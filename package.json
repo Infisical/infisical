@@ -1,0 +1,33 @@
+{
+  "name": "infisical-cli",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "bin": {
+    "infisical": "bin/index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Infisical/infisical-cli.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Infisical/infisical-cli/issues"
+  },
+  "homepage": "https://github.com/Infisical/infisical-cli#readme",
+  "dependencies": {
+    "axios": "^0.27.2",
+    "express": "^4.18.1",
+    "install": "^0.13.0",
+    "netrc-rw": "^1.0.0",
+    "npm": "^8.16.0",
+    "open": "^8.4.0",
+    "prompt-sync": "^4.2.0",
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1"
+  }
+}
