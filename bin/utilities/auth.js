@@ -12,7 +12,7 @@ const getCredentials = ({
 	try {
 		credentials = netrc.host(host);
 	} catch (err) {
-		console.log("Failed to get your credentials. You may want to login with npx infisical login");
+		console.log("Error: Failed to get local credentials. Log in with 'npx infisical login'");
 	}
 	
 	return credentials;

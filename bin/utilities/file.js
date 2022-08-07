@@ -1,4 +1,3 @@
-#! /usr/bin/env node
 const path = require('path');
 const fs = require('fs');
 const currentPath = process.cwd();
@@ -18,9 +17,8 @@ const read = (fileName) => {
 		file = fs.readFileSync(path.join(currentPath, fileName), 'utf8');
 	} catch (err) {
 		console.error(
-		"Failed to read your " 
+			"Error: Failed to read file " 
 			+ fileName 
-			+ " file. Make sure the file is really there!"
 		);
 		process.exit(1);
 	}
@@ -41,7 +39,7 @@ const write = ({
 	try {
 		fs.writeFileSync(path.join(currentPath, fileName), content);
 	} catch (err) {
-		console.log("Failed to write to file " + fileName)
+		console.error("Error: Failed to write to file " + fileName)
 		process.exit(1);
 	}
 }

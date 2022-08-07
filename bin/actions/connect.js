@@ -20,7 +20,7 @@ const connect = async ({
 		content: workspaceId
 	});
 	
-	console.log('Successfully established connection with workspace ' + workspaceId);
+	console.log('✅ Successfully established connection with workspace ' + workspaceId);
 	process.exit(0);
 }
 

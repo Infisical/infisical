@@ -1,4 +1,3 @@
-#! /usr/bin/env node
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -16,7 +15,7 @@ const {
 	getCredentials
 } = require('../utilities/auth');
 const {
-	workspaceMemberPublicKeys,
+	getWorkspaceKeys,
 	uploadFile
 } = require('../api');
 const {
@@ -24,21 +23,26 @@ const {
 } = require('../variables');
 
 /**
- * Find, encrypt, and send .env file and keys
- * [Elaborate more on mechanism]
+ * Push .env file from local to server. Follows steps:
+ * 1. Read .env file
+ * 2. Symmetrically encrypt .env file with random key
+ * 3. Assymmetrically encrypt key with each receiver public keys
+ * 4. Package and send 2-3 to server
 */
 const push = async () => {
 		
 	try {
-		const credentials = getCredentials({
-			host: KEYS_HOST
-		});
+		// read required local info
+		const credentials = getCredentials({ host: KEYS_HOST });
 
-		const file = read(".env"); // read .env
+		const file = read(".env");
 		const workspaceId = read(".env.infisical");
 		
-		const randomBytes = crypto.randomBytes(16).toString('hex'); // generate symmetic key bytes
+		console.log('Encrypting file...');
+		// generate (hex) symmetric key
+		const randomBytes = crypto.randomBytes(16).toString('hex');
 		
+		// encrypt .env file with symmetric key
 		const {
 			ciphertext,
 			iv,
@@ -48,13 +52,13 @@ const push = async () => {
 			key: randomBytes
 		});
 		
-		// get all recipients public keys
-		const publicKeys = await workspaceMemberPublicKeys({
+		console.log('Generating access keys...');
+		// obtain public keys of all receivers (i.e. members in workspace)
+		const publicKeys = await getWorkspaceKeys({
 			workspaceId
 		});
 		
-		// assymmetrically encrypt key with all workspace members'
-		// public keys
+		// assymmetrically encrypt key with each receiver public keys
 		const keys = publicKeys.map(k => {
 			const { ciphertext, nonce } = encryptAssymmetric({
 				plaintext: randomBytes,
@@ -68,25 +72,22 @@ const push = async () => {
 				userId: k.userId
 			});
 		});
-		
-		// package payload
-		const payload = ({
+
+		console.log('Pushing file...');
+		// send payload
+		await uploadFile({
 			workspaceId,
-			ciphertext, 
+			ciphertext,
 			iv,
 			tag,
 			keys
 		});
-
-		// send payload
-		await uploadFile(payload);
-		
 	} catch (err) {
-		console.log('Failed to push .env file');
+		console.error('❌ Error: Failed to push .env file');
 		process.exit(1);
 	}
 	
-	console.log('Successfully uploaded .env file');
+	console.log('✅ Successfully uploaded .env file');
 	process.exit(0);
 }
 

@@ -2,39 +2,31 @@ const netrc = require('netrc-rw');
 const open = require('open');
 const express = require('express');
 const {
-	getInfisicalPublicKey,
-	postLogin
-} = require('../api');
-const {
-	INFISICAL_URL,
 	LOGIN_HOST,
 	KEYS_HOST
 } = require('../variables');
 
 /**
- * Redirect to browser CLI login to authenticate and retrieve/sync
- * token, public/private key information.
+ * Redirect to browser SSO to authenticate and obtain/sync credentials
+ * (i.e. token and keys information).
+ * Dynamically opens a port to catch credentially.
 */
 const login = async () => {
-	// login
 
 	try {
-		// TODO: redirect to /login/cli
-		open('https://infisical.com/login');
-		
-		// TODO: figure out open ports and relay that information in open
-		const PORT = 3005;
+		const PORT = 0; // dynamic port
 		const TIMEOUT_MS = 120000;
 		
 		// open server on free port as part of browser SSO
 		const app = express();
 		app.use(express.json());
 		app.post('/auth', (req, res) => {
+
 			// save redirected login credentials
 			const { status } = req.query;
 			
 			if (status == 'fail') {
-				console.log("Failed to authenticate");
+				console.error("❌ Error: Failed to authenticate");
 				res.status(400).send({
 					message: 'Failed to authenticate'
 				});
@@ -50,7 +42,7 @@ const login = async () => {
 			} = req.body;
 
 			console.log('Logging in... done');
-			console.log('Logged in as ' + email);
+			console.log('✅ Logged in as ' + email);
 			
 			// update authentication information on file
 			updateNetRC({
@@ -73,17 +65,22 @@ const login = async () => {
 			process.exit(0);
 		});
 		
+		// start server to catch credentials upon redirect
 		const server = app.listen(PORT, () => {
-			console.log("Opening browser to https://infisical.com/login/cli");
+			console.log("Opening browser to https://infisical.com/login/cli?port=" + server.address().port);
+			console.log('infisical: Waiting for login...');
+			
+			// redirect to browser SSO link
+			open('https://infisical.com/login/cli?port=' + server.address().port);
 			setTimeout(() => {
-				console.log('Authentication session timed out.');
+				console.error('❌ Error: Authentication session timed out.');
 				server.close();
 				process.exit(0);
 			}, TIMEOUT_MS);
 		});
 
 	} catch (err) {
-		console.log("Ouch. Someting went wrong while logging you in... Let's try that again");
+		console.error("Error: Someting went wrong while logging you in... Let's try that again");
 		process.exit(1);
 	}
 }
