@@ -1,9 +1,10 @@
 const axios = require('axios');
 const {
-	INFISICAL_URL
+	INFISICAL_URL,
+	LOGIN_HOST
 } = require('./variables');
 const {
-	getToken
+	getCredentials
 } = require('./utilities/auth');
 
 // consider renaming these functions
@@ -42,16 +43,18 @@ const getInfisicalPublicKey = async () => {
 const connectToWorkspace = async ({
 	workspaceId
 }) => {
-	const URL = INFISICAL_URL + "/workspace/connect/" + workspaceId;
+	const URL = INFISICAL_URL + "/workspace/" + workspaceId + "/connect";
 	// TODO: add token
 	
-	const token = getToken();
+	const credentials = getCredentials({
+		host: LOGIN_HOST
+	});
 
 	let response;
 	try {
 		response = await axios.get(URL, {
 			headers: {
-				'Authorization': 'Bearer ' + token
+				'Authorization': 'Bearer ' + credentials.password
 			}
 		});
 	} catch (err) {
@@ -60,7 +63,95 @@ const connectToWorkspace = async ({
 	}
 }
 
+const workspaceMemberPublicKeys = async ({
+	workspaceId
+}) => {
+	const URL = INFISICAL_URL + "/workspace/" + workspaceId + "/publicKeys";
+	
+	const credentials = getCredentials({
+		host: LOGIN_HOST
+	});
+	
+	let response;
+	try {
+		response = await axios.get(URL, {
+			headers: {
+				'Authorization': 'Bearer ' + credentials.password
+			}
+		});
+	} catch (err) {
+		console.log(err);
+		console.log("Failed to connect to workspace. Double-check that you're authorized for it");
+		process.exit(1);
+	}
+	
+	return response.data.publicKeys;
+}
+
+const uploadFile = async ({
+	workspaceId,
+	ciphertext,
+	iv,
+	tag,
+	keys
+}) => {
+	const URL = INFISICAL_URL + "/file"
+	
+	const credentials = getCredentials({
+		host: LOGIN_HOST
+	});
+	
+	let response;
+	try {
+		response = await axios.post(URL, {
+			workspaceId,
+			ciphertext,
+			iv,
+			tag,
+			keys
+		}, {
+			headers: {
+				'Authorization': 'Bearer ' + credentials.password
+			}
+		});
+	} catch (err) {
+		console.log("Failed to upload .env file. Check your connection");
+		process.exit(1);
+	}
+	
+	return response;
+}
+
+
+const getFile = async ({
+	workspaceId
+}) => {
+	const URL = INFISICAL_URL + "/file/" + workspaceId
+	
+	const credentials = getCredentials({
+		host: LOGIN_HOST
+	});
+
+	let response;
+	try {
+		response = await axios.get(URL, {
+			headers: {
+				'Authorization': 'Bearer ' + credentials.password
+			}
+		});
+	} catch (err) {
+		console.log(err);
+		console.log("Failed to pull the latest .env file");
+		process.exit(1);
+	}
+	
+	return response.data;
+}
+
 module.exports = {
 	getInfisicalPublicKey,
-	connectToWorkspace
+	connectToWorkspace,
+	workspaceMemberPublicKeys,
+	uploadFile,
+	getFile
 }

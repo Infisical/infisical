@@ -1,23 +1,24 @@
 const netrc = require('netrc-rw');
-const {
-	LOGIN_HOST
-} = require('../variables');
 
-/**
- * Get existing token in .netrc file
+/** Return set of specified host credentials from
+ * .netrc file.
+ * @param {Object} obj
+ * @param {String} host - LOGIN_HOST or KEYS_HOST
 */
-const getToken = () => {
-	let token;
+const getCredentials = ({
+	host
+}) => {
+	let credentials;
 	try {
-		token = netrc.host(LOGIN_HOST).password;
+		credentials = netrc.host(host);
 	} catch (err) {
-		console.log("You need to authenticate. Run npx infisical login");
-		process.exit(1);
+		console.log("Failed to get your credentials. You may want to login with npx infisical login");
 	}
 	
-	return token
+	return credentials;
 }
 
 module.exports = {
-	getToken
+	getCredentials
 }
+
