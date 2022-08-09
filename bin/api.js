@@ -7,13 +7,13 @@ const {
 	getCredentials
 } = require('./utilities/auth');
 
-const credentials = getCredentials({
-	host: LOGIN_HOST
-});
 
 const connectToWorkspace = async ({
 	workspaceId
 }) => {
+	const credentials = getCredentials({
+		host: LOGIN_HOST
+	});
 	let response;
 	try {
 		response = await axios.get(INFISICAL_URL + '/workspace/' + workspaceId + '/connect', {
@@ -30,9 +30,12 @@ const connectToWorkspace = async ({
 const getWorkspaceKeys = async ({
 	workspaceId
 }) => {
+	const credentials = getCredentials({
+		host: LOGIN_HOST
+	});
 	let response;
 	try {
-		response = await axios.get(INFISICAL_URL + '/workspace/' + workspaceId + '/publicKeys', {
+		response = await axios.get(INFISICAL_URL + '/workspace/' + workspaceId + '/keys', {
 			headers: {
 				'Authorization': 'Bearer ' + credentials.password
 			}
@@ -52,6 +55,9 @@ const uploadFile = async ({
 	tag,
 	keys
 }) => {
+	const credentials = getCredentials({
+		host: LOGIN_HOST
+	});
 	let response;
 	try {
 		response = await axios.post(INFISICAL_URL + '/file', {
@@ -76,6 +82,9 @@ const uploadFile = async ({
 const getFile = async ({
 	workspaceId
 }) => {
+	const credentials = getCredentials({
+		host: LOGIN_HOST
+	});
 	let response;
 	try {
 		response = await axios.get(INFISICAL_URL + '/file/' + workspaceId, {
@@ -84,8 +93,7 @@ const getFile = async ({
 			}
 		});
 	} catch (err) {
-		console.log(err);
-		console.error("Failed to pull the latest .env file");
+		console.error("❌ Error: " + err.response.data.message);
 		process.exit(1);
 	}
 	

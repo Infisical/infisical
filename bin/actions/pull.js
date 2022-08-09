@@ -25,10 +25,10 @@ const {
 const pull = async () => {
 	try {
 		// read required local info
-		console.log('Pulling file...');
 		const workspaceId = read(".env.infisical");
-		const file = await getFile({ workspaceId });
 		const credentials = getCredentials({ host: KEYS_HOST });
+		console.log('Pulling file...');
+		const file = await getFile({ workspaceId });
 		
 		console.log('Decrypting file...');
 		// assymmetrically decrypt symmetric key with local private key

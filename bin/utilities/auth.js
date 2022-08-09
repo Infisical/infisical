@@ -1,4 +1,6 @@
 const netrc = require('netrc-rw');
+const jsrp = require('jsrp');
+const axios = require('axios');
 
 /** Return set of specified host credentials from
  * .netrc file.
@@ -12,7 +14,8 @@ const getCredentials = ({
 	try {
 		credentials = netrc.host(host);
 	} catch (err) {
-		console.log("Error: Failed to get local credentials. Log in with 'npx infisical login'");
+		console.error("❌ Error: Failed to get local credentials. Log in with 'npx infisical login'");
+		process.exit(0);
 	}
 	
 	return credentials;

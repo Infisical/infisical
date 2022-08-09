@@ -34,7 +34,7 @@ const command = async (args) => {
 			pull();
 			break;
 		default:
-			console.log("Error: Unrecognized command");
+			console.log("❌ Error: Command not recognized");
 			return;
 	}
 

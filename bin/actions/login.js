@@ -1,86 +1,95 @@
 const netrc = require('netrc-rw');
+const jsrp = require('jsrp');
+const axios = require('axios');
 const open = require('open');
+const prompt = require('prompt-sync')();
 const express = require('express');
 const {
 	LOGIN_HOST,
 	KEYS_HOST
 } = require('../variables');
+const {
+	decryptSymmetric
+} = require('../utilities/crypto');
 
 /**
- * Redirect to browser SSO to authenticate and obtain/sync credentials
- * (i.e. token and keys information).
- * Dynamically opens a port to catch credentially.
+ * Authenticate user via SRP protocol
 */
 const login = async () => {
-
+	
+	let token, refreshToken, publicKey, encryptedPrivateKey, iv, tag;
 	try {
-		const PORT = 0; // dynamic port
-		const TIMEOUT_MS = 120000;
 		
-		// open server on free port as part of browser SSO
-		const app = express();
-		app.use(express.json());
-		app.post('/auth', (req, res) => {
+		// prompt for user input
+		const email = prompt('Email: ');
+		const password = prompt('Password: ', { echo: '' });
 
-			// save redirected login credentials
-			const { status } = req.query;
+		// login
+		console.log('Logging in...');
+		const client = new jsrp.client();
+
+		client.init({
+			username: email,
+			password,
+		}, async () => {
+			const clientPublicKey = client.getPublicKey();
 			
-			if (status == 'fail') {
-				console.error("❌ Error: Failed to authenticate");
-				res.status(400).send({
-					message: 'Failed to authenticate'
+			let serverPublicKey, salt;
+			try {
+				const res = await axios.post('http://localhost:4000/login1', {
+					email,
+					clientPublicKey
 				});
-				server.close();
-				process.exit(1);
+				serverPublicKey = res.data.serverPublicKey;
+				salt = res.data.salt;
+			} catch (err) {
+				console.error("❌ Error: Failed to validate your login credentials");
+				process.exit(0);
 			}
-			
-			const {
-				email,
-				publicKey,
-				privateKey,
-				token
-			} = req.body;
 
-			console.log('Logging in... done');
-			console.log('✅ Logged in as ' + email);
+			client.setSalt(salt);
+			client.setServerPublicKey(serverPublicKey);
+			const clientProof = client.getProof(); // M1
 			
+			let res;
+			try {
+				res = await axios.post('http://localhost:4000/login2', {
+					email,
+					clientProof
+				});
+			} catch (err) {
+				console.error("❌ Error: Failed to validate your login credentials");
+				process.exit(0);
+			}
+
+			// decrypt private key
+			const privateKey = decryptSymmetric({
+				ciphertext: res.data.encryptedPrivateKey,
+				iv: res.data.iv,
+				tag: res.data.tag,
+				key: password.slice(0, 32).padStart(32, '0')
+			});
+
 			// update authentication information on file
 			updateNetRC({
 				host: LOGIN_HOST,
 				login: email,
-				password: token
+				password: res.data.token
 			});
 
 			// update key information on file
 			updateNetRC({
 				host: KEYS_HOST,
-				login: publicKey,
+				login: res.data.publicKey,
 				password: privateKey
 			});
 
-			res.status(200).send({
-				message: 'Logged in as ' + email
-			});
-			server.close();
+
+			console.log('✅ Logged in as ' + email);
 			process.exit(0);
 		});
-		
-		// start server to catch credentials upon redirect
-		const server = app.listen(PORT, () => {
-			console.log("Opening browser to https://infisical.com/login/cli?port=" + server.address().port);
-			console.log('infisical: Waiting for login...');
-			
-			// redirect to browser SSO link
-			open('https://infisical.com/login/cli?port=' + server.address().port);
-			setTimeout(() => {
-				console.error('❌ Error: Authentication session timed out.');
-				server.close();
-				process.exit(0);
-			}, TIMEOUT_MS);
-		});
-
 	} catch (err) {
-		console.error("Error: Someting went wrong while logging you in... Let's try that again");
+		console.error("❌ Error: Something went wrong while logging you in... Let's try that again");
 		process.exit(1);
 	}
 }

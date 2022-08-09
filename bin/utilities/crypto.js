@@ -38,8 +38,8 @@ const encryptAssymmetric = ({
  * @param {Object} obj
  * @param {String} obj.ciphertext - ciphertext to decrypt
  * @param {String} obj.nonce - nonce
- * @param {String} obj.publicKey - public key of the sender
- * @param {String} obj.privateKey - private key of the receiver (current user)
+ * @param {String} obj.publicKey - base64-encoded public key of the sender
+ * @param {String} obj.privateKey - base64-encoded private key of the receiver (current user)
  * @param {String} plaintext - UTF8 plaintext
 */
 const decryptAssymmetric = ({
