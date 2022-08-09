@@ -10,7 +10,8 @@ const LINE = /(?:^|^)\s*(?:export\s+)?([\w.-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'
 
 // links
 // TODO: replace with real URL
-const INFISICAL_URL = "http://localhost:4000";
+
+const INFISICAL_URL = "https://api.infisical.com"
 
 // hosts
 const LOGIN_HOST = 'api.infisical.com';

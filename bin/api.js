@@ -7,7 +7,6 @@ const {
 	getCredentials
 } = require('./utilities/auth');
 
-
 const connectToWorkspace = async ({
 	workspaceId
 }) => {
@@ -85,6 +84,7 @@ const getFile = async ({
 	const credentials = getCredentials({
 		host: LOGIN_HOST
 	});
+	
 	let response;
 	try {
 		response = await axios.get(INFISICAL_URL + '/file/' + workspaceId, {
@@ -93,6 +93,7 @@ const getFile = async ({
 			}
 		});
 	} catch (err) {
+		console.log(err);
 		console.error("❌ Error: " + err.response.data.message);
 		process.exit(1);
 	}
