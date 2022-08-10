@@ -1,7 +1,7 @@
 {
   "name": "infisical",
   "version": "1.0.2",
-  "description": "",
+  "description": "Sync .env files simply, securely",
   "main": "index.js",
   "bin": {
     "infisical": "bin/index.js"
@@ -30,5 +30,15 @@
     "prompt-sync": "^4.2.0",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1"
-  }
+  },
+	"keywords": [
+		"infisical",
+		"keys",
+		"secrets",		
+		"env",
+		".env",
+		"environment",
+		"variables",
+		"sync"
+	]
 }

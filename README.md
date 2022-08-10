@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="img/logo.png" alt="drawing" width="200"/>
+    <img src="img/logo.png" alt="infisical" width="200"/>
 <p>
 
 ## Infisical
