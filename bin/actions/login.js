@@ -6,7 +6,8 @@ const prompt = require('prompt-sync')();
 const express = require('express');
 const {
 	LOGIN_HOST,
-	KEYS_HOST
+	KEYS_HOST,
+	INFISICAL_URL
 } = require('../variables');
 const {
 	decryptSymmetric
@@ -36,7 +37,7 @@ const login = async () => {
 			
 			let serverPublicKey, salt;
 			try {
-				const res = await axios.post('http://localhost:4000/login1', {
+				const res = await axios.post(INFISICAL_URL + '/login1', {
 					email,
 					clientPublicKey
 				});
@@ -53,7 +54,7 @@ const login = async () => {
 			
 			let res;
 			try {
-				res = await axios.post('http://localhost:4000/login2', {
+				res = await axios.post(INFISICAL_URL + '/login2', {
 					email,
 					clientProof
 				});

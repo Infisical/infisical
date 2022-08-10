@@ -1,3 +1,7 @@
+<p align="center">
+    <img src="img/logo.png" alt="drawing" width="200"/>
+<p>
+
 ## Infisical
 
 Infisical is a simple, end-to-end encrypted secrets manager for your .env files. It enables teams to securely sync and manage .env files in seconds.
@@ -31,7 +35,7 @@ npx infisical push
 Pull the lates .env file from the workspace:
 
 ```
-npx infisical push 
+npx infisical pull
 ```
 
 Voila!
