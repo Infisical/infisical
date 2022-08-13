@@ -1,6 +1,8 @@
 <p align="center">
-    <img src="img/logo.png" alt="infisical" width="200"/>
+    <img src="https://github.com/Infisical/infisical-cli/blob/HEAD/img/logo.png?raw=true" alt="infisical" width="200"/>
 <p>
+
+![alt text](https://github.com/Infisical/infisical-cli/blob/HEAD/img/logo.png?raw=true)
 
 ## Infisical
 
