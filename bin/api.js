@@ -15,13 +15,15 @@ const connectToWorkspace = async ({
 	});
 	let response;
 	try {
-		response = await axios.get(INFISICAL_URL + '/workspace/' + workspaceId + '/connect', {
+		response = await axios.get(INFISICAL_URL + '/membership/' + workspaceId + '/connect', {
 			headers: {
 				'Authorization': 'Bearer ' + credentials.password
 			}
 		});
 	} catch (err) {
-		console.error("Error: Something went wrong while processing a network request");
+		console.error(err);
+		console.log(err.response.data);
+		console.error("❌ Error: Something went wrong while processing a network request");
 		process.exit(1);
 	}
 }
@@ -40,7 +42,7 @@ const getWorkspaceKeys = async ({
 			}
 		});
 	} catch (err) {
-		console.error("Error: Something went wrong while processing a network request");
+		console.error("❌ Error: Something went wrong while processing a network request");
 		process.exit(1);
 	}
 	
@@ -71,7 +73,7 @@ const uploadFile = async ({
 			}
 		});
 	} catch (err) {
-		console.error("Error: Something went wrong while processing a network request");
+		console.error("❌ Error: Something went wrong while processing a network request");
 		process.exit(1);
 	}
 	
@@ -93,7 +95,6 @@ const getFile = async ({
 			}
 		});
 	} catch (err) {
-		console.log(err);
 		console.error("❌ Error: " + err.response.data.message);
 		process.exit(1);
 	}
