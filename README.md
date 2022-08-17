@@ -1,9 +1,3 @@
-<p align="center">
-    <img src="https://github.com/Infisical/infisical-cli/blob/HEAD/img/logo.png?raw=true" alt="infisical" width="200"/>
-</p>
-
-![alt text](https://github.com/Infisical/infisical-cli/blob/HEAD/img/logo.png?raw=true)
-
 ## Infisical
 
 Infisical is a simple, end-to-end encrypted secrets manager for your .env files. It enables teams to securely sync and manage .env files in seconds.
