@@ -9,6 +9,8 @@ const push = require('./actions/push');
 const pull = require('./actions/pull');
 const connect = require('./actions/connect');
 
+// TODO: validate authentication + membership first
+
 /**
  * Process post-login user input
  * 

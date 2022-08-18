@@ -90,6 +90,7 @@ const login = async () => {
 			process.exit(0);
 		});
 	} catch (err) {
+		console.log(err);
 		console.error("❌ Error: Something went wrong while logging you in... Let's try that again");
 		process.exit(1);
 	}
