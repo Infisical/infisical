@@ -48,7 +48,7 @@ const getWorkspaceKeys = async ({ workspaceId }) => {
 	return response.data.publicKeys;
 };
 
-const uploadFile = async ({ workspaceId, ciphertext, iv, tag, keys }) => {
+const uploadFile = async ({ workspaceId, hash, ciphertext, iv, tag, keys }) => {
 	const credentials = getCredentials({
 		host: LOGIN_HOST,
 	});
@@ -58,6 +58,7 @@ const uploadFile = async ({ workspaceId, ciphertext, iv, tag, keys }) => {
 			INFISICAL_URL + "/file",
 			{
 				workspaceId,
+				hash,
 				ciphertext,
 				iv,
 				tag,
@@ -103,5 +104,5 @@ module.exports = {
 	connectToWorkspace,
 	getWorkspaceKeys,
 	uploadFile,
-	getFile,
+	getFile
 };

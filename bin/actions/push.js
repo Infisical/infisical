@@ -36,6 +36,7 @@ const push = async () => {
 		const credentials = getCredentials({ host: KEYS_HOST });
 
 		const file = read(".env");
+		const hash = crypto.createHash('sha256').update(file).digest('hex');
 		const workspaceId = read(".env.infisical");
 		
 		console.log('Encrypting file...');
@@ -77,6 +78,7 @@ const push = async () => {
 		// send payload
 		await uploadFile({
 			workspaceId,
+			hash,
 			ciphertext,
 			iv,
 			tag,
