@@ -3,7 +3,8 @@ const {
 	write
 } = require('../utilities/file');
 const {
-	getFile
+	getFile,
+	getSecrets
 } = require('../api');
 const {
 	getCredentials
@@ -15,6 +16,8 @@ const {
 const {
 	KEYS_HOST
 } = require('../variables');
+
+const fs = require('fs');
 
 /**
  * Pull .env file from server to local. Follow steps:
@@ -62,4 +65,71 @@ const pull = async () => {
 	process.exit(0);
 }
 
-module.exports = pull;
+/* 
+ * Pull secrets from server to local. Follow steps:
+ * 1. Get (encrypted) sectets and asymmetrically encrypted) symmetric key
+ * 2. Asymmetrically decrypt key with local private key
+ * 3. Symmetrically decrypt secrets with key
+ */
+const pull2 = async () => {
+	try {
+		// read required local info
+		const workspaceId = read(".env.infisical");
+		const credentials = getCredentials({ host: KEYS_HOST });
+		console.log('Pulling file...');
+		console.log(workspaceId);
+
+		const secrets = await getSecrets({ workspaceId });
+		
+		console.log('Decrypting file...');
+
+		// asymmetrically decrypt symmetric key with local private key
+		const key = decryptAssymmetric({
+			ciphertext: secrets.key.encryptedKey,
+			nonce: secrets.key.nonce,
+			publicKey: secrets.key.sender.publicKey,
+			privateKey: credentials.password
+		});
+		
+		// decrypt secrets with symmetric key
+		let content = '';
+		secrets.secrets.forEach((sp, idx) => {
+			const secretKey = decryptSymmetric({
+				ciphertext: sp.secretKey.ciphertext,
+				iv: sp.secretKey.iv,
+				tag: sp.secretKey.tag,
+				key
+			});
+			const secretValue = decryptSymmetric({
+				ciphertext: sp.secretValue.ciphertext,
+				iv: sp.secretValue.iv,
+				tag: sp.secretValue.tag,
+				key
+			});
+			
+			line += secretKey;
+			line += '=';
+			line += secretValue;
+			
+			if (idx > 0 && idx < secrets.secrets.length) {
+				line += '\n';
+			}
+		});
+		
+		write({
+			fileName: '.env',
+			content
+		});
+	} catch (err) {
+		console.error('❌ Error: Failed to pull .env file');
+		process.exit(1);
+	}
+	
+	console.log('✅ Successfully pulled latest .env file');
+	process.exit(0);
+}
+
+module.exports = {
+	pull,
+	pull2
+};

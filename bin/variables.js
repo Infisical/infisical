@@ -9,9 +9,10 @@ const PULL = "pull";
 const LINE = /(?:^|^)\s*(?:export\s+)?([\w.-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/mg
 
 // links
-// TODO: replace with real URL
 
-const INFISICAL_URL = "https://api.infisical.com"
+// const INFISICAL_URL = "https://api.infisical.com"
+const INFISICAL_URL = "http://localhost:4000"
+
 
 // hosts
 const LOGIN_HOST = 'api.infisical.com';
