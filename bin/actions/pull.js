@@ -10,7 +10,7 @@ const {
 	getCredentials
 } = require('../utilities/auth');
 const {
-	decryptAssymmetric,
+	decryptAsymmetric,
 	decryptSymmetric
 } = require('../utilities/crypto');
 const {
@@ -22,7 +22,7 @@ const fs = require('fs');
 /**
  * Pull .env file from server to local. Follow steps:
  * 1. Get (encrypted) .env file and (assymetrically-encrypted) symmetric key
- * 2. Assymmetrically decrypt key with local private key
+ * 2. Asymmetrically decrypt key with local private key
  * 3. Symmetrically decrypt .env file with key
 */
 const pull = async () => {
@@ -35,7 +35,7 @@ const pull = async () => {
 		
 		console.log('Decrypting file...');
 		// assymmetrically decrypt symmetric key with local private key
-		const key = decryptAssymmetric({
+		const key = decryptAsymmetric({
 			ciphertext: file.key.encryptedKey,
 			nonce: file.key.nonce,
 			publicKey: file.key.sender.publicKey,
@@ -77,50 +77,59 @@ const pull2 = async () => {
 		const workspaceId = read(".env.infisical");
 		const credentials = getCredentials({ host: KEYS_HOST });
 		console.log('Pulling file...');
-		console.log(workspaceId);
 
 		const secrets = await getSecrets({ workspaceId });
+		console.log(secrets.length);
 		
 		console.log('Decrypting file...');
 
 		// asymmetrically decrypt symmetric key with local private key
-		const key = decryptAssymmetric({
+		console.log('A');
+		const key = decryptAsymmetric({
 			ciphertext: secrets.key.encryptedKey,
 			nonce: secrets.key.nonce,
 			publicKey: secrets.key.sender.publicKey,
 			privateKey: credentials.password
 		});
+		console.log('B');
+		console.log(key);
+		console.log(secrets.secrets);
 		
 		// decrypt secrets with symmetric key
 		let content = '';
 		secrets.secrets.forEach((sp, idx) => {
+			console.log('B1');
 			const secretKey = decryptSymmetric({
 				ciphertext: sp.secretKey.ciphertext,
 				iv: sp.secretKey.iv,
 				tag: sp.secretKey.tag,
 				key
 			});
+			console.log('B2');
 			const secretValue = decryptSymmetric({
 				ciphertext: sp.secretValue.ciphertext,
 				iv: sp.secretValue.iv,
 				tag: sp.secretValue.tag,
 				key
 			});
+			console.log('B3');
 			
-			line += secretKey;
-			line += '=';
-			line += secretValue;
+			content += secretKey;
+			content += '=';
+			content += secretValue;
 			
 			if (idx > 0 && idx < secrets.secrets.length) {
-				line += '\n';
+				content += '\n';
 			}
 		});
+		console.log('C');
 		
 		write({
 			fileName: '.env',
 			content
 		});
 	} catch (err) {
+		console.error(err);
 		console.error('❌ Error: Failed to pull .env file');
 		process.exit(1);
 	}

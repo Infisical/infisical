@@ -13,7 +13,6 @@ const LINE = /(?:^|^)\s*(?:export\s+)?([\w.-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'
 // const INFISICAL_URL = "https://api.infisical.com"
 const INFISICAL_URL = "http://localhost:4000"
 
-
 // hosts
 const LOGIN_HOST = 'api.infisical.com';
 const KEYS_HOST = 'keys.infisical.com';

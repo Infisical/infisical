@@ -63,14 +63,13 @@ const getSharedKey = async ({ workspaceId }) => {
 			}
 		);
 	} catch (err) {
-		console.error(err);
 		console.error(
 			"❌ Error: Something went wrong while processing a network request"
 		);
 		process.exit(1);
 	}
 
-	return response?.latestKey;
+	return response.data.latestKey;
 };
 
 const uploadFile = async ({ workspaceId, hash, ciphertext, iv, tag, keys }) => {

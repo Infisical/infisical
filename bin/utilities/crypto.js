@@ -3,7 +3,7 @@ nacl.util = require('tweetnacl-util');
 const aes = require('./aesgcm');
 
 /**
- * Return assymmetrically encrypted [plaintext] using [publicKey] where
+ * Return asymmetrically encrypted [plaintext] using [publicKey] where
  * [publicKey] likely belongs to the recipient.
  * @param {Object} obj
  * @param {String} obj.plaintext - plaintext to encrypt
@@ -13,7 +13,7 @@ const aes = require('./aesgcm');
  * @returns {String} ciphertext - base64-encoded ciphertext
  * @returns {String} nonce - base64-encoded nonce
 */
-const encryptAssymmetric = ({
+const encryptAsymmetric = ({
 	plaintext,
 	publicKey,
 	privateKey
@@ -33,7 +33,7 @@ const encryptAssymmetric = ({
 }
 
 /**
- * Return assymmetrically decrypted [ciphertext] using [privateKey] where
+ * Return asymmetrically decrypted [ciphertext] using [privateKey] where
  * [privateKey] likely belongs to the recipient.
  * @param {Object} obj
  * @param {String} obj.ciphertext - ciphertext to decrypt
@@ -42,7 +42,7 @@ const encryptAssymmetric = ({
  * @param {String} obj.privateKey - base64-encoded private key of the receiver (current user)
  * @param {String} plaintext - UTF8 plaintext
 */
-const decryptAssymmetric = ({
+const decryptAsymmetric = ({
 	ciphertext,
 	nonce,
 	publicKey,
@@ -107,6 +107,7 @@ const decryptSymmetric = ({
 	try {
 		plaintext = aes.decrypt(ciphertext, iv, tag, key);
 	} catch (err) {
+		console.error(err);
 		console.log('Failed to perform decryption');
 		process.exit(1);
 	}
@@ -115,8 +116,8 @@ const decryptSymmetric = ({
 }
 
 module.exports = {
-	encryptAssymmetric,
-	decryptAssymmetric,
+	encryptAsymmetric,
+	decryptAsymmetric,
 	encryptSymmetric,
 	decryptSymmetric
 }

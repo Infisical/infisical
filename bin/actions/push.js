@@ -6,7 +6,8 @@ const { read, parse } = require("../utilities/file");
 const {
 	encryptSymmetric,
 	decryptSymmetric,
-	encryptAssymmetric,
+	encryptAsymmetric,
+	decryptAsymmetric
 } = require("../utilities/crypto");
 const { getCredentials } = require("../utilities/auth");
 const { getWorkspaceKeys, getSharedKey, uploadFile, uploadSecrets } = require("../api");
@@ -16,7 +17,7 @@ const { KEYS_HOST } = require("../variables");
  * Push .env file from local to server. Follows steps:
  * 1. Read .env file
  * 2. Symmetrically encrypt .env file with random key
- * 3. Assymmetrically encrypt key with each receiver public keys
+ * 3. Asymmetrically encrypt key with each receiver public keys
  * 4. Package and send 2-3 to server
  */
 const push = async () => {
@@ -46,7 +47,7 @@ const push = async () => {
 
 		// assymmetrically encrypt key with each receiver public keys
 		const keys = publicKeys.map((k) => {
-			const { ciphertext, nonce } = encryptAssymmetric({
+			const { ciphertext, nonce } = encryptAsymmetric({
 				plaintext: randomBytes,
 				publicKey: k.publicKey,
 				privateKey: credentials.password,
@@ -98,10 +99,20 @@ const push2 = async () => {
 
 		console.log("Encrypting file...");
 
-		const sharedKey = await getSharedKey({ workspaceId });
+		let sharedKey = await getSharedKey({ workspaceId });
 		
-		// if no shared key exists then generate a new shared key
-		randomBytes = sharedKey ? sharedKey : crypto.randomBytes(16).toString("hex");
+		if (sharedKey) {
+			// case: a (shared) key exists for the workspace
+			randomBytes = decryptAsymmetric({
+				ciphertext: sharedKey.encryptedKey,
+				nonce: sharedKey.nonce,
+				publicKey: sharedKey.sender.publicKey,
+				privateKey: credentials.password
+			})
+		} else {
+			// case: a (shared) key does not exist for the workspace
+			randomBytes = crypto.randomBytes(16).toString("hex");
+		}
 
 		const secrets = Object.keys(obj).map((key) => {
 			// encrypt key
@@ -145,7 +156,7 @@ const push2 = async () => {
 
 		// assymmetrically encrypt key with each receiver public keys
 		const keys = publicKeys.map((k) => {
-			const { ciphertext, nonce } = encryptAssymmetric({
+			const { ciphertext, nonce } = encryptAsymmetric({
 				plaintext: randomBytes,
 				publicKey: k.publicKey,
 				privateKey: credentials.password,
