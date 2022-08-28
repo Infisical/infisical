@@ -5,15 +5,12 @@ const {
 	PULL
 } = require('./variables');
 const login = require('./actions/login');
-const { push, push2 } = require('./actions/push');
-const { pull, pull2 } = require('./actions/pull');
+const push = require('./actions/push');
+const pull = require('./actions/pull');
 const connect = require('./actions/connect');
-
-// TODO: validate authentication + membership first
 
 /**
  * Process post-login user input
- * 
 */
 const command = async (args) => {
 	switch (args[0]) {
@@ -34,12 +31,6 @@ const command = async (args) => {
 			break;
 		case PULL:
 			pull();
-			break;
-		case "push2":
-			push2();
-			break;
-		case "pull2":
-			pull2();
 			break;
 		default:
 			console.log("❌ Error: Command not recognized");
