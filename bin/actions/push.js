@@ -35,7 +35,7 @@ const push = async () => {
 
 		let sharedKey = await getSharedKey({ workspaceId });
 		
-		if (sharedKey) {
+		if (Object.keys(sharedKey).length > 0) {
 			// case: a (shared) key exists for the workspace
 			randomBytes = decryptAsymmetric({
 				ciphertext: sharedKey.encryptedKey,
