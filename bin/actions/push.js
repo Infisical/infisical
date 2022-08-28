@@ -176,7 +176,6 @@ const push2 = async () => {
 			keys,
 		});
 	} catch (err) {
-		console.error(err);
 		console.error("❌ Error: Failed to push .env file");
 		process.exit(1);
 	}

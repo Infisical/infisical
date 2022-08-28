@@ -84,35 +84,30 @@ const pull2 = async () => {
 		console.log('Decrypting file...');
 
 		// asymmetrically decrypt symmetric key with local private key
-		console.log('A');
 		const key = decryptAsymmetric({
 			ciphertext: secrets.key.encryptedKey,
 			nonce: secrets.key.nonce,
 			publicKey: secrets.key.sender.publicKey,
 			privateKey: credentials.password
 		});
-		console.log('B');
-		console.log(key);
-		console.log(secrets.secrets);
 		
 		// decrypt secrets with symmetric key
 		let content = '';
 		secrets.secrets.forEach((sp, idx) => {
-			console.log('B1');
+
 			const secretKey = decryptSymmetric({
 				ciphertext: sp.secretKey.ciphertext,
 				iv: sp.secretKey.iv,
 				tag: sp.secretKey.tag,
 				key
 			});
-			console.log('B2');
+
 			const secretValue = decryptSymmetric({
 				ciphertext: sp.secretValue.ciphertext,
 				iv: sp.secretValue.iv,
 				tag: sp.secretValue.tag,
 				key
 			});
-			console.log('B3');
 			
 			content += secretKey;
 			content += '=';
@@ -122,14 +117,12 @@ const pull2 = async () => {
 				content += '\n';
 			}
 		});
-		console.log('C');
 		
 		write({
 			fileName: '.env',
 			content
 		});
 	} catch (err) {
-		console.error(err);
 		console.error('❌ Error: Failed to pull .env file');
 		process.exit(1);
 	}
