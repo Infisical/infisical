@@ -39,6 +39,7 @@ const getWorkspaceKeys = async ({ workspaceId }) => {
 			}
 		);
 	} catch (err) {
+		console.log(err);
 		console.error(
 			"❌ Error: Something went wrong while processing a network request"
 		);
@@ -69,7 +70,7 @@ const getSharedKey = async ({ workspaceId }) => {
 		process.exit(1);
 	}
 
-	return response.data.latestKey;
+	return response.data?.latestKey;
 };
 
 const uploadFile = async ({ workspaceId, hash, ciphertext, iv, tag, keys }) => {
