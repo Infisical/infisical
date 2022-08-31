@@ -56,7 +56,7 @@ const getSharedKey = async ({ workspaceId }) => {
 	let response;
 	try {
 		response = await axios.get(
-			INFISICAL_URL + "/key2/" + workspaceId + "/latest",
+			INFISICAL_URL + "/key/" + workspaceId + "/latest",
 			{
 				headers: {
 					Authorization: "Bearer " + credentials.password,
@@ -64,6 +64,7 @@ const getSharedKey = async ({ workspaceId }) => {
 			}
 		);
 	} catch (err) {
+		console.error(err);
 		console.error(
 			"❌ Error: Something went wrong while processing a network request"
 		);
