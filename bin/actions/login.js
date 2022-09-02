@@ -44,6 +44,7 @@ const login = async () => {
 				serverPublicKey = res.data.serverPublicKey;
 				salt = res.data.salt;
 			} catch (err) {
+				console.error(err);
 				console.error("❌ Error: Failed to validate your login credentials");
 				process.exit(0);
 			}
@@ -59,6 +60,7 @@ const login = async () => {
 					clientProof
 				});
 			} catch (err) {
+				console.error(err);
 				console.error("❌ Error: Failed to validate your login credentials");
 				process.exit(0);
 			}
