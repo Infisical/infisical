@@ -27,10 +27,22 @@ const command = async (args) => {
 			});
 			break;
 		case PUSH:
-			push();
+			if (args.length < 2) {
+				console.error("Error: Invalid command format should be 'npx infisical push [environment]'");
+				process.exit(1)	;
+			}
+			push({
+				environment: args[1]
+			});
 			break;
 		case PULL:
-			pull();
+			if (args.length < 2) {
+				console.error("Error: Invalid command format should be 'npx infisical pull [environment]'");
+				process.exit(1)	;
+			}
+			pull({
+				environment: args[1]
+			});
 			break;
 		default:
 			console.log("❌ Error: Command not recognized");

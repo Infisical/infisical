@@ -74,42 +74,11 @@ const getSharedKey = async ({ workspaceId }) => {
 	return response.data?.latestKey;
 };
 
-const uploadFile = async ({ workspaceId, hash, ciphertext, iv, tag, keys }) => {
-	const credentials = getCredentials({
-		host: LOGIN_HOST,
-	});
-	let response;
-	try {
-		response = await axios.post(
-			INFISICAL_URL + "/file",
-			{
-				workspaceId,
-				hash,
-				ciphertext,
-				iv,
-				tag,
-				keys,
-			},
-			{
-				headers: {
-					Authorization: "Bearer " + credentials.password,
-				},
-			}
-		);
-	} catch (err) {
-		console.error(
-			"❌ Error: Something went wrong while processing a network request"
-		);
-		process.exit(1);
-	}
-
-	return response;
-};
-
 const uploadSecrets = async ({ 
 	workspaceId, 
 	secrets,
-	keys
+	keys,
+	environment
 }) => {
 	const credentials = getCredentials({
 		host: LOGIN_HOST,
@@ -122,7 +91,8 @@ const uploadSecrets = async ({
 			{
 				workspaceId,
 				secrets,
-				keys
+				keys,
+				environment
 			},
 			{
 				headers: {
@@ -141,27 +111,7 @@ const uploadSecrets = async ({
 	return response;
 };
 
-const getFile = async ({ workspaceId }) => {
-	const credentials = getCredentials({
-		host: LOGIN_HOST,
-	});
-
-	let response;
-	try {
-		response = await axios.get(INFISICAL_URL + "/file/" + workspaceId, {
-			headers: {
-				Authorization: "Bearer " + credentials.password,
-			},
-		});
-	} catch (err) {
-		console.error("❌ Error: " + err.response.data.message);
-		process.exit(1);
-	}
-
-	return response.data;
-};
-
-const getSecrets = async ({ workspaceId }) => {
+const getSecrets = async ({ workspaceId, environment }) => {
 	const credentials = getCredentials({
 		host: LOGIN_HOST,
 	});
@@ -172,6 +122,9 @@ const getSecrets = async ({ workspaceId }) => {
 			headers: {
 				Authorization: "Bearer " + credentials.password,
 			},
+			params: {
+				environment
+			}
 		});
 	} catch (err) {
 		console.error("❌ Error: " + err.response.data.message);
@@ -185,8 +138,6 @@ module.exports = {
 	connectToWorkspace,
 	getWorkspaceKeys,
 	getSharedKey,
-	uploadFile,
 	uploadSecrets,
-	getFile,
 	getSecrets
 };

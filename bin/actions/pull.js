@@ -3,7 +3,6 @@ const {
 	write
 } = require('../utilities/file');
 const {
-	getFile,
 	getSecrets
 } = require('../api');
 const {
@@ -22,17 +21,20 @@ const {
  * 1. Get (encrypted) sectets and asymmetrically encrypted) symmetric key
  * 2. Asymmetrically decrypt key with local private key
  * 3. Symmetrically decrypt secrets with key
+ * @param {String} environment - dev, staging, or prod
  */
-const pull = async () => {
+const pull = async ({
+	environment
+}) => {
 	try {
 		// read required local info
 		const workspaceId = read(".env.infisical");
 		const credentials = getCredentials({ host: KEYS_HOST });
-		console.log('Pulling file...');
+		console.log("Pulling file...");
 
-		const secrets = await getSecrets({ workspaceId });
+		const secrets = await getSecrets({ workspaceId, environment });
 		
-		console.log('Decrypting file...');
+		console.log("Decrypting file...");
 
 		// asymmetrically decrypt symmetric key with local private key
 		const key = decryptAsymmetric({
@@ -74,11 +76,11 @@ const pull = async () => {
 			content
 		});
 	} catch (err) {
-		console.error('❌ Error: Failed to pull .env file');
+		console.error("❌ Error: Failed to pull .env file for ${environment} environment");
 		process.exit(1);
 	}
 	
-	console.log('✅ Successfully pulled latest .env file');
+	console.log(`✅ Successfully pulled latest .env file for ${environment} environment`);
 	process.exit(0);
 }
 
