@@ -13,6 +13,9 @@ const {
 	decryptSymmetric
 } = require('../utilities/crypto');
 const {
+	decryptSecrets
+} = require("../utilities/secret");
+const {
 	KEYS_HOST
 } = require('../variables');
 
@@ -21,7 +24,8 @@ const {
  * 1. Get (encrypted) sectets and asymmetrically encrypted) symmetric key
  * 2. Asymmetrically decrypt key with local private key
  * 3. Symmetrically decrypt secrets with key
- * @param {String} environment - dev, staging, or prod
+ * @param {Object} obj
+ * @param {String} obj.environment - dev, staging, or prod
  */
 const pull = async ({
 	environment
@@ -30,11 +34,11 @@ const pull = async ({
 		// read required local info
 		const workspaceId = read(".env.infisical");
 		const credentials = getCredentials({ host: KEYS_HOST });
-		console.log("Pulling file...");
+		console.log("⬇️  Pulling file...");
 
 		const secrets = await getSecrets({ workspaceId, environment });
 		
-		console.log("Decrypting file...");
+		console.log("🔐 Decrypting file...");
 
 		// asymmetrically decrypt symmetric key with local private key
 		const key = decryptAsymmetric({
@@ -45,32 +49,12 @@ const pull = async ({
 		});
 		
 		// decrypt secrets with symmetric key
-		let content = '';
-		secrets.secrets.forEach((sp, idx) => {
-
-			const secretKey = decryptSymmetric({
-				ciphertext: sp.secretKey.ciphertext,
-				iv: sp.secretKey.iv,
-				tag: sp.secretKey.tag,
-				key
-			});
-
-			const secretValue = decryptSymmetric({
-				ciphertext: sp.secretValue.ciphertext,
-				iv: sp.secretValue.iv,
-				tag: sp.secretValue.tag,
-				key
-			});
-			
-			content += secretKey;
-			content += '=';
-			content += secretValue;
-			
-			if (idx < secrets.secrets.length) {
-				content += '\n';
-			}
+		const content = decryptSecrets({
+			secrets,
+			key,
+			format: "text"
 		});
-		
+
 		write({
 			fileName: '.env',
 			content

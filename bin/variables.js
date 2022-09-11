@@ -4,6 +4,7 @@ const CONNECT = "connect";
 const LOGIN = "login";
 const PUSH = "push";
 const PULL = "pull";
+const NODE = "node";
 
 // parsing
 const LINE = /(?:^|^)\s*(?:export\s+)?([\w.-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/mg
@@ -22,6 +23,7 @@ module.exports = {
 	LOGIN,
 	PUSH,
 	PULL,
+	NODE,
 	LINE,
 	INFISICAL_URL,
 	LOGIN_HOST,

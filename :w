@@ -3,6 +3,28 @@ const netrc = require("netrc-rw");
 const { INFISICAL_URL, LOGIN_HOST } = require("./variables");
 const { getCredentials } = require("./utilities/auth");
 
+const connectToWorkspace = async ({ workspaceId }) => {
+	const credentials = getCredentials({
+		host: LOGIN_HOST,
+	});
+	let response;
+	try {
+		response = await axios.get(
+			INFISICAL_URL + "/membership/" + workspaceId + "/connect",
+			{
+				headers: {
+					Authorization: "Bearer " + credentials.password,
+				},
+			}
+		);
+	} catch (err) {
+		console.error(
+			"❌ Error: Failed to connect to workspace with id " + workspaceId
+		);
+		process.exit(1);
+	}
+};
+
 const getWorkspaceKeys = async ({ workspaceId }) => {
 	const credentials = getCredentials({
 		host: LOGIN_HOST,
@@ -113,45 +135,30 @@ const getSecrets = async ({ workspaceId, environment }) => {
 	return response.data;
 };
 
-const checkConnect = async ({ workspaceId }) => {
+const checkAuth = async () => {
 	let response;
 	try {
 		const credentials = netrc.host(LOGIN_HOST);
-		response = await axios.get(
-			INFISICAL_URL + "/membership/" + workspaceId + "/connect",
-			{
-				headers: {
-					Authorization: "Bearer " + credentials.password,
-				},
-			}
-		);
-	} catch (err) {
-		return false;
-	}
-	
-	return true;
-};
-
-const checkAuth = async () => {
-	try {
-		const credentials = netrc.host(LOGIN_HOST);
-		await axios.post(INFISICAL_URL + "/checkAuth", {}, {
+		response = await axios.get(INFISICAL_URL + "/checkAuth", {
 			headers: {
 				Authorization: "Bearer " + credentials.password
 			}
 		});
+		
+		console.log("response");
+		console.log(response);
+		
 	} catch (err) {
-		return false;
+
 	}
 	
-	return true;
+	return response;
 }
 
 module.exports = {
-	checkConnect,
+	connectToWorkspace,
 	getWorkspaceKeys,
 	getSharedKey,
 	uploadSecrets,
-	getSecrets,
-	checkAuth
+	getSecrets
 };

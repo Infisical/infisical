@@ -19,7 +19,8 @@ const { KEYS_HOST } = require("../variables");
  * 2. Symmetrically encrypt each secret (key and value) with (shared) key
  * 3. Asymmetrically encrypt the (shared) key with each receiver public keys
  * 4. Package and send 2-3 to server
- * @param {String} environment - dev, staging, or prod
+ * @param {Object} obj
+ * @param {String} obj.environment - dev, staging, or prod
  */
 const push = async ({
 	environment
@@ -34,7 +35,7 @@ const push = async ({
 		const obj = parse(file);
 		const workspaceId = read(".env.infisical");
 
-		console.log("Encrypting file...");
+		console.log("🔐 Encrypting file...");
 
 		let sharedKey = await getSharedKey({ workspaceId });
 		
@@ -84,7 +85,7 @@ const push = async ({
 			};
 		});
 
-		console.log("Generating access keys...");
+		console.log("🔑 Generating access keys...");
 
 		// obtain public keys of all receivers (i.e. members in workspace)
 		const publicKeys = await getWorkspaceKeys({
@@ -106,7 +107,7 @@ const push = async ({
 			};
 		});
 
-		console.log("Pushing file...");
+		console.log("⬆️  Pushing file...");
 		await uploadSecrets({
 			workspaceId,
 			secrets,

@@ -36,24 +36,6 @@ npx infisical pull [environment]
 
 Note that the environment argument for the push/pull commands accepts 3 possible inputs: dev, staging, and prod
 
-## Example
-
-```
-npx infisical login
-```
-
-```
-npx infisical connect 12345a6b12354872f789101d1
-```
-
-```
-npx infisical push dev
-```
-
-```
-npx infisical pull dev
-```
-
 Voila!
 
 ## How It Works

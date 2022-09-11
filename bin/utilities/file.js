@@ -4,6 +4,10 @@ const currentPath = process.cwd();
 const {
 	LINE
 } = require('../variables');
+const {
+  decryptAsymmetric,
+  decryptSymmetric
+} = require("../utilities/crypto");
 
 /**
  * Return contents of the file called [fileName] where file
@@ -16,11 +20,7 @@ const read = (fileName) => {
 	try {
 		file = fs.readFileSync(path.join(currentPath, fileName), 'utf8');
 	} catch (err) {
-		console.error(
-			"Error: Failed to read file " 
-			+ fileName 
-		);
-		process.exit(1);
+    throw new Error("❌ Failed to read from file " + fileName);
 	}
 	
 	return file;
@@ -29,8 +29,9 @@ const read = (fileName) => {
 /**
  * Write to file called [fileName] where file
  * exists in the folder at [currentPath]
- * @param {String} fileName - file name
- * @param {String} content - content to write to file
+ * @param {Object} obj
+ * @param {String} obj.fileName - file name
+ * @param {String} obj.content - content to write to file
 */
 const write = ({
 	fileName,
@@ -39,8 +40,7 @@ const write = ({
 	try {
 		fs.writeFileSync(path.join(currentPath, fileName), content);
 	} catch (err) {
-		console.error("Error: Failed to write to file " + fileName)
-		process.exit(1);
+    throw new Error("❌ Failed to write to file " + fileName);
 	}
 }
 
@@ -90,5 +90,5 @@ function parse (src) {
 module.exports = {
     read,
 		write,
-    parse 
+    parse
 }

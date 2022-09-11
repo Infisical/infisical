@@ -2,12 +2,14 @@ const {
 	LOGIN,
 	CONNECT,
 	PUSH,
-	PULL
+	PULL,
+	NODE
 } = require('./variables');
 const login = require('./actions/login');
 const push = require('./actions/push');
 const pull = require('./actions/pull');
 const connect = require('./actions/connect');
+const node = require('./actions/node');
 
 /**
  * Process post-login user input
@@ -45,7 +47,11 @@ const command = async (args) => {
 			});
 			break;
 		default:
-			console.log("❌ Error: Command not recognized");
+			// TODO: spawn child process + inject environment variables
+			node({
+				args
+			});
+			// console.log("❌ Error: Command not recognized");
 			return;
 	}
 
