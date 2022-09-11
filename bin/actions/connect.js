@@ -1,10 +1,6 @@
-const fs = require('fs');
-const {
-	checkConnect
-} = require('../api');
-const {
-	write
-} = require('../utilities/file');
+const fs = require("fs");
+const { checkConnect } = require("../api");
+const { write } = require("../utilities/file");
 
 /**
  * Establish connection with workspace with id [workspaceId]. Follow steps:
@@ -12,23 +8,22 @@ const {
  * 2. Record workspaceId into file .env.infisical
  * @param {Object} obj
  * @param {Object} obj.workspaceId - id of workspace to connect to
-*/
-const connect = async ({
-	workspaceId 
-}) => {
-	
+ */
+const connect = async ({ workspaceId }) => {
 	try {
 		// check workspace connection
 		const isConnected = await checkConnect({ workspaceId });
-		
+
 		if (isConnected) {
 			// create .env.infisical to store workspaceId
 			await write({
-				fileName: '.env.infisical',
-				content: workspaceId
+				fileName: ".env.infisical",
+				content: workspaceId,
 			});
 
-			console.log('✅ Successfully established connection with workspace ' + workspaceId);
+			console.log(
+				"✅ Successfully established connection with workspace " + workspaceId
+			);
 			process.exit(0);
 		} else {
 			throw new Error("Failed to connect to workspace with id " + workspaceId);
@@ -37,6 +32,6 @@ const connect = async ({
 		console.error(err.message);
 		process.exit(1);
 	}
-}
+};
 
 module.exports = connect;

@@ -53,12 +53,7 @@ const getSharedKey = async ({ workspaceId }) => {
 	return response.data?.latestKey;
 };
 
-const uploadSecrets = async ({ 
-	workspaceId, 
-	secrets,
-	keys,
-	environment
-}) => {
+const uploadSecrets = async ({ workspaceId, secrets, keys, environment }) => {
 	const credentials = getCredentials({
 		host: LOGIN_HOST,
 	});
@@ -71,7 +66,7 @@ const uploadSecrets = async ({
 				workspaceId,
 				secrets,
 				keys,
-				environment
+				environment,
 			},
 			{
 				headers: {
@@ -102,8 +97,8 @@ const getSecrets = async ({ workspaceId, environment }) => {
 				Authorization: "Bearer " + credentials.password,
 			},
 			params: {
-				environment
-			}
+				environment,
+			},
 		});
 	} catch (err) {
 		console.error("❌ Error: " + err.response.data.message);
@@ -128,24 +123,28 @@ const checkConnect = async ({ workspaceId }) => {
 	} catch (err) {
 		return false;
 	}
-	
+
 	return true;
 };
 
 const checkAuth = async () => {
 	try {
 		const credentials = netrc.host(LOGIN_HOST);
-		await axios.post(INFISICAL_URL + "/checkAuth", {}, {
-			headers: {
-				Authorization: "Bearer " + credentials.password
+		await axios.post(
+			INFISICAL_URL + "/checkAuth",
+			{},
+			{
+				headers: {
+					Authorization: "Bearer " + credentials.password,
+				},
 			}
-		});
+		);
 	} catch (err) {
 		return false;
 	}
-	
+
 	return true;
-}
+};
 
 module.exports = {
 	checkConnect,
@@ -153,5 +152,5 @@ module.exports = {
 	getSharedKey,
 	uploadSecrets,
 	getSecrets,
-	checkAuth
+	checkAuth,
 };

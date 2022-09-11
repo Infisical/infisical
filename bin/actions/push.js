@@ -7,9 +7,10 @@ const {
 	encryptSymmetric,
 	decryptSymmetric,
 	encryptAsymmetric,
-	decryptAsymmetric
+	decryptAsymmetric,
 } = require("../utilities/crypto");
 const { getCredentials } = require("../utilities/auth");
+const { setup } = require("../utilities/setup");
 const { getWorkspaceKeys, getSharedKey, uploadSecrets } = require("../api");
 const { KEYS_HOST } = require("../variables");
 
@@ -22,10 +23,8 @@ const { KEYS_HOST } = require("../variables");
  * @param {Object} obj
  * @param {String} obj.environment - dev, staging, or prod
  */
-const push = async ({
-	environment
-}) => {
-
+const push = async ({ environment }) => {
+	await setup();
 	let randomBytes;
 	try {
 		// read required local info
@@ -38,14 +37,14 @@ const push = async ({
 		console.log("🔐 Encrypting file...");
 
 		let sharedKey = await getSharedKey({ workspaceId });
-		
+
 		if (sharedKey) {
 			// case: a (shared) key exists for the workspace
 			randomBytes = decryptAsymmetric({
 				ciphertext: sharedKey.encryptedKey,
 				nonce: sharedKey.nonce,
 				publicKey: sharedKey.sender.publicKey,
-				privateKey: credentials.password
+				privateKey: credentials.password,
 			});
 		} else {
 			// case: a (shared) key does not exist for the workspace
@@ -112,14 +111,18 @@ const push = async ({
 			workspaceId,
 			secrets,
 			keys,
-			environment
+			environment,
 		});
 	} catch (err) {
-		console.error(`❌ Error: Failed to push .env file for ${environment} environment`);
+		console.error(
+			`❌ Error: Failed to push .env file for ${environment} environment`
+		);
 		process.exit(1);
 	}
 
-	console.log(`✅ Successfully uploaded .env file for ${environment} environment`);
+	console.log(
+		`✅ Successfully uploaded .env file for ${environment} environment`
+	);
 	process.exit(0);
 };
 

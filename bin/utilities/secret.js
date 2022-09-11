@@ -1,7 +1,4 @@
-const {
-  decryptAsymmetric,
-  decryptSymmetric
-} = require("./crypto");
+const { decryptAsymmetric, decryptSymmetric } = require("./crypto");
 
 /**
  * Return decrypted secrets in format [format]
@@ -10,13 +7,8 @@ const {
  * @param {String} obj.key - symmetric key to decrypt secret key-value pairs
  * @param {String} obj.format - either "text" or "object"
  * @return {String|Object} (decrypted) secrets also called the content
-*/
-const decryptSecrets = ({
-  secrets,
-	key,
-  format
-}) => {
-	
+ */
+const decryptSecrets = ({ secrets, key, format }) => {
 	// init content
 	let content;
 	switch (format) {
@@ -31,39 +23,39 @@ const decryptSecrets = ({
 			process.exit(0);
 			break;
 	}
-	
+
 	// decrypt secrets
 	secrets.secrets.forEach((sp, idx) => {
 		const secretKey = decryptSymmetric({
 			ciphertext: sp.secretKey.ciphertext,
 			iv: sp.secretKey.iv,
 			tag: sp.secretKey.tag,
-			key
+			key,
 		});
 
 		const secretValue = decryptSymmetric({
 			ciphertext: sp.secretValue.ciphertext,
 			iv: sp.secretValue.iv,
 			tag: sp.secretValue.tag,
-			key
+			key,
 		});
-		
+
 		if (format === "text") {
 			content += secretKey;
-			content += '=';
+			content += "=";
 			content += secretValue;
-			
+
 			if (idx < secrets.secrets.length) {
-				content += '\n';
+				content += "\n";
 			}
 		} else {
-			content[secretKey] = secretValue
+			content[secretKey] = secretValue;
 		}
 	});
-	
+
 	return content;
-}
+};
 
 module.exports = {
-  decryptSecrets
-}
+	decryptSecrets,
+};

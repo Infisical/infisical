@@ -47,11 +47,9 @@ const command = async (args) => {
 			});
 			break;
 		default:
-			// TODO: spawn child process + inject environment variables
 			node({
 				args
 			});
-			// console.log("❌ Error: Command not recognized");
 			return;
 	}
 

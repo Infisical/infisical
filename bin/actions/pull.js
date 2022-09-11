@@ -1,25 +1,12 @@
-const {
-	read,
-	write
-} = require('../utilities/file');
-const {
-	getSecrets
-} = require('../api');
-const {
-	getCredentials
-} = require('../utilities/auth');
-const {
-	decryptAsymmetric,
-	decryptSymmetric
-} = require('../utilities/crypto');
-const {
-	decryptSecrets
-} = require("../utilities/secret");
-const {
-	KEYS_HOST
-} = require('../variables');
+const { read, write } = require("../utilities/file");
+const { getSecrets } = require("../api");
+const { getCredentials } = require("../utilities/auth");
+const { setup } = require("../utilities/setup");
+const { decryptAsymmetric, decryptSymmetric } = require("../utilities/crypto");
+const { decryptSecrets } = require("../utilities/secret");
+const { KEYS_HOST } = require("../variables");
 
-/* 
+/*
  * Pull secrets from server to local. Follow steps:
  * 1. Get (encrypted) sectets and asymmetrically encrypted) symmetric key
  * 2. Asymmetrically decrypt key with local private key
@@ -27,9 +14,9 @@ const {
  * @param {Object} obj
  * @param {String} obj.environment - dev, staging, or prod
  */
-const pull = async ({
-	environment
-}) => {
+const pull = async ({ environment }) => {
+	await setup();
+
 	try {
 		// read required local info
 		const workspaceId = read(".env.infisical");
@@ -37,7 +24,7 @@ const pull = async ({
 		console.log("⬇️  Pulling file...");
 
 		const secrets = await getSecrets({ workspaceId, environment });
-		
+
 		console.log("🔐 Decrypting file...");
 
 		// asymmetrically decrypt symmetric key with local private key
@@ -45,27 +32,31 @@ const pull = async ({
 			ciphertext: secrets.key.encryptedKey,
 			nonce: secrets.key.nonce,
 			publicKey: secrets.key.sender.publicKey,
-			privateKey: credentials.password
+			privateKey: credentials.password,
 		});
-		
+
 		// decrypt secrets with symmetric key
 		const content = decryptSecrets({
 			secrets,
 			key,
-			format: "text"
+			format: "text",
 		});
 
 		write({
-			fileName: '.env',
-			content
+			fileName: ".env",
+			content,
 		});
 	} catch (err) {
-		console.error("❌ Error: Failed to pull .env file for ${environment} environment");
+		console.error(
+			`❌ Error: Failed to pull .env file for ${environment} environment`
+		);
 		process.exit(1);
 	}
-	
-	console.log(`✅ Successfully pulled latest .env file for ${environment} environment`);
+
+	console.log(
+		`✅ Successfully pulled latest .env file for ${environment} environment`
+	);
 	process.exit(0);
-}
+};
 
 module.exports = pull;
