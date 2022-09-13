@@ -45,18 +45,22 @@ const push = async ({ environment }) => {
 		const workspaceId = read(".env.infisical");
 
 		const oldSecrets = await getSecrets({ workspaceId, environment });
-		const key = decryptAsymmetric({
-			ciphertext: oldSecrets.key.encryptedKey,
-			nonce: oldSecrets.key.nonce,
-			publicKey: oldSecrets.key.sender.publicKey,
-			privateKey: credentials.password,
-		});
+		
+		let content = {};
+		if (oldSecrets.key) {
+			const key = decryptAsymmetric({
+				ciphertext: oldSecrets.key.encryptedKey,
+				nonce: oldSecrets.key.nonce,
+				publicKey: oldSecrets.key.sender.publicKey,
+				privateKey: credentials.password,
+			});
 
-		const content = decryptSecrets({
-			secrets: oldSecrets,
-			key,
-			format: "expanded",
-		});
+			content = decryptSecrets({
+				secrets: oldSecrets,
+				key,
+				format: "expanded",
+			});
+		}
 
 		console.log("🔐 Encrypting file...");
 		let sharedKey = await getSharedKey({ workspaceId });
