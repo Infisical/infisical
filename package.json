@@ -1,6 +1,6 @@
 {
   "name": "infisical",
-  "version": "1.0.21",
+  "version": "1.0.22",
   "description": "Sync .env files simply, securely",
   "main": "index.js",
   "bin": {
