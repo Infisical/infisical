@@ -8,7 +8,7 @@ const { KEYS_HOST } = require("../variables");
 
 /*
  * Pull secrets from server to local. Follow steps:
- * 1. Get (encrypted) sectets and asymmetrically encrypted) symmetric key
+ * 1. Get (encrypted) sectets and asymmetrically encrypted symmetric key
  * 2. Asymmetrically decrypt key with local private key
  * 3. Symmetrically decrypt secrets with key
  * @param {Object} obj

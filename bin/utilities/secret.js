@@ -5,24 +5,12 @@ const { decryptAsymmetric, decryptSymmetric } = require("./crypto");
  * @param {Object} obj
  * @param {Object[]} obj.secrets - array of (encrypted) secret key-value pair objects
  * @param {String} obj.key - symmetric key to decrypt secret key-value pairs
- * @param {String} obj.format - either "text" or "object"
+ * @param {String} obj.format - desired return format that is either "text," "object," or "expanded"
  * @return {String|Object} (decrypted) secrets also called the content
  */
 const decryptSecrets = ({ secrets, key, format }) => {
 	// init content
-	let content;
-	switch (format) {
-		case "text":
-			content = "";
-			break;
-		case "object":
-			content = {};
-			break;
-		default:
-			console.error("❌ Error: Invalid return format for decrypting secrets");
-			process.exit(0);
-			break;
-	}
+	let content = format === "text" ? "" : {};
 
 	// decrypt secrets
 	secrets.secrets.forEach((sp, idx) => {
@@ -40,16 +28,26 @@ const decryptSecrets = ({ secrets, key, format }) => {
 			key,
 		});
 
-		if (format === "text") {
-			content += secretKey;
-			content += "=";
-			content += secretValue;
+		switch (format) {
+			case "text":
+				content += secretKey;
+				content += "=";
+				content += secretValue;
 
-			if (idx < secrets.secrets.length) {
-				content += "\n";
-			}
-		} else {
-			content[secretKey] = secretValue;
+				if (idx < secrets.secrets.length) {
+					content += "\n";
+				}
+				break;
+			case "object":
+				content[secretKey] = secretValue;
+				break;
+			case "expanded":
+				content[secretKey] = ({
+					...sp,
+					plaintextKey: secretKey,
+					plaintextValue: secretValue
+				});
+				break;
 		}
 	});
 

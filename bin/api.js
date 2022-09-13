@@ -75,7 +75,6 @@ const uploadSecrets = async ({ workspaceId, secrets, keys, environment }) => {
 			}
 		);
 	} catch (err) {
-		console.error(err);
 		console.error(
 			"❌ Error: Something went wrong while processing a network request"
 		);
