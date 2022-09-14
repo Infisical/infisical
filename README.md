@@ -1,6 +1,6 @@
 ## Infisical
 
-Infisical is a simple, end-to-end encrypted (E2EE) platform that enables dev teams to sync and manage their environment variables.
+[Infisical](https://infisical.com/) is a simple, end-to-end encrypted (E2EE) platform that enables dev teams to sync and manage their environment variables.
 
 ## What’s New
 
