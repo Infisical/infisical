@@ -6,9 +6,6 @@ Infisical is a simple, end-to-end encrypted (E2EE) platform that enables dev tea
 
 Infisical enables dev teams to pull and inject environment variables directly from the platform into their local processes just by modifying their start/dev scripts. This provides the following benefits:
 
-- Consistency: Stay up-to-date with the latest secrets without needing to manually pull anything.
-- Security: Avoid having .env files in your project folder entirely and thus bypass the risk of accidentally committing .env files to version control.
-
 It also supports git-like pull/push commands to sync and share .env files manually via CLI if needed.
 
 ## Usage
@@ -17,7 +14,7 @@ As a prerequisite step, head over to **[https://infisical.com](https://infisica
 
 ### Step 1: Modify your dev script
 
-Infisical works with nodemon by pulling and injecting secrets into your local environment during development. Assuming that you’ve nodemon installed, go ahead and modify the dev script in your package.json as follows:
+Infisical works with many commands including node, nodemon, next, etc. by pulling and injecting secrets into your local environment during development. Assuming that you’ve nodemon installed, go ahead and modify the dev script in your package.json as follows:
 
 ```
 "scripts": {
@@ -26,9 +23,7 @@ Infisical works with nodemon by pulling and injecting secrets into your local en
 }
 ```
 
-Note 1: Infisical works with “node” and “next” commands as well.
-
-Note 2: You can specify which environment you wish to pull and inject your variables from; options include dev, staging, and prod.
+Note: You can specify which environment you wish to pull and inject your variables from; options include dev, staging, and prod.
 
 ### Step 2: Run your dev process
 
