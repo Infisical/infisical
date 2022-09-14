@@ -1,15 +1,13 @@
-const prompt = require("prompt-sync")();
+const prompt = require("prompt-sync")({ sigint: true });
 const { checkAuth, checkConnect } = require("../api");
 const { read, write } = require("../utilities/file");
 const { authenticate } = require("../utilities/auth");
-
-// TODO: better error + edge-case handling
-// TODO: revise/clean loop
 
 /**
  * Setup prompt to ensure user is prepared
  */
 const setup = async () => {
+	
 	let isAuthenticated;
 	try {
 		isAuthenticated = await checkAuth();
@@ -21,7 +19,6 @@ const setup = async () => {
 			workspaceId: read(".env.infisical"),
 		});
 	} catch (err) {
-		console.error(err);
 	}
 
 	while (!isAuthenticated || !isConnected) {
