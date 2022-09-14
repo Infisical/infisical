@@ -26,27 +26,31 @@ const pull = async ({ environment }) => {
 		const secrets = await getSecrets({ workspaceId, environment });
 
 		console.log("🔐 Decrypting file...");
+		
+		if (secrets.key) {
+			// asymmetrically decrypt symmetric key with local private key
+			const key = decryptAsymmetric({
+				ciphertext: secrets.key.encryptedKey,
+				nonce: secrets.key.nonce,
+				publicKey: secrets.key.sender.publicKey,
+				privateKey: credentials.password,
+			});
 
-		// asymmetrically decrypt symmetric key with local private key
-		const key = decryptAsymmetric({
-			ciphertext: secrets.key.encryptedKey,
-			nonce: secrets.key.nonce,
-			publicKey: secrets.key.sender.publicKey,
-			privateKey: credentials.password,
-		});
+			// decrypt secrets with symmetric key
+			const content = decryptSecrets({
+				secrets,
+				key,
+				format: "text",
+			});
 
-		// decrypt secrets with symmetric key
-		const content = decryptSecrets({
-			secrets,
-			key,
-			format: "text",
-		});
+			write({
+				fileName: ".env",
+				content,
+			});
+		}
 
-		write({
-			fileName: ".env",
-			content,
-		});
 	} catch (err) {
+		console.error(err);
 		console.error(
 			`❌ Error: Failed to pull .env file for ${environment} environment`
 		);
