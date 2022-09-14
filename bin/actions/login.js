@@ -1,7 +1,6 @@
 const netrc = require("netrc-rw");
 const axios = require("axios");
 const prompt = require("prompt-sync")({ sigint: true });
-const express = require("express");
 const { LOGIN_HOST, KEYS_HOST, INFISICAL_URL } = require("../variables");
 const { authenticate } = require("../utilities/auth");
 
