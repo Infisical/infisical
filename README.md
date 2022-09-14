@@ -4,7 +4,7 @@ Infisical is a simple, end-to-end encrypted (E2EE) platform that enables dev tea
 
 ## What’s New
 
-Infisical enables dev teams to pull and inject environment variables directly from the platform into their local processes just by modifying their start/dev scripts. This provides the following benefits:
+Infisical enables dev teams to pull and inject environment variables directly from the platform into their local processes just by modifying their start/dev scripts.
 
 It also supports git-like pull/push commands to sync and share .env files manually via CLI if needed.
 
