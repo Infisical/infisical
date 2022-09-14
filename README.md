@@ -1,45 +1,49 @@
 ## Infisical
 
-Infisical is a simple, end-to-end encrypted secrets manager for your .env files. It enables teams to securely sync and manage .env files in seconds.
+Infisical is a simple, end-to-end encrypted (E2EE) platform that enables dev teams to sync and manage their environment variables.
 
-## What's New
+## What’s New
 
-Infisical combines simplicity with security. With git-like commands and end-to-end encryption, Infisical is easy to use and super secure — no one (not even us) can read your dearest secrets.
+Infisical enables dev teams to pull and inject environment variables directly from the platform into their local processes just by modifying their start/dev scripts. This provides the following benefits:
+
+- Consistency: Stay up-to-date with the latest secrets without needing to manually pull anything.
+- Security: Avoid having .env files in your project folder entirely and thus bypass the risk of accidentally committing .env files to version control.
+
+It also supports git-like pull/push commands to sync and share .env files manually via CLI if needed.
 
 ## Usage
 
-Head over to https://infisical.com/ to make an account and shared workspace for your team.
+As a prerequisite step, head over to **[https://infisical.com](https://infisical.com/)** to make an account and create a workspace for your project. Once you've made an account, populate the workspace with your environment variables and invite your team.
 
-Login via CLI:
+### Step 1: Modify your dev script
 
-```
-npx infisical login
-```
-
-Connect the folder containing your .env file to the workspace:
+Infisical works with nodemon by pulling and injecting secrets into your local environment during development. Assuming that you’ve nodemon installed, go ahead and modify the dev script in your package.json as follows:
 
 ```
-npx infisical connect [workspace id]
+"scripts": {
+	...
+	"dev": "npx infisical dev nodemon index.js"
+}
 ```
 
-Push your .env file to the workspace:
+Note 1: Infisical works with “node” and “next” commands as well.
+
+Note 2: You can specify which environment you wish to pull and inject your variables from; options include dev, staging, and prod.
+
+### Step 2: Run your dev process
+
+Next, start your dev process. If it’s your first time, then follow the prompt to log in and connect the project to your workspace:
 
 ```
-npx infisical push [environment]
+npm run dev
 ```
 
-Pull the latest .env file from the workspace:
+Voila, you’re now automatically pulling and injecting secrets into your local environment every time you run your dev script!
 
-```
-npx infisical pull [environment]
-```
+Feel free to check out the full usage documentation and list of commands [here](https://infisical.com/docs/gettingStarted).
 
-Note that the environment argument for the push/pull commands accepts 3 possible inputs: dev, staging, and prod
+## How it Works
 
-Voila!
+Infisical uses end-to-end encryption to securely store and share secrets. It uses secure remote password (SRP) to handle authentication and public-key cryptography for secret sharing and syncing; your secrets are symmetrically encrypted at rest by keys decryptable-only by intended parties in your team. Put simply, we've put measures in place so that secrets remain your-eyes-only - all while making minimal user-experience trade-offs.
 
-## How It Works
-
-Infisical uses end-to-end encryption to securely store and share secrets. It uses secure remote password (SRP) to handle authentication and public-key cryptography for secret sharing and syncing; your secrets are symmetrically encrypted at rest by keys decryptable-only by intended parties in your team. Put simply, rest-assured we've put measures in place so that secrets remain your-eyes-only - all while making minimal user-experience trade-offs.
-
-For a fuller discussion on how it works, head to our website: https://infisical.com/ 
+For a fuller discussion on how it works, head to our website: **[https://infisical.com/](https://infisical.com/)**
