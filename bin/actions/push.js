@@ -2,7 +2,7 @@ const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const netrc = require("netrc-rw");
-const prompt = require("prompt-sync")();
+const prompt = require("prompt-sync")({ sigint: true });
 const { read, parse } = require("../utilities/file");
 const {
 	encryptSymmetric,
