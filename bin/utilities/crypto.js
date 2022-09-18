@@ -102,5 +102,5 @@ module.exports = {
 	encryptAsymmetric,
 	decryptAsymmetric,
 	encryptSymmetric,
-	decryptSymmetric,
+	decryptSymmetric
 };

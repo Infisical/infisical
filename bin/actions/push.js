@@ -71,7 +71,7 @@ const push = async ({ environment }) => {
 				ciphertext: sharedKey.encryptedKey,
 				nonce: sharedKey.nonce,
 				publicKey: sharedKey.sender.publicKey,
-				privateKey: credentials.password,
+				privateKey: credentials.password
 			});
 		} else {
 			// case: a (shared) key does not exist for the workspace
@@ -131,7 +131,7 @@ const push = async ({ environment }) => {
 				ivValue,
 				tagValue,
 				hashValue: crypto.createHash("sha256").update(obj[key]).digest("hex"),
-				type
+				type: "shared"
 			};
 		});
 
@@ -165,6 +165,7 @@ const push = async ({ environment }) => {
 			environment,
 		});
 	} catch (err) {
+		console.error(err);
 		console.error(
 			`❌ Error: Failed to push .env file for ${environment} environment`
 		);

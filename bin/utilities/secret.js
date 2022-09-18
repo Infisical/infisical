@@ -14,6 +14,7 @@ const decryptSecrets = ({ secrets, key, format }) => {
 
 	// decrypt secrets
 	secrets.secrets.forEach((sp, idx) => {
+		
 		const secretKey = decryptSymmetric({
 			ciphertext: sp.secretKey.ciphertext,
 			iv: sp.secretKey.iv,
