@@ -131,7 +131,7 @@ const push = async ({ environment }) => {
 				ivValue,
 				tagValue,
 				hashValue: crypto.createHash("sha256").update(obj[key]).digest("hex"),
-				type: "shared"
+				type
 			};
 		});
 

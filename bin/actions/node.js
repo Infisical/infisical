@@ -45,7 +45,7 @@ const node = async ({ args }) => {
 			format: "object",
 		});
 
-		console.log("💉 Injecting secrets into environment... \n");
+		console.log(`💉 Injecting ${args[0]} secrets into environment... \n`);
 		const child = spawn(args[1], args.slice(2), {
 			env: {
 				...process.env,
