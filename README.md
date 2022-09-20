@@ -12,7 +12,9 @@ It also supports git-like pull/push commands to sync and share .env files manual
 
 ## Usage
 
-Head over to **[https://infisical.com](https://infisical.com/)** to make an account and create a workspace for your project. Once you've made an account, populate the workspace with your environment variables and invite your team.
+For a quick tutorial, check out our quick getting started video [here](https://www.youtube.com/watch?v=fgNTyZdHiQQ).
+
+Head over to [Infisical](https://infisical.com/) to make an account and create a workspace for your project. Once you've made an account, populate the workspace with your environment variables and invite your team.
 
 Once you’ve done that, return here to pull and inject secrets from the workspace to your local process/project.
 
@@ -45,4 +47,4 @@ Feel free to check out the full usage documentation and list of commands [here](
 
 Infisical uses end-to-end encryption to securely store and share secrets. It uses secure remote password (SRP) to handle authentication and public-key cryptography for secret sharing and syncing; your secrets are symmetrically encrypted at rest by keys decryptable-only by intended parties in your team. Put simply, we've put measures in place so that secrets remain your-eyes-only - all while making minimal user-experience trade-offs.
 
-For a fuller discussion on how it works, head to our website: **[https://infisical.com](https://infisical.com)**
+For a fuller discussion on how it works, head to: [Infisical](https://infisical.com)
