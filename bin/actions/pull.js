@@ -1,4 +1,4 @@
-const { read, write } = require("../utilities/file");
+const { readFile, writeFile } = require("../utilities/file");
 const { getSecrets } = require("../api");
 const { getCredentials } = require("../utilities/auth");
 const { setup } = require("../utilities/setup");
@@ -19,7 +19,7 @@ const pull = async ({ environment }) => {
 
 	try {
 		// read required local info
-		const workspaceId = read(".env.infisical");
+		const workspaceId = readFile(".env.infisical");
 		const credentials = getCredentials({ host: KEYS_HOST });
 		console.log("⬇️  Pulling file...");
 
@@ -43,7 +43,7 @@ const pull = async ({ environment }) => {
 				format: "text",
 			});
 
-			write({
+			writeFile({
 				fileName: ".env",
 				content,
 			});

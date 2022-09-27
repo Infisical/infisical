@@ -12,7 +12,7 @@ It also supports git-like pull/push commands to sync and share .env files manual
 
 ## Usage
 
-For a quick tutorial, check out our quick getting started video [here](https://www.youtube.com/watch?v=fgNTyZdHiQQ).
+For a quick tutorial, check out our getting started video [here](https://www.youtube.com/watch?v=fgNTyZdHiQQ).
 
 Head over to [Infisical](https://infisical.com/) to make an account and create a workspace for your project. Once you've made an account, populate the workspace with your environment variables and invite your team.
 
@@ -20,16 +20,54 @@ Once you’ve done that, return here to pull and inject secrets from the workspa
 
 ### Step 1: Modify your dev script
 
-Infisical works with many commands including node, nodemon, next, etc. by pulling and injecting secrets into your local environment during development. Assuming that you’ve nodemon installed, go ahead and modify the dev script in your package.json as follows:
+Infisical works with leading JS tools and frameworks to pull and inject secrets into your local environment during development. This includes Express, Fastify, Koa (+/- nodemon) as well as Create-React-App, Next.js, NestJS, and Gatsby.
 
+Navigate to your root project folder; feel free to delete your local .env file as it won’t be needed anymore. Now, prepend the Infisical command before whatever dev command you're using in your package.json dev script. This should take the following form where the environment argument is the environment (options are dev, staging, and prod) that you wish to pull from:
+
+```jsx
+"scripts": {
+	...
+	"dev": "npx infisical [environment] [start/dev command]"
+}
 ```
+
+Examples:
+
+**Express, Fastify, Koa (+ nodemon)**
+
+```jsx
 "scripts": {
 	...
 	"dev": "npx infisical dev nodemon index.js"
 }
 ```
 
-Note: You can specify which environment you wish to pull and inject your variables from; options include dev, staging, and prod.
+**Next.js**
+
+```jsx
+"scripts": {
+	...
+	"dev": "npx infisical dev next dev"
+}
+```
+
+**NestJS**
+
+```jsx
+"scripts": {
+	...
+	"start:dev": "npx infisical dev nest start --watch"
+}
+```
+
+**Gatsby**
+
+```jsx
+"scripts": {
+	...
+	"dev": "npx infisical dev gatsby develop"
+}
+```
 
 ### Step 2: Run your dev process
 

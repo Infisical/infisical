@@ -1,5 +1,5 @@
 const { spawn } = require("child_process");
-const { read } = require("../utilities/file");
+const { readFile } = require("../utilities/file");
 const { checkAuth, checkConnect, getSecrets } = require("../api");
 const { getCredentials, authenticate } = require("../utilities/auth");
 const { setup } = require("../utilities/setup");
@@ -21,7 +21,7 @@ const node = async ({ args }) => {
 	await setup();
 
 	try {
-		const workspaceId = read(".env.infisical");
+		const workspaceId = readFile(".env.infisical");
 		const credentials = getCredentials({ host: KEYS_HOST });
 
 		console.log("⬇️  Pulling secrets...");
@@ -67,6 +67,7 @@ const node = async ({ args }) => {
 			if (signal) console.log("Process exited with signal " + signal);
 		});
 	} catch (err) {
+		console.error(err);
 		console.error(
 			"❌ Error: Something went wrong while fetching and injecting secrets into your local environment"
 		);

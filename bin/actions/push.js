@@ -3,7 +3,7 @@ const fs = require("fs");
 const crypto = require("crypto");
 const netrc = require("netrc-rw");
 const prompt = require("prompt-sync")({ sigint: true });
-const { read, parse } = require("../utilities/file");
+const { readFile, parse } = require("../utilities/file");
 const {
 	encryptSymmetric,
 	decryptSymmetric,
@@ -40,9 +40,9 @@ const push = async ({ environment }) => {
 		// read required local info
 		const credentials = getCredentials({ host: KEYS_HOST });
 
-		const file = read(".env");
+		const file = readFile(".env");
 		const obj = parse(file);
-		const workspaceId = read(".env.infisical");
+		const workspaceId = readFile(".env.infisical");
 
 		const oldSecrets = await getSecrets({ workspaceId, environment });
 		

@@ -1,6 +1,6 @@
 const fs = require("fs");
 const { checkConnect } = require("../api");
-const { write } = require("../utilities/file");
+const { writeFile } = require("../utilities/file");
 
 /**
  * Establish connection with workspace with id [workspaceId]. Follow steps:
@@ -16,7 +16,7 @@ const connect = async ({ workspaceId }) => {
 
 		if (isConnected) {
 			// create .env.infisical to store workspaceId
-			await write({
+			await writeFile({
 				fileName: ".env.infisical",
 				content: workspaceId,
 			});

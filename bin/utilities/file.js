@@ -10,7 +10,7 @@ const { decryptAsymmetric, decryptSymmetric } = require("../utilities/crypto");
  * @param {String} fileName - file name
  * @return {String} file - file
  */
-const read = (fileName) => {
+const readFile = (fileName) => {
   let file;
   try {
     file = fs.readFileSync(path.join(currentPath, fileName), "utf8");
@@ -28,7 +28,7 @@ const read = (fileName) => {
  * @param {String} obj.fileName - file name
  * @param {String} obj.content - content to write to file
  */
-const write = ({ fileName, content }) => {
+const writeFile = ({ fileName, content }) => {
   try {
     fs.writeFileSync(path.join(currentPath, fileName), content);
   } catch (err) {
@@ -80,7 +80,7 @@ function parse(src) {
 }
 
 module.exports = {
-  read,
-  write,
+  readFile,
+  writeFile,
   parse,
 };

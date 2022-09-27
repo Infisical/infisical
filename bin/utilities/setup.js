@@ -1,6 +1,6 @@
 const prompt = require("prompt-sync")({ sigint: true });
 const { checkAuth, checkConnect } = require("../api");
-const { read, write } = require("../utilities/file");
+const { readFile, writeFile } = require("../utilities/file");
 const { authenticate } = require("../utilities/auth");
 
 /**
@@ -16,7 +16,7 @@ const setup = async () => {
 	let isConnected;
 	try {
 		isConnected = await checkConnect({
-			workspaceId: read(".env.infisical"),
+			workspaceId: readFile(".env.infisical"),
 		});
 	} catch (err) {
 	}
@@ -48,7 +48,7 @@ const setup = async () => {
 					throw new Error(
 						"❌ Failed to conect to workspace with id " + workspaceId
 					);
-				await write({
+				await writeFile({
 					fileName: ".env.infisical",
 					content: workspaceId,
 				});
