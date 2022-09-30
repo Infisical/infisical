@@ -67,7 +67,6 @@ const node = async ({ args }) => {
 			if (signal) console.log("Process exited with signal " + signal);
 		});
 	} catch (err) {
-		console.error(err);
 		console.error(
 			"❌ Error: Something went wrong while fetching and injecting secrets into your local environment"
 		);
