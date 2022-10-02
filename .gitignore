@@ -1,7 +1,9 @@
 node_modules
 .env
 .env.infisical
+.DS_STORE
 
 *~
+*.swn
 *.swp
 *.swo
