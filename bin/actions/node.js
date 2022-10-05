@@ -51,6 +51,7 @@ const node = async ({ args }) => {
 				...process.env,
 				...content,
 			},
+			shell: true
 		});
 
 		child.stdout.on("data", (data) => {
