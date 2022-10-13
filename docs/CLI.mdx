@@ -1,0 +1,56 @@
+---
+title: "Command Line Interface"
+description: "Connect to Infisical in your CLI and never think about syncing and managing API-keys or .env files again."
+---
+
+## Background
+
+Infisical ships with multiple commands to assist with ongoing project needs; we list these commands and give context for them below.
+
+For details on the security of our platform, check out our security brief.
+
+Note on arguments:
+
+- [environment]: the intended environment for the given command being one of dev, staging, or prod.
+- [workspaceId]: the workspace identifier found on the dashboard.
+
+## Commands
+
+### Log in
+
+The command prompts the user to login and enter their credentials to be authenticated with the SRP protocol. If successful, the user receives a JWT token, their public key, and their (encrypted) private key back to be stored on their local machine.
+
+```jsx
+npx infisical login
+```
+
+### Connect to a workspace
+
+The command connects the local project to a workspace with id [workspaceId] on the remote server to be set as the reference workspace for future potential push/pull operations. It validates the user's membership for the given workspace, creates a new .env.infisical file in the project, and writes the id to it. It is commonly used for two scenarios:
+
+- To establish a fresh connection between project and a workspace.
+- To change an existing connection to a workspace to a new workspace.
+
+```jsx
+npx infisical connect [workspaceId]
+```
+
+### Pull environment variables to local
+
+The command pulls the latest encrypted key-value pairs (i.e. environment variables) and symmetric key from the remote server, decrypts the symmetric key with the user's local private key, decrypts the environment variables with that symmetric key, and overwrites the local .env file with the new environment variables.
+
+If no .env file exists, the command creates a new .env file and populates it with the new environment variables.
+
+```jsx
+npx infisical pull [environment]
+```
+
+### Push environment variables to remote server
+
+The command parses the local .env file into key-value pairs (i.e. environment variables), generates a random symmetric key, encrypts the environment variables with that symmetric key, gets the public keys of workspace teammates, creates multiple encrypted symmetric keys under each teammate's public key, and sends the encrypted environment variables and symmetric keys off to the remote server.
+
+If there is an existing (encrypted) symmetric key being shared for the workspace, then it fetches and uses that symmetric key to encrypt the environment variables.
+
+```jsx
+npx infisical push [environment]
+```

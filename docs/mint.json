@@ -1,0 +1,53 @@
+{
+  "name": "Infisical",
+  "basePath": "/docs",
+  "logo": {
+    "dark": "/docs/logo/dark.svg",
+    "light": "/docs/logo/light.svg",
+    "href": "https://infisical.com"
+  },
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#A1B659",
+    "light": "#E1EB55",
+    "dark": "#A1B659",
+    "ultraLight": "#EFF4DD",
+    "ultraDark": "#8D9F4C",
+    "background": {
+      "dark": "#0D1117"
+    }
+  },
+  "topbarLinks": [{ "name": "Log In", "url": "https://infisical.com/login" }],
+  "topbarCtaButton": {
+    "name": "Start for Free",
+    "url": "https://infisical.com/signup"
+  },
+  "anchors": [
+    {
+      "name": "Security",
+      "icon": "shield-halved",
+      "url": "https://infisical.com/security"
+    },
+    {
+      "name": "Blog",
+      "icon": "newspaper",
+      "url": "https://infisical.com/blog"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Documentation",
+      "pages": [
+        "gettingStarted",
+        "syncingAutomatically",
+        "syncingManually",
+        "CLI"
+      ]
+    }
+  ],
+  "classes": {
+    "topbarCtaButton": "bg-[#BADC58] hover:opacity-80 text-black rounded-md px-7 py-2.5 font-semibold",
+    "anchors": "group-hover:bg-gradient-to-br from-sky-400 to-primary",
+    "activeAnchors": "bg-gradient-to-br"
+  }
+}
