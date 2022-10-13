@@ -1,0 +1,50 @@
+---
+title: "Getting Started"
+description: "Infisical is a simple, end-to-end encrypted (E2EE) solution that enables teams to sync and manage their .env files in seconds."
+---
+
+## Introduction
+
+Infisical is a simple, end-to-end encrypted (E2EE) platform that enables dev teams to sync and manage their environment variables.
+
+It works with start/dev scripts to pull and inject environment variables into local environments automatically and supports git-like pull/push commands to sync and share .env files manually via CLI if needed.
+
+**It's compatible with most leading JS tools and frameworks including Express, Fastify, Koa (+/- nodemon) as well as Create-React-App, Next.js, NestJS, and Gatsby.**
+
+It's all powered by public-key cryptography that encrypts/decrypts environments locally before sending anything off to our remote server for secure storage — rest-assured we've put measures in place so that secrets remain your-eyes-only.
+
+<Card
+  title="Security Brief"
+  icon={duotone("shield-halved")}
+  href="https://dub.sh/XocpMvT"
+>
+  Learn more about our system + security here.
+</Card>
+
+## Prerequisites
+
+It takes roughly ~5 minutes to get up and running with Infisical 👋
+
+To begin, our docs assume that you have the node package manager installed and have a project with a .env file ready to be stored.
+
+### Step 1: Make an account
+
+Head to [https://infisical.com](https://infisical.com/) to make an account and create a workspace for your project. Once you've made an account, you'll be prompted to a dashboard with some placeholder environment variables. Go ahead and replace the placeholder environment variables with your environment variables from your .env file.
+
+Note: The dashboard allows you to view one workspace at a time, and each workspace has a unique identifier that's important to connect it to your project in subsequent steps.
+
+### Step 2 (Optional): Invite your dev team
+
+Navigate to the “Team” tab in the left sidebar and invite your teammates to the workspace by submitting their emails. They'll each receive an email invitation to join the workspace and get access to the environment variables. A few things to note about invitations due to how our public-key cryptography works:
+
+- If a teammate is already registered with Infisical, then they'll receive access to the environment variables immediately.
+- If a teammate is unregistered with Infisical, then they'll have to request access to the environment variables once they've registered.
+
+### Step 3: Connect your workspace
+
+Infisical offers two approaches for you to sync and connect your environment variables from a workspace to your project:
+
+- Automatic (recommended): Pull and inject environment variables into your project automatically by modifying your start/dev scripts; this approach avoids the need to keep .env files around entirely.
+- Manual: Pull environment variables back and update your local .env file manually via CLI; this approach is suitable for those who wish to keep using .env files.
+
+Refer to the sections corresponding to the two approaches to continue connecting the workspace to your project.

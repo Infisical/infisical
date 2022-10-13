@@ -1,0 +1,91 @@
+---
+title: "Syncing Automatically"
+description: "Infisical automatically injects the right most up-to-date version of API-keys. Always be in sync with your teammates."
+---
+
+<iframe
+  class="w-full"
+  width="560"
+  height="315"
+  src="https://www.youtube.com/embed/fgNTyZdHiQQ"
+  title="YouTube video player"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowfullscreen
+></iframe>
+
+## Background
+
+The most popular approach dev teams use to pull environment variables from Infisical and inject them into their local projects is to do so **automatically**. This provides the following benefits:
+
+- Consistency: Stay up-to-date with the latest secrets without needing to manually pull anything.
+- Security: Avoid having .env files in your project folder entirely and thus bypass the risk of accidentally committing .env files to version control.
+
+## Steps
+
+If you haven't already, be sure to perform the prerequisite steps listed in our Getting Started guide. It walks through how to set up an account, make a workspace, invite your team, and add your environment variables.
+
+Once you've done that, return here to pull secrets from the workspace to your local project.
+
+### Step 1: Modify your dev script
+
+Infisical works with leading JS tools and frameworks to pull and inject secrets into your local environment during development. This includes Express, Fastify, Koa (+/- nodemon) as well as Create-React-App, Next.js, NestJS, and Gatsby.
+
+Navigate to your root project folder; feel free to delete your local .env file as it won't be needed anymore. Now, prepend the Infisical command before whatever dev command you're using in your package.json dev script. This should take the following form where the environment argument is the environment (options are dev, staging, and prod) that you wish to pull from:
+
+```jsx
+"scripts": {
+	...
+	"dev": "npx infisical [environment] [start/dev command]"
+}
+```
+
+Examples:
+
+<CodeGroup>
+
+```jsx Express, Fastify, Koa (+ nodemon)
+"scripts": {
+	...
+	"dev": "npx infisical dev nodemon index.js"
+}
+```
+
+```jsx Next.js
+"scripts": {
+	...
+	"dev": "npx infisical dev next dev"
+}
+```
+
+```jsx NestJS
+"scripts": {
+	...
+	"start:dev": "npx infisical dev nest start --watch"
+}
+```
+
+```jsx Gatsby
+"scripts": {
+	...
+	"dev": "npx infisical dev gatsby develop"
+}
+```
+
+</CodeGroup>
+
+### Step 2: Run your dev process
+
+Next, start the dev process by running the command below. If it's your first time, then follow the prompt to log in and connect the project to your workspace:
+
+```jsx
+npm run dev
+```
+
+Voila, you're now automatically pulling and injecting secrets into your local environment every time you run your dev script!
+
+We've abstracted away the complex cryptography and enabled your team to securely sync secrets — if you're curious about how it all works, check out our security brief. Now you can get your team to start using the workspace as well.
+
+We're constantly improving Infisical, so we'd love to get your feedback and take feature requests.
+
+Lastly, if you have any questions or inquiries, shoot an email over to [support@infisical.com](mailto:support@infisical.com) so we can assist you. Alternatively, feel free to post your question or DM us on Slack here; we'd be happy to connect with you.
