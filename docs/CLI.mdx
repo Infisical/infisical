@@ -12,7 +12,7 @@ For details on the security of our platform, check out our security brief.
 Note on arguments:
 
 - [environment]: the intended environment for the given command being one of dev, staging, or prod.
-- [workspaceId]: the workspace identifier found on the dashboard.
+- [projectId]: the project identifier found on the dashboard.
 
 ## Commands
 
@@ -24,15 +24,15 @@ The command prompts the user to login and enter their credentials to be authenti
 npx infisical login
 ```
 
-### Connect to a workspace
+### Connect to a project
 
-The command connects the local project to a workspace with id [workspaceId] on the remote server to be set as the reference workspace for future potential push/pull operations. It validates the user's membership for the given workspace, creates a new .env.infisical file in the project, and writes the id to it. It is commonly used for two scenarios:
+The command connects the local codebase to a project with id [projectId] on the remote server to be set as the reference project for future potential push/pull operations. It validates the user's membership for the given project, creates a new .env.infisical file in the project, and writes the id to it. It is commonly used for two scenarios:
 
-- To establish a fresh connection between project and a workspace.
-- To change an existing connection to a workspace to a new workspace.
+- To establish a fresh connection with a project.
+- To change an existing connection to a new project.
 
 ```jsx
-npx infisical connect [workspaceId]
+npx infisical connect [projectId]
 ```
 
 ### Pull environment variables to local
@@ -47,9 +47,9 @@ npx infisical pull [environment]
 
 ### Push environment variables to remote server
 
-The command parses the local .env file into key-value pairs (i.e. environment variables), generates a random symmetric key, encrypts the environment variables with that symmetric key, gets the public keys of workspace teammates, creates multiple encrypted symmetric keys under each teammate's public key, and sends the encrypted environment variables and symmetric keys off to the remote server.
+The command parses the local .env file into key-value pairs (i.e. environment variables), generates a random symmetric key, encrypts the environment variables with that symmetric key, gets the public keys of project members, creates multiple encrypted symmetric keys under each teammate's public key, and sends the encrypted environment variables and symmetric keys off to the remote server.
 
-If there is an existing (encrypted) symmetric key being shared for the workspace, then it fetches and uses that symmetric key to encrypt the environment variables.
+If there is an existing (encrypted) symmetric key being shared for the project, then it fetches and uses that symmetric key to encrypt the environment variables.
 
 ```jsx
 npx infisical push [environment]
