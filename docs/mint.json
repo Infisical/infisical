@@ -49,5 +49,11 @@
     "topbarCtaButton": "bg-[#BADC58] hover:opacity-80 text-black rounded-md px-7 py-2.5 font-semibold",
     "anchors": "group-hover:bg-gradient-to-br from-sky-400 to-primary",
     "activeAnchors": "bg-gradient-to-br"
+  },
+  "analytics": {
+    "posthog": {
+      "apiKey": "phc_Q0xfB3LeOqo7ySk4DE6zLNwDzHFesKcmigknCy4fTdV",
+      "apiHost": "https://app.posthog.com"
+    }
   }
 }
