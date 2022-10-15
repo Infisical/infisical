@@ -52,8 +52,7 @@
   },
   "analytics": {
     "posthog": {
-      "apiKey": "phc_Q0xfB3LeOqo7ySk4DE6zLNwDzHFesKcmigknCy4fTdV",
-      "apiHost": "https://app.posthog.com"
+      "apiKey": "phc_Q0xfB3LeOqo7ySk4DE6zLNwDzHFesKcmigknCy4fTdV"
     }
   }
 }
