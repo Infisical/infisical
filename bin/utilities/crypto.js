@@ -63,8 +63,6 @@ const encryptSymmetric = ({ plaintext, key }) => {
 		iv = obj.iv;
 		tag = obj.tag;
 	} catch (err) {
-		console.log("Failed to perform encryption");
-		console.log(err);
 		process.exit(1);
 	}
 
@@ -90,8 +88,6 @@ const decryptSymmetric = ({ ciphertext, iv, tag, key }) => {
 	try {
 		plaintext = aes.decrypt(ciphertext, iv, tag, key);
 	} catch (err) {
-		console.error(err);
-		console.log("Failed to perform decryption");
 		process.exit(1);
 	}
 

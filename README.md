@@ -1,22 +1,24 @@
 ## Infisical
 
+---
+
 [Infisical](https://infisical.com/) is a simple, end-to-end encrypted (E2EE) platform that enables dev teams to sync and manage their environment variables.
-
-![alt text](/img/terminal.png)
-
-## What’s New
 
 Infisical enables dev teams to pull and inject environment variables directly from the platform into their local processes just by modifying their start/dev scripts.
 
 It also supports git-like pull/push commands to sync and share .env files manually via CLI if needed.
 
+![alt text](/img/dashboard.png)
+
 ## Usage
+
+---
 
 For a quick tutorial, check out our getting started video [here](https://www.youtube.com/watch?v=fgNTyZdHiQQ).
 
-Head over to [Infisical](https://infisical.com/) to make an account and create a workspace for your project. Once you've made an account, populate the workspace with your environment variables and invite your team.
+Head over to [Infisical](https://infisical.com/) to make an account and create a project for your app. Once you've made an account, populate the project with your environment variables and invite your team.
 
-Once you’ve done that, return here to pull and inject secrets from the workspace to your local process/project.
+Once you’ve done that, return here to pull and inject secrets from the project to your local process/project.
 
 ### Step 1: Modify your dev script
 
@@ -71,7 +73,7 @@ Examples:
 
 ### Step 2: Run your dev process
 
-Next, start your dev process. If it’s your first time, then follow the prompt to log in and connect the project to your workspace:
+Next, start your dev process. If it’s your first time, then follow the prompt to log in and connect to the project:
 
 ```
 npm run dev
@@ -82,6 +84,8 @@ Voila, you’re now automatically pulling and injecting secrets into your local 
 Feel free to check out the full usage documentation and list of commands [here](https://infisical.com/docs/gettingStarted).
 
 ## How it Works
+
+---
 
 Infisical uses end-to-end encryption to securely store and share secrets. It uses secure remote password (SRP) to handle authentication and public-key cryptography for secret sharing and syncing; your secrets are symmetrically encrypted at rest by keys decryptable-only by intended parties in your team. Put simply, we've put measures in place so that secrets remain your-eyes-only - all while making minimal user-experience trade-offs.
 
