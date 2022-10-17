@@ -1,7 +1,5 @@
 ## Infisical
 
----
-
 [Infisical](https://infisical.com/) is a simple, end-to-end encrypted (E2EE) platform that enables dev teams to sync and manage their environment variables.
 
 Infisical enables dev teams to pull and inject environment variables directly from the platform into their local processes just by modifying their start/dev scripts.
@@ -11,8 +9,6 @@ It also supports git-like pull/push commands to sync and share .env files manual
 ![alt text](/img/dashboard.png)
 
 ## Usage
-
----
 
 For a quick tutorial, check out our getting started video [here](https://www.youtube.com/watch?v=fgNTyZdHiQQ).
 
@@ -84,8 +80,6 @@ Voila, you’re now automatically pulling and injecting secrets into your local 
 Feel free to check out the full usage documentation and list of commands [here](https://infisical.com/docs/gettingStarted).
 
 ## How it Works
-
----
 
 Infisical uses end-to-end encryption to securely store and share secrets. It uses secure remote password (SRP) to handle authentication and public-key cryptography for secret sharing and syncing; your secrets are symmetrically encrypted at rest by keys decryptable-only by intended parties in your team. Put simply, we've put measures in place so that secrets remain your-eyes-only - all while making minimal user-experience trade-offs.
 
