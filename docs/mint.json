@@ -50,5 +50,5 @@
     "anchors": "group-hover:bg-gradient-to-br from-sky-400 to-primary",
     "activeAnchors": "bg-gradient-to-br"
   },
-  "backgroundImage": "/images/jumbo.png"
+  "backgroundImage": "/docs/images/background.png"
 }
