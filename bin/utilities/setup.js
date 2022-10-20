@@ -38,15 +38,15 @@ const setup = async () => {
 
 			// ensure user is connected to workspace
 			if (!isConnected) {
-				console.log("👉 Let's get this project connected to a workspace");
-				const workspaceId = prompt("Workspace ID: ");
+				console.log("👉 Let's get connected to a project.");
+				const workspaceId = prompt("Project ID: ");
 				isConnected = await checkConnect({
 					workspaceId,
 				});
 
 				if (!isConnected)
 					throw new Error(
-						"❌ Failed to conect to workspace with id " + workspaceId
+						"❌ Failed to conect to project with id " + workspaceId
 					);
 				await writeFile({
 					fileName: ".env.infisical",
