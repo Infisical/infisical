@@ -1,0 +1,31 @@
+---
+title: "Infisical CLI"
+description: "Learn about each supported command and its flags"
+---
+
+## Background
+
+Infisical ships with multiple commands to assist with ongoing project needs; we list these commands and give context for them below.
+
+<Card title="Install the CLI" icon="lightbulb" href="/installCLI">
+  If you haven't already, install the Infisical CLI
+</Card>
+
+Note on arguments:
+
+- [environment]: the intended environment for the given command being one of dev, staging, or prod.
+- [projectId]: the project identifier found on the dashboard.
+
+## Commands
+
+- `login` used to set the logged in user. Your credentials are saved securely in your system key ring. Note: only one user can be logged in at a time. To change the logged in user, run the command again and overwrite the previous login.
+- `init` used to link your infisical.com project to your local project. Run this command ideally at the root of your local project. You will have to run this command for each new project you create locally.
+- `run` used to inject your secrets as environment variables into your application process. Example `infisical run --stage=prod -- npm run start`
+  - `---projectId` flag is used to link your local project to a Infisical.com project. Use this option only when you are injecting via Infisical Token instead of your login. 
+  - `---stage` flag is used to set the environment from which your secrets are pulled from. By default, secrets from your project are pulled from the `dev`. To change to for example prod, add `--stage=prod`
+
+### Global flags 
+These are flags you can add to any command 
+
+- `--domain` you may change this if you are self hosting Infisical. By default, the CLI points to Infisical.com backend. To point to your own backend, make sure to set this flag for each command you run. Example `infisical login --domain=https://mybackend.com`
+- `--debug` use this flag when you want to see more logs related to the error you are receiving. By default debug logs are hidden. Example `infisical run --debug <your command>`

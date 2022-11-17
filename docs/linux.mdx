@@ -1,0 +1,55 @@
+---
+title: "Linux VM"
+description: "Deploy with Docker-Compose"
+---
+
+<Info>
+Self-host vs. Infisical Cloud
+
+Self-hosting Infisical means managing the service yourself, taking care of upgrades, scaling, security, etc.
+
+If you're less technical and looking for a hands-free experience with minimal overhead then we recommend Infisical Cloud.
+
+</Info>
+
+We provide a docker-compose deployment option for those who want to deploy Infisical onto a Linux VM easily.
+
+1. Install Docker on your VM
+
+```bash
+# Example in ubuntu
+apt-get update
+apt-get upgrade
+apt install docker-compose
+```
+
+2. Download the required files
+
+```bash
+# Download env file template
+wget -O .env https://raw.githubusercontent.com/Infisical/infisical-merge/main/.env.example
+
+# Download docker compose template
+wget -O docker-compose.yml https://raw.githubusercontent.com/Infisical/infisical-merge/main/docker-compose.yml
+wget -O docker-compose.yml https://raw.githubusercontent.com/Infisical/infisical-merge/main/docker-compose.prod.yml
+
+# Download nginx config
+mkdir nginx && cd nginx && wget -O https://raw.githubusercontent.com/Infisical/infisical-merge/main/nginx/default.conf
+cd ..
+```
+
+3. Tweak the `.env` according to your preferences. Refer to the available [environment variables](envars).
+
+```bash
+# update environment variables like mongo login
+nano .env
+```
+
+4. Get the service up and running.
+
+```bash
+# Start up services in detached mode
+docker-compose -f docker-compose.yaml -f docker-compose.prod.yml up -d
+```
+
+5. Your Infisical installation is complete. Please note that the containers are not exposed to the internet and only bind to the localhost. It's up to you to set up a firewall and implement any additional security measures.

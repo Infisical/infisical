@@ -1,0 +1,46 @@
+---
+title: "Developing"
+description: "This guide will help you set up and run Infisical in development mode."
+---
+
+## Clone the repo
+
+```bash
+# change location to the path you want Infisical to be installed
+cd ~
+
+# clone the repo and cd to Infisical dir
+git clone https://github.com/Infisical/infisical
+cd infisical
+```
+
+## Set up environment variables
+
+Tweak the `.env` according to your preferences. Refer to the available [environment variables](envars).
+
+```bash
+cp .env.example .env
+```
+
+## Docker for development
+
+```bash
+# build and start the services
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build
+```
+
+Then browse http://localhost:3000
+
+```bash
+# To stop environment use Control+C (on Mac) CTRL+C (on Win) or
+docker-compose down
+# start services
+docker-compose up
+```
+
+The docker-compose environment consists of:
+
+- frontend
+- backend
+- mongo
+- mongo-express

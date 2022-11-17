@@ -1,0 +1,124 @@
+---
+title: "Install CLI"
+description: "Install the official Infisical CLI for both your development and production environments"
+---
+
+## Install
+
+Installing Infisical CLI is simple. Just follow the guide for your OS below.
+
+<Accordion title="Install on MacOS ">
+  Use [brew](https://brew.sh/) package manager
+
+	```
+	$ brew install infisical/get-cli/infisical  
+	$ infisical --version
+	```
+
+	To update:
+
+	```
+	$ brew upgrade infisical
+	```
+</Accordion>
+
+<Accordion title="Install on Windows ">
+	Use [Scoop](https://scoop.sh/) package manager
+
+	```
+	$ scoop bucket add org https://github.com/Infisical/scoop-infisical.git
+	$ scoop install infisical
+	$ infisical --version
+	```
+
+	To update:
+
+	```
+	$ scoop update infisical
+	```
+</Accordion>
+
+
+<Accordion title="Install on RedHat/CentOS">
+	```
+	$ curl https://raw.githubusercontent.com/Infisical/infisical/main/infisical-cli.repo | tee /etc/yum.repos.d/infisical-cli.repo 
+
+	$ yum update && sudo yum install infisical
+	```
+</Accordion>
+
+<Accordion title="Install on Alpine">
+	```
+	$ apk add --no-cache bash sudo curl
+	$ curl -1sLf \
+		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' \
+		| sudo -E bash
+
+	$ sudo apk add infisical
+
+	$ infisical --help
+	```
+</Accordion>
+
+<Accordion title="Install on Debian/Ubuntu">
+	```
+	Add Infisical apt repo 
+	$ echo "deb [trusted=yes] https://apt.fury.io/infisical/ /" | tee -a /etc/apt/sources.list.d/infisical.list
+
+	Add prerequisites
+	$ apt update && apt -y curl ca-certificates sudo 
+
+	Install infisical cli
+	$ sudo apt update && apt install infisical
+
+	To make sure the CLI has been installed, you may run this command.
+	$ infisical --version 
+	```
+</Accordion>
+
+## Usage
+Once you have the CLI installed in your system, follow the guide to login and sync your first project.
+
+#### Login
+Login to the CLI by running the following command in your terminal
+
+```
+infisical login 
+```
+<Info>
+To authenticate without logging in manually, read about [Infisical Token](/infisicalToken)
+</Info>
+#### Link secrets to your project
+After logging in, `CD` into the root of your local project. Then run the following command in the terminal to link your Infisical project to your local project.
+
+```
+infisical init 
+```
+
+#### Inject 
+To inject the secrets from the Infisical project you have selected in step 2 into your application process, run the following command.
+
+```
+infisical run -- <your application start command>
+```
+
+Example:
+
+```
+infisical run -- npm run dev 
+```
+
+By default, Infisical injects secrets from your development environment. To modify from which environment your secrets are pulled from, use the --stage flag 
+
+Example:
+
+```
+infisical run --stage=prod -- npm run dev 
+```
+
+You're now automatically pulling and injecting secrets as environment variables into your application!
+
+### Support
+We're constantly improving Infisical, so we'd love to get your feedback and take feature requests.
+
+Lastly, if you have any questions or inquiries, shoot an email over to [support@infisical.com](mailto:support@infisical.com) so we can assist you. Alternatively, feel free to post your question or DM us on Slack here; we'd be happy to connect with you.

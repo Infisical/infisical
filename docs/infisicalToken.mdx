@@ -1,0 +1,68 @@
+---
+title: "Infisical Token"
+description: "Learn to authenticate via the CLI without in manually"
+---
+
+## Background
+
+To authenticate the Infisical CLI in environments other than your local desktop environment, you will have to utilize the Infisical Token. 
+The Infisical Token is a quick and easy way to authenticate the CLI without having to type in your email and password. This is especially needed
+in production environments where you cannot type in your login details. 
+
+With the Infisical Token, you can allow read only access to a particular environment (dev, prod, etc.) for a given project for a set amount of time. Once the token expires, any CLI application 
+that relies on it for authentication will be denied access to retrieve the related secrets. 
+
+## Generate a Infisical Token
+To get started, navigate to your dashboard and select the project for which you would like to generate a Infisical Token for. 
+Then head over to project settings and you should see a similar page like below. 
+
+![title](./images/project_settings_page.png)
+
+To add a new Infisical Token, press the `add new token` button. This will bring up a page like below. 
+
+![title](./images/add_new_token.png)
+
+Enter a name to help you identify the token then choose the environment from which you would like the CLI to retrieve the secrets from. Lastly, choose a duration 
+for the token.
+
+<Info>
+Once the token is expired, the CLI using it will no longer be able to make requests with it. 
+</Info>
+
+
+## Use Infisical token with CLI
+Once you have generated a token, it is easy to tell the Infisical CLI to use it. 
+
+### Feeding the token to the CLI 
+The CLI looks out for an environment variable called `INFISICAL_TOKEN`. Setting this environment variable depends on where you run the CLI. 
+For example, if you are running the CLI in a Docker container, you may set the environment variable via the docker run command like so. 
+
+Docker run example:
+```
+ docker run --env INFISICAL_TOKEN=<the token you generated>...
+```
+
+<Warning>
+In the event your token is exposed, visit the project settings page again and deactivate the token to expire it immediately. 
+</Warning>
+
+### Prepare `infisical run` command
+
+Once you have exposed the `INFISICAL_TOKEN` environment variable to the environment the CLI is running in you can prepare the run command.
+To have the CLI authenticate via the Infisical Token, you must provide values for flags `--stage` and `--projectId`
+
+Example:
+```
+infisical run --stage=prod --projectId=<the project id for the token you generated>
+```
+
+<Info>
+  Notice that we do not need to run any other command such as `infisical init` or `infisical login` when we use the Infisical Token.
+</Info>
+
+
+To learn more about the commands and it's flags [visit](/CLI)
+
+### Support
+
+Lastly, if you have any questions or inquiries, shoot an email over to [support@infisical.com](mailto:support@infisical.com) so we can assist you. Alternatively, feel free to post your question or DM us on Slack here; we'd be happy to connect with you.

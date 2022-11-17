@@ -1,0 +1,43 @@
+---
+title: "Syncing Manually"
+description: "Infisical is a simple, end-to-end encrypted (E2EE) solution that enables teams to sync and manage their .env files in seconds."
+---
+
+<iframe
+  class="w-full"
+  width="560"
+  height="315"
+  src="https://www.youtube.com/embed/DVa63Q8D2BI"
+  title="YouTube video player"
+  frameborder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowfullscreen
+></iframe>
+
+## Background
+
+The second approach that dev teams use to pull environment variables from Infisical into their local projects is to do so **manually**. This method is preferred if you wish to keep using a local .env file; the drawback here, however, is that you'll have to pull from Infisical every time you wish to sync environment variables.
+
+## Steps
+
+If you haven't already, be sure to perform the prerequisite steps listed in our Getting Started guide. It walks through how to set up an account, make a project, invite your team, and add your environment variables.
+
+Once you've done that, return here to connect the Infisical project to your local development environment.
+
+### Step 1: Pull your .env file from Infisical
+
+Navigate to your root project folder containing your .env file. Now run the command below. If it's your first time, then follow the prompt to log in and connect the Infisical project to your local development environment:
+
+```bash
+npx infisical pull dev
+```
+
+Note: You can specify which environment you wish to pull your variables from; options include dev, staging, and prod.
+
+Voila, you've just pulled your environment variables into your .env file. Don't believe it? Feel free to clear your .env file and run the command again to bring them back!
+
+We've abstracted away the complex cryptography and enabled your team to securely sync secrets — if you're curious about how it all works, check out our security brief. Now you can get your team to start using the project as well.
+
+We're constantly improving Infisical, so we'd love to get your feedback and take feature requests.
+
+Lastly, if you have any questions or inquiries, shoot an email over to [support@infisical.com](mailto:support@infisical.com) so we can assist you. Alternatively, feel free to post your question or DM us on Slack here; we'd be happy to connect with you.

@@ -1,0 +1,35 @@
+---
+title: "Environment Variables"
+description: ""
+---
+
+## The .env file
+
+Configuring Infisical requires setting some environment variables. There is a file called `.env.example` at the root directory of our main repo that you can use to create a `.env` before you start the server.
+
+| Variable                          | Description                                                                                                 | Default Value    |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------- |
+| `PRIVATE_KEY`                     | ❗️ NaCl-generated server secret key                                                                        | `None`           |
+| `PUBLIC_KEY`                      | ❗️ NaCl-generated server public key                                                                        | `None`           |
+| `ENCRYPTION_KEY`                  | ❗️ Strong hex encryption key                                                                               | `None`           |
+| `JWT_SIGNUP_SECRET`               | ❗️JWT token secret                                                                                         | `None`           |
+| `JWT_REFRESH_SECRET`              | ❗️ JWT token secret                                                                                        | `None`           |
+| `JWT_AUTH_SECRET`                 | ❗️ JWT token secret                                                                                        | `None`           |
+| `JWT_SECRET_SECRET`               | ❗️ JWT token secret                                                                                        | `None`           |
+| `JWT_SIGNUP_LIFETIME`             | JWT token lifetime expressed in seconds or a string describing a time span (e.g. 60, "2 days", "10h", "7d") | `15m`            |
+| `JWT_REFRESH_LIFETIME`            | JWT token lifetime expressed in seconds or a string describing a time span (e.g. 60, "2 days", "10h", "7d") | `90d`            |
+| `JWT_AUTH_LIFETIME`               | JWT token lifetime expressed in seconds or a string describing a time span (e.g. 60, "2 days", "10h", "7d") | `10d`            |
+| `EMAIL_TOKEN_LIFETIME`            | Email OTP/magic-link lifetime expressed in seconds                                                          | `86400`          |
+| `MONGO_URL`                       | ❗️ MongoDB instance connection string either to container instance or MongoDB Cloud                        | `None`           |
+| `MONGO_USERNAME`                  | MongoDB container username                                                                                  | `None`           |
+| `MONGO_PASSWORD`                  | MongoDB container password                                                                                  | `None`           |
+| `ME_CONFIG_MONGODB_ADMINUSERNAME` | Same as `MONGO_USERNAME` for mongo-express in development                                                   | `None`           |
+| `ME_CONFIG_MONGODB_ADMINPASSWORD` | Same as `MONGO_PASSWORD` for mongo-express in development                                                   | `None`           |
+| `NEXT_PUBLIC_WEBSITE_URL`         | ❗️ Site URL - should be an absolute URL including the protocol (e.g. `https://infisical.com`)              | `None`           |
+| `SMT_HOST`                        | Whether the user joined the community                                                                       | `smtp.gmail.com` |
+| `SMTP_NAME`                       | ❗️ Whether the user joined the community                                                                   | `None`           |
+| `SMTP_USERNAME`                   | ❗️ Whether the user joined the community                                                                   | `None`           |
+| `SMTP_PASSWORD`                   | ❗️ Whether the user joined the community                                                                   | `None`           |
+| `OAUTH_CLIENT_SECRET_HEROKU`      | OAuth client secret for Heroku integration                                                                  | `None`           |
+| `OAUTH_TOKEN_URL_HEROKU`          | OAuth token URL for Heroku integration                                                                      | `None`           |
+| `SENTRY_DSN`                      | DSN for error-monitoring with Sentry                                                                        | `None`           |
