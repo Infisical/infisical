@@ -1,93 +1,70 @@
 <p align="center">
-<img width="300" src="/img/logoname-black.svg#gh-light-mode-only">
-<img width="300" src="/img/logoname-white.svg#gh-dark-mode-only">
+  <h1 align="center">Infisical</h1>
+  <p align="center">Simple, open-source, E2EE platform to sync environment variables</p>
 </p>
 
----
+<img src="./backend/img/dashboard.png" width="100%" alt="Dashboard">
 
-# Infisical
+[Infisical](https://infisical.com) is a simple, open source platform to help organizations manage and sync environment variables across their development workflow and infrastructure. It's designed to be simple and end-to-end encrypted.
 
-[Infisical](https://infisical.com/) is a simple, end-to-end encrypted (E2EE) platform that enables dev teams to sync and manage their environment variables.
+- **User-Friendly Dashboard** to manage your organization's environment variables within projects.
+- **Language-Agnostic** CLI that pulls and injects environment variables into your local workflow.
+- **Authentication/Authorization** for projects (read/write controls coming soon).
+- **Multiple Environments** per project (e.g. development, staging, production, etc.)
+- **Personal/Shared** scoping for environment variables.
+- **1-Click Deploy** to Digital Ocean (other providers coming soon).
+- **Integrations** with CI/CD and production infrastructure (coming soon).
+- **Automatic Secret Rotation** (coming soon).
+- **2FA** (coming soon).
+- **Access Logs** (coming soon).
+- **Slack Integration** (coming soon).
 
-Infisical enables dev teams to pull and inject environment variables directly from the platform into their local processes just by modifying their start/dev scripts.
+And more.
 
-It also supports git-like pull/push commands to sync and share .env files manually via CLI if needed.
+## What's cool about this?
 
-![alt text](/img/infisical_github_repo.png)
+XX
 
-## Usage
+## Documentation
 
-For a quick tutorial, check out our getting started video [here](https://www.youtube.com/watch?v=fgNTyZdHiQQ).
+For full documentation, visit [infisical.com/docs](https://infisical.com/docs).
 
-Head over to [Infisical](https://infisical.com/) to make an account and create a project for your app. Once you've made an account, populate the project with your environment variables and invite your team.
+To see how to contribute, visit [Getting Started](./DEVELOPERS.md).
 
-Once you’ve done that, return here to pull and inject secrets from the project to your local process/project.
+## Integrations
 
-### Step 1: Modify your dev script
+We're currently setting the foundation and building integrations so secrets can be synced everywhere.
 
-Infisical works with leading JS tools and frameworks to pull and inject secrets into your local environment during development. This includes Express, Fastify, Koa (+/- nodemon) as well as Create-React-App, Next.js, NestJS, and Gatsby.
+- [x] Docker
+- [x] Docker Compose
+- [x] Heroku
+- [ ] Vercel
+- [ ] Kubernetes
+- [ ] AWS
+- [ ] GCP
+- [ ] Azure
+- [ ] Digital Ocean
+- [ ] GitLab
+- [ ] CircleCI
 
-Navigate to your root project folder; feel free to delete your local .env file as it won’t be needed anymore. Now, prepend the Infisical command before whatever dev command you're using in your package.json dev script. This should take the following form where the environment argument is the environment (options are dev, staging, and prod) that you wish to pull from:
+## Community & Support
 
-```jsx
-"scripts": {
-	...
-	"dev": "npx infisical [environment] [start/dev command]"
-}
-```
+- [Community Forum]() for help with building and discussion.
+- [GitHub Issues](https://github.com/Infisical/infisical-cli/issues) for any bugs and errors you encounter using Infisical.
+- [Slack](https://infisical.slack.com/ssb/redirect) for hanging out with the community and quick communication with the team.
 
-Examples:
+## Status
 
-**Express, Fastify, Koa (+ nodemon)**
+- [x] Public Alpha: Anyone can sign up over at [infisical.com](https://infisical.com) but go easy on us, there are kinks and we're just getting started.
+- [ ] Public Beta: Stable enough for most non-enterprise use-cases.
+- [ ] Public: Production-ready.
 
-```jsx
-"scripts": {
-	...
-	"dev": "npx infisical dev nodemon index.js"
-}
-```
+We're currently in Public Alpha.
 
-**Next.js**
+## Open-source vs. paid
 
-```jsx
-"scripts": {
-	...
-	"dev": "npx infisical dev next dev"
-}
-```
+This repo is entirely MIT licensed, with the exception of the `ee` directory which will contain premium enterprise features requring a Infisical license in the future. We're currently focused on developing non-enterprise offerings first that should suit most use-cases.
 
-**NestJS**
+## Security
 
-```jsx
-"scripts": {
-	...
-	"start:dev": "npx infisical dev nest start --watch"
-}
-```
-
-**Gatsby**
-
-```jsx
-"scripts": {
-	...
-	"dev": "npx infisical dev gatsby develop"
-}
-```
-
-### Step 2: Run your dev process
-
-Next, start your dev process. If it’s your first time, then follow the prompt to log in and connect to the project:
-
-```
-npm run dev
-```
-
-Voila, you’re now automatically pulling and injecting secrets into your local environment every time you run your dev script!
-
-Feel free to check out the full usage documentation and list of commands [here](https://infisical.com/docs/gettingStarted).
-
-## How it Works
-
-Infisical uses end-to-end encryption to securely store and share secrets. It uses secure remote password (SRP) to handle authentication and public-key cryptography for secret sharing and syncing; your secrets are symmetrically encrypted at rest by keys decryptable-only by intended parties in your team. Put simply, we've put measures in place so that secrets remain your-eyes-only - all while making minimal user-experience trade-offs.
-
-For a fuller discussion on how it works, head to: [Infisical](https://infisical.com)
+Looking to report a security vulnerability? Please refer to our [SECURITY.md](./SECURITY.md) file.

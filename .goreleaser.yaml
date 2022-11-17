@@ -1,0 +1,107 @@
+# This is an example .goreleaser.yml file with some sensible defaults.
+# Make sure to check the documentation at https://goreleaser.com
+# before:
+#   hooks:
+#     # You may remove this if you don't use go modules.
+#     - cd cli && go mod tidy
+#     # you may remove this if you don't need go generate
+#     - cd cli && go generate ./...
+builds:
+  - env:
+      - CGO_ENABLED=0
+    binary: infisical
+    goos:
+      - windows
+      - darwin
+      - linux
+    id: infisical
+    goarch:
+      - arm
+      - amd64
+      - arm64
+    goarm:
+      - 5
+      - 6
+      - 7
+    dir: ./cli
+
+release:
+  replace_existing_draft: true
+  mode: 'replace'
+
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ incpatch .Version }}"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+publishers:
+  - name: fury.io
+    ids:
+      - infisical
+    dir: "{{ dir .ArtifactPath }}"
+    cmd: curl -F package=@{{ .ArtifactName }} https://{{ .Env.FURY_TOKEN }}@push.fury.io/infisical/
+
+# publishers:
+#   - name: fury.io
+#     ids:
+#       - infisical
+#     dir: "{{ dir .ArtifactPath }}"
+#     cmd: curl -F package=@{{ .ArtifactName }} https://{{ .Env.FURY_TOKEN }}@push.fury.io/infisical/
+brews:
+  - name: infisical
+    tap:
+      owner: Infisical
+      name: homebrew-get-cli
+    commit_author:
+      name: "Infisical"
+      email: ai@infisical.com
+    folder: Formula
+    homepage: "https://infisical.com"
+    description: "The official Infisical CLI"
+nfpms:
+- id: infisical
+  file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  package_name: infisical
+  builds:
+    - infisical
+  vendor: Infisical, Inc
+  homepage: https://infisical.com/
+  maintainer: Infisical, Inc
+  description: The offical Infisical CLI
+  license: Apache 2.0
+  formats:
+  - rpm
+  - deb
+  - apk
+  bindir: /usr/bin
+scoop:
+  bucket:
+    owner: Infisical
+    name: scoop-infisical
+  commit_author:
+    name: "Infisical"
+    email: ai@infisical.com
+  homepage: "https://infisical.com"
+  description: "The official Infisical CLI"
+  license: Apache-2.0
+# dockers:
+#   - dockerfile: goreleaser.dockerfile
+#     goos: linux
+#     goarch: amd64
+#     ids:
+#       - infisical
+#     image_templates:
+#       - "infisical/cli:{{ .Version }}"             
+#       - "infisical/cli:{{ .Major }}.{{ .Minor }}"  
+#       - "infisical/cli:{{ .Major }}"               
+#       - "infisical/cli:latest"
+#     build_flag_templates:
+#       - "--label=org.label-schema.schema-version=1.0"
+#       - "--label=org.label-schema.version={{.Version}}"
+#       - "--label=org.label-schema.name={{.ProjectName}}"
+#       - "--platform=linux/amd64"

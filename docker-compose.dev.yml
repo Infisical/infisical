@@ -1,0 +1,66 @@
+version: '3'
+
+services:
+  backend:
+    container_name: infisical-backend
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: infisical/backend
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/nodemon.json:/app/nodemon.json
+      - /app/node_modules
+    command: npm run dev
+    env_file: .env
+    networks:
+      - infisical
+  
+  frontend:
+    container_name: infisical-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    image: infisical/frontend
+    volumes:
+      - ./frontend/pages:/app/pages
+      - ./frontend/public:/app/public
+      - ./frontend/styles:/app/styles
+      - ./frontend/components:/app/components
+    env_file: .env
+    networks:
+      - infisical
+
+  mongo:
+    container_name: infisical-mongo
+    image: mongo
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - infisical
+
+  mongo-express:
+    container_name: infisical-mongo-express
+    image: mongo-express
+    restart: always
+    depends_on:
+      - mongo
+    ports:
+      - 8081:8081
+    env_file:
+      - .env
+    networks:
+      - infisical
+
+volumes:
+  mongo-data:
+    driver: local

@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  nginx:
+    container_name: infisical-nginx
+    image: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - infisical
+    depends_on:
+      - frontend
+
+networks:
+  infisical:

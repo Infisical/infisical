@@ -1,0 +1,50 @@
+{
+	"heroku": {
+		"name": "Heroku",
+		"type": "oauth2",
+		"clientId": "bc132901-935a-4590-b010-f1857efc380d",
+		"docsLink": ""
+	},
+	"netlify": {
+		"name": "Netlify",
+		"type": "oauth2",
+		"clientId": "",
+		"docsLink": ""
+	},
+	"digitalocean": {
+		"name": "Digital Ocean",
+		"type": "oauth2",
+		"clientId": "",
+		"docsLink": ""
+	},
+	"gcp": {
+		"name": "Google Cloud Platform",
+		"type": "oauth2",
+		"clientId": "",
+		"docsLink": ""
+	},
+	"aws": {
+		"name": "Amazon Web Services",
+		"type": "oauth2",
+		"clientId": "",
+		"docsLink": ""
+	},
+	"azure": {
+		"name": "Microsoft Azure",
+		"type": "oauth2",
+		"clientId": "",
+		"docsLink": ""
+	},
+	"travisci": {
+		"name": "Travis CI",
+		"type": "oauth2",
+		"clientId": "",
+		"docsLink": ""
+	},
+	"circleci": {
+		"name": "Circle CI",
+		"type": "oauth2",
+		"clientId": "",
+		"docsLink": ""
+	}
+}
