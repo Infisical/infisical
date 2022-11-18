@@ -10,19 +10,29 @@ builds:
   - env:
       - CGO_ENABLED=0
     binary: infisical
-    goos:
-      - windows
-      - darwin
-      - linux
     id: infisical
+    goos:
+      - darwin
+      - freebsd
+      - linux
+      - netbsd
+      - openbsd
+      - windows
     goarch:
-      - arm
+      - 386
       - amd64
+      - arm
       - arm64
     goarm:
-      - 5
       - 6
       - 7
+    ignore:
+      - goos: darwin
+        goarch: "386"
+      - goos: windows
+        goarch: "386"
+      - goos: freebsd
+        goarch: "386"
     dir: ./cli
 
 release:
@@ -39,12 +49,6 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
-publishers:
-  - name: fury.io
-    ids:
-      - infisical
-    dir: "{{ dir .ArtifactPath }}"
-    cmd: curl -F package=@{{ .ArtifactName }} https://{{ .Env.FURY_TOKEN }}@push.fury.io/infisical/
 
 # publishers:
 #   - name: fury.io
@@ -65,7 +69,6 @@ brews:
     description: "The official Infisical CLI"
 nfpms:
 - id: infisical
-  file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
   package_name: infisical
   builds:
     - infisical
