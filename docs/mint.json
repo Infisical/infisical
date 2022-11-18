@@ -26,12 +26,20 @@
     {
       "name": "Security",
       "icon": "shield-halved",
-      "url": "https://infisical.com/security"
+      "url": "https://infisical.com/security",
+      "color": {
+        "from": "#A1B659",
+        "to": "#F8B7BD"
+      }
     },
     {
       "name": "Blog",
       "icon": "newspaper",
-      "url": "https://infisical.com/blog"
+      "url": "https://infisical.com/blog",
+      "color": {
+        "from": "#A1B659",
+        "to": "#F8B7BD"
+      }
     }
   ],
   "navigation": [
@@ -73,10 +81,5 @@
       ]
     }
   ],
-  "classes": {
-    "topbarCtaButton": "bg-[#BADC58] hover:opacity-80 text-black rounded-md px-7 py-2.5 font-semibold",
-    "anchors": "group-hover:bg-gradient-to-br from-sky-400 to-primary",
-    "activeAnchors": "bg-gradient-to-br"
-  },
   "backgroundImage": "/docs/images/background.png"
 }

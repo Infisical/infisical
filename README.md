@@ -3,7 +3,7 @@
   <img width="300" src="/img/logoname-white.svg#gh-dark-mode-only" alt="infisical">
 </h1>
 <p align="center">
-  <p align="center">Open-source, end-to-end encrypted, 1-line-of-code tool to sync environment variables across you team and infrastructure.</p>
+  <p align="center">Open-source, end-to-end encrypted, easy-to-use tool to auto-sync environment variables across you team and infrastructure.</p>
 </p>
 
 <h4 align="center">
@@ -30,7 +30,7 @@
 **[Infisical](https://infisical.com)** is an open source tool to help teams manage and sync environment variables across their development workflow and infrastructure. It's designed to be simple and end-to-end encrypted. You can start with just 1 line of code within 10 minutes.
 
 - **User-Friendly Dashboard** to manage your organization's environment variables within projects
-- **[Language-Agnostic CLI](https://infisical.com/docs/CLI)**  that pulls and injects environment variables into your local workflow
+- **[Language-Agnostic CLI](https://infisical.com/docs/CLI)** that pulls and injects environment variables into your local workflow
 - **[Complete control over your data](https://infisical.com/docs/self_host_overview)** - host it yourself on any infrastructure
 - **Navigate Multiple Environments** per project (e.g. development, staging, production, etc.)
 - **Personal/Shared** scoping for environment variables
@@ -46,9 +46,9 @@ And more.
 
 ## What's cool about this?
 
-Infisical is the first open-source end-to-end encrypted secret manager that takes less than 10 minutes to setup. 
+Infisical is the first open-source end-to-end encrypted secret manager that takes less than 10 minutes to setup.
 
-Yes. There are other secret managers out there. Some of them are incredibly complicated - they were built for security teams, not developers. The other ones are not end-to-end encrypted, and because of that they can read your secrets. If you care about efficiency and security at the same time - Infisical is right for you. 
+Yes. There are other secret managers out there. Some of them are incredibly complicated - they were built for security teams, not developers. The other ones are not end-to-end encrypted, and because of that they can read your secrets. If you care about efficiency and security at the same time - Infisical is right for you.
 
 On top of that, Infisical is one of the few open source solutions. Need any integrations or want a new feature? You can [create an issue for us](https://github.com/Infisical/infisical/issues) or contribute directly! This is the power of open-source. :)
 
@@ -88,7 +88,6 @@ We're currently setting the foundation and building integrations so secrets can 
 - [ ] GitLab
 - [ ] CircleCI
 
-
 We're currently in Public Alpha.
 
 ## Open-source vs. paid
@@ -99,7 +98,6 @@ This repo is entirely MIT licensed, with the exception of the `ee` directory whi
 
 Looking to report a security vulnerability? Please don't post about it in GitHub issue. Instead, refer to our [SECURITY.md](./SECURITY.md) file.
 
-
 ## Contributors 🦸
 
 [//]: contributor-faces
@@ -107,4 +105,5 @@ Looking to report a security vulnerability? Please don't post about it in GitHub
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
- <a href="https://github.com/dangtony98"><img src="https://avatars.githubusercontent.com/u/25857006?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/vlad-matsiiako"><img src="https://avatars.githubusercontent.com/u/78047717?s=96&v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/maidul98"><img src="https://avatars.githubusercontent.com/u/9300960?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/hanywang2"><img src="https://avatars.githubusercontent.com/u/44352119?v=4" width="50" height="50" alt=""/></a> 
+
+<a href="https://github.com/dangtony98"><img src="https://avatars.githubusercontent.com/u/25857006?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/vlad-matsiiako"><img src="https://avatars.githubusercontent.com/u/78047717?s=96&v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/maidul98"><img src="https://avatars.githubusercontent.com/u/9300960?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/hanywang2"><img src="https://avatars.githubusercontent.com/u/44352119?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/tobias-mintlify"><img src="https://avatars.githubusercontent.com/u/110702161?v=4" width="50" height="50" alt=""/></a>
