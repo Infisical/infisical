@@ -1,3 +1,4 @@
+cd dist
 for i in *.apk; do
     [ -f "$i" ] || break
     cloudsmith push alpine infisical/infisical-cli/alpine/any-version $i
