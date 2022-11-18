@@ -38,6 +38,7 @@ import {
 } from './routes';
 
 const connectWithRetry = () => {
+	console.log('MONGO_URL', MONGO_URL);
 	mongoose.connect(MONGO_URL)
 	.then(() => console.log('Successfully connected to DB'))
 	.catch((e) => {

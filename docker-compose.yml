@@ -5,13 +5,67 @@ services:
     container_name: infisical-nginx
     image: nginx
     ports:
-      - "8080:80"
+      - 80:80
+      - 443:443
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-    networks:
-      - infisical
     depends_on:
       - frontend
+      - backend
+    networks:
+      - infisical
+  
+  backend:
+    platform: linux/amd64
+    container_name: infisical-backend
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: infisical/backend
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/nodemon.json:/app/nodemon.json
+      - /app/node_modules
+    command: npm run start
+    env_file: .env
+    networks:
+      - infisical
+  
+  frontend:
+    platform: linux/amd64
+    container_name: infisical-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    image: infisical/frontend
+    volumes:
+      - ./frontend/pages:/app/pages
+      - ./frontend/public:/app/public
+      - ./frontend/styles:/app/styles
+      - ./frontend/components:/app/components
+      - ./frontend/next.config.js:/app/next.config.js
+    env_file: .env
+    networks:
+      - infisical
+
+  mongo:
+    container_name: infisical-mongo
+    image: mongo
+    restart: always
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - infisical
+
+volumes:
+  mongo-data:
+    driver: local
 
 networks:
   infisical:
