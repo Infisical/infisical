@@ -3,12 +3,12 @@
   <img width="300" src="/img/logoname-white.svg#gh-dark-mode-only" alt="infisical">
 </h1>
 <p align="center">
-  <p align="center">Open-source, end-to-end encrypted, easy-to-use tool to auto-sync environment variables across you team and infrastructure.</p>
+  <p align="center">Open-source, E2EE, simple tool to auto-sync environment variables across you team and infrastructure.</p>
 </p>
 
 <h4 align="center">
-  <a href="https://infisical.com/signup">Get Started - we host (Infisical Cloud)</a> |
-  <a href="https://infisical.com/docs/self_host_overview">Get Started - you host</a> |
+  <a href="https://infisical.com/signup">Infisical Cloud</a> |
+  <a href="https://infisical.com/docs/self_host_overview">Self-Hosting</a> |
   <a href="https://infisical.com/docs/gettingStarted">Docs</a> |
   <a href="https://www.infisical.com">Website</a>
 </h4>
@@ -27,36 +27,38 @@
 
 <img src="/img/infisical_github_repo.png" width="100%" alt="Dashboard" />
 
-**[Infisical](https://infisical.com)** is an open source tool to help teams manage and sync environment variables across their development workflow and infrastructure. It's designed to be simple and end-to-end encrypted. You can start with just 1 line of code within 10 minutes.
+**[Infisical](https://infisical.com)** is an open source, E2EE tool to help teams manage and sync environment variables across their development workflow and infrastructure. It's designed to be simple and take minutes to get going.
 
-- **User-Friendly Dashboard** to manage your organization's environment variables within projects
+- **User-Friendly Dashboard** to manage your team's environment variables within projects
 - **[Language-Agnostic CLI](https://infisical.com/docs/CLI)** that pulls and injects environment variables into your local workflow
 - **[Complete control over your data](https://infisical.com/docs/self_host_overview)** - host it yourself on any infrastructure
 - **Navigate Multiple Environments** per project (e.g. development, staging, production, etc.)
 - **Personal/Shared** scoping for environment variables
 - **[Integrations](https://infisical.com/docs/Heroku)** with CI/CD and production infrastructure (Heroku available, more coming soon)
-- **[1-Click Deploy](https://infisical.com/docs/linux)** to Digital Ocean (other providers coming soon)
-- 🔜 **Authentication/Authorization** for projects (read/write controls coming soon)
-- 🔜 **Automatic Secret Rotation** (coming soon)
+- 🔜 **[1-Click Deploy](https://infisical.com/docs/linux)** to Digital Ocean and Heroku
+- 🔜 **Authentication/Authorization** for projects (read/write controls soon)
+- 🔜 **Automatic Secret Rotation**
 - 🔜 **2FA** (coming soon)
-- 🔜 **Access Logs** (coming soon)
-- 🔜 **Slack Integration & MS Teams** integrations (coming soon)
+- 🔜 **Access Logs**
+- 🔜 **Slack Integration & MS Teams** integrations
 
 And more.
 
 ## What's cool about this?
 
-Infisical is the first open-source end-to-end encrypted secret manager that takes less than 10 minutes to setup.
+Infisical is simple, E2EE, and (soon to be) complete.
 
-Yes. There are other secret managers out there. Some of them are incredibly complicated - they were built for security teams, not developers. The other ones are not end-to-end encrypted, and because of that they can read your secrets. If you care about efficiency and security at the same time - Infisical is right for you.
+We're on a mission to make secret management more accessible to everyone — that means building for developers, not just security teams.
 
-On top of that, Infisical is one of the few open source solutions. Need any integrations or want a new feature? You can [create an issue for us](https://github.com/Infisical/infisical/issues) or contribute directly! This is the power of open-source. :)
+If you care about efficiency and security, then Infisical is right for you.
+
+Need any integrations or want a new feature? Feel free to [create an issue](https://github.com/Infisical/infisical/issues) or [contribute](https://infisical.com/docs/contributing) directly to the repository.
 
 ## Contributing
 
 For full documentation, visit [infisical.com/docs](https://infisical.com/docs).
 
-Whether it's big or small, we ❤️ contributions. Check out our guide to see how to [get started](./DEVELOPERS.md).
+Whether it's big or small, we love contributions ❤️ Check out our guide to see how to [get started](./DEVELOPERS.md).
 
 Not sure where to get started? [Book a free, non-pressure pairing sessions with one of our teammates](mailto:tony@infisical.com?subject=Pairing%20session&body=I'd%20like%20to%20do%20a%20pairing%20session!)!
 
