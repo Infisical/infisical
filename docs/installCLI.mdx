@@ -7,74 +7,83 @@ description: "Install the official Infisical CLI for both your development and p
 
 Installing Infisical CLI is simple. Just follow the guide for your OS below.
 
-<Accordion title="Install on MacOS ">
-  Use [brew](https://brew.sh/) package manager
+<Tabs>
+   <Tab title="MacOS">
+  	Use [brew](https://brew.sh/) package manager
 
-	```
-	$ brew install infisical/get-cli/infisical  
-	$ infisical --version
-	```
+		```
+		$ brew install infisical/get-cli/infisical  
+		$ infisical --version
+		```
 
-	To update:
+		To update:
 
-	```
-	$ brew upgrade infisical
-	```
-</Accordion>
+		```
+		$ brew upgrade infisical
+		```
+   </Tab>
+   <Tab title="Windows">
+      Use [Scoop](https://scoop.sh/) package manager
 
-<Accordion title="Install on Windows ">
-	Use [Scoop](https://scoop.sh/) package manager
+			```
+			$ scoop bucket add org https://github.com/Infisical/scoop-infisical.git
+			$ scoop install infisical
+			$ infisical --version
+			```
 
-	```
-	$ scoop bucket add org https://github.com/Infisical/scoop-infisical.git
-	$ scoop install infisical
-	$ infisical --version
-	```
+			To update:
 
-	To update:
+			```
+			$ scoop update infisical
+			```
+   </Tab>
+	 <Tab title="Alpine">
+	 Install prerequisite
+		```
+		$ sudo apk add --no-cache bash sudo
+		```
 
-	```
-	$ scoop update infisical
-	```
-</Accordion>
+		Add Infisical repository
+		```
+		$ curl -1sLf \
+			'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' \
+			| sudo -E bash
+		```
 
-
-<Accordion title="Install on RedHat/CentOS">
-	```
-	$ curl https://raw.githubusercontent.com/Infisical/infisical/main/infisical-cli.repo | tee /etc/yum.repos.d/infisical-cli.repo 
-
-	$ yum update && sudo yum install infisical
-	```
-</Accordion>
-
-<Accordion title="Install on Alpine">
-	```
-	$ apk add --no-cache bash sudo curl
-	$ curl -1sLf \
-		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' \
+		Then install CLI
+		```
+		$ apk update && apk add infisical 
+		```
+   </Tab>
+	 <Tab title="RedHat/CentOs/Amazon">
+	 Add Infisical repository
+		```
+		$ curl -1sLf \
+		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' \
 		| sudo -E bash
+		```
 
-	$ sudo apk add infisical
+		Then install CLI
+		```
+		$ yum install infisical
+		```
+   </Tab>
+	 <Tab title="Debian/Ubuntu">
+	 	Add Infisical repository 
+			
+		```
+		$ curl -1sLf \
+		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' \
+		| sudo -E bash
+		```
 
-	$ infisical --help
-	```
-</Accordion>
+			Then install CLI 
+			```
+			$ apt-get update && apt-get install -y infisical
+			```
 
-<Accordion title="Install on Debian/Ubuntu">
-	```
-	Add Infisical apt repo 
-	$ echo "deb [trusted=yes] https://apt.fury.io/infisical/ /" | tee -a /etc/apt/sources.list.d/infisical.list
-
-	Add prerequisites
-	$ apt update && apt -y curl ca-certificates sudo 
-
-	Install infisical cli
-	$ sudo apt update && apt install infisical
-
-	To make sure the CLI has been installed, you may run this command.
-	$ infisical --version 
-	```
-</Accordion>
+   </Tab>
+</Tabs>
 
 ## Usage
 Once you have the CLI installed in your system, follow the guide to login and sync your first project.
