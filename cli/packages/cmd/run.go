@@ -22,13 +22,13 @@ var runCmd = &cobra.Command{
 	Use:                   "run [any infisical run command flags] -- [your application start command]",
 	Short:                 "Used to inject environments variables into your application process",
 	DisableFlagsInUseLine: true,
-	Example:               "infisical run --stage=prod -- npm run dev",
+	Example:               "infisical run --env=prod -- npm run dev",
 	Args:                  cobra.MinimumNArgs(1),
 	PreRun:                toggleDebug,
 	Run: func(cmd *cobra.Command, args []string) {
-		stageName, err := cmd.Flags().GetString("stage")
+		envName, err := cmd.Flags().GetString("env")
 		if err != nil {
-			log.Errorln("Unable to parse the stage flag")
+			log.Errorln("Unable to parse the environment flag")
 			log.Debugln(err)
 			return
 		}
@@ -67,14 +67,14 @@ var runCmd = &cobra.Command{
 				return
 			}
 
-			envsFromApi, err = util.GetSecretsFromAPIUsingCurrentLoggedInUser(stageName, userCreds)
+			envsFromApi, err = util.GetSecretsFromAPIUsingCurrentLoggedInUser(envName, userCreds)
 			if err != nil {
 				log.Errorln("Something went wrong when pulling secrets using your logged in credentials. If the issue persists, double check your project id/try logging in again.")
 				log.Debugln(err)
 				return
 			}
 		} else {
-			envsFromApi, err = util.GetSecretsFromAPIUsingInfisicalToken(infisicalToken, stageName, projectId)
+			envsFromApi, err = util.GetSecretsFromAPIUsingInfisicalToken(infisicalToken, envName, projectId)
 			if err != nil {
 				log.Errorln("Something went wrong when pulling secrets using your Infisical token. Double check the token, project id or environment name (dev, prod, ect.)")
 				log.Debugln(err)
@@ -88,7 +88,7 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-	runCmd.Flags().StringP("stage", "s", "dev", "Set the stage (dev, prod, etc.) from which your secrets should be pulled from")
+	runCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
 	runCmd.Flags().String("projectId", "", "The project ID from which your secrets should be pulled from")
 }
 

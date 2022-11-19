@@ -12,8 +12,8 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
-func GetSecretsFromAPIUsingCurrentLoggedInUser(stageName string, userCreds models.UserCredentials) ([]models.SingleEnvironmentVariable, error) {
-	log.Debugln("stageName", stageName, "userCreds", userCreds)
+func GetSecretsFromAPIUsingCurrentLoggedInUser(envName string, userCreds models.UserCredentials) ([]models.SingleEnvironmentVariable, error) {
+	log.Debugln("envName", envName, "userCreds", userCreds)
 	// check if user has configured a workspace
 	workspace, err := GetWorkSpaceFromFile()
 	if err != nil {
@@ -28,7 +28,7 @@ func GetSecretsFromAPIUsingCurrentLoggedInUser(stageName string, userCreds model
 	var pullSecretsRequestResponse models.PullSecretsResponse
 	response, err := httpClient.
 		R().
-		SetQueryParam("environment", stageName).
+		SetQueryParam("environment", envName).
 		SetQueryParam("channel", "cli").
 		SetResult(&pullSecretsRequestResponse).
 		Get(fmt.Sprintf("%v/%v/%v", INFISICAL_URL, "secret", workspace.WorkspaceId)) // need to change workspace id
@@ -97,9 +97,9 @@ func GetSecretsFromAPIUsingCurrentLoggedInUser(stageName string, userCreds model
 	return listOfEnv, nil
 }
 
-func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, stageName string, projectId string) ([]models.SingleEnvironmentVariable, error) {
-	if infisicalToken == "" || projectId == "" || stageName == "" {
-		return nil, errors.New("infisical token, project id and or stage name cannot be empty")
+func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, envName string, projectId string) ([]models.SingleEnvironmentVariable, error) {
+	if infisicalToken == "" || projectId == "" || envName == "" {
+		return nil, errors.New("infisical token, project id and or environment name cannot be empty")
 	}
 	splitToken := strings.Split(infisicalToken, ",")
 	JTWToken := splitToken[0]
@@ -113,7 +113,7 @@ func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, stageName strin
 	var pullSecretsByInfisicalTokenResponse models.PullSecretsByInfisicalTokenResponse
 	response, err := httpClient.
 		R().
-		SetQueryParam("environment", stageName).
+		SetQueryParam("environment", envName).
 		SetQueryParam("channel", "cli").
 		SetResult(&pullSecretsByInfisicalTokenResponse).
 		Get(fmt.Sprintf("%v/secret/%v/service-token", INFISICAL_URL, projectId))
