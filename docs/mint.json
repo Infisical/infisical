@@ -15,6 +15,10 @@
     "ultraDark": "#8D9F4C",
     "background": {
       "dark": "#0D1117"
+    },
+    "anchors": {
+      "from": "#A1B659",
+      "to": "#F8B7BD"
     }
   },
   "topbarLinks": [{ "name": "Log In", "url": "https://infisical.com/login" }],
@@ -26,20 +30,12 @@
     {
       "name": "Security",
       "icon": "shield-halved",
-      "url": "https://infisical.com/security",
-      "color": {
-        "from": "#A1B659",
-        "to": "#F8B7BD"
-      }
+      "url": "https://infisical.com/security"
     },
     {
       "name": "Blog",
       "icon": "newspaper",
-      "url": "https://infisical.com/blog",
-      "color": {
-        "from": "#A1B659",
-        "to": "#F8B7BD"
-      }
+      "url": "https://infisical.com/blog"
     }
   ],
   "navigation": [
@@ -95,5 +91,5 @@
       ]
     }
   ],
-  "backgroundImage": "/docs/images/background.png"
+  "backgroundImage": "/images/background.png"
 }
