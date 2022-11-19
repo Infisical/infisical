@@ -1,110 +1,123 @@
 ---
-title: "Install CLI"
-description: "Install the official Infisical CLI for both your development and production environments"
+title: "Installation"
 ---
 
-## Install
-
-Installing Infisical CLI is simple. Just follow the guide for your OS below.
+Follow the guide for your OS below to install the CLI.
 
 <Tabs>
    <Tab title="MacOS">
   	Use [brew](https://brew.sh/) package manager
 
-		```
-		$ brew install infisical/get-cli/infisical  
-		$ infisical --version
-		```
+    	```bash
+    	# install
+    	brew install infisical/get-cli/infisical
 
-		To update:
+    	# check version
+    	infisical --version
+    	```
 
-		```
-		$ brew upgrade infisical
-		```
+    	To update:
+
+    	```bash
+    	brew upgrade infisical
+    	```
+
    </Tab>
    <Tab title="Windows">
       Use [Scoop](https://scoop.sh/) package manager
 
-			```
-			$ scoop bucket add org https://github.com/Infisical/scoop-infisical.git
-			$ scoop install infisical
-			$ infisical --version
-			```
+    		```bash
+    		# install
+    		scoop bucket add org https://github.com/Infisical/scoop-infisical.git
+    		scoop install infisical
 
-			To update:
+    		# check version
+    		infisical --version
+    		```
 
-			```
-			$ scoop update infisical
-			```
+    		To update:
+
+    		```bash
+    		scoop update infisical
+    		```
+
    </Tab>
 	 <Tab title="Alpine">
 	 Install prerequisite
-		```
+		```bash
 		$ sudo apk add --no-cache bash sudo
 		```
 
-		Add Infisical repository
-		```
-		$ curl -1sLf \
-			'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' \
-			| sudo -E bash
-		```
+    	Add Infisical repository
+    	```bash
+    	$ curl -1sLf \
+    		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' \
+    		| sudo -E bash
+    	```
 
-		Then install CLI
-		```
-		$ apk update && apk add infisical 
-		```
+    	Then install CLI
+    	```bash
+    	$ apk update && apk add infisical
+    	```
+
    </Tab>
 	 <Tab title="RedHat/CentOs/Amazon">
 	 Add Infisical repository
-		```
+		```bash
 		$ curl -1sLf \
 		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' \
 		| sudo -E bash
 		```
 
-		Then install CLI
-		```
-		$ yum install infisical
-		```
+    	Then install CLI
+    	```bash
+    	$ yum install infisical
+    	```
+
    </Tab>
 	 <Tab title="Debian/Ubuntu">
 	 	Add Infisical repository 
 			
-		```
+		```bash
 		$ curl -1sLf \
 		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' \
 		| sudo -E bash
 		```
 
-			Then install CLI 
-			```
-			$ apt-get update && apt-get install -y infisical
-			```
+    		Then install CLI
+    		```
+    		$ apt-get update && apt-get install -y infisical
+    		```
 
    </Tab>
 </Tabs>
 
 ## Usage
+
 Once you have the CLI installed in your system, follow the guide to login and sync your first project.
 
 #### Login
+
 Login to the CLI by running the following command in your terminal
 
 ```
-infisical login 
+infisical login
 ```
+
 <Info>
-To authenticate without logging in manually, read about [Infisical Token](/infisicalToken)
+  To authenticate without logging in manually, read about [Infisical
+  Token](/infisicalToken)
 </Info>
-#### Link secrets to your project
-After logging in, `CD` into the root of your local project. Then run the following command in the terminal to link your Infisical project to your local project.
+#### Link secrets to your project After logging in, `CD` into the root of your local
+project. Then run the following command in the terminal to link your Infisical project
+to your local project.
 
 ```
-infisical init 
+infisical init
 ```
 
-#### Inject 
+#### Inject
+
 To inject the secrets from the Infisical project you have selected in step 2 into your application process, run the following command.
 
 ```
@@ -114,20 +127,21 @@ infisical run -- <your application start command>
 Example:
 
 ```
-infisical run -- npm run dev 
+infisical run -- npm run dev
 ```
 
-By default, Infisical injects secrets from your development environment. To modify from which environment your secrets are pulled from, use the --stage flag 
+By default, Infisical injects secrets from your development environment. To modify from which environment your secrets are pulled from, use the --stage flag
 
 Example:
 
 ```
-infisical run --stage=prod -- npm run dev 
+infisical run --stage=prod -- npm run dev
 ```
 
 You're now automatically pulling and injecting secrets as environment variables into your application!
 
 ### Support
+
 We're constantly improving Infisical, so we'd love to get your feedback and take feature requests.
 
 Lastly, if you have any questions or inquiries, shoot an email over to [support@infisical.com](mailto:support@infisical.com) so we can assist you. Alternatively, feel free to post your question or DM us on Slack here; we'd be happy to connect with you.

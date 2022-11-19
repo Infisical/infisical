@@ -3,7 +3,7 @@
   <img width="300" src="/img/logoname-white.svg#gh-dark-mode-only" alt="infisical">
 </h1>
 <p align="center">
-  <p align="center">Open-source, E2EE, simple tool to auto-sync environment variables across you team and infrastructure.</p>
+  <p align="center">Open-source, E2EE, simple tool to manage and sync environment variables across your team and infrastructure.</p>
 </p>
 
 <h4 align="center">
@@ -38,7 +38,7 @@
 - 🔜 **[1-Click Deploy](https://infisical.com/docs/linux)** to Digital Ocean and Heroku
 - 🔜 **Authentication/Authorization** for projects (read/write controls soon)
 - 🔜 **Automatic Secret Rotation**
-- 🔜 **2FA** (coming soon)
+- 🔜 **2FA**
 - 🔜 **Access Logs**
 - 🔜 **Slack Integration & MS Teams** integrations
 

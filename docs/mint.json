@@ -44,40 +44,54 @@
   ],
   "navigation": [
     {
-      "group": "Documentation",
+      "group": "Platform",
       "pages": [
-        "gettingStarted",
-        "installCLI",
-        "infisicalToken",
-        "CLI"
+        "getting-started/introduction",
+        "getting-started/features",
+        {
+          "group": "Web UI",
+          "pages": [
+            "getting-started/dashboard/create-account",
+            "getting-started/dashboard/organization",
+            "getting-started/dashboard/project"
+          ]
+        },
+        {
+          "group": "Command Line",
+          "pages": ["getting-started/cli/installation", "getting-started/cli/cli-guide", "getting-started/cli/infisical-token"]
+        },
+        "getting-started/infiscial-token"
       ]
     },
     {
       "group": "Integrations",
       "pages": [
-        "Heroku"
+        "integrations/heroku",
+        "integrations/docker",
+        "integrations/docker-compose"
       ]
     },
     {
       "group": "Self-hosting",
       "pages": [
-        "self_host_overview",
+        "self-hosting/overview",
         {
           "group": "Deployments",
-          "pages": ["linux"]
+          "pages": ["self-hosting/deployments/linux"]
         },
         {
-          "group": "Configure",
-          "pages": ["envars"]
+          "group": "Configuration",
+          "pages": ["self-hosting/configuration/envars"]
         }
       ]
     },
     {
       "group": "Contributing",
       "pages": [
-        "contributing",
-        "codeOfConduct",
-        "developing"
+        "contributing/overview",
+        "contributing/code-of-conduct",
+        "contributing/developing",
+        "contributing/architecture"
       ]
     }
   ],
