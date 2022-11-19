@@ -33,7 +33,7 @@
 		"jsrp": "^0.2.4",
 		"markdown-it": "^13.0.1",
 		"next": "^12.2.5",
-		"posthog-js": "^1.30.0",
+		"posthog-js": "^1.34.0",
 		"query-string": "^7.1.1",
 		"react": "^17.0.2",
 		"react-beautiful-dnd": "^13.1.1",
