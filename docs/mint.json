@@ -49,14 +49,20 @@
           "pages": [
             "getting-started/dashboard/create-account",
             "getting-started/dashboard/organization",
-            "getting-started/dashboard/project"
+            "getting-started/dashboard/project",
+            "getting-started/dashboard/integrations",
+            "getting-started/dashboard/token"
           ]
         },
         {
           "group": "Command Line",
-          "pages": ["getting-started/cli/installation", "getting-started/cli/cli-guide", "getting-started/cli/infisical-token"]
-        },
-        "getting-started/infiscial-token"
+          "pages": [
+            "getting-started/cli/installation", 
+            "getting-started/cli/cli-guide", 
+            "getting-started/cli/token",
+            "getting-started/cli/reference"
+          ]
+        }
       ]
     },
     {
