@@ -1,3 +1,60 @@
 ---
 title: "Docker"
 ---
+
+### Step 1: Add CLI to your Dockerfile
+
+<Tabs>
+	 <Tab title="Alpine">
+		```dockerfile
+    	RUN apk add --no-cache bash curl && curl -1sLf \
+      'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
+      && apk add infisical
+    	```
+
+   </Tab>
+	 <Tab title="RedHat/CentOs/Amazon-linux">
+		```dockerfile
+    RUN curl -1sLf \
+    'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' | sh \ 
+    && yum install -y infisical
+		```
+   </Tab>
+	 <Tab title="Debian/Ubuntu">
+		```dockerfile
+    RUN apt-get update && apt-get install -y bash curl && curl -1sLf \
+      'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash \
+      && apt-get update && apt-get install -y infisical
+		```
+   </Tab>
+</Tabs>
+
+### Step 2: Generate Infisical Token
+In order for Infisical CLI to authenticate and retrieve your project's secrets without exposing your login credentials, you must generate a Infisical Token.
+To learn how, visit [Infisical Token](../getting-started/cli/infisical-token). Once you have generated the token, keep it handy. 
+
+### Step 3: Set start command of your container
+```dockerfile
+CMD ["infisical", "--env=<you-project-env-name>", "projectId=<your-project-id>", "run", "---", "<your application start command>"]
+```
+
+Example 
+```dockerfile
+CMD ["infisical", "--env=prod", "projectId=62faf98ae0b05e83239b5da41", "run", "---", "npm run start"]
+```
+| flag | Description                           | 
+| ------------ | ----------------------------------- | 
+| `--env`     | This is the environment name the CLI will use to pull secrets from your project.                    
+| `--projectId`      | This is the project id of the token you generated in step 2.                         | 
+
+To learn more about the flags used above, please visit our [CLI guide](../getting-started/cli/cli-guide)
+
+### Last step: Tell Docker your Infisical Token
+
+The Infisical CLI looks out for a environment variable called `INFISICAL_TOKEN`. To expose this environment variable to 
+your container do the following when running the `docker run` command. Remember, the `INFISICAL_TOKEN` is the token you generated in 
+step 2.
+
+```bash
+ docker run --env INFISICAL_TOKEN=<the-token-you-got-from-step-2>...
+```
