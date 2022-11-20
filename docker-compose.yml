@@ -21,9 +21,6 @@ services:
     restart: unless-stopped
     depends_on:
       - mongo
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
     image: infisical/backend
     volumes:
       - ./backend/src:/app/src
@@ -40,9 +37,6 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.prod
     image: infisical/frontend
     volumes:
       - ./frontend/pages:/app/pages
