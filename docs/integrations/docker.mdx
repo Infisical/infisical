@@ -33,7 +33,7 @@ title: "Docker"
 In order for Infisical CLI to authenticate and retrieve your project's secrets without exposing your login credentials, you must generate a Infisical Token.
 To learn how, visit [Infisical Token](../getting-started/cli/infisical-token). Once you have generated the token, keep it handy. 
 
-### Step 3: Set start command of your container
+### Step 3: Set start command
 ```dockerfile
 CMD ["infisical", "--env=<you-project-env-name>", "projectId=<your-project-id>", "run", "---", "<your application start command>"]
 ```

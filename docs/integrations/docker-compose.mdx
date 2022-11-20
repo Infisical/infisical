@@ -2,22 +2,56 @@
 title: "Docker Compose"
 ---
 
-## Instructions
+### Step 1: Add CLI to your Dockerfile
+Follow steps 1 through 3 on our [guide to configure Infisical CLI](/docker) in your Dockerfile. 
 
-### Step 1: Open the integrations csonsole
+### Step 2: Generate Infisical Token
+In order for Infisical CLI to authenticate and retrieve your project's secrets without exposing your login credentials, you must generate a Infisical Token.
+To learn how, visit [Infisical Token](../getting-started/cli/infisical-token). Once you have generated the token, keep it handy. 
 
-Open the Infisical Dashboard. Choose the project in which you want to set up the intergation. Go to the integrations tab in the left sidebar.
+<Info>
+If you have multiple services and they do not use the same secrets, you will have to generate a Infisical Token for each service.
+</Info>
 
-### Step 2: Authenticate with Heroku
+### Step 3: Tell Docker Compose your Infisical Token
+For each service you want to inject secrets into, set an environment variable called `INFISICAL_TOKEN` equal to a useful shell variable name.
+This will ensure that you can set Infisical Tokens for multiple services. 
 
-Click on Heroku in the list of available integrations. Log in if asked by Heroku and provide the necessary permissions to Infisical. You will afterwards be redirected back to the integrations page.
 
-Note: during an integration with Heroku, for security reasons, it is impossible to maintain end-to-end encryption. In theory, this lets Infisical decrypt yor environment variables. In practice, we can assure you that this will never be done, and it allows us to protect your secrets from bad actors online. The core Infisical service will always stay end-to-end encrypted. With any questions, reach out support@infisical.com.
+```yaml
+# Example Docker Compose file
+services:
+  web:
+    build: .
+    image: auledge-frontend
+    container_name: auledge-frontend
+    environment:
+      - INFISICAL_TOKEN: ${INFISICAL_TOEKN_FOR_WEB}
 
-### Step 3: Start integration
+  api:
+    build: .
+    image: auledge-backend
+    container_name: auledge-backend
+    environment:
+      - INFISICAL_TOKEN: ${INFISICAL_TOEKN_FOR_API}
 
-Once the integration is set up, choose a Heroku App that you want to sync the secrets to, and the Infisical project environment that you would to sync the secrets from. Click on the "Start Integration" button.
+```
+### 4: Set shell variables
+Next, set the shell variables you defined in your compose file. This can be done manually or via your CI/CD environment. Once donce, it will be used to populate the corresponding `INFISICAL_TOKEN`
+in your Docker Compose file. 
 
-### Step 4: You're good to go!
+``` bash
+#Example
 
-The integration should now show status 'In Sync'. Every time you edit the secrets, they will be automatically pushed to Heroku. If you want to update anything in your integration, you will have to delete the current one and create a new one.
+# Token refers to the token we generated in step 2 for this service
+INFISICAL_TOEKN_FOR_WEB=<token>
+
+# Token refers to the token we generated in step 2 for this service
+INFISICAL_TOEKN_FOR_API=<token>
+```
+
+Then run your compose file in the same terminal. 
+
+```bash 
+docker-compose
+```
