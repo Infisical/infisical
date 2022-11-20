@@ -1,0 +1,20 @@
+---
+title: "Overview"
+---
+
+## Summary
+
+Infisical uses end-to-end encryption (E2EE) whenever possible to securely store and share secrets. It uses secure remote password (SRP) to handle authentication and public-key cryptography for secret sharing and syncing; secrets are symmetrically encrypted at rest by keys decryptable only by members of the project.
+
+Infisical uses AES256-GCM for symmetric encryption and x2519-xsalsa20-poly1305 for asymmetric encryption operations mentioned in this brief; key generation and asymmetric algorithms are implemented with the [TweetNaCl.js](https://tweetnacl.js.org/#/) library which has been well-audited and recommended for use by cybersecurity firm Cure53. Lastly, the secure remote password (SRP) implementation uses [jsrp](https://github.com/alax/jsrp) package for user authentication. As part of our commitment to user privacy and security, we aim to conduct formal security and compliance audits in the following year.
+
+## Scope
+
+Infisical's security model spans sensitive data stored on the server-side and in transit between user devices; it makes no security guarantees for malicious events that can occur beyond its control such as user-device security exploits or key-logging arising from poor cybersecurity management on the users’ behalf.
+
+## Lingo
+
+In subsequent sections, we refer:
+
+- To users uploading their secrets to Infisical as “senders” and those receiving secrets as “receivers". For instance, if Bob and Alice are both enrolled in a project and Bob adds new secrets to the project to be pulled by Alice, then Bob is considered to be the sender and Alice the receiver.
+- To any activity involving uploading or modifying secrets to Infisical as "pushing" and fetching secrets from Infisical as "pulling."

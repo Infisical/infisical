@@ -28,11 +28,6 @@
   },
   "anchors": [
     {
-      "name": "Security",
-      "icon": "shield-halved",
-      "url": "https://infisical.com/security"
-    },
-    {
       "name": "Blog",
       "icon": "newspaper",
       "url": "https://infisical.com/blog"
@@ -44,6 +39,15 @@
       "pages": [
         "getting-started/introduction",
         "getting-started/features",
+        {
+          "group": "Security",
+          "pages": [
+            "getting-started/security/overview",
+            "getting-started/security/data-model",
+            "getting-started/security/mechanics",
+            "getting-started/security/statement"
+          ]
+        },
         {
           "group": "Web UI",
           "pages": [

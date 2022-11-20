@@ -1,0 +1,27 @@
+---
+title: "Data Model"
+---
+
+Infisical stores a range of data namely user, secrets, keys, organization, project, and membership data.
+
+## Users
+
+The `User` model includes the fields `email`, `firstName`, `lastName`, `publicKey`, `encryptedPrivateKey`, `iv`, `tag`, `salt`, `verifier`, and `refreshVersion`.
+
+Infisical makes a usability-security tradeoff to give users convenient access to public-private key pairs across different devices upon login, solving key-storage and transfer challenges across device and browser mediums, in exchange for it storing `encryptedPrivateKey`. In any case, private keys are symmetrically encrypted locally by user passwords which are not sent to the server — this is done with SRP.
+
+## Secrets
+
+The `Secret` model includes the fields `workspace`, `type`, `user`, `environment`, `secretKeyCiphertext`, `secretKeyIV`, `secretKeyTag`, `secretKeyHash`, `secretValueCiphertext`, `secretValueIV`, `secretValueTag`, and `secretValueHash`.
+
+Each secret is symmetrically encrypted by the key of the project that it belongs to; that key's encrypted copies are stored in a separate `Key` collection.
+
+## Keys
+
+The `Key` model includes the fields `encryptedKey`, `nonce`, `sender`, `receiver`, and `workspace`.
+
+Infisical stores copies of project keys, one for each member of a project, encrypted under each member's public key.
+
+## Organizations and Workspaces
+
+The `Organization`, `Workspace`, `MembershipOrg`, and `Membership` models contain enrollment information for organizations and projects; they are used to check if users are authorized to retrieve select secrets.
