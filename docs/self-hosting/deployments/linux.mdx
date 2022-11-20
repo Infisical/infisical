@@ -33,7 +33,7 @@ wget -O .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.exa
 wget -O docker-compose.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.yml
 
 # Download nginx config
-mkdir nginx && cd nginx && wget -O https://raw.githubusercontent.com/Infisical/infisical/main/nginx/default.conf
+mkdir nginx && cd nginx && wget -O default.conf https://raw.githubusercontent.com/Infisical/infisical/main/nginx/default.conf
 cd ..
 ```
 
@@ -48,7 +48,7 @@ nano .env
 
 ```bash
 # Start up services in detached mode
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose -f docker-compose.yml up -d
 ```
 
 5. Your Infisical installation is complete and should be running on ports 40 and 443. Please note that the containers are not exposed to the internet and only bind to the localhost. It's up to you to configure a firewall, SSL certificates, and implement any additional security measures.

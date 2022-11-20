@@ -8,7 +8,7 @@
 
 <h4 align="center">
   <a href="https://infisical.com/signup">Infisical Cloud</a> |
-  <a href="https://infisical.com/docs/self_host_overview">Self-Hosting</a> |
+  <a href="https://infisical.com/docs/self-hosting/overview">Self-Hosting</a> |
   <a href="https://infisical.com/docs/gettingStarted">Docs</a> |
   <a href="https://www.infisical.com">Website</a>
 </h4>
@@ -35,7 +35,7 @@
 - **Navigate Multiple Environments** per project (e.g. development, staging, production, etc.)
 - **Personal/Shared** scoping for environment variables
 - **[Integrations](https://infisical.com/docs/Heroku)** with CI/CD and production infrastructure (Heroku available, more coming soon)
-- 🔜 **[1-Click Deploy](https://infisical.com/docs/linux)** to Digital Ocean and Heroku
+- 🔜 **1-Click Deploy** to Digital Ocean and Heroku
 - 🔜 **Authentication/Authorization** for projects (read/write controls soon)
 - 🔜 **Automatic Secret Rotation**
 - 🔜 **2FA**
