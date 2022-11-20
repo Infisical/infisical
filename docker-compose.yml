@@ -62,6 +62,11 @@ services:
       - mongo-data:/data/db
     networks:
       - infisical
+  
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   mongo-data:
