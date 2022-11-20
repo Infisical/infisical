@@ -94,6 +94,7 @@ func init() {
 
 // Credit: inspired by AWS Valut
 func execCmd(command string, args []string, envs []models.SingleEnvironmentVariable) error {
+	log.Infof("\x1b[%dm%s\x1b[0m", 32, "\u2713 Injected Infisical secrets into your application process successfully")
 	log.Debugln("Secrets to inject:", envs)
 	log.Debugf("executing command: %s %s \n", command, strings.Join(args, " "))
 	cmd := exec.Command(command, args...)
