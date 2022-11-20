@@ -81,7 +81,7 @@ func IsUserLoggedIn() (hasUserLoggedIn bool, theUsersEmail string, err error) {
 
 		response, err := httpClient.
 			R().
-			Post(fmt.Sprintf("%v/%v", INFISICAL_URL, "checkAuth"))
+			Post(fmt.Sprintf("%v/v1/auth/checkAuth", INFISICAL_URL))
 
 		if err != nil {
 			return false, "", err

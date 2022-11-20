@@ -12,7 +12,7 @@ const (
 	INFISICAL_SERVICE_TOKEN              = "INFISICAL_SERVICE_TOKEN"
 )
 
-var INFISICAL_URL = "https://api.infisical.com"
+var INFISICAL_URL = "https://app.infisical.com/api"
 
 func GetHomeDir() (string, error) {
 	directory, err := os.UserHomeDir()

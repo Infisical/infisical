@@ -31,7 +31,9 @@ func GetSecretsFromAPIUsingCurrentLoggedInUser(envName string, userCreds models.
 		SetQueryParam("environment", envName).
 		SetQueryParam("channel", "cli").
 		SetResult(&pullSecretsRequestResponse).
-		Get(fmt.Sprintf("%v/%v/%v", INFISICAL_URL, "secret", workspace.WorkspaceId)) // need to change workspace id
+		Get(fmt.Sprintf("%v/v1/secret/%v", INFISICAL_URL, workspace.WorkspaceId)) // need to change workspace id
+
+	log.Debugln("Response from get secrets:", response)
 
 	if err != nil {
 		return nil, err
@@ -116,7 +118,7 @@ func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, envName string,
 		SetQueryParam("environment", envName).
 		SetQueryParam("channel", "cli").
 		SetResult(&pullSecretsByInfisicalTokenResponse).
-		Get(fmt.Sprintf("%v/secret/%v/service-token", INFISICAL_URL, projectId))
+		Get(fmt.Sprintf("%v/v1/secret/%v/service-token", INFISICAL_URL, projectId))
 
 	if err != nil {
 		return nil, err
@@ -191,7 +193,7 @@ func GetWorkSpacesFromAPI(userCreds models.UserCredentials) (workspaces []models
 	response, err := httpClient.
 		R().
 		SetResult(&getWorkSpacesResponse).
-		Get(fmt.Sprintf("%v/%v", INFISICAL_URL, "workspace"))
+		Get(fmt.Sprintf("%v/v1/workspace", INFISICAL_URL))
 
 	if err != nil {
 		return nil, err
