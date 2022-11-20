@@ -6,7 +6,7 @@ done
 
 for i in *.deb; do
     [ -f "$i" ] || break
-    cloudsmith push deb --no-republish infisical/infisical-cli/debian/any-version $i
+    cloudsmith push deb --no-republish infisical/infisical-cli/any-distro/any-version $i
 done
 
 for i in *.rpm; do
