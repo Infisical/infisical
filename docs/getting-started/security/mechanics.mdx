@@ -1,0 +1,24 @@
+---
+title: "Mechanics"
+---
+
+## Signup
+
+During account signup, a user confirms their email address via OTP, generates a public-private key pair to be stored locally (private keys are symmetrically encrypted by the user's newly-made password), and forwards SRP-related values and user identifier information to the server. This includes `email`, `firstName`, `lastName`, `publicKey`, `encryptedPrivateKey`, `iv`, `tag`, `salt`, `verifier`, and `organizationName`.
+
+Once authenticated via SRP, a user is issued a JWT and refresh token. The JWT token is stored in browser memory under a write-only class `SecurityClient` that appends the token to all future outbound requests requiring authentication. The refresh token is stored in an `HttpOnly` cookie and included in future requests to `/api/token` for JWT token renewal. This design side-steps potential XSS attacks on local storage.
+
+<Info>
+  Infisical authenticates users using the SRP protocol. With SRP, the server can
+  authenticate users without ever seeing their passwords.
+</Info>
+
+## Invitation
+
+After signing up, a user can invite other users to their organization to partake in projects — An invitation here consists of an email verification link sent to the invitee to confirm their identity if they've not previously signed up to Infisical. Both organization and project invites authorize invitees for resources but project invites differ in that they also involve sharing project keys by encrypting them under the invitees' public keys.
+
+## Pushing/Pulling Secrets
+
+To push secrets, a sender randomly-generates a symmetric encryption key, uses that key to encrypt their secret keys and values separately, asymmetrically encrypts the key with the receivers’ public keys, and uploads the encrypted secrets and keys to the server.
+
+To pull secrets, a receiver obtains encrypted secret keys and values and their encrypted copy of the project key to decrypt the secrets from the server — they asymmetrically decrypt the key using their private key and use the decrypted key to decrypt the secrets. This public-key mechanism prevents the server-side from reading any secrets.

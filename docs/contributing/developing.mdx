@@ -26,19 +26,19 @@ cp .env.example .env
 
 ```bash
 # build and start the services
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build
+docker-compose -f docker-compose.dev.yml up --build
 ```
 
-Then browse http://localhost:3000
+Then browse http://localhost:8080
 
 ```bash
 # To stop environment use Control+C (on Mac) CTRL+C (on Win) or
-docker-compose down
+docker-compose -f docker-compose.dev.yml down
 # start services
-docker-compose up
+docker-compose -f docker-compose.dev.yml up
 ```
 
-The docker-compose environment consists of:
+The docker-compose development environment consists of:
 
 - frontend
 - backend

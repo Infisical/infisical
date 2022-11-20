@@ -2,7 +2,9 @@
 title: "Docker"
 ---
 
-### Step 1: Add CLI to your Dockerfile
+Prerequisite: [Infisical Token and How to Generate One](../../getting-started/dashboard/token).
+
+## Step 1: Add CLI to your Dockerfile
 
 <Tabs>
 	 <Tab title="Alpine">
@@ -29,32 +31,32 @@ title: "Docker"
    </Tab>
 </Tabs>
 
-### Step 2: Generate Infisical Token
-In order for Infisical CLI to authenticate and retrieve your project's secrets without exposing your login credentials, you must generate a Infisical Token.
-To learn how, visit [Infisical Token](../getting-started/cli/infisical-token). Once you have generated the token, keep it handy. 
+## Step 2: Generate Infisical Token
 
-### Step 3: Set start command
-```dockerfile
-CMD ["infisical", "--env=<you-project-env-name>", "projectId=<your-project-id>", "run", "---", "<your application start command>"]
-```
+In order for the CLI to authenticate and retrieve your project's secrets without requiring your login credentials, you must [generate an Infisical Token](../../getting-started/dashboard/token); keep it handy.
 
-Example 
+## Step 3: Set start command of your container
+
 ```dockerfile
+CMD ["infisical", "--env=[your-project-env-name]", "projectId=[your-project-id]", "run", "---", "<your application start command>"]
+
+# example
 CMD ["infisical", "--env=prod", "projectId=62faf98ae0b05e83239b5da41", "run", "---", "npm run start"]
 ```
-| flag | Description                           | 
-| ------------ | ----------------------------------- | 
-| `--env`     | This is the environment name the CLI will use to pull secrets from your project.                    
-| `--projectId`      | This is the project id of the token you generated in step 2.                         | 
 
-To learn more about the flags used above, please visit our [CLI guide](../getting-started/cli/cli-guide)
+Required options:
 
-### Last step: Tell Docker your Infisical Token
+| Option        | Description                                                                                                 | Default value |
+| ------------- | ----------------------------------------------------------------------------------------------------------- | ------------- |
+| `--env`       | Used to set the environment that secrets are pulled from. Accepted values: `dev`, `staging`, `test`, `prod` | `dev`         |
+| `--projectId` | Used to link a local project to the platform                                                                | `None`        |
 
-The Infisical CLI looks out for a environment variable called `INFISICAL_TOKEN`. To expose this environment variable to 
-your container do the following when running the `docker run` command. Remember, the `INFISICAL_TOKEN` is the token you generated in 
-step 2.
+## Step 4: Feed Docker your Infisical Token
+
+The CLI looks out for an environment variable called the `INFISICAL_TOKEN` which you can set depending on where you run the CLI. If `INFISICAL_TOKEN` is detected by the CLI, it will authenticate and retrieve the environment variables which the token is authorized for.
 
 ```bash
  docker run --env INFISICAL_TOKEN=<the-token-you-got-from-step-2>...
 ```
+
+Note: `INFISICAL_TOKEN` is the token you generated in step 2.

@@ -1,0 +1,55 @@
+---
+title: "Reference"
+---
+
+## Commands
+
+| Command | Description                                                          | Options                |
+| ------- | -------------------------------------------------------------------- | ---------------------- |
+| `login` | Used to authenticate and set the logged in user.                     |
+| `init`  | Used to link a local project to the platform.                        |
+| `run`   | Used to inject envars from the platform into an application process. | `--projectId`, `--env` |
+
+## Global options
+
+| Option            | Description                        |
+| ----------------- | ---------------------------------- |
+| `--help`, `-h`    | List help for any command          |
+| `--debug`, `-d`   | Enable verbose logging             |
+| `--domain`        | Use to direct Infisical to         |
+| `--version`, `-v` | Print version information and quit |
+
+### Login
+
+Used to authenticate and set the logged in user.
+
+Post-authentication credentials are saved securely in your system keyring. Since only one user can be logged in at a time, to change the logged in user, run the command again to overwrite the previous login.
+
+```bash
+infisical login
+```
+
+### Init
+
+Used to link a local project to the platform (cloud or self-hosted)
+
+Run this command at the root of your local project. You will have to run this command for each new project you create locally.
+
+```bash
+infisical init
+```
+
+### Run
+
+Used to inject environment variables from the platform into an application process.
+
+```bash
+infisical run [options] -- [your application start command]
+```
+
+Options you can specify:
+
+| Option        | Description                                                                                                 | Default value |
+| ------------- | ----------------------------------------------------------------------------------------------------------- | ------------- |
+| `--env`       | Used to set the environment that secrets are pulled from. Accepted values: `dev`, `staging`, `test`, `prod` | `dev`         |
+| `--projectId` | Used to link a local project to the platform (required only if injecting via the service token method)      | `None`        |

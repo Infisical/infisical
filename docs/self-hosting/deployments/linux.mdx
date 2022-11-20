@@ -27,18 +27,17 @@ apt install docker-compose
 
 ```bash
 # Download env file template
-wget -O .env https://raw.githubusercontent.com/Infisical/infisical-merge/main/.env.example
+wget -O .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
 
 # Download docker compose template
-wget -O docker-compose.yml https://raw.githubusercontent.com/Infisical/infisical-merge/main/docker-compose.yml
-wget -O docker-compose.yml https://raw.githubusercontent.com/Infisical/infisical-merge/main/docker-compose.prod.yml
+wget -O docker-compose.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.yml
 
 # Download nginx config
-mkdir nginx && cd nginx && wget -O https://raw.githubusercontent.com/Infisical/infisical-merge/main/nginx/default.conf
+mkdir nginx && cd nginx && wget -O https://raw.githubusercontent.com/Infisical/infisical/main/nginx/default.conf
 cd ..
 ```
 
-3. Tweak the `.env` according to your preferences. Refer to the available [environment variables](envars).
+3. Tweak the `.env` according to your preferences. Refer to the available [environment variables](../../self-hosting/configuration/envars)
 
 ```bash
 # update environment variables like mongo login
@@ -49,7 +48,7 @@ nano .env
 
 ```bash
 # Start up services in detached mode
-docker-compose -f docker-compose.yaml -f docker-compose.prod.yml up -d
+docker-compose -f docker-compose.prod.yml up -d
 ```
 
-5. Your Infisical installation is complete. Please note that the containers are not exposed to the internet and only bind to the localhost. It's up to you to set up a firewall and implement any additional security measures.
+5. Your Infisical installation is complete and should be running on ports 40 and 443. Please note that the containers are not exposed to the internet and only bind to the localhost. It's up to you to configure a firewall, SSL certificates, and implement any additional security measures.
