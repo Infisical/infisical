@@ -26,12 +26,12 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          context: backend
+          path: ./backend/Dockerfile
           tags: infisical/backend:latest
       -
         name: Build and push frontend
         uses: docker/build-push-action@v3
         with:
           push: true
-          context: frontend
+          path: ./frontend/Dockerfile
           tags: infisical/frontend:latest
