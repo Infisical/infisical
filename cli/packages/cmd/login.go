@@ -114,8 +114,8 @@ func init() {
 
 func askForLoginCredentials() (email string, password string, err error) {
 	validateEmail := func(input string) error {
-		result, err := regexp.MatchString("^\\w+@[a-zA-Z_]+?\\.[a-zA-Z]{2,3}$", input)
-		if err != nil || !result {
+		matched, err := regexp.MatchString("^[\\w!#$%&'*+/=?`{|}~^-]+(?:\\.[\\w!#$%&'*+/=?`{|}~^-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,6}$", input)
+		if err != nil || !matched {
 			return errors.New("this doesn't look like an email address")
 		}
 		return nil
