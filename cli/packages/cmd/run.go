@@ -41,7 +41,7 @@ var runCmd = &cobra.Command{
 		}
 
 		var envsFromApi []models.SingleEnvironmentVariable
-		infisicalToken := os.Getenv(util.INFISICAL_SERVICE_TOKEN)
+		infisicalToken := os.Getenv(util.INFISICAL_TOKEN_NAME)
 		if infisicalToken == "" {
 			hasUserLoggedInbefore, loggedInUserEmail, err := util.IsUserLoggedIn()
 			if err != nil {
