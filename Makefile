@@ -5,10 +5,10 @@ push:
 	docker-compose -f docker-compose.yml push
 
 up-dev:
-	docker-compose -f docker-compose.dev.yml up
+	docker-compose -f docker-compose.dev.yml up --build
 
 up-prod:
-	docker-compose -f docker-compose.yml up
+	docker-compose -f docker-compose.yml up --build
 
 down:
 	docker-compose down

@@ -21,6 +21,7 @@ declare global {
       PRIVATE_KEY: string;
       PUBLIC_KEY: string;
       SENTRY_DSN: string;
+      SITE_URL: string;
       SMTP_HOST: string;
       SMTP_NAME: string;
       SMTP_PASSWORD: string;
@@ -31,7 +32,6 @@ declare global {
       STRIPE_PUBLISHABLE_KEY: string;
       STRIPE_SECRET_KEY: string;
       STRIPE_WEBHOOK_SECRET: string;
-      WEBSITE_URL: string;
     }
   }
 }
