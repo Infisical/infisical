@@ -7,7 +7,7 @@ import { signupLimiter } from '../helpers/rateLimiter';
 
 router.post(
 	'/email/signup',
-	// signupLimiter,
+	signupLimiter,
 	body('email').exists().trim().notEmpty().isEmail(),
 	validateRequest,
 	signupController.beginEmailSignup
@@ -15,7 +15,7 @@ router.post(
 
 router.post(
 	'/email/verify',
-	// signupLimiter,
+	signupLimiter,
 	body('email').exists().trim().notEmpty().isEmail(),
 	body('code').exists().trim().notEmpty(),
 	validateRequest,
@@ -24,7 +24,7 @@ router.post(
 
 router.post(
 	'/complete-account/signup',
-	// signupLimiter,
+	signupLimiter,
 	requireSignupAuth,
 	body('email').exists().trim().notEmpty().isEmail(),
 	body('firstName').exists().trim().notEmpty(),
@@ -42,7 +42,7 @@ router.post(
 
 router.post(
 	'/complete-account/invite',
-	// signupLimiter,
+	signupLimiter,
 	requireSignupAuth,
 	body('email').exists().trim().notEmpty().isEmail(),
 	body('firstName').exists().trim().notEmpty(),

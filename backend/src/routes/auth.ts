@@ -13,7 +13,7 @@ router.post(
 
 router.post(
 	'/login1',
-	// loginLimiter,
+	loginLimiter,
 	body('email').exists().trim().notEmpty(),
 	body('clientPublicKey').exists().trim().notEmpty(),
 	validateRequest,
@@ -22,7 +22,7 @@ router.post(
 
 router.post(
 	'/login2',
-	// loginLimiter,
+	loginLimiter,
 	body('email').exists().trim().notEmpty(),
 	body('clientProof').exists().trim().notEmpty(),
 	validateRequest,
