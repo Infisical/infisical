@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import crypto from 'crypto';
-import { WEBSITE_URL, JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET } from '../config';
+import { SITE_URL, JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET } from '../config';
 import { MembershipOrg, Organization, User, Token } from '../models';
 import { deleteMembershipOrg as deleteMemberFromOrg } from '../helpers/membershipOrg';
 import { checkEmailVerification } from '../helpers/signup';
@@ -186,7 +186,7 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 					organizationName: organization.name,
 					email: inviteeEmail,
 					token,
-					callback_url: WEBSITE_URL + '/signupinvite'
+					callback_url: SITE_URL + '/signupinvite'
 				}
 			});
 		}

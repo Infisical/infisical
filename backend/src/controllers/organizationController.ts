@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import {
+	SITE_URL,
 	STRIPE_SECRET_KEY,
 	STRIPE_PRODUCT_STARTER,
 	STRIPE_PRODUCT_PRO,
-	STRIPE_PRODUCT_CARD_AUTH,
-	WEBSITE_URL
+	STRIPE_PRODUCT_CARD_AUTH
 } from '../config';
 import Stripe from 'stripe';
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
@@ -350,13 +350,13 @@ export const createOrganizationPortalSession = async (
 				customer: req.membershipOrg.organization.customerId,
 				mode: 'setup',
 				payment_method_types: ['card'],
-				success_url: WEBSITE_URL + '/dashboard',
-				cancel_url: WEBSITE_URL + '/dashboard'
+				success_url: SITE_URL + '/dashboard',
+				cancel_url: SITE_URL + '/dashboard'
 			});
 		} else {
 			session = await stripe.billingPortal.sessions.create({
 				customer: req.membershipOrg.organization.customerId,
-				return_url: WEBSITE_URL + '/dashboard'
+				return_url: SITE_URL + '/dashboard'
 			});
 		}
 

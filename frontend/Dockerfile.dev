@@ -7,10 +7,9 @@ WORKDIR /app
 # Copy over dependency files 
 COPY package.json ./
 COPY package-lock.json ./
-COPY yarn.lock ./
 
 # Install 
-RUN yarn install 
+RUN npm install 
 
 # Copy over next.js config 
 COPY next.config.js ./next.config.js
@@ -18,4 +17,4 @@ COPY next.config.js ./next.config.js
 # Copy all files 
 COPY . .
 
-CMD ["yarn", "dev"]
+CMD ["npm", "run", "dev"]

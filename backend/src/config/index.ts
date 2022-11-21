@@ -17,6 +17,7 @@ const POSTHOG_PROJECT_API_KEY = process.env.POSTHOG_PROJECT_API_KEY!;
 const PRIVATE_KEY = process.env.PRIVATE_KEY!;
 const PUBLIC_KEY = process.env.PUBLIC_KEY!;
 const SENTRY_DSN = process.env.SENTRY_DSN!;
+const SITE_URL = process.env.SITE_URL!;
 const SMTP_HOST = process.env.SMTP_HOST! || 'smtp.gmail.com';
 const SMTP_NAME = process.env.SMTP_NAME!;
 const SMTP_USERNAME = process.env.SMTP_USERNAME!;
@@ -27,7 +28,8 @@ const STRIPE_PRODUCT_STARTER = process.env.STRIPE_PRODUCT_STARTER!;
 const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY!;
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY!;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET!;
-const WEBSITE_URL = 'http://frontend:3000';
+
+console.log('New SITE_URL: ', SITE_URL);
 
 export {
 	PORT,
@@ -49,6 +51,7 @@ export {
 	PRIVATE_KEY,
 	PUBLIC_KEY,
 	SENTRY_DSN,
+	SITE_URL,
 	SMTP_HOST,
 	SMTP_NAME,
 	SMTP_USERNAME,
@@ -58,6 +61,5 @@ export {
 	STRIPE_PRODUCT_STARTER,
 	STRIPE_PUBLISHABLE_KEY,
 	STRIPE_SECRET_KEY,
-	STRIPE_WEBHOOK_SECRET,
-	WEBSITE_URL
+	STRIPE_WEBHOOK_SECRET
 };

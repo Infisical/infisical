@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 dotenv.config();
 import * as Sentry from '@sentry/node';
-import { PORT, SENTRY_DSN, NODE_ENV, MONGO_URL, WEBSITE_URL } from './config';
+import { PORT, SENTRY_DSN, NODE_ENV, MONGO_URL, SITE_URL } from './config';
 import { apiLimiter } from './helpers/rateLimiter';
 
 const app = express();
@@ -38,7 +38,6 @@ import {
 } from './routes';
 
 const connectWithRetry = () => {
-	console.log('MONGO_URL', MONGO_URL);
 	mongoose.connect(MONGO_URL)
 	.then(() => console.log('Successfully connected to DB'))
 	.catch((e) => {
@@ -55,7 +54,7 @@ app.enable('trust proxy');
 app.use(cookieParser());
 app.use(cors({
 	credentials: true,
-	origin: WEBSITE_URL
+	origin: SITE_URL
 }));
 
 if (NODE_ENV === 'production') {

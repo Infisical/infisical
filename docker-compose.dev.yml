@@ -4,6 +4,7 @@ services:
   nginx:
     container_name: infisical-dev-nginx
     image: nginx
+    restart: always
     ports:
       - 8080:80
     volumes:
@@ -47,6 +48,8 @@ services:
       - ./frontend/styles:/app/styles
       - ./frontend/components:/app/components
     env_file: .env
+    environment:
+      - NEXT_PUBLIC_WEBSITE_URL=${SITE_URL}
     networks:
       - infisical-dev
 
@@ -55,6 +58,9 @@ services:
     container_name: infisical-dev-mongo
     restart: always
     env_file: .env
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
     volumes:
       - mongo-data:/data/db
     networks:
@@ -65,6 +71,10 @@ services:
     image: mongo-express
     restart: always
     env_file: .env
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_USERNAME}
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_PASSWORD}
+      - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongo:27017/
     ports:
       - 8081:8081
     networks:

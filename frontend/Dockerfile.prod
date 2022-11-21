@@ -7,7 +7,6 @@ WORKDIR /app
 # Copy over dependency files 
 COPY package.json ./
 COPY package-lock.json ./
-COPY yarn.lock ./
 
 # Install 
 RUN npm install 

@@ -6,7 +6,7 @@ import {
 	deleteMembership as deleteMember
 } from '../helpers/membership';
 import { sendMail } from '../helpers/nodemailer';
-import { WEBSITE_URL } from '../config';
+import { SITE_URL } from '../config';
 import { ADMIN, MEMBER, GRANTED, ACCEPTED } from '../variables';
 
 /**
@@ -217,11 +217,10 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
 				inviterFirstName: req.user.firstName,
 				inviterEmail: req.user.email,
 				workspaceName: req.membership.workspace.name,
-				callback_url: WEBSITE_URL + '/login'
+				callback_url: SITE_URL + '/login'
 			}
 		});
 	} catch (err) {
-		console.error(err);
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
 		return res.status(400).send({
