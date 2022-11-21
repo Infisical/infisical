@@ -14,7 +14,7 @@ If you have multiple services and they do not use the same secrets, you will hav
 </Info>
 
 ### Step 3: Tell Docker Compose your Infisical Token
-For each service you want to inject secrets into, set an environment variable called `INFISICAL_TOKEN` equal to a useful shell variable name.
+For each service you want to inject secrets into, set an environment variable called `INFISICAL_TOKEN` equal to a helpful identifier variable.
 This will ensure that you can set Infisical Tokens for multiple services. 
 
 
@@ -36,22 +36,22 @@ services:
       - INFISICAL_TOKEN: ${INFISICAL_TOEKN_FOR_API}
 
 ```
-### 4: Set shell variables
-Next, set the shell variables you defined in your compose file. This can be done manually or via your CI/CD environment. Once donce, it will be used to populate the corresponding `INFISICAL_TOKEN`
+### 4: Export shell variables
+Next, set the shell variables you defined in your compose file. This can be done manually or via your CI/CD environment. Once done, it will be used to populate the corresponding `INFISICAL_TOKEN`
 in your Docker Compose file. 
 
 ``` bash
 #Example
 
 # Token refers to the token we generated in step 2 for this service
-INFISICAL_TOEKN_FOR_WEB=<token>
+export INFISICAL_TOEKN_FOR_WEB=<token>
 
 # Token refers to the token we generated in step 2 for this service
-INFISICAL_TOEKN_FOR_API=<token>
+export INFISICAL_TOEKN_FOR_API=<token>
 ```
 
 Then run your compose file in the same terminal. 
 
 ```bash 
-docker-compose
+docker-compose ...
 ```
