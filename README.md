@@ -64,7 +64,7 @@ Need any integrations or want a new feature? Feel free to [create an issue](http
 
 For full documentation, visit [infisical.com/docs](https://infisical.com/docs).
 
-Whether it's big or small, we love contributions ❤️ Check out our guide to see how to [get started](./DEVELOPERS.md).
+Whether it's big or small, we love contributions ❤️ Check out our guide to see how to [get started](https://infisical.com/docs/contributing/overview).
 
 Not sure where to get started? [Book a free, non-pressure pairing sessions with one of our teammates](mailto:tony@infisical.com?subject=Pairing%20session&body=I'd%20like%20to%20do%20a%20pairing%20session!)!
 
