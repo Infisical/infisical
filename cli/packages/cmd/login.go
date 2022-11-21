@@ -28,8 +28,9 @@ var loginCmd = &cobra.Command{
 	PreRun:                toggleDebug,
 	Run: func(cmd *cobra.Command, args []string) {
 		hasUserLoggedInbefore, currentLoggedInUserEmail, err := util.IsUserLoggedIn()
+
 		if err != nil {
-			log.Debugln(err)
+			log.Debugln("Unable to get current logged in user.", err)
 		}
 
 		if hasUserLoggedInbefore {
@@ -43,12 +44,6 @@ var loginCmd = &cobra.Command{
 			if !shouldOverride {
 				return
 			}
-		}
-
-		if err != nil {
-			log.Errorln("Unable to get current logged in user.")
-			log.Debugln(err)
-			return
 		}
 
 		email, password, err := askForLoginCredentials()
@@ -160,6 +155,7 @@ func askForLoginCredentials() (email string, password string, err error) {
 }
 
 func getFreshUserCredentials(email string, password string) (*models.LoginTwoResponse, error) {
+	log.Debugln("getFreshUserCredentials:", "email", email, "password", password)
 	httpClient := resty.New()
 	httpClient.SetRetryCount(5)
 
@@ -180,7 +176,7 @@ func getFreshUserCredentials(email string, password string) (*models.LoginTwoRes
 		R().
 		SetBody(loginOneRequest).
 		SetResult(&loginOneResponseResult).
-		Post(fmt.Sprintf("%v/%v", util.INFISICAL_URL, "login1"))
+		Post(fmt.Sprintf("%v/v1/auth/login1", util.INFISICAL_URL))
 
 	if err != nil {
 		return nil, err
@@ -216,7 +212,7 @@ func getFreshUserCredentials(email string, password string) (*models.LoginTwoRes
 		R().
 		SetBody(LoginTwoRequest).
 		SetResult(&loginTwoResponseResult).
-		Post(fmt.Sprintf("%v/%v", util.INFISICAL_URL, "login2"))
+		Post(fmt.Sprintf("%v/v1/auth/login2", util.INFISICAL_URL))
 
 	if err != nil {
 		return nil, err
