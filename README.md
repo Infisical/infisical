@@ -44,6 +44,9 @@
 
 And more.
 
+## Get started 
+To quickly get started, visit our [get started guide](https://infisical.com/docs/getting-started/introduction). 
+
 ## What's cool about this?
 
 Infisical is simple, E2EE, and (soon to be) complete.
