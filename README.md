@@ -44,12 +44,15 @@
 
 And more.
 
-## Get started 
-To quickly get started, visit our [get started guide](https://infisical.com/docs/getting-started/introduction). 
+## Get started
+
+To quickly get started, visit our [get started guide](https://infisical.com/docs/getting-started/introduction).
 
 ## What's cool about this?
 
 Infisical is simple, E2EE, and (soon to be) complete.
+
+According to one [report](https://www.ekransystem.com/en/blog/secrets-management) in 2021, only 10% of organizations use secret management solutions despite all using digital secrets to some extent.
 
 We're on a mission to make secret management more accessible to everyone — that means building for developers, not just security teams.
 
@@ -77,6 +80,8 @@ Not sure where to get started? [Book a free, non-pressure pairing sessions with 
 - [ ] Public Beta: Stable enough for most non-enterprise use-cases.
 - [ ] Public: Production-ready.
 
+We're currently in Public Alpha.
+
 ## Integrations
 
 We're currently setting the foundation and building integrations so secrets can be synced everywhere. Any help is welcome! :)
@@ -92,8 +97,6 @@ We're currently setting the foundation and building integrations so secrets can 
 - [ ] Digital Ocean
 - [ ] GitLab
 - [ ] CircleCI
-
-We're currently in Public Alpha.
 
 ## Open-source vs. paid
 
