@@ -17,7 +17,7 @@ If you have multiple services and they do not use the same secrets, you will hav
 For each service you want to inject secrets into, set an environment variable called `INFISICAL_TOKEN` equal to a helpful identifier variable.
 This will ensure that you can set Infisical Tokens for multiple services. 
 
-For the example below, we have set `INFISICAL_TOEKN_FOR_WEB` and `INFISICAL_TOEKN_FOR_API` as the `INFISICAL_TOKEN` for the corresponding service.
+For the example below, we have set `INFISICAL_TOKEN_FOR_WEB` and `INFISICAL_TOKEN_FOR_API` as the `INFISICAL_TOKEN` for the corresponding service.
 
 
 ```yaml
@@ -28,14 +28,14 @@ services:
     image: auledge-frontend
     container_name: auledge-frontend
     environment:
-      - INFISICAL_TOKEN=${INFISICAL_TOEKN_FOR_WEB}
+      - INFISICAL_TOKEN=${INFISICAL_TOKEN_FOR_WEB}
 
   api:
     build: .
     image: auledge-backend
     container_name: auledge-backend
     environment:
-      - INFISICAL_TOKEN=${INFISICAL_TOEKN_FOR_API}
+      - INFISICAL_TOKEN=${INFISICAL_TOKEN_FOR_API}
 
 ```
 ### 4: Export shell variables
@@ -46,10 +46,10 @@ in your Docker Compose file.
 #Example
 
 # Token refers to the token we generated in step 2 for this service
-export INFISICAL_TOEKN_FOR_WEB=<token>
+export INFISICAL_TOKEN_FOR_WEB=<token>
 
 # Token refers to the token we generated in step 2 for this service
-export INFISICAL_TOEKN_FOR_API=<token>
+export INFISICAL_TOKEN_FOR_API=<token>
 
 # Then run your compose file in the same terminal. 
 docker-compose ...
