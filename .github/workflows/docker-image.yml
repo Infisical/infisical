@@ -1,9 +1,6 @@
 name: Push to Docker Hub
 
-on:
-  push:
-    branches:
-      - 'main'
+on: [workflow_dispatch]
 
 jobs:
   docker:
