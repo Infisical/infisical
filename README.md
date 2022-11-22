@@ -52,7 +52,7 @@ To quickly get started, visit our [get started guide](https://infisical.com/docs
 
 Infisical is simple, E2EE, and (soon to be) complete.
 
-According to one [report](https://www.ekransystem.com/en/blog/secrets-management) in 2021, only 10% of organizations use secret management solutions despite all using digital secrets to some extent.
+According to a [report](https://www.ekransystem.com/en/blog/secrets-management) in 2019, only 10% of organizations use secret management solutions despite all using digital secrets to some extent.
 
 We're on a mission to make secret management more accessible to everyone — that means building for developers, not just security teams.
 

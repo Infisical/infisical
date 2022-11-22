@@ -28,6 +28,8 @@ services:
     image: infisical/backend
     command: npm run start
     env_file: .env
+    environment:
+      - NODE_ENV=${ENV}
     networks:
       - infisical
   
@@ -42,6 +44,9 @@ services:
       dockerfile: Dockerfile.prod
     image: infisical/frontend
     env_file: .env
+    environment:
+      - NEXT_PUBLIC_WEBSITE_URL=${SITE_URL}
+      - NEXT_PUBLIC_ENV=${ENV}
     networks:
       - infisical
 

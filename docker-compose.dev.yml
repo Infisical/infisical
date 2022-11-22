@@ -30,6 +30,8 @@ services:
       - /app/node_modules
     command: npm run dev
     env_file: .env
+    environment:
+      - NODE_ENV=${ENV}
     networks:
       - infisical-dev
   
@@ -50,6 +52,7 @@ services:
     env_file: .env
     environment:
       - NEXT_PUBLIC_WEBSITE_URL=${SITE_URL}
+      - NEXT_PUBLIC_ENV=${ENV}
     networks:
       - infisical-dev
 
