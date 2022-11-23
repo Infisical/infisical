@@ -29,7 +29,7 @@ services:
     command: npm run start
     env_file: .env
     environment:
-      - NODE_ENV=${ENV}
+      - NODE_ENV=production
     networks:
       - infisical
   
@@ -45,8 +45,10 @@ services:
     image: infisical/frontend
     env_file: .env
     environment:
+      - NEXT_PUBLIC_ENV=production
       - NEXT_PUBLIC_WEBSITE_URL=${SITE_URL}
-      - NEXT_PUBLIC_ENV=${ENV}
+      - NEXT_PUBLIC_POSTHOG_HOST=${POSTHOG_HOST}
+      - NEXT_PUBLIC_POSTHOG_API_KEY=${POSTHOG_PROJECT_API_KEY}
     networks:
       - infisical
 
