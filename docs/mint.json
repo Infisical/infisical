@@ -21,16 +21,16 @@
       "to": "#F8B7BD"
     }
   },
-  "topbarLinks": [{ "name": "Log In", "url": "https://infisical.com/login" }],
+  "topbarLinks": [{ "name": "Log In", "url": "https://app.infisical.com/login" }],
   "topbarCtaButton": {
     "name": "Start for Free",
-    "url": "https://infisical.com/signup"
+    "url": "https://app.infisical.com/signup"
   },
   "anchors": [
     {
       "name": "Blog",
       "icon": "newspaper",
-      "url": "https://infisical.com/blog"
+      "url": "https://blog.infisical.com/"
     }
   ],
   "navigation": [

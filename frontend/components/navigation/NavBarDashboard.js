@@ -31,7 +31,7 @@ const supportOptions = [
 	[
 		<FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faBook} />,
 		"Read Docs",
-		"https://infisical.com/docs/gettingStarted",
+		"https://infisical.com/docs/getting-started/introduction",
 	],
 	[
 		<FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faGithub} />,

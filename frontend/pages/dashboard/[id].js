@@ -381,7 +381,7 @@ export default function Dashboard() {
 					{checkDocsPopUpVisible && 
 						<BottonRightPopup 
 							buttonText="Check Docs" 
-							buttonLink="https://www.infisical.com/docs/gettingStarted"
+							buttonLink="https://infisical.com/docs/getting-started/introduction"
 							titleText="Good job!" 
 							emoji="🎉" 
 							textLine1="Congrats on adding more secrets." 
