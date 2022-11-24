@@ -22,12 +22,12 @@ Configuring Infisical requires setting some environment variables. There is a fi
 | `MONGO_URL`                  | ❗️ MongoDB instance connection string either to container instance or MongoDB Cloud                        | `None`           |
 | `MONGO_USERNAME`             | MongoDB username if using container                                                                         | `None`           |
 | `MONGO_PASSWORD`             | MongoDB password if using container                                                                         | `None`           |
-| `ENV`                        | ❗️ `production` or `development`                                                                           | `None`           |
 | `SITE_URL`                   | ❗️ Site URL - should be an absolute URL including the protocol (e.g. `https://app.infisical.com`)          | `None`           |
 | `SMT_HOST`                   | Whether the user joined the community                                                                       | `smtp.gmail.com` |
-| `SMTP_NAME`                  | ❗️ Whether the user joined the community                                                                   | `None`           |
-| `SMTP_USERNAME`              | ❗️ Whether the user joined the community                                                                   | `None`           |
-| `SMTP_PASSWORD`              | ❗️ Whether the user joined the community                                                                   | `None`           |
+| `SMTP_NAME`                  | Hostname to connect to for establishing SMTP connections (e.g. `Team`)                                      | `None`           |
+| `SMTP_USERNAME`              | ❗️ Credential to connect to host (e.g. `team@infisical.com`)                                               | `None`           |
+| `SMTP_PASSWORD`              | ❗️ Credential to connect to host                                                                           | `None`           |
+| `TELEMETRY_ENABLED`          | `true` or `false`. [More](../overview).                                                                     | `true`           |
 | `OAUTH_CLIENT_SECRET_HEROKU` | OAuth client secret for Heroku integration                                                                  | `None`           |
 | `OAUTH_TOKEN_URL_HEROKU`     | OAuth token URL for Heroku integration                                                                      | `None`           |
 | `SENTRY_DSN`                 | DSN for error-monitoring with Sentry                                                                        | `None`           |
