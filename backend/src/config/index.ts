@@ -12,8 +12,8 @@ const MONGO_URL = process.env.MONGO_URL!;
 const NODE_ENV = process.env.NODE_ENV! || 'production';
 const OAUTH_CLIENT_SECRET_HEROKU = process.env.OAUTH_CLIENT_SECRET_HEROKU!;
 const OAUTH_TOKEN_URL_HEROKU = process.env.OAUTH_TOKEN_URL_HEROKU!;
-const POSTHOG_HOST = process.env.POSTHOG_HOST!;
-const POSTHOG_PROJECT_API_KEY = process.env.POSTHOG_PROJECT_API_KEY!;
+const POSTHOG_HOST = process.env.POSTHOG_HOST! || 'https://app.posthog.com';
+const POSTHOG_PROJECT_API_KEY = process.env.POSTHOG_PROJECT_API_KEY! || 'phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE';
 const PRIVATE_KEY = process.env.PRIVATE_KEY!;
 const PUBLIC_KEY = process.env.PUBLIC_KEY!;
 const SENTRY_DSN = process.env.SENTRY_DSN!;
@@ -28,6 +28,7 @@ const STRIPE_PRODUCT_STARTER = process.env.STRIPE_PRODUCT_STARTER!;
 const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY!;
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY!;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET!;
+const TELEMETRY_ENABLED = (process.env.TELEMETRY_ENABLED! !== 'false') && true;
 
 export {
 	PORT,
@@ -59,5 +60,6 @@ export {
 	STRIPE_PRODUCT_STARTER,
 	STRIPE_PUBLISHABLE_KEY,
 	STRIPE_SECRET_KEY,
-	STRIPE_WEBHOOK_SECRET
+	STRIPE_WEBHOOK_SECRET,
+	TELEMETRY_ENABLED
 };

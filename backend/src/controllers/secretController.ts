@@ -7,16 +7,9 @@ import {
 	reformatPullSecrets
 } from '../helpers/secret';
 import { pushKeys } from '../helpers/key';
-import { PostHog } from 'posthog-node';
 import { ENV_SET } from '../variables';
-import { NODE_ENV, POSTHOG_PROJECT_API_KEY, POSTHOG_HOST } from '../config';
 
-let client: any;
-if (NODE_ENV === 'production' && POSTHOG_PROJECT_API_KEY && POSTHOG_HOST) {
-	client = new PostHog(POSTHOG_PROJECT_API_KEY, {
-		host: POSTHOG_HOST
-	});
-}
+import { postHogClient } from '../services';
 
 interface PushSecret {
 	ciphertextKey: string;
@@ -68,11 +61,10 @@ export const pushSecrets = async (req: Request, res: Response) => {
 			keys
 		});
 
-		if (client) {
-			// capture secrets pushed event in production
-			client.capture({
-				distinctId: req.user.email,
+		if (postHogClient) {
+			postHogClient.capture({
 				event: 'secrets pushed',
+				distinctId: req.user.email,
 				properties: {
 					numberOfSecrets: secrets.length,
 					environment,
@@ -81,6 +73,7 @@ export const pushSecrets = async (req: Request, res: Response) => {
 				}
 			});
 		}
+
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
@@ -131,9 +124,9 @@ export const pullSecrets = async (req: Request, res: Response) => {
 			secrets = reformatPullSecrets({ secrets });
 		}
 
-		if (client) {
+		if (postHogClient) {
 			// capture secrets pushed event in production
-			client.capture({
+			postHogClient.capture({
 				distinctId: req.user.email,
 				event: 'secrets pulled',
 				properties: {
@@ -198,9 +191,9 @@ export const pullSecretsServiceToken = async (req: Request, res: Response) => {
 			workspace: req.serviceToken.workspace
 		};
 
-		if (client) {
+		if (postHogClient) {
 			// capture secrets pushed event in production
-			client.capture({
+			postHogClient.capture({
 				distinctId: req.serviceToken.user.email,
 				event: 'secrets pulled',
 				properties: {
