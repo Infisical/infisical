@@ -4,48 +4,90 @@ import { faCircle } from "@fortawesome/free-solid-svg-icons";
 import guidGenerator from "../utilities/randomId";
 
 
-const DashboardInputField = ({label, index, onChangeHandler, type, value, placeholder, isRequired, blurred, isStatic}) => {
-	if (isStatic === true) {
-		return (
-			<div className="flex flex-col my-2 md:my-4 justify-center w-full max-w-md">
-				<p className="text-sm font-semibold text-gray-400 mb-0.5">
-					{label}
-				</p>
-				{text && (
-					<p className="text-xs text-gray-400 mb-2">{text}</p>
-				)}
-				<input
-					onChange={(e) => console.log(e.target.value, index)}
-					type={type}
-					placeholder={placeholder}
-					value={value}
-					required={isRequired}
-					className="bg-bunker-800 text-gray-400 border border-gray-600 rounded-md text-md p-2 w-full min-w-16 outline-none"
-					readOnly
-				/>
-			</div>
-		);
-	} else {
+/**
+ * This function splits the input of a dashboard field into the parts that are inside and outside of ${...}
+ * @param {*} text - the value of the input in the Dashboard Input Field
+ * @returns 
+ */
+const findReferences = (text) => {
+	var splitText = text.split('${');
+	let textArray = [splitText[0]];
+	for (var i = 1; i < splitText.length; i++) {
+		let insideBrackets = "${" + splitText[i].split('}')[0]
+		if (splitText[i].includes('}')) {
+			insideBrackets += "}"
+		}
+		textArray.push(insideBrackets)
+		textArray.push(splitText[i].split('}')[1])
+	}
+	return textArray;
+}
+
+/**
+ * This component renders the input fields on the dashboard
+ * @param {*} index - the order number of a keyPair 
+ * @param {*} onChangeHandler - what happens when the input is modified
+ * @param {*} type - whether the input field is for a Key Name or for a Key Value
+ * @param {*} value - value of the InputField 
+ * @param {*} blurred - whether the input field should be blurred (behind the gray dots) or not; this can be turned on/off in the dashboard
+ * @returns 
+ */
+const DashboardInputField = ({index, onChangeHandler, type, value, blurred}) => {
+	if (type === "varName") {
 		return (
 			<div className="flex-col w-full">
 				<div
-					className={`group flex flex-col justify-center w-full max-w-2xl border border-mineshaft-500 rounded-md`}
+					className={`group relative flex flex-col justify-center w-full max-w-2xl border border-mineshaft-500 rounded-md`}
 				>
 					<input
 						onChange={(e) => onChangeHandler(e.target.value, index)}
 						type={type}
-						placeholder={placeholder}
 						value={value}
-						required={isRequired}
-						className={`${
-							blurred
-								? "text-bunker-800 group-hover:text-gray-400 focus:text-gray-400 active:text-gray-400"
-								: ""
-						} peer ph-no-capture bg-bunker-800 rounded-md text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-4 focus:ring-primary/50 duration-200`}
+						className="asolute z-10 peer font-mono ph-no-capture bg-bunker-800 rounded-md caret-white text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-4 focus:ring-primary/50 duration-200"
 						spellCheck="false"
 					/>
+				</div>
+			</div>
+		);
+	} else if (type === "value") {
+		return (
+			<div className="flex-col w-full">
+				<div
+					className={`group relative flex flex-col justify-center w-full max-w-2xl border border-mineshaft-500 rounded-md`}
+				>
+					<input
+						onChange={(e) => onChangeHandler(e.target.value, index)}
+						type={type}
+						value={value}
+						className={`${
+							blurred
+								? "text-transparent group-hover:text-transparent focus:text-transparent active:text-transparent"
+								: ""
+						} asolute z-10 peer font-mono ph-no-capture bg-transparent rounded-md caret-white text-transparent text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-4 focus:ring-primary/50 duration-200`}
+						spellCheck="false"
+					/>
+					<div 
+						className={`${
+							blurred
+								? "text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-400 peer-active:text-gray-400"
+								: ""
+						} flex flex-row font-mono absolute z-0 ph-no-capture bg-bunker-800 rounded-md text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-4 focus:ring-primary/50 duration-100`}
+					>
+						{findReferences(value).map((text, id) => 
+							id % 2 == 0 || text.length <= 2
+							? <span className="ph-no-capture">{text}</span> 
+							: <span className="ph-no-capture text-yellow">
+								{text.slice(0, 2)}
+								<span className="ph-no-capture text-yellow-200/80">
+									{text.slice(2, text.length - 1)}
+								</span>
+								{text.slice(text.length - 1, text.length) == "}" 
+								? <span className="ph-no-capture text-yellow">{text.slice(text.length - 1, text.length)} </span> 
+								: <span className="ph-no-capture text-yellow-400">{text.slice(text.length - 1, text.length)} </span>}
+							</span>)}
+					</div>
 					{blurred && (
-						<div className="peer pr-24 group-hover:hidden peer-hover:hidden peer-focus:hidden peer-active:invisible absolute h-10 w-fit max-w-xl rounded-md flex items-center text-gray-400/50 text-clip overflow-hidden">
+						<div className="z-20 peer pr-2 bg-bunker-800 group-hover:hidden peer-hover:hidden peer-focus:hidden peer-active:invisible absolute h-9 w-fit max-w-xl rounded-md flex items-center text-gray-400/50 text-clip overflow-hidden">
 							<p className="ml-2"></p>
 							{value
 								.split("")

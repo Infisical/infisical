@@ -7,6 +7,7 @@
 </p>
 
 <h4 align="center">
+  <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">Slack</a> |
   <a href="https://infisical.com/signup">Infisical Cloud</a> |
   <a href="https://infisical.com/docs/self-hosting/overview">Self-Hosting</a> |
   <a href="https://infisical.com/docs/gettingStarted">Docs</a> |
@@ -20,7 +21,7 @@
   <a href="https://github.com/infisical/infisical/blob/main/CONTRIBUTING.md">
     <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen" alt="PRs welcome!" />
   </a>
-  <a href="https://join.slack.com/t/infisical/shared_invite/zt-1dgg63ln8-G7PCNJdCymAT9YF3j1ewVA">
+  <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
   </a>
 </h4>
@@ -47,6 +48,12 @@ And more.
 ## Get started
 
 To quickly get started, visit our [get started guide](https://infisical.com/docs/getting-started/introduction).
+
+## Stay Up-to-Date
+
+Infisical officially launched as v.1.0 on November 21st, 2022. However, a lot of new features are coming very quickly. Watch **releases** of this repository to be notified about future updates:
+
+![infisical-star-github]()
 
 ## What's cool about this?
 

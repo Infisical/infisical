@@ -45,26 +45,20 @@ const KeyPair = ({ keyPair, deleteRow, modifyKey, modifyValue, modifyVisibility,
 				<div className="min-w-xl w-96">
 					<div className="flex items-center md:px-1 rounded-lg mt-4 md:mt-0 max-h-10">
 						<DashboardInputField
-							label=""
 							onChangeHandler={modifyKey}
 							type="varName"
 							index={keyPair[1]}
 							value={keyPair[2]}
-							placeholder=""
-							isRequired
 						/>
 					</div>
 				</div>
 				<div className="w-full min-w-5xl">
 					<div className="flex min-w-7xl items-center pl-1 pr-1.5 rounded-lg mt-4 md:mt-0 max-h-10 ">
 						<DashboardInputField
-							label=""
 							onChangeHandler={modifyValue}
 							type="value"
 							index={keyPair[1]}
 							value={keyPair[3]}
-							placeholder=""
-							isRequired
 							blurred={isBlurred}
 						/>
 					</div>
