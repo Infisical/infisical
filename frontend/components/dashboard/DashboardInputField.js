@@ -6,7 +6,7 @@ import guidGenerator from "../utilities/randomId";
 
 /**
  * This function splits the input of a dashboard field into the parts that are inside and outside of ${...}
- * @param {*} text - the value of the input in the Dashboard Input Field
+ * @param {string} text - the value of the input in the Dashboard Input Field
  * @returns 
  */
 const findReferences = (text) => {
@@ -25,11 +25,12 @@ const findReferences = (text) => {
 
 /**
  * This component renders the input fields on the dashboard
- * @param {*} index - the order number of a keyPair 
- * @param {*} onChangeHandler - what happens when the input is modified
- * @param {*} type - whether the input field is for a Key Name or for a Key Value
- * @param {*} value - value of the InputField 
- * @param {*} blurred - whether the input field should be blurred (behind the gray dots) or not; this can be turned on/off in the dashboard
+ * @param {object} obj - the order number of a keyPair 
+ * @param {number} obj.index - the order number of a keyPair 
+ * @param {function} obj.onChangeHandler - what happens when the input is modified
+ * @param {string} obj.type - whether the input field is for a Key Name or for a Key Value
+ * @param {string} obj.value - value of the InputField 
+ * @param {boolean} obj.blurred - whether the input field should be blurred (behind the gray dots) or not; this can be turned on/off in the dashboard
  * @returns 
  */
 const DashboardInputField = ({index, onChangeHandler, type, value, blurred}) => {

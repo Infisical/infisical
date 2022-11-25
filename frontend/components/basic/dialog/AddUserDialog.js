@@ -3,6 +3,7 @@ import { Fragment } from "react";
 import InputField from "../InputField";
 import { useRouter } from "next/router";
 import Button from "../buttons/Button";
+import { STRIPE_PRODUCT_STARTER } from "../../utilities/config";
 
 const AddUserDialog = ({
 	isOpen,
@@ -70,7 +71,7 @@ const AddUserDialog = ({
 											isRequired
 										/>
 									</div>
-									{currentPlan == process.env.NEXT_PUBLIC_STRIPE_PRODUCT_STARTER && <div className="flex flex-row">
+									{currentPlan == STRIPE_PRODUCT_STARTER && <div className="flex flex-row">
 										<button
 											type="button"
 											className="inline-flex justify-center rounded-md py-1 text-sm text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
