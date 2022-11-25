@@ -158,7 +158,7 @@ export default function SettingsBasic() {
 										snipets for various languages and
 										frameworks, see{" "}
 										<a
-											href="https://infisical.com/docs/gettingStarted"
+											href="https://infisical.com/docs/getting-started/introduction"
 											target="_blank"
 											rel="noopener"
 											className="text-primary hover:opacity-80 duration-200"

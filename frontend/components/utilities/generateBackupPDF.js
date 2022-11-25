@@ -111,7 +111,7 @@ function generateBackupPDF(personalName, personalEmail, generatedKey) {
 	doc.text(
 		180,
 		420,
-		"https://infisical.com/login"
+		"https://app.infisical.com/login"
 	);
 	doc.text(
 		180,
