@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 // 300 requests per 15 minutes
 const apiLimiter = rateLimit({
 	windowMs: 15 * 60 * 1000,
-	max: 300,
+	max: 400,
 	standardHeaders: true,
 	legacyHeaders: false
 });
@@ -11,7 +11,7 @@ const apiLimiter = rateLimit({
 // 5 requests per hour
 const signupLimiter = rateLimit({
 	windowMs: 60 * 60 * 1000,
-	max: 5,
+	max: 10,
 	standardHeaders: true,
 	legacyHeaders: false
 });
@@ -19,7 +19,7 @@ const signupLimiter = rateLimit({
 // 10 requests per hour
 const loginLimiter = rateLimit({
 	windowMs: 60 * 60 * 1000,
-	max: 10,
+	max: 20,
 	standardHeaders: true,
 	legacyHeaders: false
 });
@@ -27,7 +27,7 @@ const loginLimiter = rateLimit({
 // 5 requests per hour
 const passwordLimiter = rateLimit({
 	windowMs: 60 * 60 * 1000,
-	max: 5,
+	max: 10,
 	standardHeaders: true,
 	legacyHeaders: false
 });

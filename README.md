@@ -30,7 +30,7 @@
 **[Infisical](https://infisical.com)** is an open source, E2EE tool to help teams manage and sync environment variables across their development workflow and infrastructure. It's designed to be simple and take minutes to get going.
 
 - **User-Friendly Dashboard** to manage your team's environment variables within projects
-- **[Language-Agnostic CLI](https://infisical.com/docs/CLI)** that pulls and injects environment variables into your local workflow
+- **[Language-Agnostic CLI](https://infisical.com/docs/getting-started/cli/installation)** that pulls and injects environment variables into your local workflow
 - **[Complete control over your data](https://infisical.com/docs/self_host_overview)** - host it yourself on any infrastructure
 - **Navigate Multiple Environments** per project (e.g. development, staging, production, etc.)
 - **Personal/Shared** scoping for environment variables
