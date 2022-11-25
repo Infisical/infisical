@@ -7,11 +7,11 @@ assignees: ''
 
 ---
 
-**Describe the feature**
+### Feature description
 A clear and concise description of what the the feature should be.
 
-**Why would it be useful?**
+### Why would it be useful?
 Why would this feature be useful for Infisical users? 
 
-**Additional context**
+### Additional context
 Add any other context about the problem here.
