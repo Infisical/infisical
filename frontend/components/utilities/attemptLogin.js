@@ -6,6 +6,7 @@ import { initPostHog } from "../analytics/posthog";
 import getOrganizations from "../../pages/api/organization/getOrgs";
 import getOrganizationUserProjects from "../../pages/api/organization/GetOrgUserProjects";
 import SecurityClient from "./SecurityClient";
+import { ENV } from "./config";
 
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
@@ -154,7 +155,7 @@ const attemptLogin = async (
 					}
 					try {
 						if (email) {
-							if (process.env.NEXT_PUBLIC_ENV == "production") {
+							if (ENV == "production") {
 								const posthog = initPostHog();
 								posthog.identify(email);
 								posthog.capture("User Logged In");

@@ -1,10 +1,11 @@
 import posthog from "posthog-js";
+import { ENV, POSTHOG_API_KEY, POSTHOG_HOST, TELEMETRY_ENABLED } from "../utilities/config";
 
 export const initPostHog = () => {
 	if (typeof window !== "undefined") {
-		if (process.env.NEXT_PUBLIC_ENV == "production") {
-			posthog.init(process.env.NEXT_PUBLIC_POSTHOG_API_KEY, {
-				api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+		if (ENV == "production" && TELEMETRY_ENABLED) {
+			posthog.init(POSTHOG_API_KEY, {
+				api_host: POSTHOG_HOST,
 			});
 		}
 	}

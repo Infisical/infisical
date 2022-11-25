@@ -7,6 +7,7 @@ import { publicPaths } from "../const.js";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { initPostHog } from "../components/analytics/posthog";
+import { ENV } from "../components/utilities/config";
 
 config.autoAddCss = false;
 
@@ -20,7 +21,7 @@ const App = ({ Component, pageProps, ...appProps }) => {
 
 		const handleRouteChange = () => {
 			if (typeof window !== "undefined") {
-				if (process.env.NEXT_PUBLIC_ENV == "production") {
+				if (ENV == "production") {
 					posthog.capture("$pageview");
 				}
 			}

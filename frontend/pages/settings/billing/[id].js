@@ -4,6 +4,7 @@ import Plan from "../../../components/billing/Plan";
 import getOrganizationSubscriptions from "../../api/organization/GetOrgSubscription"
 import getOrganizationUsers from "../../api/organization/GetOrgUsers"
 import NavHeader from "../../../components/navigation/NavHeader";
+import { STRIPE_PRODUCT_PRO, STRIPE_PRODUCT_STARTER } from "../../../components/utilities/config";
 
 
 export default function SettingsBilling() {
@@ -20,7 +21,7 @@ export default function SettingsBilling() {
 			subtext: "$5 per member/month afterwards.",
 			buttonTextMain: "Downgrade",
 			buttonTextSecondary: "Learn More",
-			current: currentPlan == process.env.NEXT_PUBLIC_STRIPE_PRODUCT_STARTER,
+			current: currentPlan == STRIPE_PRODUCT_STARTER,
 		},
 		{
 			key: 2,
@@ -31,7 +32,7 @@ export default function SettingsBilling() {
 			text: "Keep up with key management as you grow.",
 			buttonTextMain: "Upgrade",
 			buttonTextSecondary: "Learn More",
-			current: currentPlan == process.env.NEXT_PUBLIC_STRIPE_PRODUCT_PRO,
+			current: currentPlan == STRIPE_PRODUCT_PRO,
 		},
 		{
 			key: 3,
