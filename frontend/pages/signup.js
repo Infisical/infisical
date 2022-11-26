@@ -1,19 +1,19 @@
-import React, { useEffect,useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faCheck, faWarning,faX } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faWarning, faX } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import Aes256Gcm from "~/compoennts/aes-256-gcm";
-import Button from "~/compoennts/basic/buttons/Button";
-import Error from "~/compoennts/basic/Error";
-import InputField from "~/compoennts/basic/InputField";
-import attemptLogin from "~/compoennts/utilities/attemptLogin";
-import passwordCheck from "~/compoennts/utilities/checks/PasswordCheck";
-import issueBackupKey from "~/compoennts/utilities/issueBackupKey";
+import Aes256Gcm from "~/components/aes-256-gcm";
+import Button from "~/components/basic/buttons/Button";
+import Error from "~/components/basic/Error";
+import InputField from "~/components/basic/InputField";
+import attemptLogin from "~/utilities/attemptLogin";
+import passwordCheck from "~/utilities/checks/PasswordCheck";
+import issueBackupKey from "~/utilities/issueBackupKey";
 
 import checkEmailVerificationCode from "./api/auth/CheckEmailVerificationCode";
 import completeAccountInformationSignup from "./api/auth/CompleteAccountInformationSignup";
@@ -326,7 +326,7 @@ export default function SignUp() {
 			{codeError && (
 				<Error text="Oops. Your code is wrong. Please try again." />
 			)}
-			<div className="flex flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
+			<div className="flex max-w-min flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
 				<Button
 					text="Verify"
 					onButtonPressed={incrementStep}
