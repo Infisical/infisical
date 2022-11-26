@@ -27,8 +27,8 @@ import guidGenerator from "../utilities/randomId";
 const supportOptions = [
 	[
 		<FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faSlack} />,
-		"[NEW] Join Slack Forum",
-		"https://join.slack.com/t/infisical/shared_invite/zt-1dgg63ln8-G7PCNJdCymAT9YF3j1ewVA",
+		"Join Slack Forum",
+		"https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g",
 	],
 	[
 		<FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faBook} />,

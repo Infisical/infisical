@@ -1,7 +1,7 @@
 import changePassword2 from "~/pages/api/auth/ChangePassword2";
 import SRP1 from "~/pages/api/auth/SRP1";
 
-import Aes256Gcm from "../aes-256-gcm";
+import Aes256Gcm from "./aes-256-gcm";
 
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
@@ -63,6 +63,7 @@ const changePassword = async (
 					async () => {
 						clientNewPassword.createVerifier(
 							async (err, result) => {
+								// The Blob part here is needed to account for symbols that count as 2+ bytes (e.g., é, å, ø)
 								let { ciphertext, iv, tag } = Aes256Gcm.encrypt(
 									localStorage.getItem("PRIVATE_KEY"),
 									newPassword

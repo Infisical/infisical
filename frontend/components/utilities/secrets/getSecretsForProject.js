@@ -1,11 +1,11 @@
 import getSecrets from "~/pages/api/files/GetSecrets";
 
-import guidGenerator from "./randomId";
+import guidGenerator from "../randomId";
 
 const {
 	decryptAssymmetric,
 	decryptSymmetric,
-} = require("../../components/utilities/crypto");
+} = require("../cryptography/crypto");
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
 

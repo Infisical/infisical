@@ -8,7 +8,7 @@ import nacl from "tweetnacl";
 import addServiceToken from "~/pages/api/serviceToken/addServiceToken";
 import getLatestFileKey from "~/pages/api/workspace/getLatestFileKey";
 
-import { decryptAssymmetric, encryptAssymmetric } from "../../utilities/crypto";
+import { decryptAssymmetric, encryptAssymmetric } from "../../utilities/cryptography/crypto";
 import Button from "../buttons/Button";
 import InputField from "../InputField";
 import ListBox from "../Listbox";

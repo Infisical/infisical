@@ -20,7 +20,7 @@ import createWorkspace from "~/pages/api/workspace/createWorkspace";
 import getWorkspaces from "~/pages/api/workspace/getWorkspaces";
 
 import NavBarDashboard from "../navigation/NavBarDashboard";
-import { decryptAssymmetric, encryptAssymmetric } from "../utilities/crypto";
+import { decryptAssymmetric, encryptAssymmetric } from "../utilities/cryptography/crypto";
 import Button from "./buttons/Button";
 import AddWorkspaceDialog from "./dialog/AddWorkspaceDialog";
 import Listbox from "./Listbox";

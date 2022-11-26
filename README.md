@@ -79,7 +79,7 @@ Not sure where to get started? [Book a free, non-pressure pairing sessions with 
 
 - [GitHub Discussions](https://github.com/Infisical/infisical/discussions) for help with building and discussion.
 - [GitHub Issues](https://github.com/Infisical/infisical-cli/issues) for any bugs and errors you encounter using Infisical.
-- [Community Slack](https://join.slack.com/t/infisical/shared_invite/zt-1dgg63ln8-G7PCNJdCymAT9YF3j1ewVA) for hanging out with the community and quick communication with the team.
+- [Community Slack](https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g) for hanging out with the community and quick communication with the team.
 
 ## Status
 

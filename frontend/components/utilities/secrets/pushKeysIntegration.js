@@ -2,7 +2,7 @@ import publicKeyInfical from "~/pages/api/auth/publicKeyInfisical";
 import changeHerokuConfigVars from "~/pages/api/integrations/ChangeHerokuConfigVars";
 
 const crypto = require("crypto");
-const { encryptSymmetric, encryptAssymmetric } = require("./crypto");
+const { encryptSymmetric, encryptAssymmetric } = require("../cryptography/crypto");
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
 

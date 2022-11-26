@@ -13,8 +13,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Button from "~/components/basic/buttons/Button";
 import ListBox from "~/components/basic/Listbox";
 import NavHeader from "~/components/navigation/NavHeader";
-import getSecretsForProject from "~/utilities/getSecretsForProject";
-import pushKeysIntegration from "~/utilities/pushKeysIntegration";
+import getSecretsForProject from "~/components/utilities/secrets/getSecretsForProject";
+import pushKeysIntegration from "~/components/utilities/secrets/pushKeysIntegration";
 import guidGenerator from "~/utilities/randomId";
 
 import deleteIntegration from "../api/integrations/DeleteIntegration";

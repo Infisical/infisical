@@ -8,7 +8,7 @@ const {
 	decryptSymmetric,
 	encryptSymmetric,
 	encryptAssymmetric,
-} = require("../../components/utilities/crypto");
+} = require("../cryptography/crypto");
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
 
