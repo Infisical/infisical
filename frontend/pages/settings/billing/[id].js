@@ -70,8 +70,8 @@ export default function SettingsBilling() {
 								Usage & Billing
 							</p>
 							<p className="font-normal mr-4 text-gray-400 text-base">
-								View and manage your organization's subscription
-								here.
+								View and manage your {"organization's"}{" "}
+								subscription here.
 							</p>
 						</div>
 					</div>

@@ -165,6 +165,7 @@ export default function SettingsBasic() {
 										For more guidance, including code
 										snipets for various languages and
 										frameworks, see{" "}
+										{/* eslint-disable-next-line react/jsx-no-target-blank */}
 										<a
 											href="https://infisical.com/docs/getting-started/introduction"
 											target="_blank"

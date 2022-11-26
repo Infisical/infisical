@@ -81,7 +81,7 @@ const UserTable = ({
 		]);
 	};
 
-	useEffect(async () => {
+	useEffect(() => {
 		setMyRole(userData.filter((user) => user.email == myUser)[0]?.role);
 	}, [userData, myUser]);
 

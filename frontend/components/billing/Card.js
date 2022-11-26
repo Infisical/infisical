@@ -37,24 +37,27 @@ export default function Card({ card, changeSelectedCard, selected }) {
 				<div className="flex flex-row items-center justify-between w-full">
 					<div className="flex flex-row items-center">
 						<p className="tracking-tighter mr-1 mt-0.5 flex">
-							{"****".split("").map(() => (
+							{"****".split("").map((_, index) => (
 								<FontAwesomeIcon
+									key={index}
 									className="text-xxxs mr-0.5"
 									icon={faCircle}
 								/>
 							))}
 						</p>
 						<p className="tracking-tighter mr-1 mt-0.5 flex">
-							{"****".split("").map(() => (
+							{"****".split("").map((_, index) => (
 								<FontAwesomeIcon
+									key={index}
 									className="text-xxxs mr-0.5"
 									icon={faCircle}
 								/>
 							))}
 						</p>
 						<p className="tracking-tighter mr-1 mt-0.5 flex">
-							{"****".split("").map(() => (
+							{"****".split("").map((_, index) => (
 								<FontAwesomeIcon
+									key={index}
 									className="text-xxxs mr-0.5"
 									icon={faCircle}
 								/>

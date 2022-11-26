@@ -253,7 +253,7 @@ export default function SignUp() {
 	const step1 = (
 		<div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-8 md:px-6 mx-1 mb-48 md:mb-16 rounded-xl drop-shadow-xl">
 			<p className="text-4xl font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-				Let's get started
+				{"Let'"}s get started
 			</p>
 			<div className="flex flex-col items-center justify-center w-full md:pb-2 max-h-24 max-w-md mx-auto pt-2">
 				<Link href="/login">
@@ -300,7 +300,7 @@ export default function SignUp() {
 	const step2 = (
 		<div className="bg-bunker w-max mx-auto h-7/12 pt-10 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-16">
 			<p className="text-l flex justify-center text-gray-400">
-				We've sent a verification email to{" "}
+				{"We've"} sent a verification email to{" "}
 			</p>
 			<p className="text-l flex justify-center font-semibold my-2 text-gray-400">
 				{email}{" "}
@@ -326,7 +326,7 @@ export default function SignUp() {
 			{codeError && (
 				<Error text="Oops. Your code is wrong. Please try again." />
 			)}
-			<div className="flex max-w-min flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
+			<div className="flex flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
 				<Button
 					text="Verify"
 					onButtonPressed={incrementStep}

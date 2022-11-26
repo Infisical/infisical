@@ -85,6 +85,7 @@ export default function Users() {
 
 	const [userList, setUserList] = useState();
 	const [orgUserList, setOrgUserList] = useState([]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	useEffect(async () => {
 		const user = await getUser();
 		setPersonalEmail(user.email);

@@ -13,8 +13,8 @@ export default function Activity() {
 				<p className="mt-2 mb-1 text-xl">Your invite has expired. </p>
 				<p className="text-xl">Ask the administrator for a new one.</p>
 				<p className="text-md mt-8 text-gray-600 max-w-sm text-center">
-					Note: If it still doesn't work, please reach out to us at
-					support@infisical.com
+					Note: If it still {"doesn't work"}, please reach out to us
+					at support@infisical.com
 				</p>
 			</div>
 		</div>

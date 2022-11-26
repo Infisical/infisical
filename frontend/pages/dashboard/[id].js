@@ -201,50 +201,54 @@ export default function Dashboard() {
 		);
 	};
 
-	useEffect(async () => {
-		try {
-			let userWorkspaces = await getWorkspaces();
-			const listWorkspaces = userWorkspaces.map(
-				(workspace) => workspace._id
-			);
-			if (
-				!listWorkspaces.includes(
-					router.asPath.split("/")[2].split("?")[0]
-				)
-			) {
-				router.push("/dashboard/" + listWorkspaces[0]);
+	useEffect(() => {
+		(async () => {
+			try {
+				let userWorkspaces = await getWorkspaces();
+				const listWorkspaces = userWorkspaces.map(
+					(workspace) => workspace._id
+				);
+				if (
+					!listWorkspaces.includes(
+						router.asPath.split("/")[2].split("?")[0]
+					)
+				) {
+					router.push("/dashboard/" + listWorkspaces[0]);
+				}
+
+				if (env != router.asPath.split("?")[1]) {
+					router.push(router.asPath.split("?")[0] + "?" + env);
+				}
+				setBlurred(true);
+				setWorkspaceId(router.query.id);
+
+				await getSecretsForProject({
+					env,
+					setFileState,
+					setIsKeyAvailable,
+					setData,
+					workspaceId: router.query.id,
+				});
+
+				const user = await getUser();
+				setIsNew(
+					(Date.parse(new Date()) - Date.parse(user.createdAt)) /
+						60000 <
+						3
+						? true
+						: false
+				);
+
+				let userAction = await checkUserAction({
+					action: "first_time_secrets_pushed",
+				});
+				setHasUserEverPushed(userAction ? true : false);
+			} catch (error) {
+				console.log("Error", error);
+				setData([]);
 			}
-
-			if (env != router.asPath.split("?")[1]) {
-				router.push(router.asPath.split("?")[0] + "?" + env);
-			}
-			setBlurred(true);
-			setWorkspaceId(router.query.id);
-
-			await getSecretsForProject({
-				env,
-				setFileState,
-				setIsKeyAvailable,
-				setData,
-				workspaceId: router.query.id,
-			});
-
-			const user = await getUser();
-			setIsNew(
-				(Date.parse(new Date()) - Date.parse(user.createdAt)) / 60000 <
-					3
-					? true
-					: false
-			);
-
-			let userAction = await checkUserAction({
-				action: "first_time_secrets_pushed",
-			});
-			setHasUserEverPushed(userAction ? true : false);
-		} catch (error) {
-			console.log("Error", error);
-			setData([]);
-		}
+		})();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [env]);
 
 	const addRow = () => {

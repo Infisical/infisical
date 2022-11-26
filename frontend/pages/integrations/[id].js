@@ -251,8 +251,8 @@ export default function Integrations() {
 						<div className="flex flex-col max-w-5xl justify-center bg-white/5 p-6 rounded-md mx-6 mt-8">
 							<div className="relative px-4 flex flex-col text-gray-400 items-center justify-center">
 								<div className="mb-1">
-									You don't have any integrations set up yet.
-									When you do, they will appear here.
+									You {"don't"} have any integrations set up
+									yet. When you do, they will appear here.
 								</div>
 								<div className="">
 									To start, click on any of the options below.

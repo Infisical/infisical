@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react/jsx-key */
 import React, { useState, Fragment, useEffect } from "react";
 import { useRouter } from "next/router";
 
@@ -106,6 +108,7 @@ export default function Navbar({ onButtonPressed }) {
 					>
 						<Menu.Items className="absolute right-0 mt-0.5 w-64 origin-top-right rounded-md bg-bunker border border-mineshaft-700 shadow-lg ring-1 ring-black z-20 ring-opacity-5 focus:outline-none px-2 py-1.5">
 							{supportOptions.map((option) => (
+								// eslint-disable-next-line react/jsx-no-target-blank
 								<a
 									key={guidGenerator()}
 									target="_blank"

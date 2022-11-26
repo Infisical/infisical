@@ -15,15 +15,18 @@ export default function NavHeader({ pageName, isProjectRelated }) {
 	const [workspaceName, setWorkspaceName] = useState("");
 	const router = useRouter();
 
-	useEffect(async () => {
-		let org = await getOrganization({
-			orgId: localStorage.getItem("orgData.id"),
-		});
-		setOrgName(org.name);
-		let workspace = await getWorkspaceInfo({
-			workspaceId: router.query.id,
-		});
-		setWorkspaceName(workspace.name);
+	useEffect(() => {
+		(async () => {
+			let org = await getOrganization({
+				orgId: localStorage.getItem("orgData.id"),
+			});
+			setOrgName(org.name);
+			let workspace = await getWorkspaceInfo({
+				workspaceId: router.query.id,
+			});
+			setWorkspaceName(workspace.name);
+		})();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	return (

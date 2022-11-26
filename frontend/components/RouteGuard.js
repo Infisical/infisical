@@ -11,9 +11,11 @@ export default function RouteGuard({ children }) {
 	const router = useRouter();
 	const [authorized, setAuthorized] = useState(false);
 
-	useEffect(async () => {
+	useEffect(() => {
 		// on initial load - run auth check
-		await authCheck(router.asPath);
+		(async () => {
+			await authCheck(router.asPath);
+		})();
 
 		// on route change start - hide page content by setting authorized to false
 		// #TODO: add the loading page when not yet authorized.
@@ -31,7 +33,6 @@ export default function RouteGuard({ children }) {
 			router.events.off("routeChangeComplete", authCheck);
 			// router.events.off("routeChangeError", onError);
 		};
-
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
