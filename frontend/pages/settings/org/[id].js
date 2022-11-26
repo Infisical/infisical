@@ -1,27 +1,32 @@
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/router";
+import React, { useEffect,useState } from "react";
 import Head from "next/head";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faPlus, faX } from "@fortawesome/free-solid-svg-icons";
+import { useRouter } from "next/router";
+import {
+	faMagnifyingGlass,
+	faPlus,
+	faX,
+} from "@fortawesome/free-solid-svg-icons";
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
-import InputField from "../../../components/basic/InputField";
-import getWorkspaces from "../../api/workspace/getWorkspaces";
-import AddIncidentContactDialog from "../../../components/basic/dialog/AddIncidentContactDialog";
-import getIncidentContacts from "../../api/organization/getIncidentContacts";
-import deleteIncidentContact from "../../api/organization/deleteIncidentContact";
-import deleteWorkspace from "../../api/workspace/deleteWorkspace";
-import AddUserDialog from "../../../components/basic/dialog/AddUserDialog";
-import UserTable from "../../../components/basic/table/UserTable";
-import getUser from "../../api/user/getUser";
-import guidGenerator from "../../../components/utilities/randomId";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import Button from "~/components/basic/buttons/Button";
+import AddIncidentContactDialog from "~/components/basic/dialog/AddIncidentContactDialog";
+import AddUserDialog from "~/components/basic/dialog/AddUserDialog";
+import InputField from "~/components/basic/InputField";
+import UserTable from "~/components/basic/table/UserTable";
+import NavHeader from "~/components/navigation/NavHeader";
+import guidGenerator from "~/utilities/randomId";
+
 import addUserToOrg from "../../api/organization/addUserToOrg";
-import getOrganizationUsers from "../../api/organization/GetOrgUsers";
-import renameOrg from "../../api/organization/renameOrg";
+import deleteIncidentContact from "../../api/organization/deleteIncidentContact";
+import getIncidentContacts from "../../api/organization/getIncidentContacts";
 import getOrganization from "../../api/organization/GetOrg";
 import getOrganizationSubscriptions from "../../api/organization/GetOrgSubscription";
-import NavHeader from "../../../components/navigation/NavHeader";
-import Button from "../../../components/basic/buttons/Button";
-
+import getOrganizationUsers from "../../api/organization/GetOrgUsers";
+import renameOrg from "../../api/organization/renameOrg";
+import getUser from "../../api/user/getUser";
+import deleteWorkspace from "../../api/workspace/deleteWorkspace";
+import getWorkspaces from "../../api/workspace/getWorkspaces";
 
 export default function SettingsOrg() {
 	const [buttonReady, setButtonReady] = useState(false);
@@ -51,12 +56,12 @@ export default function SettingsOrg() {
 		});
 		let orgData = org;
 		setOrgName(orgData.name);
-		let incidentContactsData = await getIncidentContacts(localStorage.getItem("orgData.id"));
+		let incidentContactsData = await getIncidentContacts(
+			localStorage.getItem("orgData.id")
+		);
 
 		setIncidentContacts(
-			incidentContactsData?.map(
-				(contact) => contact.email
-			)
+			incidentContactsData?.map((contact) => contact.email)
 		);
 
 		const user = await getUser();
@@ -82,8 +87,10 @@ export default function SettingsOrg() {
 				publicKey: user.user?.publicKey,
 			}))
 		);
-		const subscriptions = await getOrganizationSubscriptions({orgId: localStorage.getItem("orgData.id")});
-		setCurrentPlan(subscriptions.data[0].plan.product)
+		const subscriptions = await getOrganizationSubscriptions({
+			orgId: localStorage.getItem("orgData.id"),
+		});
+		setCurrentPlan(subscriptions.data[0].plan.product);
 	}, []);
 
 	const modifyOrgName = (newName) => {
@@ -127,7 +134,10 @@ export default function SettingsOrg() {
 		setIncidentContacts(
 			incidentContacts.filter((contact) => contact != incidentContact)
 		);
-		deleteIncidentContact(localStorage.getItem("orgData.id"), incidentContact);
+		deleteIncidentContact(
+			localStorage.getItem("orgData.id"),
+			incidentContact
+		);
 	};
 
 	/**
@@ -160,7 +170,7 @@ export default function SettingsOrg() {
 			</Head>
 			<div className="flex flex-row">
 				<div className="w-full max-h-screen pb-2 overflow-y-auto">
-					<NavHeader pageName="Organization Settings"/>
+					<NavHeader pageName="Organization Settings" />
 					<AddIncidentContactDialog
 						isOpen={isAddIncidentContactOpen}
 						closeModal={closeAddIncidentContactModal}
@@ -201,7 +211,9 @@ export default function SettingsOrg() {
 										>
 											<Button
 												text="Save Changes"
-												onButtonPressed={() => submitChanges(orgName)}
+												onButtonPressed={() =>
+													submitChanges(orgName)
+												}
 												color="mineshaft"
 												size="md"
 												active={buttonReady}
@@ -289,7 +301,9 @@ export default function SettingsOrg() {
 								<div className="mt-4 mb-2 min-w-max flex flex-row items-end justify-end justify-center">
 									<Button
 										text="Add Contact"
-										onButtonPressed={openAddIncidentContactModal}
+										onButtonPressed={
+											openAddIncidentContactModal
+										}
 										color="mineshaft"
 										size="md"
 										icon={faPlus}
@@ -318,7 +332,10 @@ export default function SettingsOrg() {
 										email.includes(searchIncidentContact)
 									)
 									.map((contact) => (
-										<div key={guidGenerator()} className="flex flex-row items-center justify-between max-w-5xl px-4 py-3 hover:bg-white/5 border-t border-gray-600 w-full">
+										<div
+											key={guidGenerator()}
+											className="flex flex-row items-center justify-between max-w-5xl px-4 py-3 hover:bg-white/5 border-t border-gray-600 w-full"
+										>
 											<p className="text-gray-300">
 												{contact}
 											</p>

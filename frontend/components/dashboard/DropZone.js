@@ -1,13 +1,12 @@
 import { useState } from "react";
-
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUpload } from "@fortawesome/free-solid-svg-icons";
-import guidGenerator from "../utilities/randomId";
-
-import Error from "../basic/Error";
 import Image from "next/image";
-import parse from "../utilities/file";
+import { faUpload } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import Button from "../basic/buttons/Button";
+import Error from "../basic/Error";
+import parse from "../utilities/file";
+import guidGenerator from "../utilities/randomId";
 
 const DropZone = ({
 	setData,

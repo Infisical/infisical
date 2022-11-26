@@ -1,4 +1,5 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
+
 import { PATH } from "../../../const";
 
 /**
@@ -14,9 +15,8 @@ const logout = async (req, res) => {
 		headers: {
 			"Content-Type": "application/json",
 		},
-		credentials: "include"
-	})
-	.then(res => {
+		credentials: "include",
+	}).then((res) => {
 		if (res.status == 200) {
 			SecurityClient.setToken("");
 			// Delete the cookie by not setting a value; Alternatively clear the local storage
@@ -30,7 +30,7 @@ const logout = async (req, res) => {
 		} else {
 			console.log("Failed to log out");
 		}
-	})
+	});
 };
 
 export default logout;

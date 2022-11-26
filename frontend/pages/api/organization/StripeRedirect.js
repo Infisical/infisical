@@ -1,4 +1,5 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
+
 import { PATH } from "../../../const";
 
 /**
@@ -7,20 +8,22 @@ import { PATH } from "../../../const";
  * @param {*} res
  * @returns
  */
-const StripeRedirect = ({orgId}) => {
-	return SecurityClient.fetchCall(PATH + "/api/v1/organization/" + orgId + "/customer-portal-session", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-	})
-	.then(async res => {
-		if (res.status == 200) {
-			return window.location.href = (await res.json()).url;
-		} else {
-			console.log('Failed to redirect to Stripe');
+const StripeRedirect = ({ orgId }) => {
+	return SecurityClient.fetchCall(
+		PATH + "/api/v1/organization/" + orgId + "/customer-portal-session",
+		{
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
 		}
-	})
+	).then(async (res) => {
+		if (res.status == 200) {
+			return (window.location.href = (await res.json()).url);
+		} else {
+			console.log("Failed to redirect to Stripe");
+		}
+	});
 };
 
 export default StripeRedirect;

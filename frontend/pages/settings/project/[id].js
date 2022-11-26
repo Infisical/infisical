@@ -1,17 +1,18 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/router";
+import React, { useEffect,useRef, useState } from "react";
 import Head from "next/head";
-
+import { useRouter } from "next/router";
 import { faCheck, faPlus } from "@fortawesome/free-solid-svg-icons";
-import InputField from "../../../components/basic/InputField";
+
+import Button from "~/components/basic/buttons/Button";
+import AddServiceTokenDialog from "~/components/basic/dialog/AddServiceTokenDialog";
+import InputField from "~/components/basic/InputField";
+import ServiceTokenTable from "~/components/basic/table/ServiceTokenTable";
+import NavHeader from "~/components/navigation/NavHeader";
+
+import getServiceTokens from "../../api/serviceToken/getServiceTokens";
+import deleteWorkspace from "../../api/workspace/deleteWorkspace";
 import getWorkspaces from "../../api/workspace/getWorkspaces";
 import renameWorkspace from "../../api/workspace/renameWorkspace";
-import deleteWorkspace from "../../api/workspace/deleteWorkspace";
-import NavHeader from "../../../components/navigation/NavHeader";
-import Button from "../../../components/basic/buttons/Button";
-import ServiceTokenTable from "../../../components/basic/table/ServiceTokenTable";
-import getServiceTokens from "../../api/serviceToken/getServiceTokens"
-import AddServiceTokenDialog from "../../../components/basic/dialog/AddServiceTokenDialog";
 
 export default function SettingsBasic() {
 	const [buttonReady, setButtonReady] = useState(false);
@@ -22,7 +23,8 @@ export default function SettingsBasic() {
 		useState("");
 	const [workspaceId, setWorkspaceId] = useState("");
 	const [isAddOpen, setIsAddOpen] = useState(false);
-	let [isAddServiceTokenDialogOpen, setIsAddServiceTokenDialogOpen] = useState(false);
+	let [isAddServiceTokenDialogOpen, setIsAddServiceTokenDialogOpen] =
+		useState(false);
 
 	useEffect(async () => {
 		let userWorkspaces = await getWorkspaces();
@@ -31,7 +33,9 @@ export default function SettingsBasic() {
 				setWorkspaceName(userWorkspace.name);
 			}
 		});
-		let tempServiceTokens = await getServiceTokens({workspaceId: router.query.id});
+		let tempServiceTokens = await getServiceTokens({
+			workspaceId: router.query.id,
+		});
 		setServiceTokens(tempServiceTokens);
 	}, []);
 
@@ -59,8 +63,8 @@ export default function SettingsBasic() {
 
 	const closeAddServiceTokenModal = () => {
 		setIsAddServiceTokenDialogOpen(false);
-	}
-	
+	};
+
 	/**
 	 * This function deleted a workspace.
 	 * It first checks if there is more than one workspace aviable. Otherwise, it doesn't delete
@@ -97,7 +101,10 @@ export default function SettingsBasic() {
 			/>
 			<div className="flex flex-row mr-6 max-w-5xl">
 				<div className="w-full max-h-screen pb-2 overflow-y-auto">
-					<NavHeader pageName="Project Settings" isProjectRelated={true}/>
+					<NavHeader
+						pageName="Project Settings"
+						isProjectRelated={true}
+					/>
 					<div className="flex flex-row justify-between items-center ml-6 my-8 text-xl max-w-5xl">
 						<div className="flex flex-col justify-start items-start text-3xl">
 							<p className="font-semibold mr-4 text-gray-200">
@@ -133,7 +140,9 @@ export default function SettingsBasic() {
 										>
 											<Button
 												text="Save Changes"
-												onButtonPressed={() => submitChanges(workspaceName)}
+												onButtonPressed={() =>
+													submitChanges(workspaceName)
+												}
 												color="mineshaft"
 												size="md"
 												active={buttonReady}
@@ -157,6 +166,7 @@ export default function SettingsBasic() {
 										For more guidance, including code
 										snipets for various languages and
 										frameworks, see{" "}
+										{/* eslint-disable-next-line react/jsx-no-target-blank */}
 										<a
 											href="https://infisical.com/docs/getting-started/introduction"
 											target="_blank"
@@ -184,20 +194,30 @@ export default function SettingsBasic() {
 												Service Tokens
 											</p>
 											<p className="text-base text-gray-400 mb-4">
-												Every service token is specific to you, a certain project and a certain environment within this project.
+												Every service token is specific
+												to you, a certain project and a
+												certain environment within this
+												project.
 											</p>
 										</div>
 										<div className="w-48">
 											<Button
 												text="Add New Token"
-												onButtonPressed={() => {setIsAddServiceTokenDialogOpen(true)}}
+												onButtonPressed={() => {
+													setIsAddServiceTokenDialogOpen(
+														true
+													);
+												}}
 												color="mineshaft"
 												icon={faPlus}
 												size="md"
-											/>	
+											/>
 										</div>
 									</div>
-									<ServiceTokenTable data={serviceTokens} workspaceName={workspaceName}/>
+									<ServiceTokenTable
+										data={serviceTokens}
+										workspaceName={workspaceName}
+									/>
 								</div>
 
 								{/* <div className="bg-white/5 rounded-md px-6 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4 pb-6 pt-6">

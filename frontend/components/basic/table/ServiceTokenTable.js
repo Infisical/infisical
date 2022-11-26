@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { faX } from "@fortawesome/free-solid-svg-icons";
-import Button from "../buttons/Button";
+
 import guidGenerator from "../../utilities/randomId";
+import Button from "../buttons/Button";
 
 const roles = ["admin", "user"];
 
