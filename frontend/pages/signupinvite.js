@@ -5,15 +5,15 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 
-import InputField from "../components/basic/InputField";
-import Button from "../components/basic/buttons/Button";
+import InputField from "~/components/basic/InputField";
+import Button from "~/components/basic/buttons/Button";
 import completeAccountInformationSignupInvite from "./api/auth/CompleteAccountInformationSignupInvite";
-import Aes256Gcm from "../components/aes-256-gcm";
-import passwordCheck from "../components/utilities/checks/PasswordCheck";
-import attemptLogin from "../components/utilities/attemptLogin";
+import Aes256Gcm from "~/components/aes-256-gcm";
+import passwordCheck from "~/utilities/checks/PasswordCheck";
+import attemptLogin from "~/utilities/attemptLogin";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faX, faWarning } from "@fortawesome/free-solid-svg-icons";
-import issueBackupKey from "../components/utilities/issueBackupKey";
+import issueBackupKey from "~/utilities/issueBackupKey";
 import verifySignupInvite from "./api/auth/VerifySignupInvite";
 
 const nacl = require("tweetnacl");
@@ -76,7 +76,14 @@ export default function SignupInvite() {
 
 			const { ciphertext, iv, tag } = Aes256Gcm.encrypt(
 				PRIVATE_KEY,
-				password.slice(0, 32).padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), "0")
+				password
+					.slice(0, 32)
+					.padStart(
+						32 +
+							(password.slice(0, 32).length -
+								new Blob([password]).size),
+						"0"
+					)
 			);
 			localStorage.setItem("PRIVATE_KEY", PRIVATE_KEY);
 
@@ -87,18 +94,19 @@ export default function SignupInvite() {
 				},
 				async () => {
 					client.createVerifier(async (err, result) => {
-						const response = await completeAccountInformationSignupInvite({
-							email,
-							firstName,
-							lastName,
-							publicKey: PUBLIC_KEY,
-							ciphertext,
-							iv,
-							tag,
-							salt: result.salt,
-							verifier: result.verifier,
-							token: verificationToken
-						});
+						const response =
+							await completeAccountInformationSignupInvite({
+								email,
+								firstName,
+								lastName,
+								publicKey: PUBLIC_KEY,
+								ciphertext,
+								iv,
+								tag,
+								salt: result.salt,
+								verifier: result.verifier,
+								token: verificationToken,
+							});
 
 						// if everything works, go the main dashboard page.
 						if (!errorCheck && response.status == "200") {
@@ -148,19 +156,19 @@ export default function SignupInvite() {
 				alt="verify email"
 			></Image>
 			<div className="flex flex-row items-center justify-center w-3/4 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto text-lg py-1 text-center md:text-left">
-				<Button 
+				<Button
 					text="Confirm Email"
 					onButtonPressed={async () => {
 						const response = await verifySignupInvite({
-							email, 
-							code: token
+							email,
+							code: token,
 						});
 						if (response.status == 200) {
-							setVerificationToken((await response.json()).token)
+							setVerificationToken((await response.json()).token);
 							setStep(2);
 						} else {
-							console.log("ERROR", response)
-							router.push("/requestnewinvite")
+							console.log("ERROR", response);
+							router.push("/requestnewinvite");
 						}
 					}}
 					size="lg"
@@ -213,29 +221,89 @@ export default function SignupInvite() {
 					type="password"
 					value={password}
 					isRequired
-					error={passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase}
+					error={
+						passwordErrorLength &&
+						passwordErrorNumber &&
+						passwordErrorLowerCase
+					}
 				/>
-				{(passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber) ? <div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
-					<div className={`text-gray-400 text-sm mb-1`}>Password should contain at least:</div>
-					<div className="flex flex-row justify-start items-center ml-1">
-						{passwordErrorLength 
-						? <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5"/> 
-						: <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2"/>}
-						<div className={`${passwordErrorLength ? "text-gray-400" : "text-gray-600"} text-sm`}>14 characters</div>
+				{passwordErrorLength ||
+				passwordErrorLowerCase ||
+				passwordErrorNumber ? (
+					<div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
+						<div className={`text-gray-400 text-sm mb-1`}>
+							Password should contain at least:
+						</div>
+						<div className="flex flex-row justify-start items-center ml-1">
+							{passwordErrorLength ? (
+								<FontAwesomeIcon
+									icon={faX}
+									className="text-md text-red mr-2.5"
+								/>
+							) : (
+								<FontAwesomeIcon
+									icon={faCheck}
+									className="text-md text-primary mr-2"
+								/>
+							)}
+							<div
+								className={`${
+									passwordErrorLength
+										? "text-gray-400"
+										: "text-gray-600"
+								} text-sm`}
+							>
+								14 characters
+							</div>
+						</div>
+						<div className="flex flex-row justify-start items-center ml-1">
+							{passwordErrorLowerCase ? (
+								<FontAwesomeIcon
+									icon={faX}
+									className="text-md text-red mr-2.5"
+								/>
+							) : (
+								<FontAwesomeIcon
+									icon={faCheck}
+									className="text-md text-primary mr-2"
+								/>
+							)}
+							<div
+								className={`${
+									passwordErrorLowerCase
+										? "text-gray-400"
+										: "text-gray-600"
+								} text-sm`}
+							>
+								1 lowercase character
+							</div>
+						</div>
+						<div className="flex flex-row justify-start items-center ml-1">
+							{passwordErrorNumber ? (
+								<FontAwesomeIcon
+									icon={faX}
+									className="text-md text-red mr-2.5"
+								/>
+							) : (
+								<FontAwesomeIcon
+									icon={faCheck}
+									className="text-md text-primary mr-2"
+								/>
+							)}
+							<div
+								className={`${
+									passwordErrorNumber
+										? "text-gray-400"
+										: "text-gray-600"
+								} text-sm`}
+							>
+								1 number
+							</div>
+						</div>
 					</div>
-					<div className="flex flex-row justify-start items-center ml-1">
-						{passwordErrorLowerCase 
-						? <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5"/> 
-						: <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2"/>}
-						<div className={`${passwordErrorLowerCase ? "text-gray-400" : "text-gray-600"} text-sm`}>1 lowercase character</div>
-					</div>
-					<div className="flex flex-row justify-start items-center ml-1">
-						{passwordErrorNumber 
-						? <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5"/> 
-						: <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2"/>}
-						<div className={`${passwordErrorNumber ? "text-gray-400" : "text-gray-600"} text-sm`}>1 number</div>
-					</div>
-				</div> : <div className="py-2"></div>}
+				) : (
+					<div className="py-2"></div>
+				)}
 			</div>
 			<div className="flex flex-col items-center justify-center w-full md:px-4 md:py-5 mt-2 px-2 py-3  max-h-24 max-w-md mx-auto text-lg">
 				<Button
@@ -257,23 +325,32 @@ export default function SignupInvite() {
 				Save your Emergency Kit
 			</p>
 			<div className="flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2">
-				<div>If you get locked out of your account, your Emergency Kit is the only way to sign in.</div>
-				<div className="mt-3">We recommend you download it and keep it somewhere safe.</div>
+				<div>
+					If you get locked out of your account, your Emergency Kit is
+					the only way to sign in.
+				</div>
+				<div className="mt-3">
+					We recommend you download it and keep it somewhere safe.
+				</div>
 			</div>
 			<div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-400 rounded-md max-w-xs md:max-w-md mx-auto mt-4">
-				<FontAwesomeIcon icon={faWarning} className="ml-2 mr-4 text-4xl"/>
-				It contains your Secret Key which we cannot access or recover for you if you lose it.
+				<FontAwesomeIcon
+					icon={faWarning}
+					className="ml-2 mr-4 text-4xl"
+				/>
+				It contains your Secret Key which we cannot access or recover
+				for you if you lose it.
 			</div>
 			<div className="flex flex-row items-center justify-center w-3/4 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto mt-6 md:mt-8 py-1 text-lg text-center md:text-left">
-				<Button 
-					text="Download PDF" 
+				<Button
+					text="Download PDF"
 					onButtonPressed={async () => {
 						await issueBackupKey({
-							email, 
-							password, 
-							personalName: (firstName + " " + lastName),
+							email,
+							password,
+							personalName: firstName + " " + lastName,
 							setBackupKeyError,
-							setBackupKeyIssued
+							setBackupKeyIssued,
 						});
 						router.push("/dashboard/");
 					}}

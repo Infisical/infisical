@@ -6,10 +6,10 @@
 				"components/*"
 			],
 			"~/utilities/*": [
-				"components/utilities"
+				"components/utilities/*"
 			],
 			"~/pages/*": [
-				"components/*"
+				"pages/*"
 			],
 		}
 	}

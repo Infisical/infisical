@@ -1,4 +1,4 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
 import { PATH } from "../../../const";
 
 /**
@@ -13,14 +13,13 @@ const getWorkspaces = (req, res) => {
 		headers: {
 			"Content-Type": "application/json",
 		},
-	})
-	.then(async res => {
+	}).then(async (res) => {
 		if (res.status == 200) {
 			return (await res.json()).workspaces;
 		} else {
-			console.log('Failed to get projects');
+			console.log("Failed to get projects");
 		}
-	})
+	});
 };
 
 export default getWorkspaces;

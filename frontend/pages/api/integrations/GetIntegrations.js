@@ -1,4 +1,4 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
 import { PATH } from "../../../const";
 
 const getIntegrations = () => {
@@ -7,14 +7,13 @@ const getIntegrations = () => {
 		headers: {
 			"Content-Type": "application/json",
 		},
-	})
-	.then(async res => {
+	}).then(async (res) => {
 		if (res.status == 200) {
 			return (await res.json()).integrations;
 		} else {
-			console.log('Failed to get project integrations');
+			console.log("Failed to get project integrations");
 		}
-	})
+	});
 };
 
 export default getIntegrations;

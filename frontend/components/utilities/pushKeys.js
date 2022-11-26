@@ -1,6 +1,6 @@
-import getLatestFileKey from "../../pages/api/workspace/getLatestFileKey";
-import getWorkspaceKeys from "../../pages/api/workspace/getWorkspaceKeys";
-import uploadSecrets from "../../pages/api/files/UploadSecrets";
+import getLatestFileKey from "~/pages/api/workspace/getLatestFileKey";
+import getWorkspaceKeys from "~/pages/api/workspace/getWorkspaceKeys";
+import uploadSecrets from "~/pages/api/files/UploadSecrets";
 
 const crypto = require("crypto");
 const {

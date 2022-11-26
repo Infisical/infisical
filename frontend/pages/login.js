@@ -5,11 +5,11 @@ import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 
-import InputField from "../components/basic/InputField";
-import Error from "../components/basic/Error";
-import Button from "../components/basic/buttons/Button";
+import InputField from "~/components/basic/InputField";
+import Error from "~/components/basic/Error";
+import Button from "~/components/basic/buttons/Button";
 import getWorkspaces from "./api/workspace/getWorkspaces";
-import attemptLogin from "../components/utilities/attemptLogin";
+import attemptLogin from "~/utilities/attemptLogin";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faWarning } from "@fortawesome/free-solid-svg-icons";
 
@@ -36,13 +36,18 @@ export default function Login() {
 	 */
 	const loginCheck = async () => {
 		setIsLoading(true);
-		await attemptLogin(email, password, setErrorLogin, router, false, true).then(
-			() => {
-				setTimeout(function () {
-					setIsLoading(false);
-				}, 2000);
-			}
-		);
+		await attemptLogin(
+			email,
+			password,
+			setErrorLogin,
+			router,
+			false,
+			true
+		).then(() => {
+			setTimeout(function () {
+				setIsLoading(false);
+			}, 2000);
+		});
 	};
 
 	return (
@@ -122,11 +127,17 @@ export default function Login() {
           <p className="text-gray-400">I may have <Link href="/login"><u className="text-sky-500 cursor-pointer">forgotten my password.</u></Link></p>
         </div> */}
 			</div>
-			{false &&
+			{false && (
 				<div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-300 rounded-md max-w-md mx-auto mt-4">
-					<FontAwesomeIcon icon={faWarning} className="ml-2 mr-6 text-6xl"/>
-					We are experiencing minor technical difficulties. We are working on solving it right now. Please come back in a few minutes. 
-				</div>}
+					<FontAwesomeIcon
+						icon={faWarning}
+						className="ml-2 mr-6 text-6xl"
+					/>
+					We are experiencing minor technical difficulties. We are
+					working on solving it right now. Please come back in a few
+					minutes.
+				</div>
+			)}
 		</div>
 	);
 }

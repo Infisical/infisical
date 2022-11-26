@@ -1,4 +1,4 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
 import { PATH } from "../../../const";
 
 /**
@@ -13,14 +13,13 @@ const getOrganizations = (req, res) => {
 		headers: {
 			"Content-Type": "application/json",
 		},
-	})
-	.then(async res => {
+	}).then(async (res) => {
 		if (res.status == 200) {
 			return (await res.json()).organizations;
 		} else {
-			console.log('Failed to get orgs of a user');
+			console.log("Failed to get orgs of a user");
 		}
-	})
+	});
 };
 
 export default getOrganizations;

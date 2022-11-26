@@ -1,4 +1,4 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
 import { PATH } from "../../../const";
 
 /**
@@ -6,7 +6,7 @@ import { PATH } from "../../../const";
  * @param {*} clientPublicKey
  * @returns
  */
-const SRP1 = ({clientPublicKey}) => {
+const SRP1 = ({ clientPublicKey }) => {
 	return SecurityClient.fetchCall(PATH + "/api/v1/password/srp1", {
 		method: "POST",
 		headers: {
@@ -15,14 +15,13 @@ const SRP1 = ({clientPublicKey}) => {
 		body: JSON.stringify({
 			clientPublicKey,
 		}),
-	})
-	.then(async res => {
+	}).then(async (res) => {
 		if (res.status == 200) {
-			return (await res.json());
+			return await res.json();
 		} else {
-			console.log('Failed to do the first step of SRP');
+			console.log("Failed to do the first step of SRP");
 		}
-	})
+	});
 };
 
 export default SRP1;

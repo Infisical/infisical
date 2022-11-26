@@ -1,6 +1,5 @@
-import getSecrets from "../../pages/api/files/GetSecrets";
+import getSecrets from "~/pages/api/files/GetSecrets";
 import guidGenerator from "./randomId";
-
 
 const {
 	decryptAssymmetric,
@@ -21,15 +20,12 @@ const getSecretsForProject = async ({
 	setFileState,
 	setIsKeyAvailable,
 	setData,
-	workspaceId
+	workspaceId,
 }) => {
 	try {
 		let file;
 		try {
-			file = await getSecrets(
-				workspaceId,
-				envMapping[env]
-			);
+			file = await getSecrets(workspaceId, envMapping[env]);
 
 			setFileState(file);
 		} catch (error) {
@@ -98,7 +94,9 @@ const getSecretsForProject = async ({
 			line["type"],
 		]);
 	} catch (error) {
-		console.log("Something went wrong during accessing or decripting secrets.");
+		console.log(
+			"Something went wrong during accessing or decripting secrets."
+		);
 	}
 	return true;
 };

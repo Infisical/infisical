@@ -1,11 +1,8 @@
-import publicKeyInfical from "../../pages/api/auth/publicKeyInfisical"
-import changeHerokuConfigVars from "../../pages/api/integrations/ChangeHerokuConfigVars";
+import publicKeyInfical from "~/pages/api/auth/publicKeyInfisical";
+import changeHerokuConfigVars from "~/pages/api/integrations/ChangeHerokuConfigVars";
 
 const crypto = require("crypto");
-const {
-	encryptSymmetric,
-	encryptAssymmetric,
-} = require("./crypto");
+const { encryptSymmetric, encryptAssymmetric } = require("./crypto");
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
 
@@ -71,7 +68,7 @@ const pushKeysIntegration = async ({ obj, integrationId }) => {
 		nonce,
 	};
 
-	changeHerokuConfigVars({integrationId, key, secrets})
+	changeHerokuConfigVars({ integrationId, key, secrets });
 };
 
 export default pushKeysIntegration;

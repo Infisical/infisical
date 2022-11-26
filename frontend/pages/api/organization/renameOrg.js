@@ -1,4 +1,4 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
 import { PATH } from "../../../const";
 
 /**
@@ -8,22 +8,24 @@ import { PATH } from "../../../const";
  * @returns
  */
 const renameOrg = (orgId, newOrgName) => {
-	return SecurityClient.fetchCall(PATH + "/api/v1/organization/" + orgId + "/name", {
-		method: "PATCH",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			name: newOrgName,
-		}),
-	})
-	.then(async res => {
+	return SecurityClient.fetchCall(
+		PATH + "/api/v1/organization/" + orgId + "/name",
+		{
+			method: "PATCH",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				name: newOrgName,
+			}),
+		}
+	).then(async (res) => {
 		if (res.status == 200) {
 			return res;
 		} else {
-			console.log('Failed to rename an organization');
+			console.log("Failed to rename an organization");
 		}
-	})
+	});
 };
 
 export default renameOrg;

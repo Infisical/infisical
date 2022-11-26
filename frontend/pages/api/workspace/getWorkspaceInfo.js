@@ -1,4 +1,4 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
 import { PATH } from "../../../const";
 
 /**
@@ -8,19 +8,21 @@ import { PATH } from "../../../const";
  * @returns
  */
 const getWorkspaceInfo = (req, res) => {
-	return SecurityClient.fetchCall(PATH + "/api/v1/workspace/" + req.workspaceId, {
-		method: "GET",
-		headers: {
-			"Content-Type": "application/json",
-		},
-	})
-	.then(async res => {
+	return SecurityClient.fetchCall(
+		PATH + "/api/v1/workspace/" + req.workspaceId,
+		{
+			method: "GET",
+			headers: {
+				"Content-Type": "application/json",
+			},
+		}
+	).then(async (res) => {
 		if (res.status == 200) {
 			return (await res.json()).workspace;
 		} else {
-			console.log('Failed to get project info');
+			console.log("Failed to get project info");
 		}
-	})
+	});
 };
 
 export default getWorkspaceInfo;

@@ -1,10 +1,10 @@
-import login1 from "../../pages/api/auth/Login1";
-import login2 from "../../pages/api/auth/Login2";
-import Aes256Gcm from "../../components/aes-256-gcm";
+import login1 from "~/pages/api/auth/Login1";
+import login2 from "~/pages/api/auth/Login2";
+import Aes256Gcm from "~/components/aes-256-gcm";
 import pushKeys from "./pushKeys";
 import { initPostHog } from "../analytics/posthog";
-import getOrganizations from "../../pages/api/organization/getOrgs";
-import getOrganizationUserProjects from "../../pages/api/organization/GetOrgUserProjects";
+import getOrganizations from "~/pages/api/organization/getOrgs";
+import getOrganizationUserProjects from "~/pages/api/organization/GetOrgUserProjects";
 import SecurityClient from "./SecurityClient";
 import { ENV } from "./config";
 
@@ -77,7 +77,14 @@ const attemptLogin = async (
 							encryptedPrivateKey,
 							iv,
 							tag,
-							password.slice(0, 32).padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), "0")
+							password
+								.slice(0, 32)
+								.padStart(
+									32 +
+										(password.slice(0, 32).length -
+											new Blob([password]).size),
+									"0"
+								)
 						);
 
 						try {
@@ -101,10 +108,14 @@ const attemptLogin = async (
 					}
 
 					const userOrgs = await getOrganizations();
-					const userOrgsData = userOrgs.map(org => org._id);
-					
+					const userOrgsData = userOrgs.map((org) => org._id);
+
 					let orgToLogin;
-					if (userOrgsData.includes(localStorage.getItem("orgData.id"))) {
+					if (
+						userOrgsData.includes(
+							localStorage.getItem("orgData.id")
+						)
+					) {
 						orgToLogin = localStorage.getItem("orgData.id");
 					} else {
 						orgToLogin = userOrgsData[0];
@@ -114,17 +125,29 @@ const attemptLogin = async (
 					let orgUserProjects = await getOrganizationUserProjects({
 						orgId: orgToLogin,
 					});
-					
-					orgUserProjects = orgUserProjects?.map(project => project._id);
+
+					orgUserProjects = orgUserProjects?.map(
+						(project) => project._id
+					);
 					let projectToLogin;
-					if (orgUserProjects.includes(localStorage.getItem("projectData.id"))) {
+					if (
+						orgUserProjects.includes(
+							localStorage.getItem("projectData.id")
+						)
+					) {
 						projectToLogin = localStorage.getItem("projectData.id");
 					} else {
 						try {
 							projectToLogin = orgUserProjects[0];
-							localStorage.setItem("projectData.id", projectToLogin);
+							localStorage.setItem(
+								"projectData.id",
+								projectToLogin
+							);
 						} catch (error) {
-							console.log("ERROR: User likely has no projects. ", error)
+							console.log(
+								"ERROR: User likely has no projects. ",
+								error
+							);
 						}
 					}
 

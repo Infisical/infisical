@@ -1,4 +1,4 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
 import { PATH } from "../../../const";
 
 /**
@@ -17,14 +17,13 @@ const addUserToOrg = (email, orgId) => {
 			inviteeEmail: email,
 			organizationId: orgId,
 		}),
-	})
-	.then(async res => {
+	}).then(async (res) => {
 		if (res.status == 200) {
 			return res;
 		} else {
-			console.log('Failed to add a user to an org');
+			console.log("Failed to add a user to an org");
 		}
-	})
+	});
 };
 
 export default addUserToOrg;

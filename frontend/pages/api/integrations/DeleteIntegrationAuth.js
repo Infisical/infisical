@@ -1,4 +1,4 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
 import { PATH } from "../../../const";
 
 /**
@@ -7,19 +7,21 @@ import { PATH } from "../../../const";
  * @returns
  */
 const deleteIntegrationAuth = ({ integrationAuthId }) => {
-	return SecurityClient.fetchCall(PATH + "/api/v1/integration-auth/" + integrationAuthId, {
-		method: "DELETE",
-		headers: {
-			"Content-Type": "application/json",
-		},
-	})
-	.then(async res => {
+	return SecurityClient.fetchCall(
+		PATH + "/api/v1/integration-auth/" + integrationAuthId,
+		{
+			method: "DELETE",
+			headers: {
+				"Content-Type": "application/json",
+			},
+		}
+	).then(async (res) => {
 		if (res.status == 200) {
 			return res;
 		} else {
-			console.log('Failed to delete an integration authorization');
+			console.log("Failed to delete an integration authorization");
 		}
-	})
+	});
 };
 
 export default deleteIntegrationAuth;

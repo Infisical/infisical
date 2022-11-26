@@ -1,5 +1,5 @@
 import React from "react";
-import StripeRedirect from "../../pages/api/organization/StripeRedirect";
+import StripeRedirect from "~/pages/api/organization/StripeRedirect";
 
 export default function Plan({ plan }) {
 	return (
@@ -27,12 +27,12 @@ export default function Plan({ plan }) {
 						{plan.priceExplanation}
 					</p>
 				</div>
-			<p className="relative z-10 max-w-fit px-6 text-base text-gray-400">
-				{plan.text}
-			</p>
-			<p className="relative z-10 max-w-fit px-6 text-base text-gray-400">
-				{plan.subtext}
-			</p>
+				<p className="relative z-10 max-w-fit px-6 text-base text-gray-400">
+					{plan.text}
+				</p>
+				<p className="relative z-10 max-w-fit px-6 text-base text-gray-400">
+					{plan.subtext}
+				</p>
 			</div>
 			<div className="flex flex-row items-center">
 				{plan.current == false ? (
@@ -54,7 +54,17 @@ export default function Plan({ plan }) {
 										: "hover:bg-primary hover:text-black hover:border-primary"
 								} bg-bunker duration-200 cursor-pointer rounded-md flex w-max`}
 							>
-								<button onClick={() => StripeRedirect({orgId: localStorage.getItem("orgData.id")})}>{plan.buttonTextMain}</button>
+								<button
+									onClick={() =>
+										StripeRedirect({
+											orgId: localStorage.getItem(
+												"orgData.id"
+											),
+										})
+									}
+								>
+									{plan.buttonTextMain}
+								</button>
 							</div>
 						)}
 						<a href="/pricing" target='_blank rel="noopener"'>

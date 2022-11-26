@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import checkAuth from "../pages/api/auth/CheckAuth";
+import checkAuth from "~/pages/api/auth/CheckAuth";
 import Image from "next/image";
 import { publicPaths } from "../const";
 

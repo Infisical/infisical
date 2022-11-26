@@ -1,7 +1,7 @@
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useState } from "react";
 import InputField from "../InputField";
-import addIncidentContact from "../../../pages/api/organization/addIncidentContact";
+import addIncidentContact from "~/pages/api/organization/addIncidentContact";
 import Button from "../buttons/Button";
 
 const AddIncidentContactDialog = ({

@@ -1,4 +1,4 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
 import { PATH } from "../../../const";
 
 /**
@@ -15,14 +15,13 @@ const registerUserAction = ({ action }) => {
 		body: JSON.stringify({
 			action,
 		}),
-	})
-	.then(async res => {
+	}).then(async (res) => {
 		if (res.status == 200) {
 			return res;
 		} else {
-			console.log('Failed to register a user action');
+			console.log("Failed to register a user action");
 		}
-	})
+	});
 };
 
 export default registerUserAction;

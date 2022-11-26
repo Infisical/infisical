@@ -1,13 +1,13 @@
 import "../styles/globals.css";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import { config } from "@fortawesome/fontawesome-svg-core";
-import Layout from "../components/basic/layout";
-import RouteGuard from "../components/RouteGuard";
+import Layout from "~/components/basic/layout";
+import RouteGuard from "~/components/RouteGuard";
 import { publicPaths } from "../const.js";
 import { useEffect } from "react";
 import { useRouter } from "next/router";
-import { initPostHog } from "../components/analytics/posthog";
-import { ENV } from "../components/utilities/config";
+import { initPostHog } from "~/components/analytics/posthog";
+import { ENV } from "~/utilities/config";
 
 config.autoAddCss = false;
 
@@ -39,9 +39,7 @@ const App = ({ Component, pageProps, ...appProps }) => {
 		publicPaths.includes("/" + appProps.router.pathname.split("/")[1]) ||
 		!Component.requireAuth
 	) {
-		return (
-			<Component {...pageProps} />
-		)
+		return <Component {...pageProps} />;
 	}
 
 	return (

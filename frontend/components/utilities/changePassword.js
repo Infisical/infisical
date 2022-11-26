@@ -1,6 +1,6 @@
 import Aes256Gcm from "../aes-256-gcm";
-import SRP1 from "../../pages/api/auth/SRP1";
-import changePassword2 from "../../pages/api/auth/ChangePassword2";
+import SRP1 from "~/pages/api/auth/SRP1";
+import changePassword2 from "~/pages/api/auth/ChangePassword2";
 
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
@@ -41,7 +41,7 @@ const changePassword = async (
 				let serverPublicKey, salt;
 				try {
 					const res = await SRP1({
-						clientPublicKey: clientPublicKey
+						clientPublicKey: clientPublicKey,
 					});
 					serverPublicKey = res.serverPublicKey;
 					salt = res.salt;
@@ -54,54 +54,70 @@ const changePassword = async (
 				clientOldPassword.setServerPublicKey(serverPublicKey);
 				const clientProof = clientOldPassword.getProof(); // called M1
 
-				clientNewPassword.init({
-					username: email,
-					password: newPassword
-				}, async () => {
-					clientNewPassword.createVerifier(async (err, result) => {
-			
-						let { ciphertext, iv, tag } = Aes256Gcm.encrypt(
-							localStorage.getItem("PRIVATE_KEY"), 
-							newPassword.slice(0, 32).padStart(32 + (newPassword.slice(0, 32).length - new Blob([newPassword]).size), "0")
-						);
+				clientNewPassword.init(
+					{
+						username: email,
+						password: newPassword,
+					},
+					async () => {
+						clientNewPassword.createVerifier(
+							async (err, result) => {
+								let { ciphertext, iv, tag } = Aes256Gcm.encrypt(
+									localStorage.getItem("PRIVATE_KEY"),
+									newPassword
+										.slice(0, 32)
+										.padStart(
+											32 +
+												(newPassword.slice(0, 32)
+													.length -
+													new Blob([newPassword])
+														.size),
+											"0"
+										)
+								);
 
-						if (ciphertext) {
-							localStorage.setItem(
-								"encryptedPrivateKey",
-								ciphertext
-							);
-							localStorage.setItem("iv", iv);
-							localStorage.setItem("tag", tag);
-					
-							let res;
-							try {
-								res = await changePassword2({
-									encryptedPrivateKey: ciphertext,
-									iv,
-									tag,
-									salt: result.salt,
-									verifier: result.verifier,
-									clientProof
-								});
-								if (res.status == 400) {
-									setCurrentPasswordError(true);
-								} else if (res.status == 200) {
-									setPasswordChanged(true);
-									setCurrentPassword("");
-									setNewPassword("");
+								if (ciphertext) {
+									localStorage.setItem(
+										"encryptedPrivateKey",
+										ciphertext
+									);
+									localStorage.setItem("iv", iv);
+									localStorage.setItem("tag", tag);
+
+									let res;
+									try {
+										res = await changePassword2({
+											encryptedPrivateKey: ciphertext,
+											iv,
+											tag,
+											salt: result.salt,
+											verifier: result.verifier,
+											clientProof,
+										});
+										if (res.status == 400) {
+											setCurrentPasswordError(true);
+										} else if (res.status == 200) {
+											setPasswordChanged(true);
+											setCurrentPassword("");
+											setNewPassword("");
+										}
+									} catch (err) {
+										setCurrentPasswordError(true);
+										console.log(err);
+									}
 								}
-							} catch (err) {
-								setCurrentPasswordError(true)
-								console.log(err);
 							}
-						}
-					});
-				});
-				
+						);
+					}
+				);
 			}
 		);
 	} catch (error) {
-		console.log("Something went wrong during changing the password", slat, serverPublicKey);
+		console.log(
+			"Something went wrong during changing the password",
+			slat,
+			serverPublicKey
+		);
 	}
 	return true;
 };

@@ -1,4 +1,4 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
 import { PATH } from "../../../const";
 
 /**
@@ -12,14 +12,13 @@ const deleteWorkspace = (workspaceId) => {
 		headers: {
 			"Content-Type": "application/json",
 		},
-	})
-	.then(async res => {
+	}).then(async (res) => {
 		if (res.status == 200) {
 			return res;
 		} else {
-			console.log('Failed to delete a project');
+			console.log("Failed to delete a project");
 		}
-	})
+	});
 };
 
 export default deleteWorkspace;

@@ -1,4 +1,4 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
 import { PATH } from "../../../const";
 
 /**
@@ -22,14 +22,13 @@ const uploadKeys = (workspaceId, userId, encryptedKey, nonce) => {
 				nonce: nonce,
 			},
 		}),
-	})
-	.then(async res => {
+	}).then(async (res) => {
 		if (res.status == 200) {
 			return res;
 		} else {
-			console.log('Failed to upload keys for a new user');
+			console.log("Failed to upload keys for a new user");
 		}
-	})
+	});
 };
 
 export default uploadKeys;
