@@ -1,21 +1,22 @@
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/router";
+import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
-
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useRouter } from "next/router";
 import { faMagnifyingGlass, faPlus } from "@fortawesome/free-solid-svg-icons";
-import UserTable from "../../components/basic/table/UserTable";
-import getWorkspaceUsers from "../api/workspace/getWorkspaceUsers";
-import guidGenerator from "../../components/utilities/randomId";
-import AddProjectMemberDialog from "../../components/basic/dialog/AddProjectMemberDialog";
-// import DeleteUserDialog from '../../components/basic/dialog/DeleteUserDialog';
-import addUserToWorkspace from "../api/workspace/addUserToWorkspace";
-import getUser from "../api/user/getUser";
-import uploadKeys from "../api/workspace/uploadKeys";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import Button from "~/components/basic/buttons/Button";
+import AddProjectMemberDialog from "~/components/basic/dialog/AddProjectMemberDialog";
+import UserTable from "~/components/basic/table/UserTable";
+import NavHeader from "~/components/navigation/NavHeader";
+import guidGenerator from "~/utilities/randomId";
+
 import getOrganizationUsers from "../api/organization/GetOrgUsers";
-import NavHeader from "../../components/navigation/NavHeader";
-import Button from "../../components/basic/buttons/Button";
+import getUser from "../api/user/getUser";
+// import DeleteUserDialog from '~/components/basic/dialog/DeleteUserDialog';
+import addUserToWorkspace from "../api/workspace/addUserToWorkspace";
+import getWorkspaceUsers from "../api/workspace/getWorkspaceUsers";
+import uploadKeys from "../api/workspace/uploadKeys";
 
 // #TODO: Update all the workspaceIds
 const crypto = require("crypto");
@@ -85,6 +86,7 @@ export default function Users() {
 
 	const [userList, setUserList] = useState();
 	const [orgUserList, setOrgUserList] = useState([]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	useEffect(async () => {
 		const user = await getUser();
 		setPersonalEmail(user.email);
@@ -98,15 +100,13 @@ export default function Users() {
 			firstName: user.user?.firstName,
 			lastName: user.user?.lastName,
 			email:
-				user.user?.email == null
-					? user.inviteEmail
-					: user.user?.email,
+				user.user?.email == null ? user.inviteEmail : user.user?.email,
 			role: user?.role,
 			status: user?.status,
 			userId: user.user?._id,
 			membershipId: user._id,
 			publicKey: user.user?.publicKey,
-		}))
+		}));
 		setUserList(tempUserList);
 		const orgUsers = await getOrganizationUsers({
 			orgId: localStorage.getItem("orgData.id"),
@@ -114,15 +114,15 @@ export default function Users() {
 		setOrgUserList(orgUsers);
 		setEmail(
 			orgUsers
-			?.filter((user) => user.status == "accepted")
-			.map((user) => user.user.email)
-			.filter(
-				(email) =>
-					!tempUserList
-						?.map((user1) => user1.email)
-						.includes(email)
-			)[0]
-		)
+				?.filter((user) => user.status == "accepted")
+				.map((user) => user.user.email)
+				.filter(
+					(email) =>
+						!tempUserList
+							?.map((user1) => user1.email)
+							.includes(email)
+				)[0]
+		);
 	}, []);
 
 	return userList ? (
@@ -131,7 +131,7 @@ export default function Users() {
 				<title>Users</title>
 				<link rel="icon" href="/infisical.ico" />
 			</Head>
-			<NavHeader pageName="Project Members" isProjectRelated={true}/>
+			<NavHeader pageName="Project Members" isProjectRelated={true} />
 			<div className="flex flex-col justify-start items-start px-6 py-6 pb-4 text-3xl">
 				<p className="font-semibold mr-4 text-white">Project Members</p>
 				<p className="mr-4 text-base text-gray-400">

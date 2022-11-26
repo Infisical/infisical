@@ -1,4 +1,5 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
+
 import { PATH } from "../../../const";
 
 /**
@@ -19,14 +20,13 @@ const uploadSecrets = async ({ workspaceId, secrets, keys, environment }) => {
 			environment,
 			channel: "web",
 		}),
-	})
-	.then(async res => {
+	}).then(async (res) => {
 		if (res.status == 200) {
 			return res;
 		} else {
-			console.log('Failed to push secrets');
+			console.log("Failed to push secrets");
 		}
-	})
+	});
 };
 
 export default uploadSecrets;

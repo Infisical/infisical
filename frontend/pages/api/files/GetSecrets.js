@@ -1,4 +1,5 @@
-import SecurityClient from "../../../components/utilities/SecurityClient.js";
+import SecurityClient from "~/utilities/SecurityClient.js";
+
 import { PATH } from "../../../const.js";
 
 /**
@@ -8,26 +9,28 @@ import { PATH } from "../../../const.js";
  * @returns
  */
 const getSecrets = async (workspaceId, env) => {
-	return SecurityClient.fetchCall(PATH + "/api/v1/secret/" +
-		workspaceId +
-		"?" +
-		new URLSearchParams({
-			environment: env,
-			channel: "web",
+	return SecurityClient.fetchCall(
+		PATH +
+			"/api/v1/secret/" +
+			workspaceId +
+			"?" +
+			new URLSearchParams({
+				environment: env,
+				channel: "web",
+			}),
+		{
+			method: "GET",
+			headers: {
+				"Content-Type": "application/json",
+			},
 		}
-	), {
-		method: "GET",
-		headers: {
-			"Content-Type": "application/json",
-		},
-	})
-	.then(async res => {
+	).then(async (res) => {
 		if (res.status == 200) {
-			return (await res.json());
+			return await res.json();
 		} else {
-			console.log('Failed to get project secrets');
+			console.log("Failed to get project secrets");
 		}
-	})
+	});
 };
 
 export default getSecrets;

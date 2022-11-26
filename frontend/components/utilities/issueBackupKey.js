@@ -1,6 +1,7 @@
+import issueBackupPrivateKey from "~/pages/api/auth/IssueBackupPrivateKey";
+import SRP1 from "~/pages/api/auth/SRP1";
+
 import Aes256Gcm from "../aes-256-gcm";
-import SRP1 from "../../pages/api/auth/SRP1";
-import issueBackupPrivateKey from "../../pages/api/auth/IssueBackupPrivateKey";
 import generateBackupPDF from "./generateBackupPDF";
 
 const nacl = require("tweetnacl");
@@ -24,7 +25,7 @@ const issueBackupKey = async ({
 	password,
 	personalName,
 	setBackupKeyError,
-	setBackupKeyIssued
+	setBackupKeyIssued,
 }) => {
 	try {
 		setBackupKeyError(false);
@@ -40,7 +41,7 @@ const issueBackupKey = async ({
 				let serverPublicKey, salt;
 				try {
 					const res = await SRP1({
-						clientPublicKey: clientPublicKey
+						clientPublicKey: clientPublicKey,
 					});
 					serverPublicKey = res.serverPublicKey;
 					salt = res.salt;
@@ -55,35 +56,40 @@ const issueBackupKey = async ({
 
 				const generatedKey = crypto.randomBytes(16).toString("hex");
 
-				clientKey.init({
-					username: email,
-					password: generatedKey
-				}, async () => {
-					clientKey.createVerifier(async (err, result) => {
+				clientKey.init(
+					{
+						username: email,
+						password: generatedKey,
+					},
+					async () => {
+						clientKey.createVerifier(async (err, result) => {
+							let { ciphertext, iv, tag } = Aes256Gcm.encrypt(
+								localStorage.getItem("PRIVATE_KEY"),
+								generatedKey
+							);
 
+							const res = await issueBackupPrivateKey({
+								encryptedPrivateKey: ciphertext,
+								iv,
+								tag,
+								salt: result.salt,
+								verifier: result.verifier,
+								clientProof,
+							});
 
-						let { ciphertext, iv, tag } = Aes256Gcm.encrypt(
-							localStorage.getItem("PRIVATE_KEY"), 
-							generatedKey
-						);
-
-						const res = await issueBackupPrivateKey({
-							encryptedPrivateKey: ciphertext,
-							iv,
-							tag,
-							salt: result.salt,
-							verifier: result.verifier,
-							clientProof
+							if (res.status == 400) {
+								setBackupKeyError(true);
+							} else if (res.status == 200) {
+								generateBackupPDF(
+									personalName,
+									email,
+									generatedKey
+								);
+								setBackupKeyIssued(true);
+							}
 						});
-
-						if (res.status == 400) {
-							setBackupKeyError(true);
-						} else if (res.status == 200) {
-							generateBackupPDF(personalName, email, generatedKey);
-							setBackupKeyIssued(true);
-						}
-					});
-				})
+					}
+				);
 			}
 		);
 	} catch (error) {

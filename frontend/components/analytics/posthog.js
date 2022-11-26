@@ -1,4 +1,5 @@
 import posthog from "posthog-js";
+
 import { ENV, POSTHOG_API_KEY, POSTHOG_HOST, TELEMETRY_ENABLED } from "../utilities/config";
 
 export const initPostHog = () => {

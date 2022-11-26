@@ -1,4 +1,5 @@
-import SecurityClient from "../../../components/utilities/SecurityClient.js";
+import SecurityClient from "~/utilities/SecurityClient.js";
+
 import { PATH } from "../../../const.js";
 
 /**
@@ -14,14 +15,13 @@ const checkAuth = async (req, res) => {
 		headers: {
 			"Content-Type": "application/json",
 		},
-	})
-	.then(res => {
+	}).then((res) => {
 		if (res.status == 200) {
 			return res;
 		} else {
 			console.log("Not authorized");
 		}
-	})
+	});
 };
 
 export default checkAuth;

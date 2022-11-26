@@ -1,4 +1,5 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
+
 import { PATH } from "../../../const";
 
 /**
@@ -13,14 +14,13 @@ const getUser = (req, res) => {
 		headers: {
 			"Content-Type": "application/json",
 		},
-	})
-	.then(async res => {
+	}).then(async (res) => {
 		if (res.status == 200) {
 			return (await res.json()).user;
 		} else {
-			console.log('Failed to get user info');
+			console.log("Failed to get user info");
 		}
-	})
+	});
 };
 
 export default getUser;
