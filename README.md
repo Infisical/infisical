@@ -91,9 +91,9 @@ Infisical officially launched as v.1.0 on November 21st, 2022. However, a lot of
 
 We're currently setting the foundation and building integrations so secrets can be synced everywhere. Any help is welcome! :)
 
-- [x] Docker
-- [x] Docker Compose
-- [x] Heroku
+- [x] [Docker](https://infisical.com/docs/integrations/docker)
+- [x] [Docker Compose](https://infisical.com/docs/integrations/docker-compose)
+- [x] [Heroku](https://infisical.com/docs/integrations/heroku)
 - [ ] Vercel
 - [ ] Kubernetes
 - [ ] AWS
