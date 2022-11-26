@@ -29,10 +29,11 @@ infisical run -- [your application start command]
 
 Options you can specify:
 
-| Option        | Description                                                                                                 | Default value |
-| ------------- | ----------------------------------------------------------------------------------------------------------- | ------------- |
-| `--env`       | Used to set the environment that secrets are pulled from. Accepted values: `dev`, `staging`, `test`, `prod` | `dev`         |
-| `--projectId` | Used to link a local project to the platform (required only if injecting via the service token method)      | `None`        |
+| Option         | Description                                                                                                 | Default value |
+| -------------  | ----------------------------------------------------------------------------------------------------------- | ------------- |
+| `--env`        | Used to set the environment that secrets are pulled from. Accepted values: `dev`, `staging`, `test`, `prod` | `dev`         |
+| `--projectId`  | Used to link a local project to the platform (required only if injecting via the service token method)      | `None`        |
+| `--expand`     | Parse shell parameter expansions in your secrets (e.g., `${DOMAIN}`)      | `true`        |
 
 ## Examples:
 
