@@ -1,6 +1,6 @@
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
-const aes = require("../aes-256-gcm");
+const aes = require("./aes-256-gcm");
 
 /**
  * Return assymmetrically encrypted [plaintext] using [publicKey] where

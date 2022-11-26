@@ -33,6 +33,13 @@ var runCmd = &cobra.Command{
 			return
 		}
 
+		substitute, err := cmd.Flags().GetBool("substitute")
+		if err != nil {
+			log.Errorln("Unable to parse the substitute flag")
+			log.Debugln(err)
+			return
+		}
+
 		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			log.Errorln("Unable to parse the project id flag")
@@ -82,7 +89,13 @@ var runCmd = &cobra.Command{
 			}
 		}
 
-		execCmd(args[0], args[1:], envsFromApi)
+		if substitute {
+			substitutions := util.SubstituteSecrets(envsFromApi)
+			execCmd(args[0], args[1:], substitutions)
+		} else {
+			execCmd(args[0], args[1:], envsFromApi)
+		}
+
 	},
 }
 
@@ -90,6 +103,7 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 	runCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
 	runCmd.Flags().String("projectId", "", "The project ID from which your secrets should be pulled from")
+	runCmd.Flags().Bool("substitute", true, "Parse shell variable substitutions in your secrets")
 }
 
 // Credit: inspired by AWS Valut

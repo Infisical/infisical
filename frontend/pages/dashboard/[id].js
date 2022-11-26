@@ -29,9 +29,9 @@ import BottonRightPopup from "~/components/basic/popups/BottomRightPopup";
 import DashboardInputField from "~/components/dashboard/DashboardInputField";
 import DropZone from "~/components/dashboard/DropZone";
 import NavHeader from "~/components/navigation/NavHeader";
-import getSecretsForProject from "~/utilities/getSecretsForProject";
-import pushKeys from "~/utilities/pushKeys";
-import pushKeysIntegration from "~/utilities/pushKeysIntegration";
+import getSecretsForProject from "~/components/utilities/secrets/getSecretsForProject";
+import pushKeys from "~/components/utilities/secrets/pushKeys";
+import pushKeysIntegration from "~/components/utilities/secrets/pushKeysIntegration";
 import guidGenerator from "~/utilities/randomId";
 
 import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
@@ -699,7 +699,7 @@ export default function Dashboard() {
 										data?.length > 8 ? "h-3/4" : "h-min"
 									}`}
 								>
-									<div className="sticky top-0 z-10 bg-bunker flex flex-row pl-4 pr-5 pt-4 pb-2 items-center justify-between text-gray-300 font-bold">
+									<div className="sticky top-0 z-40 bg-bunker flex flex-row pl-4 pr-5 pt-4 pb-2 items-center justify-between text-gray-300 font-bold">
 										{/* <FontAwesomeIcon icon={faAngleDown} /> */}
 										<div className="flex flex-row items-center">
 											<p className="pl-2 text-lg">

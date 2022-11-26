@@ -6,12 +6,12 @@ import { useRouter } from "next/router";
 import { faCheck, faWarning,faX } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import Aes256Gcm from "~/components/aes-256-gcm";
+import Aes256Gcm from "~/components/utilities/cryptography/aes-256-gcm";
 import Button from "~/components/basic/buttons/Button";
 import InputField from "~/components/basic/InputField";
 import attemptLogin from "~/utilities/attemptLogin";
 import passwordCheck from "~/utilities/checks/PasswordCheck";
-import issueBackupKey from "~/utilities/issueBackupKey";
+import issueBackupKey from "~/components/utilities/cryptography/issueBackupKey";
 
 import completeAccountInformationSignupInvite from "./api/auth/CompleteAccountInformationSignupInvite";
 import verifySignupInvite from "./api/auth/VerifySignupInvite";

@@ -23,7 +23,7 @@ const crypto = require("crypto");
 const {
 	decryptAssymmetric,
 	encryptAssymmetric,
-} = require("../../components/utilities/crypto");
+} = require("../../components/utilities/cryptography/crypto");
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
 

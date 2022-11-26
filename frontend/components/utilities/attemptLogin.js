@@ -1,4 +1,4 @@
-import Aes256Gcm from "~/components/aes-256-gcm";
+import Aes256Gcm from "~/components/utilities/cryptography/aes-256-gcm";
 import login1 from "~/pages/api/auth/Login1";
 import login2 from "~/pages/api/auth/Login2";
 import getOrganizations from "~/pages/api/organization/getOrgs";
@@ -6,7 +6,7 @@ import getOrganizationUserProjects from "~/pages/api/organization/GetOrgUserProj
 
 import { initPostHog } from "../analytics/posthog";
 import { ENV } from "./config";
-import pushKeys from "./pushKeys";
+import pushKeys from "./secrets/pushKeys";
 import SecurityClient from "./SecurityClient";
 
 const nacl = require("tweetnacl");

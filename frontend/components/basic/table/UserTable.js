@@ -15,7 +15,7 @@ import Listbox from "../Listbox";
 const {
 	decryptAssymmetric,
 	encryptAssymmetric,
-} = require("../../utilities/crypto");
+} = require("../../utilities/cryptography/crypto");
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
 

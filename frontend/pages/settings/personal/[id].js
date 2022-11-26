@@ -6,9 +6,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Button from "~/components/basic/buttons/Button";
 import InputField from "~/components/basic/InputField";
 import NavHeader from "~/components/navigation/NavHeader";
-import changePassword from "~/utilities/changePassword";
+import changePassword from "~/components/utilities/cryptography/changePassword";
 import passwordCheck from "~/utilities/checks/PasswordCheck";
-import issueBackupKey from "~/utilities/issueBackupKey";
+import issueBackupKey from "~/components/utilities/cryptography/issueBackupKey";
 
 import getUser from "../../api/user/getUser";
 
