@@ -1,5 +1,5 @@
 const PORT = process.env.PORT || 4000;
-const EMAIL_TOKEN_LIFETIME = process.env.EMAIL_TOKEN_LIFETIME! || '86400'; // investigate
+const EMAIL_TOKEN_LIFETIME = process.env.EMAIL_TOKEN_LIFETIME! || '86400';
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
 const JWT_AUTH_LIFETIME = process.env.JWT_AUTH_LIFETIME! || '10d';
 const JWT_AUTH_SECRET = process.env.JWT_AUTH_SECRET!;
