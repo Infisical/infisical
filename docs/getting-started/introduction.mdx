@@ -2,20 +2,36 @@
 title: "Introduction"
 ---
 
-<iframe
-  src="https://www.youtube.com/embed/JS3OKYU2078"
-  width="100%"
-  height="400"
-></iframe>
+Infisical is an [open-source](https://opensource.com/resources/what-open-source), [end-to-end encrypted](https://en.wikipedia.org/wiki/End-to-end_encryption) secret manager that enables teams to easily manage and sync their environment variables.
 
-Infisical is an [open-source](https://opensource.com/resources/what-open-source), end-to-end encrypted (E2EE) secret manager that enables teams to easily manage and sync their environment variables.
+Start syncing environment variables with [Infisical Cloud](https://app.infisical.com) or learn how to [host Infisical](/self-hosting/overview) yourself.
 
-It stops [secret sprawl](https://www.gitguardian.com/glossary/secret-sprawl-definition) by providing a single source-of-truth for environment variables. It offers a dashboard for teams to manage environment variables and a platform-agnostic CLI to inject them into apps and infrastructure.
-
-Some problems we solve:
-
-- Leaking .env files to version control.
-- Debugging missing environment variables.
-- Sending environment variables over email.
-
-Infisical uses [end-to-end encryption](https://en.wikipedia.org/wiki/End-to-end_encryption) to ensure that only designated team members can read their environment variables; unless intended for specific integrations, environment variables are always encrypted before being sent to the server.
+<CardGroup cols={2}>
+  <Card
+    title="Quickstart"
+    href="/getting-started/quickstart"
+    icon="timer"
+    color="#ea5a0c"
+  >
+    Tour Infisical in a few minutes.
+  </Card>
+  <Card href="/cli/overview" title="CLI" icon="square-terminal" color="#16a34a">
+    Install the CLI to inject secrets into apps and infra.
+  </Card>
+  <Card
+    href="/self-hosting/overview"
+    title="Self-hosting"
+    icon="server"
+    color="#0285c7"
+  >
+    Learn how to configure and deploy Infisical.
+  </Card>
+  <Card
+    href="/integrations/heroku"
+    title="Integrations"
+    icon="plug"
+    color="#dc2626"
+  >
+    Explore integrations for Docker, AWS, Heroku, etc.
+  </Card>
+</CardGroup>

@@ -49,12 +49,6 @@ And more.
 
 To quickly get started, visit our [get started guide](https://infisical.com/docs/getting-started/introduction).
 
-## Stay Up-to-Date
-
-Infisical officially launched as v.1.0 on November 21st, 2022. However, a lot of new features are coming very quickly. Watch **releases** of this repository to be notified about future updates:
-
-![infisical-star-github](https://github.com/Infisical/infisical/blob/main/.github/images/star-infisical.gif?raw=true)
-
 ## What's cool about this?
 
 Infisical is simple, E2EE, and (soon to be) complete.
@@ -88,6 +82,12 @@ Not sure where to get started? [Book a free, non-pressure pairing sessions with 
 - [ ] Public: Production-ready.
 
 We're currently in Public Alpha.
+
+## Stay Up-to-Date
+
+Infisical officially launched as v.1.0 on November 21st, 2022. However, a lot of new features are coming very quickly. Watch **releases** of this repository to be notified about future updates:
+
+![infisical-star-github](https://github.com/Infisical/infisical/blob/main/.github/images/star-infisical.gif?raw=true)
 
 ## Integrations
 
