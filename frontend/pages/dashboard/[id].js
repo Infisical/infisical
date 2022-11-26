@@ -18,6 +18,7 @@ import {
 	faPerson,
 	faPlus,
 	faX,
+	faShuffle
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Menu, Transition } from "@headlessui/react";
@@ -39,6 +40,24 @@ import checkUserAction from "../api/userActions/checkUserAction";
 import registerUserAction from "../api/userActions/registerUserAction";
 import getWorkspaces from "../api/workspace/getWorkspaces";
 
+const envMapping = {
+	Development: "dev",
+	Staging: "staging",
+	Production: "prod",
+	Testing: "test",
+};
+
+/**
+ * This component represent a single row for an environemnt variable on the dashboard
+ * @param {object} obj
+ * @param {String[]} obj.keyPair - data related to the environment variable (index, key, value, public/private)
+ * @param {function} obj.deleteRow - a function to delete a certain keyPair
+ * @param {function} obj.modifyKey - modify the key of a certain environment variable
+ * @param {function} obj.modifyValue - modify the value of a certain environment variable
+ * @param {function} obj.modifyVisibility - switch between public/private visibility 
+ * @param {boolean} obj.isBlurred - if the blurring setting is turned on
+ * @returns 
+ */
 const KeyPair = ({
 	keyPair,
 	deleteRow,
@@ -47,6 +66,8 @@ const KeyPair = ({
 	modifyVisibility,
 	isBlurred,
 }) => {
+	const [randomStringLength, setRandomStringLength] = useState(32);
+
 	return (
 		<div className="px-1 flex flex-col items-center ml-1">
 			<div className="relative flex flex-row justify-between w-full max-w-5xl mr-auto max-h-10 my-1 items-center px-2">
@@ -91,7 +112,7 @@ const KeyPair = ({
 						leaveFrom="transform opacity-100 scale-100"
 						leaveTo="transform opacity-0 scale-95"
 					>
-						<Menu.Items className="absolute right-0 mt-0.5 w-44 origin-top-right rounded-md bg-bunker border border-mineshaft-700 shadow-lg ring-1 ring-black z-20 ring-opacity-5 focus:outline-none px-1 py-1">
+						<Menu.Items className="absolute z-40 right-0 mt-0.5 w-[20rem] origin-top-right rounded-md bg-bunker border border-mineshaft-700 shadow-lg ring-1 ring-black z-20 ring-opacity-5 focus:outline-none px-1 py-1">
 							<div
 								onClick={() =>
 									modifyVisibility(
@@ -117,6 +138,59 @@ const KeyPair = ({
 										: "Make Personal"}
 								</div>
 							</div>
+							<div
+								onClick={() => {
+									if (randomStringLength > 32) {
+										setRandomStringLength(32);
+									} else if (randomStringLength < 2) {
+										setRandomStringLength(2);
+									} else {
+										modifyValue([...Array(randomStringLength)].map(() => Math.floor(Math.random() * 16).toString(16)).join(''), keyPair[1]);
+									}	
+								}}
+								className="relative flex flex-row justify-start items-center cursor-pointer select-none py-2 px-2 rounded-md text-gray-400 hover:bg-white/10 duration-200 hover:text-gray-200 w-full"
+							>
+								<FontAwesomeIcon
+									className="text-lg pl-1.5 pr-3"
+									icon={
+										keyPair[3] == ""
+											? faPlus
+											: faShuffle
+									}
+								/>
+								<div className="text-sm justify-between flex flex-row w-full">
+									<p>Generate Random Hex</p>
+									<p>digits</p>
+								</div>
+							</div>
+							<div className="flex flex-row absolute bottom-[0.4rem] right-[3.3rem] w-16 bg-bunker-800 border border-chicago-700 rounded-md text-bunker-200 ">
+								<div 
+									className="m-0.5 px-1 cursor-pointer rounded-md hover:bg-chicago-700"
+									onClick={() => {
+										if (randomStringLength > 1) {
+											setRandomStringLength(randomStringLength - 1)
+										}
+									}}
+								>
+									-
+								</div>
+								<input
+									onChange={(e) => setRandomStringLength(parseInt(e.target.value))}
+									value={randomStringLength}
+									className="text-center z-20 peer text-sm bg-transparent w-full outline-none"
+									spellCheck="false"
+								/>
+								<div 
+									className="m-0.5 px-1 pb-0.5 cursor-pointer rounded-md hover:bg-chicago-700"
+									onClick={() => {
+										if (randomStringLength < 32) {
+											setRandomStringLength(randomStringLength + 1)
+										}
+									}}
+								>
+									+
+								</div>
+							</div>
 						</Menu.Items>
 					</Transition>
 				</Menu>
@@ -134,13 +208,10 @@ const KeyPair = ({
 	);
 };
 
-const envMapping = {
-	Development: "dev",
-	Staging: "staging",
-	Production: "prod",
-	Testing: "test",
-};
-
+/**
+ * This is the main component for the dashboard (aka the screen with all the encironemnt variable & secrets)
+ * @returns 
+ */
 export default function Dashboard() {
 	const [data, setData] = useState();
 	const [fileState, setFileState] = useState([]);
@@ -196,6 +267,9 @@ export default function Dashboard() {
 		};
 	}, [buttonReady]);
 
+	/**
+	 * Reorder rows alphabetically or in the opprosite order
+	 */
 	const reorderRows = () => {
 		setSortMethod(
 			sortMethod == "alphabetical" ? "-alphabetical" : "alphabetical"
@@ -259,7 +333,7 @@ export default function Dashboard() {
 
 	const deleteRow = (id) => {
 		setButtonReady(true);
-		setData(data.filter((row) => row[0] !== id)); // filter by id
+		setData(data.filter((row) => row[0] !== id));
 	};
 
 	const modifyValue = (value, id) => {
@@ -286,6 +360,7 @@ export default function Dashboard() {
 		setButtonReady(true);
 	};
 
+	// For speed purposes and better perforamance, we are using useCallback
 	const listenChangeValue = useCallback((value, id) => {
 		modifyValue(value, id);
 	}, []);
@@ -298,14 +373,24 @@ export default function Dashboard() {
 		modifyVisibility(value, id);
 	}, []);
 
+	/**
+	 * Save the changes of environment variables and push them to the database
+	 */
 	const savePush = async () => {
+		// Format the new object with environment variables
 		let obj = Object.assign(
 			{},
 			...data.map((row) => ({ [row[2]]: [row[3], row[4]] }))
 		);
+
+		// Once "Save changed is clicked", disable that button
 		setButtonReady(false);
 		pushKeys(obj, router.query.id, env);
 
+		/**
+		 * Check which integrations are active for this project and environment
+		 * If there are any, update environment variables for those integrations
+		 */ 
 		let integrations = await getWorkspaceIntegrations({
 			workspaceId: router.query.id,
 		});
@@ -325,6 +410,7 @@ export default function Dashboard() {
 			}
 		});
 
+		// If this user has never saved environment variables before, show them a prompt to read docs
 		if (!hasUserEverPushed) {
 			setCheckDocsPopUpVisible(true);
 			await registerUserAction({ action: "first_time_secrets_pushed" });
@@ -340,7 +426,7 @@ export default function Dashboard() {
 		setBlurred(!blurred);
 	};
 
-	// This function downloads the secrets as an .env file
+	// This function downloads the secrets as a .env file
 	const download = () => {
 		const file = data
 			.map((item) => [item[2], item[3]].join("="))
@@ -357,21 +443,19 @@ export default function Dashboard() {
 		deleteRow(id);
 	};
 
+	/** 
+	 * This function copies the project id to the clipboard
+	 */
 	function copyToClipboard() {
-		// Get the text field
 		var copyText = document.getElementById("myInput");
 
-		// Select the text field
 		copyText.select();
 		copyText.setSelectionRange(0, 99999); // For mobile devices
 
-		// Copy the text inside the text field
 		navigator.clipboard.writeText(copyText.value);
 
 		setProjectIdCopied(true);
 		setTimeout(() => setProjectIdCopied(false), 2000);
-		// Alert the copied text
-		// alert("Copied the text: " + copyText.value);
 	}
 
 	return data ? (
