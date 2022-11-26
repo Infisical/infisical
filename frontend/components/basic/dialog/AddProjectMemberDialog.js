@@ -1,8 +1,9 @@
-import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useState } from "react";
-import ListBox from "../Listbox";
 import { useRouter } from "next/router";
+import { Dialog, Transition } from "@headlessui/react";
+
 import Button from "../buttons/Button";
+import ListBox from "../Listbox";
 
 const AddProjectMemberDialog = ({
 	isOpen,

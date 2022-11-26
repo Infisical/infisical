@@ -1,4 +1,5 @@
-import SecurityClient from "../../../components/utilities/SecurityClient";
+import SecurityClient from "~/utilities/SecurityClient";
+
 import { PATH } from "../../../const";
 
 /**
@@ -8,19 +9,21 @@ import { PATH } from "../../../const";
  * @returns
  */
 const getOrganizationProjects = (req, res) => {
-	return SecurityClient.fetchCall(PATH + "/api/organization/" + req.orgId + "/workspaces", {
-		method: "GET",
-		headers: {
-			"Content-Type": "application/json",
-		},
-	})
-	.then(async res => {
+	return SecurityClient.fetchCall(
+		PATH + "/api/organization/" + req.orgId + "/workspaces",
+		{
+			method: "GET",
+			headers: {
+				"Content-Type": "application/json",
+			},
+		}
+	).then(async (res) => {
 		if (res.status == 200) {
 			return (await res.json()).workspaces;
 		} else {
-			console.log('Failed to get projects for an org');
+			console.log("Failed to get projects for an org");
 		}
-	})
+	});
 };
 
 export default getOrganizationProjects;

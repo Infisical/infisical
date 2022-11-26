@@ -1,9 +1,9 @@
 import React from "react";
-import { Listbox, Transition } from "@headlessui/react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faPlus, faAngleDown } from "@fortawesome/free-solid-svg-icons";
 import { Fragment } from "react";
 import { useRouter } from "next/router";
+import { faAngleDown,faCheck, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Listbox, Transition } from "@headlessui/react";
 
 /**
  * This is the component that we use for drop down lists.

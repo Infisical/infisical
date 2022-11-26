@@ -1,6 +1,6 @@
 import React from "react";
-import Error from "./Error";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useState } from "react";
+import { useRouter } from "next/router";
 import {
 	faCircle,
 	faCircleExclamation,
@@ -8,9 +8,10 @@ import {
 	faEye,
 	faEyeSlash,
 } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import guidGenerator from "../utilities/randomId";
-import { useState } from "react";
-import { useRouter } from "next/router";
+import Error from "./Error";
 
 const InputField = (props) => {
 	const [passwordVisible, setPasswordVisible] = useState(false);

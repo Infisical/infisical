@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect,useState } from "react";
 import Head from "next/head";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faX } from "@fortawesome/free-solid-svg-icons";
-import InputField from "../../../components/basic/InputField";
-import getUser from "../../api/user/getUser";
-import NavHeader from "../../../components/navigation/NavHeader";
-import passwordCheck from "../../../components/utilities/checks/PasswordCheck";
-import changePassword from "../../../components/utilities/changePassword";
-import issueBackupKey from "../../../components/utilities/issueBackupKey";
-import Button from "../../../components/basic/buttons/Button";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import Button from "~/components/basic/buttons/Button";
+import InputField from "~/components/basic/InputField";
+import NavHeader from "~/components/navigation/NavHeader";
+import changePassword from "~/utilities/changePassword";
+import passwordCheck from "~/utilities/checks/PasswordCheck";
+import issueBackupKey from "~/utilities/issueBackupKey";
+
+import getUser from "../../api/user/getUser";
 
 export default function PersonalSettings() {
 	const [personalEmail, setPersonalEmail] = useState("");
@@ -31,8 +32,6 @@ export default function PersonalSettings() {
 		setPersonalName(user.firstName + " " + user.lastName);
 	}, []);
 
-	
-
 	return (
 		<div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
 			<Head>
@@ -41,7 +40,10 @@ export default function PersonalSettings() {
 			</Head>
 			<div className="flex flex-row">
 				<div className="w-full max-h-screen pb-2 overflow-y-auto">
-					<NavHeader pageName="Personal Settings" isProjectRelated={false}/>
+					<NavHeader
+						pageName="Personal Settings"
+						isProjectRelated={false}
+					/>
 					<div className="flex flex-row justify-between items-center ml-6 mt-8 mb-6 text-xl max-w-5xl">
 						<div className="flex flex-col justify-start items-start text-3xl">
 							<p className="font-semibold mr-4 text-gray-200">
@@ -137,52 +139,133 @@ export default function PersonalSettings() {
 									type="password"
 									value={newPassword}
 									isRequired
-									error={passwordErrorLength && passwordErrorLowerCase && passwordErrorNumber}
+									error={
+										passwordErrorLength &&
+										passwordErrorLowerCase &&
+										passwordErrorNumber
+									}
 								/>
 							</div>
-							{(passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber) ? <div className="w-full mt-3 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md max-w-xl mb-2">
-								<div className={`text-gray-400 text-sm mb-1`}>Password should contain at least:</div>
-								<div className="flex flex-row justify-start items-center ml-1">
-									{passwordErrorLength 
-									? <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5"/> 
-									: <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2"/>}
-									<div className={`${passwordErrorLength ? "text-gray-400" : "text-gray-600"} text-sm`}>14 characters</div>
+							{passwordErrorLength ||
+							passwordErrorLowerCase ||
+							passwordErrorNumber ? (
+								<div className="w-full mt-3 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md max-w-xl mb-2">
+									<div
+										className={`text-gray-400 text-sm mb-1`}
+									>
+										Password should contain at least:
+									</div>
+									<div className="flex flex-row justify-start items-center ml-1">
+										{passwordErrorLength ? (
+											<FontAwesomeIcon
+												icon={faX}
+												className="text-md text-red mr-2.5"
+											/>
+										) : (
+											<FontAwesomeIcon
+												icon={faCheck}
+												className="text-md text-primary mr-2"
+											/>
+										)}
+										<div
+											className={`${
+												passwordErrorLength
+													? "text-gray-400"
+													: "text-gray-600"
+											} text-sm`}
+										>
+											14 characters
+										</div>
+									</div>
+									<div className="flex flex-row justify-start items-center ml-1">
+										{passwordErrorLowerCase ? (
+											<FontAwesomeIcon
+												icon={faX}
+												className="text-md text-red mr-2.5"
+											/>
+										) : (
+											<FontAwesomeIcon
+												icon={faCheck}
+												className="text-md text-primary mr-2"
+											/>
+										)}
+										<div
+											className={`${
+												passwordErrorLowerCase
+													? "text-gray-400"
+													: "text-gray-600"
+											} text-sm`}
+										>
+											1 lowercase character
+										</div>
+									</div>
+									<div className="flex flex-row justify-start items-center ml-1">
+										{passwordErrorNumber ? (
+											<FontAwesomeIcon
+												icon={faX}
+												className="text-md text-red mr-2.5"
+											/>
+										) : (
+											<FontAwesomeIcon
+												icon={faCheck}
+												className="text-md text-primary mr-2"
+											/>
+										)}
+										<div
+											className={`${
+												passwordErrorNumber
+													? "text-gray-400"
+													: "text-gray-600"
+											} text-sm`}
+										>
+											1 number
+										</div>
+									</div>
 								</div>
-								<div className="flex flex-row justify-start items-center ml-1">
-									{passwordErrorLowerCase 
-									? <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5"/> 
-									: <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2"/>}
-									<div className={`${passwordErrorLowerCase ? "text-gray-400" : "text-gray-600"} text-sm`}>1 lowercase character</div>
-								</div>
-								<div className="flex flex-row justify-start items-center ml-1">
-									{passwordErrorNumber 
-									? <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5"/> 
-									: <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2"/>}
-									<div className={`${passwordErrorNumber ? "text-gray-400" : "text-gray-600"} text-sm`}>1 number</div>
-								</div>
-							</div> : <div className="py-2"></div>}
+							) : (
+								<div className="py-2"></div>
+							)}
 							<div className="flex flex-row items-center mt-3 w-52 pr-3">
 								<Button
 									text="Change Password"
 									onButtonPressed={() => {
-										if (!passwordErrorLength && !passwordErrorLowerCase && !passwordErrorNumber) {
+										if (
+											!passwordErrorLength &&
+											!passwordErrorLowerCase &&
+											!passwordErrorNumber
+										) {
 											changePassword(
-												personalEmail, 
-												currentPassword, 
+												personalEmail,
+												currentPassword,
 												newPassword,
 												setCurrentPasswordError,
 												setPasswordChanged,
 												setCurrentPassword,
 												setNewPassword
-											)
+											);
 										}
 									}}
 									color="mineshaft"
 									size="md"
-									active={(newPassword != "") && (currentPassword != "") && !(passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber)}
+									active={
+										newPassword != "" &&
+										currentPassword != "" &&
+										!(
+											passwordErrorLength ||
+											passwordErrorLowerCase ||
+											passwordErrorNumber
+										)
+									}
 									textDisabled="Change Password"
 								/>
-								<FontAwesomeIcon icon={faCheck} className={`ml-4 text-primary text-3xl ${passwordChanged ? "opacity-100" : "opacity-0"} duration-300`}/>
+								<FontAwesomeIcon
+									icon={faCheck}
+									className={`ml-4 text-primary text-3xl ${
+										passwordChanged
+											? "opacity-100"
+											: "opacity-0"
+									} duration-300`}
+								/>
 							</div>
 						</div>
 
@@ -193,10 +276,14 @@ export default function PersonalSettings() {
 										Emergency Kit
 									</p>
 									<p className="text-sm text-mineshaft-300 min-w-max">
-										Your Emergency Kit contains the information you’ll need to sign in to your Infisical account.
+										Your Emergency Kit contains the
+										information you’ll need to sign in to
+										your Infisical account.
 									</p>
 									<p className="text-sm text-mineshaft-300 mb-5 min-w-max">
-										Only the latest issued Emergency Kit remains valid. To get a new Emergency Kit, verify your password.
+										Only the latest issued Emergency Kit
+										remains valid. To get a new Emergency
+										Kit, verify your password.
 									</p>
 								</div>
 							</div>
@@ -216,11 +303,11 @@ export default function PersonalSettings() {
 									text="Download Emergency Kit"
 									onButtonPressed={() => {
 										issueBackupKey({
-											email: personalEmail, 
-											password: backupPassword, 
-											personalName, 
+											email: personalEmail,
+											password: backupPassword,
+											personalName,
 											setBackupKeyError,
-											setBackupKeyIssued
+											setBackupKeyIssued,
 										});
 									}}
 									color="mineshaft"
@@ -228,7 +315,14 @@ export default function PersonalSettings() {
 									active={backupPassword != ""}
 									textDisabled="Download Emergency Kit"
 								/>
-								<FontAwesomeIcon icon={faCheck} className={`ml-4 text-primary text-3xl ${backupKeyIssued ? "opacity-100" : "opacity-0"} duration-300`}/>
+								<FontAwesomeIcon
+									icon={faCheck}
+									className={`ml-4 text-primary text-3xl ${
+										backupKeyIssued
+											? "opacity-100"
+											: "opacity-0"
+									} duration-300`}
+								/>
 							</div>
 						</div>
 					</div>
