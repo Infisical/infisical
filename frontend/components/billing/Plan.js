@@ -1,4 +1,5 @@
 import React from "react";
+
 import StripeRedirect from "~/pages/api/organization/StripeRedirect";
 
 export default function Plan({ plan }) {

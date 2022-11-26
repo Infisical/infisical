@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
-import Listbox from "../Listbox";
-import uploadKeys from "~/pages/api/workspace/uploadKeys";
-import getLatestFileKey from "~/pages/api/workspace/getLatestFileKey";
-import deleteUserFromWorkspace from "~/pages/api/workspace/deleteUserFromWorkspace";
-import changeUserRoleInWorkspace from "~/pages/api/workspace/changeUserRoleInWorkspace";
-import deleteUserFromOrganization from "~/pages/api/organization/deleteUserFromOrganization";
 import { faX } from "@fortawesome/free-solid-svg-icons";
-import Button from "../buttons/Button";
+
+import deleteUserFromOrganization from "~/pages/api/organization/deleteUserFromOrganization";
+import changeUserRoleInWorkspace from "~/pages/api/workspace/changeUserRoleInWorkspace";
+import deleteUserFromWorkspace from "~/pages/api/workspace/deleteUserFromWorkspace";
+import getLatestFileKey from "~/pages/api/workspace/getLatestFileKey";
+import uploadKeys from "~/pages/api/workspace/uploadKeys";
+
 import guidGenerator from "../../utilities/randomId";
+import Button from "../buttons/Button";
+import Listbox from "../Listbox";
 
 const {
 	decryptAssymmetric,

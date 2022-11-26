@@ -1,8 +1,8 @@
 import React from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { faCcMastercard, faCcVisa } from "@fortawesome/free-brands-svg-icons";
+import { faCheck, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { faCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 export default function Card({ card, changeSelectedCard, selected }) {
 	function creditCardBrandIcon(cc) {

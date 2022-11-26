@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useRouter } from "next/router";
+import { faCcMastercard, faCcVisa } from "@fortawesome/free-brands-svg-icons";
 import {
 	faAngleRight,
 	faQuestionCircle,
 } from "@fortawesome/free-solid-svg-icons";
-import { faCcMastercard, faCcVisa } from "@fortawesome/free-brands-svg-icons";
 import { faCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import getOrganization from "~/pages/api/organization/GetOrg";
 import getWorkspaceInfo from "~/pages/api/workspace/getWorkspaceInfo";
-import { useRouter } from "next/router";
 
 export default function NavHeader({ pageName, isProjectRelated }) {
 	const [orgName, setOrgName] = useState("");

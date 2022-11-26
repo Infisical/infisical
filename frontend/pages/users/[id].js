@@ -1,21 +1,22 @@
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/router";
+import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
-
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useRouter } from "next/router";
 import { faMagnifyingGlass, faPlus } from "@fortawesome/free-solid-svg-icons";
-import UserTable from "~/components/basic/table/UserTable";
-import getWorkspaceUsers from "../api/workspace/getWorkspaceUsers";
-import guidGenerator from "~/utilities/randomId";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import Button from "~/components/basic/buttons/Button";
 import AddProjectMemberDialog from "~/components/basic/dialog/AddProjectMemberDialog";
+import UserTable from "~/components/basic/table/UserTable";
+import NavHeader from "~/components/navigation/NavHeader";
+import guidGenerator from "~/utilities/randomId";
+
+import getOrganizationUsers from "../api/organization/GetOrgUsers";
+import getUser from "../api/user/getUser";
 // import DeleteUserDialog from '~/components/basic/dialog/DeleteUserDialog';
 import addUserToWorkspace from "../api/workspace/addUserToWorkspace";
-import getUser from "../api/user/getUser";
+import getWorkspaceUsers from "../api/workspace/getWorkspaceUsers";
 import uploadKeys from "../api/workspace/uploadKeys";
-import getOrganizationUsers from "../api/organization/GetOrgUsers";
-import NavHeader from "~/components/navigation/NavHeader";
-import Button from "~/components/basic/buttons/Button";
 
 // #TODO: Update all the workspaceIds
 const crypto = require("crypto");

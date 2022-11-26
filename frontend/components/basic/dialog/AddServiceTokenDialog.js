@@ -1,15 +1,17 @@
-import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useState } from "react";
-import ListBox from "../Listbox";
 import { useRouter } from "next/router";
-import Button from "../buttons/Button";
-import InputField from "../InputField";
-import getLatestFileKey from "~/pages/api/workspace/getLatestFileKey";
-import { decryptAssymmetric, encryptAssymmetric } from "../../utilities/crypto";
-import addServiceToken from "~/pages/api/serviceToken/addServiceToken";
-import nacl from "tweetnacl";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Dialog, Transition } from "@headlessui/react";
+import nacl from "tweetnacl";
+
+import addServiceToken from "~/pages/api/serviceToken/addServiceToken";
+import getLatestFileKey from "~/pages/api/workspace/getLatestFileKey";
+
+import { decryptAssymmetric, encryptAssymmetric } from "../../utilities/crypto";
+import Button from "../buttons/Button";
+import InputField from "../InputField";
+import ListBox from "../Listbox";
 
 const envMapping = {
 	Development: "dev",

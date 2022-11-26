@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/router";
-
+import React, { useEffect,useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
-
-import InputField from "~/components/basic/InputField";
-import Error from "~/components/basic/Error";
-import Button from "~/components/basic/buttons/Button";
-import getWorkspaces from "./api/workspace/getWorkspaces";
-import attemptLogin from "~/utilities/attemptLogin";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useRouter } from "next/router";
 import { faWarning } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import Button from "~/components/basic/buttons/Button";
+import Error from "~/components/basic/Error";
+import InputField from "~/components/basic/InputField";
+import attemptLogin from "~/utilities/attemptLogin";
+
+import getWorkspaces from "./api/workspace/getWorkspaces";
 
 export default function Login() {
 	const [email, setEmail] = useState("");

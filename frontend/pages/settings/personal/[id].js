@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect,useState } from "react";
 import Head from "next/head";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faX } from "@fortawesome/free-solid-svg-icons";
-import InputField from "~/components/basic/InputField";
-import getUser from "../../api/user/getUser";
-import NavHeader from "~/components/navigation/NavHeader";
-import passwordCheck from "~/utilities/checks/PasswordCheck";
-import changePassword from "~/utilities/changePassword";
-import issueBackupKey from "~/utilities/issueBackupKey";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import Button from "~/components/basic/buttons/Button";
+import InputField from "~/components/basic/InputField";
+import NavHeader from "~/components/navigation/NavHeader";
+import changePassword from "~/utilities/changePassword";
+import passwordCheck from "~/utilities/checks/PasswordCheck";
+import issueBackupKey from "~/utilities/issueBackupKey";
+
+import getUser from "../../api/user/getUser";
 
 export default function PersonalSettings() {
 	const [personalEmail, setPersonalEmail] = useState("");

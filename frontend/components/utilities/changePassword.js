@@ -1,6 +1,7 @@
-import Aes256Gcm from "../aes-256-gcm";
-import SRP1 from "~/pages/api/auth/SRP1";
 import changePassword2 from "~/pages/api/auth/ChangePassword2";
+import SRP1 from "~/pages/api/auth/SRP1";
+
+import Aes256Gcm from "../aes-256-gcm";
 
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");

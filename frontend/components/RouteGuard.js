@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
-import { useRouter } from "next/router";
-import checkAuth from "~/pages/api/auth/CheckAuth";
+import { useEffect,useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/router";
+
+import checkAuth from "~/pages/api/auth/CheckAuth";
+
 import { publicPaths } from "../const";
 
 // #TODO: finish spinner only when the data loads fully

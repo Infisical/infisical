@@ -1,30 +1,32 @@
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/router";
+import React, { useEffect,useState } from "react";
 import Head from "next/head";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useRouter } from "next/router";
 import {
 	faMagnifyingGlass,
 	faPlus,
 	faX,
 } from "@fortawesome/free-solid-svg-icons";
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
-import InputField from "~/components/basic/InputField";
-import getWorkspaces from "../../api/workspace/getWorkspaces";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import Button from "~/components/basic/buttons/Button";
 import AddIncidentContactDialog from "~/components/basic/dialog/AddIncidentContactDialog";
-import getIncidentContacts from "../../api/organization/getIncidentContacts";
-import deleteIncidentContact from "../../api/organization/deleteIncidentContact";
-import deleteWorkspace from "../../api/workspace/deleteWorkspace";
 import AddUserDialog from "~/components/basic/dialog/AddUserDialog";
+import InputField from "~/components/basic/InputField";
 import UserTable from "~/components/basic/table/UserTable";
-import getUser from "../../api/user/getUser";
+import NavHeader from "~/components/navigation/NavHeader";
 import guidGenerator from "~/utilities/randomId";
+
 import addUserToOrg from "../../api/organization/addUserToOrg";
-import getOrganizationUsers from "../../api/organization/GetOrgUsers";
-import renameOrg from "../../api/organization/renameOrg";
+import deleteIncidentContact from "../../api/organization/deleteIncidentContact";
+import getIncidentContacts from "../../api/organization/getIncidentContacts";
 import getOrganization from "../../api/organization/GetOrg";
 import getOrganizationSubscriptions from "../../api/organization/GetOrgSubscription";
-import NavHeader from "~/components/navigation/NavHeader";
-import Button from "~/components/basic/buttons/Button";
+import getOrganizationUsers from "../../api/organization/GetOrgUsers";
+import renameOrg from "../../api/organization/renameOrg";
+import getUser from "../../api/user/getUser";
+import deleteWorkspace from "../../api/workspace/deleteWorkspace";
+import getWorkspaces from "../../api/workspace/getWorkspaces";
 
 export default function SettingsOrg() {
 	const [buttonReady, setButtonReady] = useState(false);

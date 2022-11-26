@@ -1,42 +1,43 @@
-import React, { useState, useEffect, useCallback, Fragment } from "react";
-import { useRouter } from "next/router";
+import React, { Fragment, useCallback, useEffect, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
-import guidGenerator from "~/utilities/randomId";
-import getSecretsForProject from "~/utilities/getSecretsForProject";
-import pushKeys from "~/utilities/pushKeys";
-import getWorkspaces from "../api/workspace/getWorkspaces";
-import getUser from "../api/user/getUser";
-import NavHeader from "~/components/navigation/NavHeader";
-
-import DashboardInputField from "~/components/dashboard/DashboardInputField";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useRouter } from "next/router";
 import {
-	faMagnifyingGlass,
-	faEye,
-	faEyeSlash,
-	faPlus,
-	faFolderOpen,
 	faArrowDownAZ,
 	faArrowDownZA,
+	faCheck,
+	faCircleInfo,
+	faCopy,
 	faDownload,
 	faEllipsis,
-	faPerson,
+	faEye,
+	faEyeSlash,
+	faFolderOpen,
+	faMagnifyingGlass,
 	faPeopleGroup,
-	faCheck,
-	faCopy,
-	faCircleInfo,
+	faPerson,
+	faPlus,
 	faX,
 } from "@fortawesome/free-solid-svg-icons";
-import ListBox from "~/components/basic/Listbox";
-import DropZone from "~/components/dashboard/DropZone";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Menu, Transition } from "@headlessui/react";
-import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
+
+import Button from "~/components/basic/buttons/Button";
+import ListBox from "~/components/basic/Listbox";
 import BottonRightPopup from "~/components/basic/popups/BottomRightPopup";
+import DashboardInputField from "~/components/dashboard/DashboardInputField";
+import DropZone from "~/components/dashboard/DropZone";
+import NavHeader from "~/components/navigation/NavHeader";
+import getSecretsForProject from "~/utilities/getSecretsForProject";
+import pushKeys from "~/utilities/pushKeys";
+import pushKeysIntegration from "~/utilities/pushKeysIntegration";
+import guidGenerator from "~/utilities/randomId";
+
+import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
+import getUser from "../api/user/getUser";
 import checkUserAction from "../api/userActions/checkUserAction";
 import registerUserAction from "../api/userActions/registerUserAction";
-import pushKeysIntegration from "~/utilities/pushKeysIntegration";
-import Button from "~/components/basic/buttons/Button";
+import getWorkspaces from "../api/workspace/getWorkspaces";
 
 const KeyPair = ({
 	keyPair,

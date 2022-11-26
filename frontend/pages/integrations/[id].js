@@ -1,27 +1,29 @@
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/router";
+import React, { useEffect,useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useRouter } from "next/router";
 import {
-	faCheck,
 	faArrowRight,
+	faCheck,
 	faRotate,
 	faX,
 } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import Button from "~/components/basic/buttons/Button";
 import ListBox from "~/components/basic/Listbox";
 import NavHeader from "~/components/navigation/NavHeader";
-import getIntegrations from "../api/integrations/GetIntegrations";
+import getSecretsForProject from "~/utilities/getSecretsForProject";
+import pushKeysIntegration from "~/utilities/pushKeysIntegration";
+import guidGenerator from "~/utilities/randomId";
+
+import deleteIntegration from "../api/integrations/DeleteIntegration";
+import deleteIntegrationAuth from "../api/integrations/DeleteIntegrationAuth";
 import getIntegrationApps from "../api/integrations/GetIntegrationApps";
+import getIntegrations from "../api/integrations/GetIntegrations";
 import getWorkspaceAuthorizations from "../api/integrations/getWorkspaceAuthorizations";
 import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
 import startIntegration from "../api/integrations/StartIntegration";
-import deleteIntegration from "../api/integrations/DeleteIntegration";
-import getSecretsForProject from "~/utilities/getSecretsForProject";
-import pushKeysIntegration from "~/utilities/pushKeysIntegration";
-import deleteIntegrationAuth from "../api/integrations/DeleteIntegrationAuth";
-import Button from "~/components/basic/buttons/Button";
-import guidGenerator from "~/utilities/randomId";
 
 const crypto = require("crypto");
 

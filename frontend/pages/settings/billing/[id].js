@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect,useState } from "react";
 import Head from "next/head";
+
 import Plan from "~/components/billing/Plan";
-import getOrganizationSubscriptions from "../../api/organization/GetOrgSubscription";
-import getOrganizationUsers from "../../api/organization/GetOrgUsers";
 import NavHeader from "~/components/navigation/NavHeader";
 import { STRIPE_PRODUCT_PRO, STRIPE_PRODUCT_STARTER } from "~/utilities/config";
+
+import getOrganizationSubscriptions from "../../api/organization/GetOrgSubscription";
+import getOrganizationUsers from "../../api/organization/GetOrgUsers";
 
 export default function SettingsBilling() {
 	let [currentPlan, setCurrentPlan] = useState("");

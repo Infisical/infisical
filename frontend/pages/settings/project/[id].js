@@ -1,17 +1,18 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/router";
+import React, { useEffect,useRef, useState } from "react";
 import Head from "next/head";
-
+import { useRouter } from "next/router";
 import { faCheck, faPlus } from "@fortawesome/free-solid-svg-icons";
+
+import Button from "~/components/basic/buttons/Button";
+import AddServiceTokenDialog from "~/components/basic/dialog/AddServiceTokenDialog";
 import InputField from "~/components/basic/InputField";
+import ServiceTokenTable from "~/components/basic/table/ServiceTokenTable";
+import NavHeader from "~/components/navigation/NavHeader";
+
+import getServiceTokens from "../../api/serviceToken/getServiceTokens";
+import deleteWorkspace from "../../api/workspace/deleteWorkspace";
 import getWorkspaces from "../../api/workspace/getWorkspaces";
 import renameWorkspace from "../../api/workspace/renameWorkspace";
-import deleteWorkspace from "../../api/workspace/deleteWorkspace";
-import NavHeader from "~/components/navigation/NavHeader";
-import Button from "~/components/basic/buttons/Button";
-import ServiceTokenTable from "~/components/basic/table/ServiceTokenTable";
-import getServiceTokens from "../../api/serviceToken/getServiceTokens";
-import AddServiceTokenDialog from "~/components/basic/dialog/AddServiceTokenDialog";
 
 export default function SettingsBasic() {
 	const [buttonReady, setButtonReady] = useState(false);

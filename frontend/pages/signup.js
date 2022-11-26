@@ -1,24 +1,24 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/router";
-
+import React, { useEffect,useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
-import dynamic from "next/dynamic";
+import { useRouter } from "next/router";
+import { faCheck, faWarning,faX } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import InputField from "~/compoennts/basic/InputField";
-import Error from "~/compoennts/basic/Error";
+import Aes256Gcm from "~/compoennts/aes-256-gcm";
 import Button from "~/compoennts/basic/buttons/Button";
-import sendVerificationEmail from "./api/auth/SendVerificationEmail";
+import Error from "~/compoennts/basic/Error";
+import InputField from "~/compoennts/basic/InputField";
+import attemptLogin from "~/compoennts/utilities/attemptLogin";
+import passwordCheck from "~/compoennts/utilities/checks/PasswordCheck";
+import issueBackupKey from "~/compoennts/utilities/issueBackupKey";
+
 import checkEmailVerificationCode from "./api/auth/CheckEmailVerificationCode";
 import completeAccountInformationSignup from "./api/auth/CompleteAccountInformationSignup";
-import Aes256Gcm from "~/compoennts/aes-256-gcm";
-import passwordCheck from "~/compoennts/utilities/checks/PasswordCheck";
+import sendVerificationEmail from "./api/auth/SendVerificationEmail";
 import getWorkspaces from "./api/workspace/getWorkspaces";
-import attemptLogin from "~/compoennts/utilities/attemptLogin";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faX, faWarning } from "@fortawesome/free-solid-svg-icons";
-import issueBackupKey from "~/compoennts/utilities/issueBackupKey";
 
 const ReactCodeInput = dynamic(import("react-code-input"));
 const nacl = require("tweetnacl");

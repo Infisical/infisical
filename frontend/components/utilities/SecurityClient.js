@@ -1,4 +1,5 @@
 import token from "~/pages/api/auth/Token";
+
 import { PATH } from "../../const";
 
 export default class SecurityClient {

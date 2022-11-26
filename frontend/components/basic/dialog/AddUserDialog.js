@@ -1,9 +1,10 @@
-import { Dialog, Transition } from "@headlessui/react";
 import { Fragment } from "react";
-import InputField from "../InputField";
 import { useRouter } from "next/router";
-import Button from "../buttons/Button";
+import { Dialog, Transition } from "@headlessui/react";
+
 import { STRIPE_PRODUCT_STARTER } from "../../utilities/config";
+import Button from "../buttons/Button";
+import InputField from "../InputField";
 
 const AddUserDialog = ({
 	isOpen,

@@ -1,27 +1,27 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react/jsx-key */
-import React, { useState, Fragment, useEffect } from "react";
-import { useRouter } from "next/router";
-
+import React, { Fragment, useEffect,useState } from "react";
 import Image from "next/image";
-
-import logout from "~/pages/api/auth/Logout";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useRouter } from "next/router";
+import { faGithub,faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
 import {
-	faBook,
-	faGear,
-	faCoins,
-	faRightFromBracket,
-	faEnvelope,
-	faPlus,
 	faAngleDown,
+	faBook,
+	faCoins,
+	faEnvelope,
+	faGear,
+	faPlus,
+	faRightFromBracket,
 } from "@fortawesome/free-solid-svg-icons";
-import { faSlack, faGithub } from "@fortawesome/free-brands-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Menu, Transition } from "@headlessui/react";
-import getUser from "~/pages/api/user/getUser";
-import getOrganizations from "~/pages/api/organization/getOrgs";
+
+import logout from "~/pages/api/auth/Logout";
 import getOrganization from "~/pages/api/organization/GetOrg";
+import getOrganizations from "~/pages/api/organization/getOrgs";
+import getUser from "~/pages/api/user/getUser";
+
 import guidGenerator from "../utilities/randomId";
 
 const supportOptions = [

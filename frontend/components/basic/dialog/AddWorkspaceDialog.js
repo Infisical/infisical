@@ -1,9 +1,10 @@
-import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useState } from "react";
-import InputField from "../InputField";
 import Image from "next/image";
-import { Checkbox } from "../table/Checkbox";
+import { Dialog, Transition } from "@headlessui/react";
+
 import Button from "../buttons/Button";
+import InputField from "../InputField";
+import { Checkbox } from "../table/Checkbox";
 
 /**
  * The dialog modal for when the user wants to create a new workspace

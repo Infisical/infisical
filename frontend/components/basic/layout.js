@@ -1,29 +1,29 @@
 /* eslint-disable react-hooks/exhaustive-deps */
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
-
-import NavBarDashboard from "../navigation/NavBarDashboard";
-import Listbox from "./Listbox";
-import getWorkspaces from "~/pages/api/workspace/getWorkspaces";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-	faHouse,
-	faUser,
 	faGear,
-	faMobile,
+	faHouse,
 	faLink,
+	faMobile,
+	faUser,
 } from "@fortawesome/free-solid-svg-icons";
-import AddWorkspaceDialog from "./dialog/AddWorkspaceDialog";
-import createWorkspace from "~/pages/api/workspace/createWorkspace";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import getOrganizations from "~/pages/api/organization/getOrgs";
 import getOrganizationUserProjects from "~/pages/api/organization/GetOrgUserProjects";
 import getOrganizationUsers from "~/pages/api/organization/GetOrgUsers";
 import addUserToWorkspace from "~/pages/api/workspace/addUserToWorkspace";
-import getOrganizations from "~/pages/api/organization/getOrgs";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import createWorkspace from "~/pages/api/workspace/createWorkspace";
+import getWorkspaces from "~/pages/api/workspace/getWorkspaces";
 
+import NavBarDashboard from "../navigation/NavBarDashboard";
 import { decryptAssymmetric, encryptAssymmetric } from "../utilities/crypto";
 import Button from "./buttons/Button";
+import AddWorkspaceDialog from "./dialog/AddWorkspaceDialog";
+import Listbox from "./Listbox";
 
 export default function Layout({ children }) {
 	const router = useRouter();
