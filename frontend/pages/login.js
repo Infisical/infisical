@@ -12,6 +12,7 @@ import getWorkspaces from "./api/workspace/getWorkspaces";
 import attemptLogin from "../components/utilities/attemptLogin";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faWarning } from "@fortawesome/free-solid-svg-icons";
+import useTranslation from "next-translate/useTranslation";
 
 export default function Login() {
 	const [email, setEmail] = useState("");
@@ -19,6 +20,7 @@ export default function Login() {
 	const [errorLogin, setErrorLogin] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const router = useRouter();
+	const { t } = useTranslation("common");
 
 	useEffect(async () => {
 		let userWorkspace;
@@ -36,13 +38,18 @@ export default function Login() {
 	 */
 	const loginCheck = async () => {
 		setIsLoading(true);
-		await attemptLogin(email, password, setErrorLogin, router, false, true).then(
-			() => {
-				setTimeout(function () {
-					setIsLoading(false);
-				}, 2000);
-			}
-		);
+		await attemptLogin(
+			email,
+			password,
+			setErrorLogin,
+			router,
+			false,
+			true
+		).then(() => {
+			setTimeout(function () {
+				setIsLoading(false);
+			}, 2000);
+		});
 	};
 
 	return (
@@ -69,7 +76,7 @@ export default function Login() {
 			</Link>
 			<div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-4 pt-8 px-6 rounded-xl drop-shadow-xl">
 				<p className="text-4xl flex justify-center font-semibold text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-					Log In
+					Log In {t("test")}
 				</p>
 				<div className="flex flex-row items-center justify-center">
 					<p className="text-md flex justify-center mt-2 text-gray-400">
@@ -122,11 +129,17 @@ export default function Login() {
           <p className="text-gray-400">I may have <Link href="/login"><u className="text-sky-500 cursor-pointer">forgotten my password.</u></Link></p>
         </div> */}
 			</div>
-			{false &&
+			{false && (
 				<div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-300 rounded-md max-w-md mx-auto mt-4">
-					<FontAwesomeIcon icon={faWarning} className="ml-2 mr-6 text-6xl"/>
-					We are experiencing minor technical difficulties. We are working on solving it right now. Please come back in a few minutes. 
-				</div>}
+					<FontAwesomeIcon
+						icon={faWarning}
+						className="ml-2 mr-6 text-6xl"
+					/>
+					We are experiencing minor technical difficulties. We are
+					working on solving it right now. Please come back in a few
+					minutes.
+				</div>
+			)}
 		</div>
 	);
 }

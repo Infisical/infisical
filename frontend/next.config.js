@@ -1,12 +1,17 @@
 // next.config.js
+const nextTranslate = require("next-translate");
 
 const ContentSecurityPolicy = `
 	default-src ${process.env.NEXT_PUBLIC_WEBSITE_URL};
-	script-src ${process.env.NEXT_PUBLIC_WEBSITE_URL} https://app.posthog.com https://infisical.com https://assets.calendly.com/ https://js.stripe.com https://api.stripe.com 'unsafe-inline' 'unsafe-eval';
+	script-src ${
+		process.env.NEXT_PUBLIC_WEBSITE_URL
+	} https://app.posthog.com https://infisical.com https://assets.calendly.com/ https://js.stripe.com https://api.stripe.com 'unsafe-inline' 'unsafe-eval';
 	style-src 'self' https://rsms.me 'unsafe-inline';
 	child-src https://infisical.com https://api.stripe.com;
 	frame-src https://js.stripe.com/ https://api.stripe.com;
-	connect-src ws://${process.env.NEXT_PUBLIC_WEBSITE_URL?.split('//')[1]} ${process.env.NEXT_PUBLIC_WEBSITE_URL} https://api.github.com/repos/Infisical/infisical-cli https://api.heroku.com/ https://id.heroku.com/oauth/authorize https://id.heroku.com/oauth/token https://checkout.stripe.com https://app.posthog.com https://infisical.com https://api.stripe.com https://vitals.vercel-insights.com/v1/vitals;
+	connect-src ws://${process.env.NEXT_PUBLIC_WEBSITE_URL?.split("//")[1]} ${
+	process.env.NEXT_PUBLIC_WEBSITE_URL
+} https://api.github.com/repos/Infisical/infisical-cli https://api.heroku.com/ https://id.heroku.com/oauth/authorize https://id.heroku.com/oauth/token https://checkout.stripe.com https://app.posthog.com https://infisical.com https://api.stripe.com https://vitals.vercel-insights.com/v1/vitals;
 	img-src 'self' https://*.stripe.com https://i.ytimg.com/ data:;
 	media-src;
 	font-src 'self' https://maxcdn.bootstrapcdn.com https://rsms.me https://fonts.gstatic.com;  
@@ -49,8 +54,8 @@ const securityHeaders = [
 	},
 ];
 
-module.exports = {
-	output: 'standalone',
+module.exports = nextTranslate({
+	output: "standalone",
 	async headers() {
 		return [
 			{
@@ -60,4 +65,4 @@ module.exports = {
 			},
 		];
 	},
-};
+});
