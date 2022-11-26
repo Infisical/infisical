@@ -2,8 +2,6 @@
 title: "Docker"
 ---
 
-Prerequisite: [Infisical Token and How to Generate One](../../getting-started/dashboard/token).
-
 ## Step 1: Add CLI to your Dockerfile
 
 <Tabs>
@@ -33,7 +31,7 @@ Prerequisite: [Infisical Token and How to Generate One](../../getting-started/da
 
 ## Step 2: Generate Infisical Token
 
-In order for the CLI to authenticate and retrieve your project's secrets without requiring your login credentials, you must [generate an Infisical Token](../../getting-started/dashboard/token); keep it handy.
+[Generate an Infisical Token](../../getting-started/dashboard/token) and keep it handy.
 
 ## Step 3: Set start command of your container
 
@@ -56,7 +54,7 @@ Required options:
 The CLI looks out for an environment variable called the `INFISICAL_TOKEN` which you can set depending on where you run the CLI. If `INFISICAL_TOKEN` is detected by the CLI, it will authenticate and retrieve the environment variables which the token is authorized for.
 
 ```bash
- docker run --env INFISICAL_TOKEN=<the-token-you-got-from-step-2>...
+ docker run --env INFISICAL_TOKEN=[the-token-you-got-from-step-2]...
 ```
 
 Note: `INFISICAL_TOKEN` is the token you generated in step 2.

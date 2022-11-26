@@ -2,33 +2,28 @@
 title: "Usage"
 ---
 
-Prerequisite: [Install the CLI](../../getting-started/cli/installation)
+Prerequisite: [Install the CLI](/cli/overview)
 
-## Login
-
-Login in using the `login` command in your terminal. Logging in is a one-time, post-installation action that authenticates you with the platform — to change users, you can run the command again.
+## Log in to the Infisical CLI
 
 ```bash
 infisical login
 ```
 
-## Initialization
-
-In the root of your local project, initialize Infisical and follow steps to connect your project to the platform.
+## Initialize Infisical for your project
 
 ```bash
+# move to your project
 cd /path/to/project
 
-# initialization
+# initialize infisical
 infisical init
 ```
 
-## Injecting environment variables
-
-To inject environment variables from the platform to your project, use the `run` command.
+## Inject environment variables
 
 ```bash
-# command
+# inject environment variables into app
 infisical run -- [your application start command]
 ```
 
@@ -39,7 +34,7 @@ Options you can specify:
 | `--env`       | Used to set the environment that secrets are pulled from. Accepted values: `dev`, `staging`, `test`, `prod` | `dev`         |
 | `--projectId` | Used to link a local project to the platform (required only if injecting via the service token method)      | `None`        |
 
-Examples:
+## Examples:
 
 ```bash
 # example with node

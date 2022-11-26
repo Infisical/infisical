@@ -35,17 +35,22 @@
   ],
   "navigation": [
     {
-      "group": "Platform",
+      "group": " ",
       "pages": [
-        "getting-started/introduction",
-        "getting-started/features",
+        {
+          "group": "Overview",
+          "pages": [
+            "getting-started/introduction",
+            "getting-started/quickstart",
+            "getting-started/features"
+          ]
+        },
         {
           "group": "Security",
           "pages": [
-            "getting-started/security/overview",
-            "getting-started/security/data-model",
-            "getting-started/security/mechanics",
-            "getting-started/security/statement"
+            "security/overview",
+            "security/data-model",
+            "security/mechanics"
           ]
         },
         {
@@ -56,48 +61,55 @@
             "getting-started/dashboard/project",
             "getting-started/dashboard/integrations",
             "getting-started/dashboard/token"
-          ]
+          ] 
         },
         {
-          "group": "Command Line",
+          "group": "CLI",
           "pages": [
-            "getting-started/cli/installation", 
-            "getting-started/cli/cli-guide", 
-            "getting-started/cli/token",
-            "getting-started/cli/reference"
+            "cli/overview",
+            "cli/usage",
+            {
+              "group": "Reference",
+              "pages": [
+                "cli/reference/commands",
+                "cli/reference/login",
+                "cli/reference/init",
+                "cli/reference/run"
+              ]
+            }
           ]
-        }
-      ]
-    },
-    {
-      "group": "Integrations",
-      "pages": [
-        "integrations/heroku",
-        "integrations/docker",
-        "integrations/docker-compose"
-      ]
-    },
-    {
-      "group": "Self-hosting",
-      "pages": [
-        "self-hosting/overview",
-        {
-          "group": "Deployments",
-          "pages": ["self-hosting/deployments/linux"]
         },
         {
-          "group": "Configuration",
-          "pages": ["self-hosting/configuration/envars"]
+          "group": "Integrations",
+          "pages": [
+            "integrations/overview",
+            "integrations/heroku",
+            "integrations/docker",
+            "integrations/docker-compose"
+          ]
+        },
+        {
+          "group": "Self-hosting",
+          "pages": [
+            "self-hosting/overview",
+            {
+              "group": "Deployments",
+              "pages": ["self-hosting/deployments/linux"]
+            },
+            {
+              "group": "Configuration",
+              "pages": ["self-hosting/configuration/envars"]
+            }
+          ]
+        },
+        {
+          "group": "Contributing",
+          "pages": [
+            "contributing/overview",
+            "contributing/code-of-conduct",
+            "contributing/developing"
+          ]
         }
-      ]
-    },
-    {
-      "group": "Contributing",
-      "pages": [
-        "contributing/overview",
-        "contributing/code-of-conduct",
-        "contributing/developing",
-        "contributing/architecture"
       ]
     }
   ],
