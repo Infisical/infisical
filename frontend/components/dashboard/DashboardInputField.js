@@ -78,7 +78,7 @@ const DashboardInputField = ({
 							blurred
 								? "text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-400 peer-active:text-gray-400"
 								: ""
-						} flex flex-row font-mono absolute z-0 ph-no-capture bg-bunker-800 rounded-md text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-4 focus:ring-primary/50 duration-100`}
+						} flex flex-row font-mono absolute z-0 ph-no-capture bg-bunker-800 h-9 rounded-md text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-4 focus:ring-primary/50 duration-100`}
 					>
 						{findReferences(value).map((texts, id) => {
 							if (id % 2 == 0 || texts.length <= 2) {
