@@ -7,61 +7,61 @@ import (
 )
 
 // References to self should return the value unaltered
-// func Test_SubstituteSecrets_When_ReferenceToSelf(t *testing.T) {
+func Test_SubstituteSecrets_When_ReferenceToSelf(t *testing.T) {
 
-// 	var tests = []struct {
-// 		Key           string
-// 		Value         string
-// 		ExpectedValue string
-// 	}{
-// 		{Key: "A", Value: "${A}", ExpectedValue: "${A}"},
-// 		{Key: "A", Value: "${A} ${A}", ExpectedValue: "${A} ${A}"},
-// 		{Key: "A", Value: "${A}${A}", ExpectedValue: "${A}${A}"},
-// 	}
+	var tests = []struct {
+		Key           string
+		Value         string
+		ExpectedValue string
+	}{
+		{Key: "A", Value: "${A}", ExpectedValue: "${A}"},
+		{Key: "A", Value: "${A} ${A}", ExpectedValue: "${A} ${A}"},
+		{Key: "A", Value: "${A}${A}", ExpectedValue: "${A}${A}"},
+	}
 
-// 	for _, test := range tests {
-// 		secret := models.SingleEnvironmentVariable{
-// 			Key:   test.Key,
-// 			Value: test.Value,
-// 		}
+	for _, test := range tests {
+		secret := models.SingleEnvironmentVariable{
+			Key:   test.Key,
+			Value: test.Value,
+		}
 
-// 		secrets := []models.SingleEnvironmentVariable{secret}
-// 		result := SubstituteSecrets(secrets)
+		secrets := []models.SingleEnvironmentVariable{secret}
+		result := SubstituteSecrets(secrets)
 
-// 		if result[0].Value != test.ExpectedValue {
-// 			t.Errorf("Test_SubstituteSecrets_When_ReferenceToSelf: expected %s but got %s for input %s", test.ExpectedValue, result[0].Value, test.Value)
-// 		}
+		if result[0].Value != test.ExpectedValue {
+			t.Errorf("Test_SubstituteSecrets_When_ReferenceToSelf: expected %s but got %s for input %s", test.ExpectedValue, result[0].Value, test.Value)
+		}
 
-// 	}
-// }
+	}
+}
 
-// func Test_SubstituteSecrets_When_ReferenceDoesNotExist(t *testing.T) {
+func Test_SubstituteSecrets_When_ReferenceDoesNotExist(t *testing.T) {
 
-// 	var tests = []struct {
-// 		Key           string
-// 		Value         string
-// 		ExpectedValue string
-// 	}{
-// 		{Key: "A", Value: "${X}", ExpectedValue: "${X}"},
-// 		{Key: "A", Value: "${H}HELLO", ExpectedValue: "${H}HELLO"},
-// 		{Key: "A", Value: "${L}${S}", ExpectedValue: "${L}${S}"},
-// 	}
+	var tests = []struct {
+		Key           string
+		Value         string
+		ExpectedValue string
+	}{
+		{Key: "A", Value: "${X}", ExpectedValue: "${X}"},
+		{Key: "A", Value: "${H}HELLO", ExpectedValue: "${H}HELLO"},
+		{Key: "A", Value: "${L}${S}", ExpectedValue: "${L}${S}"},
+	}
 
-// 	for _, test := range tests {
-// 		secret := models.SingleEnvironmentVariable{
-// 			Key:   test.Key,
-// 			Value: test.Value,
-// 		}
+	for _, test := range tests {
+		secret := models.SingleEnvironmentVariable{
+			Key:   test.Key,
+			Value: test.Value,
+		}
 
-// 		secrets := []models.SingleEnvironmentVariable{secret}
-// 		result := SubstituteSecrets(secrets)
+		secrets := []models.SingleEnvironmentVariable{secret}
+		result := SubstituteSecrets(secrets)
 
-// 		if result[0].Value != test.ExpectedValue {
-// 			t.Errorf("Test_SubstituteSecrets_When_ReferenceToSelf: expected %s but got %s for input %s", test.ExpectedValue, result[0].Value, test.Value)
-// 		}
+		if result[0].Value != test.ExpectedValue {
+			t.Errorf("Test_SubstituteSecrets_When_ReferenceToSelf: expected %s but got %s for input %s", test.ExpectedValue, result[0].Value, test.Value)
+		}
 
-// 	}
-// }
+	}
+}
 
 func Test_SubstituteSecrets_When_ReferenceDoesNotExist_And_Self_Referencing(t *testing.T) {
 
@@ -71,14 +71,9 @@ func Test_SubstituteSecrets_When_ReferenceDoesNotExist_And_Self_Referencing(t *t
 		ExpectedValue string
 	}{
 		{
-			Key:           "A",
-			Value:         "*${A}* ${X}",
-			ExpectedValue: "*${A}*",
-		},
-		{
-			Key:           "H",
-			Value:         "${X} >>>",
-			ExpectedValue: "*${A}*",
+			Key:           "O",
+			Value:         "${P} ==$$ ${X} ${UNKNOWN} ${A}",
+			ExpectedValue: "DOMAIN === ${A} DOMAIN >>> ==$$ DOMAIN ${UNKNOWN} ${A}",
 		},
 		{
 			Key:           "X",
@@ -86,25 +81,30 @@ func Test_SubstituteSecrets_When_ReferenceDoesNotExist_And_Self_Referencing(t *t
 			ExpectedValue: "DOMAIN",
 		},
 		{
-			Key:           "P",
-			Value:         "${X} === ${A} ${H}",
-			ExpectedValue: "DOMAIN",
+			Key:           "A",
+			Value:         "*${A}* ${X}",
+			ExpectedValue: "*${A}* DOMAIN",
 		},
-		// {
-		// 	Key:           "B",
-		// 	Value:         "*${A}*TOKEN*${X}*",
-		// 	ExpectedValue: "*${A}*TOKEN*DOMAIN*",
-		// },
-		// {
-		// 	Key:           "C",
-		// 	Value:         "*${A}* *${X}* *${B}* *${UNKNOWN}*",
-		// 	ExpectedValue: "*${A}* *DOMAIN* **${A}*TOKEN*DOMAIN** *${UNKNOWN}*",
-		// },
-		// {
-		// 	Key:           "W",
-		// 	Value:         "*${W}* ${LOL $JK} *${C}* *${C}*",
-		// 	ExpectedValue: "*${W}* ${LOL $JK} **${A}* *DOMAIN* **${A}*TOKEN*DOMAIN** *${UNKNOWN}** **${A}* *DOMAIN* **${A}*TOKEN*DOMAIN** *${UNKNOWN}**",
-		// },
+		{
+			Key:           "H",
+			Value:         "${X} >>>",
+			ExpectedValue: "DOMAIN >>>",
+		},
+		{
+			Key:           "P",
+			Value:         "DOMAIN === ${A} ${H}",
+			ExpectedValue: "DOMAIN === ${A} DOMAIN >>>",
+		},
+		{
+			Key:           "T",
+			Value:         "${P} ==$$ ${X} ${UNKNOWN} ${A} ${P} ==$$ ${X} ${UNKNOWN} ${A}",
+			ExpectedValue: "DOMAIN === ${A} DOMAIN >>> ==$$ DOMAIN ${UNKNOWN} ${A} DOMAIN === ${A} DOMAIN >>> ==$$ DOMAIN ${UNKNOWN} ${A}",
+		},
+		{
+			Key:           "S",
+			Value:         "${ SSS$$ ${HEY}",
+			ExpectedValue: "${ SSS$$ ${HEY}",
+		},
 	}
 
 	secrets := []models.SingleEnvironmentVariable{}
@@ -112,11 +112,49 @@ func Test_SubstituteSecrets_When_ReferenceDoesNotExist_And_Self_Referencing(t *t
 		secrets = append(secrets, models.SingleEnvironmentVariable{Key: test.Key, Value: test.Value})
 	}
 
-	SubstituteSecrets(secrets)
+	results := SubstituteSecrets(secrets)
 
-	// if result[0].Value != test.ExpectedValue {
-	// 	t.Errorf("Test_SubstituteSecrets_When_ReferenceToSelf: expected %s but got %s for input %s", test.ExpectedValue, result[0].Value, test.Value)
-	// }
+	for index, expanded := range results {
+		if expanded.Value != tests[index].ExpectedValue {
+			t.Errorf("Test_SubstituteSecrets_When_ReferenceToSelf: expected [%s] but got [%s] for input [%s]", tests[index].ExpectedValue, expanded.Value, tests[index].Value)
+		}
+	}
+}
 
-	// fmt.Println(result)
+func Test_SubstituteSecrets_When_No_SubstituteNeeded(t *testing.T) {
+
+	tests := []struct {
+		Key           string
+		Value         string
+		ExpectedValue string
+	}{
+		{
+			Key:           "DOMAIN",
+			Value:         "infisical.com",
+			ExpectedValue: "infisical.com",
+		},
+		{
+			Key:           "API_KEY",
+			Value:         "hdgsvjshcgkdckhevdkd",
+			ExpectedValue: "hdgsvjshcgkdckhevdkd",
+		},
+		{
+			Key:           "ENV",
+			Value:         "PROD",
+			ExpectedValue: "PROD",
+		},
+	}
+
+	secrets := []models.SingleEnvironmentVariable{}
+	for _, test := range tests {
+		secrets = append(secrets, models.SingleEnvironmentVariable{Key: test.Key, Value: test.Value})
+	}
+
+	results := SubstituteSecrets(secrets)
+
+	for index, expanded := range results {
+		if expanded.Value != tests[index].ExpectedValue {
+			t.Errorf("Test_SubstituteSecrets_When_ReferenceToSelf: expected [%s] but got [%s] for input [%s]", tests[index].ExpectedValue, expanded.Value, tests[index].Value)
+		}
+	}
 }

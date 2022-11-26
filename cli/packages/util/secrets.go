@@ -222,8 +222,7 @@ func getExpandedEnvVariable(secrets []models.SingleEnvironmentVariable, variable
 				return secret.Value
 			}
 
-			fullyReplacedValue := secret.Value
-			fmt.Println("variablesToPopulate", variablesToPopulate)
+			valueToEdit := secret.Value
 			for _, variableWithSign := range variablesToPopulate {
 				variableWithoutSign := strings.Trim(variableWithSign, "}")
 				variableWithoutSign = strings.Trim(variableWithoutSign, "${")
@@ -236,10 +235,8 @@ func getExpandedEnvVariable(secrets []models.SingleEnvironmentVariable, variable
 					var expandedVariableValue string
 
 					if preComputedVariable, found := hashMapOfCompleteVariables[variableWithoutSign]; found {
-						fmt.Println("precompute for varable: ", variableWithoutSign)
 						expandedVariableValue = preComputedVariable
 					} else {
-						fmt.Println("compute for varable: ", variableWithoutSign)
 						expandedVariableValue = getExpandedEnvVariable(secrets, variableWithoutSign, hashMapOfCompleteVariables, hashMapOfSelfRefs)
 						hashMapOfCompleteVariables[variableWithoutSign] = expandedVariableValue
 					}
@@ -248,12 +245,13 @@ func getExpandedEnvVariable(secrets []models.SingleEnvironmentVariable, variable
 					if _, found := hashMapOfSelfRefs[variableWithoutSign]; found {
 						continue
 					} else {
-						fullyReplacedValue = strings.ReplaceAll(fullyReplacedValue, variableWithSign, expandedVariableValue)
+						valueToEdit = strings.ReplaceAll(valueToEdit, variableWithSign, expandedVariableValue)
 					}
 				}
-
-				return fullyReplacedValue
 			}
+
+			return valueToEdit
+
 		} else {
 			continue
 		}
@@ -266,9 +264,9 @@ func SubstituteSecrets(secrets []models.SingleEnvironmentVariable) []models.Sing
 	hashMapOfCompleteVariables := make(map[string]string)
 	hashMapOfSelfRefs := make(map[string]string)
 	expandedSecrets := []models.SingleEnvironmentVariable{}
+
 	for _, secret := range secrets {
 		expandedVariable := getExpandedEnvVariable(secrets, secret.Key, hashMapOfCompleteVariables, hashMapOfSelfRefs)
-		fmt.Println(secret.Key, "=", expandedVariable)
 		expandedSecrets = append(expandedSecrets, models.SingleEnvironmentVariable{
 			Key:   secret.Key,
 			Value: expandedVariable,
