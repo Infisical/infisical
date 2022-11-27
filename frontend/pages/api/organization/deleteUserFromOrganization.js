@@ -1,6 +1,5 @@
-import SecurityClient from "~/utilities/SecurityClient";
-
 import { PATH } from "~/const";
+import SecurityClient from "~/utilities/SecurityClient";
 
 /**
  * This function removes a certain member from a certain organization

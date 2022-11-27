@@ -5,9 +5,8 @@ import { config } from "@fortawesome/fontawesome-svg-core";
 import { initPostHog } from "~/components/analytics/posthog";
 import Layout from "~/components/basic/layout";
 import RouteGuard from "~/components/RouteGuard";
-import { ENV } from "~/utilities/config";
-
 import { publicPaths } from "~/const";
+import { ENV } from "~/utilities/config";
 
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "../styles/globals.css";

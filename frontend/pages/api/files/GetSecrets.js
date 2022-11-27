@@ -1,6 +1,5 @@
-import SecurityClient from "~/utilities/SecurityClient.js";
-
 import { PATH } from "~/const";
+import SecurityClient from "~/utilities/SecurityClient.js";
 
 /**
  * This function fetches the encrypted secrets from the .env file

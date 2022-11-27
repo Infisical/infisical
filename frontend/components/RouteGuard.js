@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
 
-import checkAuth from "~/pages/api/auth/CheckAuth";
-
 import { publicPaths } from "~/const";
+import checkAuth from "~/pages/api/auth/CheckAuth";
 
 // #TODO: finish spinner only when the data loads fully
 // #TODO: Redirect somewhere if the page does not exist

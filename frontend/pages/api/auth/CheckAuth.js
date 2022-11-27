@@ -1,6 +1,5 @@
-import SecurityClient from "~/utilities/SecurityClient.js";
-
 import { PATH } from "~/const";
+import SecurityClient from "~/utilities/SecurityClient.js";
 
 /**
  * This function is used to check if the user is authenticated.

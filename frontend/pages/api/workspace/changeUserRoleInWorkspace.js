@@ -1,6 +1,5 @@
-import SecurityClient from "~/utilities/SecurityClient";
-
 import { PATH } from "~/const";
+import SecurityClient from "~/utilities/SecurityClient";
 
 /**
  * This function change the access of a user in a certain workspace

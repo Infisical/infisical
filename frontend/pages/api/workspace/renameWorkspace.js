@@ -1,6 +1,5 @@
-import SecurityClient from "~/utilities/SecurityClient";
-
 import { PATH } from "~/const";
+import SecurityClient from "~/utilities/SecurityClient";
 
 /**
  * This route lets us rename a certain workspace.

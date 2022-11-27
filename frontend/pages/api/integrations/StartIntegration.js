@@ -1,6 +1,5 @@
-import SecurityClient from "~/utilities/SecurityClient";
-
 import { PATH } from "~/const";
+import SecurityClient from "~/utilities/SecurityClient";
 
 /**
  * This route starts the integration after teh default one if gonna set up.

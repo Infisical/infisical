@@ -1,6 +1,5 @@
-import SecurityClient from "~/utilities/SecurityClient";
-
 import { PATH } from "~/const";
+import SecurityClient from "~/utilities/SecurityClient";
 
 const getIntegrations = () => {
   return SecurityClient.fetchCall(PATH + "/api/v1/integration/integrations", {

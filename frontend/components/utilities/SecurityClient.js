@@ -1,6 +1,5 @@
-import token from "~/pages/api/auth/Token";
-
 import { PATH } from "~/const";
+import token from "~/pages/api/auth/Token";
 
 export default class SecurityClient {
   static authOrigins = [PATH];
