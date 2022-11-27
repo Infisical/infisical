@@ -33,6 +33,7 @@
 		"jsrp": "^0.2.4",
 		"markdown-it": "^13.0.1",
 		"next": "^12.2.5",
+		"next-translate": "^1.6.0",
 		"posthog-js": "^1.34.0",
 		"query-string": "^7.1.1",
 		"react": "^17.0.2",

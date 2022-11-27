@@ -49,6 +49,7 @@ services:
       - ./frontend/public:/app/public
       - ./frontend/styles:/app/styles
       - ./frontend/components:/app/components
+      - ./frontend/locales:/app/locales
     env_file: .env
     environment:
       - NEXT_PUBLIC_ENV=development

@@ -19,6 +19,8 @@ import attemptLogin from "../components/utilities/attemptLogin";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faX, faWarning } from "@fortawesome/free-solid-svg-icons";
 import issueBackupKey from "../components/utilities/issueBackupKey";
+import useTranslation from "next-translate/useTranslation";
+import Trans from "next-translate/Trans";
 
 const ReactCodeInput = dynamic(import("react-code-input"));
 const nacl = require("tweetnacl");
@@ -73,7 +75,8 @@ export default function SignUp() {
 	const [passwordErrorNumber, setPasswordErrorNumber] = useState(false);
 	const [passwordErrorUpperCase, setPasswordErrorUpperCase] = useState(false);
 	const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
-	const [passwordErrorSpecialChar, setPasswordErrorSpecialChar] = useState(false);
+	const [passwordErrorSpecialChar, setPasswordErrorSpecialChar] =
+		useState(false);
 	const [emailError, setEmailError] = useState(false);
 	const [emailErrorMessage, setEmailErrorMessage] = useState("");
 	const [step, setStep] = useState(1);
@@ -83,6 +86,8 @@ export default function SignUp() {
 	const [backupKeyError, setBackupKeyError] = useState(false);
 	const [verificationToken, setVerificationToken] = useState();
 	const [backupKeyIssued, setBackupKeyIssued] = useState(false);
+
+	const { t } = useTranslation("common");
 
 	useEffect(async () => {
 		let userWorkspace;
@@ -108,7 +113,7 @@ export default function SignUp() {
 			// Checking if the code matches the email.
 			const response = await checkEmailVerificationCode(email, code);
 			if (response.status == "200" || code == "111222") {
-				setVerificationToken((await response.json()).token)
+				setVerificationToken((await response.json()).token);
 				setStep(3);
 			} else {
 				setCodeError(true);
@@ -180,7 +185,14 @@ export default function SignUp() {
 
 			const { ciphertext, iv, tag } = Aes256Gcm.encrypt(
 				PRIVATE_KEY,
-				password.slice(0, 32).padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), "0")
+				password
+					.slice(0, 32)
+					.padStart(
+						32 +
+							(password.slice(0, 32).length -
+								new Blob([password]).size),
+						"0"
+					)
 			);
 			localStorage.setItem("PRIVATE_KEY", PRIVATE_KEY);
 
@@ -191,19 +203,21 @@ export default function SignUp() {
 				},
 				async () => {
 					client.createVerifier(async (err, result) => {
-						const response = await completeAccountInformationSignup({
-							email,
-							firstName,
-							lastName,
-							organizationName: firstName + "'s organization",
-							publicKey: PUBLIC_KEY,
-							ciphertext,
-							iv,
-							tag,
-							salt: result.salt,
-							verifier: result.verifier,
-							token: verificationToken
-						});
+						const response = await completeAccountInformationSignup(
+							{
+								email,
+								firstName,
+								lastName,
+								organizationName: firstName + "'s organization",
+								publicKey: PUBLIC_KEY,
+								ciphertext,
+								iv,
+								tag,
+								salt: result.salt,
+								verifier: result.verifier,
+								token: verificationToken,
+							}
+						);
 
 						// if everything works, go the main dashboard page.
 						if (!errorCheck && response.status == "200") {
@@ -243,20 +257,20 @@ export default function SignUp() {
 	const step1 = (
 		<div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-8 md:px-6 mx-1 mb-48 md:mb-16 rounded-xl drop-shadow-xl">
 			<p className="text-4xl font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-				Let's get started
+				{t("auth.step1-start")}
 			</p>
 			<div className="flex flex-col items-center justify-center w-full md:pb-2 max-h-24 max-w-md mx-auto pt-2">
 				<Link href="/login">
 					<button className="w-max pb-3 hover:opacity-90 duration-200">
 						<u className="font-normal text-md text-sky-500">
-							Have an account? Log in
+							{t("auth.already-have-account")}
 						</u>
 					</button>
 				</Link>
 			</div>
 			<div className="flex items-center justify-center w-5/6 md:w-full m-auto md:p-2 rounded-lg max-h-24 mt-4">
 				<InputField
-					label="Email"
+					label={t("email")}
 					onChangeHandler={setEmail}
 					type="email"
 					value={email}
@@ -276,7 +290,11 @@ export default function SignUp() {
 					and acknowledged the Privacy Policy.
 				</p>
 				<div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
-					<Button text="Get Started" onButtonPressed={emailCheck} size="lg"/>
+					<Button
+						text={t("auth.step1-submit")}
+						onButtonPressed={emailCheck}
+						size="lg"
+					/>
 				</div>
 			</div>
 		</div>
@@ -285,12 +303,19 @@ export default function SignUp() {
 	// Step 2 of the signup process (enter the email verification code)
 	const step2 = (
 		<div className="bg-bunker w-max mx-auto h-7/12 pt-10 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-16">
-			<p className="text-l flex justify-center text-gray-400">
-				We've sent a verification email to{" "}
-			</p>
-			<p className="text-l flex justify-center font-semibold my-2 text-gray-400">
-				{email}{" "}
-			</p>
+			<Trans
+				i18nKey="common:auth.step2-message"
+				components={{
+					wrapper: (
+						<p className="text-l flex justify-center text-gray-400" />
+					),
+					email: (
+						<p className="text-l flex justify-center font-semibold my-2 text-gray-400" />
+					),
+				}}
+				values={{ email }}
+			/>
+
 			<div className="hidden md:block">
 				<ReactCodeInput
 					type="text"
@@ -309,11 +334,13 @@ export default function SignUp() {
 					className="mt-2 mb-6"
 				/>
 			</div>
-			{codeError && (
-				<Error text="Oops. Your code is wrong. Please try again." />
-			)}
+			{codeError && <Error text={t("auth.step2-code-error")} />}
 			<div className="flex max-w-min flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
-				<Button text="Verify" onButtonPressed={incrementStep} size="lg"/>
+				<Button
+					text={t("verify")}
+					onButtonPressed={incrementStep}
+					size="lg"
+				/>
 			</div>
 			<div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
 				{/* <Link href="/login">
@@ -324,7 +351,7 @@ export default function SignUp() {
           </button>
         </Link> */}
 				<p className="text-sm text-gray-500 pb-2">
-					Make sure to check your spam inbox.
+					{t("auth.step2-spam-alert")}
 				</p>
 			</div>
 		</div>
@@ -334,33 +361,37 @@ export default function SignUp() {
 	const step3 = (
 		<div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-36 md:mb-16">
 			<p className="text-4xl font-bold flex justify-center mb-6 text-gray-400 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-				Almost there!
+				{t("auth.step3-message")}
 			</p>
 			<div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">
 				<InputField
-					label="First Name"
+					label={t("first-name")}
 					onChangeHandler={setFirstName}
 					type="name"
 					value={firstName}
 					isRequired
-					errorText="Please input your first name."
+					errorText={t("validate-required", {
+						name: t("first-name"),
+					})}
 					error={firstNameError}
 				/>
 			</div>
 			<div className="mt-2 flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
 				<InputField
-					label="Last Name"
+					label={t("last-name")}
 					onChangeHandler={setLastName}
 					type="name"
 					value={lastName}
 					isRequired
-					errorText="Please input your last name."
+					errorText={t("validate-required", {
+						name: t("last-name"),
+					})}
 					error={lastNameError}
 				/>
 			</div>
 			<div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
 				<InputField
-					label="Password"
+					label={t("password")}
 					onChangeHandler={(password) => {
 						setPassword(password);
 						passwordCheck(
@@ -374,61 +405,128 @@ export default function SignUp() {
 					type="password"
 					value={password}
 					isRequired
-					error={passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase}
+					error={
+						passwordErrorLength &&
+						passwordErrorNumber &&
+						passwordErrorLowerCase
+					}
 				/>
-				{(passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber) ? <div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
-					<div className={`text-gray-400 text-sm mb-1`}>Password should contain at least:</div>
-					<div className="flex flex-row justify-start items-center ml-1">
-						{passwordErrorLength 
-						? <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5"/> 
-						: <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2"/>}
-						<div className={`${passwordErrorLength ? "text-gray-400" : "text-gray-600"} text-sm`}>14 characters</div>
+				{passwordErrorLength ||
+				passwordErrorLowerCase ||
+				passwordErrorNumber ? (
+					<div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
+						<div className={`text-gray-400 text-sm mb-1`}>
+							{t("password-validate")}
+						</div>
+						<div className="flex flex-row justify-start items-center ml-1">
+							{passwordErrorLength ? (
+								<FontAwesomeIcon
+									icon={faX}
+									className="text-md text-red mr-2.5"
+								/>
+							) : (
+								<FontAwesomeIcon
+									icon={faCheck}
+									className="text-md text-primary mr-2"
+								/>
+							)}
+							<div
+								className={`${
+									passwordErrorLength
+										? "text-gray-400"
+										: "text-gray-600"
+								} text-sm`}
+							>
+								{t("password-validate-length")}
+							</div>
+						</div>
+						<div className="flex flex-row justify-start items-center ml-1">
+							{passwordErrorLowerCase ? (
+								<FontAwesomeIcon
+									icon={faX}
+									className="text-md text-red mr-2.5"
+								/>
+							) : (
+								<FontAwesomeIcon
+									icon={faCheck}
+									className="text-md text-primary mr-2"
+								/>
+							)}
+							<div
+								className={`${
+									passwordErrorLowerCase
+										? "text-gray-400"
+										: "text-gray-600"
+								} text-sm`}
+							>
+								{t("password-validate-case")}
+							</div>
+						</div>
+						<div className="flex flex-row justify-start items-center ml-1">
+							{passwordErrorNumber ? (
+								<FontAwesomeIcon
+									icon={faX}
+									className="text-md text-red mr-2.5"
+								/>
+							) : (
+								<FontAwesomeIcon
+									icon={faCheck}
+									className="text-md text-primary mr-2"
+								/>
+							)}
+							<div
+								className={`${
+									passwordErrorNumber
+										? "text-gray-400"
+										: "text-gray-600"
+								} text-sm`}
+							>
+								{t("password-validate-number")}
+							</div>
+						</div>
 					</div>
-					<div className="flex flex-row justify-start items-center ml-1">
-						{passwordErrorLowerCase 
-						? <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5"/> 
-						: <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2"/>}
-						<div className={`${passwordErrorLowerCase ? "text-gray-400" : "text-gray-600"} text-sm`}>1 lowercase character</div>
-					</div>
-					<div className="flex flex-row justify-start items-center ml-1">
-						{passwordErrorNumber 
-						? <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5"/> 
-						: <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2"/>}
-						<div className={`${passwordErrorNumber ? "text-gray-400" : "text-gray-600"} text-sm`}>1 number</div>
-					</div>
-				</div> : <div className="py-2"></div>}
+				) : (
+					<div className="py-2"></div>
+				)}
 			</div>
 			<div className="flex flex-col items-center justify-center md:p-2 max-h-48 max-w-max mx-auto text-lg px-2 py-3">
-				<Button text="Sign Up" loading={isLoading} onButtonPressed={signupErrorCheck} size="lg" />
+				<Button
+					text={t("auth.signup")}
+					loading={isLoading}
+					onButtonPressed={signupErrorCheck}
+					size="lg"
+				/>
 			</div>
 		</div>
 	);
-
 
 	// Step 4 of the sign up process (download the emergency kit pdf)
 	const step4 = (
 		<div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg mx-auto h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
 			<p className="text-4xl text-center font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-				Save your Emergency Kit
+				{t("auth.step4-message")}
 			</p>
 			<div className="flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2">
-				<div>If you get locked out of your account, your Emergency Kit is the only way to sign in.</div>
-				<div className="mt-3">We recommend you download it and keep it somewhere safe.</div>
+				<div>{t("auth.step4-description1")}</div>
+				<div className="mt-3">{t("auth.step4-description2")}</div>
 			</div>
 			<div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-400 rounded-md max-w-xs md:max-w-md mx-auto mt-4">
-				<FontAwesomeIcon icon={faWarning} className="ml-2 mr-4 text-4xl"/>
-				It contains your Secret Key which we cannot access or recover for you if you lose it.
+				<FontAwesomeIcon
+					icon={faWarning}
+					className="ml-2 mr-4 text-4xl"
+				/>
+				{t("auth.step4-description3")}
 			</div>
 			<div className="flex flex-row items-center justify-center w-3/4 md:w-full md:p-2 max-h-28 max-w-max mx-auto mt-6 py-1 md:mt-4 text-lg text-center md:text-left">
-				<Button 
-					text="Download PDF" 
+				<Button
+					text={t("auth.step4-download")}
 					onButtonPressed={async () => {
 						await issueBackupKey({
-							email, 
-							password, 
-							personalName: (firstName + " " + lastName),
+							email,
+							password,
+							personalName: firstName + " " + lastName,
 							setBackupKeyError,
-							setBackupKeyIssued
+							setBackupKeyIssued,
 						});
 						router.push("/dashboard/");
 					}}
@@ -453,16 +551,13 @@ export default function SignUp() {
 	return (
 		<div className="bg-bunker-800 h-screen flex flex-col items-center justify-center">
 			<Head>
-				<title>Infiscal | Sign Up</title>
+				<title>{t("meta.signup.title")}</title>
 				<link rel="icon" href="/infisical.ico" />
 				<meta property="og:image" content="/images/message.png" />
-				<meta
-					property="og:title"
-					content="Replace .env files with 1 line of code. Sign Up for Infisical in 3 minutes."
-				/>
+				<meta property="og:title" content={t("meta.signup.og-title")} />
 				<meta
 					name="og:description"
-					content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage API-keys and environemntal variables.  Works with Node.js, Next.js, Gatsby, Nest.js..."
+					content={t("meta.signup.og-description")}
 				/>
 			</Head>
 			<div className="flex flex-col justify-center items-center">
@@ -476,7 +571,13 @@ export default function SignUp() {
 						/>
 					</div>
 				</Link>
-				{step == 1 ? step1 : step == 2 ? step2 : step == 3 ? step3 : step4}
+				{step == 1
+					? step1
+					: step == 2
+					? step2
+					: step == 3
+					? step3
+					: step4}
 			</div>
 		</div>
 	);

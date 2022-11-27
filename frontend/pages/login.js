@@ -55,13 +55,13 @@ export default function Login() {
 	return (
 		<div className="bg-bunker-800 h-screen flex flex-col justify-start px-6">
 			<Head>
-				<title>Login</title>
+				<title>{t("meta.login.title")}</title>
 				<link rel="icon" href="/infisical.ico" />
 				<meta property="og:image" content="/images/message.png" />
-				<meta property="og:title" content="Log In to Infisical" />
+				<meta property="og:title" content={t("meta.login.og-title")} />
 				<meta
 					name="og:description"
-					content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
+					content={t("meta.login.og-description")}
 				/>
 			</Head>
 			<Link href="/">
@@ -76,25 +76,25 @@ export default function Login() {
 			</Link>
 			<div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-4 pt-8 px-6 rounded-xl drop-shadow-xl">
 				<p className="text-4xl flex justify-center font-semibold text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-					Log In {t("test")}
+					{t("auth.login")}
 				</p>
 				<div className="flex flex-row items-center justify-center">
 					<p className="text-md flex justify-center mt-2 text-gray-400">
-						Need an Infisical account?
+						{t("auth.need-account")}
 					</p>
 				</div>
 				<div className="flex flex-col items-center justify-center w-full md:pb-4 max-h-24 max-w-md mx-auto">
 					<Link href="/signup">
 						<button className="w-full pb-3 hover:opacity-90 duration-200">
 							<u className="font-normal text-md text-sky-500">
-								Create an account
+								{t("auth.create-account")}
 							</u>
 						</button>
 					</Link>
 				</div>
 				<div className="flex items-center justify-center w-full md:p-2 rounded-lg mt-4 md:mt-0 max-h-24 md:max-h-28">
 					<InputField
-						label="Email"
+						label={t("email")}
 						onChangeHandler={setEmail}
 						type="email"
 						value={email}
@@ -104,7 +104,7 @@ export default function Login() {
 				</div>
 				<div className="flex items-center justify-center w-full md:p-2 rounded-lg md:mt-2 mt-6 max-h-24 md:max-h-28">
 					<InputField
-						label="Password"
+						label={t("password")}
 						onChangeHandler={setPassword}
 						type="password"
 						value={password}
@@ -118,7 +118,7 @@ export default function Login() {
 				<div className="flex flex-col items-center justify-center w-full md:p-2 max-h-20 max-w-md mt-4 mx-auto text-sm">
 					<div className="text-l mt-6 m-8 px-8 py-3 text-lg">
 						<Button
-							text="Log In"
+							text={t("login")}
 							onButtonPressed={loginCheck}
 							loading={isLoading}
 							size="lg"
@@ -135,9 +135,8 @@ export default function Login() {
 						icon={faWarning}
 						className="ml-2 mr-6 text-6xl"
 					/>
-					We are experiencing minor technical difficulties. We are
-					working on solving it right now. Please come back in a few
-					minutes.
+
+					{t("maintenance-alert")}
 				</div>
 			)}
 		</div>
