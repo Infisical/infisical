@@ -1,4 +1,4 @@
-import { PATH } from "../../../const.js";
+import { PATH } from "~/const";
 
 /**
  * This route check the verification code from the email that user just recieved
@@ -7,16 +7,16 @@ import { PATH } from "../../../const.js";
  * @returns
  */
 const checkEmailVerificationCode = (email, code) => {
-	return fetch(PATH + "/api/v1/signup/email/verify", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			email: email,
-			code: code,
-		}),
-	});
+  return fetch(PATH + "/api/v1/signup/email/verify", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email: email,
+      code: code,
+    }),
+  });
 };
 
 export default checkEmailVerificationCode;

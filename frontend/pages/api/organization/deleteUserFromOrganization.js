@@ -1,6 +1,5 @@
+import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
-
-import { PATH } from "../../../const";
 
 /**
  * This function removes a certain member from a certain organization
@@ -8,21 +7,21 @@ import { PATH } from "../../../const";
  * @returns
  */
 const deleteUserFromOrganization = (membershipId) => {
-	return SecurityClient.fetchCall(
-		PATH + "/api/v1/membership-org/" + membershipId,
-		{
-			method: "DELETE",
-			headers: {
-				"Content-Type": "application/json",
-			},
-		}
-	).then(async (res) => {
-		if (res.status == 200) {
-			return res;
-		} else {
-			console.log("Failed to delete a user from an org");
-		}
-	});
+  return SecurityClient.fetchCall(
+    PATH + "/api/v1/membership-org/" + membershipId,
+    {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  ).then(async (res) => {
+    if (res.status == 200) {
+      return res;
+    } else {
+      console.log("Failed to delete a user from an org");
+    }
+  });
 };
 
 export default deleteUserFromOrganization;
