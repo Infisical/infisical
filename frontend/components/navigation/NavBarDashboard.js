@@ -1,4 +1,4 @@
-import React, { useState, Fragment, useEffect } from "react";
+import React, { useState, Fragment, useEffect, useMemo } from "react";
 import { useRouter } from "next/router";
 
 import Image from "next/image";
@@ -12,8 +12,8 @@ import {
 	faCoins,
 	faRightFromBracket,
 	faEnvelope,
-	faPlus, 
-	faAngleDown
+	faPlus,
+	faAngleDown,
 } from "@fortawesome/free-solid-svg-icons";
 import { faSlack, faGithub } from "@fortawesome/free-brands-svg-icons";
 import { Menu, Transition } from "@headlessui/react";
@@ -21,26 +21,30 @@ import getUser from "../../pages/api/user/getUser";
 import getOrganizations from "../../pages/api/organization/getOrgs";
 import getOrganization from "../../pages/api/organization/GetOrg";
 import guidGenerator from "../utilities/randomId";
+import useTranslation from "next-translate/useTranslation";
 
-const supportOptions = [
+/**
+ * @param {(key: string) => string} t
+ */
+const supportOptions = (t) => [
 	[
 		<FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faSlack} />,
-		"[NEW] Join Slack Forum",
+		t("common:nav.support.slack"),
 		"https://join.slack.com/t/infisical/shared_invite/zt-1dgg63ln8-G7PCNJdCymAT9YF3j1ewVA",
 	],
 	[
 		<FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faBook} />,
-		"Read Docs",
+		t("common:nav.support.docs"),
 		"https://infisical.com/docs/getting-started/introduction",
 	],
 	[
 		<FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faGithub} />,
-		"Open a GitHub Issue",
+		t("common:nav.support.issue"),
 		"https://github.com/Infisical/infisical-cli/issues",
 	],
 	[
 		<FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faEnvelope} />,
-		"Send us an Email",
+		t("common:nav.support.email"),
 		"mailto:support@infisical.com",
 	],
 ];
@@ -50,6 +54,10 @@ export default function Navbar({ onButtonPressed }) {
 	const [user, setUser] = useState({});
 	const [orgs, setOrgs] = useState([]);
 	const [currentOrg, setCurrentOrg] = useState([]);
+
+	const { t } = useTranslation("common");
+
+	const supportOptionsList = useMemo(() => supportOptions(t), [t]);
 
 	useEffect(async () => {
 		const userData = await getUser();
@@ -87,7 +95,7 @@ export default function Navbar({ onButtonPressed }) {
 			</div>
 			<div className="relative flex justify-start items-center mx-2 z-40">
 				<Menu as="div" className="relative inline-block text-left">
-					<div className="mr-4"> 
+					<div className="mr-4">
 						<Menu.Button className="inline-flex w-full justify-center rounded-md px-2 py-2 text-sm font-medium text-gray-200 rounded-md hover:bg-white/10 duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75">
 							<FontAwesomeIcon
 								className="text-xl"
@@ -105,19 +113,17 @@ export default function Navbar({ onButtonPressed }) {
 						leaveTo="transform opacity-0 scale-95"
 					>
 						<Menu.Items className="absolute right-0 mt-0.5 w-64 origin-top-right rounded-md bg-bunker border border-mineshaft-700 shadow-lg ring-1 ring-black z-20 ring-opacity-5 focus:outline-none px-2 py-1.5">
-							{supportOptions.map((option) => (
+							{supportOptionsList.map(([icon, text, url]) => (
 								<a
 									key={guidGenerator()}
 									target="_blank"
 									rel="noopener"
-									href={option[2]}
+									href={url}
 									className="font-normal text-gray-300 duration-200 rounded-md w-full flex items-center py-0.5"
 								>
 									<div className="relative flex justify-start items-center cursor-pointer select-none py-2 px-2 rounded-md text-gray-400 hover:bg-white/10 duration-200 hover:text-gray-200 w-full">
-										{option[0]}
-										<div className="text-sm">
-											{option[1]}
-										</div>
+										{icon}
+										<div className="text-sm">{text}</div>
 									</div>
 								</a>
 							))}
@@ -128,7 +134,10 @@ export default function Navbar({ onButtonPressed }) {
 					<div>
 						<Menu.Button className="inline-flex w-full justify-center rounded-md pr-2 pl-2 py-2 text-sm font-medium text-gray-200 rounded-md hover:bg-white/10 duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75">
 							{user?.firstName} {user?.lastName}
-							<FontAwesomeIcon icon={faAngleDown} className="ml-2 mt-1 text-sm text-gray-300 hover:text-lime-100"/>
+							<FontAwesomeIcon
+								icon={faAngleDown}
+								className="ml-2 mt-1 text-sm text-gray-300 hover:text-lime-100"
+							/>
 						</Menu.Button>
 					</div>
 					<Transition
@@ -143,15 +152,17 @@ export default function Navbar({ onButtonPressed }) {
 						<Menu.Items className="absolute right-0 mt-0.5 w-64 origin-top-right divide-y divide-gray-700 rounded-md bg-bunker border border-mineshaft-700 shadow-lg ring-1 ring-black z-20 ring-opacity-5 focus:outline-none">
 							<div className="px-1 py-1 ">
 								<div className="text-gray-400 self-start ml-2 mt-2 text-xs font-semibold tracking-wide">
-									SIGNED IN AS
+									{t("common:nav.user.signed-in-as")}
 								</div>
-								<div 
+								<div
 									onClick={() =>
 										router.push(
-											"/settings/personal/" + router.query.id
+											"/settings/personal/" +
+												router.query.id
 										)
 									}
-									className="flex flex-row items-center px-1 mx-1 my-1 hover:bg-white/5 cursor-pointer rounded-md">
+									className="flex flex-row items-center px-1 mx-1 my-1 hover:bg-white/5 cursor-pointer rounded-md"
+								>
 									<div className="bg-white/10 h-8 w-9 rounded-full flex items-center justify-center text-gray-300">
 										{user?.firstName?.charAt(0)}
 									</div>
@@ -159,7 +170,8 @@ export default function Navbar({ onButtonPressed }) {
 										<div>
 											<p className="text-gray-300 px-2 pt-1 text-sm">
 												{" "}
-												{user?.firstName} {user?.lastName}
+												{user?.firstName}{" "}
+												{user?.lastName}
 											</p>
 											<p className="text-gray-400 px-2 pb-1 text-xs">
 												{" "}
@@ -175,7 +187,7 @@ export default function Navbar({ onButtonPressed }) {
 							</div>
 							<div className="px-2 pt-2">
 								<div className="text-gray-400 self-start ml-2 mt-2 text-xs font-semibold tracking-wide">
-									CURRENT ORGANIZATION
+									{t("common:nav.user.current-organization")}
 								</div>
 								<div
 									onClick={() =>
@@ -216,7 +228,7 @@ export default function Navbar({ onButtonPressed }) {
 											icon={faCoins}
 										/>
 										<div className="text-sm">
-											Usage & Billing
+											{t("common:nav.user.usage-billing")}
 										</div>
 									</div>
 								</button>
@@ -235,51 +247,58 @@ export default function Navbar({ onButtonPressed }) {
 										className="relative flex justify-start cursor-pointer select-none py-2 pl-10 pr-4 rounded-md text-gray-400 hover:bg-primary/100 duration-200 hover:text-black hover:font-semibold mt-1"
 									>
 										<span className="rounded-lg absolute inset-y-0 left-0 flex items-center pl-3 pr-4">
-											<FontAwesomeIcon icon={faPlus} className="ml-1" />
+											<FontAwesomeIcon
+												icon={faPlus}
+												className="ml-1"
+											/>
 										</span>
 										<div className="text-sm ml-1">
-											Invite Members
+											{t("common:nav.user.invite")}
 										</div>
 									</div>
 								</button>
 							</div>
-							{orgs?.length > 1 && <div className="px-1 pt-1">
-								<div className="text-gray-400 self-start ml-2 mt-2 text-xs font-semibold tracking-wide">
-									OTHER ORGANIZATIONS
-								</div>
-								<div className="flex flex-col items-start px-1 mt-3 mb-2">
-									{orgs
-										.filter(
-											(org) =>
-												org._id !=
-												localStorage.getItem(
-													"orgData.id"
-												)
-										)
-										.map((org) => (
-											<div
-												key={guidGenerator()}
-												onClick={() => {
-													localStorage.setItem(
-														"orgData.id",
-														org._id
-													);
-													router.reload();
-												}}
-												className="flex flex-row justify-start items-center hover:bg-white/5 w-full p-1.5 cursor-pointer rounded-md"
-											>
-												<div className="bg-white/10 h-7 w-8 rounded-md flex items-center justify-center text-gray-300">
-													{org.name.charAt(0)}
+							{orgs?.length > 1 && (
+								<div className="px-1 pt-1">
+									<div className="text-gray-400 self-start ml-2 mt-2 text-xs font-semibold tracking-wide">
+										{t(
+											"common:nav.user.other-organizations"
+										)}
+									</div>
+									<div className="flex flex-col items-start px-1 mt-3 mb-2">
+										{orgs
+											.filter(
+												(org) =>
+													org._id !=
+													localStorage.getItem(
+														"orgData.id"
+													)
+											)
+											.map((org) => (
+												<div
+													key={guidGenerator()}
+													onClick={() => {
+														localStorage.setItem(
+															"orgData.id",
+															org._id
+														);
+														router.reload();
+													}}
+													className="flex flex-row justify-start items-center hover:bg-white/5 w-full p-1.5 cursor-pointer rounded-md"
+												>
+													<div className="bg-white/10 h-7 w-8 rounded-md flex items-center justify-center text-gray-300">
+														{org.name.charAt(0)}
+													</div>
+													<div className="flex items-center justify-between w-full">
+														<p className="text-gray-300 px-2 text-sm">
+															{org.name}
+														</p>
+													</div>
 												</div>
-												<div className="flex items-center justify-between w-full">
-													<p className="text-gray-300 px-2 text-sm">
-														{org.name}
-													</p>
-												</div>
-											</div>
-										))}
+											))}
+									</div>
 								</div>
-							</div>}
+							)}
 							<div className="px-1 py-1">
 								<Menu.Item>
 									{({ active }) => (
@@ -296,7 +315,7 @@ export default function Navbar({ onButtonPressed }) {
 													className="text-lg ml-1.5 mr-3"
 													icon={faRightFromBracket}
 												/>
-												Log Out
+												{t("common:logout")}
 											</div>
 										</button>
 									)}

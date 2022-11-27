@@ -24,6 +24,8 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { decryptAssymmetric, encryptAssymmetric } from "../utilities/crypto";
 import Button from "./buttons/Button";
 
+import useTranslation from "next-translate/useTranslation";
+
 export default function Layout({ children }) {
 	const router = useRouter();
 	const [workspaceList, setWorkspaceList] = useState([]);
@@ -33,6 +35,8 @@ export default function Layout({ children }) {
 	let [isOpen, setIsOpen] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(false);
+
+	const { t } = useTranslation();
 
 	function closeModal() {
 		setIsOpen(false);
@@ -48,9 +52,7 @@ export default function Layout({ children }) {
 		setLoading(true);
 		setTimeout(() => setLoading(false), 1500);
 		const workspaces = await getWorkspaces();
-		const currentWorkspaces = workspaces.map(
-			(workspace) => workspace.name
-		);
+		const currentWorkspaces = workspaces.map((workspace) => workspace.name);
 		if (!currentWorkspaces.includes(workspaceName)) {
 			const newWorkspace = await createWorkspace(
 				workspaceName,
@@ -104,7 +106,7 @@ export default function Layout({ children }) {
 			setIsOpen(false);
 			setNewWorkspaceName("");
 		} else {
-			setError("A project with this name already exists.");
+			setError(t("common:error_project-already-exists"));
 			setLoading(false);
 		}
 	}
@@ -119,29 +121,32 @@ export default function Layout({ children }) {
 				"/dashboard/" +
 				workspaceMapping[workspaceSelected] +
 				"?Development",
-			title: "Secrets",
+			title: t("common:nav.menu.secrets"),
 			emoji: <FontAwesomeIcon icon={faHouse} />,
 		},
 		{
 			href: "/users/" + workspaceMapping[workspaceSelected],
-			title: "Members",
+			title: t("common:nav.menu.members"),
 			emoji: <FontAwesomeIcon icon={faUser} />,
 		},
 		{
 			href: "/integrations/" + workspaceMapping[workspaceSelected],
-			title: "Integrations",
+			title: t("common:nav.menu.integrations"),
 			emoji: <FontAwesomeIcon icon={faLink} />,
 		},
 		{
 			href: "/settings/project/" + workspaceMapping[workspaceSelected],
-			title: "Project Settings",
+			title: t("common:nav.menu.project-settings"),
 			emoji: <FontAwesomeIcon icon={faGear} />,
 		},
 	];
 
 	useEffect(async () => {
 		// Put a user in a workspace if they're not in one yet
-		if (localStorage.getItem("orgData.id") == null || localStorage.getItem("orgData.id") == "") {
+		if (
+			localStorage.getItem("orgData.id") == null ||
+			localStorage.getItem("orgData.id") == ""
+		) {
 			const userOrgs = await getOrganizations();
 			localStorage.setItem("orgData.id", userOrgs[0]._id);
 		}
@@ -150,7 +155,11 @@ export default function Layout({ children }) {
 			orgId: localStorage.getItem("orgData.id"),
 		});
 		let userWorkspaces = orgUserProjects;
-		if (userWorkspaces.length == 0 && (router.asPath != "/noprojects" && !router.asPath.includes("settings"))) {
+		if (
+			userWorkspaces.length == 0 &&
+			router.asPath != "/noprojects" &&
+			!router.asPath.includes("settings")
+		) {
 			router.push("/noprojects");
 		} else if (router.asPath != "/noprojects") {
 			const intendedWorkspaceId = router.asPath
@@ -158,7 +167,9 @@ export default function Layout({ children }) {
 				[router.asPath.split("/").length - 1].split("?")[0];
 
 			// If a user is not a member of a workspace they are trying to access, just push them to one of theirs
-			if (intendedWorkspaceId != "heroku" && !userWorkspaces
+			if (
+				intendedWorkspaceId != "heroku" &&
+				!userWorkspaces
 					.map((workspace) => workspace._id)
 					.includes(intendedWorkspaceId)
 			) {
@@ -207,7 +218,10 @@ export default function Layout({ children }) {
 						workspaceMapping[workspaceSelected] +
 						"?Development"
 				);
-				localStorage.setItem("projectData.id", workspaceMapping[workspaceSelected])
+				localStorage.setItem(
+					"projectData.id",
+					workspaceMapping[workspaceSelected]
+				);
 			}
 		} catch (error) {
 			console.log(error);
@@ -224,10 +238,10 @@ export default function Layout({ children }) {
 							<div className="py-6"></div>
 							<div className="flex justify-center w-full mt-7 mb-8 bg-bunker-600 w-full h-full flex flex-col items-center px-4">
 								<div className="text-gray-400 self-start ml-1 mb-1 text-xs font-semibold tracking-wide">
-									PROJECT
+									{t("common:nav.menu.project")}
 								</div>
-								{workspaceList.length>0 
-									? <Listbox
+								{workspaceList.length > 0 ? (
+									<Listbox
 										selected={workspaceSelected}
 										onChange={setWorkspaceSelected}
 										data={workspaceList}
@@ -235,58 +249,67 @@ export default function Layout({ children }) {
 										text=""
 										workspaceMapping={workspaceMapping}
 									/>
-									: <Button
+								) : (
+									<Button
 										text="Add Project"
 										onButtonPressed={openModal}
 										color="mineshaft"
 										size="md"
 										icon={faPlus}
 									/>
-								}
+								)}
 							</div>
 							<ul>
-								{workspaceList.length > 0 && menuItems.map(({ href, title, emoji }) => (
-									<li className="mt-1.5 mx-2" key={title}>
-										{router.asPath.split("/")[1] ===
-											href.split("/")[1] &&
-										(["project", "billing", "org", "personal"].includes(
-											router.asPath.split("/")[2]
-										)
-											? router.asPath.split("/")[2] ===
-											  href.split("/")[2]
-											: true) ? (
-											<div
-												className={`flex p-2 text-white text-sm rounded cursor-pointer bg-mineshaft-50/10`}
-											>
-												<div className="bg-primary w-1 rounded-xl mr-1"></div>
-												<p className="ml-2 mr-4">
-													{emoji}
-												</p>
-												{title}
-											</div>
-										) : router.asPath == "/noprojects" ? (
-											<div
-												className={`flex p-2 text-white text-sm rounded`}
-											>
-												<p className="ml-2 mr-4">
-													{emoji}
-												</p>
-												{title}
-											</div>
-										) : (
-											<Link href={href}>
+								{workspaceList.length > 0 &&
+									menuItems.map(({ href, title, emoji }) => (
+										<li className="mt-1.5 mx-2" key={title}>
+											{router.asPath.split("/")[1] ===
+												href.split("/")[1] &&
+											([
+												"project",
+												"billing",
+												"org",
+												"personal",
+											].includes(
+												router.asPath.split("/")[2]
+											)
+												? router.asPath.split(
+														"/"
+												  )[2] === href.split("/")[2]
+												: true) ? (
 												<div
-													className={`flex p-2 text-white text-sm rounded cursor-pointer hover:bg-mineshaft-50/5`}
+													className={`flex p-2 text-white text-sm rounded cursor-pointer bg-mineshaft-50/10`}
+												>
+													<div className="bg-primary w-1 rounded-xl mr-1"></div>
+													<p className="ml-2 mr-4">
+														{emoji}
+													</p>
+													{title}
+												</div>
+											) : router.asPath ==
+											  "/noprojects" ? (
+												<div
+													className={`flex p-2 text-white text-sm rounded`}
 												>
 													<p className="ml-2 mr-4">
 														{emoji}
 													</p>
 													{title}
 												</div>
-											</Link>
-										)}
-									</li>
-								))}
+											) : (
+												<Link href={href}>
+													<div
+														className={`flex p-2 text-white text-sm rounded cursor-pointer hover:bg-mineshaft-50/5`}
+													>
+														<p className="ml-2 mr-4">
+															{emoji}
+														</p>
+														{title}
+													</div>
+												</Link>
+											)}
+										</li>
+									))}
 							</ul>
 						</nav>
 					</aside>
@@ -308,9 +331,7 @@ export default function Layout({ children }) {
 					className="text-gray-300 text-7xl mb-8"
 				/>
 				<p className="text-gray-200 px-6 text-center text-lg max-w-sm">
-					{" "}
-					To use Infisical, please log in through a device with larger
-					dimensions.{" "}
+					{` ${t("common:need-login")} `}
 				</p>
 			</div>
 		</>

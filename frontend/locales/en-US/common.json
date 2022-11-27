@@ -11,11 +11,36 @@
 			"og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage API-keys and environemntal variables.  Works with Node.js, Next.js, Gatsby, Nest.js..."
 		}
 	},
+	"nav": {
+		"support": {
+			"slack": "[NEW] Join Slack Forum",
+			"docs": "Read Docs",
+			"issue": "Open a Github Issue",
+			"email": "Send us an Email"
+		},
+		"user": {
+			"signed-in-as": "SIGNED IN AS",
+			"current-organization": "CURRENT ORGANIZATION",
+			"usage-billing": "Usage & Billing",
+			"invite": "Invite Members",
+			"other-organizations": "OTHER ORGANIZATION"
+		},
+		"menu": {
+			"project": "PROJECT",
+			"secrets": "Secrets",
+			"members": "Members",
+			"integrations": "Integrations",
+			"project-settings": "Project Settings"
+		}
+	},
+	"error_project-already-exists": "A project with this name already exists.",
+	"need-login": " To use Infisical, please log in through a device with larger dimensions. ",
 	"email": "Email",
 	"password": "Password",
 	"verify": "Verify",
 	"first-name": "First Name",
 	"last-name": "Last Name",
+	"logout": "Log Out",
 	"validate-required": "Please input your {{name}}",
 	"password-validate": "Password should contain at least:",
 	"password-validate-length": "14 characters",
