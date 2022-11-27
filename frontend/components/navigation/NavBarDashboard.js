@@ -29,22 +29,22 @@ import useTranslation from "next-translate/useTranslation";
 const supportOptions = (t) => [
 	[
 		<FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faSlack} />,
-		t("common:nav.support.slack"),
+		t("nav:support.slack"),
 		"https://join.slack.com/t/infisical/shared_invite/zt-1dgg63ln8-G7PCNJdCymAT9YF3j1ewVA",
 	],
 	[
 		<FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faBook} />,
-		t("common:nav.support.docs"),
+		t("nav:support.docs"),
 		"https://infisical.com/docs/getting-started/introduction",
 	],
 	[
 		<FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faGithub} />,
-		t("common:nav.support.issue"),
+		t("nav:support.issue"),
 		"https://github.com/Infisical/infisical-cli/issues",
 	],
 	[
 		<FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faEnvelope} />,
-		t("common:nav.support.email"),
+		t("nav:support.email"),
 		"mailto:support@infisical.com",
 	],
 ];
@@ -55,7 +55,7 @@ export default function Navbar({ onButtonPressed }) {
 	const [orgs, setOrgs] = useState([]);
 	const [currentOrg, setCurrentOrg] = useState([]);
 
-	const { t } = useTranslation("common");
+	const { t } = useTranslation("");
 
 	const supportOptionsList = useMemo(() => supportOptions(t), [t]);
 
@@ -152,7 +152,7 @@ export default function Navbar({ onButtonPressed }) {
 						<Menu.Items className="absolute right-0 mt-0.5 w-64 origin-top-right divide-y divide-gray-700 rounded-md bg-bunker border border-mineshaft-700 shadow-lg ring-1 ring-black z-20 ring-opacity-5 focus:outline-none">
 							<div className="px-1 py-1 ">
 								<div className="text-gray-400 self-start ml-2 mt-2 text-xs font-semibold tracking-wide">
-									{t("common:nav.user.signed-in-as")}
+									{t("nav:user.signed-in-as")}
 								</div>
 								<div
 									onClick={() =>
@@ -187,7 +187,7 @@ export default function Navbar({ onButtonPressed }) {
 							</div>
 							<div className="px-2 pt-2">
 								<div className="text-gray-400 self-start ml-2 mt-2 text-xs font-semibold tracking-wide">
-									{t("common:nav.user.current-organization")}
+									{t("nav:user.current-organization")}
 								</div>
 								<div
 									onClick={() =>
@@ -228,7 +228,7 @@ export default function Navbar({ onButtonPressed }) {
 											icon={faCoins}
 										/>
 										<div className="text-sm">
-											{t("common:nav.user.usage-billing")}
+											{t("nav:user.usage-billing")}
 										</div>
 									</div>
 								</button>
@@ -253,7 +253,7 @@ export default function Navbar({ onButtonPressed }) {
 											/>
 										</span>
 										<div className="text-sm ml-1">
-											{t("common:nav.user.invite")}
+											{t("nav:user.invite")}
 										</div>
 									</div>
 								</button>
@@ -261,9 +261,7 @@ export default function Navbar({ onButtonPressed }) {
 							{orgs?.length > 1 && (
 								<div className="px-1 pt-1">
 									<div className="text-gray-400 self-start ml-2 mt-2 text-xs font-semibold tracking-wide">
-										{t(
-											"common:nav.user.other-organizations"
-										)}
+										{t("nav:user.other-organizations")}
 									</div>
 									<div className="flex flex-col items-start px-1 mt-3 mb-2">
 										{orgs

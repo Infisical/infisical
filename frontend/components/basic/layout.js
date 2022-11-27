@@ -106,7 +106,7 @@ export default function Layout({ children }) {
 			setIsOpen(false);
 			setNewWorkspaceName("");
 		} else {
-			setError(t("common:error_project-already-exists"));
+			setError(t("error_project-already-exists"));
 			setLoading(false);
 		}
 	}
@@ -121,22 +121,22 @@ export default function Layout({ children }) {
 				"/dashboard/" +
 				workspaceMapping[workspaceSelected] +
 				"?Development",
-			title: t("common:nav.menu.secrets"),
+			title: t("nav:menu.secrets"),
 			emoji: <FontAwesomeIcon icon={faHouse} />,
 		},
 		{
 			href: "/users/" + workspaceMapping[workspaceSelected],
-			title: t("common:nav.menu.members"),
+			title: t("nav:menu.members"),
 			emoji: <FontAwesomeIcon icon={faUser} />,
 		},
 		{
 			href: "/integrations/" + workspaceMapping[workspaceSelected],
-			title: t("common:nav.menu.integrations"),
+			title: t("nav:menu.integrations"),
 			emoji: <FontAwesomeIcon icon={faLink} />,
 		},
 		{
 			href: "/settings/project/" + workspaceMapping[workspaceSelected],
-			title: t("common:nav.menu.project-settings"),
+			title: t("nav:menu.project-settings"),
 			emoji: <FontAwesomeIcon icon={faGear} />,
 		},
 	];
@@ -238,7 +238,7 @@ export default function Layout({ children }) {
 							<div className="py-6"></div>
 							<div className="flex justify-center w-full mt-7 mb-8 bg-bunker-600 w-full h-full flex flex-col items-center px-4">
 								<div className="text-gray-400 self-start ml-1 mb-1 text-xs font-semibold tracking-wide">
-									{t("common:nav.menu.project")}
+									{t("nav:menu.project")}
 								</div>
 								{workspaceList.length > 0 ? (
 									<Listbox
@@ -331,7 +331,7 @@ export default function Layout({ children }) {
 					className="text-gray-300 text-7xl mb-8"
 				/>
 				<p className="text-gray-200 px-6 text-center text-lg max-w-sm">
-					{` ${t("common:need-login")} `}
+					{` ${t("need-login")} `}
 				</p>
 			</div>
 		</>

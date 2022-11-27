@@ -50,6 +50,7 @@ services:
       - ./frontend/styles:/app/styles
       - ./frontend/components:/app/components
       - ./frontend/locales:/app/locales
+      - ./frontend/i18n.js:/app/i18n.js
     env_file: .env
     environment:
       - NEXT_PUBLIC_ENV=development

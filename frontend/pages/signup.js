@@ -87,16 +87,16 @@ export default function SignUp() {
 	const [verificationToken, setVerificationToken] = useState();
 	const [backupKeyIssued, setBackupKeyIssued] = useState(false);
 
-	const { t } = useTranslation("common");
+	const { t } = useTranslation();
 
 	useEffect(async () => {
 		let userWorkspace;
 		try {
 			const userWorkspaces = await getWorkspaces();
 			userWorkspace = userWorkspaces[0]._id;
-			router.push("/dashboard/" + userWorkspace);
+			router.push("auth:/dashboard/" + userWorkspace);
 		} catch (error) {
-			console.log("Error - Not logged in yet");
+			console.log("auth:Error - Not logged in yet");
 		}
 	}, []);
 
@@ -130,15 +130,15 @@ export default function SignUp() {
 		var emailCheckBool = false;
 		if (!email) {
 			setEmailError(true);
-			setEmailErrorMessage("Please enter your email.");
+			setEmailErrorMessage("auth:Please enter your email.");
 			emailCheckBool = true;
 		} else if (
-			!email.includes("@") ||
-			!email.includes(".") ||
+			!email.includes("auth:@") ||
+			!email.includes("auth:.") ||
 			!/[a-z]/.test(email)
 		) {
 			setEmailError(true);
-			setEmailErrorMessage("Please enter a valid email.");
+			setEmailErrorMessage("auth:Please enter a valid email.");
 			emailCheckBool = true;
 		} else {
 			setEmailError(false);
@@ -194,7 +194,7 @@ export default function SignUp() {
 						"0"
 					)
 			);
-			localStorage.setItem("PRIVATE_KEY", PRIVATE_KEY);
+			localStorage.setItem("auth:PRIVATE_KEY", PRIVATE_KEY);
 
 			client.init(
 				{
@@ -223,13 +223,13 @@ export default function SignUp() {
 						if (!errorCheck && response.status == "200") {
 							response = await response.json();
 
-							localStorage.setItem("publicKey", PUBLIC_KEY);
+							localStorage.setItem("auth:publicKey", PUBLIC_KEY);
 							localStorage.setItem(
 								"encryptedPrivateKey",
 								ciphertext
 							);
-							localStorage.setItem("iv", iv);
-							localStorage.setItem("tag", tag);
+							localStorage.setItem("auth:iv", iv);
+							localStorage.setItem("auth:tag", tag);
 
 							try {
 								await attemptLogin(
@@ -257,20 +257,20 @@ export default function SignUp() {
 	const step1 = (
 		<div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-8 md:px-6 mx-1 mb-48 md:mb-16 rounded-xl drop-shadow-xl">
 			<p className="text-4xl font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-				{t("auth.step1-start")}
+				{t("auth:step1-start")}
 			</p>
 			<div className="flex flex-col items-center justify-center w-full md:pb-2 max-h-24 max-w-md mx-auto pt-2">
 				<Link href="/login">
 					<button className="w-max pb-3 hover:opacity-90 duration-200">
 						<u className="font-normal text-md text-sky-500">
-							{t("auth.already-have-account")}
+							{t("auth:already-have-account")}
 						</u>
 					</button>
 				</Link>
 			</div>
 			<div className="flex items-center justify-center w-5/6 md:w-full m-auto md:p-2 rounded-lg max-h-24 mt-4">
 				<InputField
-					label={t("email")}
+					label={t("auth:email")}
 					onChangeHandler={setEmail}
 					type="email"
 					value={email}
@@ -291,7 +291,7 @@ export default function SignUp() {
 				</p>
 				<div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
 					<Button
-						text={t("auth.step1-submit")}
+						text={t("auth:step1-submit")}
 						onButtonPressed={emailCheck}
 						size="lg"
 					/>
@@ -304,7 +304,7 @@ export default function SignUp() {
 	const step2 = (
 		<div className="bg-bunker w-max mx-auto h-7/12 pt-10 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-16">
 			<Trans
-				i18nKey="common:auth.step2-message"
+				i18nKey="common:step2-message"
 				components={{
 					wrapper: (
 						<p className="text-l flex justify-center text-gray-400" />
@@ -334,10 +334,10 @@ export default function SignUp() {
 					className="mt-2 mb-6"
 				/>
 			</div>
-			{codeError && <Error text={t("auth.step2-code-error")} />}
+			{codeError && <Error text={t("auth:step2-code-error")} />}
 			<div className="flex max-w-min flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
 				<Button
-					text={t("verify")}
+					text={t("auth:verify")}
 					onButtonPressed={incrementStep}
 					size="lg"
 				/>
@@ -351,7 +351,7 @@ export default function SignUp() {
           </button>
         </Link> */}
 				<p className="text-sm text-gray-500 pb-2">
-					{t("auth.step2-spam-alert")}
+					{t("auth:step2-spam-alert")}
 				</p>
 			</div>
 		</div>
@@ -361,37 +361,37 @@ export default function SignUp() {
 	const step3 = (
 		<div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-36 md:mb-16">
 			<p className="text-4xl font-bold flex justify-center mb-6 text-gray-400 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-				{t("auth.step3-message")}
+				{t("auth:step3-message")}
 			</p>
 			<div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">
 				<InputField
-					label={t("first-name")}
+					label={t("auth:first-name")}
 					onChangeHandler={setFirstName}
 					type="name"
 					value={firstName}
 					isRequired
-					errorText={t("validate-required", {
-						name: t("first-name"),
+					errorText={t("auth:validate-required", {
+						name: t("auth:first-name"),
 					})}
 					error={firstNameError}
 				/>
 			</div>
 			<div className="mt-2 flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
 				<InputField
-					label={t("last-name")}
+					label={t("auth:last-name")}
 					onChangeHandler={setLastName}
 					type="name"
 					value={lastName}
 					isRequired
-					errorText={t("validate-required", {
-						name: t("last-name"),
+					errorText={t("auth:validate-required", {
+						name: t("auth:last-name"),
 					})}
 					error={lastNameError}
 				/>
 			</div>
 			<div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
 				<InputField
-					label={t("password")}
+					label={t("auth:password")}
 					onChangeHandler={(password) => {
 						setPassword(password);
 						passwordCheck(
@@ -416,7 +416,7 @@ export default function SignUp() {
 				passwordErrorNumber ? (
 					<div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
 						<div className={`text-gray-400 text-sm mb-1`}>
-							{t("password-validate")}
+							{t("auth:password-validate")}
 						</div>
 						<div className="flex flex-row justify-start items-center ml-1">
 							{passwordErrorLength ? (
@@ -437,7 +437,7 @@ export default function SignUp() {
 										: "text-gray-600"
 								} text-sm`}
 							>
-								{t("password-validate-length")}
+								{t("auth:password-validate-length")}
 							</div>
 						</div>
 						<div className="flex flex-row justify-start items-center ml-1">
@@ -459,7 +459,7 @@ export default function SignUp() {
 										: "text-gray-600"
 								} text-sm`}
 							>
-								{t("password-validate-case")}
+								{t("auth:password-validate-case")}
 							</div>
 						</div>
 						<div className="flex flex-row justify-start items-center ml-1">
@@ -481,7 +481,7 @@ export default function SignUp() {
 										: "text-gray-600"
 								} text-sm`}
 							>
-								{t("password-validate-number")}
+								{t("auth:password-validate-number")}
 							</div>
 						</div>
 					</div>
@@ -491,7 +491,7 @@ export default function SignUp() {
 			</div>
 			<div className="flex flex-col items-center justify-center md:p-2 max-h-48 max-w-max mx-auto text-lg px-2 py-3">
 				<Button
-					text={t("auth.signup")}
+					text={t("auth:signup")}
 					loading={isLoading}
 					onButtonPressed={signupErrorCheck}
 					size="lg"
@@ -504,22 +504,22 @@ export default function SignUp() {
 	const step4 = (
 		<div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg mx-auto h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
 			<p className="text-4xl text-center font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-				{t("auth.step4-message")}
+				{t("auth:step4-message")}
 			</p>
 			<div className="flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2">
-				<div>{t("auth.step4-description1")}</div>
-				<div className="mt-3">{t("auth.step4-description2")}</div>
+				<div>{t("auth:step4-description1")}</div>
+				<div className="mt-3">{t("auth:step4-description2")}</div>
 			</div>
 			<div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-400 rounded-md max-w-xs md:max-w-md mx-auto mt-4">
 				<FontAwesomeIcon
 					icon={faWarning}
 					className="ml-2 mr-4 text-4xl"
 				/>
-				{t("auth.step4-description3")}
+				{t("auth:step4-description3")}
 			</div>
 			<div className="flex flex-row items-center justify-center w-3/4 md:w-full md:p-2 max-h-28 max-w-max mx-auto mt-6 py-1 md:mt-4 text-lg text-center md:text-left">
 				<Button
-					text={t("auth.step4-download")}
+					text={t("auth:step4-download")}
 					onButtonPressed={async () => {
 						await issueBackupKey({
 							email,
@@ -528,17 +528,17 @@ export default function SignUp() {
 							setBackupKeyError,
 							setBackupKeyIssued,
 						});
-						router.push("/dashboard/");
+						router.push("auth:/dashboard/");
 					}}
 					size="lg"
 				/>
 				{/* <div
 					className="text-l mt-4 text-lg text-gray-400 hover:text-gray-300 duration-200 bg-white/5 px-8 hover:bg-white/10 py-3 rounded-md cursor-pointer"
 					onClick={() => {
-						if (localStorage.getItem("projectData.id")) {
-							router.push("/dashboard/" + localStorage.getItem("projectData.id"));
+						if (localStorage.getItem("auth:projectData.id")) {
+							router.push("auth:/dashboard/" + localStorage.getItem("projectData.id"));
 						} else {
-							router.push("/noprojects")
+							router.push("auth:/noprojects")
 						}
 					}}
 				>
@@ -551,13 +551,16 @@ export default function SignUp() {
 	return (
 		<div className="bg-bunker-800 h-screen flex flex-col items-center justify-center">
 			<Head>
-				<title>{t("meta.signup.title")}</title>
+				<title>{t("auth:meta.signup.title")}</title>
 				<link rel="icon" href="/infisical.ico" />
 				<meta property="og:image" content="/images/message.png" />
-				<meta property="og:title" content={t("meta.signup.og-title")} />
+				<meta
+					property="og:title"
+					content={t("auth:meta.signup.og-title")}
+				/>
 				<meta
 					name="og:description"
-					content={t("meta.signup.og-description")}
+					content={t("auth:meta.signup.og-description")}
 				/>
 			</Head>
 			<div className="flex flex-col justify-center items-center">
