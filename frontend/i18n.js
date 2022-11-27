@@ -4,5 +4,6 @@ module.exports = {
 	pages: {
 		"*": ["common", "nav"],
 		"reg:^/(login|signup)": ["auth"],
+		"/dashboard/[id]": ["dashboard"],
 	},
 };

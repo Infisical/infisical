@@ -9,6 +9,8 @@ import Image from "next/image";
 import parse from "../utilities/file";
 import Button from "../basic/buttons/Button";
 
+import useTranslation from "next-translate/useTranslation";
+
 const DropZone = ({
 	setData,
 	setErrorDragAndDrop,
@@ -17,8 +19,10 @@ const DropZone = ({
 	addPresetRow,
 	setButtonReady,
 	keysExist,
-	numCurrentRows
+	numCurrentRows,
 }) => {
+	const { t } = useTranslation();
+
 	const handleDragEnter = (e) => {
 		e.preventDefault();
 		e.stopPropagation();
@@ -50,15 +54,14 @@ const DropZone = ({
 		var file = e.dataTransfer.files[0],
 			reader = new FileReader();
 		reader.onload = function (event) {
-			const keyPairs = parse(event.target.result)
-			const newData = Object.keys(keyPairs)
-				.map((key, index) => [
-					guidGenerator(),
-					numCurrentRows + index, 
-					key,
-					keyPairs[key],
-					"shared",
-				]);
+			const keyPairs = parse(event.target.result);
+			const newData = Object.keys(keyPairs).map((key, index) => [
+				guidGenerator(),
+				numCurrentRows + index,
+				key,
+				keyPairs[key],
+				"shared",
+			]);
 			setData(newData);
 			setButtonReady(true);
 		};
@@ -84,7 +87,7 @@ const DropZone = ({
 				.split("\n")
 				.map((line, index) => [
 					guidGenerator(),
-					numCurrentRows + index, 
+					numCurrentRows + index,
 					line.split("=")[0],
 					line.split("=").slice(1, line.split("=").length).join("="),
 					"shared",
@@ -130,7 +133,7 @@ const DropZone = ({
 					className="text-gray-300 text-3xl mr-6"
 				/>
 				<p className="text-gray-300 mt-1">
-					Drag and drop your .env file here to add more keys.
+					{t("common:drop-zone-keys")}
 				</p>
 			</div>
 			{errorDragAndDrop ? (
@@ -150,7 +153,7 @@ const DropZone = ({
 			onDrop={(e) => handleDrop(e)}
 		>
 			<FontAwesomeIcon icon={faUpload} className="text-7xl mb-8" />
-			<p className="">Drag and drop your .env file here.</p>
+			<p className="">{t("common:drop-zone")}</p>
 			<input
 				id="fileSelect"
 				type="file"
@@ -166,7 +169,7 @@ const DropZone = ({
 			<div className="z-10 mb-6">
 				<Button
 					color="mineshaft"
-					text="Create a new .env file" 
+					text="Create a new .env file"
 					onButtonPressed={createNewFile}
 					size="md"
 				/>

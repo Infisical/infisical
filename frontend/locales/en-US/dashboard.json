@@ -1,0 +1,10 @@
+{
+	"search-keys": "Search keys...",
+	"add-key": "Add Key",
+	"personal": "Personal",
+	"personal-description": "Personal keys are only visible to you",
+	"shared": "Shared",
+	"shared-description": "Shared keys are visible to your whole team",
+	"make-shared": "Make Shared",
+	"make-personal": "Make Personal"
+}

@@ -270,7 +270,7 @@ export default function SignUp() {
 			</div>
 			<div className="flex items-center justify-center w-5/6 md:w-full m-auto md:p-2 rounded-lg max-h-24 mt-4">
 				<InputField
-					label={t("auth:email")}
+					label={t("common:email")}
 					onChangeHandler={setEmail}
 					type="email"
 					value={email}
@@ -365,33 +365,33 @@ export default function SignUp() {
 			</p>
 			<div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">
 				<InputField
-					label={t("auth:first-name")}
+					label={t("common:first-name")}
 					onChangeHandler={setFirstName}
 					type="name"
 					value={firstName}
 					isRequired
-					errorText={t("auth:validate-required", {
-						name: t("auth:first-name"),
+					errorText={t("common:validate-required", {
+						name: t("common:first-name"),
 					})}
 					error={firstNameError}
 				/>
 			</div>
 			<div className="mt-2 flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
 				<InputField
-					label={t("auth:last-name")}
+					label={t("common:last-name")}
 					onChangeHandler={setLastName}
 					type="name"
 					value={lastName}
 					isRequired
-					errorText={t("auth:validate-required", {
-						name: t("auth:last-name"),
+					errorText={t("common:validate-required", {
+						name: t("common:last-name"),
 					})}
 					error={lastNameError}
 				/>
 			</div>
 			<div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
 				<InputField
-					label={t("auth:password")}
+					label={t("common:password")}
 					onChangeHandler={(password) => {
 						setPassword(password);
 						passwordCheck(

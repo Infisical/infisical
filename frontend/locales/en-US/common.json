@@ -12,5 +12,10 @@
 	"password-validate-length": "14 characters",
 	"password-validate-case": "1 lowercase character",
 	"password-validate-number": "1 number",
-	"maintenance-alert": "We are experiencing minor technical difficulties. We are working on solving it right now. Please come back in a few minutes."
+	"maintenance-alert": "We are experiencing minor technical difficulties. We are working on solving it right now. Please come back in a few minutes.",
+	"click-to-copy": "Click to copy",
+	"project-id": "Project ID",
+	"save-changes": "Save Changes",
+	"drop-zone": "Drag and drop your .env file here.",
+	"drop-zone-keys": "Drag and drop your .env file here to add more keys."
 }
