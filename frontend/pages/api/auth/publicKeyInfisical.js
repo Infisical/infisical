@@ -1,4 +1,4 @@
-import { PATH } from "../../../const.js";
+import { PATH } from "~/const";
 
 /**
  * This route lets us get the public key of infisical. Th euser doesn't have to be authenticated since this is just the public key.
@@ -7,12 +7,12 @@ import { PATH } from "../../../const.js";
  * @returns
  */
 const publicKeyInfisical = (req, res) => {
-	return fetch(PATH + "/api/v1/key/publicKey/infisical", {
-		method: "GET",
-		headers: {
-			"Content-Type": "application/json",
-		},
-	});
+  return fetch(PATH + "/api/v1/key/publicKey/infisical", {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 };
 
 export default publicKeyInfisical;

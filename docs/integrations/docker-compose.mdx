@@ -3,22 +3,25 @@ title: "Docker Compose"
 ---
 
 ### Step 1: Add CLI to your Dockerfile
-Follow steps 1 through 3 on our [guide to configure Infisical CLI](/docker) in your Dockerfile. 
+
+Follow steps 1 through 3 on our [guide to configure Infisical CLI](../getting-started/cli/installation) in your Dockerfile.
 
 ### Step 2: Generate Infisical Token
+
 In order for Infisical CLI to authenticate and retrieve your project's secrets without exposing your login credentials, you must generate a Infisical Token.
-To learn how, visit [Infisical Token](../getting-started/cli/infisical-token). Once you have generated the token, keep it handy. 
+To learn how, visit [Infisical Token](../getting-started/cli/infisical-token). Once you have generated the token, keep it handy.
 
 <Info>
-If you have multiple services and they do not use the same secrets, you will have to generate a Infisical Token for each service.
+  If you have multiple services and they do not use the same secrets, you will
+  have to generate a Infisical Token for each service.
 </Info>
 
 ### Step 3: Tell Docker Compose your Infisical Token
+
 For each service you want to inject secrets into, set an environment variable called `INFISICAL_TOKEN` equal to a helpful identifier variable.
-This will ensure that you can set Infisical Tokens for multiple services. 
+This will ensure that you can set Infisical Tokens for multiple services.
 
 For the example below, we have set `INFISICAL_TOKEN_FOR_WEB` and `INFISICAL_TOKEN_FOR_API` as the `INFISICAL_TOKEN` for the corresponding service.
-
 
 ```yaml
 # Example Docker Compose file
@@ -36,13 +39,14 @@ services:
     container_name: auledge-backend
     environment:
       - INFISICAL_TOKEN=${INFISICAL_TOKEN_FOR_API}
-
 ```
-### 4: Export shell variables
-Next, set the shell variables you defined in your compose file. This can be done manually or via your CI/CD environment. Once done, it will be used to populate the corresponding `INFISICAL_TOKEN`
-in your Docker Compose file. 
 
-``` bash
+### 4: Export shell variables
+
+Next, set the shell variables you defined in your compose file. This can be done manually or via your CI/CD environment. Once done, it will be used to populate the corresponding `INFISICAL_TOKEN`
+in your Docker Compose file.
+
+```bash
 #Example
 
 # Token refers to the token we generated in step 2 for this service
@@ -51,6 +55,6 @@ export INFISICAL_TOKEN_FOR_WEB=<token>
 # Token refers to the token we generated in step 2 for this service
 export INFISICAL_TOKEN_FOR_API=<token>
 
-# Then run your compose file in the same terminal. 
+# Then run your compose file in the same terminal.
 docker-compose ...
 ```

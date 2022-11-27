@@ -1,135 +1,135 @@
 {
-	"common": {
-		"error_project-already-exists": "A project with this name already exists.",
-		"need-login": " To use Infisical, please log in through a device with larger dimensions. ",
-		"email": "Email",
-		"password": "Password",
-		"verify": "Verify",
-		"first-name": "First Name",
-		"last-name": "Last Name",
-		"logout": "Log Out",
-		"validate-required": "Please input your {{name}}",
-		"password-validate": "Password should contain at least:",
-		"password-validate-length": "14 characters",
-		"password-validate-case": "1 lowercase character",
-		"password-validate-number": "1 number",
-		"maintenance-alert": "We are experiencing minor technical difficulties. We are working on solving it right now. Please come back in a few minutes.",
-		"click-to-copy": "Click to copy",
-		"project-id": "Project ID",
-		"save-changes": "Save Changes",
-		"saved": "Saved",
-		"drop-zone": "Drag and drop your .env file here.",
-		"drop-zone-keys": "Drag and drop your .env file here to add more keys.",
-		"role": "Role",
-		"role_admin": "admin",
-		"display-name": "Display Name"
-	},
-	"nav": {
-		"support": {
-			"slack": "[NEW] Join Slack Forum",
-			"docs": "Read Docs",
-			"issue": "Open a Github Issue",
-			"email": "Send us an Email"
-		},
-		"user": {
-			"signed-in-as": "SIGNED IN AS",
-			"current-organization": "CURRENT ORGANIZATION",
-			"usage-billing": "Usage & Billing",
-			"invite": "Invite Members",
-			"other-organizations": "OTHER ORGANIZATION"
-		},
-		"menu": {
-			"project": "PROJECT",
-			"secrets": "Secrets",
-			"members": "Members",
-			"integrations": "Integrations",
-			"project-settings": "Project Settings"
-		}
-	},
-	"auth": {
-		"meta": {
-			"login": {
-				"title": "Login | Infiscal",
-				"og-title": "Log In to Infisical",
-				"og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
-			},
-			"signup": {
-				"title": "Sign Up | Infiscal",
-				"og-title": "Replace .env files with 1 line of code. Sign Up for Infisical in 3 minutes.",
-				"og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage API-keys and environemntal variables.  Works with Node.js, Next.js, Gatsby, Nest.js..."
-			}
-		},
-		"login": "Log In",
-		"signup": "Sign Up",
-		"need-account": "Need an Infisical account?",
-		"create-account": "Create an account",
-		"already-have-account": "Have an account? Log in",
-		"forgot-password": "Forgot your password?",
-		"step1-start": "Let's get started",
-		"step1-privacy": "By creating an account, you agree to our Terms and have read and acknowledged the Privacy Policy.",
-		"step1-submit": "Get Started",
-		"step2-message": "<wrapper>We've sent a verification email to</wrapper><email>{{email}}</email>",
-		"step2-code-error": "Oops. Your code is wrong. Please try again.",
-		"step2-spam-alert": "Make sure to check your spam inbox.",
-		"step3-message": "Almost there!",
-		"step4-message": "Save your Emergency Kit",
-		"step4-description1": "If you get locked out of your account, your Emergency Kit is the only way to sign in.",
-		"step4-description2": "We recommend you download it and keep it somewhere safe.",
-		"step4-description3": "It contains your Secret Key which we cannot access or recover for you if you lose it.",
-		"step4-download": "Download PDF"
-	},
-	"dashboard": {
-		"secrets": "Secrets",
-		"meta": {
-			"title": "Dashboard | Infiscal",
-			"og-title": "Manage your .env files in seconds",
-			"og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
-		},
-		"search-keys": "Search keys...",
-		"add-key": "Add Key",
-		"personal": "Personal",
-		"personal-description": "Personal keys are only visible to you",
-		"shared": "Shared",
-		"shared-description": "Shared keys are visible to your whole team",
-		"make-shared": "Make Shared",
-		"make-personal": "Make Personal",
-		"check-docs": {
-			"button": "Check Docs",
-			"title": "Good job!",
-			"line1": "Congrats on adding more secrets.",
-			"line2": "Here is how to connect them to your codebase."
-		}
-	},
-	"settings": {
-		"meta": {
-			"members": {
-				"title": "Project Members",
-				"head-title": "Project Settings | Infiscal",
-				"description": "This pages shows the members of the selected project."
-			},
-			"org": {
-				"title": "Organization Settings",
-				"head-title": "Organization Settings | Infiscal",
-				"description": "Manage members of your organization. These users could afterwards be formed into projects."
-			}
-		},
-		"search-members": "Search members...",
-		"search": "Search...",
-		"add-member": "Add Member",
-		"org-members": "Organization Members",
-		"org-members-description": "Manage members of your organization. These users could afterwards be formed into projects.",
-		"incident-contacts": "Incident Contacts",
-		"incident-contacts-description": "These contacts will be notified in the unlikely event of a severe incident.",
-		"no-incident-contacts": "No incident contacts found.",
-		"add-contact": "Add Contact",
-		"add-member-dialog": {
-			"add-member-to-project": "Add a member to your project",
-			"already-all-invited": "All the users in your organization are already invited.",
-			"add-user-org-first": "Add more users to the organization first.",
-			"user-will-email": "The user will receive an email with the instructions.",
-			"looking-add": "<0>If you are looking to add users to your org,</0><1>click here</1>",
-			"add-user-to-org": "Add Users to Organization",
-			"add-member": "Add Member"
-		}
-	}
+  "common": {
+    "error_project-already-exists": "A project with this name already exists.",
+    "no-mobile": " To use Infisical, please log in through a device with larger dimensions. ",
+    "email": "Email",
+    "password": "Password",
+    "verify": "Verify",
+    "first-name": "First Name",
+    "last-name": "Last Name",
+    "logout": "Log Out",
+    "validate-required": "Please input your {{name}}",
+    "password-validate": "Password should contain at least:",
+    "password-validate-length": "14 characters",
+    "password-validate-case": "1 lowercase character",
+    "password-validate-number": "1 number",
+    "maintenance-alert": "We are experiencing minor technical difficulties. We are working on solving it right now. Please come back in a few minutes.",
+    "click-to-copy": "Click to copy",
+    "project-id": "Project ID",
+    "save-changes": "Save Changes",
+    "saved": "Saved",
+    "drop-zone": "Drag and drop your .env file here.",
+    "drop-zone-keys": "Drag and drop your .env file here to add more keys.",
+    "role": "Role",
+    "role_admin": "admin",
+    "display-name": "Display Name"
+  },
+  "nav": {
+    "support": {
+      "slack": "[NEW] Join Slack Forum",
+      "docs": "Read Docs",
+      "issue": "Open a Github Issue",
+      "email": "Send us an Email"
+    },
+    "user": {
+      "signed-in-as": "SIGNED IN AS",
+      "current-organization": "CURRENT ORGANIZATION",
+      "usage-billing": "Usage & Billing",
+      "invite": "Invite Members",
+      "other-organizations": "OTHER ORGANIZATION"
+    },
+    "menu": {
+      "project": "PROJECT",
+      "secrets": "Secrets",
+      "members": "Members",
+      "integrations": "Integrations",
+      "project-settings": "Project Settings"
+    }
+  },
+  "auth": {
+    "meta": {
+      "login": {
+        "title": "Login | Infiscal",
+        "og-title": "Log In to Infisical",
+        "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
+      },
+      "signup": {
+        "title": "Sign Up | Infiscal",
+        "og-title": "Replace .env files with 1 line of code. Sign Up for Infisical in 3 minutes.",
+        "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage API-keys and environemntal variables.  Works with Node.js, Next.js, Gatsby, Nest.js..."
+      }
+    },
+    "login": "Log In",
+    "signup": "Sign Up",
+    "need-account": "Need an Infisical account?",
+    "create-account": "Create an account",
+    "already-have-account": "Have an account? Log in",
+    "forgot-password": "Forgot your password?",
+    "step1-start": "Let's get started",
+    "step1-privacy": "By creating an account, you agree to our Terms and have read and acknowledged the Privacy Policy.",
+    "step1-submit": "Get Started",
+    "step2-message": "<wrapper>We've sent a verification email to</wrapper><email>{{email}}</email>",
+    "step2-code-error": "Oops. Your code is wrong. Please try again.",
+    "step2-spam-alert": "Make sure to check your spam inbox.",
+    "step3-message": "Almost there!",
+    "step4-message": "Save your Emergency Kit",
+    "step4-description1": "If you get locked out of your account, your Emergency Kit is the only way to sign in.",
+    "step4-description2": "We recommend you download it and keep it somewhere safe.",
+    "step4-description3": "It contains your Secret Key which we cannot access or recover for you if you lose it.",
+    "step4-download": "Download PDF"
+  },
+  "dashboard": {
+    "secrets": "Secrets",
+    "meta": {
+      "title": "Dashboard | Infiscal",
+      "og-title": "Manage your .env files in seconds",
+      "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
+    },
+    "search-keys": "Search keys...",
+    "add-key": "Add Key",
+    "personal": "Personal",
+    "personal-description": "Personal keys are only visible to you",
+    "shared": "Shared",
+    "shared-description": "Shared keys are visible to your whole team",
+    "make-shared": "Make Shared",
+    "make-personal": "Make Personal",
+    "check-docs": {
+      "button": "Check Docs",
+      "title": "Good job!",
+      "line1": "Congrats on adding more secrets.",
+      "line2": "Here is how to connect them to your codebase."
+    }
+  },
+  "settings": {
+    "meta": {
+      "members": {
+        "title": "Project Members",
+        "head-title": "Project Settings | Infiscal",
+        "description": "This pages shows the members of the selected project."
+      },
+      "org": {
+        "title": "Organization Settings",
+        "head-title": "Organization Settings | Infiscal",
+        "description": "Manage members of your organization. These users could afterwards be formed into projects."
+      }
+    },
+    "search-members": "Search members...",
+    "search": "Search...",
+    "add-member": "Add Member",
+    "org-members": "Organization Members",
+    "org-members-description": "Manage members of your organization. These users could afterwards be formed into projects.",
+    "incident-contacts": "Incident Contacts",
+    "incident-contacts-description": "These contacts will be notified in the unlikely event of a severe incident.",
+    "no-incident-contacts": "No incident contacts found.",
+    "add-contact": "Add Contact",
+    "add-member-dialog": {
+      "add-member-to-project": "Add a member to your project",
+      "already-all-invited": "All the users in your organization are already invited.",
+      "add-user-org-first": "Add more users to the organization first.",
+      "user-will-email": "The user will receive an email with the instructions.",
+      "looking-add": "<0>If you are looking to add users to your org,</0><1>click here</1>",
+      "add-user-to-org": "Add Users to Organization",
+      "add-member": "Add Member"
+    }
+  }
 }

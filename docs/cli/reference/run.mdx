@@ -1,0 +1,19 @@
+---
+title: "infisical run"
+---
+
+```bash
+infisical run [options] -- [your application start command]
+```
+
+## Description
+
+Inject environment variables from the platform into an application process.
+
+## Options
+
+| Option         | Description                                                                                                 | Default value |
+| -------------- | ----------------------------------------------------------------------------------------------------------- | ------------- |
+| `--env`        | Used to set the environment that secrets are pulled from. Accepted values: `dev`, `staging`, `test`, `prod` | `dev`         |
+| `--projectId`  | Used to link a local project to the platform (required only if injecting via the service token method)      | `None`        |
+| `--expand`     | Parse shell parameter expansions in your secrets (e.g., `${DOMAIN}`)      | `true`        |

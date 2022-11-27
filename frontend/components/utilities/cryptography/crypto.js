@@ -1,6 +1,6 @@
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
-const aes = require("../aes-256-gcm");
+const aes = require("./aes-256-gcm");
 
 /**
  * Return assymmetrically encrypted [plaintext] using [publicKey] where
@@ -14,18 +14,18 @@ const aes = require("../aes-256-gcm");
  * @returns {String} nonce - base64-encoded nonce
  */
 const encryptAssymmetric = ({ plaintext, publicKey, privateKey }) => {
-	const nonce = nacl.randomBytes(24);
-	const ciphertext = nacl.box(
-		nacl.util.decodeUTF8(plaintext),
-		nonce,
-		nacl.util.decodeBase64(publicKey),
-		nacl.util.decodeBase64(privateKey)
-	);
+  const nonce = nacl.randomBytes(24);
+  const ciphertext = nacl.box(
+    nacl.util.decodeUTF8(plaintext),
+    nonce,
+    nacl.util.decodeBase64(publicKey),
+    nacl.util.decodeBase64(privateKey)
+  );
 
-	return {
-		ciphertext: nacl.util.encodeBase64(ciphertext),
-		nonce: nacl.util.encodeBase64(nonce),
-	};
+  return {
+    ciphertext: nacl.util.encodeBase64(ciphertext),
+    nonce: nacl.util.encodeBase64(nonce),
+  };
 };
 
 /**
@@ -39,14 +39,14 @@ const encryptAssymmetric = ({ plaintext, publicKey, privateKey }) => {
  * @param {String} plaintext - UTF8 plaintext
  */
 const decryptAssymmetric = ({ ciphertext, nonce, publicKey, privateKey }) => {
-	const plaintext = nacl.box.open(
-		nacl.util.decodeBase64(ciphertext),
-		nacl.util.decodeBase64(nonce),
-		nacl.util.decodeBase64(publicKey),
-		nacl.util.decodeBase64(privateKey)
-	);
+  const plaintext = nacl.box.open(
+    nacl.util.decodeBase64(ciphertext),
+    nacl.util.decodeBase64(nonce),
+    nacl.util.decodeBase64(publicKey),
+    nacl.util.decodeBase64(privateKey)
+  );
 
-	return nacl.util.encodeUTF8(plaintext);
+  return nacl.util.encodeUTF8(plaintext);
 };
 
 /**
@@ -56,23 +56,23 @@ const decryptAssymmetric = ({ ciphertext, nonce, publicKey, privateKey }) => {
  * @param {String} obj.key - 16-byte hex key
  */
 const encryptSymmetric = ({ plaintext, key }) => {
-	let ciphertext, iv, tag;
-	try {
-		const obj = aes.encrypt(plaintext, key);
-		ciphertext = obj.ciphertext;
-		iv = obj.iv;
-		tag = obj.tag;
-	} catch (err) {
-		console.log("Failed to perform encryption");
-		console.log(err);
-		process.exit(1);
-	}
+  let ciphertext, iv, tag;
+  try {
+    const obj = aes.encrypt(plaintext, key);
+    ciphertext = obj.ciphertext;
+    iv = obj.iv;
+    tag = obj.tag;
+  } catch (err) {
+    console.log("Failed to perform encryption");
+    console.log(err);
+    process.exit(1);
+  }
 
-	return {
-		ciphertext,
-		iv,
-		tag,
-	};
+  return {
+    ciphertext,
+    iv,
+    tag,
+  };
 };
 
 /**
@@ -86,20 +86,20 @@ const encryptSymmetric = ({ plaintext, key }) => {
  *
  */
 const decryptSymmetric = ({ ciphertext, iv, tag, key }) => {
-	let plaintext;
-	try {
-		plaintext = aes.decrypt(ciphertext, iv, tag, key);
-	} catch (err) {
-		console.log("Failed to perform decryption");
-		process.exit(1);
-	}
+  let plaintext;
+  try {
+    plaintext = aes.decrypt(ciphertext, iv, tag, key);
+  } catch (err) {
+    console.log("Failed to perform decryption");
+    process.exit(1);
+  }
 
-	return plaintext;
+  return plaintext;
 };
 
 module.exports = {
-	encryptAssymmetric,
-	decryptAssymmetric,
-	encryptSymmetric,
-	decryptSymmetric,
+  encryptAssymmetric,
+  decryptAssymmetric,
+  encryptSymmetric,
+  decryptSymmetric,
 };

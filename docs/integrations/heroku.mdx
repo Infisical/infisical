@@ -5,20 +5,22 @@ description: "With this integration, you can automatically sync your secrets to 
 
 ## Instructions
 
-### Step 1: Open the integrations csonsole
+### Step 1: Open the integrations console
 
 Open the Infisical Dashboard. Choose the project in which you want to set up the intergation. Go to the integrations tab in the left sidebar.
 
 ### Step 2: Authenticate with Heroku
 
-Click on Heroku in the list of available integrations. Log in if asked by Heroku and provide the necessary permissions to Infisical. You will afterwards be redirected back to the integrations page.
+Click on "Heroku" tile. Log in if required and provide the necessary permissions to Infisical. You will afterwards be redirected back to the integrations page.
 
-Note: during an integration with Heroku, for security reasons, it is impossible to maintain end-to-end encryption. In theory, this lets Infisical decrypt yor environment variables. In practice, we can assure you that this will never be done, and it allows us to protect your secrets from bad actors online. The core Infisical service will always stay end-to-end encrypted. With any questions, reach out support@infisical.com.
+Note: during an integration with Heroku, for security reasons, it is impossible to maintain end-to-end encryption. In theory, this lets Infisical decrypt yor environment variables. In practice, we can assure you that this will never be done, and it allows us to protect your secrets from bad actors online. With any questions, reach out support@infisical.com.
 
 ### Step 3: Start integration
 
-Once the integration is set up, choose a Heroku App that you want to sync the secrets to, and the Infisical project environment that you would to sync the secrets from. Click on the "Start Integration" button.
+Choose a Heroku App that you want to sync the secrets to, and the Infisical project environment that you want to sync the secrets from. Start the integration.
 
-### Step 4: You're good to go!
+The integration should now show status 'In Sync'. Every time you edit secrets, they will be automatically pushed to Heroku. 
 
-The integration should now show status 'In Sync'. Every time you edit the secrets, they will be automatically pushed to Heroku. If you want to update anything in your integration, you will have to delete the current one and create a new one.
+<Info> 
+  If you need to update your integration, you will have to delete the current one and create a new one.
+</Info>

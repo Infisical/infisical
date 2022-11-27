@@ -1,4 +1,4 @@
-import { PATH } from "../../../const";
+import { PATH } from "~/const";
 
 /**
  * This function is called in the end of the signup process.
@@ -16,37 +16,37 @@ import { PATH } from "../../../const";
  * @returns
  */
 const completeAccountInformationSignup = ({
-	email,
-	firstName,
-	lastName,
-	organizationName,
-	publicKey,
-	ciphertext,
-	iv,
-	tag,
-	salt,
-	verifier,
-	token
+  email,
+  firstName,
+  lastName,
+  organizationName,
+  publicKey,
+  ciphertext,
+  iv,
+  tag,
+  salt,
+  verifier,
+  token,
 }) => {
-	return fetch(PATH + "/api/v1/signup/complete-account/signup", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			"Authorization": "Bearer " + token,
-		},
-		body: JSON.stringify({
-			email,
-			firstName,
-			lastName,
-			publicKey,
-			encryptedPrivateKey: ciphertext,
-			organizationName,
-			iv,
-			tag,
-			salt,
-			verifier,
-		}),
-	});
+  return fetch(PATH + "/api/v1/signup/complete-account/signup", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + token,
+    },
+    body: JSON.stringify({
+      email,
+      firstName,
+      lastName,
+      publicKey,
+      encryptedPrivateKey: ciphertext,
+      organizationName,
+      iv,
+      tag,
+      salt,
+      verifier,
+    }),
+  });
 };
 
 export default completeAccountInformationSignup;

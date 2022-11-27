@@ -8,6 +8,7 @@ import {
 	STRIPE_PRODUCT_CARD_AUTH
 } from '../config';
 import Stripe from 'stripe';
+
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
 	apiVersion: '2022-08-01'
 });
