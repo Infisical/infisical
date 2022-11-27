@@ -376,29 +376,32 @@ export default function Dashboard() {
 	return data ? (
 		<div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
 			<Head>
-				<title>Secrets</title>
+				<title>{t("dashboard:meta.title")}</title>
 				<link rel="icon" href="/infisical.ico" />
 				<meta property="og:image" content="/images/message.png" />
 				<meta
 					property="og:title"
-					content="Manage your .env files in seconds"
+					content={t("dashboard:meta.og-title")}
 				/>
 				<meta
 					name="og:description"
-					content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
+					content={t("dashboard:meta.og-description")}
 				/>
 			</Head>
 			<div className="flex flex-row">
 				<div className="w-full max-h-96 pb-2">
-					<NavHeader pageName="Secrets" isProjectRelated={true} />
+					<NavHeader
+						pageName={t("dashboard:secrets")}
+						isProjectRelated={true}
+					/>
 					{checkDocsPopUpVisible && (
 						<BottonRightPopup
-							buttonText="Check Docs"
+							buttonText={t("dashboard:check-docs.button")}
 							buttonLink="https://infisical.com/docs/getting-started/introduction"
-							titleText="Good job!"
+							titleText={t("dashboard:check-docs.title")}
 							emoji="🎉"
-							textLine1="Congrats on adding more secrets."
-							textLine2="Here is how to connect them to your codebase."
+							textLine1={t("dashboard:check-docs.line1")}
+							textLine2={t("dashboard:check-docs.line2")}
 							setCheckDocsPopUpVisible={setCheckDocsPopUpVisible}
 						/>
 					)}
@@ -456,13 +459,13 @@ export default function Dashboard() {
 									className={`flex justify-start max-w-sm mt-2`}
 								>
 									<Button
-										text={t("save-changes")}
+										text={t("common:save-changes")}
 										onButtonPressed={savePush}
 										color="primary"
 										size="md"
 										active={buttonReady}
 										iconDisabled={faCheck}
-										textDisabled="Saved"
+										textDisabled={t("common:saved")}
 									/>
 								</div>
 							)}

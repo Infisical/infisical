@@ -9,6 +9,8 @@ module.exports = {
 	pages: {
 		"*": ["common", "nav"],
 		"rgx:^/(login|signup)": ["auth"],
+		"rgx:^/settings": ["settings"],
 		"/dashboard/[id]": ["dashboard"],
+		"/users/[id]": ["settings"],
 	},
 };

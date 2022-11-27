@@ -3,6 +3,8 @@ import { Fragment, useState } from "react";
 import ListBox from "../Listbox";
 import { useRouter } from "next/router";
 import Button from "../buttons/Button";
+import useTranslation from "next-translate/useTranslation";
+import Trans from "next-translate/Trans";
 
 const AddProjectMemberDialog = ({
 	isOpen,
@@ -14,6 +16,7 @@ const AddProjectMemberDialog = ({
 	setEmail,
 }) => {
 	const router = useRouter();
+	const { t } = useTranslation();
 
 	return (
 		<div className="z-50">
@@ -48,56 +51,68 @@ const AddProjectMemberDialog = ({
 											as="h3"
 											className="text-lg font-medium leading-6 text-gray-400 z-50"
 										>
-											Add a member to your project
+											{t(
+												"settings:add-member-dialog.add-member-to-project"
+											)}
 										</Dialog.Title>
 									) : (
 										<Dialog.Title
 											as="h3"
 											className="text-lg font-medium leading-6 text-gray-400 z-50"
 										>
-											All the users in your organization
-											are already invited.
+											{t(
+												"settings:add-member-dialog.already-all-invited"
+											)}
 										</Dialog.Title>
 									)}
 									<div className="mt-2 mb-4">
 										{data?.length > 0 ? (
 											<div className="flex flex-col">
 												<p className="text-sm text-gray-500">
-													The user will receive an email
-													with the instructions.
+													{t(
+														"settings:add-member-dialog.user-will-email"
+													)}
 												</p>
 												<div className="">
-													<button
-														type="button"
-														className="inline-flex justify-center rounded-md py-1 text-sm text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-														onClick={() =>
-															router.push(
-																"/settings/org/" +
-																	router.query.id
-															)
-														}
-													>
-														If you are looking to add users to your org, 
-													</button>
-													<button
-														type="button"
-														className="ml-1 inline-flex justify-center rounded-md py-1 text-sm text-gray-500 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-														onClick={() =>
-															router.push(
-																"/settings/org/" +
-																router.query.id + 
-																"?invite"
-															)
-														}
-													>
-														click here.
-													</button>
+													<Trans
+														i18nKey="settings:add-member-dialog.looking-add"
+														components={[
+															<button
+																type="button"
+																className="inline-flex justify-center rounded-md py-1 text-sm text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+																onClick={() =>
+																	router.push(
+																		"/settings/org/" +
+																			router
+																				.query
+																				.id
+																	)
+																}
+															/>,
+															<button
+																type="button"
+																className="ml-1 inline-flex justify-center rounded-md py-1 text-sm text-gray-500 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+																onClick={() =>
+																	router.push(
+																		"/settings/org/" +
+																			router
+																				.query
+																				.id +
+																			"?invite"
+																	)
+																}
+															>
+																click here.
+															</button>,
+														]}
+													/>
 												</div>
 											</div>
 										) : (
 											<p className="text-sm text-gray-500">
-												Add more users to the
-												organization first.
+												{t(
+													"settings:add-member-dialog.add-user-org-first"
+												)}
 											</p>
 										)}
 									</div>
@@ -117,9 +132,13 @@ const AddProjectMemberDialog = ({
 										{data?.length > 0 ? (
 											<div className="mt-6 flex flex-col justify-start w-max">
 												<Button
-													onButtonPressed={submitModal}
+													onButtonPressed={
+														submitModal
+													}
 													color="mineshaft"
-													text="Add Member"
+													text={t(
+														"settings:add-member-dialog.add-member"
+													)}
 													size="md"
 												/>
 											</div>
@@ -132,7 +151,9 @@ const AddProjectMemberDialog = ({
 													)
 												}
 												color="mineshaft"
-												text="Add Users to Organization"
+												text={t(
+													"settings:add-member-dialog.add-user-to-org"
+												)}
 												size="md"
 											/>
 										)}

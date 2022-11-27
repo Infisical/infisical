@@ -17,6 +17,8 @@ import getOrganizationUsers from "../api/organization/GetOrgUsers";
 import NavHeader from "../../components/navigation/NavHeader";
 import Button from "../../components/basic/buttons/Button";
 
+import useTranslation from "next-translate/useTranslation";
+
 // #TODO: Update all the workspaceIds
 const crypto = require("crypto");
 const {
@@ -33,6 +35,8 @@ export default function Users() {
 	let [email, setEmail] = useState("");
 	const [personalEmail, setPersonalEmail] = useState("");
 	const [searchUsers, setSearchUsers] = useState("");
+
+	const { t } = useTranslation();
 
 	const router = useRouter();
 	let workspaceId;
@@ -98,15 +102,13 @@ export default function Users() {
 			firstName: user.user?.firstName,
 			lastName: user.user?.lastName,
 			email:
-				user.user?.email == null
-					? user.inviteEmail
-					: user.user?.email,
+				user.user?.email == null ? user.inviteEmail : user.user?.email,
 			role: user?.role,
 			status: user?.status,
 			userId: user.user?._id,
 			membershipId: user._id,
 			publicKey: user.user?.publicKey,
-		}))
+		}));
 		setUserList(tempUserList);
 		const orgUsers = await getOrganizationUsers({
 			orgId: localStorage.getItem("orgData.id"),
@@ -114,28 +116,33 @@ export default function Users() {
 		setOrgUserList(orgUsers);
 		setEmail(
 			orgUsers
-			?.filter((user) => user.status == "accepted")
-			.map((user) => user.user.email)
-			.filter(
-				(email) =>
-					!tempUserList
-						?.map((user1) => user1.email)
-						.includes(email)
-			)[0]
-		)
+				?.filter((user) => user.status == "accepted")
+				.map((user) => user.user.email)
+				.filter(
+					(email) =>
+						!tempUserList
+							?.map((user1) => user1.email)
+							.includes(email)
+				)[0]
+		);
 	}, []);
 
 	return userList ? (
 		<div className="bg-bunker-800 md:h-screen flex flex-col justify-start">
 			<Head>
-				<title>Users</title>
+				<title>{t("settings:meta.members.head-title")}</title>
 				<link rel="icon" href="/infisical.ico" />
 			</Head>
-			<NavHeader pageName="Project Members" isProjectRelated={true}/>
+			<NavHeader
+				pageName={t("settings:meta.members.title")}
+				isProjectRelated={true}
+			/>
 			<div className="flex flex-col justify-start items-start px-6 py-6 pb-4 text-3xl">
-				<p className="font-semibold mr-4 text-white">Project Members</p>
+				<p className="font-semibold mr-4 text-white">
+					{t("settings:meta.members.title")}
+				</p>
 				<p className="mr-4 text-base text-gray-400">
-					This pages shows the members of the selected project.
+					{t("settings:meta.members.description")}
 				</p>
 			</div>
 			<AddProjectMemberDialog
@@ -166,12 +173,12 @@ export default function Users() {
 						className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
 						value={searchUsers}
 						onChange={(e) => setSearchUsers(e.target.value)}
-						placeholder={"Search members..."}
+						placeholder={t("settings:search-members")}
 					/>
 				</div>
 				<div className="mt-2 ml-2 min-w-max flex flex-row items-start justify-start mr-4">
 					<Button
-						text="Add Member"
+						text={t("settings:add-member")}
 						onButtonPressed={openAddModal}
 						color="mineshaft"
 						size="md"
