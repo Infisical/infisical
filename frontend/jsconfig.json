@@ -8,6 +8,9 @@
 			"~/utilities/*": [
 				"components/utilities/*"
 			],
+			"~/*": [
+				"const"
+			],
 			"~/pages/*": [
 				"pages/*"
 			],

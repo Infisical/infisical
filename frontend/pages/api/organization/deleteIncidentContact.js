@@ -1,6 +1,6 @@
 import SecurityClient from "~/utilities/SecurityClient";
 
-import { PATH } from "../../../const";
+import { PATH } from "~/const";
 
 /**
  * This route deletes an incident Contact from a certain organization
@@ -8,24 +8,24 @@ import { PATH } from "../../../const";
  * @returns
  */
 const deleteIncidentContact = (organizaionId, email) => {
-	return SecurityClient.fetchCall(
-		PATH + "/api/v1/organization/" + organizaionId + "/incidentContactOrg",
-		{
-			method: "DELETE",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				email: email,
-			}),
-		}
-	).then(async (res) => {
-		if (res.status == 200) {
-			return res;
-		} else {
-			console.log("Failed to delete an incident contact");
-		}
-	});
+  return SecurityClient.fetchCall(
+    PATH + "/api/v1/organization/" + organizaionId + "/incidentContactOrg",
+    {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: email,
+      }),
+    }
+  ).then(async (res) => {
+    if (res.status == 200) {
+      return res;
+    } else {
+      console.log("Failed to delete an incident contact");
+    }
+  });
 };
 
 export default deleteIncidentContact;

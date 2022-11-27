@@ -1,6 +1,6 @@
 import SecurityClient from "~/utilities/SecurityClient";
 
-import { PATH } from "../../../const";
+import { PATH } from "~/const";
 
 /**
  * This route logs the user out. Note: the user should authorized to do this.
@@ -10,27 +10,27 @@ import { PATH } from "../../../const";
  * @returns
  */
 const logout = async (req, res) => {
-	return SecurityClient.fetchCall(PATH + "/api/v1/auth/logout", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		credentials: "include",
-	}).then((res) => {
-		if (res.status == 200) {
-			SecurityClient.setToken("");
-			// Delete the cookie by not setting a value; Alternatively clear the local storage
-			localStorage.setItem("publicKey", "");
-			localStorage.setItem("encryptedPrivateKey", "");
-			localStorage.setItem("iv", "");
-			localStorage.setItem("tag", "");
-			localStorage.setItem("PRIVATE_KEY", "");
-			console.log("User logged out", res);
-			return res;
-		} else {
-			console.log("Failed to log out");
-		}
-	});
+  return SecurityClient.fetchCall(PATH + "/api/v1/auth/logout", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+  }).then((res) => {
+    if (res.status == 200) {
+      SecurityClient.setToken("");
+      // Delete the cookie by not setting a value; Alternatively clear the local storage
+      localStorage.setItem("publicKey", "");
+      localStorage.setItem("encryptedPrivateKey", "");
+      localStorage.setItem("iv", "");
+      localStorage.setItem("tag", "");
+      localStorage.setItem("PRIVATE_KEY", "");
+      console.log("User logged out", res);
+      return res;
+    } else {
+      console.log("Failed to log out");
+    }
+  });
 };
 
 export default logout;
