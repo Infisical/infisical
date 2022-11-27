@@ -16,7 +16,6 @@
     "@fortawesome/free-solid-svg-icons": "^6.1.2",
     "@fortawesome/react-fontawesome": "^0.1.19",
     "@headlessui/react": "^1.6.6",
-    "@heroicons/react": "^1.0.6",
     "@reduxjs/toolkit": "^1.8.3",
     "@stripe/react-stripe-js": "^1.10.0",
     "@stripe/stripe-js": "^1.35.0",
@@ -53,6 +52,7 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.4",
+    "@types/node": "18.11.9",
     "autoprefixer": "^10.4.7",
     "eslint": "^8.28.0",
     "eslint-config-next": "^13.0.5",

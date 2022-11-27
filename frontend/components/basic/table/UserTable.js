@@ -185,7 +185,7 @@ const UserTable = ({
                         )}
                         {(row.status == "invited" ||
                           row.status == "verified") && (
-                          <div className="w-full pl-12">
+                          <div className="w-full pl-9">
                             <Button
                               onButtonPressed={() =>
                                 deleteMembershipAndResendInvite(
