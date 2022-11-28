@@ -56,6 +56,7 @@ const envMapping = {
  * @param {function} obj.modifyValue - modify the value of a certain environment variable
  * @param {function} obj.modifyVisibility - switch between public/private visibility
  * @param {boolean} obj.isBlurred - if the blurring setting is turned on
+ * @param {string[]} obj.duplicates - list of all the duplicates secret names on the dashboard
  * @returns
  */
 const KeyPair = ({
@@ -65,19 +66,21 @@ const KeyPair = ({
   modifyValue,
   modifyVisibility,
   isBlurred,
+  duplicates
 }) => {
   const [randomStringLength, setRandomStringLength] = useState(32);
 
   return (
     <div className="px-1 flex flex-col items-center ml-1">
-      <div className="relative flex flex-row justify-between w-full max-w-5xl mr-auto max-h-10 my-1 items-center px-2">
+      <div className="relative flex flex-row justify-between w-full max-w-5xl mr-auto max-h-14 my-1 items-start px-2">
         <div className="min-w-xl w-96">
-          <div className="flex items-center md:px-1 rounded-lg mt-4 md:mt-0 max-h-10">
+          <div className="flex items-center md:px-1 rounded-lg mt-4 md:mt-0 max-h-16">
             <DashboardInputField
               onChangeHandler={modifyKey}
               type="varName"
               index={keyPair[1]}
               value={keyPair[2]}
+              duplicates={duplicates}
             />
           </div>
         </div>
@@ -112,7 +115,7 @@ const KeyPair = ({
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <Menu.Items className="absolute z-40 right-0 mt-0.5 w-[20rem] origin-top-right rounded-md bg-bunker border border-mineshaft-700 shadow-lg ring-1 ring-black z-20 ring-opacity-5 focus:outline-none px-1 py-1">
+            <Menu.Items className="absolute z-50 drop-shadow-xl right-0 mt-0.5 w-[20rem] origin-top-right rounded-md bg-bunker border border-mineshaft-500 shadow-lg ring-1 ring-black z-20 ring-opacity-5 focus:outline-none px-1 py-1">
               <div
                 onClick={() =>
                   modifyVisibility(
@@ -372,37 +375,47 @@ export default function Dashboard() {
       ...data.map((row) => ({ [row[2]]: [row[3], row[4]] }))
     );
 
-    // Once "Save changed is clicked", disable that button
-    setButtonReady(false);
-    pushKeys(obj, router.query.id, env);
+    // Checking if any of the secret keys start with a number - if so, don't do anything
+    const nameErrors = !Object.keys(obj).map(key => !isNaN(key.charAt(0))).every(v => v === false);
+    const duplicatesExist = data?.map(item => item[2]).filter((item, index) => index !== data?.map(item => item[2]).indexOf(item)).length > 0;
 
-    /**
-     * Check which integrations are active for this project and environment
-     * If there are any, update environment variables for those integrations
-     */
-    let integrations = await getWorkspaceIntegrations({
-      workspaceId: router.query.id,
-    });
-    integrations.map(async (integration) => {
-      if (
-        envMapping[env] == integration.environment &&
-        integration.isActive == true
-      ) {
-        let objIntegration = Object.assign(
-          {},
-          ...data.map((row) => ({ [row[2]]: row[3] }))
-        );
-        await pushKeysIntegration({
-          obj: objIntegration,
-          integrationId: integration._id,
-        });
+    if (nameErrors) {
+      console.log("Solve all name errors first!");
+    } else if (duplicatesExist) {
+      console.log("Remove the duplicated entries first!");
+    } else {
+      // Once "Save changed is clicked", disable that button
+      setButtonReady(false);
+      pushKeys(obj, router.query.id, env);
+
+      /**
+       * Check which integrations are active for this project and environment
+       * If there are any, update environment variables for those integrations
+       */
+      let integrations = await getWorkspaceIntegrations({
+        workspaceId: router.query.id,
+      });
+      integrations.map(async (integration) => {
+        if (
+          envMapping[env] == integration.environment &&
+          integration.isActive == true
+        ) {
+          let objIntegration = Object.assign(
+            {},
+            ...data.map((row) => ({ [row[2]]: row[3] }))
+          );
+          await pushKeysIntegration({
+            obj: objIntegration,
+            integrationId: integration._id,
+          });
+        }
+      });
+
+      // If this user has never saved environment variables before, show them a prompt to read docs
+      if (!hasUserEverPushed) {
+        setCheckDocsPopUpVisible(true);
+        await registerUserAction({ action: "first_time_secrets_pushed" });
       }
-    });
-
-    // If this user has never saved environment variables before, show them a prompt to read docs
-    if (!hasUserEverPushed) {
-      setCheckDocsPopUpVisible(true);
-      await registerUserAction({ action: "first_time_secrets_pushed" });
     }
   };
 
@@ -642,6 +655,7 @@ export default function Dashboard() {
                           modifyKey={listenChangeKey}
                           modifyVisibility={listenChangeVisibility}
                           isBlurred={blurred}
+                          duplicates={data?.map(item => item[2]).filter((item, index) => index !== data?.map(item => item[2]).indexOf(item))}
                         />
                       ))}
                   </div>
@@ -689,6 +703,7 @@ export default function Dashboard() {
                           modifyKey={listenChangeKey}
                           modifyVisibility={listenChangeVisibility}
                           isBlurred={blurred}
+                          duplicates={data?.map(item => item[2]).filter((item, index) => index !== data?.map(item => item[2]).indexOf(item))}
                         />
                       ))}
                   </div>
