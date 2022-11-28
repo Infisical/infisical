@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/Infisical/infisical-merge/packages/models"
-	"github.com/Infisical/infisical-merge/packages/srp"
-	"github.com/Infisical/infisical-merge/packages/util"
+	"github.com/Infisical/infisical/packages/models"
+	"github.com/Infisical/infisical/packages/srp"
+	"github.com/Infisical/infisical/packages/util"
 	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
 	log "github.com/sirupsen/logrus"

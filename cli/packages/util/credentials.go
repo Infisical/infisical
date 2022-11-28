@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Infisical/infisical-merge/packages/models"
+	"github.com/Infisical/infisical/packages/models"
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
 	"github.com/zalando/go-keyring"

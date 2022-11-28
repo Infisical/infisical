@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Infisical/infisical-merge/packages/models"
+	"github.com/Infisical/infisical/packages/models"
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/nacl/box"

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/Infisical/infisical-merge/packages/models"
-	"github.com/Infisical/infisical-merge/packages/util"
+	"github.com/Infisical/infisical/packages/models"
+	"github.com/Infisical/infisical/packages/util"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

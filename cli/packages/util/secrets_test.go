@@ -3,7 +3,7 @@ package util
 import (
 	"testing"
 
-	"github.com/Infisical/infisical-merge/packages/models"
+	"github.com/Infisical/infisical/packages/models"
 )
 
 // References to self should return the value unaltered

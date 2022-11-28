@@ -1,4 +1,4 @@
-module github.com/Infisical/infisical-merge
+module github.com/Infisical/infisical
 
 go 1.19
 

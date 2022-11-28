@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Infisical/infisical-merge/packages/models"
+	"github.com/Infisical/infisical/packages/models"
 	log "github.com/sirupsen/logrus"
 )
 

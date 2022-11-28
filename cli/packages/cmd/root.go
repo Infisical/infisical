@@ -6,7 +6,7 @@ package cmd
 import (
 	"os"
 
-	"github.com/Infisical/infisical-merge/packages/util"
+	"github.com/Infisical/infisical/packages/util"
 	"github.com/spf13/cobra"
 )
 
