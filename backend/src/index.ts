@@ -4,9 +4,9 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+
 dotenv.config();
 import * as Sentry from '@sentry/node';
-// import { PostHogClient } from './services';
 import { PORT, SENTRY_DSN, NODE_ENV, MONGO_URL, SITE_URL, POSTHOG_PROJECT_API_KEY, POSTHOG_HOST, TELEMETRY_ENABLED } from './config';
 import { apiLimiter } from './helpers/rateLimiter';
 
@@ -18,12 +18,6 @@ Sentry.init({
 	debug: NODE_ENV === 'production' ? false : true,
 	environment: NODE_ENV
 });
-
-// PostHogClient.init({
-// 	projectApiKey: POSTHOG_PROJECT_API_KEY,
-// 	host: POSTHOG_HOST,
-// 	telemetryEnabled: TELEMETRY_ENABLED
-// });
 
 import {
 	signup as signupRouter,
