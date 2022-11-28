@@ -1,0 +1,39 @@
+---
+title: "Gatsby"
+---
+
+Prerequisite: [Install the CLI](/cli/overview)
+
+## Initialize Infisical for your [Gatsby](https://www.gatsbyjs.com) app
+
+```bash
+# move to your app
+cd /path/to/project
+
+# initialize infisical
+infisical init
+```
+
+## Modify the start script in your `package.json`
+
+```json
+...
+"scripts": {
+    "develop": "infisical run -- gatsby develop",
+    "start": "infisical run -- gatsby develop",
+    "build": "infisical run -- gatsby build",
+    "serve": "infisical run -- gatsby serve",
+    "clean": "infisical run -- gatsby clean"
+}
+...
+```
+
+## Start your server with environment variables injected
+
+```bash
+yarn run start
+
+# or start development server
+
+yarn run develop
+```

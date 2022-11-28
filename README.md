@@ -38,7 +38,7 @@
 - **[Complete control over your data](https://infisical.com/docs/self-hosting/overview)** - host it yourself on any infrastructure
 - **Navigate Multiple Environments** per project (e.g. development, staging, production, etc.)
 - **Personal/Shared** scoping for environment variables
-- **[Integrations](https://infisical.com/docs/integrations/heroku)** with CI/CD and production infrastructure (Heroku available, more coming soon)
+- **[Integrations](https://infisical.com/docs/integrations/overview)** with CI/CD and production infrastructure (Heroku available, more coming soon)
 - 🔜 **1-Click Deploy** to Digital Ocean and Heroku
 - 🔜 **Authentication/Authorization** for projects (read/write controls soon)
 - 🔜 **Automatic Secret Rotation**
@@ -92,19 +92,24 @@ Infisical officially launched as v.1.0 on November 21st, 2022. However, a lot of
 
 ## Integrations
 
-We're currently setting the foundation and building integrations so secrets can be synced everywhere. Any help is welcome! :)
+We're currently setting the foundation and building [integrations](https://infisical.com/docs/integrations/overview) so secrets can be synced everywhere. Any help is welcome! :)
 
-- [x] [Docker](https://infisical.com/docs/integrations/docker)
-- [x] [Docker Compose](https://infisical.com/docs/integrations/docker-compose)
-- [x] [Heroku](https://infisical.com/docs/integrations/heroku)
-- [ ] Vercel
+- [x] [Docker](https://infisical.com/docs/integrations/platforms/docker)
+- [x] [Docker Compose](https://infisical.com/docs/integrations/platforms/docker-compose)
 - [ ] Kubernetes
+- [x] [Heroku](https://infisical.com/docs/integrations/cloud/heroku)
+- [ ] Vercel
 - [ ] AWS
 - [ ] GCP
 - [ ] Azure
 - [ ] Digital Ocean
 - [ ] GitLab
-- [ ] CircleCI
+- [x] React
+- [x] Express
+- [x] Next.js
+- [x] NestJS
+- [x] Gatsby
+- [x] Flask
 
 ## Open-source vs. paid
 

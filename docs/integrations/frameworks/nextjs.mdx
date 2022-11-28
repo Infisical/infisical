@@ -1,0 +1,37 @@
+---
+title: "Next.js"
+---
+
+Prerequisite: [Install the CLI](/cli/overview)
+
+## Initialize Infisical for your [Next.js](https://nextjs.org)
+
+```bash
+# move to your Next.js app
+cd /path/to/project
+
+# initialize infisical
+infisical init
+```
+
+## Modify the start script in your `package.json`
+
+```json
+...
+"scripts": {
+    "dev": "infisical run -- next dev",
+    "build": "infisical run -- next build",
+    "start": "infisical run -- next start"
+}
+...
+```
+
+## Start your server with environment variables injected
+
+```bash
+yarn run dev
+
+# or
+
+npm run dev
+```
