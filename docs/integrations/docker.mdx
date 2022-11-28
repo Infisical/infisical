@@ -2,7 +2,9 @@
 title: "Docker"
 ---
 
-## Step 1: Add CLI to your Dockerfile
+The Docker integration enables you to inject environment variables from Infisical into a container.
+
+## Add the CLI to your Dockerfile
 
 <Tabs>
 	 <Tab title="Alpine">
@@ -29,14 +31,10 @@ title: "Docker"
    </Tab>
 </Tabs>
 
-## Step 2: Generate Infisical Token
-
-[Generate an Infisical Token](../../getting-started/dashboard/token) and keep it handy.
-
-## Step 3: Set start command of your container
+## Modify the start command in your Dockerfile
 
 ```dockerfile
-CMD ["infisical", "--env=[your-project-env-name]", "projectId=[your-project-id]", "run", "---", "<your application start command>"]
+CMD ["infisical", "--env=[env]", "projectId=[projectId]", "run", "---", "[your application start command]"]
 
 # example
 CMD ["infisical", "--env=prod", "projectId=62faf98ae0b05e83239b5da41", "run", "---", "npm run start"]
@@ -49,12 +47,14 @@ Required options:
 | `--env`       | Used to set the environment that secrets are pulled from. Accepted values: `dev`, `staging`, `test`, `prod` | `dev`         |
 | `--projectId` | Used to link a local project to the platform                                                                | `None`        |
 
-## Step 4: Feed Docker your Infisical Token
+## Generate an Infisical Token
 
-The CLI looks out for an environment variable called the `INFISICAL_TOKEN` which you can set depending on where you run the CLI. If `INFISICAL_TOKEN` is detected by the CLI, it will authenticate and retrieve the environment variables which the token is authorized for.
+[Generate an Infisical Token](../../getting-started/dashboard/token) and keep it handy.
+
+## Feed Docker your Infisical Token
+
+The CLI looks out for an environment variable called `INFISICAL_TOKEN`. If the token is detected, the CLI will authenticate, retrieve, and inject the environment variables which the token is authorized for.
 
 ```bash
- docker run --env INFISICAL_TOKEN=[the-token-you-got-from-step-2]...
+ docker run --env INFISICAL_TOKEN=[token]...
 ```
-
-Note: `INFISICAL_TOKEN` is the token you generated in step 2.

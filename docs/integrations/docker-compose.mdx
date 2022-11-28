@@ -2,11 +2,13 @@
 title: "Docker Compose"
 ---
 
-### Step 1: Add CLI to your Dockerfile
+The Docker Compose integration enables you to inject environment variables from Infisical into the containers defined in your compose file.
 
-Follow steps 1 through 3 on our [guide to configure Infisical CLI](../getting-started/cli/installation) in your Dockerfile.
+## Add the CLI to your Dockerfile(s)
 
-### Step 2: Generate Infisical Token
+Follow steps 1 through 3 on our [guide to configure Infisical CLI](../integrations/docker) in your Dockerfile.
+
+## Generate Infisical Token
 
 In order for Infisical CLI to authenticate and retrieve your project's secrets without exposing your login credentials, you must generate a Infisical Token.
 To learn how, visit [Infisical Token](../getting-started/cli/infisical-token). Once you have generated the token, keep it handy.
@@ -16,7 +18,7 @@ To learn how, visit [Infisical Token](../getting-started/cli/infisical-token). O
   have to generate a Infisical Token for each service.
 </Info>
 
-### Step 3: Tell Docker Compose your Infisical Token
+## Tell Docker Compose your Infisical Token
 
 For each service you want to inject secrets into, set an environment variable called `INFISICAL_TOKEN` equal to a helpful identifier variable.
 This will ensure that you can set Infisical Tokens for multiple services.
@@ -41,7 +43,7 @@ services:
       - INFISICAL_TOKEN=${INFISICAL_TOKEN_FOR_API}
 ```
 
-### 4: Export shell variables
+## Export shell variables
 
 Next, set the shell variables you defined in your compose file. This can be done manually or via your CI/CD environment. Once done, it will be used to populate the corresponding `INFISICAL_TOKEN`
 in your Docker Compose file.
