@@ -2,6 +2,12 @@ const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
 const aes = require("./aes-256-gcm");
 
+type encryptAsymmetricProps = {
+  plaintext: string;
+  publicKey: string;
+  privateKey: string;
+}
+
 /**
  * Return assymmetrically encrypted [plaintext] using [publicKey] where
  * [publicKey] likely belongs to the recipient.
@@ -13,7 +19,7 @@ const aes = require("./aes-256-gcm");
  * @returns {String} ciphertext - base64-encoded ciphertext
  * @returns {String} nonce - base64-encoded nonce
  */
-const encryptAssymmetric = ({ plaintext, publicKey, privateKey }) => {
+const encryptAssymmetric = ({ plaintext, publicKey, privateKey }: encryptAsymmetricProps): object => {
   const nonce = nacl.randomBytes(24);
   const ciphertext = nacl.box(
     nacl.util.decodeUTF8(plaintext),
@@ -28,6 +34,13 @@ const encryptAssymmetric = ({ plaintext, publicKey, privateKey }) => {
   };
 };
 
+type decryptAsymmetricProps = {
+  ciphertext: string;
+  nonce: string;
+  publicKey: string;
+  privateKey: string;
+}
+
 /**
  * Return assymmetrically decrypted [ciphertext] using [privateKey] where
  * [privateKey] likely belongs to the recipient.
@@ -38,7 +51,7 @@ const encryptAssymmetric = ({ plaintext, publicKey, privateKey }) => {
  * @param {String} obj.privateKey - base64-encoded private key of the receiver (current user)
  * @param {String} plaintext - UTF8 plaintext
  */
-const decryptAssymmetric = ({ ciphertext, nonce, publicKey, privateKey }) => {
+const decryptAssymmetric = ({ ciphertext, nonce, publicKey, privateKey }: decryptAsymmetricProps): string => {
   const plaintext = nacl.box.open(
     nacl.util.decodeBase64(ciphertext),
     nacl.util.decodeBase64(nonce),
@@ -49,13 +62,18 @@ const decryptAssymmetric = ({ ciphertext, nonce, publicKey, privateKey }) => {
   return nacl.util.encodeUTF8(plaintext);
 };
 
+type encryptSymmetricProps = {
+  plaintext: string;
+  key: string;
+}
+
 /**
  * Return symmetrically encrypted [plaintext] using [key].
  * @param {Object} obj
  * @param {String} obj.plaintext - plaintext to encrypt
  * @param {String} obj.key - 16-byte hex key
  */
-const encryptSymmetric = ({ plaintext, key }) => {
+const encryptSymmetric = ({ plaintext, key }: encryptSymmetricProps): object => {
   let ciphertext, iv, tag;
   try {
     const obj = aes.encrypt(plaintext, key);
@@ -75,6 +93,13 @@ const encryptSymmetric = ({ plaintext, key }) => {
   };
 };
 
+type decryptSymmetricProps = {
+  ciphertext: string;
+  iv: string;
+  tag: string;
+  key: string;
+}
+
 /**
  * Return symmetrically decypted [ciphertext] using [iv], [tag],
  * and [key].
@@ -85,7 +110,7 @@ const encryptSymmetric = ({ plaintext, key }) => {
  * @param {String} obj.key - 32-byte hex key
  *
  */
-const decryptSymmetric = ({ ciphertext, iv, tag, key }) => {
+const decryptSymmetric = ({ ciphertext, iv, tag, key }: decryptSymmetricProps): string => {
   let plaintext;
   try {
     plaintext = aes.decrypt(ciphertext, iv, tag, key);
@@ -97,9 +122,9 @@ const decryptSymmetric = ({ ciphertext, iv, tag, key }) => {
   return plaintext;
 };
 
-module.exports = {
-  encryptAssymmetric,
+export {
   decryptAssymmetric,
-  encryptSymmetric,
   decryptSymmetric,
+  encryptAssymmetric,
+  encryptSymmetric,
 };
