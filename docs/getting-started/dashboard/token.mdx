@@ -2,20 +2,15 @@
 title: "Infisical Token"
 ---
 
-An Infisical Token is needed to authenticate the CLI when there isn't an easy way to manually type in your login credentials to sync environment variables to your applications.
+An Infisical Token is needed to authenticate the CLI when there isn't an easy way to input your login credentials.
 
-It grants read-only access to a particular environment and project for a specified amount of time.
+It's useful for the [Docker](/integrations/docker) and [Docker Compose](/integrations/docker-compose) integrations.
 
-This is useful in the following contexts:
-
-- [Docker](/integrations/docker)/[Docker-Compose](/integrations/docker-compose) integration: An Infisical Token can be passed to a Docker container as an environment variable for the CLI to authenticate and pull its corresponding secrets.
-
-## Generate an Infisical Token
-
-It's possible to generate an Infisical token in the settings of a project.
+It's possible to generate the token in the settings of a project.
 
 ![token add](../../images/project-token-add.png)
 
-![token name](../../images/project-token-name.png)
-
-![token added](../../images/project-token-added.png)
+<Note>
+  The token grants read-only access to a particular environment and project for
+  a specified amount of time.
+</Note>
