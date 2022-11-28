@@ -1,7 +1,7 @@
 import React from "react";
 import Image from "next/image";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { FontAwesomeIcon, FontAwesomeIconProps } from "@fortawesome/react-fontawesome";
 
 var classNames = require("classnames");
 
@@ -17,6 +17,20 @@ type ButtonProps = {
   textDisabled: string;
 }
 
+/**
+ * This is the main butto component in the app.
+ * @param {object} props 
+ * @param {string} props.text - text inside the button
+ * @param {function} props.onButtonPressed - the action that happens when the button is clicked
+ * @param {boolean} props.loading - if a button is currently in the laoding state
+ * @param {string} props.color - button color
+ * @param {string} props.size - button size
+ * @param {FontAwesomeIconProps} props.icon - the icon inside the button
+ * @param {boolean} props.active - if the button is active or disabled
+ * @param {FontAwesomeIconProps} props.text - the icon inside the button when it is disabled
+ * @param {string} props.textDisable - text inside the button when it is disabled
+ * @returns 
+ */
 export default function Button (props: ButtonProps): JSX.Element {
   // Check if the button show always be 'active' - then true;
   // or if it should switch between 'active' and 'disabled' - then give the status

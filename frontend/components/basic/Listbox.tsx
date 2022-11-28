@@ -1,6 +1,5 @@
 import React from "react";
 import { Fragment } from "react";
-import { useRouter } from "next/router";
 import {
   faAngleDown,
   faCheck,
@@ -9,9 +8,25 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Listbox, Transition } from "@headlessui/react";
 
+
+type ListBoxProps = {
+  selected: string,
+  onChange: () => void,
+  data: string[],
+  text: string,
+  buttonAction: () => void,
+  width: string,
+}
+
 /**
  * This is the component that we use for drop down lists.
- * @param {*} param0
+ * @param {object} obj
+ * @param {string} obj.selected - the item that is currently selected
+ * @param {function} obj.onChange - what happends if you select the item inside a list
+ * @param {string[]} obj.data - all the options available
+ * @param {string} obj.text - the text that shows us in front of the select option
+ * @param {function} obj.buttonAction - if there is a button at the bottom of the list, this is the action that happens when you click the button
+ * @param {string} obj.width - button width
  * @returns
  */
 export default function ListBox({
@@ -21,10 +36,7 @@ export default function ListBox({
   text,
   buttonAction,
   width,
-  workspaceMapping = [],
-}) {
-  const router = useRouter();
-
+} : ListBoxProps): JSX.Element {
   return (
     <Listbox value={selected} onChange={onChange}>
       <div className="relative">
@@ -61,7 +73,7 @@ export default function ListBox({
                     `my-0.5 relative cursor-default select-none py-2 pl-10 pr-4 rounded-md ${
                       selected ? "bg-white/10 text-gray-400 font-bold" : ""
                     } ${
-                      active & !selected
+                      active && !selected
                         ? "bg-white/5 text-mineshaft-200 cursor-pointer"
                         : "text-gray-400"
                     } `
