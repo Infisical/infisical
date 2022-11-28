@@ -21,6 +21,9 @@
   <a href="https://github.com/infisical/infisical/blob/main/CONTRIBUTING.md">
     <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen" alt="PRs welcome!" />
   </a>
+  <a href="">
+    <img src="https://img.shields.io/github/commit-activity/m/infisical/infisical" alt="git commit activity" />
+  </a>
   <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
   </a>
