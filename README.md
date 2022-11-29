@@ -8,7 +8,7 @@
 
 <h4 align="center">
   <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">Slack</a> |
-  <a href="https://infisical.com/signup">Infisical Cloud</a> |
+  <a href="https://infisical.com/">Infisical Cloud</a> |
   <a href="https://infisical.com/docs/self-hosting/overview">Self-Hosting</a> |
   <a href="https://infisical.com/docs/getting-started/introduction">Docs</a> |
   <a href="https://www.infisical.com">Website</a>
