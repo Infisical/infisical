@@ -39,9 +39,6 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.prod
     image: infisical/frontend
     env_file: .env
     environment:
