@@ -257,7 +257,7 @@ We're currently setting the foundation and building [integrations](https://infis
 
 ## Open-source vs. paid
 
-This repo is entirely MIT licensed, with the exception of the `ee` directory which will contain premium enterprise features requring a Infisical license in the future. We're currently focused on developing non-enterprise offerings first that should suit most use-cases.
+This repo is entirely MIT licensed, with the exception of the `ee` directory which will contain premium enterprise features requiring a Infisical license in the future. We're currently focused on developing non-enterprise offerings first that should suit most use-cases.
 
 ## Security
 
