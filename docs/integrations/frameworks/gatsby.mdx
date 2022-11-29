@@ -28,12 +28,14 @@ infisical init
 ...
 ```
 
-## Start your server with environment variables injected
+## Start your development server with environment variables injected
 
 ```bash
-yarn run start
-
-# or start development server
-
-yarn run develop
+npm run develop
 ```
+
+<Note>
+  Note that for environment variables to be exposed to the client, you'll have
+  to prefix them with `GATSBY_`. Read more about that
+  [here](https://www.gatsbyjs.com/docs/how-to/local-development/environment-variables/#accessing-environment-variables-in-the-browser).
+</Note>

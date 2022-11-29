@@ -29,9 +29,15 @@ infisical init
 ## Start your server with environment variables injected
 
 ```bash
-yarn run dev
+npm run build && npm run start
 
-# or
+# or start development server
 
 npm run dev
 ```
+
+<Note>
+  Note that for environment variables to be exposed to the client, you'll have
+  to prefix them with `NEXT_PUBLIC_`. Read more about that
+  [here](https://nextjs.org/docs/basic-features/environment-variables).
+</Note>
