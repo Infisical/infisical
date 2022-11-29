@@ -135,7 +135,6 @@
       "pages": [
         "integrations/frameworks/react",
         "integrations/frameworks/vue",
-        "integrations/frameworks/angular",
         "integrations/frameworks/express",
         "integrations/frameworks/nextjs",
         "integrations/frameworks/nestjs",
