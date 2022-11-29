@@ -33,7 +33,7 @@
 
 **[Infisical](https://infisical.com)** is an open source, E2EE tool to help teams manage and sync environment variables across their development workflow and infrastructure. It's designed to be simple and take minutes to get going.
 
-- **User-Friendly Dashboard** to manage your team's environment variables within projects
+- **[User-Friendly Dashboard](https://infisical.com/docs/getting-started/dashboard/project)** to manage your team's environment variables within projects
 - **[Language-Agnostic CLI](https://infisical.com/docs/cli/overview)** that pulls and injects environment variables into your local workflow
 - **[Complete control over your data](https://infisical.com/docs/self-hosting/overview)** - host it yourself on any infrastructure
 - **Navigate Multiple Environments** per project (e.g. development, staging, production, etc.)
@@ -140,65 +140,43 @@ We're currently setting the foundation and building [integrations](https://infis
     </tr>
     <tr>
       <td align="left" valign="middle">
-        <a href="#">
-          🔜 Netlify
-        </a>
+        🔜 AWS
       </td>
       <td align="left" valign="middle">
-        <a href="#">
-          🔜 GitHub Actions
-        </a>
+        🔜 GitHub Actions (https://github.com/Infisical/infisical/issues/54)
       </td>
       <td align="left" valign="middle">
-        <a href="#">
-          🔜 Railway
-        </a>
+         🔜 Railway
       </td>
     </tr>
     <tr>
       <td align="left" valign="middle">
-        <a href="#">
-          🔜 GCP
-        </a>
+        🔜 GCP
       </td>
       <td align="left" valign="middle">
-        <a href="#">
-          🔜 Kubernetes
-        </a>
+        🔜 Kubernetes
       </td>
       <td align="left" valign="middle">
-        <a href="#">
-          🔜 CircleCI
-        </a>
+        🔜 CircleCI
       </td>
     </tr>
     <tr>
       <td align="left" valign="middle">
-        <a href="#">
-          🔜 Jenkins
-        </a>
+        🔜 Jenkins
       </td>
       <td align="left" valign="middle">
-        <a href="#">
-          🔜 Digital Ocean
-        </a>
+        🔜 Digital Ocean
       </td>
       <td align="left" valign="middle">
-        <a href="#">
-          🔜 Azure
-        </a>
+        🔜 Azure
       </td>
     </tr>
     <tr>
       <td align="left" valign="middle">
-        <a href="#">
-          🔜 TravisCI
-        </a>
+         🔜 TravisCI
       </td>
       <td align="left" valign="middle">
-        <a href="#">
-          🔜 AWS
-        </a>
+         🔜 Netlify (https://github.com/Infisical/infisical/issues/55)
       </td>
     </tr>
   </tbody>
@@ -265,9 +243,7 @@ We're currently setting the foundation and building [integrations](https://infis
         </a>
       </td>
       <td align="left" valign="middle">
-        <a href="#">
-          🔜 Vite
-        </a>
+        🔜 Vite
       </td>
     </tr>
     <tr>
