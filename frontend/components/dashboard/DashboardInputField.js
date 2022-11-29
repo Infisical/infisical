@@ -62,7 +62,7 @@ const DashboardInputField = ({
         </div>
         {startsWithNumber && 
           <p className="text-red text-xs mt-0.5 mx-1 mb-2 max-w-xs">
-            Can't start with a number
+            Should not start with a number
           </p>
         }
         {hasDuplicates && !startsWithNumber &&

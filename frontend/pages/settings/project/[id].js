@@ -166,7 +166,7 @@ export default function SettingsBasic() {
                       placeholder=""
                       isRequired
                       static
-                      text="This is your project's auto-generated unique identifier. It can't be changed."
+                      text="This is your project&apos;s auto-generated unique identifier. It can&apos;t be changed."
                     />
                   </div>
                 </div>
