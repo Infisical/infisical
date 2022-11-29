@@ -123,19 +123,13 @@ We're currently setting the foundation and building [integrations](https://infis
     </tr>
     <tr>
       <td align="left" valign="middle">
-        <a href="#">
-          🔜 Vercel
-        </a>
+        🔜 Vercel
       </td>
       <td align="left" valign="middle">
-        <a href="#">
-          🔜 GitLab CI/CD
-        </a>
+        🔜 GitLab CI/CD
       </td>
       <td align="left" valign="middle">
-        <a href="#">
-          🔜 Fly.io
-        </a>
+        🔜 Fly.io
       </td>
     </tr>
     <tr>
