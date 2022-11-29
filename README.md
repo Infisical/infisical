@@ -94,22 +94,196 @@ Infisical officially launched as v.1.0 on November 21st, 2022. However, a lot of
 
 We're currently setting the foundation and building [integrations](https://infisical.com/docs/integrations/overview) so secrets can be synced everywhere. Any help is welcome! :)
 
-- [x] [Docker](https://infisical.com/docs/integrations/platforms/docker)
-- [x] [Docker Compose](https://infisical.com/docs/integrations/platforms/docker-compose)
-- [ ] Kubernetes
-- [x] [Heroku](https://infisical.com/docs/integrations/cloud/heroku)
-- [ ] Vercel
-- [ ] AWS
-- [ ] GCP
-- [ ] Azure
-- [ ] Digital Ocean
-- [ ] GitLab
-- [x] React
-- [x] Express
-- [x] Next.js
-- [x] NestJS
-- [x] Gatsby
-- [x] Flask
+<table>
+<tr>
+  <th>Platforms </th>
+  <th>Frameworks</th>
+</tr>
+<tr> 
+  <td>
+
+<table>
+  <tbody>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/platforms/docker">
+          ✔️ Docker
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/platforms/docker-compose">
+          ✔️ Docker Compose
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/cloud/heroku">
+          ✔️ Heroku
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="#">
+          🔜 Vercel
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="#">
+          🔜 GitLab CI/CD
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="#">
+          🔜 Fly.io
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="#">
+          🔜 Netlify
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="#">
+          🔜 GitHub Actions
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="#">
+          🔜 Railway
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="#">
+          🔜 GCP
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="#">
+          🔜 Kubernetes
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="#">
+          🔜 CircleCI
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="#">
+          🔜 Jenkins
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="#">
+          🔜 Digital Ocean
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="#">
+          🔜 Azure
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="#">
+          🔜 TravisCI
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="#">
+          🔜 AWS
+        </a>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+  </td>
+<td>
+
+
+<table>
+  <tbody>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/react">
+          ✔️ React
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/express">
+          ✔️ Express
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/gatsby">
+          ✔️ Gatsby
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/flask">
+          ✔️ Flask
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/django">
+          ✔️ Django
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/laravel">
+          ✔️ Laravel
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/nestjs">
+          ✔️ NestJS
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/remix">
+          ✔️ Remix
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/nextjs">
+          ✔️ Next.js
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="#">
+          🔜 Vite
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/rails">
+          ✔️ Ruby on Rails
+        </a>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+</td>
+</tr> 
+</table>
+
 
 ## Open-source vs. paid
 
