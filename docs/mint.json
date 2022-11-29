@@ -38,6 +38,11 @@
       "url": "self-hosting"
     },
     {
+      "name": "Integrations",
+      "icon": "plug",
+      "url": "integrations"
+    },
+    {
       "name": "Contributing",
       "icon": "code",
       "url": "contributing"
@@ -93,15 +98,6 @@
       ]
     },
     {
-      "group": "Integrations",
-      "pages": [
-        "integrations/overview",
-        "integrations/heroku",
-        "integrations/docker",
-        "integrations/docker-compose"
-      ]
-    },
-    {
       "group": "Self-hosting",
       "pages": [
         "self-hosting/overview",
@@ -115,6 +111,43 @@
         }
       ]
     }, 
+    {
+      "group": "Integrations",
+      "pages": [
+        "integrations/overview"
+      ]
+    },
+    {
+      "group": "Platforms",
+      "pages": [
+        "integrations/platforms/docker",
+        "integrations/platforms/docker-compose"
+      ]
+    },
+    {
+      "group": "Cloud",
+      "pages": [
+        "integrations/cloud/heroku"
+      ]
+    },
+    {
+      "group": "Frameworks",
+      "pages": [
+        "integrations/frameworks/react",
+        "integrations/frameworks/vue",
+        "integrations/frameworks/angular",
+        "integrations/frameworks/express",
+        "integrations/frameworks/nextjs",
+        "integrations/frameworks/nestjs",
+        "integrations/frameworks/gatsby",
+        "integrations/frameworks/remix",
+        "integrations/frameworks/vite",
+        "integrations/frameworks/django",
+        "integrations/frameworks/flask",
+        "integrations/frameworks/laravel",
+        "integrations/frameworks/rails"
+      ]
+    },
     {
       "group": "Security",
       "pages": [

@@ -8,7 +8,7 @@
 
 <h4 align="center">
   <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">Slack</a> |
-  <a href="https://infisical.com/signup">Infisical Cloud</a> |
+  <a href="https://infisical.com/">Infisical Cloud</a> |
   <a href="https://infisical.com/docs/self-hosting/overview">Self-Hosting</a> |
   <a href="https://infisical.com/docs/getting-started/introduction">Docs</a> |
   <a href="https://www.infisical.com">Website</a>
@@ -33,12 +33,12 @@
 
 **[Infisical](https://infisical.com)** is an open source, E2EE tool to help teams manage and sync environment variables across their development workflow and infrastructure. It's designed to be simple and take minutes to get going.
 
-- **User-Friendly Dashboard** to manage your team's environment variables within projects
+- **[User-Friendly Dashboard](https://infisical.com/docs/getting-started/dashboard/project)** to manage your team's environment variables within projects
 - **[Language-Agnostic CLI](https://infisical.com/docs/cli/overview)** that pulls and injects environment variables into your local workflow
 - **[Complete control over your data](https://infisical.com/docs/self-hosting/overview)** - host it yourself on any infrastructure
 - **Navigate Multiple Environments** per project (e.g. development, staging, production, etc.)
 - **Personal/Shared** scoping for environment variables
-- **[Integrations](https://infisical.com/docs/integrations/heroku)** with CI/CD and production infrastructure (Heroku available, more coming soon)
+- **[Integrations](https://infisical.com/docs/integrations/overview)** with CI/CD and production infrastructure (Heroku available, more coming soon)
 - 🔜 **1-Click Deploy** to Digital Ocean and Heroku
 - 🔜 **Authentication/Authorization** for projects (read/write controls soon)
 - 🔜 **Automatic Secret Rotation**
@@ -92,19 +92,168 @@ Infisical officially launched as v.1.0 on November 21st, 2022. However, a lot of
 
 ## Integrations
 
-We're currently setting the foundation and building integrations so secrets can be synced everywhere. Any help is welcome! :)
+We're currently setting the foundation and building [integrations](https://infisical.com/docs/integrations/overview) so secrets can be synced everywhere. Any help is welcome! :)
 
-- [x] [Docker](https://infisical.com/docs/integrations/docker)
-- [x] [Docker Compose](https://infisical.com/docs/integrations/docker-compose)
-- [x] [Heroku](https://infisical.com/docs/integrations/heroku)
-- [ ] Vercel
-- [ ] Kubernetes
-- [ ] AWS
-- [ ] GCP
-- [ ] Azure
-- [ ] Digital Ocean
-- [ ] GitLab
-- [ ] CircleCI
+<table>
+<tr>
+  <th>Platforms </th>
+  <th>Frameworks</th>
+</tr>
+<tr> 
+  <td>
+
+<table>
+  <tbody>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/platforms/docker">
+          ✔️ Docker
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/platforms/docker-compose">
+          ✔️ Docker Compose
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/cloud/heroku">
+          ✔️ Heroku
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        🔜 Vercel
+      </td>
+      <td align="left" valign="middle">
+        🔜 GitLab CI/CD
+      </td>
+      <td align="left" valign="middle">
+        🔜 Fly.io
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        🔜 AWS
+      </td>
+      <td align="left" valign="middle">
+        🔜 GitHub Actions (https://github.com/Infisical/infisical/issues/54)
+      </td>
+      <td align="left" valign="middle">
+         🔜 Railway
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        🔜 GCP
+      </td>
+      <td align="left" valign="middle">
+        🔜 Kubernetes
+      </td>
+      <td align="left" valign="middle">
+        🔜 CircleCI
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        🔜 Jenkins
+      </td>
+      <td align="left" valign="middle">
+        🔜 Digital Ocean
+      </td>
+      <td align="left" valign="middle">
+        🔜 Azure
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+         🔜 TravisCI
+      </td>
+      <td align="left" valign="middle">
+         🔜 Netlify (https://github.com/Infisical/infisical/issues/55)
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+  </td>
+<td>
+
+
+<table>
+  <tbody>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/react">
+          ✔️ React
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/express">
+          ✔️ Express
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/gatsby">
+          ✔️ Gatsby
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/flask">
+          ✔️ Flask
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/django">
+          ✔️ Django
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/laravel">
+          ✔️ Laravel
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/nestjs">
+          ✔️ NestJS
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/remix">
+          ✔️ Remix
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/nextjs">
+          ✔️ Next.js
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        🔜 Vite
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/rails">
+          ✔️ Ruby on Rails
+        </a>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+</td>
+</tr> 
+</table>
+
 
 ## Open-source vs. paid
 

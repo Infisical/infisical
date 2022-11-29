@@ -1,0 +1,43 @@
+---
+title: "Next.js"
+---
+
+Prerequisite: [Install the CLI](/cli/overview)
+
+## Initialize Infisical for your [Next.js](https://nextjs.org)
+
+```bash
+# move to your Next.js app
+cd /path/to/project
+
+# initialize infisical
+infisical init
+```
+
+## Modify the start script in your `package.json`
+
+```json
+...
+"scripts": {
+    "dev": "infisical run -- next dev",
+    "build": "infisical run -- next build",
+    "start": "infisical run -- next start"
+}
+...
+```
+
+## Start your server with environment variables injected
+
+```bash
+npm run build && npm run start
+
+# or start development server
+
+npm run dev
+```
+
+<Note>
+  Note that for environment variables to be exposed to the client, you'll have
+  to prefix them with `NEXT_PUBLIC_`. Read more about that
+  [here](https://nextjs.org/docs/basic-features/environment-variables).
+</Note>
