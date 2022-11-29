@@ -115,7 +115,7 @@ const KeyPair = ({
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <Menu.Items className="absolute z-50 drop-shadow-xl right-0 mt-0.5 w-[20rem] origin-top-right rounded-md bg-bunker border border-mineshaft-500 shadow-lg ring-1 ring-black z-20 ring-opacity-5 focus:outline-none px-1 py-1">
+            <Menu.Items className="absolute z-50 drop-shadow-xl right-0 mt-0.5 w-[20rem] origin-top-right rounded-md bg-bunker border border-mineshaft-500 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none px-1 py-1">
               <div
                 onClick={() =>
                   modifyVisibility(
