@@ -7,25 +7,6 @@ import guidGenerator from "../utilities/randomId";
 const REGEX = /([$]{.*?})/g;
 
 /**
- * This function splits the input of a dashboard field into the parts that are inside and outside of ${...}
- * @param {string} text - the value of the input in the Dashboard Input Field
- * @returns
- */
-const findReferences = (text) => {
-  var splitText = text.split("${");
-  let textArray = [splitText[0]];
-  for (var i = 1; i < splitText.length; i++) {
-    let insideBrackets = "${" + splitText[i].split("}")[0];
-    if (splitText[i].includes("}")) {
-      insideBrackets += "}";
-    }
-    textArray.push(insideBrackets);
-    textArray.push(splitText[i].split("}")[1]);
-  }
-  return textArray;
-};
-
-/**
  * This component renders the input fields on the dashboard
  * @param {object} obj - the order number of a keyPair
  * @param {number} obj.index - the order number of a keyPair
@@ -44,6 +25,12 @@ const DashboardInputField = ({
   blurred,
   duplicates
 }) => {
+  const ref = useRef(null);
+  const syncScroll = (e) => {
+    ref.current.scrollTop = e.target.scrollTop;
+    ref.current.scrollLeft = e.target.scrollLeft;
+  };
+  
   if (type === "varName") {
     const startsWithNumber = !isNaN(value.charAt(0)) && value != "";
     const hasDuplicates = duplicates?.includes(value);
@@ -75,13 +62,6 @@ const DashboardInputField = ({
       </div>
     );
   } else if (type === "value") {
-    const ref = useRef(null);
-  
-    const syncScroll = (e) => {
-      ref.current.scrollTop = e.target.scrollTop;
-      ref.current.scrollLeft = e.target.scrollLeft;
-    };
-
     return (
       <div className="flex-col w-full">
         <div
@@ -110,15 +90,27 @@ const DashboardInputField = ({
             {
               value
               .split(REGEX)
-              .map((word, i) => {
+              .map((word, id) => {
                 if (word.match(REGEX) !== null) {
                   return (
-                    <span key={i} className="text-yellow-400">
-                      {word}
+                    <span className="ph-no-capture text-yellow" key={id}>
+                      {word.slice(0, 2)}
+                      <span className="ph-no-capture text-yellow-200/80">
+                        {word.slice(2, word.length - 1)}
+                      </span>
+                      {word.slice(word.length - 1, word.length) == "}" ? (
+                        <span className="ph-no-capture text-yellow">
+                          {word.slice(word.length - 1, word.length)}{" "}
+                        </span>
+                      ) : (
+                        <span className="ph-no-capture text-yellow-400">
+                          {word.slice(word.length - 1, word.length)}{" "}
+                        </span>
+                      )}
                     </span>
                   );
                 } else {
-                  return <span key={i}>{word}</span>;
+                  return <span key={id} className="ph-no-capture">{word}</span>;
                 }
               })
             }
