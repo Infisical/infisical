@@ -65,7 +65,7 @@ const DashboardInputField = ({
     return (
       <div className="flex-col w-full">
         <div
-          className={`group relative flex flex-col justify-center w-full max-w-2xl border border-mineshaft-500 rounded-md`}
+          className={`group relative whitespace-pre	flex flex-col justify-center w-full max-w-2xl border border-mineshaft-500 rounded-md`}
         >
           <input
             value={value}
@@ -75,7 +75,7 @@ const DashboardInputField = ({
               blurred
                 ? "text-transparent group-hover:text-transparent focus:text-transparent active:text-transparent"
                 : ""
-            } asolute z-10 peer font-mono ph-no-capture bg-transparent rounded-md caret-white text-transparent text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-200`}
+            } z-10 peer font-mono ph-no-capture bg-transparent rounded-md caret-white text-transparent text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-200`}
             spellCheck="false"
           />
           <div 
@@ -84,7 +84,7 @@ const DashboardInputField = ({
               blurred
                 ? "text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-400 peer-active:text-gray-400"
                 : ""
-            } flex flex-row font-mono absolute z-0 ph-no-capture max-w-2xl overflow-x-scroll bg-bunker-800 h-9 rounded-md text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-100`}
+            } flex flex-row whitespace-pre font-mono absolute z-0 ph-no-capture max-w-2xl overflow-x-scroll bg-bunker-800 h-9 rounded-md text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-100`}
           >
             {
               value
@@ -99,11 +99,11 @@ const DashboardInputField = ({
                       </span>
                       {word.slice(word.length - 1, word.length) == "}" ? (
                         <span className="ph-no-capture text-yellow">
-                          {word.slice(word.length - 1, word.length)}{" "}
+                          {word.slice(word.length - 1, word.length)}
                         </span>
                       ) : (
                         <span className="ph-no-capture text-yellow-400">
-                          {word.slice(word.length - 1, word.length)}{" "}
+                          {word.slice(word.length - 1, word.length)}
                         </span>
                       )}
                     </span>
