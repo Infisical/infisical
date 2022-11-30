@@ -69,7 +69,7 @@ const DashboardInputField = ({
         >
           <input
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => onChangeHandler(e.target.value, index)}
             onScroll={syncScroll}
             className={`${
               blurred
@@ -77,7 +77,6 @@ const DashboardInputField = ({
                 : ""
             } asolute z-10 peer font-mono ph-no-capture bg-transparent rounded-md caret-white text-transparent text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-200`}
             spellCheck="false"
-            placeholder="This is a placeholder!"
           />
           <div 
             ref={ref} 
