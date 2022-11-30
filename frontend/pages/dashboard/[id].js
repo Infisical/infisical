@@ -34,12 +34,12 @@ import pushKeys from "~/components/utilities/secrets/pushKeys";
 import pushKeysIntegration from "~/components/utilities/secrets/pushKeysIntegration";
 import guidGenerator from "~/utilities/randomId";
 
+import { envMapping } from "../../public/data/frequentConstants";
 import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
 import getUser from "../api/user/getUser";
 import checkUserAction from "../api/userActions/checkUserAction";
 import registerUserAction from "../api/userActions/registerUserAction";
 import getWorkspaces from "../api/workspace/getWorkspaces";
-import { envMapping } from "../../public/data/frequentConstants";
 
 /**
  * This component represent a single row for an environemnt variable on the dashboard

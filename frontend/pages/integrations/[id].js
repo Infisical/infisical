@@ -17,6 +17,11 @@ import getSecretsForProject from "~/components/utilities/secrets/getSecretsForPr
 import pushKeysIntegration from "~/components/utilities/secrets/pushKeysIntegration";
 import guidGenerator from "~/utilities/randomId";
 
+import { 
+  envMapping, 
+  frameworks, 
+  reverseEnvMapping
+} from "../../public/data/frequentConstants";
 import deleteIntegration from "../api/integrations/DeleteIntegration";
 import deleteIntegrationAuth from "../api/integrations/DeleteIntegrationAuth";
 import getIntegrationApps from "../api/integrations/GetIntegrationApps";
@@ -24,7 +29,6 @@ import getIntegrations from "../api/integrations/GetIntegrations";
 import getWorkspaceAuthorizations from "../api/integrations/getWorkspaceAuthorizations";
 import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
 import startIntegration from "../api/integrations/StartIntegration";
-import { envMapping, reverseEnvMapping, frameworks } from "../../public/data/frequentConstants";
 
 const crypto = require("crypto");
 
