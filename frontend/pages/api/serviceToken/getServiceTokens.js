@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -8,7 +7,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  */
 const getServiceTokens = ({ workspaceId }) => {
   return SecurityClient.fetchCall(
-    PATH + "/api/v1/workspace/" + workspaceId + "/service-tokens",
+    "/api/v1/workspace/" + workspaceId + "/service-tokens",
     {
       method: "GET",
       headers: {

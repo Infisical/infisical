@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -14,7 +13,7 @@ const changePassword2 = ({
   verifier,
   clientProof,
 }) => {
-  return SecurityClient.fetchCall(PATH + "/api/v1/password/change-password", {
+  return SecurityClient.fetchCall("/api/v1/password/change-password", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

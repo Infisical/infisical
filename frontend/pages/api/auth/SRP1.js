@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -7,7 +6,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  * @returns
  */
 const SRP1 = ({ clientPublicKey }) => {
-  return SecurityClient.fetchCall(PATH + "/api/v1/password/srp1", {
+  return SecurityClient.fetchCall("/api/v1/password/srp1", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

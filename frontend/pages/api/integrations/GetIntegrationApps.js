@@ -1,9 +1,8 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 const getIntegrationApps = ({ integrationAuthId }) => {
   return SecurityClient.fetchCall(
-    PATH + "/api/v1/integration-auth/" + integrationAuthId + "/apps",
+    "/api/v1/integration-auth/" + integrationAuthId + "/apps",
     {
       method: "GET",
       headers: {

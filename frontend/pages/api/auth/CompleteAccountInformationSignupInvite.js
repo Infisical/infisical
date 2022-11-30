@@ -1,5 +1,3 @@
-import { PATH } from "~/const";
-
 /**
  * This function is called in the end of the signup process.
  * It sends all the necessary nformation to the server.
@@ -26,7 +24,7 @@ const completeAccountInformationSignupInvite = ({
   verifier,
   token,
 }) => {
-  return fetch(PATH + "/api/v1/signup/complete-account/invite", {
+  return fetch("/api/v1/signup/complete-account/invite", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

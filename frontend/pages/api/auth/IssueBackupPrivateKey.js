@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -13,7 +12,7 @@ const issueBackupPrivateKey = ({
   clientProof,
 }) => {
   return SecurityClient.fetchCall(
-    PATH + "/api/v1/password/backup-private-key",
+    "/api/v1/password/backup-private-key",
     {
       method: "POST",
       headers: {
