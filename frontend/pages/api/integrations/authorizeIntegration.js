@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -8,7 +7,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  */
 const AuthorizeIntegration = ({ workspaceId, code, integration }) => {
   return SecurityClient.fetchCall(
-    PATH + "/api/v1/integration-auth/oauth-token",
+    "/api/v1/integration-auth/oauth-token",
     {
       method: "POST",
       headers: {

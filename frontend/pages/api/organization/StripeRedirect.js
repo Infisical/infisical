@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -9,7 +8,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  */
 const StripeRedirect = ({ orgId }) => {
   return SecurityClient.fetchCall(
-    PATH + "/api/v1/organization/" + orgId + "/customer-portal-session",
+    "/api/v1/organization/" + orgId + "/customer-portal-session",
     {
       method: "POST",
       headers: {

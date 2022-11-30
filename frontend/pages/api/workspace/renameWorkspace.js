@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -9,7 +8,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  */
 const renameWorkspace = (workspaceId, newWorkspaceName) => {
   return SecurityClient.fetchCall(
-    PATH + "/api/v1/workspace/" + workspaceId + "/name",
+    "/api/v1/workspace/" + workspaceId + "/name",
     {
       method: "POST",
       headers: {

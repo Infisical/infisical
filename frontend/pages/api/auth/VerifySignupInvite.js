@@ -1,5 +1,3 @@
-import { PATH } from "~/const";
-
 /**
  * This route verifies the signup invite link
  * @param {*} email
@@ -7,7 +5,7 @@ import { PATH } from "~/const";
  * @returns
  */
 const verifySignupInvite = ({ email, code }) => {
-  return fetch(PATH + "/api/v1/invite-org/verify", {
+  return fetch("/api/v1/invite-org/verify", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

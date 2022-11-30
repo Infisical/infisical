@@ -1,9 +1,8 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 const changeHerokuConfigVars = ({ integrationId, key, secrets }) => {
   return SecurityClient.fetchCall(
-    PATH + "/api/v1/integration/" + integrationId + "/sync",
+    "/api/v1/integration/" + integrationId + "/sync",
     {
       method: "POST",
       headers: {

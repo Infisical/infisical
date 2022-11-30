@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -7,7 +6,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  * @returns
  */
 const deleteWorkspace = (workspaceId) => {
-  return SecurityClient.fetchCall(PATH + "/api/v1/workspace/" + workspaceId, {
+  return SecurityClient.fetchCall("/api/v1/workspace/" + workspaceId, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",

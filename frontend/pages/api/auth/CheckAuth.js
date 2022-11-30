@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient.js";
 
 /**
@@ -9,7 +8,7 @@ import SecurityClient from "~/utilities/SecurityClient.js";
  * @returns
  */
 const checkAuth = async (req, res) => {
-  return SecurityClient.fetchCall(PATH + "/api/v1/auth/checkAuth", {
+  return SecurityClient.fetchCall("/api/v1/auth/checkAuth", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

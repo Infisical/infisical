@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -7,7 +6,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  * @returns
  */
 const deleteUserFromWorkspace = (membershipId) => {
-  return SecurityClient.fetchCall(PATH + "/api/v1/membership/" + membershipId, {
+  return SecurityClient.fetchCall("/api/v1/membership/" + membershipId, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",

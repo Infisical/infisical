@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -8,7 +7,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  * @returns
  */
 const uploadSecrets = async ({ workspaceId, secrets, keys, environment }) => {
-  return SecurityClient.fetchCall(PATH + "/api/v1/secret/" + workspaceId, {
+  return SecurityClient.fetchCall("/api/v1/secret/" + workspaceId, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
