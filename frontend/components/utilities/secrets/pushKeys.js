@@ -1,6 +1,7 @@
 import uploadSecrets from "~/pages/api/files/UploadSecrets";
 import getLatestFileKey from "~/pages/api/workspace/getLatestFileKey";
 import getWorkspaceKeys from "~/pages/api/workspace/getWorkspaceKeys";
+import { envMapping } from "../../../public/data/frequentConstants";
 
 const crypto = require("crypto");
 const {
@@ -12,12 +13,6 @@ const {
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
 
-const envMapping = {
-  Development: "dev",
-  Staging: "staging",
-  Production: "prod",
-  Testing: "test",
-};
 
 const pushKeys = async (obj, workspaceId, env) => {
   let sharedKey = await getLatestFileKey(workspaceId);

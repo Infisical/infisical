@@ -4,15 +4,7 @@ import { faX } from "@fortawesome/free-solid-svg-icons";
 
 import guidGenerator from "../../utilities/randomId";
 import Button from "../buttons/Button";
-
-const roles = ["admin", "user"];
-
-const reverseEnvMapping = {
-  dev: "Development",
-  staging: "Staging",
-  prod: "Production",
-  test: "Testing",
-};
+import { reverseEnvMapping } from "../../../public/data/frequentConstants";
 
 /**
  * This is the component that we utilize for the user table - in future, can reuse it for some other purposes too.

@@ -39,13 +39,7 @@ import getUser from "../api/user/getUser";
 import checkUserAction from "../api/userActions/checkUserAction";
 import registerUserAction from "../api/userActions/registerUserAction";
 import getWorkspaces from "../api/workspace/getWorkspaces";
-
-const envMapping = {
-  Development: "dev",
-  Staging: "staging",
-  Production: "prod",
-  Testing: "test",
-};
+import { envMapping } from "../../public/data/frequentConstants";
 
 /**
  * This component represent a single row for an environemnt variable on the dashboard

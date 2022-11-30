@@ -15,13 +15,7 @@ import {
 import Button from "../buttons/Button";
 import InputField from "../InputField";
 import ListBox from "../Listbox";
-
-const envMapping = {
-  Development: "dev",
-  Staging: "staging",
-  Production: "prod",
-  Testing: "test",
-};
+import { envMapping } from "../../../public/data/frequentConstants";
 
 const expiryMapping = {
   "1 day": 86400,
