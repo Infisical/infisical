@@ -1,27 +1,10 @@
-import React from "react";
+import React, { useRef } from "react";
 import { faCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import guidGenerator from "../utilities/randomId";
 
-/**
- * This function splits the input of a dashboard field into the parts that are inside and outside of ${...}
- * @param {string} text - the value of the input in the Dashboard Input Field
- * @returns
- */
-const findReferences = (text) => {
-  var splitText = text.split("${");
-  let textArray = [splitText[0]];
-  for (var i = 1; i < splitText.length; i++) {
-    let insideBrackets = "${" + splitText[i].split("}")[0];
-    if (splitText[i].includes("}")) {
-      insideBrackets += "}";
-    }
-    textArray.push(insideBrackets);
-    textArray.push(splitText[i].split("}")[1]);
-  }
-  return textArray;
-};
+const REGEX = /([$]{.*?})/g;
 
 /**
  * This component renders the input fields on the dashboard
@@ -42,6 +25,12 @@ const DashboardInputField = ({
   blurred,
   duplicates
 }) => {
+  const ref = useRef(null);
+  const syncScroll = (e) => {
+    ref.current.scrollTop = e.target.scrollTop;
+    ref.current.scrollLeft = e.target.scrollLeft;
+  };
+  
   if (type === "varName") {
     const startsWithNumber = !isNaN(value.charAt(0)) && value != "";
     const hasDuplicates = duplicates?.includes(value);
@@ -76,52 +65,54 @@ const DashboardInputField = ({
     return (
       <div className="flex-col w-full">
         <div
-          className={`group relative flex flex-col justify-center w-full max-w-2xl border border-mineshaft-500 rounded-md`}
+          className={`group relative whitespace-pre	flex flex-col justify-center w-full max-w-2xl border border-mineshaft-500 rounded-md`}
         >
           <input
-            onChange={(e) => onChangeHandler(e.target.value, index)}
-            type={type}
             value={value}
+            onChange={(e) => onChangeHandler(e.target.value, index)}
+            onScroll={syncScroll}
             className={`${
               blurred
                 ? "text-transparent group-hover:text-transparent focus:text-transparent active:text-transparent"
                 : ""
-            } asolute z-10 peer font-mono ph-no-capture bg-transparent rounded-md caret-white text-transparent text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-200`}
+            } z-10 peer font-mono ph-no-capture bg-transparent rounded-md caret-white text-transparent text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-200`}
             spellCheck="false"
           />
-          <div
+          <div 
+            ref={ref} 
             className={`${
               blurred
                 ? "text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-400 peer-active:text-gray-400"
                 : ""
-            } flex flex-row font-mono absolute z-0 ph-no-capture bg-bunker-800 h-9 rounded-md text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-100`}
+            } flex flex-row whitespace-pre font-mono absolute z-0 ph-no-capture max-w-2xl overflow-x-scroll bg-bunker-800 h-9 rounded-md text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-100`}
           >
-            {findReferences(value).map((texts, id) => {
-              if (id % 2 == 0 || texts.length <= 2) {
-                return (
-                  <span className="ph-no-capture" key={id}>
-                    {texts}
-                  </span>
-                );
-              }
-              return (
-                <span className="ph-no-capture text-yellow" key={id}>
-                  {texts.slice(0, 2)}
-                  <span className="ph-no-capture text-yellow-200/80">
-                    {texts.slice(2, texts.length - 1)}
-                  </span>
-                  {texts.slice(texts.length - 1, texts.length) == "}" ? (
-                    <span className="ph-no-capture text-yellow">
-                      {texts.slice(texts.length - 1, texts.length)}{" "}
+            {
+              value
+              .split(REGEX)
+              .map((word, id) => {
+                if (word.match(REGEX) !== null) {
+                  return (
+                    <span className="ph-no-capture text-yellow" key={id}>
+                      {word.slice(0, 2)}
+                      <span className="ph-no-capture text-yellow-200/80">
+                        {word.slice(2, word.length - 1)}
+                      </span>
+                      {word.slice(word.length - 1, word.length) == "}" ? (
+                        <span className="ph-no-capture text-yellow">
+                          {word.slice(word.length - 1, word.length)}
+                        </span>
+                      ) : (
+                        <span className="ph-no-capture text-yellow-400">
+                          {word.slice(word.length - 1, word.length)}
+                        </span>
+                      )}
                     </span>
-                  ) : (
-                    <span className="ph-no-capture text-yellow-400">
-                      {texts.slice(texts.length - 1, texts.length)}{" "}
-                    </span>
-                  )}
-                </span>
-              );
-            })}
+                  );
+                } else {
+                  return <span key={id} className="ph-no-capture">{word}</span>;
+                }
+              })
+            }
           </div>
           {blurred && (
             <div className="z-20 peer pr-2 bg-bunker-800 group-hover:hidden peer-hover:hidden peer-focus:hidden peer-active:invisible absolute h-9 w-fit max-w-xl rounded-md flex items-center text-gray-400/50 text-clip overflow-hidden">
@@ -137,7 +128,7 @@ const DashboardInputField = ({
                   />
                 ))}
             </div>
-          )}
+          )} 
         </div>
       </div>
     );
