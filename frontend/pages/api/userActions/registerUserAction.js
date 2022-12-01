@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -7,7 +6,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  * @returns
  */
 const registerUserAction = ({ action }) => {
-  return SecurityClient.fetchCall(PATH + "/api/v1/user-action", {
+  return SecurityClient.fetchCall("/api/v1/user-action", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

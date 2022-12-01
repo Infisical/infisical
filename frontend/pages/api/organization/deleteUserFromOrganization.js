@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -8,7 +7,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  */
 const deleteUserFromOrganization = (membershipId) => {
   return SecurityClient.fetchCall(
-    PATH + "/api/v1/membership-org/" + membershipId,
+    "/api/v1/membership-org/" + membershipId,
     {
       method: "DELETE",
       headers: {

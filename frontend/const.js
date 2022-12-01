@@ -1,5 +1,3 @@
-export const PATH = process.env.NEXT_PUBLIC_WEBSITE_URL;
-
 export const publicPaths = [
   `/`,
   // `/integrations`,

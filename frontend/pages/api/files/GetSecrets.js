@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient.js";
 
 /**
@@ -9,7 +8,6 @@ import SecurityClient from "~/utilities/SecurityClient.js";
  */
 const getSecrets = async (workspaceId, env) => {
   return SecurityClient.fetchCall(
-    PATH +
       "/api/v1/secret/" +
       workspaceId +
       "?" +

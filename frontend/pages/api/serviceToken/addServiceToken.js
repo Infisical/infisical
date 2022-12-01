@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -15,7 +14,7 @@ const addServiceToken = ({
   encryptedKey,
   nonce,
 }) => {
-  return SecurityClient.fetchCall(PATH + "/api/v1/service-token/", {
+  return SecurityClient.fetchCall("/api/v1/service-token/", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

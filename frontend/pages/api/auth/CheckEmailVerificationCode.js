@@ -1,5 +1,3 @@
-import { PATH } from "~/const";
-
 /**
  * This route check the verification code from the email that user just recieved
  * @param {*} email
@@ -7,7 +5,7 @@ import { PATH } from "~/const";
  * @returns
  */
 const checkEmailVerificationCode = (email, code) => {
-  return fetch(PATH + "/api/v1/signup/email/verify", {
+  return fetch("/api/v1/signup/email/verify", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

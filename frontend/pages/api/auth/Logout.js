@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -9,7 +8,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  * @returns
  */
 const logout = async (req, res) => {
-  return SecurityClient.fetchCall(PATH + "/api/v1/auth/logout", {
+  return SecurityClient.fetchCall("/api/v1/auth/logout", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
