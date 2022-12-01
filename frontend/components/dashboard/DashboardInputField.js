@@ -116,7 +116,7 @@ const DashboardInputField = ({
           </div>
           {blurred && (
             <div className="absolute flex flex-row items-center z-20 peer pr-2 bg-bunker-800 group-hover:hidden peer-hover:hidden peer-focus:hidden peer-active:invisible h-9 w-full max-w-2xl rounded-md text-gray-400/50 text-clip">
-              <div className="px-2 flex flex-row items-center overflow-x-scroll">
+              <div className="px-2 flex flex-row items-center overflow-x-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
                 {value
                   .split("")
                   .map(() => (
