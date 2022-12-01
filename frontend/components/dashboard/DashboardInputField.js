@@ -84,7 +84,7 @@ const DashboardInputField = ({
               blurred
                 ? "text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-400 peer-active:text-gray-400"
                 : ""
-            } flex flex-row whitespace-pre font-mono absolute z-0 ph-no-capture max-w-2xl overflow-x-scroll bg-bunker-800 h-9 rounded-md text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-100`}
+            } absolute flex flex-row whitespace-pre font-mono z-0 ph-no-capture max-w-2xl overflow-x-scroll bg-bunker-800 h-9 rounded-md text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-100`}
           >
             {
               value
@@ -115,18 +115,18 @@ const DashboardInputField = ({
             }
           </div>
           {blurred && (
-            <div className="z-20 peer pr-2 bg-bunker-800 group-hover:hidden peer-hover:hidden peer-focus:hidden peer-active:invisible absolute h-9 w-fit max-w-xl rounded-md flex items-center text-gray-400/50 text-clip overflow-hidden">
-              <p className="ml-2"></p>
-              {value
-                .split("")
-                .slice(0, 42)
-                .map(() => (
-                  <FontAwesomeIcon
-                    key={guidGenerator()}
-                    className="text-xxs mx-0.5"
-                    icon={faCircle}
-                  />
-                ))}
+            <div className="absolute flex flex-row items-center z-20 peer pr-2 bg-bunker-800 group-hover:hidden peer-hover:hidden peer-focus:hidden peer-active:invisible h-9 w-full max-w-2xl rounded-md text-gray-400/50 text-clip">
+              <div className="px-2 flex flex-row items-center overflow-x-scroll">
+                {value
+                  .split("")
+                  .map(() => (
+                    <FontAwesomeIcon
+                      key={guidGenerator()}
+                      className="text-xxs mx-0.5"
+                      icon={faCircle}
+                    />
+                  ))}
+              </div>
             </div>
           )} 
         </div>
