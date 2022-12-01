@@ -253,12 +253,12 @@ export default function Layout({ children }) {
                           className={`flex relative px-0.5 py-2.5 text-white text-sm rounded cursor-pointer bg-primary-50/10`}
                         >
                           <div className="absolute top-0 my-1 ml-1 inset-0 bg-primary w-1 rounded-xl mr-1"></div>
-                          <p className="w-6 ml-3 mr-1 flex items-center justify-center">{emoji}</p>
+                          <p className="w-6 ml-4 mr-2 flex items-center justify-center text-lg">{emoji}</p>
                           {title}
                         </div>
                       ) : router.asPath == "/noprojects" ? (
                         <div className={`flex p-2.5 text-white text-sm rounded`}>
-                          <p className="w-8 flex items-center justify-center">{emoji}</p>
+                          <p className="w-10 flex items-center justify-center text-lg">{emoji}</p>
                           {title}
                         </div>
                       ) : (
@@ -266,7 +266,7 @@ export default function Layout({ children }) {
                           <div
                             className={`flex p-2.5 text-white text-sm rounded cursor-pointer hover:bg-primary-50/5`}
                           >
-                            <p className="w-8 flex items-center justify-center">{emoji}</p>
+                            <p className="w-10 flex items-center justify-center text-lg">{emoji}</p>
                             {title}
                           </div>
                         </Link>
