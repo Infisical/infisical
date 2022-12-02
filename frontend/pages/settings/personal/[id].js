@@ -31,10 +31,6 @@ export default function PersonalSettings() {
 
   const { t, lang } = useTranslation();
 
-  const changeLanguage = useCallback((code) => {
-    setLanguage(code);
-  }, []);
-
   useEffect(async () => {
     let user = await getUser();
     setPersonalEmail(user.email);
