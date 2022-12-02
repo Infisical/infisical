@@ -55,14 +55,11 @@ export default function Login() {
   return (
     <div className="bg-bunker-800 h-screen flex flex-col justify-start px-6">
       <Head>
-        <title>{t("auth:meta.login.title")}</title>
+        <title>{t("common:head-title", { title: t("login:title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("auth:meta.login.og-title")} />
-        <meta
-          name="og:description"
-          content={t("auth:meta.login.og-description")}
-        />
+        <meta property="og:title" content={t("login:og-title")} />
+        <meta name="og:description" content={t("login:og-description")} />
       </Head>
       <Link href="/">
         <div className="flex justify-center mb-8 mt-20 cursor-pointer">
@@ -76,18 +73,18 @@ export default function Login() {
       </Link>
       <div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-4 pt-8 px-6 rounded-xl drop-shadow-xl">
         <p className="text-4xl flex justify-center font-semibold text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-          {t("auth:login")}
+          {t("login:login")}
         </p>
         <div className="flex flex-row items-center justify-center">
           <p className="text-md flex justify-center mt-2 text-gray-400">
-            {t("auth:need-account")}
+            {t("login:need-account")}
           </p>
         </div>
         <div className="flex flex-col items-center justify-center w-full md:pb-4 max-h-24 max-w-md mx-auto">
           <Link href="/signup">
             <button className="w-full pb-3 hover:opacity-90 duration-200">
               <u className="font-normal text-md text-sky-500">
-                {t("auth:create-account")}
+                {t("login:create-account")}
               </u>
             </button>
           </Link>
@@ -116,7 +113,7 @@ export default function Login() {
         <div className="flex flex-col items-center justify-center w-full md:p-2 max-h-20 max-w-md mt-4 mx-auto text-sm">
           <div className="text-l mt-6 m-8 px-8 py-3 text-lg">
             <Button
-              text={t("auth:login")}
+              text={t("login:login")}
               onButtonPressed={loginCheck}
               loading={isLoading}
               size="lg"
@@ -131,7 +128,7 @@ export default function Login() {
         <div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-300 rounded-md max-w-md mx-auto mt-4">
           <FontAwesomeIcon icon={faWarning} className="ml-2 mr-6 text-6xl" />
 
-          {t("auth:maintenance-alert")}
+          {t("common:maintenance-alert")}
         </div>
       )}
     </div>

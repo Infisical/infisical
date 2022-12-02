@@ -1,18 +1,15 @@
 {
   "common": {
+    "head-title": "{{title}} | Infiscal",
     "error_project-already-exists": "A project with this name already exists.",
     "no-mobile": " To use Infisical, please log in through a device with larger dimensions. ",
     "email": "Email",
     "password": "Password",
-    "verify": "Verify",
     "first-name": "First Name",
     "last-name": "Last Name",
     "logout": "Log Out",
     "validate-required": "Please input your {{name}}",
-    "password-validate": "Password should contain at least:",
-    "password-validate-length": "14 characters",
-    "password-validate-case": "1 lowercase character",
-    "password-validate-number": "1 number",
+
     "maintenance-alert": "We are experiencing minor technical difficulties. We are working on solving it right now. Please come back in a few minutes.",
     "click-to-copy": "Click to copy",
     "project-id": "Project ID",
@@ -22,7 +19,29 @@
     "drop-zone-keys": "Drag and drop your .env file here to add more keys.",
     "role": "Role",
     "role_admin": "admin",
-    "display-name": "Display Name"
+    "display-name": "Display Name",
+    "free": "Free",
+    "starter": "Starter",
+    "professional": "Professional",
+    "enterprise": "Enterprise",
+    "downgrade": "Downgrade",
+    "upgrade": "Upgrade",
+    "learn-more": "Learn More",
+    "custom-pricing": "Custom Pricing",
+    "schedule-demo": "Schedule a Demo",
+    "environment": "Environment",
+    "expired-in": "Expires in"
+  },
+  "form-password": {
+    "password": "Password",
+    "change": "Change password",
+    "current": "Current password",
+    "current-wrong": "The current password may be wrong",
+    "new": "New password",
+    "validate-base": "Password should contain at least:",
+    "validate-length": "14 characters",
+    "validate-case": "1 lowercase character",
+    "validate-number": "1 number"
   },
   "nav": {
     "support": {
@@ -46,25 +65,22 @@
       "project-settings": "Project Settings"
     }
   },
-  "auth": {
-    "meta": {
-      "login": {
-        "title": "Login | Infiscal",
-        "og-title": "Log In to Infisical",
-        "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
-      },
-      "signup": {
-        "title": "Sign Up | Infiscal",
-        "og-title": "Replace .env files with 1 line of code. Sign Up for Infisical in 3 minutes.",
-        "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage API-keys and environemntal variables.  Works with Node.js, Next.js, Gatsby, Nest.js..."
-      }
-    },
+  "login": {
+    "title": "Login",
+    "og-title": "Log In to Infisical",
+    "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files.",
     "login": "Log In",
-    "signup": "Sign Up",
     "need-account": "Need an Infisical account?",
-    "create-account": "Create an account",
+    "create-account": "Create an account"
+  },
+  "signup": {
+    "title": "Sign Up",
+    "og-title": "Replace .env files with 1 line of code. Sign Up for Infisical in 3 minutes.",
+    "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage API-keys and environemntal variables.  Works with Node.js, Next.js, Gatsby, Nest.js...",
+    "signup": "Sign Up",
     "already-have-account": "Have an account? Log in",
     "forgot-password": "Forgot your password?",
+    "verify": "Verify",
     "step1-start": "Let's get started",
     "step1-privacy": "By creating an account, you agree to our Terms and have read and acknowledged the Privacy Policy.",
     "step1-submit": "Get Started",
@@ -100,36 +116,105 @@
       "line2": "Here is how to connect them to your codebase."
     }
   },
+  "settings-members": {
+    "title": "Project Members",
+    "description": "This pages shows the members of the selected project."
+  },
+  "settings-org": {
+    "title": "Organization Settings",
+    "description": "Manage members of your organization. These users could afterwards be formed into projects."
+  },
+  "settings-personal": {
+    "title": "Personal Settings",
+    "description": "View and manage your personal information here.",
+    "emergency": {
+      "name": "Emergency Kit",
+      "text1": "Your Emergency Kit contains the information you’ll need to sign in to your Infisical account.",
+      "text2": "Only the latest issued Emergency Kit remains valid. To get a new Emergency Kit, verify your password.",
+      "download": "Download Emergency Kit"
+    }
+  },
+  "settings-project": {
+    "title": "Project Settings",
+    "description": "These settings only apply to the currently selected Project.",
+    "danger-zone": "Danger Zone",
+    "delete-project": "Delete Project",
+    "project-to-delete": "Project to be Deleted",
+    "danger-zone-note": "As soon as you delete this project, you will not be able to undo it. This will immediately remove all the keys. If you still want to do that, please enter the name of the project below.",
+    "delete-project-note": "Note: You can only delete a project in case you have more than one",
+    "project-id-description": "To integrate Infisical into your code base and get automatic injection of environmental variables, you should use the following Project ID.",
+    "project-id-description2": "For more guidance, including code snipets for various languages and frameworks, see ",
+    "auto-generated": "This is your project's auto-generated unique identifier. It can't be changed.",
+    "docs": "Infisical Docs"
+  },
+  "section-token": {
+    "service-tokens": "Service Tokens",
+    "service-tokens-description": "Every service token is specific to you, a certain project and a certain environment within this project.",
+    "add-new": "Add New Token",
+    "add-dialog": {
+      "title": "Add a service token for {{target}}",
+      "description": "Specify the name, environment, and expiry period. When a token is generated, you will only be able to see it once before it disappears. Make sure to save it somewhere.",
+      "name": "Service Token Name",
+      "add": "Add Service Token",
+      "copy-service-token": "Copy your service token",
+      "copy-service-token-description": "Once you close this popup, you will never see your service token again"
+    }
+  },
   "settings": {
-    "meta": {
-      "members": {
-        "title": "Project Members",
-        "head-title": "Project Settings | Infiscal",
-        "description": "This pages shows the members of the selected project."
-      },
-      "org": {
-        "title": "Organization Settings",
-        "head-title": "Organization Settings | Infiscal",
-        "description": "Manage members of your organization. These users could afterwards be formed into projects."
-      }
-    },
-    "search-members": "Search members...",
     "search": "Search...",
+    "delete-project": "Delete Project"
+  },
+  "billing": {
+    "title": "Usage & Billing",
+    "description": "View and manage your organization's subscription here",
+    "subscription": "Subscription",
+    "starter": {
+      "price-explanation": "up to 5 team members",
+      "text": "Manage any project with 5 members for free!",
+      "subtext": "$5 per member/month afterwards."
+    },
+    "professional": {
+      "price-explanation": "/member/month",
+      "subtext": "Includes unlimited projects & members.",
+      "text": "Keep up with key management as you grow."
+    },
+    "enterprise": {
+      "text": "Keep up with key management as you grow."
+    },
+    "current-usage": "Current Usage"
+  },
+  "section-members": {
     "add-member": "Add Member",
     "org-members": "Organization Members",
     "org-members-description": "Manage members of your organization. These users could afterwards be formed into projects.",
-    "incident-contacts": "Incident Contacts",
-    "incident-contacts-description": "These contacts will be notified in the unlikely event of a severe incident.",
-    "no-incident-contacts": "No incident contacts found.",
-    "add-contact": "Add Contact",
-    "add-member-dialog": {
+    "search-members": "Search members...",
+    "add-dialog": {
       "add-member-to-project": "Add a member to your project",
       "already-all-invited": "All the users in your organization are already invited.",
       "add-user-org-first": "Add more users to the organization first.",
       "user-will-email": "The user will receive an email with the instructions.",
       "looking-add": "<0>If you are looking to add users to your org,</0><1>click here</1>",
-      "add-user-to-org": "Add Users to Organization",
-      "add-member": "Add Member"
+      "add-user-to-org": "Add Users to Organization"
     }
+  },
+  "section-incident": {
+    "incident-contacts": "Incident Contacts",
+    "incident-contacts-description": "These contacts will be notified in the unlikely event of a severe incident.",
+    "no-incident-contacts": "No incident contacts found.",
+    "add-contact": "Add Contact",
+    "add-dialog": {
+      "title": "Add an Incident Contact",
+      "description": "This contact will be notified in the unlikely event of a severe incident.",
+      "add-incident": "Add Incident Contact"
+    }
+  },
+  "integrations": {
+    "title": "Project Integrations",
+    "description": "Manage your integrations of Infisical with third-party services.",
+    "no-integrations1": "You don't have any integrations set up yet. When you do, they will appear here.",
+    "no-integrations2": "To start, click on any of the options below. It takes 5 clicks to set up.",
+    "available": "Available Integrations",
+    "available-text1": "Click on the itegration you want to connect. This will let your environment variables flow automatically into selected third-party services.",
+    "available-text2": " Note: during an integration with Heroku, for security reasons, it is impossible to maintain end-to-end encryption. In theory, this lets Infisical decrypt yor environment variables. In practice, we can assure you that this will never be done, and it allows us to protect your secrets from bad actors online. The core Infisical service will always stay end-to-end encrypted. With any questions, reach out support@infisical.com."
   }
 }

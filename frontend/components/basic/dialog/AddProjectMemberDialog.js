@@ -52,25 +52,25 @@ const AddProjectMemberDialog = ({
                       as="h3"
                       className="text-lg font-medium leading-6 text-gray-400 z-50"
                     >
-                      {t("settings:add-member-dialog.add-member-to-project")}
+                      {t("section-members:add-dialog.add-member-to-project")}
                     </Dialog.Title>
                   ) : (
                     <Dialog.Title
                       as="h3"
                       className="text-lg font-medium leading-6 text-gray-400 z-50"
                     >
-                      {t("settings:add-member-dialog.already-all-invited")}
+                      {t("section-members:add-dialog.already-all-invited")}
                     </Dialog.Title>
                   )}
                   <div className="mt-2 mb-4">
                     {data?.length > 0 ? (
                       <div className="flex flex-col">
                         <p className="text-sm text-gray-500">
-                          {t("settings:add-member-dialog.user-will-email")}
+                          {t("section-members:add-dialog.user-will-email")}
                         </p>
                         <div className="">
                           <Trans
-                            i18nKey="settings:add-member-dialog.looking-add"
+                            i18nKey="section-members:add-dialog.looking-add"
                             components={[
                               // eslint-disable-next-line react/jsx-key
                               <button
@@ -93,16 +93,14 @@ const AddProjectMemberDialog = ({
                                       "?invite"
                                   )
                                 }
-                              >
-                                click here.
-                              </button>,
+                              />,
                             ]}
                           />
                         </div>
                       </div>
                     ) : (
                       <p className="text-sm text-gray-500">
-                        {t("settings:add-member-dialog.add-user-org-first")}
+                        {t("section-members:add-dialog.add-user-org-first")}
                       </p>
                     )}
                   </div>
@@ -122,7 +120,7 @@ const AddProjectMemberDialog = ({
                         <Button
                           onButtonPressed={submitModal}
                           color="mineshaft"
-                          text={t("settings:add-member-dialog.add-member")}
+                          text={t("section-members:add-member")}
                           size="md"
                         />
                       </div>
@@ -132,7 +130,7 @@ const AddProjectMemberDialog = ({
                           router.push("/settings/org/" + router.query.id)
                         }
                         color="mineshaft"
-                        text={t("settings:add-member-dialog.add-user-to-org")}
+                        text={t("section-members:add-dialog.add-user-to-org")}
                         size="md"
                       />
                     )}

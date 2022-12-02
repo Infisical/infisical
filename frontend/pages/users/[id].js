@@ -127,19 +127,21 @@ export default function Users() {
   return userList ? (
     <div className="bg-bunker-800 md:h-screen flex flex-col justify-start">
       <Head>
-        <title>{t("settings:meta.members.head-title")}</title>
+        <title>
+          {t("common:head-title", { title: t("settings-members:title") })}
+        </title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
       <NavHeader
-        pageName={t("settings:meta.members.title")}
+        pageName={t("settings-members:title")}
         isProjectRelated={true}
       />
       <div className="flex flex-col justify-start items-start px-6 py-6 pb-4 text-3xl">
         <p className="font-semibold mr-4 text-white">
-          {t("settings:meta.members.title")}
+          {t("settings-members:title")}
         </p>
         <p className="mr-4 text-base text-gray-400">
-          {t("settings:meta.members.description")}
+          {t("settings-members:description")}
         </p>
       </div>
       <AddProjectMemberDialog
@@ -167,12 +169,12 @@ export default function Users() {
             className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
             value={searchUsers}
             onChange={(e) => setSearchUsers(e.target.value)}
-            placeholder={t("settings:search-members")}
+            placeholder={t("section-members:search-members")}
           />
         </div>
         <div className="mt-2 ml-2 min-w-max flex flex-row items-start justify-start mr-4">
           <Button
-            text={t("settings:add-member")}
+            text={t("section-members:add-member")}
             onButtonPressed={openAddModal}
             color="mineshaft"
             size="md"

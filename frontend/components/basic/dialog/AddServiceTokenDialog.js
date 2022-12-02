@@ -1,5 +1,6 @@
 import { Fragment, useState } from "react";
 import { useRouter } from "next/router";
+import useTranslate from "next-translate/useTranslation";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Dialog, Transition } from "@headlessui/react";
@@ -41,6 +42,7 @@ const AddServiceTokenDialog = ({
   const [serviceTokenEnv, setServiceTokenEnv] = useState("Development");
   const [serviceTokenExpiresIn, setServiceTokenExpiresIn] = useState("1 day");
   const [serviceTokenCopied, setServiceTokenCopied] = useState(false);
+  const { t } = useTranslate();
 
   const generateServiceToken = async () => {
     const latestFileKey = await getLatestFileKey(workspaceId);
@@ -134,21 +136,20 @@ const AddServiceTokenDialog = ({
                       as="h3"
                       className="text-lg font-medium leading-6 text-gray-400 z-50"
                     >
-                      Add a service token for {workspaceName}
+                      {t("section-token:add-dialog.title", {
+                        target: workspaceName,
+                      })}
                     </Dialog.Title>
                     <div className="mt-2 mb-4">
                       <div className="flex flex-col">
                         <p className="text-sm text-gray-500">
-                          Specify the name, environment, and expiry period. When
-                          a token is generated, you will only be able to see it
-                          once before it disappears. Make sure to save it
-                          somewhere.
+                          {t("section-token:add-dialog.description")}
                         </p>
                       </div>
                     </div>
                     <div className="max-h-28 mb-2">
                       <InputField
-                        label="Service Token Name"
+                        label={t("section-token:add-dialog.name")}
                         onChangeHandler={setServiceTokenName}
                         type="varName"
                         value={serviceTokenName}
@@ -167,7 +168,7 @@ const AddServiceTokenDialog = ({
                           "Testing",
                         ]}
                         width="full"
-                        text="Environment: "
+                        text={`t("common:environment"): `}
                       />
                     </div>
                     <div className="max-h-28">
@@ -176,7 +177,7 @@ const AddServiceTokenDialog = ({
                         onChange={setServiceTokenExpiresIn}
                         data={["1 day", "7 days", "1 month"]}
                         width="full"
-                        text="Expires in: "
+                        text={`t("common:expired-in"): `}
                       />
                     </div>
                     <div className="max-w-max">
@@ -184,8 +185,8 @@ const AddServiceTokenDialog = ({
                         <Button
                           onButtonPressed={() => generateServiceToken()}
                           color="mineshaft"
-                          text="Add Service Token"
-                          textDisabled="Add Service Token"
+                          text={t("section-token:add-dialog.add")}
+                          textDisabled={t("section-token:add-dialog.add")}
                           size="md"
                           active={serviceTokenName == "" ? false : true}
                         />
@@ -198,13 +199,14 @@ const AddServiceTokenDialog = ({
                       as="h3"
                       className="text-lg font-medium leading-6 text-gray-400 z-50"
                     >
-                      Copy your service token
+                      {t("section-token:add-dialog.copy-service-token")}
                     </Dialog.Title>
                     <div className="mt-2 mb-4">
                       <div className="flex flex-col">
                         <p className="text-sm text-gray-500">
-                          Once you close this popup, you will never see your
-                          service token again
+                          {t(
+                            "section-token:add-dialog.copy-service-token-description"
+                          )}
                         </p>
                       </div>
                     </div>
@@ -234,7 +236,7 @@ const AddServiceTokenDialog = ({
                             )}
                           </button>
                           <span className="absolute hidden group-hover:flex group-hover:animate-popup duration-300 w-28 -left-8 -top-20 translate-y-full px-3 py-2 bg-chicago-900 rounded-md text-center text-gray-400 text-sm">
-                            Click to Copy
+                            {t("common.click-to-copy")}
                           </span>
                         </div>
                       </div>

@@ -159,12 +159,14 @@ export default function SettingsOrg() {
   return (
     <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
       <Head>
-        <title>{t("settings:meta.org.head-title")}</title>
+        <title>
+          {t("common:head-title", { title: t("settings-org:title") })}
+        </title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
       <div className="flex flex-row">
         <div className="w-full max-h-screen pb-2 overflow-y-auto">
-          <NavHeader pageName={t("settings:meta.org.title")} />
+          <NavHeader pageName={t("settings-org:title")} />
           <AddIncidentContactDialog
             isOpen={isAddIncidentContactOpen}
             closeModal={closeAddIncidentContactModal}
@@ -175,10 +177,10 @@ export default function SettingsOrg() {
           <div className="flex flex-row justify-between items-center ml-6 my-8 text-xl max-w-5xl">
             <div className="flex flex-col justify-start items-start text-3xl">
               <p className="font-semibold mr-4 text-gray-200">
-                {t("settings:meta.org.title")}
+                {t("settings-org:title")}
               </p>
               <p className="font-normal mr-4 text-gray-400 text-base">
-                {t("settings:meta.org.description")}
+                {t("settings-org:description")}
               </p>
             </div>
           </div>
@@ -278,15 +280,15 @@ export default function SettingsOrg() {
               <div className="flex flex-row max-w-5xl justify-between items-center w-full">
                 <div className="flex flex-col justify-between w-full max-w-3xl">
                   <p className="text-xl font-semibold mb-3 min-w-max">
-                    {t("settings:incident-contacts")}
+                    {t("section-incident:incident-contacts")}
                   </p>
                   <p className="text-xs text-gray-500 mb-2 min-w-max">
-                    {t("settings:incident-contacts-description")}
+                    {t("section-incident:incident-contacts-description")}
                   </p>
                 </div>
                 <div className="mt-4 mb-2 min-w-max flex flex-row items-end justify-end justify-center">
                   <Button
-                    text={t("common:add-contact")}
+                    text={t("section-incident:add-contact")}
                     onButtonPressed={openAddIncidentContactModal}
                     color="mineshaft"
                     size="md"
@@ -332,7 +334,7 @@ export default function SettingsOrg() {
               ) : (
                 <div className="w-full flex flex-row justify-center mt-6 max-w-4xl ml-6">
                   <p className="text-gray-400">
-                    {t("settings:no-incident-contacts")}
+                    {t("section-incident:no-incident-contacts")}
                   </p>
                 </div>
               )}

@@ -250,13 +250,13 @@ export default function SignUp() {
   const step1 = (
     <div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-8 md:px-6 mx-1 mb-48 md:mb-16 rounded-xl drop-shadow-xl">
       <p className="text-4xl font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-        {t("auth:step1-start")}
+        {t("signup:step1-start")}
       </p>
       <div className="flex flex-col items-center justify-center w-full md:pb-2 max-h-24 max-w-md mx-auto pt-2">
         <Link href="/login">
           <button className="w-max pb-3 hover:opacity-90 duration-200">
             <u className="font-normal text-md text-sky-500">
-              {t("auth:already-have-account")}
+              {t("signup:already-have-account")}
             </u>
           </button>
         </Link>
@@ -279,12 +279,11 @@ export default function SignUp() {
         </div> */}
       <div className="flex flex-col items-center justify-center w-5/6 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto mt-4 md:mt-4 text-sm text-center md:text-left">
         <p className="text-gray-400 mt-2 md:mx-0.5">
-          By creating an account, you agree to our Terms and have read and
-          acknowledged the Privacy Policy.
+          {t("signup:step1-privacy")}
         </p>
         <div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
           <Button
-            text={t("auth:step1-submit")}
+            text={t("signup:step1-submit")}
             onButtonPressed={emailCheck}
             size="lg"
           />
@@ -297,7 +296,7 @@ export default function SignUp() {
   const step2 = (
     <div className="bg-bunker w-max mx-auto h-7/12 pt-10 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-16">
       <Trans
-        i18nKey="common:step2-message"
+        i18nKey="signup:step2-message"
         components={{
           wrapper: <p className="text-l flex justify-center text-gray-400" />,
           email: (
@@ -325,10 +324,10 @@ export default function SignUp() {
           className="mt-2 mb-6"
         />
       </div>
-      {codeError && <Error text={t("auth:step2-code-error")} />}
+      {codeError && <Error text={t("signup:step2-code-error")} />}
       <div className="flex max-w-min flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
         <Button
-          text={t("auth:verify")}
+          text={t("signup:verify")}
           onButtonPressed={incrementStep}
           size="lg"
         />
@@ -342,7 +341,7 @@ export default function SignUp() {
           </button>
         </Link> */}
         <p className="text-sm text-gray-500 pb-2">
-          {t("auth:step2-spam-alert")}
+          {t("signup:step2-spam-alert")}
         </p>
       </div>
     </div>
@@ -352,7 +351,7 @@ export default function SignUp() {
   const step3 = (
     <div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-36 md:mb-16">
       <p className="text-4xl font-bold flex justify-center mb-6 text-gray-400 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-        {t("auth:step3-message")}
+        {t("signup:step3-message")}
       </p>
       <div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">
         <InputField
@@ -382,7 +381,7 @@ export default function SignUp() {
       </div>
       <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
         <InputField
-          label={t("common:password")}
+          label={t("form-password:password")}
           onChangeHandler={(password) => {
             setPassword(password);
             passwordCheck(
@@ -405,7 +404,7 @@ export default function SignUp() {
         passwordErrorNumber ? (
           <div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
             <div className={`text-gray-400 text-sm mb-1`}>
-              {t("auth:password-validate")}
+              {t("form-password:validate-base")}
             </div>
             <div className="flex flex-row justify-start items-center ml-1">
               {passwordErrorLength ? (
@@ -424,7 +423,7 @@ export default function SignUp() {
                   passwordErrorLength ? "text-gray-400" : "text-gray-600"
                 } text-sm`}
               >
-                {t("auth:password-validate-length")}
+                {t("form-password:validate-length")}
               </div>
             </div>
             <div className="flex flex-row justify-start items-center ml-1">
@@ -444,7 +443,7 @@ export default function SignUp() {
                   passwordErrorLowerCase ? "text-gray-400" : "text-gray-600"
                 } text-sm`}
               >
-                {t("auth:password-validate-case")}
+                {t("form-password:validate-case")}
               </div>
             </div>
             <div className="flex flex-row justify-start items-center ml-1">
@@ -464,7 +463,7 @@ export default function SignUp() {
                   passwordErrorNumber ? "text-gray-400" : "text-gray-600"
                 } text-sm`}
               >
-                {t("auth:password-validate-number")}
+                {t("form-password:validate-number")}
               </div>
             </div>
           </div>
@@ -531,14 +530,11 @@ export default function SignUp() {
   return (
     <div className="bg-bunker-800 h-screen flex flex-col items-center justify-center">
       <Head>
-        <title>{t("auth:meta.signup.title")}</title>
+        <title>{t("common:head-title", { title: t("signup:title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("auth:meta.signup.og-title")} />
-        <meta
-          name="og:description"
-          content={t("auth:meta.signup.og-description")}
-        />
+        <meta property="og:title" content={t("signup:og-title")} />
+        <meta name="og:description" content={t("signup:og-description")} />
       </Head>
       <div className="flex flex-col justify-center items-center">
         <Link href="/">

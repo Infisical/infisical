@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import { useRouter } from "next/router";
+import useTranslation from "next-translate/useTranslation";
 import {
   faArrowRight,
   faCheck,
@@ -53,6 +54,8 @@ const Integration = ({ projectIntegration }) => {
   const [integrationApp, setIntegrationApp] = useState(
     projectIntegration.app ? projectIntegration.app : apps[0]
   );
+
+  const { t } = useTranslation();
 
   useEffect(async () => {
     const tempHerokuApps = await getIntegrationApps({
@@ -179,6 +182,8 @@ export default function Integrations() {
   const router = useRouter();
   const [csrfToken, setCsrfToken] = useState("");
 
+  const { t } = useTranslation();
+
   useEffect(async () => {
     const tempCSRFToken = crypto.randomBytes(16).toString("hex");
     setCsrfToken(tempCSRFToken);
@@ -205,24 +210,28 @@ export default function Integrations() {
   return integrations ? (
     <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
       <Head>
-        <title>Dashboard</title>
+        <title>
+          <title>
+            {t("common:head-title", { title: t("integrations:title") })}
+          </title>
+        </title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
         <meta property="og:title" content="Manage your .env files in seconds" />
-        <meta
-          name="og:description"
-          content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
-        />
+        <meta name="og:description" content={t("integrations:description")} />
       </Head>
       <div className="flex flex-row">
         <div className="w-full max-h-96 pb-2 h-screen max-h-[calc(100vh-10px)] overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
-          <NavHeader pageName="Project Integrations" isProjectRelated={true} />
+          <NavHeader
+            pageName={t("integrations:title")}
+            isProjectRelated={true}
+          />
           <div className="flex flex-col justify-between items-start mx-4 mt-6 mb-4 text-xl max-w-5xl px-2">
             <div className="flex flex-row justify-start items-center text-3xl">
-              <p className="font-semibold mr-4">Current Project Integrations</p>
+              <p className="font-semibold mr-4">{t("integrations:title")}</p>
             </div>
             <p className="mr-4 text-base text-gray-400">
-              Manage your integrations of Infisical with third-party services.
+              {t("integrations:description")}
             </p>
           </div>
           {projectIntegrations.length > 0 ? (
@@ -235,34 +244,22 @@ export default function Integrations() {
           ) : (
             <div className="flex flex-col max-w-5xl justify-center bg-white/5 p-6 rounded-md mx-6 mt-8">
               <div className="relative px-4 flex flex-col text-gray-400 items-center justify-center">
-                <div className="mb-1">
-                  You {"don't"} have any integrations set up yet. When you do,
-                  they will appear here.
-                </div>
-                <div className="">
-                  To start, click on any of the options below. It takes 5 clicks
-                  to set up.
-                </div>
+                <div className="mb-1">{t("integrations:no-integrations1")}</div>
+                <div className="">{t("integrations:no-integrations2")}</div>
               </div>
             </div>
           )}
           <div className="flex flex-col justify-between items-start mx-4 mt-12 mb-4 text-xl max-w-5xl px-2">
             <div className="flex flex-row justify-start items-center text-3xl">
-              <p className="font-semibold mr-4">Available Integrations</p>
+              <p className="font-semibold mr-4">
+                {t("integrations:available")}
+              </p>
             </div>
             <p className="mr-4 text-base text-gray-400">
-              Click on the itegration you want to connect. This will let your
-              environment variables flow automatically into selected third-party
-              services.
+              {t("integrations:available-text1")}
             </p>
             <p className="mr-4 text-xs text-gray-600 mt-1">
-              Note: during an integration with Heroku, for security reasons, it
-              is impossible to maintain end-to-end encryption. In theory, this
-              lets Infisical decrypt yor environment variables. In practice, we
-              can assure you that this will never be done, and it allows us to
-              protect your secrets from bad actors online. The core Infisical
-              service will always stay end-to-end encrypted. With any questions,
-              reach out support@infisical.com.
+              {t("integrations:available-text2")}
             </p>
           </div>
           <div className="grid gap-4 grid-cols-3 grid-rows-3 mx-6 mt-4 max-w-5xl">
