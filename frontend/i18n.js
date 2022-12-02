@@ -20,7 +20,7 @@ module.exports = {
       "section-incident",
       "section-members",
     ],
-    "/settings/personal/[id]": ["settings-personal"],
+    "/settings/personal/[id]": ["settings-personal", "form-password"],
     "/settings/billing/[id]": ["billing"],
     "/integrations/[id]": ["integrations"],
   },

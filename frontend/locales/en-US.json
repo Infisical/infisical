@@ -30,7 +30,8 @@
     "custom-pricing": "Custom Pricing",
     "schedule-demo": "Schedule a Demo",
     "environment": "Environment",
-    "expired-in": "Expires in"
+    "expired-in": "Expires in",
+    "language": "Language"
   },
   "form-password": {
     "password": "Password",
@@ -132,7 +133,8 @@
       "text1": "Your Emergency Kit contains the information you’ll need to sign in to your Infisical account.",
       "text2": "Only the latest issued Emergency Kit remains valid. To get a new Emergency Kit, verify your password.",
       "download": "Download Emergency Kit"
-    }
+    },
+    "change-language": "Change Language"
   },
   "settings-project": {
     "title": "Project Settings",

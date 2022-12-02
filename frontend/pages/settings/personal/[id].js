@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Head from "next/head";
+import setLanguage from "next-translate/setLanguage";
 import useTranslation from "next-translate/useTranslation";
 import { faCheck, faX } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import Button from "~/components/basic/buttons/Button";
 import InputField from "~/components/basic/InputField";
+import ListBox from "~/components/basic/Listbox";
 import NavHeader from "~/components/navigation/NavHeader";
 import changePassword from "~/components/utilities/cryptography/changePassword";
 import issueBackupKey from "~/components/utilities/cryptography/issueBackupKey";
@@ -27,7 +29,11 @@ export default function PersonalSettings() {
   const [backupKeyIssued, setBackupKeyIssued] = useState(false);
   const [backupKeyError, setBackupKeyError] = useState(false);
 
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
+
+  const changeLanguage = useCallback((code) => {
+    setLanguage(code);
+  }, []);
 
   useEffect(async () => {
     let user = await getUser();
@@ -108,6 +114,21 @@ export default function PersonalSettings() {
 								</div> */}
               </div>
             </div>
+            <div className="bg-white/5 rounded-md px-6 pt-6 pb-6 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4">
+              <p className="text-xl font-semibold self-start">
+                {t("settings-personal:change-language")}
+              </p>
+              <div className="max-h-28 w-ful mt-4">
+                <ListBox
+                  selected={lang}
+                  onChange={setLanguage}
+                  data={["en-US", "ko-KR"]}
+                  width="full"
+                  text={`${t("common:language")}: `}
+                />
+              </div>
+            </div>
+
             <div className="bg-white/5 rounded-md px-6 pt-5 pb-6 flex flex-col items-start flex flex-col items-start w-full mb-6">
               <div className="flex flex-row max-w-5xl justify-between items-center w-full">
                 <div className="flex flex-col justify-between w-full max-w-3xl">

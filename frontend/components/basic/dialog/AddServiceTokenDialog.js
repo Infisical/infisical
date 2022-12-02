@@ -168,7 +168,7 @@ const AddServiceTokenDialog = ({
                           "Testing",
                         ]}
                         width="full"
-                        text={`t("common:environment"): `}
+                        text={`${t("common:environment")}: `}
                       />
                     </div>
                     <div className="max-h-28">
@@ -177,7 +177,7 @@ const AddServiceTokenDialog = ({
                         onChange={setServiceTokenExpiresIn}
                         data={["1 day", "7 days", "1 month"]}
                         width="full"
-                        text={`t("common:expired-in"): `}
+                        text={`${t("common:expired-in")}: `}
                       />
                     </div>
                     <div className="max-w-max">

@@ -4,7 +4,6 @@
     "simple-import-sort"
   ],
   "rules": {
-    "i18n-ally-translation-missing": "off",
     "react-hooks/exhaustive-deps": "off",
     "simple-import-sort/exports": "warn",
     "simple-import-sort/imports": [
