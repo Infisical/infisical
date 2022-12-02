@@ -72,9 +72,10 @@ Not sure where to get started? [Book a free, non-pressure pairing sessions with 
 
 ## Community & Support
 
-- [GitHub Discussions](https://github.com/Infisical/infisical/discussions) for help with building and discussion.
-- [GitHub Issues](https://github.com/Infisical/infisical-cli/issues) for any bugs and errors you encounter using Infisical.
-- [Community Slack](https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g) for hanging out with the community and quick communication with the team.
+- [Slack](https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g) (For live discussion with the community and the Infisical team)
+- [GitHub Discussions](https://github.com/Infisical/infisical/discussions) (For help with building and deeper conversations about features)
+- [GitHub Issues](https://github.com/Infisical/infisical-cli/issues) (For any bugs and errors you encounter using Infisical)
+- [Twitter](https://twitter.com/infisical) (Get news fast) 
 
 ## Status
 
@@ -106,17 +107,17 @@ We're currently setting the foundation and building [integrations](https://infis
   <tbody>
     <tr>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/platforms/docker">
+        <a href="https://infisical.com/docs/integrations/platforms/docker?ref=github.com">
           ✔️ Docker
         </a>
       </td>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/platforms/docker-compose">
+        <a href="https://infisical.com/docs/integrations/platforms/docker-compose?ref=github.com">
           ✔️ Docker Compose
         </a>
       </td>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/cloud/heroku">
+        <a href="https://infisical.com/docs/integrations/cloud/heroku?ref=github.com">
           ✔️ Heroku
         </a>
       </td>
@@ -184,66 +185,73 @@ We're currently setting the foundation and building [integrations](https://infis
   <tbody>
     <tr>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/frameworks/react">
+        <a href="https://infisical.com/docs/integrations/frameworks/react?ref=github.com">
           ✔️ React
         </a>
       </td>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/frameworks/express">
+        <a href="https://infisical.com/docs/integrations/frameworks/express?ref=github.com">
           ✔️ Express
         </a>
       </td>
     </tr>
     <tr>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/frameworks/gatsby">
+        <a href="https://infisical.com/docs/integrations/frameworks/gatsby?ref=github.com">
           ✔️ Gatsby
         </a>
       </td>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/frameworks/flask">
+        <a href="https://infisical.com/docs/integrations/frameworks/flask?ref=github.com">
           ✔️ Flask
         </a>
       </td>
     </tr>
     <tr>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/frameworks/django">
+        <a href="https://infisical.com/docs/integrations/frameworks/django?ref=github.com">
           ✔️ Django
         </a>
       </td>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/frameworks/laravel">
+        <a href="https://infisical.com/docs/integrations/frameworks/laravel?ref=github.com">
           ✔️ Laravel
         </a>
       </td>
     </tr>
     <tr>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/frameworks/nestjs">
+        <a href="https://infisical.com/docs/integrations/frameworks/nestjs?ref=github.com">
           ✔️ NestJS
         </a>
       </td>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/frameworks/remix">
+        <a href="https://infisical.com/docs/integrations/frameworks/remix?ref=github.com">
           ✔️ Remix
         </a>
       </td>
     </tr>
     <tr>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/frameworks/nextjs">
+        <a href="https://infisical.com/docs/integrations/frameworks/nextjs?ref=github.com">
           ✔️ Next.js
         </a>
       </td>
       <td align="left" valign="middle">
-        🔜 Vite
+        <a href="https://infisical.com/docs/integrations/frameworks/vite?ref=github.com">
+          ✔️ Vite
+        </a>
       </td>
     </tr>
     <tr>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/frameworks/rails">
+        <a href="https://infisical.com/docs/integrations/frameworks/rails?ref=github.com">
           ✔️ Ruby on Rails
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/vue?ref=github.com">
+          ✔️ Vue
         </a>
       </td>
     </tr>
