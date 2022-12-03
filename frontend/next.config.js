@@ -2,19 +2,11 @@
 
 const ContentSecurityPolicy = `
 	default-src 'self';
-<<<<<<< HEAD
-	script-src 'self' https://app.posthog.com https://infisical.com https://assets.calendly.com/ https://js.stripe.com https://api.stripe.com 'unsafe-inline' 'unsafe-eval';
-=======
 	script-src 'self' https://app.posthog.com https://js.stripe.com https://api.stripe.com 'unsafe-inline' 'unsafe-eval';
->>>>>>> main
 	style-src 'self' https://rsms.me 'unsafe-inline';
 	child-src https://api.stripe.com;
 	frame-src https://js.stripe.com/ https://api.stripe.com;
-<<<<<<< HEAD
-	connect-src 'self' ws: wss: https://api.github.com/repos/Infisical/infisical-cli https://api.heroku.com/ https://id.heroku.com/oauth/authorize https://id.heroku.com/oauth/token https://checkout.stripe.com https://app.posthog.com https://infisical.com https://api.stripe.com https://vitals.vercel-insights.com/v1/vitals;
-=======
 	connect-src 'self' https://api.heroku.com/ https://id.heroku.com/oauth/authorize https://id.heroku.com/oauth/token https://checkout.stripe.com https://app.posthog.com https://api.stripe.com;
->>>>>>> main
 	img-src 'self' https://*.stripe.com https://i.ytimg.com/ data:;
 	media-src;
 	font-src 'self' https://maxcdn.bootstrapcdn.com https://rsms.me https://fonts.gstatic.com;  
