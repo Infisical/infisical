@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -7,7 +6,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  * @returns
  */
 const createWorkspace = (workspaceName, organizationId) => {
-  return SecurityClient.fetchCall(PATH + "/api/v1/workspace", {
+  return SecurityClient.fetchCall("/api/v1/workspace", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

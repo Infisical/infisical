@@ -5,8 +5,8 @@ import { useRouter } from "next/router";
 import {
   faGear,
   faHouse,
-  faLink,
   faMobile,
+  faPlug,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
@@ -124,7 +124,7 @@ export default function Layout({ children }) {
     {
       href: "/integrations/" + workspaceMapping[workspaceSelected],
       title: "Integrations",
-      emoji: <FontAwesomeIcon icon={faLink} />,
+      emoji: <FontAwesomeIcon icon={faPlug} />,
     },
     {
       href: "/settings/project/" + workspaceMapping[workspaceSelected],
@@ -242,7 +242,7 @@ export default function Layout({ children }) {
               <ul>
                 {workspaceList.length > 0 &&
                   menuItems.map(({ href, title, emoji }) => (
-                    <li className="mt-1.5 mx-2" key={title}>
+                    <li className="mt-0.5 mx-2" key={title}>
                       {router.asPath.split("/")[1] === href.split("/")[1] &&
                       (["project", "billing", "org", "personal"].includes(
                         router.asPath.split("/")[2]
@@ -250,23 +250,23 @@ export default function Layout({ children }) {
                         ? router.asPath.split("/")[2] === href.split("/")[2]
                         : true) ? (
                         <div
-                          className={`flex p-2 text-white text-sm rounded cursor-pointer bg-mineshaft-50/10`}
+                          className={`flex relative px-0.5 py-2.5 text-white text-sm rounded cursor-pointer bg-primary-50/10`}
                         >
-                          <div className="bg-primary w-1 rounded-xl mr-1"></div>
-                          <p className="ml-2 mr-4">{emoji}</p>
+                          <div className="absolute top-0 my-1 ml-1 inset-0 bg-primary w-1 rounded-xl mr-1"></div>
+                          <p className="w-6 ml-4 mr-2 flex items-center justify-center text-lg">{emoji}</p>
                           {title}
                         </div>
                       ) : router.asPath == "/noprojects" ? (
-                        <div className={`flex p-2 text-white text-sm rounded`}>
-                          <p className="ml-2 mr-4">{emoji}</p>
+                        <div className={`flex p-2.5 text-white text-sm rounded`}>
+                          <p className="w-10 flex items-center justify-center text-lg">{emoji}</p>
                           {title}
                         </div>
                       ) : (
                         <Link href={href}>
                           <div
-                            className={`flex p-2 text-white text-sm rounded cursor-pointer hover:bg-mineshaft-50/5`}
+                            className={`flex p-2.5 text-white text-sm rounded cursor-pointer hover:bg-primary-50/5`}
                           >
-                            <p className="ml-2 mr-4">{emoji}</p>
+                            <p className="w-10 flex items-center justify-center text-lg">{emoji}</p>
                             {title}
                           </div>
                         </Link>

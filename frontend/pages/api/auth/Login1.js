@@ -1,5 +1,3 @@
-import { PATH } from "~/const";
-
 /**
  * This is the first step of the login process (pake)
  * @param {*} email
@@ -7,7 +5,7 @@ import { PATH } from "~/const";
  * @returns
  */
 const login1 = (email, clientPublicKey) => {
-  return fetch(PATH + "/api/v1/auth/login1", {
+  return fetch("/api/v1/auth/login1", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
