@@ -124,7 +124,7 @@ We're currently setting the foundation and building [integrations](https://infis
     </tr>
     <tr>
       <td align="left" valign="middle">
-        🔜 Vercel
+        🔜 Vercel (https://github.com/Infisical/infisical/issues/60)
       </td>
       <td align="left" valign="middle">
         🔜 GitLab CI/CD
