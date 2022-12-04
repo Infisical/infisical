@@ -1,8 +1,16 @@
 {
-  "extends": ["next/babel", "next/core-web-vitals"],
-  "plugins": ["simple-import-sort"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "next",
+    "next/core-web-vitals"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["simple-import-sort", "@typescript-eslint"],
   "rules": {
     "react-hooks/exhaustive-deps": "off",
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": "error",
     "simple-import-sort/exports": "warn",
     "simple-import-sort/imports": [
       "warn",
