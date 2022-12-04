@@ -20,13 +20,13 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-#       -
-#         name: Build and push backend
-#         uses: docker/build-push-action@v3
-#         with:
-#           push: true
-#           context: /backend
-#           tags: infisical/backend:latest
+      -
+        name: Build and push backend
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          context: backend
+          tags: infisical/backend:test
       -
         name: Build and push frontend
         uses: docker/build-push-action@v3
