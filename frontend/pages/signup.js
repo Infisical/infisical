@@ -495,7 +495,9 @@ export default function SignUp() {
               setBackupKeyError,
               setBackupKeyIssued,
             });
-            router.push("/dashboard/");
+            const userWorkspaces = await getWorkspaces();
+            let userWorkspace = userWorkspaces[0]._id;
+            router.push("/home/" + userWorkspace);
           }}
           size="lg"
         />
