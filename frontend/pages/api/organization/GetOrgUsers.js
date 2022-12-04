@@ -2,13 +2,13 @@ import SecurityClient from "~/utilities/SecurityClient";
 
 /**
  * This route lets us get all the users in an org.
- * @param {*} req
- * @param {*} res
+ * @param {object} obj
+ * @param {string} obj.orgId - organization Id
  * @returns
  */
-const getOrganizationUsers = (req, res) => {
+const getOrganizationUsers = ({ orgId }) => {
   return SecurityClient.fetchCall(
-    "/api/v1/organization/" + req.orgId + "/users",
+    "/api/v1/organization/" + orgId + "/users",
     {
       method: "GET",
       headers: {

@@ -53,9 +53,12 @@
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.4",
     "@types/node": "18.11.9",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
     "autoprefixer": "^10.4.7",
-    "eslint": "^8.28.0",
+    "eslint": "^8.29.0",
     "eslint-config-next": "^13.0.5",
+    "eslint-import-resolver-typescript": "^3.5.2",
     "eslint-plugin-simple-import-sort": "^8.0.0",
     "postcss": "^8.4.14",
     "prettier": "2.7.1",

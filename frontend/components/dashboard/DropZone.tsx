@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ChangeEvent, type DragEvent, useState } from "react";
 import Image from "next/image";
 import { faUpload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -8,27 +8,37 @@ import Error from "../basic/Error";
 import parse from "../utilities/file";
 import guidGenerator from "../utilities/randomId";
 
+interface DropZoneProps {
+  // TODO: change Data type from any
+  setData: (data: any) => void;
+  setErrorDragAndDrop: (hasError: boolean) => void;
+  createNewFile: () => void;
+  errorDragAndDrop: boolean;
+  setButtonReady: (isReady: boolean) => void;
+  keysExist: boolean;
+  numCurrentRows: number;
+}
+
 const DropZone = ({
   setData,
   setErrorDragAndDrop,
   createNewFile,
   errorDragAndDrop,
-  addPresetRow,
   setButtonReady,
   keysExist,
   numCurrentRows,
-}) => {
-  const handleDragEnter = (e) => {
+}: DropZoneProps) => {
+  const handleDragEnter = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
   };
 
-  const handleDragLeave = (e) => {
+  const handleDragLeave = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
   };
 
-  const handleDragOver = (e) => {
+  const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -39,22 +49,25 @@ const DropZone = ({
   const [loading, setLoading] = useState(false);
 
   // This function function immediately parses the file after it is dropped
-  const handleDrop = async (e) => {
+  const handleDrop = async (e: DragEvent) => {
     setLoading(true);
     setTimeout(() => setLoading(false), 5000);
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = "copy";
 
-    var file = e.dataTransfer.files[0],
-      reader = new FileReader();
-    reader.onload = function (event) {
-      const keyPairs = parse(event.target.result);
+    const file = e.dataTransfer.files[0];
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+      if (event.target === null || event.target.result === null) return;
+      // parse function's argument looks like to be ArrayBuffer
+      const keyPairs = parse(event.target.result as Buffer);
       const newData = Object.keys(keyPairs).map((key, index) => [
         guidGenerator(),
         numCurrentRows + index,
         key,
-        keyPairs[key],
+        keyPairs[key as keyof typeof keyPairs],
         "shared",
       ]);
       setData(newData);
@@ -72,23 +85,28 @@ const DropZone = ({
   };
 
   // This function is used when the user manually selects a file from the in-browser dircetory (not drag and drop)
-  const handleFileSelect = (e) => {
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     setLoading(true);
     setTimeout(() => setLoading(false), 5000);
-    var file = e.target.files[0],
-      reader = new FileReader();
-    reader.onload = function (event) {
-      const newData = event.target.result
-        .split("\n")
-        .map((line, index) => [
-          guidGenerator(),
-          numCurrentRows + index,
-          line.split("=")[0],
-          line.split("=").slice(1, line.split("=").length).join("="),
-          "shared",
-        ]);
-      setData(newData);
-      setButtonReady(true);
+    if (e.currentTarget.files === null) return;
+    const file = e.currentTarget.files[0];
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target === null || event.target.result === null) return;
+      const { result } = event.target;
+      if (typeof result === "string") {
+        const newData = result
+          .split("\n")
+          .map((line: string, index: number) => [
+            guidGenerator(),
+            numCurrentRows + index,
+            line.split("=")[0],
+            line.split("=").slice(1, line.split("=").length).join("="),
+            "shared",
+          ]);
+        setData(newData);
+        setButtonReady(true);
+      }
     };
     reader.readAsText(file);
   };
@@ -105,17 +123,17 @@ const DropZone = ({
   ) : keysExist ? (
     <div
       className="opacity-60 hover:opacity-100 duration-200 relative bg-bunker outline max-w-[calc(100%-1rem)] w-full outline-dashed outline-gray-600 rounded-md outline-2 flex flex-col items-center justify-center mb-16 mx-auto mt-1 py-8 px-2"
-      onDragEnter={(e) => handleDragEnter(e)}
-      onDragOver={(e) => handleDragOver(e)}
-      onDragLeave={(e) => handleDragLeave(e)}
-      onDrop={(e) => handleDrop(e)}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       <input
         id="fileSelect"
         type="file"
         className="opacity-0 absolute w-full h-full"
         accept=".txt,.env"
-        onChange={(e) => handleFileSelect(e)}
+        onChange={handleFileSelect}
       />
       {errorDragAndDrop ? (
         <div className="my-3 max-w-xl opacity-80"></div>
@@ -142,10 +160,10 @@ const DropZone = ({
   ) : (
     <div
       className="opacity-80 hover:opacity-100 duration-200 relative bg-bunker outline max-w-2xl w-full outline-dashed outline-gray-700 rounded-md outline-2 flex flex-col items-center justify-center pt-16 mb-16 px-4"
-      onDragEnter={(e) => handleDragEnter(e)}
-      onDragOver={(e) => handleDragOver(e)}
-      onDragLeave={(e) => handleDragLeave(e)}
-      onDrop={(e) => handleDrop(e)}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       <FontAwesomeIcon icon={faUpload} className="text-7xl mb-8" />
       <p className="">Drag and drop your .env file here.</p>
@@ -154,7 +172,7 @@ const DropZone = ({
         type="file"
         className="opacity-0 absolute w-full h-full"
         accept=".txt,.env"
-        onChange={(e) => handleFileSelect(e)}
+        onChange={handleFileSelect}
       />
       <div className="flex flex-row w-full items-center justify-center mb-6 mt-5">
         <div className="border-t border-gray-700 w-1/5"></div>
