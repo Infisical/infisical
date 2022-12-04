@@ -61,7 +61,7 @@ const DashboardInputField = ({
             }
             type={type}
             value={value}
-            className={`absolute z-10 peer font-mono ph-no-capture bg-bunker-800 rounded-md caret-white text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 ${
+            className={`z-10 peer font-mono ph-no-capture bg-bunker-800 rounded-md caret-white text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 ${
               error ? "focus:ring-red/50" : "focus:ring-primary/50"
             } duration-200`}
             spellCheck="false"

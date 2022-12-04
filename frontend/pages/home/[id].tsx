@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { faSlack } from "@fortawesome/free-brands-svg-icons";
-import { faCheckCircle, faHandPeace, faNetworkWired, faPlug, faPlus, faUserPlus } from "@fortawesome/free-solid-svg-icons";
+import { faCheckCircle, faHandPeace, faNetworkWired, faPlug, faPlus, faStar, faUserPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import getOrganizationUsers from "../api/organization/GetOrgUsers";
@@ -93,6 +93,7 @@ export default function Home() {
   const router = useRouter();
   const [hasUserClickedSlack, setHasUserClickedSlack] = useState(false);
   const [hasUserClickedIntro, setHasUserClickedIntro] = useState(false);
+  const [hasUserStarred, setHasUserStarred] = useState(false);
   const [usersInOrg, setUsersInOrg] = useState(false);
 
   useEffect(() => {
@@ -106,6 +107,11 @@ export default function Home() {
         action: "intro_cta_clicked",
       });
       setHasUserClickedIntro(userActionIntro ? true : false);
+
+      let userActionStar = await checkUserAction({
+        action: "star_cta_clicked",
+      });
+      setHasUserStarred(userActionStar ? true : false);
 
       let orgId = localStorage.getItem("orgData.id");
       const orgUsers = await getOrganizationUsers({
@@ -127,6 +133,7 @@ export default function Home() {
         {learningItem({ text: "Integrate Infisical with your infrastructure", subText: "Only a few integrations are currently available. Many more coming soon!", complete: false, icon: faPlug, time: "15 min", link: "https://infisical.com/docs/integrations/overview"  })}
         {learningItem({ text: "Invite your teammates", subText: "", complete: usersInOrg, icon: faUserPlus, time: "2 min", link: "/settings/org/" + router.query.id + "?invite" })}
         {learningItem({ text: "Join Infisical Slack", subText: "Have any questions? Ask us!", complete: hasUserClickedSlack, icon: faSlack, time: "1 min", userAction: "slack_cta_clicked", link: "https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g" })}
+        {learningItem({ text: "Star Infisical on GitHub", subText: "Like what we're doing? You know what to do! :)", complete: hasUserStarred, icon: faStar, time: "1 min", userAction: "star_cta_clicked", link: "https://github.com/Infisical/infisical" })}
       </div>
     </div>
   );
