@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infisical-backend
+  labels:
+    app: backend
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      app: backend 
+  template:
+    metadata: 
+      labels:
+        app: backend 
+    spec:
+      containers:
+      - name: backend 
+        image: infisical/backend
+        ports: 
+        - containerPort: 4000
+        env:
+
+---
+apiVersion: v1
+kind: Service 
+metadata:
+  name: infisical-backend-service 
+spec:
+  selector:
+    app: backend 
+  ports:
+    - protocol: TCP
+      port: 4000
+      targetPort: 4000 # container port 
