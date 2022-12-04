@@ -31,5 +31,5 @@ jobs:
         with:
           push: true
           file: Dockerfile.dev
-          context: /frontend
+          context: frontend
           tags: infisical/frontend:test
