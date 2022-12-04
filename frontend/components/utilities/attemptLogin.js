@@ -137,7 +137,15 @@ const attemptLogin = async (
             await pushKeys(
               {
                 DATABASE_URL: [
-                  "mongodb+srv://this_is:an_example@mongodb.net",
+                  "mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net",
+                  "personal",
+                ],
+                DB_USERNAME: [
+                  "user1234",
+                  "personal",
+                ],
+                DB_PASSWORD: [
+                  "ah8jak3hk8dhiu4dw7whxwe1l",
                   "personal",
                 ],
                 TWILIO_AUTH_TOKEN: [
