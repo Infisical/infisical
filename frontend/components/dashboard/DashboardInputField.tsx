@@ -1,4 +1,4 @@
-import React, { SyntheticEvent, UIEvent, useRef, WheelEvent } from "react";
+import React, { SyntheticEvent, useRef } from "react";
 import { faCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
