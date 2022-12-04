@@ -32,6 +32,6 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          file: Dockerfile.dev
+          file: frontend/Dockerfile.dev
           context: frontend
           tags: infisical/frontend:test
