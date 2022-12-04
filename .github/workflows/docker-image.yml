@@ -6,6 +6,8 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -18,17 +20,18 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-#       -
-#         name: Build and push backend
-#         uses: docker/build-push-action@v3
-#         with:
-#           push: true
-#           context: /backend
-#           tags: infisical/backend:latest
+      -
+        name: Build and push backend
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          context: backend
+          tags: infisical/backend:test
       -
         name: Build and push frontend
         uses: docker/build-push-action@v3
         with:
           push: true
-          file: /frontend/Dockerfile.dev
+          file: frontend/Dockerfile.dev
+          context: frontend
           tags: infisical/frontend:test
