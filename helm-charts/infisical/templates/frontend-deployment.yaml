@@ -1,9 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: infisical-frontend
+  name: {{ .Release.Name }}-frontend-deployment
   labels:
     app: frontend
+  namespace: {{ .Values.namespace }}
 spec:
   replicas: {{ .Values.frontend.replicaCount }}
   selector:
@@ -17,6 +18,7 @@ spec:
       containers:
       - name: frontend 
         image: infisical/frontend
+        imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
         ports: 
         - containerPort: 4000
 ---
@@ -24,6 +26,7 @@ apiVersion: v1
 kind: Service 
 metadata:
   name: infisical-frontend-service 
+  namespace: {{ .Values.namespace }}
 spec:
   selector:
     app: frontend 

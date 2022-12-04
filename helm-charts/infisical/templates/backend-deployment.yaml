@@ -1,9 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: infisical-backend
+  name: {{ .Release.Name }}-backend-deployment
   labels:
     app: backend
+  namespace: {{ .Values.namespace }}
 spec:
   replicas: {{ .Values.backend.replicaCount }}
   selector:
@@ -17,15 +18,21 @@ spec:
       containers:
       - name: backend 
         image: infisical/backend
+        imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
         ports: 
         - containerPort: 4000
         env:
+        {{- range $key, $value := .Values.secrets }}
+        - name: {{ $key }}
+          value: {{ $value }}
+        {{- end }}
 
 ---
 apiVersion: v1
 kind: Service 
 metadata:
   name: infisical-backend-service 
+  namespace: {{ .Values.namespace }}
 spec:
   selector:
     app: backend 

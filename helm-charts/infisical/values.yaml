@@ -1,39 +1,36 @@
-# Default values for Infisical
+namespace: infisical
+
 frontend:
   replicaCount: 1
   image:
     repository: 
     pullPolicy: IfNotPresent
-    # Overrides the image tag whose default is the chart appVersion.
-    tag: ""
+    tag: "latest"
 
 backend:
   replicaCount: 1
   image:
     repository: 
     pullPolicy: IfNotPresent
-    # Overrides the image tag whose default is the chart appVersion.
-    tag: ""
+    tag: "latest"
 
 ingress:
   enabled: false
-  className: ""
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-  hosts:
-    - host: chart-example.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
+  annotations: []
+  hostName: example.com
+  tls: {}
 
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
+secrets:
+  PRIVATE_KEY: REQUIRED
+  PUBLIC_KEY: REQUIRED
+  ENCRYPTION_KEY: REQUIRED
+  JWT_SIGNUP_SECRET: REQUIRED
+  JWT_REFRESH_SECRET: REQUIRED
+  JWT_AUTH_SECRET: REQUIRED
+  NODE_ENV: development
+  SMTP_HOST: REQUIRED
+  SMTP_NAME: REQUIRED
+  SMTP_USERNAME: REQUIRED
+  SMTP_PASSWORD: REQUIRED
+  MONGO_URL: REQUIRED
+    
