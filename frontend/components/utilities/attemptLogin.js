@@ -4,10 +4,9 @@ import login2 from "~/pages/api/auth/Login2";
 import getOrganizations from "~/pages/api/organization/getOrgs";
 import getOrganizationUserProjects from "~/pages/api/organization/GetOrgUserProjects";
 
-import { initPostHog } from "../analytics/posthog";
 import pushKeys from "./secrets/pushKeys";
-import { ENV } from "./config";
 import SecurityClient from "./SecurityClient";
+import Telemetry from "./telemetry/Telemetry";
 
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
@@ -33,6 +32,8 @@ const attemptLogin = async (
 ) => {
   try {
     let userWorkspace, userOrg;
+    const telemetry = new Telemetry().getInstance();
+
     client.init(
       {
         username: email,
@@ -159,16 +160,9 @@ const attemptLogin = async (
               "Development"
             );
           }
-          try {
-            if (email) {
-              if (ENV == "production") {
-                const posthog = initPostHog();
-                posthog.identify(email);
-                posthog.capture("User Logged In");
-              }
-            }
-          } catch (error) {
-            console.log("posthog", error);
+          if (email) {
+            telemetry.identify(email);
+            telemetry.capture("User Logged In");
           }
 
           if (isLogin) {

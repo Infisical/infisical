@@ -2,11 +2,10 @@ import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { config } from "@fortawesome/fontawesome-svg-core";
 
-import { initPostHog } from "~/components/analytics/posthog";
 import Layout from "~/components/basic/layout";
 import RouteGuard from "~/components/RouteGuard";
 import { publicPaths } from "~/const";
-import { ENV } from "~/utilities/config";
+import Telemetry from "~/utilities/telemetry/Telemetry";
 
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "../styles/globals.css";
@@ -15,17 +14,14 @@ config.autoAddCss = false;
 
 const App = ({ Component, pageProps, ...appProps }) => {
   const router = useRouter();
-  const posthog = initPostHog();
 
   useEffect(() => {
     // Init for auto capturing
-    const posthog = initPostHog();
+    const telemetry = new Telemetry().getInstance();
 
     const handleRouteChange = () => {
       if (typeof window !== "undefined") {
-        if (ENV == "production") {
-          posthog.capture("$pageview");
-        }
+        telemetry.capture("$pageview");
       }
     };
 
