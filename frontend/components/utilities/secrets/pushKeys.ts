@@ -26,7 +26,7 @@ export interface IK {
  * @param {object} obj.env - which environment a user is pushing to 
  */
 const pushKeys = async({ obj, workspaceId, env }: { obj: object; workspaceId: string; env: string; }) => {
-  let sharedKey = await getLatestFileKey({ workspaceId });
+  const sharedKey = await getLatestFileKey({ workspaceId });
 
   const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
 
