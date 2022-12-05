@@ -2,13 +2,12 @@ import SecurityClient from "~/utilities/SecurityClient";
 
 /**
  * This route lets us get the public keys of everyone in your workspace.
- * @param {*} req
- * @param {*} res
+ * @param {string} workspaceId
  * @returns
  */
-const getWorkspaceKeys = (req, res) => {
+const getWorkspaceKeys = ({ workspaceId }: { workspaceId: string; }) => {
   return SecurityClient.fetchCall(
-    "/api/v1/workspace/" + req.workspaceId + "/keys",
+    "/api/v1/workspace/" + workspaceId + "/keys",
     {
       method: "GET",
       headers: {
@@ -16,7 +15,7 @@ const getWorkspaceKeys = (req, res) => {
       },
     }
   ).then(async (res) => {
-    if (res.status == 200) {
+    if (res?.status == 200) {
       return (await res.json()).publicKeys;
     } else {
       console.log("Failed to get the public keys of everyone in the workspace");
