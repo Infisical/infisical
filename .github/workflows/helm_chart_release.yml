@@ -8,8 +8,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
       - name: Install Helm
         uses: azure/setup-helm@v3
         with:
