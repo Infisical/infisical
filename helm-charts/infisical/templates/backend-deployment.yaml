@@ -23,6 +23,9 @@ spec:
         - containerPort: 4000
         env:
         {{- range $key, $value := .Values.secrets }}
+        {{- if eq $value "MUST_REPLACE" }}
+          {{ fail "Environment variables are not set. Please set all environment variables to continue." }}
+        {{ end }}
         - name: {{ $key }}
           value: {{ $value }}
         {{- end }}
