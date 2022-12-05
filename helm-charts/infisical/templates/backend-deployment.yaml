@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-backend-deployment
+  labels:
+    app: backend
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      app: backend 
+  template:
+    metadata: 
+      labels:
+        app: backend 
+    spec:
+      containers:
+      - name: backend 
+        image: infisical/backend
+        imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+        ports: 
+        - containerPort: 4000
+        env:
+        {{- range $key, $value := .Values.secrets }}
+        {{- if eq $value "MUST_REPLACE" }}
+          {{ fail "Environment variables are not set. Please set all environment variables to continue." }}
+        {{ end }}
+        - name: {{ $key }}
+          value: {{ $value }}
+        {{- end }}
+
+---
+apiVersion: v1
+kind: Service 
+metadata:
+  name: infisical-backend-service 
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: backend 
+  ports:
+    - protocol: TCP
+      port: 4000
+      targetPort: 4000 # container port 

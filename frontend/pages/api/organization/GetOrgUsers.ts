@@ -2,13 +2,13 @@ import SecurityClient from "~/utilities/SecurityClient";
 
 /**
  * This route lets us get all the users in an org.
- * @param {*} req
- * @param {*} res
+ * @param {object} obj
+ * @param {string} obj.orgId - organization Id
  * @returns
  */
-const getOrganizationUsers = (req, res) => {
+const getOrganizationUsers = ({ orgId }: { orgId: string; }) => {
   return SecurityClient.fetchCall(
-    "/api/v1/organization/" + req.orgId + "/users",
+    "/api/v1/organization/" + orgId + "/users",
     {
       method: "GET",
       headers: {
@@ -16,7 +16,7 @@ const getOrganizationUsers = (req, res) => {
       },
     }
   ).then(async (res) => {
-    if (res.status == 200) {
+    if (res?.status == 200) {
       return (await res.json()).users;
     } else {
       console.log("Failed to get org users");

@@ -54,15 +54,13 @@ To quickly get started, visit our [get started guide](https://infisical.com/docs
 
 ## What's cool about this?
 
-Infisical is simple, E2EE, and (soon to be) complete.
+Infisical makes secret management simple and end-to-end encrypted by default. We're on a mission to make it more accessible to all developers, <i>not just security teams</i>. 
 
 According to a [report](https://www.ekransystem.com/en/blog/secrets-management) in 2019, only 10% of organizations use secret management solutions despite all using digital secrets to some extent.
 
-We're on a mission to make secret management more accessible to everyone — that means building for developers, not just security teams.
-
 If you care about efficiency and security, then Infisical is right for you.
 
-Need any integrations or want a new feature? Feel free to [create an issue](https://github.com/Infisical/infisical/issues) or [contribute](https://infisical.com/docs/contributing/overview) directly to the repository.
+We are currently working hard to make Infisical more extensive. Need any integrations or want a new feature? Feel free to [create an issue](https://github.com/Infisical/infisical/issues) or [contribute](https://infisical.com/docs/contributing/overview) directly to the repository.
 
 ## Contributing
 
@@ -124,7 +122,7 @@ We're currently setting the foundation and building [integrations](https://infis
     </tr>
     <tr>
       <td align="left" valign="middle">
-        🔜 Vercel
+        🔜 Vercel (https://github.com/Infisical/infisical/issues/60)
       </td>
       <td align="left" valign="middle">
         🔜 GitLab CI/CD
@@ -279,4 +277,4 @@ Looking to report a security vulnerability? Please don't post about it in GitHub
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
 
-<a href="https://github.com/dangtony98"><img src="https://avatars.githubusercontent.com/u/25857006?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/mv-turtle"><img src="https://avatars.githubusercontent.com/u/78047717?s=96&v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/maidul98"><img src="https://avatars.githubusercontent.com/u/9300960?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/gangjun06"><img src="https://avatars.githubusercontent.com/u/50910815?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/reginaldbondoc"><img src="https://avatars.githubusercontent.com/u/7693108?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/hanywang2"><img src="https://avatars.githubusercontent.com/u/44352119?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/tobias-mintlify"><img src="https://avatars.githubusercontent.com/u/110702161?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/0xflotus"><img src="https://avatars.githubusercontent.com/u/26602940?v=4" width="50" height="50" alt=""/></a> 
+<a href="https://github.com/dangtony98"><img src="https://avatars.githubusercontent.com/u/25857006?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/mv-turtle"><img src="https://avatars.githubusercontent.com/u/78047717?s=96&v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/maidul98"><img src="https://avatars.githubusercontent.com/u/9300960?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/gangjun06"><img src="https://avatars.githubusercontent.com/u/50910815?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/reginaldbondoc"><img src="https://avatars.githubusercontent.com/u/7693108?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/SH5H"><img src="https://avatars.githubusercontent.com/u/25437192?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/hanywang2"><img src="https://avatars.githubusercontent.com/u/44352119?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/tobias-mintlify"><img src="https://avatars.githubusercontent.com/u/110702161?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/0xflotus"><img src="https://avatars.githubusercontent.com/u/26602940?v=4" width="50" height="50" alt=""/></a> 

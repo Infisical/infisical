@@ -37,7 +37,7 @@ const AddServiceTokenDialog = ({
   const [serviceTokenCopied, setServiceTokenCopied] = useState(false);
 
   const generateServiceToken = async () => {
-    const latestFileKey = await getLatestFileKey(workspaceId);
+    const latestFileKey = await getLatestFileKey({ workspaceId });
 
     const key = decryptAssymmetric({
       ciphertext: latestFileKey.latestKey.encryptedKey,

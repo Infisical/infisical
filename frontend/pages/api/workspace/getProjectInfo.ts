@@ -2,13 +2,12 @@ import SecurityClient from "~/utilities/SecurityClient";
 
 /**
  * This route lets us get the information of a certain project.
- * @param {*} req
- * @param {*} res
+ * @param {*} projectId - project ID (we renamed workspaces to projects in the app)
  * @returns
  */
-const getWorkspaceInfo = (req, res) => {
+const getProjectInfo = ({ projectId }: { projectId: string; }) => {
   return SecurityClient.fetchCall(
-    "/api/v1/workspace/" + req.workspaceId,
+    "/api/v1/workspace/" + projectId,
     {
       method: "GET",
       headers: {
@@ -16,7 +15,7 @@ const getWorkspaceInfo = (req, res) => {
       },
     }
   ).then(async (res) => {
-    if (res.status == 200) {
+    if (res?.status == 200) {
       return (await res.json()).workspace;
     } else {
       console.log("Failed to get project info");
@@ -24,4 +23,4 @@ const getWorkspaceInfo = (req, res) => {
   });
 };
 
-export default getWorkspaceInfo;
+export default getProjectInfo;

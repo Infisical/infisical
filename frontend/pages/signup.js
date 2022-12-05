@@ -197,7 +197,7 @@ export default function SignUp() {
         },
         async () => {
           client.createVerifier(async (err, result) => {
-            const response = await completeAccountInformationSignup({
+            let response = await completeAccountInformationSignup({
               email,
               firstName,
               lastName,
@@ -495,7 +495,9 @@ export default function SignUp() {
               setBackupKeyError,
               setBackupKeyIssued,
             });
-            router.push("/dashboard/");
+            const userWorkspaces = await getWorkspaces();
+            let userWorkspace = userWorkspaces[0]._id;
+            router.push("/home/" + userWorkspace);
           }}
           size="lg"
         />
