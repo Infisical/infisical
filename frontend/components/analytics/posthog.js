@@ -8,7 +8,7 @@ import {
 
 export const initPostHog = () => {
   if (typeof window !== "undefined") {
-    if (ENV == "production" && TELEMETRY_CAPTURING_ENABLED) {
+    if (ENV == "production" && TELEMETRY_CAPTURING_ENABLED) { // eslint-disable-line
       posthog.init(POSTHOG_API_KEY, {
         api_host: POSTHOG_HOST,
       });

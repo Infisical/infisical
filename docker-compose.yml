@@ -17,7 +17,6 @@ services:
       - infisical
   
   backend:
-    platform: linux/amd64
     container_name: infisical-backend
     restart: unless-stopped
     depends_on:
@@ -31,7 +30,6 @@ services:
       - infisical
   
   frontend:
-    platform: linux/amd64
     container_name: infisical-frontend
     restart: unless-stopped
     depends_on:

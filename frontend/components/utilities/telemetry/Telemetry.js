@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { initPostHog } from "~/components/analytics/posthog";
 import { ENV } from "~/components/utilities/config";
 
