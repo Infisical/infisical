@@ -6,7 +6,7 @@ import {
   FontAwesomeIconProps,
 } from "@fortawesome/react-fontawesome";
 
-var classNames = require("classnames");
+const classNames = require("classnames");
 
 type ButtonProps = {
   text: string;
@@ -40,7 +40,7 @@ export default function Button(props: ButtonProps): JSX.Element {
   const activityStatus =
     props.active || (props.text != "" && props.textDisabled == undefined);
 
-  let styleButton = classNames(
+  const styleButton = classNames(
     "group m-auto md:m-0 inline-block rounded-md duration-200",
 
     // Setting background colors and hover modes
@@ -67,7 +67,7 @@ export default function Button(props: ButtonProps): JSX.Element {
     props.size == "icon-sm" && "h-9 w-9 flex items-center justify-center"
   );
 
-  let styleMainDiv = classNames(
+  const styleMainDiv = classNames(
     "relative font-medium flex items-center",
 
     // Setting the text color for the text and icon
@@ -79,11 +79,11 @@ export default function Button(props: ButtonProps): JSX.Element {
     props.size == "icon" && "flex items-center justify-center"
   );
 
-  let textStyle = classNames(
+  const textStyle = classNames(
     "relative duration-200",
 
     // Show the loading sign if the loading indicator is on
-    Boolean(props.loading) ? "opacity-0" : "opacity-100",
+    props.loading ? "opacity-0" : "opacity-100",
     props.size == "md" && "text-sm",
     props.size == "lg" && "text-lg"
   );

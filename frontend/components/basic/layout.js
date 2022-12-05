@@ -19,6 +19,7 @@ import getOrganizationUsers from "~/pages/api/organization/GetOrgUsers";
 import addUserToWorkspace from "~/pages/api/workspace/addUserToWorkspace";
 import createWorkspace from "~/pages/api/workspace/createWorkspace";
 import getWorkspaces from "~/pages/api/workspace/getWorkspaces";
+import uploadKeys from "~/pages/api/workspace/uploadKeys";
 
 import NavBarDashboard from "../navigation/NavBarDashboard";
 import {
@@ -156,9 +157,7 @@ export default function Layout({ children }) {
       router.push("/noprojects");
     } else if (router.asPath != "/noprojects") {
       const intendedWorkspaceId = router.asPath
-        .split("/")
-        [router.asPath.split("/").length - 1].split("?")[0];
-
+        .split("/")[router.asPath.split("/").length - 1].split("?")[0];
       // If a user is not a member of a workspace they are trying to access, just push them to one of theirs
       if (
         intendedWorkspaceId != "heroku" &&
@@ -179,9 +178,7 @@ export default function Layout({ children }) {
             userWorkspaces.map((workspace) => [workspace._id, workspace.name])
           )[
             router.asPath
-              .split("/")
-              [router.asPath.split("/").length - 1].split("?")[0]
-          ]
+              .split("/")[router.asPath.split("/").length - 1].split("?")[0]]
         );
       }
     }
@@ -193,12 +190,9 @@ export default function Layout({ children }) {
         workspaceMapping[workspaceSelected] &&
         workspaceMapping[workspaceSelected] !==
           router.asPath
-            .split("/")
-            [router.asPath.split("/").length - 1].split("?")[0]
+            .split("/")[router.asPath.split("/").length - 1].split("?")[0]
       ) {
-        router.push(
-          "/dashboard/" + workspaceMapping[workspaceSelected] + "?Development"
-        );
+        router.push("/dashboard/" + workspaceMapping[workspaceSelected] + "?Development");
         localStorage.setItem(
           "projectData.id",
           workspaceMapping[workspaceSelected]

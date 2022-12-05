@@ -31,8 +31,8 @@ const issueBackupPrivateKey = ({
     if (res.status == 200) {
       return res;
     } else {
-      return res;
       console.log("Failed to issue the backup key");
+      return res;
     }
   });
 };

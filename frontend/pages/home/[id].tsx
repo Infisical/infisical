@@ -98,22 +98,22 @@ export default function Home() {
 
   useEffect(() => {
     const checkUserActionsFunction = async () => {
-      let userActionSlack = await checkUserAction({
+      const userActionSlack = await checkUserAction({
         action: "slack_cta_clicked",
       });
       setHasUserClickedSlack(userActionSlack ? true : false);
 
-      let userActionIntro = await checkUserAction({
+      const userActionIntro = await checkUserAction({
         action: "intro_cta_clicked",
       });
       setHasUserClickedIntro(userActionIntro ? true : false);
 
-      let userActionStar = await checkUserAction({
+      const userActionStar = await checkUserAction({
         action: "star_cta_clicked",
       });
       setHasUserStarred(userActionStar ? true : false);
 
-      let orgId = localStorage.getItem("orgData.id");
+      const orgId = localStorage.getItem("orgData.id");
       const orgUsers = await getOrganizationUsers({
         orgId: orgId ? orgId : "",
       });
@@ -123,9 +123,9 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="mx-6 lg:mx-0 w-full overflow-y-scroll pt-28 h-screen">
-      <div className="flex flex-col items-center text-gray-300 text-lg mx-auto max-w-2xl lg:max-w-3xl xl:max-w-4xl">
-        <div className="text-3xl font-bold text-left w-full pt-6">Your quick start guide</div>
+    <div className="mx-6 lg:mx-0 w-full overflow-y-scroll pt-20 h-screen">
+      <div className="flex flex-col items-center text-gray-300 text-lg mx-auto max-w-2xl lg:max-w-3xl xl:max-w-4xl py-6">
+        <div className="text-3xl font-bold text-left w-full">Your quick start guide</div>
         <div className="text-md text-left w-full pt-2 pb-4 text-bunker-300">Click on the items below and follow the instructions.</div>
         {learningItem({ text: "Get to know Infisical", subText: "", complete: hasUserClickedIntro, icon: faHandPeace, time: "3 min", userAction: "intro_cta_clicked", link: "https://www.youtube.com/watch?v=JS3OKYU2078" })}
         {learningItem({ text: "Add your secrets", subText: "Click to see example secrets, and add your own.", complete: false, icon: faPlus, time: "2 min", userAction: "first_time_secrets_pushed", link: "/dashboard/" + router.query.id })}
