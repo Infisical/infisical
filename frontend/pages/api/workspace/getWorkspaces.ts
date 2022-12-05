@@ -1,3 +1,5 @@
+import { Workspaces } from "types/workspaces";
+
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -12,10 +14,11 @@ const getWorkspaces = () => {
     },
   }).then(async (res) => {
     if (res?.status == 200) {
-      return (await res.json()).workspaces;
-    } else {
-      console.log("Failed to get projects");
+      const data = (await res.json()) as unknown as { workspaces: Workspaces };
+      return data.workspaces;
     }
+
+    throw new Error("Failed to get projects");
   });
 };
 
