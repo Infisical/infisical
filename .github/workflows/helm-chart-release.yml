@@ -14,13 +14,11 @@ jobs:
         uses: azure/setup-helm@v3
         with:
           version: v3.10.0
-      - name: Build helm package
-        run: cd helm-charts && helm package ./infisical
-        uses: helm/chart-releaser-action@v1.4.1
-      - name: Install python and Cloudsmith CLI
+      - name: Install python
         uses: actions/setup-python@v4
+      - name: Install Cloudsmith CLI
         run: pip install --upgrade cloudsmith-cli
-      - name: Push helm package to Cloudsmith
+      - name: Build and push helm package to Cloudsmith
         run: cd helm-charts && sh upload-to-cloudsmith.sh
         env:
           CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
