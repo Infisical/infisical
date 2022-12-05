@@ -1,6 +1,12 @@
-import { Workspaces } from "types/workspaces";
-
 import SecurityClient from "~/utilities/SecurityClient";
+
+interface Workspaces {
+  __v: number;
+  _id: string;
+  name: string;
+  organization: string;
+}
+[];
 
 /**
  * This route lets us get the workspaces of a certain user
