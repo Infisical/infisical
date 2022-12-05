@@ -197,7 +197,7 @@ export default function SignUp() {
         },
         async () => {
           client.createVerifier(async (err, result) => {
-            const response = await completeAccountInformationSignup({
+            let response = await completeAccountInformationSignup({
               email,
               firstName,
               lastName,

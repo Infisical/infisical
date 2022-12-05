@@ -3,11 +3,8 @@ import SecurityClient from "~/utilities/SecurityClient";
 /**
  * This route logs the user out. Note: the user should authorized to do this.
  * We first try to log out - if the authorization fails (response.status = 401), we refetch the new token, and then retry
- * @param {*} req
- * @param {*} res
- * @returns
  */
-const logout = async (req, res) => {
+const logout = async () => {
   return SecurityClient.fetchCall("/api/v1/auth/logout", {
     method: "POST",
     headers: {
@@ -15,7 +12,7 @@ const logout = async (req, res) => {
     },
     credentials: "include",
   }).then((res) => {
-    if (res.status == 200) {
+    if (res?.status == 200) {
       SecurityClient.setToken("");
       // Delete the cookie by not setting a value; Alternatively clear the local storage
       localStorage.setItem("publicKey", "");

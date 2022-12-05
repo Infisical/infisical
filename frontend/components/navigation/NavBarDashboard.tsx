@@ -47,27 +47,44 @@ const supportOptions = [
   ],
 ];
 
-export default function Navbar({ onButtonPressed }) {
-  const router = useRouter();
-  const [user, setUser] = useState({});
-  const [orgs, setOrgs] = useState([]);
-  const [currentOrg, setCurrentOrg] = useState([]);
+export interface ICurrentOrg {
+  name: string;
+}
 
-  useEffect(async () => {
-    const userData = await getUser();
-    setUser(userData);
-    const orgsData = await getOrganizations();
-    setOrgs(orgsData);
-    const currentOrg = await getOrganization({
-      orgId: localStorage.getItem("orgData.id"),
-    });
-    setCurrentOrg(currentOrg);
+export interface IUser {
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+/**
+ * This is the navigation bar in the main app. 
+ * It has two main components: support options and user menu (inlcudes billing, logout, org/user settings)
+ * @returns NavBar
+ */
+export default function Navbar() {
+  const router = useRouter();
+  const [user, setUser] = useState<IUser | undefined>();
+  const [orgs, setOrgs] = useState([]);
+  const [currentOrg, setCurrentOrg] = useState<ICurrentOrg | undefined>();
+
+  useEffect(() => {
+    (async () => {
+      const userData = await getUser();
+      setUser(userData);
+      const orgsData = await getOrganizations();
+      setOrgs(orgsData);
+      const currentOrg = await getOrganization({
+        orgId: String(localStorage.getItem("orgData.id")),
+      });
+      setCurrentOrg(currentOrg);
+    })();
   }, []);
 
   const closeApp = async () => {
     console.log("Logging out...");
     await logout();
-    router.push("/");
+    router.push("/login");
   };
 
   return (
@@ -108,7 +125,7 @@ export default function Navbar({ onButtonPressed }) {
                   key={guidGenerator()}
                   target="_blank"
                   rel="noopener"
-                  href={option[2]}
+                  href={String(option[2])}
                   className="font-normal text-gray-300 duration-200 rounded-md w-full flex items-center py-0.5"
                 >
                   <div className="relative flex justify-start items-center cursor-pointer select-none py-2 px-2 rounded-md text-gray-400 hover:bg-white/10 duration-200 hover:text-gray-200 w-full">
@@ -238,9 +255,9 @@ export default function Navbar({ onButtonPressed }) {
                   <div className="flex flex-col items-start px-1 mt-3 mb-2">
                     {orgs
                       .filter(
-                        (org) => org._id != localStorage.getItem("orgData.id")
+                        (org : { _id: string }) => org._id != localStorage.getItem("orgData.id")
                       )
-                      .map((org) => (
+                      .map((org : { _id: string; name: string; }) => (
                         <div
                           key={guidGenerator()}
                           onClick={() => {

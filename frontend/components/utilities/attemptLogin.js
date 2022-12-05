@@ -43,7 +43,7 @@ const attemptLogin = async (
 
         let serverPublicKey, salt;
         try {
-          const res = await login1(email, clientPublicKey);
+          let res = await login1(email, clientPublicKey);
           res = await res.json();
           serverPublicKey = res.serverPublicKey;
           salt = res.salt;
