@@ -25,12 +25,12 @@ export default function NavHeader({ pageName, isProjectRelated } : { pageName: s
   useEffect(() => {
     (async () => {
       const orgId = localStorage.getItem("orgData.id")
-      let org = await getOrganization({
+      const org = await getOrganization({
         orgId: orgId ? orgId : "",
       });
       setOrgName(org.name);
 
-      let workspace = await getProjectInfo({
+      const workspace = await getProjectInfo({
         projectId: String(router.query.id),
       });
       setWorkspaceName(workspace.name);

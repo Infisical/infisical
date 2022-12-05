@@ -7,20 +7,30 @@ import { envMapping } from "../../../public/data/frequentConstants";
 const crypto = require("crypto");
 const {
   decryptAssymmetric,
-  decryptSymmetric,
   encryptSymmetric,
   encryptAssymmetric,
 } = require("../cryptography/crypto");
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
 
+export interface IK {
+  publicKey: string;
+  userId: string;
+}
 
-const pushKeys = async (obj, workspaceId, env) => {
-  let sharedKey = await getLatestFileKey(workspaceId);
+/**
+ * This function pushes the keys to the database after decrypting them end-to-end
+ * @param {object} obj 
+ * @param {object} obj.obj - object with all the key pairs
+ * @param {object} obj.workspaceId - the id of a project to which a user is pushing
+ * @param {object} obj.env - which environment a user is pushing to 
+ */
+const pushKeys = async({ obj, workspaceId, env }: { obj: object; workspaceId: string; env: string; }) => {
+  const sharedKey = await getLatestFileKey({ workspaceId });
 
   const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
 
-  let randomBytes;
+  let randomBytes: string;
   if (Object.keys(sharedKey).length > 0) {
     // case: a (shared) key exists for the workspace
     randomBytes = decryptAssymmetric({
@@ -51,11 +61,11 @@ const pushKeys = async (obj, workspaceId, env) => {
       iv: ivValue,
       tag: tagValue,
     } = encryptSymmetric({
-      plaintext: obj[key][0],
+      plaintext: obj[key as keyof typeof obj][0],
       key: randomBytes,
     });
 
-    const visibility = obj[key][1] != null ? obj[key][1] : "personal";
+    const visibility = obj[key as keyof typeof obj][1] != null ? obj[key as keyof typeof obj][1] : "personal";
 
     return {
       ciphertextKey,
@@ -65,7 +75,7 @@ const pushKeys = async (obj, workspaceId, env) => {
       ciphertextValue,
       ivValue,
       tagValue,
-      hashValue: crypto.createHash("sha256").update(obj[key][0]).digest("hex"),
+      hashValue: crypto.createHash("sha256").update(obj[key as keyof typeof obj][0]).digest("hex"),
       type: visibility,
     };
   });
@@ -76,7 +86,7 @@ const pushKeys = async (obj, workspaceId, env) => {
   });
 
   // assymmetrically encrypt key with each receiver public keys
-  const keys = publicKeys.map((k) => {
+  const keys = publicKeys.map((k: IK) => {
     const { ciphertext, nonce } = encryptAssymmetric({
       plaintext: randomBytes,
       publicKey: k.publicKey,
@@ -95,7 +105,7 @@ const pushKeys = async (obj, workspaceId, env) => {
     workspaceId,
     secrets,
     keys,
-    environment: envMapping[env],
+    environment: envMapping[env as keyof typeof envMapping],
   });
 };
 

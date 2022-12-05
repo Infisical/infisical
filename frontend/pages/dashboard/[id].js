@@ -378,9 +378,9 @@ export default function Dashboard() {
     } else if (duplicatesExist) {
       console.log("Remove the duplicated entries first!");
     } else {
-      // Once "Save changed is clicked", disable that button
+      // Once "Save changes is clicked", disable that button
       setButtonReady(false);
-      pushKeys(obj, router.query.id, env);
+      pushKeys({obj, workspaceId: router.query.id, env});
 
       /**
        * Check which integrations are active for this project and environment

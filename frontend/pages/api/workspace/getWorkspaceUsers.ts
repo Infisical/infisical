@@ -2,13 +2,12 @@ import SecurityClient from "~/utilities/SecurityClient";
 
 /**
  * This route lets us get all the users in the workspace.
- * @param {*} req
- * @param {*} res
+ * @param {string} workspaceId - workspace ID
  * @returns
  */
-const getWorkspaceUsers = (req, res) => {
+const getWorkspaceUsers = ({ workspaceId }: { workspaceId: string; }) => {
   return SecurityClient.fetchCall(
-    "/api/v1/workspace/" + req.workspaceId + "/users",
+    "/api/v1/workspace/" + workspaceId + "/users",
     {
       method: "GET",
       headers: {
@@ -16,7 +15,7 @@ const getWorkspaceUsers = (req, res) => {
       },
     }
   ).then(async (res) => {
-    if (res.status == 200) {
+    if (res?.status == 200) {
       return (await res.json()).users;
     } else {
       console.log("Failed to get Project Users");

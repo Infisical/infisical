@@ -162,7 +162,8 @@
       "pages": [
         "contributing/overview",
         "contributing/code-of-conduct",
-        "contributing/developing"
+        "contributing/developing",
+        "contributing/FAQ"
       ]
     }
   ],

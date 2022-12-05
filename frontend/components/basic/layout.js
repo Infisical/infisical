@@ -56,10 +56,10 @@ export default function Layout({ children }) {
     const workspaces = await getWorkspaces();
     const currentWorkspaces = workspaces.map((workspace) => workspace.name);
     if (!currentWorkspaces.includes(workspaceName)) {
-      const newWorkspace = await createWorkspace(
+      const newWorkspace = await createWorkspace({
         workspaceName,
-        localStorage.getItem("orgData.id")
-      );
+        organizationId: localStorage.getItem("orgData.id")
+    });
       let newWorkspaceId;
       try {
         newWorkspaceId = newWorkspace._id;
