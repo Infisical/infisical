@@ -1,8 +1,8 @@
 import * as Sentry from '@sentry/node';
 import { Request, Response, NextFunction } from 'express';
-import { IntegrationAuth, Membership } from '../models';
-import { decryptSymmetric } from '../utils/crypto';
+import { IntegrationAuth } from '../models';
 import { getOAuthAccessToken } from '../helpers/integrationAuth';
+import { validateMembership } from '../helpers/membership';
 
 /**
  * Validate if user on request is a member of workspace with proper roles associated
@@ -20,8 +20,6 @@ const requireIntegrationAuthorizationAuth = ({
 	acceptedStatuses: string[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
-		// (authorization) integration authorization middleware
-
 		try {
 			const { integrationAuthId } = req.params;
 
@@ -34,29 +32,15 @@ const requireIntegrationAuthorizationAuth = ({
 			if (!integrationAuth) {
 				throw new Error('Failed to find integration authorization');
 			}
-
-			const membership = await Membership.findOne({
-				user: req.user._id,
-				workspace: integrationAuth.workspace
+			
+			await validateMembership({
+				userId: req.user._id.toString(),
+				workspaceId: integrationAuth.workspace.toString(),
+				acceptedRoles,
+				acceptedStatuses
 			});
 
-			if (!membership) {
-				throw new Error(
-					'Failed to find integration authorization workspace membership'
-				);
-			}
-
-			if (!acceptedRoles.includes(membership.role)) {
-				throw new Error('Failed to validate workspace membership role');
-			}
-
-			if (!acceptedStatuses.includes(membership.status)) {
-				throw new Error('Failed to validate workspace membership status');
-			}
-
 			req.integrationAuth = integrationAuth;
-
-			// TODO: make compatible with other integration types since they won't necessarily have access tokens
 			req.accessToken = await getOAuthAccessToken({ integrationAuth });
 			return next();
 		} catch (err) {

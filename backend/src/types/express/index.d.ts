@@ -11,6 +11,7 @@ declare global {
 			membershipOrg: any;
 			integration: any;
 			integrationAuth: any;
+			bot: any;
 			serviceToken: any;
 			accessToken: any;
 			query?: any;

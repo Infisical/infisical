@@ -10,6 +10,81 @@ import {
 } from '../config';
 
 /**
+ * Encrypt access and refresh tokens, compute new access token expiration times [accessExpiresAt],
+ * and upsert them into the DB for workspace with id [workspaceId] and integration [integration].
+ * @param {Object} obj
+ * @param {String} obj.workspaceId - id of workspace
+ * @param {String} obj.integration - name of integration
+ * @param {String} obj.accessToken - access token for integration
+ * @param {Date} obj.accessExpiresAt - date of expiration for access token
+ * @param {String} obj.refreshToken - refresh token for integration
+*/
+const processOAuthTokenRes2 = async ({
+	workspaceId,
+	integration,
+	accessToken,
+	accessExpiresAt,
+	refreshToken,
+}: {
+	workspaceId: string;
+	integration: string;
+	accessToken: string;
+	accessExpiresAt: Date;
+	refreshToken: string;
+}) => {
+
+	let integrationAuth;
+	try {
+		// encrypt refresh + access tokens
+		const {
+			ciphertext: refreshCiphertext,
+			iv: refreshIV,
+			tag: refreshTag
+		} = encryptSymmetric({
+			plaintext: refreshToken,
+			key: ENCRYPTION_KEY
+		});
+
+		const {
+			ciphertext: accessCiphertext,
+			iv: accessIV,
+			tag: accessTag
+		} = encryptSymmetric({
+			plaintext: accessToken,
+			key: ENCRYPTION_KEY
+		});
+
+		// create or replace integration authorization with encrypted tokens
+		// and access token expiration date
+		integrationAuth = await IntegrationAuth.findOneAndUpdate(
+			{ workspace: workspaceId, integration },
+			{
+				workspace: workspaceId,
+				integration,
+				refreshCiphertext,
+				refreshIV,
+				refreshTag,
+				accessCiphertext,
+				accessIV,
+				accessTag,
+				accessExpiresAt
+			},
+			{ upsert: true, new: true }
+		);
+
+	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
+		throw new Error(
+			'Failed to process OAuth2 authorization server token response'
+		);
+	}
+	
+	return integrationAuth;
+}
+
+// TODO: deprecate
+/**
  * Process token exchange and refresh responses from respective OAuth2 authorization servers by
  * encrypting access and refresh tokens, computing new access token expiration times [accessExpiresAt],
  * and upserting them into the DB for workspace with id [workspaceId] and integration [integration].
@@ -82,6 +157,7 @@ const processOAuthTokenRes = async ({
 	return integrationAuth;
 };
 
+// TODO: deprecate
 /**
  * Return access token for integration either by decrypting a non-expired access token [accessCiphertext] on
  * the integration authorization document or by requesting a new one by decrypting and exchanging the
@@ -171,4 +247,4 @@ const getOAuthAccessToken = async ({
 	return accessToken;
 };
 
-export { processOAuthTokenRes, getOAuthAccessToken };
+export { processOAuthTokenRes, processOAuthTokenRes2, getOAuthAccessToken };

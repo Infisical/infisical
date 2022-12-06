@@ -7,6 +7,8 @@ import { processOAuthTokenRes } from '../helpers/integrationAuth';
 import { INTEGRATION_SET, ENV_DEV } from '../variables';
 import { OAUTH_CLIENT_SECRET_HEROKU, OAUTH_TOKEN_URL_HEROKU } from '../config';
 
+import { IntegrationService } from '../services';
+
 /**
  * Perform OAuth2 code-token exchange as part of integration [integration] for workspace with id [workspaceId]
  * Note: integration [integration] must be set up compatible/designed for OAuth2
@@ -14,58 +16,64 @@ import { OAUTH_CLIENT_SECRET_HEROKU, OAUTH_TOKEN_URL_HEROKU } from '../config';
  * @param res
  * @returns
  */
-export const integrationAuthOauthExchange = async (
+export const oAuthExchange = async (
 	req: Request,
 	res: Response
 ) => {
 	try {
-		let clientSecret;
+		// let clientSecret;
 
 		const { workspaceId, code, integration } = req.body;
 
 		if (!INTEGRATION_SET.has(integration))
 			throw new Error('Failed to validate integration');
-
-		// use correct client secret
-		switch (integration) {
-			case 'heroku':
-				clientSecret = OAUTH_CLIENT_SECRET_HEROKU;
-		}
-
-		// TODO: unfinished - make compatible with other integration types
-		const res = await axios.post(
-			OAUTH_TOKEN_URL_HEROKU!,
-			new URLSearchParams({
-				grant_type: 'authorization_code',
-				code: code,
-				client_secret: clientSecret
-			} as any)
-		);
-
-		const integrationAuth = await processOAuthTokenRes({
+	
+		await IntegrationService.handleOAuthExchange({
 			workspaceId,
 			integration,
-			res
+			code
 		});
 
-		// create or replace integration
-		const integrationObj = await Integration.findOneAndUpdate(
-			{ workspace: workspaceId, integration },
-			{
-				workspace: workspaceId,
-				environment: ENV_DEV,
-				isActive: false,
-				app: null,
-				integration,
-				integrationAuth: integrationAuth._id
-			},
-			{ upsert: true, new: true }
-		);
+		// // use correct client secret
+		// switch (integration) {
+		// 	case 'heroku':
+		// 		clientSecret = OAUTH_CLIENT_SECRET_HEROKU;
+		// }
+
+		// // TODO: unfinished - make compatible with other integration types
+		// const res = await axios.post( // this response may be different for each integration
+		// 	OAUTH_TOKEN_URL_HEROKU!,
+		// 	new URLSearchParams({
+		// 		grant_type: 'authorization_code',
+		// 		code: code,
+		// 		client_secret: clientSecret
+		// 	} as any)
+		// );
+
+		// const integrationAuth = await processOAuthTokenRes({
+		// 	workspaceId,
+		// 	integration,
+		// 	res
+		// });
+
+		// // create or replace integration
+		// const integrationObj = await Integration.findOneAndUpdate(
+		// 	{ workspace: workspaceId, integration },
+		// 	{
+		// 		workspace: workspaceId,
+		// 		environment: ENV_DEV,
+		// 		isActive: false,
+		// 		app: null,
+		// 		integration,
+		// 		integrationAuth: integrationAuth._id
+		// 	},
+		// 	{ upsert: true, new: true }
+		// );
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
 		return res.status(400).send({
-			message: 'Failed to get OAuth2 token'
+			message: 'Failed to get OAuth2 code-token exchange'
 		});
 	}
 

@@ -11,7 +11,7 @@ import { integrationController } from '../controllers';
 
 router.get('/integrations', requireAuth, integrationController.getIntegrations);
 
-router.post(
+router.post( // TODO: deprecate
 	'/:integrationId/sync',
 	requireAuth,
 	requireIntegrationAuth({

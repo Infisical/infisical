@@ -10,7 +10,7 @@ import {
 import { ADMIN, MEMBER, GRANTED } from '../variables';
 import { integrationAuthController } from '../controllers';
 
-router.post(
+router.post( // semi-ok
 	'/oauth-token',
 	requireAuth,
 	requireWorkspaceAuth({
@@ -22,10 +22,10 @@ router.post(
 	body('code').exists().trim().notEmpty(),
 	body('integration').exists().trim().notEmpty(),
 	validateRequest,
-	integrationAuthController.integrationAuthOauthExchange
+	integrationAuthController.oAuthExchange
 );
 
-router.get(
+router.get( // not-ok
 	'/:integrationAuthId/apps',
 	requireAuth,
 	requireIntegrationAuthorizationAuth({
@@ -37,7 +37,7 @@ router.get(
 	integrationAuthController.getIntegrationAuthApps
 );
 
-router.delete(
+router.delete( // not-ok
 	'/:integrationAuthId',
 	requireAuth,
 	requireIntegrationAuthorizationAuth({

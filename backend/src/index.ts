@@ -22,6 +22,7 @@ Sentry.init({
 import {
 	signup as signupRouter,
 	auth as authRouter,
+	bot as botRouter,
 	organization as organizationRouter,
 	workspace as workspaceRouter,
 	membershipOrg as membershipOrgRouter,
@@ -71,6 +72,7 @@ app.use(express.json());
 // routers
 app.use('/api/v1/signup', signupRouter);
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/bot', botRouter);
 app.use('/api/v1/user', userRouter);
 app.use('/api/v1/user-action', userActionRouter);
 app.use('/api/v1/organization', organizationRouter);

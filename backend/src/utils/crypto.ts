@@ -3,6 +3,21 @@ import util from 'tweetnacl-util';
 import AesGCM from './aes-gcm';
 
 /**
+ * Return new base64, NaCl, public-private key pair.
+ * @returns {Object} obj
+ * @returns {String} obj.publicKey - base64, NaCl, public key
+ * @returns {String} obj.privateKey - base64, NaCl, private key
+ */
+const generateKeyPair = () => {
+	const pair = nacl.box.keyPair();
+	
+	return ({
+		publicKey: util.encodeBase64(pair.publicKey),
+		privateKey: util.encodeBase64(pair.secretKey)
+	});
+}
+
+/**
  * Return assymmetrically encrypted [plaintext] using [publicKey] where
  * [publicKey] likely belongs to the recipient.
  * @param {Object} obj
@@ -139,6 +154,7 @@ const decryptSymmetric = ({
 };
 
 export {
+	generateKeyPair,
 	encryptAsymmetric,
 	decryptAsymmetric,
 	encryptSymmetric,

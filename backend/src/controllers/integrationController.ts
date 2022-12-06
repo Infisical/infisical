@@ -49,6 +49,7 @@ export const getIntegrations = async (req: Request, res: Response) => {
 	});
 };
 
+// TODO: deprecate
 /**
  * Sync secrets [secrets] to integration with id [integrationId]
  * @param req

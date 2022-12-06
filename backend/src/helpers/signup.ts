@@ -33,7 +33,7 @@ const sendEmailVerification = async ({ email }: { email: string }) => {
 		// send mail
 		await sendMail({
 			template: 'emailVerification.handlebars',
-			subjectLine: 'Infisical workspace invitation',
+			subjectLine: 'Infisical confirmation code',
 			recipients: [email],
 			substitutions: {
 				code: token
