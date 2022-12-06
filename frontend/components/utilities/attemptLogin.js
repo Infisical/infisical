@@ -32,7 +32,6 @@ const attemptLogin = async (
   isLogin
 ) => {
   try {
-    let userWorkspace, userOrg;
     client.init(
       {
         username: email,
@@ -140,14 +139,8 @@ const attemptLogin = async (
                   "mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net",
                   "personal",
                 ],
-                DB_USERNAME: [
-                  "user1234",
-                  "personal",
-                ],
-                DB_PASSWORD: [
-                  "ah8jak3hk8dhiu4dw7whxwe1l",
-                  "personal",
-                ],
+                DB_USERNAME: ["user1234", "personal"],
+                DB_PASSWORD: ["ah8jak3hk8dhiu4dw7whxwe1l", "personal"],
                 TWILIO_AUTH_TOKEN: [
                   "hgSIwDAKvz8PJfkj6xkzYqzGmAP3HLuG",
                   "shared",

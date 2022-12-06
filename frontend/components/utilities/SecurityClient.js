@@ -3,7 +3,7 @@ import token from "~/pages/api/auth/Token";
 export default class SecurityClient {
   static #token = "";
 
-  contructor() {}
+  constructor() {}
 
   static setToken(token) {
     this.#token = token;
