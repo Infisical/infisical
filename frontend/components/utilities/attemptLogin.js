@@ -31,7 +31,6 @@ const attemptLogin = async (
   isLogin
 ) => {
   try {
-    let userWorkspace, userOrg;
     const telemetry = new Telemetry().getInstance();
 
     client.init(
@@ -135,20 +134,14 @@ const attemptLogin = async (
 
           // If user is logging in for the first time, add the example keys
           if (isSignUp) {
-            await pushKeys(
-              {
+            await pushKeys({
+              obj: {
                 DATABASE_URL: [
                   "mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net",
                   "personal",
                 ],
-                DB_USERNAME: [
-                  "user1234",
-                  "personal",
-                ],
-                DB_PASSWORD: [
-                  "ah8jak3hk8dhiu4dw7whxwe1l",
-                  "personal",
-                ],
+                DB_USERNAME: ["user1234", "personal"],
+                DB_PASSWORD: ["ah8jak3hk8dhiu4dw7whxwe1l", "personal"],
                 TWILIO_AUTH_TOKEN: [
                   "hgSIwDAKvz8PJfkj6xkzYqzGmAP3HLuG",
                   "shared",
@@ -156,9 +149,9 @@ const attemptLogin = async (
                 WEBSITE_URL: ["http://localhost:3000", "shared"],
                 STRIPE_SECRET_KEY: ["sk_test_7348oyho4hfq398HIUOH78", "shared"],
               },
-              projectToLogin,
-              "Development"
-            );
+              workspaceId: projectToLogin,
+              env: "Development"
+            });
           }
           if (email) {
             telemetry.identify(email);

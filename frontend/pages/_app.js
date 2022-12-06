@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { config } from "@fortawesome/fontawesome-svg-core";
 
-import Layout from "~/components/basic/layout";
+import Layout from "~/components/basic/Layout";
 import RouteGuard from "~/components/RouteGuard";
 import { publicPaths } from "~/const";
 import Telemetry from "~/utilities/telemetry/Telemetry";
