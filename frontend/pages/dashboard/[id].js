@@ -26,6 +26,7 @@ import { Menu, Transition } from "@headlessui/react";
 import Button from "~/components/basic/buttons/Button";
 import ListBox from "~/components/basic/Listbox";
 import BottonRightPopup from "~/components/basic/popups/BottomRightPopup";
+import { useNotificationContext } from "~/components/context/Notifications/NotificationProvider";
 import DashboardInputField from "~/components/dashboard/DashboardInputField";
 import DropZone from "~/components/dashboard/DropZone";
 import NavHeader from "~/components/navigation/NavHeader";
@@ -60,7 +61,7 @@ const KeyPair = ({
   modifyValue,
   modifyVisibility,
   isBlurred,
-  duplicates
+  duplicates,
 }) => {
   const [randomStringLength, setRandomStringLength] = useState(32);
 
@@ -227,6 +228,8 @@ export default function Dashboard() {
   const [checkDocsPopUpVisible, setCheckDocsPopUpVisible] = useState(false);
   const [hasUserEverPushed, setHasUserEverPushed] = useState(false);
 
+  const { createNotification } = useNotificationContext();
+
   // #TODO: fix save message for changing reroutes
   // const beforeRouteHandler = (url) => {
   // 	const warningText =
@@ -370,46 +373,61 @@ export default function Dashboard() {
     );
 
     // Checking if any of the secret keys start with a number - if so, don't do anything
-    const nameErrors = !Object.keys(obj).map(key => !isNaN(key.charAt(0))).every(v => v === false);
-    const duplicatesExist = data?.map(item => item[2]).filter((item, index) => index !== data?.map(item => item[2]).indexOf(item)).length > 0;
+    const nameErrors = !Object.keys(obj)
+      .map((key) => !isNaN(key.charAt(0)))
+      .every((v) => v === false);
+    const duplicatesExist =
+      data
+        ?.map((item) => item[2])
+        .filter(
+          (item, index) => index !== data?.map((item) => item[2]).indexOf(item)
+        ).length > 0;
 
     if (nameErrors) {
-      console.log("Solve all name errors first!");
-    } else if (duplicatesExist) {
-      console.log("Remove the duplicated entries first!");
-    } else {
-      // Once "Save changed is clicked", disable that button
-      setButtonReady(false);
-      pushKeys(obj, router.query.id, env);
-
-      /**
-       * Check which integrations are active for this project and environment
-       * If there are any, update environment variables for those integrations
-       */
-      let integrations = await getWorkspaceIntegrations({
-        workspaceId: router.query.id,
+      return createNotification({
+        text: "Solve all name errors first!",
+        type: "error",
       });
-      integrations.map(async (integration) => {
-        if (
-          envMapping[env] == integration.environment &&
-          integration.isActive == true
-        ) {
-          let objIntegration = Object.assign(
-            {},
-            ...data.map((row) => ({ [row[2]]: row[3] }))
-          );
-          await pushKeysIntegration({
-            obj: objIntegration,
-            integrationId: integration._id,
-          });
-        }
-      });
+    }
 
-      // If this user has never saved environment variables before, show them a prompt to read docs
-      if (!hasUserEverPushed) {
-        setCheckDocsPopUpVisible(true);
-        await registerUserAction({ action: "first_time_secrets_pushed" });
+    if (duplicatesExist) {
+      return createNotification({
+        text: "Your secrets weren't saved; please fix the conflicts first.",
+        type: "error",
+      });
+    }
+
+    // Once "Save changed is clicked", disable that button
+    setButtonReady(false);
+    pushKeys(obj, router.query.id, env);
+
+    /**
+     * Check which integrations are active for this project and environment
+     * If there are any, update environment variables for those integrations
+     */
+    let integrations = await getWorkspaceIntegrations({
+      workspaceId: router.query.id,
+    });
+    integrations.map(async (integration) => {
+      if (
+        envMapping[env] == integration.environment &&
+        integration.isActive == true
+      ) {
+        let objIntegration = Object.assign(
+          {},
+          ...data.map((row) => ({ [row[2]]: row[3] }))
+        );
+        await pushKeysIntegration({
+          obj: objIntegration,
+          integrationId: integration._id,
+        });
       }
+    });
+
+    // If this user has never saved environment variables before, show them a prompt to read docs
+    if (!hasUserEverPushed) {
+      setCheckDocsPopUpVisible(true);
+      await registerUserAction({ action: "first_time_secrets_pushed" });
     }
   };
 
@@ -649,7 +667,13 @@ export default function Dashboard() {
                           modifyKey={listenChangeKey}
                           modifyVisibility={listenChangeVisibility}
                           isBlurred={blurred}
-                          duplicates={data?.map(item => item[2]).filter((item, index) => index !== data?.map(item => item[2]).indexOf(item))}
+                          duplicates={data
+                            ?.map((item) => item[2])
+                            .filter(
+                              (item, index) =>
+                                index !==
+                                data?.map((item) => item[2]).indexOf(item)
+                            )}
                         />
                       ))}
                   </div>
@@ -697,7 +721,13 @@ export default function Dashboard() {
                           modifyKey={listenChangeKey}
                           modifyVisibility={listenChangeVisibility}
                           isBlurred={blurred}
-                          duplicates={data?.map(item => item[2]).filter((item, index) => index !== data?.map(item => item[2]).indexOf(item))}
+                          duplicates={data
+                            ?.map((item) => item[2])
+                            .filter(
+                              (item, index) =>
+                                index !==
+                                data?.map((item) => item[2]).indexOf(item)
+                            )}
                         />
                       ))}
                   </div>

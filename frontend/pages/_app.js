@@ -4,7 +4,7 @@ import { config } from "@fortawesome/fontawesome-svg-core";
 
 import { initPostHog } from "~/components/analytics/posthog";
 import Layout from "~/components/basic/layout";
-import NotificationProvider from "~/components/context/NotificationProvider";
+import NotificationProvider from "~/components/context/Notifications/NotificationProvider";
 import RouteGuard from "~/components/RouteGuard";
 import { publicPaths } from "~/const";
 import { ENV } from "~/utilities/config";
