@@ -1,0 +1,36 @@
+---
+title: "Nuxt"
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+- [Install the CLI](/cli/overview)
+
+## Initialize Infisical for your [Nuxt](https://nuxtjs.org) app
+
+```bash
+# move to your Nuxt app
+cd /path/to/project
+
+# initialize infisical
+infisical init
+```
+
+## Modify the start script in your `package.json`
+
+```json
+...
+"scripts": {
+    "dev": "infisical run -- nuxt",
+    "build": "infisical run -- nuxt build",
+    "start": "infisical run -- nuxt start"
+}
+...
+```
+
+## Start your development server with environment variables injected
+
+```bash
+npm run dev
+```

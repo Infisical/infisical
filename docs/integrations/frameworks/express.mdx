@@ -1,0 +1,45 @@
+---
+title: "Express, Fastify, Koa"
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+- [Install the CLI](/cli/overview)
+
+The steps apply to the following non-exhaustive list of frameworks:
+
+- [Express](https://expressjs.com)
+- [Fastify](https://www.fastify.io)
+- [Koa](https://koajs.com)
+
+## Initialize Infisical for your app
+
+```bash
+# move to your app
+cd /path/to/project
+
+# initialize infisical
+infisical init
+```
+
+## Modify the start script in your `package.json`
+
+```json
+...
+"scripts": {
+    "start": "infisical run -- node index.js"
+    "dev": "infisical run -- nodemon index.js" // if using nodemon for dev
+}
+...
+```
+
+## Start your server with environment variables injected
+
+```bash
+npm run start
+
+# or start development server
+
+npm run dev
+```

@@ -18,6 +18,11 @@ import getSecretsForProject from "~/components/utilities/secrets/getSecretsForPr
 import pushKeysIntegration from "~/components/utilities/secrets/pushKeysIntegration";
 import guidGenerator from "~/utilities/randomId";
 
+import {
+  envMapping,
+  frameworks,
+  reverseEnvMapping,
+} from "../../public/data/frequentConstants";
 import deleteIntegration from "../api/integrations/DeleteIntegration";
 import deleteIntegrationAuth from "../api/integrations/DeleteIntegrationAuth";
 import getIntegrationApps from "../api/integrations/GetIntegrationApps";
@@ -27,20 +32,6 @@ import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegratio
 import startIntegration from "../api/integrations/StartIntegration";
 
 const crypto = require("crypto");
-
-const envMapping = {
-  Development: "dev",
-  Staging: "staging",
-  Production: "prod",
-  Testing: "test",
-};
-
-const reverseEnvMapping = {
-  dev: "Development",
-  staging: "Staging",
-  prod: "Production",
-  test: "Testing",
-};
 
 const Integration = ({ projectIntegration }) => {
   const [integrationEnvironment, setIntegrationEnvironment] = useState(
@@ -262,7 +253,7 @@ export default function Integrations() {
               {t("integrations:available-text2")}
             </p>
           </div>
-          <div className="grid gap-4 grid-cols-3 grid-rows-3 mx-6 mt-4 max-w-5xl">
+          <div className="grid gap-4 grid-cols-4 grid-rows-2 mx-6 mt-4 max-w-5xl">
             {Object.keys(integrations).map((integration) => (
               <div
                 className={`relative ${
@@ -287,12 +278,12 @@ export default function Integrations() {
                 >
                   <Image
                     src={`/images/integrations/${integrations[integration].name}.png`}
-                    height={100}
-                    width={100}
+                    height={70}
+                    width={70}
                     alt="integration logo"
                   ></Image>
                   {integrations[integration].name.split(" ").length > 2 ? (
-                    <div className="font-semibold text-gray-300 group-hover:text-gray-200 duration-200 text-3xl ml-8 max-w-xs">
+                    <div className="font-semibold text-gray-300 group-hover:text-gray-200 duration-200 text-3xl ml-4 max-w-xs">
                       <div>{integrations[integration].name.split(" ")[0]}</div>
                       <div className="text-base">
                         {integrations[integration].name.split(" ")[1]}{" "}
@@ -300,7 +291,7 @@ export default function Integrations() {
                       </div>
                     </div>
                   ) : (
-                    <div className="font-semibold text-gray-300 group-hover:text-gray-200 duration-200 text-2xl ml-8 max-w-xs">
+                    <div className="font-semibold text-gray-300 group-hover:text-gray-200 duration-200 text-xl ml-4 max-w-xs">
                       {integrations[integration].name}
                     </div>
                   )}
@@ -347,6 +338,46 @@ export default function Integrations() {
                     </div>
                   </div>
                 )}
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col justify-between items-start mx-4 mt-12 mb-4 text-xl max-w-5xl px-2">
+            <div className="flex flex-row justify-start items-center text-3xl">
+              <p className="font-semibold mr-4">Framework Integrations</p>
+            </div>
+            <p className="mr-4 text-base text-gray-400">
+              Click on a framework to get the setup instructions.
+            </p>
+          </div>
+          <div className="grid gap-4 grid-cols-7 grid-rows-2 mx-6 mt-4 max-w-5xl">
+            {frameworks.map((framework) => (
+              <div key={framework.name}>
+                <a
+                  href={framework.link}
+                  rel="noopener"
+                  className={`relative flex flex-row items-center justify-center bg-bunker-500 hover:bg-gradient-to-tr hover:from-sky-400 hover:to-primary duration-200 h-32 rounded-md p-0.5 items-center cursor-pointer`}
+                >
+                  <div
+                    className={`font-semibold bg-bunker-500 flex flex-col items-center justify-center h-full w-full rounded-md text-gray-300 group-hover:text-gray-200 duration-200 ${
+                      framework?.name?.split(" ").length > 1
+                        ? "text-sm px-1"
+                        : "text-xl px-2"
+                    } text-center w-full max-w-xs`}
+                  >
+                    {framework?.image && (
+                      <Image
+                        src={`/images/integrations/${framework.image}.png`}
+                        height={framework?.name ? 60 : 90}
+                        width={framework?.name ? 60 : 90}
+                        alt="integration logo"
+                      ></Image>
+                    )}
+                    {framework?.name && framework?.image && (
+                      <div className="h-2"></div>
+                    )}
+                    {framework?.name && framework.name}
+                  </div>
+                </a>
               </div>
             ))}
           </div>

@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -8,7 +7,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  * @returns
  */
 const addUserToOrg = (email, orgId) => {
-  return SecurityClient.fetchCall(PATH + "/api/v1/invite-org/signup", {
+  return SecurityClient.fetchCall("/api/v1/invite-org/signup", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

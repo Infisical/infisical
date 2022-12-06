@@ -1,0 +1,60 @@
+---
+title: "Docker"
+---
+
+Infisical can be used in a Dockerfile to inject environment variables into a Docker container.
+
+## Add the CLI to your Dockerfile
+
+<Tabs>
+	 <Tab title="Alpine">
+		```dockerfile
+    	RUN apk add --no-cache bash curl && curl -1sLf \
+      'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' | bash \
+      && apk add infisical
+    	```
+
+   </Tab>
+	 <Tab title="RedHat/CentOs/Amazon-linux">
+		```dockerfile
+    RUN curl -1sLf \
+    'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' | sh \ 
+    && yum install -y infisical
+		```
+   </Tab>
+	 <Tab title="Debian/Ubuntu">
+		```dockerfile
+    RUN apt-get update && apt-get install -y bash curl && curl -1sLf \
+      'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash \
+      && apt-get update && apt-get install -y infisical
+		```
+   </Tab>
+</Tabs>
+
+## Modify the start command in your Dockerfile
+
+```dockerfile
+CMD ["infisical", "--env=[env]", "projectId=[projectId]", "run", "---", "[your application start command]"]
+
+# example
+CMD ["infisical", "--env=prod", "projectId=62faf98ae0b05e83239b5da41", "run", "---", "npm run start"]
+```
+
+Required options:
+
+| Option        | Description                                                                                                 | Default value |
+| ------------- | ----------------------------------------------------------------------------------------------------------- | ------------- |
+| `--env`       | Used to set the environment that secrets are pulled from. Accepted values: `dev`, `staging`, `test`, `prod` | `dev`         |
+| `--projectId` | Used to link a local project to the platform                                                                | `None`        |
+
+## Generate an Infisical Token
+
+[Generate an Infisical Token](../../getting-started/dashboard/token) and keep it handy.
+
+## Feed Docker your Infisical Token
+
+The CLI looks out for an environment variable called `INFISICAL_TOKEN`. If the token is detected, the CLI will authenticate, retrieve, and inject the environment variables which the token is authorized for.
+
+```bash
+ docker run --env INFISICAL_TOKEN=[token]...
+```

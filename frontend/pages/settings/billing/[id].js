@@ -54,7 +54,7 @@ export default function SettingsBilling() {
       orgId: localStorage.getItem("orgData.id"),
     });
 
-    setCurrentPlan(subscriptions.data[0].plan.product);
+    setCurrentPlan(subscriptions.data[0].plan.id);
     const orgUsers = await getOrganizationUsers({
       orgId: localStorage.getItem("orgData.id"),
     });

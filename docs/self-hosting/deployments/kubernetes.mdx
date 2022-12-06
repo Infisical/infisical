@@ -1,0 +1,54 @@
+---
+title: "Kubernetes"
+description: "Deploy with Kubernetes"
+---
+
+<Info>
+Self-host vs. Infisical Cloud
+
+Self-hosting Infisical means managing the service yourself, taking care of upgrades, scaling, security, etc.
+
+If you're less technical and looking for a hands-free experience with minimal overhead then we recommend Infisical Cloud.
+
+</Info>
+
+**Prerequisites**
+- You have understanding of [Kubernetes](https://kubernetes.io/)
+- You have understanding of [Helm package manager](https://helm.sh/) 
+- You have [kubectl](https://kubernetes.io/docs/reference/kubectl/kubectl/) installed and connected to your kubernetes cluster
+
+
+#### 1. Fill our environment variables
+
+Before you can deploy the Helm chart, you must fill out the required environment variables. To do so, please either download or copy the
+contents of [this file](https://raw.githubusercontent.com/Infisical/infisical/main/helm-charts/infisical/values.yaml) to a `.yaml` file. 
+_Refer to the available [environment variables](../../self-hosting/configuration/envars)_
+
+Once you have a local copy of the values file, fill our the required environment variables and save the file.
+
+
+#### 2. Install Infisical Helm repository 
+
+```bash
+helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/' 
+  
+helm repo update
+```
+
+#### 3. Install the Helm chart 
+
+By default, the helm chart will be installed on your default namespace. If you wish to install the Chart on a different namespace, you may specify
+that by adding the `--namespace <namespace-to-install-to>` to your `helm install` command.
+
+```bash
+## Installs to default namespace
+helm install infisical-helm-charts/infisical --values <path to the values.yaml you downloaded/created in step 2>
+```
+
+<Note>
+If you have not filled out all of the required environment variables, you will see an error message prompting you to 
+do so. 
+</Note>
+
+4. Your Infisical installation is complete and should be running on the host name you specified in Ingress in `values.yaml`.
+Note: Please allow an additional time (2 minutes) for the frontend pods to be fully ready.

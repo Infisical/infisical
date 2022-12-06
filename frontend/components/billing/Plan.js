@@ -61,7 +61,7 @@ export default function Plan({ plan }) {
                 </button>
               </div>
             )}
-            <a href="/pricing" target='_blank rel="noopener"'>
+            <a href="https://infisical.com/pricing" target='_blank rel="noopener"'>
               <div className="relative z-10 text-gray-400 font-semibold hover:text-primary duration-200 cursor-pointer mb-0.5">
                 {plan.buttonTextSecondary}
               </div>

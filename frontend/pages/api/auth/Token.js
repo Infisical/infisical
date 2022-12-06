@@ -1,7 +1,5 @@
-import { PATH } from "~/const";
-
 const token = async (req, res) => {
-  return fetch(PATH + "/api/v1/auth/token", {
+  return fetch("/api/v1/auth/token", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -9,7 +8,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  */
 const changeUserRoleInWorkspace = (membershipId, role) => {
   return SecurityClient.fetchCall(
-    PATH + "/api/v1/membership/" + membershipId + "/change-role",
+    "/api/v1/membership/" + membershipId + "/change-role",
     {
       method: "POST",
       headers: {

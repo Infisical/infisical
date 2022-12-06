@@ -92,7 +92,7 @@ export default function SignupInvite() {
         },
         async () => {
           client.createVerifier(async (err, result) => {
-            const response = await completeAccountInformationSignupInvite({
+            let response = await completeAccountInformationSignupInvite({
               email,
               firstName,
               lastName,
@@ -291,7 +291,7 @@ export default function SignupInvite() {
           <div className="py-2"></div>
         )}
       </div>
-      <div className="flex flex-col items-center justify-center w-full md:px-4 md:py-5 mt-2 px-2 py-3  max-h-24 max-w-md mx-auto text-lg">
+      <div className="flex flex-col items-center justify-center md:px-4 md:py-5 mt-2 px-2 py-3 max-h-24 max-w-max mx-auto text-lg">
         <Button
           text="Sign Up"
           onButtonPressed={() => {

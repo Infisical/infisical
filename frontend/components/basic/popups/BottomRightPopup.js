@@ -2,6 +2,19 @@ import React from "react";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+
+/**
+ * This is the notification that pops up at the bottom right when a user performs a certain action
+ * @param {object} org 
+ * @param {string} org.buttonText - text of the button inside the notification
+ * @param {string} org.buttonLink - where the button leads to
+ * @param {string} org.titleText - the text at the top of a notification
+ * @param {string} org.emoji - the emoji in the notification title
+ * @param {string} org.textLine1 - first line of the text in the notification
+ * @param {string} org.textLine2 - second line of the text in the notification
+ * @param {string} org.setCheckDocsPopUpVisible - the functions that closes the popup
+ * @returns 
+ */
 export default function BottonRightPopup({
   buttonText,
   buttonLink,

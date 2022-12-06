@@ -201,7 +201,7 @@ export default function SignUp() {
         },
         async () => {
           client.createVerifier(async (err, result) => {
-            const response = await completeAccountInformationSignup({
+            let response = await completeAccountInformationSignup({
               email,
               firstName,
               lastName,
@@ -473,7 +473,7 @@ export default function SignUp() {
       </div>
       <div className="flex flex-col items-center justify-center md:p-2 max-h-48 max-w-max mx-auto text-lg px-2 py-3">
         <Button
-          text={t("auth:signup")}
+          text={t("signup:signup")}
           loading={isLoading}
           onButtonPressed={signupErrorCheck}
           size="lg"
@@ -486,19 +486,19 @@ export default function SignUp() {
   const step4 = (
     <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg mx-auto h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
       <p className="text-4xl text-center font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-        {t("auth:step4-message")}
+        {t("signup:step4-message")}
       </p>
       <div className="flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2">
-        <div>{t("auth:step4-description1")}</div>
-        <div className="mt-3">{t("auth:step4-description2")}</div>
+        <div>{t("signup:step4-description1")}</div>
+        <div className="mt-3">{t("signup:step4-description2")}</div>
       </div>
       <div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-400 rounded-md max-w-xs md:max-w-md mx-auto mt-4">
         <FontAwesomeIcon icon={faWarning} className="ml-2 mr-4 text-4xl" />
-        {t("auth:step4-description3")}
+        {t("signup:step4-description3")}
       </div>
       <div className="flex flex-row items-center justify-center w-3/4 md:w-full md:p-2 max-h-28 max-w-max mx-auto mt-6 py-1 md:mt-4 text-lg text-center md:text-left">
         <Button
-          text={t("auth:step4-download")}
+          text={t("signup:step4-download")}
           onButtonPressed={async () => {
             await issueBackupKey({
               email,
@@ -507,7 +507,9 @@ export default function SignUp() {
               setBackupKeyError,
               setBackupKeyIssued,
             });
-            router.push("auth:/dashboard/");
+            const userWorkspaces = await getWorkspaces();
+            let userWorkspace = userWorkspaces[0]._id;
+            router.push("/home/" + userWorkspace);
           }}
           size="lg"
         />

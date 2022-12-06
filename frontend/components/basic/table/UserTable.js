@@ -88,7 +88,7 @@ const UserTable = ({
   }, [userData, myUser]);
 
   const grantAccess = async (id, publicKey) => {
-    let result = await getLatestFileKey(router.query.id);
+    let result = await getLatestFileKey({workspaceId: router.query.id});
 
     const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
 

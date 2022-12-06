@@ -1,0 +1,24 @@
+---
+title: "Django"
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+- [Install the CLI](/cli/overview)
+
+## Initialize Infisical for your [Django](https://www.djangoproject.com) project
+
+```bash
+# move to your Django project
+cd /path/to/project
+
+# initialize infisical
+infisical init
+```
+
+## Start your server with environment variables injected
+
+```bash
+infisical run -- python manage.py runserver
+```

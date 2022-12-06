@@ -1,0 +1,42 @@
+---
+title: "Vue"
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+- [Install the CLI](/cli/overview)
+
+## Initialize Infisical for your [Vue](https://vuejs.org) app
+
+```bash
+# move to your Vue app
+cd /path/to/project
+
+# initialize infisical
+infisical init
+```
+
+## Modify the start script in your `package.json`
+
+```json
+...
+"scripts": {
+    "serve": "infisical run -- vue-cli-service serve",
+    "build": "infisical run -- vue-cli-service build",
+    "lint": "infisical run -- vue-cli-service lint"
+}
+...
+```
+
+## Start your development server with environment variables injected
+
+```bash
+npm run serve
+```
+
+<Note>
+  Note that for environment variables to be exposed to the client, you'll have
+  to prefix them with `VUE_APP` Read more about that
+  [here](https://cli.vuejs.org/guide/mode-and-env.html).
+</Note>

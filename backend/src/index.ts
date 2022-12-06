@@ -4,8 +4,6 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import swaggerJSDoc from 'swagger-jsdoc';
-import swaggerUi from 'swagger-ui-express';
 
 dotenv.config();
 import * as Sentry from '@sentry/node';
@@ -66,39 +64,6 @@ if (NODE_ENV === 'production') {
 	app.disable('x-powered-by');
 	app.use(apiLimiter);
 	app.use(helmet());
-}
-
-if (NODE_ENV === 'development') {
-	const swaggerDefinition = {
-		openapi: '3.0.0',
-		info: {
-			title: 'Infisical API',
-			version: '1.0.0',
-			description: 'Infisical is an open-source, E2EE tool to sync environment variables across your team and infrastructure.',
-			license: {
-				name: 'License',
-				url: 'https://github.com/Infisical/infisical/blob/main/LICENSE'
-			},
-			contact: {
-				name: 'Infisical',
-				url: 'https://infisical.com'
-			},
-		},
-		servers: [
-			{
-				url: 'http://localhost:8080/api/v1',
-				description: 'Development server'
-			}
-		]
-	}
-	
-	const options = {
-		swaggerDefinition,
-		apis: ['./src/routes/*.ts']
-	}
-	
-	const swaggerSpec = swaggerJSDoc(options);
-	app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 }
 
 app.use(express.json());

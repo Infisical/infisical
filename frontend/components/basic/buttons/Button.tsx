@@ -1,35 +1,59 @@
 import React from "react";
 import Image from "next/image";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  FontAwesomeIcon,
+  FontAwesomeIconProps,
+} from "@fortawesome/react-fontawesome";
 
-var classNames = require("classnames");
+const classNames = require("classnames");
 
 type ButtonProps = {
   text: string;
   onButtonPressed: () => void;
-  loading: boolean;
+  loading?: boolean;
   color: string;
   size: string;
-  icon: IconProp;
-  active: boolean;
-  iconDisabled: string;
-  textDisabled: string;
-}
+  icon?: IconProp;
+  active?: boolean;
+  iconDisabled?: string;
+  textDisabled?: string;
+};
 
-export default function Button (props: ButtonProps): JSX.Element {
+/**
+ * This is the main butto component in the app.
+ * @param {object} props
+ * @param {string} props.text - text inside the button
+ * @param {function} props.onButtonPressed - the action that happens when the button is clicked
+ * @param {boolean} props.loading - if a button is currently in the laoding state
+ * @param {string} props.color - button color
+ * @param {string} props.size - button size
+ * @param {FontAwesomeIconProps} props.icon - the icon inside the button
+ * @param {boolean} props.active - if the button is active or disabled
+ * @param {FontAwesomeIconProps} props.text - the icon inside the button when it is disabled
+ * @param {string} props.textDisable - text inside the button when it is disabled
+ * @returns
+ */
+export default function Button(props: ButtonProps): JSX.Element {
   // Check if the button show always be 'active' - then true;
   // or if it should switch between 'active' and 'disabled' - then give the status
-  const activityStatus = props.active || (props.text != "" && props.textDisabled == undefined)
-  
-  let styleButton = classNames(
+  const activityStatus =
+    props.active || (props.text != "" && props.textDisabled == undefined);
+
+  const styleButton = classNames(
     "group m-auto md:m-0 inline-block rounded-md duration-200",
 
     // Setting background colors and hover modes
-    props.color == "mineshaft" && activityStatus && "bg-mineshaft-700 hover:bg-primary",
+    props.color == "mineshaft" &&
+      activityStatus &&
+      "bg-mineshaft-700 hover:bg-primary",
     props.color == "mineshaft" && !activityStatus && "bg-mineshaft",
-    (props.color == "primary" || !props.color) && activityStatus && "bg-primary hover:opacity-80",
-    (props.color == "primary" || !props.color) && !activityStatus && "bg-primary",
+    (props.color == "primary" || !props.color) &&
+      activityStatus &&
+      "bg-primary hover:opacity-80",
+    (props.color == "primary" || !props.color) &&
+      !activityStatus &&
+      "bg-primary",
     props.color == "red" && "bg-red",
 
     // Changing the opacity when active vs when not
@@ -43,7 +67,7 @@ export default function Button (props: ButtonProps): JSX.Element {
     props.size == "icon-sm" && "h-9 w-9 flex items-center justify-center"
   );
 
-  let styleMainDiv = classNames(
+  const styleMainDiv = classNames(
     "relative font-medium flex items-center",
 
     // Setting the text color for the text and icon
@@ -55,11 +79,11 @@ export default function Button (props: ButtonProps): JSX.Element {
     props.size == "icon" && "flex items-center justify-center"
   );
 
-  let textStyle = classNames(
+  const textStyle = classNames(
     "relative duration-200",
 
     // Show the loading sign if the loading indicator is on
-    props.loading == true ? "opacity-0" : "opacity-100",
+    props.loading ? "opacity-0" : "opacity-100",
     props.size == "md" && "text-sm",
     props.size == "lg" && "text-lg"
   );
@@ -86,7 +110,7 @@ export default function Button (props: ButtonProps): JSX.Element {
         </div>
         {props.icon && (
           <FontAwesomeIcon
-            icon={props.icon as IconProp}
+            icon={props.icon}
             className={`flex my-auto font-extrabold ${
               props.size == "icon-sm" ? "text-sm" : "text-md"
             } ${(props.text || props.textDisabled) && "mr-2"}`}
@@ -101,7 +125,9 @@ export default function Button (props: ButtonProps): JSX.Element {
           />
         )}
         {(props.text || props.textDisabled) && (
-          <p className={textStyle}>{activityStatus ? props.text : props.textDisabled}</p>
+          <p className={textStyle}>
+            {activityStatus ? props.text : props.textDisabled}
+          </p>
         )}
       </div>
     </button>

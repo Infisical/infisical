@@ -43,7 +43,7 @@ const attemptLogin = async (
 
         let serverPublicKey, salt;
         try {
-          const res = await login1(email, clientPublicKey);
+          let res = await login1(email, clientPublicKey);
           res = await res.json();
           serverPublicKey = res.serverPublicKey;
           salt = res.salt;
@@ -134,10 +134,18 @@ const attemptLogin = async (
 
           // If user is logging in for the first time, add the example keys
           if (isSignUp) {
-            await pushKeys(
-              {
+            await pushKeys({
+              obj: {
                 DATABASE_URL: [
-                  "mongodb+srv://this_is:an_example@mongodb.net",
+                  "mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net",
+                  "personal",
+                ],
+                DB_USERNAME: [
+                  "user1234",
+                  "personal",
+                ],
+                DB_PASSWORD: [
+                  "ah8jak3hk8dhiu4dw7whxwe1l",
                   "personal",
                 ],
                 TWILIO_AUTH_TOKEN: [
@@ -147,9 +155,9 @@ const attemptLogin = async (
                 WEBSITE_URL: ["http://localhost:3000", "shared"],
                 STRIPE_SECRET_KEY: ["sk_test_7348oyho4hfq398HIUOH78", "shared"],
               },
-              projectToLogin,
-              "Development"
-            );
+              workspaceId: projectToLogin,
+              env: "Development"
+            });
           }
           try {
             if (email) {

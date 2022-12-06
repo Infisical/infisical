@@ -1,5 +1,6 @@
 import getSecrets from "~/pages/api/files/GetSecrets";
 
+import { envMapping } from "../../../public/data/frequentConstants";
 import guidGenerator from "../randomId";
 
 const {
@@ -8,13 +9,6 @@ const {
 } = require("../cryptography/crypto");
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
-
-const envMapping = {
-  Development: "dev",
-  Staging: "staging",
-  Production: "prod",
-  Testing: "test",
-};
 
 const getSecretsForProject = async ({
   env,

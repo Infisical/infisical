@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -9,7 +8,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  */
 const getOrganizationUserProjects = (req, res) => {
   return SecurityClient.fetchCall(
-    PATH + "/api/v1/organization/" + req.orgId + "/my-workspaces",
+    "/api/v1/organization/" + req.orgId + "/my-workspaces",
     {
       method: "GET",
       headers: {

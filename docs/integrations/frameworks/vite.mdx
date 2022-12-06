@@ -1,0 +1,43 @@
+---
+title: "Vite"
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+- [Install the CLI](/cli/overview)
+
+## Initialize Infisical for your [Vite](https://vitejs.dev) app
+
+```bash
+# move to your Vite app
+cd /path/to/project
+
+# initialize infisical
+infisical init
+```
+
+## Modify the start script in your `package.json`
+
+```json
+...
+"scripts": {
+    "dev": "infisical run -- vite",
+    "build": "infisical run -- vite build",
+    "preview": "infisical run -- vite preview"
+}
+...
+```
+
+## Start your development server with environment variables injected
+
+```bash
+npm run dev
+```
+
+<Note>
+  Note that for environment variables to be exposed to the client, you'll have
+  to prefix them with `VITE_` and export them from the `vite.config.js` file.
+  Read more about that [here](https://vitejs.dev/guide/env-and-mode.html) and
+  [here](https://main.vitejs.dev/config).
+</Note>

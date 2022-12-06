@@ -2,17 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { faX } from "@fortawesome/free-solid-svg-icons";
 
+import { reverseEnvMapping } from "../../../public/data/frequentConstants";
 import guidGenerator from "../../utilities/randomId";
 import Button from "../buttons/Button";
-
-const roles = ["admin", "user"];
-
-const reverseEnvMapping = {
-  dev: "Development",
-  staging: "Staging",
-  prod: "Production",
-  test: "Testing",
-};
 
 /**
  * This is the component that we utilize for the user table - in future, can reuse it for some other purposes too.

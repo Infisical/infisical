@@ -1,0 +1,41 @@
+---
+title: "Remix"
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+- [Install the CLI](/cli/overview)
+
+## Initialize Infisical for your [Remix](https://remix.run) app
+
+```bash
+# move to your Vue app
+cd /path/to/project
+
+# initialize infisical
+infisical init
+```
+
+## Modify the start script in your `package.json`
+
+```json
+...
+"scripts": {
+    ...
+    "dev": "infisical run -- run-p dev:*",
+    "start": "infisical run -- remix-serve build"
+    ...
+}
+...
+```
+
+## Start your server with environment variables injected
+
+```bash
+npm run build && npm run start
+
+# or start development server
+
+npm run dev
+```

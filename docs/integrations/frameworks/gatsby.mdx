@@ -1,0 +1,44 @@
+---
+title: "Gatsby"
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+- [Install the CLI](/cli/overview)
+
+## Initialize Infisical for your [Gatsby](https://www.gatsbyjs.com) app
+
+```bash
+# move to your app
+cd /path/to/project
+
+# initialize infisical
+infisical init
+```
+
+## Modify the start script in your `package.json`
+
+```json
+...
+"scripts": {
+    "develop": "infisical run -- gatsby develop",
+    "start": "infisical run -- gatsby develop",
+    "build": "infisical run -- gatsby build",
+    "serve": "infisical run -- gatsby serve",
+    "clean": "infisical run -- gatsby clean"
+}
+...
+```
+
+## Start your development server with environment variables injected
+
+```bash
+npm run develop
+```
+
+<Note>
+  Note that for environment variables to be exposed to the client, you'll have
+  to prefix them with `GATSBY_`. Read more about that
+  [here](https://www.gatsbyjs.com/docs/how-to/local-development/environment-variables/#accessing-environment-variables-in-the-browser).
+</Note>

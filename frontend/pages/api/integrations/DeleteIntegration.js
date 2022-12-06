@@ -1,4 +1,3 @@
-import { PATH } from "~/const";
 import SecurityClient from "~/utilities/SecurityClient";
 
 /**
@@ -8,7 +7,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  */
 const deleteIntegration = ({ integrationId }) => {
   return SecurityClient.fetchCall(
-    PATH + "/api/v1/integration/" + integrationId,
+    "/api/v1/integration/" + integrationId,
     {
       method: "DELETE",
       headers: {

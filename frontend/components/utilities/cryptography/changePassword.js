@@ -108,11 +108,7 @@ const changePassword = async (
       }
     );
   } catch (error) {
-    console.log(
-      "Something went wrong during changing the password",
-      slat,
-      serverPublicKey
-    );
+    console.log("Something went wrong during changing the password");
   }
   return true;
 };

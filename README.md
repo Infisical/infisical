@@ -8,7 +8,7 @@
 
 <h4 align="center">
   <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">Slack</a> |
-  <a href="https://infisical.com/signup">Infisical Cloud</a> |
+  <a href="https://infisical.com/">Infisical Cloud</a> |
   <a href="https://infisical.com/docs/self-hosting/overview">Self-Hosting</a> |
   <a href="https://infisical.com/docs/getting-started/introduction">Docs</a> |
   <a href="https://www.infisical.com">Website</a>
@@ -21,6 +21,9 @@
   <a href="https://github.com/infisical/infisical/blob/main/CONTRIBUTING.md">
     <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen" alt="PRs welcome!" />
   </a>
+  <a href="">
+    <img src="https://img.shields.io/github/commit-activity/m/infisical/infisical" alt="git commit activity" />
+  </a>
   <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
   </a>
@@ -30,12 +33,12 @@
 
 **[Infisical](https://infisical.com)** is an open source, E2EE tool to help teams manage and sync environment variables across their development workflow and infrastructure. It's designed to be simple and take minutes to get going.
 
-- **User-Friendly Dashboard** to manage your team's environment variables within projects
+- **[User-Friendly Dashboard](https://infisical.com/docs/getting-started/dashboard/project)** to manage your team's environment variables within projects
 - **[Language-Agnostic CLI](https://infisical.com/docs/cli/overview)** that pulls and injects environment variables into your local workflow
 - **[Complete control over your data](https://infisical.com/docs/self-hosting/overview)** - host it yourself on any infrastructure
 - **Navigate Multiple Environments** per project (e.g. development, staging, production, etc.)
 - **Personal/Shared** scoping for environment variables
-- **[Integrations](https://infisical.com/docs/integrations/heroku)** with CI/CD and production infrastructure (Heroku available, more coming soon)
+- **[Integrations](https://infisical.com/docs/integrations/overview)** with CI/CD and production infrastructure (Heroku available, more coming soon)
 - 🔜 **1-Click Deploy** to Digital Ocean and Heroku
 - 🔜 **Authentication/Authorization** for projects (read/write controls soon)
 - 🔜 **Automatic Secret Rotation**
@@ -51,15 +54,13 @@ To quickly get started, visit our [get started guide](https://infisical.com/docs
 
 ## What's cool about this?
 
-Infisical is simple, E2EE, and (soon to be) complete.
+Infisical makes secret management simple and end-to-end encrypted by default. We're on a mission to make it more accessible to all developers, <i>not just security teams</i>. 
 
 According to a [report](https://www.ekransystem.com/en/blog/secrets-management) in 2019, only 10% of organizations use secret management solutions despite all using digital secrets to some extent.
 
-We're on a mission to make secret management more accessible to everyone — that means building for developers, not just security teams.
-
 If you care about efficiency and security, then Infisical is right for you.
 
-Need any integrations or want a new feature? Feel free to [create an issue](https://github.com/Infisical/infisical/issues) or [contribute](https://infisical.com/docs/contributing/overview) directly to the repository.
+We are currently working hard to make Infisical more extensive. Need any integrations or want a new feature? Feel free to [create an issue](https://github.com/Infisical/infisical/issues) or [contribute](https://infisical.com/docs/contributing/overview) directly to the repository.
 
 ## Contributing
 
@@ -69,9 +70,10 @@ Not sure where to get started? [Book a free, non-pressure pairing sessions with 
 
 ## Community & Support
 
-- [GitHub Discussions](https://github.com/Infisical/infisical/discussions) for help with building and discussion.
-- [GitHub Issues](https://github.com/Infisical/infisical-cli/issues) for any bugs and errors you encounter using Infisical.
-- [Community Slack](https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g) for hanging out with the community and quick communication with the team.
+- [Slack](https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g) (For live discussion with the community and the Infisical team)
+- [GitHub Discussions](https://github.com/Infisical/infisical/discussions) (For help with building and deeper conversations about features)
+- [GitHub Issues](https://github.com/Infisical/infisical-cli/issues) (For any bugs and errors you encounter using Infisical)
+- [Twitter](https://twitter.com/infisical) (Get news fast) 
 
 ## Status
 
@@ -89,23 +91,179 @@ Infisical officially launched as v.1.0 on November 21st, 2022. However, a lot of
 
 ## Integrations
 
-We're currently setting the foundation and building integrations so secrets can be synced everywhere. Any help is welcome! :)
+We're currently setting the foundation and building [integrations](https://infisical.com/docs/integrations/overview) so secrets can be synced everywhere. Any help is welcome! :)
 
-- [x] [Docker](https://infisical.com/docs/integrations/docker)
-- [x] [Docker Compose](https://infisical.com/docs/integrations/docker-compose)
-- [x] [Heroku](https://infisical.com/docs/integrations/heroku)
-- [ ] Vercel
-- [ ] Kubernetes
-- [ ] AWS
-- [ ] GCP
-- [ ] Azure
-- [ ] Digital Ocean
-- [ ] GitLab
-- [ ] CircleCI
+<table>
+<tr>
+  <th>Platforms </th>
+  <th>Frameworks</th>
+</tr>
+<tr> 
+  <td>
+
+<table>
+  <tbody>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/platforms/docker?ref=github.com">
+          ✔️ Docker
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/platforms/docker-compose?ref=github.com">
+          ✔️ Docker Compose
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/cloud/heroku?ref=github.com">
+          ✔️ Heroku
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        🔜 Vercel (https://github.com/Infisical/infisical/issues/60)
+      </td>
+      <td align="left" valign="middle">
+        🔜 GitLab CI/CD
+      </td>
+      <td align="left" valign="middle">
+        🔜 Fly.io
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        🔜 AWS
+      </td>
+      <td align="left" valign="middle">
+        🔜 GitHub Actions (https://github.com/Infisical/infisical/issues/54)
+      </td>
+      <td align="left" valign="middle">
+         🔜 Railway
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        🔜 GCP
+      </td>
+      <td align="left" valign="middle">
+        🔜 Kubernetes
+      </td>
+      <td align="left" valign="middle">
+        🔜 CircleCI
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        🔜 Jenkins
+      </td>
+      <td align="left" valign="middle">
+        🔜 Digital Ocean
+      </td>
+      <td align="left" valign="middle">
+        🔜 Azure
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+         🔜 TravisCI
+      </td>
+      <td align="left" valign="middle">
+         🔜 Netlify (https://github.com/Infisical/infisical/issues/55)
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+  </td>
+<td>
+
+
+<table>
+  <tbody>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/react?ref=github.com">
+          ✔️ React
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/express?ref=github.com">
+          ✔️ Express
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/gatsby?ref=github.com">
+          ✔️ Gatsby
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/flask?ref=github.com">
+          ✔️ Flask
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/django?ref=github.com">
+          ✔️ Django
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/laravel?ref=github.com">
+          ✔️ Laravel
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/nestjs?ref=github.com">
+          ✔️ NestJS
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/remix?ref=github.com">
+          ✔️ Remix
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/nextjs?ref=github.com">
+          ✔️ Next.js
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/vite?ref=github.com">
+          ✔️ Vite
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/rails?ref=github.com">
+          ✔️ Ruby on Rails
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/vue?ref=github.com">
+          ✔️ Vue
+        </a>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+</td>
+</tr> 
+</table>
+
 
 ## Open-source vs. paid
 
-This repo is entirely MIT licensed, with the exception of the `ee` directory which will contain premium enterprise features requring a Infisical license in the future. We're currently focused on developing non-enterprise offerings first that should suit most use-cases.
+This repo is entirely MIT licensed, with the exception of the `ee` directory which will contain premium enterprise features requiring a Infisical license in the future. We're currently focused on developing non-enterprise offerings first that should suit most use-cases.
 
 ## Security
 
@@ -119,4 +277,4 @@ Looking to report a security vulnerability? Please don't post about it in GitHub
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
 
-<a href="https://github.com/dangtony98"><img src="https://avatars.githubusercontent.com/u/25857006?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/mv-turtle"><img src="https://avatars.githubusercontent.com/u/78047717?s=96&v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/maidul98"><img src="https://avatars.githubusercontent.com/u/9300960?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/hanywang2"><img src="https://avatars.githubusercontent.com/u/44352119?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/tobias-mintlify"><img src="https://avatars.githubusercontent.com/u/110702161?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/gangjun06"><img src="https://avatars.githubusercontent.com/u/50910815?v=4" width="50" height="50" alt=""/></a>
+<a href="https://github.com/dangtony98"><img src="https://avatars.githubusercontent.com/u/25857006?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/mv-turtle"><img src="https://avatars.githubusercontent.com/u/78047717?s=96&v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/maidul98"><img src="https://avatars.githubusercontent.com/u/9300960?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/gangjun06"><img src="https://avatars.githubusercontent.com/u/50910815?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/reginaldbondoc"><img src="https://avatars.githubusercontent.com/u/7693108?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/SH5H"><img src="https://avatars.githubusercontent.com/u/25437192?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/hanywang2"><img src="https://avatars.githubusercontent.com/u/44352119?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/tobias-mintlify"><img src="https://avatars.githubusercontent.com/u/110702161?v=4" width="50" height="50" alt=""/></a> <a href="https://github.com/0xflotus"><img src="https://avatars.githubusercontent.com/u/26602940?v=4" width="50" height="50" alt=""/></a> 

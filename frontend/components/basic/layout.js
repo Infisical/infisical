@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import useTranslation from "next-translate/useTranslation";
 import {
+  faBookOpen,
   faGear,
-  faHouse,
-  faLink,
+  faKey,
   faMobile,
+  faPlug,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
@@ -19,6 +20,7 @@ import getOrganizationUsers from "~/pages/api/organization/GetOrgUsers";
 import addUserToWorkspace from "~/pages/api/workspace/addUserToWorkspace";
 import createWorkspace from "~/pages/api/workspace/createWorkspace";
 import getWorkspaces from "~/pages/api/workspace/getWorkspaces";
+import uploadKeys from "~/pages/api/workspace/uploadKeys";
 
 import NavBarDashboard from "../navigation/NavBarDashboard";
 import {
@@ -57,10 +59,10 @@ export default function Layout({ children }) {
     const workspaces = await getWorkspaces();
     const currentWorkspaces = workspaces.map((workspace) => workspace.name);
     if (!currentWorkspaces.includes(workspaceName)) {
-      const newWorkspace = await createWorkspace(
+      const newWorkspace = await createWorkspace({
         workspaceName,
-        localStorage.getItem("orgData.id")
-      );
+        organizationId: localStorage.getItem("orgData.id"),
+      });
       let newWorkspaceId;
       try {
         newWorkspaceId = newWorkspace._id;
@@ -117,7 +119,7 @@ export default function Layout({ children }) {
       href:
         "/dashboard/" + workspaceMapping[workspaceSelected] + "?Development",
       title: t("nav:menu.secrets"),
-      emoji: <FontAwesomeIcon icon={faHouse} />,
+      emoji: <FontAwesomeIcon icon={faKey} />,
     },
     {
       href: "/users/" + workspaceMapping[workspaceSelected],
@@ -127,7 +129,7 @@ export default function Layout({ children }) {
     {
       href: "/integrations/" + workspaceMapping[workspaceSelected],
       title: t("nav:menu.integrations"),
-      emoji: <FontAwesomeIcon icon={faLink} />,
+      emoji: <FontAwesomeIcon icon={faPlug} />,
     },
     {
       href: "/settings/project/" + workspaceMapping[workspaceSelected],
@@ -160,7 +162,6 @@ export default function Layout({ children }) {
       const intendedWorkspaceId = router.asPath
         .split("/")
         [router.asPath.split("/").length - 1].split("?")[0];
-
       // If a user is not a member of a workspace they are trying to access, just push them to one of theirs
       if (
         intendedWorkspaceId != "heroku" &&
@@ -217,66 +218,100 @@ export default function Layout({ children }) {
         <NavBarDashboard />
         <div className="flex flex-col md:flex-row flex-1">
           <aside className="bg-bunker-600 border-r border-mineshaft-500 w-full md:w-60 h-screen">
-            <nav>
-              <div className="py-6"></div>
-              <div className="flex justify-center w-full mt-7 mb-8 bg-bunker-600 w-full h-full flex flex-col items-center px-4">
-                <div className="text-gray-400 self-start ml-1 mb-1 text-xs font-semibold tracking-wide">
-                  {t("nav:menu.project")}
+            <nav className="flex flex-col justify-between items-between h-full">
+              {/* <div className="py-6"></div> */}
+              <div>
+                <div className="flex justify-center w-full mt-[4.5rem] mb-6 bg-bunker-600 w-full h-20 flex flex-col items-center px-4">
+                  <div className="text-gray-400 self-start ml-1 mb-1 text-xs font-semibold tracking-wide">
+                    {t("nav:menu.project")}
+                  </div>
+                  {workspaceList.length > 0 ? (
+                    <Listbox
+                      selected={workspaceSelected}
+                      onChange={setWorkspaceSelected}
+                      data={workspaceList}
+                      buttonAction={openModal}
+                      text=""
+                      workspaceMapping={workspaceMapping}
+                    />
+                  ) : (
+                    <Button
+                      text="Add Project"
+                      onButtonPressed={openModal}
+                      color="mineshaft"
+                      size="md"
+                      icon={faPlus}
+                    />
+                  )}
                 </div>
-                {workspaceList.length > 0 ? (
-                  <Listbox
-                    selected={workspaceSelected}
-                    onChange={setWorkspaceSelected}
-                    data={workspaceList}
-                    buttonAction={openModal}
-                    text=""
-                    workspaceMapping={workspaceMapping}
-                  />
-                ) : (
-                  <Button
-                    text="Add Project"
-                    onButtonPressed={openModal}
-                    color="mineshaft"
-                    size="md"
-                    icon={faPlus}
-                  />
-                )}
-              </div>
-              <ul>
-                {workspaceList.length > 0 &&
-                  menuItems.map(({ href, title, emoji }) => (
-                    <li className="mt-1.5 mx-2" key={title}>
-                      {router.asPath.split("/")[1] === href.split("/")[1] &&
-                      (["project", "billing", "org", "personal"].includes(
-                        router.asPath.split("/")[2]
-                      )
-                        ? router.asPath.split("/")[2] === href.split("/")[2]
-                        : true) ? (
-                        <div
-                          className={`flex p-2 text-white text-sm rounded cursor-pointer bg-mineshaft-50/10`}
-                        >
-                          <div className="bg-primary w-1 rounded-xl mr-1"></div>
-                          <p className="ml-2 mr-4">{emoji}</p>
-                          {title}
-                        </div>
-                      ) : router.asPath == "/noprojects" ? (
-                        <div className={`flex p-2 text-white text-sm rounded`}>
-                          <p className="ml-2 mr-4">{emoji}</p>
-                          {title}
-                        </div>
-                      ) : (
-                        <Link href={href}>
+                <ul>
+                  {workspaceList.length > 0 &&
+                    menuItems.map(({ href, title, emoji }) => (
+                      <li className="mt-0.5 mx-2" key={title}>
+                        {router.asPath.split("/")[1] === href.split("/")[1] &&
+                        (["project", "billing", "org", "personal"].includes(
+                          router.asPath.split("/")[2]
+                        )
+                          ? router.asPath.split("/")[2] === href.split("/")[2]
+                          : true) ? (
                           <div
-                            className={`flex p-2 text-white text-sm rounded cursor-pointer hover:bg-mineshaft-50/5`}
+                            className={`flex relative px-0.5 py-2.5 text-white text-sm rounded cursor-pointer bg-primary-50/10`}
                           >
-                            <p className="ml-2 mr-4">{emoji}</p>
+                            <div className="absolute top-0 my-1 ml-1 inset-0 bg-primary w-1 rounded-xl mr-1"></div>
+                            <p className="w-6 ml-4 mr-2 flex items-center justify-center text-lg">
+                              {emoji}
+                            </p>
                             {title}
                           </div>
-                        </Link>
-                      )}
-                    </li>
-                  ))}
-              </ul>
+                        ) : router.asPath == "/noprojects" ? (
+                          <div
+                            className={`flex p-2.5 text-white text-sm rounded`}
+                          >
+                            <p className="w-10 flex items-center justify-center text-lg">
+                              {emoji}
+                            </p>
+                            {title}
+                          </div>
+                        ) : (
+                          <Link href={href}>
+                            <div
+                              className={`flex p-2.5 text-white text-sm rounded cursor-pointer hover:bg-primary-50/5`}
+                            >
+                              <p className="w-10 flex items-center justify-center text-lg">
+                                {emoji}
+                              </p>
+                              {title}
+                            </div>
+                          </Link>
+                        )}
+                      </li>
+                    ))}
+                </ul>
+              </div>
+              <div className="w-full mt-40 mb-4 px-2">
+                {router.asPath.split("/")[1] === "home" ? (
+                  <div
+                    className={`flex relative px-0.5 py-2.5 text-white text-sm rounded cursor-pointer bg-primary-50/10`}
+                  >
+                    <div className="absolute top-0 my-1 ml-1 inset-0 bg-primary w-1 rounded-xl mr-1"></div>
+                    <p className="w-6 ml-4 mr-2 flex items-center justify-center text-lg">
+                      <FontAwesomeIcon icon={faBookOpen} />
+                    </p>
+                    Infisical Guide
+                  </div>
+                ) : (
+                  <Link href={`/home/` + workspaceMapping[workspaceSelected]}>
+                    <div
+                      className={`flex p-2.5 text-white text-sm rounded cursor-pointer hover:bg-primary-50/5 mt-max border border-dashed border-bunker-400`}
+                    >
+                      <p className="w-10 flex items-center justify-center text-lg">
+                        <FontAwesomeIcon icon={faBookOpen} />
+                      </p>
+                      Infisical Guide
+                    </div>
+                  </Link>
+                )}
+              </div>
             </nav>
           </aside>
           <AddWorkspaceDialog
