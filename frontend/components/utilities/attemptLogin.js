@@ -134,8 +134,8 @@ const attemptLogin = async (
 
           // If user is logging in for the first time, add the example keys
           if (isSignUp) {
-            await pushKeys(
-              {
+            await pushKeys({
+              obj: {
                 DATABASE_URL: [
                   "mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net",
                   "personal",
@@ -155,9 +155,9 @@ const attemptLogin = async (
                 WEBSITE_URL: ["http://localhost:3000", "shared"],
                 STRIPE_SECRET_KEY: ["sk_test_7348oyho4hfq398HIUOH78", "shared"],
               },
-              projectToLogin,
-              "Development"
-            );
+              workspaceId: projectToLogin,
+              env: "Development"
+            });
           }
           try {
             if (email) {
