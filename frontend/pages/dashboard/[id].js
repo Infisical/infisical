@@ -454,21 +454,15 @@ export default function Dashboard() {
   return data ? (
     <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
       <Head>
-        <title>{t("dashboard:meta.title")}</title>
+        <title>{t("common:head-title", { title: t("dashboard:title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("dashboard:meta.og-title")} />
-        <meta
-          name="og:description"
-          content={t("dashboard:meta.og-description")}
-        />
+        <meta property="og:title" content={t("dashboard:og-title")} />
+        <meta name="og:description" content={t("dashboard:og-description")} />
       </Head>
       <div className="flex flex-row">
         <div className="w-full max-h-96 pb-2">
-          <NavHeader
-            pageName={t("dashboard:secrets")}
-            isProjectRelated={true}
-          />
+          <NavHeader pageName={t("dashboard:title")} isProjectRelated={true} />
           {checkDocsPopUpVisible && (
             <BottonRightPopup
               buttonText={t("dashboard:check-docs.button")}
@@ -482,7 +476,7 @@ export default function Dashboard() {
           )}
           <div className="flex flex-row justify-between items-center mx-6 mt-6 mb-3 text-xl max-w-5xl">
             <div className="flex flex-row justify-start items-center text-3xl">
-              <p className="font-semibold mr-4 mt-1">Secrets</p>
+              <p className="font-semibold mr-4 mt-1">{t("dashboard:title")}</p>
               {data?.length == 0 && (
                 <ListBox
                   selected={env}

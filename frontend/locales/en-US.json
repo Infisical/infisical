@@ -20,18 +20,10 @@
     "role": "Role",
     "role_admin": "admin",
     "display-name": "Display Name",
-    "free": "Free",
-    "starter": "Starter",
-    "professional": "Professional",
-    "enterprise": "Enterprise",
-    "downgrade": "Downgrade",
-    "upgrade": "Upgrade",
-    "learn-more": "Learn More",
-    "custom-pricing": "Custom Pricing",
-    "schedule-demo": "Schedule a Demo",
     "environment": "Environment",
     "expired-in": "Expires in",
-    "language": "Language"
+    "language": "Language",
+    "search": "Search..."
   },
   "form-password": {
     "password": "Password",
@@ -96,12 +88,9 @@
     "step4-download": "Download PDF"
   },
   "dashboard": {
-    "secrets": "Secrets",
-    "meta": {
-      "title": "Dashboard | Infiscal",
-      "og-title": "Manage your .env files in seconds",
-      "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
-    },
+    "title": "Secrets",
+    "og-title": "Manage your .env files in seconds",
+    "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files.",
     "search-keys": "Search keys...",
     "add-key": "Add Key",
     "personal": "Personal",
@@ -162,28 +151,33 @@
       "copy-service-token-description": "Once you close this popup, you will never see your service token again"
     }
   },
-  "settings": {
-    "search": "Search...",
-    "delete-project": "Delete Project"
-  },
   "billing": {
     "title": "Usage & Billing",
     "description": "View and manage your organization's subscription here",
     "subscription": "Subscription",
     "starter": {
+      "name": "Starter",
       "price-explanation": "up to 5 team members",
       "text": "Manage any project with 5 members for free!",
       "subtext": "$5 per member/month afterwards."
     },
     "professional": {
+      "name": "Professional",
       "price-explanation": "/member/month",
       "subtext": "Includes unlimited projects & members.",
       "text": "Keep up with key management as you grow."
     },
     "enterprise": {
+      "name": "Enterprise",
       "text": "Keep up with key management as you grow."
     },
-    "current-usage": "Current Usage"
+    "current-usage": "Current Usage",
+    "free": "Free",
+    "downgrade": "Downgrade",
+    "upgrade": "Upgrade",
+    "learn-more": "Learn More",
+    "custom-pricing": "Custom Pricing",
+    "schedule-demo": "Schedule a Demo"
   },
   "section-members": {
     "add-member": "Add Member",

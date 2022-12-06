@@ -243,7 +243,7 @@ export default function PersonalSettings() {
               )}
               <div className="flex flex-row items-center mt-3 w-52 pr-3">
                 <Button
-                  text="Change Password"
+                  text={t("form-password:change")}
                   onButtonPressed={() => {
                     if (
                       !passwordErrorLength &&
@@ -272,7 +272,7 @@ export default function PersonalSettings() {
                       passwordErrorNumber
                     )
                   }
-                  textDisabled={t("password:change")}
+                  textDisabled={t("form-password:change")}
                 />
                 <FontAwesomeIcon
                   icon={faCheck}
@@ -299,13 +299,13 @@ export default function PersonalSettings() {
               </div>
               <div className="w-full max-w-xl mb-4">
                 <InputField
-                  label={t("password:current")}
+                  label={t("form-password:current")}
                   onChangeHandler={setBackupPassword}
                   type="password"
                   value={backupPassword}
                   isRequired
                   error={backupKeyError}
-                  errorText={t("password:current-wrong")}
+                  errorText={t("form-password:current-wrong")}
                 />
               </div>
               <div className="flex flex-row items-center mt-3 w-full w-60">

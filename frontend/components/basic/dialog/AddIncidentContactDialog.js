@@ -82,7 +82,7 @@ const AddIncidentContactDialog = ({
                     <Button
                       onButtonPressed={submit}
                       color="mineshaft"
-                      text={t("section-incident.add-dialog.add-incident")}
+                      text={t("section-incident:add-dialog.add-incident")}
                       size="md"
                     />
                   </div>

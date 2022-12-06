@@ -219,10 +219,10 @@ export default function SettingsOrg() {
             </div>
             <div className="bg-white/5 rounded-md px-6 pt-6 pb-2 flex flex-col items-start flex flex-col items-start w-full mb-6">
               <p className="font-semibold mr-4 text-white text-xl">
-                {t("settings:org-members")}
+                {t("section-members:org-members")}
               </p>
               <p className="mr-4 text-gray-400 mt-2 mb-2">
-                {t("settings:org-members-description")}
+                {t("section-members:org-members-description")}
               </p>
               <AddUserDialog
                 isOpen={isAddUserOpen}
@@ -245,12 +245,12 @@ export default function SettingsOrg() {
                     className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
                     value={searchUsers}
                     onChange={(e) => setSearchUsers(e.target.value)}
-                    placeholder={t("settings:search-members")}
+                    placeholder={t("section-members:search-members")}
                   />
                 </div>
                 <div className="mt-2 ml-2 min-w-max flex flex-row items-start justify-start">
                   <Button
-                    text={t("settings:add-member")}
+                    text={t("section-members:add-member")}
                     onButtonPressed={openAddUserModal}
                     color="mineshaft"
                     size="md"
@@ -305,7 +305,7 @@ export default function SettingsOrg() {
                   className="pl-2 text-gray-400 rounded-tr-md bg-white/5 w-full h-full outline-none"
                   value={searchIncidentContact}
                   onChange={(e) => setSearchIncidentContact(e.target.value)}
-                  placeholder={t("settings:search")}
+                  placeholder={t("common:search")}
                 />
               </div>
               {incidentContacts?.filter((email) =>
