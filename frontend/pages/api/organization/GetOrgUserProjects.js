@@ -6,7 +6,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  * @param {*} res
  * @returns
  */
-const getOrganizationUserProjects = (req, res) => {
+const getOrganizationUserProjects = (req) => {
   return SecurityClient.fetchCall(
     "/api/v1/organization/" + req.orgId + "/my-workspaces",
     {

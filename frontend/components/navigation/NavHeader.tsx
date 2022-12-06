@@ -1,29 +1,37 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { faCcMastercard, faCcVisa } from "@fortawesome/free-brands-svg-icons";
 import {
   faAngleRight,
-  faQuestionCircle,
 } from "@fortawesome/free-solid-svg-icons";
-import { faCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import getOrganization from "~/pages/api/organization/GetOrg";
-import getWorkspaceInfo from "~/pages/api/workspace/getWorkspaceInfo";
+import getProjectInfo from "~/pages/api/workspace/getProjectInfo";
 
-export default function NavHeader({ pageName, isProjectRelated }) {
+/**
+ * This is the component at the top of almost every page.
+ * It shows how to navigate to a certain page.
+ * It future these links should also be clickable and hoverable
+ * @param obj 
+ * @param obj.pageName - Name of the page
+ * @param obj.isProjectRelated - whether this page is related to project or now (determine if it's 2 or 3 navigation steps)
+ * @returns 
+ */
+export default function NavHeader({ pageName, isProjectRelated } : { pageName: string; isProjectRelated: boolean; }): JSX.Element {
   const [orgName, setOrgName] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");
   const router = useRouter();
 
   useEffect(() => {
     (async () => {
-      let org = await getOrganization({
-        orgId: localStorage.getItem("orgData.id"),
+      const orgId = localStorage.getItem("orgData.id")
+      const org = await getOrganization({
+        orgId: orgId ? orgId : "",
       });
       setOrgName(org.name);
-      let workspace = await getWorkspaceInfo({
-        workspaceId: router.query.id,
+
+      const workspace = await getProjectInfo({
+        projectId: String(router.query.id),
       });
       setWorkspaceName(workspace.name);
     })();

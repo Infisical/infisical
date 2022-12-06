@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import ReactCodeInput from "react-code-input";
 import dynamic from "next/dynamic";
 import Head from "next/head";
 import Image from "next/image";
@@ -20,7 +21,7 @@ import completeAccountInformationSignup from "./api/auth/CompleteAccountInformat
 import sendVerificationEmail from "./api/auth/SendVerificationEmail";
 import getWorkspaces from "./api/workspace/getWorkspaces";
 
-const ReactCodeInput = dynamic(import("react-code-input"));
+// const ReactCodeInput = dynamic(import("react-code-input"));
 const nacl = require("tweetnacl");
 const jsrp = require("jsrp");
 nacl.util = require("tweetnacl-util");
@@ -42,7 +43,7 @@ const props = {
     border: "1px solid gray",
     textAlign: "center",
   },
-};
+} as const;
 const propsPhone = {
   inputStyle: {
     fontFamily: "monospace",
@@ -58,7 +59,7 @@ const propsPhone = {
     border: "1px solid gray",
     textAlign: "center",
   },
-};
+} as const;
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
@@ -85,15 +86,16 @@ export default function SignUp() {
   const [verificationToken, setVerificationToken] = useState();
   const [backupKeyIssued, setBackupKeyIssued] = useState(false);
 
-  useEffect(async () => {
-    let userWorkspace;
-    try {
-      const userWorkspaces = await getWorkspaces();
-      userWorkspace = userWorkspaces[0]._id;
-      router.push("/dashboard/" + userWorkspace);
-    } catch (error) {
-      console.log("Error - Not logged in yet");
-    }
+  useEffect(() => {
+    const tryAuth = async () => {
+      try {
+        const userWorkspaces = await getWorkspaces();
+        router.push("/dashboard/" + userWorkspaces[0]._id);
+      } catch (error) {
+        console.log("Error - Not logged in yet");
+      }
+    };
+    tryAuth();
   }, []);
 
   /**
@@ -108,7 +110,7 @@ export default function SignUp() {
     } else if (step == 2) {
       // Checking if the code matches the email.
       const response = await checkEmailVerificationCode(email, code);
-      if (response.status == "200" || code == "111222") {
+      if (response.status === 200 || code == "111222") {
         setVerificationToken((await response.json()).token);
         setStep(3);
       } else {
@@ -123,7 +125,7 @@ export default function SignUp() {
    * Verifies if the entered email "looks" correct
    */
   const emailCheck = () => {
-    var emailCheckBool = false;
+    let emailCheckBool = false;
     if (!email) {
       setEmailError(true);
       setEmailErrorMessage("Please enter your email.");
@@ -150,7 +152,7 @@ export default function SignUp() {
   // Verifies if the imformation that the users entered (name, workspace) is there, and if the password matched the criteria.
   const signupErrorCheck = async () => {
     setIsLoading(true);
-    var errorCheck = false;
+    let errorCheck = false;
     if (!firstName) {
       setFirstNameError(true);
       errorCheck = true;
@@ -163,13 +165,13 @@ export default function SignUp() {
     } else {
       setLastNameError(false);
     }
-    errorCheck = passwordCheck(
+    errorCheck = passwordCheck({
       password,
       setPasswordErrorLength,
       setPasswordErrorNumber,
       setPasswordErrorLowerCase,
-      errorCheck
-    );
+      currentErrorCheck: errorCheck,
+    });
 
     if (!errorCheck) {
       // Generate a random pair of a public and a private key
@@ -187,7 +189,8 @@ export default function SignUp() {
             32 + (password.slice(0, 32).length - new Blob([password]).size),
             "0"
           )
-      );
+      ) as { ciphertext: string; iv: string; tag: string };
+
       localStorage.setItem("PRIVATE_KEY", PRIVATE_KEY);
 
       client.init(
@@ -196,45 +199,47 @@ export default function SignUp() {
           password: password,
         },
         async () => {
-          client.createVerifier(async (err, result) => {
-            const response = await completeAccountInformationSignup({
-              email,
-              firstName,
-              lastName,
-              organizationName: firstName + "'s organization",
-              publicKey: PUBLIC_KEY,
-              ciphertext,
-              iv,
-              tag,
-              salt: result.salt,
-              verifier: result.verifier,
-              token: verificationToken,
-            });
+          client.createVerifier(
+            async (err: any, result: { salt: string; verifier: string }) => {
+              const response = await completeAccountInformationSignup({
+                email,
+                firstName,
+                lastName,
+                organizationName: firstName + "'s organization",
+                publicKey: PUBLIC_KEY,
+                ciphertext,
+                iv,
+                tag,
+                salt: result.salt,
+                verifier: result.verifier,
+                token: verificationToken,
+              });
 
-            // if everything works, go the main dashboard page.
-            if (!errorCheck && response.status == "200") {
-              response = await response.json();
+              // if everything works, go the main dashboard page.
+              if (response.status === 200) {
+                // response = await response.json();
 
-              localStorage.setItem("publicKey", PUBLIC_KEY);
-              localStorage.setItem("encryptedPrivateKey", ciphertext);
-              localStorage.setItem("iv", iv);
-              localStorage.setItem("tag", tag);
+                localStorage.setItem("publicKey", PUBLIC_KEY);
+                localStorage.setItem("encryptedPrivateKey", ciphertext);
+                localStorage.setItem("iv", iv);
+                localStorage.setItem("tag", tag);
 
-              try {
-                await attemptLogin(
-                  email,
-                  password,
-                  setErrorLogin,
-                  router,
-                  true,
-                  false
-                );
-                incrementStep();
-              } catch (error) {
-                setIsLoading(false);
+                try {
+                  await attemptLogin(
+                    email,
+                    password,
+                    setErrorLogin,
+                    router,
+                    true,
+                    false
+                  );
+                  incrementStep();
+                } catch (error) {
+                  setIsLoading(false);
+                }
               }
             }
-          });
+          );
         }
       );
     } else {
@@ -296,6 +301,8 @@ export default function SignUp() {
       </p>
       <div className="hidden md:block">
         <ReactCodeInput
+          name=""
+          inputMode="tel"
           type="text"
           fields={6}
           onChange={setCode}
@@ -305,6 +312,8 @@ export default function SignUp() {
       </div>
       <div className="block md:hidden">
         <ReactCodeInput
+          name=""
+          inputMode="tel"
           type="text"
           fields={6}
           onChange={setCode}
@@ -364,15 +373,15 @@ export default function SignUp() {
       <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
         <InputField
           label="Password"
-          onChangeHandler={(password) => {
+          onChangeHandler={(password: string) => {
             setPassword(password);
-            passwordCheck(
+            passwordCheck({
               password,
               setPasswordErrorLength,
               setPasswordErrorNumber,
               setPasswordErrorLowerCase,
-              false
-            );
+              currentErrorCheck: false,
+            });
           }}
           type="password"
           value={password}
@@ -496,7 +505,7 @@ export default function SignUp() {
               setBackupKeyIssued,
             });
             const userWorkspaces = await getWorkspaces();
-            let userWorkspace = userWorkspaces[0]._id;
+            const userWorkspace = userWorkspaces[0]._id;
             router.push("/home/" + userWorkspace);
           }}
           size="lg"

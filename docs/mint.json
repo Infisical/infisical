@@ -102,8 +102,11 @@
       "pages": [
         "self-hosting/overview",
         {
-          "group": "Deployments",
-          "pages": ["self-hosting/deployments/linux"]
+          "group": "Deployments options",
+          "pages": [
+            "self-hosting/deployments/linux",
+            "self-hosting/deployments/kubernetes"
+          ]
         },
         {
           "group": "Configuration",
@@ -162,7 +165,8 @@
       "pages": [
         "contributing/overview",
         "contributing/code-of-conduct",
-        "contributing/developing"
+        "contributing/developing",
+        "contributing/FAQ"
       ]
     }
   ],

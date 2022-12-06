@@ -1,19 +1,27 @@
-import React from "react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/router";
-import {
-  faCircle,
-  faCircleExclamation,
-  faE,
-  faEye,
-  faEyeSlash,
-} from "@fortawesome/free-solid-svg-icons";
+import { faCircle, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import guidGenerator from "../utilities/randomId";
-import Error from "./Error";
 
-const InputField = (props) => {
+interface InputFieldProps {
+  static?: boolean;
+  label: string;
+  type: string;
+  value: string;
+  placeholder?: string;
+  isRequired: boolean;
+  disabled?: boolean;
+  error?: boolean;
+  text?: string;
+  name?: string;
+  blurred?: boolean;
+  errorText?: string;
+  onChangeHandler: (value: string) => void;
+}
+
+const InputField = (props: InputFieldProps) => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const router = useRouter();
 
@@ -67,7 +75,7 @@ const InputField = (props) => {
         >
           <input
             onChange={(e) => props.onChangeHandler(e.target.value)}
-            type={passwordVisible == false ? props.type : "text"}
+            type={passwordVisible === false ? props.type : "text"}
             placeholder={props.placeholder}
             value={props.value}
             required={props.isRequired}

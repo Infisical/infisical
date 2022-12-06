@@ -6,7 +6,7 @@ import SecurityClient from "~/utilities/SecurityClient";
  * @param {string} obj.orgId - organization Id
  * @returns
  */
-const getOrganizationUsers = ({ orgId }) => {
+const getOrganizationUsers = ({ orgId }: { orgId: string; }) => {
   return SecurityClient.fetchCall(
     "/api/v1/organization/" + orgId + "/users",
     {
@@ -16,7 +16,7 @@ const getOrganizationUsers = ({ orgId }) => {
       },
     }
   ).then(async (res) => {
-    if (res.status == 200) {
+    if (res?.status == 200) {
       return (await res.json()).users;
     } else {
       console.log("Failed to get org users");

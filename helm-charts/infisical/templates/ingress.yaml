@@ -1,8 +1,8 @@
+{{ if .Values.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: infisical-ingress
-  namespace: {{ .Values.namespace }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -22,17 +22,18 @@ spec:
   - host: {{ .Values.ingress.hostName}}
     http: 
       paths:
-      - path: /
-        pathType: Prefix
+      - path: {{ .Values.ingress.frontend.path }}
+        pathType: {{ .Values.ingress.frontend.pathType }}
         backend:
           service:
             name: infisical-frontend-service 
             port:
               number: 3000
-      - path: /api
-        pathType: Prefix
+      - path: {{ .Values.ingress.backend.path }}
+        pathType: {{ .Values.ingress.backend.pathType }}
         backend:
           service:
             name: infisical-backend-service 
             port:
               number: 4000
+{{ end }}

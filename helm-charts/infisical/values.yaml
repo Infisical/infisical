@@ -1,3 +1,8 @@
+#####
+# INFISICAL K8 DEFAULT VALUES FIL
+# PLEASE REPLACE VALUES/EDIT AS REQUIRED 
+#####
+
 namespace: infisical
 
 frontend:
@@ -15,22 +20,57 @@ backend:
     tag: "latest"
 
 ingress:
-  enabled: false
-  annotations: []
+  enabled: true
+  annotations: {}
   hostName: example.com
-  tls: {}
+  frontend: 
+    path: /
+    pathType: Prefix
+  backend:
+    path: /api
+    pathType: Prefix
+  tls: []
 
+## Complete Ingress example 
+# ingress:
+#   enabled: true
+#   annotations: 
+#     kubernetes.io/ingress.class: "nginx"
+#     cert-manager.io/issuer: letsencrypt-nginx
+#   hostName: example.com
+#   frontend: 
+#     path: /
+#     pathType: Prefix
+#   backend:
+#     path: /api
+#     pathType: Prefix
+#   tls:
+#     hosts:
+#     - k8.infisical.com
+#       secretName: letsencrypt-nginx
+
+###
+### YOU MUST FILL IN ALL SECRETS BELOW
+### 
 secrets:
-  PRIVATE_KEY: REQUIRED
-  PUBLIC_KEY: REQUIRED
-  ENCRYPTION_KEY: REQUIRED
-  JWT_SIGNUP_SECRET: REQUIRED
-  JWT_REFRESH_SECRET: REQUIRED
-  JWT_AUTH_SECRET: REQUIRED
-  NODE_ENV: development
-  SMTP_HOST: REQUIRED
-  SMTP_NAME: REQUIRED
-  SMTP_USERNAME: REQUIRED
-  SMTP_PASSWORD: REQUIRED
-  MONGO_URL: REQUIRED
+  # Required keys for platform encryption/decryption ops. Replace with nacl sk keys
+  PRIVATE_KEY: MUST_REPLACE
+  PUBLIC_KEY: MUST_REPLACE
+  ENCRYPTION_KEY: MUST_REPLACE
+
+  # JWT
+  # Required secrets to sign JWT tokens
+  JWT_SIGNUP_SECRET: MUST_REPLACE
+  JWT_REFRESH_SECRET: MUST_REPLACE
+  JWT_AUTH_SECRET: MUST_REPLACE
+
+  # Mail/SMTP
+  # Required to send emails
+  SMTP_HOST: MUST_REPLACE 
+  SMTP_NAME: MUST_REPLACE
+  SMTP_USERNAME: MUST_REPLACE
+  SMTP_PASSWORD: MUST_REPLACE
+
+  # You may replace with Mongo Cloud URI
+  MONGO_URL: mongodb://root:root@mongodb-service:27017/
     
