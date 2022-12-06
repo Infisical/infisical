@@ -4,6 +4,7 @@ import { config } from "@fortawesome/fontawesome-svg-core";
 
 import { initPostHog } from "~/components/analytics/posthog";
 import Layout from "~/components/basic/layout";
+import NotificationProvider from "~/components/context/NotificationProvider";
 import RouteGuard from "~/components/RouteGuard";
 import { publicPaths } from "~/const";
 import { ENV } from "~/utilities/config";
@@ -46,9 +47,11 @@ const App = ({ Component, pageProps, ...appProps }) => {
 
   return (
     <RouteGuard>
-      <Layout>
-        <Component {...pageProps} />
-      </Layout>
+      <NotificationProvider>
+        <Layout>
+          <Component {...pageProps} />
+        </Layout>
+      </NotificationProvider>
     </RouteGuard>
   );
 };
