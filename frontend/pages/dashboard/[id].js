@@ -399,7 +399,7 @@ export default function Dashboard() {
 
     // Once "Save changed is clicked", disable that button
     setButtonReady(false);
-    pushKeys(obj, router.query.id, env);
+    pushKeys({ obj, workspaceId: router.query.id, env });
 
     /**
      * Check which integrations are active for this project and environment
