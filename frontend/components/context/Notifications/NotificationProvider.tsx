@@ -25,7 +25,9 @@ interface NotificationProviderProps {
 }
 
 const NotificationProvider = ({ children }: NotificationProviderProps) => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<Required<Notification>[]>(
+    []
+  );
 
   const clearNotification = (text: string) => {
     return setNotifications((state) =>
@@ -44,7 +46,7 @@ const NotificationProvider = ({ children }: NotificationProviderProps) => {
       return;
     }
 
-    const newNotification: Notification = { text, type, timeoutMs };
+    const newNotification: Required<Notification> = { text, type, timeoutMs };
 
     return setNotifications((state) => [...state, newNotification]);
   };

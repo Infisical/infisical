@@ -2,7 +2,7 @@ import Notification from "./Notification";
 import { Notification as NotificationType } from "./NotificationProvider";
 
 interface NoticationsProps {
-  notifications: NotificationType[];
+  notifications: Required<NotificationType>[];
   clearNotification: (text: string) => void;
 }
 
