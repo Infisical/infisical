@@ -2,7 +2,7 @@ import { createContext, ReactNode, useContext, useState } from "react";
 
 import Notifications from "./Notifications";
 
-type NotificationType = "success" | "error";
+type NotificationType = "success" | "error" | "info";
 
 export type Notification = {
   text: string;

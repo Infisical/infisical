@@ -42,6 +42,7 @@ const Notification = ({
         {
           "bg-green-600": notification.type === "success",
           "bg-red-500": notification.type === "error",
+          "bg-blue-500": notification.type === "info",
         }
       )}
       role="alert"
