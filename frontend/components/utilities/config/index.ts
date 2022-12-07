@@ -4,8 +4,6 @@ const POSTHOG_HOST =
   process.env.NEXT_PUBLIC_POSTHOG_HOST! || "https://app.posthog.com";
 const STRIPE_PRODUCT_PRO = process.env.NEXT_PUBLIC_STRIPE_PRODUCT_PRO!;
 const STRIPE_PRODUCT_STARTER = process.env.NEXT_PUBLIC_STRIPE_PRODUCT_STARTER!;
-const TELEMETRY_ENABLED =
-  process.env.NEXT_PUBLIC_TELEMETRY_ENABLED! !== "false";
 
 export {
   ENV,
@@ -13,5 +11,4 @@ export {
   POSTHOG_HOST,
   STRIPE_PRODUCT_PRO,
   STRIPE_PRODUCT_STARTER,
-  TELEMETRY_ENABLED,
 };
