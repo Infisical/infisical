@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { faXmarkCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import classnames from "classnames";
@@ -13,6 +14,27 @@ const Notification = ({
   notification,
   clearNotification,
 }: NotificationProps) => {
+  const timeout = useRef<number>();
+
+  const handleClearNotification = () => clearNotification(notification.text);
+
+  const setNotifTimeout = () => {
+    timeout.current = window.setTimeout(
+      handleClearNotification,
+      notification.timeoutMs
+    );
+  };
+
+  const cancelNotifTimeout = () => {
+    clearTimeout(timeout.current);
+  };
+
+  useEffect(() => {
+    setNotifTimeout();
+
+    return cancelNotifTimeout;
+  }, []);
+
   return (
     <div
       className={classnames(
