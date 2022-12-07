@@ -67,7 +67,7 @@ export default function Layout({ children }: LayoutProps) {
 
     try {
       const workspaces = await getWorkspaces();
-      const currentWorkspaces = workspaces.map((workspace) => workspace.name);
+      const currentWorkspaces = (workspaces as unknown as any[]).map((workspace: any) => workspace.name);
       if (!currentWorkspaces.includes(workspaceName)) {
         const newWorkspace = await createWorkspace({
           workspaceName,
