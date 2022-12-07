@@ -1,6 +1,6 @@
 import SecurityClient from "~/utilities/SecurityClient";
 
-interface Workspaces {
+interface Workspace {
   __v: number;
   _id: string;
   name: string;
@@ -19,7 +19,7 @@ const getWorkspaces = () => {
     },
   }).then(async (res) => {
     if (res?.status == 200) {
-      const data = (await res.json()) as unknown as { workspaces: Workspaces[] };
+      const data = (await res.json()) as unknown as { workspaces: Workspace[] };
       return data.workspaces;
     }
 
