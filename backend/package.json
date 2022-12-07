@@ -24,7 +24,7 @@
     "stripe": "^10.7.0",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
-    "typescript": "^4.8.4"
+    "typescript": "^4.9.3"
   },
   "name": "infisical-api",
   "version": "1.0.0",
