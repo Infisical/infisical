@@ -1,0 +1,41 @@
+name: Check Frontend Pull Request
+
+on:
+  pull_request:
+    types: [ opened, synchronize ]
+    paths:
+      - 'frontend/**'
+      - '!frontend/README.md'
+      - '!frontend/.*'
+      - 'frontend/.eslintrc.js'
+
+
+jobs:
+
+  check-fe-pr:
+    name: Check
+    runs-on: ubuntu-latest
+
+    steps:
+      -
+        name: ☁️ Checkout source
+        uses: actions/checkout@v3
+      -
+        name: 🔧 Setup Node 16
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      -
+        name: 📦 Install dependencies
+        run: npm ci --only-production --ignore-scripts
+        working-directory: frontend
+      # -
+      #   name: 🧪 Run tests
+      #   run: npm run test:ci
+      #   working-directory: frontend
+      -
+        name: 🏗️ Run build
+        run: npm run build
+        working-directory: frontend

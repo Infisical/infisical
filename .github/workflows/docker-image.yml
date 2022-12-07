@@ -11,7 +11,7 @@ jobs:
     steps:
       - 
         name: ☁️ Checkout source
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       -
         name: 🔧 Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -36,7 +36,7 @@ jobs:
       #   run: |
       #     docker run --rm infisical/backend:test
       -
-        name: 📦 Build backend and push
+        name: 🏗️ Build backend and push
         uses: docker/build-push-action@v3
         with:
           push: true
@@ -52,7 +52,7 @@ jobs:
     steps:
       - 
         name: ☁️ Checkout source
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       -
         name: 🔧 Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -79,10 +79,12 @@ jobs:
       #   run: |
       #     docker run --rm infisical/frontend:test
       -
-        name: 📦 Build frontend and push
+        name: 🏗️ Build frontend and push
         uses: docker/build-push-action@v3
         with:
           push: true
           context: frontend
           tags: infisical/frontend:latest
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
