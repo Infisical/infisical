@@ -1,0 +1,41 @@
+name: Check Backend Pull Request
+
+on:
+  pull_request:
+    types: [ opened, synchronize ]
+    paths:
+      - 'backend/**'
+      - '!backend/README.md'
+      - '!backend/.*'
+      - 'backend/.eslintrc.js'
+
+
+jobs:
+
+  check-be-pr:
+    name: Check
+    runs-on: ubuntu-latest
+
+    steps:
+      -
+        name: ☁️ Checkout source
+        uses: actions/checkout@v3
+      -
+        name: 🔧 Setup Node 16
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      -
+        name: 📦 Install dependencies
+        run: npm ci --only-production --ignore-scripts
+        working-directory: backend
+      # -
+      #   name: 🧪 Run tests
+      #   run: npm run test:ci
+      #   working-directory: backend
+      -
+        name: 🏗️ Run build
+        run: npm run build
+        working-directory: backend
