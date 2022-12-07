@@ -6,7 +6,7 @@ type NotificationType = "success" | "error";
 
 export type Notification = {
   text: string;
-  type: NotificationType;
+  type?: NotificationType;
   timeoutMs?: number;
 };
 
