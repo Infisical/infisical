@@ -1,12 +1,11 @@
 import SecurityClient from "~/utilities/SecurityClient";
 
-interface Workspaces {
+interface Workspace {
   __v: number;
   _id: string;
   name: string;
   organization: string;
 }
-[];
 
 /**
  * This route lets us get the workspaces of a certain user
@@ -20,7 +19,7 @@ const getWorkspaces = () => {
     },
   }).then(async (res) => {
     if (res?.status == 200) {
-      const data = (await res.json()) as unknown as { workspaces: Workspaces };
+      const data = (await res.json()) as unknown as { workspaces: Workspace[] };
       return data.workspaces;
     }
 
