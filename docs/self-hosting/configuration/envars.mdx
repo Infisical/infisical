@@ -9,24 +9,24 @@ Configuring Infisical requires setting some environment variables. There is a fi
 
 | Variable                     | Description                                                                                                 | Default Value    |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------- |
-| `PRIVATE_KEY`                | ❗️ NaCl-generated server secret key                                                                        | `None`           |
-| `PUBLIC_KEY`                 | ❗️ NaCl-generated server public key                                                                        | `None`           |
-| `ENCRYPTION_KEY`             | ❗️ Strong hex encryption key                                                                               | `None`           |
-| `JWT_SIGNUP_SECRET`          | ❗️JWT token secret                                                                                         | `None`           |
-| `JWT_REFRESH_SECRET`         | ❗️ JWT token secret                                                                                        | `None`           |
-| `JWT_AUTH_SECRET`            | ❗️ JWT token secret                                                                                        | `None`           |
+| `PRIVATE_KEY`                | ❗️ NaCl-generated server secret key                                                                         | `None`           |
+| `PUBLIC_KEY`                 | ❗️ NaCl-generated server public key                                                                         | `None`           |
+| `ENCRYPTION_KEY`             | ❗️ Strong hex encryption key                                                                                | `None`           |
+| `JWT_SIGNUP_SECRET`          | ❗️ JWT token secret                                                                                         | `None`           |
+| `JWT_REFRESH_SECRET`         | ❗️ JWT token secret                                                                                         | `None`           |
+| `JWT_AUTH_SECRET`            | ❗️ JWT token secret                                                                                         | `None`           |
 | `JWT_SIGNUP_LIFETIME`        | JWT token lifetime expressed in seconds or a string describing a time span (e.g. 60, "2 days", "10h", "7d") | `15m`            |
 | `JWT_REFRESH_LIFETIME`       | JWT token lifetime expressed in seconds or a string describing a time span (e.g. 60, "2 days", "10h", "7d") | `90d`            |
 | `JWT_AUTH_LIFETIME`          | JWT token lifetime expressed in seconds or a string describing a time span (e.g. 60, "2 days", "10h", "7d") | `10d`            |
 | `EMAIL_TOKEN_LIFETIME`       | Email OTP/magic-link lifetime expressed in seconds                                                          | `86400`          |
-| `MONGO_URL`                  | ❗️ MongoDB instance connection string either to container instance or MongoDB Cloud                        | `None`           |
+| `MONGO_URL`                  | ❗️ MongoDB instance connection string either to container instance or MongoDB Cloud                         | `None`           |
 | `MONGO_USERNAME`             | MongoDB username if using container                                                                         | `None`           |
 | `MONGO_PASSWORD`             | MongoDB password if using container                                                                         | `None`           |
-| `SITE_URL`                   | ❗️ Site URL - should be an absolute URL including the protocol (e.g. `https://app.infisical.com`)          | `None`           |
-| `SMT_HOST`                   | Whether the user joined the community                                                                       | `smtp.gmail.com` |
-| `SMTP_NAME`                  | Hostname to connect to for establishing SMTP connections (e.g. `Team`)                                      | `None`           |
-| `SMTP_USERNAME`              | ❗️ Credential to connect to host (e.g. `team@infisical.com`)                                               | `None`           |
-| `SMTP_PASSWORD`              | ❗️ Credential to connect to host                                                                           | `None`           |
+| `SITE_URL`                   | ❗️ Site URL - should be an absolute URL including the protocol (e.g. `https://app.infisical.com`)           | `None`           |
+| `SMTP_HOST`                  | Hostname to connect to for establishing SMTP connections                                                    | `smtp.gmail.com` |
+| `SMTP_NAME`                  | Name label to be used in From field (e.g. `Team`)                                                           | `None`           |
+| `SMTP_USERNAME`              | ❗️ Credential to connect to host (e.g. `team@infisical.com`)                                                | `None`           |
+| `SMTP_PASSWORD`              | ❗️ Credential to connect to host                                                                            | `None`           |
 | `TELEMETRY_ENABLED`          | `true` or `false`. [More](../overview).                                                                     | `true`           |
 | `OAUTH_CLIENT_SECRET_HEROKU` | OAuth client secret for Heroku integration                                                                  | `None`           |
 | `OAUTH_TOKEN_URL_HEROKU`     | OAuth token URL for Heroku integration                                                                      | `None`           |
