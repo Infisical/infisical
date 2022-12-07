@@ -15,16 +15,14 @@ const Notifications = ({
   }
 
   return (
-    <div className="hidden fixed z-50 top-1 w-full inset-x-0 pointer-events-none md:flex justify-center">
-      <div className="flex flex-col gap-y-2 w-96">
-        {notifications.map((notif) => (
-          <Notification
-            key={notif.text}
-            notification={notif}
-            clearNotification={clearNotification}
-          />
-        ))}
-      </div>
+    <div className="hidden fixed z-50 md:flex md:flex-col-reverse bottom-1 gap-y-2 w-96 h-full right-1 pointer-events-none">
+      {notifications.map((notif) => (
+        <Notification
+          key={notif.text}
+          notification={notif}
+          clearNotification={clearNotification}
+        />
+      ))}
     </div>
   );
 };
