@@ -4,6 +4,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -107,12 +108,14 @@ func formatEnvs(envs []models.SingleEnvironmentVariable, format string) (string,
 
 // Format environment variables as a CSV file
 func formatAsCSV(envs []models.SingleEnvironmentVariable) string {
-	var csv string
-	csv += "Key,Value\n"
+	csvString := &strings.Builder{}
+	writer := csv.NewWriter(csvString)
+	writer.Write([]string{"Key", "Value"})
 	for _, env := range envs {
-		csv += fmt.Sprintf("%s,\"%s\"\n", env.Key, env.Value)
+		writer.Write([]string{env.Key, env.Value})
 	}
-	return csv
+	writer.Flush()
+	return csvString.String()
 }
 
 // Format environment variables as a dotenv file
