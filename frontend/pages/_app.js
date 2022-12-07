@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { config } from "@fortawesome/fontawesome-svg-core";
 
-import Layout from "~/components/basic/Layout";
+import Layout from "~/components/basic/layout";
+import NotificationProvider from "~/components/context/Notifications/NotificationProvider";
 import RouteGuard from "~/components/RouteGuard";
 import { publicPaths } from "~/const";
 import Telemetry from "~/utilities/telemetry/Telemetry";
@@ -42,9 +43,11 @@ const App = ({ Component, pageProps, ...appProps }) => {
 
   return (
     <RouteGuard>
-      <Layout>
-        <Component {...pageProps} />
-      </Layout>
+      <NotificationProvider>
+        <Layout>
+          <Component {...pageProps} />
+        </Layout>
+      </NotificationProvider>
     </RouteGuard>
   );
 };

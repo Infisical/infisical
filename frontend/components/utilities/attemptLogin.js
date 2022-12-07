@@ -5,6 +5,7 @@ import getOrganizations from "~/pages/api/organization/getOrgs";
 import getOrganizationUserProjects from "~/pages/api/organization/GetOrgUserProjects";
 
 import pushKeys from "./secrets/pushKeys";
+import { saveTokenToLocalStorage } from "./saveTokenToLocalStorage";
 import SecurityClient from "./SecurityClient";
 import Telemetry from "./telemetry/Telemetry";
 
@@ -41,66 +42,38 @@ const attemptLogin = async (
       async () => {
         const clientPublicKey = client.getPublicKey();
 
-        let serverPublicKey, salt;
-        try {
-          let res = await login1(email, clientPublicKey);
-          res = await res.json();
-          serverPublicKey = res.serverPublicKey;
-          salt = res.salt;
-        } catch (err) {
-          setErrorLogin(true);
-          console.log("Wrong password", err);
-        }
+        const { serverPublicKey, salt } = await login1(email, clientPublicKey);
 
-        let response;
         try {
           client.setSalt(salt);
           client.setServerPublicKey(serverPublicKey);
           const clientProof = client.getProof(); // called M1
-          response = await login2(email, clientProof);
-        } catch (err) {
-          setErrorLogin(true);
-          console.log("Password verification failed");
-        }
 
-        // if everything works, go the main dashboard page.
-        try {
-          if (response.status == "200") {
-            response = await response.json();
-            SecurityClient.setToken(response["token"]);
-            const publicKey = response["publicKey"];
-            const encryptedPrivateKey = response["encryptedPrivateKey"];
-            const iv = response["iv"];
-            const tag = response["tag"];
+          // if everything works, go the main dashboard page.
+          const { token, publicKey, encryptedPrivateKey, iv, tag } =
+            await login2(email, clientProof);
+          SecurityClient.setToken(token);
 
-            const PRIVATE_KEY = Aes256Gcm.decrypt(
-              encryptedPrivateKey,
-              iv,
-              tag,
-              password
-                .slice(0, 32)
-                .padStart(
-                  32 +
-                    (password.slice(0, 32).length - new Blob([password]).size),
-                  "0"
-                )
-            );
+          const privateKey = Aes256Gcm.decrypt(
+            encryptedPrivateKey,
+            iv,
+            tag,
+            password
+              .slice(0, 32)
+              .padStart(
+                32 + (password.slice(0, 32).length - new Blob([password]).size),
+                "0"
+              )
+          );
 
-            try {
-              localStorage.setItem("publicKey", publicKey);
-              localStorage.setItem("encryptedPrivateKey", encryptedPrivateKey);
-              localStorage.setItem("iv", iv);
-              localStorage.setItem("tag", tag);
-              localStorage.setItem("PRIVATE_KEY", PRIVATE_KEY);
-            } catch (err) {
-              setErrorLogin(true);
-              console.error(
-                "Unable to send the tokens in local storage:" + err.message
-              );
-            }
-          } else {
-            setErrorLogin(true);
-          }
+          saveTokenToLocalStorage({
+            token,
+            publicKey,
+            encryptedPrivateKey,
+            iv,
+            tag,
+            privateKey,
+          });
 
           const userOrgs = await getOrganizations();
           const userOrgsData = userOrgs.map((org) => org._id);
@@ -150,7 +123,7 @@ const attemptLogin = async (
                 STRIPE_SECRET_KEY: ["sk_test_7348oyho4hfq398HIUOH78", "shared"],
               },
               workspaceId: projectToLogin,
-              env: "Development"
+              env: "Development",
             });
           }
           if (email) {
