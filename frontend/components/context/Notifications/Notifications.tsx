@@ -3,7 +3,7 @@ import { Notification as NotificationType } from "./NotificationProvider";
 
 interface NoticationsProps {
   notifications: NotificationType[];
-  clearNotification: (text?: string) => void;
+  clearNotification: (text: string) => void;
 }
 
 const Notifications = ({

@@ -11,7 +11,7 @@ export type Notification = {
 };
 
 type NotificationContextState = {
-  createNotification: ({ text, type }: Notification) => void;
+  createNotification: (newNotification: Notification) => void;
 };
 
 const NotificationContext = createContext<NotificationContextState>({
@@ -27,14 +27,10 @@ interface NotificationProviderProps {
 const NotificationProvider = ({ children }: NotificationProviderProps) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const clearNotification = (text?: string) => {
-    if (text) {
-      return setNotifications((state) =>
-        state.filter((notif) => notif.text !== text)
-      );
-    }
-
-    return setNotifications([]);
+  const clearNotification = (text: string) => {
+    return setNotifications((state) =>
+      state.filter((notif) => notif.text !== text)
+    );
   };
 
   const createNotification = ({
