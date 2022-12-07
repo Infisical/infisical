@@ -6,7 +6,6 @@ interface Workspaces {
   name: string;
   organization: string;
 }
-[];
 
 /**
  * This route lets us get the workspaces of a certain user
@@ -20,7 +19,7 @@ const getWorkspaces = () => {
     },
   }).then(async (res) => {
     if (res?.status == 200) {
-      const data = (await res.json()) as unknown as { workspaces: Workspaces };
+      const data = (await res.json()) as unknown as { workspaces: Workspaces[] };
       return data.workspaces;
     }
 
