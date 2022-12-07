@@ -47,46 +47,11 @@ var runCmd = &cobra.Command{
 			return
 		}
 
-		var envsFromApi []models.SingleEnvironmentVariable
-		infisicalToken := os.Getenv(util.INFISICAL_TOKEN_NAME)
-		if infisicalToken == "" {
-			hasUserLoggedInbefore, loggedInUserEmail, err := util.IsUserLoggedIn()
-			if err != nil {
-				log.Info("Unexpected issue occurred while checking login status. To see more details, add flag --debug")
-				log.Debugln(err)
-				return
-			}
-
-			if !hasUserLoggedInbefore {
-				log.Infoln("No logged in user. To login, please run command [infisical login]")
-				return
-			}
-
-			userCreds, err := util.GetUserCredsFromKeyRing(loggedInUserEmail)
-			if err != nil {
-				log.Infoln("Unable to get user creds from key ring")
-				log.Debug(err)
-				return
-			}
-
-			if !util.WorkspaceConfigFileExists() {
-				log.Infoln("Your project is not connected to a project yet. Run command [infisical init]")
-				return
-			}
-
-			envsFromApi, err = util.GetSecretsFromAPIUsingCurrentLoggedInUser(envName, userCreds)
-			if err != nil {
-				log.Errorln("Something went wrong when pulling secrets using your logged in credentials. If the issue persists, double check your project id/try logging in again.")
-				log.Debugln(err)
-				return
-			}
-		} else {
-			envsFromApi, err = util.GetSecretsFromAPIUsingInfisicalToken(infisicalToken, envName, projectId)
-			if err != nil {
-				log.Errorln("Something went wrong when pulling secrets using your Infisical token. Double check the token, project id or environment name (dev, prod, ect.)")
-				log.Debugln(err)
-				return
-			}
+		envsFromApi, err := util.GetAllEnvironmentVariables(projectId, envName)
+		if err != nil {
+			log.Errorln("Something went wrong when pulling secrets using your Infisical token. Double check the token, project id or environment name (dev, prod, ect.)")
+			log.Debugln(err)
+			return
 		}
 
 		if shouldExpandSecrets {
