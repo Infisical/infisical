@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@sentry/node": "^7.14.0",
+    "@sentry/node": "^7.19.0",
     "@sentry/tracing": "^7.14.0",
     "@types/crypto-js": "^4.1.1",
     "axios": "^1.1.3",
