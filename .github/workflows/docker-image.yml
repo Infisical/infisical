@@ -24,17 +24,17 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      -
-        name: 📦 Build backend and export to Docker
-        uses: docker/build-push-action@v3
-        with:
-          load: true
-          context: backend
-          tags: infisical/backend:test
-      -
-        name: 🧪 Test backend image
-        run: |
-          docker run --rm infisical/backend:test
+      # -
+      #   name: 📦 Build backend and export to Docker
+      #   uses: docker/build-push-action@v3
+      #   with:
+      #     load: true
+      #     context: backend
+      #     tags: infisical/backend:test
+      # -
+      #   name: 🧪 Test backend image
+      #   run: |
+      #     docker run --rm infisical/backend:test
       -
         name: 📦 Build backend and push
         uses: docker/build-push-action@v3
@@ -65,19 +65,19 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      -
-        name: 📦 Build frontend and export to Docker
-        uses: docker/build-push-action@v3
-        with:
-          load: true
-          context: frontend
-          tags: infisical/frontend:test
-          build-args: |
-            POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
-      -
-        name: 🧪 Test frontend image
-        run: |
-          docker run --rm infisical/frontend:test
+      # -
+      #   name: 📦 Build frontend and export to Docker
+      #   uses: docker/build-push-action@v3
+      #   with:
+      #     load: true
+      #     context: frontend
+      #     tags: infisical/frontend:test
+      #     build-args: |
+      #       POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+      # -
+      #   name: 🧪 Test frontend image
+      #   run: |
+      #     docker run --rm infisical/frontend:test
       -
         name: 📦 Build frontend and push
         uses: docker/build-push-action@v3
