@@ -26,7 +26,7 @@ const encryptAsymmetric = ({
 	try {
 		nonce = nacl.randomBytes(24);
 		ciphertext = nacl.box(
-			util.decodeUTF8(plaintext),
+			util.decodeUTF8(plaintex),
 			nonce,
 			util.decodeBase64(publicKey),
 			util.decodeBase64(privateKey)
