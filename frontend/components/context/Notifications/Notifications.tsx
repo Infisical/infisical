@@ -10,6 +10,10 @@ const Notifications = ({
   notifications,
   clearNotification,
 }: NoticationsProps) => {
+  if (!notifications.length) {
+    return null;
+  }
+
   return (
     <div className="hidden fixed z-50 top-1 w-full inset-x-0 pointer-events-none md:flex justify-center">
       <div className="flex flex-col gap-y-2 w-96">
