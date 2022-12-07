@@ -25,7 +25,7 @@ var exportCmd = &cobra.Command{
 	Use:                   "export",
 	Short:                 "Used to export environment variables to a file",
 	DisableFlagsInUseLine: true,
-	Example:               "infisical export --env=prod --format=json",
+	Example:               "infisical export --env=prod --format=json > secrets.json",
 	Args:                  cobra.NoArgs,
 	PreRun:                toggleDebug,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -67,13 +67,13 @@ var exportCmd = &cobra.Command{
 		var output string
 		if shouldExpandSecrets {
 			substitutions := util.SubstituteSecrets(envsFromApi)
-			output, err = formatEnvs(envName, substitutions, format)
+			output, err = formatEnvs(substitutions, format)
 			if err != nil {
 				log.Errorln(err)
 				return
 			}
 		} else {
-			output, err = formatEnvs(envName, envsFromApi, format)
+			output, err = formatEnvs(envsFromApi, format)
 			if err != nil {
 				log.Errorln(err)
 				return
@@ -92,7 +92,7 @@ func init() {
 }
 
 // Format according to the format flag
-func formatEnvs(_ string, envs []models.SingleEnvironmentVariable, format string) (string, error) {
+func formatEnvs(envs []models.SingleEnvironmentVariable, format string) (string, error) {
 	switch strings.ToLower(format) {
 	case FormatDotenv:
 		return formatAsDotEnv(envs), nil
