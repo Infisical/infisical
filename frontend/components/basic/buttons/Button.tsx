@@ -12,7 +12,7 @@ type ButtonProps = {
   text: string;
   onButtonPressed: () => void;
   loading?: boolean;
-  color: string;
+  color?: string;
   size: string;
   icon?: IconProp;
   active?: boolean;

@@ -1,18 +1,21 @@
+interface PasswordCheckProps {
+  password: string;
+  currentErrorCheck: boolean;
+  setPasswordErrorLength: (value: boolean) => void;
+  setPasswordErrorNumber: (value: boolean) => void;
+  setPasswordErrorLowerCase: (value: boolean) => void;
+}
+
 /**
  * This function checks a user password with respect to some criteria.
- * @param {*} password
- * @param {*} setPasswordError
- * @param {*} setPasswordErrorMessage
- * @param {*} currentErrorCheck
- * @returns
  */
-const passwordCheck = (
+const passwordCheck = ({
   password,
   setPasswordErrorLength,
   setPasswordErrorNumber,
   setPasswordErrorLowerCase,
-  currentErrorCheck
-) => {
+  currentErrorCheck,
+}: PasswordCheckProps) => {
   let errorCheck = currentErrorCheck;
   if (!password || password.length < 14) {
     setPasswordErrorLength(true);

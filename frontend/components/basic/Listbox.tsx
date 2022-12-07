@@ -8,14 +8,13 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Listbox, Transition } from "@headlessui/react";
 
-
-type ListBoxProps = {
-  selected: string,
-  onChange: () => void,
-  data: string[],
-  text: string,
-  buttonAction: () => void,
-  width: string,
+interface ListBoxProps {
+  selected: string;
+  onChange: () => void;
+  data: string[];
+  text: string;
+  buttonAction: () => void;
+  isFull?: boolean;
 }
 
 /**
@@ -35,14 +34,14 @@ export default function ListBox({
   data,
   text,
   buttonAction,
-  width,
-} : ListBoxProps): JSX.Element {
+  isFull,
+}: ListBoxProps): JSX.Element {
   return (
     <Listbox value={selected} onChange={onChange}>
       <div className="relative">
         <Listbox.Button
           className={`text-gray-400 relative ${
-            width == "full" ? "w-full" : "w-52"
+            isFull ? "w-full" : "w-52"
           } cursor-default rounded-md bg-white/[0.07] hover:bg-white/[0.11] duration-200 py-2.5 pl-3 pr-10 text-left shadow-md focus:outline-none focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-orange-300 sm:text-sm`}
         >
           <div className="flex flex-row">
