@@ -7,6 +7,7 @@ type NotificationType = "success" | "error";
 export type Notification = {
   text: string;
   type: NotificationType;
+  timeoutMs?: number;
 };
 
 type NotificationContextState = {
@@ -36,14 +37,20 @@ const NotificationProvider = ({ children }: NotificationProviderProps) => {
     return setNotifications([]);
   };
 
-  const createNotification = ({ text, type = "success" }: Notification) => {
+  const createNotification = ({
+    text,
+    type = "success",
+    timeoutMs = 2000,
+  }: Notification) => {
     const doesNotifExist = notifications.some((notif) => notif.text === text);
 
     if (doesNotifExist) {
       return;
     }
 
-    return setNotifications((state) => [...state, { text, type }]);
+    const newNotification: Notification = { text, type, timeoutMs };
+
+    return setNotifications((state) => [...state, newNotification]);
   };
 
   return (
