@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { faXmarkCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import classnames from "classnames";
@@ -5,14 +6,35 @@ import classnames from "classnames";
 import { Notification as NotificationType } from "./NotificationProvider";
 
 interface NotificationProps {
-  notification: NotificationType;
-  clearNotification: (text?: string) => void;
+  notification: Required<NotificationType>;
+  clearNotification: (text: string) => void;
 }
 
 const Notification = ({
   notification,
   clearNotification,
 }: NotificationProps) => {
+  const timeout = useRef<number>();
+
+  const handleClearNotification = () => clearNotification(notification.text);
+
+  const setNotifTimeout = () => {
+    timeout.current = window.setTimeout(
+      handleClearNotification,
+      notification.timeoutMs
+    );
+  };
+
+  const cancelNotifTimeout = () => {
+    clearTimeout(timeout.current);
+  };
+
+  useEffect(() => {
+    setNotifTimeout();
+
+    return cancelNotifTimeout;
+  }, []);
+
   return (
     <div
       className={classnames(
@@ -20,6 +42,7 @@ const Notification = ({
         {
           "bg-green-600": notification.type === "success",
           "bg-red-500": notification.type === "error",
+          "bg-blue-500": notification.type === "info",
         }
       )}
       role="alert"
