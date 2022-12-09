@@ -186,6 +186,7 @@ export default function SignupInvite() {
           isRequired
           errorText="Please input your first name."
           error={firstNameError}
+          autoComplete="given-name"
         />
       </div>
       <div className="flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
@@ -197,6 +198,7 @@ export default function SignupInvite() {
           isRequired
           errorText="Please input your last name."
           error={lastNameError}
+          autoComplete="family-name"
         />
       </div>
       <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
@@ -218,6 +220,8 @@ export default function SignupInvite() {
           error={
             passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase
           }
+          autoComplete="new-password"
+          id="new-password"
         />
         {passwordErrorLength ||
         passwordErrorLowerCase ||
