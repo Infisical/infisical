@@ -7,4 +7,21 @@ Prerequisites:
 - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
 - [Install the CLI](/cli/overview)
 
-Instructions coming soon.
+## Initialize Infisical for your [Laravel](https://laravel.com/) app
+
+```bash
+# navigate to the root of your of your project 
+cd /path/to/project
+
+# then initialize Infisical
+infisical init
+```
+
+## Start your application as usual but with Infisical
+
+```bash
+infisical run -- <your application start command>
+
+# Example 
+infisical run -- php artisan serve
+```

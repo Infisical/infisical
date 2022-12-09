@@ -10,29 +10,20 @@ Prerequisites:
 ## Initialize Infisical for your [Vite](https://vitejs.dev) app
 
 ```bash
-# move to your Vite app
+# navigate to the root of your of your project 
 cd /path/to/project
 
-# initialize infisical
+# then initialize Infisical
 infisical init
 ```
 
-## Modify the start script in your `package.json`
-
-```json
-...
-"scripts": {
-    "dev": "infisical run -- vite",
-    "build": "infisical run -- vite build",
-    "preview": "infisical run -- vite preview"
-}
-...
-```
-
-## Start your development server with environment variables injected
+## Start your application as usual but with Infisical
 
 ```bash
-npm run dev
+infisical run -- <your application start command>
+
+# Example
+infisical run -- npm run dev
 ```
 
 <Note>
