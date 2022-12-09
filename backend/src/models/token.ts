@@ -18,7 +18,7 @@ const tokenSchema = new Schema<IToken>({
 	},
 	createdAt: {
 		type: Date,
-		expires: EMAIL_TOKEN_LIFETIME,
+		expires: parseInt(EMAIL_TOKEN_LIFETIME),
 		default: Date.now
 	}
 });
