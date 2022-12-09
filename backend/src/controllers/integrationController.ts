@@ -50,57 +50,6 @@ export const getIntegrations = async (req: Request, res: Response) => {
 };
 
 /**
- * Sync secrets [secrets] to integration with id [integrationId]
- * @param req
- * @param res
- * @returns
- */
-export const syncIntegration = async (req: Request, res: Response) => {
-	// NOTE TO ALL DEVS: THIS FUNCTION IS BEING DEPRECATED. IGNORE IT BUT KEEP IT FOR NOW.
-	
-	return;
-
-	try {
-		const { key, secrets }: { key: Key; secrets: PushSecret[] } = req.body;
-		const symmetricKey = decryptAsymmetric({
-			ciphertext: key.encryptedKey,
-			nonce: key.nonce,
-			publicKey: req.user.publicKey,
-			privateKey: PRIVATE_KEY
-		});
-
-		// decrypt secrets with symmetric key
-		const content = decryptSecrets({
-			secrets,
-			key: symmetricKey,
-			format: 'object'
-		});
-
-		// TODO: make integration work for other integrations as well
-		const res = await axios.patch(
-			`https://api.heroku.com/apps/${req.integration.app}/config-vars`,
-			content,
-			{
-				headers: {
-					Accept: 'application/vnd.heroku+json; version=3',
-					Authorization: 'Bearer ' + req.accessToken
-				}
-			}
-		);
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to sync secrets with integration'
-		});
-	}
-
-	return res.status(200).send({
-		message: 'Successfully synced secrets with integration'
-	});
-};
-
-/**
  * Change environment or name of integration with id [integrationId]
  * @param req
  * @param res

@@ -14,7 +14,6 @@ import Button from "~/components/basic/buttons/Button";
 import ListBox from "~/components/basic/Listbox";
 import NavHeader from "~/components/navigation/NavHeader";
 import getSecretsForProject from "~/components/utilities/secrets/getSecretsForProject";
-import pushKeysIntegration from "~/components/utilities/secrets/pushKeysIntegration";
 import guidGenerator from "~/utilities/randomId";
 
 import { 
@@ -126,27 +125,7 @@ const Integration = ({ projectIntegration }) => {
                   environment: envMapping[integrationEnvironment],
                   appName: integrationApp,
                 });
-                if (result?.status == 200) {
-                  let currentSecrets = await getSecretsForProject({
-                    env: integrationEnvironment,
-                    setFileState,
-                    setIsKeyAvailable,
-                    setData,
-                    workspaceId: router.query.id,
-                  });
-
-                  let obj = Object.assign(
-                    {},
-                    ...currentSecrets.map((row) => ({
-                      [row[2]]: row[3],
-                    }))
-                  );
-                  await pushKeysIntegration({
-                    obj,
-                    integrationId: projectIntegration._id,
-                  });
-                  router.reload();
-                }
+                router.reload();
               }}
               color="mineshaft"
               size="md"
@@ -331,7 +310,7 @@ export default function Integrations() {
                 <a
                   href={`${
                     ["Heroku"].includes(integrations[integration].name)
-                      ? `https://id.heroku.com/oauth/authorize?client_id=bc132901-935a-4590-b010-f1857efc380d&response_type=code&scope=write-protected&state=${csrfToken}`
+                      ? `https://id.heroku.com/oauth/authorize?client_id=7b1311a1-1cb2-4938-8adf-f37a399ec41b&response_type=code&scope=write-protected&state=${csrfToken}`
                       : "#"
                   }`}
                   rel="noopener"

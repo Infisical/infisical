@@ -11,20 +11,6 @@ import { integrationController } from '../controllers';
 
 router.get('/integrations', requireAuth, integrationController.getIntegrations);
 
-router.post( // TODO: deprecate
-	'/:integrationId/sync',
-	requireAuth,
-	requireIntegrationAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [GRANTED]
-	}),
-	param('integrationId').exists().trim(),
-	body('key').exists(),
-	body('secrets').exists(),
-	validateRequest,
-	integrationController.syncIntegration
-);
-
 router.patch(
 	'/:integrationId',
 	requireAuth,

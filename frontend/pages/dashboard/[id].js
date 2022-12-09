@@ -32,7 +32,6 @@ import DropZone from "~/components/dashboard/DropZone";
 import NavHeader from "~/components/navigation/NavHeader";
 import getSecretsForProject from "~/components/utilities/secrets/getSecretsForProject";
 import pushKeys from "~/components/utilities/secrets/pushKeys";
-import pushKeysIntegration from "~/components/utilities/secrets/pushKeysIntegration";
 import guidGenerator from "~/utilities/randomId";
 
 import { envMapping } from "../../public/data/frequentConstants";
@@ -400,29 +399,6 @@ export default function Dashboard() {
     // Once "Save changed is clicked", disable that button
     setButtonReady(false);
     pushKeys({ obj, workspaceId: router.query.id, env });
-
-    /**
-     * Check which integrations are active for this project and environment
-     * If there are any, update environment variables for those integrations
-     */
-    let integrations = await getWorkspaceIntegrations({
-      workspaceId: router.query.id,
-    });
-    integrations.map(async (integration) => {
-      if (
-        envMapping[env] == integration.environment &&
-        integration.isActive == true
-      ) {
-        let objIntegration = Object.assign(
-          {},
-          ...data.map((row) => ({ [row[2]]: row[3] }))
-        );
-        await pushKeysIntegration({
-          obj: objIntegration,
-          integrationId: integration._id,
-        });
-      }
-    });
 
     // If this user has never saved environment variables before, show them a prompt to read docs
     if (!hasUserEverPushed) {
