@@ -10,41 +10,18 @@ Prerequisites:
 ## Initialize Infisical for your [NestJS](https://nestjs.com) app
 
 ```bash
-# move to your Next.js app
+# navigate to the root of your of your project 
 cd /path/to/project
 
-# initialize infisical
+# then initialize infisical
 infisical init
 ```
 
-## Modify the start script in your `package.json`
-
-```json
-...
-"scripts": {
-    "prebuild": "rimraf dist",
-    "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "infisical run -- nest start",
-    "start:dev": "infisical run -- nest start --watch",
-    "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
-}
-...
-```
-
-## Start your server with environment variables injected
+## Start your application as usual but with Infisical
 
 ```bash
-npm run start
+infisical run -- <your application start command>
 
-# or start development server
-
-npm run start:dev
+# Example
+infisical run -- npm run start:dev
 ```

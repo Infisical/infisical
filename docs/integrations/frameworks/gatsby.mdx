@@ -10,31 +10,20 @@ Prerequisites:
 ## Initialize Infisical for your [Gatsby](https://www.gatsbyjs.com) app
 
 ```bash
-# move to your app
+# navigate to the root of your of your project 
 cd /path/to/project
 
-# initialize infisical
+# then initialize Infisical
 infisical init
 ```
 
-## Modify the start script in your `package.json`
-
-```json
-...
-"scripts": {
-    "develop": "infisical run -- gatsby develop",
-    "start": "infisical run -- gatsby develop",
-    "build": "infisical run -- gatsby build",
-    "serve": "infisical run -- gatsby serve",
-    "clean": "infisical run -- gatsby clean"
-}
-...
-```
-
-## Start your development server with environment variables injected
+## Start your application as usual but with Infisical
 
 ```bash
-npm run develop
+infisical run -- <your application start command>
+
+# Example
+infisical run -- npm run develop
 ```
 
 <Note>

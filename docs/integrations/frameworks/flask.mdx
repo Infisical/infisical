@@ -10,15 +10,18 @@ Prerequisites:
 ## Initialize Infisical for your [Flask](https://flask.palletsprojects.com/en/2.2.x) app
 
 ```bash
-# move to your Flask app
+# navigate to the root of your of your project 
 cd /path/to/project
 
-# initialize infisical
+# then initialize Infisical
 infisical init
 ```
 
-## Start your server with environment variables injected
+## Start your application as usual but with Infisical
 
 ```bash
+infisical run -- <your application start command>
+
+# Example 
 infisical run -- flask run
 ```
