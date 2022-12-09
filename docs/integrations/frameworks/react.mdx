@@ -10,28 +10,18 @@ Prerequisites:
 ## Initialize Infisical for your [Create React App](https://create-react-app.dev)
 
 ```bash
-# move to your React app
+# navigate to the root of your of your project 
 cd /path/to/project
 
-# initialize infisical
+# then initialize infisical
 infisical init
 ```
 
-## Modify the start script in your `package.json`
-
-```json
-...
-"scripts": {
-    "start": "infisical run -- react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-}
-...
-```
-
-## Start your server with environment variables injected
+## Start your application as usual but with Infisical
 
 ```bash
-npm start
+infisical run -- <your application start command>
+
+# Example
+infisical run -- npm run dev
 ```

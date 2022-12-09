@@ -16,30 +16,18 @@ The steps apply to the following non-exhaustive list of frameworks:
 ## Initialize Infisical for your app
 
 ```bash
-# move to your app
+# navigate to the root of your of your project 
 cd /path/to/project
 
-# initialize infisical
+# then initialize Infisical
 infisical init
 ```
 
-## Modify the start script in your `package.json`
-
-```json
-...
-"scripts": {
-    "start": "infisical run -- node index.js"
-    "dev": "infisical run -- nodemon index.js" // if using nodemon for dev
-}
-...
-```
-
-## Start your server with environment variables injected
+## Start your application as usual but with Infisical
 
 ```bash
-npm run start
+infisical run -- <your application start command>
 
-# or start development server
-
-npm run dev
+# Example
+infisical run -- npm run dev
 ```
