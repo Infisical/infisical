@@ -1,3 +1,4 @@
+/* eslint-disable no-unexpected-multiline */
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -22,6 +23,7 @@ import getWorkspaces from "~/pages/api/workspace/getWorkspaces";
 import uploadKeys from "~/pages/api/workspace/uploadKeys";
 
 import NavBarDashboard from "../navigation/NavBarDashboard";
+import { tempLocalStorage } from "../utilities/checks/tempLocalStorage";
 import {
   decryptAssymmetric,
   encryptAssymmetric,
@@ -30,18 +32,26 @@ import Button from "./buttons/Button";
 import AddWorkspaceDialog from "./dialog/AddWorkspaceDialog";
 import Listbox from "./Listbox";
 
-export default function Layout({ children }) {
+interface LayoutProps {
+  children: React.ReactNode;
+}
+
+export default function Layout({ children }: LayoutProps) {
   const router = useRouter();
   const [workspaceList, setWorkspaceList] = useState([]);
   const [workspaceMapping, setWorkspaceMapping] = useState([{ 1: 2 }]);
   const [workspaceSelected, setWorkspaceSelected] = useState("∞");
-  let [newWorkspaceName, setNewWorkspaceName] = useState("");
-  let [isOpen, setIsOpen] = useState(false);
+  const [newWorkspaceName, setNewWorkspaceName] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
   function closeModal() {
     setIsOpen(false);
+  }
+
+  function openModal() {
+    setIsOpen(true);
   }
 
   // TODO: what to do about the fact that 2ids can have the same name
@@ -50,152 +60,176 @@ export default function Layout({ children }) {
    * When a user creates a new workspace, redirect them to the page of the new workspace.
    * @param {*} workspaceName
    */
-  async function submitModal(workspaceName, addAllUsers) {
+  async function submitModal(workspaceName: string, addAllUsers: boolean) {
     setLoading(true);
+    // timeout code.
     setTimeout(() => setLoading(false), 1500);
-    const workspaces = await getWorkspaces();
-    const currentWorkspaces = workspaces.map((workspace) => workspace.name);
-    if (!currentWorkspaces.includes(workspaceName)) {
-      const newWorkspace = await createWorkspace({
-        workspaceName,
-        organizationId: localStorage.getItem("orgData.id")
-    });
-      let newWorkspaceId;
-      try {
-        newWorkspaceId = newWorkspace._id;
-      } catch (error) {
-        console.log(error);
-      }
-      if (addAllUsers) {
-        let orgUsers = await getOrganizationUsers({
-          orgId: localStorage.getItem("orgData.id"),
+
+    try {
+      const workspaces = await getWorkspaces();
+      const currentWorkspaces = workspaces.map((workspace) => workspace.name);
+      if (!currentWorkspaces.includes(workspaceName)) {
+        const newWorkspace = await createWorkspace({
+          workspaceName,
+          organizationId: tempLocalStorage("orgData.id"),
         });
-        orgUsers.map(async (user) => {
-          if (user.status == "accepted") {
-            let result = await addUserToWorkspace(
-              user.user.email,
-              newWorkspaceId
-            );
-            if (result?.invitee && result?.latestKey) {
-              const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
+        const newWorkspaceId = newWorkspace._id;
 
-              // assymmetrically decrypt symmetric key with local private key
-              const key = decryptAssymmetric({
-                ciphertext: result.latestKey.encryptedKey,
-                nonce: result.latestKey.nonce,
-                publicKey: result.latestKey.sender.publicKey,
-                privateKey: PRIVATE_KEY,
-              });
+        if (addAllUsers) {
+          const orgUsers = await getOrganizationUsers({
+            orgId: tempLocalStorage("orgData.id"),
+          });
+          orgUsers.map(async (user: any) => {
+            if (user.status == "accepted") {
+              const result = await addUserToWorkspace(
+                user.user.email,
+                newWorkspaceId
+              );
+              if (result?.invitee && result?.latestKey) {
+                const PRIVATE_KEY = tempLocalStorage("PRIVATE_KEY");
 
-              const { ciphertext, nonce } = encryptAssymmetric({
-                plaintext: key,
-                publicKey: result.invitee.publicKey,
-                privateKey: PRIVATE_KEY,
-              });
+                // assymmetrically decrypt symmetric key with local private key
+                const key = decryptAssymmetric({
+                  ciphertext: result.latestKey.encryptedKey,
+                  nonce: result.latestKey.nonce,
+                  publicKey: result.latestKey.sender.publicKey,
+                  privateKey: PRIVATE_KEY,
+                });
 
-              uploadKeys(newWorkspaceId, result.invitee._id, ciphertext, nonce);
+                const { ciphertext, nonce } = encryptAssymmetric({
+                  plaintext: key,
+                  publicKey: result.invitee.publicKey,
+                  privateKey: PRIVATE_KEY,
+                }) as { ciphertext: string; nonce: string };
+
+                uploadKeys(
+                  newWorkspaceId,
+                  result.invitee._id,
+                  ciphertext,
+                  nonce
+                );
+              }
             }
-          }
-        });
+          });
+        }
+        router.push("/dashboard/" + newWorkspaceId + "?Development");
+        setIsOpen(false);
+        setNewWorkspaceName("");
+      } else {
+        console.error("A project with this name already exists.");
+        setError(true);
+        setLoading(false);
       }
-      router.push("/dashboard/" + newWorkspaceId + "?Development");
-      setIsOpen(false);
-      setNewWorkspaceName("");
-    } else {
-      setError("A project with this name already exists.");
+    } catch (err) {
+      console.error(err);
+      setError(true);
       setLoading(false);
     }
-  }
-
-  function openModal() {
-    setIsOpen(true);
   }
 
   const menuItems = [
     {
       href:
-        "/dashboard/" + workspaceMapping[workspaceSelected] + "?Development",
+        "/dashboard/" +
+        workspaceMapping[workspaceSelected as any] +
+        "?Development",
       title: "Secrets",
       emoji: <FontAwesomeIcon icon={faKey} />,
     },
     {
-      href: "/users/" + workspaceMapping[workspaceSelected],
+      href: "/users/" + workspaceMapping[workspaceSelected as any],
       title: "Members",
       emoji: <FontAwesomeIcon icon={faUser} />,
     },
     {
-      href: "/integrations/" + workspaceMapping[workspaceSelected],
+      href: "/integrations/" + workspaceMapping[workspaceSelected as any],
       title: "Integrations",
       emoji: <FontAwesomeIcon icon={faPlug} />,
     },
     {
-      href: "/settings/project/" + workspaceMapping[workspaceSelected],
+      href: "/settings/project/" + workspaceMapping[workspaceSelected as any],
       title: "Project Settings",
       emoji: <FontAwesomeIcon icon={faGear} />,
     },
   ];
 
-  useEffect(async () => {
+  useEffect(() => {
     // Put a user in a workspace if they're not in one yet
-    if (
-      localStorage.getItem("orgData.id") == null ||
-      localStorage.getItem("orgData.id") == ""
-    ) {
-      const userOrgs = await getOrganizations();
-      localStorage.setItem("orgData.id", userOrgs[0]._id);
-    }
-
-    let orgUserProjects = await getOrganizationUserProjects({
-      orgId: localStorage.getItem("orgData.id"),
-    });
-    let userWorkspaces = orgUserProjects;
-    if (
-      userWorkspaces.length == 0 &&
-      router.asPath != "/noprojects" &&
-      !router.asPath.includes("settings")
-    ) {
-      router.push("/noprojects");
-    } else if (router.asPath != "/noprojects") {
-      const intendedWorkspaceId = router.asPath
-        .split("/")[router.asPath.split("/").length - 1].split("?")[0];
-      // If a user is not a member of a workspace they are trying to access, just push them to one of theirs
-      if (
-        intendedWorkspaceId != "heroku" &&
-        !userWorkspaces
-          .map((workspace) => workspace._id)
-          .includes(intendedWorkspaceId)
-      ) {
-        router.push("/dashboard/" + userWorkspaces[0]._id + "?Development");
-      } else {
-        setWorkspaceList(userWorkspaces.map((workspace) => workspace.name));
-        setWorkspaceMapping(
-          Object.fromEntries(
-            userWorkspaces.map((workspace) => [workspace.name, workspace._id])
-          )
-        );
-        setWorkspaceSelected(
-          Object.fromEntries(
-            userWorkspaces.map((workspace) => [workspace._id, workspace.name])
-          )[
-            router.asPath
-              .split("/")[router.asPath.split("/").length - 1].split("?")[0]]
-        );
+    const putUserInWorkSpace = async () => {
+      if (tempLocalStorage("orgData.id") === "") {
+        const userOrgs = await getOrganizations();
+        localStorage.setItem("orgData.id", userOrgs[0]._id);
       }
-    }
+
+      const orgUserProjects = await getOrganizationUserProjects({
+        orgId: tempLocalStorage("orgData.id"),
+      });
+      const userWorkspaces = orgUserProjects;
+      if (
+        userWorkspaces.length == 0 &&
+        router.asPath != "/noprojects" &&
+        !router.asPath.includes("settings")
+      ) {
+        router.push("/noprojects");
+      } else if (router.asPath != "/noprojects") {
+        const intendedWorkspaceId = router.asPath
+          .split("/")
+          [router.asPath.split("/").length - 1].split("?")[0];
+        // If a user is not a member of a workspace they are trying to access, just push them to one of theirs
+        if (
+          intendedWorkspaceId != "heroku" &&
+          !userWorkspaces
+            .map((workspace: { _id: string }) => workspace._id)
+            .includes(intendedWorkspaceId)
+        ) {
+          router.push("/dashboard/" + userWorkspaces[0]._id + "?Development");
+        } else {
+          setWorkspaceList(
+            userWorkspaces.map((workspace: any) => workspace.name)
+          );
+          setWorkspaceMapping(
+            Object.fromEntries(
+              userWorkspaces.map((workspace: any) => [
+                workspace.name,
+                workspace._id,
+              ])
+            ) as any
+          );
+          setWorkspaceSelected(
+            Object.fromEntries(
+              userWorkspaces.map((workspace: any) => [
+                workspace._id,
+                workspace.name,
+              ])
+            )[
+              router.asPath
+                .split("/")
+                [router.asPath.split("/").length - 1].split("?")[0]
+            ]
+          );
+        }
+      }
+    };
+    putUserInWorkSpace();
   }, []);
 
   useEffect(() => {
     try {
       if (
-        workspaceMapping[workspaceSelected] &&
-        workspaceMapping[workspaceSelected] !==
+        workspaceMapping[Number(workspaceSelected)] &&
+        `${workspaceMapping[Number(workspaceSelected)]}` !==
           router.asPath
-            .split("/")[router.asPath.split("/").length - 1].split("?")[0]
+            .split("/")
+            [router.asPath.split("/").length - 1].split("?")[0]
       ) {
-        router.push("/dashboard/" + workspaceMapping[workspaceSelected] + "?Development");
+        router.push(
+          "/dashboard/" +
+            workspaceMapping[Number(workspaceSelected)] +
+            "?Development"
+        );
         localStorage.setItem(
           "projectData.id",
-          workspaceMapping[workspaceSelected]
+          `${workspaceMapping[Number(workspaceSelected)]}`
         );
       }
     } catch (error) {
@@ -212,18 +246,18 @@ export default function Layout({ children }) {
             <nav className="flex flex-col justify-between items-between h-full">
               {/* <div className="py-6"></div> */}
               <div>
-                <div className="flex justify-center w-full mt-[4.5rem] mb-6 bg-bunker-600 w-full h-20 flex flex-col items-center px-4">
+                <div className="flex justify-center w-full mt-[4.5rem] mb-6 bg-bunker-600 h-20 flex-col items-center px-4">
                   <div className="text-gray-400 self-start ml-1 mb-1 text-xs font-semibold tracking-wide">
                     PROJECT
                   </div>
                   {workspaceList.length > 0 ? (
                     <Listbox
                       selected={workspaceSelected}
-                      onChange={setWorkspaceSelected}
+                      onChange={setWorkspaceSelected as any}
                       data={workspaceList}
                       buttonAction={openModal}
                       text=""
-                      workspaceMapping={workspaceMapping}
+                      // workspaceMapping={workspaceMapping as any}
                     />
                   ) : (
                     <Button
@@ -249,12 +283,18 @@ export default function Layout({ children }) {
                             className={`flex relative px-0.5 py-2.5 text-white text-sm rounded cursor-pointer bg-primary-50/10`}
                           >
                             <div className="absolute top-0 my-1 ml-1 inset-0 bg-primary w-1 rounded-xl mr-1"></div>
-                            <p className="w-6 ml-4 mr-2 flex items-center justify-center text-lg">{emoji}</p>
+                            <p className="w-6 ml-4 mr-2 flex items-center justify-center text-lg">
+                              {emoji}
+                            </p>
                             {title}
                           </div>
                         ) : router.asPath == "/noprojects" ? (
-                          <div className={`flex p-2.5 text-white text-sm rounded`}>
-                            <p className="w-10 flex items-center justify-center text-lg">{emoji}</p>
+                          <div
+                            className={`flex p-2.5 text-white text-sm rounded`}
+                          >
+                            <p className="w-10 flex items-center justify-center text-lg">
+                              {emoji}
+                            </p>
                             {title}
                           </div>
                         ) : (
@@ -262,7 +302,9 @@ export default function Layout({ children }) {
                             <div
                               className={`flex p-2.5 text-white text-sm rounded cursor-pointer hover:bg-primary-50/5`}
                             >
-                              <p className="w-10 flex items-center justify-center text-lg">{emoji}</p>
+                              <p className="w-10 flex items-center justify-center text-lg">
+                                {emoji}
+                              </p>
                               {title}
                             </div>
                           </Link>
@@ -277,15 +319,21 @@ export default function Layout({ children }) {
                     className={`flex relative px-0.5 py-2.5 text-white text-sm rounded cursor-pointer bg-primary-50/10`}
                   >
                     <div className="absolute top-0 my-1 ml-1 inset-0 bg-primary w-1 rounded-xl mr-1"></div>
-                    <p className="w-6 ml-4 mr-2 flex items-center justify-center text-lg"><FontAwesomeIcon icon={faBookOpen}/></p>
+                    <p className="w-6 ml-4 mr-2 flex items-center justify-center text-lg">
+                      <FontAwesomeIcon icon={faBookOpen} />
+                    </p>
                     Infisical Guide
                   </div>
                 ) : (
-                  <Link href={`/home/` + workspaceMapping[workspaceSelected]}>
+                  <Link
+                    href={`/home/` + workspaceMapping[workspaceSelected as any]}
+                  >
                     <div
                       className={`flex p-2.5 text-white text-sm rounded cursor-pointer hover:bg-primary-50/5 mt-max border border-dashed border-bunker-400`}
                     >
-                      <p className="w-10 flex items-center justify-center text-lg"><FontAwesomeIcon icon={faBookOpen}/></p>
+                      <p className="w-10 flex items-center justify-center text-lg">
+                        <FontAwesomeIcon icon={faBookOpen} />
+                      </p>
                       Infisical Guide
                     </div>
                   </Link>
@@ -305,7 +353,7 @@ export default function Layout({ children }) {
           <main className="flex-1 bg-bunker-800">{children}</main>
         </div>
       </div>
-      <div className="block md:hidden bg-bunker-800 w-screen h-screen flex flex-col justify-center items-center">
+      <div className="md:hidden bg-bunker-800 w-screen h-screen flex flex-col justify-center items-center">
         <FontAwesomeIcon
           icon={faMobile}
           className="text-gray-300 text-7xl mb-8"

@@ -106,7 +106,7 @@ const initializeDefaultOrg = async ({
 
 		// initialize a default workspace inside the new organization
 		const workspace = await createWorkspace({
-			name: `${user.firstName}'s Project`,
+			name: `Example Project`,
 			organizationId: organization._id.toString()
 		});
 

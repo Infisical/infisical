@@ -1,0 +1,33 @@
+---
+title: "infisical export"
+---
+
+```bash
+infisical export [options]
+```
+
+## Description
+
+Export environment variables from the platform into a file format.
+
+## Options
+
+| Option        | Description                                                                                                                                  | Default value |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `--env`       | Used to set the environment that secrets are pulled from. Accepted values: `dev`, `staging`, `test`, `prod`                                  | `dev`         |
+| `--projectId` | Only required if injecting via the [service token method](../token). If you are not using service token, the project id will be automatically retrieved from the `.infisical.json` located at the root of your local project.  | `None`        |
+| `--expand`    | Parse shell parameter expansions in your secrets (e.g., `${DOMAIN}`)                                                                         | `true`        |
+| `--format`    | Format of the output file. Accepted values: `dotenv`, `csv` and `json`                                                                       | `dotenv`      |
+
+## Examples
+
+```bash
+# Export variables to a .env file
+infisical export > .env
+
+# Export variables to a CSV file
+infisical export --format=csv > secrets.csv
+
+# Export variables to a JSON file
+infisical export --format=json > secrets.json
+```

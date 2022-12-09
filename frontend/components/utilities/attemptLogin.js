@@ -4,10 +4,10 @@ import login2 from "~/pages/api/auth/Login2";
 import getOrganizations from "~/pages/api/organization/getOrgs";
 import getOrganizationUserProjects from "~/pages/api/organization/GetOrgUserProjects";
 
-import { initPostHog } from "../analytics/posthog";
 import pushKeys from "./secrets/pushKeys";
-import { ENV } from "./config";
+import { saveTokenToLocalStorage } from "./saveTokenToLocalStorage";
 import SecurityClient from "./SecurityClient";
+import Telemetry from "./telemetry/Telemetry";
 
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
@@ -32,7 +32,8 @@ const attemptLogin = async (
   isLogin
 ) => {
   try {
-    let userWorkspace, userOrg;
+    const telemetry = new Telemetry().getInstance();
+
     client.init(
       {
         username: email,
@@ -41,66 +42,38 @@ const attemptLogin = async (
       async () => {
         const clientPublicKey = client.getPublicKey();
 
-        let serverPublicKey, salt;
-        try {
-          let res = await login1(email, clientPublicKey);
-          res = await res.json();
-          serverPublicKey = res.serverPublicKey;
-          salt = res.salt;
-        } catch (err) {
-          setErrorLogin(true);
-          console.log("Wrong password", err);
-        }
+        const { serverPublicKey, salt } = await login1(email, clientPublicKey);
 
-        let response;
         try {
           client.setSalt(salt);
           client.setServerPublicKey(serverPublicKey);
           const clientProof = client.getProof(); // called M1
-          response = await login2(email, clientProof);
-        } catch (err) {
-          setErrorLogin(true);
-          console.log("Password verification failed");
-        }
 
-        // if everything works, go the main dashboard page.
-        try {
-          if (response.status == "200") {
-            response = await response.json();
-            SecurityClient.setToken(response["token"]);
-            const publicKey = response["publicKey"];
-            const encryptedPrivateKey = response["encryptedPrivateKey"];
-            const iv = response["iv"];
-            const tag = response["tag"];
+          // if everything works, go the main dashboard page.
+          const { token, publicKey, encryptedPrivateKey, iv, tag } =
+            await login2(email, clientProof);
+          SecurityClient.setToken(token);
 
-            const PRIVATE_KEY = Aes256Gcm.decrypt(
-              encryptedPrivateKey,
-              iv,
-              tag,
-              password
-                .slice(0, 32)
-                .padStart(
-                  32 +
-                    (password.slice(0, 32).length - new Blob([password]).size),
-                  "0"
-                )
-            );
+          const privateKey = Aes256Gcm.decrypt(
+            encryptedPrivateKey,
+            iv,
+            tag,
+            password
+              .slice(0, 32)
+              .padStart(
+                32 + (password.slice(0, 32).length - new Blob([password]).size),
+                "0"
+              )
+          );
 
-            try {
-              localStorage.setItem("publicKey", publicKey);
-              localStorage.setItem("encryptedPrivateKey", encryptedPrivateKey);
-              localStorage.setItem("iv", iv);
-              localStorage.setItem("tag", tag);
-              localStorage.setItem("PRIVATE_KEY", PRIVATE_KEY);
-            } catch (err) {
-              setErrorLogin(true);
-              console.error(
-                "Unable to send the tokens in local storage:" + err.message
-              );
-            }
-          } else {
-            setErrorLogin(true);
-          }
+          saveTokenToLocalStorage({
+            token,
+            publicKey,
+            encryptedPrivateKey,
+            iv,
+            tag,
+            privateKey,
+          });
 
           const userOrgs = await getOrganizations();
           const userOrgsData = userOrgs.map((org) => org._id);
@@ -134,20 +107,14 @@ const attemptLogin = async (
 
           // If user is logging in for the first time, add the example keys
           if (isSignUp) {
-            await pushKeys(
-              {
+            await pushKeys({
+              obj: {
                 DATABASE_URL: [
                   "mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net",
                   "personal",
                 ],
-                DB_USERNAME: [
-                  "user1234",
-                  "personal",
-                ],
-                DB_PASSWORD: [
-                  "ah8jak3hk8dhiu4dw7whxwe1l",
-                  "personal",
-                ],
+                DB_USERNAME: ["user1234", "personal"],
+                DB_PASSWORD: ["ah8jak3hk8dhiu4dw7whxwe1l", "personal"],
                 TWILIO_AUTH_TOKEN: [
                   "hgSIwDAKvz8PJfkj6xkzYqzGmAP3HLuG",
                   "shared",
@@ -155,20 +122,13 @@ const attemptLogin = async (
                 WEBSITE_URL: ["http://localhost:3000", "shared"],
                 STRIPE_SECRET_KEY: ["sk_test_7348oyho4hfq398HIUOH78", "shared"],
               },
-              projectToLogin,
-              "Development"
-            );
+              workspaceId: projectToLogin,
+              env: "Development",
+            });
           }
-          try {
-            if (email) {
-              if (ENV == "production") {
-                const posthog = initPostHog();
-                posthog.identify(email);
-                posthog.capture("User Logged In");
-              }
-            }
-          } catch (error) {
-            console.log("posthog", error);
+          if (email) {
+            telemetry.identify(email);
+            telemetry.capture("User Logged In");
           }
 
           if (isLogin) {

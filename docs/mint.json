@@ -87,12 +87,12 @@
         "cli/overview",
         "cli/usage",
         {
-          "group": "Reference",
+          "group": "Commands",
           "pages": [
-            "cli/reference/commands",
-            "cli/reference/login",
-            "cli/reference/init",
-            "cli/reference/run"
+            "cli/commands/login",
+            "cli/commands/init",
+            "cli/commands/run",
+            "cli/commands/export"
           ]
         }
       ]
