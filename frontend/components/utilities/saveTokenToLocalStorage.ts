@@ -3,7 +3,7 @@ interface Props {
   encryptedPrivateKey: string;
   iv: string;
   tag: string;
-  privateTag: string;
+  privateKey: string;
 }
 
 export const saveTokenToLocalStorage = ({
@@ -11,14 +11,14 @@ export const saveTokenToLocalStorage = ({
   encryptedPrivateKey,
   iv,
   tag,
-  privateTag,
+  privateKey,
 }: Props) => {
   try {
     localStorage.setItem("publicKey", publicKey);
     localStorage.setItem("encryptedPrivateKey", encryptedPrivateKey);
     localStorage.setItem("iv", iv);
     localStorage.setItem("tag", tag);
-    localStorage.setItem("PRIVATE_KEY", privateTag);
+    localStorage.setItem("PRIVATE_KEY", privateKey);
   } catch (err) {
     if (err instanceof Error) {
       throw new Error(
