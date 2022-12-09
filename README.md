@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img width="300" src="/img/logoname-black.svg#gh-light-mode-only" alt="ifnisical">
+  <img width="300" src="/img/logoname-black.svg#gh-light-mode-only" alt="infisical">
   <img width="300" src="/img/logoname-white.svg#gh-dark-mode-only" alt="infisical">
 </h1>
 <p align="center">
