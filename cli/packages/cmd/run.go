@@ -47,18 +47,17 @@ var runCmd = &cobra.Command{
 			return
 		}
 
-		envsFromApi, err := util.GetAllEnvironmentVariables(projectId, envName)
+		secrets, err := util.GetAllEnvironmentVariables(projectId, envName)
 		if err != nil {
-			log.Errorln("Something went wrong when pulling secrets using your Infisical token. Double check the token, project id or environment name (dev, prod, ect.)")
 			log.Debugln(err)
 			return
 		}
 
 		if shouldExpandSecrets {
-			substitutions := util.SubstituteSecrets(envsFromApi)
-			execCmd(args[0], args[1:], substitutions)
+			secretsWithSubstitutions := util.SubstituteSecrets(secrets)
+			execCmd(args[0], args[1:], secretsWithSubstitutions)
 		} else {
-			execCmd(args[0], args[1:], envsFromApi)
+			execCmd(args[0], args[1:], secrets)
 		}
 
 	},
@@ -73,9 +72,12 @@ func init() {
 
 // Credit: inspired by AWS Valut
 func execCmd(command string, args []string, envs []models.SingleEnvironmentVariable) error {
-	log.Infof("\x1b[%dm%s\x1b[0m", 32, "\u2713 Injected Infisical secrets into your application process successfully")
-	log.Debugln("Secrets to inject:", envs)
+	numberOfSecretsInjected := fmt.Sprintf("\u2713 Injected %v Infisical secrets into your application process successfully", len(envs))
+
+	log.Infof("\x1b[%dm%s\x1b[0m", 32, numberOfSecretsInjected)
 	log.Debugf("executing command: %s %s \n", command, strings.Join(args, " "))
+	log.Debugln("Secrets injected:", envs)
+
 	cmd := exec.Command(command, args...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

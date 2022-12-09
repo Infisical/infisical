@@ -14,19 +14,7 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
-func GetSecretsFromAPIUsingCurrentLoggedInUser(envName string, userCreds models.UserCredentials) ([]models.SingleEnvironmentVariable, error) {
-	log.Debugln("envName", envName, "userCreds", userCreds)
-	// check if user has configured a workspace
-	workspace, err := GetWorkSpaceFromFile()
-	if err != nil {
-		return nil, fmt.Errorf("Unable to read workspace file:", err)
-	}
-
-	// create http client
-	httpClient := resty.New().
-		SetAuthToken(userCreds.JTWToken).
-		SetHeader("Accept", "application/json")
-
+func getSecretsByWorkspaceIdAndEnvName(httpClient resty.Client, envName string, workspace models.WorkspaceConfigFile, userCreds models.UserCredentials) (listOfSecrets []models.SingleEnvironmentVariable, err error) {
 	var pullSecretsRequestResponse models.PullSecretsResponse
 	response, err := httpClient.
 		R().
@@ -35,14 +23,11 @@ func GetSecretsFromAPIUsingCurrentLoggedInUser(envName string, userCreds models.
 		SetResult(&pullSecretsRequestResponse).
 		Get(fmt.Sprintf("%v/v1/secret/%v", INFISICAL_URL, workspace.WorkspaceId)) // need to change workspace id
 
-	log.Debugln("Response from get secrets:", response)
-
 	if err != nil {
 		return nil, err
 	}
 
 	if response.StatusCode() > 299 {
-		log.Debugln(response)
 		return nil, fmt.Errorf(response.Status())
 	}
 
@@ -67,7 +52,7 @@ func GetSecretsFromAPIUsingCurrentLoggedInUser(envName string, userCreds models.
 		return nil, err
 	}
 
-	log.Debugln("workspaceKey", workspaceKey, "nonce", nonce, "senderPublicKey", senderPublicKey, "currentUsersPrivateKey", currentUsersPrivateKey)
+	// log.Debugln("workspaceKey", workspaceKey, "nonce", nonce, "senderPublicKey", senderPublicKey, "currentUsersPrivateKey", currentUsersPrivateKey)
 	workspaceKeyInBytes, _ := box.Open(nil, workspaceKey, (*[24]byte)(nonce), (*[32]byte)(senderPublicKey), (*[32]byte)(currentUsersPrivateKey))
 	var listOfEnv []models.SingleEnvironmentVariable
 
@@ -101,6 +86,32 @@ func GetSecretsFromAPIUsingCurrentLoggedInUser(envName string, userCreds models.
 	return listOfEnv, nil
 }
 
+func GetSecretsFromAPIUsingCurrentLoggedInUser(envName string, userCreds models.UserCredentials) ([]models.SingleEnvironmentVariable, error) {
+	log.Debugln("GetSecretsFromAPIUsingCurrentLoggedInUser", "envName", envName, "userCreds", userCreds)
+	// check if user has configured a workspace
+	workspaces, err := GetAllWorkSpaceConfigsStartingFromCurrentPath()
+	if err != nil {
+		return nil, fmt.Errorf("Unable to read workspace file(s):", err)
+	}
+
+	// create http client
+	httpClient := resty.New().
+		SetAuthToken(userCreds.JTWToken).
+		SetHeader("Accept", "application/json")
+
+	secrets := []models.SingleEnvironmentVariable{}
+	for _, workspace := range workspaces {
+		secretsFromAPI, err := getSecretsByWorkspaceIdAndEnvName(*httpClient, envName, workspace, userCreds)
+		if err != nil {
+			return nil, fmt.Errorf("GetSecretsFromAPIUsingCurrentLoggedInUser: Unable to get secrets by workspace id and env name")
+		}
+
+		secrets = append(secrets, secretsFromAPI...)
+	}
+
+	return secrets, nil
+}
+
 func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, envName string, projectId string) ([]models.SingleEnvironmentVariable, error) {
 	if infisicalToken == "" || projectId == "" || envName == "" {
 		return nil, errors.New("infisical token, project id and or environment name cannot be empty")
@@ -127,7 +138,6 @@ func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, envName string,
 	}
 
 	if response.StatusCode() > 299 {
-		log.Debugln(response)
 		return nil, fmt.Errorf(response.Status())
 	}
 
@@ -188,6 +198,7 @@ func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, envName string,
 func GetAllEnvironmentVariables(projectId string, envName string) ([]models.SingleEnvironmentVariable, error) {
 	var envsFromApi []models.SingleEnvironmentVariable
 	infisicalToken := os.Getenv(INFISICAL_TOKEN_NAME)
+
 	if infisicalToken == "" {
 		hasUserLoggedInbefore, loggedInUserEmail, err := IsUserLoggedIn()
 		if err != nil {
@@ -208,8 +219,13 @@ func GetAllEnvironmentVariables(projectId string, envName string) ([]models.Sing
 			return envsFromApi, err
 		}
 
-		if !WorkspaceConfigFileExists() {
-			log.Infoln("Your project is not connected to a project yet. Run command [infisical init]")
+		workspaceConfigs, err := GetAllWorkSpaceConfigsStartingFromCurrentPath()
+		if err != nil {
+			return nil, fmt.Errorf("unable to check if you have a %s file in your current directory", INFISICAL_WORKSPACE_CONFIG_FILE_NAME)
+		}
+
+		if len(workspaceConfigs) == 0 {
+			log.Infoln("Your local project is not connected to a Infisical project yet. Run command [infisical init]")
 			return envsFromApi, fmt.Errorf("project not initialized")
 		}
 
