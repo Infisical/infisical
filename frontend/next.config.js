@@ -1,4 +1,4 @@
-// next.config.js
+const { i18n } = require("./next-i18next.config.js");
 const nextTranslate = require("next-translate");
 
 const ContentSecurityPolicy = `
@@ -50,7 +50,7 @@ const securityHeaders = [
   },
 ];
 
-module.exports = nextTranslate({
+module.exports = {
   output: "standalone",
   async headers() {
     return [
@@ -64,4 +64,5 @@ module.exports = nextTranslate({
   webpack: (config, { isServer, webpack }) => {
     return config;
   },
-});
+  i18n,
+};
