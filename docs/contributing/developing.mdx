@@ -16,17 +16,48 @@ cd infisical
 
 ## Set up environment variables
 
-Tweak the `.env` according to your preferences. Refer to the available [environment variables](/self-hosting/configuration/envars).
+Before running the docker-compose we have to generate the .env file with the environment variables, you can create your own file or start with the
+`.env.example` as an example guide.
 
-```bash
-cp .env.example .env
+Mandatory variables in the `.env` file:
+
+1. Keys and JWT variables
+
+![image](https://user-images.githubusercontent.com/118568289/206791534-9c9d1431-e83d-49c0-8a54-b373ed0df820.png)
+
+The `.env.example` has these variables empty, you can self generate the `JWT and ENCRYPTION_KEY` with this [32-byte random hex strings generator](https://www.browserling.com/tools/random-hex).
+
+For the `PRIVATE_KEY and PUBLIC_KEY` you can use the ones shown in the screenshot:
+
 ```
+PRIVATE_KEY='oGVv5rThrpZ7WLgQW27chY1cXngr4wLQIZnGfSKgHPk='
+PUBLIC_KEY='ldr6JaC7AY+tun3omGLdE4SWpkJbtVBOI54KfUP53Xc='
+```
+
+2. Mongo variables and site URL
+
+![image](https://user-images.githubusercontent.com/118568289/206792171-3376e3c6-c3ac-4d5d-8776-d78ee089b520.png)
+
+These variables are used to connect the MongoDB and set the URL for the localhost.
+
+3. Mail SMTP service variables
+
+![image](https://user-images.githubusercontent.com/118568289/206792653-ba3211d1-1071-43f2-93a7-8b408bbd9e0e.png)
+
+These variables are needed to use the Mail SMTP service that takes care of sending the verification code when you
+register in the app.
+
+For the `SMTP_USERNAME` variable, you will need an email with 2-steps-verification.
+
+For the `SMTP_PASSWORD` variable, you will need to [generate an app password](https://support.google.com/mail/answer/185833?hl=en) with the email you used in the `SMTP_USERNAME` variable.
+
+With this environment variables, you will be ready to run the docker-compose.
 
 ## Docker for development
 
 ```bash
 # build and start the services
-docker-compose -f docker-compose.dev.yml up --build
+docker-compose -f docker-compose.dev.yml up --build --force-recreate
 ```
 
 Then browse http://localhost:8080
