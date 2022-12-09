@@ -204,13 +204,13 @@ export default function SignupInvite() {
           label="Password"
           onChangeHandler={(password) => {
             setPassword(password);
-            passwordCheck(
+            passwordCheck({
               password,
               setPasswordErrorLength,
               setPasswordErrorNumber,
               setPasswordErrorLowerCase,
-              false
-            );
+              currentErrorCheck: false,
+            });
           }}
           type="password"
           value={password}

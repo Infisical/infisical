@@ -125,13 +125,13 @@ export default function PersonalSettings() {
                   label="New Password"
                   onChangeHandler={(password) => {
                     setNewPassword(password);
-                    passwordCheck(
+                    passwordCheck({
                       password,
                       setPasswordErrorLength,
                       setPasswordErrorNumber,
                       setPasswordErrorLowerCase,
-                      false
-                    );
+                      currentErrorCheck: false,
+                    });
                   }}
                   type="password"
                   value={newPassword}
