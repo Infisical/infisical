@@ -29,6 +29,14 @@ import getIntegrations from "../api/integrations/GetIntegrations";
 import getWorkspaceAuthorizations from "../api/integrations/getWorkspaceAuthorizations";
 import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
 import startIntegration from "../api/integrations/StartIntegration";
+import getBot from "../api/bot/getBot";
+import setBotActiveStatus from "../api/bot/setBotActiveStatus";
+import getLatestFileKey from "../api/workspace/getLatestFileKey";
+
+const {
+  decryptAssymmetric,
+  encryptAssymmetric
+} = require('../../components/utilities/cryptography/crypto');
 
 const crypto = require("crypto");
 
@@ -169,6 +177,7 @@ export default function Integrations() {
   const [authorizations, setAuthorizations] = useState();
   const router = useRouter();
   const [csrfToken, setCsrfToken] = useState("");
+  const [bot, setBot] = useState(null);
 
   useEffect(async () => {
     const tempCSRFToken = crypto.randomBytes(16).toString("hex");
@@ -184,6 +193,12 @@ export default function Integrations() {
       workspaceId: router.query.id,
     });
     setProjectIntegrations(projectIntegrations);
+    
+    const bot = await getBot({
+      workspaceId: router.query.id
+    });
+    
+    setBot(bot.bot);
 
     try {
       const integrationsData = await getIntegrations();
@@ -192,6 +207,50 @@ export default function Integrations() {
       console.log("Error", error);
     }
   }, []);
+
+  /**
+   * Toggle activate/deactivate bot
+   */
+  const handleBotActivate = async () => {
+    const k = await getLatestFileKey({ workspaceId: router.query.id });
+    try {
+      if (bot) {
+        let botKey;
+        if (!bot.isActive) {
+          // case: bot is active -> deactivate
+          
+          const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
+          const WORKSPACE_KEY = decryptAssymmetric({
+            ciphertext: k.latestKey.encryptedKey,
+            nonce: k.latestKey.nonce,
+            publicKey: k.latestKey.sender.publicKey,
+            privateKey: PRIVATE_KEY
+          });
+
+          const { ciphertext, nonce } = encryptAssymmetric({
+            plaintext: WORKSPACE_KEY,
+            publicKey: bot.publicKey,
+            privateKey: PRIVATE_KEY
+          });
+
+          botKey = {
+            encryptedKey: ciphertext,
+            nonce
+          }
+        }
+
+        // case: bot is not active
+        const bot2 = await setBotActiveStatus({
+          botId: bot._id,
+          isActive: bot.isActive ? false : true,
+          botKey
+        });
+        setBot(bot2.bot);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   return integrations ? (
     <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
@@ -212,6 +271,9 @@ export default function Integrations() {
             <div className="flex flex-row justify-start items-center text-3xl">
               <p className="font-semibold mr-4">Current Project Integrations</p>
             </div>
+            <button onClick={() => handleBotActivate()}>
+              {(bot && bot?.isActive) ? 'Deactivate bot' : 'Activate bot'}
+              </button>
             <p className="mr-4 text-base text-gray-400">
               Manage your integrations of Infisical with third-party services.
             </p>

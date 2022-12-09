@@ -1,19 +1,8 @@
-import { 
-    Bot,
-    IBot,
-    BotKey,
-    IBotKey,
-    IUser,
-    Secret
-} from '../models';
-import * as Sentry from '@sentry/node';
 import {
-    decryptAsymmetric,
-    decryptSymmetric
-} from '../utils/crypto';
-import {
-    ENCRYPTION_KEY
-} from '../config';
+    getSecretsHelper,
+    encryptSymmetricHelper,
+    decryptSymmetricHelper
+} from '../helpers/bot';
 
 /**
  * Class to handle bot actions
@@ -21,87 +10,72 @@ import {
 class BotService {
     
     /**
-     * Return decrypted secrets using bot
+     * Return decrypted secrets for workspace with id [workspaceId] and 
+     * environment [environmen] shared to bot.
      * @param {Object} obj
      * @param {String} obj.workspaceId - id of workspace of secrets
      * @param {String} obj.environment - environment for secrets
+     * @returns {Object} secretObj - object where keys are secret keys and values are secret values
      */
-    static async decryptSecrets({
+    static async getSecrets({
         workspaceId,
         environment
     }: {
         workspaceId: string;
         environment: string;
     }) {
-
-        let content: any = {};
-        let bot;
-        let botKey;
-        try {
-            
-            // find bot
-            bot = await Bot.findOne({
-                workspace: workspaceId,
-                isActive: true
-            });
-            
-            if (!bot) throw new Error('Failed to find bot');
-            
-            // find bot key
-            botKey = await BotKey.findOne({
-                workspace: workspaceId
-            }).populate<{ sender: IUser }>('sender');
-            
-            if (!botKey) throw new Error('Failed to find bot key');
-            
-            // decrypt bot private key
-            const privateKey = decryptSymmetric({
-                ciphertext: bot.encryptedPrivateKey,
-                iv: bot.iv,
-                tag: bot.tag,
-                key: ENCRYPTION_KEY
-            });
-            
-            // decrypt workspace key
-            const key = decryptAsymmetric({
-                ciphertext: botKey.encryptedKey,
-                nonce: botKey.nonce,
-                publicKey: botKey.sender.publicKey as string,
-                privateKey
-            });
-            
-            // decrypt secrets
-            const secrets = await Secret.find({
-                workspace: workspaceId,
-                environment
-            });
-
-            secrets.forEach(secret => {
-                // KEY, VALUE
-                const secretKey = decryptSymmetric({
-                    ciphertext: secret.secretKeyCiphertext,
-                    iv: secret.secretKeyIV,
-                    tag: secret.secretKeyTag,
-                    key
-                });
-                
-                const secretValue = decryptSymmetric({
-                    ciphertext: secret.secretValueCiphertext,
-                    iv: secret.secretValueIV,
-                    tag: secret.secretValueTag,
-                    key
-                });
-                
-                content[secretKey] = secretValue;
-            });
-            
-        } catch (err) {
-            console.error('BotService');
-            Sentry.setUser(null);
-            Sentry.captureException(err);
-        }
-        
-        return content;
+        return await getSecretsHelper({
+            workspaceId,
+            environment
+        });
+    }
+    
+    /**
+     * Return symmetrically encrypted [plaintext] using the
+     * bot's copy of the workspace key for workspace with id [workspaceId] 
+     * @param {Object} obj
+     * @param {String} obj.workspaceId - id of workspace
+     * @param {String} obj.plaintext - plaintext to encrypt
+     */
+    static async encryptSymmetric({
+        workspaceId,
+        plaintext
+    }: {
+        workspaceId: string;
+        plaintext: string;
+    }) {
+        return await encryptSymmetricHelper({
+            workspaceId,
+            plaintext
+        });
+    }
+    
+    /**
+     * Return symmetrically decrypted [ciphertext] using the
+     * bot's copy of the workspace key for workspace with id [workspaceId]
+     * @param {Object} obj
+     * @param {String} obj.workspaceId - id of workspace
+     * @param {String} obj.ciphertext - ciphertext to decrypt
+     * @param {String} obj.iv - iv
+     * @param {String} obj.tag - tag
+     */
+    static async decryptSymmetric({
+        workspaceId,
+        ciphertext,
+        iv,
+        tag
+    }: {
+        workspaceId: string;
+        ciphertext: string;
+        iv: string;
+        tag: string;
+    }) {
+        return await decryptSymmetricHelper({
+            workspaceId,
+            ciphertext,
+            iv,
+            tag
+        });
     }
 }
 

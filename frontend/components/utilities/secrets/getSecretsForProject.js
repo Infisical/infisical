@@ -42,7 +42,7 @@ const getSecretsForProject = async ({
         publicKey: file.key.sender.publicKey,
         privateKey: PRIVATE_KEY,
       });
-
+      
       file.secrets.map((secretPair) => {
         // decrypt .env file with symmetric key
         const plainTextKey = decryptSymmetric({

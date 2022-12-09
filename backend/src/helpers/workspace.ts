@@ -30,10 +30,10 @@ const createWorkspace = async ({
 			organization: organizationId
 		}).save();
 		
-		// const bot = await createBot({
-		// 	name: 'Infisical Bot',
-		// 	workspaceId: workspace._id.toString()
-		// });
+		const bot = await createBot({
+			name: 'Infisical Bot',
+			workspaceId: workspace._id.toString()
+		});
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);

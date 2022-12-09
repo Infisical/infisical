@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/node';
 import { Request, Response, NextFunction } from 'express';
-import { Integration, IntegrationAuth, Membership } from '../models';
-import { getOAuthAccessToken } from '../helpers/integrationAuth';
+import { Bot, Integration, IntegrationAuth, Membership } from '../models';
+import { IntegrationService } from '../services';
 import { validateMembership } from '../helpers/membership';
 
 /**
@@ -51,7 +51,9 @@ const requireIntegrationAuth = ({
 			}
 
 			req.integration = integration;
-			req.accessToken = await getOAuthAccessToken({ integrationAuth });
+			req.accessToken = await IntegrationService.getIntegrationAuthAccess({
+				integrationAuthId: integrationAuth._id.toString()
+			});
 
 			return next();
 		} catch (err) {

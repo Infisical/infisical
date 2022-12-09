@@ -1,7 +1,6 @@
 import BackupPrivateKey, { IBackupPrivateKey } from './backupPrivateKey';
 import Bot, { IBot } from './bot';
 import BotKey, { IBotKey } from './botKey';
-import BotSequence, { IBotSequence } from './botSequence';
 import IncidentContactOrg, { IIncidentContactOrg } from './incidentContactOrg';
 import Integration, { IIntegration } from './integration';
 import IntegrationAuth, { IIntegrationAuth } from './integrationAuth';
@@ -23,8 +22,6 @@ export {
 	IBot,
 	BotKey,
 	IBotKey,
-	BotSequence,
-	IBotSequence,
 	IncidentContactOrg,
 	IIncidentContactOrg,
 	Integration,

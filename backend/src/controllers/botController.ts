@@ -18,7 +18,7 @@ interface BotKey {
 export const getBotByWorkspaceId = async (req: Request, res: Response) => {
     let bot;
 	try {
-        const { workspaceId } = req.body;
+        const { workspaceId } = req.params;
 
         bot = await Bot.findOne({
             workspace: workspaceId
@@ -58,13 +58,24 @@ export const setBotActiveState = async (req: Request, res: Response) => {
         
         if (isActive) {
             // bot state set to active -> share workspace key with bot
-            await new BotKey({
+            if (!botKey?.encryptedKey || !botKey?.nonce) {
+                return res.status(400).send({
+                    message: 'Failed to set bot state to active - missing bot key'
+                });
+            }
+            
+            await BotKey.findOneAndUpdate({
+                workspace: req.bot.workspace
+            }, {
                 encryptedKey: botKey.encryptedKey,
                 nonce: botKey.nonce,
                 sender: req.user._id,
-                receiver: req.bot._id,
+                bot: req.bot._id,
                 workspace: req.bot.workspace
-            }).save();
+            }, {
+                upsert: true,
+                new: true
+            });
         } else {
             // case: bot state set to inactive -> delete bot's workspace key
             await BotKey.deleteOne({

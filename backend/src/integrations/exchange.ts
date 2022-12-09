@@ -2,11 +2,11 @@ import axios from 'axios';
 import * as Sentry from '@sentry/node';
 import {
     INTEGRATION_HEROKU,
+    INTEGRATION_HEROKU_TOKEN_URL,
     ACTION_PUSH_TO_HEROKU
 } from '../variables';
 import { 
-    OAUTH_CLIENT_SECRET_HEROKU, 
-    OAUTH_TOKEN_URL_HEROKU 
+    OAUTH_CLIENT_SECRET_HEROKU
 } from '../config';
 
 /**
@@ -29,13 +29,13 @@ const exchangeCode = async ({
     code: string;
 }) => {
     let obj = {} as any;
+                
     try {
         switch (integration) {
             case INTEGRATION_HEROKU:
                 obj = await exchangeCodeHeroku({
                     code
                 });
-                obj['action'] = ACTION_PUSH_TO_HEROKU;
                 break;
         } 
     } catch (err) {
@@ -63,10 +63,10 @@ const exchangeCodeHeroku = async ({
     code: string;
 }) => {
     let res: any;
-    let accessExpiresAt: any;
+    let accessExpiresAt = new Date();
     try {
         res = await axios.post(
-            OAUTH_TOKEN_URL_HEROKU!,
+            INTEGRATION_HEROKU_TOKEN_URL,
             new URLSearchParams({
 				grant_type: 'authorization_code',
 				code: code,
@@ -78,7 +78,6 @@ const exchangeCodeHeroku = async ({
             accessExpiresAt.getSeconds() + res.data.expires_in
         );
     } catch (err) {
-        console.error('integrationHerokuExchange');
         Sentry.setUser(null);
         Sentry.captureException(err);
         throw new Error('Failed OAuth2 code-token exchange with Heroku');

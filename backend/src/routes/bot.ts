@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
 import {
     requireAuth,
     requireBotAuth,
@@ -11,14 +11,13 @@ import { botController } from '../controllers';
 import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../variables';
 
 router.get(
-    '/',
+    '/:workspaceId',
 	requireAuth,
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [COMPLETED, GRANTED],
-        location: 'body'
+		acceptedStatuses: [COMPLETED, GRANTED]
 	}),
-    body('workspaceId').exists().trim().notEmpty(),
+    param('workspaceId').exists().trim().notEmpty(),
     validateRequest,
     botController.getBotByWorkspaceId
 );

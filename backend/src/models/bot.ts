@@ -24,12 +24,12 @@ const botSchema = new Schema<IBot>(
         },
         isActive: {
             type: Boolean,
-            required: true
+            required: true,
+            default: false
         },
         publicKey: {
             type: String,
-            required: true,
-            select: false
+            required: true
         },
         encryptedPrivateKey: {
             type: String,

@@ -49,7 +49,6 @@ export const getIntegrations = async (req: Request, res: Response) => {
 	});
 };
 
-// TODO: deprecate
 /**
  * Sync secrets [secrets] to integration with id [integrationId]
  * @param req
@@ -57,7 +56,10 @@ export const getIntegrations = async (req: Request, res: Response) => {
  * @returns
  */
 export const syncIntegration = async (req: Request, res: Response) => {
-	// TODO: unfinished - make more versatile to accomodate for other integrations
+	// NOTE TO ALL DEVS: THIS FUNCTION IS BEING DEPRECATED. IGNORE IT BUT KEEP IT FOR NOW.
+	
+	return;
+
 	try {
 		const { key, secrets }: { key: Key; secrets: PushSecret[] } = req.body;
 		const symmetricKey = decryptAsymmetric({
@@ -106,6 +108,7 @@ export const syncIntegration = async (req: Request, res: Response) => {
  */
 export const modifyIntegration = async (req: Request, res: Response) => {
 	let integration;
+	
 	try {
 		const { update } = req.body;
 

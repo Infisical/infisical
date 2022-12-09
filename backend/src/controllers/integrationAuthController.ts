@@ -3,15 +3,13 @@ import * as Sentry from '@sentry/node';
 import axios from 'axios';
 import { readFileSync } from 'fs';
 import { IntegrationAuth, Integration } from '../models';
-import { processOAuthTokenRes } from '../helpers/integrationAuth';
 import { INTEGRATION_SET, ENV_DEV } from '../variables';
 import { OAUTH_CLIENT_SECRET_HEROKU, OAUTH_TOKEN_URL_HEROKU } from '../config';
-
 import { IntegrationService } from '../services';
+import { getApps } from '../integrations';
 
 /**
  * Perform OAuth2 code-token exchange as part of integration [integration] for workspace with id [workspaceId]
- * Note: integration [integration] must be set up compatible/designed for OAuth2
  * @param req
  * @param res
  * @returns
@@ -21,8 +19,6 @@ export const oAuthExchange = async (
 	res: Response
 ) => {
 	try {
-		// let clientSecret;
-
 		const { workspaceId, code, integration } = req.body;
 
 		if (!INTEGRATION_SET.has(integration))
@@ -33,42 +29,6 @@ export const oAuthExchange = async (
 			integration,
 			code
 		});
-
-		// // use correct client secret
-		// switch (integration) {
-		// 	case 'heroku':
-		// 		clientSecret = OAUTH_CLIENT_SECRET_HEROKU;
-		// }
-
-		// // TODO: unfinished - make compatible with other integration types
-		// const res = await axios.post( // this response may be different for each integration
-		// 	OAUTH_TOKEN_URL_HEROKU!,
-		// 	new URLSearchParams({
-		// 		grant_type: 'authorization_code',
-		// 		code: code,
-		// 		client_secret: clientSecret
-		// 	} as any)
-		// );
-
-		// const integrationAuth = await processOAuthTokenRes({
-		// 	workspaceId,
-		// 	integration,
-		// 	res
-		// });
-
-		// // create or replace integration
-		// const integrationObj = await Integration.findOneAndUpdate(
-		// 	{ workspace: workspaceId, integration },
-		// 	{
-		// 		workspace: workspaceId,
-		// 		environment: ENV_DEV,
-		// 		isActive: false,
-		// 		app: null,
-		// 		integration,
-		// 		integrationAuth: integrationAuth._id
-		// 	},
-		// 	{ upsert: true, new: true }
-		// );
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
@@ -83,26 +43,25 @@ export const oAuthExchange = async (
 };
 
 /**
- * Return list of applications allowed for integration with id [integrationAuthId]
+ * Return list of applications allowed for integration with integration authorization id [integrationAuthId]
  * @param req
  * @param res
  * @returns
  */
 export const getIntegrationAuthApps = async (req: Request, res: Response) => {
-	// TODO: unfinished - make compatible with other integration types
 	let apps;
 	try {
-		const res = await axios.get('https://api.heroku.com/apps', {
-			headers: {
-				Accept: 'application/vnd.heroku+json; version=3',
-				Authorization: 'Bearer ' + req.accessToken
-			}
+		apps = await getApps({
+			integration: req.integrationAuth.integration,
+			accessToken: req.accessToken
 		});
-
-		apps = res.data.map((a: any) => ({
-			name: a.name
-		}));
-	} catch (err) {}
+	} catch (err) {
+		Sentry.setUser(null);
+        Sentry.captureException(err);	
+		return res.status(400).send({
+			message: 'Failed to get integration authorization applications'
+		});
+	}
 
 	return res.status(200).send({
 		apps

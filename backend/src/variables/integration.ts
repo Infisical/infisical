@@ -7,12 +7,16 @@ const INTEGRATION_SET = new Set([INTEGRATION_HEROKU, INTEGRATION_NETLIFY]);
 const INTEGRATION_OAUTH2 = 'oauth2';
 
 // integration oauth endpoints
-const OAUTH_TOKEN_URL_HEROKU = 'https://id.heroku.com/oauth/token';
+const INTEGRATION_HEROKU_TOKEN_URL = 'https://id.heroku.com/oauth/token';
+
+// integration apps endpoints
+const INTEGRATION_HEROKU_APPS_URL = 'https://api.heroku.com/apps';
 
 export {
     INTEGRATION_HEROKU,
     INTEGRATION_NETLIFY,
     INTEGRATION_SET,
     INTEGRATION_OAUTH2,
-    OAUTH_TOKEN_URL_HEROKU
+    INTEGRATION_HEROKU_TOKEN_URL,
+    INTEGRATION_HEROKU_APPS_URL
 }

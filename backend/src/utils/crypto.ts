@@ -96,7 +96,7 @@ const decryptAsymmetric = ({
  * Return symmetrically encrypted [plaintext] using [key].
  * @param {Object} obj
  * @param {String} obj.plaintext - plaintext to encrypt
- * @param {String} obj.key - 16-byte hex key
+ * @param {String} obj.key - hex key
  */
 const encryptSymmetric = ({
 	plaintext,
@@ -129,7 +129,7 @@ const encryptSymmetric = ({
  * @param {String} obj.ciphertext - ciphertext to decrypt
  * @param {String} obj.iv - iv
  * @param {String} obj.tag - tag
- * @param {String} obj.key - 32-byte hex key
+ * @param {String} obj.key - hex key
  *
  */
 const decryptSymmetric = ({

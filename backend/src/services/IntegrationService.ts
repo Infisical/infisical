@@ -1,15 +1,23 @@
 import * as Sentry from '@sentry/node';
 import {
-    Integration,
-    Bot,
-    BotSequence
+    Integration
 } from '../models';
+import { 
+    handleOAuthExchangeHelper,
+    syncIntegrationsHelper,
+    getIntegrationAuthRefreshHelper,
+    getIntegrationAuthAccessHelper,
+    setIntegrationAuthRefreshHelper,
+    setIntegrationAuthAccessHelper,
+} from '../helpers/integration';
 import { exchangeCode } from '../integrations';
-import { processOAuthTokenRes2 } from '../helpers/integrationAuth';
 import { 
     ENV_DEV, 
     EVENT_PUSH_SECRETS
 } from '../variables';
+
+// should sync stuff be here too? Probably.
+// TODO: move bot functions to IntegrationService.
 
 /**
  * Class to handle integrations
@@ -36,57 +44,101 @@ class IntegrationService {
         integration: string;
         code: string;
     }) {
-        console.log('IntegrationService > handleO')
-        let action;
-        try {
-            
-            const bot = await Bot.find({
-                workspace: workspaceId,
-                isActive: true
-            });
-            
-            if (!bot) throw new Error('Bot must be enabled for OAuth2 code-token exchange');
-            
-            // exchange code for access and refresh tokens
-            let res = await exchangeCode({
-                integration,
-                code
-            });
-            
-            const integrationAuth = await processOAuthTokenRes2({
-                workspaceId,
-                integration,
-                accessToken: res.accessToken,
-                accessExpiresAt: res.accessExpiresAt,
-                refreshToken: res.refreshToken
-            });
+        await handleOAuthExchangeHelper({
+            workspaceId,
+            integration,
+            code
+        });
+    }
+    
+    /**
+     * Sync/push environment variables in workspace with id [workspaceId] to
+     * all associated integrations
+     * @param {Object} obj
+     * @param {Object} obj.workspaceId - id of workspace
+     */
+    static async syncIntegrations({
+        workspaceId
+    }: {
+        workspaceId: string;
+    }) {
+        return await syncIntegrationsHelper({
+            workspaceId
+        });
+    }
+    
+    /**
+     * Return decrypted refresh token for integration auth
+     * with id [integrationAuthId]
+     * @param {Object} obj
+     * @param {String} obj.integrationAuthId - id of integration auth
+     * @param {String} refreshToken - decrypted refresh token
+     */
+    static async getIntegrationAuthRefresh({ integrationAuthId }: { integrationAuthId: string}) {
+        return await getIntegrationAuthRefreshHelper({
+            integrationAuthId
+        });
+    }
+    
+    /**
+     * Return decrypted access token for integration auth
+     * with id [integrationAuthId]
+     * @param {Object} obj
+     * @param {String} obj.integrationAuthId - id of integration auth
+     * @param {String} accessToken - decrypted access token
+     */
+    static async getIntegrationAuthAccess({ integrationAuthId }: { integrationAuthId: string}) {
+        return await getIntegrationAuthAccessHelper({
+            integrationAuthId
+        });
+    }
 
-            await Integration.findOneAndUpdate(
-                { workspace: workspaceId, integration },
-                {
-                    workspace: workspaceId,
-                    environment: ENV_DEV,
-                    isActive: false,
-                    app: null,
-                    integration,
-                    integrationAuth: integrationAuth._id
-                },
-                { upsert: true, new: true }
-		    );
-            
-            // add bot sequence
-            await BotSequence.findOneAndUpdate({
-                bot: bot._id,
-                name: integration + 'sequence',
-                event: EVENT_PUSH_SECRETS,
-                action
-            });
-        } catch (err) {
-            console.error('IntegrationService error', err);
-            Sentry.setUser(null);
-            Sentry.captureException(err);
-            throw new Error('Failed to handle OAuth2 code-token exchange')
-        }
+    /**
+     * Encrypt refresh token [refreshToken] using the bot's copy
+     * of the workspace key for workspace belonging to integration auth
+     * with id [integrationAuthId]
+     * @param {Object} obj
+     * @param {String} obj.integrationAuthId - id of integration auth
+     * @param {String} obj.refreshToken - refresh token
+     * @returns {IntegrationAuth} integrationAuth - updated integration auth
+     */
+    static async setIntegrationAuthRefresh({ 
+        integrationAuthId,
+        refreshToken 
+    }: { 
+        integrationAuthId: string; 
+        refreshToken: string;
+    }) {
+        return await setIntegrationAuthRefreshHelper({
+            integrationAuthId,
+            refreshToken
+        });
+    }
+
+    /**
+     * Encrypt access token [accessToken] using the bot's copy
+     * of the workspace key for workspace belonging to integration auth
+     * with id [integrationAuthId]
+     * @param {Object} obj
+     * @param {String} obj.integrationAuthId - id of integration auth
+     * @param {String} obj.accessToken - access token
+     * @param {String} obj.accessExpiresAt - expiration date of access token
+     * @returns {IntegrationAuth} - updated integration auth
+     */
+    static async setIntegrationAuthAccess({ 
+        integrationAuthId,
+        accessToken,
+        accessExpiresAt
+    }: { 
+        integrationAuthId: string;
+        accessToken: string;
+        accessExpiresAt: Date;
+    }) {
+        return await setIntegrationAuthAccessHelper({
+            integrationAuthId,
+            accessToken,
+            accessExpiresAt
+        });
     }
 }
 

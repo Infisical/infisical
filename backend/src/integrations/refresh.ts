@@ -5,7 +5,7 @@ import {
     OAUTH_CLIENT_SECRET_HEROKU
 } from '../config';
 import {
-    OAUTH_TOKEN_URL_HEROKU
+    INTEGRATION_HEROKU_TOKEN_URL
 } from '../variables';
 
 /**
@@ -55,7 +55,7 @@ const exchangeRefreshHeroku = async ({
     let accessToken;
     try {
         const res = await axios.post(
-            OAUTH_TOKEN_URL_HEROKU,
+            INTEGRATION_HEROKU_TOKEN_URL,
             new URLSearchParams({
                 grant_type: 'refresh_token',
                 refresh_token: refreshToken,
