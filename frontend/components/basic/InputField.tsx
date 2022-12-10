@@ -21,7 +21,10 @@ interface InputFieldProps {
   onChangeHandler: (value: string) => void;
 }
 
-const InputField = (props: InputFieldProps) => {
+const InputField = (
+  props: InputFieldProps &
+    Pick<JSX.IntrinsicElements["input"], "autoComplete" | "id">
+) => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const router = useRouter();
 
@@ -43,6 +46,8 @@ const InputField = (props: InputFieldProps) => {
           className="bg-bunker-800 text-gray-400 border border-gray-600 rounded-md text-md p-2 w-full min-w-16 outline-none"
           name={props.name}
           readOnly
+          autoComplete={props.autoComplete}
+          id={props.id}
         />
       </div>
     );
@@ -88,6 +93,8 @@ const InputField = (props: InputFieldProps) => {
             } relative peer bg-bunker-800 rounded-md text-gray-400 text-md p-2 w-full min-w-16 outline-none focus:ring-4 duration-200`}
             name={props.name}
             spellCheck="false"
+            autoComplete={props.autoComplete}
+            id={props.id}
           />
           {props.label?.includes("Password") && (
             <button

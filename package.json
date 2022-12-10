@@ -1,0 +1,28 @@
+{
+  "name": "infisical",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/infisical/infisical.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/infisical/infisical/issues"
+  },
+  "homepage": "https://github.com/infisical/infisical#readme",
+  "scripts": {
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "**/*": "prettier --write --ignore-unknown",
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "eslint": "^8.29.0",
+    "husky": "^8.0.2",
+    "prettier": "^2.8.1"
+  }
+}

@@ -119,19 +119,21 @@ export default function PersonalSettings() {
                   isRequired
                   error={currentPasswordError}
                   errorText="The current password may be wrong"
+                  autoComplete="current-password"
+                  id="current-password"
                 />
                 <div className="py-2"></div>
                 <InputField
                   label="New Password"
                   onChangeHandler={(password) => {
                     setNewPassword(password);
-                    passwordCheck(
+                    passwordCheck({
                       password,
                       setPasswordErrorLength,
                       setPasswordErrorNumber,
                       setPasswordErrorLowerCase,
-                      false
-                    );
+                      currentErrorCheck: false,
+                    });
                   }}
                   type="password"
                   value={newPassword}
@@ -141,6 +143,8 @@ export default function PersonalSettings() {
                     passwordErrorLowerCase &&
                     passwordErrorNumber
                   }
+                  autoComplete="new-password"
+                  id="new-password"
                 />
               </div>
               {passwordErrorLength ||
@@ -283,6 +287,8 @@ export default function PersonalSettings() {
                   isRequired
                   error={backupKeyError}
                   errorText="The current password is wrong"
+                  autoComplete="current-password"
+                  id="current-password"
                 />
               </div>
               <div className="flex flex-row items-center mt-3 w-full w-60">
