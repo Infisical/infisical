@@ -1,6 +1,7 @@
 {
   "private": true,
   "scripts": {
+    "prepare": "cd .. && npm install",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
