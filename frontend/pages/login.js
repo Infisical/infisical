@@ -98,6 +98,7 @@ export default function Login() {
             value={email}
             placeholder=""
             isRequired
+            autocomplete="username"
           />
         </div>
         <div className="flex items-center justify-center w-full md:p-2 rounded-lg md:mt-2 mt-6 max-h-24 md:max-h-28">
@@ -108,6 +109,8 @@ export default function Login() {
             value={password}
             placeholder=""
             isRequired
+            autoComplete="current-password"
+            id="current-password"
           />
         </div>
         {errorLogin && <Error text="Your email and/or password are wrong." />}

@@ -272,6 +272,7 @@ export default function SignUp() {
           isRequired
           error={emailError}
           errorText={emailErrorMessage}
+          autoComplete="username"
         />
       </div>
       {/* <div className='flex flex-row justify-left mt-4 max-w-md mx-auto'>
@@ -357,6 +358,7 @@ export default function SignUp() {
           isRequired
           errorText="Please input your first name."
           error={firstNameError}
+          autoComplete="given-name"
         />
       </div>
       <div className="mt-2 flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
@@ -368,6 +370,7 @@ export default function SignUp() {
           isRequired
           errorText="Please input your last name."
           error={lastNameError}
+          autoComplete="family-name"
         />
       </div>
       <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
@@ -389,6 +392,8 @@ export default function SignUp() {
           error={
             passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase
           }
+          autoComplete="new-password"
+          id="new-password"
         />
         {passwordErrorLength ||
         passwordErrorLowerCase ||
