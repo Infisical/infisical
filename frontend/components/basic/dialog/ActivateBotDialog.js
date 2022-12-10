@@ -67,7 +67,7 @@ const ActivateBotDialog = ({
                                 </Dialog.Title>
                                 <div className="mt-2 mb-2">
                                     <p className="text-sm text-gray-500">
-                                        Enabling platform integrations lets Infisical decrypt your secrets so they can be forwarded to the platforms.
+                                        Most cloud integrations require Infisical to be able to decrypt your secrets so they can be forwarded over.
                                     </p>
                                 </div>
                                 <div className="mt-6 max-w-max">

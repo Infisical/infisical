@@ -316,21 +316,10 @@ export default function Integrations() {
           )}
           <div className={`flex flex-col justify-between items-start mx-4 ${projectIntegrations.length > 0 ? 'mt-12' : 'mt-6'} mb-4 text-xl max-w-5xl px-2`}>
             <div className="flex flex-row justify-start items-center text-3xl">
-              <p className="font-semibold mr-4">Platform & Cloud Integrations</p>
+              <p className="font-semibold mr-4">Cloud Integrations</p>
             </div>
             <p className="mr-4 text-base text-gray-400">
-              Click on the itegration you want to connect. This will let your
-              environment variables flow automatically into selected third-party
-              services.
-            </p>
-            <p className="mr-4 text-xs text-gray-600 mt-1">
-              Note: during an integration with Heroku, for security reasons, it
-              is impossible to maintain end-to-end encryption. In theory, this
-              lets Infisical decrypt yor environment variables. In practice, we
-              can assure you that this will never be done, and it allows us to
-              protect your secrets from bad actors online. The core Infisical
-              service will always stay end-to-end encrypted. With any questions,
-              reach out support@infisical.com.
+              Click on an integration to begin syncing secrets to it.
             </p>
           </div>
           <div className="grid gap-4 grid-cols-4 grid-rows-2 mx-6 mt-4 max-w-5xl">
