@@ -18,10 +18,12 @@ router.patch(
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED]
 	}),
-	param('integrationId'),
-	body('update'),
+	param('integrationId').exists().trim(),
+	body('app').exists().trim(),
+	body('environment').exists().trim(),
+	body('isActive').exists().isBoolean(),
 	validateRequest,
-	integrationController.modifyIntegration
+	integrationController.updateIntegration
 );
 
 router.delete(
@@ -31,7 +33,7 @@ router.delete(
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED]
 	}),
-	param('integrationId'),
+	param('integrationId').exists().trim(),
 	validateRequest,
 	integrationController.deleteIntegration
 );

@@ -62,14 +62,6 @@ export const pushSecrets = async (req: Request, res: Response) => {
 			keys
 		});
 		
-		// trigger event
-		EventService.handleEvent({
-			event: eventPushSecrets({
-				workspaceId,
-				environment,
-				secrets
-			})
-		});
 		
 		if (postHogClient) {
 			postHogClient.capture({
@@ -83,6 +75,13 @@ export const pushSecrets = async (req: Request, res: Response) => {
 				}
 			});
 		}
+
+		// trigger event - push secrets
+		EventService.handleEvent({
+			event: eventPushSecrets({
+				workspaceId
+			})
+		});
 
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });

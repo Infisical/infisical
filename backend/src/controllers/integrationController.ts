@@ -1,11 +1,9 @@
 import { Request, Response } from 'express';
 import { readFileSync } from 'fs';
 import * as Sentry from '@sentry/node';
-import axios from 'axios';
-import { Integration } from '../models';
-import { decryptAsymmetric } from '../utils/crypto';
-import { decryptSecrets } from '../helpers/secret';
-import { PRIVATE_KEY } from '../config';
+import { Integration, Bot, BotKey } from '../models';
+import { EventService } from '../services';
+import { eventPushSecrets } from '../events';
 
 interface Key {
 	encryptedKey: string;
@@ -55,26 +53,40 @@ export const getIntegrations = async (req: Request, res: Response) => {
  * @param res
  * @returns
  */
-export const modifyIntegration = async (req: Request, res: Response) => {
+export const updateIntegration = async (req: Request, res: Response) => {
 	let integration;
 	
 	try {
-		const { update } = req.body;
+		const { app, environment, isActive } = req.body;
 
 		integration = await Integration.findOneAndUpdate(
 			{
 				_id: req.integration._id
 			},
-			update,
+			{
+				app,
+				environment,
+				isActive
+			},
 			{
 				new: true
 			}
 		);
+		
+		if (integration) {
+
+			// trigger event - push secrets
+			EventService.handleEvent({
+				event: eventPushSecrets({
+					workspaceId: integration.workspace.toString()
+				})
+			});
+		}
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
 		return res.status(400).send({
-			message: 'Failed to modify integration'
+			message: 'Failed to update integration'
 		});
 	}
 
@@ -84,7 +96,8 @@ export const modifyIntegration = async (req: Request, res: Response) => {
 };
 
 /**
- * Delete integration with id [integrationId]
+ * Delete integration with id [integrationId] and deactivate bot if there are
+ * no integrations left
  * @param req
  * @param res
  * @returns
@@ -97,6 +110,29 @@ export const deleteIntegration = async (req: Request, res: Response) => {
 		deletedIntegration = await Integration.findOneAndDelete({
 			_id: integrationId
 		});
+		
+		if (!deletedIntegration) throw new Error('Failed to find integration');
+		
+		const integrations = await Integration.find({
+			workspace: deletedIntegration.workspace
+		});
+			
+		if (integrations.length === 0) {
+			// case: no integrations left, deactivate bot
+			const bot = await Bot.findOneAndUpdate({
+				workspace: deletedIntegration.workspace
+			}, {
+				isActive: false
+			}, {
+				new: true
+			});
+			
+			if (bot) {
+				await BotKey.deleteOne({
+					bot: bot._id
+				});
+			}
+		}
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);

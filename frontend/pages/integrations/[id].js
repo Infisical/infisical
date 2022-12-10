@@ -27,16 +27,16 @@ import getIntegrationApps from "../api/integrations/GetIntegrationApps";
 import getIntegrations from "../api/integrations/GetIntegrations";
 import getWorkspaceAuthorizations from "../api/integrations/getWorkspaceAuthorizations";
 import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
-import startIntegration from "../api/integrations/StartIntegration";
+import updateIntegration from "../api/integrations/updateIntegration";
 import getBot from "../api/bot/getBot";
 import setBotActiveStatus from "../api/bot/setBotActiveStatus";
 import getLatestFileKey from "../api/workspace/getLatestFileKey";
+import ActivateBotDialog from "~/components/basic/dialog/ActivateBotDialog";
 
 const {
   decryptAssymmetric,
   encryptAssymmetric
 } = require('../../components/utilities/cryptography/crypto');
-
 const crypto = require("crypto");
 
 const Integration = ({ projectIntegration }) => {
@@ -120,10 +120,11 @@ const Integration = ({ projectIntegration }) => {
             <Button
               text="Start Integration"
               onButtonPressed={async () => {
-                const result = await startIntegration({
+                const result = await updateIntegration({
                   integrationId: projectIntegration._id,
                   environment: envMapping[integrationEnvironment],
-                  appName: integrationApp,
+                  app: integrationApp,
+                  isActive: true
                 });
                 router.reload();
               }}
@@ -151,39 +152,43 @@ const Integration = ({ projectIntegration }) => {
 };
 
 export default function Integrations() {
-  const [integrations, setIntegrations] = useState();
-  const [projectIntegrations, setProjectIntegrations] = useState();
+  const [integrations, setIntegrations] = useState({});
+  const [projectIntegrations, setProjectIntegrations] = useState([]);
   const [authorizations, setAuthorizations] = useState();
   const router = useRouter();
   const [csrfToken, setCsrfToken] = useState("");
   const [bot, setBot] = useState(null);
+  const [isActivateBotOpen, setIsActivateBotOpen] = useState(false);
+  const [selectedIntegrationOption, setSelectedIntegrationOption] = useState(null); 
 
   useEffect(async () => {
-    const tempCSRFToken = crypto.randomBytes(16).toString("hex");
-    setCsrfToken(tempCSRFToken);
-    localStorage.setItem("latestCSRFToken", tempCSRFToken);
-
-    let projectAuthorizations = await getWorkspaceAuthorizations({
-      workspaceId: router.query.id,
-    });
-    setAuthorizations(projectAuthorizations);
-
-    const projectIntegrations = await getWorkspaceIntegrations({
-      workspaceId: router.query.id,
-    });
-    setProjectIntegrations(projectIntegrations);
-    
-    const bot = await getBot({
-      workspaceId: router.query.id
-    });
-    
-    setBot(bot.bot);
-
     try {
+      // generate CSRF token for OAuth2 code-token exchange integrations
+      const tempCSRFToken = crypto.randomBytes(16).toString("hex");
+      setCsrfToken(tempCSRFToken);
+      localStorage.setItem("latestCSRFToken", tempCSRFToken);
+
+      let projectAuthorizations = await getWorkspaceAuthorizations({
+        workspaceId: router.query.id,
+      });
+      setAuthorizations(projectAuthorizations);
+
+      const projectIntegrations = await getWorkspaceIntegrations({
+        workspaceId: router.query.id,
+      });
+
+      setProjectIntegrations(projectIntegrations);
+      
+      const bot = await getBot({
+        workspaceId: router.query.id
+      });
+      
+      setBot(bot.bot);
+
       const integrationsData = await getIntegrations();
       setIntegrations(integrationsData);
-    } catch (error) {
-      console.log("Error", error);
+    } catch (err) {
+      console.log(err);
     }
   }, []);
 
@@ -191,7 +196,7 @@ export default function Integrations() {
    * Toggle activate/deactivate bot
    */
   const handleBotActivate = async () => {
-    const k = await getLatestFileKey({ workspaceId: router.query.id });
+    const key = await getLatestFileKey({ workspaceId: router.query.id });
     try {
       if (bot) {
         let botKey;
@@ -200,9 +205,9 @@ export default function Integrations() {
           
           const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
           const WORKSPACE_KEY = decryptAssymmetric({
-            ciphertext: k.latestKey.encryptedKey,
-            nonce: k.latestKey.nonce,
-            publicKey: k.latestKey.sender.publicKey,
+            ciphertext: key.latestKey.encryptedKey,
+            nonce: key.latestKey.nonce,
+            publicKey: key.latestKey.sender.publicKey,
             privateKey: PRIVATE_KEY
           });
 
@@ -230,7 +235,45 @@ export default function Integrations() {
       console.error(err);
     }
   }
+  
+  /**
+   * Start integration for a given integration option [integrationOption]
+   * @param {Object} obj 
+   * @param {Object} obj.integrationOption - an integration option
+   * @returns 
+   */
+  const handleIntegrationOption = async ({ integrationOption }) => {
+    // TODO: modularize
+    switch (integrationOption.name) {
+      case 'Heroku':
+        window.location = `https://id.heroku.com/oauth/authorize?client_id=7b1311a1-1cb2-4938-8adf-f37a399ec41b&response_type=code&scope=write-protected&state=${csrfToken}`;
+        return;
+    }
+    
+  }
 
+  /**
+   * Call [handleIntegrationOption] if bot is active, else open dialog for user to grant
+   * permission to share secretes with Infisical prior to starting any integration
+   * @param {Object} obj 
+   * @param {String} obj.integrationOption - an integration option
+   * @returns 
+   */
+  const integrationOptionPress = ({ integrationOption }) => {
+    try {
+      if (bot.isActive) {
+        // case: bot is active -> proceed with integration
+        handleIntegrationOption({ integrationOption });
+        return;
+      }
+      
+      // case: bot is not active -> open modal to activate bot
+      setIsActivateBotOpen(true);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  
   return integrations ? (
     <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
       <Head>
@@ -246,39 +289,32 @@ export default function Integrations() {
       <div className="flex flex-row">
         <div className="w-full max-h-96 pb-2 h-screen max-h-[calc(100vh-10px)] overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
           <NavHeader pageName="Project Integrations" isProjectRelated={true} />
-          <div className="flex flex-col justify-between items-start mx-4 mt-6 mb-4 text-xl max-w-5xl px-2">
-            <div className="flex flex-row justify-start items-center text-3xl">
-              <p className="font-semibold mr-4">Current Project Integrations</p>
-            </div>
-            <button onClick={() => handleBotActivate()}>
-              {(bot && bot?.isActive) ? 'Deactivate bot' : 'Activate bot'}
-              </button>
-            <p className="mr-4 text-base text-gray-400">
-              Manage your integrations of Infisical with third-party services.
-            </p>
-          </div>
-          {projectIntegrations.length > 0 ? (
-            projectIntegrations.map((projectIntegration) => (
-              <Integration
-                key={guidGenerator()}
-                projectIntegration={projectIntegration}
-              />
-            ))
-          ) : (
-            <div className="flex flex-col max-w-5xl justify-center bg-white/5 p-6 rounded-md mx-6 mt-8">
-              <div className="relative px-4 flex flex-col text-gray-400 items-center justify-center">
-                <div className="mb-1">
-                  You {"don't"} have any integrations set up yet. When you do,
-                  they will appear here.
+          <ActivateBotDialog 
+            isOpen={isActivateBotOpen}
+            closeModal={() => setIsActivateBotOpen(false)}
+            selectedIntegrationOption={selectedIntegrationOption}
+            handleBotActivate={handleBotActivate}
+            handleIntegrationOption={handleIntegrationOption}
+          />
+          {projectIntegrations.length > 0 && (
+            <>
+              <div className="flex flex-col justify-between items-start mx-4 mb-4 mt-6 text-xl max-w-5xl px-2">
+                <div className="flex flex-row justify-start items-center text-3xl">
+                  <p className="font-semibold mr-4">Current Project Integrations</p>
                 </div>
-                <div className="">
-                  To start, click on any of the options below. It takes 5 clicks
-                  to set up.
-                </div>
+                <p className="text-base text-gray-400">
+                  Manage your integrations of Infisical with third-party services.
+                </p>
               </div>
-            </div>
+              {projectIntegrations.map((projectIntegration) => (
+                <Integration
+                  key={guidGenerator()}
+                  projectIntegration={projectIntegration}
+                />
+              ))}
+            </>
           )}
-          <div className="flex flex-col justify-between items-start mx-4 mt-12 mb-4 text-xl max-w-5xl px-2">
+          <div className={`flex flex-col justify-between items-start mx-4 ${projectIntegrations.length > 0 ? 'mt-12' : 'mt-6'} mb-4 text-xl max-w-5xl px-2`}>
             <div className="flex flex-row justify-start items-center text-3xl">
               <p className="font-semibold mr-4">Platform & Cloud Integrations</p>
             </div>
@@ -302,30 +338,24 @@ export default function Integrations() {
               <div
                 className={`relative ${
                   ["Heroku"].includes(integrations[integration].name)
-                    ? ""
+                    ? "hover:bg-white/10 duration-200 cursor-pointer"
                     : "opacity-50"
-                }`}
+                } flex flex-row bg-white/5 h-32 rounded-md p-4 items-center`}
+                onClick={() => {
+                  if (!["Heroku"].includes(integrations[integration].name)) return;
+                  setSelectedIntegrationOption(integrations[integration]);
+                  integrationOptionPress({
+                    integrationOption: integrations[integration]
+                  });
+                }}
                 key={integrations[integration].name}
               >
-                <a
-                  href={`${
-                    ["Heroku"].includes(integrations[integration].name)
-                      ? `https://id.heroku.com/oauth/authorize?client_id=7b1311a1-1cb2-4938-8adf-f37a399ec41b&response_type=code&scope=write-protected&state=${csrfToken}`
-                      : "#"
-                  }`}
-                  rel="noopener"
-                  className={`relative flex flex-row bg-white/5 h-32 rounded-md p-4 items-center ${
-                    ["Heroku"].includes(integrations[integration].name)
-                      ? "hover:bg-white/10 duration-200 cursor-pointer"
-                      : "cursor-default grayscale"
-                  }`}
-                >
                   <Image
                     src={`/images/integrations/${integrations[integration].name}.png`}
                     height={70}
                     width={70}
                     alt="integration logo"
-                  ></Image>
+                  />
                   {integrations[integration].name.split(" ").length > 2 ? (
                     <div className="font-semibold text-gray-300 group-hover:text-gray-200 duration-200 text-3xl ml-4 max-w-xs">
                       <div>{integrations[integration].name.split(" ")[0]}</div>
@@ -339,7 +369,6 @@ export default function Integrations() {
                       {integrations[integration].name}
                     </div>
                   )}
-                </a>
                 {["Heroku"].includes(integrations[integration].name) &&
                   authorizations
                     .map((authorization) => authorization.integration)

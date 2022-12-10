@@ -37,8 +37,7 @@ const integrationSchema = new Schema<IIntegration>(
 		app: {
 			// name of app in provider
 			type: String,
-			default: null,
-			required: true
+			default: null
 		},
 		integration: {
 			type: String,

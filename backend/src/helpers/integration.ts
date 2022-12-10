@@ -73,20 +73,18 @@ const handleOAuthExchangeHelper = async ({
             accessExpiresAt: res.accessExpiresAt
         });
 
-        // initializes an integration after exchange
-        await Integration.findOneAndUpdate(
-            { workspace: workspaceId, integration },
-            {
-                workspace: workspaceId,
-                environment: ENV_DEV,
-                isActive: false,
-                app: null,
-                integration,
-                integrationAuth: integrationAuth._id
-            },
-            { upsert: true, new: true }
-        );
+        // initialize new integration after exchange
+        await new Integration({
+            workspace: workspaceId,
+            environment: ENV_DEV,
+            isActive: false,
+            app: null,
+            integration,
+            integrationAuth: integrationAuth._id
+        }).save();
+        
     } catch (err) {
+        console.error('in', err);
         Sentry.setUser(null);
         Sentry.captureException(err);
         throw new Error('Failed to handle OAuth2 code-token exchange')
