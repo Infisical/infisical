@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import fs from 'fs';
 import path from 'path';
 import handlebars from 'handlebars';
@@ -11,6 +10,7 @@ import {
   SMTP_PASSWORD
 } from '../config';
 import SMTPConnection from 'nodemailer/lib/smtp-connection';
+import * as Sentry from '@sentry/node';
 
 const mailOpts: SMTPConnection.Options = {
   host: SMTP_HOST,
@@ -26,12 +26,16 @@ if (SMTP_USERNAME && SMTP_PASSWORD) {
 const transporter = nodemailer.createTransport(mailOpts);
 transporter
   .verify()
-  .then(() => console.log('SMTP - Successfully connected'))
-  .catch((err) =>
-    console.log(
+  .then(() => {
+    Sentry.setUser(null);
+    Sentry.captureMessage('SMTP - Successfully connected');
+  })
+  .catch((err) => {
+    Sentry.setUser(null);
+    Sentry.captureException(
       `SMTP - Failed to connect to ${SMTP_HOST}:${SMTP_PORT} \n\t${err}`
-    )
-  );
+    );
+  });
 
 /**
  * @param {Object} obj
@@ -66,7 +70,8 @@ const sendMail = async ({
       html: htmlToSend
     });
   } catch (err) {
-    console.error(err);
+    Sentry.setUser(null);
+    Sentry.captureException(err);
   }
 };
 
