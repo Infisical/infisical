@@ -74,7 +74,7 @@ const KeyPair = ({
               onChangeHandler={modifyKey}
               type="varName"
               index={keyPair[1]}
-              value={keyPair[2]}
+              value={keyPair.key}
               duplicates={duplicates}
             />
           </div>
@@ -85,7 +85,7 @@ const KeyPair = ({
               onChangeHandler={modifyValue}
               type="value"
               index={keyPair[1]}
-              value={keyPair[3]}
+              value={keyPair.value}
               blurred={isBlurred}
             />
           </div>
@@ -114,7 +114,7 @@ const KeyPair = ({
               <div
                 onClick={() =>
                   modifyVisibility(
-                    keyPair[4] == "personal" ? "shared" : "personal",
+                    keyPair.type == "personal" ? "shared" : "personal",
                     keyPair[1]
                   )
                 }
@@ -122,10 +122,10 @@ const KeyPair = ({
               >
                 <FontAwesomeIcon
                   className="text-lg pl-1.5 pr-3"
-                  icon={keyPair[4] == "personal" ? faPeopleGroup : faPerson}
+                  icon={keyPair.type == "personal" ? faPeopleGroup : faPerson}
                 />
                 <div className="text-sm">
-                  {keyPair[4] == "personal" ? "Make Shared" : "Make Personal"}
+                  {keyPair.type == "personal" ? "Make Shared" : "Make Personal"}
                 </div>
               </div>
               <div
@@ -190,7 +190,7 @@ const KeyPair = ({
         <div className="w-2"></div>
         <div className="opacity-50 hover:opacity-100 duration-200">
           <Button
-            onButtonPressed={() => deleteRow(keyPair[0])}
+            onButtonPressed={() => deleteRow(keyPair.id)}
             color="red"
             size="icon-sm"
             icon={faX}
@@ -322,12 +322,12 @@ export default function Dashboard() {
 
   const deleteRow = (id) => {
     setButtonReady(true);
-    setData(data.filter((row) => row[0] !== id));
+    setData(data.filter((row) => row.id !== id));
   };
 
   const modifyValue = (value, id) => {
     setData((oldData) => {
-      oldData[id][3] = value;
+      oldData[id].value = value;
       return [...oldData];
     });
     setButtonReady(true);
@@ -335,7 +335,7 @@ export default function Dashboard() {
 
   const modifyKey = (value, id) => {
     setData((oldData) => {
-      oldData[id][2] = value;
+      oldData[id].key = value;
       return [...oldData];
     });
     setButtonReady(true);
@@ -343,7 +343,7 @@ export default function Dashboard() {
 
   const modifyVisibility = (value, id) => {
     setData((oldData) => {
-      oldData[id][4] = value;
+      oldData[id].type = value;
       return [...oldData];
     });
     setButtonReady(true);
@@ -369,7 +369,7 @@ export default function Dashboard() {
     // Format the new object with environment variables
     let obj = Object.assign(
       {},
-      ...data.map((row) => ({ [row[2]]: [row[3], row[4]] }))
+      ...data.map((row) => ({ [row.key]: [row.value, row.type] }))
     );
 
     // Checking if any of the secret keys start with a number - if so, don't do anything
@@ -378,9 +378,9 @@ export default function Dashboard() {
       .every((v) => v === false);
     const duplicatesExist =
       data
-        ?.map((item) => item[2])
+        ?.map((item) => item.key)
         .filter(
-          (item, index) => index !== data?.map((item) => item[2]).indexOf(item)
+          (item, index) => index !== data?.map((item) => item.key).indexOf(item)
         ).length > 0;
 
     if (nameErrors) {
@@ -415,7 +415,7 @@ export default function Dashboard() {
       ) {
         let objIntegration = Object.assign(
           {},
-          ...data.map((row) => ({ [row[2]]: row[3] }))
+          ...data.map((row) => ({ [row.key]: row.value }))
         );
         await pushKeysIntegration({
           obj: objIntegration,
@@ -442,7 +442,7 @@ export default function Dashboard() {
 
   // This function downloads the secrets as a .env file
   const download = () => {
-    const file = data.map((item) => [item[2], item[3]].join("=")).join("\n");
+    const file = data.map((item) => [item.key, item.value].join("=")).join("\n");
     const blob = new Blob([file]);
     const fileDownloadUrl = URL.createObjectURL(blob);
     let alink = document.createElement("a");
@@ -648,19 +648,19 @@ export default function Dashboard() {
                     {data
                       .filter(
                         (keyPair) =>
-                          keyPair[2]
+                          keyPair.key
                             .toLowerCase()
                             .includes(searchKeys.toLowerCase()) &&
-                          keyPair[4] == "personal"
+                          keyPair.type == "personal"
                       )
                       .sort((a, b) =>
                         sortMethod == "alphabetical"
-                          ? a[2].localeCompare(b[2])
-                          : b[2].localeCompare(a[2])
+                          ? a.key.localeCompare(b.key)
+                          : b.key.localeCompare(a.key)
                       )
                       ?.map((keyPair, index) => (
                         <KeyPair
-                          key={keyPair[0]}
+                          key={keyPair.id}
                           keyPair={keyPair}
                           deleteRow={deleteCertainRow}
                           modifyValue={listenChangeValue}
@@ -668,11 +668,11 @@ export default function Dashboard() {
                           modifyVisibility={listenChangeVisibility}
                           isBlurred={blurred}
                           duplicates={data
-                            ?.map((item) => item[2])
+                            ?.map((item) => item.key)
                             .filter(
                               (item, index) =>
                                 index !==
-                                data?.map((item) => item[2]).indexOf(item)
+                                data?.map((item) => item.key).indexOf(item)
                             )}
                         />
                       ))}
@@ -702,19 +702,19 @@ export default function Dashboard() {
                     {data
                       .filter(
                         (keyPair) =>
-                          keyPair[2]
+                          keyPair.key
                             .toLowerCase()
                             .includes(searchKeys.toLowerCase()) &&
-                          keyPair[4] == "shared"
+                          keyPair.type == "shared"
                       )
                       .sort((a, b) =>
                         sortMethod == "alphabetical"
-                          ? a[2].localeCompare(b[2])
-                          : b[2].localeCompare(a[2])
+                          ? a.key.localeCompare(b.key)
+                          : b.key.localeCompare(a.key)
                       )
                       ?.map((keyPair, index) => (
                         <KeyPair
-                          key={keyPair[0]}
+                          key={keyPair.id}
                           keyPair={keyPair}
                           deleteRow={deleteCertainRow}
                           modifyValue={listenChangeValue}
@@ -722,11 +722,11 @@ export default function Dashboard() {
                           modifyVisibility={listenChangeVisibility}
                           isBlurred={blurred}
                           duplicates={data
-                            ?.map((item) => item[2])
+                            ?.map((item) => item.key)
                             .filter(
                               (item, index) =>
                                 index !==
-                                data?.map((item) => item[2]).indexOf(item)
+                                data?.map((item) => item.key).indexOf(item)
                             )}
                         />
                       ))}
