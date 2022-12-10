@@ -52,7 +52,7 @@ ingress:
 ###
 ### YOU MUST FILL IN ALL SECRETS BELOW
 ### 
-secrets:
+backendEnvironmentVariables:
   # Required keys for platform encryption/decryption ops. Replace with nacl sk keys
   PRIVATE_KEY: MUST_REPLACE
   PUBLIC_KEY: MUST_REPLACE
@@ -73,4 +73,7 @@ secrets:
 
   # You may replace with Mongo Cloud URI
   MONGO_URL: mongodb://root:root@mongodb-service:27017/
+
+# frontendEnvironmentVariables:
+#   INFISICAL_TELEMETRY_ENABLED: true
     
