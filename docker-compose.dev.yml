@@ -20,6 +20,7 @@ services:
     restart: unless-stopped
     depends_on:
       - mongo
+      - smtp-server
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -33,7 +34,7 @@ services:
       - NODE_ENV=development
     networks:
       - infisical-dev
-  
+
   frontend:
     container_name: infisical-dev-frontend
     restart: unless-stopped
@@ -81,6 +82,18 @@ services:
       - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongo:27017/
     ports:
       - 8081:8081
+    networks:
+      - infisical-dev
+
+  smtp-server:
+    container_name: infisical-dev-smtp-server
+    image: mailhog/mailhog
+    restart: always
+    logging:
+      driver: 'none' # disable saving logs
+    ports:
+      - 1025:1025 # SMTP server
+      - 8025:8025 # Web UI
     networks:
       - infisical-dev
 
