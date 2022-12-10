@@ -18,6 +18,11 @@ spec:
       - name: frontend 
         image: infisical/frontend
         imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        env:
+        {{- range $key, $value := .Values.frontendEnvironmentVariables }}
+        - name: {{ $key }}
+          value: {{ quote $value }}
+        {{- end }}
         ports: 
         - containerPort: 4000
 ---

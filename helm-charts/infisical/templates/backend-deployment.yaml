@@ -21,7 +21,7 @@ spec:
         ports: 
         - containerPort: 4000
         env:
-        {{- range $key, $value := .Values.secrets }}
+        {{- range $key, $value := .Values.backendEnvironmentVariables }}
         {{- if eq $value "MUST_REPLACE" }}
           {{ fail "Environment variables are not set. Please set all environment variables to continue." }}
         {{ end }}
