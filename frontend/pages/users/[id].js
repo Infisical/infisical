@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import { useRouter } from "next/router";
-import useTranslation from "next-translate/useTranslation";
+import { useTranslation } from "next-i18next";
+import { appWithTranslation } from "next-i18next";
 import { faMagnifyingGlass, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -11,6 +12,7 @@ import AddProjectMemberDialog from "~/components/basic/dialog/AddProjectMemberDi
 import UserTable from "~/components/basic/table/UserTable";
 import NavHeader from "~/components/navigation/NavHeader";
 import guidGenerator from "~/utilities/randomId";
+import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
 import getOrganizationUsers from "../api/organization/GetOrgUsers";
 import getUser from "../api/user/getUser";
@@ -211,3 +213,9 @@ export default function Users() {
 }
 
 Users.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps([
+  "settings",
+  "settings-members",
+  "section-members",
+]);

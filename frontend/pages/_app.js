@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useRouter } from "next/router";
+import { appWithTranslation } from "next-i18next";
 import { config } from "@fortawesome/fontawesome-svg-core";
 
 import { initPostHog } from "~/components/analytics/posthog";
@@ -17,6 +18,17 @@ config.autoAddCss = false;
 const App = ({ Component, pageProps, ...appProps }) => {
   const router = useRouter();
   const posthog = initPostHog();
+
+  // useEffect(() => {
+  //   const storedLang = localStorage.getItem("lang");
+  //   console.log(router.locale);
+  //   console.log(storedLang);
+  //   if (router.locale ?? "en" !== storedLang ?? "en") {
+  //     router.push(router.pathname, router.pathname, {
+  //       locale: storedLang ?? "en",
+  //     });
+  //   }
+  // }, [router.locale, router.pathname]);
 
   useEffect(() => {
     // Init for auto capturing
@@ -56,7 +68,7 @@ const App = ({ Component, pageProps, ...appProps }) => {
   );
 };
 
-export default App;
+export default appWithTranslation(App);
 
 {
   /* <Script

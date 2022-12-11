@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import useTranslation from "next-translate/useTranslation";
+import { useTranslation } from "next-i18next";
 import {
   faMagnifyingGlass,
   faPlus,
@@ -17,6 +17,7 @@ import InputField from "~/components/basic/InputField";
 import UserTable from "~/components/basic/table/UserTable";
 import NavHeader from "~/components/navigation/NavHeader";
 import guidGenerator from "~/utilities/randomId";
+import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
 import addUserToOrg from "../../api/organization/addUserToOrg";
 import deleteIncidentContact from "../../api/organization/deleteIncidentContact";
@@ -383,3 +384,10 @@ export default function SettingsOrg() {
 }
 
 SettingsOrg.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps([
+  "settings",
+  "settings-org",
+  "section-incident",
+  "section-members",
+]);

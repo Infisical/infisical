@@ -1,6 +1,6 @@
 import { type ChangeEvent, type DragEvent, useState } from "react";
 import Image from "next/image";
-import useTranslation from "next-translate/useTranslation";
+import { useTranslation } from "next-i18next";
 import { faUpload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 

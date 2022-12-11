@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import useTranslation from "next-translate/useTranslation";
+import { useTranslation } from "next-i18next";
 import { faCheck, faPlus } from "@fortawesome/free-solid-svg-icons";
 
 import Button from "~/components/basic/buttons/Button";
@@ -9,6 +9,7 @@ import AddServiceTokenDialog from "~/components/basic/dialog/AddServiceTokenDial
 import InputField from "~/components/basic/InputField";
 import ServiceTokenTable from "~/components/basic/table/ServiceTokenTable";
 import NavHeader from "~/components/navigation/NavHeader";
+import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
 import getServiceTokens from "../../api/serviceToken/getServiceTokens";
 import deleteWorkspace from "../../api/workspace/deleteWorkspace";
@@ -280,3 +281,9 @@ export default function SettingsBasic() {
 }
 
 SettingsBasic.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps([
+  "settings",
+  "settings-project",
+  "section-token",
+]);

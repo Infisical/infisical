@@ -2,9 +2,8 @@ import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/router";
-import setLanguage from "next-translate/setLanguage";
-import useTranslation from "next-translate/useTranslation";
+import Router, { useRouter } from "next/router";
+import { useTranslation } from "next-i18next";
 import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -13,16 +12,23 @@ import Error from "~/components/basic/Error";
 import InputField from "~/components/basic/InputField";
 import ListBox from "~/components/basic/Listbox";
 import attemptLogin from "~/utilities/attemptLogin";
+import { getTranslatedStaticProps } from "~/utilities/withTranslateProps";
 
 import getWorkspaces from "./api/workspace/getWorkspaces";
 
-export default function Login() {
+export default function Login(props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorLogin, setErrorLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { t, lang } = useTranslation("");
+  const { t } = useTranslation();
+  const lang = router.locale ?? "en";
+
+  const setLanguage = async (to) => {
+    Router.push("/login", "/login", { locale: to });
+    localStorage.setItem("lang", to);
+  };
 
   useEffect(async () => {
     let userWorkspace;
@@ -132,7 +138,7 @@ export default function Login() {
             <ListBox
               selected={lang}
               onChange={setLanguage}
-              data={["en-US", "ko-KR"]}
+              data={["en", "ko"]}
               width="full"
               text={`${t("common:language")}: `}
             />
@@ -150,3 +156,5 @@ export default function Login() {
     </div>
   );
 }
+
+export const getStaticProps = getTranslatedStaticProps(["auth", "login"]);

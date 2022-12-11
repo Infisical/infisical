@@ -2,7 +2,7 @@ import React, { Fragment, useCallback, useEffect, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import { useRouter } from "next/router";
-import useTranslation from "next-translate/useTranslation";
+import { useTranslation } from "next-i18next";
 import {
   faArrowDownAZ,
   faArrowDownZA,
@@ -35,6 +35,7 @@ import getSecretsForProject from "~/components/utilities/secrets/getSecretsForPr
 import pushKeys from "~/components/utilities/secrets/pushKeys";
 import pushKeysIntegration from "~/components/utilities/secrets/pushKeysIntegration";
 import guidGenerator from "~/utilities/randomId";
+import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
 import { envMapping } from "../../public/data/frequentConstants";
 import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
@@ -810,3 +811,5 @@ export default function Dashboard() {
 }
 
 Dashboard.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps(["dashboard"]);

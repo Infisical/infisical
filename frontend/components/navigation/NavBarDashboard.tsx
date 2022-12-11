@@ -2,7 +2,7 @@
 import React, { Fragment, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
-import useTranslation from "next-translate/useTranslation";
+import { TFunction, useTranslation } from "next-i18next";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
 import {
@@ -17,15 +17,16 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Menu, Transition } from "@headlessui/react";
 
+import logout from "~/pages/api/auth/Logout";
+
 import getOrganization from "../../pages/api/organization/GetOrg";
 import getOrganizations from "../../pages/api/organization/getOrgs";
 import getUser from "../../pages/api/user/getUser";
 import guidGenerator from "../utilities/randomId";
-import logout from "~/pages/api/auth/Logout";
 /**
  * @param {(key: string) => string} t
  */
-const supportOptions = (t) => [
+const supportOptions = (t: TFunction) => [
   [
     <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faSlack} />,
     t("nav:support.slack"),
@@ -69,7 +70,7 @@ export default function Navbar() {
   const [orgs, setOrgs] = useState([]);
   const [currentOrg, setCurrentOrg] = useState<ICurrentOrg | undefined>();
 
-  const { t } = useTranslation("");
+  const { t } = useTranslation();
 
   const supportOptionsList = useMemo(() => supportOptions(t), [t]);
 
@@ -128,7 +129,7 @@ export default function Navbar() {
                 <a
                   key={guidGenerator()}
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   href={String(url)}
                   className="font-normal text-gray-300 duration-200 rounded-md w-full flex items-center py-0.5"
                 >

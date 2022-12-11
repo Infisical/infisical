@@ -1,9 +1,9 @@
 /* eslint-disable no-unexpected-multiline */
 /* eslint-disable react-hooks/exhaustive-deps */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import useTranslation from "next-translate/useTranslation";
+import { useTranslation } from "next-i18next";
 import {
   faBookOpen,
   faGear,
@@ -130,31 +130,34 @@ export default function Layout({ children }: LayoutProps) {
     }
   }
 
-  const menuItems = [
-    {
-      href:
-        "/dashboard/" +
-        workspaceMapping[workspaceSelected as any] +
-        "?Development",
-      title: t("nav:menu.secrets"),
-      emoji: <FontAwesomeIcon icon={faKey} />,
-    },
-    {
-      href: "/users/" + workspaceMapping[workspaceSelected as any],
-      title: t("nav:menu.members"),
-      emoji: <FontAwesomeIcon icon={faUser} />,
-    },
-    {
-      href: "/integrations/" + workspaceMapping[workspaceSelected as any],
-      title: t("nav:menu.integrations"),
-      emoji: <FontAwesomeIcon icon={faPlug} />,
-    },
-    {
-      href: "/settings/project/" + workspaceMapping[workspaceSelected as any],
-      title: t("nav:menu.project-settings"),
-      emoji: <FontAwesomeIcon icon={faGear} />,
-    },
-  ];
+  const menuItems = useMemo(
+    () => [
+      {
+        href:
+          "/dashboard/" +
+          workspaceMapping[workspaceSelected as any] +
+          "?Development",
+        title: t("nav:menu.secrets"),
+        emoji: <FontAwesomeIcon icon={faKey} />,
+      },
+      {
+        href: "/users/" + workspaceMapping[workspaceSelected as any],
+        title: t("nav:menu.members"),
+        emoji: <FontAwesomeIcon icon={faUser} />,
+      },
+      {
+        href: "/integrations/" + workspaceMapping[workspaceSelected as any],
+        title: t("nav:menu.integrations"),
+        emoji: <FontAwesomeIcon icon={faPlug} />,
+      },
+      {
+        href: "/settings/project/" + workspaceMapping[workspaceSelected as any],
+        title: t("nav:menu.project-settings"),
+        emoji: <FontAwesomeIcon icon={faGear} />,
+      },
+    ],
+    [t]
+  );
 
   useEffect(() => {
     // Put a user in a workspace if they're not in one yet

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
-import useTranslation from "next-translate/useTranslation";
+import { useTranslation } from "next-i18next";
 
 import Plan from "~/components/billing/Plan";
 import NavHeader from "~/components/navigation/NavHeader";
 import { STRIPE_PRODUCT_PRO, STRIPE_PRODUCT_STARTER } from "~/utilities/config";
+import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
 import getOrganizationSubscriptions from "../../api/organization/GetOrgSubscription";
 import getOrganizationUsers from "../../api/organization/GetOrgUsers";
@@ -112,3 +113,8 @@ export default function SettingsBilling() {
 }
 
 SettingsBilling.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps([
+  "settings",
+  "billing",
+]);

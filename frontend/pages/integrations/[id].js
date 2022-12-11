@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import { useRouter } from "next/router";
-import useTranslation from "next-translate/useTranslation";
+import { useTranslation } from "next-i18next";
 import {
   faArrowRight,
   faCheck,
@@ -17,6 +17,7 @@ import NavHeader from "~/components/navigation/NavHeader";
 import getSecretsForProject from "~/components/utilities/secrets/getSecretsForProject";
 import pushKeysIntegration from "~/components/utilities/secrets/pushKeysIntegration";
 import guidGenerator from "~/utilities/randomId";
+import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
 import {
   envMapping,
@@ -398,3 +399,7 @@ export default function Integrations() {
 }
 
 Integrations.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps([
+  "integrations",
+]);

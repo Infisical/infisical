@@ -1,7 +1,7 @@
 import { Fragment, useState } from "react";
 import { useRouter } from "next/router";
 import Trans from "next-translate/Trans";
-import useTranslation from "next-translate/useTranslation";
+import { useTranslation } from "next-i18next";
 import { Dialog, Transition } from "@headlessui/react";
 
 import Button from "../buttons/Button";

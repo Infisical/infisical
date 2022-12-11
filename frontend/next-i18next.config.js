@@ -8,18 +8,7 @@ module.exports = {
   debug: process.env.NODE_ENV === "development",
   i18n: {
     defaultLocale: "en",
-    locales: ["en", "de"],
-  },
-  /** To avoid issues when deploying to some paas (vercel...) */
-  //   localePath:
-  //     typeof window === "undefined"
-  //       ? require("path").resolve("./public/locales")
-  //       : "/locales",
-  localePath: (locale, namespace, missing) => {
-    const data = JSON.parse(
-      require("path").resolve(`./public/locales/${locale}.json`)
-    );
-    return data.default[namespace];
+    locales: ["en", "ko"],
   },
 
   reloadOnPrerender: process.env.NODE_ENV === "development",

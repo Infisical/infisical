@@ -1,5 +1,4 @@
 const { i18n } = require("./next-i18next.config.js");
-const nextTranslate = require("next-translate");
 
 const ContentSecurityPolicy = `
 	default-src 'self';

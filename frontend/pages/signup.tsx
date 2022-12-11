@@ -20,8 +20,8 @@ import checkEmailVerificationCode from "./api/auth/CheckEmailVerificationCode";
 import completeAccountInformationSignup from "./api/auth/CompleteAccountInformationSignup";
 import sendVerificationEmail from "./api/auth/SendVerificationEmail";
 import getWorkspaces from "./api/workspace/getWorkspaces";
-import useTranslation from "next-translate/useTranslation";
-import Trans from "next-translate/Trans";
+import { Trans, useTranslation } from "next-i18next";
+import { getTranslatedStaticProps } from "~/components/utilities/withTranslateProps";
 
 // const ReactCodeInput = dynamic(import("react-code-input"));
 const nacl = require("tweetnacl");
@@ -369,9 +369,11 @@ export default function SignUp() {
           type="name"
           value={firstName}
           isRequired
-          errorText={t("common:validate-required", {
-            name: t("common:first-name"),
-          })}
+          errorText={
+            t("common:validate-required", {
+              name: t("common:first-name"),
+            }) as string
+          }
           error={firstNameError}
         />
       </div>
@@ -382,15 +384,17 @@ export default function SignUp() {
           type="name"
           value={lastName}
           isRequired
-          errorText={t("common:validate-required", {
-            name: t("common:last-name"),
-          })}
+          errorText={
+            t("common:validate-required", {
+              name: t("common:last-name"),
+            }) as string
+          }
           error={lastNameError}
         />
       </div>
       <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
         <InputField
-          label={t("form-password:password")}
+          label={t("section-password:password")}
           onChangeHandler={(password: string) => {
             setPassword(password);
             passwordCheck({
@@ -413,7 +417,7 @@ export default function SignUp() {
         passwordErrorNumber ? (
           <div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
             <div className={`text-gray-400 text-sm mb-1`}>
-              {t("form-password:validate-base")}
+              {t("section-password:validate-base")}
             </div>
             <div className="flex flex-row justify-start items-center ml-1">
               {passwordErrorLength ? (
@@ -432,7 +436,7 @@ export default function SignUp() {
                   passwordErrorLength ? "text-gray-400" : "text-gray-600"
                 } text-sm`}
               >
-                {t("form-password:validate-length")}
+                {t("section-password:validate-length")}
               </div>
             </div>
             <div className="flex flex-row justify-start items-center ml-1">
@@ -452,7 +456,7 @@ export default function SignUp() {
                   passwordErrorLowerCase ? "text-gray-400" : "text-gray-600"
                 } text-sm`}
               >
-                {t("form-password:validate-case")}
+                {t("section-password:validate-case")}
               </div>
             </div>
             <div className="flex flex-row justify-start items-center ml-1">
@@ -472,7 +476,7 @@ export default function SignUp() {
                   passwordErrorNumber ? "text-gray-400" : "text-gray-600"
                 } text-sm`}
               >
-                {t("form-password:validate-number")}
+                {t("section-password:validate-number")}
               </div>
             </div>
           </div>
@@ -544,8 +548,11 @@ export default function SignUp() {
         <title>{t("common:head-title", { title: t("signup:title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("signup:og-title")} />
-        <meta name="og:description" content={t("signup:og-description")} />
+        <meta property="og:title" content={t("signup:og-title") as string} />
+        <meta
+          name="og:description"
+          content={t("signup:og-description") as string}
+        />
       </Head>
       <div className="flex flex-col justify-center items-center">
         <Link href="/">
@@ -563,3 +570,9 @@ export default function SignUp() {
     </div>
   );
 }
+
+export const getStaticProps = getTranslatedStaticProps([
+  "auth",
+  "signup",
+  "section-password",
+]);
