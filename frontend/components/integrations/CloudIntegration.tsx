@@ -28,7 +28,6 @@ const CloudIntegration = ({
     deleteIntegrationAuth,
     authorizations
 }: CloudIntegration) => {
-    console.log('cio', integration);
     return (
         <div
         className={`relative ${

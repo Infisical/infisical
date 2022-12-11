@@ -18,30 +18,6 @@ import {
   faPerson,
   faPlus,
   faShuffle,
-<<<<<<< HEAD
-  faX,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Menu, Transition } from "@headlessui/react";
-
-import Button from "~/components/basic/buttons/Button";
-import ListBox from "~/components/basic/Listbox";
-import BottonRightPopup from "~/components/basic/popups/BottomRightPopup";
-import { useNotificationContext } from "~/components/context/Notifications/NotificationProvider";
-import DashboardInputField from "~/components/dashboard/DashboardInputField";
-import DropZone from "~/components/dashboard/DropZone";
-import NavHeader from "~/components/navigation/NavHeader";
-import getSecretsForProject from "~/components/utilities/secrets/getSecretsForProject";
-import pushKeys from "~/components/utilities/secrets/pushKeys";
-import guidGenerator from "~/utilities/randomId";
-
-import { envMapping } from "../../public/data/frequentConstants";
-import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
-import getUser from "../api/user/getUser";
-import checkUserAction from "../api/userActions/checkUserAction";
-import registerUserAction from "../api/userActions/registerUserAction";
-import getWorkspaces from "../api/workspace/getWorkspaces";
-=======
   faX
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -65,7 +41,6 @@ import getUser from '../api/user/getUser';
 import checkUserAction from '../api/userActions/checkUserAction';
 import registerUserAction from '../api/userActions/registerUserAction';
 import getWorkspaces from '../api/workspace/getWorkspaces';
->>>>>>> 158c51ff3cbcd9a8eab6c44e728232d79a1cbab9
 
 /**
  * This component represent a single row for an environemnt variable on the dashboard
@@ -426,32 +401,6 @@ export default function Dashboard() {
     setButtonReady(false);
     pushKeys({ obj, workspaceId: router.query.id, env });
 
-<<<<<<< HEAD
-=======
-    /**
-     * Check which integrations are active for this project and environment
-     * If there are any, update environment variables for those integrations
-     */
-    let integrations = await getWorkspaceIntegrations({
-      workspaceId: router.query.id
-    });
-    integrations.map(async (integration) => {
-      if (
-        envMapping[env] == integration.environment &&
-        integration.isActive == true
-      ) {
-        let objIntegration = Object.assign(
-          {},
-          ...data.map((row) => ({ [row[2]]: row[3] }))
-        );
-        await pushKeysIntegration({
-          obj: objIntegration,
-          integrationId: integration._id
-        });
-      }
-    });
-
->>>>>>> 158c51ff3cbcd9a8eab6c44e728232d79a1cbab9
     // If this user has never saved environment variables before, show them a prompt to read docs
     if (!hasUserEverPushed) {
       setCheckDocsPopUpVisible(true);

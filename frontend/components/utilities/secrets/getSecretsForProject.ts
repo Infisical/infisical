@@ -48,13 +48,8 @@ const getSecretsForProject = async ({
         publicKey: file.key.sender.publicKey,
         privateKey: PRIVATE_KEY
       });
-<<<<<<< HEAD:frontend/components/utilities/secrets/getSecretsForProject.js
-      
-      file.secrets.map((secretPair) => {
-=======
 
       file.secrets.map((secretPair: any) => {
->>>>>>> 158c51ff3cbcd9a8eab6c44e728232d79a1cbab9:frontend/components/utilities/secrets/getSecretsForProject.ts
         // decrypt .env file with symmetric key
         const plainTextKey = decryptSymmetric({
           ciphertext: secretPair.secretKey.ciphertext,

@@ -74,38 +74,38 @@ export default function Integrations() {
    * 4. Send encrypted project key to backend and set bot status to active
    */
   const handleBotActivate = async () => {
+    let botKey;
     try {
-      const key = await getLatestFileKey({ workspaceId: router.query.id });
 
       if (bot) {
         // case: there is a bot
-          const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
-          
-          const WORKSPACE_KEY = decryptAssymmetric({
-            ciphertext: key.latestKey.encryptedKey,
-            nonce: key.latestKey.nonce,
-            publicKey: key.latestKey.sender.publicKey,
-            privateKey: PRIVATE_KEY
-          });
+        const key = await getLatestFileKey({ workspaceId: router.query.id });
+        const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
+        
+        const WORKSPACE_KEY = decryptAssymmetric({
+          ciphertext: key.latestKey.encryptedKey,
+          nonce: key.latestKey.nonce,
+          publicKey: key.latestKey.sender.publicKey,
+          privateKey: PRIVATE_KEY
+        });
 
-          const { ciphertext, nonce } = encryptAssymmetric({
-            plaintext: WORKSPACE_KEY,
-            publicKey: bot.publicKey,
-            privateKey: PRIVATE_KEY
-          });
+        const { ciphertext, nonce } = encryptAssymmetric({
+          plaintext: WORKSPACE_KEY,
+          publicKey: bot.publicKey,
+          privateKey: PRIVATE_KEY
+        });
 
-          botKey = {
-            encryptedKey: ciphertext,
-            nonce
-          }
-          
-          // case: bot is not active
-          setBot((await setBotActiveStatus({
-            botId: bot._id,
-            isActive: bot.isActive ? false : true,
-            botKey
-          })).bot);
+        botKey = {
+          encryptedKey: ciphertext,
+          nonce
         }
+        
+        setBot((await setBotActiveStatus({
+          botId: bot._id,
+          isActive: bot.isActive ? false : true,
+          botKey
+        })).bot);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -115,6 +115,9 @@ export default function Integrations() {
    * Start integration for a given integration option [integrationOption]
    * @param {Object} obj 
    * @param {Object} obj.integrationOption - an integration option
+   * @param {String} obj.name
+   * @param {String} obj.type
+   * @param {String} obj.docsLink
    * @returns 
    */
   const handleIntegrationOption = async ({ integrationOption }) => {
@@ -122,20 +125,23 @@ export default function Integrations() {
     
     // generate CSRF token for OAuth2 code-token exchange integrations
     const csrfToken = crypto.randomBytes(16).toString("hex");
+    localStorage.setItem('latestCSRFToken', csrfToken);
     
     switch (integrationOption.name) {
       case 'Heroku':
         window.location = `https://id.heroku.com/oauth/authorize?client_id=7b1311a1-1cb2-4938-8adf-f37a399ec41b&response_type=code&scope=write-protected&state=${csrfToken}`;
         return;
     }
-    
   }
-
+  
   /**
-   * Call [handleIntegrationOption] if bot is active, else open dialog for user to grant
-   * permission to share secretes with Infisical prior to starting any integration
+   * Open dialog to activate bot if bot is not active. 
+   * Otherwise, start integration [integrationOption]
    * @param {Object} obj 
-   * @param {String} obj.integrationOption - an integration option
+   * @param {Object} obj.integrationOption - an integration option
+   * @param {String} obj.name
+   * @param {String} obj.type
+   * @param {String} obj.docsLink
    * @returns 
    */
   const integrationOptionPress = ({ integrationOption }) => {

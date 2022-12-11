@@ -5,6 +5,7 @@ const queryString = require("query-string");
 import AuthorizeIntegration from "./api/integrations/authorizeIntegration";
 
 export default function Heroku() {
+  console.log('HEROKU PAGE');
   const router = useRouter();
   const parsedUrl = queryString.parse(router.asPath.split("?")[1]);
   const code = parsedUrl.code;
@@ -16,7 +17,11 @@ export default function Heroku() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(async () => {
     try {
+      console.log('A');
+      console.log(state);
+      console.log(localStorage.getItem('latestCSRFToken'));
       if (state == localStorage.getItem("latestCSRFToken")) {
+        console.log('B');
         await AuthorizeIntegration({
           workspaceId: localStorage.getItem("projectData.id"),
           code,
@@ -25,6 +30,7 @@ export default function Heroku() {
         router.push("/integrations/" + localStorage.getItem("projectData.id"));
       }
     } catch (error) {
+      console.error(error);
       console.log("Error - Not logged in yet");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

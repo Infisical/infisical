@@ -1,4 +1,8 @@
-import SecurityClient from "~/utilities/SecurityClient.js";
+import SecurityClient from "~/utilities/SecurityClient";
+
+interface Props {
+  workspaceId: string;
+}
 
 /**
  * This function fetches the bot for a project
@@ -6,7 +10,7 @@ import SecurityClient from "~/utilities/SecurityClient.js";
  * @param {String} obj.workspaceId
  * @returns
  */
-const getBot = async ({ workspaceId }) => {
+const getBot = async ({ workspaceId }: Props) => {
   return SecurityClient.fetchCall(
       "/api/v1/bot/" + workspaceId,
     {
@@ -16,7 +20,7 @@ const getBot = async ({ workspaceId }) => {
         }
     }
   ).then(async (res) => {
-    if (res.status == 200) {
+    if (res && res.status == 200) {
       return await res.json();
     } else {
       console.log("Failed to get bot for project");
