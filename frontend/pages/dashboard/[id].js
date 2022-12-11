@@ -266,9 +266,12 @@ export default function Dashboard() {
    * Reorder rows alphabetically or in the opprosite order
    */
   const reorderRows = () => {
-    setSortMethod(
-      sortMethod == "alphabetical" ? "-alphabetical" : "alphabetical"
+    setSortMethod(prevSort =>
+      prevSort == "alphabetical"
+        ? "-alphabetical"
+        : "alphabetical"
     );
+
     sortValuesHandler()
   };
 
@@ -404,9 +407,8 @@ export default function Dashboard() {
       });
     }
 
-    // Once "Save changed is clicked", disable that button and sort values
+    // Once "Save changed is clicked", disable that button
     setButtonReady(false);
-    sortValuesHandler()
     pushKeys({ obj, workspaceId: router.query.id, env });
 
     /**
@@ -449,8 +451,6 @@ export default function Dashboard() {
   };
 
   const sortValuesHandler = () => {
-    console.log(sortMethod)
-
     const sortedData = data.sort((a, b) =>
       sortMethod == "alphabetical"
         ? a.key.localeCompare(b.key)
@@ -600,7 +600,7 @@ export default function Dashboard() {
                     </div>
                     <div className="ml-2 min-w-max flex flex-row items-start justify-start">
                       <Button
-                        onButtonPressed={reorderRows}
+                        onButtonPressed={() => reorderRows()}
                         color="mineshaft"
                         size="icon-md"
                         icon={
