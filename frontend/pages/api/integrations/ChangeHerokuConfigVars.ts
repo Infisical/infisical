@@ -2,8 +2,18 @@ import SecurityClient from '~/utilities/SecurityClient';
 
 interface Props {
   integrationId: string;
-  key: string;
-  secrets: string;
+  key: { encryptedKey: any; nonce: any };
+  secrets: {
+    ciphertextKey: any;
+    ivKey: any;
+    tagKey: any;
+    hashKey: any;
+    ciphertextValue: any;
+    ivValue: any;
+    tagValue: any;
+    hashValue: any;
+    type: string;
+  }[];
 }
 
 const changeHerokuConfigVars = ({ integrationId, key, secrets }: Props) => {

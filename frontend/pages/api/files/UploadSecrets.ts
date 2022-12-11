@@ -2,7 +2,7 @@ import SecurityClient from '~/utilities/SecurityClient';
 
 interface Props {
   workspaceId: string;
-  secrets: string;
+  secrets: any;
   keys: string;
   environment: string;
 }

@@ -2,6 +2,8 @@ import React from 'react';
 
 import StripeRedirect from '~/pages/api/organization/StripeRedirect';
 
+import { tempLocalStorage } from '../utilities/checks/tempLocalStorage';
+
 interface Props {
   plan: {
     name: string;
@@ -66,7 +68,7 @@ export default function Plan({ plan }: Props) {
                 <button
                   onClick={() =>
                     StripeRedirect({
-                      orgId: localStorage.getItem('orgData.id')
+                      orgId: tempLocalStorage('orgData.id')
                     })
                   }
                 >
