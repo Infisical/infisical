@@ -1,7 +1,7 @@
-import React, { Fragment, useCallback, useEffect, useState } from "react";
-import Head from "next/head";
-import Image from "next/image";
-import { useRouter } from "next/router";
+import React, { Fragment, useCallback, useEffect, useState } from 'react';
+import Head from 'next/head';
+import Image from 'next/image';
+import { useRouter } from 'next/router';
 import {
   faArrowDownAZ,
   faArrowDownZA,
@@ -18,6 +18,7 @@ import {
   faPerson,
   faPlus,
   faShuffle,
+<<<<<<< HEAD
   faX,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -40,6 +41,31 @@ import getUser from "../api/user/getUser";
 import checkUserAction from "../api/userActions/checkUserAction";
 import registerUserAction from "../api/userActions/registerUserAction";
 import getWorkspaces from "../api/workspace/getWorkspaces";
+=======
+  faX
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Menu, Transition } from '@headlessui/react';
+
+import Button from '~/components/basic/buttons/Button';
+import ListBox from '~/components/basic/Listbox';
+import BottonRightPopup from '~/components/basic/popups/BottomRightPopup';
+import { useNotificationContext } from '~/components/context/Notifications/NotificationProvider';
+import DashboardInputField from '~/components/dashboard/DashboardInputField';
+import DropZone from '~/components/dashboard/DropZone';
+import NavHeader from '~/components/navigation/NavHeader';
+import getSecretsForProject from '~/components/utilities/secrets/getSecretsForProject';
+import pushKeys from '~/components/utilities/secrets/pushKeys';
+import pushKeysIntegration from '~/components/utilities/secrets/pushKeysIntegration';
+import guidGenerator from '~/utilities/randomId';
+
+import { envMapping } from '../../public/data/frequentConstants';
+import getWorkspaceIntegrations from '../api/integrations/getWorkspaceIntegrations';
+import getUser from '../api/user/getUser';
+import checkUserAction from '../api/userActions/checkUserAction';
+import registerUserAction from '../api/userActions/registerUserAction';
+import getWorkspaces from '../api/workspace/getWorkspaces';
+>>>>>>> 158c51ff3cbcd9a8eab6c44e728232d79a1cbab9
 
 /**
  * This component represent a single row for an environemnt variable on the dashboard
@@ -60,7 +86,7 @@ const KeyPair = ({
   modifyValue,
   modifyVisibility,
   isBlurred,
-  duplicates,
+  duplicates
 }) => {
   const [randomStringLength, setRandomStringLength] = useState(32);
 
@@ -113,7 +139,7 @@ const KeyPair = ({
               <div
                 onClick={() =>
                   modifyVisibility(
-                    keyPair[4] == "personal" ? "shared" : "personal",
+                    keyPair[4] == 'personal' ? 'shared' : 'personal',
                     keyPair[1]
                   )
                 }
@@ -121,10 +147,10 @@ const KeyPair = ({
               >
                 <FontAwesomeIcon
                   className="text-lg pl-1.5 pr-3"
-                  icon={keyPair[4] == "personal" ? faPeopleGroup : faPerson}
+                  icon={keyPair[4] == 'personal' ? faPeopleGroup : faPerson}
                 />
                 <div className="text-sm">
-                  {keyPair[4] == "personal" ? "Make Shared" : "Make Personal"}
+                  {keyPair[4] == 'personal' ? 'Make Shared' : 'Make Personal'}
                 </div>
               </div>
               <div
@@ -137,7 +163,7 @@ const KeyPair = ({
                     modifyValue(
                       [...Array(randomStringLength)]
                         .map(() => Math.floor(Math.random() * 16).toString(16))
-                        .join(""),
+                        .join(''),
                       keyPair[1]
                     );
                   }
@@ -146,7 +172,7 @@ const KeyPair = ({
               >
                 <FontAwesomeIcon
                   className="text-lg pl-1.5 pr-3"
-                  icon={keyPair[3] == "" ? faPlus : faShuffle}
+                  icon={keyPair[3] == '' ? faPlus : faShuffle}
                 />
                 <div className="text-sm justify-between flex flex-row w-full">
                   <p>Generate Random Hex</p>
@@ -209,21 +235,21 @@ export default function Dashboard() {
   const [fileState, setFileState] = useState([]);
   const [buttonReady, setButtonReady] = useState(false);
   const router = useRouter();
-  const [workspaceId, setWorkspaceId] = useState("");
+  const [workspaceId, setWorkspaceId] = useState('');
   const [blurred, setBlurred] = useState(true);
   const [isKeyAvailable, setIsKeyAvailable] = useState(true);
   const [env, setEnv] = useState(
-    router.asPath.split("?").length == 1
-      ? "Development"
-      : Object.keys(envMapping).includes(router.asPath.split("?")[1])
-      ? router.asPath.split("?")[1]
-      : "Development"
+    router.asPath.split('?').length == 1
+      ? 'Development'
+      : Object.keys(envMapping).includes(router.asPath.split('?')[1])
+      ? router.asPath.split('?')[1]
+      : 'Development'
   );
   const [isNew, setIsNew] = useState(false);
-  const [searchKeys, setSearchKeys] = useState("");
+  const [searchKeys, setSearchKeys] = useState('');
   const [errorDragAndDrop, setErrorDragAndDrop] = useState(false);
   const [projectIdCopied, setProjectIdCopied] = useState(false);
-  const [sortMethod, setSortMethod] = useState("alphabetical");
+  const [sortMethod, setSortMethod] = useState('alphabetical');
   const [checkDocsPopUpVisible, setCheckDocsPopUpVisible] = useState(false);
   const [hasUserEverPushed, setHasUserEverPushed] = useState(false);
 
@@ -247,16 +273,16 @@ export default function Dashboard() {
   // prompt the user if they try and leave with unsaved changes
   useEffect(() => {
     const warningText =
-      "Do you want to save your results before leaving this page?";
+      'Do you want to save your results before leaving this page?';
     const handleWindowClose = (e) => {
       if (!buttonReady) return;
       e.preventDefault();
       return (e.returnValue = warningText);
     };
-    window.addEventListener("beforeunload", handleWindowClose);
+    window.addEventListener('beforeunload', handleWindowClose);
     // router.events.on('routeChangeStart', beforeRouteHandler);
     return () => {
-      window.removeEventListener("beforeunload", handleWindowClose);
+      window.removeEventListener('beforeunload', handleWindowClose);
       // router.events.off('routeChangeStart', beforeRouteHandler);
     };
   }, [buttonReady]);
@@ -266,7 +292,7 @@ export default function Dashboard() {
    */
   const reorderRows = () => {
     setSortMethod(
-      sortMethod == "alphabetical" ? "-alphabetical" : "alphabetical"
+      sortMethod == 'alphabetical' ? '-alphabetical' : 'alphabetical'
     );
   };
 
@@ -276,13 +302,13 @@ export default function Dashboard() {
         let userWorkspaces = await getWorkspaces();
         const listWorkspaces = userWorkspaces.map((workspace) => workspace._id);
         if (
-          !listWorkspaces.includes(router.asPath.split("/")[2].split("?")[0])
+          !listWorkspaces.includes(router.asPath.split('/')[2].split('?')[0])
         ) {
-          router.push("/dashboard/" + listWorkspaces[0]);
+          router.push('/dashboard/' + listWorkspaces[0]);
         }
 
-        if (env != router.asPath.split("?")[1]) {
-          router.push(router.asPath.split("?")[0] + "?" + env);
+        if (env != router.asPath.split('?')[1]) {
+          router.push(router.asPath.split('?')[0] + '?' + env);
         }
         setBlurred(true);
         setWorkspaceId(router.query.id);
@@ -292,7 +318,7 @@ export default function Dashboard() {
           setFileState,
           setIsKeyAvailable,
           setData,
-          workspaceId: router.query.id,
+          workspaceId: router.query.id
         });
 
         const user = await getUser();
@@ -303,11 +329,11 @@ export default function Dashboard() {
         );
 
         let userAction = await checkUserAction({
-          action: "first_time_secrets_pushed",
+          action: 'first_time_secrets_pushed'
         });
         setHasUserEverPushed(userAction ? true : false);
       } catch (error) {
-        console.log("Error", error);
+        console.log('Error', error);
         setData([]);
       }
     })();
@@ -316,7 +342,7 @@ export default function Dashboard() {
 
   const addRow = () => {
     setIsNew(false);
-    setData([...data, [guidGenerator(), data.length, "", "", "shared"]]);
+    setData([...data, [guidGenerator(), data.length, '', '', 'shared']]);
   };
 
   const deleteRow = (id) => {
@@ -384,15 +410,15 @@ export default function Dashboard() {
 
     if (nameErrors) {
       return createNotification({
-        text: "Solve all name errors first!",
-        type: "error",
+        text: 'Solve all name errors first!',
+        type: 'error'
       });
     }
 
     if (duplicatesExist) {
       return createNotification({
         text: "Your secrets weren't saved; please fix the conflicts first.",
-        type: "error",
+        type: 'error'
       });
     }
 
@@ -400,10 +426,36 @@ export default function Dashboard() {
     setButtonReady(false);
     pushKeys({ obj, workspaceId: router.query.id, env });
 
+<<<<<<< HEAD
+=======
+    /**
+     * Check which integrations are active for this project and environment
+     * If there are any, update environment variables for those integrations
+     */
+    let integrations = await getWorkspaceIntegrations({
+      workspaceId: router.query.id
+    });
+    integrations.map(async (integration) => {
+      if (
+        envMapping[env] == integration.environment &&
+        integration.isActive == true
+      ) {
+        let objIntegration = Object.assign(
+          {},
+          ...data.map((row) => ({ [row[2]]: row[3] }))
+        );
+        await pushKeysIntegration({
+          obj: objIntegration,
+          integrationId: integration._id
+        });
+      }
+    });
+
+>>>>>>> 158c51ff3cbcd9a8eab6c44e728232d79a1cbab9
     // If this user has never saved environment variables before, show them a prompt to read docs
     if (!hasUserEverPushed) {
       setCheckDocsPopUpVisible(true);
-      await registerUserAction({ action: "first_time_secrets_pushed" });
+      await registerUserAction({ action: 'first_time_secrets_pushed' });
     }
   };
 
@@ -418,12 +470,12 @@ export default function Dashboard() {
 
   // This function downloads the secrets as a .env file
   const download = () => {
-    const file = data.map((item) => [item[2], item[3]].join("=")).join("\n");
+    const file = data.map((item) => [item[2], item[3]].join('=')).join('\n');
     const blob = new Blob([file]);
     const fileDownloadUrl = URL.createObjectURL(blob);
-    let alink = document.createElement("a");
+    let alink = document.createElement('a');
     alink.href = fileDownloadUrl;
-    alink.download = envMapping[env] + ".env";
+    alink.download = envMapping[env] + '.env';
     alink.click();
   };
 
@@ -435,7 +487,7 @@ export default function Dashboard() {
    * This function copies the project id to the clipboard
    */
   function copyToClipboard() {
-    var copyText = document.getElementById("myInput");
+    var copyText = document.getElementById('myInput');
 
     copyText.select();
     copyText.setSelectionRange(0, 99999); // For mobile devices
@@ -478,7 +530,7 @@ export default function Dashboard() {
               {data?.length == 0 && (
                 <ListBox
                   selected={env}
-                  data={["Development", "Staging", "Production", "Testing"]}
+                  data={['Development', 'Staging', 'Production', 'Testing']}
                   // ref={useRef(123)}
                   onChange={setEnv}
                   className="z-40"
@@ -533,7 +585,7 @@ export default function Dashboard() {
                   <>
                     <ListBox
                       selected={env}
-                      data={["Development", "Staging", "Production", "Testing"]}
+                      data={['Development', 'Staging', 'Production', 'Testing']}
                       // ref={useRef(123)}
                       onChange={setEnv}
                       className="z-40"
@@ -547,7 +599,7 @@ export default function Dashboard() {
                         className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
                         value={searchKeys}
                         onChange={(e) => setSearchKeys(e.target.value)}
-                        placeholder={"Search keys..."}
+                        placeholder={'Search keys...'}
                       />
                     </div>
                     <div className="ml-2 min-w-max flex flex-row items-start justify-start">
@@ -556,7 +608,7 @@ export default function Dashboard() {
                         color="mineshaft"
                         size="icon-md"
                         icon={
-                          sortMethod == "alphabetical"
+                          sortMethod == 'alphabetical'
                             ? faArrowDownAZ
                             : faArrowDownZA
                         }
@@ -627,10 +679,10 @@ export default function Dashboard() {
                           keyPair[2]
                             .toLowerCase()
                             .includes(searchKeys.toLowerCase()) &&
-                          keyPair[4] == "personal"
+                          keyPair[4] == 'personal'
                       )
                       .sort((a, b) =>
-                        sortMethod == "alphabetical"
+                        sortMethod == 'alphabetical'
                           ? a[2].localeCompare(b[2])
                           : b[2].localeCompare(a[2])
                       )
@@ -656,7 +708,7 @@ export default function Dashboard() {
                 </div>
                 <div
                   className={`bg-white/5 mt-1 mb-2 rounded-md p-1 pb-2 max-w-5xl ${
-                    data?.length > 8 ? "h-3/4" : "h-min"
+                    data?.length > 8 ? 'h-3/4' : 'h-min'
                   }`}
                 >
                   <div className="sticky top-0 z-40 bg-bunker flex flex-row pl-4 pr-5 pt-4 pb-2 items-center justify-between text-gray-300 font-bold">
@@ -681,10 +733,10 @@ export default function Dashboard() {
                           keyPair[2]
                             .toLowerCase()
                             .includes(searchKeys.toLowerCase()) &&
-                          keyPair[4] == "shared"
+                          keyPair[4] == 'shared'
                       )
                       .sort((a, b) =>
-                        sortMethod == "alphabetical"
+                        sortMethod == 'alphabetical'
                           ? a[2].localeCompare(b[2])
                           : b[2].localeCompare(a[2])
                       )
@@ -742,10 +794,10 @@ export default function Dashboard() {
                     />
                   )}
                 {fileState.message ==
-                  "Failed membership validation for workspace" && (
+                  'Failed membership validation for workspace' && (
                   <p>You are not authorized to view this project.</p>
                 )}
-                {fileState.message == "Access needed to pull the latest file" ||
+                {fileState.message == 'Access needed to pull the latest file' ||
                   (!isKeyAvailable && (
                     <>
                       <FontAwesomeIcon

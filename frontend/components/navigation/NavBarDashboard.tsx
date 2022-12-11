@@ -1,10 +1,10 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react/jsx-key */
-import React, { Fragment, useEffect, useState } from "react";
-import Image from "next/image";
-import { useRouter } from "next/router";
-import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
-import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
+import React, { Fragment, useEffect, useState } from 'react';
+import Image from 'next/image';
+import { useRouter } from 'next/router';
+import { faGithub, faSlack } from '@fortawesome/free-brands-svg-icons';
+import { faCircleQuestion } from '@fortawesome/free-regular-svg-icons';
 import {
   faAngleDown,
   faBook,
@@ -12,39 +12,39 @@ import {
   faEnvelope,
   faGear,
   faPlus,
-  faRightFromBracket,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Menu, Transition } from "@headlessui/react";
+  faRightFromBracket
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Menu, Transition } from '@headlessui/react';
 
-import logout from "~/pages/api/auth/Logout";
-import getOrganization from "~/pages/api/organization/GetOrg";
-import getOrganizations from "~/pages/api/organization/getOrgs";
-import getUser from "~/pages/api/user/getUser";
+import logout from '~/pages/api/auth/Logout';
+import getOrganization from '~/pages/api/organization/GetOrg';
+import getOrganizations from '~/pages/api/organization/getOrgs';
+import getUser from '~/pages/api/user/getUser';
 
-import guidGenerator from "../utilities/randomId";
+import guidGenerator from '../utilities/randomId';
 
 const supportOptions = [
   [
     <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faSlack} />,
-    "Join Slack Forum",
-    "https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g",
+    'Join Slack Forum',
+    'https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g'
   ],
   [
     <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faBook} />,
-    "Read Docs",
-    "https://infisical.com/docs/getting-started/introduction",
+    'Read Docs',
+    'https://infisical.com/docs/getting-started/introduction'
   ],
   [
     <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faGithub} />,
-    "Open a GitHub Issue",
-    "https://github.com/Infisical/infisical-cli/issues",
+    'Open a GitHub Issue',
+    'https://github.com/Infisical/infisical-cli/issues'
   ],
   [
     <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faEnvelope} />,
-    "Send us an Email",
-    "mailto:support@infisical.com",
-  ],
+    'Send us an Email',
+    'mailto:support@infisical.com'
+  ]
 ];
 
 export interface ICurrentOrg {
@@ -58,7 +58,7 @@ export interface IUser {
 }
 
 /**
- * This is the navigation bar in the main app. 
+ * This is the navigation bar in the main app.
  * It has two main components: support options and user menu (inlcudes billing, logout, org/user settings)
  * @returns NavBar
  */
@@ -75,16 +75,16 @@ export default function Navbar() {
       const orgsData = await getOrganizations();
       setOrgs(orgsData);
       const currentOrg = await getOrganization({
-        orgId: String(localStorage.getItem("orgData.id")),
+        orgId: String(localStorage.getItem('orgData.id'))
       });
       setCurrentOrg(currentOrg);
     })();
   }, []);
 
   const closeApp = async () => {
-    console.log("Logging out...");
+    console.log('Logging out...');
     await logout();
-    router.push("/login");
+    router.push('/login');
   };
 
   return (
@@ -163,7 +163,7 @@ export default function Navbar() {
                 </div>
                 <div
                   onClick={() =>
-                    router.push("/settings/personal/" + router.query.id)
+                    router.push('/settings/personal/' + router.query.id)
                   }
                   className="flex flex-row items-center px-1 mx-1 my-1 hover:bg-white/5 cursor-pointer rounded-md"
                 >
@@ -173,11 +173,11 @@ export default function Navbar() {
                   <div className="flex items-center justify-between w-full">
                     <div>
                       <p className="text-gray-300 px-2 pt-1 text-sm">
-                        {" "}
+                        {' '}
                         {user?.firstName} {user?.lastName}
                       </p>
                       <p className="text-gray-400 px-2 pb-1 text-xs">
-                        {" "}
+                        {' '}
                         {user?.email}
                       </p>
                     </div>
@@ -194,7 +194,7 @@ export default function Navbar() {
                 </div>
                 <div
                   onClick={() =>
-                    router.push("/settings/org/" + router.query.id)
+                    router.push('/settings/org/' + router.query.id)
                   }
                   className="flex flex-row items-center px-2 mt-2 py-1 hover:bg-white/5 cursor-pointer rounded-md"
                 >
@@ -217,7 +217,7 @@ export default function Navbar() {
                 >
                   <div
                     onClick={() =>
-                      router.push("/settings/billing/" + router.query.id)
+                      router.push('/settings/billing/' + router.query.id)
                     }
                     className="mt-1 relative flex justify-start cursor-pointer select-none py-2 px-2 rounded-md text-gray-400 hover:bg-white/5 duration-200 hover:text-gray-200"
                   >
@@ -235,7 +235,7 @@ export default function Navbar() {
                   <div
                     onClick={() =>
                       router.push(
-                        "/settings/org/" + router.query.id + "?invite"
+                        '/settings/org/' + router.query.id + '?invite'
                       )
                     }
                     className="relative flex justify-start cursor-pointer select-none py-2 pl-10 pr-4 rounded-md text-gray-400 hover:bg-primary/100 duration-200 hover:text-black hover:font-semibold mt-1"
@@ -255,13 +255,14 @@ export default function Navbar() {
                   <div className="flex flex-col items-start px-1 mt-3 mb-2">
                     {orgs
                       .filter(
-                        (org : { _id: string }) => org._id != localStorage.getItem("orgData.id")
+                        (org: { _id: string }) =>
+                          org._id != localStorage.getItem('orgData.id')
                       )
-                      .map((org : { _id: string; name: string; }) => (
+                      .map((org: { _id: string; name: string }) => (
                         <div
                           key={guidGenerator()}
                           onClick={() => {
-                            localStorage.setItem("orgData.id", org._id);
+                            localStorage.setItem('orgData.id', org._id);
                             router.reload();
                           }}
                           className="flex flex-row justify-start items-center hover:bg-white/5 w-full p-1.5 cursor-pointer rounded-md"
@@ -286,8 +287,8 @@ export default function Navbar() {
                       onClick={closeApp}
                       className={`${
                         active
-                          ? "bg-red font-semibold text-white"
-                          : "text-gray-400"
+                          ? 'bg-red font-semibold text-white'
+                          : 'text-gray-400'
                       } group flex w-full items-center rounded-md px-2 py-2 text-sm`}
                     >
                       <div className="relative flex justify-start items-center cursor-pointer select-none">

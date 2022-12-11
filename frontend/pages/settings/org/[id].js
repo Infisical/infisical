@@ -1,62 +1,62 @@
-import React, { useEffect, useState } from "react";
-import Head from "next/head";
-import { useRouter } from "next/router";
+import React, { useEffect, useState } from 'react';
+import Head from 'next/head';
+import { useRouter } from 'next/router';
 import {
   faMagnifyingGlass,
   faPlus,
-  faX,
-} from "@fortawesome/free-solid-svg-icons";
-import { faCheck } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+  faX
+} from '@fortawesome/free-solid-svg-icons';
+import { faCheck } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import Button from "~/components/basic/buttons/Button";
-import AddIncidentContactDialog from "~/components/basic/dialog/AddIncidentContactDialog";
-import AddUserDialog from "~/components/basic/dialog/AddUserDialog";
-import InputField from "~/components/basic/InputField";
-import UserTable from "~/components/basic/table/UserTable";
-import NavHeader from "~/components/navigation/NavHeader";
-import guidGenerator from "~/utilities/randomId";
+import Button from '~/components/basic/buttons/Button';
+import AddIncidentContactDialog from '~/components/basic/dialog/AddIncidentContactDialog';
+import AddUserDialog from '~/components/basic/dialog/AddUserDialog';
+import InputField from '~/components/basic/InputField';
+import UserTable from '~/components/basic/table/UserTable';
+import NavHeader from '~/components/navigation/NavHeader';
+import guidGenerator from '~/utilities/randomId';
 
-import addUserToOrg from "../../api/organization/addUserToOrg";
-import deleteIncidentContact from "../../api/organization/deleteIncidentContact";
-import getIncidentContacts from "../../api/organization/getIncidentContacts";
-import getOrganization from "../../api/organization/GetOrg";
-import getOrganizationSubscriptions from "../../api/organization/GetOrgSubscription";
-import getOrganizationUsers from "../../api/organization/GetOrgUsers";
-import renameOrg from "../../api/organization/renameOrg";
-import getUser from "../../api/user/getUser";
-import deleteWorkspace from "../../api/workspace/deleteWorkspace";
-import getWorkspaces from "../../api/workspace/getWorkspaces";
+import addUserToOrg from '../../api/organization/addUserToOrg';
+import deleteIncidentContact from '../../api/organization/deleteIncidentContact';
+import getIncidentContacts from '../../api/organization/getIncidentContacts';
+import getOrganization from '../../api/organization/GetOrg';
+import getOrganizationSubscriptions from '../../api/organization/GetOrgSubscription';
+import getOrganizationUsers from '../../api/organization/GetOrgUsers';
+import renameOrg from '../../api/organization/renameOrg';
+import getUser from '../../api/user/getUser';
+import deleteWorkspace from '../../api/workspace/deleteWorkspace';
+import getWorkspaces from '../../api/workspace/getWorkspaces';
 
 export default function SettingsOrg() {
   const [buttonReady, setButtonReady] = useState(false);
   const router = useRouter();
-  const [orgName, setOrgName] = useState("");
-  const [emailUser, setEmailUser] = useState("");
-  const [workspaceToBeDeletedName, setWorkspaceToBeDeletedName] = useState("");
-  const [searchUsers, setSearchUsers] = useState("");
-  const [workspaceId, setWorkspaceId] = useState("");
+  const [orgName, setOrgName] = useState('');
+  const [emailUser, setEmailUser] = useState('');
+  const [workspaceToBeDeletedName, setWorkspaceToBeDeletedName] = useState('');
+  const [searchUsers, setSearchUsers] = useState('');
+  const [workspaceId, setWorkspaceId] = useState('');
   const [isAddIncidentContactOpen, setIsAddIncidentContactOpen] =
     useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(
-    router.asPath.split("?")[1] == "invite"
+    router.asPath.split('?')[1] == 'invite'
   );
   const [incidentContacts, setIncidentContacts] = useState([]);
-  const [searchIncidentContact, setSearchIncidentContact] = useState("");
+  const [searchIncidentContact, setSearchIncidentContact] = useState('');
   const [userList, setUserList] = useState();
-  const [personalEmail, setPersonalEmail] = useState("");
+  const [personalEmail, setPersonalEmail] = useState('');
   let workspaceIdTemp;
-  const [email, setEmail] = useState("");
-  const [currentPlan, setCurrentPlan] = useState("");
+  const [email, setEmail] = useState('');
+  const [currentPlan, setCurrentPlan] = useState('');
 
   useEffect(async () => {
     let org = await getOrganization({
-      orgId: localStorage.getItem("orgData.id"),
+      orgId: localStorage.getItem('orgData.id')
     });
     let orgData = org;
     setOrgName(orgData.name);
     let incidentContactsData = await getIncidentContacts(
-      localStorage.getItem("orgData.id")
+      localStorage.getItem('orgData.id')
     );
 
     setIncidentContacts(incidentContactsData?.map((contact) => contact.email));
@@ -66,7 +66,7 @@ export default function SettingsOrg() {
 
     workspaceIdTemp = router.query.id;
     let orgUsers = await getOrganizationUsers({
-      orgId: localStorage.getItem("orgData.id"),
+      orgId: localStorage.getItem('orgData.id')
     });
     setUserList(
       orgUsers.map((user) => ({
@@ -78,11 +78,11 @@ export default function SettingsOrg() {
         status: user?.status,
         userId: user.user?._id,
         membershipId: user._id,
-        publicKey: user.user?.publicKey,
+        publicKey: user.user?.publicKey
       }))
     );
     const subscriptions = await getOrganizationSubscriptions({
-      orgId: localStorage.getItem("orgData.id"),
+      orgId: localStorage.getItem('orgData.id')
     });
     setCurrentPlan(subscriptions.data[0].plan.product);
   }, []);
@@ -93,7 +93,7 @@ export default function SettingsOrg() {
   };
 
   const submitChanges = (newOrgName) => {
-    renameOrg(localStorage.getItem("orgData.id"), newOrgName);
+    renameOrg(localStorage.getItem('orgData.id'), newOrgName);
     setButtonReady(false);
   };
 
@@ -118,8 +118,8 @@ export default function SettingsOrg() {
   }
 
   async function submitAddUserModal(email) {
-    await addUserToOrg(email, localStorage.getItem("orgData.id"));
-    setEmail("");
+    await addUserToOrg(email, localStorage.getItem('orgData.id'));
+    setEmail('');
     setIsAddUserOpen(false);
     router.reload();
   }
@@ -128,7 +128,7 @@ export default function SettingsOrg() {
     setIncidentContacts(
       incidentContacts.filter((contact) => contact != incidentContact)
     );
-    deleteIncidentContact(localStorage.getItem("orgData.id"), incidentContact);
+    deleteIncidentContact(localStorage.getItem('orgData.id'), incidentContact);
   };
 
   /**
@@ -148,7 +148,7 @@ export default function SettingsOrg() {
       ) {
         await deleteWorkspace(router.query.id);
         let userWorkspaces = await getWorkspaces();
-        router.push("/dashboard/" + userWorkspaces[0]._id);
+        router.push('/dashboard/' + userWorkspaces[0]._id);
       }
     }
   };
@@ -241,7 +241,7 @@ export default function SettingsOrg() {
                     className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
                     value={searchUsers}
                     onChange={(e) => setSearchUsers(e.target.value)}
-                    placeholder={"Search members..."}
+                    placeholder={'Search members...'}
                   />
                 </div>
                 <div className="mt-2 ml-2 min-w-max flex flex-row items-start justify-start">
@@ -302,7 +302,7 @@ export default function SettingsOrg() {
                   className="pl-2 text-gray-400 rounded-tr-md bg-white/5 w-full h-full outline-none"
                   value={searchIncidentContact}
                   onChange={(e) => setSearchIncidentContact(e.target.value)}
-                  placeholder={"Search..."}
+                  placeholder={'Search...'}
                 />
               </div>
               {incidentContacts?.filter((email) =>
