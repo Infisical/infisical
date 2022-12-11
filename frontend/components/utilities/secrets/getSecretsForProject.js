@@ -68,9 +68,10 @@ const getSecretsForProject = async ({
     setFileState(tempFileState);
 
     setData(
-      tempFileState.map((line) => {
+      tempFileState.map((line, index) => {
         return {
           id: guidGenerator(),
+          pos: index,
           key: line["key"],
           value: line["value"],
           type: line["type"]

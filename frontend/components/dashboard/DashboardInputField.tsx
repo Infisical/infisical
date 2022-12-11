@@ -7,8 +7,8 @@ import guidGenerator from "../utilities/randomId";
 const REGEX = /([$]{.*?})/g;
 
 interface DashboardInputFieldProps {
-  id: string;
-  onChangeHandler: (value: string, id: string) => void;
+  position: number;
+  onChangeHandler: (value: string, position: number) => void;
   value: string;
   type: "varName" | "value";
   blurred: boolean;
@@ -18,7 +18,7 @@ interface DashboardInputFieldProps {
 /**
  * This component renders the input fields on the dashboard
  * @param {object} obj - the order number of a keyPair
- * @param {string} obj.id - the order number of a keyPair
+ * @param {number} obj.pos - the order number of a keyPair
  * @param {function} obj.onChangeHandler - what happens when the input is modified
  * @param {string} obj.type - whether the input field is for a Key Name or for a Key Value
  * @param {string} obj.value - value of the InputField
@@ -28,7 +28,7 @@ interface DashboardInputFieldProps {
  */
 
 const DashboardInputField = ({
-  id,
+  position,
   onChangeHandler,
   type,
   value,
@@ -57,7 +57,7 @@ const DashboardInputField = ({
         >
           <input
             onChange={(e) =>
-              onChangeHandler(e.target.value.toUpperCase(), id)
+              onChangeHandler(e.target.value.toUpperCase(), position)
             }
             type={type}
             value={value}
@@ -87,7 +87,7 @@ const DashboardInputField = ({
         >
           <input
             value={value}
-            onChange={(e) => onChangeHandler(e.target.value, id)}
+            onChange={(e) => onChangeHandler(e.target.value, position)}
             onScroll={syncScroll}
             className={`${
               blurred

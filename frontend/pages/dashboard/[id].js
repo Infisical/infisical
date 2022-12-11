@@ -73,7 +73,7 @@ const KeyPair = ({
             <DashboardInputField
               onChangeHandler={modifyKey}
               type="varName"
-              id={keyPair.id}
+              position={keyPair.pos}
               value={keyPair.key}
               duplicates={duplicates}
             />
@@ -84,7 +84,7 @@ const KeyPair = ({
             <DashboardInputField
               onChangeHandler={modifyValue}
               type="value"
-              id={keyPair.id}
+              position={keyPair.pos}
               value={keyPair.value}
               blurred={isBlurred}
             />
@@ -115,7 +115,7 @@ const KeyPair = ({
                 onClick={() =>
                   modifyVisibility(
                     keyPair.type == "personal" ? "shared" : "personal",
-                    keyPair.id
+                    keyPair.pos
                   )
                 }
                 className="relative flex justify-start items-center cursor-pointer select-none py-2 px-2 rounded-md text-gray-400 hover:bg-white/10 duration-200 hover:text-gray-200 w-full"
@@ -139,7 +139,7 @@ const KeyPair = ({
                       [...Array(randomStringLength)]
                         .map(() => Math.floor(Math.random() * 16).toString(16))
                         .join(""),
-                      keyPair.id
+                      keyPair.pos
                     );
                   }
                 }}
@@ -319,9 +319,10 @@ export default function Dashboard() {
   const addRow = () => {
     setIsNew(false);
     setData([...data, {
-      id:guidGenerator(), 
-      key:"", 
-      value:"", 
+      id:guidGenerator(),
+      pos:data.length,
+      key:"",
+      value:"",
       type:"shared"
     }]);
   };
@@ -331,41 +332,41 @@ export default function Dashboard() {
     setData(data.filter((row) => row.id !== id));
   };
 
-  const modifyValue = (value, id) => {
+  const modifyValue = (value, pos) => {
     setData((oldData) => {
-      oldData.find(data => data.id === id).value = value;
+      oldData[pos].value = value;
       return [...oldData];
     });
     setButtonReady(true);
   };
 
-  const modifyKey = (value, id) => {
+  const modifyKey = (value, pos) => {
     setData((oldData) => {
-      oldData.find(data => data.id === id).key = value;
+      oldData[pos].key = value;
       return [...oldData];
     });
     setButtonReady(true);
   };
 
-  const modifyVisibility = (value, id) => {
+  const modifyVisibility = (value, pos) => {
     setData((oldData) => {
-      oldData.find(data => data.id === id).type = value;
+      oldData[pos].type = value;
       return [...oldData];
     });
     setButtonReady(true);
   };
 
   // For speed purposes and better perforamance, we are using useCallback
-  const listenChangeValue = useCallback((value, id) => {
-    modifyValue(value, id);
+  const listenChangeValue = useCallback((value, pos) => {
+    modifyValue(value, pos);
   }, []);
 
-  const listenChangeKey = useCallback((value, id) => {
-    modifyKey(value, id);
+  const listenChangeKey = useCallback((value, pos) => {
+    modifyKey(value, pos);
   }, []);
 
-  const listenChangeVisibility = useCallback((value, id) => {
-    modifyVisibility(value, id);
+  const listenChangeVisibility = useCallback((value, pos) => {
+    modifyVisibility(value, pos);
   }, []);
 
   /**
@@ -448,17 +449,18 @@ export default function Dashboard() {
   };
 
   const sortValuesHandler = () => {
-    /**
-     * Since react's SetStateActionHandler optimises renders when values don't change 
-     * we have to map and return a new sorted list to force a render.
-     * @returns {sorted list}
-    */
+    console.log(sortMethod)
 
-    let sortedData = data.sort((a, b) =>
+    const sortedData = data.sort((a, b) =>
       sortMethod == "alphabetical"
         ? a.key.localeCompare(b.key)
         : b.key.localeCompare(a.key)
-    ).map((item) => item)
+    ).map((item, index) => {
+      return {
+        ...item, pos:index
+      }
+    })
+
     setData(sortedData)
   }
 
