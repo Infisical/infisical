@@ -45,7 +45,7 @@ import getWorkspaces from "../api/workspace/getWorkspaces";
 /**
  * This component represent a single row for an environemnt variable on the dashboard
  * @param {object} obj
- * @param {String[]} obj.keyPair - data related to the environment variable (index, key, value, public/private)
+ * @param {String[]} obj.keyPair - data related to the environment variable (id, key, value, public/private)
  * @param {function} obj.deleteRow - a function to delete a certain keyPair
  * @param {function} obj.modifyKey - modify the key of a certain environment variable
  * @param {function} obj.modifyValue - modify the value of a certain environment variable
@@ -73,7 +73,7 @@ const KeyPair = ({
             <DashboardInputField
               onChangeHandler={modifyKey}
               type="varName"
-              index={keyPair[1]}
+              id={keyPair.id}
               value={keyPair.key}
               duplicates={duplicates}
             />
@@ -84,7 +84,7 @@ const KeyPair = ({
             <DashboardInputField
               onChangeHandler={modifyValue}
               type="value"
-              index={keyPair[1]}
+              id={keyPair.id}
               value={keyPair.value}
               blurred={isBlurred}
             />
@@ -115,7 +115,7 @@ const KeyPair = ({
                 onClick={() =>
                   modifyVisibility(
                     keyPair.type == "personal" ? "shared" : "personal",
-                    keyPair[1]
+                    keyPair.id
                   )
                 }
                 className="relative flex justify-start items-center cursor-pointer select-none py-2 px-2 rounded-md text-gray-400 hover:bg-white/10 duration-200 hover:text-gray-200 w-full"
@@ -139,7 +139,7 @@ const KeyPair = ({
                       [...Array(randomStringLength)]
                         .map(() => Math.floor(Math.random() * 16).toString(16))
                         .join(""),
-                      keyPair[1]
+                      keyPair.id
                     );
                   }
                 }}
@@ -147,7 +147,7 @@ const KeyPair = ({
               >
                 <FontAwesomeIcon
                   className="text-lg pl-1.5 pr-3"
-                  icon={keyPair[3] == "" ? faPlus : faShuffle}
+                  icon={keyPair.value == "" ? faPlus : faShuffle}
                 />
                 <div className="text-sm justify-between flex flex-row w-full">
                   <p>Generate Random Hex</p>
@@ -269,6 +269,7 @@ export default function Dashboard() {
     setSortMethod(
       sortMethod == "alphabetical" ? "-alphabetical" : "alphabetical"
     );
+    sortValuesHandler()
   };
 
   useEffect(() => {
@@ -397,8 +398,9 @@ export default function Dashboard() {
       });
     }
 
-    // Once "Save changed is clicked", disable that button
+    // Once "Save changed is clicked", disable that button and sort values
     setButtonReady(false);
+    sortValuesHandler()
     pushKeys({ obj, workspaceId: router.query.id, env });
 
     /**
@@ -439,6 +441,21 @@ export default function Dashboard() {
   const changeBlurred = () => {
     setBlurred(!blurred);
   };
+
+  const sortValuesHandler = () => {
+    /**
+     * Since react's SetStateActionHandler optimises renders when values don't change 
+     * we have to map and return a new sorted list to force a render.
+     * @returns {sorted list}
+    */
+
+    let sortedData = data.sort((a, b) =>
+      sortMethod == "alphabetical"
+        ? a.key.localeCompare(b.key)
+        : b.key.localeCompare(a.key)
+    ).map((item) => item)
+    setData(sortedData)
+  }
 
   // This function downloads the secrets as a .env file
   const download = () => {
@@ -652,13 +669,7 @@ export default function Dashboard() {
                             .toLowerCase()
                             .includes(searchKeys.toLowerCase()) &&
                           keyPair.type == "personal"
-                      )
-                      .sort((a, b) =>
-                        sortMethod == "alphabetical"
-                          ? a.key.localeCompare(b.key)
-                          : b.key.localeCompare(a.key)
-                      )
-                      ?.map((keyPair, index) => (
+                      )?.map((keyPair) => (
                         <KeyPair
                           key={keyPair.id}
                           keyPair={keyPair}
@@ -706,13 +717,7 @@ export default function Dashboard() {
                             .toLowerCase()
                             .includes(searchKeys.toLowerCase()) &&
                           keyPair.type == "shared"
-                      )
-                      .sort((a, b) =>
-                        sortMethod == "alphabetical"
-                          ? a.key.localeCompare(b.key)
-                          : b.key.localeCompare(a.key)
-                      )
-                      ?.map((keyPair, index) => (
+                      )?.map((keyPair) => (
                         <KeyPair
                           key={keyPair.id}
                           keyPair={keyPair}
