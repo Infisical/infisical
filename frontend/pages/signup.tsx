@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactCodeInput from 'react-code-input';
-import dynamic from 'next/dynamic';
 import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -181,15 +180,15 @@ export default function SignUp() {
       const PRIVATE_KEY = nacl.util.encodeBase64(secretKeyUint8Array);
       const PUBLIC_KEY = nacl.util.encodeBase64(publicKeyUint8Array);
 
-      const { ciphertext, iv, tag } = Aes256Gcm.encrypt(
-        PRIVATE_KEY,
-        password
+      const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
+        text: PRIVATE_KEY,
+        secret: password
           .slice(0, 32)
           .padStart(
             32 + (password.slice(0, 32).length - new Blob([password]).size),
             '0'
           )
-      ) as { ciphertext: string; iv: string; tag: string };
+      }) as { ciphertext: string; iv: string; tag: string };
 
       localStorage.setItem('PRIVATE_KEY', PRIVATE_KEY);
 

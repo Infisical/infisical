@@ -2,8 +2,8 @@ import SecurityClient from '~/utilities/SecurityClient';
 
 /**
  * This function fetches the encrypted secrets from the .env file
- * @param {*} workspaceId
- * @param {*} env
+ * @param {string} workspaceId - project is for which a user is trying to get secrets
+ * @param {string} env - environment of a project for which a user is trying ot get secrets
  * @returns
  */
 const getSecrets = async (workspaceId: string, env: string) => {

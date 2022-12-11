@@ -6,7 +6,7 @@ interface Props {
 
 /**
  * This is the first step of the change password process (pake)
- * @param {*} clientPublicKey
+ * @param {string} clientPublicKey
  * @returns
  */
 const SRP1 = ({ clientPublicKey }: Props) => {

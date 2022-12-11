@@ -1,9 +1,8 @@
-import { useEffect, useRef } from "react";
-import { faXmarkCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import classnames from "classnames";
+import { useEffect, useRef } from 'react';
+import { faX } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import { Notification as NotificationType } from "./NotificationProvider";
+import { Notification as NotificationType } from './NotificationProvider';
 
 interface NotificationProps {
   notification: Required<NotificationType>;
@@ -12,7 +11,7 @@ interface NotificationProps {
 
 const Notification = ({
   notification,
-  clearNotification,
+  clearNotification
 }: NotificationProps) => {
   const timeout = useRef<number>();
 
@@ -37,22 +36,29 @@ const Notification = ({
 
   return (
     <div
-      className={classnames(
-        "w-full flex items-center justify-between px-4 py-3 rounded pointer-events-auto",
-        {
-          "bg-green-600": notification.type === "success",
-          "bg-red-500": notification.type === "error",
-          "bg-blue-500": notification.type === "info",
-        }
-      )}
+      className="relative w-full flex items-center justify-between px-4 py-6 rounded-md border border-bunker-500 pointer-events-auto bg-bunker-500"
       role="alert"
     >
-      <p className="text-white text-sm font-bold">{notification.text}</p>
+      {notification.type === 'error' && (
+        <div className="absolute w-full h-1 bg-red top-0 left-0 rounded-t-md"></div>
+      )}
+      {notification.type === 'success' && (
+        <div className="absolute w-full h-1 bg-green top-0 left-0 rounded-t-md"></div>
+      )}
+      {notification.type === 'info' && (
+        <div className="absolute w-full h-1 bg-yellow top-0 left-0 rounded-t-md"></div>
+      )}
+      <p className="text-bunker-200 text-sm font-semibold mt-0.5">
+        {notification.text}
+      </p>
       <button
-        className="bg-white/5 rounded-lg p-3"
+        className="rounded-lg"
         onClick={() => clearNotification(notification.text)}
       >
-        <FontAwesomeIcon className="text-white" icon={faXmarkCircle} />
+        <FontAwesomeIcon
+          className="text-white w-4 h-3 hover:text-red"
+          icon={faX}
+        />
       </button>
     </div>
   );

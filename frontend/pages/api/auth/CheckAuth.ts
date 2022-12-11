@@ -3,9 +3,6 @@ import SecurityClient from '~/utilities/SecurityClient';
 /**
  * This function is used to check if the user is authenticated.
  * To do that, we get their tokens from cookies, and verify if they are good.
- * @param {*} req
- * @param {*} res
- * @returns
  */
 const checkAuth = async () => {
   return SecurityClient.fetchCall('/api/v1/auth/checkAuth', {

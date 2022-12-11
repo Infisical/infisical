@@ -217,7 +217,7 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 	try {
 		const { email, code } = req.body;
 
-		user = await User.findOne({ email });
+		user = await User.findOne({ email }).select('+publicKey');
 		if (user && user?.publicKey) {
 			// case: user has already completed account
 			return res.status(403).send({
@@ -257,7 +257,7 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
 		return res.status(400).send({
-			error: 'Failed email magic link confirmation'
+			error: 'Failed email magic link verification for organization invitation'
 		});
 	}
 

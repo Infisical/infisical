@@ -5,8 +5,9 @@ interface Props {
 
 /**
  * This route check the verification code from the email that user just recieved
- * @param {*} email
- * @param {*} code
+ * @param {object} obj
+ * @param {string} obj.email
+ * @param {string} obj.code
  * @returns
  */
 const checkEmailVerificationCode = ({ email, code }: Props) => {

@@ -7,7 +7,10 @@ interface Props {
 }
 /**
  * This is the first step of the change password process (pake)
- * @param {*} clientPublicKey
+ * @param {object} obj
+ * @param {object} obj.workspaceId - project id for which we want to authorize the integration
+ * @param {object} obj.code
+ * @param {object} obj.integration - integration which a user is trying to turn on
  * @returns
  */
 const AuthorizeIntegration = ({ workspaceId, code, integration }: Props) => {
