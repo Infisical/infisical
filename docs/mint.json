@@ -130,7 +130,8 @@
     {
       "group": "Cloud",
       "pages": [
-        "integrations/cloud/heroku"
+        "integrations/cloud/heroku",
+        "integrations/cloud/vercel"
       ]
     },
     {
