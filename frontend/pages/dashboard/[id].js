@@ -328,7 +328,7 @@ export default function Dashboard() {
 
   const modifyValue = (value, id) => {
     setData((oldData) => {
-      oldData[id].value = value;
+      oldData.find(data => data.id === id).value = value;
       return [...oldData];
     });
     setButtonReady(true);
@@ -336,7 +336,7 @@ export default function Dashboard() {
 
   const modifyKey = (value, id) => {
     setData((oldData) => {
-      oldData[id].key = value;
+      oldData.find(data => data.id === id).key = value;
       return [...oldData];
     });
     setButtonReady(true);
@@ -344,7 +344,7 @@ export default function Dashboard() {
 
   const modifyVisibility = (value, id) => {
     setData((oldData) => {
-      oldData[id].type = value;
+      oldData.find(data => data.id === id).type = value;
       return [...oldData];
     });
     setButtonReady(true);
