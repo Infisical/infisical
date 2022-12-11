@@ -45,7 +45,7 @@ import getWorkspaces from '../api/workspace/getWorkspaces';
 /**
  * This component represent a single row for an environemnt variable on the dashboard
  * @param {object} obj
- * @param {String[]} obj.keyPair - data related to the environment variable (id, key, value, public/private)
+ * @param {String[]} obj.keyPair - data related to the environment variable (id, pos, key, value, public/private)
  * @param {function} obj.deleteRow - a function to delete a certain keyPair
  * @param {function} obj.modifyKey - modify the key of a certain environment variable
  * @param {function} obj.modifyValue - modify the value of a certain environment variable
@@ -114,7 +114,7 @@ const KeyPair = ({
               <div
                 onClick={() =>
                   modifyVisibility(
-                    keyPair.type == "personal" ? "shared" : "personal",
+                    keyPair.type == 'personal' ? 'shared' : 'personal',
                     keyPair.pos
                   )
                 }
@@ -122,10 +122,10 @@ const KeyPair = ({
               >
                 <FontAwesomeIcon
                   className="text-lg pl-1.5 pr-3"
-                  icon={keyPair.type == "personal" ? faPeopleGroup : faPerson}
+                  icon={keyPair.type == 'personal' ? faPeopleGroup : faPerson}
                 />
                 <div className="text-sm">
-                  {keyPair.type == "personal" ? "Make Shared" : "Make Personal"}
+                  {keyPair.type == 'personal' ? 'Make Shared' : 'Make Personal'}
                 </div>
               </div>
               <div
@@ -138,7 +138,7 @@ const KeyPair = ({
                     modifyValue(
                       [...Array(randomStringLength)]
                         .map(() => Math.floor(Math.random() * 16).toString(16))
-                        .join(""),
+                        .join(''),
                       keyPair.pos
                     );
                   }
@@ -147,7 +147,7 @@ const KeyPair = ({
               >
                 <FontAwesomeIcon
                   className="text-lg pl-1.5 pr-3"
-                  icon={keyPair.value == "" ? faPlus : faShuffle}
+                  icon={keyPair.value == '' ? faPlus : faShuffle}
                 />
                 <div className="text-sm justify-between flex flex-row w-full">
                   <p>Generate Random Hex</p>
@@ -267,9 +267,9 @@ export default function Dashboard() {
    */
   const reorderRows = () => {
     setSortMethod(prevSort =>
-      prevSort == "alphabetical"
-        ? "-alphabetical"
-        : "alphabetical"
+      prevSort == 'alphabetical'
+        ? '-alphabetical'
+        : 'alphabetical'
     );
 
     sortValuesHandler()
@@ -324,9 +324,9 @@ export default function Dashboard() {
     setData([...data, {
       id:guidGenerator(),
       pos:data.length,
-      key:"",
-      value:"",
-      type:"shared"
+      key:'',
+      value:'',
+      type:'shared'
     }]);
   };
 
