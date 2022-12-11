@@ -11,6 +11,14 @@ interface Props {
 
 /**
  * This is the route that issues a backup private key that will afterwards be added into a pdf
+ * @param {object} obj
+ * @param {string} obj.encryptedPrivateKey
+ * @param {string} obj.iv
+ * @param {string} obj.tag
+ * @param {string} obj.salt
+ * @param {string} obj.verifier
+ * @param {string} obj.clientProof
+ * @returns
  */
 const issueBackupPrivateKey = ({
   encryptedPrivateKey,

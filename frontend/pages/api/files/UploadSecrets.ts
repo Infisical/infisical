@@ -9,8 +9,11 @@ interface Props {
 
 /**
  * This function uploads the encrypted .env file
- * @param {*} req
- * @param {*} res
+ * @param {object} obj
+ * @param {string} obj.workspaceId
+ * @param {} obj.secrets
+ * @param {} obj.keys
+ * @param {string} obj.environment
  * @returns
  */
 const uploadSecrets = async ({

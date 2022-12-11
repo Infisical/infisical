@@ -1,7 +1,6 @@
 import issueBackupPrivateKey from '~/pages/api/auth/IssueBackupPrivateKey';
 import SRP1 from '~/pages/api/auth/SRP1';
 
-import { tempLocalStorage } from '../checks/tempLocalStorage';
 import generateBackupPDF from '../generateBackupPDF';
 import Aes256Gcm from './aes-256-gcm';
 
@@ -12,21 +11,22 @@ const clientPassword = new jsrp.client();
 const clientKey = new jsrp.client();
 const crypto = require('crypto');
 
-interface Props {
+interface BackupKeyProps {
   email: string;
   password: string;
   personalName: string;
-  setBackupKeyError: any;
-  setBackupKeyIssued: any;
+  setBackupKeyError: (value: boolean) => void;
+  setBackupKeyIssued: (value: boolean) => void;
 }
 
 /**
- * This function loggs in the user (whether it's right after signup, or a normal login)
- * @param {*} email
- * @param {*} password
- * @param {*} setErrorLogin
- * @param {*} router
- * @param {*} isSignUp
+ * This function issue a backup key for a user
+ * @param {obkect} obj
+ * @param {string} obj.email - email of a user issuing a backup key
+ * @param {string} obj.password - password of a user issuing a backup key
+ * @param {string} obj.personalName - name of a user issuing a backup key
+ * @param {function} obj.setBackupKeyError - state function that turns true if there is an erorr with a backup key
+ * @param {function} obj.setBackupKeyIssued - state function that turns true if a backup key was issued correctly
  * @returns
  */
 const issueBackupKey = async ({
@@ -35,7 +35,7 @@ const issueBackupKey = async ({
   personalName,
   setBackupKeyError,
   setBackupKeyIssued
-}: Props) => {
+}: BackupKeyProps) => {
   try {
     setBackupKeyError(false);
     setBackupKeyIssued(false);
@@ -72,14 +72,11 @@ const issueBackupKey = async ({
           },
           async () => {
             clientKey.createVerifier(
-              async (_: any, result: { salt: string; verifier: string }) => {
-                // TODO: Fix this
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
-                const { ciphertext, iv, tag } = Aes256Gcm.encrypt(
-                  tempLocalStorage('PRIVATE_KEY'),
-                  generatedKey
-                );
+              async (err: any, result: { salt: string; verifier: string }) => {
+                const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
+                  text: String(localStorage.getItem('PRIVATE_KEY')),
+                  secret: generatedKey
+                });
 
                 const res = await issueBackupPrivateKey({
                   encryptedPrivateKey: ciphertext,
@@ -90,10 +87,14 @@ const issueBackupKey = async ({
                   clientProof
                 });
 
-                if (res && res.status == 400) {
+                if (res?.status == 400) {
                   setBackupKeyError(true);
-                } else if (res && res.status == 200) {
-                  generateBackupPDF(personalName, email, generatedKey);
+                } else if (res?.status == 200) {
+                  generateBackupPDF({
+                    personalName,
+                    personalEmail: email,
+                    generatedKey
+                  });
                   setBackupKeyIssued(true);
                 }
               }

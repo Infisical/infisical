@@ -54,20 +54,19 @@ const attemptLogin = async (
             await login2(email, clientProof);
           SecurityClient.setToken(token);
 
-          const privateKey = Aes256Gcm.decrypt(
-            encryptedPrivateKey,
+          const privateKey = Aes256Gcm.decrypt({
+            ciphertext: encryptedPrivateKey,
             iv,
             tag,
-            password
+            secret: password
               .slice(0, 32)
               .padStart(
                 32 + (password.slice(0, 32).length - new Blob([password]).size),
                 '0'
               )
-          );
+          });
 
           saveTokenToLocalStorage({
-            token,
             publicKey,
             encryptedPrivateKey,
             iv,
@@ -114,11 +113,8 @@ const attemptLogin = async (
                   'personal'
                 ],
                 DB_USERNAME: ['user1234', 'personal'],
-                DB_PASSWORD: ['ah8jak3hk8dhiu4dw7whxwe1l', 'personal'],
-                TWILIO_AUTH_TOKEN: [
-                  'hgSIwDAKvz8PJfkj6xkzYqzGmAP3HLuG',
-                  'shared'
-                ],
+                DB_PASSWORD: ['example_password', 'personal'],
+                TWILIO_AUTH_TOKEN: ['example_twillion_token', 'shared'],
                 WEBSITE_URL: ['http://localhost:3000', 'shared'],
                 STRIPE_SECRET_KEY: ['sk_test_7348oyho4hfq398HIUOH78', 'shared']
               },

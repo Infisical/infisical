@@ -5,8 +5,9 @@ interface Props {
 
 /**
  * This route verifies the signup invite link
- * @param {*} email
- * @param {*} code
+ * @param {object} obj
+ * @param {string} obj.email - email that a user is trying to verify
+ * @param {string} obj.code - code that a user received to the abovementioned email
  * @returns
  */
 const verifySignupInvite = ({ email, code }: Props) => {

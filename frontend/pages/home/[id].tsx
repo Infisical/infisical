@@ -47,7 +47,7 @@ const learningItem = ({
         >
           <div
             onClick={async () => {
-              if (userAction) {
+              if (userAction && userAction != 'first_time_secrets_pushed') {
                 await registerUserAction({
                   action: userAction
                 });

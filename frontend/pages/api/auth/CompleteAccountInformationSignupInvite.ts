@@ -14,15 +14,17 @@ interface Props {
 /**
  * This function is called in the end of the signup process.
  * It sends all the necessary nformation to the server.
- * @param {*} email
- * @param {*} firstName
- * @param {*} lastName
- * @param {*} publicKey
- * @param {*} ciphertext
- * @param {*} iv
- * @param {*} tag
- * @param {*} salt
- * @param {*} verifier
+ * @param {object} obj
+ * @param {string} obj.email - email of the user completing signupinvite flow
+ * @param {string} obj.firstName - first name of the user completing signupinvite flow
+ * @param {string} obj.lastName - last name of the user completing signupinvite flow
+ * @param {string} obj.publicKey - public key of the user completing signupinvite flow
+ * @param {string} obj.ciphertext
+ * @param {string} obj.iv
+ * @param {string} obj.tag
+ * @param {string} obj.salt
+ * @param {string} obj.verifier
+ * @param {string} obj.token - token that confirms a user's identity
  * @returns
  */
 const completeAccountInformationSignupInvite = ({

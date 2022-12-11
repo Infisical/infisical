@@ -385,14 +385,14 @@ export default function Dashboard() {
 
     if (nameErrors) {
       return createNotification({
-        text: 'Solve all name errors first!',
+        text: 'Solve all name errors before saving secrets.',
         type: 'error'
       });
     }
 
     if (duplicatesExist) {
       return createNotification({
-        text: "Your secrets weren't saved; please fix the conflicts first.",
+        text: 'Remove duplicated secret names before saving.',
         type: 'error'
       });
     }
