@@ -318,7 +318,12 @@ export default function Dashboard() {
 
   const addRow = () => {
     setIsNew(false);
-    setData([...data, [guidGenerator(), data.length, "", "", "shared"]]);
+    setData([...data, {
+      id:guidGenerator(), 
+      key:"", 
+      value:"", 
+      type:"shared"
+    }]);
   };
 
   const deleteRow = (id) => {
