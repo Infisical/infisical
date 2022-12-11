@@ -1,39 +1,39 @@
-import { Fragment, useState } from "react";
-import { useRouter } from "next/router";
-import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Dialog, Transition } from "@headlessui/react";
-import nacl from "tweetnacl";
+import { Fragment, useState } from 'react';
+import { faCheck, faCopy } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Dialog, Transition } from '@headlessui/react';
+import nacl from 'tweetnacl';
 
-import addServiceToken from "~/pages/api/serviceToken/addServiceToken";
-import getLatestFileKey from "~/pages/api/workspace/getLatestFileKey";
+import addServiceToken from '~/pages/api/serviceToken/addServiceToken';
+import getLatestFileKey from '~/pages/api/workspace/getLatestFileKey';
 
-import { envMapping } from "../../../public/data/frequentConstants";
+import { envMapping } from '../../../public/data/frequentConstants';
 import {
   decryptAssymmetric,
-  encryptAssymmetric,
-} from "../../utilities/cryptography/crypto";
-import Button from "../buttons/Button";
-import InputField from "../InputField";
-import ListBox from "../Listbox";
+  encryptAssymmetric
+} from '../../utilities/cryptography/crypto';
+import Button from '../buttons/Button';
+import InputField from '../InputField';
+import ListBox from '../Listbox';
 
 const expiryMapping = {
-  "1 day": 86400,
-  "7 days": 604800,
-  "1 month": 2592000,
+  '1 day': 86400,
+  '7 days': 604800,
+  '1 month': 2592000,
+  '6 months': 15552000,
+  '12 months': 31104000
 };
 
 const AddServiceTokenDialog = ({
   isOpen,
   closeModal,
   workspaceId,
-  workspaceName,
+  workspaceName
 }) => {
-  const router = useRouter();
-  const [serviceToken, setServiceToken] = useState("");
-  const [serviceTokenName, setServiceTokenName] = useState("");
-  const [serviceTokenEnv, setServiceTokenEnv] = useState("Development");
-  const [serviceTokenExpiresIn, setServiceTokenExpiresIn] = useState("1 day");
+  const [serviceToken, setServiceToken] = useState('');
+  const [serviceTokenName, setServiceTokenName] = useState('');
+  const [serviceTokenEnv, setServiceTokenEnv] = useState('Development');
+  const [serviceTokenExpiresIn, setServiceTokenExpiresIn] = useState('1 day');
   const [serviceTokenCopied, setServiceTokenCopied] = useState(false);
 
   const generateServiceToken = async () => {
@@ -43,7 +43,7 @@ const AddServiceTokenDialog = ({
       ciphertext: latestFileKey.latestKey.encryptedKey,
       nonce: latestFileKey.latestKey.nonce,
       publicKey: latestFileKey.latestKey.sender.publicKey,
-      privateKey: localStorage.getItem("PRIVATE_KEY"),
+      privateKey: localStorage.getItem('PRIVATE_KEY')
     });
 
     // generate new public/private key pair
@@ -55,7 +55,7 @@ const AddServiceTokenDialog = ({
     const { ciphertext: encryptedKey, nonce } = encryptAssymmetric({
       plaintext: key,
       publicKey,
-      privateKey,
+      privateKey
     });
 
     let newServiceToken = await addServiceToken({
@@ -65,16 +65,16 @@ const AddServiceTokenDialog = ({
       expiresIn: expiryMapping[serviceTokenExpiresIn],
       publicKey,
       encryptedKey,
-      nonce,
+      nonce
     });
 
-    const serviceToken = newServiceToken + "," + privateKey;
+    const serviceToken = newServiceToken + ',' + privateKey;
     setServiceToken(serviceToken);
   };
 
   function copyToClipboard() {
     // Get the text field
-    var copyText = document.getElementById("serviceToken");
+    var copyText = document.getElementById('serviceToken');
 
     // Select the text field
     copyText.select();
@@ -91,8 +91,8 @@ const AddServiceTokenDialog = ({
 
   const closeAddServiceTokenModal = () => {
     closeModal();
-    setServiceTokenName("");
-    setServiceToken("");
+    setServiceTokenName('');
+    setServiceToken('');
   };
 
   return (
@@ -122,7 +122,7 @@ const AddServiceTokenDialog = ({
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                {serviceToken == "" ? (
+                {serviceToken == '' ? (
                   <Dialog.Panel className="w-full max-w-md transform rounded-md bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all">
                     <Dialog.Title
                       as="h3"
@@ -155,12 +155,12 @@ const AddServiceTokenDialog = ({
                         selected={serviceTokenEnv}
                         onChange={setServiceTokenEnv}
                         data={[
-                          "Development",
-                          "Staging",
-                          "Production",
-                          "Testing",
+                          'Development',
+                          'Staging',
+                          'Production',
+                          'Testing'
                         ]}
-                        width="full"
+                        isFull={true}
                         text="Environment: "
                       />
                     </div>
@@ -168,8 +168,14 @@ const AddServiceTokenDialog = ({
                       <ListBox
                         selected={serviceTokenExpiresIn}
                         onChange={setServiceTokenExpiresIn}
-                        data={["1 day", "7 days", "1 month"]}
-                        width="full"
+                        data={[
+                          '1 day',
+                          '7 days',
+                          '1 month',
+                          '6 months',
+                          '12 months'
+                        ]}
+                        isFull={true}
                         text="Expires in: "
                       />
                     </div>
@@ -181,7 +187,7 @@ const AddServiceTokenDialog = ({
                           text="Add Service Token"
                           textDisabled="Add Service Token"
                           size="md"
-                          active={serviceTokenName == "" ? false : true}
+                          active={serviceTokenName == '' ? false : true}
                         />
                       </div>
                     </div>
