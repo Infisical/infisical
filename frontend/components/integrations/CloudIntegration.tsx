@@ -6,7 +6,7 @@ import {
     faX,
   } from "@fortawesome/free-solid-svg-icons";
 
-interface CloudIntegration {
+interface Props {
     integration: IntegrationOption;
     setSelectedIntegrationOption: () => void;
     integrationOptionPress: () => void;
@@ -27,7 +27,7 @@ const CloudIntegration = ({
     integrationOptionPress,
     deleteIntegrationAuth,
     authorizations
-}: CloudIntegration) => {
+}: Props) => {
     return (
         <div
         className={`relative ${

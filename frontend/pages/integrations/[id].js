@@ -4,8 +4,9 @@ import Image from "next/image";
 import { useRouter } from "next/router";
 import NavHeader from "~/components/navigation/NavHeader";
 import Integration from "~/components/integrations/Integration";
-import FrameworkIntegration from "~/components/integrations/FrameworkIntegration";
-import CloudIntegration from "~/components/integrations/CloudIntegration";
+import FrameworkIntegrationSection from "~/components/integrations/FrameworkIntegrationSection";
+import CloudIntegrationSection from "~/components/integrations/CloudIntegrationSection";
+import ProjectIntegrationSection from "~/components/integrations/ProjectIntegrationSection";
 import guidGenerator from "~/utilities/randomId";
 import { 
   frameworks
@@ -180,50 +181,21 @@ export default function Integrations() {
           handleBotActivate={handleBotActivate}
           handleIntegrationOption={handleIntegrationOption}
         />
+        
         {projectIntegrations.length > 0 && (
-          <>
-            <div className="flex flex-col justify-between items-start mx-4 mb-4 mt-6 text-xl max-w-5xl px-2">
-              <p className="font-semibold text-3xl">Current Project Integrations</p>
-              <p className="text-base text-gray-400">
-                Manage your integrations of Infisical with third-party services.
-              </p>
-            </div>
-            {projectIntegrations.map((projectIntegration) => (
-              <Integration
-                key={guidGenerator()}
-                projectIntegration={projectIntegration}
-              />
-            ))}
-          </>
+          <ProjectIntegrationSection 
+            projectIntegrations={projectIntegrations}
+          />
         )}
-        <div className={`flex flex-col justify-between items-start m-4 ${projectIntegrations.length > 0 ? 'mt-12' : 'mt-6'} text-xl max-w-5xl px-2`}>
-          <p className="font-semibold text-3xl">Cloud Integrations</p>
-          <p className="text-base text-gray-400">
-            Click on an integration to begin syncing secrets to it.
-          </p>
-        </div>
-        <div className="grid gap-4 grid-cols-4 grid-rows-2 mx-6 max-w-5xl">
-          {integrations.map((integration) => (
-            <CloudIntegration 
-              integration={integration}
-              setSelectedIntegrationOption={setSelectedIntegrationOption}
-              integrationOptionPress={integrationOptionPress}
-              deleteIntegrationAuth={deleteIntegrationAuth}
-              authorizations={authorizations}
-            />
-          ))}
-        </div>
-        <div className="flex flex-col justify-between items-start mx-4 mt-12 mb-4 text-xl max-w-5xl px-2">
-          <p className="font-semibold text-3xl">Framework Integrations</p>
-          <p className="text-base text-gray-400">
-            Click on a framework to get the setup instructions.
-          </p>
-        </div>
-        <div className="grid gap-4 grid-cols-7 grid-rows-2 mx-6 mt-4 max-w-5xl">
-          {frameworks.map((framework) => (
-            <FrameworkIntegration framework={framework} />
-          ))}
-        </div>
+        <CloudIntegrationSection 
+          projectIntegrations={projectIntegrations}
+          integrations={integrations}
+          setSelectedIntegrationOption={setSelectedIntegrationOption}
+          integrationOptionPress={integrationOptionPress}
+          deleteIntegrationAuth={deleteIntegrationAuth}
+          authorizations={authorizations}
+        />
+        <FrameworkIntegrationSection frameworks={frameworks} />
       </div>
     </div>
   ) : (
