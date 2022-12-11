@@ -1,8 +1,8 @@
-import { createContext, ReactNode, useContext, useState } from "react";
+import { createContext, ReactNode, useContext, useState } from 'react';
 
-import Notifications from "./Notifications";
+import Notifications from './Notifications';
 
-type NotificationType = "success" | "error" | "info";
+type NotificationType = 'success' | 'error' | 'info';
 
 export type Notification = {
   text: string;
@@ -15,7 +15,7 @@ type NotificationContextState = {
 };
 
 const NotificationContext = createContext<NotificationContextState>({
-  createNotification: () => console.log("createNotification not set!"),
+  createNotification: () => console.log('createNotification not set!')
 });
 
 export const useNotificationContext = () => useContext(NotificationContext);
@@ -37,8 +37,8 @@ const NotificationProvider = ({ children }: NotificationProviderProps) => {
 
   const createNotification = ({
     text,
-    type = "success",
-    timeoutMs = 2000,
+    type = 'success',
+    timeoutMs = 5000
   }: Notification) => {
     const doesNotifExist = notifications.some((notif) => notif.text === text);
 
@@ -54,7 +54,7 @@ const NotificationProvider = ({ children }: NotificationProviderProps) => {
   return (
     <NotificationContext.Provider
       value={{
-        createNotification,
+        createNotification
       }}
     >
       <Notifications

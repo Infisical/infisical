@@ -1,5 +1,5 @@
-import Notification from "./Notification";
-import { Notification as NotificationType } from "./NotificationProvider";
+import Notification from './Notification';
+import { Notification as NotificationType } from './NotificationProvider';
 
 interface NoticationsProps {
   notifications: Required<NotificationType>[];
@@ -8,14 +8,14 @@ interface NoticationsProps {
 
 const Notifications = ({
   notifications,
-  clearNotification,
+  clearNotification
 }: NoticationsProps) => {
   if (!notifications.length) {
     return null;
   }
 
   return (
-    <div className="hidden fixed z-50 md:flex md:flex-col-reverse bottom-1 gap-y-2 w-96 h-full right-1 pointer-events-none">
+    <div className="hidden fixed z-50 md:flex md:flex-col-reverse bottom-1 gap-y-2 w-96 h-full right-2 bottom-2 pointer-events-none">
       {notifications.map((notif) => (
         <Notification
           key={notif.text}
