@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  backend:
+    container_name: infisical-backend-test
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    image: infisical/backend:test
+    command: npm run start
+    environment:
+      - NODE_ENV=production
+      - MONGO_URL=mongodb://test:example@mongo:27017/?authSource=admin
+      - MONGO_USERNAME=test
+      - MONGO_PASSWORD=example
+    networks:
+      - infisical-test
+
+  mongo:
+    container_name: infisical-mongo-test
+    image: mongo
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=test
+      - MONGO_INITDB_ROOT_PASSWORD=example
+    networks:
+      - infisical-test
+
+networks:
+  infisical-test:

@@ -60,5 +60,8 @@ EXPOSE 3000
 ENV PORT 3000
 ENV NEXT_TELEMETRY_DISABLED 1
 
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \  
+    CMD node scripts/healthcheck.js
+
 
 CMD ["/app/scripts/start.sh"]

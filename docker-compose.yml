@@ -15,7 +15,7 @@ services:
       - backend
     networks:
       - infisical
-  
+
   backend:
     container_name: infisical-backend
     restart: unless-stopped
@@ -28,7 +28,7 @@ services:
       - NODE_ENV=production
     networks:
       - infisical
-  
+
   frontend:
     container_name: infisical-frontend
     restart: unless-stopped
