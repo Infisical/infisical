@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { useRouter } from "next/router";
-import { faCircle, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import React, { useState } from 'react';
+import { useRouter } from 'next/router';
+import { faCircle, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import guidGenerator from "../utilities/randomId";
+import guidGenerator from '../utilities/randomId';
 
 interface InputFieldProps {
   static?: boolean;
@@ -23,7 +23,7 @@ interface InputFieldProps {
 
 const InputField = (
   props: InputFieldProps &
-    Pick<JSX.IntrinsicElements["input"], "autoComplete" | "id">
+    Pick<JSX.IntrinsicElements['input'], 'autoComplete' | 'id'>
 ) => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const router = useRouter();
@@ -75,28 +75,28 @@ const InputField = (
         </div>
         <div
           className={`group relative flex flex-col justify-center w-full max-w-2xl border ${
-            props.error ? "border-red" : "border-mineshaft-500"
+            props.error ? 'border-red' : 'border-mineshaft-500'
           } rounded-md`}
         >
           <input
             onChange={(e) => props.onChangeHandler(e.target.value)}
-            type={passwordVisible === false ? props.type : "text"}
+            type={passwordVisible === false ? props.type : 'text'}
             placeholder={props.placeholder}
             value={props.value}
             required={props.isRequired}
             className={`${
               props.blurred
-                ? "text-bunker-800 group-hover:text-gray-400 focus:text-gray-400 active:text-gray-400"
-                : ""
+                ? 'text-bunker-800 group-hover:text-gray-400 focus:text-gray-400 active:text-gray-400'
+                : ''
             } ${
-              props.error ? "focus:ring-red/50" : "focus:ring-primary/50"
+              props.error ? 'focus:ring-red/50' : 'focus:ring-primary/50'
             } relative peer bg-bunker-800 rounded-md text-gray-400 text-md p-2 w-full min-w-16 outline-none focus:ring-4 duration-200`}
             name={props.name}
             spellCheck="false"
             autoComplete={props.autoComplete}
             id={props.id}
           />
-          {props.label?.includes("Password") && (
+          {props.label?.includes('Password') && (
             <button
               onClick={() => {
                 setPasswordVisible(!passwordVisible);
@@ -114,7 +114,7 @@ const InputField = (
             <div className="peer group-hover:hidden peer-hover:hidden peer-focus:hidden peer-active:invisible absolute h-10 w-fit max-w-xl rounded-md flex items-center text-gray-400/50 text-clip overflow-hidden">
               <p className="ml-2"></p>
               {props.value
-                .split("")
+                .split('')
                 .slice(0, 54)
                 .map(() => (
                   <FontAwesomeIcon
