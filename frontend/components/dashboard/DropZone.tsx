@@ -1,12 +1,12 @@
-import { type ChangeEvent, type DragEvent, useState } from "react";
-import Image from "next/image";
-import { faUpload } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { type ChangeEvent, type DragEvent, useState } from 'react';
+import Image from 'next/image';
+import { faUpload } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import Button from "../basic/buttons/Button";
-import Error from "../basic/Error";
-import parse from "../utilities/file";
-import guidGenerator from "../utilities/randomId";
+import Button from '../basic/buttons/Button';
+import Error from '../basic/Error';
+import parse from '../utilities/file';
+import guidGenerator from '../utilities/randomId';
 
 interface DropZoneProps {
   // TODO: change Data type from any
@@ -26,7 +26,7 @@ const DropZone = ({
   errorDragAndDrop,
   setButtonReady,
   keysExist,
-  numCurrentRows,
+  numCurrentRows
 }: DropZoneProps) => {
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault();
@@ -43,7 +43,7 @@ const DropZone = ({
     e.stopPropagation();
 
     // set dropEffect to copy i.e copy of the source item
-    e.dataTransfer.dropEffect = "copy";
+    e.dataTransfer.dropEffect = 'copy';
   };
 
   const [loading, setLoading] = useState(false);
@@ -54,7 +54,7 @@ const DropZone = ({
     setTimeout(() => setLoading(false), 5000);
     e.preventDefault();
     e.stopPropagation();
-    e.dataTransfer.dropEffect = "copy";
+    e.dataTransfer.dropEffect = 'copy';
 
     const file = e.dataTransfer.files[0];
     const reader = new FileReader();
@@ -68,7 +68,7 @@ const DropZone = ({
         numCurrentRows + index,
         key,
         keyPairs[key as keyof typeof keyPairs],
-        "shared",
+        'shared'
       ]);
       setData(newData);
       setButtonReady(true);
@@ -94,15 +94,15 @@ const DropZone = ({
     reader.onload = (event) => {
       if (event.target === null || event.target.result === null) return;
       const { result } = event.target;
-      if (typeof result === "string") {
+      if (typeof result === 'string') {
         const newData = result
-          .split("\n")
+          .split('\n')
           .map((line: string, index: number) => [
             guidGenerator(),
             numCurrentRows + index,
-            line.split("=")[0],
-            line.split("=").slice(1, line.split("=").length).join("="),
-            "shared",
+            line.split('=')[0],
+            line.split('=').slice(1, line.split('=').length).join('='),
+            'shared'
           ]);
         setData(newData);
         setButtonReady(true);

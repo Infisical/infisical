@@ -1,72 +1,71 @@
-import React, { useEffect, useRef, useState } from "react";
-import ReactCodeInput from "react-code-input";
-import dynamic from "next/dynamic";
-import Head from "next/head";
-import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/router";
-import { faCheck, faWarning, faX } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import React, { useEffect, useState } from 'react';
+import ReactCodeInput from 'react-code-input';
+import Head from 'next/head';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { faCheck, faWarning, faX } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import Button from "~/components/basic/buttons/Button";
-import Error from "~/components/basic/Error";
-import InputField from "~/components/basic/InputField";
-import Aes256Gcm from "~/components/utilities/cryptography/aes-256-gcm";
-import issueBackupKey from "~/components/utilities/cryptography/issueBackupKey";
-import attemptLogin from "~/utilities/attemptLogin";
-import passwordCheck from "~/utilities/checks/PasswordCheck";
+import Button from '~/components/basic/buttons/Button';
+import Error from '~/components/basic/Error';
+import InputField from '~/components/basic/InputField';
+import Aes256Gcm from '~/components/utilities/cryptography/aes-256-gcm';
+import issueBackupKey from '~/components/utilities/cryptography/issueBackupKey';
+import attemptLogin from '~/utilities/attemptLogin';
+import passwordCheck from '~/utilities/checks/PasswordCheck';
 
-import checkEmailVerificationCode from "./api/auth/CheckEmailVerificationCode";
-import completeAccountInformationSignup from "./api/auth/CompleteAccountInformationSignup";
-import sendVerificationEmail from "./api/auth/SendVerificationEmail";
-import getWorkspaces from "./api/workspace/getWorkspaces";
+import checkEmailVerificationCode from './api/auth/CheckEmailVerificationCode';
+import completeAccountInformationSignup from './api/auth/CompleteAccountInformationSignup';
+import sendVerificationEmail from './api/auth/SendVerificationEmail';
+import getWorkspaces from './api/workspace/getWorkspaces';
 
 // const ReactCodeInput = dynamic(import("react-code-input"));
-const nacl = require("tweetnacl");
-const jsrp = require("jsrp");
-nacl.util = require("tweetnacl-util");
+const nacl = require('tweetnacl');
+const jsrp = require('jsrp');
+nacl.util = require('tweetnacl-util');
 const client = new jsrp.client();
 
 // The stye for the verification code input
 const props = {
   inputStyle: {
-    fontFamily: "monospace",
-    margin: "4px",
-    MozAppearance: "textfield",
-    width: "55px",
-    borderRadius: "5px",
-    fontSize: "24px",
-    height: "55px",
-    paddingLeft: "7",
-    backgroundColor: "#0d1117",
-    color: "white",
-    border: "1px solid gray",
-    textAlign: "center",
-  },
+    fontFamily: 'monospace',
+    margin: '4px',
+    MozAppearance: 'textfield',
+    width: '55px',
+    borderRadius: '5px',
+    fontSize: '24px',
+    height: '55px',
+    paddingLeft: '7',
+    backgroundColor: '#0d1117',
+    color: 'white',
+    border: '1px solid gray',
+    textAlign: 'center'
+  }
 } as const;
 const propsPhone = {
   inputStyle: {
-    fontFamily: "monospace",
-    margin: "4px",
-    MozAppearance: "textfield",
-    width: "40px",
-    borderRadius: "5px",
-    fontSize: "24px",
-    height: "40px",
-    paddingLeft: "7",
-    backgroundColor: "#0d1117",
-    color: "white",
-    border: "1px solid gray",
-    textAlign: "center",
-  },
+    fontFamily: 'monospace',
+    margin: '4px',
+    MozAppearance: 'textfield',
+    width: '40px',
+    borderRadius: '5px',
+    fontSize: '24px',
+    height: '40px',
+    paddingLeft: '7',
+    backgroundColor: '#0d1117',
+    color: 'white',
+    border: '1px solid gray',
+    textAlign: 'center'
+  }
 } as const;
 
 export default function SignUp() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [code, setCode] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState(false);
   const [firstNameError, setFirstNameError] = useState(false);
   const [lastNameError, setLastNameError] = useState(false);
@@ -77,22 +76,22 @@ export default function SignUp() {
   const [passwordErrorSpecialChar, setPasswordErrorSpecialChar] =
     useState(false);
   const [emailError, setEmailError] = useState(false);
-  const [emailErrorMessage, setEmailErrorMessage] = useState("");
+  const [emailErrorMessage, setEmailErrorMessage] = useState('');
   const [step, setStep] = useState(1);
   const router = useRouter();
   const [errorLogin, setErrorLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [backupKeyError, setBackupKeyError] = useState(false);
-  const [verificationToken, setVerificationToken] = useState();
+  const [verificationToken, setVerificationToken] = useState('');
   const [backupKeyIssued, setBackupKeyIssued] = useState(false);
 
   useEffect(() => {
     const tryAuth = async () => {
       try {
         const userWorkspaces = await getWorkspaces();
-        router.push("/dashboard/" + userWorkspaces[0]._id);
+        router.push('/dashboard/' + userWorkspaces[0]._id);
       } catch (error) {
-        console.log("Error - Not logged in yet");
+        console.log('Error - Not logged in yet');
       }
     };
     tryAuth();
@@ -109,8 +108,8 @@ export default function SignUp() {
       setStep(2);
     } else if (step == 2) {
       // Checking if the code matches the email.
-      const response = await checkEmailVerificationCode(email, code);
-      if (response.status === 200 || code == "111222") {
+      const response = await checkEmailVerificationCode({ email, code });
+      if (response.status === 200 || code == '111222') {
         setVerificationToken((await response.json()).token);
         setStep(3);
       } else {
@@ -128,15 +127,15 @@ export default function SignUp() {
     let emailCheckBool = false;
     if (!email) {
       setEmailError(true);
-      setEmailErrorMessage("Please enter your email.");
+      setEmailErrorMessage('Please enter your email.');
       emailCheckBool = true;
     } else if (
-      !email.includes("@") ||
-      !email.includes(".") ||
+      !email.includes('@') ||
+      !email.includes('.') ||
       !/[a-z]/.test(email)
     ) {
       setEmailError(true);
-      setEmailErrorMessage("Please enter a valid email.");
+      setEmailErrorMessage('Please enter a valid email.');
       emailCheckBool = true;
     } else {
       setEmailError(false);
@@ -170,7 +169,7 @@ export default function SignUp() {
       setPasswordErrorLength,
       setPasswordErrorNumber,
       setPasswordErrorLowerCase,
-      currentErrorCheck: errorCheck,
+      currentErrorCheck: errorCheck
     });
 
     if (!errorCheck) {
@@ -181,22 +180,22 @@ export default function SignUp() {
       const PRIVATE_KEY = nacl.util.encodeBase64(secretKeyUint8Array);
       const PUBLIC_KEY = nacl.util.encodeBase64(publicKeyUint8Array);
 
-      const { ciphertext, iv, tag } = Aes256Gcm.encrypt(
-        PRIVATE_KEY,
-        password
+      const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
+        text: PRIVATE_KEY,
+        secret: password
           .slice(0, 32)
           .padStart(
             32 + (password.slice(0, 32).length - new Blob([password]).size),
-            "0"
+            '0'
           )
-      ) as { ciphertext: string; iv: string; tag: string };
+      }) as { ciphertext: string; iv: string; tag: string };
 
-      localStorage.setItem("PRIVATE_KEY", PRIVATE_KEY);
+      localStorage.setItem('PRIVATE_KEY', PRIVATE_KEY);
 
       client.init(
         {
           username: email,
-          password: password,
+          password: password
         },
         async () => {
           client.createVerifier(
@@ -212,17 +211,17 @@ export default function SignUp() {
                 tag,
                 salt: result.salt,
                 verifier: result.verifier,
-                token: verificationToken,
+                token: verificationToken
               });
 
               // if everything works, go the main dashboard page.
               if (response.status === 200) {
                 // response = await response.json();
 
-                localStorage.setItem("publicKey", PUBLIC_KEY);
-                localStorage.setItem("encryptedPrivateKey", ciphertext);
-                localStorage.setItem("iv", iv);
-                localStorage.setItem("tag", tag);
+                localStorage.setItem('publicKey', PUBLIC_KEY);
+                localStorage.setItem('encryptedPrivateKey', ciphertext);
+                localStorage.setItem('iv', iv);
+                localStorage.setItem('tag', tag);
 
                 try {
                   await attemptLogin(
@@ -295,10 +294,10 @@ export default function SignUp() {
   const step2 = (
     <div className="bg-bunker w-max mx-auto h-7/12 pt-10 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-16">
       <p className="text-l flex justify-center text-gray-400">
-        {"We've"} sent a verification email to{" "}
+        {"We've"} sent a verification email to{' '}
       </p>
       <p className="text-l flex justify-center font-semibold my-2 text-gray-400">
-        {email}{" "}
+        {email}{' '}
       </p>
       <div className="hidden md:block">
         <ReactCodeInput
@@ -383,7 +382,7 @@ export default function SignUp() {
               setPasswordErrorLength,
               setPasswordErrorNumber,
               setPasswordErrorLowerCase,
-              currentErrorCheck: false,
+              currentErrorCheck: false
             });
           }}
           type="password"
@@ -416,7 +415,7 @@ export default function SignUp() {
               )}
               <div
                 className={`${
-                  passwordErrorLength ? "text-gray-400" : "text-gray-600"
+                  passwordErrorLength ? 'text-gray-400' : 'text-gray-600'
                 } text-sm`}
               >
                 14 characters
@@ -436,7 +435,7 @@ export default function SignUp() {
               )}
               <div
                 className={`${
-                  passwordErrorLowerCase ? "text-gray-400" : "text-gray-600"
+                  passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'
                 } text-sm`}
               >
                 1 lowercase character
@@ -456,7 +455,7 @@ export default function SignUp() {
               )}
               <div
                 className={`${
-                  passwordErrorNumber ? "text-gray-400" : "text-gray-600"
+                  passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'
                 } text-sm`}
               >
                 1 number
@@ -505,13 +504,13 @@ export default function SignUp() {
             await issueBackupKey({
               email,
               password,
-              personalName: firstName + " " + lastName,
+              personalName: firstName + ' ' + lastName,
               setBackupKeyError,
-              setBackupKeyIssued,
+              setBackupKeyIssued
             });
             const userWorkspaces = await getWorkspaces();
             const userWorkspace = userWorkspaces[0]._id;
-            router.push("/home/" + userWorkspace);
+            router.push('/home/' + userWorkspace);
           }}
           size="lg"
         />
