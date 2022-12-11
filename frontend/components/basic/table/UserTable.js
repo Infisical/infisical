@@ -1,25 +1,25 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/router";
-import { faX } from "@fortawesome/free-solid-svg-icons";
+import React, { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
+import { faX } from '@fortawesome/free-solid-svg-icons';
 
-import deleteUserFromOrganization from "~/pages/api/organization/deleteUserFromOrganization";
-import changeUserRoleInWorkspace from "~/pages/api/workspace/changeUserRoleInWorkspace";
-import deleteUserFromWorkspace from "~/pages/api/workspace/deleteUserFromWorkspace";
-import getLatestFileKey from "~/pages/api/workspace/getLatestFileKey";
-import uploadKeys from "~/pages/api/workspace/uploadKeys";
+import deleteUserFromOrganization from '~/pages/api/organization/deleteUserFromOrganization';
+import changeUserRoleInWorkspace from '~/pages/api/workspace/changeUserRoleInWorkspace';
+import deleteUserFromWorkspace from '~/pages/api/workspace/deleteUserFromWorkspace';
+import getLatestFileKey from '~/pages/api/workspace/getLatestFileKey';
+import uploadKeys from '~/pages/api/workspace/uploadKeys';
 
-import guidGenerator from "../../utilities/randomId";
-import Button from "../buttons/Button";
-import Listbox from "../Listbox";
+import guidGenerator from '../../utilities/randomId';
+import Button from '../buttons/Button';
+import Listbox from '../Listbox';
 
 const {
   decryptAssymmetric,
-  encryptAssymmetric,
-} = require("../../utilities/cryptography/crypto");
-const nacl = require("tweetnacl");
-nacl.util = require("tweetnacl-util");
+  encryptAssymmetric
+} = require('../../utilities/cryptography/crypto');
+const nacl = require('tweetnacl');
+nacl.util = require('tweetnacl-util');
 
-const roles = ["admin", "user"];
+const roles = ['admin', 'user'];
 
 /**
  * This is the component that we utilize for the user table - in future, can reuse it for some other purposes too.
@@ -36,13 +36,13 @@ const UserTable = ({
   isOrg,
   onClick,
   deleteUser,
-  setUserIdToBeDeleted,
+  setUserIdToBeDeleted
 }) => {
   const [roleSelected, setRoleSelected] = useState(
     Array(userData?.length).fill(userData.map((user) => user.role))
   );
   const router = useRouter();
-  const [myRole, setMyRole] = useState("member");
+  const [myRole, setMyRole] = useState('member');
 
   // Delete the row in the table (e.g. a user)
   // #TODO: Add a pop-up that warns you that the user is going to be deleted.
@@ -57,7 +57,7 @@ const UserTable = ({
     changeData(userData.filter((v, i) => i !== index));
     setRoleSelected([
       ...roleSelected.slice(0, index),
-      ...roleSelected.slice(index + 1, userData?.length),
+      ...roleSelected.slice(index + 1, userData?.length)
     ]);
   };
 
@@ -76,10 +76,10 @@ const UserTable = ({
           status: userData[index].status,
           userId: userData[index].userId,
           membershipId: userData[index].membershipId,
-          publicKey: userData[index].publicKey,
-        },
+          publicKey: userData[index].publicKey
+        }
       ],
-      ...userData.slice(index + 1, userData?.length),
+      ...userData.slice(index + 1, userData?.length)
     ]);
   };
 
@@ -88,22 +88,22 @@ const UserTable = ({
   }, [userData, myUser]);
 
   const grantAccess = async (id, publicKey) => {
-    let result = await getLatestFileKey({workspaceId: router.query.id});
+    let result = await getLatestFileKey({ workspaceId: router.query.id });
 
-    const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
+    const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
 
     // assymmetrically decrypt symmetric key with local private key
     const key = decryptAssymmetric({
       ciphertext: result.latestKey.encryptedKey,
       nonce: result.latestKey.nonce,
       publicKey: result.latestKey.sender.publicKey,
-      privateKey: PRIVATE_KEY,
+      privateKey: PRIVATE_KEY
     });
 
     const { ciphertext, nonce } = encryptAssymmetric({
       plaintext: key,
       publicKey: publicKey,
-      privateKey: PRIVATE_KEY,
+      privateKey: PRIVATE_KEY
     });
 
     uploadKeys(router.query.id, id, ciphertext, nonce);
@@ -158,24 +158,24 @@ const UserTable = ({
                     </td>
                     <td className="flex flex-row justify-end pr-8 py-2 border-t border-0.5 border-mineshaft-700">
                       <div className="flex justify-end mr-6 w-3/4 mx-2 w-full h-full flex flex-row items-center">
-                        {row.status == "granted" &&
-                        ((myRole == "admin" && row.role != "owner") ||
-                          myRole == "owner") &&
+                        {row.status == 'granted' &&
+                        ((myRole == 'admin' && row.role != 'owner') ||
+                          myRole == 'owner') &&
                         myUser !== row.email ? (
                           <Listbox
                             selected={row.role}
                             onChange={(e) => handleRoleUpdate(index, e)}
                             data={
-                              myRole == "owner"
-                                ? ["owner", "admin", "member"]
-                                : ["admin", "member"]
+                              myRole == 'owner'
+                                ? ['owner', 'admin', 'member']
+                                : ['admin', 'member']
                             }
                             text="Role: "
                             membershipId={row.membershipId}
                           />
                         ) : (
-                          row.status != "invited" &&
-                          row.status != "verified" && (
+                          row.status != 'invited' &&
+                          row.status != 'verified' && (
                             <Listbox
                               selected={row.role}
                               text="Role: "
@@ -183,8 +183,8 @@ const UserTable = ({
                             />
                           )
                         )}
-                        {(row.status == "invited" ||
-                          row.status == "verified") && (
+                        {(row.status == 'invited' ||
+                          row.status == 'verified') && (
                           <div className="w-full pl-9">
                             <Button
                               onButtonPressed={() =>
@@ -199,7 +199,7 @@ const UserTable = ({
                             />
                           </div>
                         )}
-                        {row.status == "completed" && myUser !== row.email && (
+                        {row.status == 'completed' && myUser !== row.email && (
                           <div className="border border-mineshaft-700 rounded-md bg-white/5 hover:bg-primary text-white hover:text-black duration-200">
                             <Button
                               onButtonPressed={() =>
@@ -214,7 +214,7 @@ const UserTable = ({
                       </div>
                       {myUser !== row.email &&
                       // row.role != "admin" &&
-                      myRole != "member" ? (
+                      myRole != 'member' ? (
                         <div className="opacity-50 hover:opacity-100 flex items-center">
                           <Button
                             onButtonPressed={(e) =>

@@ -1,4 +1,4 @@
-import SecurityClient from "~/utilities/SecurityClient";
+import SecurityClient from '~/utilities/SecurityClient';
 
 interface Workspace {
   __v: number;
@@ -12,18 +12,18 @@ interface Workspace {
  * @returns
  */
 const getWorkspaces = () => {
-  return SecurityClient.fetchCall("/api/v1/workspace", {
-    method: "GET",
+  return SecurityClient.fetchCall('/api/v1/workspace', {
+    method: 'GET',
     headers: {
-      "Content-Type": "application/json",
-    },
+      'Content-Type': 'application/json'
+    }
   }).then(async (res) => {
     if (res?.status == 200) {
       const data = (await res.json()) as unknown as { workspaces: Workspace[] };
       return data.workspaces;
     }
 
-    throw new Error("Failed to get projects");
+    throw new Error('Failed to get projects');
   });
 };
 
