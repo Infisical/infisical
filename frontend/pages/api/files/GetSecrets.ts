@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient.js';
+import SecurityClient from '~/utilities/SecurityClient';
 
 /**
  * This function fetches the encrypted secrets from the .env file

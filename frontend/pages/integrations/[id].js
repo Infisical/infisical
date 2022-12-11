@@ -1,36 +1,36 @@
-import React, { useEffect, useState } from "react";
-import Head from "next/head";
-import Image from "next/image";
-import { useRouter } from "next/router";
+import React, { useEffect, useState } from 'react';
+import Head from 'next/head';
+import Image from 'next/image';
+import { useRouter } from 'next/router';
 import {
   faArrowRight,
   faCheck,
   faRotate,
-  faX,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+  faX
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import Button from "~/components/basic/buttons/Button";
-import ListBox from "~/components/basic/Listbox";
-import NavHeader from "~/components/navigation/NavHeader";
-import getSecretsForProject from "~/components/utilities/secrets/getSecretsForProject";
-import pushKeysIntegration from "~/components/utilities/secrets/pushKeysIntegration";
-import guidGenerator from "~/utilities/randomId";
+import Button from '~/components/basic/buttons/Button';
+import ListBox from '~/components/basic/Listbox';
+import NavHeader from '~/components/navigation/NavHeader';
+import getSecretsForProject from '~/components/utilities/secrets/getSecretsForProject';
+import pushKeysIntegration from '~/components/utilities/secrets/pushKeysIntegration';
+import guidGenerator from '~/utilities/randomId';
 
-import { 
-  envMapping, 
-  frameworks, 
+import {
+  envMapping,
+  frameworks,
   reverseEnvMapping
-} from "../../public/data/frequentConstants";
-import deleteIntegration from "../api/integrations/DeleteIntegration";
-import deleteIntegrationAuth from "../api/integrations/DeleteIntegrationAuth";
-import getIntegrationApps from "../api/integrations/GetIntegrationApps";
-import getIntegrations from "../api/integrations/GetIntegrations";
-import getWorkspaceAuthorizations from "../api/integrations/getWorkspaceAuthorizations";
-import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
-import startIntegration from "../api/integrations/StartIntegration";
+} from '../../public/data/frequentConstants';
+import deleteIntegration from '../api/integrations/DeleteIntegration';
+import deleteIntegrationAuth from '../api/integrations/DeleteIntegrationAuth';
+import getIntegrationApps from '../api/integrations/GetIntegrationApps';
+import getIntegrations from '../api/integrations/GetIntegrations';
+import getWorkspaceAuthorizations from '../api/integrations/getWorkspaceAuthorizations';
+import getWorkspaceIntegrations from '../api/integrations/getWorkspaceIntegrations';
+import startIntegration from '../api/integrations/StartIntegration';
 
-const crypto = require("crypto");
+const crypto = require('crypto');
 
 const Integration = ({ projectIntegration }) => {
   const [integrationEnvironment, setIntegrationEnvironment] = useState(
@@ -47,7 +47,7 @@ const Integration = ({ projectIntegration }) => {
 
   useEffect(async () => {
     const tempHerokuApps = await getIntegrationApps({
-      integrationAuthId: projectIntegration.integrationAuth,
+      integrationAuthId: projectIntegration.integrationAuth
     });
     const tempHerokuAppNames = tempHerokuApps.map((app) => app.name);
     setApps(tempHerokuAppNames);
@@ -67,9 +67,9 @@ const Integration = ({ projectIntegration }) => {
             <ListBox
               data={
                 !projectIntegration.isActive && [
-                  "Development",
-                  "Staging",
-                  "Production",
+                  'Development',
+                  'Staging',
+                  'Production'
                 ]
               }
               selected={integrationEnvironment}
@@ -116,7 +116,7 @@ const Integration = ({ projectIntegration }) => {
                 const result = await startIntegration({
                   integrationId: projectIntegration._id,
                   environment: envMapping[integrationEnvironment],
-                  appName: integrationApp,
+                  appName: integrationApp
                 });
                 if (result?.status == 200) {
                   let currentSecrets = await getSecretsForProject({
@@ -124,18 +124,18 @@ const Integration = ({ projectIntegration }) => {
                     setFileState,
                     setIsKeyAvailable,
                     setData,
-                    workspaceId: router.query.id,
+                    workspaceId: router.query.id
                   });
 
                   let obj = Object.assign(
                     {},
                     ...currentSecrets.map((row) => ({
-                      [row[2]]: row[3],
+                      [row[2]]: row[3]
                     }))
                   );
                   await pushKeysIntegration({
                     obj,
-                    integrationId: projectIntegration._id,
+                    integrationId: projectIntegration._id
                   });
                   router.reload();
                 }
@@ -148,7 +148,7 @@ const Integration = ({ projectIntegration }) => {
             <Button
               onButtonPressed={async () => {
                 await deleteIntegration({
-                  integrationId: projectIntegration._id,
+                  integrationId: projectIntegration._id
                 });
                 router.reload();
               }}
@@ -168,20 +168,20 @@ export default function Integrations() {
   const [projectIntegrations, setProjectIntegrations] = useState();
   const [authorizations, setAuthorizations] = useState();
   const router = useRouter();
-  const [csrfToken, setCsrfToken] = useState("");
+  const [csrfToken, setCsrfToken] = useState('');
 
   useEffect(async () => {
-    const tempCSRFToken = crypto.randomBytes(16).toString("hex");
+    const tempCSRFToken = crypto.randomBytes(16).toString('hex');
     setCsrfToken(tempCSRFToken);
-    localStorage.setItem("latestCSRFToken", tempCSRFToken);
+    localStorage.setItem('latestCSRFToken', tempCSRFToken);
 
     let projectAuthorizations = await getWorkspaceAuthorizations({
-      workspaceId: router.query.id,
+      workspaceId: router.query.id
     });
     setAuthorizations(projectAuthorizations);
 
     const projectIntegrations = await getWorkspaceIntegrations({
-      workspaceId: router.query.id,
+      workspaceId: router.query.id
     });
     setProjectIntegrations(projectIntegrations);
 
@@ -189,7 +189,7 @@ export default function Integrations() {
       const integrationsData = await getIntegrations();
       setIntegrations(integrationsData);
     } catch (error) {
-      console.log("Error", error);
+      console.log('Error', error);
     }
   }, []);
 
@@ -239,7 +239,9 @@ export default function Integrations() {
           )}
           <div className="flex flex-col justify-between items-start mx-4 mt-12 mb-4 text-xl max-w-5xl px-2">
             <div className="flex flex-row justify-start items-center text-3xl">
-              <p className="font-semibold mr-4">Platform & Cloud Integrations</p>
+              <p className="font-semibold mr-4">
+                Platform & Cloud Integrations
+              </p>
             </div>
             <p className="mr-4 text-base text-gray-400">
               Click on the itegration you want to connect. This will let your
@@ -260,23 +262,23 @@ export default function Integrations() {
             {Object.keys(integrations).map((integration) => (
               <div
                 className={`relative ${
-                  ["Heroku"].includes(integrations[integration].name)
-                    ? ""
-                    : "opacity-50"
+                  ['Heroku'].includes(integrations[integration].name)
+                    ? ''
+                    : 'opacity-50'
                 }`}
                 key={integrations[integration].name}
               >
                 <a
                   href={`${
-                    ["Heroku"].includes(integrations[integration].name)
+                    ['Heroku'].includes(integrations[integration].name)
                       ? `https://id.heroku.com/oauth/authorize?client_id=bc132901-935a-4590-b010-f1857efc380d&response_type=code&scope=write-protected&state=${csrfToken}`
-                      : "#"
+                      : '#'
                   }`}
                   rel="noopener"
                   className={`relative flex flex-row bg-white/5 h-32 rounded-md p-4 items-center ${
-                    ["Heroku"].includes(integrations[integration].name)
-                      ? "hover:bg-white/10 duration-200 cursor-pointer"
-                      : "cursor-default grayscale"
+                    ['Heroku'].includes(integrations[integration].name)
+                      ? 'hover:bg-white/10 duration-200 cursor-pointer'
+                      : 'cursor-default grayscale'
                   }`}
                 >
                   <Image
@@ -285,12 +287,12 @@ export default function Integrations() {
                     width={70}
                     alt="integration logo"
                   ></Image>
-                  {integrations[integration].name.split(" ").length > 2 ? (
+                  {integrations[integration].name.split(' ').length > 2 ? (
                     <div className="font-semibold text-gray-300 group-hover:text-gray-200 duration-200 text-3xl ml-4 max-w-xs">
-                      <div>{integrations[integration].name.split(" ")[0]}</div>
+                      <div>{integrations[integration].name.split(' ')[0]}</div>
                       <div className="text-base">
-                        {integrations[integration].name.split(" ")[1]}{" "}
-                        {integrations[integration].name.split(" ")[2]}
+                        {integrations[integration].name.split(' ')[1]}{' '}
+                        {integrations[integration].name.split(' ')[2]}
                       </div>
                     </div>
                   ) : (
@@ -299,7 +301,7 @@ export default function Integrations() {
                     </div>
                   )}
                 </a>
-                {["Heroku"].includes(integrations[integration].name) &&
+                {['Heroku'].includes(integrations[integration].name) &&
                   authorizations
                     .map((authorization) => authorization.integration)
                     .includes(integrations[integration].name.toLowerCase()) && (
@@ -313,7 +315,7 @@ export default function Integrations() {
                                   authorization.integration ==
                                   integrations[integration].name.toLowerCase()
                               )
-                              .map((authorization) => authorization._id)[0],
+                              .map((authorization) => authorization._id)[0]
                           });
                           router.reload();
                         }}
@@ -334,7 +336,7 @@ export default function Integrations() {
                       </div>
                     </div>
                   )}
-                {!["Heroku"].includes(integrations[integration].name) && (
+                {!['Heroku'].includes(integrations[integration].name) && (
                   <div className="absolute group z-50 top-0 right-0 flex flex-row">
                     <div className="w-max bg-yellow py-0.5 px-2 rounded-bl-md rounded-tr-md text-xs flex flex-row items-center text-black opacity-90">
                       Coming Soon
@@ -351,7 +353,8 @@ export default function Integrations() {
             <p className="mr-4 text-base text-gray-400">
               Click on a framework to get the setup instructions.
             </p>
-          </div><div className="grid gap-4 grid-cols-7 grid-rows-2 mx-6 mt-4 max-w-5xl">
+          </div>
+          <div className="grid gap-4 grid-cols-7 grid-rows-2 mx-6 mt-4 max-w-5xl">
             {frameworks.map((framework) => (
               <div key={framework.name}>
                 <a
@@ -359,14 +362,24 @@ export default function Integrations() {
                   rel="noopener"
                   className={`relative flex flex-row items-center justify-center bg-bunker-500 hover:bg-gradient-to-tr hover:from-sky-400 hover:to-primary duration-200 h-32 rounded-md p-0.5 items-center cursor-pointer`}
                 >
-                  <div className={`font-semibold bg-bunker-500 flex flex-col items-center justify-center h-full w-full rounded-md text-gray-300 group-hover:text-gray-200 duration-200 ${framework?.name?.split(" ").length > 1 ? "text-sm px-1" : "text-xl px-2"} text-center w-full max-w-xs`}>
-                    {framework?.image && <Image
-                      src={`/images/integrations/${framework.image}.png`}
-                      height={framework?.name ? 60 : 90}
-                      width={framework?.name ? 60 : 90}
-                      alt="integration logo"
-                    ></Image>}
-                    {framework?.name && framework?.image && <div className="h-2"></div>}
+                  <div
+                    className={`font-semibold bg-bunker-500 flex flex-col items-center justify-center h-full w-full rounded-md text-gray-300 group-hover:text-gray-200 duration-200 ${
+                      framework?.name?.split(' ').length > 1
+                        ? 'text-sm px-1'
+                        : 'text-xl px-2'
+                    } text-center w-full max-w-xs`}
+                  >
+                    {framework?.image && (
+                      <Image
+                        src={`/images/integrations/${framework.image}.png`}
+                        height={framework?.name ? 60 : 90}
+                        width={framework?.name ? 60 : 90}
+                        alt="integration logo"
+                      ></Image>
+                    )}
+                    {framework?.name && framework?.image && (
+                      <div className="h-2"></div>
+                    )}
                     {framework?.name && framework.name}
                   </div>
                 </a>

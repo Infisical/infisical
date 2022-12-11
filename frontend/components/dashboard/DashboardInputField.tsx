@@ -1,8 +1,8 @@
-import React, { SyntheticEvent, useRef } from "react";
-import { faCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import React, { SyntheticEvent, useRef } from 'react';
+import { faCircle } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import guidGenerator from "../utilities/randomId";
+import guidGenerator from '../utilities/randomId';
 
 const REGEX = /([$]{.*?})/g;
 
@@ -10,7 +10,7 @@ interface DashboardInputFieldProps {
   index: number;
   onChangeHandler: (value: string, index: number) => void;
   value: string;
-  type: "varName" | "value";
+  type: 'varName' | 'value';
   blurred: boolean;
   duplicates: string[];
 }
@@ -33,7 +33,7 @@ const DashboardInputField = ({
   type,
   value,
   blurred,
-  duplicates,
+  duplicates
 }: DashboardInputFieldProps) => {
   const ref = useRef<HTMLDivElement | null>(null);
   const syncScroll = (e: SyntheticEvent<HTMLDivElement>) => {
@@ -43,8 +43,8 @@ const DashboardInputField = ({
     ref.current.scrollLeft = e.currentTarget.scrollLeft;
   };
 
-  if (type === "varName") {
-    const startsWithNumber = !isNaN(Number(value.charAt(0))) && value != "";
+  if (type === 'varName') {
+    const startsWithNumber = !isNaN(Number(value.charAt(0))) && value != '';
     const hasDuplicates = duplicates?.includes(value);
     const error = startsWithNumber || hasDuplicates;
 
@@ -52,7 +52,7 @@ const DashboardInputField = ({
       <div className="flex-col w-full">
         <div
           className={`group relative flex flex-col justify-center w-full max-w-2xl border ${
-            error ? "border-red" : "border-mineshaft-500"
+            error ? 'border-red' : 'border-mineshaft-500'
           } rounded-md`}
         >
           <input
@@ -62,7 +62,7 @@ const DashboardInputField = ({
             type={type}
             value={value}
             className={`z-10 peer font-mono ph-no-capture bg-bunker-800 rounded-md caret-white text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 ${
-              error ? "focus:ring-red/50" : "focus:ring-primary/50"
+              error ? 'focus:ring-red/50' : 'focus:ring-primary/50'
             } duration-200`}
             spellCheck="false"
           />
@@ -79,7 +79,7 @@ const DashboardInputField = ({
         )}
       </div>
     );
-  } else if (type === "value") {
+  } else if (type === 'value') {
     return (
       <div className="flex-col w-full">
         <div
@@ -91,8 +91,8 @@ const DashboardInputField = ({
             onScroll={syncScroll}
             className={`${
               blurred
-                ? "text-transparent group-hover:text-transparent focus:text-transparent active:text-transparent"
-                : ""
+                ? 'text-transparent group-hover:text-transparent focus:text-transparent active:text-transparent'
+                : ''
             } z-10 peer font-mono ph-no-capture bg-transparent rounded-md caret-white text-transparent text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-200 no-scrollbar no-scrollbar::-webkit-scrollbar`}
             spellCheck="false"
           />
@@ -100,8 +100,8 @@ const DashboardInputField = ({
             ref={ref}
             className={`${
               blurred
-                ? "text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-400 peer-active:text-gray-400"
-                : ""
+                ? 'text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-400 peer-active:text-gray-400'
+                : ''
             } absolute flex flex-row whitespace-pre font-mono z-0 ph-no-capture max-w-2xl overflow-x-scroll bg-bunker-800 h-9 rounded-md text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
           >
             {value.split(REGEX).map((word, id) => {
@@ -112,7 +112,7 @@ const DashboardInputField = ({
                     <span className="ph-no-capture text-yellow-200/80">
                       {word.slice(2, word.length - 1)}
                     </span>
-                    {word.slice(word.length - 1, word.length) == "}" ? (
+                    {word.slice(word.length - 1, word.length) == '}' ? (
                       <span className="ph-no-capture text-yellow">
                         {word.slice(word.length - 1, word.length)}
                       </span>
@@ -135,7 +135,7 @@ const DashboardInputField = ({
           {blurred && (
             <div className="absolute flex flex-row items-center z-20 peer pr-2 bg-bunker-800 group-hover:hidden peer-hover:hidden peer-focus:hidden peer-active:invisible h-9 w-full max-w-2xl rounded-md text-gray-400/50 text-clip">
               <div className="px-2 flex flex-row items-center overflow-x-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
-                {value.split("").map(() => (
+                {value.split('').map(() => (
                   <FontAwesomeIcon
                     key={guidGenerator()}
                     className="text-xxs mx-0.5"

@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient.js';
+import SecurityClient from '~/utilities/SecurityClient';
 
 /**
  * This function is used to check if the user is authenticated.

@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/router";
-import { faX } from "@fortawesome/free-solid-svg-icons";
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
+import { faX } from '@fortawesome/free-solid-svg-icons';
 
-import { reverseEnvMapping } from "../../../public/data/frequentConstants";
-import guidGenerator from "../../utilities/randomId";
-import Button from "../buttons/Button";
+import { reverseEnvMapping } from '../../../public/data/frequentConstants';
+import guidGenerator from '../../utilities/randomId';
+import Button from '../buttons/Button';
 
 /**
  * This is the component that we utilize for the user table - in future, can reuse it for some other purposes too.
