@@ -68,7 +68,7 @@ const getSecretsForProject = async ({
     setFileState(tempFileState);
 
     setData(
-      tempFileState.map((line, index) => {
+      tempFileState.map((line) => {
         return {
           id: guidGenerator(),
           key: line["key"],
@@ -76,12 +76,8 @@ const getSecretsForProject = async ({
           type: line["type"]
         }
       })
-      // .sort((a, b) =>
-      // 	sortMethod == "alphabetical"
-      // 		? a[2].localeCompare(b[2])
-      // 		: b[2].localeCompare(a[2])
-      // )
     );
+
     return tempFileState.map((line, index) => [
       guidGenerator(),
       index,
