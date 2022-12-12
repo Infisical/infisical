@@ -9,8 +9,6 @@ import { ADMIN, MEMBER, GRANTED } from '../variables';
 import { body, param } from 'express-validator';
 import { integrationController } from '../controllers';
 
-router.get('/integrations', requireAuth, integrationController.getIntegrations);
-
 router.patch(
 	'/:integrationId',
 	requireAuth,

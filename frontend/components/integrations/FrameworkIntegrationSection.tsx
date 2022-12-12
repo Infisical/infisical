@@ -22,7 +22,10 @@ const FrameworkIntegrationSection = ({ frameworks }: Props) => {
         </div>
         <div className="grid gap-4 grid-cols-7 grid-rows-2 mx-6 mt-4 max-w-5xl">
           {frameworks.map((framework) => (
-            <FrameworkIntegration framework={framework} />
+            <FrameworkIntegration 
+              framework={framework}
+              key={`framework-integration-${framework.slug}`}
+            />
           ))}
         </div>
       </>

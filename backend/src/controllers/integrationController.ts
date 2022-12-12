@@ -23,31 +23,6 @@ interface PushSecret {
 }
 
 /**
- * Return list of all available integrations on Infisical
- * @param req
- * @param res
- * @returns
- */
-export const getIntegrations = async (req: Request, res: Response) => {
-	let integrations;
-	try {
-		integrations = JSON.parse(
-			readFileSync('./src/json/integrations.json').toString()
-		);
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get integrations'
-		});
-	}
-
-	return res.status(200).send({
-		integrations
-	});
-};
-
-/**
  * Change environment or name of integration with id [integrationId]
  * @param req
  * @param res

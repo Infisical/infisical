@@ -28,7 +28,7 @@ const CloudIntegration = ({
     deleteIntegrationAuth,
     authorizations
 }: Props) => {
-    return (
+    return authorizations ? (
         <div
         className={`relative ${
             ["Heroku"].includes(integration.name)
@@ -106,7 +106,7 @@ const CloudIntegration = ({
             </div>
         )}
         </div>
-    );
+    ) : <div></div>
 } 
 
 export default CloudIntegration;

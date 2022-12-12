@@ -7,12 +7,9 @@ import Integration from "~/components/integrations/Integration";
 import FrameworkIntegrationSection from "~/components/integrations/FrameworkIntegrationSection";
 import CloudIntegrationSection from "~/components/integrations/CloudIntegrationSection";
 import ProjectIntegrationSection from "~/components/integrations/ProjectIntegrationSection";
-import guidGenerator from "~/utilities/randomId";
-import { 
-  frameworks
-} from "../../public/data/frequentConstants";
+import frameworkIntegrations from "../../public/json/frameworkIntegrations.json";
+import cloudIntegrations from "../../public/json/cloudIntegrations.json";
 import deleteIntegrationAuth from "../api/integrations/DeleteIntegrationAuth";
-import getIntegrations from "../api/integrations/GetIntegrations";
 import getWorkspaceAuthorizations from "../api/integrations/getWorkspaceAuthorizations";
 import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
 import getBot from "../api/bot/getBot";
@@ -26,7 +23,6 @@ const {
 const crypto = require("crypto");
 
 export default function Integrations() {
-  const [integrations, setIntegrations] = useState([]);
   const [projectIntegrations, setProjectIntegrations] = useState([]);
   const [authorizations, setAuthorizations] = useState();
   const [bot, setBot] = useState(null);
@@ -54,14 +50,7 @@ export default function Integrations() {
         workspaceId: router.query.id
       });
       setBot(bot.bot);
-
-      // get cloud integration options
-      let integrationOptions = await getIntegrations();
-      integrationOptions = Object
-        .keys(integrationOptions)
-        .map(integrationOption => integrationOptions[integrationOption]);
       
-      setIntegrations(integrationOptions);
     } catch (err) {
       console.log(err);
     }
@@ -160,7 +149,7 @@ export default function Integrations() {
     }
   }
   
-  return integrations ? (
+  return (
     <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
       <Head>
         <title>Dashboard</title>
@@ -181,7 +170,6 @@ export default function Integrations() {
           handleBotActivate={handleBotActivate}
           handleIntegrationOption={handleIntegrationOption}
         />
-        
         {projectIntegrations.length > 0 && (
           <ProjectIntegrationSection 
             projectIntegrations={projectIntegrations}
@@ -189,24 +177,16 @@ export default function Integrations() {
         )}
         <CloudIntegrationSection 
           projectIntegrations={projectIntegrations}
-          integrations={integrations}
+          integrations={cloudIntegrations}
           setSelectedIntegrationOption={setSelectedIntegrationOption}
           integrationOptionPress={integrationOptionPress}
           deleteIntegrationAuth={deleteIntegrationAuth}
           authorizations={authorizations}
         />
-        <FrameworkIntegrationSection frameworks={frameworks} />
+        <FrameworkIntegrationSection 
+          frameworks={frameworkIntegrations} 
+        />
       </div>
-    </div>
-  ) : (
-    <div className="relative z-10 w-10/12 mr-auto h-full ml-2 bg-bunker-800 flex flex-col items-center justify-center">
-      <div className="absolute top-0 bg-bunker h-14 border-b border-mineshaft-700 w-full"></div>
-      <Image
-        src="/images/loading/loading.gif"
-        height={70}
-        width={120}
-        alt="loading animation"
-      ></Image>
     </div>
   );
 }
