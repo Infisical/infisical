@@ -84,7 +84,6 @@ const handleOAuthExchangeHelper = async ({
         }).save();
         
     } catch (err) {
-        console.error('in', err);
         Sentry.setUser(null);
         Sentry.captureException(err);
         throw new Error('Failed to handle OAuth2 code-token exchange')
@@ -184,7 +183,7 @@ const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrati
     try {
         const integrationAuth = await IntegrationAuth
             .findById(integrationAuthId)
-            .select('+accessCiphertext +accessIV +accessTag');
+            .select('workspace integration +accessCiphertext +accessIV +accessTag +accessExpiresAt + refreshCiphertext');
 
         if (!integrationAuth) throw new Error('Failed to find integration auth');
 

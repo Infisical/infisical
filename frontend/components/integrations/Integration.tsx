@@ -15,7 +15,7 @@ import getIntegrationApps from "../../pages/api/integrations/GetIntegrationApps"
 import Button from "~/components/basic/buttons/Button";
 import ListBox from "~/components/basic/Listbox";
 
-interface ProjectIntegration {
+interface Integration {
     app?: string;
     environment: string;
     integration: string;
@@ -24,28 +24,29 @@ interface ProjectIntegration {
 }
 
 const Integration = ({ 
-    projectIntegration 
+  integration
 }: {
-    projectIntegration: ProjectIntegration;
+  integration: Integration;
 }) => {
     const [integrationEnvironment, setIntegrationEnvironment] = useState(
-      reverseEnvMapping[projectIntegration.environment]
+      reverseEnvMapping[integration.environment]
     );
     const [fileState, setFileState] = useState([]);
     const router = useRouter();
     const [apps, setApps] = useState([]);
     const [integrationApp, setIntegrationApp] = useState(
-      projectIntegration.app ? projectIntegration.app : apps[0]
+      integration.app ? integration.app : apps[0]
     );
   
     useEffect(async () => {
       const tempHerokuApps = await getIntegrationApps({
-        integrationAuthId: projectIntegration.integrationAuth,
+        integrationAuthId: integration.integrationAuth,
       });
+      
       const tempHerokuAppNames = tempHerokuApps.map((app) => app.name);
       setApps(tempHerokuAppNames);
       setIntegrationApp(
-        projectIntegration.app ? projectIntegration.app : tempHerokuAppNames[0]
+        integration.app ? integration.app : tempHerokuAppNames[0]
       );
     }, []);
   
@@ -59,7 +60,7 @@ const Integration = ({
               </div>
               <ListBox
                 data={
-                  !projectIntegration.isActive && [
+                  !integration.isActive && [
                     "Development",
                     "Staging",
                     "Production",
@@ -78,8 +79,8 @@ const Integration = ({
                 INTEGRATION
               </div>
               <div className="py-2.5 bg-white/[.07] rounded-md pl-4 pr-20 text-sm font-semibold text-gray-300">
-                {projectIntegration.integration.charAt(0).toUpperCase() +
-                  projectIntegration.integration.slice(1)}
+                {integration.integration.charAt(0).toUpperCase() +
+                  integration.integration.slice(1)}
               </div>
             </div>
             <div>
@@ -87,14 +88,14 @@ const Integration = ({
                 HEROKU APP
               </div>
               <ListBox
-                data={!projectIntegration.isActive && apps}
+                data={!integration.isActive && apps}
                 selected={integrationApp}
                 onChange={setIntegrationApp}
               />
             </div>
           </div>
           <div className="flex flex-row mt-6">
-            {projectIntegration.isActive ? (
+            {integration.isActive ? (
               <div className="max-w-5xl flex flex-row items-center bg-white/5 p-2 rounded-md px-4">
                 <FontAwesomeIcon
                   icon={faRotate}
@@ -107,7 +108,7 @@ const Integration = ({
                 text="Start Integration"
                 onButtonPressed={async () => {
                   const result = await updateIntegration({
-                    integrationId: projectIntegration._id,
+                    integrationId: integration._id,
                     environment: envMapping[integrationEnvironment],
                     app: integrationApp,
                     isActive: true
@@ -122,7 +123,7 @@ const Integration = ({
               <Button
                 onButtonPressed={async () => {
                   await deleteIntegration({
-                    integrationId: projectIntegration._id,
+                    integrationId: integration._id,
                   });
                   router.reload();
                 }}

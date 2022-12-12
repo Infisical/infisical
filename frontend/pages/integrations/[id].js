@@ -6,10 +6,9 @@ import NavHeader from "~/components/navigation/NavHeader";
 import Integration from "~/components/integrations/Integration";
 import FrameworkIntegrationSection from "~/components/integrations/FrameworkIntegrationSection";
 import CloudIntegrationSection from "~/components/integrations/CloudIntegrationSection";
-import ProjectIntegrationSection from "~/components/integrations/ProjectIntegrationSection";
-import frameworkIntegrations from "../../public/json/frameworkIntegrations.json";
-import cloudIntegrations from "../../public/json/cloudIntegrations.json";
-import deleteIntegrationAuth from "../api/integrations/DeleteIntegrationAuth";
+import IntegrationSection from "~/components/integrations/IntegrationSection";
+import frameworkIntegrationOptions from "../../public/json/frameworkIntegrations.json";
+import cloudIntegrationOptions from "../../public/json/cloudIntegrations.json";
 import getWorkspaceAuthorizations from "../api/integrations/getWorkspaceAuthorizations";
 import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
 import getBot from "../api/bot/getBot";
@@ -34,19 +33,25 @@ export default function Integrations() {
   useEffect(async () => {
     try {
       // get project integration authorizations
-      setIntegrationAuths(await getWorkspaceAuthorizations({
-        workspaceId: router.query.id,
-      }));
+      setIntegrationAuths(
+        await getWorkspaceAuthorizations({
+          workspaceId: router.query.id,
+        })
+      );
 
       // get project integrations
-      setIntegrations(await getWorkspaceIntegrations({
-        workspaceId: router.query.id,
-      }));
+      setIntegrations(
+        await getWorkspaceIntegrations({
+          workspaceId: router.query.id,
+        })
+      );
       
       // get project bot
-      setBot(await getBot({
-        workspaceId: router.query.id
-      }));
+      setBot(
+        await getBot({
+          workspaceId: router.query.id
+        }
+      ));
       
     } catch (err) {
       console.log(err);
@@ -159,7 +164,10 @@ export default function Integrations() {
         />
       </Head>
       <div className="w-full max-h-96 pb-2 h-screen max-h-[calc(100vh-10px)] overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
-        <NavHeader pageName="Project Integrations" isProjectRelated={true} />
+        <NavHeader 
+          pageName="Project Integrations" 
+          isProjectRelated={true} 
+        />
         <ActivateBotDialog 
           isOpen={isActivateBotOpen}
           closeModal={() => setIsActivateBotOpen(false)}
@@ -167,21 +175,15 @@ export default function Integrations() {
           handleBotActivate={handleBotActivate}
           handleIntegrationOption={handleIntegrationOption}
         />
-        {integrations.length > 0 && ( // shouldn't need to check for length
-          <ProjectIntegrationSection 
-            projectIntegrations={integrations}
-          />
-        )}
+        <IntegrationSection integrations={integrations} />
         <CloudIntegrationSection 
-          projectIntegrations={integrations}
-          integrations={cloudIntegrations}
+          cloudIntegrationOptions={cloudIntegrationOptions}
           setSelectedIntegrationOption={setSelectedIntegrationOption}
           integrationOptionPress={integrationOptionPress}
-          deleteIntegrationAuth={deleteIntegrationAuth}
-          authorizations={integrationAuths}
+          integrationAuths={integrationAuths}
         />
         <FrameworkIntegrationSection 
-          frameworks={frameworkIntegrations} 
+          frameworks={frameworkIntegrationOptions} 
         />
       </div>
     </div>

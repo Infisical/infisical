@@ -1,7 +1,7 @@
 import React from "react";
 import CloudIntegration from "./CloudIntegration";
 
-interface IntegrationOption {
+interface CloudIntegrationOption {
     name: string;
     type: string;
     clientId: string;
@@ -9,39 +9,34 @@ interface IntegrationOption {
 }
 
 interface Props {
-    projectIntegrations: any;
-    integrations: IntegrationOption[];
+    cloudIntegrationOptions: CloudIntegrationOption[];
     setSelectedIntegrationOption: () => void;
     integrationOptionPress: () => void;
-    deleteIntegrationAuth: () => void;
-    authorizations: any;
+    integrationAuths: any;
 }
 
 const CloudIntegrationSection = ({ 
-    projectIntegrations,
-    integrations,
+    cloudIntegrationOptions,
     setSelectedIntegrationOption,
     integrationOptionPress,
-    deleteIntegrationAuth,
-    authorizations
+    integrationAuths
 }: Props) => {
     return (
         <>
-            <div className={`flex flex-col justify-between items-start m-4 ${projectIntegrations.length > 0 ? 'mt-12' : 'mt-6'} text-xl max-w-5xl px-2`}>
+            <div className={`flex flex-col justify-between items-start m-4 mt-7 text-xl max-w-5xl px-2`}>
                 <h1 className="font-semibold text-3xl">Cloud Integrations</h1>
                 <p className="text-base text-gray-400">
                     Click on an integration to begin syncing secrets to it.
                 </p>
             </div>
             <div className="grid gap-4 grid-cols-4 grid-rows-2 mx-6 max-w-5xl">
-                {integrations.map((integration) => (
+                {cloudIntegrationOptions.map((cloudIntegrationOption) => (
                     <CloudIntegration 
-                        integration={integration}
+                        cloudIntegrationOption={cloudIntegrationOption}
                         setSelectedIntegrationOption={setSelectedIntegrationOption}
                         integrationOptionPress={integrationOptionPress}
-                        deleteIntegrationAuth={deleteIntegrationAuth}
-                        authorizations={authorizations}
-                        key={`cloud-integration-${integration.slug}`}
+                        integrationAuths={integrationAuths}
+                        key={`cloud-integration-${cloudIntegrationOption.slug}`}
                     />
                 ))}
             </div>
