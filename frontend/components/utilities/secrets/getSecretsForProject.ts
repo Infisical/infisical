@@ -81,17 +81,19 @@ const getSecretsForProject = async ({
           key: line['key'],
           value: line['value'],
           type: line['type']
-        }
+        };
       })
     );
 
-    return tempFileState.map((line, index) => [
-      guidGenerator(),
-      index,
-      line['key'],
-      line['value'],
-      line['type']
-    ]);
+    return tempFileState.map((line, index) => {
+      return {
+        id: guidGenerator(),
+        pos: index,
+        key: line['key'],
+        value: line['value'],
+        type: line['type']
+      };
+    });
   } catch (error) {
     console.log('Something went wrong during accessing or decripting secrets.');
   }

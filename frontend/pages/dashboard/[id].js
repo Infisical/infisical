@@ -265,14 +265,12 @@ export default function Dashboard() {
   /**
    * Reorder rows alphabetically or in the opprosite order
    */
-  const reorderRows = () => {
-    setSortMethod(prevSort =>
-      prevSort == 'alphabetical'
-        ? '-alphabetical'
-        : 'alphabetical'
+  const reorderRows = (dataToReorder) => {
+    setSortMethod((prevSort) =>
+      prevSort == 'alphabetical' ? '-alphabetical' : 'alphabetical'
     );
 
-    sortValuesHandler()
+    sortValuesHandler(dataToReorder);
   };
 
   useEffect(() => {
@@ -292,13 +290,14 @@ export default function Dashboard() {
         setBlurred(true);
         setWorkspaceId(router.query.id);
 
-        await getSecretsForProject({
+        const dataToSort = await getSecretsForProject({
           env,
           setFileState,
           setIsKeyAvailable,
           setData,
           workspaceId: router.query.id
         });
+        reorderRows(dataToSort);
 
         const user = await getUser();
         setIsNew(
@@ -321,13 +320,16 @@ export default function Dashboard() {
 
   const addRow = () => {
     setIsNew(false);
-    setData([...data, {
-      id:guidGenerator(),
-      pos:data.length,
-      key:'',
-      value:'',
-      type:'shared'
-    }]);
+    setData([
+      ...data,
+      {
+        id: guidGenerator(),
+        pos: data.length,
+        key: '',
+        value: '',
+        type: 'shared'
+      }
+    ]);
   };
 
   const deleteRow = (id) => {
@@ -450,23 +452,28 @@ export default function Dashboard() {
     setBlurred(!blurred);
   };
 
-  const sortValuesHandler = () => {
-    const sortedData = data.sort((a, b) =>
-      sortMethod == 'alphabetical'
-        ? a.key.localeCompare(b.key)
-        : b.key.localeCompare(a.key)
-    ).map((item, index) => {
-      return {
-        ...item, pos:index
-      }
-    })
+  const sortValuesHandler = (dataToSort) => {
+    const sortedData = (dataToSort != 1 ? dataToSort : data)
+      .sort((a, b) =>
+        sortMethod == 'alphabetical'
+          ? a.key.localeCompare(b.key)
+          : b.key.localeCompare(a.key)
+      )
+      .map((item, index) => {
+        return {
+          ...item,
+          pos: index
+        };
+      });
 
-    setData(sortedData)
-  }
+    setData(sortedData);
+  };
 
   // This function downloads the secrets as a .env file
   const download = () => {
-    const file = data.map((item) => [item.key, item.value].join('=')).join('\n');
+    const file = data
+      .map((item) => [item.key, item.value].join('='))
+      .join('\n');
     const blob = new Blob([file]);
     const fileDownloadUrl = URL.createObjectURL(blob);
     let alink = document.createElement('a');
@@ -600,7 +607,7 @@ export default function Dashboard() {
                     </div>
                     <div className="ml-2 min-w-max flex flex-row items-start justify-start">
                       <Button
-                        onButtonPressed={() => reorderRows()}
+                        onButtonPressed={() => reorderRows(1)}
                         color="mineshaft"
                         size="icon-md"
                         icon={
@@ -676,7 +683,8 @@ export default function Dashboard() {
                             .toLowerCase()
                             .includes(searchKeys.toLowerCase()) &&
                           keyPair.type == 'personal'
-                      )?.map((keyPair) => (
+                      )
+                      ?.map((keyPair) => (
                         <KeyPair
                           key={keyPair.id}
                           keyPair={keyPair}
@@ -724,7 +732,8 @@ export default function Dashboard() {
                             .toLowerCase()
                             .includes(searchKeys.toLowerCase()) &&
                           keyPair.type == 'shared'
-                      )?.map((keyPair) => (
+                      )
+                      ?.map((keyPair) => (
                         <KeyPair
                           key={keyPair.id}
                           keyPair={keyPair}

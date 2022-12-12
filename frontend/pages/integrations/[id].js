@@ -130,7 +130,7 @@ const Integration = ({ projectIntegration }) => {
                   let obj = Object.assign(
                     {},
                     ...currentSecrets.map((row) => ({
-                      [row[2]]: row[3]
+                      [row.key]: row.value
                     }))
                   );
                   await pushKeysIntegration({
