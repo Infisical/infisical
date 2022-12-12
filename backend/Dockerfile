@@ -2,11 +2,14 @@ FROM node:16-bullseye-slim
 
 WORKDIR /app
 
-COPY package*.json .
+COPY package.json package-lock.json ./
 
-RUN npm install
+RUN npm ci --only-production
 
 COPY . .
 
-CMD ["npm", "run", "start"]
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \  
+    CMD node healthcheck.js
 
+
+CMD ["npm", "run", "start"]
