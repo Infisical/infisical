@@ -23,8 +23,8 @@ const {
 const crypto = require("crypto");
 
 export default function Integrations() {
-  const [projectIntegrations, setProjectIntegrations] = useState([]);
-  const [authorizations, setAuthorizations] = useState();
+  const [integrationAuths, setIntegrationAuths] = useState([]);
+  const [integrations, setIntegrations] = useState([]);
   const [bot, setBot] = useState(null);
   const [isActivateBotOpen, setIsActivateBotOpen] = useState(false);
   const [selectedIntegrationOption, setSelectedIntegrationOption] = useState(null); 
@@ -33,23 +33,20 @@ export default function Integrations() {
 
   useEffect(async () => {
     try {
-      // get integrations authorized for project
-      let projectAuthorizations = await getWorkspaceAuthorizations({
+      // get project integration authorizations
+      setIntegrationAuths(await getWorkspaceAuthorizations({
         workspaceId: router.query.id,
-      });
-      setAuthorizations(projectAuthorizations);
+      }));
 
-      // get active/inactive (cloud) integrations for project
-      const projectIntegrations = await getWorkspaceIntegrations({
+      // get project integrations
+      setIntegrations(await getWorkspaceIntegrations({
         workspaceId: router.query.id,
-      });
-      setProjectIntegrations(projectIntegrations);
+      }));
       
-      // get bot for project
-      const bot = await getBot({
+      // get project bot
+      setBot(await getBot({
         workspaceId: router.query.id
-      });
-      setBot(bot.bot);
+      }));
       
     } catch (err) {
       console.log(err);
@@ -170,18 +167,18 @@ export default function Integrations() {
           handleBotActivate={handleBotActivate}
           handleIntegrationOption={handleIntegrationOption}
         />
-        {projectIntegrations.length > 0 && (
+        {integrations.length > 0 && ( // shouldn't need to check for length
           <ProjectIntegrationSection 
-            projectIntegrations={projectIntegrations}
+            projectIntegrations={integrations}
           />
         )}
         <CloudIntegrationSection 
-          projectIntegrations={projectIntegrations}
+          projectIntegrations={integrations}
           integrations={cloudIntegrations}
           setSelectedIntegrationOption={setSelectedIntegrationOption}
           integrationOptionPress={integrationOptionPress}
           deleteIntegrationAuth={deleteIntegrationAuth}
-          authorizations={authorizations}
+          authorizations={integrationAuths}
         />
         <FrameworkIntegrationSection 
           frameworks={frameworkIntegrations} 

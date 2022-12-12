@@ -21,7 +21,7 @@ const getBot = async ({ workspaceId }: Props) => {
     }
   ).then(async (res) => {
     if (res && res.status == 200) {
-      return await res.json();
+      return (await res.json()).bot;
     } else {
       console.log("Failed to get bot for project");
     }
