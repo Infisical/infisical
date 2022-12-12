@@ -74,26 +74,26 @@ const getSecretsForProject = async ({
     setFileState(tempFileState);
 
     setData(
-      tempFileState.map((line, index) => [
-        guidGenerator(),
-        index,
-        line['key'],
-        line['value'],
-        line['type']
-      ])
-      // .sort((a, b) =>
-      // 	sortMethod == "alphabetical"
-      // 		? a[2].localeCompare(b[2])
-      // 		: b[2].localeCompare(a[2])
-      // )
+      tempFileState.map((line, index) => {
+        return {
+          id: guidGenerator(),
+          pos: index,
+          key: line['key'],
+          value: line['value'],
+          type: line['type']
+        };
+      })
     );
-    return tempFileState.map((line, index) => [
-      guidGenerator(),
-      index,
-      line['key'],
-      line['value'],
-      line['type']
-    ]);
+
+    return tempFileState.map((line, index) => {
+      return {
+        id: guidGenerator(),
+        pos: index,
+        key: line['key'],
+        value: line['value'],
+        type: line['type']
+      };
+    });
   } catch (error) {
     console.log('Something went wrong during accessing or decripting secrets.');
   }

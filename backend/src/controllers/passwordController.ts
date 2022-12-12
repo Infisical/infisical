@@ -309,7 +309,7 @@ export const getBackupPrivateKey = async (req: Request, res: Response) => {
 	try {
 		backupPrivateKey = await BackupPrivateKey.findOne({
 			user: req.user._id
-		});
+		}).select('+encryptedPrivateKey +iv +tag');
 		
 		if (!backupPrivateKey) throw new Error('Failed to find backup private key');
 	} catch (err) {
