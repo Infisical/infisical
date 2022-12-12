@@ -51,9 +51,10 @@ const connectWithRetry = () => {
         console.log(e);
       }, 5000);
     });
+  return mongoose.connection;
 };
 
-connectWithRetry();
+const dbConnection = connectWithRetry();
 
 app.enable('trust proxy');
 app.use(cookieParser());
@@ -97,7 +98,11 @@ const server = http.createServer(app);
 const onSignal = () => {
   console.log('Server is starting clean-up');
   return Promise.all([
-    // your clean logic, like closing database connections
+    () => {
+      dbConnection.close(() => {
+        console.info('Database connection closed');
+      });
+    }
   ]);
 };
 

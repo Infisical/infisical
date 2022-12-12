@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
-/* eslint-disable no-console */
-/* eslint-disable no-undef */
 const http = require('http');
 const PORT = process.env.PORT || 4000;
 const options = {
@@ -20,7 +17,7 @@ const healthCheck = http.request(options, (res) => {
 });
 
 healthCheck.on('error', function (err) {
-  console.error(err);
+  console.error(`HEALTH CHECK ERROR: ${err}`);
   process.exit(1);
 });
 
