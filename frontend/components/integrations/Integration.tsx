@@ -15,6 +15,8 @@ import getIntegrationApps from "../../pages/api/integrations/GetIntegrationApps"
 import Button from "~/components/basic/buttons/Button";
 import ListBox from "~/components/basic/Listbox";
 
+// TODO: optimize laggy dropdown for app options
+
 interface Integration {
     app?: string;
     environment: string;
@@ -34,23 +36,21 @@ const Integration = ({
     const [fileState, setFileState] = useState([]);
     const router = useRouter();
     const [apps, setApps] = useState([]);
-    const [integrationApp, setIntegrationApp] = useState(
-      integration.app ? integration.app : apps[0]
-    );
+    const [integrationApp, setIntegrationApp] = useState(null);
   
     useEffect(async () => {
-      const tempHerokuApps = await getIntegrationApps({
+      const tempApps = await getIntegrationApps({
         integrationAuthId: integration.integrationAuth,
       });
       
-      const tempHerokuAppNames = tempHerokuApps.map((app) => app.name);
-      setApps(tempHerokuAppNames);
+      const tempAppNames = tempApps.map((app) => app.name);
+      setApps(tempAppNames);
       setIntegrationApp(
-        integration.app ? integration.app : tempHerokuAppNames[0]
+        integration.app ? integration.app : tempAppNames[0]
       );
     }, []);
   
-    return (
+    return (integrationApp && apps.length > 0) ? (
       <div className="flex flex-col max-w-5xl justify-center bg-white/5 p-6 rounded-md mx-6 mt-8">
         <div className="relative px-4 flex flex-row items-center justify-between mb-4">
           <div className="flex flex-row">
@@ -63,6 +63,7 @@ const Integration = ({
                   !integration.isActive && [
                     "Development",
                     "Staging",
+                    "Testing",
                     "Production",
                   ]
                 }
@@ -135,7 +136,9 @@ const Integration = ({
           </div>
         </div>
       </div>
-    );
+    ) : (
+      <div></div>
+    )
   };
 
 export default Integration;

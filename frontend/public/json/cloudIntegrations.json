@@ -3,6 +3,7 @@
         "name": "Heroku",
         "slug": "heroku",
         "image": "Heroku",
+        "isAvailable": true,
         "type": "oauth2",
         "clientId": "bc132901-935a-4590-b010-f1857efc380d"
     },
@@ -10,6 +11,7 @@
         "name": "Netlify",
         "slug": "netlify",
         "image": "Netlify",
+        "isAvailable": false,
         "type": "oauth2",
         "clientId": ""
     },
@@ -17,6 +19,7 @@
         "name": "Digital Ocean",
         "slug": "digital-ocean",
         "image": "Digital Ocean",
+        "isAvailable": false,
         "type": "",
         "clientId": ""
     },
@@ -24,6 +27,7 @@
         "name": "Google Cloud Platform",
         "slug": "gcp",
         "image": "Google Cloud Platform",
+        "isAvailable": false,
         "type": "",
         "clientId": ""
     },
@@ -31,6 +35,7 @@
         "name": "Amazon Web Services",
         "slug": "aws",
         "image": "Amazon Web Services",
+        "isAvailable": false,
         "type": "",
         "clientId": ""
     },
@@ -38,6 +43,7 @@
         "name": "Microsoft Azure",
         "slug": "azure",
         "image": "Microsoft Azure",
+        "isAvailable": false,
         "type": "",
         "clientId": ""
     },
@@ -45,6 +51,7 @@
         "name": "Travis CI",
         "slug": "travisci",
         "image": "Travis CI",
+        "isAvailable": false,
         "type": "",
         "clientId": ""
     },
@@ -52,6 +59,7 @@
         "name": "Circle CI",
         "slug": "circleci",
         "image": "Circle CI",
+        "isAvailable": false,
         "type": "",
         "clientId": ""
     }
