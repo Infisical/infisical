@@ -33,7 +33,7 @@ export default function SignupInvite() {
   const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
   const router = useRouter();
   const parsedUrl = queryString.parse(router.asPath.split('?')[1]);
-  const [email, setEmail] = useState(parsedUrl.to.replace(' ', '+').trim());
+  const [email, setEmail] = useState(parsedUrl.to?.replace(' ', '+').trim());
   const token = parsedUrl.token;
   const [errorLogin, setErrorLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
