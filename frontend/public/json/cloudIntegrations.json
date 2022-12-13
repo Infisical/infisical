@@ -5,14 +5,14 @@
         "image": "Heroku",
         "isAvailable": true,
         "type": "oauth2",
-        "clientId": "bc132901-935a-4590-b010-f1857efc380d"
+        "clientId": "7b1311a1-1cb2-4938-8adf-f37a399ec41b"
     },
     {
-        "name": "Netlify",
+        "name": "Vercel",
         "slug": "netlify",
         "image": "Netlify",
-        "isAvailable": false,
-        "type": "oauth2",
+        "isAvailable": true,
+        "type": "vercel",
         "clientId": ""
     },
     {

@@ -10,8 +10,15 @@ import { exchangeCode, exchangeRefresh, syncSecrets } from '../integrations';
 import { BotService, IntegrationService } from '../services';
 import {
     ENV_DEV,
-    EVENT_PUSH_SECRETS
+    EVENT_PUSH_SECRETS,
+    INTEGRATION_VERCEL
 } from '../variables';
+
+interface Update {
+    workspace: string;
+    integration: string;
+    teamId?: string;
+}
 
 /**
  * Perform OAuth2 code-token exchange for workspace with id [workspaceId] and integration
@@ -49,29 +56,45 @@ const handleOAuthExchangeHelper = async ({
             code
         });
         
+        // TODO: continue ironing out Vercel integration
+        
+        let update: Update = {
+            workspace: workspaceId,
+            integration
+        }
+        
+        switch (integration) {
+            case INTEGRATION_VERCEL:
+                update.teamId = res.teamId;
+                break;
+        }
+        
         integrationAuth = await IntegrationAuth.findOneAndUpdate({
             workspace: workspaceId,
             integration
-        }, {
-            workspace: workspaceId,
-            integration
-        }, {
+        }, update, {
             new: true,
             upsert: true
         });
         
-        // set integration auth refresh token
-        await setIntegrationAuthRefreshHelper({
-            integrationAuthId: integrationAuth._id.toString(),
-            refreshToken: res.refreshToken
-        });
+        if (res.refreshToken) {
+            // case: refresh token returned from exchange
+            // set integration auth refresh token
+            await setIntegrationAuthRefreshHelper({
+                integrationAuthId: integrationAuth._id.toString(),
+                refreshToken: res.refreshToken
+            });
+        }
         
-        // set integration auth access token
-        await setIntegrationAuthAccessHelper({
-            integrationAuthId: integrationAuth._id.toString(),
-            accessToken: res.accessToken,
-            accessExpiresAt: res.accessExpiresAt
-        });
+        if (res.accessToken) {
+            // case: access token returned from exchange
+            // set integration auth access token
+            await setIntegrationAuthAccessHelper({
+                integrationAuthId: integrationAuth._id.toString(),
+                accessToken: res.accessToken,
+                accessExpiresAt: res.accessExpiresAt
+            });
+        }
 
         // initialize new integration after exchange
         await new Integration({
@@ -82,7 +105,6 @@ const handleOAuthExchangeHelper = async ({
             integration,
             integrationAuth: integrationAuth._id
         }).save();
-        
     } catch (err) {
         Sentry.setUser(null);
         Sentry.captureException(err);
@@ -104,7 +126,7 @@ const syncIntegrationsHelper = async ({
     try {
         integrations = await Integration.find({
             workspace: workspaceId,
-            isActive: true, // TODO: filter so Integrations are ones with non-null apps
+            isActive: true,
             app: { $ne: null }
         }).populate<{integrationAuth: IIntegrationAuth}>('integrationAuth', 'accessToken');
 
@@ -126,11 +148,13 @@ const syncIntegrationsHelper = async ({
             await syncSecrets({
                 integration: integration.integration,
                 app: integration.app,
+                target: integration.target,
                 secrets,
                 accessToken
             });
         }
     } catch (err) {
+        console.log('syncIntegrationsHelper error', err);
         Sentry.setUser(null);
         Sentry.captureException(err);
         throw new Error('Failed to sync secrets to integrations');

@@ -9,13 +9,15 @@ import SecurityClient from "~/utilities/SecurityClient";
  * @param {String} obj.app - name of app 
  * @param {String} obj.environment - project environment to push secrets from
  * @param {Boolean} obj.isActive - active state
+ * @param {String} obj.target - (optional) target (environment)
  * @returns
  */
 const updateIntegration = ({ 
   integrationId, 
   app, 
-  environment, 
-  isActive 
+  environment,
+  isActive,
+  target
 }) => { 
   return SecurityClient.fetchCall(
     "/api/v1/integration/" + integrationId,
@@ -27,7 +29,8 @@ const updateIntegration = ({
       body: JSON.stringify({
         app,
         environment,
-        isActive
+        isActive,
+        target
       }),
     }
   ).then(async (res) => {

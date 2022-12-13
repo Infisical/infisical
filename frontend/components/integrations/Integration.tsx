@@ -7,7 +7,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-    reverseEnvMapping
+  envMapping,
+  reverseEnvMapping
 } from "../../public/data/frequentConstants";
 import updateIntegration from "../../pages/api/integrations/updateIntegration"
 import deleteIntegration from "../../pages/api/integrations/DeleteIntegration"
@@ -37,6 +38,7 @@ const Integration = ({
     const router = useRouter();
     const [apps, setApps] = useState([]);
     const [integrationApp, setIntegrationApp] = useState(null);
+    const [integrationTarget, setIntegrationTarget] = useState(null);
   
     useEffect(async () => {
       const tempApps = await getIntegrationApps({
@@ -48,54 +50,70 @@ const Integration = ({
       setIntegrationApp(
         integration.app ? integration.app : tempAppNames[0]
       );
+      setIntegrationTarget("Development");
     }, []);
-  
-    return (integrationApp && apps.length > 0) ? (
-      <div className="flex flex-col max-w-5xl justify-center bg-white/5 p-6 rounded-md mx-6 mt-8">
-        <div className="relative px-4 flex flex-row items-center justify-between mb-4">
-          <div className="flex flex-row">
-            <div>
-              <div className="text-gray-400 self-start ml-1 mb-1 text-xs font-semibold tracking-wide">
-                ENVIRONMENT
-              </div>
-              <ListBox
-                data={
-                  !integration.isActive && [
-                    "Development",
-                    "Staging",
-                    "Testing",
-                    "Production",
-                  ]
-                }
-                selected={integrationEnvironment}
-                onChange={setIntegrationEnvironment}
-              />
-            </div>
+    
+    if (!integrationApp || apps.length === 0) return <div></div>
+    
+    return (
+      <div className="max-w-5xl p-6 mx-6 mb-8 rounded-md bg-white/5 flex justify-between">
+        <div className="flex">
+          <div>
+            <p className="text-gray-400 text-xs font-semibold mb-2">ENVIRONMENT</p>
+            <ListBox data={!integration.isActive ? [
+                  "Development",
+                  "Staging",
+                  "Testing",
+                  "Production",
+                ] : null}
+              selected={integrationEnvironment}
+              onChange={setIntegrationEnvironment}
+              isFull={true}
+            />
+          </div>
+          <div className="pt-2">
             <FontAwesomeIcon
               icon={faArrowRight}
               className="mx-4 text-gray-400 mt-8"
-            />
-            <div className="mr-2">
-              <div className="text-gray-400 self-start ml-1 mb-1 text-xs font-semibold tracking-wide">
-                INTEGRATION
-              </div>
-              <div className="py-2.5 bg-white/[.07] rounded-md pl-4 pr-20 text-sm font-semibold text-gray-300">
-                {integration.integration.charAt(0).toUpperCase() +
-                  integration.integration.slice(1)}
-              </div>
-            </div>
-            <div>
-              <div className="text-gray-400 self-start ml-1 mb-1 text-xs font-semibold tracking-wide">
-                HEROKU APP
-              </div>
-              <ListBox
-                data={!integration.isActive && apps}
-                selected={integrationApp}
-                onChange={setIntegrationApp}
-              />
+            /> 
+          </div>
+          <div className="mr-2">
+            <p className="text-gray-400 text-xs font-semibold mb-2">
+              INTEGRATION
+            </p>
+            <div className="py-2.5 bg-white/[.07] rounded-md pl-4 pr-10 text-sm font-semibold text-gray-300">
+              {integration.integration.charAt(0).toUpperCase() +
+                integration.integration.slice(1)}
             </div>
           </div>
-          <div className="flex flex-row mt-6">
+          <div className="mr-2">
+            <div className="text-gray-400 text-xs font-semibold mb-2">
+              APP
+            </div>
+            <ListBox
+              data={!integration.isActive && apps}
+              selected={integrationApp}
+              onChange={setIntegrationApp}
+            />
+          </div>
+          {integration.integration === "vercel" && (
+            <div>
+              <div className="text-gray-400 text-xs font-semibold mb-2">
+                  ENVIRONMENT
+              </div>
+              <ListBox
+                data={!integration.isActive && [
+                  "Production",
+                  "Preview",
+                  "Development"
+                ]}
+                selected={integrationTarget}
+                onChange={setIntegrationTarget}
+              />
+            </div>
+          )}
+        </div>
+        <div className="flex items-end">
             {integration.isActive ? (
               <div className="max-w-5xl flex flex-row items-center bg-white/5 p-2 rounded-md px-4">
                 <FontAwesomeIcon
@@ -112,7 +130,8 @@ const Integration = ({
                     integrationId: integration._id,
                     environment: envMapping[integrationEnvironment],
                     app: integrationApp,
-                    isActive: true
+                    isActive: true,
+                    target: integrationTarget.toLowerCase()
                   });
                   router.reload();
                 }}
@@ -133,12 +152,9 @@ const Integration = ({
                 icon={faX}
               />
             </div>
-          </div>
         </div>
       </div>
-    ) : (
-      <div></div>
-    )
+    );
   };
 
 export default Integration;

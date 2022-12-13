@@ -1,10 +1,15 @@
 import { Schema, model, Types } from 'mongoose';
-import { INTEGRATION_HEROKU, INTEGRATION_NETLIFY } from '../variables';
+import { 
+	INTEGRATION_HEROKU, 
+	INTEGRATION_VERCEL,
+	INTEGRATION_NETLIFY 
+} from '../variables';
 
 export interface IIntegrationAuth {
 	_id: Types.ObjectId;
 	workspace: Types.ObjectId;
 	integration: 'heroku' | 'netlify';
+	teamId: string;
 	refreshCiphertext?: string;
 	refreshIV?: string;
 	refreshTag?: string;
@@ -22,8 +27,15 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
 		},
 		integration: {
 			type: String,
-			enum: [INTEGRATION_HEROKU, INTEGRATION_NETLIFY],
+			enum: [
+				INTEGRATION_HEROKU, 
+				INTEGRATION_VERCEL,
+				INTEGRATION_NETLIFY
+			],
 			required: true
+		},
+		teamId: { // vercel-specific integration param set at OAuth2 code-token exchange
+			type: String
 		},
 		refreshCiphertext: {
 			type: String,

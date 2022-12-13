@@ -31,17 +31,21 @@ interface PushSecret {
 export const updateIntegration = async (req: Request, res: Response) => {
 	let integration;
 	
+	// TODO: add integration-specific validation to ensure that each
+	// integration has the correct fields populated in [Integration]
+	
 	try {
-		const { app, environment, isActive } = req.body;
+		const { app, environment, isActive, target } = req.body;
 
 		integration = await Integration.findOneAndUpdate(
 			{
 				_id: req.integration._id
 			},
 			{
-				app,
 				environment,
-				isActive
+				isActive,
+				app,
+				target
 			},
 			{
 				new: true
@@ -49,7 +53,6 @@ export const updateIntegration = async (req: Request, res: Response) => {
 		);
 		
 		if (integration) {
-
 			// trigger event - push secrets
 			EventService.handleEvent({
 				event: eventPushSecrets({

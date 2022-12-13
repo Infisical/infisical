@@ -2,12 +2,34 @@ import axios from 'axios';
 import * as Sentry from '@sentry/node';
 import {
     INTEGRATION_HEROKU,
+    INTEGRATION_VERCEL,
     INTEGRATION_HEROKU_TOKEN_URL,
+    INTEGRATION_VERCEL_TOKEN_URL,
     ACTION_PUSH_TO_HEROKU
 } from '../variables';
 import { 
-    OAUTH_CLIENT_SECRET_HEROKU
+    SITE_URL,
+    OAUTH_CLIENT_SECRET_HEROKU,
+    CLIENT_ID_VERCEL,
+    CLIENT_SECRET_VERCEL
 } from '../config';
+
+interface ExchangeCodeHerokuResponse {
+    token_type: string;
+    access_token: string;
+    expires_in: number;
+    refresh_token: string;
+    user_id: string;
+    session_nonce?: string;
+}
+
+interface ExchangeCodeVercelResponse {
+    token_type: string;
+    access_token: string;
+    installation_id: string;
+    user_id: string;
+    team_id?: string;
+}
 
 /**
  * Return [accessToken], [accessExpiresAt], and [refreshToken] for OAuth2
@@ -37,6 +59,10 @@ const exchangeCode = async ({
                     code
                 });
                 break;
+            case INTEGRATION_VERCEL:
+                obj = await exchangeCodeVercel({
+                    code
+                });
         } 
     } catch (err) {
         Sentry.setUser(null);
@@ -62,20 +88,20 @@ const exchangeCodeHeroku = async ({
 }: {
     code: string;
 }) => {
-    let res: any;
+    let res: ExchangeCodeHerokuResponse;
     let accessExpiresAt = new Date();
     try {
-        res = await axios.post(
+        res = (await axios.post(
             INTEGRATION_HEROKU_TOKEN_URL,
             new URLSearchParams({
 				grant_type: 'authorization_code',
 				code: code,
 				client_secret: OAUTH_CLIENT_SECRET_HEROKU
 			} as any)
-        );
+        )).data;
         
         accessExpiresAt.setSeconds(
-            accessExpiresAt.getSeconds() + res.data.expires_in
+            accessExpiresAt.getSeconds() + res.expires_in
         );
     } catch (err) {
         Sentry.setUser(null);
@@ -84,9 +110,50 @@ const exchangeCodeHeroku = async ({
     }
     
     return ({
-        accessToken: res.data.access_token,
-        refreshToken: res.data.refresh_token,
+        accessToken: res.access_token,
+        refreshToken: res.refresh_token,
         accessExpiresAt
+    });
+}
+
+/**
+ * Return [accessToken], [accessExpiresAt], and [refreshToken] for Vercel
+ * code-token exchange
+ * @param {Object} obj1
+ * @param {Object} obj1.code - code for code-token exchange
+ * @returns {Object} obj2
+ * @returns {String} obj2.accessToken - access token for Heroku API
+ * @returns {String} obj2.refreshToken - refresh token for Heroku API
+ * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
+ */
+const exchangeCodeVercel = async ({
+    code
+}: {
+    code: string;
+}) => {
+    let res: ExchangeCodeVercelResponse;
+    try {
+        res = (await axios.post(
+            INTEGRATION_VERCEL_TOKEN_URL,
+            new URLSearchParams({
+				code: code,
+                client_id: CLIENT_ID_VERCEL,
+				client_secret: CLIENT_SECRET_VERCEL,
+                redirect_uri: `${SITE_URL}/vercel`
+			} as any)
+        )).data;
+        
+    } catch (err) {
+        Sentry.setUser(null);
+        Sentry.captureException(err);
+        throw new Error('Failed OAuth2 code-token exchange with Vercel');
+    }
+    
+    return ({
+        accessToken: res.access_token,
+        refreshToken: null,
+        accessExpiresAt: null,
+        teamId: res.team_id
     });
 }
 

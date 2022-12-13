@@ -113,7 +113,7 @@ export default function Integrations() {
    * @returns 
    */
   const handleIntegrationOption = async ({ integrationOption }) => {
-    // TODO: modularize
+    // TODO: modularize and handle switch by slug
     
     // generate CSRF token for OAuth2 code-token exchange integrations
     const csrfToken = crypto.randomBytes(16).toString("hex");
@@ -121,8 +121,13 @@ export default function Integrations() {
     
     switch (integrationOption.name) {
       case 'Heroku':
-        window.location = `https://id.heroku.com/oauth/authorize?client_id=7b1311a1-1cb2-4938-8adf-f37a399ec41b&response_type=code&scope=write-protected&state=${csrfToken}`;
-        return;
+        // console.log('Heroku integration ', integrationOption);
+        window.location = `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${csrfToken}`;
+        break;
+      case 'Vercel':
+        console.log('Vercel integration ', integrationOption);
+        window.location = `https://vercel.com/integrations/infisical/new?state=${csrfToken}`;
+        break;
     }
   }
   

@@ -4,7 +4,6 @@ import axios from 'axios';
 import { readFileSync } from 'fs';
 import { IntegrationAuth, Integration } from '../models';
 import { INTEGRATION_SET, ENV_DEV } from '../variables';
-import { OAUTH_CLIENT_SECRET_HEROKU, OAUTH_TOKEN_URL_HEROKU } from '../config';
 import { IntegrationService } from '../services';
 import { getApps } from '../integrations';
 

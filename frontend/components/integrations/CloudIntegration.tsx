@@ -33,8 +33,6 @@ const CloudIntegration = ({
     integrationOptionPress,
     integrationAuths
 }: Props) => {
-    console.log('cloudIntegrationOption', cloudIntegrationOption);
-    console.log('integrationAuths', integrationAuths);
     return integrationAuths ? (
         <div
             className={`relative ${
