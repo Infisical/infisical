@@ -103,7 +103,7 @@ export const login2 = async (req: Request, res: Response) => {
           // store (refresh) token in httpOnly cookie
           res.cookie('jid', tokens.refreshToken, {
             httpOnly: true,
-            path: '/token',
+            path: '/',
             sameSite: 'strict',
             secure: NODE_ENV === 'production' ? true : false
           });
