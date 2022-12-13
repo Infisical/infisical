@@ -10,7 +10,7 @@ WORKDIR /app
 COPY package.json package-lock.json next.config.js ./
 
 # Install dependencies
-RUN npm ci --only-production
+RUN npm ci --only-production --ignore-scripts
 
 
 # Rebuild the source code only when needed

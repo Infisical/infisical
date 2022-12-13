@@ -31,6 +31,7 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "scripts": {
+    "prepare": "cd .. && npm install",
     "start": "npm run build && node build/index.js",
     "dev": "nodemon",
     "build": "rimraf ./build && tsc && cp -R ./src/templates ./src/json ./build",
