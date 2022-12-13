@@ -9,18 +9,18 @@
     },
     {
         "name": "Vercel",
-        "slug": "netlify",
-        "image": "Netlify",
+        "slug": "vercel",
+        "image": "Vercel",
         "isAvailable": true,
         "type": "vercel",
         "clientId": ""
     },
     {
-        "name": "Digital Ocean",
-        "slug": "digital-ocean",
-        "image": "Digital Ocean",
-        "isAvailable": false,
-        "type": "",
+        "name": "Netlify",
+        "slug": "netlify",
+        "image": "Netlify",
+        "isAvailable": true,
+        "type": "oauth2",
         "clientId": ""
     },
     {

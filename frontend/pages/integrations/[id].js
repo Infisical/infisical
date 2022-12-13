@@ -125,8 +125,10 @@ export default function Integrations() {
         window.location = `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${csrfToken}`;
         break;
       case 'Vercel':
-        console.log('Vercel integration ', integrationOption);
         window.location = `https://vercel.com/integrations/infisical/new?state=${csrfToken}`;
+        break;
+      case 'Netlify':
+        console.log('netlifyyy');
         break;
     }
   }

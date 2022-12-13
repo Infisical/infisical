@@ -4,11 +4,10 @@ import { useRouter } from "next/router";
 const queryString = require("query-string");
 import AuthorizeIntegration from "./api/integrations/authorizeIntegration";
 
-export default function Vercel() {
+export default function Netlify() {
   const router = useRouter();
   const parsedUrl = queryString.parse(router.asPath.split("?")[1]);
-  const code = parsedUrl.code;
-  const state = parsedUrl.state
+  // modify comment here
   
   /**
    * Here we forward to the default workspace if a user opens this url
@@ -17,20 +16,22 @@ export default function Vercel() {
   useEffect(async () => {
     if (state === localStorage.getItem('latestCSRFToken')) {
       localStorage.removeItem('latestCSRFToken');
+        
+      console.log('Netlify', parsedUrl);
       
-      await AuthorizeIntegration({
-        workspaceId: localStorage.getItem('projectData.id'),
-        code,
-        integration: "vercel"
-      });
+    //   await AuthorizeIntegration({
+    //     workspaceId: localStorage.getItem('projectData.id'),
+    //     code,
+    //     integration: "vercel"
+    //   });
       
-      router.push("/integrations/" + localStorage.getItem("projectData.id"));
+    //   router.push("/integrations/" + localStorage.getItem("projectData.id"));
     }
 
     try {
   
     } catch (err) {
-      console.error('Vercel integration error: ', err);
+      console.error('Netlify integration error: ', err);
     }
     
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -39,4 +40,4 @@ export default function Vercel() {
   return <div></div>;
 }
 
-Vercel.requireAuth = true;
+Netlify.requireAuth = true;
