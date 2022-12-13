@@ -33,7 +33,7 @@ export default function SignupInvite() {
   const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
   const router = useRouter();
   const parsedUrl = queryString.parse(router.asPath.split('?')[1]);
-  const [email, setEmail] = useState(parsedUrl.to);
+  const [email, setEmail] = useState(parsedUrl.to.replace(' ', '+').trim());
   const token = parsedUrl.token;
   const [errorLogin, setErrorLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -150,7 +150,7 @@ export default function SignupInvite() {
         width={410}
         alt="verify email"
       ></Image>
-      <div className="flex flex-row items-center justify-center w-3/4 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto text-lg py-1 text-center md:text-left">
+      <div className="flex max-w-max flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
         <Button
           text="Confirm Email"
           onButtonPressed={async () => {
@@ -361,7 +361,7 @@ export default function SignupInvite() {
   );
 
   return (
-    <div className="bg-bunker-800 h-screen flex flex-col items-center justify-center">
+    <div className="bg-bunker-800 h-full flex flex-col items-center justify-center">
       <Head>
         <title>Sign Up</title>
         <link rel="icon" href="/infisical.ico" />

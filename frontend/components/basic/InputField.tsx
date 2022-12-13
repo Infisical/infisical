@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useRouter } from 'next/router';
 import { faCircle, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -26,7 +25,6 @@ const InputField = (
     Pick<JSX.IntrinsicElements['input'], 'autoComplete' | 'id'>
 ) => {
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const router = useRouter();
 
   if (props.static === true) {
     return (

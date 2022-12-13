@@ -1,34 +1,37 @@
-import React, { useEffect, useState } from "react";
-import Head from "next/head";
-import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/router";
-import { faWarning } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import React, { useEffect, useState } from 'react';
+import Head from 'next/head';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { faWarning } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import Button from "~/components/basic/buttons/Button";
-import Error from "~/components/basic/Error";
-import InputField from "~/components/basic/InputField";
-import attemptLogin from "~/utilities/attemptLogin";
+import Button from '~/components/basic/buttons/Button';
+import Error from '~/components/basic/Error';
+import InputField from '~/components/basic/InputField';
+import attemptLogin from '~/utilities/attemptLogin';
 
-import getWorkspaces from "./api/workspace/getWorkspaces";
+import getWorkspaces from './api/workspace/getWorkspaces';
 
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [errorLogin, setErrorLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  useEffect(async () => {
-    let userWorkspace;
-    try {
-      const userWorkspaces = await getWorkspaces();
-      userWorkspace = userWorkspaces[0]._id;
-      router.push("/dashboard/" + userWorkspace);
-    } catch (error) {
-      console.log("Error - Not logged in yet");
-    }
+  useEffect(() => {
+    const redirectToDashboard = async () => {
+      let userWorkspace;
+      try {
+        const userWorkspaces = await getWorkspaces();
+        userWorkspace = userWorkspaces[0]._id;
+        router.push('/dashboard/' + userWorkspace);
+      } catch (error) {
+        console.log('Error - Not logged in yet');
+      }
+    };
+    redirectToDashboard();
   }, []);
 
   /**
@@ -73,23 +76,9 @@ export default function Login() {
         </div>
       </Link>
       <div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-4 pt-8 px-6 rounded-xl drop-shadow-xl">
-        <p className="text-4xl flex justify-center font-semibold text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-          Log In
+        <p className="text-3xl w-max mx-auto flex justify-center font-semibold text-bunker-100 mb-6">
+          Log in to your account
         </p>
-        <div className="flex flex-row items-center justify-center">
-          <p className="text-md flex justify-center mt-2 text-gray-400">
-            Need an Infisical account?
-          </p>
-        </div>
-        <div className="flex flex-col items-center justify-center w-full md:pb-4 max-h-24 max-w-md mx-auto">
-          <Link href="/signup">
-            <button className="w-full pb-3 hover:opacity-90 duration-200">
-              <u className="font-normal text-md text-sky-500">
-                Create an account
-              </u>
-            </button>
-          </Link>
-        </div>
         <div className="flex items-center justify-center w-full md:p-2 rounded-lg mt-4 md:mt-0 max-h-24 md:max-h-28">
           <InputField
             label="Email"
@@ -98,10 +87,10 @@ export default function Login() {
             value={email}
             placeholder=""
             isRequired
-            autocomplete="username"
+            autoComplete="username"
           />
         </div>
-        <div className="flex items-center justify-center w-full md:p-2 rounded-lg md:mt-2 mt-6 max-h-24 md:max-h-28">
+        <div className="relative flex items-center justify-center w-full md:p-2 rounded-lg md:mt-2 mt-6 max-h-24 md:max-h-28">
           <InputField
             label="Password"
             onChangeHandler={setPassword}
@@ -112,6 +101,9 @@ export default function Login() {
             autoComplete="current-password"
             id="current-password"
           />
+          <div className="absolute top-2 right-3 text-primary-700 hover:text-primary duration-200 cursor-pointer text-sm">
+            <Link href="/verify-email">Forgot password?</Link>
+          </div>
         </div>
         {errorLogin && <Error text="Your email and/or password are wrong." />}
         <div className="flex flex-col items-center justify-center w-full md:p-2 max-h-20 max-w-md mt-4 mx-auto text-sm">
@@ -135,6 +127,16 @@ export default function Login() {
           solving it right now. Please come back in a few minutes.
         </div>
       )}
+      <div className="flex flex-row items-center justify-center md:pb-4 mt-4">
+        <p className="text-sm flex justify-center text-gray-400 w-max">
+          Need an Infisical account?
+        </p>
+        <Link href="/signup">
+          <button className="text-primary-700 hover:text-primary duration-200 font-normal text-sm underline-offset-4 ml-1.5">
+            Sign up here.
+          </button>
+        </Link>
+      </div>
     </div>
   );
 }

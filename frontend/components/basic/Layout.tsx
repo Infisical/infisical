@@ -41,7 +41,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const router = useRouter();
   const [workspaceList, setWorkspaceList] = useState([]);
-  const [workspaceMapping, setWorkspaceMapping] = useState([{ 1: 2 }]);
+  const [workspaceMapping, setWorkspaceMapping] = useState([{ '1': '2' }]);
   const [workspaceSelected, setWorkspaceSelected] = useState('∞');
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -221,20 +221,20 @@ export default function Layout({ children }: LayoutProps) {
   useEffect(() => {
     try {
       if (
-        workspaceMapping[Number(workspaceSelected)] &&
-        `${workspaceMapping[Number(workspaceSelected)]}` !==
+        workspaceMapping[workspaceSelected as any] &&
+        `${workspaceMapping[workspaceSelected as any]}` !==
           router.asPath
             .split('/')
             [router.asPath.split('/').length - 1].split('?')[0]
       ) {
         router.push(
           '/dashboard/' +
-            workspaceMapping[Number(workspaceSelected)] +
+            workspaceMapping[workspaceSelected as any] +
             '?Development'
         );
         localStorage.setItem(
           'projectData.id',
-          `${workspaceMapping[Number(workspaceSelected)]}`
+          `${workspaceMapping[workspaceSelected as any]}`
         );
       }
     } catch (error) {
