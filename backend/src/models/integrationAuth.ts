@@ -8,8 +8,9 @@ import {
 export interface IIntegrationAuth {
 	_id: Types.ObjectId;
 	workspace: Types.ObjectId;
-	integration: 'heroku' | 'netlify';
+	integration: 'heroku' | 'vercel' | 'netlify';
 	teamId: string;
+	accountId: string;
 	refreshCiphertext?: string;
 	refreshIV?: string;
 	refreshTag?: string;
@@ -34,7 +35,10 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
 			],
 			required: true
 		},
-		teamId: { // vercel-specific integration param set at OAuth2 code-token exchange
+		teamId: { // vercel-specific integration param
+			type: String
+		},
+		accountId: { // netlify-specific integration param
 			type: String
 		},
 		refreshCiphertext: {

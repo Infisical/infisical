@@ -74,6 +74,7 @@ const getSecretsHelper = async ({
         const key = await getKey({ workspaceId });
         const secrets = await Secret.find({
             workspaceId,
+            environment,
             type: SECRET_SHARED
         });
         

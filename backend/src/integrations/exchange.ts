@@ -35,6 +35,14 @@ interface ExchangeCodeVercelResponse {
     team_id?: string;
 }
 
+interface ExchangeCodeNetlifyResponse {
+    access_token: string;
+    token_type: string;
+    refresh_token: string;
+    scope: string;
+    created_at: number;
+}
+
 /**
  * Return [accessToken], [accessExpiresAt], and [refreshToken] for OAuth2
  * code-token exchange for integration named [integration]
@@ -152,7 +160,6 @@ const exchangeCodeVercel = async ({
                 redirect_uri: `${SITE_URL}/vercel`
 			} as any)
         )).data;
-        
     } catch (err) {
         Sentry.setUser(null);
         Sentry.captureException(err);
@@ -182,42 +189,50 @@ const exchangeCodeNetlify = async ({
 }: {
     code: string;
 }) => {
-    console.log('exchangeCodeNetlify');
-    let res: ExchangeCodeVercelResponse;
+    let res: ExchangeCodeNetlifyResponse;
+    let accountId;
     try {
         res = (await axios.post(
-            INTEGRATION_VERCEL_TOKEN_URL,
+            INTEGRATION_NETLIFY_TOKEN_URL,
             new URLSearchParams({
+                grant_type: 'authorization_code',
 				code: code,
-                client_id: CLIENT_ID_VERCEL,
-				client_secret: CLIENT_SECRET_VERCEL,
-                redirect_uri: `${SITE_URL}/vercel`
+                client_id: CLIENT_ID_NETLIFY,
+				client_secret: CLIENT_SECRET_NETLIFY,
+                redirect_uri: `${SITE_URL}/netlify`
 			} as any)
         )).data;
 
-        res = (await axios.post(
-            INTEGRATION_NETLIFY_TOKEN_URL,
-            `${"https://api.netlify.com/oauth/token"}?code=${code}&client_id=${CLIENT_ID_NETLIFY}&client_secret=${CLIENT_SECRET_NETLIFY}&grant_type=authorization_code&redirect_uri=${SITE_URL}/netlify`
-            // INTEGRATION_NETLIFY_TOKEN_URL,
-            // new URLSearchParams({
-			// 	code: code,
-            //     client_id: CLIENT_ID_NETLIFY,
-			// 	client_secret: CLIENT_SECRET_NETLIFY,
-            //     redirect_uri: `${SITE_URL}/netlify`
-			// } as any)
-        ));
+        const res2 = await axios.get(
+            'https://api.netlify.com/api/v1/sites',
+            {
+                headers: {
+                    Authorization: `Bearer ${res.access_token}`
+                }
+            }
+        );
         
-        console.log('resss', res);
+        const res3 = (await axios.get(
+            'https://api.netlify.com/api/v1/accounts',
+            {
+                headers: {
+                    Authorization: `Bearer ${res.access_token}`
+                }
+            }
+        )).data;
         
+        accountId = res3[0].id;
+
     } catch (err) {
-        console.error('netlify err', err);
         Sentry.setUser(null);
         Sentry.captureException(err);
         throw new Error('Failed OAuth2 code-token exchange with Netlify');
     }
     
     return ({
-
+        accessToken: res.access_token,
+        refreshToken: res.refresh_token,
+        accountId
     });
 }
 

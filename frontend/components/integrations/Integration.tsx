@@ -8,7 +8,8 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   envMapping,
-  reverseEnvMapping
+  reverseEnvMapping,
+  reverseContextNetlifyMapping
 } from "../../public/data/frequentConstants";
 import updateIntegration from "../../pages/api/integrations/updateIntegration"
 import deleteIntegration from "../../pages/api/integrations/DeleteIntegration"
@@ -36,22 +37,84 @@ const Integration = ({
     );
     const [fileState, setFileState] = useState([]);
     const router = useRouter();
-    const [apps, setApps] = useState([]);
-    const [integrationApp, setIntegrationApp] = useState(null);
-    const [integrationTarget, setIntegrationTarget] = useState(null);
+    const [apps, setApps] = useState([]); // integration app objects
+    const [integrationApp, setIntegrationApp] = useState(null); // integration app name
+    const [integrationTarget, setIntegrationTarget] = useState(null); // vercel-specific integration param
+    const [integrationContext, setIntegrationContext] = useState(null); // netlify-specific integration param
   
     useEffect(async () => {
+      interface App {
+        name: string;
+        siteId?: string;
+      }
+      
       const tempApps = await getIntegrationApps({
         integrationAuthId: integration.integrationAuth,
       });
       
-      const tempAppNames = tempApps.map((app) => app.name);
-      setApps(tempAppNames);
+      setApps(tempApps);
       setIntegrationApp(
-        integration.app ? integration.app : tempAppNames[0]
+        integration.app ? integration.app : tempApps[0].name
       );
-      setIntegrationTarget("Development");
+      
+      switch (integration.integration) {
+        case "vercel":
+          setIntegrationTarget("Development");
+          break;
+        case "netlify":
+          setIntegrationContext("All");
+          break;
+        default:
+          break;
+      }
     }, []);
+    
+    const renderIntegrationSpecificParams = (integration) => {
+      try {
+        switch (integration.integration) {
+          case "vercel":
+            return (
+              <div>
+                <div className="text-gray-400 text-xs font-semibold mb-2">
+                    ENVIRONMENT
+                </div>
+                <ListBox
+                  data={!integration.isActive && [
+                    "Production",
+                    "Preview",
+                    "Development"
+                  ]}
+                  selected={"Production"}
+                  onChange={setIntegrationTarget}
+                />
+            </div>
+            );
+          case "netlify":
+            return (
+              <div>
+                <div className="text-gray-400 text-xs font-semibold mb-2">
+                  CONTEXT
+                </div>
+                <ListBox
+                  data={!integration.isActive && [
+                    "All",
+                    "Production",
+                    "Deploy previews",
+                    "Branch deploys",
+                    "Local development"
+                  ]}
+                  selected={integrationContext}
+                  onChange={setIntegrationContext}
+                />
+              </div>
+            );
+          default:
+            return <div></div>;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
     
     if (!integrationApp || apps.length === 0) return <div></div>
     
@@ -91,27 +154,12 @@ const Integration = ({
               APP
             </div>
             <ListBox
-              data={!integration.isActive && apps}
+              data={!integration.isActive && apps.map((app) => app.name)}
               selected={integrationApp}
               onChange={setIntegrationApp}
             />
           </div>
-          {integration.integration === "vercel" && (
-            <div>
-              <div className="text-gray-400 text-xs font-semibold mb-2">
-                  ENVIRONMENT
-              </div>
-              <ListBox
-                data={!integration.isActive && [
-                  "Production",
-                  "Preview",
-                  "Development"
-                ]}
-                selected={integrationTarget}
-                onChange={setIntegrationTarget}
-              />
-            </div>
-          )}
+          {renderIntegrationSpecificParams(integration)}
         </div>
         <div className="flex items-end">
             {integration.isActive ? (
@@ -131,7 +179,9 @@ const Integration = ({
                     environment: envMapping[integrationEnvironment],
                     app: integrationApp,
                     isActive: true,
-                    target: integrationTarget.toLowerCase()
+                    target: integrationTarget ? integrationTarget.toLowerCase() : null,
+                    context: integrationContext ? reverseContextNetlifyMapping[integrationContext] : null,
+                    siteId: apps.find((app) => app.name === integrationApp).siteId
                   });
                   router.reload();
                 }}

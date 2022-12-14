@@ -9,7 +9,9 @@ import SecurityClient from "~/utilities/SecurityClient";
  * @param {String} obj.app - name of app 
  * @param {String} obj.environment - project environment to push secrets from
  * @param {Boolean} obj.isActive - active state
- * @param {String} obj.target - (optional) target (environment)
+ * @param {String} obj.target - (optional) target (environment) for Vercel integration
+ * @param {String} obj.context - (optional) context (environment) for Netlify integration
+ * @param {String} obj.siteId - (optional) app (site_id) for Netlify integration
  * @returns
  */
 const updateIntegration = ({ 
@@ -17,7 +19,9 @@ const updateIntegration = ({
   app, 
   environment,
   isActive,
-  target
+  target,
+  context,
+  siteId
 }) => { 
   return SecurityClient.fetchCall(
     "/api/v1/integration/" + integrationId,
@@ -30,7 +34,9 @@ const updateIntegration = ({
         app,
         environment,
         isActive,
-        target
+        target,
+        context,
+        siteId
       }),
     }
   ).then(async (res) => {

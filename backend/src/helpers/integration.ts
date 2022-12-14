@@ -11,13 +11,15 @@ import { BotService, IntegrationService } from '../services';
 import {
     ENV_DEV,
     EVENT_PUSH_SECRETS,
-    INTEGRATION_VERCEL
+    INTEGRATION_VERCEL,
+    INTEGRATION_NETLIFY
 } from '../variables';
 
 interface Update {
     workspace: string;
     integration: string;
     teamId?: string;
+    accountId?: string;
 }
 
 /**
@@ -55,8 +57,6 @@ const handleOAuthExchangeHelper = async ({
             integration,
             code
         });
-
-        return;
         
         let update: Update = {
             workspace: workspaceId,
@@ -66,6 +66,9 @@ const handleOAuthExchangeHelper = async ({
         switch (integration) {
             case INTEGRATION_VERCEL:
                 update.teamId = res.teamId;
+                break;
+            case INTEGRATION_NETLIFY:
+                update.accountId = res.accountId;
                 break;
         }
         
@@ -124,11 +127,12 @@ const syncIntegrationsHelper = async ({
 }) => {
     let integrations;
     try {
+
         integrations = await Integration.find({
             workspace: workspaceId,
             isActive: true,
             app: { $ne: null }
-        }).populate<{integrationAuth: IIntegrationAuth}>('integrationAuth', 'accessToken');
+        });
 
         // for each workspace integration, sync/push secrets
         // to that integration
@@ -139,22 +143,23 @@ const syncIntegrationsHelper = async ({
                 environment: integration.environment
             });
             
+            const integrationAuth = await IntegrationAuth.findById(integration.integrationAuth);
+            if (!integrationAuth) throw new Error('Failed to find integration auth');
+            
             // get integration auth access token
             const accessToken = await getIntegrationAuthAccessHelper({
-                integrationAuthId: integration.integrationAuth._id.toString()
+                integrationAuthId: integration.integrationAuth.toString()
             });
 
             // sync secrets to integration
             await syncSecrets({
-                integration: integration.integration,
-                app: integration.app,
-                target: integration.target,
+                integration,
+                integrationAuth,
                 secrets,
                 accessToken
             });
         }
     } catch (err) {
-        console.log('syncIntegrationsHelper error', err);
         Sentry.setUser(null);
         Sentry.captureException(err);
         throw new Error('Failed to sync secrets to integrations');

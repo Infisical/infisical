@@ -35,8 +35,15 @@ export const updateIntegration = async (req: Request, res: Response) => {
 	// integration has the correct fields populated in [Integration]
 	
 	try {
-		const { app, environment, isActive, target } = req.body;
-
+		const { 
+			app, 
+			environment, 
+			isActive, 
+			target, // vercel-specific integration param
+			context, // netlify-specific integration param
+			siteId // netlify-specific integration param
+		} = req.body;
+		
 		integration = await Integration.findOneAndUpdate(
 			{
 				_id: req.integration._id
@@ -45,7 +52,9 @@ export const updateIntegration = async (req: Request, res: Response) => {
 				environment,
 				isActive,
 				app,
-				target
+				target,
+				context,
+				siteId
 			},
 			{
 				new: true

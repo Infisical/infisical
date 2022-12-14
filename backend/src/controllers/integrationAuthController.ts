@@ -51,7 +51,7 @@ export const getIntegrationAuthApps = async (req: Request, res: Response) => {
 	let apps;
 	try {
 		apps = await getApps({
-			integration: req.integrationAuth.integration,
+			integrationAuth: req.integrationAuth,
 			accessToken: req.accessToken
 		});
 	} catch (err) {

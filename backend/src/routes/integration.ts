@@ -20,6 +20,9 @@ router.patch(
 	body('app').exists().trim(),
 	body('environment').exists().trim(),
 	body('isActive').exists().isBoolean(),
+	body('target').exists(),
+	body('context').exists(),
+	body('siteId').exists(),
 	validateRequest,
 	integrationController.updateIntegration
 );

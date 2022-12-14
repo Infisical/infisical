@@ -16,7 +16,9 @@ export interface IIntegration {
 	isActive: boolean;
 	app: string;
 	target: string;
-	integration: 'heroku' | 'netlify';
+	context: string;
+	siteId: string;
+	integration: 'heroku' | 'vercel' | 'netlify';
 	integrationAuth: Types.ObjectId;
 }
 
@@ -41,6 +43,14 @@ const integrationSchema = new Schema<IIntegration>(
 			default: null
 		},
 		target: { // vercel-specific target (environment)
+			type: String,
+			default: null
+		},
+		context: { // netlify-specific context (deploy)
+			type: String,
+			default: null
+		},
+		siteId: { // netlify-specific site (app) id
 			type: String,
 			default: null
 		},
