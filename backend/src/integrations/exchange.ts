@@ -3,15 +3,19 @@ import * as Sentry from '@sentry/node';
 import {
     INTEGRATION_HEROKU,
     INTEGRATION_VERCEL,
+    INTEGRATION_NETLIFY,
     INTEGRATION_HEROKU_TOKEN_URL,
     INTEGRATION_VERCEL_TOKEN_URL,
+    INTEGRATION_NETLIFY_TOKEN_URL,
     ACTION_PUSH_TO_HEROKU
 } from '../variables';
 import { 
     SITE_URL,
     OAUTH_CLIENT_SECRET_HEROKU,
     CLIENT_ID_VERCEL,
-    CLIENT_SECRET_VERCEL
+    CLIENT_ID_NETLIFY,
+    CLIENT_SECRET_VERCEL,
+    CLIENT_SECRET_NETLIFY
 } from '../config';
 
 interface ExchangeCodeHerokuResponse {
@@ -63,6 +67,12 @@ const exchangeCode = async ({
                 obj = await exchangeCodeVercel({
                     code
                 });
+                break;
+            case INTEGRATION_NETLIFY:
+                obj = await exchangeCodeNetlify({
+                    code
+                });
+                break;
         } 
     } catch (err) {
         Sentry.setUser(null);
@@ -154,6 +164,60 @@ const exchangeCodeVercel = async ({
         refreshToken: null,
         accessExpiresAt: null,
         teamId: res.team_id
+    });
+}
+
+/**
+ * Return [accessToken], [accessExpiresAt], and [refreshToken] for Vercel
+ * code-token exchange
+ * @param {Object} obj1
+ * @param {Object} obj1.code - code for code-token exchange
+ * @returns {Object} obj2
+ * @returns {String} obj2.accessToken - access token for Heroku API
+ * @returns {String} obj2.refreshToken - refresh token for Heroku API
+ * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
+ */
+const exchangeCodeNetlify = async ({
+    code
+}: {
+    code: string;
+}) => {
+    console.log('exchangeCodeNetlify');
+    let res: ExchangeCodeVercelResponse;
+    try {
+        res = (await axios.post(
+            INTEGRATION_VERCEL_TOKEN_URL,
+            new URLSearchParams({
+				code: code,
+                client_id: CLIENT_ID_VERCEL,
+				client_secret: CLIENT_SECRET_VERCEL,
+                redirect_uri: `${SITE_URL}/vercel`
+			} as any)
+        )).data;
+
+        res = (await axios.post(
+            INTEGRATION_NETLIFY_TOKEN_URL,
+            `${"https://api.netlify.com/oauth/token"}?code=${code}&client_id=${CLIENT_ID_NETLIFY}&client_secret=${CLIENT_SECRET_NETLIFY}&grant_type=authorization_code&redirect_uri=${SITE_URL}/netlify`
+            // INTEGRATION_NETLIFY_TOKEN_URL,
+            // new URLSearchParams({
+			// 	code: code,
+            //     client_id: CLIENT_ID_NETLIFY,
+			// 	client_secret: CLIENT_SECRET_NETLIFY,
+            //     redirect_uri: `${SITE_URL}/netlify`
+			// } as any)
+        ));
+        
+        console.log('resss', res);
+        
+    } catch (err) {
+        console.error('netlify err', err);
+        Sentry.setUser(null);
+        Sentry.captureException(err);
+        throw new Error('Failed OAuth2 code-token exchange with Netlify');
+    }
+    
+    return ({
+
     });
 }
 

@@ -55,8 +55,8 @@ const handleOAuthExchangeHelper = async ({
             integration,
             code
         });
-        
-        // TODO: continue ironing out Vercel integration
+
+        return;
         
         let update: Update = {
             workspace: workspaceId,

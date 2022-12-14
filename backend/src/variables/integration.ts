@@ -14,7 +14,7 @@ const INTEGRATION_OAUTH2 = 'oauth2';
 // integration oauth endpoints
 const INTEGRATION_HEROKU_TOKEN_URL = 'https://id.heroku.com/oauth/token';
 const INTEGRATION_VERCEL_TOKEN_URL = 'https://api.vercel.com/v2/oauth/access_token';
-const INTEGRATION_NETLIFY_TOKEN_URL = 'https://app.netlify.com/authorize';
+const INTEGRATION_NETLIFY_TOKEN_URL = 'https://api.netlify.com/oauth/token';
 
 // integration apps endpoints
 const INTEGRATION_HEROKU_API_URL = 'https://api.heroku.com';

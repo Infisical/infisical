@@ -21,7 +21,8 @@
         "image": "Netlify",
         "isAvailable": true,
         "type": "oauth2",
-        "clientId": ""
+        "clientId": "frGheMeEzVEUgM5yHLcPeTj9kYJhYvqkR5IkSexOS50",
+        "redirectURL": "http://localhost:8080/netlify"
     },
     {
         "name": "Google Cloud Platform",
