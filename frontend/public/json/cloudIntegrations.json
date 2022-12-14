@@ -21,7 +21,7 @@
         "image": "Netlify",
         "isAvailable": true,
         "type": "oauth2",
-        "clientId": "frGheMeEzVEUgM5yHLcPeTj9kYJhYvqkR5IkSexOS50",
+        "clientId": "fYWBhD3gt0pT62UIwYrlGRcy--pPVLYIQad6ORrES9o",
         "redirectURL": "http://localhost:8080/netlify"
     },
     {
