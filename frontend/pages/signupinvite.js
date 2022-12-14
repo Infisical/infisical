@@ -58,13 +58,13 @@ export default function SignupInvite() {
     } else {
       setLastNameError(false);
     }
-    errorCheck = passwordCheck(
+    errorCheck = passwordCheck({
       password,
       setPasswordErrorLength,
       setPasswordErrorNumber,
       setPasswordErrorLowerCase,
       errorCheck
-    );
+    });
 
     if (!errorCheck) {
       // Generate a random pair of a public and a private key
@@ -329,7 +329,7 @@ export default function SignupInvite() {
         It contains your Secret Key which we cannot access or recover for you if
         you lose it.
       </div>
-      <div className="flex flex-row items-center justify-center w-3/4 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto mt-6 md:mt-8 py-1 text-lg text-center md:text-left">
+      <div className="flex flex-col items-center justify-center md:px-4 md:py-5 mt-2 px-2 py-3 max-h-24 max-w-max mx-auto text-lg">
         <Button
           text="Download PDF"
           onButtonPressed={async () => {
@@ -361,7 +361,7 @@ export default function SignupInvite() {
   );
 
   return (
-    <div className="bg-bunker-800 h-full flex flex-col items-center justify-center">
+    <div className="bg-bunker-800 h-screen flex flex-col items-center justify-center">
       <Head>
         <title>Sign Up</title>
         <link rel="icon" href="/infisical.ico" />
