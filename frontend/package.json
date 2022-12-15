@@ -44,6 +44,7 @@
     "react-redux": "^8.0.2",
     "react-table": "^7.8.0",
     "set-cookie-parser": "^2.5.1",
+    "sharp": "^0.31.2",
     "styled-components": "^5.3.5",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",

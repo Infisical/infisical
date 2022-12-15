@@ -22,11 +22,11 @@ spec:
         - containerPort: 4000
         env:
         {{- range $key, $value := .Values.backendEnvironmentVariables }}
-        {{- if eq $value "MUST_REPLACE" }}
+        {{- if $value | quote | eq "MUST_REPLACE" }}
           {{ fail "Environment variables are not set. Please set all environment variables to continue." }}
         {{ end }}
         - name: {{ $key }}
-          value: {{ $value }}
+          value: {{ quote $value }}
         {{- end }}
 
 ---

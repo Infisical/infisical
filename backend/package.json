@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@godaddy/terminus": "^4.11.2",
     "@sentry/node": "^7.14.0",
     "@sentry/tracing": "^7.19.0",
     "@types/crypto-js": "^4.1.1",

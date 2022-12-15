@@ -63,13 +63,15 @@ const DropZone = ({
       if (event.target === null || event.target.result === null) return;
       // parse function's argument looks like to be ArrayBuffer
       const keyPairs = parse(event.target.result as Buffer);
-      const newData = Object.keys(keyPairs).map((key, index) => [
-        guidGenerator(),
-        numCurrentRows + index,
-        key,
-        keyPairs[key as keyof typeof keyPairs],
-        'shared'
-      ]);
+      const newData = Object.keys(keyPairs).map((key, index) => {
+        return {
+          id: guidGenerator(),
+          pos: numCurrentRows + index,
+          key: key,
+          value: keyPairs[key as keyof typeof keyPairs],
+          type: 'shared'
+        };
+      });
       setData(newData);
       setButtonReady(true);
     };
@@ -97,13 +99,15 @@ const DropZone = ({
       if (typeof result === 'string') {
         const newData = result
           .split('\n')
-          .map((line: string, index: number) => [
-            guidGenerator(),
-            numCurrentRows + index,
-            line.split('=')[0],
-            line.split('=').slice(1, line.split('=').length).join('='),
-            'shared'
-          ]);
+          .map((line: string, index: number) => {
+            return {
+              id: guidGenerator(),
+              pos: numCurrentRows + index,
+              key: line.split('=')[0],
+              value: line.split('=').slice(1, line.split('=').length).join('='),
+              type: 'shared'
+            };
+          });
         setData(newData);
         setButtonReady(true);
       }
