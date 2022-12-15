@@ -5,7 +5,7 @@ import { readFileSync } from 'fs';
 import { IntegrationAuth, Integration } from '../models';
 import { INTEGRATION_SET, ENV_DEV } from '../variables';
 import { IntegrationService } from '../services';
-import { getApps } from '../integrations';
+import { getApps, revokeAccess } from '../integrations';
 
 /**
  * Perform OAuth2 code-token exchange as part of integration [integration] for workspace with id [workspaceId]
@@ -74,46 +74,22 @@ export const getIntegrationAuthApps = async (req: Request, res: Response) => {
  * @returns
  */
 export const deleteIntegrationAuth = async (req: Request, res: Response) => {
-	// TODO: unfinished - disable application via Heroku API and make compatible with other integration types
 	try {
 		const { integrationAuthId } = req.params;
 
-		// TODO: disable application via Heroku API; figure out what authorization id is
-
-		const integrations = JSON.parse(
-			readFileSync('./src/json/integrations.json').toString()
-		);
-
-		let authorizationId;
-		switch (req.integrationAuth.integration) {
-			case 'heroku':
-				authorizationId = integrations.heroku.clientId;
-		}
-
-		// not sure what authorizationId is?
-		// // revoke authorization
-		// const res2 = await axios.delete(
-		//   `https://api.heroku.com/oauth/authorizations/${authorizationId}`,
-		//   {
-		//     headers: {
-		//         'Accept': 'application/vnd.heroku+json; version=3',
-		//         'Authorization': 'Bearer ' + req.accessToken
-		//     }
-		//   }
-		// );
-
-		const deletedIntegrationAuth = await IntegrationAuth.findOneAndDelete({
-			_id: integrationAuthId
+		await revokeAccess({
+			integrationAuth: req.integrationAuth,
+			accessToken: req.accessToken
 		});
-
-		if (deletedIntegrationAuth) {
-			await Integration.deleteMany({
-				integrationAuth: deletedIntegrationAuth._id
-			});
-		}
 	} catch (err) {
+		Sentry.setUser(null);
+        Sentry.captureException(err);	
 		return res.status(400).send({
 			message: 'Failed to delete integration authorization'
 		});
 	}
-};
+	
+	return res.status(200).send({
+		message: 'Successfully deleted integration authorization'
+	});
+}

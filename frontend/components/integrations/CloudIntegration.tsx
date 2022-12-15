@@ -1,5 +1,6 @@
 import React from "react";
 import Image from "next/image";
+import { useRouter } from "next/router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faCheck,
@@ -33,6 +34,7 @@ const CloudIntegration = ({
     integrationOptionPress,
     integrationAuths
 }: Props) => {
+    const router = useRouter();
     return integrationAuths ? (
         <div
             className={`relative ${
@@ -74,7 +76,8 @@ const CloudIntegration = ({
             .includes(cloudIntegrationOption.name.toLowerCase()) && (
             <div className="absolute group z-50 top-0 right-0 flex flex-row">
                 <div
-                    onClick={() => {
+                    onClick={(event) => {
+                        event.stopPropagation();
                         deleteIntegrationAuth({
                         integrationAuthId: integrationAuths
                             .filter(

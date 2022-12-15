@@ -115,44 +115,24 @@ export default function Integrations() {
    * @returns 
    */
   const handleIntegrationOption = async ({ integrationOption }) => {
-    // TODO: modularize and handle switch by slug
-    
-    console.log('handle', integrationOption);
-    
-    // generate CSRF token for OAuth2 code-token exchange integrations
-    const state = crypto.randomBytes(16).toString("hex");
-    localStorage.setItem('latestCSRFToken', state);
-    
-    switch (integrationOption.name) {
-      case 'Heroku':
-        // console.log('Heroku integration ', integrationOption);
-        window.location = `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`;
-        break;
-      case 'Vercel':
-        window.location = `https://vercel.com/integrations/infisical/new?state=${state}`;
-        break;
-      case 'Netlify':
-        // window.location = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=token&redirect_uri=${integrationOption.redirectURL}&state=${state}`;
-        window.location = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${integrationOption.redirectURL}&state=${state}`;
-        // const res = await axios.post('https://api.netlify.com/api/v1/oauth/tickets' + '?client_id=' + integrationOption.clientId);
-        
-        // window.location = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=ticket&redirect_uri=${integrationOption.redirectURL}&state=${state}&ticket=${res.data.id}`;
-        // `https://app.netlify.com/authorize?response_type=ticket&ticket=${ticket.id}`
-        try {
-          // const res = await axios.post('https://api.netlify.com/api/v1/oauth/tickets' + '?client_id=' + integrationOption.clientId);
-          // console.log('res response', res);
-          // const res2 = await axios.get('https://api.netlify.com/api/v1/oauth/tickets/' + res.data.id);
-          // console.log('res2 response', res2);
-          // console.log('ticket_id', res.data.id);
-          // // exchange ticket:
-          // const res3 = await axios.get(`https://api.netlify.com/api/v1/oauth/tickets/${res.data.id}/exchange`);
-          // console.log('res3 response', res3);
-
-        } catch (err) {
-          console.error('Netlify ', err);
-        }
-        
-        break;
+    try {
+      // generate CSRF token for OAuth2 code-token exchange integrations
+      const state = crypto.randomBytes(16).toString("hex");
+      localStorage.setItem('latestCSRFToken', state);
+      
+      switch (integrationOption.name) {
+        case 'Heroku':
+          window.location = `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`;
+          break;
+        case 'Vercel':
+          window.location = `https://vercel.com/integrations/infisical/new?state=${state}`;
+          break;
+        case 'Netlify':
+          window.location = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${integrationOption.redirectURL}&state=${state}`;
+          break;
+      }
+    } catch (err) {
+      console.log(err);
     }
   }
   
