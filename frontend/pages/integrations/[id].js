@@ -15,6 +15,7 @@ import getBot from "../api/bot/getBot";
 import setBotActiveStatus from "../api/bot/setBotActiveStatus";
 import getLatestFileKey from "../api/workspace/getLatestFileKey";
 import ActivateBotDialog from "~/components/basic/dialog/ActivateBotDialog";
+import IntegrationAccessTokenDialog from "~/components/basic/dialog/IntegrationAccessTokenDialog";
 const {
   decryptAssymmetric,
   encryptAssymmetric
@@ -27,7 +28,8 @@ export default function Integrations() {
   const [integrationAuths, setIntegrationAuths] = useState([]);
   const [integrations, setIntegrations] = useState([]);
   const [bot, setBot] = useState(null);
-  const [isActivateBotOpen, setIsActivateBotOpen] = useState(false);
+  const [isActivateBotDialogOpen, setIsActivateBotDialogOpen] = useState(false);
+  const [isIntegrationAccessTokenDialogOpen, setIntegrationAccessTokenDialogOpen] = useState(true);
   const [selectedIntegrationOption, setSelectedIntegrationOption] = useState(null); 
 
   const router = useRouter();
@@ -120,6 +122,8 @@ export default function Integrations() {
       const state = crypto.randomBytes(16).toString("hex");
       localStorage.setItem('latestCSRFToken', state);
       
+      // TODO: Add CircleCI, Render, Fly.io
+      
       switch (integrationOption.name) {
         case 'Heroku':
           window.location = `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`;
@@ -129,6 +133,10 @@ export default function Integrations() {
           break;
         case 'Netlify':
           window.location = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${integrationOption.redirectURL}&state=${state}`;
+          break;
+        case 'Fly.io':
+          console.log('fly.io');
+          setIntegrationAccessTokenDialogOpen(true);
           break;
       }
     } catch (err) {
@@ -179,8 +187,15 @@ export default function Integrations() {
           isProjectRelated={true} 
         />
         <ActivateBotDialog 
-          isOpen={isActivateBotOpen}
-          closeModal={() => setIsActivateBotOpen(false)}
+          isOpen={isActivateBotDialogOpen}
+          closeModal={() => setIsActivateBotDialogOpen(false)}
+          selectedIntegrationOption={selectedIntegrationOption}
+          handleBotActivate={handleBotActivate}
+          handleIntegrationOption={handleIntegrationOption}
+        />
+        <IntegrationAccessTokenDialog
+          isOpen={isIntegrationAccessTokenDialogOpen}
+          closeModal={() => setIntegrationAccessTokenDialogOpen(false)}
           selectedIntegrationOption={selectedIntegrationOption}
           handleBotActivate={handleBotActivate}
           handleIntegrationOption={handleIntegrationOption}

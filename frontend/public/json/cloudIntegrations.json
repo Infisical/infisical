@@ -5,7 +5,8 @@
         "image": "Heroku",
         "isAvailable": true,
         "type": "oauth2",
-        "clientId": "7b1311a1-1cb2-4938-8adf-f37a399ec41b"
+        "clientId": "7b1311a1-1cb2-4938-8adf-f37a399ec41b",
+        "docsLink": ""
     },
     {
         "name": "Vercel",
@@ -13,7 +14,8 @@
         "image": "Vercel",
         "isAvailable": true,
         "type": "vercel",
-        "clientId": ""
+        "clientId": "",
+        "docsLink": ""
     },
     {
         "name": "Netlify",
@@ -22,7 +24,17 @@
         "isAvailable": true,
         "type": "oauth2",
         "clientId": "fYWBhD3gt0pT62UIwYrlGRcy--pPVLYIQad6ORrES9o",
-        "redirectURL": "http://localhost:8080/netlify"
+        "redirectURL": "http://localhost:8080/netlify",
+        "docsLink": ""
+    },
+    {
+        "name": "Fly.io",
+        "slug": "flyio",
+        "image": "Google Cloud Platform",
+        "isAvailable": true,
+        "type": "accessToken",
+        "clientId": "",
+        "docsLink": ""
     },
     {
         "name": "Google Cloud Platform",
@@ -30,7 +42,8 @@
         "image": "Google Cloud Platform",
         "isAvailable": false,
         "type": "",
-        "clientId": ""
+        "clientId": "",
+        "docsLink": ""
     },
     {
         "name": "Amazon Web Services",
@@ -38,7 +51,8 @@
         "image": "Amazon Web Services",
         "isAvailable": false,
         "type": "",
-        "clientId": ""
+        "clientId": "",
+        "docsLink": ""
     },
     {
         "name": "Microsoft Azure",
@@ -46,7 +60,8 @@
         "image": "Microsoft Azure",
         "isAvailable": false,
         "type": "",
-        "clientId": ""
+        "clientId": "",
+        "docsLink": ""
     },
     {
         "name": "Travis CI",
@@ -54,7 +69,8 @@
         "image": "Travis CI",
         "isAvailable": false,
         "type": "",
-        "clientId": ""
+        "clientId": "",
+        "docsLink": ""
     },
     {
         "name": "Circle CI",
@@ -62,6 +78,7 @@
         "image": "Circle CI",
         "isAvailable": false,
         "type": "",
-        "clientId": ""
+        "clientId": "",
+        "docsLink": ""
     }
 ]
