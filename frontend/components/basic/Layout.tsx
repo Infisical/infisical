@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import {
+  faBook,
   faBookOpen,
   faGear,
   faKey,
@@ -149,6 +150,11 @@ export default function Layout({ children }: LayoutProps) {
       href: '/integrations/' + workspaceMapping[workspaceSelected as any],
       title: 'Integrations',
       emoji: <FontAwesomeIcon icon={faPlug} />
+    },
+    {
+      href: '/activity/' + workspaceMapping[workspaceSelected as any],
+      title: 'Activity',
+      emoji: <FontAwesomeIcon icon={faBook} />
     },
     {
       href: '/settings/project/' + workspaceMapping[workspaceSelected as any],
