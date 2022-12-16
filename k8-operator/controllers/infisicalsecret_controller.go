@@ -71,6 +71,6 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 // SetupWithManager sets up the controller with the Manager.
 func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&secretsv1alpha1.InfisicalSecret{}).
+		For(&secretsv1alpha1.InfisicalSecret{}). // TODO we should also be watching secrets with the name specifed
 		Complete(r)
 }

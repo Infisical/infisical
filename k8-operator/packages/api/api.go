@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/Infisical/infisical/k8-operator/packages/crypto"
@@ -20,7 +21,7 @@ func GetAllEnvironmentVariables(projectId string, envName string, infisicalToken
 		return nil, err
 	}
 
-	return envsFromApi, nil
+	return SubstituteSecrets(envsFromApi), nil
 }
 
 func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, envName string, projectId string) ([]models.SingleEnvironmentVariable, error) {
@@ -105,4 +106,74 @@ func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, envName string,
 	}
 
 	return listOfEnv, nil
+}
+
+func getExpandedEnvVariable(secrets []models.SingleEnvironmentVariable, variableWeAreLookingFor string, hashMapOfCompleteVariables map[string]string, hashMapOfSelfRefs map[string]string) string {
+	if value, found := hashMapOfCompleteVariables[variableWeAreLookingFor]; found {
+		return value
+	}
+
+	for _, secret := range secrets {
+		if secret.Key == variableWeAreLookingFor {
+			regex := regexp.MustCompile(`\${([^\}]*)}`)
+			variablesToPopulate := regex.FindAllString(secret.Value, -1)
+
+			// case: variable is a constant so return its value
+			if len(variablesToPopulate) == 0 {
+				return secret.Value
+			}
+
+			valueToEdit := secret.Value
+			for _, variableWithSign := range variablesToPopulate {
+				variableWithoutSign := strings.Trim(variableWithSign, "}")
+				variableWithoutSign = strings.Trim(variableWithoutSign, "${")
+
+				// case: reference to self
+				if variableWithoutSign == secret.Key {
+					hashMapOfSelfRefs[variableWithoutSign] = variableWithoutSign
+					continue
+				} else {
+					var expandedVariableValue string
+
+					if preComputedVariable, found := hashMapOfCompleteVariables[variableWithoutSign]; found {
+						expandedVariableValue = preComputedVariable
+					} else {
+						expandedVariableValue = getExpandedEnvVariable(secrets, variableWithoutSign, hashMapOfCompleteVariables, hashMapOfSelfRefs)
+						hashMapOfCompleteVariables[variableWithoutSign] = expandedVariableValue
+					}
+
+					// If after expanding all the vars above, is the current var a self ref? if so no replacement needed for it
+					if _, found := hashMapOfSelfRefs[variableWithoutSign]; found {
+						continue
+					} else {
+						valueToEdit = strings.ReplaceAll(valueToEdit, variableWithSign, expandedVariableValue)
+					}
+				}
+			}
+
+			return valueToEdit
+
+		} else {
+			continue
+		}
+	}
+
+	return "${" + variableWeAreLookingFor + "}"
+}
+
+func SubstituteSecrets(secrets []models.SingleEnvironmentVariable) []models.SingleEnvironmentVariable {
+	hashMapOfCompleteVariables := make(map[string]string)
+	hashMapOfSelfRefs := make(map[string]string)
+	expandedSecrets := []models.SingleEnvironmentVariable{}
+
+	for _, secret := range secrets {
+		expandedVariable := getExpandedEnvVariable(secrets, secret.Key, hashMapOfCompleteVariables, hashMapOfSelfRefs)
+		expandedSecrets = append(expandedSecrets, models.SingleEnvironmentVariable{
+			Key:   secret.Key,
+			Value: expandedVariable,
+		})
+
+	}
+
+	return expandedSecrets
 }
