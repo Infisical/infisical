@@ -7,11 +7,11 @@ import (
 type KubeSecretReference struct {
 	// The name of the Kubernetes Secret
 	// +kubebuilder:validation:Required
-	Name string `json:"name"`
+	SecretName string `json:"secretName"`
 
 	// The name space where the Kubernetes Secret is located
 	// +kubebuilder:validation:Required
-	Namespace string `json:"namespace,omitempty"`
+	SecretNamespace string `json:"secretNamespace,omitempty"`
 }
 
 // InfisicalSecretSpec defines the desired state of InfisicalSecret

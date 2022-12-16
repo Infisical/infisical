@@ -54,6 +54,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	err = r.ReconcileInfisicalSecret(ctx, infisicalSecretCR)
+	r.SetReadyToSyncSecretsConditions(ctx, &infisicalSecretCR, err)
 	if err != nil {
 		log.Error(err, "Unable to reconcile Infisical Secret and will try again")
 		return ctrl.Result{
@@ -61,7 +62,10 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}, nil
 	}
 
-	return ctrl.Result{}, nil
+	// Sync again after the specified time
+	return ctrl.Result{
+		RequeueAfter: time.Minute,
+	}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
