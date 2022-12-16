@@ -16,8 +16,8 @@ type KubeSecretReference struct {
 
 // InfisicalSecretSpec defines the desired state of InfisicalSecret
 type InfisicalSecretSpec struct {
-	ServiceTokenSecret KubeSecretReference `json:"serviceTokenSecret,omitempty"`
-	ManagedSecret      KubeSecretReference `json:"managedSecret,omitempty"`
+	InfisicalToken KubeSecretReference `json:"infisicalToken,omitempty"`
+	ManagedSecret  KubeSecretReference `json:"managedSecret,omitempty"`
 
 	// The Infisical project id
 	// +kubebuilder:validation:Required
