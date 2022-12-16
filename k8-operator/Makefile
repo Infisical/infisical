@@ -42,10 +42,10 @@ helm-chart:
 	$(KUSTOMIZE) build config/default | helmify ../helm-charts/secrets-operator
 
 ## Yaml for Kubectl 
-dist: manifests kustomize
-	mkdir -p dist
+kubectl-install: manifests kustomize
+	mkdir -p kubectl-install
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default > dist/install-secrets-operator.yaml
+	$(KUSTOMIZE) build config/default > kubectl-install/install-secrets-operator.yaml
 
 ##@ Development
 
