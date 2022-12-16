@@ -1,6 +1,6 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= infisical/kubernetes-operator:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.25.0
 
@@ -40,6 +40,12 @@ help: ## Display this help.
 ## Chart 
 helm-chart:
 	$(KUSTOMIZE) build config/default | helmify ../helm-charts/secrets-operator
+
+## Yaml for Kubectl 
+dist: manifests kustomize
+	mkdir -p dist
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUSTOMIZE) build config/default > dist/install-secrets-operator.yaml
 
 ##@ Development
 

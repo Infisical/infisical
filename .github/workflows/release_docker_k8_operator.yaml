@@ -30,6 +30,9 @@ jobs:
 
       - uses: actions/setup-go@v2
 
+      - name: Generate YAML for Kubectl
+        run: make dist charts
+
       - name: Upload CRD manifest
         uses: svenstaro/upload-release-action@v2
         with:
