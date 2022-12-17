@@ -101,7 +101,7 @@ export default function Login() {
             autoComplete="current-password"
             id="current-password"
           />
-          <div className="absolute top-2 right-3 text-primary-700 hover:text-primary duration-200 cursor-pointer text-sm">
+          <div className="absolute top-0 md:top-2 right-0.5 md:right-3 text-primary-700 hover:text-primary duration-200 cursor-pointer text-sm">
             <Link href="/verify-email">Forgot password?</Link>
           </div>
         </div>
