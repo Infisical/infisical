@@ -29,12 +29,12 @@ func (r *InfisicalSecretReconciler) GetKubeSecretByNamespacedName(ctx context.Co
 
 func (r *InfisicalSecretReconciler) GetInfisicalToken(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (string, error) {
 	tokenSecret, err := r.GetKubeSecretByNamespacedName(ctx, types.NamespacedName{
-		Namespace: infisicalSecret.Spec.InfisicalToken.SecretNamespace,
-		Name:      infisicalSecret.Spec.InfisicalToken.SecretName,
+		Namespace: infisicalSecret.Spec.TokenSecretReference.SecretNamespace,
+		Name:      infisicalSecret.Spec.TokenSecretReference.SecretName,
 	})
 
 	if err != nil {
-		return "", fmt.Errorf("failed to read Infisical token secret from secret named [%s] in namespace [%s]: with error [%w]", infisicalSecret.Spec.ManagedSecret.SecretName, infisicalSecret.Spec.ManagedSecret.SecretNamespace, err)
+		return "", fmt.Errorf("failed to read Infisical token secret from secret named [%s] in namespace [%s]: with error [%w]", infisicalSecret.Spec.ManagedSecretReference.SecretName, infisicalSecret.Spec.ManagedSecretReference.SecretNamespace, err)
 	}
 
 	infisicalServiceToken := tokenSecret.Data[INFISICAL_TOKEN_SECRET_KEY_NAME]
@@ -54,8 +54,8 @@ func (r *InfisicalSecretReconciler) CreateInfisicalManagedKubeSecret(ctx context
 	// create a new secret as specified by the managed secret spec of CRD
 	newKubeSecretInstance := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      infisicalSecret.Spec.ManagedSecret.SecretName,
-			Namespace: infisicalSecret.Spec.ManagedSecret.SecretNamespace,
+			Name:      infisicalSecret.Spec.ManagedSecretReference.SecretName,
+			Namespace: infisicalSecret.Spec.ManagedSecretReference.SecretNamespace,
 		},
 		Type: "Opaque",
 		Data: plainProcessedSecrets,
@@ -94,15 +94,15 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 	}
 
 	managedKubeSecret, err := r.GetKubeSecretByNamespacedName(ctx, types.NamespacedName{
-		Name:      infisicalSecret.Spec.ManagedSecret.SecretName,
-		Namespace: infisicalSecret.Spec.ManagedSecret.SecretNamespace,
+		Name:      infisicalSecret.Spec.ManagedSecretReference.SecretName,
+		Namespace: infisicalSecret.Spec.ManagedSecretReference.SecretNamespace,
 	})
 
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("something went wrong when fetching the managed Kubernetes secret [%w]", err)
 	}
 
-	secretsFromApi, err := api.GetAllEnvironmentVariables(infisicalSecret.Spec.ProjectId, infisicalSecret.Spec.Environment, infisicalToken)
+	secretsFromApi, err := api.GetAllEnvironmentVariables(infisicalSecret.Spec.ProjectId, infisicalSecret.Spec.Environment, infisicalToken, infisicalSecret.Spec.HostAPI)
 
 	if err != nil {
 		return err

@@ -1,0 +1,14 @@
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  name: infisicalsecret-sample
+  # namespace: first-project
+spec:
+  projectId: 62faf98ae0b05e8529b5da46
+  environment: dev
+  tokenSecretReference:
+    secretName: service-token
+    secretNamespace: first-project
+  managedSecretReference:
+    secretName: managed-secret
+    secretNamespace: first-project
