@@ -22,8 +22,6 @@ const {
 } = require('../../components/utilities/cryptography/crypto');
 const crypto = require("crypto");
 
-import axios from "axios";
-
 export default function Integrations() {
   const [cloudIntegrationOptions, setCloudIntegrationOptions] = useState([]);
   const [integrationAuths, setIntegrationAuths] = useState([]);
@@ -137,7 +135,7 @@ export default function Integrations() {
           window.location = `https://vercel.com/integrations/infisical-dev/new?state=${state}`;
           break;
         case 'Netlify':
-          window.location = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${window.location.origin}`;
+          window.location = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${window.location.origin}/netlify`;
           break;
         // case 'Fly.io':
         //   console.log('fly.io');
