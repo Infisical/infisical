@@ -51,7 +51,7 @@ export default function Activity() {
           <p className="font-semibold mr-4 text-bunker-100">Activity Logs</p>
         </div>
         <p className="mr-4 text-base text-gray-400">
-          Manage your integrations of Infisical with third-party services.
+          Event history limited to the last 12 months.
         </p>
       </div>
       <ActivityTable data={data} />
