@@ -178,5 +178,8 @@
       ]
     }
   ],
-  "backgroundImage": "/images/background.png"
+  "backgroundImage": "/images/background.png",
+  "integrations": {
+    "intercom": "hsg644ru"
+  }
 }
