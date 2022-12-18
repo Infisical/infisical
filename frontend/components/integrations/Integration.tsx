@@ -17,8 +17,6 @@ import getIntegrationApps from "../../pages/api/integrations/GetIntegrationApps"
 import Button from "~/components/basic/buttons/Button";
 import ListBox from "~/components/basic/Listbox";
 
-// TODO: optimize laggy dropdown for app options
-
 interface Integration {
     app?: string;
     environment: string;

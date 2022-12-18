@@ -28,15 +28,6 @@
         "docsLink": ""
     },
     {
-        "name": "Fly.io",
-        "slug": "flyio",
-        "image": "Google Cloud Platform",
-        "isAvailable": true,
-        "type": "accessToken",
-        "clientId": "",
-        "docsLink": ""
-    },
-    {
         "name": "Google Cloud Platform",
         "slug": "gcp",
         "image": "Google Cloud Platform",

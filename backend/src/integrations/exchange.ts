@@ -11,7 +11,7 @@ import {
 } from '../variables';
 import { 
     SITE_URL,
-    OAUTH_CLIENT_SECRET_HEROKU,
+    CLIENT_SECRET_HEROKU,
     CLIENT_ID_VERCEL,
     CLIENT_ID_NETLIFY,
     CLIENT_SECRET_VERCEL,
@@ -114,7 +114,7 @@ const exchangeCodeHeroku = async ({
             new URLSearchParams({
 				grant_type: 'authorization_code',
 				code: code,
-				client_secret: OAUTH_CLIENT_SECRET_HEROKU
+				client_secret: CLIENT_SECRET_HEROKU
 			} as any)
         )).data;
         

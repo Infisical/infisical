@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as Sentry from '@sentry/node';
 import { INTEGRATION_HEROKU } from '../variables';
 import {
-    OAUTH_CLIENT_SECRET_HEROKU
+    CLIENT_SECRET_HEROKU
 } from '../config';
 import {
     INTEGRATION_HEROKU_TOKEN_URL
@@ -59,7 +59,7 @@ const exchangeRefreshHeroku = async ({
             new URLSearchParams({
                 grant_type: 'refresh_token',
                 refresh_token: refreshToken,
-                client_secret: OAUTH_CLIENT_SECRET_HEROKU
+                client_secret: CLIENT_SECRET_HEROKU
             } as any)
         );
 

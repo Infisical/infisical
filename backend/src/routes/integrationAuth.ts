@@ -42,7 +42,8 @@ router.delete(
 	requireAuth,
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [GRANTED]
+		acceptedStatuses: [GRANTED],
+		attachAccessToken: false
 	}),
 	param('integrationAuthId'),
 	validateRequest,
