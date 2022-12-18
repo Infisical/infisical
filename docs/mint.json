@@ -21,7 +21,9 @@
       "to": "#F8B7BD"
     }
   },
-  "topbarLinks": [{ "name": "Log In", "url": "https://app.infisical.com/login" }],
+  "topbarLinks": [
+    { "name": "Log In", "url": "https://app.infisical.com/login" }
+  ],
   "topbarCtaButton": {
     "name": "Start for Free",
     "url": "https://app.infisical.com/signup"
@@ -113,12 +115,10 @@
           "pages": ["self-hosting/configuration/envars"]
         }
       ]
-    }, 
+    },
     {
       "group": "Integrations",
-      "pages": [
-        "integrations/overview"
-      ]
+      "pages": ["integrations/overview"]
     },
     {
       "group": "Platforms",
@@ -138,9 +138,7 @@
     },
     {
       "group": "CI/CD",
-      "pages": [
-        "integrations/cicd/circleci"
-      ]
+      "pages": ["integrations/cicd/circleci"]
     },
     {
       "group": "Frameworks",
@@ -179,5 +177,8 @@
       ]
     }
   ],
-  "backgroundImage": "/images/background.png"
+  "backgroundImage": "/images/background.png",
+  "integrations": {
+    "intercom": "hsg644ru"
+  }
 }
