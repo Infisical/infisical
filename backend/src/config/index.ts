@@ -11,6 +11,7 @@ const JWT_SIGNUP_SECRET = process.env.JWT_SIGNUP_SECRET!;
 const MONGO_URL = process.env.MONGO_URL!;
 const NODE_ENV = process.env.NODE_ENV! || 'production';
 const CLIENT_SECRET_HEROKU = process.env.CLIENT_SECRET_HEROKU!;
+const CLIENT_ID_HEROKU = process.env.CLIENT_ID_HEROKU!;
 const CLIENT_ID_VERCEL = process.env.CLIENT_ID_VERCEL!;
 const CLIENT_ID_NETLIFY = process.env.CLIENT_ID_NETLIFY!;
 const CLIENT_SECRET_VERCEL = process.env.CLIENT_SECRET_VERCEL!;
@@ -49,6 +50,7 @@ export {
   JWT_SIGNUP_SECRET,
   MONGO_URL,
   NODE_ENV,
+  CLIENT_ID_HEROKU,
   CLIENT_ID_VERCEL,
   CLIENT_ID_NETLIFY,
   CLIENT_SECRET_HEROKU,

@@ -8,10 +8,9 @@ import FrameworkIntegrationSection from "~/components/integrations/FrameworkInte
 import CloudIntegrationSection from "~/components/integrations/CloudIntegrationSection";
 import IntegrationSection from "~/components/integrations/IntegrationSection";
 import frameworkIntegrationOptions from "../../public/json/frameworkIntegrations.json";
-// import cloudIntegrationOptions from "../../public/json/cloudIntegrations.json";
-import { cloudIntegrationOptions } from "../../public/data/cloudIntegrations";
 import getWorkspaceAuthorizations from "../api/integrations/getWorkspaceAuthorizations";
 import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
+import getIntegrationOptions from "../api/integrations/GetIntegrationOptions";
 import getBot from "../api/bot/getBot";
 import setBotActiveStatus from "../api/bot/setBotActiveStatus";
 import getLatestFileKey from "../api/workspace/getLatestFileKey";
@@ -26,6 +25,7 @@ const crypto = require("crypto");
 import axios from "axios";
 
 export default function Integrations() {
+  const [cloudIntegrationOptions, setCloudIntegrationOptions] = useState([]);
   const [integrationAuths, setIntegrationAuths] = useState([]);
   const [integrations, setIntegrations] = useState([]);
   const [bot, setBot] = useState(null);
@@ -37,6 +37,11 @@ export default function Integrations() {
 
   useEffect(async () => {
     try {
+      // get cloud integration options
+      setCloudIntegrationOptions(
+        await getIntegrationOptions()
+      );
+
       // get project integration authorizations
       setIntegrationAuths(
         await getWorkspaceAuthorizations({
@@ -201,12 +206,16 @@ export default function Integrations() {
           handleIntegrationOption={handleIntegrationOption}
         /> */}
         <IntegrationSection integrations={integrations} />
-        <CloudIntegrationSection 
-          cloudIntegrationOptions={cloudIntegrationOptions}
-          setSelectedIntegrationOption={setSelectedIntegrationOption}
-          integrationOptionPress={integrationOptionPress}
-          integrationAuths={integrationAuths}
-        />
+        {cloudIntegrationOptions.length > 0 ? (
+          <CloudIntegrationSection 
+            cloudIntegrationOptions={cloudIntegrationOptions}
+            setSelectedIntegrationOption={setSelectedIntegrationOption}
+            integrationOptionPress={integrationOptionPress}
+            integrationAuths={integrationAuths}
+          />
+        ) : (
+          <div></div>
+        )}
         <FrameworkIntegrationSection 
           frameworks={frameworkIntegrationOptions} 
         />
