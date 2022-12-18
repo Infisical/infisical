@@ -21,7 +21,9 @@
       "to": "#F8B7BD"
     }
   },
-  "topbarLinks": [{ "name": "Log In", "url": "https://app.infisical.com/login" }],
+  "topbarLinks": [
+    { "name": "Log In", "url": "https://app.infisical.com/login" }
+  ],
   "topbarCtaButton": {
     "name": "Start for Free",
     "url": "https://app.infisical.com/signup"
@@ -113,18 +115,17 @@
           "pages": ["self-hosting/configuration/envars"]
         }
       ]
-    }, 
+    },
     {
       "group": "Integrations",
-      "pages": [
-        "integrations/overview"
-      ]
+      "pages": ["integrations/overview"]
     },
     {
       "group": "Platforms",
       "pages": [
         "integrations/platforms/docker",
-        "integrations/platforms/docker-compose"
+        "integrations/platforms/docker-compose",
+        "integrations/platforms/kubernetes"
       ]
     },
     {
@@ -138,9 +139,7 @@
     },
     {
       "group": "CI/CD",
-      "pages": [
-        "integrations/cicd/circleci"
-      ]
+      "pages": ["integrations/cicd/circleci"]
     },
     {
       "group": "Frameworks",
