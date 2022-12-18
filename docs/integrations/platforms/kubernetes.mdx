@@ -50,6 +50,7 @@ This resource is available after installing the Infisical operator. In order to 
 Once the secret is created, add the name and namespace of the secret under `tokenSecretReference` field in the InfisicalSecret custom resource.
 
 {' '}
+
 <Info>
   No matter what the name of the secret is or its namespace, it must contain a
   key named `infisicalToken` with a valid Infisical Token as the value
@@ -98,8 +99,8 @@ spec:
 
 ## Verify
 
-After creating an `InfisicalSecret` custom resource, you can reference the managed secret specified in the `managedSecretReference` field in your deployment just like any other Kubernetes secret.
-To confirm that the operator has created the managed secret specified in managedSecretReference, you can list the secrets in the namespace you specified.
+To use the InfisicalSecret custom resource in your deployment, you can simply reference the managed secret specified in the `managedSecretReference` field as you would any other Kubernetes secret.
+To verify that the operator has successfully created the managed secret, you can check the secrets in the namespace that was specified.
 
 ```bash
 # Verify managed secret is created
