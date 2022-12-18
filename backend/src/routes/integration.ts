@@ -9,22 +9,6 @@ import { ADMIN, MEMBER, GRANTED } from '../variables';
 import { body, param } from 'express-validator';
 import { integrationController } from '../controllers';
 
-router.get('/integrations', requireAuth, integrationController.getIntegrations);
-
-router.post(
-	'/:integrationId/sync',
-	requireAuth,
-	requireIntegrationAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [GRANTED]
-	}),
-	param('integrationId').exists().trim(),
-	body('key').exists(),
-	body('secrets').exists(),
-	validateRequest,
-	integrationController.syncIntegration
-);
-
 router.patch(
 	'/:integrationId',
 	requireAuth,
@@ -32,10 +16,15 @@ router.patch(
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED]
 	}),
-	param('integrationId'),
-	body('update'),
+	param('integrationId').exists().trim(),
+	body('app').exists().trim(),
+	body('environment').exists().trim(),
+	body('isActive').exists().isBoolean(),
+	body('target').exists(),
+	body('context').exists(),
+	body('siteId').exists(),
 	validateRequest,
-	integrationController.modifyIntegration
+	integrationController.updateIntegration
 );
 
 router.delete(
@@ -45,7 +34,7 @@ router.delete(
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED]
 	}),
-	param('integrationId'),
+	param('integrationId').exists().trim(),
 	validateRequest,
 	integrationController.deleteIntegration
 );

@@ -23,22 +23,23 @@ Sentry.init({
 });
 
 import {
-  signup as signupRouter,
-  auth as authRouter,
-  organization as organizationRouter,
-  workspace as workspaceRouter,
-  membershipOrg as membershipOrgRouter,
-  membership as membershipRouter,
-  key as keyRouter,
-  inviteOrg as inviteOrgRouter,
-  user as userRouter,
-  userAction as userActionRouter,
-  secret as secretRouter,
-  serviceToken as serviceTokenRouter,
-  password as passwordRouter,
-  stripe as stripeRouter,
-  integration as integrationRouter,
-  integrationAuth as integrationAuthRouter
+	signup as signupRouter,
+	auth as authRouter,
+	bot as botRouter,
+	organization as organizationRouter,
+	workspace as workspaceRouter,
+	membershipOrg as membershipOrgRouter,
+	membership as membershipRouter,
+	key as keyRouter,
+	inviteOrg as inviteOrgRouter,
+	user as userRouter,
+	userAction as userActionRouter,
+	secret as secretRouter,
+	serviceToken as serviceTokenRouter,
+	password as passwordRouter,
+	stripe as stripeRouter,
+	integration as integrationRouter,
+	integrationAuth as integrationAuthRouter
 } from './routes';
 
 const connectWithRetry = () => {
@@ -78,6 +79,7 @@ app.use(express.json());
 // routers
 app.use('/api/v1/signup', signupRouter);
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/bot', botRouter);
 app.use('/api/v1/user', userRouter);
 app.use('/api/v1/user-action', userActionRouter);
 app.use('/api/v1/organization', organizationRouter);

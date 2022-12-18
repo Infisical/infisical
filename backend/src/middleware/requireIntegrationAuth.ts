@@ -1,7 +1,8 @@
 import * as Sentry from '@sentry/node';
 import { Request, Response, NextFunction } from 'express';
-import { Integration, IntegrationAuth, Membership } from '../models';
-import { getOAuthAccessToken } from '../helpers/integrationAuth';
+import { Bot, Integration, IntegrationAuth, Membership } from '../models';
+import { IntegrationService } from '../services';
+import { validateMembership } from '../helpers/membership';
 
 /**
  * Validate if user on request is a member of workspace with proper roles associated
@@ -31,23 +32,13 @@ const requireIntegrationAuth = ({
 			if (!integration) {
 				throw new Error('Failed to find integration');
 			}
-
-			const membership = await Membership.findOne({
-				user: req.user._id,
-				workspace: integration.workspace
+			
+			await validateMembership({
+				userId: req.user._id.toString(),
+				workspaceId: integration.workspace.toString(),
+				acceptedRoles,
+				acceptedStatuses
 			});
-
-			if (!membership) {
-				throw new Error('Failed to find integration workspace membership');
-			}
-
-			if (!acceptedRoles.includes(membership.role)) {
-				throw new Error('Failed to validate workspace membership role');
-			}
-
-			if (!acceptedStatuses.includes(membership.status)) {
-				throw new Error('Failed to validate workspace membership status');
-			}
 
 			const integrationAuth = await IntegrationAuth.findOne({
 				_id: integration.integrationAuth
@@ -60,7 +51,9 @@ const requireIntegrationAuth = ({
 			}
 
 			req.integration = integration;
-			req.accessToken = await getOAuthAccessToken({ integrationAuth });
+			req.accessToken = await IntegrationService.getIntegrationAuthAccess({
+				integrationAuthId: integrationAuth._id.toString()
+			});
 
 			return next();
 		} catch (err) {
