@@ -95,12 +95,6 @@ Not sure where to get started? You can:
 
 We're currently in Public Alpha.
 
-## 🚨 Stay Up-to-Date
-
-Infisical officially launched as v.1.0 on November 21st, 2022. However, a lot of new features are coming very quickly. Watch **releases** of this repository to be notified about future updates:
-
-![infisical-star-github](https://github.com/Infisical/infisical/blob/main/.github/images/star-infisical.gif?raw=true)
-
 ## 🔌 Integrations
 
 We're currently setting the foundation and building [integrations](https://infisical.com/docs/integrations/overview) so secrets can be synced everywhere. Any help is welcome! :)
@@ -306,6 +300,12 @@ This repo is entirely MIT licensed, with the exception of the `ee` directory whi
 ## 🛡 Security
 
 Looking to report a security vulnerability? Please don't post about it in GitHub issue. Instead, refer to our [SECURITY.md](./SECURITY.md) file.
+
+## 🚨 Stay Up-to-Date
+
+Infisical officially launched as v.1.0 on November 21st, 2022. However, a lot of new features are coming very quickly. Watch **releases** of this repository to be notified about future updates:
+
+![infisical-star-github](https://github.com/Infisical/infisical/blob/main/.github/images/star-infisical.gif?raw=true)
 
 ## 🦸 Contributors
 
