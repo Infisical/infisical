@@ -27,6 +27,9 @@
   <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
   </a>
+  <a href="https://twitter.com/infisical">
+    <img src="https://img.shields.io/twitter/follow/infisical?label=Follow" alt="Infisical Twitter" />
+  </a>
 </h4>
 
 <img src="/img/infisical_github_repo.png" width="100%" alt="Dashboard" />
@@ -134,7 +137,9 @@ We're currently setting the foundation and building [integrations](https://infis
         🔜 Vercel (https://github.com/Infisical/infisical/issues/60)
       </td>
       <td align="left" valign="middle">
-        🔜 GitLab CI/CD
+        <a href="https://infisical.com/docs/integrations/platforms/kubernetes?ref=github.com">
+          ✔️ Kubernetes
+        </a>
       </td>
       <td align="left" valign="middle">
         🔜 Fly.io
@@ -156,7 +161,7 @@ We're currently setting the foundation and building [integrations](https://infis
         🔜 GCP
       </td>
       <td align="left" valign="middle">
-        🔜 Kubernetes
+        🔜 GitLab CI/CD
       </td>
       <td align="left" valign="middle">
         🔜 CircleCI
