@@ -118,6 +118,7 @@ export default function Integrations() {
    * @returns 
    */
   const handleIntegrationOption = async ({ integrationOption }) => {
+
     try {
       // generate CSRF token for OAuth2 code-token exchange integrations
       const state = crypto.randomBytes(16).toString("hex");
@@ -131,7 +132,7 @@ export default function Integrations() {
           window.location = `https://vercel.com/integrations/infisical-dev/new?state=${state}`;
           break;
         case 'Netlify':
-          window.location = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${integrationOption.redirectURL}`;
+          window.location = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${window.location.origin}`;
           break;
         // case 'Fly.io':
         //   console.log('fly.io');

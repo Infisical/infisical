@@ -1,5 +1,4 @@
 import {
-    SITE_URL,
     CLIENT_ID_HEROKU,
     CLIENT_ID_NETLIFY
 } from '../../components/utilities/config';
@@ -30,7 +29,6 @@ const cloudIntegrationOptions = [
         isAvailable: true,
         type: 'oauth2',
         clientId: CLIENT_ID_NETLIFY,
-        redirectURL: `${SITE_URL}/netlify`,
         docsLink: ''
     },
     {
