@@ -15,20 +15,18 @@ export default function Vercel() {
    */
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(async () => {
-    if (state === localStorage.getItem('latestCSRFToken')) {
-      localStorage.removeItem('latestCSRFToken');
-      
-      await AuthorizeIntegration({
-        workspaceId: localStorage.getItem('projectData.id'),
-        code,
-        integration: "vercel"
-      });
-      
-      router.push("/integrations/" + localStorage.getItem("projectData.id"));
-    }
-
     try {
-  
+      if (state === localStorage.getItem('latestCSRFToken')) {
+        localStorage.removeItem('latestCSRFToken');
+        
+        await AuthorizeIntegration({
+          workspaceId: localStorage.getItem('projectData.id'),
+          code,
+          integration: "vercel"
+        });
+        
+        router.push("/integrations/" + localStorage.getItem("projectData.id"));
+      }
     } catch (err) {
       console.error('Vercel integration error: ', err);
     }

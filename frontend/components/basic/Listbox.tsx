@@ -10,10 +10,10 @@ import { Listbox, Transition } from "@headlessui/react";
 
 interface ListBoxProps {
   selected: string;
-  onChange: () => void;
+  onChange: (arg: string) => void;
   data: string[];
-  text: string;
-  buttonAction: () => void;
+  text?: string;
+  buttonAction?: () => void;
   isFull?: boolean;
 }
 
