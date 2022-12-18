@@ -12,6 +12,7 @@ import Token, { IToken } from './token';
 import User, { IUser } from './user';
 import UserAction, { IUserAction } from './userAction';
 import Workspace, { IWorkspace } from './workspace';
+import Log, { ILog } from './log';
 
 export {
 	BackupPrivateKey,
@@ -41,5 +42,7 @@ export {
 	UserAction,
 	IUserAction,
 	Workspace,
-	IWorkspace
+	IWorkspace,
+	Log,
+	ILog
 };

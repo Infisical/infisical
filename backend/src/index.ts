@@ -38,7 +38,8 @@ import {
   password as passwordRouter,
   stripe as stripeRouter,
   integration as integrationRouter,
-  integrationAuth as integrationAuthRouter
+  integrationAuth as integrationAuthRouter,
+  log as logRouter
 } from './routes';
 
 const connectWithRetry = () => {
@@ -92,6 +93,7 @@ app.use('/api/v1/password', passwordRouter);
 app.use('/api/v1/stripe', stripeRouter);
 app.use('/api/v1/integration', integrationRouter);
 app.use('/api/v1/integration-auth', integrationAuthRouter);
+app.use('/api/v1/log', logRouter);
 
 const server = http.createServer(app);
 

@@ -14,3 +14,4 @@ helm install infisical-helm-charts/<name-of-helm-chart>
 
 #### Available chart names
 - infisical
+- secrets-operator

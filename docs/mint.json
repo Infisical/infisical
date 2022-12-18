@@ -131,7 +131,15 @@
       "group": "Cloud",
       "pages": [
         "integrations/cloud/heroku",
-        "integrations/cloud/vercel"
+        "integrations/cloud/vercel",
+        "integrations/cloud/render",
+        "integrations/cloud/flyio"
+      ]
+    },
+    {
+      "group": "CI/CD",
+      "pages": [
+        "integrations/cicd/circleci"
       ]
     },
     {

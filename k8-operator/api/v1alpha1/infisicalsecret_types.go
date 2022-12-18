@@ -7,11 +7,11 @@ import (
 type KubeSecretReference struct {
 	// The name of the Kubernetes Secret
 	// +kubebuilder:validation:Required
-	Name string `json:"name"`
+	SecretName string `json:"secretName"`
 
 	// The name space where the Kubernetes Secret is located
 	// +kubebuilder:validation:Required
-	Namespace string `json:"namespace,omitempty"`
+	SecretNamespace string `json:"secretNamespace"`
 }
 
 // InfisicalSecretSpec defines the desired state of InfisicalSecret
@@ -21,11 +21,11 @@ type InfisicalSecretSpec struct {
 
 	// The Infisical project id
 	// +kubebuilder:validation:Required
-	ProjectId string `json:"projectId,omitempty"`
+	ProjectId string `json:"projectId"`
 
 	// The Infisical environment such as dev, prod, testing
 	// +kubebuilder:validation:Required
-	Environment string `json:"environment,omitempty"`
+	Environment string `json:"environment"`
 }
 
 // InfisicalSecretStatus defines the observed state of InfisicalSecret
