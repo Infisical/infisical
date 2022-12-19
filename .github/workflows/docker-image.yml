@@ -19,21 +19,21 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: 📦 Build backend and export to Docker
-        uses: docker/build-push-action@v3
-        with:
-          load: true
-          context: backend
-          tags: infisical/backend:test
-      - name: ⏻ Spawn backend container and dependencies
-        run: |
-          docker compose -f .github/resources/docker-compose.be-test.yml up --wait --quiet-pull
-      - name: 🧪 Test backend image
-        run: |
-          ./.github/resources/healthcheck.sh infisical-backend-test
-      - name: ⏻ Shut down backend container and dependencies
-        run: |
-          docker compose -f .github/resources/docker-compose.be-test.yml down
+      # - name: 📦 Build backend and export to Docker
+      #   uses: docker/build-push-action@v3
+      #   with:
+      #     load: true
+      #     context: backend
+      #     tags: infisical/backend:test
+      # - name: ⏻ Spawn backend container and dependencies
+      #   run: |
+      #     docker compose -f .github/resources/docker-compose.be-test.yml up --wait --quiet-pull
+      # - name: 🧪 Test backend image
+      #   run: |
+      #     ./.github/resources/healthcheck.sh infisical-backend-test
+      # - name: ⏻ Shut down backend container and dependencies
+      #   run: |
+      #     docker compose -f .github/resources/docker-compose.be-test.yml down
       - name: 🏗️ Build backend and push
         uses: docker/build-push-action@v3
         with:
