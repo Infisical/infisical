@@ -8,8 +8,8 @@ RUN npm ci --only-production --ignore-scripts
 
 COPY . .
 
-HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \  
-    CMD node healthcheck.js
+# HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \  
+#     CMD node healthcheck.js
 
 
 CMD ["npm", "run", "start"]
