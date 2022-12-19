@@ -49,17 +49,14 @@ const ActivityLogsRow = ({ row }: { row: ActivityTableProps }): JSX.Element => {
   const [payloadOpened, setPayloadOpened] = useState(false);
   return (
     <>
-      <tr
-        key={guidGenerator()}
-        className="bg-bunker-800 duration-100 cursor-pointer w-full"
-      >
+      <tr key={guidGenerator()} className="bg-bunker-800 duration-100 w-full">
         <div
           onClick={() => setPayloadOpened(!payloadOpened)}
-          className="border-mineshaft-700 border-t text-gray-300 flex items-center"
+          className="border-mineshaft-700 border-t text-gray-300 flex items-center cursor-pointer"
         >
           <FontAwesomeIcon
             icon={payloadOpened ? faAngleDown : faAngleRight}
-            className={`mt-3.5 ml-6 text-bunker-100 hover:bg-primary-100/[0.15] ${
+            className={`mt-3 ml-6 text-bunker-100 hover:bg-primary-100/[0.15] ${
               payloadOpened && 'bg-primary-100/10'
             } p-1 duration-100 h-4 w-4 rounded-md`}
           />

@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import {
-  faBook,
   faBookOpen,
   faGear,
   faKey,
   faMobile,
   faPlug,
+  faTimeline,
   faUser
 } from '@fortawesome/free-solid-svg-icons';
 import { faPlus } from '@fortawesome/free-solid-svg-icons';
@@ -153,8 +153,8 @@ export default function Layout({ children }: LayoutProps) {
     },
     {
       href: '/activity/' + workspaceMapping[workspaceSelected as any],
-      title: 'Activity',
-      emoji: <FontAwesomeIcon icon={faBook} />
+      title: 'Activity Logs',
+      emoji: <FontAwesomeIcon icon={faTimeline} />
     },
     {
       href: '/settings/project/' + workspaceMapping[workspaceSelected as any],
