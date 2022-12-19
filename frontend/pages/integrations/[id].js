@@ -134,6 +134,9 @@ export default function Integrations() {
         case 'Netlify':
           window.location = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${integrationOption.redirectURL}&state=${state}`;
           break;
+        case 'Github':
+          window.location = `https://github.com.com/login/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${integrationOption.redirectURL}&state=${state}`;
+          break;
         case 'Fly.io':
           console.log('fly.io');
           setIntegrationAccessTokenDialogOpen(true);
