@@ -61,6 +61,8 @@ const syncSecrets = async ({
                 });
                 break;
         }
+        
+        // TODO: set integration to inactive if it was not synced correctly (send alert?)
     } catch (err) {
         Sentry.setUser(null);
         Sentry.captureException(err);
@@ -101,8 +103,8 @@ const syncSecretsHeroku = async ({
         });
 
         await axios.patch(
-			`${INTEGRATION_HEROKU_API_URL}/apps/${integration.app}/config-vars`,
-		    secrets,
+            `${INTEGRATION_HEROKU_API_URL}/apps/${integration.app}/config-vars`,
+            secrets,
 			{
 				headers: {
 					Accept: 'application/vnd.heroku+json; version=3',
@@ -174,9 +176,9 @@ const syncSecretsVercel = async ({
             [secret.key]: secret
         }), {});
         
-        let updateSecrets: VercelSecret[] = [];
-        let deleteSecrets: VercelSecret[] = [];
-        let newSecrets: VercelSecret[] = [];
+        const updateSecrets: VercelSecret[] = [];
+        const deleteSecrets: VercelSecret[] = [];
+        const newSecrets: VercelSecret[] = [];
 
         // Identify secrets to create
         Object.keys(secrets).map((key) => {
@@ -286,6 +288,173 @@ const syncSecretsNetlify = async ({
     secrets: any;
     accessToken: string;
 }) => {
+    // TODO: Netlify revision in progress
+    // try {
+    //     const getParams = new URLSearchParams({
+    //         context_name: integration.context,
+    //         site_id: integration.siteId
+    //     });
+        
+    //     const res = (await axios.get(
+    //         `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env`,
+    //         {
+    //             params: getParams,
+    //             headers: {
+    //                 Authorization: `Bearer ${accessToken}`
+    //             }
+    //         }
+    //     ))
+    //     .data
+    //     .reduce((obj: any, secret: any) => ({
+    //         ...obj,
+    //         [secret.key]: secret
+    //     }), {});
+        
+    //     res.forEach((r: any) => console.log(r));
+    //     console.log('getParams', getParams);
+        
+    //     interface UpdateNetlifySecret {
+    //         key: string;
+    //         context: string;
+    //         value: string;
+    //     }
+        
+    //     interface DeleteNetlifySecret {
+    //         key: string;
+    //     }
+        
+    //     interface NewNetlifySecretValue {
+    //         value: string;
+    //         context: string;
+    //     }
+        
+    //     interface NewNetlifySecret {
+    //         key: string;
+    //         values: NewNetlifySecretValue[];
+    //     }
+        
+    //     let updateSecrets: UpdateNetlifySecret[] = [];
+    //     let deleteSecrets: DeleteNetlifySecret[] = [];
+    //     let newSecrets: NewNetlifySecret[] = [];
+        
+    //     interface NetlifyValue {
+    //         id: string;
+    //         value: string;
+    //         context: string;
+    //         role: string;
+    //     }
+
+    //     // Identify secrets to create - GOOD
+    //     Object.keys(secrets).map((key) => {
+    //         if (!(key in res)) {
+    //             // case: secret does not exist in Netlify -> create secret
+    //             newSecrets.push({
+    //                 key: key,
+    //                 values: [{
+    //                     value: secrets[key],
+    //                     context: integration.context
+    //                 }]
+    //             });
+    //         } else {
+    //             // case: secret exists in Netlify
+                
+    //             const netlifyContextsSet = new Set (res[key].values.map((netlifyValue: NetlifyValue) => netlifyValue.context));
+                
+    //             // TODO: check context/env.
+    //             res[key].values.forEach((netlifyValue: NetlifyValue) => {
+    //                 if (netlifyValue.context === integration.context) {
+    //                     // case: Netlify value context matches integration context
+    //                     // TODO: check if value has changed
+    //                 }
+    //             });
+    //         }
+    //     });
+
+    //     // Identify secrets to update and delete
+    //     Object.keys(res).map((key) => {
+    //         if (key in secrets) {
+    //             // if (res[key] !== secrets[key]) {
+    //             //     // case: secret value has changed
+    //             //     updateSecrets.push({
+    //             //         key: key,
+    //             //         context: integration.context,
+    //             //         value: secrets[key]
+    //             //     });
+    //             // }
+                
+    //             // TODO: modify check and record of updated secrets
+                
+    //             // case 1: new context added.
+    //         } else {
+    //             // case: secret has been deleted
+    //             deleteSecrets.push({
+    //                 key
+    //             });
+    //         }
+    //     });
+        
+    //     const syncParams = new URLSearchParams({
+    //         site_id: integration.siteId
+    //     });
+
+    //     console.log('Netlify newSecrets', newSecrets);
+    //     newSecrets.forEach(secret => console.log(secret.values));
+    //     // Sync/push new secrets
+    //     if (newSecrets.length > 0) {
+    //         await axios.post(
+    //             `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env`,
+    //             newSecrets,
+    //             {
+    //                 params: syncParams,
+    //                 headers: {
+    //                     Authorization: `Bearer ${accessToken}`
+    //                 }
+    //             }
+    //         );
+    //     }
+
+    //     console.log('Netlify updateSecrets', updateSecrets);
+    //     // Sync/push updated secrets
+    //     if (updateSecrets.length > 0) {
+            
+    //         updateSecrets.forEach(async (secret: UpdateNetlifySecret) => {
+    //             await axios.patch(
+    //                 `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${secret.key}`,
+    //                 {
+    //                     context: secret.context,
+    //                     value: secret.value
+    //                 },
+    //                 {
+    //                     params: syncParams,
+    //                     headers: {
+    //                         Authorization: `Bearer ${accessToken}` 
+    //                     }
+    //                 }
+    //             );
+    //         });
+    //     }
+
+    //     console.log('Netlify deleteSecrets', deleteSecrets);
+    //     // Delete secrets
+    //     if (deleteSecrets.length > 0) {
+    //         deleteSecrets.forEach(async (secret: DeleteNetlifySecret) => {
+    //             await axios.delete(
+    //                 `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${secret.key}`,
+    //                 {
+    //                     params: syncParams,
+    //                     headers: {
+    //                         Authorization: `Bearer ${accessToken}`
+    //                     }
+    //                 }
+    //             );
+    //         });
+    //     }
+    // } catch (err) {
+    //     Sentry.setUser(null);
+    //     Sentry.captureException(err);
+    //     throw new Error('Failed to sync secrets to Heroku');
+    // }
+
     try {
         const getParams = new URLSearchParams({
             context_name: integration.context,
@@ -327,9 +496,9 @@ const syncSecretsNetlify = async ({
             values: NewNetlifySecretValue[];
         }
         
-        let updateSecrets: UpdateNetlifySecret[] = [];
-        let deleteSecrets: DeleteNetlifySecret[] = [];
-        let newSecrets: NewNetlifySecret[] = [];
+        const updateSecrets: UpdateNetlifySecret[] = [];
+        const deleteSecrets: DeleteNetlifySecret[] = [];
+        const newSecrets: NewNetlifySecret[] = [];
 
         // Identify secrets to create
         Object.keys(secrets).map((key) => {

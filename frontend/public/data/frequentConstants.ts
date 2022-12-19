@@ -16,8 +16,14 @@ const reverseEnvMapping: Mapping = {
   test: "Testing",
 };
 
+const contextNetlifyMapping: Mapping = {
+  "dev": "Local development",
+  "branch-deploy": "Branch deploys",
+  "deploy-review": "Deploy Previews",
+  "production": "Production"
+}
+
 const reverseContextNetlifyMapping: Mapping = {
-  "All": "all",
   "Local development": "dev",
   "Branch deploys": "branch-deploy",
   "Deploy Previews": "deploy-preview",
@@ -25,6 +31,7 @@ const reverseContextNetlifyMapping: Mapping = {
 }
 
 export {
+  contextNetlifyMapping,
   envMapping,
   reverseContextNetlifyMapping,
-  reverseEnvMapping};
+  reverseEnvMapping}

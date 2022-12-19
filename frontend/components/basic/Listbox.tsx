@@ -11,7 +11,7 @@ import { Listbox, Transition } from "@headlessui/react";
 interface ListBoxProps {
   selected: string;
   onChange: (arg: string) => void;
-  data: string[];
+  data: string[] | null;
   text?: string;
   buttonAction?: () => void;
   isFull?: boolean;
