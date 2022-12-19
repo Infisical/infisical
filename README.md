@@ -128,7 +128,9 @@ We're currently setting the foundation and building [integrations](https://infis
     </tr>
     <tr>
       <td align="left" valign="middle">
-        🔜 Vercel (https://github.com/Infisical/infisical/issues/60)
+        <a href="https://infisical.com/docs/integrations/cloud/vercel?ref=github.com">
+          ✔️ Vercel
+        </a>
       </td>
       <td align="left" valign="middle">
         <a href="https://infisical.com/docs/integrations/platforms/kubernetes?ref=github.com">
