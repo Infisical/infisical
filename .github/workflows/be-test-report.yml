@@ -1,0 +1,30 @@
+name: 'Backend Test Report'
+
+on:
+  workflow_run:
+    workflows: ['Check Backend Pull Request']
+    types:
+      - completed
+
+jobs:
+  be-report:
+    name: Backend test report
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: dorny/test-reporter@v1
+        with:
+          path: '*.xml' # Path to test results (inside artifact .zip)
+          reporter: jest-junit # Format of test results
+      - name: 📄 Publish test results
+        uses: dorny/test-reporter@v1
+        with:
+          name: Test Results
+          artifact: be-test-results
+          path: reports/jest-*.xml
+          reporter: jest-junit
+      - uses: ArtiomTr/jest-coverage-report-action@v2
+        id: coverage
+        with:
+          output: report-markdown
+          coverage-file: backend/coverage/report.json
