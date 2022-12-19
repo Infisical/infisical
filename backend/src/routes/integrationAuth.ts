@@ -10,6 +10,12 @@ import {
 import { ADMIN, MEMBER, GRANTED } from '../variables';
 import { integrationAuthController } from '../controllers';
 
+router.get(
+	'/integration-options',
+	requireAuth,
+	integrationAuthController.getIntegrationOptions
+);
+
 router.post(
 	'/oauth-token',
 	requireAuth,
@@ -42,7 +48,8 @@ router.delete(
 	requireAuth,
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [GRANTED]
+		acceptedStatuses: [GRANTED],
+		attachAccessToken: false
 	}),
 	param('integrationAuthId'),
 	validateRequest,

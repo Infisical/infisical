@@ -1,3 +1,8 @@
+import {
+    CLIENT_ID_HEROKU,
+    CLIENT_ID_NETLIFY
+} from '../config';
+
 // integrations
 const INTEGRATION_HEROKU = 'heroku';
 const INTEGRATION_VERCEL = 'vercel';
@@ -27,6 +32,81 @@ const INTEGRATION_VERCEL_API_URL = 'https://api.vercel.com';
 const INTEGRATION_NETLIFY_API_URL = 'https://api.netlify.com';
 const INTEGRATION_GITHUB_API_URL = ' https://api.github.com/';
 
+const INTEGRATION_OPTIONS = [
+    {
+        name: 'Heroku',
+        slug: 'heroku',
+        image: 'Heroku', 
+        isAvailable: true,
+        type: 'oauth2',
+        clientId: CLIENT_ID_HEROKU,
+        docsLink: ''
+    },
+    {
+        name: 'Vercel',
+        slug: 'vercel',
+        image: 'Vercel', 
+        isAvailable: true,
+        type: 'vercel',
+        clientId: '',
+        docsLink: ''
+    },
+    {
+        name: 'Netlify',
+        slug: 'netlify',
+        image: 'Netlify', 
+        isAvailable: true,
+        type: 'oauth2',
+        clientId: CLIENT_ID_NETLIFY,
+        docsLink: ''
+    },
+    {
+        name: 'Google Cloud Platform',
+        slug: 'gcp',
+        image: 'Google Cloud Platform', 
+        isAvailable: false,
+        type: '',
+        clientId: '',
+        docsLink: ''
+    },
+    {
+        name: 'Amazon Web Services',
+        slug: 'aws',
+        image: 'Amazon Web Services', 
+        isAvailable: false,
+        type: '',
+        clientId: '',
+        docsLink: ''
+    },
+    {
+        name: 'Microsoft Azure',
+        slug: 'azure',
+        image: 'Microsoft Azure', 
+        isAvailable: false,
+        type: '',
+        clientId: '',
+        docsLink: ''
+    },
+    {
+        name: 'Travis CI',
+        slug: 'travisci',
+        image: 'Travis CI', 
+        isAvailable: false,
+        type: '',
+        clientId: '',
+        docsLink: ''
+    },
+    {
+        name: 'Circle CI',
+        slug: 'circleci',
+        image: 'Circle CI', 
+        isAvailable: false,
+        type: '',
+        clientId: '',
+        docsLink: ''
+    }
+]
+
 export {
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
@@ -41,5 +121,6 @@ export {
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
-  INTEGRATION_GITHUB_API_URL
+  INTEGRATION_GITHUB_API_URL,
+  INTEGRATION_OPTIONS
 };

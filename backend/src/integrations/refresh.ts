@@ -1,8 +1,12 @@
 import axios from 'axios';
 import * as Sentry from '@sentry/node';
 import { INTEGRATION_HEROKU } from '../variables';
-import { OAUTH_CLIENT_SECRET_HEROKU } from '../config';
-import { INTEGRATION_HEROKU_TOKEN_URL } from '../variables';
+import {
+    CLIENT_SECRET_HEROKU
+} from '../config';
+import {
+    INTEGRATION_HEROKU_TOKEN_URL
+} from '../variables';
 
 /**
  * Return new access token by exchanging refresh token [refreshToken] for integration
@@ -48,6 +52,7 @@ const exchangeRefreshHeroku = async ({
 }: {
   refreshToken: string;
 }) => {
+<<<<<<< HEAD
   let accessToken;
   try {
     const res = await axios.post(
@@ -58,6 +63,18 @@ const exchangeRefreshHeroku = async ({
         client_secret: OAUTH_CLIENT_SECRET_HEROKU
       } as any)
     );
+=======
+    let accessToken;
+    try {
+        const res = await axios.post(
+            INTEGRATION_HEROKU_TOKEN_URL,
+            new URLSearchParams({
+                grant_type: 'refresh_token',
+                refresh_token: refreshToken,
+                client_secret: CLIENT_SECRET_HEROKU
+            } as any)
+        );
+>>>>>>> 5444382d5ae1fabf1107434a856b58b9f09c67f6
 
     accessToken = res.data.access_token;
   } catch (err) {

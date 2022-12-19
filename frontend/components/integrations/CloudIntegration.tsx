@@ -87,6 +87,7 @@ const CloudIntegration = ({
                             )
                             .map((authorization) => authorization._id)[0],
                         });
+                        
                         router.reload();
                     }}
                     className="cursor-pointer w-max bg-red py-0.5 px-2 rounded-b-md text-xs flex flex-row items-center opacity-0 group-hover:opacity-100 duration-200"

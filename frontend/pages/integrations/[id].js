@@ -8,9 +8,9 @@ import FrameworkIntegrationSection from "~/components/integrations/FrameworkInte
 import CloudIntegrationSection from "~/components/integrations/CloudIntegrationSection";
 import IntegrationSection from "~/components/integrations/IntegrationSection";
 import frameworkIntegrationOptions from "../../public/json/frameworkIntegrations.json";
-import cloudIntegrationOptions from "../../public/json/cloudIntegrations.json";
 import getWorkspaceAuthorizations from "../api/integrations/getWorkspaceAuthorizations";
 import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
+import getIntegrationOptions from "../api/integrations/GetIntegrationOptions";
 import getBot from "../api/bot/getBot";
 import setBotActiveStatus from "../api/bot/setBotActiveStatus";
 import getLatestFileKey from "../api/workspace/getLatestFileKey";
@@ -22,20 +22,24 @@ const {
 } = require('../../components/utilities/cryptography/crypto');
 const crypto = require("crypto");
 
-import axios from "axios";
-
 export default function Integrations() {
+  const [cloudIntegrationOptions, setCloudIntegrationOptions] = useState([]);
   const [integrationAuths, setIntegrationAuths] = useState([]);
   const [integrations, setIntegrations] = useState([]);
   const [bot, setBot] = useState(null);
   const [isActivateBotDialogOpen, setIsActivateBotDialogOpen] = useState(false);
-  const [isIntegrationAccessTokenDialogOpen, setIntegrationAccessTokenDialogOpen] = useState(true);
+  // const [isIntegrationAccessTokenDialogOpen, setIntegrationAccessTokenDialogOpen] = useState(true);
   const [selectedIntegrationOption, setSelectedIntegrationOption] = useState(null); 
 
   const router = useRouter();
 
   useEffect(async () => {
     try {
+      // get cloud integration options
+      setCloudIntegrationOptions(
+        await getIntegrationOptions()
+      );
+
       // get project integration authorizations
       setIntegrationAuths(
         await getWorkspaceAuthorizations({
@@ -117,19 +121,18 @@ export default function Integrations() {
    * @returns 
    */
   const handleIntegrationOption = async ({ integrationOption }) => {
+
     try {
       // generate CSRF token for OAuth2 code-token exchange integrations
       const state = crypto.randomBytes(16).toString("hex");
       localStorage.setItem('latestCSRFToken', state);
-      
-      // TODO: Add CircleCI, Render, Fly.io
       
       switch (integrationOption.name) {
         case 'Heroku':
           window.location = `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`;
           break;
         case 'Vercel':
-          window.location = `https://vercel.com/integrations/infisical/new?state=${state}`;
+          window.location = `https://vercel.com/integrations/infisical-dev/new?state=${state}`;
           break;
         case 'Netlify':
           window.location = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${integrationOption.redirectURL}&state=${state}`;
@@ -140,7 +143,12 @@ export default function Integrations() {
         case 'Fly.io':
           console.log('fly.io');
           setIntegrationAccessTokenDialogOpen(true);
+          window.location = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${window.location.origin}/netlify`;
           break;
+        // case 'Fly.io':
+        //   console.log('fly.io');
+        //   setIntegrationAccessTokenDialogOpen(true);
+        //   break;
       }
     } catch (err) {
       console.log(err);
@@ -166,7 +174,7 @@ export default function Integrations() {
       }
       
       // case: bot is not active -> open modal to activate bot
-      setIsActivateBotOpen(true);
+      setIsActivateBotDialogOpen(true);
     } catch (err) {
       console.error(err);
     }
@@ -196,20 +204,24 @@ export default function Integrations() {
           handleBotActivate={handleBotActivate}
           handleIntegrationOption={handleIntegrationOption}
         />
-        <IntegrationAccessTokenDialog
+        {/* <IntegrationAccessTokenDialog
           isOpen={isIntegrationAccessTokenDialogOpen}
           closeModal={() => setIntegrationAccessTokenDialogOpen(false)}
           selectedIntegrationOption={selectedIntegrationOption}
           handleBotActivate={handleBotActivate}
           handleIntegrationOption={handleIntegrationOption}
-        />
+        /> */}
         <IntegrationSection integrations={integrations} />
-        <CloudIntegrationSection 
-          cloudIntegrationOptions={cloudIntegrationOptions}
-          setSelectedIntegrationOption={setSelectedIntegrationOption}
-          integrationOptionPress={integrationOptionPress}
-          integrationAuths={integrationAuths}
-        />
+        {cloudIntegrationOptions.length > 0 ? (
+          <CloudIntegrationSection 
+            cloudIntegrationOptions={cloudIntegrationOptions}
+            setSelectedIntegrationOption={setSelectedIntegrationOption}
+            integrationOptionPress={integrationOptionPress}
+            integrationAuths={integrationAuths}
+          />
+        ) : (
+          <div></div>
+        )}
         <FrameworkIntegrationSection 
           frameworks={frameworkIntegrationOptions} 
         />

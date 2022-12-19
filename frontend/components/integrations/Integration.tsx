@@ -17,8 +17,6 @@ import getIntegrationApps from "../../pages/api/integrations/GetIntegrationApps"
 import Button from "~/components/basic/buttons/Button";
 import ListBox from "~/components/basic/Listbox";
 
-// TODO: optimize laggy dropdown for app options
-
 interface Integration {
     app?: string;
     environment: string;
@@ -174,6 +172,7 @@ const Integration = ({
               <Button
                 text="Start Integration"
                 onButtonPressed={async () => {
+                  const siteId = apps.find((app) => app.name === integrationApp).siteId ? apps.find((app) => app.name === integrationApp).siteId : null;
                   const result = await updateIntegration({
                     integrationId: integration._id,
                     environment: envMapping[integrationEnvironment],
@@ -181,7 +180,7 @@ const Integration = ({
                     isActive: true,
                     target: integrationTarget ? integrationTarget.toLowerCase() : null,
                     context: integrationContext ? reverseContextNetlifyMapping[integrationContext] : null,
-                    siteId: apps.find((app) => app.name === integrationApp).siteId
+                    siteId
                   });
                   router.reload();
                 }}

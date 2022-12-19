@@ -10,14 +10,16 @@ import { validateMembership } from '../helpers/membership';
  * @param {Object} obj
  * @param {String[]} obj.acceptedRoles - accepted workspace roles
  * @param {String[]} obj.acceptedStatuses - accepted workspace statuses
- * @param {Boolean} obj.attachRefresh - whether or not to decrypt and attach integration authorization refresh token onto request
+ * @param {Boolean} obj.attachAccessToken - whether or not to decrypt and attach integration authorization access token onto request
  */
 const requireIntegrationAuthorizationAuth = ({
 	acceptedRoles,
-	acceptedStatuses
+	acceptedStatuses,
+	attachAccessToken = true
 }: {
 	acceptedRoles: string[];
 	acceptedStatuses: string[];
+	attachAccessToken?: boolean;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
 		try {
@@ -41,9 +43,11 @@ const requireIntegrationAuthorizationAuth = ({
 			});
 
 			req.integrationAuth = integrationAuth;
-			req.accessToken = await IntegrationService.getIntegrationAuthAccess({
-				integrationAuthId: integrationAuth._id.toString()
-			});
+			if (attachAccessToken) {
+				req.accessToken = await IntegrationService.getIntegrationAuthAccess({
+					integrationAuthId: integrationAuth._id.toString()
+				});
+			}
 			
 			return next();
 		} catch (err) {

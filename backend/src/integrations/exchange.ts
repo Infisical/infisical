@@ -11,9 +11,9 @@ import {
   INTEGRATION_GITHUB_TOKEN_URL,
   ACTION_PUSH_TO_HEROKU
 } from '../variables';
+
 import {
   SITE_URL,
-  OAUTH_CLIENT_SECRET_HEROKU,
   CLIENT_ID_VERCEL,
   CLIENT_ID_NETLIFY,
   CLIENT_ID_GITHUB,
@@ -117,6 +117,7 @@ const exchangeCode = async ({
  * @returns {String} obj2.refreshToken - refresh token for Heroku API
  * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
  */
+<<<<<<< HEAD
 const exchangeCodeHeroku = async ({ code }: { code: string }) => {
   let res: ExchangeCodeHerokuResponse;
   const accessExpiresAt = new Date();
@@ -145,6 +146,40 @@ const exchangeCodeHeroku = async ({ code }: { code: string }) => {
     accessExpiresAt
   };
 };
+=======
+const exchangeCodeHeroku = async ({
+    code
+}: {
+    code: string;
+}) => {
+    let res: ExchangeCodeHerokuResponse;
+    let accessExpiresAt = new Date();
+    try {
+        res = (await axios.post(
+            INTEGRATION_HEROKU_TOKEN_URL,
+            new URLSearchParams({
+				grant_type: 'authorization_code',
+				code: code,
+				client_secret: CLIENT_SECRET_HEROKU
+			} as any)
+        )).data;
+        
+        accessExpiresAt.setSeconds(
+            accessExpiresAt.getSeconds() + res.expires_in
+        );
+    } catch (err) {
+        Sentry.setUser(null);
+        Sentry.captureException(err);
+        throw new Error('Failed OAuth2 code-token exchange with Heroku');
+    }
+    
+    return ({
+        accessToken: res.access_token,
+        refreshToken: res.refresh_token,
+        accessExpiresAt
+    });
+}
+>>>>>>> 5444382d5ae1fabf1107434a856b58b9f09c67f6
 
 /**
  * Return [accessToken], [accessExpiresAt], and [refreshToken] for Vercel

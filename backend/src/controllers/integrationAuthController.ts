@@ -3,9 +3,18 @@ import * as Sentry from '@sentry/node';
 import axios from 'axios';
 import { readFileSync } from 'fs';
 import { IntegrationAuth, Integration } from '../models';
-import { INTEGRATION_SET, ENV_DEV } from '../variables';
+import { INTEGRATION_SET, INTEGRATION_OPTIONS, ENV_DEV } from '../variables';
 import { IntegrationService } from '../services';
 import { getApps, revokeAccess } from '../integrations';
+
+export const getIntegrationOptions = async (
+	req: Request,
+	res: Response
+) => {
+	return res.status(200).send({
+		integrationOptions: INTEGRATION_OPTIONS
+	});
+}
 
 /**
  * Perform OAuth2 code-token exchange as part of integration [integration] for workspace with id [workspaceId]
