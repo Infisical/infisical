@@ -40,7 +40,7 @@
     "lint-staged": "lint-staged",
     "pretest": "docker compose -f test-resources/docker-compose.test.yml up -d",
     "test": "cross-env NODE_ENV=test jest --testTimeout=10000 --detectOpenHandles",
-    "test:ci": "npm test -- --watchAll=false --ci --reporters=default --reporters=jest-junit --coverage --testLocationInResults",
+    "test:ci": "npm test -- --watchAll=false --ci --reporters=default --reporters=jest-junit --reporters=github-actions --coverage --testLocationInResults",
     "posttest": "docker compose -f test-resources/docker-compose.test.yml down"
   },
   "repository": {
@@ -83,8 +83,9 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "coveragePathIgnorePatterns": [
-      "/node_modules/"
+    "collectCoverageFrom": [
+      "src/*.{js,ts}",
+      "!**/node_modules/**"
     ],
     "setupFiles": [
       "<rootDir>/test-resources/env-vars.js"

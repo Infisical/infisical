@@ -33,5 +33,5 @@ jobs:
         id: coverage
         with:
           output: report-markdown
-          coverage-file: coverage/report.json
+          coverage-file: coverage/coverage-final.json
           working-directory: backend
