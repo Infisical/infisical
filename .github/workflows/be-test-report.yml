@@ -34,6 +34,7 @@ jobs:
         with:
           output: comment, report-markdown
           coverage-file: coverage/report.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           working-directory: backend
       - uses: marocchino/sticky-pull-request-comment@v2
         with:
