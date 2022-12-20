@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"runtime"
 	"strings"
 	"syscall"
 
@@ -19,11 +20,10 @@ import (
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
+	Example:               "infisical run --env=prod -- npm run dev",
 	Use:                   "run [any infisical run command flags] -- [your application start command]",
 	Short:                 "Used to inject environments variables into your application process",
 	DisableFlagsInUseLine: true,
-	Example:               "infisical run --env=prod -- npm run dev",
-	Args:                  cobra.MinimumNArgs(1),
 	PreRun:                toggleDebug,
 	Run: func(cmd *cobra.Command, args []string) {
 		envName, err := cmd.Flags().GetString("env")
@@ -54,10 +54,14 @@ var runCmd = &cobra.Command{
 		}
 
 		if shouldExpandSecrets {
-			secretsWithSubstitutions := util.SubstituteSecrets(secrets)
-			execCmd(args[0], args[1:], secretsWithSubstitutions)
+			secrets = util.SubstituteSecrets(secrets)
+		}
+
+		if cmd.Flags().Changed("command") {
+			command := cmd.Flag("command").Value.String()
+			_ = executeMultipleCommandWithEnvs(command, secrets)
 		} else {
-			execCmd(args[0], args[1:], secrets)
+			_ = executeSingleCommandWithEnvs(args, secrets)
 		}
 
 	},
@@ -68,22 +72,51 @@ func init() {
 	runCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
 	runCmd.Flags().String("projectId", "", "The project ID from which your secrets should be pulled from")
 	runCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
+	runCmd.Flags().String("command", "", "command to execute (e.g. \"npm install && npm run dev\")")
 }
 
-// Credit: inspired by AWS Valut
-func execCmd(command string, args []string, envs []models.SingleEnvironmentVariable) error {
-	numberOfSecretsInjected := fmt.Sprintf("\u2713 Injected %v Infisical secrets into your application process successfully", len(envs))
-
+// Will execute a single command and pass in the given secrets into the process
+func executeSingleCommandWithEnvs(args []string, secrets []models.SingleEnvironmentVariable) error {
+	command := args[0]
+	argsForCommand := args[1:]
+	numberOfSecretsInjected := fmt.Sprintf("\u2713 Injected %v Infisical secrets into your application process successfully", len(secrets))
 	log.Infof("\x1b[%dm%s\x1b[0m", 32, numberOfSecretsInjected)
-	log.Debugf("executing command: %s %s \n", command, strings.Join(args, " "))
-	log.Debugln("Secrets injected:", envs)
+	log.Debugf("executing command: %s %s \n", command, strings.Join(argsForCommand, " "))
+	log.Debugln("Secrets injected:", secrets)
 
-	cmd := exec.Command(command, args...)
+	cmd := exec.Command(command, argsForCommand...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = getAllEnvs(envs)
+	cmd.Env = getAllEnvs(secrets)
 
+	return execCmd(cmd)
+}
+
+func executeMultipleCommandWithEnvs(fullCommand string, secrets []models.SingleEnvironmentVariable) error {
+	shell := [2]string{"sh", "-c"}
+	if runtime.GOOS == "windows" {
+		shell = [2]string{"cmd", "/C"}
+	} else {
+		shell[0] = os.Getenv("SHELL")
+	}
+
+	cmd := exec.Command(shell[0], shell[1], fullCommand)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = getAllEnvs(secrets)
+
+	numberOfSecretsInjected := fmt.Sprintf("\u2713 Injected %v Infisical secrets into your application process successfully", len(secrets))
+	log.Infof("\x1b[%dm%s\x1b[0m", 32, numberOfSecretsInjected)
+	log.Debugf("executing command: %s %s %s \n", shell[0], shell[1], fullCommand)
+	log.Debugln("Secrets injected:", secrets)
+
+	return execCmd(cmd)
+}
+
+// Credit: inspired by AWS Valut
+func execCmd(cmd *exec.Cmd) error {
 	sigChannel := make(chan os.Signal, 1)
 	signal.Notify(sigChannel)
 
@@ -100,7 +133,7 @@ func execCmd(command string, args []string, envs []models.SingleEnvironmentVaria
 
 	if err := cmd.Wait(); err != nil {
 		_ = cmd.Process.Signal(os.Kill)
-		return fmt.Errorf("Failed to wait for command termination: %v", err)
+		return fmt.Errorf("failed to wait for command termination: %v", err)
 	}
 
 	waitStatus := cmd.ProcessState.Sys().(syscall.WaitStatus)
