@@ -1,13 +1,14 @@
-name: 'Check Backend Pull Request'
+name: "Check Backend Pull Request"
 
 on:
+  workflow_dispatch: # remove me
   pull_request:
     types: [opened, synchronize]
     paths:
-      - 'backend/**'
-      - '!backend/README.md'
-      - '!backend/.*'
-      - 'backend/.eslintrc.js'
+      - "backend/**"
+      - "!backend/README.md"
+      - "!backend/.*"
+      - "backend/.eslintrc.js"
 
 jobs:
   check-be-pr:
@@ -20,8 +21,8 @@ jobs:
       - name: 🔧 Setup Node 16
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
-          cache: 'npm'
+          node-version: "16"
+          cache: "npm"
           cache-dependency-path: backend/package-lock.json
       - name: 📦 Install dependencies
         run: npm ci --only-production --ignore-scripts
@@ -35,8 +36,8 @@ jobs:
         with:
           name: be-test-results
           path: |
-            backend/reports
-            backend/coverage
+            ./backend/reports
+            ./backend/coverage
       - name: 🏗️ Run build
         run: npm run build
         working-directory: backend
