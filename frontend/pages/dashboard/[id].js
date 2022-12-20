@@ -413,29 +413,6 @@ export default function Dashboard() {
     setButtonReady(false);
     pushKeys({ obj, workspaceId: router.query.id, env });
 
-    /**
-     * Check which integrations are active for this project and environment
-     * If there are any, update environment variables for those integrations
-     */
-    let integrations = await getWorkspaceIntegrations({
-      workspaceId: router.query.id
-    });
-    integrations.map(async (integration) => {
-      if (
-        envMapping[env] == integration.environment &&
-        integration.isActive == true
-      ) {
-        let objIntegration = Object.assign(
-          {},
-          ...data.map((row) => ({ [row.key]: row.value }))
-        );
-        await pushKeysIntegration({
-          obj: objIntegration,
-          integrationId: integration._id
-        });
-      }
-    });
-
     // If this user has never saved environment variables before, show them a prompt to read docs
     if (!hasUserEverPushed) {
       setCheckDocsPopUpVisible(true);

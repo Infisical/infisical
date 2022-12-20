@@ -27,6 +27,9 @@
   <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
   </a>
+  <a href="https://twitter.com/infisical">
+    <img src="https://img.shields.io/twitter/follow/infisical?label=Follow" alt="Infisical Twitter" />
+  </a>
 </h4>
 
 <img src="/img/infisical_github_repo.png" width="100%" alt="Dashboard" />
@@ -92,12 +95,6 @@ Not sure where to get started? You can:
 
 We're currently in Public Alpha.
 
-## 🚨 Stay Up-to-Date
-
-Infisical officially launched as v.1.0 on November 21st, 2022. However, a lot of new features are coming very quickly. Watch **releases** of this repository to be notified about future updates:
-
-![infisical-star-github](https://github.com/Infisical/infisical/blob/main/.github/images/star-infisical.gif?raw=true)
-
 ## 🔌 Integrations
 
 We're currently setting the foundation and building [integrations](https://infisical.com/docs/integrations/overview) so secrets can be synced everywhere. Any help is welcome! :)
@@ -131,10 +128,14 @@ We're currently setting the foundation and building [integrations](https://infis
     </tr>
     <tr>
       <td align="left" valign="middle">
-        🔜 Vercel (https://github.com/Infisical/infisical/issues/60)
+        <a href="https://infisical.com/docs/integrations/cloud/vercel?ref=github.com">
+          ✔️ Vercel
+        </a>
       </td>
       <td align="left" valign="middle">
-        🔜 GitLab CI/CD
+        <a href="https://infisical.com/docs/integrations/platforms/kubernetes?ref=github.com">
+          ✔️ Kubernetes
+        </a>
       </td>
       <td align="left" valign="middle">
         🔜 Fly.io
@@ -156,7 +157,7 @@ We're currently setting the foundation and building [integrations](https://infis
         🔜 GCP
       </td>
       <td align="left" valign="middle">
-        🔜 Kubernetes
+        🔜 GitLab CI/CD
       </td>
       <td align="left" valign="middle">
         🔜 CircleCI
@@ -301,6 +302,12 @@ This repo is entirely MIT licensed, with the exception of the `ee` directory whi
 ## 🛡 Security
 
 Looking to report a security vulnerability? Please don't post about it in GitHub issue. Instead, refer to our [SECURITY.md](./SECURITY.md) file.
+
+## 🚨 Stay Up-to-Date
+
+Infisical officially launched as v.1.0 on November 21st, 2022. However, a lot of new features are coming very quickly. Watch **releases** of this repository to be notified about future updates:
+
+![infisical-star-github](https://github.com/Infisical/infisical/blob/main/.github/images/star-infisical.gif?raw=true)
 
 ## 🦸 Contributors
 

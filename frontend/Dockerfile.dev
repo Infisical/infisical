@@ -9,7 +9,7 @@ COPY package.json ./
 COPY package-lock.json ./
 
 # Install 
-RUN npm install 
+RUN npm install --ignore-scripts
 
 # Copy over next.js config 
 COPY next.config.js ./next.config.js

@@ -1,4 +1,5 @@
 import * as authController from './authController';
+import * as botController from './botController';
 import * as integrationAuthController from './integrationAuthController';
 import * as integrationController from './integrationController';
 import * as keyController from './keyController';
@@ -16,6 +17,7 @@ import * as workspaceController from './workspaceController';
 
 export {
 	authController,
+	botController,
 	integrationAuthController,
 	integrationController,
 	keyController,

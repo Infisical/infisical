@@ -13,6 +13,7 @@ import { apiLimiter } from './helpers/rateLimiter';
 import {
   signup as signupRouter,
   auth as authRouter,
+  bot as botRouter,
   organization as organizationRouter,
   workspace as workspaceRouter,
   membershipOrg as membershipOrgRouter,
@@ -52,6 +53,7 @@ if (NODE_ENV === 'production') {
 // routers
 app.use('/api/v1/signup', signupRouter);
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/bot', botRouter);
 app.use('/api/v1/user', userRouter);
 app.use('/api/v1/user-action', userActionRouter);
 app.use('/api/v1/organization', organizationRouter);

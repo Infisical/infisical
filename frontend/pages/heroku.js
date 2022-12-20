@@ -16,16 +16,17 @@ export default function Heroku() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(async () => {
     try {
-      if (state == localStorage.getItem("latestCSRFToken")) {
+      if (state === localStorage.getItem('latestCSRFToken')) {
+        localStorage.removeItem('latestCSRFToken');
         await AuthorizeIntegration({
-          workspaceId: localStorage.getItem("projectData.id"),
+          workspaceId: localStorage.getItem('projectData.id'),
           code,
           integration: "heroku",
         });
         router.push("/integrations/" + localStorage.getItem("projectData.id"));
       }
     } catch (error) {
-      console.log("Error - Not logged in yet");
+      console.error('Heroku integration error: ', error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

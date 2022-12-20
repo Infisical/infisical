@@ -73,7 +73,7 @@ const attemptLogin = async (
             tag,
             privateKey
           });
-
+          
           const userOrgs = await getOrganizations();
           const userOrgsData = userOrgs.map((org) => org._id);
 

@@ -7,8 +7,9 @@ import {
 	reformatPullSecrets
 } from '../helpers/secret';
 import { pushKeys } from '../helpers/key';
+import { eventPushSecrets } from '../events';
+import { EventService } from '../services';
 import { ENV_SET } from '../variables';
-
 import { postHogClient } from '../services';
 
 interface PushSecret {
@@ -60,7 +61,8 @@ export const pushSecrets = async (req: Request, res: Response) => {
 			workspaceId,
 			keys
 		});
-
+		
+		
 		if (postHogClient) {
 			postHogClient.capture({
 				event: 'secrets pushed',
@@ -73,6 +75,13 @@ export const pushSecrets = async (req: Request, res: Response) => {
 				}
 			});
 		}
+
+		// trigger event - push secrets
+		EventService.handleEvent({
+			event: eventPushSecrets({
+				workspaceId
+			})
+		});
 
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
@@ -192,7 +201,7 @@ export const pullSecretsServiceToken = async (req: Request, res: Response) => {
 		};
 
 		if (postHogClient) {
-			// capture secrets pushed event in production
+			// capture secrets pulled event in production
 			postHogClient.capture({
 				distinctId: req.serviceToken.user.email,
 				event: 'secrets pulled',

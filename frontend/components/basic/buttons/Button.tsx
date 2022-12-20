@@ -9,7 +9,7 @@ import {
 const classNames = require("classnames");
 
 type ButtonProps = {
-  text: string;
+  text?: string;
   onButtonPressed: () => void;
   loading?: boolean;
   color?: string;
