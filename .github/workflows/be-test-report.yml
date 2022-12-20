@@ -13,9 +13,12 @@ jobs:
 
     steps:
       - name: 📁 Download test results
-        uses: actions/download-artifact@v3
+        id: download-artifact
+        uses: dawidd6/action-download-artifact@v2
         with:
           name: be-test-results
+          workflow: check-be-pull-request.yml
+          workflow_conclusion: success
       - name: 📋 Publish test results
         uses: dorny/test-reporter@v1
         with:
