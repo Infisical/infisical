@@ -35,3 +35,6 @@ jobs:
           output: comment, report-markdown
           coverage-file: coverage/report.json
           working-directory: backend
+      - uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: ${{ steps.coverage.outputs.report }}
