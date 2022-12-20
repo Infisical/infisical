@@ -20,6 +20,9 @@ spec:
         imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
         ports: 
         - containerPort: 4000
+        envFrom:
+        - secretRef:
+            name: {{ .Values.backend.kubeSecretRef }}
         env:
         {{- range $key, $value := .Values.backendEnvironmentVariables }}
         {{- if $value | quote | eq "MUST_REPLACE" }}

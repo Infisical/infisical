@@ -18,6 +18,9 @@ spec:
       - name: frontend 
         image: infisical/frontend
         imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        envFrom:
+        - secretRef:
+            name: {{ .Values.frontend.kubeSecretRef }}
         env:
         {{- range $key, $value := .Values.frontendEnvironmentVariables }}
         {{- if $value | quote | eq "MUST_REPLACE" }}
