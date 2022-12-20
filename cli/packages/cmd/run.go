@@ -20,11 +20,38 @@ import (
 
 // runCmd represents the run command
 var runCmd = &cobra.Command{
-	Example:               "infisical run --env=prod -- npm run dev",
+	Example: `
+	infisical run --env=dev -- npm run dev
+	infisical run --command "first-command && second-command; more-commands..."
+	`,
 	Use:                   "run [any infisical run command flags] -- [your application start command]",
 	Short:                 "Used to inject environments variables into your application process",
 	DisableFlagsInUseLine: true,
 	PreRun:                toggleDebug,
+	Args: func(cmd *cobra.Command, args []string) error {
+		// Check if the --command flag has been set
+		commandFlagSet := cmd.Flags().Changed("command")
+
+		// If the --command flag has been set, check if a value was provided
+		if commandFlagSet {
+			command := cmd.Flag("command").Value.String()
+			if command == "" {
+				return fmt.Errorf("you need to provide a command after the flag --command")
+			}
+
+			// If the --command flag has been set, args should not be provided
+			if len(args) > 0 {
+				return fmt.Errorf("you cannot set any arguments after --command flag. --command only takes a string command")
+			}
+		} else {
+			// If the --command flag has not been set, at least one arg should be provided
+			if len(args) == 0 {
+				return fmt.Errorf("at least one argument is required after the run command, received %d", len(args))
+			}
+		}
+
+		return nil
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		envName, err := cmd.Flags().GetString("env")
 		if err != nil {
@@ -59,9 +86,18 @@ var runCmd = &cobra.Command{
 
 		if cmd.Flags().Changed("command") {
 			command := cmd.Flag("command").Value.String()
-			_ = executeMultipleCommandWithEnvs(command, secrets)
+			err = executeMultipleCommandWithEnvs(command, secrets)
+			if err != nil {
+				log.Errorf("Something went wrong when executing your command [error=%s]", err)
+				return
+			}
 		} else {
-			_ = executeSingleCommandWithEnvs(args, secrets)
+			err = executeSingleCommandWithEnvs(args, secrets)
+			if err != nil {
+				log.Errorf("Something went wrong when executing your command [error=%s]", err)
+				return
+			}
+			return
 		}
 
 	},
@@ -72,7 +108,7 @@ func init() {
 	runCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
 	runCmd.Flags().String("projectId", "", "The project ID from which your secrets should be pulled from")
 	runCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
-	runCmd.Flags().String("command", "", "command to execute (e.g. \"npm install && npm run dev\")")
+	runCmd.Flags().StringP("command", "c", "", "chained commands to execute (e.g. \"npm install && npm run dev; echo ...\")")
 }
 
 // Will execute a single command and pass in the given secrets into the process
