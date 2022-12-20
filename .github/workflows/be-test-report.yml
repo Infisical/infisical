@@ -32,6 +32,6 @@ jobs:
         uses: ArtiomTr/jest-coverage-report-action@v2
         id: coverage
         with:
-          output: report-markdown
+          output: comment, report-markdown
           coverage-file: coverage/report.json
           working-directory: backend
