@@ -72,5 +72,3 @@ app.use('/api/v1/integration-auth', integrationAuthRouter);
 export const server = app.listen(PORT, () => {
   console.log(`Listening on PORT ${[PORT]}`);
 });
-
-// test change, remove me
