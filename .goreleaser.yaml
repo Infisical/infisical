@@ -81,6 +81,7 @@ nfpms:
   - rpm
   - deb
   - apk
+  - archlinux
   bindir: /usr/bin
 scoop:
   bucket:
