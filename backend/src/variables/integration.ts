@@ -51,7 +51,7 @@ const INTEGRATION_OPTIONS = [
         name: 'Netlify',
         slug: 'netlify',
         image: 'Netlify', 
-        isAvailable: false,
+        isAvailable: true,
         type: 'oauth2',
         clientId: CLIENT_ID_NETLIFY,
         docsLink: ''
