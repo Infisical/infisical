@@ -17,16 +17,6 @@ export const uploadKey = async (req: Request, res: Response) => {
 		const { workspaceId } = req.params;
 		const { key } = req.body;
 
-		// validate membership of sender
-		const senderMembership = await findMembership({
-			user: req.user._id,
-			workspace: workspaceId
-		});
-
-		if (!senderMembership) {
-			throw new Error('Failed sender membership validation for workspace');
-		}
-
 		// validate membership of receiver
 		const receiverMembership = await findMembership({
 			user: key.userId,

@@ -1,4 +1,6 @@
 import BackupPrivateKey, { IBackupPrivateKey } from './backupPrivateKey';
+import Bot, { IBot } from './bot';
+import BotKey, { IBotKey } from './botKey';
 import IncidentContactOrg, { IIncidentContactOrg } from './incidentContactOrg';
 import Integration, { IIntegration } from './integration';
 import IntegrationAuth, { IIntegrationAuth } from './integrationAuth';
@@ -17,6 +19,10 @@ import Log, { ILog } from './log';
 export {
 	BackupPrivateKey,
 	IBackupPrivateKey,
+	Bot,
+	IBot,
+	BotKey,
+	IBotKey,
 	IncidentContactOrg,
 	IIncidentContactOrg,
 	Integration,

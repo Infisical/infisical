@@ -5,6 +5,7 @@ import {
 	ENV_STAGING,
 	ENV_PROD,
 	INTEGRATION_HEROKU,
+	INTEGRATION_VERCEL,
 	INTEGRATION_NETLIFY
 } from '../variables';
 
@@ -14,7 +15,10 @@ export interface IIntegration {
 	environment: 'dev' | 'test' | 'staging' | 'prod';
 	isActive: boolean;
 	app: string;
-	integration: 'heroku' | 'netlify';
+	target: string;
+	context: string;
+	siteId: string;
+	integration: 'heroku' | 'vercel' | 'netlify';
 	integrationAuth: Types.ObjectId;
 }
 
@@ -34,15 +38,29 @@ const integrationSchema = new Schema<IIntegration>(
 			type: Boolean,
 			required: true
 		},
-		app: {
-			// name of app in provider
+		app: { // name of app in provider
 			type: String,
-			default: null,
-			required: true
+			default: null
+		},
+		target: { // vercel-specific target (environment)
+			type: String,
+			default: null
+		},
+		context: { // netlify-specific context (deploy)
+			type: String,
+			default: null
+		},
+		siteId: { // netlify-specific site (app) id
+			type: String,
+			default: null
 		},
 		integration: {
 			type: String,
-			enum: [INTEGRATION_HEROKU, INTEGRATION_NETLIFY],
+			enum: [
+				INTEGRATION_HEROKU, 
+				INTEGRATION_VERCEL, 
+				INTEGRATION_NETLIFY
+			],
 			required: true
 		},
 		integrationAuth: {

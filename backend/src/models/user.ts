@@ -11,7 +11,7 @@ export interface IUser {
 	tag?: string;
 	salt?: string;
 	verifier?: string;
-	refreshVersion?: Number;
+	refreshVersion?: number;
 }
 
 const userSchema = new Schema<IUser>(

@@ -5,16 +5,13 @@ export interface ILog {
     user?: Types.ObjectId;
     workspace: Types.ObjectId;
     event: string;
-    source: string;
+    payload: {
+        numberofSecrets?: number;
+        environment?: string;
+    },
+    channel: string;
     ipAddress?: string;
 }
-
-// TODO: need a way to store payload info for each
-// log
-
-// which secret is being ref etc.
-
-// user logged in
 
 const logSchema = new Schema<ILog>(
     {
@@ -30,7 +27,7 @@ const logSchema = new Schema<ILog>(
             type: String,
             required: true
         },
-        payload: { // should this just be a payload attr?
+        payload: {
             numberOfSecrets: {
                 type: Number
             },

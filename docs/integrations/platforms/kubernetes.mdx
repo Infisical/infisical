@@ -1,0 +1,161 @@
+---
+title: 'Kubernetes'
+---
+
+The Infisical Secrets Operator is a custom Kubernetes controller that helps keep secrets in a cluster up to date by synchronizing them.
+It is installed in its own namespace within the cluster and follows strict RBAC policies.
+The operator uses InfisicalSecret custom resources to identify which secrets to sync and where to store them.
+It is responsible for continuously updating managed secrets, and in the future may also automatically reload deployments that use them as needed.
+
+## Install Operator
+
+The operator can be install via [Helm](helm.sh) or [kubectl](https://github.com/kubernetes/kubectl)
+
+<Tabs>
+	 <Tab title="Helm">
+		Install Infisical Helm repository 
+    ```bash
+    helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/' 
+      
+    helm repo update
+    ```
+
+    Install the Helm chart
+    ```bash
+    helm install --generate-name infisical-helm-charts/secrets-operator
+    ```
+
+   </Tab>
+	 <Tab title="Kubectl">
+   The operator will be installed in `infisical-operator-system` namespace
+		```
+    kubectl apply -f https://raw.githubusercontent.com/Infisical/infisical/main/k8-operator/kubectl-install/install-secrets-operator.yaml
+		```
+   </Tab>
+</Tabs>
+
+## Sync Infisical Secrets to your cluster
+
+To retrieve secrets from an Infisical project and store them in your Kubernetes cluster, you can use the InfisicalSecret custom resource.
+This resource is available after installing the Infisical operator. In order to specify the Infisical Token location and the location where the retrieved secrets should be stored, you can use the `tokenSecretReference` and `managedSecretReference` fields within the InfisicalSecret resource.
+
+<Accordion title="tokenSecretReference">
+  The `tokenSecretReference` field in the InfisicalSecret resource is used to specify the location of the Infisical Token, which is required for authenticating and retrieving secrets from an Infisical project.
+  
+  To create a Kubernetes secret containing an [Infisical Token](../../getting-started/dashboard/token), you can run the following command.
+  ``` bash
+  kubectl create secret generic service-token --from-literal=infisicalToken=<infisical-token-here> 
+  ```
+
+Once the secret is created, add the name and namespace of the secret under `tokenSecretReference` field in the InfisicalSecret custom resource.
+
+{' '}
+
+<Info>
+  No matter what the name of the secret is or its namespace, it must contain a
+  key named `infisicalToken` with a valid Infisical Token as the value
+</Info>
+
+</Accordion>
+
+<Accordion title="managedSecretReference">
+The `managedSecretReference` field in the InfisicalSecret resource is used to specify the location where secrets retrieved from an Infisical project should be stored. 
+You should specify the name and namespace of the Kubernetes secret that will hold these secrets. The operator will create the secret for you, you just need to provide its name and namespace.
+
+It is recommended that the managed secret be created in the same namespace as the deployment that will use it.
+
+</Accordion>
+
+```yaml
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  # Name of of this InfisicalSecret resource
+  name: infisicalsecret-sample
+spec:
+  # The host that should be used to pull secrets from. The default value is https://infisical.com/api.
+  hostAPI: https://infisical.com/api
+
+  # The Infisical project from which to pull secrets from
+  projectId: 62faf98ae0b05e8529b5da46
+
+  # The environment (dev, prod, testing, etc.) of the above project from where secrets should be pulled from
+  environment: dev
+
+  # The Kubernetes secret the stores the Infisical token
+  tokenSecretReference:
+    # Kubernetes secret name
+    secretName: service-token
+    # The secret namespace
+    secretNamespace: default
+
+  # The Kubernetes secret that Infisical Operator will create and populate with secrets from the above project
+  managedSecretReference:
+    # The name of managed Kubernetes secret that should be created
+    secretName: managed-secret
+    # The namespace the managed secret should be installed in
+    secretNamespace: default
+```
+
+## Verify
+
+To use the InfisicalSecret custom resource in your deployment, you can simply reference the managed secret specified in the `managedSecretReference` field as you would any other Kubernetes secret.
+To verify that the operator has successfully created the managed secret, you can check the secrets in the namespace that was specified.
+
+```bash
+# Verify managed secret is created
+kubectl get secrets -n <namespace of managed secret>
+```
+
+<Info>
+  The Infisical secrets will be synced and stored into the managed secret every
+  5 minutes.
+</Info>
+
+## Troubleshoot
+
+If the operator is unable to fetch secrets from the API, it will not affect the managed Kubernetes secret.
+It will continue attempting to reconnect to the API indefinitely.
+The InfisicalSecret resource uses the `status.conditions` field to report its current state and any errors encountered.
+
+```yaml
+$ kubectl get infisicalSecrets
+NAME                     AGE
+infisicalsecret-sample   12s
+
+$ kubectl describe infisicalSecret infisicalsecret-sample
+...
+Spec:
+...
+Status:
+  Conditions:
+    Last Transition Time:  2022-12-18T04:29:09Z
+    Message:               Infisical controller has located the Infisical token in provided Kubernetes secret
+    Reason:                OK
+    Status:                True
+    Type:                  secrets.infisical.com/LoadedInfisicalToken
+    Last Transition Time:  2022-12-18T04:29:10Z
+    Message:               Failed to update secret because: 400 Bad Request
+    Reason:                Error
+    Status:                False
+    Type:                  secrets.infisical.com/ReadyToSyncSecrets
+Events:                    <none>
+```
+
+## Uninstall Operator
+
+The managed secret created by the operator will not be deleted when the operator is uninstalled.
+
+<Tabs>
+	 <Tab title="Helm">
+		Install Infisical Helm repository 
+    ```bash
+    helm uninstall add <release name>
+    ```
+   </Tab>
+	 <Tab title="Kubectl">
+		```
+    kubectl delete -f https://raw.githubusercontent.com/Infisical/infisical/main/k8-operator/kubectl-install/install-secrets-operator.yaml
+		```
+   </Tab>
+</Tabs>

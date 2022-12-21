@@ -1,4 +1,5 @@
 import * as authController from './authController';
+import * as botController from './botController';
 import * as integrationAuthController from './integrationAuthController';
 import * as integrationController from './integrationController';
 import * as keyController from './keyController';
@@ -17,6 +18,7 @@ import * as logController from './logController';
 
 export {
 	authController,
+	botController,
 	integrationAuthController,
 	integrationController,
 	keyController,
