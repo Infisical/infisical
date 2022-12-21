@@ -133,6 +133,7 @@
       "pages": [
         "integrations/cloud/heroku",
         "integrations/cloud/vercel",
+        "integrations/cloud/netlify",
         "integrations/cloud/render",
         "integrations/cloud/flyio"
       ]
