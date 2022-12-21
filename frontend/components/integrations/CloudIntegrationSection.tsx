@@ -1,11 +1,14 @@
 import React from "react";
+
 import CloudIntegration from "./CloudIntegration";
 
 interface CloudIntegrationOption {
+    isAvailable: boolean;
     name: string;
     type: string;
     clientId: string;
     docsLink: string;
+    slug: string;
 }
 
 interface Props {

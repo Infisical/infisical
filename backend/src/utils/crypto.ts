@@ -1,6 +1,7 @@
 import nacl from 'tweetnacl';
 import util from 'tweetnacl-util';
 import AesGCM from './aes-gcm';
+import * as Sentry from '@sentry/node';
 
 /**
  * Return new base64, NaCl, public-private key pair.
@@ -47,6 +48,8 @@ const encryptAsymmetric = ({
 			util.decodeBase64(privateKey)
 		);
 	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
 		throw new Error('Failed to perform asymmetric encryption');
 	}
 
@@ -86,6 +89,8 @@ const decryptAsymmetric = ({
 			util.decodeBase64(privateKey)
 		);
 	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
 		throw new Error('Failed to perform asymmetric decryption');
 	}
 
@@ -112,6 +117,8 @@ const encryptSymmetric = ({
 		iv = obj.iv;
 		tag = obj.tag;
 	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
 		throw new Error('Failed to perform symmetric encryption');
 	}
 
@@ -147,6 +154,8 @@ const decryptSymmetric = ({
 	try {
 		plaintext = AesGCM.decrypt(ciphertext, iv, tag, key);
 	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
 		throw new Error('Failed to perform symmetric decryption');
 	}
 

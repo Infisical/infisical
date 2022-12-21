@@ -27,7 +27,6 @@ router.post(
 	passwordController.changePassword
 );
 
-// NEW
 router.post(
 	'/email/password-reset',
 	passwordLimiter,
@@ -36,7 +35,6 @@ router.post(
 	passwordController.emailPasswordReset
 );
 
-// NEW
 router.post(
 	'/email/password-reset-verify',
 	passwordLimiter,
@@ -46,7 +44,6 @@ router.post(
 	passwordController.emailPasswordResetVerify
 );
 
-// NEW
 router.get(
 	'/backup-private-key',
 	passwordLimiter,
@@ -68,7 +65,6 @@ router.post(
 	passwordController.createBackupPrivateKey
 );
 
-// NEW
 router.post(
 	'/password-reset',
 	requireSignupAuth,

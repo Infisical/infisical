@@ -1,23 +1,29 @@
-const envMapping = {
+interface Mapping {
+  [key: string]: string;
+}
+
+const envMapping: Mapping = {
   Development: "dev",
   Staging: "staging",
   Production: "prod",
   Testing: "test",
 };
-  
-const reverseEnvMapping = {
+
+const reverseEnvMapping: Mapping = {
   dev: "Development",
   staging: "Staging",
   prod: "Production",
   test: "Testing",
 };
 
-const vercelMapping = {
-
+const contextNetlifyMapping: Mapping = {
+  "dev": "Local development",
+  "branch-deploy": "Branch deploys",
+  "deploy-review": "Deploy Previews",
+  "production": "Production"
 }
 
-const reverseContextNetlifyMapping = {
-  "All": "all",
+const reverseContextNetlifyMapping: Mapping = {
   "Local development": "dev",
   "Branch deploys": "branch-deploy",
   "Deploy Previews": "deploy-preview",
@@ -25,7 +31,7 @@ const reverseContextNetlifyMapping = {
 }
 
 export {
+  contextNetlifyMapping,
   envMapping,
-  reverseEnvMapping,
-  reverseContextNetlifyMapping
-};
+  reverseContextNetlifyMapping,
+  reverseEnvMapping}

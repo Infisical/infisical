@@ -1,13 +1,21 @@
 import React from "react";
-import Integration from "./Integration";
+
 import guidGenerator from "~/utilities/randomId";
 
-interface Integration {
-
-}
+import Integration from "./Integration";
 
 interface Props {
   integrations: any
+}
+
+interface IntegrationType {
+  _id: string;
+  app?: string;
+  environment: string;
+  integration: string;
+  integrationAuth: string;
+  isActive: boolean;
+  context: string;
 }
 
 const ProjectIntegrationSection = ({
@@ -21,12 +29,12 @@ const ProjectIntegrationSection = ({
             Manage your integrations of Infisical with third-party services.
           </p>
         </div>
-        {integrations.map((integration  => ( 
+        {integrations.map((integration: IntegrationType)  => ( 
           <Integration
             key={guidGenerator()}
             integration={integration}
           />
-        )))}
+        ))}
       </div>
     ) : <div></div>
 }

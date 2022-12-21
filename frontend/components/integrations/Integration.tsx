@@ -6,23 +6,33 @@ import {
     faX,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  envMapping,
-  reverseEnvMapping,
-  reverseContextNetlifyMapping
-} from "../../public/data/frequentConstants";
-import updateIntegration from "../../pages/api/integrations/updateIntegration"
-import deleteIntegration from "../../pages/api/integrations/DeleteIntegration"
-import getIntegrationApps from "../../pages/api/integrations/GetIntegrationApps";
+
 import Button from "~/components/basic/buttons/Button";
 import ListBox from "~/components/basic/Listbox";
 
+import deleteIntegration from "../../pages/api/integrations/DeleteIntegration"
+import getIntegrationApps from "../../pages/api/integrations/GetIntegrationApps";
+import updateIntegration from "../../pages/api/integrations/updateIntegration"
+import {
+  contextNetlifyMapping,
+  envMapping,
+  reverseContextNetlifyMapping,
+  reverseEnvMapping,
+} from "../../public/data/frequentConstants";
+
 interface Integration {
+    _id: string;
     app?: string;
     environment: string;
     integration: string;
     integrationAuth: string;
-    isActive: Boolean;
+    isActive: boolean;
+    context: string;
+}
+
+interface IntegrationApp {
+  name: string;
+  siteId: string;
 }
 
 const Integration = ({ 
@@ -35,39 +45,44 @@ const Integration = ({
     );
     const [fileState, setFileState] = useState([]);
     const router = useRouter();
-    const [apps, setApps] = useState([]); // integration app objects
-    const [integrationApp, setIntegrationApp] = useState(null); // integration app name
-    const [integrationTarget, setIntegrationTarget] = useState(null); // vercel-specific integration param
-    const [integrationContext, setIntegrationContext] = useState(null); // netlify-specific integration param
+    const [apps, setApps] = useState<IntegrationApp[]>([]); // integration app objects
+    const [integrationApp, setIntegrationApp] = useState(""); // integration app name
+    const [integrationTarget, setIntegrationTarget] = useState(""); // vercel-specific integration param
+    const [integrationContext, setIntegrationContext] = useState(""); // netlify-specific integration param
   
-    useEffect(async () => {
-      interface App {
-        name: string;
-        siteId?: string;
+    useEffect(() => {
+      
+      const loadIntegration = async () => {
+        interface App {
+          name: string;
+          siteId?: string;
+        }
+        
+        const tempApps: [IntegrationApp] = await getIntegrationApps({
+          integrationAuthId: integration.integrationAuth,
+        });
+        
+        setApps(tempApps);
+        setIntegrationApp(
+          integration.app ? integration.app : tempApps[0].name
+        );
+        
+        switch (integration.integration) {
+          case "vercel":
+            setIntegrationTarget("Development");
+            break;
+          case "netlify":
+            setIntegrationContext(integration?.context ? contextNetlifyMapping[integration.context] : "Local development");
+            break;
+          default:
+            break;
+        }
       }
-      
-      const tempApps = await getIntegrationApps({
-        integrationAuthId: integration.integrationAuth,
-      });
-      
-      setApps(tempApps);
-      setIntegrationApp(
-        integration.app ? integration.app : tempApps[0].name
-      );
-      
-      switch (integration.integration) {
-        case "vercel":
-          setIntegrationTarget("Development");
-          break;
-        case "netlify":
-          setIntegrationContext("All");
-          break;
-        default:
-          break;
-      }
+
+      loadIntegration();
     }, []);
     
-    const renderIntegrationSpecificParams = (integration) => {
+    const renderIntegrationSpecificParams = (integration: Integration) => {
       try {
         switch (integration.integration) {
           case "vercel":
@@ -77,11 +92,11 @@ const Integration = ({
                     ENVIRONMENT
                 </div>
                 <ListBox
-                  data={!integration.isActive && [
+                  data={!integration.isActive ? [
                     "Production",
                     "Preview",
                     "Development"
-                  ]}
+                  ] : null}
                   selected={"Production"}
                   onChange={setIntegrationTarget}
                 />
@@ -94,13 +109,12 @@ const Integration = ({
                   CONTEXT
                 </div>
                 <ListBox
-                  data={!integration.isActive && [
-                    "All",
+                  data={!integration.isActive ? [
                     "Production",
                     "Deploy previews",
                     "Branch deploys",
                     "Local development"
-                  ]}
+                  ] : null}
                   selected={integrationContext}
                   onChange={setIntegrationContext}
                 />
@@ -128,7 +142,9 @@ const Integration = ({
                   "Production",
                 ] : null}
               selected={integrationEnvironment}
-              onChange={setIntegrationEnvironment}
+              onChange={(environment) => {
+                setIntegrationEnvironment(environment);
+              }}
               isFull={true}
             />
           </div>
@@ -152,9 +168,11 @@ const Integration = ({
               APP
             </div>
             <ListBox
-              data={!integration.isActive && apps.map((app) => app.name)}
+              data={!integration.isActive ? apps.map((app) => app.name) : null}
               selected={integrationApp}
-              onChange={setIntegrationApp}
+              onChange={(app) => {
+                setIntegrationApp(app);
+              }}
             />
           </div>
           {renderIntegrationSpecificParams(integration)}
@@ -172,7 +190,10 @@ const Integration = ({
               <Button
                 text="Start Integration"
                 onButtonPressed={async () => {
-                  const siteId = apps.find((app) => app.name === integrationApp).siteId ? apps.find((app) => app.name === integrationApp).siteId : null;
+                  
+                  const siteApp = apps.find((app) => app.name === integrationApp); // obj or undefined
+                  const siteId = siteApp?.siteId ? siteApp.siteId : null;
+                  
                   const result = await updateIntegration({
                     integrationId: integration._id,
                     environment: envMapping[integrationEnvironment],
@@ -182,6 +203,7 @@ const Integration = ({
                     context: integrationContext ? reverseContextNetlifyMapping[integrationContext] : null,
                     siteId
                   });
+                  
                   router.reload();
                 }}
                 color="mineshaft"

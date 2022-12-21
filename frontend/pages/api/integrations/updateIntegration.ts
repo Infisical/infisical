@@ -22,6 +22,15 @@ const updateIntegration = ({
   target,
   context,
   siteId
+}: {
+  integrationId: string, 
+  app: string, 
+  environment: string,
+  isActive: boolean,
+  target: string | null,
+  context: string | null,
+  siteId: string | null
+
 }) => { 
   return SecurityClient.fetchCall(
     "/api/v1/integration/" + integrationId,
@@ -40,7 +49,7 @@ const updateIntegration = ({
       }),
     }
   ).then(async (res) => {
-    if (res.status == 200) {
+    if (res && res.status == 200) {
       return res;
     } else {
       console.log("Failed to start an integration");

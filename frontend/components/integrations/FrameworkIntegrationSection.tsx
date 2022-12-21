@@ -1,14 +1,17 @@
 import React from "react";
+
 import FrameworkIntegration from "./FrameworkIntegration";
 
 interface Framework {
     name: string;
     image: string;
     link: string;
+    slug: string;
+    docsLink: string;
 }
 
 interface Props {
-    framework: Framework
+    frameworks: [Framework]
 }
 
 const FrameworkIntegrationSection = ({ frameworks }: Props) => {

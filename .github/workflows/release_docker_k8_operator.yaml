@@ -27,12 +27,3 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: infisical/kubernetes-operator:latest
-
-      - uses: actions/setup-go@v2
-
-      - name: Upload CRD manifest
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/install-secrets-operator.yaml
-          tag: ${{ github.ref }}

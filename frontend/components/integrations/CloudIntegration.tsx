@@ -1,30 +1,32 @@
 import React from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faCheck,
     faX,
   } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import deleteIntegrationAuth from "../../pages/api/integrations/DeleteIntegrationAuth";
 
 interface CloudIntegrationOption {
-    isAvailable: Boolean;
+    isAvailable: boolean;
     name: string;
     type: string;
     clientId: string;
     docsLink: string;
+    slug: string;
 }
 
 interface IntegrationAuth {
-    id: string;
+    _id: string;
     integration: string;
 }
 
 interface Props {
     cloudIntegrationOption: CloudIntegrationOption;
-    setSelectedIntegrationOption: () => void;
-    integrationOptionPress: () => void;
+    setSelectedIntegrationOption: (cloudIntegration: CloudIntegrationOption) => void;
+    integrationOptionPress: (cloudIntegrationOption: CloudIntegrationOption) => void;
     integrationAuths: IntegrationAuth[];
 }
 
@@ -45,9 +47,7 @@ const CloudIntegration = ({
             onClick={() => {
                 if (!cloudIntegrationOption.isAvailable) return;
                 setSelectedIntegrationOption(cloudIntegrationOption);
-                integrationOptionPress({
-                    integrationOption: cloudIntegrationOption
-                });
+                integrationOptionPress(cloudIntegrationOption);
             }}
             key={cloudIntegrationOption.name}
         >

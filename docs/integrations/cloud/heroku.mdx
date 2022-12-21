@@ -1,26 +1,29 @@
 ---
 title: "Heroku"
-description: "With this integration, you can automatically sync your secrets to Heroku as soon as you update secrets in Infisical."
 ---
 
-## Instructions
+Prerequisites:
 
-### Step 1: Open the integrations console
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
 
-Open the Infisical Dashboard. Choose the project in which you want to set up the intergation. Go to the integrations tab in the left sidebar.
+## Navigate to your project's integrations tab
 
-### Step 2: Authenticate with Heroku
+![integrations](../../images/integrations.png)
 
-Click on "Heroku" tile. Log in if required and provide the necessary permissions to Infisical. You will afterwards be redirected back to the integrations page.
+## Authorize Infisical for Heroku
 
-Note: during an integration with Heroku, for security reasons, it is impossible to maintain end-to-end encryption. In theory, this lets Infisical decrypt yor environment variables. In practice, we can assure you that this will never be done, and it allows us to protect your secrets from bad actors online. With any questions, reach out support@infisical.com.
+Press on the Heroku tile and grant Infisical access to your Heroku account.
 
-### Step 3: Start integration
+![integrations heroku authorization](../../images/integrations-heroku-auth.png)
 
-Choose a Heroku App that you want to sync the secrets to, and the Infisical project environment that you want to sync the secrets from. Start the integration.
-
-The integration should now show status 'In Sync'. Every time you edit secrets, they will be automatically pushed to Heroku. 
-
-<Info> 
-  If you need to update your integration, you will have to delete the current one and create a new one.
+<Info>
+  If this is your project's first cloud integration, then you'll have to grant Infisical access to your project's environment variables.
+  Although this step breaks E2EE, it's necessary for Infisical to sync the environment variables to the cloud platform.
 </Info>
+
+## Start integration
+
+Select which Infisical environment secrets you want to sync to which Heroku app and press start integration to start syncing secrets to Heroku.
+
+![integrations heroku](../../images/integrations-heroku.png)
+

@@ -2,20 +2,22 @@ import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import { useRouter } from "next/router";
-import NavHeader from "~/components/navigation/NavHeader";
-import Integration from "~/components/integrations/Integration";
-import FrameworkIntegrationSection from "~/components/integrations/FrameworkIntegrationSection";
-import CloudIntegrationSection from "~/components/integrations/CloudIntegrationSection";
-import IntegrationSection from "~/components/integrations/IntegrationSection";
-import frameworkIntegrationOptions from "../../public/json/frameworkIntegrations.json";
-import getWorkspaceAuthorizations from "../api/integrations/getWorkspaceAuthorizations";
-import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
-import getIntegrationOptions from "../api/integrations/GetIntegrationOptions";
-import getBot from "../api/bot/getBot";
-import setBotActiveStatus from "../api/bot/setBotActiveStatus";
-import getLatestFileKey from "../api/workspace/getLatestFileKey";
+
 import ActivateBotDialog from "~/components/basic/dialog/ActivateBotDialog";
 import IntegrationAccessTokenDialog from "~/components/basic/dialog/IntegrationAccessTokenDialog";
+import CloudIntegrationSection from "~/components/integrations/CloudIntegrationSection";
+import FrameworkIntegrationSection from "~/components/integrations/FrameworkIntegrationSection";
+import Integration from "~/components/integrations/Integration";
+import IntegrationSection from "~/components/integrations/IntegrationSection";
+import NavHeader from "~/components/navigation/NavHeader";
+
+import frameworkIntegrationOptions from "../../public/json/frameworkIntegrations.json";
+import getBot from "../api/bot/getBot";
+import setBotActiveStatus from "../api/bot/setBotActiveStatus";
+import getIntegrationOptions from "../api/integrations/GetIntegrationOptions";
+import getWorkspaceAuthorizations from "../api/integrations/getWorkspaceAuthorizations";
+import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
+import getLatestFileKey from "../api/workspace/getLatestFileKey";
 const {
   decryptAssymmetric,
   encryptAssymmetric
@@ -39,7 +41,7 @@ export default function Integrations() {
       setCloudIntegrationOptions(
         await getIntegrationOptions()
       );
-
+      
       // get project integration authorizations
       setIntegrationAuths(
         await getWorkspaceAuthorizations({
@@ -132,7 +134,7 @@ export default function Integrations() {
           window.location = `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`;
           break;
         case 'Vercel':
-          window.location = `https://vercel.com/integrations/infisical-dev/new?state=${state}`;
+          window.location = `https://vercel.com/integrations/${integrationOption.clientSlug}/new?state=${state}`;
           break;
         case 'Netlify':
           window.location = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${integrationOption.redirectURL}&state=${state}`;
@@ -158,14 +160,13 @@ export default function Integrations() {
   /**
    * Open dialog to activate bot if bot is not active. 
    * Otherwise, start integration [integrationOption]
-   * @param {Object} obj 
-   * @param {Object} obj.integrationOption - an integration option
-   * @param {String} obj.name
-   * @param {String} obj.type
-   * @param {String} obj.docsLink
+   * @param {Object} integrationOption - an integration option
+   * @param {String} integrationOption.name
+   * @param {String} integrationOption.type
+   * @param {String} integrationOption.docsLink
    * @returns 
    */
-  const integrationOptionPress = ({ integrationOption }) => {
+  const integrationOptionPress = (integrationOption) => {
     try {
       if (bot.isActive) {
         // case: bot is active -> proceed with integration

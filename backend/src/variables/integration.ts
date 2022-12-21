@@ -1,6 +1,7 @@
 import {
     CLIENT_ID_HEROKU,
-    CLIENT_ID_NETLIFY
+    CLIENT_ID_NETLIFY,
+    CLIENT_SLUG_VERCEL
 } from '../config';
 
 // integrations
@@ -49,6 +50,7 @@ const INTEGRATION_OPTIONS = [
         isAvailable: true,
         type: 'vercel',
         clientId: '',
+        clientSlug: CLIENT_SLUG_VERCEL,
         docsLink: ''
     },
     {
