@@ -1,6 +1,5 @@
-/* eslint-disable no-console */
 
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -29,6 +28,9 @@ import {
   integration as integrationRouter,
   integrationAuth as integrationAuthRouter
 } from './routes';
+import { getLogger } from './utils/logger';
+import RequestError from './utils/requestError';
+import { InternalServerError } from './utils/errors';
 
 export const app = express();
 
@@ -50,6 +52,19 @@ if (NODE_ENV === 'production') {
   app.use(helmet());
 }
 
+//* Error Handling Middleware
+app.use((error: RequestError|Error, req: Request, res: Response, next: NextFunction)=>{
+  if(res.headersSent) return next();
+  
+  if(!(error instanceof RequestError)){
+      error = InternalServerError({context: {exception: error.message}, stack: error.stack})
+      getLogger('backend-main').log((<RequestError>error).levelName.toLowerCase(), (<RequestError>error).message)
+  }
+  res.status((<RequestError>error).statusCode).json((<RequestError>error).format(req))
+  next()
+})
+
+
 // routers
 app.use('/api/v1/signup', signupRouter);
 app.use('/api/v1/auth', authRouter);
@@ -70,5 +85,5 @@ app.use('/api/v1/integration', integrationRouter);
 app.use('/api/v1/integration-auth', integrationAuthRouter);
 
 export const server = app.listen(PORT, () => {
-  console.log(`Listening on PORT ${[PORT]}`);
+  getLogger("backend-main").info(`Server started listening at port ${PORT}`)
 });

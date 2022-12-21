@@ -10,6 +10,8 @@ const JWT_SIGNUP_LIFETIME = process.env.JWT_SIGNUP_LIFETIME! || '15m';
 const JWT_SIGNUP_SECRET = process.env.JWT_SIGNUP_SECRET!;
 const MONGO_URL = process.env.MONGO_URL!;
 const NODE_ENV = process.env.NODE_ENV! || 'production';
+const VERBOSE_ERROR_OUTPUT = process.env.VERBOSE_ERROR_OUTPUT || false;
+const LOKI_HOST = process.env.LOKI_HOST || undefined;
 const CLIENT_SECRET_HEROKU = process.env.CLIENT_SECRET_HEROKU!;
 const CLIENT_ID_HEROKU = process.env.CLIENT_ID_HEROKU!;
 const CLIENT_ID_VERCEL = process.env.CLIENT_ID_VERCEL!;
@@ -51,6 +53,8 @@ export {
   JWT_SIGNUP_SECRET,
   MONGO_URL,
   NODE_ENV,
+  VERBOSE_ERROR_OUTPUT,
+  LOKI_HOST,
   CLIENT_ID_HEROKU,
   CLIENT_ID_VERCEL,
   CLIENT_ID_NETLIFY,

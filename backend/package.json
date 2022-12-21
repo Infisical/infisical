@@ -25,7 +25,9 @@
     "stripe": "^10.7.0",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
-    "typescript": "^4.9.3"
+    "typescript": "^4.9.3",
+    "winston": "^3.8.2",
+    "winston-loki": "^6.0.6"
   },
   "name": "infisical-api",
   "version": "1.0.0",
