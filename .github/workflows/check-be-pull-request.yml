@@ -1,7 +1,6 @@
 name: "Check Backend Pull Request"
 
 on:
-  workflow_dispatch: # remove me
   pull_request:
     types: [opened, synchronize]
     paths:

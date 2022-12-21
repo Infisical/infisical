@@ -6,14 +6,14 @@ export const setUpHealthEndpoint = <T>(server: T) => {
   const onSignal = () => {
     console.log('Server is starting clean-up');
     return Promise.all([
-      () => {
+      new Promise((resolve) => {
         if (mongoose.connection && mongoose.connection.readyState == 1) {
-          mongoose.connection.close();
-          () => {
-            console.info('Database connection closed');
-          };
+          mongoose.connection.close()
+            .then(() => resolve('Database connection closed'));
+        } else {
+          resolve('Database connection already closed');
         }
-      }
+      })
     ]);
   };
 
