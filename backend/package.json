@@ -17,7 +17,7 @@
     "helmet": "^5.1.1",
     "jsonwebtoken": "^8.5.1",
     "jsrp": "^0.2.4",
-    "mongoose": "^6.7.2",
+    "mongoose": "^6.7.3",
     "nodemailer": "^6.8.0",
     "posthog-node": "^2.1.0",
     "query-string": "^7.1.3",
