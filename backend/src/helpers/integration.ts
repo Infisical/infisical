@@ -138,7 +138,7 @@ const syncIntegrationsHelper = async ({
         // to that integration
         for await (const integration of integrations) {
             // get workspace, environment (shared) secrets
-            const secrets = await BotService.getSecrets({
+            const secrets = await BotService.getSecrets({ // issue here?
                 workspaceId: integration.workspace.toString(),
                 environment: integration.environment
             });
