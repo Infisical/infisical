@@ -69,7 +69,7 @@ const getSecretsHelper = async ({
     workspaceId: string;
     environment: string;
 }) => {
-    let content = {} as any;
+    const content = {} as any;
     try {
         const key = await getKey({ workspaceId });
         const secrets = await Secret.find({

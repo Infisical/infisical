@@ -16,7 +16,7 @@ const revokeAccess = async ({
     accessToken
 }: {
     integrationAuth: IIntegrationAuth,
-    accessToken: String
+    accessToken: string
 }) => {
     try {
         // add any integration-specific revocation logic 

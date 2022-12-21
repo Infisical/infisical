@@ -2,40 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import handlebars from 'handlebars';
 import nodemailer from 'nodemailer';
-import {
-  SMTP_HOST,
-  SMTP_PORT,
-  SMTP_NAME,
-  SMTP_USERNAME,
-  SMTP_PASSWORD
-} from '../config';
-import SMTPConnection from 'nodemailer/lib/smtp-connection';
+import { SMTP_NAME, SMTP_USERNAME } from '../config';
 import * as Sentry from '@sentry/node';
 
-const mailOpts: SMTPConnection.Options = {
-  host: SMTP_HOST,
-  port: SMTP_PORT as number
-};
-if (SMTP_USERNAME && SMTP_PASSWORD) {
-  mailOpts.auth = {
-    user: SMTP_USERNAME,
-    pass: SMTP_PASSWORD
-  };
-}
-// create nodemailer transporter
-const transporter = nodemailer.createTransport(mailOpts);
-transporter
-  .verify()
-  .then(() => {
-    Sentry.setUser(null);
-    Sentry.captureMessage('SMTP - Successfully connected');
-  })
-  .catch((err) => {
-    Sentry.setUser(null);
-    Sentry.captureException(
-      `SMTP - Failed to connect to ${SMTP_HOST}:${SMTP_PORT} \n\t${err}`
-    );
-  });
+let smtpTransporter: nodemailer.Transporter;
 
 /**
  * @param {Object} obj
@@ -63,7 +33,7 @@ const sendMail = async ({
     const temp = handlebars.compile(html);
     const htmlToSend = temp(substitutions);
 
-    await transporter.sendMail({
+    await smtpTransporter.sendMail({
       from: `"${SMTP_NAME}" <${SMTP_USERNAME}>`,
       to: recipients.join(', '),
       subject: subjectLine,
@@ -75,4 +45,8 @@ const sendMail = async ({
   }
 };
 
-export { sendMail };
+const setTransporter = (transporter: nodemailer.Transporter) => {
+  smtpTransporter = transporter;
+};
+
+export { sendMail, setTransporter };

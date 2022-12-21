@@ -107,7 +107,7 @@ const exchangeCodeHeroku = async ({
     code: string;
 }) => {
     let res: ExchangeCodeHerokuResponse;
-    let accessExpiresAt = new Date();
+    const accessExpiresAt = new Date();
     try {
         res = (await axios.post(
             INTEGRATION_HEROKU_TOKEN_URL,
