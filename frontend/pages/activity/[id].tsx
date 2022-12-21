@@ -1,11 +1,96 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 
+import EventFilter from '~/components/basic/EventFilter';
 import ActivityTable from '~/components/basic/table/ActivityTable';
 import NavHeader from '~/components/navigation/NavHeader';
 import onboardingCheck from '~/components/utilities/checks/OnboardingCheck';
 
 const data = [
+  {
+    eventName: 'Secrets Pulled',
+    user: 'matsiiako@gmail.com',
+    source: 'CLI',
+    time: new Date()
+  },
+  {
+    eventName: 'Secrets Pushed',
+    user: 'matsiiako@gmail.com',
+    source: 'Web',
+    time: new Date()
+  },
+  {
+    eventName: 'Secrets Pulled',
+    user: 'matsiiako@gmail.com',
+    source: 'CLI',
+    time: new Date()
+  },
+  {
+    eventName: 'Secrets Pushed',
+    user: 'matsiiako@gmail.com',
+    source: 'Web',
+    time: new Date()
+  },
+  {
+    eventName: 'Secrets Pulled',
+    user: 'matsiiako@gmail.com',
+    source: 'CLI',
+    time: new Date()
+  },
+  {
+    eventName: 'Secrets Pushed',
+    user: 'matsiiako@gmail.com',
+    source: 'Web',
+    time: new Date()
+  },
+  {
+    eventName: 'Secrets Pulled',
+    user: 'matsiiako@gmail.com',
+    source: 'CLI',
+    time: new Date()
+  },
+  {
+    eventName: 'Secrets Pushed',
+    user: 'matsiiako@gmail.com',
+    source: 'Web',
+    time: new Date()
+  },
+  {
+    eventName: 'Secrets Pulled',
+    user: 'matsiiako@gmail.com',
+    source: 'CLI',
+    time: new Date()
+  },
+  {
+    eventName: 'Secrets Pushed',
+    user: 'matsiiako@gmail.com',
+    source: 'Web',
+    time: new Date()
+  },
+  {
+    eventName: 'Secrets Pulled',
+    user: 'matsiiako@gmail.com',
+    source: 'CLI',
+    time: new Date()
+  },
+  {
+    eventName: 'Secrets Pushed',
+    user: 'matsiiako@gmail.com',
+    source: 'Web',
+    time: new Date()
+  },
+  {
+    eventName: 'Secrets Pulled',
+    user: 'matsiiako@gmail.com',
+    source: 'CLI',
+    time: new Date()
+  },
+  {
+    eventName: 'Secrets Pushed',
+    user: 'matsiiako@gmail.com',
+    source: 'Web',
+    time: new Date()
+  },
   {
     eventName: 'Secrets Pulled',
     user: 'matsiiako@gmail.com',
@@ -32,6 +117,7 @@ export default function Activity() {
   const [hasUserStarred, setHasUserStarred] = useState(false);
   const [hasUserPushedSecrets, setHasUserPushedSecrets] = useState(false);
   const [usersInOrg, setUsersInOrg] = useState(false);
+  const [eventChosen, setEventChosen] = useState('');
 
   useEffect(() => {
     onboardingCheck({
@@ -54,7 +140,20 @@ export default function Activity() {
           Event history limited to the last 12 months.
         </p>
       </div>
-      <ActivityTable data={data} />
+      {/* Licence Required 
+      <div className="px-6 h-8 mt-2">
+        <EventFilter 
+          selected={eventChosen}
+          select={setEventChosen}
+          data={["Secrets Pulled", "Secrets Pushed"]}
+          isFull={false}
+        />
+      </div> */}
+      <ActivityTable
+        data={data.filter((event) =>
+          eventChosen != '' ? event.eventName == eventChosen : event
+        )}
+      />
     </div>
   );
 }
