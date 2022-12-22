@@ -13,6 +13,10 @@ import {
   INTEGRATION_GITHUB_API_URL
 } from '../variables';
 
+interface GitHubApp {
+  name: string;
+}
+
 /**
  * Return list of names of apps for integration named [integration]
  * @param {Object} obj
@@ -186,13 +190,17 @@ const getAppsGithub = async ({
       auth: accessToken
     });
 
-    const repos = await octokit.request(
+    const repos = (await octokit.request(
       'GET /user/repos{?visibility,affiliation,type,sort,direction,per_page,page,since,before}',
       {}
-    );
-    apps = repos.map((a: any) => {
-      a.name;
-    });
+    )).data;
+
+    apps = repos
+      .filter((a:any) => a.permissions.admin === true)
+      .map((a: any) => ({
+          name: a.name
+        })
+      );
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);

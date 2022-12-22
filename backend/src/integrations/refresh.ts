@@ -52,18 +52,6 @@ const exchangeRefreshHeroku = async ({
 }: {
   refreshToken: string;
 }) => {
-<<<<<<< HEAD
-  let accessToken;
-  try {
-    const res = await axios.post(
-      INTEGRATION_HEROKU_TOKEN_URL,
-      new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-        client_secret: OAUTH_CLIENT_SECRET_HEROKU
-      } as any)
-    );
-=======
     let accessToken;
     try {
         const res = await axios.post(
@@ -74,7 +62,6 @@ const exchangeRefreshHeroku = async ({
                 client_secret: CLIENT_SECRET_HEROKU
             } as any)
         );
->>>>>>> 5444382d5ae1fabf1107434a856b58b9f09c67f6
 
     accessToken = res.data.access_token;
   } catch (err) {

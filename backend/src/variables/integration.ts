@@ -1,6 +1,7 @@
 import {
     CLIENT_ID_HEROKU,
     CLIENT_ID_NETLIFY,
+    CLIENT_ID_GITHUB,
     CLIENT_SLUG_VERCEL
 } from '../config';
 
@@ -31,7 +32,7 @@ const INTEGRATION_GITHUB_TOKEN_URL =
 const INTEGRATION_HEROKU_API_URL = 'https://api.heroku.com';
 const INTEGRATION_VERCEL_API_URL = 'https://api.vercel.com';
 const INTEGRATION_NETLIFY_API_URL = 'https://api.netlify.com';
-const INTEGRATION_GITHUB_API_URL = ' https://api.github.com/';
+const INTEGRATION_GITHUB_API_URL = 'https://api.github.com';
 
 const INTEGRATION_OPTIONS = [
     {
@@ -61,6 +62,16 @@ const INTEGRATION_OPTIONS = [
         type: 'oauth2',
         clientId: CLIENT_ID_NETLIFY,
         docsLink: ''
+    },
+    {
+        name: 'GitHub',
+        slug: 'github',
+        image: 'GitHub', 
+        isAvailable: true,
+        type: 'oauth2',
+        clientId: CLIENT_ID_GITHUB,
+        docsLink: ''
+        
     },
     {
         name: 'Google Cloud Platform',

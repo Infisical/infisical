@@ -1,7 +1,9 @@
 import axios from 'axios';
 import * as Sentry from '@sentry/node';
 import { Octokit } from '@octokit/rest';
-import * as sodium from 'libsodium-wrappers';
+// import * as sodium from 'libsodium-wrappers';
+import sodium from 'libsodium-wrappers';
+// const sodium = require('libsodium-wrappers');
 import { IIntegration, IIntegrationAuth } from '../models';
 import {
   INTEGRATION_HEROKU,
@@ -66,11 +68,11 @@ const syncSecrets = async ({
       case INTEGRATION_GITHUB:
         await syncSecretsGitHub({
           integration,
-          integrationAuth,
           secrets,
           accessToken
         });
         break;
+    }
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
@@ -486,7 +488,7 @@ const syncSecretsNetlify = async ({
 }
 
 /**
- * Sync/push [secrets] to GitHub site [app]
+ * Sync/push [secrets] to GitHub [repo]
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
  * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
@@ -494,105 +496,109 @@ const syncSecretsNetlify = async ({
  */
 const syncSecretsGitHub = async ({
   integration,
-  integrationAuth,
   secrets,
   accessToken
 }: {
   integration: IIntegration;
-  integrationAuth: IIntegrationAuth;
   secrets: any;
   accessToken: string;
 }) => {
   try {
-    const deleteSecrets: Array<string> = [];
+    
+    interface GitHubRepoKey {
+      key_id: string;
+      key: string;
+    }
+    
+    interface GitHubSecret {
+      name: string;
+      created_at: string;
+      updated_at: string;
+    }
+
+    interface GitHubSecretRes {
+        [index: string]: GitHubSecret;
+    }
+
+    const deleteSecrets: GitHubSecret[] = [];
 
     const octokit = new Octokit({
       auth: accessToken
     });
 
-    const loggedInUser = await octokit.request('GET /user', {});
-    // TODO: Check loggedInUser.login == repo owner
-    const repoPublicKey = await octokit.request(
+    const user = (await octokit.request('GET /user', {})).data;
+    
+    const repoPublicKey: GitHubRepoKey = (await octokit.request(
       'GET /repos/{owner}/{repo}/actions/secrets/public-key',
       {
-        owner: loggedInUser.login,
+        owner: user.login,
         repo: integration.app
       }
-    ).key;
+    )).data;
 
-    const userRepos = await octokit.request('GET /user/repos', {});
-
-    // Get local copy of decrypted secrets. We cannot decrypt them as we dont have access to GH private key
-    const encryptedSecrets = await octokit.request(
+    // // Get local copy of decrypted secrets. We cannot decrypt them as we dont have access to GH private key
+    const encryptedSecrets: GitHubSecretRes = (await octokit.request(
       'GET /repos/{owner}/{repo}/actions/secrets',
       {
-        owner: loggedInUser.name,
+        owner: user.login,
         repo: integration.app
       }
-    );
-
-    Object.keys(secrets).map((key) => {
-      if (!(key in encryptedSecrets)) {
-        deleteSecrets.push(key);
-      }
-    });
-
-    if (!Object.values(userRepos).includes(integration.app)) {
-      if (deleteSecrets.length == 0) {
-        throw new Error('Failed to sync secrets to Github');
-      }
-    }
-
-    // Sync/push all secrets
-    for (const i in secrets) {
-      let encryptedSecret;
-      sodium.ready.then(() => {
-        // Convert Secret & Base64 key to Uint8Array.
-        const binkey = sodium.from_base64(
-          repoPublicKey,
-          sodium.base64_variants.ORIGINAL
-        );
-        const binsec = sodium.from_string(secrets[i]);
-
-        //Encrypt the secret using LibSodium
-        const encBytes = sodium.crypto_box_seal(binsec, binkey);
-
-        // Convert encrypted Uint8Array to Base64
-        encryptedSecret = sodium.to_base64(
-          encBytes,
-          sodium.base64_variants.ORIGINAL
-        );
-      });
-
-      const res = await octokit.request(
-        'PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}',
-        {
-          owner: loggedInUser.login,
-          repo: integration.app,
-          secret_name: Object.keys(secrets[i]),
-          encrypted_value: encryptedSecret,
-          key_id: '' //TODO: Not sure if we need this? https://docs.github.com/en/rest/actions/secrets?apiVersion=2022-11-28#create-or-update-a-repository-secret
-        }
-      );
-    }
-
-    // Delete secrets
-    if (deleteSecrets.length > 0) {
-      for (const i in deleteSecrets) {
-        const res = await octokit.request(
+    ))
+    .data
+    .secrets
+    .reduce((obj: any, secret: any) => ({
+      ...obj,
+      [secret.name]: secret
+    }), {});
+    
+    Object.keys(encryptedSecrets).map(async (key) => {
+      if (!(key in secrets)) {
+        await octokit.request(
           'DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}',
           {
-            owner: loggedInUser.login,
+            owner: user.login,
             repo: integration.app,
-            secret_name: secrets[i]
+            secret_name: key
           }
         );
       }
-    }
+    });
+    
+    Object.keys(secrets).map((key) => {
+      // let encryptedSecret;
+      sodium.ready.then(async () => {
+          // convert secret & base64 key to Uint8Array.
+          const binkey = sodium.from_base64(
+            repoPublicKey.key,
+            sodium.base64_variants.ORIGINAL
+          );
+          const binsec = sodium.from_string(secrets[key]);
+
+          // encrypt secret using libsodium
+          const encBytes = sodium.crypto_box_seal(binsec, binkey);
+
+          // convert encrypted Uint8Array to base64
+          const encryptedSecret = sodium.to_base64(
+            encBytes,
+            sodium.base64_variants.ORIGINAL
+          );
+          
+          await octokit.request(
+            'PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}',
+            {
+              owner: user.login,
+              repo: integration.app,
+              secret_name: key,
+              encrypted_value: encryptedSecret,
+              key_id: repoPublicKey.key_id
+            }
+          );
+      });
+    });
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error('Failed to sync secrets to Github');
+    throw new Error('Failed to sync secrets to GitHub');
   }
 };
 

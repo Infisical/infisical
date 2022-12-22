@@ -14,11 +14,10 @@ const CLIENT_SECRET_HEROKU = process.env.CLIENT_SECRET_HEROKU!;
 const CLIENT_ID_HEROKU = process.env.CLIENT_ID_HEROKU!;
 const CLIENT_ID_VERCEL = process.env.CLIENT_ID_VERCEL!;
 const CLIENT_ID_NETLIFY = process.env.CLIENT_ID_NETLIFY!;
-const CLIENT_ID_GITHUB =
-  process.env.CLIENT_ID_GITHUB! || 'e787fc24bcec43ecd5d5';
+const CLIENT_ID_GITHUB = process.env.CLIENT_ID_GITHUB!;
 const CLIENT_SECRET_VERCEL = process.env.CLIENT_SECRET_VERCEL!;
 const CLIENT_SECRET_NETLIFY = process.env.CLIENT_SECRET_NETLIFY!;
-const CLIENT_SECRET_GITHUB = process.env.CLIENT_SECRET_GITHUB! || '407f32da788f63559abd662c6de08bb2911ca8ae';
+const CLIENT_SECRET_GITHUB = process.env.CLIENT_SECRET_GITHUB!;
 const CLIENT_SLUG_VERCEL= process.env.CLIENT_SLUG_VERCEL!;
 const POSTHOG_HOST = process.env.POSTHOG_HOST! || 'https://app.posthog.com';
 const POSTHOG_PROJECT_API_KEY =

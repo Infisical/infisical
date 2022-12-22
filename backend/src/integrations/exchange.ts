@@ -9,14 +9,15 @@ import {
   INTEGRATION_VERCEL_TOKEN_URL,
   INTEGRATION_NETLIFY_TOKEN_URL,
   INTEGRATION_GITHUB_TOKEN_URL,
+  INTEGRATION_GITHUB_API_URL,
   ACTION_PUSH_TO_HEROKU
 } from '../variables';
-
 import {
   SITE_URL,
   CLIENT_ID_VERCEL,
   CLIENT_ID_NETLIFY,
   CLIENT_ID_GITHUB,
+  CLIENT_SECRET_HEROKU,
   CLIENT_SECRET_VERCEL,
   CLIENT_SECRET_NETLIFY,
   CLIENT_SECRET_GITHUB
@@ -117,43 +118,13 @@ const exchangeCode = async ({
  * @returns {String} obj2.refreshToken - refresh token for Heroku API
  * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
  */
-<<<<<<< HEAD
-const exchangeCodeHeroku = async ({ code }: { code: string }) => {
-  let res: ExchangeCodeHerokuResponse;
-  const accessExpiresAt = new Date();
-  try {
-    res = (
-      await axios.post(
-        INTEGRATION_HEROKU_TOKEN_URL,
-        new URLSearchParams({
-          grant_type: 'authorization_code',
-          code: code,
-          client_secret: OAUTH_CLIENT_SECRET_HEROKU
-        } as any)
-      )
-    ).data;
-
-    accessExpiresAt.setSeconds(accessExpiresAt.getSeconds() + res.expires_in);
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error('Failed OAuth2 code-token exchange with Heroku');
-  }
-
-  return {
-    accessToken: res.access_token,
-    refreshToken: res.refresh_token,
-    accessExpiresAt
-  };
-};
-=======
 const exchangeCodeHeroku = async ({
     code
 }: {
     code: string;
 }) => {
     let res: ExchangeCodeHerokuResponse;
-    let accessExpiresAt = new Date();
+    const accessExpiresAt = new Date();
     try {
         res = (await axios.post(
             INTEGRATION_HEROKU_TOKEN_URL,
@@ -179,7 +150,6 @@ const exchangeCodeHeroku = async ({
         accessExpiresAt
     });
 }
->>>>>>> 5444382d5ae1fabf1107434a856b58b9f09c67f6
 
 /**
  * Return [accessToken], [accessExpiresAt], and [refreshToken] for Vercel
@@ -286,7 +256,6 @@ const exchangeCodeNetlify = async ({ code }: { code: string }) => {
  */
 const exchangeCodeGithub = async ({ code }: { code: string }) => {
   let res: ExchangeCodeGithubResponse;
-  let res2;
   try {
     res = (
       await axios.get(INTEGRATION_GITHUB_TOKEN_URL, {
@@ -295,29 +264,21 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
           client_secret: CLIENT_SECRET_GITHUB,
           code: code,
           redirect_uri: `${SITE_URL}/github`
+        },
+        headers: {
+          Accept: 'application/json'
         }
       })
     ).data;
 
-    res2 = (
-      await axios.get(INTEGRATION_GITHUB_TOKEN_URL, {
-        params: {
-          Authorization: `Bearer ${res.access_token}`
-        }
-      })
-    ).data;
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error('Failed OAuth2 code-token exchange with Github');
   }
 
-  // TODO: Check actual response and fix next line
-  const accountId = res2.user;
-
   return {
     accessToken: res.access_token,
-    user: accountId,
     refreshToken: null,
     accessExpiresAt: null
   };
