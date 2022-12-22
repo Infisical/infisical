@@ -1,10 +1,11 @@
 import nodemailer from 'nodemailer';
-import { SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD } from '../config';
+import { SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_SECURE } from '../config';
 import SMTPConnection from 'nodemailer/lib/smtp-connection';
 import * as Sentry from '@sentry/node';
 
 const mailOpts: SMTPConnection.Options = {
   host: SMTP_HOST,
+  secure: SMTP_SECURE as boolean,
   port: SMTP_PORT as number
 };
 if (SMTP_USERNAME && SMTP_PASSWORD) {

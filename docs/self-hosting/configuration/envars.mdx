@@ -24,12 +24,15 @@ Configuring Infisical requires setting some environment variables. There is a fi
 | `MONGO_PASSWORD`             | MongoDB password if using container                                                                         | `None`           |
 | `SITE_URL`                   | ❗️ Site URL - should be an absolute URL including the protocol (e.g. `https://app.infisical.com`)           | `None`           |
 | `SMTP_HOST`                  | Hostname to connect to for establishing SMTP connections                                                    | `smtp.gmail.com` |
-| `SMTP_NAME`                  | Name label to be used in From field (e.g. `Team`)                                                           | `None`           |
+| `SMTP_SECURE`                | Use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported                        | `false`          |
+| `SMTP_PORT`                  | ❗️ Port to connect to for establishing SMTP connections                                                     | `587`            |
+| `SMTP_FROM_ADDRESS`          | ❗️ Email address to be used for sending emails (e.g. `team@infisical.com`)                                  | `None`           |
+| `SMTP_FROM_NAME`             | Name label to be used in From field (e.g. `Team`)                                                           | `Infisical`      |
 | `SMTP_USERNAME`              | ❗️ Credential to connect to host (e.g. `team@infisical.com`)                                                | `None`           |
 | `SMTP_PASSWORD`              | ❗️ Credential to connect to host                                                                            | `None`           |
 | `TELEMETRY_ENABLED`          | `true` or `false`. [More](../overview).                                                                     | `true`           |
-| `CLIENT_ID_VERCEL`           | OAuth client id for Vercel integration                                                                     | `None`           |
-| `CLIENT_ID_NETLIFY`          | OAuth client id for Netlify integration                                                                    | `None`           |
+| `CLIENT_ID_VERCEL`           | OAuth client id for Vercel integration                                                                      | `None`           |
+| `CLIENT_ID_NETLIFY`          | OAuth client id for Netlify integration                                                                     | `None`           |
 | `CLIENT_SECRET_HEROKU`       | OAuth client secret for Heroku integration                                                                  | `None`           |
 | `CLIENT_SECRET_VERCEL`       | OAuth client secret for Vercel integration                                                                  | `None`           |
 | `CLIENT_SECRET_NETLIFY`      | OAuth client secret for Netlify integration                                                                 | `None`           |
