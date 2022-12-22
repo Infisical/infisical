@@ -22,8 +22,6 @@ declare global {
       CLIENT_SECRET_NETLIFY: string;
 			POSTHOG_HOST: string;
 			POSTHOG_PROJECT_API_KEY: string;
-      PRIVATE_KEY: string;
-      PUBLIC_KEY: string;
       SENTRY_DSN: string;
       SITE_URL: string;
       SMTP_HOST: string;

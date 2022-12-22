@@ -15,6 +15,7 @@ interface IntegrationType {
   integration: string;
   integrationAuth: string;
   isActive: boolean;
+  context: string;
 }
 
 const ProjectIntegrationSection = ({

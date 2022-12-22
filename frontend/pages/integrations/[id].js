@@ -41,7 +41,7 @@ export default function Integrations() {
       setCloudIntegrationOptions(
         await getIntegrationOptions()
       );
-
+      
       // get project integration authorizations
       setIntegrationAuths(
         await getWorkspaceAuthorizations({
@@ -123,6 +123,8 @@ export default function Integrations() {
    * @returns 
    */
   const handleIntegrationOption = async ({ integrationOption }) => {
+    
+    console.log('handleIntegrationOption', integrationOption);
 
     try {
       // generate CSRF token for OAuth2 code-token exchange integrations
@@ -134,10 +136,13 @@ export default function Integrations() {
           window.location = `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`;
           break;
         case 'Vercel':
-          window.location = `https://vercel.com/integrations/infisical-dev/new?state=${state}`;
+          window.location = `https://vercel.com/integrations/${integrationOption.clientSlug}/new?state=${state}`;
           break;
         case 'Netlify':
           window.location = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${window.location.origin}/netlify`;
+          break;
+        case 'GitHub':
+          window.location = `https://github.com/login/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=repo&redirect_uri=${window.location.origin}/github&state=${state}`;
           break;
         // case 'Fly.io':
         //   console.log('fly.io');

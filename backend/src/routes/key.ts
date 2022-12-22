@@ -34,6 +34,4 @@ router.get(
 	keyController.getLatestKey
 );
 
-router.get('/publicKey/infisical', keyController.getPublicKeyInfisical);
-
 export default router;

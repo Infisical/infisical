@@ -133,13 +133,17 @@
       "pages": [
         "integrations/cloud/heroku",
         "integrations/cloud/vercel",
+        "integrations/cloud/netlify",
         "integrations/cloud/render",
         "integrations/cloud/flyio"
       ]
     },
     {
       "group": "CI/CD",
-      "pages": ["integrations/cicd/circleci"]
+      "pages": [
+        "integrations/cicd/githubactions",
+        "integrations/cicd/circleci"
+      ]
     },
     {
       "group": "Frameworks",

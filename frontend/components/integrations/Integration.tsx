@@ -14,9 +14,11 @@ import deleteIntegration from "../../pages/api/integrations/DeleteIntegration"
 import getIntegrationApps from "../../pages/api/integrations/GetIntegrationApps";
 import updateIntegration from "../../pages/api/integrations/updateIntegration"
 import {
+  contextNetlifyMapping,
   envMapping,
   reverseContextNetlifyMapping,
-  reverseEnvMapping} from "../../public/data/frequentConstants";
+  reverseEnvMapping,
+} from "../../public/data/frequentConstants";
 
 interface Integration {
     _id: string;
@@ -25,6 +27,7 @@ interface Integration {
     integration: string;
     integrationAuth: string;
     isActive: boolean;
+    context: string;
 }
 
 interface IntegrationApp {
@@ -69,7 +72,7 @@ const Integration = ({
             setIntegrationTarget("Development");
             break;
           case "netlify":
-            setIntegrationContext("All");
+            setIntegrationContext(integration?.context ? contextNetlifyMapping[integration.context] : "Local development");
             break;
           default:
             break;
@@ -93,7 +96,7 @@ const Integration = ({
                     "Production",
                     "Preview",
                     "Development"
-                  ] : []}
+                  ] : null}
                   selected={"Production"}
                   onChange={setIntegrationTarget}
                 />
@@ -107,12 +110,11 @@ const Integration = ({
                 </div>
                 <ListBox
                   data={!integration.isActive ? [
-                    "All",
                     "Production",
                     "Deploy previews",
                     "Branch deploys",
                     "Local development"
-                  ] : []}
+                  ] : null}
                   selected={integrationContext}
                   onChange={setIntegrationContext}
                 />
@@ -138,7 +140,7 @@ const Integration = ({
                   "Staging",
                   "Testing",
                   "Production",
-                ] : []}
+                ] : null}
               selected={integrationEnvironment}
               onChange={(environment) => {
                 setIntegrationEnvironment(environment);
@@ -166,7 +168,7 @@ const Integration = ({
               APP
             </div>
             <ListBox
-              data={!integration.isActive ? apps.map((app) => app.name) : []}
+              data={!integration.isActive ? apps.map((app) => app.name) : null}
               selected={integrationApp}
               onChange={(app) => {
                 setIntegrationApp(app);
@@ -190,7 +192,8 @@ const Integration = ({
                 onButtonPressed={async () => {
                   
                   const siteApp = apps.find((app) => app.name === integrationApp); // obj or undefined
-                  const siteId = siteApp ? siteApp.siteId : null;
+                  const siteId = siteApp?.siteId ? siteApp.siteId : null;
+                  
                   const result = await updateIntegration({
                     integrationId: integration._id,
                     environment: envMapping[integrationEnvironment],
@@ -200,6 +203,7 @@ const Integration = ({
                     context: integrationContext ? reverseContextNetlifyMapping[integrationContext] : null,
                     siteId
                   });
+
                   router.reload();
                 }}
                 color="mineshaft"
