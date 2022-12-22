@@ -80,7 +80,7 @@ export default function Button(props: ButtonProps): JSX.Element {
   );
 
   const textStyle = classNames(
-    "relative duration-200",
+    "relative duration-200 text-center w-full",
 
     // Show the loading sign if the loading indicator is on
     props.loading ? "opacity-0" : "opacity-100",
