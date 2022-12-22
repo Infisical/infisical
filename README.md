@@ -146,7 +146,9 @@ We're currently setting the foundation and building [integrations](https://infis
         🔜 AWS
       </td>
       <td align="left" valign="middle">
-        🔜 GitHub Actions (https://github.com/Infisical/infisical/issues/54)
+        <a href="https://infisical.com/docs/integrations/cicd/githubactions">
+          ✔️ GitHub Actions
+        </a>
       </td>
       <td align="left" valign="middle">
          🔜 Railway
@@ -179,7 +181,9 @@ We're currently setting the foundation and building [integrations](https://infis
          🔜 TravisCI
       </td>
       <td align="left" valign="middle">
-         🔜 Netlify (https://github.com/Infisical/infisical/issues/55)
+        <a href="https://infisical.com/docs/integrations/cloud/netlify">
+          ✔️ Netlify
+        </a>
       </td>
       <td align="left" valign="middle">
          🔜 Railway
