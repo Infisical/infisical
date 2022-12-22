@@ -26,10 +26,12 @@ const PUBLIC_KEY = process.env.PUBLIC_KEY!;
 const SENTRY_DSN = process.env.SENTRY_DSN!;
 const SITE_URL = process.env.SITE_URL!;
 const SMTP_HOST = process.env.SMTP_HOST! || 'smtp.gmail.com';
+const SMTP_SECURE = process.env.SMTP_SECURE! || false;
 const SMTP_PORT = process.env.SMTP_PORT! || 587;
-const SMTP_NAME = process.env.SMTP_NAME!;
 const SMTP_USERNAME = process.env.SMTP_USERNAME!;
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD!;
+const SMTP_FROM_ADDRESS = process.env.SMTP_FROM_ADDRESS!;
+const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME! || 'Infisical';
 const STRIPE_PRODUCT_CARD_AUTH = process.env.STRIPE_PRODUCT_CARD_AUTH!;
 const STRIPE_PRODUCT_PRO = process.env.STRIPE_PRODUCT_PRO!;
 const STRIPE_PRODUCT_STARTER = process.env.STRIPE_PRODUCT_STARTER!;
@@ -66,9 +68,11 @@ export {
   SITE_URL,
   SMTP_HOST,
   SMTP_PORT,
-  SMTP_NAME,
+  SMTP_SECURE,
   SMTP_USERNAME,
   SMTP_PASSWORD,
+  SMTP_FROM_ADDRESS,
+  SMTP_FROM_NAME,
   STRIPE_PRODUCT_CARD_AUTH,
   STRIPE_PRODUCT_PRO,
   STRIPE_PRODUCT_STARTER,
