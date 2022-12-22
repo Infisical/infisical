@@ -23,8 +23,6 @@ const POSTHOG_HOST = process.env.POSTHOG_HOST! || 'https://app.posthog.com';
 const POSTHOG_PROJECT_API_KEY =
   process.env.POSTHOG_PROJECT_API_KEY! ||
   'phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE';
-const PRIVATE_KEY = process.env.PRIVATE_KEY!;
-const PUBLIC_KEY = process.env.PUBLIC_KEY!;
 const SENTRY_DSN = process.env.SENTRY_DSN!;
 const SITE_URL = process.env.SITE_URL!;
 const SMTP_HOST = process.env.SMTP_HOST! || 'smtp.gmail.com';
@@ -66,8 +64,6 @@ export {
   CLIENT_SLUG_VERCEL,
   POSTHOG_HOST,
   POSTHOG_PROJECT_API_KEY,
-  PRIVATE_KEY,
-  PUBLIC_KEY,
   SENTRY_DSN,
   SITE_URL,
   SMTP_HOST,
