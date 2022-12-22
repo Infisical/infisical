@@ -16,13 +16,15 @@ export default function NoProjects() {
           alt="google logo"
         ></Image>
       </div>
-      <div className="max-w-md">
-        You are not part of any projects in this organization yet. When you do,
-        they will appear here.
-      </div>
-      <div className="max-w-md mt-4 mb-8">
-        Create a new project, or ask other organization members to give you
-        neccessary permissions.
+      <div className="p-4 rounded-md bg-bunker-500 mb-8 text-bunker-300 shadow-xl">
+        <div className="max-w-md">
+          You are not part of any projects in this organization yet. When you do,
+          they will appear here.
+        </div>
+        <div className="max-w-md mt-4">
+          Create a new project, or ask other organization members to give you
+          neccessary permissions.
+        </div>
       </div>
     </div>
   );
