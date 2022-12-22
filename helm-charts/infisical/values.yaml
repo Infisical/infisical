@@ -3,14 +3,14 @@
 # PLEASE REPLACE VALUES/EDIT AS REQUIRED 
 #####
 
-namespace: infisical
-
 frontend:
   replicaCount: 1
   image:
     repository: 
     pullPolicy: IfNotPresent
     tag: "latest"
+    # kubeSecretRef: some-kube-secret-name
+
 
 backend:
   replicaCount: 1
@@ -18,6 +18,7 @@ backend:
     repository: 
     pullPolicy: IfNotPresent
     tag: "latest"
+    # kubeSecretRef: some-kube-secret-name
 
 ingress:
   enabled: true
@@ -54,8 +55,6 @@ ingress:
 ### 
 backendEnvironmentVariables:
   # Required keys for platform encryption/decryption ops. Replace with nacl sk keys
-  PRIVATE_KEY: MUST_REPLACE
-  PUBLIC_KEY: MUST_REPLACE
   ENCRYPTION_KEY: MUST_REPLACE
 
   # JWT
@@ -71,9 +70,8 @@ backendEnvironmentVariables:
   SMTP_USERNAME: MUST_REPLACE
   SMTP_PASSWORD: MUST_REPLACE
 
-  # You may replace with Mongo Cloud URI
+  # Recommended to replace with Mongo Cloud URI as the DB instance in the cluster does not have persistence yet
   MONGO_URL: mongodb://root:root@mongodb-service:27017/
 
 # frontendEnvironmentVariables:
-#   INFISICAL_TELEMETRY_ENABLED: true
     
