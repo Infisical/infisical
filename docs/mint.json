@@ -140,7 +140,10 @@
     },
     {
       "group": "CI/CD",
-      "pages": ["integrations/cicd/circleci"]
+      "pages": [
+        "integrations/cicd/githubactions",
+        "integrations/cicd/circleci"
+      ]
     },
     {
       "group": "Frameworks",
