@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import * as Sentry from '@sentry/node';
 import { User } from '../models';
 import { JWT_SIGNUP_SECRET } from '../config';
+import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
 
 declare module 'jsonwebtoken' {
 	export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -21,32 +22,24 @@ const requireSignupAuth = async (
 ) => {
 	// JWT (temporary) authentication middleware for complete signup
 
-	try {
-		if (!req.headers?.authorization)
-			throw new Error('Failed to locate authorization header');
+	const [ AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE ] = <[string, string]>req.headers['authorization']?.split(' ', 2) ?? [null, null]
+	if(AUTH_TOKEN_TYPE === null) return next(BadRequestError({message: `Missing Authorization Header in the request header.`}))
+	if(AUTH_TOKEN_TYPE.toLowerCase() !== 'bearer') return next(UnauthorizedRequestError({message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.`}))
+	if(AUTH_TOKEN_VALUE === null) return next(BadRequestError({message: 'Missing Authorization Body in the request header'}))
+	
+	const decodedToken = <jwt.UserIDJwtPayload>(
+		jwt.verify(AUTH_TOKEN_VALUE, JWT_SIGNUP_SECRET)
+	);
 
-		const token = req.headers.authorization.split(' ')[1];
-		const decodedToken = <jwt.UserIDJwtPayload>(
-			jwt.verify(token, JWT_SIGNUP_SECRET)
-		);
+	const user = await User.findOne({
+		_id: decodedToken.userId
+	}).select('+publicKey');
 
-		const user = await User.findOne({
-			_id: decodedToken.userId
-		}).select('+publicKey');
+	if (!user)
+		return next(UnauthorizedRequestError({message: 'Unable to authenticate for User account completion. Try logging in again'}))
 
-		if (!user)
-			throw new Error('Failed to temporarily authenticate unfound user');
-
-		req.user = user;
-		return next();
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		return res.status(401).send({
-			error:
-				'Failed to temporarily authenticate user for complete account. Try logging in'
-		});
-	}
+	req.user = user;
+	return next();
 };
 
 export default requireSignupAuth;

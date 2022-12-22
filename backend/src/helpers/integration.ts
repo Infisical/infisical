@@ -176,6 +176,7 @@ const syncIntegrationsHelper = async ({
  */
  const getIntegrationAuthRefreshHelper = async ({ integrationAuthId }: { integrationAuthId: string }) => {
     let refreshToken;
+	//TODO: Refactor code to take advantage of using RequestError. It's possible to create new types of errors for more detailed errors
     try {
         const integrationAuth = await IntegrationAuth
             .findById(integrationAuthId)
@@ -209,6 +210,7 @@ const syncIntegrationsHelper = async ({
  */
 const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrationAuthId: string }) => {
     let accessToken;
+	//TODO: Refactor code to take advantage of using RequestError. It's possible to create new types of errors for more detailed errors
     try {
         const integrationAuth = await IntegrationAuth
             .findById(integrationAuthId)

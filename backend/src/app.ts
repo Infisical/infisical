@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import * as Sentry from '@sentry/node';
 
 dotenv.config();
 import { PORT, NODE_ENV, SITE_URL } from './config';
@@ -60,6 +61,11 @@ app.use((error: RequestError|Error, req: Request, res: Response, next: NextFunct
       error = InternalServerError({context: {exception: error.message}, stack: error.stack})
       getLogger('backend-main').log((<RequestError>error).levelName.toLowerCase(), (<RequestError>error).message)
   }
+  //* Sentry Error Capture
+  if(req.user !== undefined || req.user !== null)
+    Sentry.setUser({ email: req.user.email })
+  Sentry.captureException(error)
+  
   res.status((<RequestError>error).statusCode).json((<RequestError>error).format(req))
   next()
 })

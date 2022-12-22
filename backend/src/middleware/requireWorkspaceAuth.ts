@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/node';
 import { Request, Response, NextFunction } from 'express';
 import { validateMembership } from '../helpers/membership';
+import { UnauthorizedRequestError } from '../utils/errors';
 
 type req = 'params' | 'body' | 'query';
 
@@ -36,11 +37,7 @@ const requireWorkspaceAuth = ({
 
 			return next();
 		} catch (err) {
-			Sentry.setUser(null);
-			Sentry.captureException(err);
-			return res.status(401).send({
-				error: 'Failed workspace authorization'
-			});
+			return next(UnauthorizedRequestError({message: 'Unable to authenticate workspace'}))
 		}
 	};
 };
