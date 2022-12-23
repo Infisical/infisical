@@ -3,29 +3,54 @@ import { faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import Button from '../basic/buttons/Button';
+import ListBox from '../basic/Listbox';
 import Toggle from '../basic/Toggle';
 import DashboardInputField from './DashboardInputField';
 import GenerateSecretMenu from './GenerateSecretMenu';
 
+
+interface SecretProps {
+  key: string;
+  value: string;
+  pos: number;
+  visibility: string;
+}
+
+interface SideBarProps {
+  toggleSidebar: (value: number) => void; 
+  data: SecretProps[];
+  modifyKey: (value: string) => void; 
+  modifyValue: (value: string) => void; 
+  modifyVisibility: (value: string) => void; 
+}
+
 /**
+ * @param {object} obj
+ * @param {function} obj.toggleSidebar - function that opens or closes the sidebar
+ * @param {SecretProps[]} obj.data - data of a certain key valeu pair
+ * @param {function} obj.modifyKey - function that modifies the secret key
+ * @param {function} obj.modifyValue - function that modifies the secret value
+ * @param {function} obj.modifyVisibility - function that modifies the secret visibility
  * @returns the sidebar with 'secret's settings'
  */
-const SideBar = () => {
-  const [overrideEnabled, setOverrideEnabled] = useState(false)
+const SideBar = ({ toggleSidebar, data, modifyKey, modifyValue, modifyVisibility }: SideBarProps) => {
+  const [overrideEnabled, setOverrideEnabled] = useState(false);
 
   return <div className='absolute border-l border-mineshaft-500 bg-bunker fixed h-full w-96 top-14 right-0 z-50 shadow-xl flex flex-col justify-between'>
     <div className='h-min'>
       <div className="flex flex-row px-4 py-3 border-b border-mineshaft-500 justify-between items-center">
         <p className="font-semibold text-lg text-bunker-200">Secret</p>
-        <FontAwesomeIcon icon={faX} className='w-4 h-4 text-bunker-300 cursor-pointer'/>
+        <div className='p-1' onClick={() => toggleSidebar(-1)}>
+          <FontAwesomeIcon icon={faX} className='w-4 h-4 text-bunker-300 cursor-pointer'/>
+        </div>
       </div>
-      <div className='mt-4 px-4 pointer-events-none'>
+      <div className='mt-4 px-4'>
         <p className='text-sm text-bunker-300'>Key</p>
         <DashboardInputField
-          onChangeHandler={() => {}}
+          onChangeHandler={modifyKey}
           type="varName"
-          position={1}
-          value={"KeyKeyKey"}
+          position={data[0].pos}
+          value={data[0].key}
           duplicates={[]}
           blurred={false}
         />
@@ -33,14 +58,14 @@ const SideBar = () => {
       <div className={`relative mt-2 px-4 ${overrideEnabled && "opacity-40 pointer-events-none"} duration-200`}>
         <p className='text-sm text-bunker-300'>Value</p>
         <DashboardInputField
-          onChangeHandler={() => {}}
+          onChangeHandler={modifyValue}
           type="value"
-          position={1}
-          value={"ValueValueValue"}
+          position={data[0].pos}
+          value={data[0].value}
           duplicates={[]}
           blurred={true}
         />
-        <div className='absolute right-[1.7rem] top-[1.65rem] z-50'>
+        <div className='absolute bg-bunker-800 right-[1rem] top-[1.65rem] z-50'>
           <GenerateSecretMenu />
         </div>
       </div>
@@ -51,9 +76,9 @@ const SideBar = () => {
         </div>
         <div className={`relative ${!overrideEnabled && "opacity-40 pointer-events-none"} duration-200`}>
           <DashboardInputField
-            onChangeHandler={() => {}}
+            onChangeHandler={modifyValue}
             type="value"
-            position={1}
+            position={data[0].pos}
             value={"ValueValueValue"}
             duplicates={[]}
             blurred={true}
@@ -62,11 +87,20 @@ const SideBar = () => {
             <GenerateSecretMenu />
           </div>
         </div>
-        <div className={`mt-6`}>
-          <p className='text-sm text-bunker-300'>Comments & notes</p>
-          <div className='h-32 w-full bg-bunker-800 p-2 rounded-md border border-mineshaft-500 rounded-md text-sm text-bunker-300'> 
-            Leave your comment here...
-          </div>
+      </div>
+      <div className={`relative mt-4 px-4 opacity-80 duration-200`}>
+        <p className='text-sm text-bunker-200'>Group</p>
+        <ListBox
+          selected={"Database Secrets"}
+          onChange={() => {}}
+          data={["Group1"]}
+          isFull={true}
+        />
+      </div>
+      <div className={`mt-4 px-4`}>
+        <p className='text-sm text-bunker-300'>Comments & notes</p>
+        <div className='h-32 w-full bg-bunker-800 p-2 rounded-md border border-mineshaft-500 rounded-md text-sm text-bunker-300'> 
+          Leave your comment here...
         </div>
       </div>
     </div>

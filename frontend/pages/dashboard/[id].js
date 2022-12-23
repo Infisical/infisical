@@ -56,14 +56,16 @@ const KeyPair = ({
   modifyValue,
   modifyVisibility,
   isBlurred,
-  duplicates
+  duplicates,
+  toggleSidebar,
+  sidebarSecretNumber
 }) => {
 
   return (
-    <div className="px-1 flex flex-col items-center ml-1">
-      <div className="relative flex flex-row justify-between w-full max-w-5xl mr-auto max-h-14 my-1 items-start px-2">
+    <div className={`mx-1 flex flex-col items-center ml-1 ${keyPair.pos == sidebarSecretNumber && "bg-mineshaft-500 duration-200"} rounded-md`}>
+      <div className="relative flex flex-row justify-between w-full max-w-5xl mr-auto max-h-14 my-1 items-start px-1">
         <div className="min-w-xl w-96">
-          <div className="flex items-center md:px-1 rounded-lg mt-4 md:mt-0 max-h-16">
+          <div className="flex pr-1 items-center rounded-lg mt-4 md:mt-0 max-h-16">
             <DashboardInputField
               onChangeHandler={modifyKey}
               type="varName"
@@ -84,17 +86,17 @@ const KeyPair = ({
             />
           </div>
         </div>
-        <div className="cursor-pointer w-9 h-9 bg-white/10 rounded-md flex flex-row justify-center items-center opacity-50 hover:opacity-100 duration-200">
+        <div onClick={() => toggleSidebar(keyPair.pos)} className="cursor-pointer w-9 h-9 bg-mineshaft-700 hover:bg-chicago-700 rounded-md flex flex-row justify-center items-center duration-200">
           <FontAwesomeIcon
             className="text-gray-300 px-2.5 text-lg mt-0.5"
             icon={faEllipsis}
           />
         </div>
         <div className="w-2"></div>
-        <div className="opacity-50 hover:opacity-100 duration-200">
+        <div className="bg-[#9B3535] hover:bg-red rounded-md duration-200">
           <Button
             onButtonPressed={() => deleteRow(keyPair.id)}
-            color="red"
+            color="none"
             size="icon-sm"
             icon={faX}
           />
@@ -130,7 +132,7 @@ export default function Dashboard() {
   const [sortMethod, setSortMethod] = useState('alphabetical');
   const [checkDocsPopUpVisible, setCheckDocsPopUpVisible] = useState(false);
   const [hasUserEverPushed, setHasUserEverPushed] = useState(false);
-  const [sidebarOpen, toggleSidebar] = useState(false);
+  const [sidebarSecretNumber, toggleSidebar] = useState(-1);
 
   const { createNotification } = useNotificationContext();
 
@@ -335,17 +337,17 @@ export default function Dashboard() {
 
   const sortValuesHandler = (dataToSort) => {
     const sortedData = (dataToSort != 1 ? dataToSort : data)
-      .sort((a, b) =>
-        sortMethod == 'alphabetical'
-          ? a.key.localeCompare(b.key)
-          : b.key.localeCompare(a.key)
-      )
-      .map((item, index) => {
-        return {
-          ...item,
-          pos: index
-        };
-      });
+    .sort((a, b) =>
+      sortMethod == 'alphabetical'
+        ? a.key.localeCompare(b.key)
+        : b.key.localeCompare(a.key)
+    )
+    .map((item, index) => {
+      return {
+        ...item,
+        pos: index
+      };
+    });
 
     setData(sortedData);
   };
@@ -395,7 +397,13 @@ export default function Dashboard() {
         />
       </Head>
       <div className="flex flex-row">
-        {!sidebarOpen && <SideBar />}
+        {sidebarSecretNumber != -1  && <SideBar 
+          toggleSidebar={toggleSidebar} 
+          data={data.filter(row => row.pos == sidebarSecretNumber)} 
+          modifyKey={listenChangeKey} 
+          modifyValue={listenChangeValue} 
+          modifyVisibility={listenChangeVisibility} 
+        />}
         <div className="w-full max-h-96 pb-2">
           <NavHeader pageName="Secrets" isProjectRelated={true} />
           {checkDocsPopUpVisible && (
@@ -557,7 +565,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
-                  <div id="data1" className="">
+                  <div id="data1" className="px-1">
                     {data
                       .filter(
                         (keyPair) =>
@@ -582,6 +590,8 @@ export default function Dashboard() {
                                 index !==
                                 data?.map((item) => item.key).indexOf(item)
                             )}
+                          toggleSidebar={toggleSidebar}
+                          sidebarSecretNumber={sidebarSecretNumber}
                         />
                       ))}
                   </div>
@@ -631,6 +641,8 @@ export default function Dashboard() {
                                 index !==
                                 data?.map((item) => item.key).indexOf(item)
                             )}
+                          toggleSidebar={toggleSidebar}
+                          sidebarSecretNumber={sidebarSecretNumber}
                         />
                       ))}
                   </div>

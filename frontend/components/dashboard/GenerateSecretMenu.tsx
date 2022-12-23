@@ -14,7 +14,7 @@ const GenerateSecretMenu = () => {
   return <Menu as="div" className="relative inline-block text-left">
     <div>
       <Menu.Button className="inline-flex w-full justify-center rounded-md text-sm font-medium text-gray-200 rounded-md hover:bg-white/10 duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75">
-        <div className='p-1 rounded-md hover:bg-white/5'>
+        <div className='py-1 px-2 rounded-md bg-bunker-800 hover:bg-bunker-500'>
           <FontAwesomeIcon icon={faShuffle} className='text-bunker-300'/>
         </div>
       </Menu.Button>
