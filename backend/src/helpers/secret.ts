@@ -1,7 +1,11 @@
 import * as Sentry from '@sentry/node';
 import {
 	Secret,
-	ISecret
+	ISecret,
+	SecretVersion,
+	ISecretVersion,
+	SecretSnapshot,
+	ISecretSnapshot
 } from '../models';
 import { decryptSymmetric } from '../utils/crypto';
 import { SECRET_SHARED, SECRET_PERSONAL } from '../variables';
@@ -19,7 +23,7 @@ interface PushSecret {
 }
 
 interface Update {
-	[index: string]: string;
+	[index: string]: any;
 }
 
 type DecryptSecretType = 'text' | 'object' | 'expanded';
@@ -61,17 +65,27 @@ const pushSecrets = async ({
 		}, {});
 
 		// handle deleting secrets
-		const toDelete = oldSecrets.filter(
-			(s: ISecret) => !(s.secretKeyHash in newSecretsObj)
-		);
+		const toDelete = oldSecrets
+			.filter(
+				(s: ISecret) => !(s.secretKeyHash in newSecretsObj)
+			)
+			.map((s) => s._id);
 		if (toDelete.length > 0) {
 			await Secret.deleteMany({
-				_id: { $in: toDelete.map((s) => s._id) }
+				_id: { $in: toDelete }
+			}, {
+				rawResult: true
+			});
+			
+			await SecretVersion.updateMany({
+				secret: { $in: toDelete }
+			}, {
+				isDeleted: true
 			});
 		}
 
 		// handle modifying secrets where type or value changed
-		const operations = secrets
+		const toUpdate = secrets
 			.filter((s) => {
 				if (s.hashKey in oldSecretsObj) {
 					if (s.hashValue !== oldSecretsObj[s.hashKey].secretValueHash) {
@@ -86,18 +100,22 @@ const pushSecrets = async ({
 				}
 
 				return false;
-			})
+			});
+		
+		const operations = toUpdate
 			.map((s) => {
 				const update: Update = {
-					type: s.type,
 					secretValueCiphertext: s.ciphertextValue,
 					secretValueIV: s.ivValue,
 					secretValueTag: s.tagValue,
-					secretValueHash: s.hashValue
+					secretValueHash: s.hashValue,
+					$inc: {
+						version: 1
+					}
 				};
 
 				if (s.type === SECRET_PERSONAL) {
-					// attach user assocaited with the personal secret
+					// attach user associated with the personal secret
 					update['user'] = userId;
 				}
 
@@ -111,16 +129,40 @@ const pushSecrets = async ({
 					}
 				};
 			});
-		const a = await Secret.bulkWrite(operations as any);
+		await Secret.bulkWrite(operations as any);
+		await SecretVersion.insertMany(
+			toUpdate.map(({
+				ciphertextKey,
+				ivKey,
+				tagKey,
+				hashKey,
+				ciphertextValue,
+				ivValue,
+				tagValue,
+				hashValue
+			}) => ({
+				secret: oldSecretsObj[hashKey]._id,
+				version: oldSecretsObj[hashKey].version + 1,
+				isDeleted: false,
+				secretKeyCiphertext: ciphertextKey,
+				secretKeyIV: ivKey,
+				secretKeyTag: tagKey,
+				secretKeyHash: hashKey,
+				secretValueCiphertext: ciphertextValue,
+				secretValueIV: ivValue,
+				secretValueTag: tagValue,
+				secretValueHash: hashValue
+			}))
+		);
 
 		// handle adding new secrets
 		const toAdd = secrets.filter((s) => !(s.hashKey in oldSecretsObj));
 
 		if (toAdd.length > 0) {
 			// add secrets
-			await Secret.insertMany(
+			const newSecrets = await Secret.insertMany(
 				toAdd.map((s, idx) => {
-					let obj: any = {
+					const obj: any = {
 						workspace: workspaceId,
 						type: toAdd[idx].type,
 						environment,
@@ -141,7 +183,39 @@ const pushSecrets = async ({
 					return obj;
 				})
 			);
+
+			await SecretVersion.insertMany(
+				newSecrets.map(({
+					_id,
+					secretKeyCiphertext,
+					secretKeyIV,
+					secretKeyTag,
+					secretKeyHash,
+					secretValueCiphertext,
+					secretValueIV,
+					secretValueTag,
+					secretValueHash
+				}) => ({
+					secret: _id,
+					version: 1,
+					isDeleted: false,
+					secretKeyCiphertext,
+					secretKeyIV,
+					secretKeyTag,
+					secretKeyHash,
+					secretValueCiphertext,
+					secretValueIV,
+					secretValueTag,
+					secretValueHash
+				}))
+			);
 		}
+		
+		await takeSecretSnapshotHelper({
+			workspaceId
+		});
+		// TODO: in the future add secret snapshot to capture entire
+		// state of project at this point in time
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
@@ -295,9 +369,56 @@ const decryptSecrets = ({
 	return content;
 };
 
+/**
+     * Saves a copy of the current state of secrets in workspace with id
+     * [workspaceId] under a new snapshot with incremented version under the
+     * secretsnapshots collection.
+     * @param {Object} obj
+     * @param {String} obj.workspaceId
+     */
+const takeSecretSnapshotHelper = async ({
+	workspaceId
+}: {
+	workspaceId: string;
+}) => {
+	try {
+		const secrets = await Secret.find({
+			workspace: workspaceId
+		});
+		
+		const latestSecretSnapshot = await SecretSnapshot.findOne({
+			workspace: workspaceId
+		}).sort({ version: -1 });
+		
+		if (!latestSecretSnapshot) {
+			// case: no snapshots exist for workspace -> create first snapshot
+			await new SecretSnapshot({
+				workspace: workspaceId,
+				version: 1,
+				secrets 
+			}).save();	
+
+			return;
+		}
+		
+		// case: snapshots exist for workspace
+		await new SecretSnapshot({
+			workspace: workspaceId,
+			version: latestSecretSnapshot.version + 1,
+			secrets 
+		}).save();
+		
+	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
+		throw new Error('Failed to take a secret snapshot');
+	}
+}
+
 export {
 	pushSecrets,
 	pullSecrets,
 	reformatPullSecrets,
-	decryptSecrets
+	decryptSecrets,
+	takeSecretSnapshotHelper
 };
