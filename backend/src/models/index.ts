@@ -7,6 +7,8 @@ import Membership, { IMembership } from './membership';
 import MembershipOrg, { IMembershipOrg } from './membershipOrg';
 import Organization, { IOrganization } from './organization';
 import Secret, { ISecret } from './secret';
+import SecretVersion, { ISecretVersion } from './secretVersion';
+import SecretSnapshot, { ISecretSnapshot } from './secretSnapshot';
 import ServiceToken, { IServiceToken } from './serviceToken';
 import Token, { IToken } from './token';
 import User, { IUser } from './user';
@@ -32,6 +34,10 @@ export {
 	IOrganization,
 	Secret,
 	ISecret,
+	SecretVersion,
+	ISecretVersion,
+	SecretSnapshot,
+	ISecretSnapshot,
 	ServiceToken,
 	IServiceToken,
 	Token,
