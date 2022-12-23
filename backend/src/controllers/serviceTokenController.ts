@@ -58,7 +58,8 @@ export const createServiceToken = async (req: Request, res: Response) => {
 
 		token = createToken({
 			payload: {
-				serviceTokenId: serviceToken._id.toString()
+				serviceTokenId: serviceToken._id.toString(),
+				workspaceId
 			},
 			expiresIn: expiresIn,
 			secret: JWT_SERVICE_SECRET
