@@ -1,4 +1,4 @@
-import React, { Fragment, useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
@@ -14,14 +14,10 @@ import {
   faEyeSlash,
   faFolderOpen,
   faMagnifyingGlass,
-  faPeopleGroup,
-  faPerson,
   faPlus,
-  faShuffle,
   faX
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Menu, Transition } from '@headlessui/react';
 
 import Button from '~/components/basic/buttons/Button';
 import ListBox from '~/components/basic/Listbox';
@@ -29,14 +25,13 @@ import BottonRightPopup from '~/components/basic/popups/BottomRightPopup';
 import { useNotificationContext } from '~/components/context/Notifications/NotificationProvider';
 import DashboardInputField from '~/components/dashboard/DashboardInputField';
 import DropZone from '~/components/dashboard/DropZone';
+import SideBar from '~/components/dashboard/Sidebar';
 import NavHeader from '~/components/navigation/NavHeader';
 import getSecretsForProject from '~/components/utilities/secrets/getSecretsForProject';
 import pushKeys from '~/components/utilities/secrets/pushKeys';
-import pushKeysIntegration from '~/components/utilities/secrets/pushKeysIntegration';
 import guidGenerator from '~/utilities/randomId';
 
 import { envMapping } from '../../public/data/frequentConstants';
-import getWorkspaceIntegrations from '../api/integrations/getWorkspaceIntegrations';
 import getUser from '../api/user/getUser';
 import checkUserAction from '../api/userActions/checkUserAction';
 import registerUserAction from '../api/userActions/registerUserAction';
@@ -61,15 +56,16 @@ const KeyPair = ({
   modifyValue,
   modifyVisibility,
   isBlurred,
-  duplicates
+  duplicates,
+  toggleSidebar,
+  sidebarSecretNumber
 }) => {
-  const [randomStringLength, setRandomStringLength] = useState(32);
 
   return (
-    <div className="px-1 flex flex-col items-center ml-1">
-      <div className="relative flex flex-row justify-between w-full max-w-5xl mr-auto max-h-14 my-1 items-start px-2">
+    <div className={`mx-1 flex flex-col items-center ml-1 ${keyPair.pos == sidebarSecretNumber && "bg-mineshaft-500 duration-200"} rounded-md`}>
+      <div className="relative flex flex-row justify-between w-full max-w-5xl mr-auto max-h-14 my-1 items-start px-1">
         <div className="min-w-xl w-96">
-          <div className="flex items-center md:px-1 rounded-lg mt-4 md:mt-0 max-h-16">
+          <div className="flex pr-1 items-center rounded-lg mt-4 md:mt-0 max-h-16">
             <DashboardInputField
               onChangeHandler={modifyKey}
               type="varName"
@@ -90,108 +86,17 @@ const KeyPair = ({
             />
           </div>
         </div>
-        <Menu as="div" className="relative inline-block text-left">
-          <div>
-            <Menu.Button className="inline-flex w-full justify-center rounded-md text-sm font-medium text-gray-200 rounded-md hover:bg-white/10 duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75">
-              <div className="cursor-pointer w-9 h-9 bg-white/10 rounded-md flex flex-row justify-center items-center opacity-50 hover:opacity-100 duration-200">
-                <FontAwesomeIcon
-                  className="text-gray-300 px-2.5 text-lg mt-0.5"
-                  icon={faEllipsis}
-                />
-              </div>
-            </Menu.Button>
-          </div>
-          <Transition
-            as={Fragment}
-            enter="transition ease-out duration-100"
-            enterFrom="transform opacity-0 scale-95"
-            enterTo="transform opacity-100 scale-100"
-            leave="transition ease-in duration-75"
-            leaveFrom="transform opacity-100 scale-100"
-            leaveTo="transform opacity-0 scale-95"
-          >
-            <Menu.Items className="absolute z-50 drop-shadow-xl right-0 mt-0.5 w-[20rem] origin-top-right rounded-md bg-bunker border border-mineshaft-500 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none px-1 py-1">
-              <div
-                onClick={() =>
-                  modifyVisibility(
-                    keyPair.type == 'personal' ? 'shared' : 'personal',
-                    keyPair.pos
-                  )
-                }
-                className="relative flex justify-start items-center cursor-pointer select-none py-2 px-2 rounded-md text-gray-400 hover:bg-white/10 duration-200 hover:text-gray-200 w-full"
-              >
-                <FontAwesomeIcon
-                  className="text-lg pl-1.5 pr-3"
-                  icon={keyPair.type == 'personal' ? faPeopleGroup : faPerson}
-                />
-                <div className="text-sm">
-                  {keyPair.type == 'personal' ? 'Make Shared' : 'Make Personal'}
-                </div>
-              </div>
-              <div
-                onClick={() => {
-                  if (randomStringLength > 32) {
-                    setRandomStringLength(32);
-                  } else if (randomStringLength < 2) {
-                    setRandomStringLength(2);
-                  } else {
-                    modifyValue(
-                      [...Array(randomStringLength)]
-                        .map(() => Math.floor(Math.random() * 16).toString(16))
-                        .join(''),
-                      keyPair.pos
-                    );
-                  }
-                }}
-                className="relative flex flex-row justify-start items-center cursor-pointer select-none py-2 px-2 rounded-md text-gray-400 hover:bg-white/10 duration-200 hover:text-gray-200 w-full"
-              >
-                <FontAwesomeIcon
-                  className="text-lg pl-1.5 pr-3"
-                  icon={keyPair.value == '' ? faPlus : faShuffle}
-                />
-                <div className="text-sm justify-between flex flex-row w-full">
-                  <p>Generate Random Hex</p>
-                  <p>digits</p>
-                </div>
-              </div>
-              <div className="flex flex-row absolute bottom-[0.4rem] right-[3.3rem] w-16 bg-bunker-800 border border-chicago-700 rounded-md text-bunker-200 ">
-                <div
-                  className="m-0.5 px-1 cursor-pointer rounded-md hover:bg-chicago-700"
-                  onClick={() => {
-                    if (randomStringLength > 1) {
-                      setRandomStringLength(randomStringLength - 1);
-                    }
-                  }}
-                >
-                  -
-                </div>
-                <input
-                  onChange={(e) =>
-                    setRandomStringLength(parseInt(e.target.value))
-                  }
-                  value={randomStringLength}
-                  className="text-center z-20 peer text-sm bg-transparent w-full outline-none"
-                  spellCheck="false"
-                />
-                <div
-                  className="m-0.5 px-1 pb-0.5 cursor-pointer rounded-md hover:bg-chicago-700"
-                  onClick={() => {
-                    if (randomStringLength < 32) {
-                      setRandomStringLength(randomStringLength + 1);
-                    }
-                  }}
-                >
-                  +
-                </div>
-              </div>
-            </Menu.Items>
-          </Transition>
-        </Menu>
+        <div onClick={() => toggleSidebar(keyPair.pos)} className="cursor-pointer w-9 h-9 bg-mineshaft-700 hover:bg-chicago-700 rounded-md flex flex-row justify-center items-center duration-200">
+          <FontAwesomeIcon
+            className="text-gray-300 px-2.5 text-lg mt-0.5"
+            icon={faEllipsis}
+          />
+        </div>
         <div className="w-2"></div>
-        <div className="opacity-50 hover:opacity-100 duration-200">
+        <div className="bg-[#9B3535] hover:bg-red rounded-md duration-200">
           <Button
             onButtonPressed={() => deleteRow(keyPair.id)}
-            color="red"
+            color="none"
             size="icon-sm"
             icon={faX}
           />
@@ -227,6 +132,7 @@ export default function Dashboard() {
   const [sortMethod, setSortMethod] = useState('alphabetical');
   const [checkDocsPopUpVisible, setCheckDocsPopUpVisible] = useState(false);
   const [hasUserEverPushed, setHasUserEverPushed] = useState(false);
+  const [sidebarSecretNumber, toggleSidebar] = useState(-1);
 
   const { createNotification } = useNotificationContext();
 
@@ -431,17 +337,17 @@ export default function Dashboard() {
 
   const sortValuesHandler = (dataToSort) => {
     const sortedData = (dataToSort != 1 ? dataToSort : data)
-      .sort((a, b) =>
-        sortMethod == 'alphabetical'
-          ? a.key.localeCompare(b.key)
-          : b.key.localeCompare(a.key)
-      )
-      .map((item, index) => {
-        return {
-          ...item,
-          pos: index
-        };
-      });
+    .sort((a, b) =>
+      sortMethod == 'alphabetical'
+        ? a.key.localeCompare(b.key)
+        : b.key.localeCompare(a.key)
+    )
+    .map((item, index) => {
+      return {
+        ...item,
+        pos: index
+      };
+    });
 
     setData(sortedData);
   };
@@ -491,6 +397,13 @@ export default function Dashboard() {
         />
       </Head>
       <div className="flex flex-row">
+        {sidebarSecretNumber != -1  && <SideBar 
+          toggleSidebar={toggleSidebar} 
+          data={data.filter(row => row.pos == sidebarSecretNumber)} 
+          modifyKey={listenChangeKey} 
+          modifyValue={listenChangeValue} 
+          modifyVisibility={listenChangeVisibility} 
+        />}
         <div className="w-full max-h-96 pb-2">
           <NavHeader pageName="Secrets" isProjectRelated={true} />
           {checkDocsPopUpVisible && (
@@ -652,7 +565,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
-                  <div id="data1" className="">
+                  <div id="data1" className="px-1">
                     {data
                       .filter(
                         (keyPair) =>
@@ -677,6 +590,8 @@ export default function Dashboard() {
                                 index !==
                                 data?.map((item) => item.key).indexOf(item)
                             )}
+                          toggleSidebar={toggleSidebar}
+                          sidebarSecretNumber={sidebarSecretNumber}
                         />
                       ))}
                   </div>
@@ -726,6 +641,8 @@ export default function Dashboard() {
                                 index !==
                                 data?.map((item) => item.key).indexOf(item)
                             )}
+                          toggleSidebar={toggleSidebar}
+                          sidebarSecretNumber={sidebarSecretNumber}
                         />
                       ))}
                   </div>
