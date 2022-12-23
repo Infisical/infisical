@@ -50,4 +50,18 @@ router.get(
 	secretController.pullSecretsServiceToken
 );
 
+router.get(
+	'/:secretId/secret-versions',
+	requireAuth,
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		acceptedStatuses: [COMPLETED, GRANTED]
+	}),
+	param('secretId').exists().trim(),
+	query('offset').exists().isInt(),
+	query('limit').exists().isInt(),
+	validateRequest,
+	secretController.getSecretVersions
+);
+
 export default router;
