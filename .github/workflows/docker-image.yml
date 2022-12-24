@@ -10,6 +10,17 @@ jobs:
     steps:
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
+      - name: Docker metadata action
+        id: meta_backend
+        uses: docker/metadata-action@v4.1.1
+        with:
+          images: |
+            infisical/backend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
       - name: 🔧 Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: 🔧 Set up Docker Buildx
@@ -39,7 +50,7 @@ jobs:
         with:
           push: true
           context: backend
-          tags: infisical/backend:latest
+          tags: ${{ steps.meta_backend.outputs.tags }}
           platforms: linux/amd64,linux/arm64
 
   frontend-image:
@@ -49,6 +60,17 @@ jobs:
     steps:
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
+      - name: Docker metadata action
+        id: meta_frontend
+        uses: docker/metadata-action@v4.1.1
+        with:
+          images: |
+            infisical/frontend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
       - name: 🔧 Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: 🔧 Set up Docker Buildx
@@ -80,7 +102,7 @@ jobs:
         with:
           push: true
           context: frontend
-          tags: infisical/frontend:latest
+          tags: ${{ steps.meta_frontend.outputs.tags }}
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
