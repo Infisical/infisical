@@ -26,7 +26,7 @@ const POSTHOG_PROJECT_API_KEY =
 const SENTRY_DSN = process.env.SENTRY_DSN!;
 const SITE_URL = process.env.SITE_URL!;
 const SMTP_HOST = process.env.SMTP_HOST! || 'smtp.gmail.com';
-const SMTP_SECURE = process.env.SMTP_SECURE! || false;
+const SMTP_SECURE = process.env.SMTP_SECURE! === 'true' || false;
 const SMTP_PORT = process.env.SMTP_PORT! || 587;
 const SMTP_USERNAME = process.env.SMTP_USERNAME!;
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD!;

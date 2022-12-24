@@ -3,9 +3,7 @@ title: "Environment Variables"
 description: ""
 ---
 
-## The .env file
-
-Configuring Infisical requires setting some environment variables. There is a file called `.env.example` at the root directory of our main repo that you can use to create a `.env` before you start the server.
+Configuring Infisical requires setting some environment variables. There is a file called `.env.example` at the root directory of our main repo that you can use to create a `.env` file before you start the server.
 
 | Variable                     | Description                                                                                                 | Default Value    |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------- |
@@ -22,13 +20,13 @@ Configuring Infisical requires setting some environment variables. There is a fi
 | `MONGO_USERNAME`             | MongoDB username if using container                                                                         | `None`           |
 | `MONGO_PASSWORD`             | MongoDB password if using container                                                                         | `None`           |
 | `SITE_URL`                   | ❗️ Site URL - should be an absolute URL including the protocol (e.g. `https://app.infisical.com`)           | `None`           |
-| `SMTP_HOST`                  | Hostname to connect to for establishing SMTP connections                                                    | `smtp.gmail.com` |
-| `SMTP_SECURE`                | Use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported                        | `false`          |
-| `SMTP_PORT`                  | Port to connect to for establishing SMTP connections                                                     | `587`            |
-| `SMTP_FROM_ADDRESS`          | ❗️ Email address to be used for sending emails (e.g. `team@infisical.com`)                                  | `None`           |
-| `SMTP_FROM_NAME`             | Name label to be used in From field (e.g. `Team`)                                                           | `Infisical`      |
+| `SMTP_HOST`                  | ❗️ Hostname to connect to for establishing SMTP connections                                                    | `smtp.gmail.com` |
 | `SMTP_USERNAME`              | ❗️ Credential to connect to host (e.g. `team@infisical.com`)                                                | `None`           |
 | `SMTP_PASSWORD`              | ❗️ Credential to connect to host                                                                            | `None`           |
+| `SMTP_PORT`                  | Port to connect to for establishing SMTP connections                                                     | `587`            |
+| `SMTP_SECURE`                | If true, use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported                        | `false`          |
+| `SMTP_FROM_ADDRESS`          | ❗️ Email address to be used for sending emails (e.g. `team@infisical.com`)                                  | `None`           |
+| `SMTP_FROM_NAME`             | Name label to be used in From field (e.g. `Team`)                                                           | `Infisical`      |
 | `TELEMETRY_ENABLED`          | `true` or `false`. [More](../overview).                                                                     | `true`           |
 | `CLIENT_ID_HEROKU`           | OAuth2 client ID for Heroku integration                                                                      | `None`           |
 | `CLIENT_ID_VERCEL`           | OAuth2 client ID for Vercel integration                                                                      | `None`           |

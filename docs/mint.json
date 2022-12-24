@@ -112,7 +112,10 @@
         },
         {
           "group": "Configuration",
-          "pages": ["self-hosting/configuration/envars"]
+          "pages": [
+            "self-hosting/configuration/envars",
+            "self-hosting/configuration/email"
+          ]
         }
       ]
     },
