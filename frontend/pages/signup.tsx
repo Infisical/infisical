@@ -40,8 +40,8 @@ const props = {
     backgroundColor: '#0d1117',
     color: 'white',
     border: '1px solid gray',
-    textAlign: 'center'
-  }
+    textAlign: 'center',
+  },
 } as const;
 const propsPhone = {
   inputStyle: {
@@ -56,8 +56,8 @@ const propsPhone = {
     backgroundColor: '#0d1117',
     color: 'white',
     border: '1px solid gray',
-    textAlign: 'center'
-  }
+    textAlign: 'center',
+  },
 } as const;
 
 export default function SignUp() {
@@ -148,7 +148,8 @@ export default function SignUp() {
     }
   };
 
-  // Verifies if the imformation that the users entered (name, workspace) is there, and if the password matched the criteria.
+  // Verifies if the imformation that the users entered (name, workspace) is there, and if the password matched the
+  // criteria.
   const signupErrorCheck = async () => {
     setIsLoading(true);
     let errorCheck = false;
@@ -169,7 +170,7 @@ export default function SignUp() {
       setPasswordErrorLength,
       setPasswordErrorNumber,
       setPasswordErrorLowerCase,
-      currentErrorCheck: errorCheck
+      currentErrorCheck: errorCheck,
     });
 
     if (!errorCheck) {
@@ -186,8 +187,8 @@ export default function SignUp() {
           .slice(0, 32)
           .padStart(
             32 + (password.slice(0, 32).length - new Blob([password]).size),
-            '0'
-          )
+            '0',
+          ),
       }) as { ciphertext: string; iv: string; tag: string };
 
       localStorage.setItem('PRIVATE_KEY', PRIVATE_KEY);
@@ -195,7 +196,7 @@ export default function SignUp() {
       client.init(
         {
           username: email,
-          password: password
+          password: password,
         },
         async () => {
           client.createVerifier(
@@ -204,14 +205,14 @@ export default function SignUp() {
                 email,
                 firstName,
                 lastName,
-                organizationName: firstName + "'s organization",
+                organizationName: firstName + '\'s organization',
                 publicKey: PUBLIC_KEY,
                 ciphertext,
                 iv,
                 tag,
                 salt: result.salt,
                 verifier: result.verifier,
-                token: verificationToken
+                token: verificationToken,
               });
 
               // if everything works, go the main dashboard page.
@@ -230,16 +231,16 @@ export default function SignUp() {
                     setErrorLogin,
                     router,
                     true,
-                    false
+                    false,
                   );
                   incrementStep();
                 } catch (error) {
                   setIsLoading(false);
                 }
               }
-            }
+            },
           );
-        }
+        },
       );
     } else {
       setIsLoading(false);
@@ -250,7 +251,7 @@ export default function SignUp() {
   const step1 = (
     <div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-8 md:px-6 mx-1 mb-48 md:mb-16 rounded-xl drop-shadow-xl">
       <p className="text-4xl font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-        {"Let'"}s get started
+        {'Let\''}s get started
       </p>
       <div className="flex flex-col items-center justify-center w-full md:pb-2 max-h-24 max-w-md mx-auto pt-2">
         <Link href="/login">
@@ -261,260 +262,267 @@ export default function SignUp() {
           </button>
         </Link>
       </div>
-      <div className="flex items-center justify-center w-5/6 md:w-full m-auto md:p-2 rounded-lg max-h-24 mt-4">
-        <InputField
-          label="Email"
-          onChangeHandler={setEmail}
-          type="email"
-          value={email}
-          placeholder=""
-          isRequired
-          error={emailError}
-          errorText={emailErrorMessage}
-          autoComplete="username"
-        />
-      </div>
-      {/* <div className='flex flex-row justify-left mt-4 max-w-md mx-auto'>
+      <form onSubmit={(e) => {e.preventDefault();}}>
+        <div className="flex items-center justify-center w-5/6 md:w-full m-auto md:p-2 rounded-lg max-h-24 mt-4">
+          <InputField
+            label="Email"
+            onChangeHandler={setEmail}
+            type="email"
+            value={email}
+            placeholder=""
+            isRequired
+            error={emailError}
+            errorText={emailErrorMessage}
+            autoComplete="username"
+          />
+        </div>
+        {/* <div className='flex flex-row justify-left mt-4 max-w-md mx-auto'>
           <Checkbox className="mr-4"/>
           <p className='text-sm'>I do not want to receive emails about Infisical and its products.</p>
         </div> */}
-      <div className="flex flex-col items-center justify-center w-5/6 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto mt-4 md:mt-4 text-sm text-center md:text-left">
-        <p className="text-gray-400 mt-2 md:mx-0.5">
-          By creating an account, you agree to our Terms and have read and
-          acknowledged the Privacy Policy.
-        </p>
-        <div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
-          <Button text="Get Started" onButtonPressed={emailCheck} size="lg" />
+        <div className="flex flex-col items-center justify-center w-5/6 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto mt-4 md:mt-4 text-sm text-center md:text-left">
+          <p className="text-gray-400 mt-2 md:mx-0.5">
+            By creating an account, you agree to our Terms and have read and
+            acknowledged the Privacy Policy.
+          </p>
+          <div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
+            <Button text="Get Started" type="submit" onButtonPressed={emailCheck} size="lg" />
+          </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 
   // Step 2 of the signup process (enter the email verification code)
   const step2 = (
-    <div className="bg-bunker w-max mx-auto h-7/12 pt-10 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-16">
-      <p className="text-l flex justify-center text-gray-400">
-        {"We've"} sent a verification email to{' '}
-      </p>
-      <p className="text-l flex justify-center font-semibold my-2 text-gray-400">
-        {email}{' '}
-      </p>
-      <div className="hidden md:block">
-        <ReactCodeInput
-          name=""
-          inputMode="tel"
-          type="text"
-          fields={6}
-          onChange={setCode}
-          {...props}
-          className="mt-6 mb-2"
-        />
-      </div>
-      <div className="block md:hidden">
-        <ReactCodeInput
-          name=""
-          inputMode="tel"
-          type="text"
-          fields={6}
-          onChange={setCode}
-          {...propsPhone}
-          className="mt-2 mb-6"
-        />
-      </div>
-      {codeError && (
-        <Error text="Oops. Your code is wrong. Please try again." />
-      )}
-      <div className="flex max-w-min flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
-        <Button text="Verify" onButtonPressed={incrementStep} size="lg" />
-      </div>
-      <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
-        {/* <Link href="/login">
+    <form onSubmit={(e) => {e.preventDefault();}}>
+      <div className="bg-bunker w-max mx-auto h-7/12 pt-10 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-16">
+        <p className="text-l flex justify-center text-gray-400">
+          {'We\'ve'} sent a verification email to{' '}
+        </p>
+        <p className="text-l flex justify-center font-semibold my-2 text-gray-400">
+          {email}{' '}
+        </p>
+        <div className="hidden md:block">
+          <ReactCodeInput
+            name=""
+            inputMode="tel"
+            type="text"
+            fields={6}
+            onChange={setCode}
+            {...props}
+            className="mt-6 mb-2"
+          />
+        </div>
+        <div className="block md:hidden">
+          <ReactCodeInput
+            name=""
+            inputMode="tel"
+            type="text"
+            fields={6}
+            onChange={setCode}
+            {...propsPhone}
+            className="mt-2 mb-6"
+          />
+        </div>
+        {codeError && (
+          <Error text="Oops. Your code is wrong. Please try again." />
+        )}
+        <div className="flex max-w-min flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
+          <Button text="Verify" onButtonPressed={incrementStep} size="lg" />
+        </div>
+        <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
+          {/* <Link href="/login">
           <button className="w-full hover:opacity-90 duration-200">
             <u className="font-normal text-sm text-sky-700">
               Not seeing an email? Resend
             </u>
           </button>
         </Link> */}
-        <p className="text-sm text-gray-500 pb-2">
-          Make sure to check your spam inbox.
-        </p>
+          <p className="text-sm text-gray-500 pb-2">
+            Make sure to check your spam inbox.
+          </p>
+        </div>
       </div>
-    </div>
+    </form>
   );
 
   // Step 3 of the signup process (enter the rest of the impformation)
   const step3 = (
-    <div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-36 md:mb-16">
-      <p className="text-4xl font-bold flex justify-center mb-6 text-gray-400 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-        Almost there!
-      </p>
-      <div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">
-        <InputField
-          label="First Name"
-          onChangeHandler={setFirstName}
-          type="name"
-          value={firstName}
-          isRequired
-          errorText="Please input your first name."
-          error={firstNameError}
-          autoComplete="given-name"
-        />
-      </div>
-      <div className="mt-2 flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
-        <InputField
-          label="Last Name"
-          onChangeHandler={setLastName}
-          type="name"
-          value={lastName}
-          isRequired
-          errorText="Please input your last name."
-          error={lastNameError}
-          autoComplete="family-name"
-        />
-      </div>
-      <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
-        <InputField
-          label="Password"
-          onChangeHandler={(password: string) => {
-            setPassword(password);
-            passwordCheck({
-              password,
-              setPasswordErrorLength,
-              setPasswordErrorNumber,
-              setPasswordErrorLowerCase,
-              currentErrorCheck: false
-            });
-          }}
-          type="password"
-          value={password}
-          isRequired
-          error={
-            passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase
-          }
-          autoComplete="new-password"
-          id="new-password"
-        />
-        {passwordErrorLength ||
-        passwordErrorLowerCase ||
-        passwordErrorNumber ? (
-          <div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
-            <div className={`text-gray-400 text-sm mb-1`}>
-              Password should contain at least:
-            </div>
-            <div className="flex flex-row justify-start items-center ml-1">
-              {passwordErrorLength ? (
-                <FontAwesomeIcon
-                  icon={faX}
-                  className="text-md text-red mr-2.5"
-                />
-              ) : (
-                <FontAwesomeIcon
-                  icon={faCheck}
-                  className="text-md text-primary mr-2"
-                />
-              )}
-              <div
-                className={`${
-                  passwordErrorLength ? 'text-gray-400' : 'text-gray-600'
-                } text-sm`}
-              >
-                14 characters
+    <form onSubmit={(e) => {e.preventDefault();}}>
+      <div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-36 md:mb-16">
+        <p className="text-4xl font-bold flex justify-center mb-6 text-gray-400 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
+          Almost there!
+        </p>
+        <div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">
+          <InputField
+            label="First Name"
+            onChangeHandler={setFirstName}
+            type="name"
+            value={firstName}
+            isRequired
+            errorText="Please input your first name."
+            error={firstNameError}
+            autoComplete="given-name"
+          />
+        </div>
+        <div className="mt-2 flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
+          <InputField
+            label="Last Name"
+            onChangeHandler={setLastName}
+            type="name"
+            value={lastName}
+            isRequired
+            errorText="Please input your last name."
+            error={lastNameError}
+            autoComplete="family-name"
+          />
+        </div>
+        <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
+          <InputField
+            label="Password"
+            onChangeHandler={(password: string) => {
+              setPassword(password);
+              passwordCheck({
+                password,
+                setPasswordErrorLength,
+                setPasswordErrorNumber,
+                setPasswordErrorLowerCase,
+                currentErrorCheck: false,
+              });
+            }}
+            type="password"
+            value={password}
+            isRequired
+            error={
+              passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase
+            }
+            autoComplete="new-password"
+            id="new-password"
+          />
+          {passwordErrorLength ||
+          passwordErrorLowerCase ||
+          passwordErrorNumber ? (
+            <div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
+              <div className={`text-gray-400 text-sm mb-1`}>
+                Password should contain at least:
+              </div>
+              <div className="flex flex-row justify-start items-center ml-1">
+                {passwordErrorLength ? (
+                  <FontAwesomeIcon
+                    icon={faX}
+                    className="text-md text-red mr-2.5"
+                  />
+                ) : (
+                  <FontAwesomeIcon
+                    icon={faCheck}
+                    className="text-md text-primary mr-2"
+                  />
+                )}
+                <div
+                  className={`${
+                    passwordErrorLength ? 'text-gray-400' : 'text-gray-600'
+                  } text-sm`}
+                >
+                  14 characters
+                </div>
+              </div>
+              <div className="flex flex-row justify-start items-center ml-1">
+                {passwordErrorLowerCase ? (
+                  <FontAwesomeIcon
+                    icon={faX}
+                    className="text-md text-red mr-2.5"
+                  />
+                ) : (
+                  <FontAwesomeIcon
+                    icon={faCheck}
+                    className="text-md text-primary mr-2"
+                  />
+                )}
+                <div
+                  className={`${
+                    passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'
+                  } text-sm`}
+                >
+                  1 lowercase character
+                </div>
+              </div>
+              <div className="flex flex-row justify-start items-center ml-1">
+                {passwordErrorNumber ? (
+                  <FontAwesomeIcon
+                    icon={faX}
+                    className="text-md text-red mr-2.5"
+                  />
+                ) : (
+                  <FontAwesomeIcon
+                    icon={faCheck}
+                    className="text-md text-primary mr-2"
+                  />
+                )}
+                <div
+                  className={`${
+                    passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'
+                  } text-sm`}
+                >
+                  1 number
+                </div>
               </div>
             </div>
-            <div className="flex flex-row justify-start items-center ml-1">
-              {passwordErrorLowerCase ? (
-                <FontAwesomeIcon
-                  icon={faX}
-                  className="text-md text-red mr-2.5"
-                />
-              ) : (
-                <FontAwesomeIcon
-                  icon={faCheck}
-                  className="text-md text-primary mr-2"
-                />
-              )}
-              <div
-                className={`${
-                  passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'
-                } text-sm`}
-              >
-                1 lowercase character
-              </div>
-            </div>
-            <div className="flex flex-row justify-start items-center ml-1">
-              {passwordErrorNumber ? (
-                <FontAwesomeIcon
-                  icon={faX}
-                  className="text-md text-red mr-2.5"
-                />
-              ) : (
-                <FontAwesomeIcon
-                  icon={faCheck}
-                  className="text-md text-primary mr-2"
-                />
-              )}
-              <div
-                className={`${
-                  passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'
-                } text-sm`}
-              >
-                1 number
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="py-2"></div>
-        )}
+          ) : (
+            <div className="py-2"></div>
+          )}
+        </div>
+        <div className="flex flex-col items-center justify-center md:p-2 max-h-48 max-w-max mx-auto text-lg px-2 py-3">
+          <Button
+            text="Sign Up"
+            loading={isLoading}
+            onButtonPressed={signupErrorCheck}
+            size="lg"
+          />
+        </div>
       </div>
-      <div className="flex flex-col items-center justify-center md:p-2 max-h-48 max-w-max mx-auto text-lg px-2 py-3">
-        <Button
-          text="Sign Up"
-          loading={isLoading}
-          onButtonPressed={signupErrorCheck}
-          size="lg"
-        />
-      </div>
-    </div>
+    </form>
   );
 
   // Step 4 of the sign up process (download the emergency kit pdf)
   const step4 = (
-    <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg mx-auto h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
-      <p className="text-4xl text-center font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-        Save your Emergency Kit
-      </p>
-      <div className="flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2">
-        <div>
-          If you get locked out of your account, your Emergency Kit is the only
-          way to sign in.
+    <form onSubmit={(e) => {e.preventDefault();}}>
+      <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg mx-auto h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
+        <p className="text-4xl text-center font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
+          Save your Emergency Kit
+        </p>
+        <div className="flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2">
+          <div>
+            If you get locked out of your account, your Emergency Kit is the only
+            way to sign in.
+          </div>
+          <div className="mt-3">
+            We recommend you download it and keep it somewhere safe.
+          </div>
         </div>
-        <div className="mt-3">
-          We recommend you download it and keep it somewhere safe.
+        <div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-400 rounded-md max-w-xs md:max-w-md mx-auto mt-4">
+          <FontAwesomeIcon icon={faWarning} className="ml-2 mr-4 text-4xl" />
+          It contains your Secret Key which we cannot access or recover for you if
+          you lose it.
         </div>
-      </div>
-      <div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-400 rounded-md max-w-xs md:max-w-md mx-auto mt-4">
-        <FontAwesomeIcon icon={faWarning} className="ml-2 mr-4 text-4xl" />
-        It contains your Secret Key which we cannot access or recover for you if
-        you lose it.
-      </div>
-      <div className="flex flex-row items-center justify-center w-3/4 md:w-full md:p-2 max-h-28 max-w-max mx-auto mt-6 py-1 md:mt-4 text-lg text-center md:text-left">
-        <Button
-          text="Download PDF"
-          onButtonPressed={async () => {
-            await issueBackupKey({
-              email,
-              password,
-              personalName: firstName + ' ' + lastName,
-              setBackupKeyError,
-              setBackupKeyIssued
-            });
-            const userWorkspaces = await getWorkspaces();
-            const userWorkspace = userWorkspaces[0]._id;
-            router.push('/home/' + userWorkspace);
-          }}
-          size="lg"
-        />
-        {/* <div
+        <div className="flex flex-row items-center justify-center w-3/4 md:w-full md:p-2 max-h-28 max-w-max mx-auto mt-6 py-1 md:mt-4 text-lg text-center md:text-left">
+          <Button
+            text="Download PDF"
+            onButtonPressed={async () => {
+              await issueBackupKey({
+                email,
+                password,
+                personalName: firstName + ' ' + lastName,
+                setBackupKeyError,
+                setBackupKeyIssued,
+              });
+              const userWorkspaces = await getWorkspaces();
+              const userWorkspace = userWorkspaces[0]._id;
+              router.push('/home/' + userWorkspace);
+            }}
+            size="lg"
+          />
+          {/* <div
 					className="text-l mt-4 text-lg text-gray-400 hover:text-gray-300 duration-200 bg-white/5 px-8 hover:bg-white/10 py-3 rounded-md cursor-pointer"
 					onClick={() => {
 						if (localStorage.getItem("projectData.id")) {
@@ -526,8 +534,9 @@ export default function SignUp() {
 				>
 					Later
 				</div> */}
+        </div>
       </div>
-    </div>
+    </form>
   );
 
   return (
