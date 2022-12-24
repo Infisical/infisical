@@ -1,6 +1,25 @@
 import React from "react";
 import { Switch } from "@headlessui/react";
 
+
+interface OverrideProps {
+  id: string;
+  keyName: string;
+  value: string;
+  pos: number;
+}
+
+interface ToggleProps { 
+  enabled: boolean; 
+  setEnabled: (value: boolean) => void; 
+  addOverride: (value: OverrideProps) => void; 
+  keyName: string;
+  value: string;
+  pos: number;
+  id: string;
+  deleteOverride: (id: string) => void; 
+}
+
 /**
  * This is a typical 'iPhone' toggle (e.g., user for overriding secrets with personal values)
  * @param obj 
@@ -8,11 +27,19 @@ import { Switch } from "@headlessui/react";
  * @param {function} obj.setEnabled - change the state of the toggle
  * @returns 
  */
-export default function Toggle ({ enabled, setEnabled }: { enabled: boolean; setEnabled: (value: boolean) => void; }): JSX.Element {
+export default function Toggle ({ enabled, setEnabled, addOverride, keyName, value, pos, id, deleteOverride }: ToggleProps): JSX.Element {
+  console.log(755, pos, enabled)
   return (
     <Switch
       checked={enabled}
-      onChange={setEnabled}
+      onChange={() => {
+        if (enabled == false) {
+          addOverride({ id, keyName, value, pos });
+        } else {
+          deleteOverride(id);
+        }
+        setEnabled(!enabled);
+      }}
       className={`${
         enabled ? 'bg-primary' : 'bg-bunker-400'
       } relative inline-flex h-5 w-9 items-center rounded-full`}

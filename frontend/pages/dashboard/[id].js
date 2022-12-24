@@ -6,7 +6,6 @@ import {
   faArrowDownAZ,
   faArrowDownZA,
   faCheck,
-  faCircleInfo,
   faCopy,
   faDownload,
   faEllipsis,
@@ -83,6 +82,7 @@ const KeyPair = ({
               position={keyPair.pos}
               value={keyPair.value}
               blurred={isBlurred}
+              override={keyPair.value == "user1234" && true}
             />
           </div>
         </div>
@@ -176,7 +176,7 @@ export default function Dashboard() {
       prevSort == 'alphabetical' ? '-alphabetical' : 'alphabetical'
     );
 
-    sortValuesHandler(dataToReorder);
+    sortValuesHandler(dataToReorder, "");
   };
 
   useEffect(() => {
@@ -238,9 +238,41 @@ export default function Dashboard() {
     ]);
   };
 
+  /**
+   * This function add an ovverrided version of a certain secret to the current user
+   * @param {object} obj 
+   * @param {string} obj.id - if of this secret that is about to be overriden
+   * @param {string} obj.keyName - key name of this secret
+   * @param {string} obj.value - value of this secret
+   * @param {string} obj.pos - position of this secret on the dashboard 
+   */
+  const addOverride = ({ id, keyName, value, pos }) => {
+    setIsNew(false);
+    const tempdata = [
+      ...data,
+      {
+        id: id,
+        pos: pos,
+        key: keyName,
+        value: value,
+        type: 'personal'
+      }
+    ];
+    sortValuesHandler(tempdata, sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical");
+  };
+
   const deleteRow = (id) => {
     setButtonReady(true);
     setData(data.filter((row) => row.id !== id));
+  };
+
+  /**
+   * This function deleted the override of a certain secrer
+   * @param {string} id - id of a secret to be deleted
+   */
+  const deleteOverride = (id) => {
+    setButtonReady(true);
+    setData(data.filter((row) => !(row.id == id && row.type == 'personal')));
   };
 
   const modifyValue = (value, pos) => {
@@ -335,10 +367,11 @@ export default function Dashboard() {
     setBlurred(!blurred);
   };
 
-  const sortValuesHandler = (dataToSort) => {
+  const sortValuesHandler = (dataToSort, specificSortMethod) => {
+    const howToSort = specificSortMethod != "" ? specificSortMethod : sortMethod
     const sortedData = (dataToSort != 1 ? dataToSort : data)
     .sort((a, b) =>
-      sortMethod == 'alphabetical'
+      howToSort == 'alphabetical'
         ? a.key.localeCompare(b.key)
         : b.key.localeCompare(a.key)
     )
@@ -397,12 +430,14 @@ export default function Dashboard() {
         />
       </Head>
       <div className="flex flex-row">
-        {sidebarSecretNumber != -1  && <SideBar 
+        {sidebarSecretNumber != -1 && <SideBar 
           toggleSidebar={toggleSidebar} 
           data={data.filter(row => row.pos == sidebarSecretNumber)} 
           modifyKey={listenChangeKey} 
           modifyValue={listenChangeValue} 
           modifyVisibility={listenChangeVisibility} 
+          addOverride={addOverride}
+          deleteOverride={deleteOverride}
         />}
         <div className="w-full max-h-96 pb-2">
           <NavHeader pageName="Secrets" isProjectRelated={true} />
@@ -550,101 +585,33 @@ export default function Dashboard() {
                 <div
                   className={`bg-white/5 mt-1 mb-1 rounded-md pb-2 max-w-5xl overflow-visible`}
                 >
-                  <div className="rounded-t-md sticky top-0 z-20 bg-bunker flex flex-row pl-4 pr-6 pt-4 pb-2 items-center justify-between text-gray-300 font-bold">
-                    {/* <FontAwesomeIcon icon={faAngleDown} /> */}
-                    <div className="flex flex-row items-center">
-                      <p className="pl-2 text-lg">Personal</p>
-                      <div className="group font-normal group relative inline-block text-gray-300 underline hover:text-primary duration-200">
-                        <FontAwesomeIcon
-                          className="ml-3 mt-1 text-lg"
-                          icon={faCircleInfo}
-                        />
-                        <span className="absolute hidden group-hover:flex group-hover:animate-popdown duration-300 w-44 -left-16 -top-7 translate-y-full px-2 py-2 bg-gray-700 rounded-md text-center text-gray-100 text-sm after:content-[''] after:absolute after:left-1/2 after:bottom-[100%] after:-translate-x-1/2 after:border-8 after:border-x-transparent after:border-t-transparent after:border-b-gray-700">
-                          Personal keys are only visible to you
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div id="data1" className="px-1">
-                    {data
-                      .filter(
-                        (keyPair) =>
-                          keyPair.key
-                            .toLowerCase()
-                            .includes(searchKeys.toLowerCase()) &&
-                          keyPair.type == 'personal'
-                      )
-                      ?.map((keyPair) => (
-                        <KeyPair
-                          key={keyPair.id}
-                          keyPair={keyPair}
-                          deleteRow={deleteCertainRow}
-                          modifyValue={listenChangeValue}
-                          modifyKey={listenChangeKey}
-                          modifyVisibility={listenChangeVisibility}
-                          isBlurred={blurred}
-                          duplicates={data
-                            ?.map((item) => item.key)
-                            .filter(
-                              (item, index) =>
-                                index !==
-                                data?.map((item) => item.key).indexOf(item)
-                            )}
-                          toggleSidebar={toggleSidebar}
-                          sidebarSecretNumber={sidebarSecretNumber}
-                        />
-                      ))}
-                  </div>
-                </div>
-                <div
-                  className={`bg-white/5 mt-1 mb-2 rounded-md p-1 pb-2 max-w-5xl ${
-                    data?.length > 8 ? 'h-3/4' : 'h-min'
-                  }`}
-                >
-                  <div className="sticky top-0 z-40 bg-bunker flex flex-row pl-4 pr-5 pt-4 pb-2 items-center justify-between text-gray-300 font-bold">
-                    {/* <FontAwesomeIcon icon={faAngleDown} /> */}
-                    <div className="flex flex-row items-center">
-                      <p className="pl-2 text-lg">Shared</p>
-                      <div className="group font-normal group relative inline-block text-gray-300 underline hover:text-primary duration-200">
-                        <FontAwesomeIcon
-                          className="ml-3 text-lg mt-1"
-                          icon={faCircleInfo}
-                        />
-                        <span className="absolute hidden group-hover:flex group-hover:animate-popdown duration-300 w-44 -left-16 -top-7 translate-y-full px-2 py-2 bg-gray-700 rounded-md text-center text-gray-100 text-sm after:content-[''] after:absolute after:left-1/2 after:bottom-[100%] after:-translate-x-1/2 after:border-8 after:border-x-transparent after:border-t-transparent after:border-b-gray-700">
-                          Shared keys are visible to your whole team
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div id="data2" className="data2">
-                    {data
-                      .filter(
-                        (keyPair) =>
-                          keyPair.key
-                            .toLowerCase()
-                            .includes(searchKeys.toLowerCase()) &&
-                          keyPair.type == 'shared'
-                      )
-                      ?.map((keyPair) => (
-                        <KeyPair
-                          key={keyPair.id}
-                          keyPair={keyPair}
-                          deleteRow={deleteCertainRow}
-                          modifyValue={listenChangeValue}
-                          modifyKey={listenChangeKey}
-                          modifyVisibility={listenChangeVisibility}
-                          isBlurred={blurred}
-                          duplicates={data
-                            ?.map((item) => item.key)
-                            .filter(
-                              (item, index) =>
-                                index !==
-                                data?.map((item) => item.key).indexOf(item)
-                            )}
-                          toggleSidebar={toggleSidebar}
-                          sidebarSecretNumber={sidebarSecretNumber}
-                        />
-                      ))}
+                  <div id="data1" className="px-1 pt-2">
+                    {data?.filter(row => !(data
+                          ?.map((item) => item.key)
+                          .filter(
+                            (item, index) =>
+                              index !==
+                              data?.map((item) => item.key).indexOf(item)
+                          ).includes(row.key) && row.type == 'shared')).map((keyPair) => (
+                      <KeyPair
+                        key={keyPair.id}
+                        keyPair={keyPair}
+                        deleteRow={deleteCertainRow}
+                        modifyValue={listenChangeValue}
+                        modifyKey={listenChangeKey}
+                        modifyVisibility={listenChangeVisibility}
+                        isBlurred={blurred}
+                        duplicates={data
+                          ?.map((item) => item.key)
+                          .filter(
+                            (item, index) =>
+                              index !==
+                              data?.map((item) => item.key).indexOf(item)
+                          )}
+                        toggleSidebar={toggleSidebar}
+                        sidebarSecretNumber={sidebarSecretNumber}
+                      />
+                    ))}
                   </div>
                 </div>
                 <div className="w-full max-w-5xl">

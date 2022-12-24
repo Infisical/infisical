@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { faX } from '@fortawesome/free-solid-svg-icons';
+import { faBackward, faDotCircle, faRotateLeft, faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import Button from '../basic/buttons/Button';
@@ -13,7 +13,14 @@ interface SecretProps {
   key: string;
   value: string;
   pos: number;
-  visibility: string;
+  id: string;
+}
+
+interface OverrideProps {
+  id: string;
+  keyName: string;
+  value: string;
+  pos: number;
 }
 
 interface SideBarProps {
@@ -22,6 +29,8 @@ interface SideBarProps {
   modifyKey: (value: string) => void; 
   modifyValue: (value: string) => void; 
   modifyVisibility: (value: string) => void; 
+  addOverride: (value: OverrideProps) => void; 
+  deleteOverride: (id: string) => void; 
 }
 
 /**
@@ -33,7 +42,7 @@ interface SideBarProps {
  * @param {function} obj.modifyVisibility - function that modifies the secret visibility
  * @returns the sidebar with 'secret's settings'
  */
-const SideBar = ({ toggleSidebar, data, modifyKey, modifyValue, modifyVisibility }: SideBarProps) => {
+const SideBar = ({ toggleSidebar, data, modifyKey, modifyValue, modifyVisibility, addOverride, deleteOverride }: SideBarProps) => {
   const [overrideEnabled, setOverrideEnabled] = useState(false);
 
   return <div className='absolute border-l border-mineshaft-500 bg-bunker fixed h-full w-96 top-14 right-0 z-50 shadow-xl flex flex-col justify-between'>
@@ -44,7 +53,7 @@ const SideBar = ({ toggleSidebar, data, modifyKey, modifyValue, modifyVisibility
           <FontAwesomeIcon icon={faX} className='w-4 h-4 text-bunker-300 cursor-pointer'/>
         </div>
       </div>
-      <div className='mt-4 px-4'>
+      <div className='mt-4 px-4 pointer-events-none'>
         <p className='text-sm text-bunker-300'>Key</p>
         <DashboardInputField
           onChangeHandler={modifyKey}
@@ -61,25 +70,34 @@ const SideBar = ({ toggleSidebar, data, modifyKey, modifyValue, modifyVisibility
           onChangeHandler={modifyValue}
           type="value"
           position={data[0].pos}
-          value={data[0].value}
+          value={data[0].value + "xxx" + data[0].pos}
           duplicates={[]}
-          blurred={true}
+          blurred={true}     
         />
-        <div className='absolute bg-bunker-800 right-[1rem] top-[1.65rem] z-50'>
+        <div className='absolute bg-bunker-800 right-[1.07rem] top-[1.6rem] z-50'>
           <GenerateSecretMenu />
         </div>
       </div>
       <div className='mt-4 px-4'>
         <div className='flex flex-row items-center justify-between my-2 pl-1 pr-2'>
           <p className='text-sm text-bunker-300'>Override value with a personal value</p>
-          <Toggle enabled={overrideEnabled} setEnabled={setOverrideEnabled} />
+          <Toggle 
+            enabled={overrideEnabled} 
+            setEnabled={setOverrideEnabled} 
+            addOverride={addOverride} 
+            keyName={data[0].key}
+            value={data[0].value}
+            pos={data[0].pos}
+            id={data[0].id}
+            deleteOverride={deleteOverride}
+          />
         </div>
         <div className={`relative ${!overrideEnabled && "opacity-40 pointer-events-none"} duration-200`}>
           <DashboardInputField
             onChangeHandler={modifyValue}
             type="value"
             position={data[0].pos}
-            value={"ValueValueValue"}
+            value={"ValueValueValue" + data[0].pos}
             duplicates={[]}
             blurred={true}
           />
@@ -97,9 +115,57 @@ const SideBar = ({ toggleSidebar, data, modifyKey, modifyValue, modifyVisibility
           isFull={true}
         />
       </div>
-      <div className={`mt-4 px-4`}>
-        <p className='text-sm text-bunker-300'>Comments & notes</p>
-        <div className='h-32 w-full bg-bunker-800 p-2 rounded-md border border-mineshaft-500 rounded-md text-sm text-bunker-300'> 
+      <div className='w-full h-52 px-4 mt-4 text-sm text-bunker-300 overflow-x-none'>
+        <p className=''>Version History</p>
+        <div className='p-1 rounded-md bg-bunker-800 border border-mineshaft-500 overflow-x-none'>
+          <div className='h-48 overflow-y-scroll overflow-x-none'>
+            <div className='flex flex-row'>
+              <div className='pr-1 flex flex-col items-center'>
+                <div className='p-1'><FontAwesomeIcon icon={faDotCircle} /></div>
+                <div className='w-0 h-full border-l mt-1'></div>
+              </div>
+              <div className='flex flex-col w-full max-w-[calc(100%-2.3rem)]'>
+                <div className='pr-2 pt-1'>Current</div>
+                <div className=''><p className='break-words'><span className='py-0.5 px-1 rounded-md bg-primary-300/20 mr-1.5'>Key:</span>{data[0].key}</p></div>
+                <div className=''><p className='break-words'><span className='py-0.5 px-1 rounded-md bg-primary-300/20 mr-1.5'>Value:</span>{data[0].value}</p></div>
+                <div className='pb-1'><p className='break-words'><span className='py-0.5 px-1 rounded-md bg-primary-300/20 mr-1.5'>Visibility:</span>{'shared'}</p></div>
+              </div>
+            </div>
+            <div className='flex flex-row'>
+              <div className='pr-1 flex flex-col items-center'>
+                <div className='cursor-pointer p-1 hover:bg-bunker-500 rounded-md'><FontAwesomeIcon icon={faRotateLeft} /></div>
+                <div className='w-0 h-full border-l'></div>
+              </div>
+              <div className='flex flex-col max-w-[calc(100%-2.3rem)]'>
+                <div className='pr-2 pt-1'>12/22/2022 12:36 EST</div>
+                <div className='w-full pr-2'><span className='py-0.5 px-1 rounded-md bg-primary-200/10 mr-1'>Key:</span> KeyKeyKey</div>
+                <div className='w-full pr-2'><span className='py-0.5 px-1 rounded-md bg-primary-200/10 mr-1'>Value:</span> ValueValueValue</div>
+                <div className='pb-1'><p className='break-words'><span className='py-0.5 px-1 rounded-md bg-primary-300/20 mr-1.5'>Visibility:</span>{'shared'}</p></div>
+              </div>
+            </div>
+            <div className='flex flex-row'>
+              <div className='pr-1 flex flex-col items-center'>
+                <div className='cursor-pointer p-1 hover:bg-bunker-500 rounded-md'><FontAwesomeIcon icon={faRotateLeft} /></div>
+                <div className='w-0 h-full border-l'></div>
+              </div>
+              <div className='flex flex-col max-w-[calc(100%-2.3rem)]'>
+                <div className='pr-2 pt-1'>12/21/2022 09:11 EST</div>
+                <div className='w-full pr-2'><span className='py-0.5 px-1 rounded-md bg-primary-200/10 mr-1'>Key:</span> KeyKey</div>
+                <div className='w-full pr-2'><span className='py-0.5 px-1 rounded-md bg-primary-200/10 mr-1'>Value:</span> ValueValue</div>
+                <div className='pb-1'><p className='break-words'><span className='py-0.5 px-1 rounded-md bg-primary-300/20 mr-1.5'>Visibility:</span>{'shared'}</p></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className={`relative mt-4 px-4 pt-4`}>
+        <div className='flex flex-row justify-between'>
+          <p className='text-sm text-bunker-300'>Comments & notes</p>
+          <div className="bg-yellow rounded-md h-min">
+            <p className="relative text-black text-xs px-1.5 h-min">Coming soon!</p>
+          </div>
+        </div>
+        <div className='h-32 opacity-50 w-full bg-bunker-800 p-2 rounded-md border border-mineshaft-500 rounded-md text-sm text-bunker-300'> 
           Leave your comment here...
         </div>
       </div>

@@ -13,6 +13,7 @@ interface DashboardInputFieldProps {
   type: 'varName' | 'value';
   blurred: boolean;
   duplicates: string[];
+  override?: boolean;
 }
 
 /**
@@ -33,7 +34,8 @@ const DashboardInputField = ({
   type,
   value,
   blurred,
-  duplicates
+  duplicates,
+  override
 }: DashboardInputFieldProps) => {
   const ref = useRef<HTMLDivElement | null>(null);
   const syncScroll = (e: SyntheticEvent<HTMLDivElement>) => {
@@ -85,6 +87,7 @@ const DashboardInputField = ({
         <div
           className={`group relative whitespace-pre	flex flex-col justify-center w-full max-w-2xl border border-mineshaft-500 rounded-md`}
         >
+          {override == true && <div className='bg-yellow-300 absolute top-[0.1rem] right-[0.1rem] z-10 w-min text-xxs px-1 text-black opacity-80 rounded-sm'>Override enabled</div>}
           <input
             value={value}
             onChange={(e) => onChangeHandler(e.target.value, position)}
@@ -99,10 +102,13 @@ const DashboardInputField = ({
           <div
             ref={ref}
             className={`${
-              blurred
+              blurred && !override
                 ? 'text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-400 peer-active:text-gray-400'
                 : ''
-            } absolute flex flex-row whitespace-pre font-mono z-0 ph-no-capture max-w-2xl overflow-x-scroll bg-bunker-800 h-9 rounded-md text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
+            } ${
+              override ? 'text-yellow-300' : 'text-gray-400'
+            }
+            absolute flex flex-row whitespace-pre font-mono z-0 ph-no-capture max-w-2xl overflow-x-scroll bg-bunker-800 h-9 rounded-md text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
           >
             {value.split(REGEX).map((word, id) => {
               if (word.match(REGEX) !== null) {
