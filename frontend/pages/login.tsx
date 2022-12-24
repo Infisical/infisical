@@ -80,9 +80,7 @@ export default function Login() {
         </div>
       </Link>
       <form
-        onChange={() => setErrorLogin(false)} onSubmit={(e) => {
-        e.preventDefault();
-      }}
+        onChange={() => setErrorLogin(false)} onSubmit={(e) => e.preventDefault()}
       >
         <div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-4 pt-8 px-6 rounded-xl drop-shadow-xl">
           <p className="text-3xl w-max mx-auto flex justify-center font-semibold text-bunker-100 mb-6">

@@ -557,7 +557,7 @@ export default function SignUp() {
             />
           </div>
         </Link>
-        <form onSubmit={(e) => {e.preventDefault();}}>
+        <form onSubmit={(e) => e.preventDefault()}>
           {step == 1 ? step1 : step == 2 ? step2 : step == 3 ? step3 : step4}
         </form>
       </div>
