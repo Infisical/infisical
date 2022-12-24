@@ -13,10 +13,8 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
-const INFISICAL_URL = "https://app.infisical.com/api"
-
-func GetAllEnvironmentVariables(projectId string, envName string, infisicalToken string) ([]models.SingleEnvironmentVariable, error) {
-	envsFromApi, err := GetSecretsFromAPIUsingInfisicalToken(infisicalToken, envName, projectId)
+func GetAllEnvironmentVariables(projectId string, envName string, infisicalToken string, hostAPI string) ([]models.SingleEnvironmentVariable, error) {
+	envsFromApi, err := GetSecretsFromAPIUsingInfisicalToken(infisicalToken, envName, projectId, hostAPI)
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +22,7 @@ func GetAllEnvironmentVariables(projectId string, envName string, infisicalToken
 	return SubstituteSecrets(envsFromApi), nil
 }
 
-func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, envName string, projectId string) ([]models.SingleEnvironmentVariable, error) {
+func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, envName string, projectId string, hostAPI string) ([]models.SingleEnvironmentVariable, error) {
 	if infisicalToken == "" || projectId == "" || envName == "" {
 		return nil, errors.New("infisical token, project id and or environment name cannot be empty")
 	}
@@ -44,7 +42,7 @@ func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, envName string,
 		SetQueryParam("environment", envName).
 		SetQueryParam("channel", "cli").
 		SetResult(&pullSecretsByInfisicalTokenResponse).
-		Get(fmt.Sprintf("%v/v1/secret/%v/service-token", INFISICAL_URL, projectId))
+		Get(fmt.Sprintf("%v/v1/secret/%v/service-token", hostAPI, projectId))
 
 	if err != nil {
 		return nil, err

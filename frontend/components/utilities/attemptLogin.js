@@ -42,9 +42,9 @@ const attemptLogin = async (
       async () => {
         const clientPublicKey = client.getPublicKey();
 
-        const { serverPublicKey, salt } = await login1(email, clientPublicKey);
-
         try {
+          const { serverPublicKey, salt } = await login1(email, clientPublicKey);
+
           client.setSalt(salt);
           client.setServerPublicKey(serverPublicKey);
           const clientProof = client.getProof(); // called M1
@@ -73,7 +73,7 @@ const attemptLogin = async (
             tag,
             privateKey
           });
-
+          
           const userOrgs = await getOrganizations();
           const userOrgsData = userOrgs.map((org) => org._id);
 

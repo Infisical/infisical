@@ -51,6 +51,7 @@ services:
     env_file: .env
     environment:
       - NEXT_PUBLIC_ENV=development
+      - INFISICAL_TELEMETRY_ENABLED=${TELEMETRY_ENABLED}
       - NEXT_PUBLIC_STRIPE_PRODUCT_PRO=${STRIPE_PRODUCT_PRO}
       - NEXT_PUBLIC_STRIPE_PRODUCT_STARTER=${STRIPE_PRODUCT_STARTER}
     networks:

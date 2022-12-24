@@ -1,4 +1,5 @@
 import signup from './signup';
+import bot from './bot';
 import auth from './auth';
 import user from './user';
 import userAction from './userAction';
@@ -18,6 +19,7 @@ import integrationAuth from './integrationAuth';
 export {
 	signup,
 	auth,
+	bot,
 	user,
 	userAction,
 	organization,

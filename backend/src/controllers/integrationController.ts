@@ -1,11 +1,9 @@
 import { Request, Response } from 'express';
 import { readFileSync } from 'fs';
 import * as Sentry from '@sentry/node';
-import axios from 'axios';
-import { Integration } from '../models';
-import { decryptAsymmetric } from '../utils/crypto';
-import { decryptSecrets } from '../helpers/secret';
-import { PRIVATE_KEY } from '../config';
+import { Integration, Bot, BotKey } from '../models';
+import { EventService } from '../services';
+import { eventPushSecrets } from '../events';
 
 interface Key {
 	encryptedKey: string;
@@ -25,103 +23,57 @@ interface PushSecret {
 }
 
 /**
- * Return list of all available integrations on Infisical
- * @param req
- * @param res
- * @returns
- */
-export const getIntegrations = async (req: Request, res: Response) => {
-	let integrations;
-	try {
-		integrations = JSON.parse(
-			readFileSync('./src/json/integrations.json').toString()
-		);
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get integrations'
-		});
-	}
-
-	return res.status(200).send({
-		integrations
-	});
-};
-
-/**
- * Sync secrets [secrets] to integration with id [integrationId]
- * @param req
- * @param res
- * @returns
- */
-export const syncIntegration = async (req: Request, res: Response) => {
-	// TODO: unfinished - make more versatile to accomodate for other integrations
-	try {
-		const { key, secrets }: { key: Key; secrets: PushSecret[] } = req.body;
-		const symmetricKey = decryptAsymmetric({
-			ciphertext: key.encryptedKey,
-			nonce: key.nonce,
-			publicKey: req.user.publicKey,
-			privateKey: PRIVATE_KEY
-		});
-
-		// decrypt secrets with symmetric key
-		const content = decryptSecrets({
-			secrets,
-			key: symmetricKey,
-			format: 'object'
-		});
-
-		// TODO: make integration work for other integrations as well
-		const res = await axios.patch(
-			`https://api.heroku.com/apps/${req.integration.app}/config-vars`,
-			content,
-			{
-				headers: {
-					Accept: 'application/vnd.heroku+json; version=3',
-					Authorization: 'Bearer ' + req.accessToken
-				}
-			}
-		);
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to sync secrets with integration'
-		});
-	}
-
-	return res.status(200).send({
-		message: 'Successfully synced secrets with integration'
-	});
-};
-
-/**
  * Change environment or name of integration with id [integrationId]
  * @param req
  * @param res
  * @returns
  */
-export const modifyIntegration = async (req: Request, res: Response) => {
+export const updateIntegration = async (req: Request, res: Response) => {
 	let integration;
+	
+	// TODO: add integration-specific validation to ensure that each
+	// integration has the correct fields populated in [Integration]
+	
 	try {
-		const { update } = req.body;
-
+		const { 
+			app, 
+			environment, 
+			isActive, 
+			target, // vercel-specific integration param
+			context, // netlify-specific integration param
+			siteId // netlify-specific integration param
+		} = req.body;
+		
 		integration = await Integration.findOneAndUpdate(
 			{
 				_id: req.integration._id
 			},
-			update,
+			{
+				environment,
+				isActive,
+				app,
+				target,
+				context,
+				siteId
+			},
 			{
 				new: true
 			}
 		);
+		
+		if (integration) {
+			// trigger event - push secrets
+			EventService.handleEvent({
+				event: eventPushSecrets({
+					workspaceId: integration.workspace.toString()
+				})
+			});
+		}
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
 		return res.status(400).send({
-			message: 'Failed to modify integration'
+			message: 'Failed to update integration'
 		});
 	}
 
@@ -131,7 +83,8 @@ export const modifyIntegration = async (req: Request, res: Response) => {
 };
 
 /**
- * Delete integration with id [integrationId]
+ * Delete integration with id [integrationId] and deactivate bot if there are
+ * no integrations left
  * @param req
  * @param res
  * @returns
@@ -144,6 +97,29 @@ export const deleteIntegration = async (req: Request, res: Response) => {
 		deletedIntegration = await Integration.findOneAndDelete({
 			_id: integrationId
 		});
+		
+		if (!deletedIntegration) throw new Error('Failed to find integration');
+		
+		const integrations = await Integration.find({
+			workspace: deletedIntegration.workspace
+		});
+			
+		if (integrations.length === 0) {
+			// case: no integrations left, deactivate bot
+			const bot = await Bot.findOneAndUpdate({
+				workspace: deletedIntegration.workspace
+			}, {
+				isActive: false
+			}, {
+				new: true
+			});
+			
+			if (bot) {
+				await BotKey.deleteOne({
+					bot: bot._id
+				});
+			}
+		}
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);

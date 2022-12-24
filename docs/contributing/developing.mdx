@@ -16,59 +16,54 @@ cd infisical
 
 ## Set up environment variables
 
-Before running the docker-compose we have to generate the .env file with the environment variables, you can create your own file or start with the
-`.env.example` as an example guide.
+Start by creating a .env file at the root of the Infisical directory 
 
-Mandatory variables in the `.env` file:
+<Tip>
+    Reference the [environment variable list](https://infisical.com/docs/self-hosting/configuration/envars) and provided [`.env.example`](https://raw.githubusercontent.com/Infisical/infisical/main/.env.example) template to fill out your .env file. 
+</Tip>
 
-1. Keys and JWT variables
+### Keys
 
-![image](https://user-images.githubusercontent.com/118568289/206791534-9c9d1431-e83d-49c0-8a54-b373ed0df820.png)
+`ENCRYPTION_KEY`, `JWT_SIGNUP_SECRET`, `JWT_REFRESH_SECRET`, `JWT_AUTH_SECRET`, `JWT_SERVICE_SECRET` values can be generated with this [32-byte random hex generator](https://www.browserling.com/tools/random-hex).
 
-The `.env.example` has these variables empty, you can self generate the `JWT and ENCRYPTION_KEY` with this [32-byte random hex strings generator](https://www.browserling.com/tools/random-hex).
+### Database
 
-For the `PRIVATE_KEY and PUBLIC_KEY` you can use the ones shown in the screenshot:
+Use to the following `MONGO_URL`, `MONGO_USERNAME`, `MONGO_PASSWORD`, `SITE_URL` values:
 
 ```
-PRIVATE_KEY='oGVv5rThrpZ7WLgQW27chY1cXngr4wLQIZnGfSKgHPk='
-PUBLIC_KEY='ldr6JaC7AY+tun3omGLdE4SWpkJbtVBOI54KfUP53Xc='
+MONGO_URL=mongodb://root:example@mongo:27017/?authSource=admin
+MONGO_USERNAME=root
+MONGO_PASSWORD=example
+
+SITE_URL=http://localhost:8080
 ```
 
-2. Mongo variables and site URL
+<Info>
+    If you decide to use your own `MONGO_USERNAME` and `MONGO_PASSWORD`, you'll have to modify `MONGO_URL` to take the form: `mongodb://[MONGO_USERNAME]:[MONGO_PASSWORD]@mongo:27017/?authSource=admin`.
+</Info>
 
-![image](https://user-images.githubusercontent.com/118568289/206792171-3376e3c6-c3ac-4d5d-8776-d78ee089b520.png)
+### Mailing
 
-These variables are used to connect the MongoDB and set the URL for the localhost.
+Option 1: Bring your own SMTP server and credentials by filling in `SMTP_HOST`, `SMTP_FROM_ADDRESS`, `SMTP_FROM_NAME`, `SMTP_USERNAME`, and `SMTP_PASSWORD`.
+<Info>
+    `SMTP_HOST` is set to `smtp.gmail.com` by default. For `SMTP_USERNAME` and `SMTP_PASSWORD`, you'll need an email with 2-step-verification and an [app password](https://support.google.com/mail/answer/185833?hl=en) for it.
+</Info>
 
-For development, you can use `root` for the `MONGO_USERNAME` and `example` for the `MONGO_PASSWORD` as shown in the screenshot.
 
-Take into account that if you use your own `MONGO_USERNAME` and `MONGO_PASSWORD`, you also have to change the `MONGO_URL` with the form of `MONGO_USERNAME:MONGO_PASSWORD` after the `//` part of the URL.
-
-3. Mail SMTP service variables
-
-![image](https://user-images.githubusercontent.com/118568289/206792653-ba3211d1-1071-43f2-93a7-8b408bbd9e0e.png)
-
-If you want to receive actual emails (e.g. you want to test how the email message will look like), take note of the following.
-
-For the `SMTP_USERNAME` variable, you will need an email with 2-steps-verification.
-
-For the `SMTP_PASSWORD` variable, you will need to [generate an app password](https://support.google.com/mail/answer/185833?hl=en) with the email you used in the `SMTP_USERNAME` variable.
-
-Otherwise, a local SMTP server (MailHog) is available for testing purposes. Set the following values to use this:
+Option 2: Use the provided (Mailhog) SMTP server and browse emails sent by the backend on `http://localhost:8025`. To use this option, set the following `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM_NAME`, `SMTP_USERNAME`, `SMTP_PASSWORD` values:
 
 ```
 SMTP_HOST=smtp-server
 SMTP_PORT=1025
-SMTP_NAME=<whatever you like>
+SMTP_FROM_ADDRESS=team@infisical.com
+SMTP_FROM_NAME=[whatever you like]
 SMTP_USERNAME=team@infisical.com
 SMTP_PASSWORD=
 ```
 
-Make sure to leave the `SMTP_PASSWORD` blank so the backend will be able to connect to MailHog
-
-You can browse `http://localhost:8025/` to browse email messages sent by the backend.
-
-With these environment variables, you will be ready to run the docker-compose.
+<Warning>
+    Make sure to leave the `SMTP_PASSWORD` blank so the backend can connect to MailHog.
+</Warning>
 
 ## Docker for development
 
@@ -85,11 +80,3 @@ docker-compose -f docker-compose.dev.yml down
 # start services
 docker-compose -f docker-compose.dev.yml up
 ```
-
-The docker-compose development environment consists of:
-
-- nginx
-- frontend
-- backend
-- mongo
-- mongo-express

@@ -14,12 +14,14 @@ declare global {
 			JWT_SIGNUP_SECRET: string;
       MONGO_URL: string;
       NODE_ENV: 'development' | 'staging' | 'testing' | 'production';
-      OAUTH_CLIENT_SECRET_HEROKU: string;
-      OAUTH_TOKEN_URL_HEROKU: string;
+      CLIENT_ID_HEROKU: string;
+      CLIENT_ID_VERCEL: string;
+      CLIENT_ID_NETLIFY: string;
+      CLIENT_SECRET_HEROKU: string;
+      CLIENT_SECRET_VERCEL: string;
+      CLIENT_SECRET_NETLIFY: string;
 			POSTHOG_HOST: string;
 			POSTHOG_PROJECT_API_KEY: string;
-      PRIVATE_KEY: string;
-      PUBLIC_KEY: string;
       SENTRY_DSN: string;
       SITE_URL: string;
       SMTP_HOST: string;

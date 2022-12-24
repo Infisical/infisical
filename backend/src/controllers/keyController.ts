@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import { Key } from '../models';
 import { findMembership } from '../helpers/membership';
-import { PUBLIC_KEY } from '../config';
 import { GRANTED } from '../variables';
 
 /**
@@ -16,16 +15,6 @@ export const uploadKey = async (req: Request, res: Response) => {
 	try {
 		const { workspaceId } = req.params;
 		const { key } = req.body;
-
-		// validate membership of sender
-		const senderMembership = await findMembership({
-			user: req.user._id,
-			workspace: workspaceId
-		});
-
-		if (!senderMembership) {
-			throw new Error('Failed sender membership validation for workspace');
-		}
 
 		// validate membership of receiver
 		const receiverMembership = await findMembership({
@@ -94,16 +83,4 @@ export const getLatestKey = async (req: Request, res: Response) => {
 	}
 
 	return res.status(200).send(resObj);
-};
-
-/**
- * Return public key of Infisical
- * @param req
- * @param res
- * @returns
- */
-export const getPublicKeyInfisical = async (req: Request, res: Response) => {
-	return res.status(200).send({
-		publicKey: PUBLIC_KEY
-	});
 };

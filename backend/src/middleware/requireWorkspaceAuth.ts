@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/node';
 import { Request, Response, NextFunction } from 'express';
-import { Membership, IWorkspace } from '../models';
+import { validateMembership } from '../helpers/membership';
 
 type req = 'params' | 'body' | 'query';
 
@@ -25,24 +25,12 @@ const requireWorkspaceAuth = ({
 		// workspace authorization middleware
 
 		try {
-			// validate workspace membership
-
-			const membership = await Membership.findOne({
-				user: req.user._id,
-				workspace: req[location].workspaceId
-			}).populate<{ workspace: IWorkspace }>('workspace');
-
-			if (!membership) {
-				throw new Error('Failed to find workspace membership');
-			}
-
-			if (!acceptedRoles.includes(membership.role)) {
-				throw new Error('Failed to validate workspace membership role');
-			}
-
-			if (!acceptedStatuses.includes(membership.status)) {
-				throw new Error('Failed to validate workspace membership status');
-			}
+			const membership = await validateMembership({
+				userId: req.user._id.toString(),
+				workspaceId: req[location].workspaceId,
+				acceptedRoles,
+				acceptedStatuses
+			});
 
 			req.membership = membership;
 

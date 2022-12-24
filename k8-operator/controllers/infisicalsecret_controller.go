@@ -36,6 +36,8 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	var infisicalSecretCR v1alpha1.InfisicalSecret
 	err := r.Get(ctx, req.NamespacedName, &infisicalSecretCR)
 
+	requeueTime := time.Minute * 5
+
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Infisical Secret not found")
@@ -43,7 +45,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		} else {
 			log.Error(err, "Unable to fetch Infisical Secret from cluster. Will retry")
 			return ctrl.Result{
-				RequeueAfter: time.Minute,
+				RequeueAfter: requeueTime,
 			}, nil
 		}
 	}
@@ -58,13 +60,13 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if err != nil {
 		log.Error(err, "Unable to reconcile Infisical Secret and will try again")
 		return ctrl.Result{
-			RequeueAfter: time.Minute,
+			RequeueAfter: requeueTime,
 		}, nil
 	}
 
 	// Sync again after the specified time
 	return ctrl.Result{
-		RequeueAfter: time.Minute,
+		RequeueAfter: requeueTime,
 	}, nil
 }
 
