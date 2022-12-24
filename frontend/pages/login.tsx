@@ -114,7 +114,7 @@ export default function Login() {
               <Link href="/verify-email">Forgot password?</Link>
             </div>
           </div>
-          {errorLogin && <Error text="Your email and/or password are wrong." />}
+          {!isLoading && errorLogin && <Error text="Your email and/or password are wrong." />}
           <div className="flex flex-col items-center justify-center w-full md:p-2 max-h-20 max-w-md mt-4 mx-auto text-sm">
             <div className="text-l mt-6 m-8 px-8 py-3 text-lg">
               <Button
