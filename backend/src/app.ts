@@ -1,10 +1,9 @@
 
-import express, { NextFunction, Request, Response } from 'express';
+import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
-import * as Sentry from '@sentry/node';
 
 dotenv.config();
 import { PORT, NODE_ENV, SITE_URL } from './config';
@@ -30,8 +29,8 @@ import {
   integrationAuth as integrationAuthRouter
 } from './routes';
 import { getLogger } from './utils/logger';
-import RequestError, { LogLevel } from './utils/requestError';
-import { InternalServerError, RouteNotFoundError } from './utils/errors';
+import { catchUnroutedRequests } from './middleware/catchUnroutedRequests';
+import { RouteNotFoundError } from './utils/errors';
 
 export const app = express();
 
@@ -81,27 +80,7 @@ app.use((req, res, next)=>{
 })
 
 //* Error Handling Middleware (must be after all routing logic)
-app.use((error: RequestError|Error, req: Request, res: Response, next: NextFunction)=>{
-  if(res.headersSent) return next();
-  //TODO: Find better way to type check for error. In current setting you need to cast type to get the functions and variables from RequestError
-  if(!(error instanceof RequestError)){
-      error = InternalServerError({context: {exception: error.message}, stack: error.stack})
-      getLogger('backend-main').log((<RequestError>error).levelName.toLowerCase(), (<RequestError>error).message)
-  }
-
-  //* Set Sentry user identification if req.user is populated
-  if(req.user !== undefined && req.user !== null){
-    Sentry.setUser({ email: req.user.email })
-  }
-  //* Only sent error to Sentry if LogLevel is one of the following level 'ERROR', 'EMERGENCY' or 'CRITICAL'
-  //* with this we will eliminate false-positive errors like 'BadRequestError', 'UnauthorizedRequestError' and so on
-  if([LogLevel.ERROR, LogLevel.EMERGENCY, LogLevel.CRITICAL].includes((<RequestError>error).level)){
-    Sentry.captureException(error)
-  }
-  
-  res.status((<RequestError>error).statusCode).json((<RequestError>error).format(req))
-  next()
-})
+app.use(catchUnroutedRequests)
 
 
 export const server = app.listen(PORT, () => {
