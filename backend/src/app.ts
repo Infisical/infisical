@@ -29,8 +29,9 @@ import {
   integrationAuth as integrationAuthRouter
 } from './routes';
 import { getLogger } from './utils/logger';
-import { catchUnroutedRequests } from './middleware/catchUnroutedRequests';
 import { RouteNotFoundError } from './utils/errors';
+import { errorHandler } from '@sentry/node/types/handlers';
+import { requestErrorHandler } from './middleware/requestErrorHandler';
 
 export const app = express();
 
@@ -80,7 +81,7 @@ app.use((req, res, next)=>{
 })
 
 //* Error Handling Middleware (must be after all routing logic)
-app.use(catchUnroutedRequests)
+app.use(requestErrorHandler)
 
 
 export const server = app.listen(PORT, () => {

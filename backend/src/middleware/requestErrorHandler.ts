@@ -6,7 +6,7 @@ import { getLogger } from "../utils/logger";
 import RequestError, { LogLevel } from "../utils/requestError";
 
 
-export const catchUnroutedRequests: ErrorRequestHandler = (error: RequestError|Error, req, res, next) => {
+export const requestErrorHandler: ErrorRequestHandler = (error: RequestError|Error, req, res, next) => {
     if(res.headersSent) return next();
     //TODO: Find better way to type check for error. In current setting you need to cast type to get the functions and variables from RequestError
     if(!(error instanceof RequestError)){
