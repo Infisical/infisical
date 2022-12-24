@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import * as Sentry from '@sentry/node';
 import { validationResult } from 'express-validator';
 import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
 

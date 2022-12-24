@@ -1,5 +1,6 @@
 import RequestError, { LogLevel, RequestErrorContext } from "./requestError"
 
+//* ----->[GENERAL HTTP ERRORS]<-----
 export const RouteNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.INFO,
     statusCode: error?.statusCode ?? 404,
@@ -62,3 +63,54 @@ export const ServiceUnavailableError = (error?: Partial<RequestErrorContext>) =>
     context: error?.context,
     stack: error?.stack
 })
+
+export const ValidationError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 400,
+    type: error?.type ?? 'validation_error',
+    message: error?.message ?? 'The request failed validation',
+    context: error?.context,
+    stack: error?.stack
+})
+
+//* ----->[INTEGRATION ERRORS]<-----
+export const IntegrationNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? 'integration_not_found_error',
+    message: error?.message ?? 'The requested integration was not found',
+    context: error?.context,
+    stack: error?.stack
+})
+
+//* ----->[WORKSPACE ERRORS]<-----
+export const WorkspaceNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? 'workspace_not_found_error',
+    message: error?.message ?? 'The requested workspace was not found',
+    context: error?.context,
+    stack: error?.stack
+})
+
+//* ----->[ORGANIZATION ERRORS]<-----
+export const OrganizationNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? 'organization_not_found_error',
+    message: error?.message ?? 'The requested organization was not found',
+    context: error?.context,
+    stack: error?.stack
+})
+
+//* ----->[ACCOUNT ERRORS]<-----
+export const AccountNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? 'account_not_found_error',
+    message: error?.message ?? 'The requested account was not found',
+    context: error?.context,
+    stack: error?.stack
+})
+
+//* ----->[MISC ERRORS]<-----

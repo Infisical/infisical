@@ -1,9 +1,8 @@
-import * as Sentry from '@sentry/node';
 import { Request, Response, NextFunction } from 'express';
-import { Bot, Integration, IntegrationAuth, Membership } from '../models';
+import { Integration, IntegrationAuth } from '../models';
 import { IntegrationService } from '../services';
 import { validateMembership } from '../helpers/membership';
-import { UnauthorizedRequestError } from '../utils/errors';
+import { IntegrationNotFoundError, UnauthorizedRequestError } from '../utils/errors';
 
 /**
  * Validate if user on request is a member of workspace with proper roles associated
@@ -30,7 +29,7 @@ const requireIntegrationAuth = ({
 		});
 
 		if (!integration) {
-			return next(UnauthorizedRequestError({message: 'Failed to locate Integration'}))
+			return next(IntegrationNotFoundError({message: 'Failed to locate Integration'}))
 		}
 		
 		await validateMembership({

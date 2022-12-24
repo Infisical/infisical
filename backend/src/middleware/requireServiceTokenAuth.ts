@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-import * as Sentry from '@sentry/node';
 import { ServiceToken } from '../models';
 import { JWT_SERVICE_SECRET } from '../config';
 import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
@@ -42,7 +41,7 @@ const requireServiceTokenAuth = async (
 		.populate('user', '+publicKey')
 		.select('+encryptedKey +publicKey +nonce');
 
-	if (!serviceToken) return next(UnauthorizedRequestError({message: 'Failed to locate Service Token'}))
+	if (!serviceToken) return next(UnauthorizedRequestError({message: 'The service token does not match the record in the database'}))
 
 	req.serviceToken = serviceToken;
 	return next();

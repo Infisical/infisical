@@ -1,7 +1,6 @@
-import * as Sentry from '@sentry/node';
 import { Request, Response, NextFunction } from 'express';
 import { IOrganization, MembershipOrg } from '../models';
-import { UnauthorizedRequestError } from '../utils/errors';
+import { UnauthorizedRequestError, ValidationError } from '../utils/errors';
 
 /**
  * Validate if user on request is a member with proper roles for organization
@@ -26,16 +25,17 @@ const requireOrganizationAuth = ({
 			organization: req.params.organizationId
 		}).populate<{ organization: IOrganization }>('organization');
 
-		if (!membershipOrg) {
-			return next(UnauthorizedRequestError({message: 'Failed to locate Organization Membership'}))
-		}
 
+		if (!membershipOrg) {
+			return next(UnauthorizedRequestError({message: "You're not a member of this Organization."}))
+		}
+		//TODO is this important to validate? I mean is it possible to save wrong role to database or get wrong role from databse? - Zamion101
 		if (!acceptedRoles.includes(membershipOrg.role)) {
-			return next(UnauthorizedRequestError({message: 'Failed to validate Organization Membership Role'}))
+			return next(ValidationError({message: 'Failed to validate Organization Membership Role'}))
 		}
 
 		if (!acceptedStatuses.includes(membershipOrg.status)) {
-			return next(UnauthorizedRequestError({message: 'Failed to validate Organization Membership Status'}))
+			return next(ValidationError({message: 'Failed to validate Organization Membership Status'}))
 		}
 
 		req.membershipOrg = membershipOrg;

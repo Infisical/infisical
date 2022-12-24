@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-import * as Sentry from '@sentry/node';
 import { User } from '../models';
 import { JWT_SIGNUP_SECRET } from '../config';
 import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
@@ -24,7 +23,7 @@ const requireSignupAuth = async (
 
 	const [ AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE ] = <[string, string]>req.headers['authorization']?.split(' ', 2) ?? [null, null]
 	if(AUTH_TOKEN_TYPE === null) return next(BadRequestError({message: `Missing Authorization Header in the request header.`}))
-	if(AUTH_TOKEN_TYPE.toLowerCase() !== 'bearer') return next(UnauthorizedRequestError({message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.`}))
+	if(AUTH_TOKEN_TYPE.toLowerCase() !== 'bearer') return next(BadRequestError({message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.`}))
 	if(AUTH_TOKEN_VALUE === null) return next(BadRequestError({message: 'Missing Authorization Body in the request header'}))
 	
 	const decodedToken = <jwt.UserIDJwtPayload>(

@@ -1,8 +1,7 @@
-import * as Sentry from '@sentry/node';
 import { Request, Response, NextFunction } from 'express';
 import { Bot } from '../models';
 import { validateMembership } from '../helpers/membership';
-import { UnauthorizedRequestError } from '../utils/errors';
+import { AccountNotFoundError } from '../utils/errors';
 
 type req = 'params' | 'body' | 'query';
 
@@ -19,7 +18,7 @@ const requireBotAuth = ({
         const bot = await Bot.findOne({ _id: req[location].botId });
         
         if (!bot) {
-            return next(UnauthorizedRequestError({message: 'Failed to locate Bot account'}))
+            return next(AccountNotFoundError({message: 'Failed to locate Bot account'}))
         }
         
         await validateMembership({

@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node';
 import { Request, Response, NextFunction } from 'express';
 import { validateMembership } from '../helpers/membership';
 import { UnauthorizedRequestError } from '../utils/errors';
