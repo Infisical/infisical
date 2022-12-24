@@ -1,4 +1,5 @@
 
+import { patchRouterParam } from './utils/patchAsyncRoutes';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -30,8 +31,10 @@ import {
 } from './routes';
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
-import { errorHandler } from '@sentry/node/types/handlers';
 import { requestErrorHandler } from './middleware/requestErrorHandler';
+
+//* Patch Async route params to handle Promise Rejections
+patchRouterParam()
 
 export const app = express();
 
@@ -52,7 +55,6 @@ if (NODE_ENV === 'production') {
   app.use(apiLimiter);
   app.use(helmet());
 }
-
 
 // routers
 app.use('/api/v1/signup', signupRouter);
