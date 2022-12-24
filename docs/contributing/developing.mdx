@@ -16,53 +16,43 @@ cd infisical
 
 ## Set up environment variables
 
-Start by creating a .env file at the root of the Infisical directory 
+Start by creating a .env file at the root of the Infisical directory. It's best to start with the provided [`.env.example`](https://github.com/Infisical/infisical/blob/main/.env.example) template containing the necessary envars to fill out your .env file — you only have to modify the SMTP parameters.
+
+<Warning>
+    The pre-populated environment variable values in the `.env.example` file are meant to be used in development only.
+    You'll want to fill in your own values in production, especially concerning encryption keys, secrets, and SMTP parameters.
+</Warning>
+
+Refer to the [environment variable list](https://infisical.com/docs/self-hosting/configuration/envars) for guidance on each envar.
+
+### Helpful tips for developing with Infisical:
 
 <Tip>
-    Reference the [environment variable list](https://infisical.com/docs/self-hosting/configuration/envars) and provided [`.env.example`](https://raw.githubusercontent.com/Infisical/infisical/main/.env.example) template to fill out your .env file. 
+Use the `ENCRYPTION_KEY`, JWT-secret envars, `MONGO_URL`, `MONGO_USERNAME`, `MONGO_PASSWORD` provided in the `.env.example` file.
+
+If setting your own values: 
+
+- `ENCRYPTION_KEY` should be a [32-byte random hex](https://www.browserling.com/tools/random-hex)
+- `MONGO_URL` should take the form: `mongodb://[MONGO_USERNAME]:[MONGO_PASSWORD]@mongo:27017/?authSource=admin`.
 </Tip>
 
-### Keys
+<Tip>
+Bring and configure your own SMTP server by following our [email configuration guide](https://infisical.com/docs/self-hosting/configuration/email) (we recommend using either SendGrid or Mailgun).
 
-`ENCRYPTION_KEY`, `JWT_SIGNUP_SECRET`, `JWT_REFRESH_SECRET`, `JWT_AUTH_SECRET`, `JWT_SERVICE_SECRET` values can be generated with this [32-byte random hex generator](https://www.browserling.com/tools/random-hex).
-
-### Database
-
-Use to the following `MONGO_URL`, `MONGO_USERNAME`, `MONGO_PASSWORD`, `SITE_URL` values:
-
-```
-MONGO_URL=mongodb://root:example@mongo:27017/?authSource=admin
-MONGO_USERNAME=root
-MONGO_PASSWORD=example
-
-SITE_URL=http://localhost:8080
-```
-
-<Info>
-    If you decide to use your own `MONGO_USERNAME` and `MONGO_PASSWORD`, you'll have to modify `MONGO_URL` to take the form: `mongodb://[MONGO_USERNAME]:[MONGO_PASSWORD]@mongo:27017/?authSource=admin`.
-</Info>
-
-### Mailing
-
-Option 1: Bring your own SMTP server and credentials by filling in `SMTP_HOST`, `SMTP_FROM_ADDRESS`, `SMTP_FROM_NAME`, `SMTP_USERNAME`, and `SMTP_PASSWORD`.
-<Info>
-    `SMTP_HOST` is set to `smtp.gmail.com` by default. For `SMTP_USERNAME` and `SMTP_PASSWORD`, you'll need an email with 2-step-verification and an [app password](https://support.google.com/mail/answer/185833?hl=en) for it.
-</Info>
-
-
-Option 2: Use the provided (Mailhog) SMTP server and browse emails sent by the backend on `http://localhost:8025`. To use this option, set the following `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM_NAME`, `SMTP_USERNAME`, `SMTP_PASSWORD` values:
+Alternatively, you can use the provided development (Mailhog) SMTP server to send and browse emails sent by the backend on http://localhost:8025; to use this option, set the following `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM_NAME`, `SMTP_USERNAME`, `SMTP_PASSWORD` below.
+</Tip>
 
 ```
 SMTP_HOST=smtp-server
 SMTP_PORT=1025
 SMTP_FROM_ADDRESS=team@infisical.com
-SMTP_FROM_NAME=[whatever you like]
+SMTP_FROM_NAME=Infisical
 SMTP_USERNAME=team@infisical.com
 SMTP_PASSWORD=
 ```
 
 <Warning>
-    Make sure to leave the `SMTP_PASSWORD` blank so the backend can connect to MailHog.
+    If using Mailhog, make sure to leave the `SMTP_PASSWORD` blank so the backend can connect to MailHog.
 </Warning>
 
 ## Docker for development

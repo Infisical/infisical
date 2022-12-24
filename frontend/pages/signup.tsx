@@ -40,8 +40,8 @@ const props = {
     backgroundColor: '#0d1117',
     color: 'white',
     border: '1px solid gray',
-    textAlign: 'center'
-  }
+    textAlign: 'center',
+  },
 } as const;
 const propsPhone = {
   inputStyle: {
@@ -56,8 +56,8 @@ const propsPhone = {
     backgroundColor: '#0d1117',
     color: 'white',
     border: '1px solid gray',
-    textAlign: 'center'
-  }
+    textAlign: 'center',
+  },
 } as const;
 
 export default function SignUp() {
@@ -81,6 +81,7 @@ export default function SignUp() {
   const router = useRouter();
   const [errorLogin, setErrorLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isResendingVerificationEmail, setIsResendingVerificationEmail] = useState(false);
   const [backupKeyError, setBackupKeyError] = useState(false);
   const [verificationToken, setVerificationToken] = useState('');
   const [backupKeyIssued, setBackupKeyIssued] = useState(false);
@@ -148,7 +149,8 @@ export default function SignUp() {
     }
   };
 
-  // Verifies if the imformation that the users entered (name, workspace) is there, and if the password matched the criteria.
+  // Verifies if the imformation that the users entered (name, workspace) is there, and if the password matched the
+  // criteria.
   const signupErrorCheck = async () => {
     setIsLoading(true);
     let errorCheck = false;
@@ -169,7 +171,7 @@ export default function SignUp() {
       setPasswordErrorLength,
       setPasswordErrorNumber,
       setPasswordErrorLowerCase,
-      currentErrorCheck: errorCheck
+      currentErrorCheck: errorCheck,
     });
 
     if (!errorCheck) {
@@ -186,8 +188,8 @@ export default function SignUp() {
           .slice(0, 32)
           .padStart(
             32 + (password.slice(0, 32).length - new Blob([password]).size),
-            '0'
-          )
+            '0',
+          ),
       }) as { ciphertext: string; iv: string; tag: string };
 
       localStorage.setItem('PRIVATE_KEY', PRIVATE_KEY);
@@ -195,7 +197,7 @@ export default function SignUp() {
       client.init(
         {
           username: email,
-          password: password
+          password: password,
         },
         async () => {
           client.createVerifier(
@@ -204,14 +206,14 @@ export default function SignUp() {
                 email,
                 firstName,
                 lastName,
-                organizationName: firstName + "'s organization",
+                organizationName: firstName + '\'s organization',
                 publicKey: PUBLIC_KEY,
                 ciphertext,
                 iv,
                 tag,
                 salt: result.salt,
                 verifier: result.verifier,
-                token: verificationToken
+                token: verificationToken,
               });
 
               // if everything works, go the main dashboard page.
@@ -230,27 +232,37 @@ export default function SignUp() {
                     setErrorLogin,
                     router,
                     true,
-                    false
+                    false,
                   );
                   incrementStep();
                 } catch (error) {
                   setIsLoading(false);
                 }
               }
-            }
+            },
           );
-        }
+        },
       );
     } else {
       setIsLoading(false);
     }
   };
 
+  const resendVerificationEmail = async () => {
+    setIsResendingVerificationEmail(true);
+    setIsLoading(true);
+    await sendVerificationEmail(email);
+    setTimeout(() => {
+      setIsLoading(false);
+      setIsResendingVerificationEmail(false);
+    }, 2000);
+  };
+
   // Step 1 of the sign up process (enter the email or choose google authentication)
   const step1 = (
     <div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-8 md:px-6 mx-1 mb-48 md:mb-16 rounded-xl drop-shadow-xl">
       <p className="text-4xl font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-        {"Let'"}s get started
+        {'Let\''}s get started
       </p>
       <div className="flex flex-col items-center justify-center w-full md:pb-2 max-h-24 max-w-md mx-auto pt-2">
         <Link href="/login">
@@ -284,7 +296,7 @@ export default function SignUp() {
           acknowledged the Privacy Policy.
         </p>
         <div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
-          <Button text="Get Started" onButtonPressed={emailCheck} size="lg" />
+          <Button loading={isLoading} text="Get Started" onButtonPressed={emailCheck} size="lg" />
         </div>
       </div>
     </div>
@@ -294,7 +306,7 @@ export default function SignUp() {
   const step2 = (
     <div className="bg-bunker w-max mx-auto h-7/12 pt-10 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-16">
       <p className="text-l flex justify-center text-gray-400">
-        {"We've"} sent a verification email to{' '}
+        {'We\'ve'} sent a verification email to{' '}
       </p>
       <p className="text-l flex justify-center font-semibold my-2 text-gray-400">
         {email}{' '}
@@ -328,13 +340,16 @@ export default function SignUp() {
         <Button text="Verify" onButtonPressed={incrementStep} size="lg" />
       </div>
       <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
-        {/* <Link href="/login">
-          <button className="w-full hover:opacity-90 duration-200">
-            <u className="font-normal text-sm text-sky-700">
-              Not seeing an email? Resend
-            </u>
-          </button>
-        </Link> */}
+        <div className="flex flex-row items-baseline gap-1">
+          <span className="text-gray-400">
+            Not seeing an email?
+          </span>
+          <u className={`font-normal text-sm ${isResendingVerificationEmail ? 'text-gray-400' : 'text-sky-500 hover:opacity-90 duration-200'}`}>
+            <button disabled={isLoading} onClick={resendVerificationEmail}>
+              {isResendingVerificationEmail ? 'Resending...' : 'Resend'}
+            </button>
+          </u>
+        </div>
         <p className="text-sm text-gray-500 pb-2">
           Make sure to check your spam inbox.
         </p>
@@ -382,7 +397,7 @@ export default function SignUp() {
               setPasswordErrorLength,
               setPasswordErrorNumber,
               setPasswordErrorLowerCase,
-              currentErrorCheck: false
+              currentErrorCheck: false,
             });
           }}
           type="password"
@@ -506,7 +521,7 @@ export default function SignUp() {
               password,
               personalName: firstName + ' ' + lastName,
               setBackupKeyError,
-              setBackupKeyIssued
+              setBackupKeyIssued,
             });
             const userWorkspaces = await getWorkspaces();
             const userWorkspace = userWorkspaces[0]._id;
