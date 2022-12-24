@@ -255,14 +255,13 @@ export default function SignUp() {
       </p>
       <div className="flex flex-col items-center justify-center w-full md:pb-2 max-h-24 max-w-md mx-auto pt-2">
         <Link href="/login">
-          <button className="w-max pb-3 hover:opacity-90 duration-200">
+          <button type="button" className="w-max pb-3 hover:opacity-90 duration-200">
             <u className="font-normal text-md text-sky-500">
               Have an account? Log in
             </u>
           </button>
         </Link>
       </div>
-      <form onSubmit={(e) => {e.preventDefault();}}>
         <div className="flex items-center justify-center w-5/6 md:w-full m-auto md:p-2 rounded-lg max-h-24 mt-4">
           <InputField
             label="Email"
@@ -289,13 +288,11 @@ export default function SignUp() {
             <Button text="Get Started" type="submit" onButtonPressed={emailCheck} size="lg" />
           </div>
         </div>
-      </form>
     </div>
   );
 
   // Step 2 of the signup process (enter the email verification code)
   const step2 = (
-    <form onSubmit={(e) => {e.preventDefault();}}>
       <div className="bg-bunker w-max mx-auto h-7/12 pt-10 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-16">
         <p className="text-l flex justify-center text-gray-400">
           {'We\'ve'} sent a verification email to{' '}
@@ -344,12 +341,10 @@ export default function SignUp() {
           </p>
         </div>
       </div>
-    </form>
   );
 
   // Step 3 of the signup process (enter the rest of the impformation)
   const step3 = (
-    <form onSubmit={(e) => {e.preventDefault();}}>
       <div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-36 md:mb-16">
         <p className="text-4xl font-bold flex justify-center mb-6 text-gray-400 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
           Almost there!
@@ -481,12 +476,10 @@ export default function SignUp() {
           />
         </div>
       </div>
-    </form>
   );
 
   // Step 4 of the sign up process (download the emergency kit pdf)
   const step4 = (
-    <form onSubmit={(e) => {e.preventDefault();}}>
       <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg mx-auto h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
         <p className="text-4xl text-center font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
           Save your Emergency Kit
@@ -536,7 +529,6 @@ export default function SignUp() {
 				</div> */}
         </div>
       </div>
-    </form>
   );
 
   return (
@@ -565,7 +557,9 @@ export default function SignUp() {
             />
           </div>
         </Link>
-        {step == 1 ? step1 : step == 2 ? step2 : step == 3 ? step3 : step4}
+        <form onSubmit={(e) => {e.preventDefault();}}>
+          {step == 1 ? step1 : step == 2 ? step2 : step == 3 ? step3 : step4}
+        </form>
       </div>
     </div>
   );
