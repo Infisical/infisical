@@ -91,7 +91,7 @@ var loginCmd = &cobra.Command{
 
 		err = util.StoreUserCredsInKeyRing(userCredentialsToBeStored)
 		if err != nil {
-			log.Errorln("Unable to store your credentials in system key ring")
+			log.Errorln("Unable to store your credentials in system key ring. Run with flag -d to see full logs")
 			log.Debugln(err)
 			return
 		}

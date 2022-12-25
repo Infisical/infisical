@@ -15,8 +15,6 @@ func GetCurrentVaultBackend() (keyring.BackendType, error) {
 	}
 
 	if configFile.VaultBackendType == "" {
-		if keyring.AvailableBackends()[0] == keyring.FileBackend {
-		}
 		return keyring.AvailableBackends()[0], nil
 	}
 
