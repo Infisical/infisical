@@ -244,7 +244,7 @@ export const getSecretVersions = async (req: Request, res: Response) => {
 		.limit(limit);
 
 	} catch (err) {
-		Sentry.setUser({ email: req.serviceToken.user.email });
+		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
 		return res.status(400).send({
 			message: 'Failed to get secret versions'
