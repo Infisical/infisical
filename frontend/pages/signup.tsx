@@ -266,7 +266,7 @@ export default function SignUp() {
       </p>
       <div className="flex flex-col items-center justify-center w-full md:pb-2 max-h-24 max-w-md mx-auto pt-2">
         <Link href="/login">
-          <button className="w-max pb-3 hover:opacity-90 duration-200">
+          <button type="button" className="w-max pb-3 hover:opacity-90 duration-200">
             <u className="font-normal text-md text-sky-500">
               Have an account? Log in
             </u>
@@ -286,7 +286,7 @@ export default function SignUp() {
           autoComplete="username"
         />
       </div>
-      {/* <div className='flex flex-row justify-left mt-4 max-w-md mx-auto'>
+        {/* <div className='flex flex-row justify-left mt-4 max-w-md mx-auto'>
           <Checkbox className="mr-4"/>
           <p className='text-sm'>I do not want to receive emails about Infisical and its products.</p>
         </div> */}
@@ -296,7 +296,7 @@ export default function SignUp() {
           acknowledged the Privacy Policy.
         </p>
         <div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
-          <Button loading={isLoading} text="Get Started" onButtonPressed={emailCheck} size="lg" />
+          <Button text="Get Started" type="submit" onButtonPressed={emailCheck} size="lg" />
         </div>
       </div>
     </div>
@@ -512,35 +512,17 @@ export default function SignUp() {
         It contains your Secret Key which we cannot access or recover for you if
         you lose it.
       </div>
-      <div className="flex flex-row items-center justify-center w-3/4 md:w-full md:p-2 max-h-28 max-w-max mx-auto mt-6 py-1 md:mt-4 text-lg text-center md:text-left">
-        <Button
-          text="Download PDF"
-          onButtonPressed={async () => {
-            await issueBackupKey({
-              email,
-              password,
-              personalName: firstName + ' ' + lastName,
-              setBackupKeyError,
-              setBackupKeyIssued,
-            });
-            const userWorkspaces = await getWorkspaces();
-            const userWorkspace = userWorkspaces[0]._id;
-            router.push('/home/' + userWorkspace);
-          }}
-          size="lg"
-        />
-        {/* <div
-					className="text-l mt-4 text-lg text-gray-400 hover:text-gray-300 duration-200 bg-white/5 px-8 hover:bg-white/10 py-3 rounded-md cursor-pointer"
-					onClick={() => {
-						if (localStorage.getItem("projectData.id")) {
-							router.push("/dashboard/" + localStorage.getItem("projectData.id"));
-						} else {
-							router.push("/noprojects")
-						}
-					}}
-				>
-					Later
-				</div> */}
+      <div
+        className="text-l mt-4 text-lg text-gray-400 hover:text-gray-300 duration-200 bg-white/5 px-8 hover:bg-white/10 py-3 rounded-md cursor-pointer"
+        onClick={() => {
+          if (localStorage.getItem("projectData.id")) {
+            router.push("/dashboard/" + localStorage.getItem("projectData.id"));
+          } else {
+            router.push("/noprojects")
+          }
+        }}
+      >
+        Later
       </div>
     </div>
   );
@@ -571,7 +553,9 @@ export default function SignUp() {
             />
           </div>
         </Link>
-        {step == 1 ? step1 : step == 2 ? step2 : step == 3 ? step3 : step4}
+        <form onSubmit={(e) => e.preventDefault()}>
+          {step == 1 ? step1 : step == 2 ? step2 : step == 3 ? step3 : step4}
+        </form>
       </div>
     </div>
   );

@@ -96,6 +96,7 @@ const InputField = (
           />
           {props.label?.includes('Password') && (
             <button
+              type="button"
               onClick={() => {
                 setPasswordVisible(!passwordVisible);
               }}
