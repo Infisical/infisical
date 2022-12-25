@@ -24,7 +24,7 @@ import BottonRightPopup from '~/components/basic/popups/BottomRightPopup';
 import { useNotificationContext } from '~/components/context/Notifications/NotificationProvider';
 import DashboardInputField from '~/components/dashboard/DashboardInputField';
 import DropZone from '~/components/dashboard/DropZone';
-import SideBar from '~/components/dashboard/Sidebar';
+import SideBar from '~/components/dashboard/SideBar';
 import NavHeader from '~/components/navigation/NavHeader';
 import getSecretsForProject from '~/components/utilities/secrets/getSecretsForProject';
 import pushKeys from '~/components/utilities/secrets/pushKeys';
@@ -36,6 +36,26 @@ import checkUserAction from '../api/userActions/checkUserAction';
 import registerUserAction from '../api/userActions/registerUserAction';
 import getWorkspaces from '../api/workspace/getWorkspaces';
 
+
+interface SecretDataProps {
+  type: 'personal' | 'shared';
+  pos: number;
+  key: string;
+  value: string;
+  id: string;
+}
+
+interface KeyPairProps {
+  keyPair: SecretDataProps;
+  deleteRow: (id: string) => void;
+  modifyKey: (value: string, position: number) => void; 
+  modifyValue: (value: string, position: number) => void; 
+  isBlurred: boolean;
+  duplicates: any[];
+  toggleSidebar: (id: string) => void;
+  sidebarSecretId: string;
+}
+
 /**
  * This component represent a single row for an environemnt variable on the dashboard
  * @param {object} obj
@@ -43,9 +63,10 @@ import getWorkspaces from '../api/workspace/getWorkspaces';
  * @param {function} obj.deleteRow - a function to delete a certain keyPair
  * @param {function} obj.modifyKey - modify the key of a certain environment variable
  * @param {function} obj.modifyValue - modify the value of a certain environment variable
- * @param {function} obj.modifyVisibility - switch between public/private visibility
  * @param {boolean} obj.isBlurred - if the blurring setting is turned on
  * @param {string[]} obj.duplicates - list of all the duplicates secret names on the dashboard
+ * @param {string[]} obj.toggleSidebar - open/close/switch sidebar
+ * @param {string[]} obj.sidebarSecretId - the id of a secret for the side bar is displayed
  * @returns
  */
 const KeyPair = ({
@@ -53,16 +74,20 @@ const KeyPair = ({
   deleteRow,
   modifyKey,
   modifyValue,
-  modifyVisibility,
   isBlurred,
   duplicates,
   toggleSidebar,
-  sidebarSecretNumber
-}) => {
-
+  sidebarSecretId
+}: KeyPairProps) => {
   return (
-    <div className={`mx-1 flex flex-col items-center ml-1 ${keyPair.pos == sidebarSecretNumber && "bg-mineshaft-500 duration-200"} rounded-md`}>
+    <div className={`mx-1 flex flex-col items-center ml-1 ${keyPair.id == sidebarSecretId && "bg-mineshaft-500 duration-200"} rounded-md`}>
       <div className="relative flex flex-row justify-between w-full max-w-5xl mr-auto max-h-14 my-1 items-start px-1">
+      {keyPair.type == "personal" && <div className="group font-normal group absolute top-[1rem] left-[0.2rem] z-40 inline-block text-gray-300 underline hover:text-primary duration-200">
+        <div className='w-1 h-1 rounded-full bg-primary z-40'></div>
+        <span className="absolute z-50 hidden group-hover:flex group-hover:animate-popdown duration-200 w-[10.5rem] -left-[0.4rem] -top-[1.7rem] translate-y-full px-2 py-2 bg-mineshaft-500 rounded-b-md rounded-r-md text-center text-gray-100 text-sm after:content-[''] after:absolute after:left-0 after:bottom-[100%] after:-translate-x-0 after:border-8 after:border-x-transparent after:border-t-transparent after:border-b-mineshaft-500">
+          This secret is overriden
+        </span>
+      </div>}
         <div className="min-w-xl w-96">
           <div className="flex pr-1 items-center rounded-lg mt-4 md:mt-0 max-h-16">
             <DashboardInputField
@@ -71,6 +96,7 @@ const KeyPair = ({
               position={keyPair.pos}
               value={keyPair.key}
               duplicates={duplicates}
+              blurred={false}
             />
           </div>
         </div>
@@ -82,11 +108,12 @@ const KeyPair = ({
               position={keyPair.pos}
               value={keyPair.value}
               blurred={isBlurred}
-              override={keyPair.value == "user1234" && true}
+              override={keyPair.type == "personal"}
+              duplicates={[]}
             />
           </div>
         </div>
-        <div onClick={() => toggleSidebar(keyPair.pos)} className="cursor-pointer w-9 h-9 bg-mineshaft-700 hover:bg-chicago-700 rounded-md flex flex-row justify-center items-center duration-200">
+        <div onClick={() => toggleSidebar(keyPair.id)} className="cursor-pointer w-9 h-9 bg-mineshaft-700 hover:bg-chicago-700 rounded-md flex flex-row justify-center items-center duration-200">
           <FontAwesomeIcon
             className="text-gray-300 px-2.5 text-lg mt-0.5"
             icon={faEllipsis}
@@ -106,13 +133,32 @@ const KeyPair = ({
   );
 };
 
+
+/**
+ * this function finds the teh duplicates in an array
+ * @param arr - array of anything (e.g., with secret keys and types (personal/shared))
+ * @returns - a list with duplicates
+ */
+function findDuplicates(arr: any[]) {
+  const map = new Map();
+  return arr.filter((item) => {
+    if (map.has(item)) {
+      map.set(item, false);
+      return true;
+    } else {
+      map.set(item, true);
+      return false;
+    }
+  });
+}
+
 /**
  * This is the main component for the dashboard (aka the screen with all the encironemnt variable & secrets)
  * @returns
  */
 export default function Dashboard() {
-  const [data, setData] = useState();
-  const [fileState, setFileState] = useState([]);
+  const [data, setData] = useState<SecretDataProps[] | null>();
+  const [fileState, setFileState] = useState<SecretDataProps[]>([]);
   const [buttonReady, setButtonReady] = useState(false);
   const router = useRouter();
   const [workspaceId, setWorkspaceId] = useState('');
@@ -132,7 +178,7 @@ export default function Dashboard() {
   const [sortMethod, setSortMethod] = useState('alphabetical');
   const [checkDocsPopUpVisible, setCheckDocsPopUpVisible] = useState(false);
   const [hasUserEverPushed, setHasUserEverPushed] = useState(false);
-  const [sidebarSecretNumber, toggleSidebar] = useState(-1);
+  const [sidebarSecretId, toggleSidebar] = useState("None");
 
   const { createNotification } = useNotificationContext();
 
@@ -155,7 +201,7 @@ export default function Dashboard() {
   useEffect(() => {
     const warningText =
       'Do you want to save your results before leaving this page?';
-    const handleWindowClose = (e) => {
+    const handleWindowClose = (e: any) => {
       if (!buttonReady) return;
       e.preventDefault();
       return (e.returnValue = warningText);
@@ -171,18 +217,18 @@ export default function Dashboard() {
   /**
    * Reorder rows alphabetically or in the opprosite order
    */
-  const reorderRows = (dataToReorder) => {
+  const reorderRows = (dataToReorder: SecretDataProps[] | 1) => {
     setSortMethod((prevSort) =>
       prevSort == 'alphabetical' ? '-alphabetical' : 'alphabetical'
     );
 
-    sortValuesHandler(dataToReorder, "");
+    sortValuesHandler(dataToReorder, undefined);
   };
 
   useEffect(() => {
     (async () => {
       try {
-        let userWorkspaces = await getWorkspaces();
+        const userWorkspaces = await getWorkspaces();
         const listWorkspaces = userWorkspaces.map((workspace) => workspace._id);
         if (
           !listWorkspaces.includes(router.asPath.split('/')[2].split('?')[0])
@@ -194,31 +240,31 @@ export default function Dashboard() {
           router.push(router.asPath.split('?')[0] + '?' + env);
         }
         setBlurred(true);
-        setWorkspaceId(router.query.id);
+        setWorkspaceId(String(router.query.id));
 
         const dataToSort = await getSecretsForProject({
           env,
           setFileState,
           setIsKeyAvailable,
           setData,
-          workspaceId: router.query.id
+          workspaceId: String(router.query.id)
         });
         reorderRows(dataToSort);
 
         const user = await getUser();
         setIsNew(
-          (Date.parse(new Date()) - Date.parse(user.createdAt)) / 60000 < 3
+          (Date.parse(String(new Date())) - Date.parse(user.createdAt)) / 60000 < 3
             ? true
             : false
         );
 
-        let userAction = await checkUserAction({
+        const userAction = await checkUserAction({
           action: 'first_time_secrets_pushed'
         });
         setHasUserEverPushed(userAction ? true : false);
       } catch (error) {
         console.log('Error', error);
-        setData([]);
+        setData(undefined);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -227,16 +273,23 @@ export default function Dashboard() {
   const addRow = () => {
     setIsNew(false);
     setData([
-      ...data,
+      ...data!,
       {
         id: guidGenerator(),
-        pos: data.length,
+        pos: data!.length,
         key: '',
         value: '',
         type: 'shared'
       }
     ]);
   };
+
+  interface overrideProps {
+    id: string;
+    keyName: string;
+    value: string;
+    pos: number;
+  }
 
   /**
    * This function add an ovverrided version of a certain secret to the current user
@@ -246,10 +299,10 @@ export default function Dashboard() {
    * @param {string} obj.value - value of this secret
    * @param {string} obj.pos - position of this secret on the dashboard 
    */
-  const addOverride = ({ id, keyName, value, pos }) => {
+  const addOverride = ({ id, keyName, value, pos }: overrideProps) => {
     setIsNew(false);
-    const tempdata = [
-      ...data,
+    const tempdata: SecretDataProps[] | 1 = [
+      ...data!,
       {
         id: id,
         pos: pos,
@@ -261,54 +314,55 @@ export default function Dashboard() {
     sortValuesHandler(tempdata, sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical");
   };
 
-  const deleteRow = (id) => {
+  const deleteRow = (id: string) => {
     setButtonReady(true);
-    setData(data.filter((row) => row.id !== id));
+    setData(data!.filter((row: SecretDataProps) => row.id !== id));
   };
 
   /**
    * This function deleted the override of a certain secrer
    * @param {string} id - id of a secret to be deleted
    */
-  const deleteOverride = (id) => {
+  const deleteOverride = (id: string) => {
     setButtonReady(true);
-    setData(data.filter((row) => !(row.id == id && row.type == 'personal')));
+    const tempData = data!.filter((row: SecretDataProps) => !(row.id == id && row.type == 'personal'))
+    sortValuesHandler(tempData, sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical")
   };
 
-  const modifyValue = (value, pos) => {
+  const modifyValue = (value: string, pos: number) => {
     setData((oldData) => {
-      oldData[pos].value = value;
-      return [...oldData];
+      oldData![pos].value = value;
+      return [...oldData!];
     });
     setButtonReady(true);
   };
 
-  const modifyKey = (value, pos) => {
+  const modifyKey = (value: string, pos: number) => {
     setData((oldData) => {
-      oldData[pos].key = value;
-      return [...oldData];
+      oldData![pos].key = value;
+      return [...oldData!];
     });
     setButtonReady(true);
   };
 
-  const modifyVisibility = (value, pos) => {
+  const modifyVisibility = (value: "shared" | "personal", pos: number) => {
     setData((oldData) => {
-      oldData[pos].type = value;
-      return [...oldData];
+      oldData![pos].type = value;
+      return [...oldData!];
     });
     setButtonReady(true);
   };
 
   // For speed purposes and better perforamance, we are using useCallback
-  const listenChangeValue = useCallback((value, pos) => {
+  const listenChangeValue = useCallback((value: string, pos: number) => {
     modifyValue(value, pos);
   }, []);
 
-  const listenChangeKey = useCallback((value, pos) => {
+  const listenChangeKey = useCallback((value: string, pos: number) => {
     modifyKey(value, pos);
   }, []);
 
-  const listenChangeVisibility = useCallback((value, pos) => {
+  const listenChangeVisibility = useCallback((value: "shared" | "personal", pos: number) => {
     modifyVisibility(value, pos);
   }, []);
 
@@ -317,21 +371,16 @@ export default function Dashboard() {
    */
   const savePush = async () => {
     // Format the new object with environment variables
-    let obj = Object.assign(
+    const obj = Object.assign(
       {},
-      ...data.map((row) => ({ [row.key]: [row.value, row.type] }))
+      ...data!.map((row: SecretDataProps) => ({ [row.type.charAt(0) + row.key]: [row.value, row.type] }))
     );
 
     // Checking if any of the secret keys start with a number - if so, don't do anything
     const nameErrors = !Object.keys(obj)
-      .map((key) => !isNaN(key.charAt(0)))
+      .map((key) => !isNaN(Number(key[0].charAt(0))))
       .every((v) => v === false);
-    const duplicatesExist =
-      data
-        ?.map((item) => item.key)
-        .filter(
-          (item, index) => index !== data?.map((item) => item.key).indexOf(item)
-        ).length > 0;
+    const duplicatesExist = findDuplicates(data!.map((item: SecretDataProps) => [item.key, item.type])).length > 0;
 
     if (nameErrors) {
       return createNotification({
@@ -347,9 +396,11 @@ export default function Dashboard() {
       });
     }
 
+    console.log('pushing', obj)
+
     // Once "Save changed is clicked", disable that button
     setButtonReady(false);
-    pushKeys({ obj, workspaceId: router.query.id, env });
+    pushKeys({ obj, workspaceId: String(router.query.id), env });
 
     // If this user has never saved environment variables before, show them a prompt to read docs
     if (!hasUserEverPushed) {
@@ -358,8 +409,8 @@ export default function Dashboard() {
     }
   };
 
-  const addData = (newData) => {
-    setData(data.concat(newData));
+  const addData = (newData: SecretDataProps[]) => {
+    setData(data!.concat(newData));
     setButtonReady(true);
   };
 
@@ -367,38 +418,39 @@ export default function Dashboard() {
     setBlurred(!blurred);
   };
 
-  const sortValuesHandler = (dataToSort, specificSortMethod) => {
-    const howToSort = specificSortMethod != "" ? specificSortMethod : sortMethod
-    const sortedData = (dataToSort != 1 ? dataToSort : data)
+  const sortValuesHandler = (dataToSort: SecretDataProps[] | 1, specificSortMethod?: 'alphabetical' | '-alphabetical') => {
+    const howToSort = specificSortMethod == undefined ? sortMethod : specificSortMethod;
+    const sortedData = (dataToSort != 1 ? dataToSort : data)!
     .sort((a, b) =>
       howToSort == 'alphabetical'
         ? a.key.localeCompare(b.key)
         : b.key.localeCompare(a.key)
     )
-    .map((item, index) => {
+    .map((item: SecretDataProps, index: number) => {
       return {
         ...item,
         pos: index
       };
     });
+    console.log('override', sortedData)
 
     setData(sortedData);
   };
 
   // This function downloads the secrets as a .env file
   const download = () => {
-    const file = data
-      .map((item) => [item.key, item.value].join('='))
+    const file = data!
+      .map((item: SecretDataProps) => [item.key, item.value].join('='))
       .join('\n');
     const blob = new Blob([file]);
     const fileDownloadUrl = URL.createObjectURL(blob);
-    let alink = document.createElement('a');
+    const alink = document.createElement('a');
     alink.href = fileDownloadUrl;
     alink.download = envMapping[env] + '.env';
     alink.click();
   };
 
-  const deleteCertainRow = (id) => {
+  const deleteCertainRow = (id: string) => {
     deleteRow(id);
   };
 
@@ -406,15 +458,17 @@ export default function Dashboard() {
    * This function copies the project id to the clipboard
    */
   function copyToClipboard() {
-    var copyText = document.getElementById('myInput');
+    const copyText = document.getElementById('myInput');
+    
+    if (copyText) {
+      copyText.select();
+      // copyText.setSelectionRange(0, 99999); // For mobile devices
 
-    copyText.select();
-    copyText.setSelectionRange(0, 99999); // For mobile devices
-
-    navigator.clipboard.writeText(copyText.value);
-
-    setProjectIdCopied(true);
-    setTimeout(() => setProjectIdCopied(false), 2000);
+      navigator.clipboard.writeText(copyText.value);
+  
+      setProjectIdCopied(true);
+      setTimeout(() => setProjectIdCopied(false), 2000);
+    }
   }
 
   return data ? (
@@ -430,14 +484,15 @@ export default function Dashboard() {
         />
       </Head>
       <div className="flex flex-row">
-        {sidebarSecretNumber != -1 && <SideBar 
+        {sidebarSecretId != "None" && <SideBar 
           toggleSidebar={toggleSidebar} 
-          data={data.filter(row => row.pos == sidebarSecretNumber)} 
+          data={data.filter((row: SecretDataProps) => row.id == sidebarSecretId)} 
           modifyKey={listenChangeKey} 
           modifyValue={listenChangeValue} 
-          modifyVisibility={listenChangeVisibility} 
           addOverride={addOverride}
           deleteOverride={deleteOverride}
+          buttonReady={buttonReady}
+          savePush={savePush}
         />}
         <div className="w-full max-h-96 pb-2">
           <NavHeader pageName="Secrets" isProjectRelated={true} />
@@ -461,7 +516,6 @@ export default function Dashboard() {
                   data={['Development', 'Staging', 'Production', 'Testing']}
                   // ref={useRef(123)}
                   onChange={setEnv}
-                  className="z-40"
                 />
               )}
             </div>
@@ -516,7 +570,6 @@ export default function Dashboard() {
                       data={['Development', 'Staging', 'Production', 'Testing']}
                       // ref={useRef(123)}
                       onChange={setEnv}
-                      className="z-40"
                     />
                     <div className="h-10 w-full bg-white/5 hover:bg-white/10 ml-2 flex items-center rounded-md flex flex-row items-center">
                       <FontAwesomeIcon
@@ -599,17 +652,10 @@ export default function Dashboard() {
                         deleteRow={deleteCertainRow}
                         modifyValue={listenChangeValue}
                         modifyKey={listenChangeKey}
-                        modifyVisibility={listenChangeVisibility}
                         isBlurred={blurred}
-                        duplicates={data
-                          ?.map((item) => item.key)
-                          .filter(
-                            (item, index) =>
-                              index !==
-                              data?.map((item) => item.key).indexOf(item)
-                          )}
+                        duplicates={findDuplicates(data?.map((item) => [item.key, item.type]))}
                         toggleSidebar={toggleSidebar}
-                        sidebarSecretNumber={sidebarSecretNumber}
+                        sidebarSecretId={sidebarSecretId}
                       />
                     ))}
                   </div>
@@ -628,30 +674,19 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-xl text-gray-400 max-w-5xl mt-28">
-                {fileState.message != "There's nothing to pull" &&
-                  fileState.message != undefined && (
-                    <FontAwesomeIcon
-                      className="text-7xl mb-8"
-                      icon={faFolderOpen}
-                    />
-                  )}
-                {(fileState.message == "There's nothing to pull" ||
-                  fileState.message == undefined) &&
-                  isKeyAvailable && (
-                    <DropZone
-                      setData={setData}
-                      setErrorDragAndDrop={setErrorDragAndDrop}
-                      createNewFile={addRow}
-                      errorDragAndDrop={errorDragAndDrop}
-                      setButtonReady={setButtonReady}
-                      numCurrentRows={data.length}
-                    />
-                  )}
-                {fileState.message ==
-                  'Failed membership validation for workspace' && (
-                  <p>You are not authorized to view this project.</p>
+                {isKeyAvailable && (
+                  <DropZone
+                    setData={setData}
+                    setErrorDragAndDrop={setErrorDragAndDrop}
+                    createNewFile={addRow}
+                    errorDragAndDrop={errorDragAndDrop}
+                    setButtonReady={setButtonReady}
+                    numCurrentRows={data.length}
+                    keysExist={false}
+                  />
                 )}
-                {fileState.message == 'Access needed to pull the latest file' ||
+                {
+                // fileState.message == 'Access needed to pull the latest file' ||
                   (!isKeyAvailable && (
                     <>
                       <FontAwesomeIcon

@@ -16,7 +16,7 @@ type ButtonProps = {
   size: string;
   icon?: IconProp;
   active?: boolean;
-  iconDisabled?: string;
+  iconDisabled?: IconProp;
   textDisabled?: string;
 };
 

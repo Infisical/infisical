@@ -8,7 +8,7 @@ import { Menu, Transition } from '@headlessui/react';
  * This is the menu that is used to (re)generate secrets (currently we only have ranom hex, in future we will have more options)
  * @returns the popup-menu for randomly generating secrets
  */
-const GenerateSecretMenu = () => {
+const GenerateSecretMenu = ({ modifyValue, position }: { modifyValue: (value: string, position: number) => void; position: number; }) => {
   const [randomStringLength, setRandomStringLength] = useState(32);
 
   return <Menu as="div" className="relative inline-block text-left">
@@ -36,12 +36,12 @@ const GenerateSecretMenu = () => {
             } else if (randomStringLength < 2) {
               setRandomStringLength(2);
             } else {
-              // modifyValue(
-              //   [...Array(randomStringLength)]
-              //     .map(() => Math.floor(Math.random() * 16).toString(16))
-              //     .join(''),
-              //   keyPair.pos
-              // );
+              modifyValue(
+                [...Array(randomStringLength)]
+                  .map(() => Math.floor(Math.random() * 16).toString(16))
+                  .join(''),
+                position
+              );
             }
           }}
           className="relative flex flex-row justify-start items-center cursor-pointer select-none py-2 px-2 rounded-md text-gray-400 hover:bg-white/10 duration-200 hover:text-gray-200 w-full"

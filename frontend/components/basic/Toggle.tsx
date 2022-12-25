@@ -28,7 +28,6 @@ interface ToggleProps {
  * @returns 
  */
 export default function Toggle ({ enabled, setEnabled, addOverride, keyName, value, pos, id, deleteOverride }: ToggleProps): JSX.Element {
-  console.log(755, pos, enabled)
   return (
     <Switch
       checked={enabled}
