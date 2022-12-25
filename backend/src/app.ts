@@ -27,7 +27,8 @@ import {
   password as passwordRouter,
   stripe as stripeRouter,
   integration as integrationRouter,
-  integrationAuth as integrationAuthRouter
+  integrationAuth as integrationAuthRouter,
+  apiKey as apiKeyRouter
 } from './routes';
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
@@ -74,7 +75,7 @@ app.use('/api/v1/password', passwordRouter);
 app.use('/api/v1/stripe', stripeRouter);
 app.use('/api/v1/integration', integrationRouter);
 app.use('/api/v1/integration-auth', integrationAuthRouter);
-
+app.use('/api/v1/api-key', apiKeyRouter);
 
 //* Handle unrouted requests and respond with proper error message as well as status code
 app.use((req, res, next)=>{

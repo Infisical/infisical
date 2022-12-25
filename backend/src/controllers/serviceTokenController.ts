@@ -74,3 +74,12 @@ export const createServiceToken = async (req: Request, res: Response) => {
 		token
 	});
 };
+
+/**
+ * SERVICE_TOKEN: <JWT_SERVICE_TOKEN>,<PRIVATE_KEY_SERVICE_TOKEN>
+ * - <JWT_SERVICE_TOKEN> authorizes the service token for "service token"-only endpoints.
+ * - <PRIVATE_KEY_SERVICE_TOKEN> authorizes the service token to pull secrets via that endpoint.
+ * 
+ * 
+ * 
+ */

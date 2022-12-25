@@ -10,7 +10,7 @@ import { body } from 'express-validator';
 import { ADMIN, MEMBER, GRANTED } from '../variables';
 import { serviceTokenController } from '../controllers';
 
-// TODO: revoke service token
+// Note to devs: service-token to be deprecated in favor of api-key
 
 router.get(
 	'/',
