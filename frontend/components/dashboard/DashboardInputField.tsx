@@ -45,7 +45,6 @@ const DashboardInputField = ({
     ref.current.scrollTop = e.currentTarget.scrollTop;
     ref.current.scrollLeft = e.currentTarget.scrollLeft;
   };
-  console.log('rerender', value)
 
   if (type === 'varName') {
     const startsWithNumber = !isNaN(Number(value.charAt(0))) && value != '';
