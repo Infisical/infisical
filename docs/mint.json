@@ -97,7 +97,8 @@
             "cli/commands/export",
             "cli/commands/vault"
           ]
-        }
+        },
+        "cli/faq"
       ]
     },
     {
