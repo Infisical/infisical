@@ -53,6 +53,7 @@ const exchangeRefreshHeroku = async ({
   refreshToken: string;
 }) => {
     let accessToken;
+	//TODO: Refactor code to take advantage of using RequestError. It's possible to create new types of errors for more detailed errors
     try {
         const res = await axios.post(
             INTEGRATION_HEROKU_TOKEN_URL,
