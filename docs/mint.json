@@ -94,7 +94,8 @@
             "cli/commands/login",
             "cli/commands/init",
             "cli/commands/run",
-            "cli/commands/export"
+            "cli/commands/export",
+            "cli/commands/vault"
           ]
         }
       ]
