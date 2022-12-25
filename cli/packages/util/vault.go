@@ -5,13 +5,8 @@ import (
 	"os"
 
 	"github.com/99designs/keyring"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/term"
 )
-
-// Keyring instance
-var keyringInstance keyring.Keyring
-var keyringInstanceConfig keyring.Config
 
 func GetCurrentVaultBackend() (keyring.BackendType, error) {
 	configFile, err := GetConfigFile()
@@ -28,13 +23,13 @@ func GetCurrentVaultBackend() (keyring.BackendType, error) {
 	return configFile.VaultBackendType, nil
 }
 
-func InitKeyRingInstance() {
+func GetKeyRing() (keyring.Keyring, error) {
 	currentVaultBackend, err := GetCurrentVaultBackend()
 	if err != nil {
-		log.Infof("InitKeyRingInstance: unable to get the current vault backend, [err=%s]", err)
+		return nil, fmt.Errorf("GetKeyRing: unable to get the current vault backend, [err=%s]", err)
 	}
 
-	keyringInstanceConfig = keyring.Config{
+	keyringInstanceConfig := keyring.Config{
 		FilePasswordFunc:               fileKeyringPassphrasePrompt,
 		ServiceName:                    SERVICE_NAME,
 		LibSecretCollectionName:        SERVICE_NAME,
@@ -51,10 +46,12 @@ func InitKeyRingInstance() {
 		keyringInstanceConfig.AllowedBackends = []keyring.BackendType{keyring.BackendType(currentVaultBackend)}
 	}
 
-	keyringInstance, err = keyring.Open(keyringInstanceConfig)
+	keyringInstance, err := keyring.Open(keyringInstanceConfig)
 	if err != nil {
-		log.Errorf("InitKeyRingInstance: Unable to create instance of Keyring because of [err=%s]", err)
+		return nil, fmt.Errorf("GetKeyRing: Unable to create instance of Keyring because of [err=%s]", err)
 	}
+
+	return keyringInstance, nil
 }
 
 func fileKeyringPassphrasePrompt(prompt string) (string, error) {
