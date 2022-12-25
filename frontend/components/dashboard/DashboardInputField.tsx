@@ -11,20 +11,21 @@ interface DashboardInputFieldProps {
   onChangeHandler: (value: string, position: number) => void;
   value: string;
   type: 'varName' | 'value';
-  blurred: boolean;
-  duplicates: string[];
+  blurred?: boolean;
+  isDuplicate?: boolean;
   override?: boolean;
 }
 
 /**
  * This component renders the input fields on the dashboard
  * @param {object} obj - the order number of a keyPair
- * @param {number} obj.pos - the order number of a keyPair
+ * @param {number} obj.position - the order number of a keyPair
  * @param {function} obj.onChangeHandler - what happens when the input is modified
  * @param {string} obj.type - whether the input field is for a Key Name or for a Key Value
  * @param {string} obj.value - value of the InputField
  * @param {boolean} obj.blurred - whether the input field should be blurred (behind the gray dots) or not; this can be turned on/off in the dashboard
- * @param {string[]} obj.duplicates - list of all the duplicated key names on the dashboard
+ * @param {boolean} obj.isDuplicate - if the key name is duplicated
+ * @param {boolean} obj.override - whether a secret/row should be displalyed as overriden
  * @returns
  */
 
@@ -34,7 +35,7 @@ const DashboardInputField = ({
   type,
   value,
   blurred,
-  duplicates,
+  isDuplicate,
   override
 }: DashboardInputFieldProps) => {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -44,11 +45,11 @@ const DashboardInputField = ({
     ref.current.scrollTop = e.currentTarget.scrollTop;
     ref.current.scrollLeft = e.currentTarget.scrollLeft;
   };
+  console.log('rerender', value)
 
   if (type === 'varName') {
     const startsWithNumber = !isNaN(Number(value.charAt(0))) && value != '';
-    const hasDuplicates = duplicates?.includes(value);
-    const error = startsWithNumber || hasDuplicates;
+    const error = startsWithNumber || isDuplicate;
 
     return (
       <div className="flex-col w-full">
@@ -74,7 +75,7 @@ const DashboardInputField = ({
             Should not start with a number
           </p>
         )}
-        {hasDuplicates && !startsWithNumber && (
+        {isDuplicate && !startsWithNumber && (
           <p className="text-red text-xs mt-0.5 mx-1 mb-2 max-w-xs">
             Secret names should be unique
           </p>
@@ -159,4 +160,8 @@ const DashboardInputField = ({
   return <>Something Wrong</>;
 };
 
-export default React.memo(DashboardInputField);
+function inputPropsAreEqual(prev: DashboardInputFieldProps, next: DashboardInputFieldProps) {
+  return prev.value === next.value && prev.type === next.type && prev.position === next.position && prev.blurred === next.blurred && prev.override === next.override && prev.duplicate === next.duplicate;
+}
+
+export default React.memo(DashboardInputField, inputPropsAreEqual);
