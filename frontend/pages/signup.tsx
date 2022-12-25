@@ -354,176 +354,177 @@ export default function SignUp() {
           Make sure to check your spam inbox.
         </p>
       </div>
+    </div>
   );
 
   // Step 3 of the signup process (enter the rest of the impformation)
   const step3 = (
-      <div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-36 md:mb-16">
-        <p className="text-4xl font-bold flex justify-center mb-6 text-gray-400 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-          Almost there!
-        </p>
-        <div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">
-          <InputField
-            label="First Name"
-            onChangeHandler={setFirstName}
-            type="name"
-            value={firstName}
-            isRequired
-            errorText="Please input your first name."
-            error={firstNameError}
-            autoComplete="given-name"
-          />
-        </div>
-        <div className="mt-2 flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
-          <InputField
-            label="Last Name"
-            onChangeHandler={setLastName}
-            type="name"
-            value={lastName}
-            isRequired
-            errorText="Please input your last name."
-            error={lastNameError}
-            autoComplete="family-name"
-          />
-        </div>
-        <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
-          <InputField
-            label="Password"
-            onChangeHandler={(password: string) => {
-              setPassword(password);
-              passwordCheck({
-                password,
-                setPasswordErrorLength,
-                setPasswordErrorNumber,
-                setPasswordErrorLowerCase,
-                currentErrorCheck: false,
-              });
-            }}
-            type="password"
-            value={password}
-            isRequired
-            error={
-              passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase
-            }
-            autoComplete="new-password"
-            id="new-password"
-          />
-          {passwordErrorLength ||
-          passwordErrorLowerCase ||
-          passwordErrorNumber ? (
-            <div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
-              <div className={`text-gray-400 text-sm mb-1`}>
-                Password should contain at least:
-              </div>
-              <div className="flex flex-row justify-start items-center ml-1">
-                {passwordErrorLength ? (
-                  <FontAwesomeIcon
-                    icon={faX}
-                    className="text-md text-red mr-2.5"
-                  />
-                ) : (
-                  <FontAwesomeIcon
-                    icon={faCheck}
-                    className="text-md text-primary mr-2"
-                  />
-                )}
-                <div
-                  className={`${
-                    passwordErrorLength ? 'text-gray-400' : 'text-gray-600'
-                  } text-sm`}
-                >
-                  14 characters
-                </div>
-              </div>
-              <div className="flex flex-row justify-start items-center ml-1">
-                {passwordErrorLowerCase ? (
-                  <FontAwesomeIcon
-                    icon={faX}
-                    className="text-md text-red mr-2.5"
-                  />
-                ) : (
-                  <FontAwesomeIcon
-                    icon={faCheck}
-                    className="text-md text-primary mr-2"
-                  />
-                )}
-                <div
-                  className={`${
-                    passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'
-                  } text-sm`}
-                >
-                  1 lowercase character
-                </div>
-              </div>
-              <div className="flex flex-row justify-start items-center ml-1">
-                {passwordErrorNumber ? (
-                  <FontAwesomeIcon
-                    icon={faX}
-                    className="text-md text-red mr-2.5"
-                  />
-                ) : (
-                  <FontAwesomeIcon
-                    icon={faCheck}
-                    className="text-md text-primary mr-2"
-                  />
-                )}
-                <div
-                  className={`${
-                    passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'
-                  } text-sm`}
-                >
-                  1 number
-                </div>
+    <div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-36 md:mb-16">
+      <p className="text-4xl font-bold flex justify-center mb-6 text-gray-400 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
+        Almost there!
+      </p>
+      <div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">
+        <InputField
+          label="First Name"
+          onChangeHandler={setFirstName}
+          type="name"
+          value={firstName}
+          isRequired
+          errorText="Please input your first name."
+          error={firstNameError}
+          autoComplete="given-name"
+        />
+      </div>
+      <div className="mt-2 flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
+        <InputField
+          label="Last Name"
+          onChangeHandler={setLastName}
+          type="name"
+          value={lastName}
+          isRequired
+          errorText="Please input your last name."
+          error={lastNameError}
+          autoComplete="family-name"
+        />
+      </div>
+      <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
+        <InputField
+          label="Password"
+          onChangeHandler={(password: string) => {
+            setPassword(password);
+            passwordCheck({
+              password,
+              setPasswordErrorLength,
+              setPasswordErrorNumber,
+              setPasswordErrorLowerCase,
+              currentErrorCheck: false,
+            });
+          }}
+          type="password"
+          value={password}
+          isRequired
+          error={
+            passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase
+          }
+          autoComplete="new-password"
+          id="new-password"
+        />
+        {passwordErrorLength ||
+        passwordErrorLowerCase ||
+        passwordErrorNumber ? (
+          <div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
+            <div className={`text-gray-400 text-sm mb-1`}>
+              Password should contain at least:
+            </div>
+            <div className="flex flex-row justify-start items-center ml-1">
+              {passwordErrorLength ? (
+                <FontAwesomeIcon
+                  icon={faX}
+                  className="text-md text-red mr-2.5"
+                />
+              ) : (
+                <FontAwesomeIcon
+                  icon={faCheck}
+                  className="text-md text-primary mr-2"
+                />
+              )}
+              <div
+                className={`${
+                  passwordErrorLength ? 'text-gray-400' : 'text-gray-600'
+                } text-sm`}
+              >
+                14 characters
               </div>
             </div>
-          ) : (
-            <div className="py-2"></div>
-          )}
-        </div>
-        <div className="flex flex-col items-center justify-center md:p-2 max-h-48 max-w-max mx-auto text-lg px-2 py-3">
-          <Button
-            text="Sign Up"
-            loading={isLoading}
-            onButtonPressed={signupErrorCheck}
-            size="lg"
-          />
-        </div>
+            <div className="flex flex-row justify-start items-center ml-1">
+              {passwordErrorLowerCase ? (
+                <FontAwesomeIcon
+                  icon={faX}
+                  className="text-md text-red mr-2.5"
+                />
+              ) : (
+                <FontAwesomeIcon
+                  icon={faCheck}
+                  className="text-md text-primary mr-2"
+                />
+              )}
+              <div
+                className={`${
+                  passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'
+                } text-sm`}
+              >
+                1 lowercase character
+              </div>
+            </div>
+            <div className="flex flex-row justify-start items-center ml-1">
+              {passwordErrorNumber ? (
+                <FontAwesomeIcon
+                  icon={faX}
+                  className="text-md text-red mr-2.5"
+                />
+              ) : (
+                <FontAwesomeIcon
+                  icon={faCheck}
+                  className="text-md text-primary mr-2"
+                />
+              )}
+              <div
+                className={`${
+                  passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'
+                } text-sm`}
+              >
+                1 number
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="py-2"></div>
+        )}
       </div>
+      <div className="flex flex-col items-center justify-center md:p-2 max-h-48 max-w-max mx-auto text-lg px-2 py-3">
+        <Button
+          text="Sign Up"
+          loading={isLoading}
+          onButtonPressed={signupErrorCheck}
+          size="lg"
+        />
+      </div>
+    </div>
   );
 
   // Step 4 of the sign up process (download the emergency kit pdf)
   const step4 = (
-      <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg mx-auto h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
-        <p className="text-4xl text-center font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-          Save your Emergency Kit
-        </p>
-        <div className="flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2">
-          <div>
-            If you get locked out of your account, your Emergency Kit is the only
-            way to sign in.
-          </div>
-          <div className="mt-3">
-            We recommend you download it and keep it somewhere safe.
-          </div>
+    <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg mx-auto h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
+      <p className="text-4xl text-center font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
+        Save your Emergency Kit
+      </p>
+      <div className="flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2">
+        <div>
+          If you get locked out of your account, your Emergency Kit is the only
+          way to sign in.
         </div>
-        <div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-400 rounded-md max-w-xs md:max-w-md mx-auto mt-4">
-          <FontAwesomeIcon icon={faWarning} className="ml-2 mr-4 text-4xl" />
-          It contains your Secret Key which we cannot access or recover for you if
-          you lose it.
-        </div>
-					className="text-l mt-4 text-lg text-gray-400 hover:text-gray-300 duration-200 bg-white/5 px-8 hover:bg-white/10 py-3 rounded-md cursor-pointer"
-					onClick={() => {
-						if (localStorage.getItem("projectData.id")) {
-							router.push("/dashboard/" + localStorage.getItem("projectData.id"));
-						} else {
-							router.push("/noprojects")
-						}
-					}}
-				>
-					Later
-				</div> */}
+        <div className="mt-3">
+          We recommend you download it and keep it somewhere safe.
         </div>
       </div>
+      <div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-400 rounded-md max-w-xs md:max-w-md mx-auto mt-4">
+        <FontAwesomeIcon icon={faWarning} className="ml-2 mr-4 text-4xl" />
+        It contains your Secret Key which we cannot access or recover for you if
+        you lose it.
+      </div>
+      <div
+        className="text-l mt-4 text-lg text-gray-400 hover:text-gray-300 duration-200 bg-white/5 px-8 hover:bg-white/10 py-3 rounded-md cursor-pointer"
+        onClick={() => {
+          if (localStorage.getItem("projectData.id")) {
+            router.push("/dashboard/" + localStorage.getItem("projectData.id"));
+          } else {
+            router.push("/noprojects")
+          }
+        }}
+      >
+        Later
+      </div>
+    </div>
   );
 
   return (
