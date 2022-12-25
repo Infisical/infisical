@@ -130,18 +130,4 @@ router.get(
 	workspaceController.getWorkspaceServiceTokens
 );
 
-router.get(
-	'/:workspaceId/secret-snapshots',
-	requireAuth,
-	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [GRANTED]
-	}),
-	param('workspaceId').exists().trim(),
-	query('offset').exists().isInt(),
-	query('limit').exists().isInt(),
-	validateRequest,
-	workspaceController.getWorkspaceSecretSnapshots
-);
-
 export default router;

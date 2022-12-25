@@ -6,7 +6,7 @@ import {
 	ENV_TESTING,
 	ENV_STAGING,
 	ENV_PROD
-} from '../variables';
+} from '../../variables';
 
 export interface ISecretSnapshot {
     workspace: Types.ObjectId;

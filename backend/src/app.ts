@@ -11,6 +11,11 @@ import { PORT, NODE_ENV, SITE_URL } from './config';
 import { apiLimiter } from './helpers/rateLimiter';
 
 import {
+  workspace as eeWorkspaceRouter,
+  secret as eeSecretRouter
+} from './ee/routes';
+
+import {
   signup as signupRouter,
   auth as authRouter,
   bot as botRouter,
@@ -29,6 +34,7 @@ import {
   integration as integrationRouter,
   integrationAuth as integrationAuthRouter
 } from './routes';
+
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
 import { requestErrorHandler } from './middleware/requestErrorHandler';
@@ -55,6 +61,10 @@ if (NODE_ENV === 'production') {
   app.use(apiLimiter);
   app.use(helmet());
 }
+
+// /ee routers
+app.use('/api/v1/secret', eeSecretRouter);
+app.use('/api/v1/workspace', eeWorkspaceRouter);
 
 // routers
 app.use('/api/v1/signup', signupRouter);

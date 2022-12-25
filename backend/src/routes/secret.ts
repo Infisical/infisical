@@ -7,8 +7,8 @@ import {
 	validateRequest
 } from '../middleware';
 import { body, query, param } from 'express-validator';
-import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../variables';
 import { secretController } from '../controllers';
+import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../variables';
 
 router.post(
 	'/:workspaceId',
@@ -48,20 +48,6 @@ router.get(
 	param('workspaceId').exists().trim(),
 	validateRequest,
 	secretController.pullSecretsServiceToken
-);
-
-router.get(
-	'/:secretId/secret-versions',
-	requireAuth,
-	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [COMPLETED, GRANTED]
-	}),
-	param('secretId').exists().trim(),
-	query('offset').exists().isInt(),
-	query('limit').exists().isInt(),
-	validateRequest,
-	secretController.getSecretVersions
 );
 
 export default router;
