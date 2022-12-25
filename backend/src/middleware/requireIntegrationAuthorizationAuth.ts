@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { IntegrationAuth } from '../models';
 import { IntegrationService } from '../services';
 import { validateMembership } from '../helpers/membership';
+import { UnauthorizedRequestError } from '../utils/errors';
 
 /**
  * Validate if user on request is a member of workspace with proper roles associated
@@ -22,41 +23,33 @@ const requireIntegrationAuthorizationAuth = ({
 	attachAccessToken?: boolean;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
-		try {
-			const { integrationAuthId } = req.params;
+		const { integrationAuthId } = req.params;
 
-			const integrationAuth = await IntegrationAuth.findOne({
-				_id: integrationAuthId
-			}).select(
-				'+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt'
-			);
+		const integrationAuth = await IntegrationAuth.findOne({
+			_id: integrationAuthId
+		}).select(
+			'+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt'
+		);
 
-			if (!integrationAuth) {
-				throw new Error('Failed to find integration authorization');
-			}
-			
-			await validateMembership({
-				userId: req.user._id.toString(),
-				workspaceId: integrationAuth.workspace.toString(),
-				acceptedRoles,
-				acceptedStatuses
-			});
+		if (!integrationAuth) {
+			return next(UnauthorizedRequestError({message: 'Failed to locate Integration Authorization credentials'}))
+		}
+		
+		await validateMembership({
+			userId: req.user._id.toString(),
+			workspaceId: integrationAuth.workspace.toString(),
+			acceptedRoles,
+			acceptedStatuses
+		});
 
-			req.integrationAuth = integrationAuth;
-			if (attachAccessToken) {
-				req.accessToken = await IntegrationService.getIntegrationAuthAccess({
-					integrationAuthId: integrationAuth._id.toString()
-				});
-			}
-			
-			return next();
-		} catch (err) {
-			Sentry.setUser(null);
-			Sentry.captureException(err);
-			return res.status(401).send({
-				error: 'Failed (authorization) integration authorizationt'
+		req.integrationAuth = integrationAuth;
+		if (attachAccessToken) {
+			req.accessToken = await IntegrationService.getIntegrationAuthAccess({
+				integrationAuthId: integrationAuth._id.toString()
 			});
 		}
+		
+		return next();
 	};
 };
 

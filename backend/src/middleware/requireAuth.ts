@@ -1,8 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-import * as Sentry from '@sentry/node';
 import { User } from '../models';
 import { JWT_AUTH_SECRET } from '../config';
+import { AccountNotFoundError, BadRequestError, UnauthorizedRequestError } from '../utils/errors';
 
 declare module 'jsonwebtoken' {
 	export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -20,32 +20,25 @@ declare module 'jsonwebtoken' {
  */
 const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
 	// JWT authentication middleware
-	try {
-		if (!req.headers?.authorization)
-			throw new Error('Failed to locate authorization header');
+	const [ AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE ] = <[string, string]>req.headers['authorization']?.split(' ', 2) ?? [null, null]
+	if(AUTH_TOKEN_TYPE === null) return next(BadRequestError({message: `Missing Authorization Header in the request header.`}))
+	if(AUTH_TOKEN_TYPE.toLowerCase() !== 'bearer') return next(BadRequestError({message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.`}))
+	if(AUTH_TOKEN_VALUE === null) return next(BadRequestError({message: 'Missing Authorization Body in the request header'}))
 
-		const token = req.headers.authorization.split(' ')[1];
-		const decodedToken = <jwt.UserIDJwtPayload>(
-			jwt.verify(token, JWT_AUTH_SECRET)
-		);
+	const decodedToken = <jwt.UserIDJwtPayload>(
+		jwt.verify(AUTH_TOKEN_VALUE, JWT_AUTH_SECRET)
+	);
 
-		const user = await User.findOne({
-			_id: decodedToken.userId
-		}).select('+publicKey');
+	const user = await User.findOne({
+		_id: decodedToken.userId
+	}).select('+publicKey');
 
-		if (!user) throw new Error('Failed to authenticate unfound user');
-		if (!user?.publicKey)
-			throw new Error('Failed to authenticate not fully set up account');
+	if (!user) return next(AccountNotFoundError({message: 'Failed to locate User account'}))
+	if (!user?.publicKey)
+		return next(UnauthorizedRequestError({message: 'Unable to authenticate due to partially set up account'}))
 
-		req.user = user;
-		return next();
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		return res.status(401).send({
-			error: 'Failed to authenticate user. Try logging in'
-		});
-	}
+	req.user = user;
+	return next();
 };
 
 export default requireAuth;

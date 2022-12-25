@@ -81,6 +81,7 @@ export default function SignUp() {
   const router = useRouter();
   const [errorLogin, setErrorLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isResendingVerificationEmail, setIsResendingVerificationEmail] = useState(false);
   const [backupKeyError, setBackupKeyError] = useState(false);
   const [verificationToken, setVerificationToken] = useState('');
   const [backupKeyIssued, setBackupKeyIssued] = useState(false);
@@ -247,6 +248,16 @@ export default function SignUp() {
     }
   };
 
+  const resendVerificationEmail = async () => {
+    setIsResendingVerificationEmail(true);
+    setIsLoading(true);
+    await sendVerificationEmail(email);
+    setTimeout(() => {
+      setIsLoading(false);
+      setIsResendingVerificationEmail(false);
+    }, 2000);
+  };
+
   // Step 1 of the sign up process (enter the email or choose google authentication)
   const step1 = (
     <div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-8 md:px-6 mx-1 mb-48 md:mb-16 rounded-xl drop-shadow-xl">
@@ -262,84 +273,86 @@ export default function SignUp() {
           </button>
         </Link>
       </div>
-        <div className="flex items-center justify-center w-5/6 md:w-full m-auto md:p-2 rounded-lg max-h-24 mt-4">
-          <InputField
-            label="Email"
-            onChangeHandler={setEmail}
-            type="email"
-            value={email}
-            placeholder=""
-            isRequired
-            error={emailError}
-            errorText={emailErrorMessage}
-            autoComplete="username"
-          />
-        </div>
+      <div className="flex items-center justify-center w-5/6 md:w-full m-auto md:p-2 rounded-lg max-h-24 mt-4">
+        <InputField
+          label="Email"
+          onChangeHandler={setEmail}
+          type="email"
+          value={email}
+          placeholder=""
+          isRequired
+          error={emailError}
+          errorText={emailErrorMessage}
+          autoComplete="username"
+        />
+      </div>
         {/* <div className='flex flex-row justify-left mt-4 max-w-md mx-auto'>
           <Checkbox className="mr-4"/>
           <p className='text-sm'>I do not want to receive emails about Infisical and its products.</p>
         </div> */}
-        <div className="flex flex-col items-center justify-center w-5/6 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto mt-4 md:mt-4 text-sm text-center md:text-left">
-          <p className="text-gray-400 mt-2 md:mx-0.5">
-            By creating an account, you agree to our Terms and have read and
-            acknowledged the Privacy Policy.
-          </p>
-          <div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
-            <Button text="Get Started" type="submit" onButtonPressed={emailCheck} size="lg" />
-          </div>
+      <div className="flex flex-col items-center justify-center w-5/6 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto mt-4 md:mt-4 text-sm text-center md:text-left">
+        <p className="text-gray-400 mt-2 md:mx-0.5">
+          By creating an account, you agree to our Terms and have read and
+          acknowledged the Privacy Policy.
+        </p>
+        <div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
+          <Button text="Get Started" type="submit" onButtonPressed={emailCheck} size="lg" />
         </div>
+      </div>
     </div>
   );
 
   // Step 2 of the signup process (enter the email verification code)
   const step2 = (
-      <div className="bg-bunker w-max mx-auto h-7/12 pt-10 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-16">
-        <p className="text-l flex justify-center text-gray-400">
-          {'We\'ve'} sent a verification email to{' '}
+    <div className="bg-bunker w-max mx-auto h-7/12 pt-10 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-16">
+      <p className="text-l flex justify-center text-gray-400">
+        {'We\'ve'} sent a verification email to{' '}
+      </p>
+      <p className="text-l flex justify-center font-semibold my-2 text-gray-400">
+        {email}{' '}
+      </p>
+      <div className="hidden md:block">
+        <ReactCodeInput
+          name=""
+          inputMode="tel"
+          type="text"
+          fields={6}
+          onChange={setCode}
+          {...props}
+          className="mt-6 mb-2"
+        />
+      </div>
+      <div className="block md:hidden">
+        <ReactCodeInput
+          name=""
+          inputMode="tel"
+          type="text"
+          fields={6}
+          onChange={setCode}
+          {...propsPhone}
+          className="mt-2 mb-6"
+        />
+      </div>
+      {codeError && (
+        <Error text="Oops. Your code is wrong. Please try again." />
+      )}
+      <div className="flex max-w-min flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
+        <Button text="Verify" onButtonPressed={incrementStep} size="lg" />
+      </div>
+      <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
+        <div className="flex flex-row items-baseline gap-1">
+          <span className="text-gray-400">
+            Not seeing an email?
+          </span>
+          <u className={`font-normal text-sm ${isResendingVerificationEmail ? 'text-gray-400' : 'text-sky-500 hover:opacity-90 duration-200'}`}>
+            <button disabled={isLoading} onClick={resendVerificationEmail}>
+              {isResendingVerificationEmail ? 'Resending...' : 'Resend'}
+            </button>
+          </u>
+        </div>
+        <p className="text-sm text-gray-500 pb-2">
+          Make sure to check your spam inbox.
         </p>
-        <p className="text-l flex justify-center font-semibold my-2 text-gray-400">
-          {email}{' '}
-        </p>
-        <div className="hidden md:block">
-          <ReactCodeInput
-            name=""
-            inputMode="tel"
-            type="text"
-            fields={6}
-            onChange={setCode}
-            {...props}
-            className="mt-6 mb-2"
-          />
-        </div>
-        <div className="block md:hidden">
-          <ReactCodeInput
-            name=""
-            inputMode="tel"
-            type="text"
-            fields={6}
-            onChange={setCode}
-            {...propsPhone}
-            className="mt-2 mb-6"
-          />
-        </div>
-        {codeError && (
-          <Error text="Oops. Your code is wrong. Please try again." />
-        )}
-        <div className="flex max-w-min flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
-          <Button text="Verify" onButtonPressed={incrementStep} size="lg" />
-        </div>
-        <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
-          {/* <Link href="/login">
-          <button className="w-full hover:opacity-90 duration-200">
-            <u className="font-normal text-sm text-sky-700">
-              Not seeing an email? Resend
-            </u>
-          </button>
-        </Link> */}
-          <p className="text-sm text-gray-500 pb-2">
-            Make sure to check your spam inbox.
-          </p>
-        </div>
       </div>
   );
 
@@ -498,24 +511,6 @@ export default function SignUp() {
           It contains your Secret Key which we cannot access or recover for you if
           you lose it.
         </div>
-        <div className="flex flex-row items-center justify-center w-3/4 md:w-full md:p-2 max-h-28 max-w-max mx-auto mt-6 py-1 md:mt-4 text-lg text-center md:text-left">
-          <Button
-            text="Download PDF"
-            onButtonPressed={async () => {
-              await issueBackupKey({
-                email,
-                password,
-                personalName: firstName + ' ' + lastName,
-                setBackupKeyError,
-                setBackupKeyIssued,
-              });
-              const userWorkspaces = await getWorkspaces();
-              const userWorkspace = userWorkspaces[0]._id;
-              router.push('/home/' + userWorkspace);
-            }}
-            size="lg"
-          />
-          {/* <div
 					className="text-l mt-4 text-lg text-gray-400 hover:text-gray-300 duration-200 bg-white/5 px-8 hover:bg-white/10 py-3 rounded-md cursor-pointer"
 					onClick={() => {
 						if (localStorage.getItem("projectData.id")) {

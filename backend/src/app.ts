@@ -1,5 +1,5 @@
-/* eslint-disable no-console */
 
+import { patchRouterParam } from './utils/patchAsyncRoutes';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -29,6 +29,12 @@ import {
   integration as integrationRouter,
   integrationAuth as integrationAuthRouter
 } from './routes';
+import { getLogger } from './utils/logger';
+import { RouteNotFoundError } from './utils/errors';
+import { requestErrorHandler } from './middleware/requestErrorHandler';
+
+//* Patch Async route params to handle Promise Rejections
+patchRouterParam()
 
 export const app = express();
 
@@ -69,6 +75,17 @@ app.use('/api/v1/stripe', stripeRouter);
 app.use('/api/v1/integration', integrationRouter);
 app.use('/api/v1/integration-auth', integrationAuthRouter);
 
+
+//* Handle unrouted requests and respond with proper error message as well as status code
+app.use((req, res, next)=>{
+  if(res.headersSent) return next();
+  next(RouteNotFoundError({message: `The requested source '(${req.method})${req.url}' was not found`}))
+})
+
+//* Error Handling Middleware (must be after all routing logic)
+app.use(requestErrorHandler)
+
+
 export const server = app.listen(PORT, () => {
-  console.log(`Listening on PORT ${[PORT]}`);
+  getLogger("backend-main").info(`Server started listening at port ${PORT}`)
 });

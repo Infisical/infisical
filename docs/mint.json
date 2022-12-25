@@ -94,7 +94,8 @@
             "cli/commands/login",
             "cli/commands/init",
             "cli/commands/run",
-            "cli/commands/export"
+            "cli/commands/export",
+            "cli/commands/vault"
           ]
         }
       ]
@@ -102,18 +103,21 @@
     {
       "group": "Self-hosting",
       "pages": [
-        "self-hosting/overview",
-        {
-          "group": "Deployments options",
-          "pages": [
-            "self-hosting/deployments/linux",
-            "self-hosting/deployments/kubernetes"
-          ]
-        },
-        {
-          "group": "Configuration",
-          "pages": ["self-hosting/configuration/envars"]
-        }
+        "self-hosting/overview"
+      ]
+    },
+    {
+      "group": "Deployment options",
+      "pages": [
+        "self-hosting/deployments/linux",
+        "self-hosting/deployments/kubernetes"
+      ]
+    },
+    {
+      "group": "Configuration",
+      "pages": [
+        "self-hosting/configuration/envars",
+        "self-hosting/configuration/email"
       ]
     },
     {
@@ -177,8 +181,7 @@
       "pages": [
         "contributing/overview",
         "contributing/code-of-conduct",
-        "contributing/developing",
-        "contributing/FAQ"
+        "contributing/developing"
       ]
     }
   ],
