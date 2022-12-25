@@ -57,17 +57,17 @@ const pushSecrets = async ({
 			workspaceId,
 			environment
 		});
-		const oldSecretsObj: any = oldSecrets.reduce((accumulator, s: any) => {
-			return { ...accumulator, [s.secretKeyHash]: s };
-		}, {});
-		const newSecretsObj = secrets.reduce((accumulator, s) => {
-			return { ...accumulator, [s.hashKey]: s };
-		}, {});
+		const oldSecretsObj: any = oldSecrets.reduce((accumulator, s: any) => 
+			({ ...accumulator, [`${s.type}-${s.secretKeyHash}`]: s })
+		, {});
+		const newSecretsObj = secrets.reduce((accumulator, s) => 
+			({ ...accumulator, [`${s.type}-${s.hashKey}`]: s })
+		, {});
 
 		// handle deleting secrets
 		const toDelete = oldSecrets
 			.filter(
-				(s: ISecret) => !(s.secretKeyHash in newSecretsObj)
+				(s: ISecret) => !(`${s.type}-${s.secretKeyHash}` in newSecretsObj)
 			)
 			.map((s) => s._id);
 		if (toDelete.length > 0) {
@@ -87,14 +87,9 @@ const pushSecrets = async ({
 		// handle modifying secrets where type or value changed
 		const toUpdate = secrets
 			.filter((s) => {
-				if (s.hashKey in oldSecretsObj) {
-					if (s.hashValue !== oldSecretsObj[s.hashKey].secretValueHash) {
+				if (`${s.type}-${s.hashKey}` in oldSecretsObj) {
+					if (s.hashValue !== oldSecretsObj[`${s.type}-${s.hashKey}`].secretValueHash) {
 						// case: filter secrets where value changed
-						return true;
-					}
-
-					if (s.type !== oldSecretsObj[s.hashKey].type) {
-						// case: filter secrets where type changed
 						return true;
 					}
 				}
@@ -122,8 +117,7 @@ const pushSecrets = async ({
 				return {
 					updateOne: {
 						filter: {
-							workspace: workspaceId,
-							_id: oldSecretsObj[s.hashKey]._id
+							_id: oldSecretsObj[`${s.type}-${s.hashKey}`]._id
 						},
 						update
 					}
@@ -132,6 +126,7 @@ const pushSecrets = async ({
 		await Secret.bulkWrite(operations as any);
 		await SecretVersion.insertMany(
 			toUpdate.map(({
+				type,
 				ciphertextKey,
 				ivKey,
 				tagKey,
@@ -141,8 +136,8 @@ const pushSecrets = async ({
 				tagValue,
 				hashValue
 			}) => ({
-				secret: oldSecretsObj[hashKey]._id,
-				version: oldSecretsObj[hashKey].version + 1,
+				secret: oldSecretsObj[`${type}-${hashKey}`]._id,
+				version: oldSecretsObj[`${type}-${hashKey}`].version + 1,
 				isDeleted: false,
 				secretKeyCiphertext: ciphertextKey,
 				secretKeyIV: ivKey,
@@ -156,7 +151,7 @@ const pushSecrets = async ({
 		);
 
 		// handle adding new secrets
-		const toAdd = secrets.filter((s) => !(s.hashKey in oldSecretsObj));
+		const toAdd = secrets.filter((s) => !(`${s.type}-${s.hashKey}` in oldSecretsObj));
 
 		if (toAdd.length > 0) {
 			// add secrets
@@ -214,8 +209,6 @@ const pushSecrets = async ({
 		await takeSecretSnapshotHelper({
 			workspaceId
 		});
-		// TODO: in the future add secret snapshot to capture entire
-		// state of project at this point in time
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
