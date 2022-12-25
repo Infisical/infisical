@@ -2,18 +2,18 @@ import * as Sentry from '@sentry/node';
 import {
     Bot,
     Integration,
-    IIntegration,
     IntegrationAuth,
-    IIntegrationAuth
 } from '../models';
 import { exchangeCode, exchangeRefresh, syncSecrets } from '../integrations';
-import { BotService, IntegrationService } from '../services';
+import { BotService } from '../services';
 import {
     ENV_DEV,
     EVENT_PUSH_SECRETS,
     INTEGRATION_VERCEL,
     INTEGRATION_NETLIFY
 } from '../variables';
+import { UnauthorizedRequestError } from '../utils/errors';
+import RequestError from '../utils/requestError';
 
 interface Update {
     workspace: string;
@@ -176,12 +176,13 @@ const syncIntegrationsHelper = async ({
  */
  const getIntegrationAuthRefreshHelper = async ({ integrationAuthId }: { integrationAuthId: string }) => {
     let refreshToken;
+	
     try {
         const integrationAuth = await IntegrationAuth
             .findById(integrationAuthId)
             .select('+refreshCiphertext +refreshIV +refreshTag');
 
-        if (!integrationAuth) throw new Error('Failed to find integration auth');
+        if (!integrationAuth) throw UnauthorizedRequestError({message: 'Failed to locate Integration Authentication credentials'});
 
         refreshToken = await BotService.decryptSymmetric({
             workspaceId: integrationAuth.workspace.toString(),
@@ -193,7 +194,10 @@ const syncIntegrationsHelper = async ({
     } catch (err) {
         Sentry.setUser(null);
 		Sentry.captureException(err);
-		throw new Error('Failed to get integration refresh token');
+        if(err instanceof RequestError)
+            throw err
+        else
+            throw new Error('Failed to get integration refresh token');
     }
     
     return refreshToken;
@@ -209,12 +213,13 @@ const syncIntegrationsHelper = async ({
  */
 const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrationAuthId: string }) => {
     let accessToken;
+	
     try {
         const integrationAuth = await IntegrationAuth
             .findById(integrationAuthId)
             .select('workspace integration +accessCiphertext +accessIV +accessTag +accessExpiresAt + refreshCiphertext');
 
-        if (!integrationAuth) throw new Error('Failed to find integration auth');
+        if (!integrationAuth) throw UnauthorizedRequestError({message: 'Failed to locate Integration Authentication credentials'});
 
         accessToken = await BotService.decryptSymmetric({
             workspaceId: integrationAuth.workspace.toString(),
@@ -240,7 +245,10 @@ const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrati
     } catch (err) {
         Sentry.setUser(null);
 		Sentry.captureException(err);
-		throw new Error('Failed to get integration access token');
+        if(err instanceof RequestError)
+            throw err
+        else
+            throw new Error('Failed to get integration access token');
     }
     
     return accessToken;

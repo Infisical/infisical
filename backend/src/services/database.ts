@@ -1,10 +1,10 @@
-/* eslint-disable no-console */
 import mongoose from 'mongoose';
+import { getLogger } from '../utils/logger';
 
 export const initDatabase = (MONGO_URL: string) => {
   mongoose
     .connect(MONGO_URL)
-    .then(() => console.log('Successfully connected to DB'))
-    .catch((e) => console.log('Failed to connect to DB ', e));
+    .then(() => getLogger("database").info("Database connection established"))
+    .catch((e) => getLogger("database").error(`Unable to establish Database connection due to the error.\n${e}`));
   return mongoose.connection;
 };
