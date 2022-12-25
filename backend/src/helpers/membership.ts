@@ -21,6 +21,7 @@ const validateMembership = async ({
 }) => {
 	
 	let membership;
+	//TODO: Refactor code to take advantage of using RequestError. It's possible to create new types of errors for more detailed errors
 	try {
 		membership = await Membership.findOne({
 			user: userId,
