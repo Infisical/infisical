@@ -24,8 +24,15 @@ func WriteInitalConfig(userCredentials *models.UserCredentials) error {
 		}
 	}
 
+	// get existing config
+	existingConfigFile, err := GetConfigFile()
+	if err != nil {
+		return fmt.Errorf("writeInitalConfig: unable to write config file because [err=%s]", err)
+	}
+
 	configFile := models.ConfigFile{
 		LoggedInUserEmail: userCredentials.Email,
+		VaultBackendType:  existingConfigFile.VaultBackendType,
 	}
 
 	configFileMarshalled, err := json.Marshal(configFile)
@@ -151,4 +158,51 @@ func GetAllWorkSpaceConfigsStartingFromCurrentPath() (workspaces []models.Worksp
 	}
 
 	return listOfWorkSpaceConfigs, nil
+}
+
+// Get the infisical config file and if it doesn't exist, return empty config model, otherwise raise error
+func GetConfigFile() (models.ConfigFile, error) {
+	fullConfigFilePath, _, err := GetFullConfigFilePath()
+	if err != nil {
+		return models.ConfigFile{}, err
+	}
+
+	configFileAsBytes, err := os.ReadFile(fullConfigFilePath)
+	if err != nil {
+		if err, ok := err.(*os.PathError); ok {
+			return models.ConfigFile{}, nil
+		} else {
+			return models.ConfigFile{}, err
+		}
+	}
+
+	var configFile models.ConfigFile
+	err = json.Unmarshal(configFileAsBytes, &configFile)
+	if err != nil {
+		return models.ConfigFile{}, err
+	}
+
+	return configFile, nil
+}
+
+// Write a ConfigFile to disk. Raise error if unable to save the model to ask
+func WriteConfigFile(configFile *models.ConfigFile) error {
+	fullConfigFilePath, _, err := GetFullConfigFilePath()
+	if err != nil {
+		return fmt.Errorf("writeConfigFile: unable to write config file because an error occurred when getting config file path [err=%s]", err)
+	}
+
+	configFileMarshalled, err := json.Marshal(configFile)
+	if err != nil {
+		return fmt.Errorf("writeConfigFile: unable to write config file because an error occurred when marshalling the config file [err=%s]", err)
+	}
+
+	// Create file in directory
+	err = WriteToFile(fullConfigFilePath, configFileMarshalled, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("writeConfigFile: unable to write config file because an error occurred when write the config to file [err=%s]", err)
+
+	}
+
+	return nil
 }

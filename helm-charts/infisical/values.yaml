@@ -22,7 +22,8 @@ backend:
 
 ingress:
   enabled: true
-  annotations: {}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
   hostName: example.com
   frontend: 
     path: /

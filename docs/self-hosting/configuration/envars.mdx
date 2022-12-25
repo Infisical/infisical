@@ -3,18 +3,15 @@ title: "Environment Variables"
 description: ""
 ---
 
-## The .env file
-
-Configuring Infisical requires setting some environment variables. There is a file called `.env.example` at the root directory of our main repo that you can use to create a `.env` before you start the server.
+Configuring Infisical requires setting some environment variables. There is a file called [`.env.example`](https://github.com/Infisical/infisical/blob/main/.env.example) at the root directory of our main repo that you can use to create a `.env` file before you start the server.
 
 | Variable                     | Description                                                                                                 | Default Value    |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------- |
-| `PRIVATE_KEY`                | ❗️ NaCl-generated server secret key                                                                         | `None`           |
-| `PUBLIC_KEY`                 | ❗️ NaCl-generated server public key                                                                         | `None`           |
 | `ENCRYPTION_KEY`             | ❗️ Strong hex encryption key                                                                                | `None`           |
 | `JWT_SIGNUP_SECRET`          | ❗️ JWT token secret                                                                                         | `None`           |
 | `JWT_REFRESH_SECRET`         | ❗️ JWT token secret                                                                                         | `None`           |
 | `JWT_AUTH_SECRET`            | ❗️ JWT token secret                                                                                         | `None`           |
+| `JWT_SERVICE_SECRET`         | ❗️ JWT token secret                                                                                         | `None`           |
 | `JWT_SIGNUP_LIFETIME`        | JWT token lifetime expressed in seconds or a string describing a time span (e.g. 60, "2 days", "10h", "7d") | `15m`            |
 | `JWT_REFRESH_LIFETIME`       | JWT token lifetime expressed in seconds or a string describing a time span (e.g. 60, "2 days", "10h", "7d") | `90d`            |
 | `JWT_AUTH_LIFETIME`          | JWT token lifetime expressed in seconds or a string describing a time span (e.g. 60, "2 days", "10h", "7d") | `10d`            |
@@ -23,14 +20,21 @@ Configuring Infisical requires setting some environment variables. There is a fi
 | `MONGO_USERNAME`             | MongoDB username if using container                                                                         | `None`           |
 | `MONGO_PASSWORD`             | MongoDB password if using container                                                                         | `None`           |
 | `SITE_URL`                   | ❗️ Site URL - should be an absolute URL including the protocol (e.g. `https://app.infisical.com`)           | `None`           |
-| `SMTP_HOST`                  | Hostname to connect to for establishing SMTP connections                                                    | `smtp.gmail.com` |
-| `SMTP_NAME`                  | Name label to be used in From field (e.g. `Team`)                                                           | `None`           |
+| `SMTP_HOST`                  | ❗️ Hostname to connect to for establishing SMTP connections                                                    | `None` |
 | `SMTP_USERNAME`              | ❗️ Credential to connect to host (e.g. `team@infisical.com`)                                                | `None`           |
 | `SMTP_PASSWORD`              | ❗️ Credential to connect to host                                                                            | `None`           |
+| `SMTP_PORT`                  | Port to connect to for establishing SMTP connections                                                     | `587`            |
+| `SMTP_SECURE`                | If true, use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported                        | `false`          |
+| `SMTP_FROM_ADDRESS`          | ❗️ Email address to be used for sending emails (e.g. `team@infisical.com`)                                  | `None`           |
+| `SMTP_FROM_NAME`             | Name label to be used in From field (e.g. `Team`)                                                           | `Infisical`      |
 | `TELEMETRY_ENABLED`          | `true` or `false`. [More](../overview).                                                                     | `true`           |
-| `CLIENT_ID_VERCEL`           | OAuth client id for Vercel integration                                                                     | `None`           |
-| `CLIENT_ID_NETLIFY`          | OAuth client id for Netlify integration                                                                    | `None`           |
-| `CLIENT_SECRET_HEROKU`       | OAuth client secret for Heroku integration                                                                  | `None`           |
-| `CLIENT_SECRET_VERCEL`       | OAuth client secret for Vercel integration                                                                  | `None`           |
-| `CLIENT_SECRET_NETLIFY`      | OAuth client secret for Netlify integration                                                                 | `None`           |
+| `CLIENT_ID_HEROKU`           | OAuth2 client ID for Heroku integration                                                                      | `None`           |
+| `CLIENT_ID_VERCEL`           | OAuth2 client ID for Vercel integration                                                                      | `None`           |
+| `CLIENT_ID_NETLIFY`          | OAuth2 client ID for Netlify integration                                                                     | `None`           |
+| `CLIENT_ID_GITHUB`           | OAuth2 client ID for GitHub integration                                                                     | `None`           |
+| `CLIENT_SECRET_HEROKU`       | OAuth2 client secret for Heroku integration                                                                  | `None`           |
+| `CLIENT_SECRET_VERCEL`       | OAuth2 client secret for Vercel integration                                                                  | `None`           |
+| `CLIENT_SECRET_NETLIFY`      | OAuth2 client secret for Netlify integration                                                                 | `None`           |
+| `CLIENT_SECRET_GITHUB`       | OAuth2 client secret for GitHub integration                                                                 | `None`           |
+| `CLIENT_SLUG_VERCEL`         | OAuth2 slug for Netlify integration                                                                 | `None`           |
 | `SENTRY_DSN`                 | DSN for error-monitoring with Sentry                                                                        | `None`           |

@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import handlebars from 'handlebars';
 import nodemailer from 'nodemailer';
-import { SMTP_NAME, SMTP_USERNAME } from '../config';
+import { SMTP_FROM_NAME, SMTP_FROM_ADDRESS } from '../config';
 import * as Sentry from '@sentry/node';
 
 let smtpTransporter: nodemailer.Transporter;
@@ -34,7 +34,7 @@ const sendMail = async ({
     const htmlToSend = temp(substitutions);
 
     await smtpTransporter.sendMail({
-      from: `"${SMTP_NAME}" <${SMTP_USERNAME}>`,
+      from: `"${SMTP_FROM_NAME}" <${SMTP_FROM_ADDRESS}>`,
       to: recipients.join(', '),
       subject: subjectLine,
       html: htmlToSend

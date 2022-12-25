@@ -34,7 +34,7 @@ spec:
         {{- end }}
         {{- end }}
         ports: 
-        - containerPort: 4000
+        - containerPort: 3000
 ---
 apiVersion: v1
 kind: Service 

@@ -102,18 +102,21 @@
     {
       "group": "Self-hosting",
       "pages": [
-        "self-hosting/overview",
-        {
-          "group": "Deployments options",
-          "pages": [
-            "self-hosting/deployments/linux",
-            "self-hosting/deployments/kubernetes"
-          ]
-        },
-        {
-          "group": "Configuration",
-          "pages": ["self-hosting/configuration/envars"]
-        }
+        "self-hosting/overview"
+      ]
+    },
+    {
+      "group": "Deployment options",
+      "pages": [
+        "self-hosting/deployments/linux",
+        "self-hosting/deployments/kubernetes"
+      ]
+    },
+    {
+      "group": "Configuration",
+      "pages": [
+        "self-hosting/configuration/envars",
+        "self-hosting/configuration/email"
       ]
     },
     {
@@ -140,7 +143,10 @@
     },
     {
       "group": "CI/CD",
-      "pages": ["integrations/cicd/circleci"]
+      "pages": [
+        "integrations/cicd/githubactions",
+        "integrations/cicd/circleci"
+      ]
     },
     {
       "group": "Frameworks",
@@ -174,8 +180,7 @@
       "pages": [
         "contributing/overview",
         "contributing/code-of-conduct",
-        "contributing/developing",
-        "contributing/FAQ"
+        "contributing/developing"
       ]
     }
   ],

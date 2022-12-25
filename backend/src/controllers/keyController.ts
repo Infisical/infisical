@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import { Key } from '../models';
 import { findMembership } from '../helpers/membership';
-import { PUBLIC_KEY } from '../config';
 import { GRANTED } from '../variables';
 
 /**
@@ -84,16 +83,4 @@ export const getLatestKey = async (req: Request, res: Response) => {
 	}
 
 	return res.status(200).send(resObj);
-};
-
-/**
- * Return public key of Infisical
- * @param req
- * @param res
- * @returns
- */
-export const getPublicKeyInfisical = async (req: Request, res: Response) => {
-	return res.status(200).send({
-		publicKey: PUBLIC_KEY
-	});
 };

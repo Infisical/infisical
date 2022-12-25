@@ -203,7 +203,7 @@ const Integration = ({
                     context: integrationContext ? reverseContextNetlifyMapping[integrationContext] : null,
                     siteId
                   });
-                  
+
                   router.reload();
                 }}
                 color="mineshaft"
