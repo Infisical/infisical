@@ -10,6 +10,7 @@ import {
 
 export interface ISecret {
 	_id: Types.ObjectId;
+	version: number;
 	workspace: Types.ObjectId;
 	type: string;
 	user: Types.ObjectId;
@@ -26,6 +27,10 @@ export interface ISecret {
 
 const secretSchema = new Schema<ISecret>(
 	{
+		version: {
+			type: Number,
+			required: true
+		},
 		workspace: {
 			type: Schema.Types.ObjectId,
 			ref: 'Workspace',

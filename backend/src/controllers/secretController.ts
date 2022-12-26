@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
-import { Key } from '../models';
+import { Key, Secret } from '../models';
 import {
 	pushSecrets as push,
 	pullSecrets as pull,
@@ -169,9 +169,6 @@ export const pullSecrets = async (req: Request, res: Response) => {
  * @returns
  */
 export const pullSecretsServiceToken = async (req: Request, res: Response) => {
-	// get (encrypted) secrets from workspace with id [workspaceId]
-	// service token route
-
 	let secrets;
 	let key;
 	try {
