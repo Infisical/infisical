@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import useTranslate from "next-translate/useTranslation";
+import { useTranslation } from "next-i18next";
 import { Dialog, Transition } from "@headlessui/react";
 
 import addIncidentContact from "~/pages/api/organization/addIncidentContact";
@@ -15,7 +15,7 @@ const AddIncidentContactDialog = ({
   setIncidentContacts,
 }) => {
   let [incidentContactEmail, setIncidentContactEmail] = useState("");
-  const { t } = useTranslate();
+  const { t } = useTranslation();
 
   const submit = () => {
     setIncidentContacts(

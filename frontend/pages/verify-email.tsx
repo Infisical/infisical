@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
-import Head from 'next/head';
-import Image from 'next/image';
-import Link from 'next/link';
+import React, { useState } from "react";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
 
-import Button from '~/components/basic/buttons/Button';
-import InputField from '~/components/basic/InputField';
+import Button from "~/components/basic/buttons/Button";
+import InputField from "~/components/basic/InputField";
+import { getTranslatedStaticProps } from "~/components/utilities/withTranslateProps";
 
-import SendEmailOnPasswordReset from './api/auth/SendEmailOnPasswordReset';
+import SendEmailOnPasswordReset from "./api/auth/SendEmailOnPasswordReset";
 
 export default function VerifyEmail() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [step, setStep] = useState(1);
 
   /**
@@ -92,3 +93,5 @@ export default function VerifyEmail() {
     </div>
   );
 }
+
+export const getServerSideProps = getTranslatedStaticProps([]);
