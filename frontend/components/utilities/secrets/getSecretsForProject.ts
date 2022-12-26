@@ -39,7 +39,7 @@ const getSecretsForProject = async ({
 
     const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
 
-    const tempFileState: { key: string; value: string; type: string }[] = [];
+    const tempFileState: { key: string; value: string; type: 'personal' | 'shared'; }[] = [];
     if (file.key) {
       // assymmetrically decrypt symmetric key with local private key
       const key = decryptAssymmetric({
@@ -97,7 +97,7 @@ const getSecretsForProject = async ({
   } catch (error) {
     console.log('Something went wrong during accessing or decripting secrets.');
   }
-  return true;
+  return [];
 };
 
 export default getSecretsForProject;

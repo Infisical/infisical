@@ -7,12 +7,23 @@
 #     # you may remove this if you don't need go generate
 #     - cd cli && go generate ./...
 builds:
-  - env:
-      - CGO_ENABLED=0
+  - id: darwin-build
     binary: infisical
-    id: infisical
+    env:
+      - CGO_ENABLED=1
+      - CC=/home/runner/work/osxcross/target/bin/o64-clang
+      - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
     goos:
       - darwin
+    ignore:
+      - goos: darwin
+        goarch: "386"
+    dir: ./cli
+  - id: all-other-builds
+    env:
+      - CGO_ENABLED=0
+    binary: infisical
+    goos:
       - freebsd
       - linux
       - netbsd
@@ -27,8 +38,6 @@ builds:
       - 6
       - 7
     ignore:
-      - goos: darwin
-        goarch: "386"
       - goos: windows
         goarch: "386"
       - goos: freebsd
@@ -71,7 +80,7 @@ nfpms:
 - id: infisical
   package_name: infisical
   builds:
-    - infisical
+    - all-other-builds
   vendor: Infisical, Inc
   homepage: https://infisical.com/
   maintainer: Infisical, Inc

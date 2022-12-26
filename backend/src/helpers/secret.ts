@@ -1,10 +1,20 @@
 import * as Sentry from '@sentry/node';
 import {
 	Secret,
-	ISecret
+	ISecret,
 } from '../models';
+import {
+	EESecretService
+} from '../ee/services';
+import {
+	SecretVersion
+} from '../ee/models';
+import {
+	takeSecretSnapshotHelper
+} from '../ee/helpers/secret';
 import { decryptSymmetric } from '../utils/crypto';
 import { SECRET_SHARED, SECRET_PERSONAL } from '../variables';
+import { LICENSE_KEY } from '../config';
 
 interface PushSecret {
 	ciphertextKey: string;
@@ -19,7 +29,7 @@ interface PushSecret {
 }
 
 interface Update {
-	[index: string]: string;
+	[index: string]: any;
 }
 
 type DecryptSecretType = 'text' | 'object' | 'expanded';
@@ -46,6 +56,7 @@ const pushSecrets = async ({
 	environment: string;
 	secrets: PushSecret[];
 }): Promise<void> => {
+	// TODO: clean up function and fix up types
 	try {
 		// construct useful data structures
 		const oldSecrets = await pullSecrets({
@@ -53,74 +64,124 @@ const pushSecrets = async ({
 			workspaceId,
 			environment
 		});
-		const oldSecretsObj: any = oldSecrets.reduce((accumulator, s: any) => {
-			return { ...accumulator, [s.secretKeyHash]: s };
-		}, {});
-		const newSecretsObj = secrets.reduce((accumulator, s) => {
-			return { ...accumulator, [s.hashKey]: s };
-		}, {});
+		
+		const oldSecretsObj: any = oldSecrets.reduce((accumulator, s: any) => 
+			({ ...accumulator, [`${s.type}-${s.secretKeyHash}`]: s })
+		, {});
+		const newSecretsObj: any = secrets.reduce((accumulator, s) => 
+			({ ...accumulator, [`${s.type}-${s.hashKey}`]: s })
+		, {});
 
 		// handle deleting secrets
-		const toDelete = oldSecrets.filter(
-			(s: ISecret) => !(s.secretKeyHash in newSecretsObj)
-		);
+		const toDelete = oldSecrets
+			.filter(
+				(s: ISecret) => !(`${s.type}-${s.secretKeyHash}` in newSecretsObj)
+			)
+			.map((s) => s._id);
 		if (toDelete.length > 0) {
 			await Secret.deleteMany({
-				_id: { $in: toDelete.map((s) => s._id) }
+				_id: { $in: toDelete }
+			});
+			
+			await SecretVersion.updateMany({
+				secret: { $in: toDelete }
+			}, {
+				isDeleted: true
 			});
 		}
-
-		// handle modifying secrets where type or value changed
-		const operations = secrets
+		
+		const toUpdate = oldSecrets
 			.filter((s) => {
-				if (s.hashKey in oldSecretsObj) {
-					if (s.hashValue !== oldSecretsObj[s.hashKey].secretValueHash) {
+				if (`${s.type}-${s.secretKeyHash}` in newSecretsObj) {
+					if (s.secretValueHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashValue) {
 						// case: filter secrets where value changed
 						return true;
 					}
 
-					if (s.type !== oldSecretsObj[s.hashKey].type) {
-						// case: filter secrets where type changed
+					if (!s.version) {
+						// case: filter (legacy) secrets that were not versioned
 						return true;
 					}
 				}
-
+				
 				return false;
-			})
+			});
+
+		const operations = toUpdate
 			.map((s) => {
+				const {
+					ciphertextValue,
+					ivValue,
+					tagValue,
+					hashValue
+				} = newSecretsObj[`${s.type}-${s.secretKeyHash}`];
+
 				const update: Update = {
-					type: s.type,
-					secretValueCiphertext: s.ciphertextValue,
-					secretValueIV: s.ivValue,
-					secretValueTag: s.tagValue,
-					secretValueHash: s.hashValue
-				};
+					secretValueCiphertext: ciphertextValue,
+					secretValueIV: ivValue,
+					secretValueTag: tagValue,
+					secretValueHash: hashValue
+				}
+
+				if (!s.version) {
+					// case: (legacy) secret was not versioned
+					update.version = 1;
+				} else {
+					update['$inc'] = {
+						version: 1
+					}
+				}
 
 				if (s.type === SECRET_PERSONAL) {
-					// attach user assocaited with the personal secret
+					// attach user associated with the personal secret
 					update['user'] = userId;
 				}
 
 				return {
 					updateOne: {
 						filter: {
-							workspace: workspaceId,
-							_id: oldSecretsObj[s.hashKey]._id
+							_id: oldSecretsObj[`${s.type}-${s.secretKeyHash}`]._id
 						},
 						update
 					}
 				};
 			});
-		const a = await Secret.bulkWrite(operations as any);
+		await Secret.bulkWrite(operations as any);
+		
+		// (EE) add secret versions for updated secrets
+		await EESecretService.addSecretVersions({
+			secretVersions: toUpdate.map(({
+				_id,
+				version,
+				type,
+				secretKeyHash,
+			}) => {
+				const newSecret = newSecretsObj[`${type}-${secretKeyHash}`];
+				return ({
+					secret: _id,
+					version: version ? version + 1 : 1,
+					isDeleted: false,
+					secretKeyCiphertext: newSecret.ciphertextKey,
+					secretKeyIV: newSecret.ivKey,
+					secretKeyTag: newSecret.tagKey,
+					secretKeyHash: newSecret.hashKey,
+					secretValueCiphertext: newSecret.ciphertextValue,
+					secretValueIV: newSecret.ivValue,
+					secretValueTag: newSecret.tagValue,
+					secretValueHash: newSecret.hashValue
+				})
+			}) 
+		});
 
 		// handle adding new secrets
-		const toAdd = secrets.filter((s) => !(s.hashKey in oldSecretsObj));
+		const toAdd = secrets.filter((s) => !(`${s.type}-${s.hashKey}` in oldSecretsObj));
 
 		if (toAdd.length > 0) {
 			// add secrets
-			await Secret.insertMany(
+			const newSecrets = await Secret.insertMany(
 				toAdd.map((s, idx) => {
-					let obj: any = {
+					const obj: any = {
+						version: 1,
 						workspace: workspaceId,
 						type: toAdd[idx].type,
 						environment,
@@ -141,7 +202,39 @@ const pushSecrets = async ({
 					return obj;
 				})
 			);
+
+			// (EE) add secret versions for new secrets
+			EESecretService.addSecretVersions({
+				secretVersions: newSecrets.map(({
+					_id,
+					secretKeyCiphertext,
+					secretKeyIV,
+					secretKeyTag,
+					secretKeyHash,
+					secretValueCiphertext,
+					secretValueIV,
+					secretValueTag,
+					secretValueHash
+				}) => ({
+					secret: _id,
+					version: 1,
+					isDeleted: false,
+					secretKeyCiphertext,
+					secretKeyIV,
+					secretKeyTag,
+					secretKeyHash,
+					secretValueCiphertext,
+					secretValueIV,
+					secretValueTag,
+					secretValueHash
+				}))
+			});
 		}
+		
+		// (EE) take a secret snapshot
+		await EESecretService.takeSecretSnapshot({
+			workspaceId
+		})
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
@@ -294,6 +387,8 @@ const decryptSecrets = ({
 
 	return content;
 };
+
+
 
 export {
 	pushSecrets,

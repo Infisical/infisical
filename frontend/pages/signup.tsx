@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ReactCodeInput from 'react-code-input';
 import Head from 'next/head';
 import Image from 'next/image';
@@ -260,46 +260,49 @@ export default function SignUp() {
 
   // Step 1 of the sign up process (enter the email or choose google authentication)
   const step1 = (
-    <div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-8 md:px-6 mx-1 mb-48 md:mb-16 rounded-xl drop-shadow-xl">
-      <p className="text-4xl font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-        {'Let\''}s get started
-      </p>
-      <div className="flex flex-col items-center justify-center w-full md:pb-2 max-h-24 max-w-md mx-auto pt-2">
+    <div>
+      <div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-8 md:px-6 mx-1 rounded-xl drop-shadow-xl">
+        <p className="text-4xl font-semibold flex justify-center text-primary">
+          {'Let\''}s get started
+        </p>
+        <div className="flex items-center justify-center w-5/6 md:w-full m-auto md:p-2 rounded-lg max-h-24 mt-4">
+          <InputField
+            label="Email"
+            onChangeHandler={setEmail}
+            type="email"
+            value={email}
+            placeholder=""
+            isRequired
+            error={emailError}
+            errorText={emailErrorMessage}
+            autoComplete="username"
+          />
+        </div>
+          {/* <div className='flex flex-row justify-left mt-4 max-w-md mx-auto'>
+            <Checkbox className="mr-4"/>
+            <p className='text-sm'>I do not want to receive emails about Infisical and its products.</p>
+          </div> */}
+        <div className="flex flex-col items-center justify-center w-5/6 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto mt-4 md:mt-4 text-sm text-center md:text-left">
+          <p className="text-gray-400 mt-2 md:mx-0.5">
+            By creating an account, you agree to our Terms and have read and
+            acknowledged the Privacy Policy.
+          </p>
+          <div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
+            <Button text="Get Started" type="submit" onButtonPressed={emailCheck} size="lg" />
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-col items-center justify-center w-full md:pb-2 max-w-md mx-auto pt-2 mb-48 md:mb-16 mt-2">
         <Link href="/login">
-          <button className="w-max pb-3 hover:opacity-90 duration-200">
-            <u className="font-normal text-md text-sky-500">
+          <button type="button" className="w-max pb-3 hover:opacity-90 duration-200">
+            <u className="font-normal text-sm text-primary-500">
               Have an account? Log in
             </u>
           </button>
         </Link>
       </div>
-      <div className="flex items-center justify-center w-5/6 md:w-full m-auto md:p-2 rounded-lg max-h-24 mt-4">
-        <InputField
-          label="Email"
-          onChangeHandler={setEmail}
-          type="email"
-          value={email}
-          placeholder=""
-          isRequired
-          error={emailError}
-          errorText={emailErrorMessage}
-          autoComplete="username"
-        />
-      </div>
-      {/* <div className='flex flex-row justify-left mt-4 max-w-md mx-auto'>
-          <Checkbox className="mr-4"/>
-          <p className='text-sm'>I do not want to receive emails about Infisical and its products.</p>
-        </div> */}
-      <div className="flex flex-col items-center justify-center w-5/6 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto mt-4 md:mt-4 text-sm text-center md:text-left">
-        <p className="text-gray-400 mt-2 md:mx-0.5">
-          By creating an account, you agree to our Terms and have read and
-          acknowledged the Privacy Policy.
-        </p>
-        <div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
-          <Button loading={isLoading} text="Get Started" onButtonPressed={emailCheck} size="lg" />
-        </div>
-      </div>
     </div>
+
   );
 
   // Step 2 of the signup process (enter the email verification code)
@@ -340,11 +343,11 @@ export default function SignUp() {
         <Button text="Verify" onButtonPressed={incrementStep} size="lg" />
       </div>
       <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
-        <div className="flex flex-row items-baseline gap-1">
+        <div className="flex flex-row items-baseline gap-1 text-sm">
           <span className="text-gray-400">
             Not seeing an email?
           </span>
-          <u className={`font-normal text-sm ${isResendingVerificationEmail ? 'text-gray-400' : 'text-sky-500 hover:opacity-90 duration-200'}`}>
+          <u className={`font-normal ${isResendingVerificationEmail ? 'text-gray-400' : 'text-primary-500 hover:opacity-90 duration-200'}`}>
             <button disabled={isLoading} onClick={resendVerificationEmail}>
               {isResendingVerificationEmail ? 'Resending...' : 'Resend'}
             </button>
@@ -512,7 +515,7 @@ export default function SignUp() {
         It contains your Secret Key which we cannot access or recover for you if
         you lose it.
       </div>
-      <div className="flex flex-row items-center justify-center w-3/4 md:w-full md:p-2 max-h-28 max-w-max mx-auto mt-6 py-1 md:mt-4 text-lg text-center md:text-left">
+      <div className="flex flex-col items-center justify-center md:px-4 md:py-5 mt-2 px-2 py-3 max-h-24 max-w-max mx-auto text-lg">
         <Button
           text="Download PDF"
           onButtonPressed={async () => {
@@ -521,11 +524,9 @@ export default function SignUp() {
               password,
               personalName: firstName + ' ' + lastName,
               setBackupKeyError,
-              setBackupKeyIssued,
+              setBackupKeyIssued
             });
-            const userWorkspaces = await getWorkspaces();
-            const userWorkspace = userWorkspaces[0]._id;
-            router.push('/home/' + userWorkspace);
+            router.push('/dashboard/');
           }}
           size="lg"
         />
@@ -571,7 +572,9 @@ export default function SignUp() {
             />
           </div>
         </Link>
-        {step == 1 ? step1 : step == 2 ? step2 : step == 3 ? step3 : step4}
+        <form onSubmit={(e) => e.preventDefault()}>
+          {step == 1 ? step1 : step == 2 ? step2 : step == 3 ? step3 : step4}
+        </form>
       </div>
     </div>
   );

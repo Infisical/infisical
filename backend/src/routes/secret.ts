@@ -7,8 +7,8 @@ import {
 	validateRequest
 } from '../middleware';
 import { body, query, param } from 'express-validator';
-import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../variables';
 import { secretController } from '../controllers';
+import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../variables';
 
 router.post(
 	'/:workspaceId',

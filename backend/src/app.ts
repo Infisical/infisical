@@ -1,5 +1,6 @@
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { patchRouterParam } = require('./utils/patchAsyncRoutes');
 
-import { patchRouterParam } from './utils/patchAsyncRoutes';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -9,6 +10,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 import { PORT, NODE_ENV, SITE_URL } from './config';
 import { apiLimiter } from './helpers/rateLimiter';
+
+import {
+  workspace as eeWorkspaceRouter,
+  secret as eeSecretRouter
+} from './ee/routes';
 
 import {
   signup as signupRouter,
@@ -30,12 +36,13 @@ import {
   integrationAuth as integrationAuthRouter,
   apiKey as apiKeyRouter
 } from './routes';
+
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
 import { requestErrorHandler } from './middleware/requestErrorHandler';
 
-//* Patch Async route params to handle Promise Rejections
-patchRouterParam()
+// patch async route params to handle Promise Rejections
+patchRouterParam();
 
 export const app = express();
 
@@ -56,6 +63,10 @@ if (NODE_ENV === 'production') {
   app.use(apiLimiter);
   app.use(helmet());
 }
+
+// /ee routers
+app.use('/api/v1/secret', eeSecretRouter);
+app.use('/api/v1/workspace', eeWorkspaceRouter);
 
 // routers
 app.use('/api/v1/signup', signupRouter);

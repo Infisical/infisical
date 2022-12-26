@@ -1,0 +1,50 @@
+---
+title: "infisical vault"
+---
+
+<Tabs>
+  <Tab title="View current Vault">
+    ```bash
+    infisical vault 
+
+    # Example output
+    The following vaults are available on your system:
+    - keychain
+    - pass
+    - file
+
+    You are currently using [keychain] vault to store your login credentials
+    ```
+  </Tab>
+
+  <Tab title="Switch vault">
+    ```bash
+    infisical vault set <name-of-vault>
+
+    # Example 
+    infisical vault set keychain
+    ```
+  </Tab>
+</Tabs>
+
+
+## Description
+
+To ensure secure storage of your login credentials when using the CLI, Infisical stores login credentials securely in a system vault or encrypted text file with a passphrase known only by the user.
+
+<Accordion title="Supported vaults">
+  By default, the most appropriate vault is chosen to store your login credentials. 
+  For example, if you are on macOS, KeyChain will be automatically selected.
+
+- [macOS Keychain](https://support.apple.com/en-au/guide/keychain-access/welcome/mac)
+- [Windows Credential Manager](https://support.microsoft.com/en-au/help/4026814/windows-accessing-credential-manager)
+- Secret Service ([Gnome Keyring](https://wiki.gnome.org/Projects/GnomeKeyring), [KWallet](https://kde.org/applications/system/org.kde.kwalletmanager5))
+- [KWallet](https://kde.org/applications/system/org.kde.kwalletmanager5)
+- [Pass](https://www.passwordstore.org/)
+- [KeyCtl]()
+- Encrypted file (JWT)
+</Accordion>
+
+<Tip>To avoid constantly entering your passphrase when using the `file` vault type, set the `INFISICAL_VAULT_FILE_PASSPHRASE` environment variable with your password in your shell</Tip>
+
+

@@ -45,7 +45,7 @@ function wrap(fn) {
   return copyFnProps(fn, newFn);
 }
 
-export function patchRouterParam() {
+function patchRouterParam() {
   const originalParam = Router.prototype.constructor.param;
   Router.prototype.constructor.param = function param(name, fn) {
     fn = wrap(fn);
@@ -63,3 +63,7 @@ Object.defineProperty(Layer.prototype, 'handle', {
     this.__handle = fn;
   },
 });
+
+module.exports = {
+  patchRouterParam
+};

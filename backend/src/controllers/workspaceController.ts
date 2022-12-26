@@ -7,7 +7,7 @@ import {
 	Integration,
 	IntegrationAuth,
 	IUser,
-	ServiceToken
+	ServiceToken,
 } from '../models';
 import {
 	createWorkspace as create,

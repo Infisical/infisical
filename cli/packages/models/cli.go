@@ -17,6 +17,7 @@ type ConfigFile struct {
 type SingleEnvironmentVariable struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+	Type  string `json:"type"`
 }
 
 type WorkspaceConfigFile struct {
