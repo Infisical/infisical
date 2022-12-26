@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ReactCodeInput from 'react-code-input';
 import Head from 'next/head';
 import Image from 'next/image';
