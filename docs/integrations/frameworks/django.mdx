@@ -10,15 +10,18 @@ Prerequisites:
 ## Initialize Infisical for your [Django](https://www.djangoproject.com) project
 
 ```bash
-# move to your Django project
+# navigate to the root of your of your project 
 cd /path/to/project
 
-# initialize infisical
+# then initialize Infisical
 infisical init
 ```
 
-## Start your server with environment variables injected
+## Start your application as usual but with Infisical
 
 ```bash
+infisical run -- <your application start command>
+
+# Example
 infisical run -- python manage.py runserver
 ```

@@ -91,7 +91,9 @@ var loginCmd = &cobra.Command{
 
 		err = util.StoreUserCredsInKeyRing(userCredentialsToBeStored)
 		if err != nil {
-			log.Errorln("Unable to store your credentials in system key ring")
+			currentVault, _ := util.GetCurrentVaultBackend()
+			log.Errorf("Unable to store your credentials in system vault [%s]. Rerun with flag -d to see full logs", currentVault)
+			log.Errorln("To trouble shoot further, read https://infisical.com/docs/cli/faq")
 			log.Debugln(err)
 			return
 		}
@@ -114,7 +116,7 @@ func init() {
 
 func askForLoginCredentials() (email string, password string, err error) {
 	validateEmail := func(input string) error {
-		matched, err := regexp.MatchString("^[\\w!#$%&'*+/=?`{|}~^-]+(?:\\.[\\w!#$%&'*+/=?`{|}~^-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,6}$", input)
+		matched, err := regexp.MatchString("^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$", input)
 		if err != nil || !matched {
 			return errors.New("this doesn't look like an email address")
 		}

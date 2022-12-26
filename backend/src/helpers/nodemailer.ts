@@ -2,21 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import handlebars from 'handlebars';
 import nodemailer from 'nodemailer';
-import { SMTP_HOST, SMTP_NAME, SMTP_USERNAME, SMTP_PASSWORD } from '../config';
+import { SMTP_FROM_NAME, SMTP_FROM_ADDRESS } from '../config';
+import * as Sentry from '@sentry/node';
 
-// create nodemailer transporter
-const transporter = nodemailer.createTransport({
-	host: SMTP_HOST,
-	port: 587,
-	auth: {
-		user: SMTP_USERNAME,
-		pass: SMTP_PASSWORD
-	}
-});
-transporter
-	.verify()
-	.then(() => console.log('SMTP - Successfully connected'))
-	.catch((err) => console.log('SMTP - Failed to connect'));
+let smtpTransporter: nodemailer.Transporter;
 
 /**
  * @param {Object} obj
@@ -26,33 +15,38 @@ transporter
  * @param {Object} obj.substitutions - object containing template substitutions
  */
 const sendMail = async ({
-	template,
-	subjectLine,
-	recipients,
-	substitutions
+  template,
+  subjectLine,
+  recipients,
+  substitutions
 }: {
-	template: string;
-	subjectLine: string;
-	recipients: string[];
-	substitutions: any;
+  template: string;
+  subjectLine: string;
+  recipients: string[];
+  substitutions: any;
 }) => {
-	try {
-		const html = fs.readFileSync(
-			path.resolve(__dirname, '../templates/' + template),
-			'utf8'
-		);
-		const temp = handlebars.compile(html);
-		const htmlToSend = temp(substitutions);
+  try {
+    const html = fs.readFileSync(
+      path.resolve(__dirname, '../templates/' + template),
+      'utf8'
+    );
+    const temp = handlebars.compile(html);
+    const htmlToSend = temp(substitutions);
 
-		await transporter.sendMail({
-			from: `"${SMTP_NAME}" <${SMTP_USERNAME}>`,
-			to: recipients.join(', '),
-			subject: subjectLine,
-			html: htmlToSend
-		});
-	} catch (err) {
-		console.error(err);
-	}
+    await smtpTransporter.sendMail({
+      from: `"${SMTP_FROM_NAME}" <${SMTP_FROM_ADDRESS}>`,
+      to: recipients.join(', '),
+      subject: subjectLine,
+      html: htmlToSend
+    });
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+  }
 };
 
-export { sendMail };
+const setTransporter = (transporter: nodemailer.Transporter) => {
+  smtpTransporter = transporter;
+};
+
+export { sendMail, setTransporter };

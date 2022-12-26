@@ -23,9 +23,7 @@ import getOrganization from "../../pages/api/organization/GetOrg";
 import getOrganizations from "../../pages/api/organization/getOrgs";
 import getUser from "../../pages/api/user/getUser";
 import guidGenerator from "../utilities/randomId";
-/**
- * @param {(key: string) => string} t
- */
+
 const supportOptions = (t: TFunction) => [
   [
     <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faSlack} />,

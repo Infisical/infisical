@@ -18,8 +18,23 @@ spec:
       - name: frontend 
         image: infisical/frontend
         imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        {{- if .Values.frontend.kubeSecretRef }}
+        envFrom:
+        - secretRef:
+            name: {{ .Values.frontend.kubeSecretRef }}
+        {{- end }}
+        {{- if .Values.frontendEnvironmentVariables }}
+        env:
+        {{- range $key, $value := .Values.frontendEnvironmentVariables }}
+        {{- if $value | quote | eq "MUST_REPLACE" }}
+          {{ fail "Environment variables are not set. Please set all environment variables to continue." }}
+        {{ end }}
+        - name: {{ $key }}
+          value: {{ quote $value }}
+        {{- end }}
+        {{- end }}
         ports: 
-        - containerPort: 4000
+        - containerPort: 3000
 ---
 apiVersion: v1
 kind: Service 

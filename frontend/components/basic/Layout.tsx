@@ -18,12 +18,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import getOrganizations from "~/pages/api/organization/getOrgs";
 import getOrganizationUserProjects from "~/pages/api/organization/GetOrgUserProjects";
 import getOrganizationUsers from "~/pages/api/organization/GetOrgUsers";
+import checkUserAction from "~/pages/api/userActions/checkUserAction";
 import addUserToWorkspace from "~/pages/api/workspace/addUserToWorkspace";
 import createWorkspace from "~/pages/api/workspace/createWorkspace";
 import getWorkspaces from "~/pages/api/workspace/getWorkspaces";
 import uploadKeys from "~/pages/api/workspace/uploadKeys";
 
 import NavBarDashboard from "../navigation/NavBarDashboard";
+import onboardingCheck from "../utilities/checks/OnboardingCheck";
 import { tempLocalStorage } from "../utilities/checks/tempLocalStorage";
 import {
   decryptAssymmetric,
@@ -40,12 +42,14 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const router = useRouter();
   const [workspaceList, setWorkspaceList] = useState([]);
-  const [workspaceMapping, setWorkspaceMapping] = useState([{ 1: 2 }]);
+  const [workspaceMapping, setWorkspaceMapping] = useState([{ "1": "2" }]);
   const [workspaceSelected, setWorkspaceSelected] = useState("∞");
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [totalOnboardingActionsDone, setTotalOnboardingActionsDone] =
+    useState(0);
 
   const { t } = useTranslation();
 
@@ -217,25 +221,26 @@ export default function Layout({ children }: LayoutProps) {
       }
     };
     putUserInWorkSpace();
+    onboardingCheck({ setTotalOnboardingActionsDone });
   }, []);
 
   useEffect(() => {
     try {
       if (
-        workspaceMapping[Number(workspaceSelected)] &&
-        `${workspaceMapping[Number(workspaceSelected)]}` !==
+        workspaceMapping[workspaceSelected as any] &&
+        `${workspaceMapping[workspaceSelected as any]}` !==
           router.asPath
             .split("/")
             [router.asPath.split("/").length - 1].split("?")[0]
       ) {
         router.push(
           "/dashboard/" +
-            workspaceMapping[Number(workspaceSelected)] +
+            workspaceMapping[workspaceSelected as any] +
             "?Development"
         );
         localStorage.setItem(
           "projectData.id",
-          `${workspaceMapping[Number(workspaceSelected)]}`
+          `${workspaceMapping[workspaceSelected as any]}`
         );
       }
     } catch (error) {
@@ -246,6 +251,10 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <>
       <div className="fixed w-full hidden md:block flex flex-col h-screen">
+        <script
+          src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.2.2/cdn.js"
+          defer
+        ></script>
         <NavBarDashboard />
         <div className="flex flex-col md:flex-row flex-1">
           <aside className="bg-bunker-600 border-r border-mineshaft-500 w-full md:w-60 h-screen">
@@ -329,18 +338,44 @@ export default function Layout({ children }: LayoutProps) {
                       <FontAwesomeIcon icon={faBookOpen} />
                     </p>
                     Infisical Guide
+                    <img
+                      src={`/images/progress-${
+                        totalOnboardingActionsDone == 0 ? "0" : ""
+                      }${totalOnboardingActionsDone == 1 ? "14" : ""}${
+                        totalOnboardingActionsDone == 2 ? "28" : ""
+                      }${totalOnboardingActionsDone == 3 ? "43" : ""}${
+                        totalOnboardingActionsDone == 4 ? "57" : ""
+                      }${totalOnboardingActionsDone == 5 ? "71" : ""}.svg`}
+                      height={58}
+                      width={58}
+                      alt="progress bar"
+                      className="absolute right-2 -top-2"
+                    ></img>
                   </div>
                 ) : (
                   <Link
                     href={`/home/` + workspaceMapping[workspaceSelected as any]}
                   >
                     <div
-                      className={`flex p-2.5 text-white text-sm rounded cursor-pointer hover:bg-primary-50/5 mt-max border border-dashed border-bunker-400`}
+                      className={`relative flex p-2.5 overflow-visible text-white h-10 text-sm rounded cursor-pointer bg-white/10 hover:bg-primary-50/[0.15] mt-max`}
                     >
                       <p className="w-10 flex items-center justify-center text-lg">
                         <FontAwesomeIcon icon={faBookOpen} />
                       </p>
                       Infisical Guide
+                      <img
+                        src={`/images/progress-${
+                          totalOnboardingActionsDone == 0 ? "0" : ""
+                        }${totalOnboardingActionsDone == 1 ? "14" : ""}${
+                          totalOnboardingActionsDone == 2 ? "28" : ""
+                        }${totalOnboardingActionsDone == 3 ? "43" : ""}${
+                          totalOnboardingActionsDone == 4 ? "57" : ""
+                        }${totalOnboardingActionsDone == 5 ? "71" : ""}.svg`}
+                        height={58}
+                        width={58}
+                        alt="progress bar"
+                        className="absolute right-2 -top-2"
+                      ></img>
                     </div>
                   </Link>
                 )}

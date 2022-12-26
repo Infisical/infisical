@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Head from "next/head";
+import { useRouter } from "next/router";
 import { useTranslation } from "next-i18next";
-import setLanguage from "next-translate/setLanguage";
 import { faCheck, faX } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -30,7 +30,14 @@ export default function PersonalSettings() {
   const [backupKeyIssued, setBackupKeyIssued] = useState(false);
   const [backupKeyError, setBackupKeyError] = useState(false);
 
-  const { t, lang } = useTranslation();
+  const { t } = useTranslation();
+  const router = useRouter();
+  const lang = router.locale ?? "en";
+
+  const setLanguage = async (to) => {
+    router.push(router.asPath, router.asPath, { locale: to });
+    localStorage.setItem("lang", to);
+  };
 
   useEffect(async () => {
     let user = await getUser();
@@ -145,19 +152,21 @@ export default function PersonalSettings() {
                   isRequired
                   error={currentPasswordError}
                   errorText={t("section-password:current-wrong")}
+                  autoComplete="current-password"
+                  id="current-password"
                 />
                 <div className="py-2"></div>
                 <InputField
                   label={t("section-password:new")}
                   onChangeHandler={(password) => {
                     setNewPassword(password);
-                    passwordCheck(
+                    passwordCheck({
                       password,
                       setPasswordErrorLength,
                       setPasswordErrorNumber,
                       setPasswordErrorLowerCase,
-                      false
-                    );
+                      currentErrorCheck: false,
+                    });
                   }}
                   type="password"
                   value={newPassword}
@@ -167,6 +176,8 @@ export default function PersonalSettings() {
                     passwordErrorLowerCase &&
                     passwordErrorNumber
                   }
+                  autoComplete="new-password"
+                  id="new-password"
                 />
               </div>
               {passwordErrorLength ||
@@ -307,6 +318,8 @@ export default function PersonalSettings() {
                   isRequired
                   error={backupKeyError}
                   errorText={t("section-password:current-wrong")}
+                  autoComplete="current-password"
+                  id="current-password"
                 />
               </div>
               <div className="flex flex-row items-center mt-3 w-full w-60">

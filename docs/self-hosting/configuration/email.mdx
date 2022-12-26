@@ -1,0 +1,75 @@
+---
+title: "Email"
+description: ""
+---
+
+Infisical requires you to configure your own SMTP server for certain functionality like:
+
+- Sending email confirmation links to sign up.
+- Sending invite links for projects.
+- Sending alerts.
+
+We strongly recommend using an email service to act as your email server and provide examples for common providers.
+
+## General configuration
+
+By default, you need to configure the following SMTP [environment variables](https://infisical.com/docs/self-hosting/configuration/envars):
+
+- `SMTP_HOST`: Hostname to connect to for establishing SMTP connections.
+- `SMTP_USERNAME`: Credential to connect to host (e.g. team@infisical.com)
+- `SMTP_PASSWORD`: Credential to connect to host.
+- `SMTP_PORT`: Port to connect to for establishing SMTP connections.
+- `SMTP_SECURE`: If `true`, the connection will use TLS when connecting to server with special configs for SendGrid and Mailgun. If `false` (the default) then TLS is used if server supports the STARTTLS extension.
+- `SMTP_FROM_ADDRESS`: Email address to be used for sending emails (e.g. team@infisical.com).
+- `SMTP_FROM_NAME`: Name label to be used in `From` field (e.g. Team).
+
+Below you will find details on how to configure common email providers (not in any particular order).
+
+## Twilio SendGrid
+
+1. Create an account and configure [SendGrid](https://sendgrid.com) to send emails.
+2. Create a SendGrid API Key under Settings > [API Keys](https://app.sendgrid.com/settings/api_keys)
+3. Set a name for your API Key, we recommend using "Infisical," and select the "Restricted Key" option. You will need to enable the "Mail Send" permission as shown below:
+
+![creating sendgrid api key](../../images/email-sendgrid-create-key.png)
+
+![setting sendgrid api key restriction](../../images/email-sendgrid-restrictions.png)
+
+4. With the API Key, you can now set your SMTP environment variables:
+
+```
+SMTP_HOST=smtp.sendgrid.net
+SMTP_USERNAME=apikey
+SMTP_PASSWORD=SG.rqFsfjxYPiqE1lqZTgD_lz7x8IVLx # your SendGrid API Key from step above
+SMTP_PORT=587
+SMTP_SECURE=true
+SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
+SMTP_FROM_NAME=Infisical
+```
+
+<Info>
+    Remember that you will need to restart Infisical for this to work properly.
+</Info>
+
+## Mailgun
+
+1. Create an account and configure [Mailgun](https://www.mailgun.com) to send emails.
+2. Obtain your Mailgun credentials in Sending > Overview > SMTP
+
+![obtain mailhog api key estriction](../../images/email-mailhog-credentials.png)
+
+3. With your Mailgun credentials, you can now set up your SMTP environment variables:
+
+```
+SMTP_HOST=smtp.mailgun.org # obtained from credentials page
+SMTP_USERNAME=postmaster@example.mailgun.org # obtained from credentials page
+SMTP_PASSWORD=password # obtained from credentials page
+SMTP_PORT=587
+SMTP_SECURE=true
+SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
+SMTP_FROM_NAME=Infisical
+```
+
+<Info>
+    Remember that you will need to restart Infisical for this to work properly.
+</Info>

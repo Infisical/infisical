@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import ReactCodeInput from "react-code-input";
-import dynamic from "next/dynamic";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { useTranslation } from "next-i18next";
 import { faCheck, faWarning, faX } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -13,6 +13,7 @@ import Error from "~/components/basic/Error";
 import InputField from "~/components/basic/InputField";
 import Aes256Gcm from "~/components/utilities/cryptography/aes-256-gcm";
 import issueBackupKey from "~/components/utilities/cryptography/issueBackupKey";
+import { getTranslatedStaticProps } from "~/components/utilities/withTranslateProps";
 import attemptLogin from "~/utilities/attemptLogin";
 import passwordCheck from "~/utilities/checks/PasswordCheck";
 
@@ -20,8 +21,6 @@ import checkEmailVerificationCode from "./api/auth/CheckEmailVerificationCode";
 import completeAccountInformationSignup from "./api/auth/CompleteAccountInformationSignup";
 import sendVerificationEmail from "./api/auth/SendVerificationEmail";
 import getWorkspaces from "./api/workspace/getWorkspaces";
-import { Trans, useTranslation } from "next-i18next";
-import { getTranslatedStaticProps } from "~/components/utilities/withTranslateProps";
 
 // const ReactCodeInput = dynamic(import("react-code-input"));
 const nacl = require("tweetnacl");
@@ -84,8 +83,10 @@ export default function SignUp() {
   const router = useRouter();
   const [errorLogin, setErrorLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isResendingVerificationEmail, setIsResendingVerificationEmail] =
+    useState(false);
   const [backupKeyError, setBackupKeyError] = useState(false);
-  const [verificationToken, setVerificationToken] = useState();
+  const [verificationToken, setVerificationToken] = useState("");
   const [backupKeyIssued, setBackupKeyIssued] = useState(false);
 
   const { t } = useTranslation();
@@ -113,7 +114,7 @@ export default function SignUp() {
       setStep(2);
     } else if (step == 2) {
       // Checking if the code matches the email.
-      const response = await checkEmailVerificationCode(email, code);
+      const response = await checkEmailVerificationCode({ email, code });
       if (response.status === 200 || code == "111222") {
         setVerificationToken((await response.json()).token);
         setStep(3);
@@ -153,7 +154,8 @@ export default function SignUp() {
     }
   };
 
-  // Verifies if the imformation that the users entered (name, workspace) is there, and if the password matched the criteria.
+  // Verifies if the imformation that the users entered (name, workspace) is there, and if the password matched the
+  // criteria.
   const signupErrorCheck = async () => {
     setIsLoading(true);
     let errorCheck = false;
@@ -185,15 +187,15 @@ export default function SignUp() {
       const PRIVATE_KEY = nacl.util.encodeBase64(secretKeyUint8Array);
       const PUBLIC_KEY = nacl.util.encodeBase64(publicKeyUint8Array);
 
-      const { ciphertext, iv, tag } = Aes256Gcm.encrypt(
-        PRIVATE_KEY,
-        password
+      const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
+        text: PRIVATE_KEY,
+        secret: password
           .slice(0, 32)
           .padStart(
             32 + (password.slice(0, 32).length - new Blob([password]).size),
             "0"
-          )
-      ) as { ciphertext: string; iv: string; tag: string };
+          ),
+      }) as { ciphertext: string; iv: string; tag: string };
 
       localStorage.setItem("PRIVATE_KEY", PRIVATE_KEY);
 
@@ -251,15 +253,28 @@ export default function SignUp() {
     }
   };
 
+  const resendVerificationEmail = async () => {
+    setIsResendingVerificationEmail(true);
+    setIsLoading(true);
+    await sendVerificationEmail(email);
+    setTimeout(() => {
+      setIsLoading(false);
+      setIsResendingVerificationEmail(false);
+    }, 2000);
+  };
+
   // Step 1 of the sign up process (enter the email or choose google authentication)
   const step1 = (
     <div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-8 md:px-6 mx-1 mb-48 md:mb-16 rounded-xl drop-shadow-xl">
       <p className="text-4xl font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-        {t("signup:step1-start")}
+        {"Let'"}s get started
       </p>
       <div className="flex flex-col items-center justify-center w-full md:pb-2 max-h-24 max-w-md mx-auto pt-2">
         <Link href="/login">
-          <button className="w-max pb-3 hover:opacity-90 duration-200">
+          <button
+            type="button"
+            className="w-max pb-3 hover:opacity-90 duration-200"
+          >
             <u className="font-normal text-md text-sky-500">
               {t("signup:already-have-account")}
             </u>
@@ -276,6 +291,7 @@ export default function SignUp() {
           isRequired
           error={emailError}
           errorText={emailErrorMessage}
+          autoComplete="username"
         />
       </div>
       {/* <div className='flex flex-row justify-left mt-4 max-w-md mx-auto'>
@@ -287,11 +303,7 @@ export default function SignUp() {
           {t("signup:step1-privacy")}
         </p>
         <div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
-          <Button
-            text={t("signup:step1-submit")}
-            onButtonPressed={emailCheck}
-            size="lg"
-          />
+          <Button text="Get Started" onButtonPressed={emailCheck} size="lg" />
         </div>
       </div>
     </div>
@@ -300,17 +312,12 @@ export default function SignUp() {
   // Step 2 of the signup process (enter the email verification code)
   const step2 = (
     <div className="bg-bunker w-max mx-auto h-7/12 pt-10 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-16">
-      <Trans
-        i18nKey="signup:step2-message"
-        components={{
-          wrapper: <p className="text-l flex justify-center text-gray-400" />,
-          email: (
-            <p className="text-l flex justify-center font-semibold my-2 text-gray-400" />
-          ),
-        }}
-        values={{ email }}
-      />
-
+      <p className="text-l flex justify-center text-gray-400">
+        {"We've"} sent a verification email to{" "}
+      </p>
+      <p className="text-l flex justify-center font-semibold my-2 text-gray-400">
+        {email}{" "}
+      </p>
       <div className="hidden md:block">
         <ReactCodeInput
           name=""
@@ -336,19 +343,26 @@ export default function SignUp() {
       {codeError && <Error text={t("signup:step2-code-error")} />}
       <div className="flex max-w-min flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
         <Button
-          text={t("signup:verify")}
+          text={t("signup:verify") ?? ""}
           onButtonPressed={incrementStep}
           size="lg"
         />
       </div>
       <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
-        {/* <Link href="/login">
-          <button className="w-full hover:opacity-90 duration-200">
-            <u className="font-normal text-sm text-sky-700">
-              Not seeing an email? Resend
-            </u>
-          </button>
-        </Link> */}
+        <div className="flex flex-row items-baseline gap-1">
+          <span className="text-gray-400">Not seeing an email?</span>
+          <u
+            className={`font-normal text-sm ${
+              isResendingVerificationEmail
+                ? "text-gray-400"
+                : "text-sky-500 hover:opacity-90 duration-200"
+            }`}
+          >
+            <button disabled={isLoading} onClick={resendVerificationEmail}>
+              {isResendingVerificationEmail ? "Resending..." : "Resend"}
+            </button>
+          </u>
+        </div>
         <p className="text-sm text-gray-500 pb-2">
           {t("signup:step2-spam-alert")}
         </p>
@@ -375,6 +389,7 @@ export default function SignUp() {
             }) as string
           }
           error={firstNameError}
+          autoComplete="given-name"
         />
       </div>
       <div className="mt-2 flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
@@ -390,6 +405,7 @@ export default function SignUp() {
             }) as string
           }
           error={lastNameError}
+          autoComplete="family-name"
         />
       </div>
       <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
@@ -411,6 +427,8 @@ export default function SignUp() {
           error={
             passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase
           }
+          autoComplete="new-password"
+          id="new-password"
         />
         {passwordErrorLength ||
         passwordErrorLowerCase ||
@@ -486,7 +504,7 @@ export default function SignUp() {
       </div>
       <div className="flex flex-col items-center justify-center md:p-2 max-h-48 max-w-max mx-auto text-lg px-2 py-3">
         <Button
-          text={t("signup:signup")}
+          text={t("signup:signup") ?? ""}
           loading={isLoading}
           onButtonPressed={signupErrorCheck}
           size="lg"
@@ -511,7 +529,7 @@ export default function SignUp() {
       </div>
       <div className="flex flex-row items-center justify-center w-3/4 md:w-full md:p-2 max-h-28 max-w-max mx-auto mt-6 py-1 md:mt-4 text-lg text-center md:text-left">
         <Button
-          text={t("signup:step4-download")}
+          text="Download PDF"
           onButtonPressed={async () => {
             await issueBackupKey({
               email,
@@ -529,10 +547,10 @@ export default function SignUp() {
         {/* <div
 					className="text-l mt-4 text-lg text-gray-400 hover:text-gray-300 duration-200 bg-white/5 px-8 hover:bg-white/10 py-3 rounded-md cursor-pointer"
 					onClick={() => {
-						if (localStorage.getItem("auth:projectData.id")) {
-							router.push("auth:/dashboard/" + localStorage.getItem("projectData.id"));
+						if (localStorage.getItem("projectData.id")) {
+							router.push("/dashboard/" + localStorage.getItem("projectData.id"));
 						} else {
-							router.push("auth:/noprojects")
+							router.push("/noprojects")
 						}
 					}}
 				>
@@ -565,7 +583,9 @@ export default function SignUp() {
             />
           </div>
         </Link>
-        {step == 1 ? step1 : step == 2 ? step2 : step == 3 ? step3 : step4}
+        <form onSubmit={(e) => e.preventDefault()}>
+          {step == 1 ? step1 : step == 2 ? step2 : step == 3 ? step3 : step4}
+        </form>
       </div>
     </div>
   );

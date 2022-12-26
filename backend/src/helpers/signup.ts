@@ -33,7 +33,7 @@ const sendEmailVerification = async ({ email }: { email: string }) => {
 		// send mail
 		await sendMail({
 			template: 'emailVerification.handlebars',
-			subjectLine: 'Infisical workspace invitation',
+			subjectLine: 'Infisical confirmation code',
 			recipients: [email],
 			substitutions: {
 				code: token
@@ -66,7 +66,7 @@ const checkEmailVerification = async ({
 			email,
 			token: code
 		});
-
+	
 		if (!token) throw new Error('Failed to find email verification token');
 	} catch (err) {
 		Sentry.setUser(null);

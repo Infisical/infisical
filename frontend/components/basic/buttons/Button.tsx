@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ButtonHTMLAttributes } from "react";
 import Image from "next/image";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import {
@@ -9,7 +9,7 @@ import {
 const classNames = require("classnames");
 
 type ButtonProps = {
-  text: string;
+  text?: string;
   onButtonPressed: () => void;
   loading?: boolean;
   color?: string;
@@ -18,6 +18,7 @@ type ButtonProps = {
   active?: boolean;
   iconDisabled?: string;
   textDisabled?: string;
+  type?: ButtonHTMLAttributes<any>['type'];
 };
 
 /**
@@ -91,6 +92,7 @@ export default function Button(props: ButtonProps): JSX.Element {
   const button = (
     <button
       disabled={!activityStatus}
+      type={props.type}
       onClick={props.onButtonPressed}
       className={styleButton}
     >

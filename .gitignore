@@ -25,7 +25,9 @@ node_modules
 .env
 
 # testing
-/coverage
+coverage
+reports
+junit.xml
 
 # next.js
 /.next/

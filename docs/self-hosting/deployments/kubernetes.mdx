@@ -42,7 +42,7 @@ that by adding the `--namespace <namespace-to-install-to>` to your `helm install
 
 ```bash
 ## Installs to default namespace
-helm install infisical-helm-charts/infisical --values <path to the values.yaml you downloaded/created in step 2>
+helm install infisical-helm-charts/infisical --generate-name --values <path to the values.yaml you downloaded/created in step 2>
 ```
 
 <Note>
@@ -50,5 +50,4 @@ If you have not filled out all of the required environment variables, you will s
 do so. 
 </Note>
 
-4. Your Infisical installation is complete and should be running on the host name you specified in Ingress in `values.yaml`.
-Note: Please allow an additional time (2 minutes) for the frontend pods to be fully ready.
+#### 4. Your Infisical installation is complete and should be running on the host name you specified in Ingress in `values.yaml`.

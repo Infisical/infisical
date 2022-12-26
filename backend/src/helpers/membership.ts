@@ -2,6 +2,52 @@ import * as Sentry from '@sentry/node';
 import { Membership, Key } from '../models';
 
 /**
+ * Validate that user with id [userId] is a member of workspace with id [workspaceId]
+ * and has at least one of the roles in [acceptedRoles] and statuses in [acceptedStatuses]
+ * @param {Object} obj
+ * @param {String} obj.userId - id of user to validate
+ * @param {String} obj.workspaceId - id of workspace
+ */
+const validateMembership = async ({
+	userId,
+	workspaceId,
+	acceptedRoles,
+	acceptedStatuses
+}: {
+	userId: string;
+	workspaceId: string;
+	acceptedRoles: string[];
+	acceptedStatuses: string[];
+}) => {
+	
+	let membership;
+	//TODO: Refactor code to take advantage of using RequestError. It's possible to create new types of errors for more detailed errors
+	try {
+		membership = await Membership.findOne({
+			user: userId,
+			workspace: workspaceId
+		});
+		
+		if (!membership) throw new Error('Failed to find membership');
+		
+		if (!acceptedRoles.includes(membership.role)) {
+			throw new Error('Failed to validate membership role');
+		}
+
+		if (!acceptedStatuses.includes(membership.status)) {
+			throw new Error('Failed to validate membership status');
+		}
+		
+	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
+		throw new Error('Failed to validate membership');
+	}
+	
+	return membership;
+}
+
+/**
  * Return membership matching criteria specified in query [queryObj]
  * @param {Object} queryObj - query object
  * @return {Object} membership - membership
@@ -97,4 +143,9 @@ const deleteMembership = async ({ membershipId }: { membershipId: string }) => {
 	return deletedMembership;
 };
 
-export { addMemberships, findMembership, deleteMembership };
+export { 
+	validateMembership,
+	addMemberships, 
+	findMembership, 
+	deleteMembership 
+};

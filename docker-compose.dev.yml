@@ -20,10 +20,10 @@ services:
     restart: unless-stopped
     depends_on:
       - mongo
+      - smtp-server
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: infisical/backend
     volumes:
       - ./backend/src:/app/src
       - ./backend/nodemon.json:/app/nodemon.json
@@ -34,7 +34,7 @@ services:
       - NODE_ENV=development
     networks:
       - infisical-dev
-  
+
   frontend:
     container_name: infisical-dev-frontend
     restart: unless-stopped
@@ -43,7 +43,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-    image: infisical/frontend
     volumes:
       - ./frontend/pages:/app/pages
       - ./frontend/public:/app/public
@@ -54,12 +53,9 @@ services:
     env_file: .env
     environment:
       - NEXT_PUBLIC_ENV=development
-      - NEXT_PUBLIC_WEBSITE_URL=${SITE_URL}
-      - NEXT_PUBLIC_POSTHOG_HOST=${POSTHOG_HOST}
-      - NEXT_PUBLIC_POSTHOG_API_KEY=${POSTHOG_PROJECT_API_KEY}
+      - INFISICAL_TELEMETRY_ENABLED=${TELEMETRY_ENABLED}
       - NEXT_PUBLIC_STRIPE_PRODUCT_PRO=${STRIPE_PRODUCT_PRO}
       - NEXT_PUBLIC_STRIPE_PRODUCT_STARTER=${STRIPE_PRODUCT_STARTER}
-      - NEXT_PUBLIC_TELEMETRY_ENABLED=${TELEMETRY_ENABLED}
     networks:
       - infisical-dev
 
@@ -80,6 +76,8 @@ services:
     container_name: infisical-dev-mongo-express
     image: mongo-express
     restart: always
+    depends_on:
+      - mongo
     env_file: .env
     environment:
       - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_USERNAME}
@@ -87,6 +85,18 @@ services:
       - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongo:27017/
     ports:
       - 8081:8081
+    networks:
+      - infisical-dev
+
+  smtp-server:
+    container_name: infisical-dev-smtp-server
+    image: mailhog/mailhog
+    restart: always
+    logging:
+      driver: 'none' # disable saving logs
+    ports:
+      - 1025:1025 # SMTP server
+      - 8025:8025 # Web UI
     networks:
       - infisical-dev
 

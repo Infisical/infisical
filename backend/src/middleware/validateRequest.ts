@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import * as Sentry from '@sentry/node';
 import { validationResult } from 'express-validator';
+import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
 
 /**
  * Validate intended inputs on [req] via express-validator
@@ -15,16 +15,12 @@ const validate = (req: Request, res: Response, next: NextFunction) => {
 	try {
 		const errors = validationResult(req);
 		if (!errors.isEmpty()) {
-			return res.status(400).json({ errors: errors.array() });
+			return next(BadRequestError({context: {errors: errors.array}}))
 		}
 
 		return next();
 	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		return res.status(401).send({
-			error: "Looks like you're unauthenticated . Try logging in"
-		});
+		return next(UnauthorizedRequestError({message: 'Unauthenticated requests are not allowed. Try logging in'}))
 	}
 };
 

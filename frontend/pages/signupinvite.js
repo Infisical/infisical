@@ -1,39 +1,39 @@
-import React, { useState } from "react";
-import Head from "next/head";
-import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/router";
-import { faCheck, faWarning, faX } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import React, { useState } from 'react';
+import Head from 'next/head';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { faCheck, faWarning, faX } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import Button from "~/components/basic/buttons/Button";
-import InputField from "~/components/basic/InputField";
-import Aes256Gcm from "~/components/utilities/cryptography/aes-256-gcm";
-import issueBackupKey from "~/components/utilities/cryptography/issueBackupKey";
-import attemptLogin from "~/utilities/attemptLogin";
-import passwordCheck from "~/utilities/checks/PasswordCheck";
+import Button from '~/components/basic/buttons/Button';
+import InputField from '~/components/basic/InputField';
+import Aes256Gcm from '~/components/utilities/cryptography/aes-256-gcm';
+import issueBackupKey from '~/components/utilities/cryptography/issueBackupKey';
+import attemptLogin from '~/utilities/attemptLogin';
+import passwordCheck from '~/utilities/checks/PasswordCheck';
 
-import completeAccountInformationSignupInvite from "./api/auth/CompleteAccountInformationSignupInvite";
-import verifySignupInvite from "./api/auth/VerifySignupInvite";
+import completeAccountInformationSignupInvite from './api/auth/CompleteAccountInformationSignupInvite';
+import verifySignupInvite from './api/auth/VerifySignupInvite';
 
-const nacl = require("tweetnacl");
-const jsrp = require("jsrp");
-nacl.util = require("tweetnacl-util");
+const nacl = require('tweetnacl');
+const jsrp = require('jsrp');
+nacl.util = require('tweetnacl-util');
 const client = new jsrp.client();
-const queryString = require("query-string");
+const queryString = require('query-string');
 
 export default function SignupInvite() {
-  const [password, setPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [firstNameError, setFirstNameError] = useState(false);
   const [lastNameError, setLastNameError] = useState(false);
   const [passwordErrorLength, setPasswordErrorLength] = useState(false);
   const [passwordErrorNumber, setPasswordErrorNumber] = useState(false);
   const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
   const router = useRouter();
-  const parsedUrl = queryString.parse(router.asPath.split("?")[1]);
-  const [email, setEmail] = useState(parsedUrl.to);
+  const parsedUrl = queryString.parse(router.asPath.split('?')[1]);
+  const [email, setEmail] = useState(parsedUrl.to?.replace(' ', '+').trim());
   const token = parsedUrl.token;
   const [errorLogin, setErrorLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,13 +58,13 @@ export default function SignupInvite() {
     } else {
       setLastNameError(false);
     }
-    errorCheck = passwordCheck(
+    errorCheck = passwordCheck({
       password,
       setPasswordErrorLength,
       setPasswordErrorNumber,
       setPasswordErrorLowerCase,
       errorCheck
-    );
+    });
 
     if (!errorCheck) {
       // Generate a random pair of a public and a private key
@@ -74,21 +74,22 @@ export default function SignupInvite() {
       const PRIVATE_KEY = nacl.util.encodeBase64(secretKeyUint8Array);
       const PUBLIC_KEY = nacl.util.encodeBase64(publicKeyUint8Array);
 
-      const { ciphertext, iv, tag } = Aes256Gcm.encrypt(
-        PRIVATE_KEY,
-        password
+      const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
+        text: PRIVATE_KEY,
+        secret: password
           .slice(0, 32)
           .padStart(
             32 + (password.slice(0, 32).length - new Blob([password]).size),
-            "0"
+            '0'
           )
-      );
-      localStorage.setItem("PRIVATE_KEY", PRIVATE_KEY);
+      });
+
+      localStorage.setItem('PRIVATE_KEY', PRIVATE_KEY);
 
       client.init(
         {
           username: email,
-          password: password,
+          password: password
         },
         async () => {
           client.createVerifier(async (err, result) => {
@@ -102,17 +103,17 @@ export default function SignupInvite() {
               tag,
               salt: result.salt,
               verifier: result.verifier,
-              token: verificationToken,
+              token: verificationToken
             });
 
             // if everything works, go the main dashboard page.
-            if (!errorCheck && response.status == "200") {
+            if (!errorCheck && response.status == '200') {
               response = await response.json();
 
-              localStorage.setItem("publicKey", PUBLIC_KEY);
-              localStorage.setItem("encryptedPrivateKey", ciphertext);
-              localStorage.setItem("iv", iv);
-              localStorage.setItem("tag", tag);
+              localStorage.setItem('publicKey', PUBLIC_KEY);
+              localStorage.setItem('encryptedPrivateKey', ciphertext);
+              localStorage.setItem('iv', iv);
+              localStorage.setItem('tag', tag);
 
               try {
                 await attemptLogin(
@@ -126,7 +127,7 @@ export default function SignupInvite() {
                 setStep(3);
               } catch (error) {
                 setIsLoading(false);
-                console.log("Error", error);
+                console.log('Error', error);
               }
             }
           });
@@ -149,20 +150,20 @@ export default function SignupInvite() {
         width={410}
         alt="verify email"
       ></Image>
-      <div className="flex flex-row items-center justify-center w-3/4 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto text-lg py-1 text-center md:text-left">
+      <div className="flex max-w-max flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
         <Button
           text="Confirm Email"
           onButtonPressed={async () => {
             const response = await verifySignupInvite({
               email,
-              code: token,
+              code: token
             });
             if (response.status == 200) {
               setVerificationToken((await response.json()).token);
               setStep(2);
             } else {
-              console.log("ERROR", response);
-              router.push("/requestnewinvite");
+              console.log('ERROR', response);
+              router.push('/requestnewinvite');
             }
           }}
           size="lg"
@@ -186,6 +187,7 @@ export default function SignupInvite() {
           isRequired
           errorText="Please input your first name."
           error={firstNameError}
+          autoComplete="given-name"
         />
       </div>
       <div className="flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
@@ -197,6 +199,7 @@ export default function SignupInvite() {
           isRequired
           errorText="Please input your last name."
           error={lastNameError}
+          autoComplete="family-name"
         />
       </div>
       <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
@@ -204,13 +207,13 @@ export default function SignupInvite() {
           label="Password"
           onChangeHandler={(password) => {
             setPassword(password);
-            passwordCheck(
+            passwordCheck({
               password,
               setPasswordErrorLength,
               setPasswordErrorNumber,
               setPasswordErrorLowerCase,
-              false
-            );
+              currentErrorCheck: false
+            });
           }}
           type="password"
           value={password}
@@ -218,6 +221,8 @@ export default function SignupInvite() {
           error={
             passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase
           }
+          autoComplete="new-password"
+          id="new-password"
         />
         {passwordErrorLength ||
         passwordErrorLowerCase ||
@@ -240,7 +245,7 @@ export default function SignupInvite() {
               )}
               <div
                 className={`${
-                  passwordErrorLength ? "text-gray-400" : "text-gray-600"
+                  passwordErrorLength ? 'text-gray-400' : 'text-gray-600'
                 } text-sm`}
               >
                 14 characters
@@ -260,7 +265,7 @@ export default function SignupInvite() {
               )}
               <div
                 className={`${
-                  passwordErrorLowerCase ? "text-gray-400" : "text-gray-600"
+                  passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'
                 } text-sm`}
               >
                 1 lowercase character
@@ -280,7 +285,7 @@ export default function SignupInvite() {
               )}
               <div
                 className={`${
-                  passwordErrorNumber ? "text-gray-400" : "text-gray-600"
+                  passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'
                 } text-sm`}
               >
                 1 number
@@ -324,18 +329,18 @@ export default function SignupInvite() {
         It contains your Secret Key which we cannot access or recover for you if
         you lose it.
       </div>
-      <div className="flex flex-row items-center justify-center w-3/4 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto mt-6 md:mt-8 py-1 text-lg text-center md:text-left">
+      <div className="flex flex-col items-center justify-center md:px-4 md:py-5 mt-2 px-2 py-3 max-h-24 max-w-max mx-auto text-lg">
         <Button
           text="Download PDF"
           onButtonPressed={async () => {
             await issueBackupKey({
               email,
               password,
-              personalName: firstName + " " + lastName,
+              personalName: firstName + ' ' + lastName,
               setBackupKeyError,
-              setBackupKeyIssued,
+              setBackupKeyIssued
             });
-            router.push("/dashboard/");
+            router.push('/dashboard/');
           }}
           size="lg"
         />

@@ -1,18 +1,17 @@
-import Aes256Gcm from "~/components/utilities/cryptography/aes-256-gcm";
-import login1 from "~/pages/api/auth/Login1";
-import login2 from "~/pages/api/auth/Login2";
-import getOrganizations from "~/pages/api/organization/getOrgs";
-import getOrganizationUserProjects from "~/pages/api/organization/GetOrgUserProjects";
+import Aes256Gcm from '~/components/utilities/cryptography/aes-256-gcm';
+import login1 from '~/pages/api/auth/Login1';
+import login2 from '~/pages/api/auth/Login2';
+import getOrganizations from '~/pages/api/organization/getOrgs';
+import getOrganizationUserProjects from '~/pages/api/organization/GetOrgUserProjects';
 
-import { initPostHog } from "../analytics/posthog";
-import pushKeys from "./secrets/pushKeys";
-import { ENV } from "./config";
-import { saveTokenToLocalStorage } from "./saveTokenToLocalStorage";
-import SecurityClient from "./SecurityClient";
+import pushKeys from './secrets/pushKeys';
+import Telemetry from './telemetry/Telemetry';
+import { saveTokenToLocalStorage } from './saveTokenToLocalStorage';
+import SecurityClient from './SecurityClient';
 
-const nacl = require("tweetnacl");
-nacl.util = require("tweetnacl-util");
-const jsrp = require("jsrp");
+const nacl = require('tweetnacl');
+nacl.util = require('tweetnacl-util');
+const jsrp = require('jsrp');
 const client = new jsrp.client();
 
 /**
@@ -33,17 +32,19 @@ const attemptLogin = async (
   isLogin
 ) => {
   try {
+    const telemetry = new Telemetry().getInstance();
+
     client.init(
       {
         username: email,
-        password: password,
+        password: password
       },
       async () => {
         const clientPublicKey = client.getPublicKey();
 
-        const { serverPublicKey, salt } = await login1(email, clientPublicKey);
-
         try {
+          const { serverPublicKey, salt } = await login1(email, clientPublicKey);
+
           client.setSalt(salt);
           client.setServerPublicKey(serverPublicKey);
           const clientProof = client.getProof(); // called M1
@@ -53,54 +54,53 @@ const attemptLogin = async (
             await login2(email, clientProof);
           SecurityClient.setToken(token);
 
-          const privateKey = Aes256Gcm.decrypt(
-            encryptedPrivateKey,
+          const privateKey = Aes256Gcm.decrypt({
+            ciphertext: encryptedPrivateKey,
             iv,
             tag,
-            password
+            secret: password
               .slice(0, 32)
               .padStart(
                 32 + (password.slice(0, 32).length - new Blob([password]).size),
-                "0"
+                '0'
               )
-          );
+          });
 
           saveTokenToLocalStorage({
-            token,
             publicKey,
             encryptedPrivateKey,
             iv,
             tag,
-            privateKey,
+            privateKey
           });
-
+          
           const userOrgs = await getOrganizations();
           const userOrgsData = userOrgs.map((org) => org._id);
 
           let orgToLogin;
-          if (userOrgsData.includes(localStorage.getItem("orgData.id"))) {
-            orgToLogin = localStorage.getItem("orgData.id");
+          if (userOrgsData.includes(localStorage.getItem('orgData.id'))) {
+            orgToLogin = localStorage.getItem('orgData.id');
           } else {
             orgToLogin = userOrgsData[0];
-            localStorage.setItem("orgData.id", orgToLogin);
+            localStorage.setItem('orgData.id', orgToLogin);
           }
 
           let orgUserProjects = await getOrganizationUserProjects({
-            orgId: orgToLogin,
+            orgId: orgToLogin
           });
 
           orgUserProjects = orgUserProjects?.map((project) => project._id);
           let projectToLogin;
           if (
-            orgUserProjects.includes(localStorage.getItem("projectData.id"))
+            orgUserProjects.includes(localStorage.getItem('projectData.id'))
           ) {
-            projectToLogin = localStorage.getItem("projectData.id");
+            projectToLogin = localStorage.getItem('projectData.id');
           } else {
             try {
               projectToLogin = orgUserProjects[0];
-              localStorage.setItem("projectData.id", projectToLogin);
+              localStorage.setItem('projectData.id', projectToLogin);
             } catch (error) {
-              console.log("ERROR: User likely has no projects. ", error);
+              console.log('ERROR: User likely has no projects. ', error);
             }
           }
 
@@ -109,45 +109,35 @@ const attemptLogin = async (
             await pushKeys({
               obj: {
                 DATABASE_URL: [
-                  "mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net",
-                  "personal",
+                  'mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net',
+                  'personal'
                 ],
-                DB_USERNAME: ["user1234", "personal"],
-                DB_PASSWORD: ["ah8jak3hk8dhiu4dw7whxwe1l", "personal"],
-                TWILIO_AUTH_TOKEN: [
-                  "hgSIwDAKvz8PJfkj6xkzYqzGmAP3HLuG",
-                  "shared",
-                ],
-                WEBSITE_URL: ["http://localhost:3000", "shared"],
-                STRIPE_SECRET_KEY: ["sk_test_7348oyho4hfq398HIUOH78", "shared"],
+                DB_USERNAME: ['user1234', 'personal'],
+                DB_PASSWORD: ['example_password', 'personal'],
+                TWILIO_AUTH_TOKEN: ['example_twillion_token', 'shared'],
+                WEBSITE_URL: ['http://localhost:3000', 'shared'],
+                STRIPE_SECRET_KEY: ['sk_test_7348oyho4hfq398HIUOH78', 'shared']
               },
               workspaceId: projectToLogin,
-              env: "Development",
+              env: 'Development'
             });
           }
-          try {
-            if (email) {
-              if (ENV == "production") {
-                const posthog = initPostHog();
-                posthog.identify(email);
-                posthog.capture("User Logged In");
-              }
-            }
-          } catch (error) {
-            console.log("posthog", error);
+          if (email) {
+            telemetry.identify(email);
+            telemetry.capture('User Logged In');
           }
 
           if (isLogin) {
-            router.push("/dashboard/");
+            router.push('/dashboard/');
           }
         } catch (error) {
           setErrorLogin(true);
-          console.log("Login response not available");
+          console.log('Login response not available');
         }
       }
     );
   } catch (error) {
-    console.log("Something went wrong during authentication");
+    console.log('Something went wrong during authentication');
   }
   return true;
 };

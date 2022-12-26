@@ -3,12 +3,9 @@ package util
 import (
 	"crypto/aes"
 	"crypto/cipher"
-
-	log "github.com/sirupsen/logrus"
 )
 
 func DecryptSymmetric(key []byte, encryptedPrivateKey []byte, tag []byte, IV []byte) ([]byte, error) {
-	log.Debugln("Key:", key, "encryptedPrivateKey", encryptedPrivateKey, "tag", tag, "IV", IV)
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err

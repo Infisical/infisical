@@ -36,7 +36,7 @@ var initCmd = &cobra.Command{
 			return
 		}
 
-		if util.WorkspaceConfigFileExists() {
+		if util.WorkspaceConfigFileExistsInCurrentPath() {
 			shouldOverride, err := shouldOverrideWorkspacePrompt()
 			if err != nil {
 				log.Errorln("Unable to parse your answer")

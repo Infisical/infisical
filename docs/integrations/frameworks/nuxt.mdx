@@ -10,27 +10,18 @@ Prerequisites:
 ## Initialize Infisical for your [Nuxt](https://nuxtjs.org) app
 
 ```bash
-# move to your Nuxt app
+# navigate to the root of your of your project 
 cd /path/to/project
 
-# initialize infisical
+# then initialize infisical
 infisical init
 ```
 
-## Modify the start script in your `package.json`
-
-```json
-...
-"scripts": {
-    "dev": "infisical run -- nuxt",
-    "build": "infisical run -- nuxt build",
-    "start": "infisical run -- nuxt start"
-}
-...
-```
-
-## Start your development server with environment variables injected
+## Start your application as usual but with Infisical
 
 ```bash
-npm run dev
+infisical run -- <your application start command>
+
+# Example
+infisical run -- npm run dev
 ```

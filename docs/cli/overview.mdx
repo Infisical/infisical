@@ -1,5 +1,5 @@
 ---
-title: "Overview"
+title: 'Install'
 ---
 
 Prerequisite: Set up an account with [Infisical Cloud](https://app.infisical.com) or via a [self-hosted installation](/self-hosting/overview).
@@ -13,11 +13,7 @@ The Infisical CLI provides a way to inject environment variables from the platfo
   	Use [brew](https://brew.sh/) package manager
 
     	```bash
-    	# install
     	brew install infisical/get-cli/infisical
-
-    	# check version
-    	infisical --version
     	```
 
     	## Updates
@@ -31,13 +27,12 @@ The Infisical CLI provides a way to inject environment variables from the platfo
       Use [Scoop](https://scoop.sh/) package manager
 
     		```bash
-    		# install
     		scoop bucket add org https://github.com/Infisical/scoop-infisical.git
-    		scoop install infisical
-
-    		# check version
-    		infisical --version
     		```
+
+    			```bash
+    			scoop install infisical
+    			```
 
     		## Updates
 
@@ -49,33 +44,33 @@ The Infisical CLI provides a way to inject environment variables from the platfo
 	 <Tab title="Alpine">
 	 Install prerequisite
 		```bash
-		$ sudo apk add --no-cache bash sudo
+		sudo apk add --no-cache bash sudo
 		```
 
     	Add Infisical repository
     	```bash
-    	$ curl -1sLf \
+    	curl -1sLf \
     		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' \
     		| sudo -E bash
     	```
 
     	Then install CLI
     	```bash
-    	$ sudo apk update && sudo apk add infisical
+    	sudo apk update && sudo apk add infisical
     	```
 
    </Tab>
 	 <Tab title="RedHat/CentOs/Amazon">
 	 Add Infisical repository
 		```bash
-		$ curl -1sLf \
+		curl -1sLf \
 		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' \
 		| sudo -E bash
 		```
 
     	Then install CLI
     	```bash
-    	$ sudo yum install infisical
+    	sudo yum install infisical
     	```
 
    </Tab>
@@ -83,14 +78,14 @@ The Infisical CLI provides a way to inject environment variables from the platfo
 	 	Add Infisical repository 
 			
 		```bash
-		$ curl -1sLf \
+		curl -1sLf \
 		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' \
 		| sudo -E bash
 		```
 
     	Then install CLI
     	```bash
-    	$ sudo apt-get update && sudo apt-get install -y infisical
+    	sudo apt-get update && sudo apt-get install -y infisical
     	```
 
    </Tab>

@@ -1,6 +1,5 @@
 import { Fragment, useState } from "react";
-import { useRouter } from "next/router";
-import useTranslate from "next-translate/useTranslation";
+import { useTranslation } from "next-i18next";
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Dialog, Transition } from "@headlessui/react";
@@ -22,6 +21,8 @@ const expiryMapping = {
   "1 day": 86400,
   "7 days": 604800,
   "1 month": 2592000,
+  "6 months": 15552000,
+  "12 months": 31104000,
 };
 
 const AddServiceTokenDialog = ({
@@ -30,13 +31,12 @@ const AddServiceTokenDialog = ({
   workspaceId,
   workspaceName,
 }) => {
-  const router = useRouter();
   const [serviceToken, setServiceToken] = useState("");
   const [serviceTokenName, setServiceTokenName] = useState("");
   const [serviceTokenEnv, setServiceTokenEnv] = useState("Development");
   const [serviceTokenExpiresIn, setServiceTokenExpiresIn] = useState("1 day");
   const [serviceTokenCopied, setServiceTokenCopied] = useState(false);
-  const { t } = useTranslate();
+  const { t } = useTranslation();
 
   const generateServiceToken = async () => {
     const latestFileKey = await getLatestFileKey({ workspaceId });
@@ -169,7 +169,13 @@ const AddServiceTokenDialog = ({
                       <ListBox
                         selected={serviceTokenExpiresIn}
                         onChange={setServiceTokenExpiresIn}
-                        data={["1 day", "7 days", "1 month"]}
+                        data={[
+                          "1 day",
+                          "7 days",
+                          "1 month",
+                          "6 months",
+                          "12 months",
+                        ]}
                         width="full"
                         text={`${t("common:expired-in")}: `}
                       />
@@ -205,7 +211,7 @@ const AddServiceTokenDialog = ({
                       </div>
                     </div>
                     <div className="w-full">
-                      <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400 w-full h-36">
+                      <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400 w-full h-44">
                         <input
                           type="text"
                           value={serviceToken}

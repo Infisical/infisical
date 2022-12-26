@@ -19,35 +19,35 @@ import {
   faPerson,
   faPlus,
   faShuffle,
-  faX,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Menu, Transition } from "@headlessui/react";
+  faX
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Menu, Transition } from '@headlessui/react';
 
-import Button from "~/components/basic/buttons/Button";
-import ListBox from "~/components/basic/Listbox";
-import BottonRightPopup from "~/components/basic/popups/BottomRightPopup";
-import { useNotificationContext } from "~/components/context/Notifications/NotificationProvider";
-import DashboardInputField from "~/components/dashboard/DashboardInputField";
-import DropZone from "~/components/dashboard/DropZone";
-import NavHeader from "~/components/navigation/NavHeader";
-import getSecretsForProject from "~/components/utilities/secrets/getSecretsForProject";
-import pushKeys from "~/components/utilities/secrets/pushKeys";
-import pushKeysIntegration from "~/components/utilities/secrets/pushKeysIntegration";
-import guidGenerator from "~/utilities/randomId";
+import Button from '~/components/basic/buttons/Button';
+import ListBox from '~/components/basic/Listbox';
+import BottonRightPopup from '~/components/basic/popups/BottomRightPopup';
+import { useNotificationContext } from '~/components/context/Notifications/NotificationProvider';
+import DashboardInputField from '~/components/dashboard/DashboardInputField';
+import DropZone from '~/components/dashboard/DropZone';
+import NavHeader from '~/components/navigation/NavHeader';
+import getSecretsForProject from '~/components/utilities/secrets/getSecretsForProject';
+import pushKeys from '~/components/utilities/secrets/pushKeys';
+import pushKeysIntegration from '~/components/utilities/secrets/pushKeysIntegration';
+import guidGenerator from '~/utilities/randomId';
 import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
-import { envMapping } from "../../public/data/frequentConstants";
-import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
-import getUser from "../api/user/getUser";
-import checkUserAction from "../api/userActions/checkUserAction";
-import registerUserAction from "../api/userActions/registerUserAction";
-import getWorkspaces from "../api/workspace/getWorkspaces";
+
+import { envMapping } from '../../public/data/frequentConstants';
+import getUser from '../api/user/getUser';
+import checkUserAction from '../api/userActions/checkUserAction';
+import registerUserAction from '../api/userActions/registerUserAction';
+import getWorkspaces from '../api/workspace/getWorkspaces';
 
 /**
  * This component represent a single row for an environemnt variable on the dashboard
  * @param {object} obj
- * @param {String[]} obj.keyPair - data related to the environment variable (index, key, value, public/private)
+ * @param {String[]} obj.keyPair - data related to the environment variable (id, pos, key, value, public/private)
  * @param {function} obj.deleteRow - a function to delete a certain keyPair
  * @param {function} obj.modifyKey - modify the key of a certain environment variable
  * @param {function} obj.modifyValue - modify the value of a certain environment variable
@@ -63,7 +63,7 @@ const KeyPair = ({
   modifyValue,
   modifyVisibility,
   isBlurred,
-  duplicates,
+  duplicates
 }) => {
   const [randomStringLength, setRandomStringLength] = useState(32);
   const { t } = useTranslation();
@@ -76,8 +76,8 @@ const KeyPair = ({
             <DashboardInputField
               onChangeHandler={modifyKey}
               type="varName"
-              index={keyPair[1]}
-              value={keyPair[2]}
+              position={keyPair.pos}
+              value={keyPair.key}
               duplicates={duplicates}
             />
           </div>
@@ -87,8 +87,8 @@ const KeyPair = ({
             <DashboardInputField
               onChangeHandler={modifyValue}
               type="value"
-              index={keyPair[1]}
-              value={keyPair[3]}
+              position={keyPair.pos}
+              value={keyPair.value}
               blurred={isBlurred}
             />
           </div>
@@ -117,15 +117,15 @@ const KeyPair = ({
               <div
                 onClick={() =>
                   modifyVisibility(
-                    keyPair[4] == "personal" ? "shared" : "personal",
-                    keyPair[1]
+                    keyPair.type == 'personal' ? 'shared' : 'personal',
+                    keyPair.pos
                   )
                 }
                 className="relative flex justify-start items-center cursor-pointer select-none py-2 px-2 rounded-md text-gray-400 hover:bg-white/10 duration-200 hover:text-gray-200 w-full"
               >
                 <FontAwesomeIcon
                   className="text-lg pl-1.5 pr-3"
-                  icon={keyPair[4] == "personal" ? faPeopleGroup : faPerson}
+                  icon={keyPair.type == 'personal' ? faPeopleGroup : faPerson}
                 />
                 <div className="text-sm">
                   {keyPair[4] == "personal"
@@ -143,8 +143,8 @@ const KeyPair = ({
                     modifyValue(
                       [...Array(randomStringLength)]
                         .map(() => Math.floor(Math.random() * 16).toString(16))
-                        .join(""),
-                      keyPair[1]
+                        .join(''),
+                      keyPair.pos
                     );
                   }
                 }}
@@ -152,7 +152,7 @@ const KeyPair = ({
               >
                 <FontAwesomeIcon
                   className="text-lg pl-1.5 pr-3"
-                  icon={keyPair[3] == "" ? faPlus : faShuffle}
+                  icon={keyPair.value == '' ? faPlus : faShuffle}
                 />
                 <div className="text-sm justify-between flex flex-row w-full">
                   <p>Generate Random Hex</p>
@@ -195,7 +195,7 @@ const KeyPair = ({
         <div className="w-2"></div>
         <div className="opacity-50 hover:opacity-100 duration-200">
           <Button
-            onButtonPressed={() => deleteRow(keyPair[0])}
+            onButtonPressed={() => deleteRow(keyPair.id)}
             color="red"
             size="icon-sm"
             icon={faX}
@@ -215,21 +215,21 @@ export default function Dashboard() {
   const [fileState, setFileState] = useState([]);
   const [buttonReady, setButtonReady] = useState(false);
   const router = useRouter();
-  const [workspaceId, setWorkspaceId] = useState("");
+  const [workspaceId, setWorkspaceId] = useState('');
   const [blurred, setBlurred] = useState(true);
   const [isKeyAvailable, setIsKeyAvailable] = useState(true);
   const [env, setEnv] = useState(
-    router.asPath.split("?").length == 1
-      ? "Development"
-      : Object.keys(envMapping).includes(router.asPath.split("?")[1])
-      ? router.asPath.split("?")[1]
-      : "Development"
+    router.asPath.split('?').length == 1
+      ? 'Development'
+      : Object.keys(envMapping).includes(router.asPath.split('?')[1])
+      ? router.asPath.split('?')[1]
+      : 'Development'
   );
   const [isNew, setIsNew] = useState(false);
-  const [searchKeys, setSearchKeys] = useState("");
+  const [searchKeys, setSearchKeys] = useState('');
   const [errorDragAndDrop, setErrorDragAndDrop] = useState(false);
   const [projectIdCopied, setProjectIdCopied] = useState(false);
-  const [sortMethod, setSortMethod] = useState("alphabetical");
+  const [sortMethod, setSortMethod] = useState('alphabetical');
   const [checkDocsPopUpVisible, setCheckDocsPopUpVisible] = useState(false);
   const [hasUserEverPushed, setHasUserEverPushed] = useState(false);
 
@@ -255,16 +255,16 @@ export default function Dashboard() {
   // prompt the user if they try and leave with unsaved changes
   useEffect(() => {
     const warningText =
-      "Do you want to save your results before leaving this page?";
+      'Do you want to save your results before leaving this page?';
     const handleWindowClose = (e) => {
       if (!buttonReady) return;
       e.preventDefault();
       return (e.returnValue = warningText);
     };
-    window.addEventListener("beforeunload", handleWindowClose);
+    window.addEventListener('beforeunload', handleWindowClose);
     // router.events.on('routeChangeStart', beforeRouteHandler);
     return () => {
-      window.removeEventListener("beforeunload", handleWindowClose);
+      window.removeEventListener('beforeunload', handleWindowClose);
       // router.events.off('routeChangeStart', beforeRouteHandler);
     };
   }, [buttonReady]);
@@ -272,10 +272,12 @@ export default function Dashboard() {
   /**
    * Reorder rows alphabetically or in the opprosite order
    */
-  const reorderRows = () => {
-    setSortMethod(
-      sortMethod == "alphabetical" ? "-alphabetical" : "alphabetical"
+  const reorderRows = (dataToReorder) => {
+    setSortMethod((prevSort) =>
+      prevSort == 'alphabetical' ? '-alphabetical' : 'alphabetical'
     );
+
+    sortValuesHandler(dataToReorder);
   };
 
   useEffect(() => {
@@ -284,24 +286,25 @@ export default function Dashboard() {
         let userWorkspaces = await getWorkspaces();
         const listWorkspaces = userWorkspaces.map((workspace) => workspace._id);
         if (
-          !listWorkspaces.includes(router.asPath.split("/")[2].split("?")[0])
+          !listWorkspaces.includes(router.asPath.split('/')[2].split('?')[0])
         ) {
-          router.push("/dashboard/" + listWorkspaces[0]);
+          router.push('/dashboard/' + listWorkspaces[0]);
         }
 
-        if (env != router.asPath.split("?")[1]) {
-          router.push(router.asPath.split("?")[0] + "?" + env);
+        if (env != router.asPath.split('?')[1]) {
+          router.push(router.asPath.split('?')[0] + '?' + env);
         }
         setBlurred(true);
         setWorkspaceId(router.query.id);
 
-        await getSecretsForProject({
+        const dataToSort = await getSecretsForProject({
           env,
           setFileState,
           setIsKeyAvailable,
           setData,
-          workspaceId: router.query.id,
+          workspaceId: router.query.id
         });
+        reorderRows(dataToSort);
 
         const user = await getUser();
         setIsNew(
@@ -311,11 +314,11 @@ export default function Dashboard() {
         );
 
         let userAction = await checkUserAction({
-          action: "first_time_secrets_pushed",
+          action: 'first_time_secrets_pushed'
         });
         setHasUserEverPushed(userAction ? true : false);
       } catch (error) {
-        console.log("Error", error);
+        console.log('Error', error);
         setData([]);
       }
     })();
@@ -324,49 +327,58 @@ export default function Dashboard() {
 
   const addRow = () => {
     setIsNew(false);
-    setData([...data, [guidGenerator(), data.length, "", "", "shared"]]);
+    setData([
+      ...data,
+      {
+        id: guidGenerator(),
+        pos: data.length,
+        key: '',
+        value: '',
+        type: 'shared'
+      }
+    ]);
   };
 
   const deleteRow = (id) => {
     setButtonReady(true);
-    setData(data.filter((row) => row[0] !== id));
+    setData(data.filter((row) => row.id !== id));
   };
 
-  const modifyValue = (value, id) => {
+  const modifyValue = (value, pos) => {
     setData((oldData) => {
-      oldData[id][3] = value;
+      oldData[pos].value = value;
       return [...oldData];
     });
     setButtonReady(true);
   };
 
-  const modifyKey = (value, id) => {
+  const modifyKey = (value, pos) => {
     setData((oldData) => {
-      oldData[id][2] = value;
+      oldData[pos].key = value;
       return [...oldData];
     });
     setButtonReady(true);
   };
 
-  const modifyVisibility = (value, id) => {
+  const modifyVisibility = (value, pos) => {
     setData((oldData) => {
-      oldData[id][4] = value;
+      oldData[pos].type = value;
       return [...oldData];
     });
     setButtonReady(true);
   };
 
   // For speed purposes and better perforamance, we are using useCallback
-  const listenChangeValue = useCallback((value, id) => {
-    modifyValue(value, id);
+  const listenChangeValue = useCallback((value, pos) => {
+    modifyValue(value, pos);
   }, []);
 
-  const listenChangeKey = useCallback((value, id) => {
-    modifyKey(value, id);
+  const listenChangeKey = useCallback((value, pos) => {
+    modifyKey(value, pos);
   }, []);
 
-  const listenChangeVisibility = useCallback((value, id) => {
-    modifyVisibility(value, id);
+  const listenChangeVisibility = useCallback((value, pos) => {
+    modifyVisibility(value, pos);
   }, []);
 
   /**
@@ -376,7 +388,7 @@ export default function Dashboard() {
     // Format the new object with environment variables
     let obj = Object.assign(
       {},
-      ...data.map((row) => ({ [row[2]]: [row[3], row[4]] }))
+      ...data.map((row) => ({ [row.key]: [row.value, row.type] }))
     );
 
     // Checking if any of the secret keys start with a number - if so, don't do anything
@@ -385,22 +397,22 @@ export default function Dashboard() {
       .every((v) => v === false);
     const duplicatesExist =
       data
-        ?.map((item) => item[2])
+        ?.map((item) => item.key)
         .filter(
-          (item, index) => index !== data?.map((item) => item[2]).indexOf(item)
+          (item, index) => index !== data?.map((item) => item.key).indexOf(item)
         ).length > 0;
 
     if (nameErrors) {
       return createNotification({
-        text: "Solve all name errors first!",
-        type: "error",
+        text: 'Solve all name errors before saving secrets.',
+        type: 'error'
       });
     }
 
     if (duplicatesExist) {
       return createNotification({
-        text: "Your secrets weren't saved; please fix the conflicts first.",
-        type: "error",
+        text: 'Remove duplicated secret names before saving.',
+        type: 'error'
       });
     }
 
@@ -408,33 +420,10 @@ export default function Dashboard() {
     setButtonReady(false);
     pushKeys({ obj, workspaceId: router.query.id, env });
 
-    /**
-     * Check which integrations are active for this project and environment
-     * If there are any, update environment variables for those integrations
-     */
-    let integrations = await getWorkspaceIntegrations({
-      workspaceId: router.query.id,
-    });
-    integrations.map(async (integration) => {
-      if (
-        envMapping[env] == integration.environment &&
-        integration.isActive == true
-      ) {
-        let objIntegration = Object.assign(
-          {},
-          ...data.map((row) => ({ [row[2]]: row[3] }))
-        );
-        await pushKeysIntegration({
-          obj: objIntegration,
-          integrationId: integration._id,
-        });
-      }
-    });
-
     // If this user has never saved environment variables before, show them a prompt to read docs
     if (!hasUserEverPushed) {
       setCheckDocsPopUpVisible(true);
-      await registerUserAction({ action: "first_time_secrets_pushed" });
+      await registerUserAction({ action: 'first_time_secrets_pushed' });
     }
   };
 
@@ -447,14 +436,33 @@ export default function Dashboard() {
     setBlurred(!blurred);
   };
 
+  const sortValuesHandler = (dataToSort) => {
+    const sortedData = (dataToSort != 1 ? dataToSort : data)
+      .sort((a, b) =>
+        sortMethod == 'alphabetical'
+          ? a.key.localeCompare(b.key)
+          : b.key.localeCompare(a.key)
+      )
+      .map((item, index) => {
+        return {
+          ...item,
+          pos: index
+        };
+      });
+
+    setData(sortedData);
+  };
+
   // This function downloads the secrets as a .env file
   const download = () => {
-    const file = data.map((item) => [item[2], item[3]].join("=")).join("\n");
+    const file = data
+      .map((item) => [item.key, item.value].join('='))
+      .join('\n');
     const blob = new Blob([file]);
     const fileDownloadUrl = URL.createObjectURL(blob);
-    let alink = document.createElement("a");
+    let alink = document.createElement('a');
     alink.href = fileDownloadUrl;
-    alink.download = envMapping[env] + ".env";
+    alink.download = envMapping[env] + '.env';
     alink.click();
   };
 
@@ -466,7 +474,7 @@ export default function Dashboard() {
    * This function copies the project id to the clipboard
    */
   function copyToClipboard() {
-    var copyText = document.getElementById("myInput");
+    var copyText = document.getElementById('myInput');
 
     copyText.select();
     copyText.setSelectionRange(0, 99999); // For mobile devices
@@ -506,7 +514,7 @@ export default function Dashboard() {
               {data?.length == 0 && (
                 <ListBox
                   selected={env}
-                  data={["Development", "Staging", "Production", "Testing"]}
+                  data={['Development', 'Staging', 'Production', 'Testing']}
                   // ref={useRef(123)}
                   onChange={setEnv}
                   className="z-40"
@@ -563,7 +571,7 @@ export default function Dashboard() {
                   <>
                     <ListBox
                       selected={env}
-                      data={["Development", "Staging", "Production", "Testing"]}
+                      data={['Development', 'Staging', 'Production', 'Testing']}
                       // ref={useRef(123)}
                       onChange={setEnv}
                       className="z-40"
@@ -582,11 +590,11 @@ export default function Dashboard() {
                     </div>
                     <div className="ml-2 min-w-max flex flex-row items-start justify-start">
                       <Button
-                        onButtonPressed={reorderRows}
+                        onButtonPressed={() => reorderRows(1)}
                         color="mineshaft"
                         size="icon-md"
                         icon={
-                          sortMethod == "alphabetical"
+                          sortMethod == 'alphabetical'
                             ? faArrowDownAZ
                             : faArrowDownZA
                         }
@@ -654,19 +662,14 @@ export default function Dashboard() {
                     {data
                       .filter(
                         (keyPair) =>
-                          keyPair[2]
+                          keyPair.key
                             .toLowerCase()
                             .includes(searchKeys.toLowerCase()) &&
-                          keyPair[4] == "personal"
+                          keyPair.type == 'personal'
                       )
-                      .sort((a, b) =>
-                        sortMethod == "alphabetical"
-                          ? a[2].localeCompare(b[2])
-                          : b[2].localeCompare(a[2])
-                      )
-                      ?.map((keyPair, index) => (
+                      ?.map((keyPair) => (
                         <KeyPair
-                          key={keyPair[0]}
+                          key={keyPair.id}
                           keyPair={keyPair}
                           deleteRow={deleteCertainRow}
                           modifyValue={listenChangeValue}
@@ -674,11 +677,11 @@ export default function Dashboard() {
                           modifyVisibility={listenChangeVisibility}
                           isBlurred={blurred}
                           duplicates={data
-                            ?.map((item) => item[2])
+                            ?.map((item) => item.key)
                             .filter(
                               (item, index) =>
                                 index !==
-                                data?.map((item) => item[2]).indexOf(item)
+                                data?.map((item) => item.key).indexOf(item)
                             )}
                         />
                       ))}
@@ -686,7 +689,7 @@ export default function Dashboard() {
                 </div>
                 <div
                   className={`bg-white/5 mt-1 mb-2 rounded-md p-1 pb-2 max-w-5xl ${
-                    data?.length > 8 ? "h-3/4" : "h-min"
+                    data?.length > 8 ? 'h-3/4' : 'h-min'
                   }`}
                 >
                   <div className="sticky top-0 z-10 bg-bunker flex flex-row pl-4 pr-5 pt-4 pb-2 items-center justify-between text-gray-300 font-bold">
@@ -708,19 +711,14 @@ export default function Dashboard() {
                     {data
                       .filter(
                         (keyPair) =>
-                          keyPair[2]
+                          keyPair.key
                             .toLowerCase()
                             .includes(searchKeys.toLowerCase()) &&
-                          keyPair[4] == "shared"
+                          keyPair.type == 'shared'
                       )
-                      .sort((a, b) =>
-                        sortMethod == "alphabetical"
-                          ? a[2].localeCompare(b[2])
-                          : b[2].localeCompare(a[2])
-                      )
-                      ?.map((keyPair, index) => (
+                      ?.map((keyPair) => (
                         <KeyPair
-                          key={keyPair[0]}
+                          key={keyPair.id}
                           keyPair={keyPair}
                           deleteRow={deleteCertainRow}
                           modifyValue={listenChangeValue}
@@ -728,11 +726,11 @@ export default function Dashboard() {
                           modifyVisibility={listenChangeVisibility}
                           isBlurred={blurred}
                           duplicates={data
-                            ?.map((item) => item[2])
+                            ?.map((item) => item.key)
                             .filter(
                               (item, index) =>
                                 index !==
-                                data?.map((item) => item[2]).indexOf(item)
+                                data?.map((item) => item.key).indexOf(item)
                             )}
                         />
                       ))}
@@ -772,10 +770,10 @@ export default function Dashboard() {
                     />
                   )}
                 {fileState.message ==
-                  "Failed membership validation for workspace" && (
+                  'Failed membership validation for workspace' && (
                   <p>You are not authorized to view this project.</p>
                 )}
-                {fileState.message == "Access needed to pull the latest file" ||
+                {fileState.message == 'Access needed to pull the latest file' ||
                   (!isKeyAvailable && (
                     <>
                       <FontAwesomeIcon
