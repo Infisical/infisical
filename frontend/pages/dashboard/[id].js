@@ -9,13 +9,11 @@ import {
   faCircleInfo,
   faCopy,
   faDownload,
-  faEllipsis,
   faEye,
   faEyeSlash,
   faFolderOpen,
   faMagnifyingGlass,
   faPlus,
-  faX
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -24,7 +22,6 @@ import ListBox from '~/components/basic/Listbox';
 import BottonRightPopup from '~/components/basic/popups/BottomRightPopup';
 import { useNotificationContext } from '~/components/context/Notifications/NotificationProvider';
 import KeyList from '~/components/dashboard/KeyList';
-import KeyPair from '~/components/dashboard/KeyPair';
 import DropZone from '~/components/dashboard/DropZone';
 import SideBar from '~/components/dashboard/Sidebar';
 import NavHeader from '~/components/navigation/NavHeader';
@@ -511,35 +508,6 @@ export default function Dashboard() {
                       toggleSidebar={toggleSidebar}
                       sidebarSecretNumber={sidebarSecretNumber}
                     />
-
-                    {/* {data
-                      .filter(
-                        (keyPair) =>
-                          keyPair.key
-                            .toLowerCase()
-                            .includes(searchKeys.toLowerCase()) &&
-                          keyPair.type == 'personal'
-                      )
-                      ?.map((keyPair) => (
-                        <KeyPair
-                          key={keyPair.id}
-                          keyPair={keyPair}
-                          deleteRow={deleteCertainRow}
-                          modifyValue={listenChangeValue}
-                          modifyKey={listenChangeKey}
-                          modifyVisibility={listenChangeVisibility}
-                          isBlurred={blurred}
-                          duplicates={data
-                            ?.map((item) => item.key)
-                            .filter(
-                              (item, index) =>
-                                index !==
-                                data?.map((item) => item.key).indexOf(item)
-                            )}
-                          toggleSidebar={toggleSidebar}
-                          sidebarSecretNumber={sidebarSecretNumber}
-                        />
-                      ))} */}
                   </div>
                 </div>
                 <div
@@ -575,34 +543,6 @@ export default function Dashboard() {
                       toggleSidebar={toggleSidebar}
                       sidebarSecretNumber={sidebarSecretNumber}
                     />
-                    {/* {data
-                      .filter(
-                        (keyPair) =>
-                          keyPair.key
-                            .toLowerCase()
-                            .includes(searchKeys.toLowerCase()) &&
-                          keyPair.type == "shared"
-                      )
-                      ?.map((keyPair) => (
-                        <KeyPair
-                          key={keyPair.id}
-                          keyPair={keyPair}
-                          deleteRow={deleteCertainRow}
-                          modifyValue={listenChangeValue}
-                          modifyKey={listenChangeKey}
-                          modifyVisibility={listenChangeVisibility}
-                          isBlurred={blurred}
-                          duplicates={data
-                            ?.map((item) => item.key)
-                            .filter(
-                              (item, index) =>
-                                index !==
-                                data?.map((item) => item.key).indexOf(item)
-                            )}
-                          toggleSidebar={toggleSidebar}
-                          sidebarSecretNumber={sidebarSecretNumber}
-                        />
-                      ))} */}
                   </div>
                 </div>
                 <div className="w-full max-w-5xl">
