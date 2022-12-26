@@ -13,35 +13,23 @@ function KeyList({
   toggleSidebar,
   sidebarSecretNumber,
 }) {
-  const [initialKeys] = useState(keyPairs)
-  const [selectedKeys, setSelectedKeys] = useState(initialKeys)
+  const [selectedKeys, setSelectedKeys] = useState(keyPairs)
 
+  /**
+   * filter/set keypairs depending on type and searchKey
+   */
   useEffect(() => {
-    const setSharedKeys = (data) => {
-      const sharedKeys = data.filter(
+    const setInitialKeys = (data) => {
+      const keys = data.filter(
         (keyPair) =>
           keyPair.key.toLowerCase().includes(searchKeys.toLowerCase()) &&
-          keyPair.type == "shared"
+          keyPair.type == type
       )
-  
-      setSelectedKeys(sharedKeys)
-    }
-  
-    const setPersonalKeys = (data) => {
-      const personalKeys = data.filter(
-        (keyPair) =>
-          keyPair.key.toLowerCase().includes(searchKeys.toLowerCase()) &&
-          keyPair.type == "personal"
-      )
-  
-      setSelectedKeys(personalKeys)
+
+      setSelectedKeys(keys)
     }
 
-    if (type === "shared") {
-      setSharedKeys(keyPairs)
-    } else if (type === "personal") {
-      setPersonalKeys(keyPairs)
-    }
+    setInitialKeys(keyPairs)
   }, [keyPairs, searchKeys])
 
   return (
