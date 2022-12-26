@@ -10,6 +10,8 @@ const JWT_SIGNUP_LIFETIME = process.env.JWT_SIGNUP_LIFETIME! || '15m';
 const JWT_SIGNUP_SECRET = process.env.JWT_SIGNUP_SECRET!;
 const MONGO_URL = process.env.MONGO_URL!;
 const NODE_ENV = process.env.NODE_ENV! || 'production';
+const VERBOSE_ERROR_OUTPUT = process.env.VERBOSE_ERROR_OUTPUT! === 'true' && true;
+const LOKI_HOST = process.env.LOKI_HOST || undefined;
 const CLIENT_SECRET_HEROKU = process.env.CLIENT_SECRET_HEROKU!;
 const CLIENT_ID_HEROKU = process.env.CLIENT_ID_HEROKU!;
 const CLIENT_ID_VERCEL = process.env.CLIENT_ID_VERCEL!;
@@ -23,13 +25,11 @@ const POSTHOG_HOST = process.env.POSTHOG_HOST! || 'https://app.posthog.com';
 const POSTHOG_PROJECT_API_KEY =
   process.env.POSTHOG_PROJECT_API_KEY! ||
   'phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE';
-const PRIVATE_KEY = process.env.PRIVATE_KEY!;
-const PUBLIC_KEY = process.env.PUBLIC_KEY!;
 const SENTRY_DSN = process.env.SENTRY_DSN!;
 const SITE_URL = process.env.SITE_URL!;
-const SMTP_HOST = process.env.SMTP_HOST! || 'smtp.gmail.com';
-const SMTP_SECURE = process.env.SMTP_SECURE! || false;
-const SMTP_PORT = process.env.SMTP_PORT! || 587;
+const SMTP_HOST = process.env.SMTP_HOST!;
+const SMTP_SECURE = process.env.SMTP_SECURE! === 'true' || false;
+const SMTP_PORT = parseInt(process.env.SMTP_PORT!) || 587;
 const SMTP_USERNAME = process.env.SMTP_USERNAME!;
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD!;
 const SMTP_FROM_ADDRESS = process.env.SMTP_FROM_ADDRESS!;
@@ -55,6 +55,8 @@ export {
   JWT_SIGNUP_SECRET,
   MONGO_URL,
   NODE_ENV,
+  VERBOSE_ERROR_OUTPUT,
+  LOKI_HOST,
   CLIENT_ID_HEROKU,
   CLIENT_ID_VERCEL,
   CLIENT_ID_NETLIFY,
@@ -66,8 +68,6 @@ export {
   CLIENT_SLUG_VERCEL,
   POSTHOG_HOST,
   POSTHOG_PROJECT_API_KEY,
-  PRIVATE_KEY,
-  PUBLIC_KEY,
   SENTRY_DSN,
   SITE_URL,
   SMTP_HOST,

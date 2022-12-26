@@ -1,4 +1,4 @@
-import React, { SyntheticEvent, useRef } from 'react';
+import { memo, SyntheticEvent, useRef } from 'react';
 import { faCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -163,4 +163,4 @@ function inputPropsAreEqual(prev: DashboardInputFieldProps, next: DashboardInput
   return prev.value === next.value && prev.type === next.type && prev.position === next.position && prev.blurred === next.blurred && prev.override === next.override && prev.isDuplicate === next.isDuplicate;
 }
 
-export default React.memo(DashboardInputField, inputPropsAreEqual);
+export default memo(DashboardInputField, inputPropsAreEqual);
