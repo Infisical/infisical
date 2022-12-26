@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react/jsx-key */
-import React, { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { faGithub, faSlack } from '@fortawesome/free-brands-svg-icons';

@@ -1,4 +1,4 @@
-import React, { SyntheticEvent, useRef } from 'react';
+import { memo, SyntheticEvent, useRef } from 'react';
 import { faCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -153,4 +153,4 @@ const DashboardInputField = ({
   return <>Something Wrong</>;
 };
 
-export default React.memo(DashboardInputField);
+export default memo(DashboardInputField);

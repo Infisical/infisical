@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { memo,useState } from 'react';
 import { faCircle, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -140,4 +140,4 @@ const InputField = (
   }
 };
 
-export default React.memo(InputField);
+export default memo(InputField);
