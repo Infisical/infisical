@@ -18,6 +18,8 @@ interface ToggleProps {
   pos: number;
   id: string;
   deleteOverride: (id: string) => void; 
+  sharedToHide: string[];
+  setSharedToHide: (values: string[]) => void;
 }
 
 /**
@@ -25,16 +27,41 @@ interface ToggleProps {
  * @param obj 
  * @param {boolean} obj.enabled - whether the toggle is turned on or off
  * @param {function} obj.setEnabled - change the state of the toggle
+ * @param {function} obj.addOverride - a function that adds an override to a certain secret
+ * @param {string} obj.keyName - key of a certain secret
+ * @param {string} obj.value - value of a certain secret
+ * @param {number} obj.pos - position of a certain secret
+ #TODO: make the secret id persistent?
+ * @param {string} obj.id - id of a certain secret  
+ * @param {function} obj.deleteOverride - a function that deleted an override for a certain secret
+ * @param {string[]} obj.sharedToHide - an array of shared secrets that we want to hide visually because they are overriden. 
+ * @param {function} obj.setSharedToHide - a function that updates the array of secrets that we want to hide visually
  * @returns 
  */
-export default function Toggle ({ enabled, setEnabled, addOverride, keyName, value, pos, id, deleteOverride }: ToggleProps): JSX.Element {
+export default function Toggle ({ 
+  enabled, 
+  setEnabled, 
+  addOverride, 
+  keyName, 
+  value, 
+  pos, 
+  id, 
+  deleteOverride,
+  sharedToHide,
+  setSharedToHide
+}: ToggleProps): JSX.Element {
   return (
     <Switch
       checked={enabled}
       onChange={() => {
         if (enabled == false) {
           addOverride({ id, keyName, value, pos });
+          setSharedToHide([
+            ...sharedToHide!,
+            id
+          ])
         } else {
+          setSharedToHide(sharedToHide!.filter(tempId => tempId != id))
           deleteOverride(id);
         }
         setEnabled(!enabled);

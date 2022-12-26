@@ -33,6 +33,8 @@ interface SideBarProps {
   deleteOverride: (id: string) => void; 
   buttonReady: boolean;
   savePush: () => void;
+  sharedToHide: string[];
+  setSharedToHide: (values: string[]) => void;
 }
 
 /**
@@ -45,9 +47,22 @@ interface SideBarProps {
  * @param {function} obj.deleteOverride - delete the personal override for a certain secret
  * @param {boolean} obj.buttonReady - is the button for saving chagnes active
  * @param {function} obj.savePush - save changes andp ush secrets
+ * @param {string[]} obj.sharedToHide - an array of shared secrets that we want to hide visually because they are overriden. 
+ * @param {function} obj.setSharedToHide - a function that updates the array of secrets that we want to hide visually
  * @returns the sidebar with 'secret's settings'
  */
-const SideBar = ({ toggleSidebar, data, modifyKey, modifyValue, addOverride, deleteOverride, buttonReady, savePush }: SideBarProps) => {
+const SideBar = ({ 
+  toggleSidebar, 
+  data, 
+  modifyKey, 
+  modifyValue, 
+  addOverride, 
+  deleteOverride, 
+  buttonReady, 
+  savePush,
+  sharedToHide,
+  setSharedToHide 
+}: SideBarProps) => {
   const [overrideEnabled, setOverrideEnabled] = useState(data.map(secret => secret.type).includes("personal"));
   console.log("sidebar", data, data.map(secret => secret.type).includes("personal"))
 
@@ -66,7 +81,7 @@ const SideBar = ({ toggleSidebar, data, modifyKey, modifyValue, addOverride, del
           type="varName"
           position={data[0].pos}
           value={data[0].key}
-          duplicates={[]}
+          isDuplicate={false}
           blurred={false}
         />
       </div>
@@ -78,7 +93,7 @@ const SideBar = ({ toggleSidebar, data, modifyKey, modifyValue, addOverride, del
           type="value"
           position={data.filter(secret => secret.type == "shared")[0]?.pos}
           value={data.filter(secret => secret.type == "shared")[0]?.value}
-          duplicates={[]}
+          isDuplicate={false}
           blurred={true}     
         />
         <div className='absolute bg-bunker-800 right-[1.07rem] top-[1.6rem] z-50'>
@@ -102,6 +117,8 @@ const SideBar = ({ toggleSidebar, data, modifyKey, modifyValue, addOverride, del
             pos={data[0].pos}
             id={data[0].id}
             deleteOverride={deleteOverride}
+            sharedToHide={sharedToHide}
+            setSharedToHide={setSharedToHide}
           />
         </div>}
         <div className={`relative ${!overrideEnabled && "opacity-40 pointer-events-none"} duration-200`}>
@@ -110,7 +127,7 @@ const SideBar = ({ toggleSidebar, data, modifyKey, modifyValue, addOverride, del
             type="value"
             position={overrideEnabled ? data.filter(secret => secret.type == "personal")[0].pos : data[0].pos}
             value={overrideEnabled ? data.filter(secret => secret.type == "personal")[0].value : data[0].value}
-            duplicates={[]}
+            isDuplicate={false}
             blurred={true}
           />
           <div className='absolute right-[0.57rem] top-[0.3rem] z-50'>

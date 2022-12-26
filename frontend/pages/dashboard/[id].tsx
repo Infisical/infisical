@@ -88,6 +88,7 @@ export default function Dashboard() {
   const [checkDocsPopUpVisible, setCheckDocsPopUpVisible] = useState(false);
   const [hasUserEverPushed, setHasUserEverPushed] = useState(false);
   const [sidebarSecretId, toggleSidebar] = useState("None");
+  const [sharedToHide, setSharedToHide] = useState<string[]>([]);
 
   const { createNotification } = useNotificationContext();
 
@@ -159,6 +160,16 @@ export default function Dashboard() {
           workspaceId: String(router.query.id)
         });
         reorderRows(dataToSort);
+
+        setSharedToHide(
+          dataToSort?.filter(row => (dataToSort
+          ?.map((item) => item.key)
+          .filter(
+            (item, index) =>
+              index !==
+              dataToSort?.map((item) => item.key).indexOf(item)
+          ).includes(row.key) && row.type == 'shared'))?.map((item) => item.id)
+        )
 
         const user = await getUser();
         setIsNew(
@@ -289,7 +300,7 @@ export default function Dashboard() {
     const nameErrors = !Object.keys(obj)
       .map((key) => !isNaN(Number(key[0].charAt(0))))
       .every((v) => v === false);
-    const duplicatesExist = findDuplicates(data!.map((item: SecretDataProps) => [item.key, item.type])).length > 0;
+    const duplicatesExist = findDuplicates(data!.map((item: SecretDataProps) => item.key + item.type)).length > 0;
 
     if (nameErrors) {
       return createNotification({
@@ -402,6 +413,8 @@ export default function Dashboard() {
           deleteOverride={deleteOverride}
           buttonReady={buttonReady}
           savePush={savePush}
+          sharedToHide={sharedToHide}
+          setSharedToHide={setSharedToHide}
         />}
         <div className="w-full max-h-96 pb-2">
           <NavHeader pageName="Secrets" isProjectRelated={true} />
@@ -548,21 +561,15 @@ export default function Dashboard() {
                   className={`bg-white/5 mt-1 mb-1 rounded-md pb-2 max-w-5xl overflow-visible`}
                 >
                   <div id="data1" className="px-1 pt-2">
-                    {data?.filter(row => !(data
-                          ?.map((item) => item.key)
-                          .filter(
-                            (item, index) =>
-                              index !==
-                              data?.map((item) => item.key).indexOf(item)
-                          ).includes(row.key) && row.type == 'shared')).map((keyPair) => (
-                      <KeyPair
+                    {data?.filter(row => !(sharedToHide.includes(row.id) && row.type == 'shared')).map((keyPair) => (
+                      <KeyPair 
                         key={keyPair.id}
                         keyPair={keyPair}
                         deleteRow={deleteCertainRow}
                         modifyValue={listenChangeValue}
                         modifyKey={listenChangeKey}
                         isBlurred={blurred}
-                        isDuplicate={findDuplicates(data?.map((item) => [item.key, item.type]))?.includes(keyPair.value)}
+                        isDuplicate={findDuplicates(data?.map((item) => item.key + item.type))?.includes(keyPair.key + keyPair.type)}
                         toggleSidebar={toggleSidebar}
                         sidebarSecretId={sidebarSecretId}
                       />
