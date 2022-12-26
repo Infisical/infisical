@@ -1,4 +1,6 @@
-import { patchRouterParam } from './utils/patchAsyncRoutes';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { patchRouterParam } = require('./utils/patchAsyncRoutes');
+
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -6,7 +8,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 
 dotenv.config();
-import { PORT, NODE_ENV, SITE_URL, LICENSE_KEY } from './config';
+import { PORT, NODE_ENV, SITE_URL } from './config';
 import { apiLimiter } from './helpers/rateLimiter';
 
 import {
@@ -38,8 +40,8 @@ import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
 import { requestErrorHandler } from './middleware/requestErrorHandler';
 
-//* Patch Async route params to handle Promise Rejections
-patchRouterParam()
+// patch async route params to handle Promise Rejections
+patchRouterParam();
 
 export const app = express();
 

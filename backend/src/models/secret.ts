@@ -29,8 +29,7 @@ const secretSchema = new Schema<ISecret>(
 	{
 		version: {
 			type: Number,
-			default: 1,
-            required: true
+			required: true
 		},
 		workspace: {
 			type: Schema.Types.ObjectId,

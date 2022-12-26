@@ -56,6 +56,7 @@ const pushSecrets = async ({
 	environment: string;
 	secrets: PushSecret[];
 }): Promise<void> => {
+	// TODO: clean up function and fix up types
 	try {
 		// construct useful data structures
 		const oldSecrets = await pullSecrets({
@@ -63,10 +64,11 @@ const pushSecrets = async ({
 			workspaceId,
 			environment
 		});
+		
 		const oldSecretsObj: any = oldSecrets.reduce((accumulator, s: any) => 
 			({ ...accumulator, [`${s.type}-${s.secretKeyHash}`]: s })
 		, {});
-		const newSecretsObj = secrets.reduce((accumulator, s) => 
+		const newSecretsObj: any = secrets.reduce((accumulator, s) => 
 			({ ...accumulator, [`${s.type}-${s.hashKey}`]: s })
 		, {});
 
@@ -79,8 +81,6 @@ const pushSecrets = async ({
 		if (toDelete.length > 0) {
 			await Secret.deleteMany({
 				_id: { $in: toDelete }
-			}, {
-				rawResult: true
 			});
 			
 			await SecretVersion.updateMany({
@@ -89,31 +89,48 @@ const pushSecrets = async ({
 				isDeleted: true
 			});
 		}
-
-		// handle modifying secrets where type or value changed
-		const toUpdate = secrets
+		
+		const toUpdate = oldSecrets
 			.filter((s) => {
-				if (`${s.type}-${s.hashKey}` in oldSecretsObj) {
-					if (s.hashValue !== oldSecretsObj[`${s.type}-${s.hashKey}`].secretValueHash) {
+				if (`${s.type}-${s.secretKeyHash}` in newSecretsObj) {
+					if (s.secretValueHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashValue) {
 						// case: filter secrets where value changed
 						return true;
 					}
-				}
 
+					if (!s.version) {
+						// case: filter (legacy) secrets that were not versioned
+						return true;
+					}
+				}
+				
 				return false;
 			});
-		
+
 		const operations = toUpdate
 			.map((s) => {
+				const {
+					ciphertextValue,
+					ivValue,
+					tagValue,
+					hashValue
+				} = newSecretsObj[`${s.type}-${s.secretKeyHash}`];
+
 				const update: Update = {
-					secretValueCiphertext: s.ciphertextValue,
-					secretValueIV: s.ivValue,
-					secretValueTag: s.tagValue,
-					secretValueHash: s.hashValue,
-					$inc: {
+					secretValueCiphertext: ciphertextValue,
+					secretValueIV: ivValue,
+					secretValueTag: tagValue,
+					secretValueHash: hashValue
+				}
+
+				if (!s.version) {
+					// case: (legacy) secret was not versioned
+					update.version = 1;
+				} else {
+					update['$inc'] = {
 						version: 1
 					}
-				};
+				}
 
 				if (s.type === SECRET_PERSONAL) {
 					// attach user associated with the personal secret
@@ -123,7 +140,7 @@ const pushSecrets = async ({
 				return {
 					updateOne: {
 						filter: {
-							_id: oldSecretsObj[`${s.type}-${s.hashKey}`]._id
+							_id: oldSecretsObj[`${s.type}-${s.secretKeyHash}`]._id
 						},
 						update
 					}
@@ -134,28 +151,26 @@ const pushSecrets = async ({
 		// (EE) add secret versions for updated secrets
 		await EESecretService.addSecretVersions({
 			secretVersions: toUpdate.map(({
+				_id,
+				version,
 				type,
-				ciphertextKey,
-				ivKey,
-				tagKey,
-				hashKey,
-				ciphertextValue,
-				ivValue,
-				tagValue,
-				hashValue
-			}) => ({
-				secret: oldSecretsObj[`${type}-${hashKey}`]._id,
-				version: oldSecretsObj[`${type}-${hashKey}`].version + 1,
-				isDeleted: false,
-				secretKeyCiphertext: ciphertextKey,
-				secretKeyIV: ivKey,
-				secretKeyTag: tagKey,
-				secretKeyHash: hashKey,
-				secretValueCiphertext: ciphertextValue,
-				secretValueIV: ivValue,
-				secretValueTag: tagValue,
-				secretValueHash: hashValue
-			})) 
+				secretKeyHash,
+			}) => {
+				const newSecret = newSecretsObj[`${type}-${secretKeyHash}`];
+				return ({
+					secret: _id,
+					version: version ? version + 1 : 1,
+					isDeleted: false,
+					secretKeyCiphertext: newSecret.ciphertextKey,
+					secretKeyIV: newSecret.ivKey,
+					secretKeyTag: newSecret.tagKey,
+					secretKeyHash: newSecret.hashKey,
+					secretValueCiphertext: newSecret.ciphertextValue,
+					secretValueIV: newSecret.ivValue,
+					secretValueTag: newSecret.tagValue,
+					secretValueHash: newSecret.hashValue
+				})
+			}) 
 		});
 
 		// handle adding new secrets
@@ -166,6 +181,7 @@ const pushSecrets = async ({
 			const newSecrets = await Secret.insertMany(
 				toAdd.map((s, idx) => {
 					const obj: any = {
+						version: 1,
 						workspace: workspaceId,
 						type: toAdd[idx].type,
 						environment,
@@ -217,7 +233,6 @@ const pushSecrets = async ({
 		
 		// (EE) take a secret snapshot
 		await EESecretService.takeSecretSnapshot({
-			licenseKey: LICENSE_KEY,
 			workspaceId
 		})
 	} catch (err) {

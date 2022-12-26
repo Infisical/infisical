@@ -19,10 +19,8 @@ class EESecretService {
      * @param {String} obj.workspaceId
      */
     static async takeSecretSnapshot({
-        licenseKey,
         workspaceId
     }: {
-        licenseKey: string;
         workspaceId: string;
     }) {
         if (!EELicenseService.isLicenseValid) return;
