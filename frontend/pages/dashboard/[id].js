@@ -499,7 +499,20 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div id="data1" className="px-1">
-                    {data
+                    <KeyList
+                      keyPairs={data}
+                      type={'personal'}
+                      searchKeys={searchKeys}
+                      modifyValue={listenChangeValue}
+                      modifyKey={listenChangeKey}
+                      isBlurred={blurred}
+                      deleteCertainRow={deleteCertainRow}
+                      modifyVisibility={listenChangeVisibility}
+                      toggleSidebar={toggleSidebar}
+                      sidebarSecretNumber={sidebarSecretNumber}
+                    />
+
+                    {/* {data
                       .filter(
                         (keyPair) =>
                           keyPair.key
@@ -526,7 +539,7 @@ export default function Dashboard() {
                           toggleSidebar={toggleSidebar}
                           sidebarSecretNumber={sidebarSecretNumber}
                         />
-                      ))}
+                      ))} */}
                   </div>
                 </div>
                 <div
@@ -550,13 +563,25 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div id="data2" className="data2">
-                    {data
+                    <KeyList
+                      keyPairs={data}
+                      type={"shared"}
+                      searchKeys={searchKeys}
+                      modifyValue={listenChangeValue}
+                      modifyKey={listenChangeKey}
+                      isBlurred={blurred}
+                      deleteCertainRow={deleteCertainRow}
+                      modifyVisibility={listenChangeVisibility}
+                      toggleSidebar={toggleSidebar}
+                      sidebarSecretNumber={sidebarSecretNumber}
+                    />
+                    {/* {data
                       .filter(
                         (keyPair) =>
                           keyPair.key
                             .toLowerCase()
                             .includes(searchKeys.toLowerCase()) &&
-                          keyPair.type == 'shared'
+                          keyPair.type == "shared"
                       )
                       ?.map((keyPair) => (
                         <KeyPair
@@ -577,7 +602,7 @@ export default function Dashboard() {
                           toggleSidebar={toggleSidebar}
                           sidebarSecretNumber={sidebarSecretNumber}
                         />
-                      ))}
+                      ))} */}
                   </div>
                 </div>
                 <div className="w-full max-w-5xl">
