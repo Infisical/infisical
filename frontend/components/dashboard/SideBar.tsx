@@ -143,7 +143,6 @@ const SideBar = ({
           isFull={true}
         />
       </div> */}
-      <SecretVersionList />
       <div className={`relative mt-4 px-4 pt-4`}>
         <div className='flex flex-row justify-between'>
           <p className='text-sm text-bunker-300'>Comments & notes</p>
