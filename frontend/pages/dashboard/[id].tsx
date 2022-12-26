@@ -553,39 +553,38 @@ export default function Dashboard() {
               </div>
             </div>
             {data?.length !== 0 ? (
-              <div
-                id="dataall"
-                className="flex flex-col max-h-40 grow max-h-[calc(100vh-240px)] w-full overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar"
-              >
-                <div
-                  className={`bg-white/5 mt-1 mb-1 rounded-md pb-2 max-w-5xl overflow-visible`}
-                >
-                  <div id="data1" className="px-1 pt-2">
-                    {data?.filter(row => !(sharedToHide.includes(row.id) && row.type == 'shared')).map((keyPair) => (
-                      <KeyPair 
-                        key={keyPair.id}
-                        keyPair={keyPair}
-                        deleteRow={deleteCertainRow}
-                        modifyValue={listenChangeValue}
-                        modifyKey={listenChangeKey}
-                        isBlurred={blurred}
-                        isDuplicate={findDuplicates(data?.map((item) => item.key + item.type))?.includes(keyPair.key + keyPair.type)}
-                        toggleSidebar={toggleSidebar}
-                        sidebarSecretId={sidebarSecretId}
+              <div className="flex flex-col w-full mt-1 mb-2">
+                <div className='bg-mineshaft-800 rounded-md px-2 py-2 max-w-5xl'>
+                  <div
+                    className={`mt-1 max-h-[calc(100vh-280px)] overflow-hidden overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar`}
+                  >
+                    <div className="px-1 pt-2">
+                      {data?.filter(row => !(sharedToHide.includes(row.id) && row.type == 'shared')).map((keyPair) => (
+                        <KeyPair 
+                          key={keyPair.id}
+                          keyPair={keyPair}
+                          deleteRow={deleteCertainRow}
+                          modifyValue={listenChangeValue}
+                          modifyKey={listenChangeKey}
+                          isBlurred={blurred}
+                          isDuplicate={findDuplicates(data?.map((item) => item.key + item.type))?.includes(keyPair.key + keyPair.type)}
+                          toggleSidebar={toggleSidebar}
+                          sidebarSecretId={sidebarSecretId}
+                        />
+                      ))}
+                    </div>
+                    <div className="w-full max-w-5xl px-2 pt-2">
+                      <DropZone
+                        setData={addData}
+                        setErrorDragAndDrop={setErrorDragAndDrop}
+                        createNewFile={addRow}
+                        errorDragAndDrop={errorDragAndDrop}
+                        setButtonReady={setButtonReady}
+                        keysExist={true}
+                        numCurrentRows={data.length}
                       />
-                    ))}
+                    </div>
                   </div>
-                </div>
-                <div className="w-full max-w-5xl">
-                  <DropZone
-                    setData={addData}
-                    setErrorDragAndDrop={setErrorDragAndDrop}
-                    createNewFile={addRow}
-                    errorDragAndDrop={errorDragAndDrop}
-                    setButtonReady={setButtonReady}
-                    keysExist={true}
-                    numCurrentRows={data.length}
-                  />
                 </div>
               </div>
             ) : (
