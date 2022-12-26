@@ -378,11 +378,11 @@ export default function Dashboard() {
    * This function copies the project id to the clipboard
    */
   function copyToClipboard() {
-    const copyText = document.getElementById('myInput');
+    const copyText = document.getElementById('myInput') as HTMLInputElement;
     
     if (copyText) {
       copyText.select();
-      // copyText.setSelectionRange(0, 99999); // For mobile devices
+      copyText.setSelectionRange(0, 99999); // For mobile devices
 
       navigator.clipboard.writeText(copyText.value);
   
