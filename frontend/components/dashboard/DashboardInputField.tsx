@@ -11,19 +11,21 @@ interface DashboardInputFieldProps {
   onChangeHandler: (value: string, position: number) => void;
   value: string;
   type: 'varName' | 'value';
-  blurred: boolean;
-  duplicates: string[];
+  blurred?: boolean;
+  isDuplicate?: boolean;
+  override?: boolean;
 }
 
 /**
  * This component renders the input fields on the dashboard
  * @param {object} obj - the order number of a keyPair
- * @param {number} obj.pos - the order number of a keyPair
+ * @param {number} obj.position - the order number of a keyPair
  * @param {function} obj.onChangeHandler - what happens when the input is modified
  * @param {string} obj.type - whether the input field is for a Key Name or for a Key Value
  * @param {string} obj.value - value of the InputField
  * @param {boolean} obj.blurred - whether the input field should be blurred (behind the gray dots) or not; this can be turned on/off in the dashboard
- * @param {string[]} obj.duplicates - list of all the duplicated key names on the dashboard
+ * @param {boolean} obj.isDuplicate - if the key name is duplicated
+ * @param {boolean} obj.override - whether a secret/row should be displalyed as overriden
  * @returns
  */
 
@@ -33,7 +35,8 @@ const DashboardInputField = ({
   type,
   value,
   blurred,
-  duplicates
+  isDuplicate,
+  override
 }: DashboardInputFieldProps) => {
   const ref = useRef<HTMLDivElement | null>(null);
   const syncScroll = (e: SyntheticEvent<HTMLDivElement>) => {
@@ -45,8 +48,7 @@ const DashboardInputField = ({
 
   if (type === 'varName') {
     const startsWithNumber = !isNaN(Number(value.charAt(0))) && value != '';
-    const hasDuplicates = duplicates?.includes(value);
-    const error = startsWithNumber || hasDuplicates;
+    const error = startsWithNumber || isDuplicate;
 
     return (
       <div className="flex-col w-full">
@@ -72,7 +74,7 @@ const DashboardInputField = ({
             Should not start with a number
           </p>
         )}
-        {hasDuplicates && !startsWithNumber && (
+        {isDuplicate && !startsWithNumber && (
           <p className="text-red text-xs mt-0.5 mx-1 mb-2 max-w-xs">
             Secret names should be unique
           </p>
@@ -85,6 +87,7 @@ const DashboardInputField = ({
         <div
           className={`group relative whitespace-pre	flex flex-col justify-center w-full max-w-2xl border border-mineshaft-500 rounded-md`}
         >
+          {override == true && <div className='bg-primary-300 absolute top-[0.1rem] right-[0.1rem] z-10 w-min text-xxs px-1 text-black opacity-80 rounded-md'>Override enabled</div>}
           <input
             value={value}
             onChange={(e) => onChangeHandler(e.target.value, position)}
@@ -99,10 +102,13 @@ const DashboardInputField = ({
           <div
             ref={ref}
             className={`${
-              blurred
+              blurred && !override
                 ? 'text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-400 peer-active:text-gray-400'
                 : ''
-            } absolute flex flex-row whitespace-pre font-mono z-0 ph-no-capture max-w-2xl overflow-x-scroll bg-bunker-800 h-9 rounded-md text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
+            } ${
+              override ? 'text-primary-300' : 'text-gray-400'
+            }
+            absolute flex flex-row whitespace-pre font-mono z-0 ph-no-capture max-w-2xl overflow-x-scroll bg-bunker-800 h-9 rounded-md text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
           >
             {value.split(REGEX).map((word, id) => {
               if (word.match(REGEX) !== null) {
@@ -153,4 +159,8 @@ const DashboardInputField = ({
   return <>Something Wrong</>;
 };
 
-export default memo(DashboardInputField);
+function inputPropsAreEqual(prev: DashboardInputFieldProps, next: DashboardInputFieldProps) {
+  return prev.value === next.value && prev.type === next.type && prev.position === next.position && prev.blurred === next.blurred && prev.override === next.override && prev.isDuplicate === next.isDuplicate;
+}
+
+export default memo(DashboardInputField, inputPropsAreEqual);
