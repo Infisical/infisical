@@ -17,16 +17,14 @@ config.autoAddCss = false;
 const App = ({ Component, pageProps, ...appProps }) => {
   const router = useRouter();
 
-  // useEffect(() => {
-  //   const storedLang = localStorage.getItem("lang");
-  //   console.log(router.locale);
-  //   console.log(storedLang);
-  //   if (router.locale ?? "en" !== storedLang ?? "en") {
-  //     router.push(router.pathname, router.pathname, {
-  //       locale: storedLang ?? "en",
-  //     });
-  //   }
-  // }, [router.locale, router.pathname]);
+  useEffect(() => {
+    const storedLang = localStorage.getItem("lang");
+    if (router.locale ?? "en" !== storedLang ?? "en") {
+      router.push(router.pathname, router.pathname, {
+        locale: storedLang ?? "en",
+      });
+    }
+  }, [router.locale, router.pathname]);
 
   useEffect(() => {
     // Init for auto capturing
