@@ -156,7 +156,7 @@ export default function Layout({ children }: LayoutProps) {
         emoji: <FontAwesomeIcon icon={faGear} />,
       },
     ],
-    [t]
+    [t, workspaceMapping, workspaceSelected]
   );
 
   useEffect(() => {
