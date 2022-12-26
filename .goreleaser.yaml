@@ -85,7 +85,7 @@ nfpms:
   homepage: https://infisical.com/
   maintainer: Infisical, Inc
   description: The offical Infisical CLI
-  license: Apache 2.0
+  license: MIT
   formats:
   - rpm
   - deb
@@ -101,7 +101,7 @@ scoop:
     email: ai@infisical.com
   homepage: "https://infisical.com"
   description: "The official Infisical CLI"
-  license: Apache-2.0
+  license: MIT
 aurs:
   -
     name: infisical-bin
@@ -109,7 +109,7 @@ aurs:
     description: "The official Infisical CLI"
     maintainers:
       - Infisical, Inc <support@infisical.com>
-    license: Apache-2.0
+    license: MIT
     private_key: '{{ .Env.AUR_KEY }}'
     git_url: 'ssh://aur@aur.archlinux.org/infisical-bin.git'
     package: |-
