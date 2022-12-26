@@ -44,6 +44,14 @@ function KeyList({
     }
   }, [keyPairs])
 
+  useEffect(() => {
+    const filteredKeys = selectedKeys.filter((keyPair) =>
+      keyPair.key.toLowerCase().includes(searchKeys.toLowerCase())
+    )
+
+    setSelectedKeys(filteredKeys)
+  }, [searchKeys])
+
   return (
     <div>
       {selectedKeys.map((keyPair) => (
