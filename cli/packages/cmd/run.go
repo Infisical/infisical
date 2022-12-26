@@ -119,7 +119,7 @@ func init() {
 	runCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
 	runCmd.Flags().String("projectId", "", "The project ID from which your secrets should be pulled from")
 	runCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
-	runCmd.Flags().Bool("secret-overriding", true, "If two secrets are found with the same name, the one that is of type personal will be prioritized")
+	runCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets with the same name over shared secrets")
 	runCmd.Flags().StringP("command", "c", "", "chained commands to execute (e.g. \"npm install && npm run dev; echo ...\")")
 }
 
