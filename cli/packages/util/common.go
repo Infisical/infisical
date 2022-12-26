@@ -19,6 +19,7 @@ func GetHomeDir() (string, error) {
 	return directory, err
 }
 
+// write file to given path. If path does not exist throw error
 func WriteToFile(fileName string, dataToWrite []byte, filePerm os.FileMode) error {
 	err := os.WriteFile(fileName, dataToWrite, filePerm)
 	if err != nil {
