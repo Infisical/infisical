@@ -3,7 +3,9 @@ import {
     Secret
 } from '../../models';
 import {
-    SecretSnapshot
+    SecretSnapshot,
+	SecretVersion,
+	ISecretVersion
 } from '../models';
 
 /**
@@ -52,6 +54,21 @@ import {
 	}
 }
 
+const addSecretVersionsHelper = async ({
+	secretVersions
+}: {
+	secretVersions: ISecretVersion[]
+}) => {
+	try {
+		await SecretVersion.insertMany(secretVersions);
+	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
+		throw new Error('Failed to add secret versions');
+	}
+}
+
 export {
-    takeSecretSnapshotHelper
+    takeSecretSnapshotHelper,
+	addSecretVersionsHelper
 }

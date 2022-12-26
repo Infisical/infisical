@@ -1,4 +1,3 @@
-
 import { patchRouterParam } from './utils/patchAsyncRoutes';
 import express from 'express';
 import helmet from 'helmet';
@@ -7,7 +6,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 
 dotenv.config();
-import { PORT, NODE_ENV, SITE_URL } from './config';
+import { PORT, NODE_ENV, SITE_URL, LICENSE_KEY } from './config';
 import { apiLimiter } from './helpers/rateLimiter';
 
 import {

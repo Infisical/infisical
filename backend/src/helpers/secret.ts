@@ -130,8 +130,10 @@ const pushSecrets = async ({
 				};
 			});
 		await Secret.bulkWrite(operations as any);
-		await SecretVersion.insertMany(
-			toUpdate.map(({
+		
+		// (EE) add secret versions for updated secrets
+		await EESecretService.addSecretVersions({
+			secretVersions: toUpdate.map(({
 				type,
 				ciphertextKey,
 				ivKey,
@@ -153,8 +155,8 @@ const pushSecrets = async ({
 				secretValueIV: ivValue,
 				secretValueTag: tagValue,
 				secretValueHash: hashValue
-			}))
-		);
+			})) 
+		});
 
 		// handle adding new secrets
 		const toAdd = secrets.filter((s) => !(`${s.type}-${s.hashKey}` in oldSecretsObj));
@@ -185,8 +187,9 @@ const pushSecrets = async ({
 				})
 			);
 
-			await SecretVersion.insertMany(
-				newSecrets.map(({
+			// (EE) add secret versions for new secrets
+			EESecretService.addSecretVersions({
+				secretVersions: newSecrets.map(({
 					_id,
 					secretKeyCiphertext,
 					secretKeyIV,
@@ -209,7 +212,7 @@ const pushSecrets = async ({
 					secretValueTag,
 					secretValueHash
 				}))
-			);
+			});
 		}
 		
 		// (EE) take a secret snapshot

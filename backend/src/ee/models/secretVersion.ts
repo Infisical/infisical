@@ -1,7 +1,7 @@
 import { Schema, model, Types } from 'mongoose';
 
 export interface ISecretVersion {
-    _id: Types.ObjectId;
+    _id?: Types.ObjectId;
     secret: Types.ObjectId;
     version: number;
     isDeleted: boolean;

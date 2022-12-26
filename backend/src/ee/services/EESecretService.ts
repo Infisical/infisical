@@ -1,4 +1,8 @@
-import { takeSecretSnapshotHelper } from '../helpers/secret';
+import { ISecretVersion } from '../models';
+import { 
+    takeSecretSnapshotHelper,
+    addSecretVersionsHelper
+} from '../helpers/secret';
 import EELicenseService from './EELicenseService';
 
 /**
@@ -21,8 +25,24 @@ class EESecretService {
         licenseKey: string;
         workspaceId: string;
     }) {
-        EELicenseService.checkLicense({ licenseKey });
+        if (!EELicenseService.isLicenseValid) return;
         await takeSecretSnapshotHelper({ workspaceId });
+    }
+    
+    /**
+     * Adds secret versions [secretVersions] to the SecretVersion collection.
+     * @param {Object} obj
+     * @param {SecretVersion} obj.secretVersions
+     */
+    static async addSecretVersions({
+        secretVersions
+    }: {
+        secretVersions: ISecretVersion[];
+    }) {
+        if (!EELicenseService.isLicenseValid) return;
+        await addSecretVersionsHelper({
+            secretVersions
+        });
     }
 }
 

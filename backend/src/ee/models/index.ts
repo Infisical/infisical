@@ -3,5 +3,7 @@ import SecretVersion, { ISecretVersion } from "./secretVersion";
 
 export {
     SecretSnapshot,
-    SecretVersion
+    ISecretSnapshot,
+    SecretVersion,
+    ISecretVersion
 }
