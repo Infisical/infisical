@@ -187,7 +187,7 @@ func GetConfigFile() (models.ConfigFile, error) {
 
 // Write a ConfigFile to disk. Raise error if unable to save the model to ask
 func WriteConfigFile(configFile *models.ConfigFile) error {
-	fullConfigFilePath, _, err := GetFullConfigFilePath()
+	fullConfigFilePath, fullConfigFileDirPath, err := GetFullConfigFilePath()
 	if err != nil {
 		return fmt.Errorf("writeConfigFile: unable to write config file because an error occurred when getting config file path [err=%s]", err)
 	}
@@ -197,8 +197,20 @@ func WriteConfigFile(configFile *models.ConfigFile) error {
 		return fmt.Errorf("writeConfigFile: unable to write config file because an error occurred when marshalling the config file [err=%s]", err)
 	}
 
+	// check if config folder exists and if not create it
+	if _, err := os.Stat(fullConfigFileDirPath); errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir(fullConfigFileDirPath, os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Create file in directory
-	err = WriteToFile(fullConfigFilePath, configFileMarshalled, os.ModePerm)
+	err = os.WriteFile(fullConfigFilePath, configFileMarshalled, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("writeConfigFile: Unable to write to file [err=%s]", err)
+	}
+
 	if err != nil {
 		return fmt.Errorf("writeConfigFile: unable to write config file because an error occurred when write the config to file [err=%s]", err)
 

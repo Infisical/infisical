@@ -19,7 +19,13 @@ func StoreUserCredsInKeyRing(userCred *models.UserCredentials) error {
 		return fmt.Errorf("StoreUserCredsInKeyRing: something went wrong when marshalling user creds [err=%s]", err)
 	}
 
-	err = keyringInstance.Set(keyring.Item{
+	// Get keyring
+	configuredKeyring, err := GetKeyRing()
+	if err != nil {
+		return fmt.Errorf("StoreUserCredsInKeyRing: unable to get keyring instance with [err=%s]", err)
+	}
+
+	err = configuredKeyring.Set(keyring.Item{
 		Key:  userCred.Email,
 		Data: []byte(string(userCredMarshalled)),
 	})
@@ -32,20 +38,26 @@ func StoreUserCredsInKeyRing(userCred *models.UserCredentials) error {
 }
 
 func GetUserCredsFromKeyRing(userEmail string) (credentials models.UserCredentials, err error) {
-	credentialsValue, err := keyringInstance.Get(userEmail)
+	// Get keyring
+	configuredKeyring, err := GetKeyRing()
 	if err != nil {
-		return models.UserCredentials{}, fmt.Errorf("Unable to get key from Keyring. could not find login credentials in your Keyring. This is common if you have switched vault backend recently. If so, please login in again and retry:", err)
+		return models.UserCredentials{}, fmt.Errorf("GetUserCredsFromKeyRing: unable to get keyring instance with [err=%s]", err)
+	}
+
+	credentialsValue, err := configuredKeyring.Get(userEmail)
+	if err != nil {
+		return models.UserCredentials{}, fmt.Errorf("GetUserCredsFromKeyRing: unable to get key from Keyring. could not find login credentials in your Keyring. This is common if you have switched vault backend recently. If so, please login in again and retry [err=%s]", err)
 	}
 
 	var userCredentials models.UserCredentials
 
 	err = json.Unmarshal([]byte(credentialsValue.Data), &userCredentials)
 	if err != nil {
-		return models.UserCredentials{}, fmt.Errorf("Something went wrong when unmarshalling user creds:", err)
+		return models.UserCredentials{}, fmt.Errorf("getUserCredsFromKeyRing: Something went wrong when unmarshalling user creds [err=%s]", err)
 	}
 
 	if err != nil {
-		return models.UserCredentials{}, fmt.Errorf("Unable to store user credentials", err)
+		return models.UserCredentials{}, fmt.Errorf("GetUserCredsFromKeyRing: Unable to store user credentials [err=%s]", err)
 	}
 
 	return userCredentials, err
@@ -82,7 +94,7 @@ func IsUserLoggedIn() (hasUserLoggedIn bool, theUsersEmail string, err error) {
 
 		if response.StatusCode() > 299 {
 			log.Infoln("Login expired, please login again.")
-			return false, "", fmt.Errorf("Login expired, please login again.")
+			return false, "", fmt.Errorf("GetUserCredsFromKeyRing: Login expired, please login again.")
 		}
 
 		return true, configFile.LoggedInUserEmail, nil

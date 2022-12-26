@@ -42,7 +42,7 @@ var vaultSetCmd = &cobra.Command{
 
 			err = util.WriteConfigFile(&configFile)
 			if err != nil {
-				log.Errorf("Unable to set vault to [%s] because an error occurred when saving the config file [err=%s]")
+				log.Errorf("Unable to set vault to [%s] because an error occurred when saving the config file [err=%s]", wantedVaultTypeName, err)
 				return
 			}
 
