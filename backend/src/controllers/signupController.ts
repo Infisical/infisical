@@ -10,6 +10,7 @@ import {
 } from '../helpers/signup';
 import { issueTokens, createToken } from '../helpers/auth';
 import { INVITED, ACCEPTED } from '../variables';
+import axios from 'axios';
 
 /**
  * Signup step 1: Initialize account for user under email [email] and send a verification code
@@ -179,6 +180,21 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 
 		token = tokens.token;
 		refreshToken = tokens.refreshToken;
+
+		// sending a welcome email to new users
+		if (process.env.LOOPS_API_KEY) {
+			await axios.post("https://app.loops.so/api/v1/events/send", {
+				"email": email,
+				"eventName": "Sign Up",
+				"firstName": firstName,
+				"lastName": lastName
+			}, {
+				headers: {
+					"Accept": "application/json",
+					"Authorization": "Bearer " + process.env.LOOPS_API_KEY
+				},
+			});
+		}
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
