@@ -14,7 +14,7 @@ import Token, { IToken } from './token';
 import User, { IUser } from './user';
 import UserAction, { IUserAction } from './userAction';
 import Workspace, { IWorkspace } from './workspace';
-import APIKey, { IAPIKey } from './apiKey';
+import APIKeyData, { IAPIKeyData } from './apiKeyData';
 
 export {
 	BackupPrivateKey,
@@ -49,6 +49,6 @@ export {
 	IUserAction,
 	Workspace,
 	IWorkspace,
-	APIKey,
-	IAPIKey,
+	APIKeyData,
+	IAPIKeyData,
 };

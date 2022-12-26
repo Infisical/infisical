@@ -4,16 +4,14 @@ import {
     requireAuth
 } from '../middleware';
 import {
-    APIKey
+    APIKeyData
 } from '../models';
-import { body } from 'express-validator';
+import { param, body, query } from 'express-validator';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
-// import * as bcrypt from 'bcrypt';
-// const bcrypt = require('bcrypt');
 import * as Sentry from '@sentry/node';
 
-// POST /api/v1/api-key
+// TODO: middleware
 router.post(
     '/',
     requireAuth,
@@ -25,7 +23,7 @@ router.post(
     body('tag'),
     body('expiresAt'),
     async (req, res) => {
-        let savedAPIKey;
+        let apiKey, apiKeyData;
         try {
             const { 
                 name,
@@ -37,14 +35,13 @@ router.post(
                 expiresAt
             } = req.body;
             
-            // api-key: 38 characters
-            // 6-char: prefix
-            // 32-char: remaining
-            const apiKey = crypto.randomBytes(19).toString('hex');
-            const saltRounds = 10; // config?
+            // create 38-char API key with first 6-char being the prefix
+            apiKey = crypto.randomBytes(19).toString('hex');
+
+            const saltRounds = 10; // TODO: add as config envar
             const apiKeyHash = await bcrypt.hash(apiKey, saltRounds);
             
-            savedAPIKey = await new APIKey({
+            apiKeyData = await new APIKeyData({
                 name,
                 workspace,
                 environment,
@@ -55,22 +52,72 @@ router.post(
                 iv,
                 tag
             }).save();
-
-            // 1. generate api key
-            // 2. hash api key with bcrypt
-            // 3. store hash and api key info in db
-            // 4. return api key
             
         } catch (err) {
             Sentry.setUser({ email: req.user.email });
             Sentry.captureException(err);
             return res.status(400).send({
-                message: 'xxx'
+                message: 'Failed to create workspace API Key'
             });
         }
 
         return res.status(200).send({
-            apiKey: savedAPIKey
+            apiKey,
+            apiKeyData
+        });
+    }
+);
+
+// TODO: middleware
+router.get(
+    '/',
+    requireAuth,
+    query('workspaceId').exists().trim(),
+    async (req, res) => {
+        let apiKeyData;
+        try {
+            const { workspaceId } = req.query;
+
+            apiKeyData = await APIKeyData.find({
+                workspace: workspaceId
+            });
+        } catch (err) {
+            Sentry.setUser({ email: req.user.email });
+            Sentry.captureException(err);
+            return res.status(400).send({
+                message: 'Failed to get workspace API Key data'
+            });
+        }
+        
+        return res.status(200).send({
+            apiKeyData
+        });
+    }
+);
+
+// TODO: middleware
+router.delete(
+    ':apiKeyDataId',
+    requireAuth,
+    // TODO: requireAPIKeyDataAuth,
+    param('apiKeyDataId').exists().trim(),
+    async (req, res) => {
+        let apiKeyData;
+        try {
+            const { apiKeyDataId } = req.params;
+
+            apiKeyData = await APIKeyData.findByIdAndDelete(apiKeyDataId);
+            
+        } catch (err) {
+            Sentry.setUser({ email: req.user.email });
+            Sentry.captureException(err);
+            return res.status(400).send({
+                message: 'Failed to delete API key data'
+            });
+        }
+        
+        return res.status(200).send({
+            apiKeyData
         });
     }
 );

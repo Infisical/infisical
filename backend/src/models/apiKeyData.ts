@@ -1,12 +1,12 @@
 import { Schema, model, Types } from 'mongoose';
 import { ENV_DEV, ENV_TESTING, ENV_STAGING, ENV_PROD } from '../variables';
 
-// TODO: add scopes
-
-export interface IAPIKey {
+export interface IAPIKeyData {
     name: string;
-    workspace: string;
-    environment: string;
+    workspaces: { 
+        workspace: Types.ObjectId,
+        environments: string[]
+    }[];
     expiresAt: Date;
     prefix: string;
     apiKeyHash: string;
@@ -15,19 +15,22 @@ export interface IAPIKey {
     tag: string;
 }
 
-const apiKeySchema = new Schema<IAPIKey>(
+const apiKeyDataSchema = new Schema<IAPIKeyData>(
     {
         name: {
             type: String,
             required: true
         },
-        workspace: {
-            type: String
-        },
-        environment: {
-            type: String,
-            enum: [ENV_DEV, ENV_TESTING, ENV_STAGING, ENV_PROD]
-        },
+        workspaces: [{
+            workspace: {
+                type: Schema.Types.ObjectId,
+                ref: 'Workspace'
+            },
+            environments: [{
+                type: String,
+                enum: [ENV_DEV, ENV_TESTING, ENV_STAGING, ENV_PROD]
+            }]
+        }],
         expiresAt: {
             type: Date
         },
@@ -58,6 +61,6 @@ const apiKeySchema = new Schema<IAPIKey>(
     }
 );
 
-const APIKey = model<IAPIKey>('APIKey', apiKeySchema);
+const APIKeyData = model<IAPIKeyData>('APIKeyData', apiKeyDataSchema);
     
-export default APIKey;
+export default APIKeyData;

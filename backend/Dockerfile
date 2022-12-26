@@ -4,7 +4,10 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 
-RUN npm ci --only-production --ignore-scripts
+# RUN npm ci --only-production --ignore-scripts
+# "prepare": "cd .. && npm install"
+
+RUN npm ci --only-production
 
 COPY . .
 
