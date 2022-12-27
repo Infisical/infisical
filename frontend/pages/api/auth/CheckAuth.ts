@@ -10,13 +10,7 @@ const checkAuth = async () => {
     headers: {
       'Content-Type': 'application/json'
     }
-  }).then((res) => {
-    if (res && res.status == 200) {
-      return res;
-    } else {
-      console.log('Not authorized');
-    }
-  });
+  }).then((res) => res);
 };
 
 export default checkAuth;
