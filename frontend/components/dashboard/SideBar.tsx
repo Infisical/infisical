@@ -149,6 +149,7 @@ const SideBar = ({
           isFull={true}
         />
       </div> */}
+      <SecretVersionList secretId={data[0].id} />
       <CommentField comment={data.filter(secret => secret.type == "shared")[0]?.comment} modifyComment={modifyComment} position={data[0].pos} />
     </div>
     <div className={`flex justify-start max-w-sm mt-4 px-4 mt-full mb-[4.7rem]`}>
