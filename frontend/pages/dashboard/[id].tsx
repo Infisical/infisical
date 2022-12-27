@@ -41,6 +41,7 @@ interface SecretDataProps {
   key: string;
   value: string;
   id: string;
+  comment: string;
 }
 
 /**
@@ -199,7 +200,8 @@ export default function Dashboard() {
         pos: data!.length,
         key: '',
         value: '',
-        type: 'shared'
+        type: 'shared',
+        comment: '',
       }
     ]);
   };
@@ -209,6 +211,7 @@ export default function Dashboard() {
     keyName: string;
     value: string;
     pos: number;
+    comment: string;
   }
 
   /**
@@ -219,7 +222,7 @@ export default function Dashboard() {
    * @param {string} obj.value - value of this secret
    * @param {string} obj.pos - position of this secret on the dashboard 
    */
-  const addOverride = ({ id, keyName, value, pos }: overrideProps) => {
+  const addOverride = ({ id, keyName, value, pos, comment }: overrideProps) => {
     setIsNew(false);
     const tempdata: SecretDataProps[] | 1 = [
       ...data!,
@@ -228,7 +231,8 @@ export default function Dashboard() {
         pos: pos,
         key: keyName,
         value: value,
-        type: 'personal'
+        type: 'personal',
+        comment: comment
       }
     ];
     sortValuesHandler(tempdata, sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical");
@@ -273,6 +277,14 @@ export default function Dashboard() {
     setButtonReady(true);
   };
 
+  const modifyComment = (value: string, pos: number) => {
+    setData((oldData) => {
+      oldData![pos].comment = value;
+      return [...oldData!];
+    });
+    setButtonReady(true);
+  };
+
   // For speed purposes and better perforamance, we are using useCallback
   const listenChangeValue = useCallback((value: string, pos: number) => {
     modifyValue(value, pos);
@@ -286,6 +298,10 @@ export default function Dashboard() {
     modifyVisibility(value, pos);
   }, []);
 
+  const listenChangeComment = useCallback((value: string, pos: number) => {
+    modifyComment(value, pos);
+  }, []);
+
   /**
    * Save the changes of environment variables and push them to the database
    */
@@ -293,7 +309,7 @@ export default function Dashboard() {
     // Format the new object with environment variables
     const obj = Object.assign(
       {},
-      ...data!.map((row: SecretDataProps) => ({ [row.type.charAt(0) + row.key]: [row.value, row.type] }))
+      ...data!.map((row: SecretDataProps) => ({ [row.type.charAt(0) + row.key]: [row.value, row.comment] }))
     );
 
     // Checking if any of the secret keys start with a number - if so, don't do anything
@@ -315,8 +331,6 @@ export default function Dashboard() {
         type: 'error'
       });
     }
-
-    console.log('pushing', obj)
 
     // Once "Save changed is clicked", disable that button
     setButtonReady(false);
@@ -352,7 +366,6 @@ export default function Dashboard() {
         pos: index
       };
     });
-    console.log('override', sortedData)
 
     setData(sortedData);
   };
@@ -409,6 +422,7 @@ export default function Dashboard() {
           data={data.filter((row: SecretDataProps) => row.id == sidebarSecretId)} 
           modifyKey={listenChangeKey} 
           modifyValue={listenChangeValue} 
+          modifyComment={listenChangeComment}
           addOverride={addOverride}
           deleteOverride={deleteOverride}
           buttonReady={buttonReady}
@@ -436,7 +450,6 @@ export default function Dashboard() {
                 <ListBox
                   selected={env}
                   data={['Development', 'Staging', 'Production', 'Testing']}
-                  // ref={useRef(123)}
                   onChange={setEnv}
                 />
               )}
@@ -490,7 +503,6 @@ export default function Dashboard() {
                     <ListBox
                       selected={env}
                       data={['Development', 'Staging', 'Production', 'Testing']}
-                      // ref={useRef(123)}
                       onChange={setEnv}
                     />
                     <div className="h-10 w-full bg-white/5 hover:bg-white/10 ml-2 flex items-center rounded-md flex flex-row items-center">
@@ -554,36 +566,34 @@ export default function Dashboard() {
             </div>
             {data?.length !== 0 ? (
               <div className="flex flex-col w-full mt-1 mb-2">
-                <div className='bg-mineshaft-800 rounded-md px-2 py-2 max-w-5xl'>
-                  <div
-                    className={`mt-1 max-h-[calc(100vh-280px)] overflow-hidden overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar`}
-                  >
-                    <div className="px-1 pt-2">
-                      {data?.filter(row => !(sharedToHide.includes(row.id) && row.type == 'shared')).map((keyPair) => (
-                        <KeyPair 
-                          key={keyPair.id}
-                          keyPair={keyPair}
-                          deleteRow={deleteCertainRow}
-                          modifyValue={listenChangeValue}
-                          modifyKey={listenChangeKey}
-                          isBlurred={blurred}
-                          isDuplicate={findDuplicates(data?.map((item) => item.key + item.type))?.includes(keyPair.key + keyPair.type)}
-                          toggleSidebar={toggleSidebar}
-                          sidebarSecretId={sidebarSecretId}
-                        />
-                      ))}
-                    </div>
-                    <div className="w-full max-w-5xl px-2 pt-2">
-                      <DropZone
-                        setData={addData}
-                        setErrorDragAndDrop={setErrorDragAndDrop}
-                        createNewFile={addRow}
-                        errorDragAndDrop={errorDragAndDrop}
-                        setButtonReady={setButtonReady}
-                        keysExist={true}
-                        numCurrentRows={data.length}
+                <div
+                  className={`max-w-5xl mt-1 max-h-[calc(100vh-280px)] overflow-hidden overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar`}
+                >
+                  <div className="px-1 pt-2 bg-mineshaft-800 rounded-md p-2">
+                    {data?.filter(row => !(sharedToHide.includes(row.id) && row.type == 'shared')).map((keyPair) => (
+                      <KeyPair 
+                        key={keyPair.id}
+                        keyPair={keyPair}
+                        deleteRow={deleteCertainRow}
+                        modifyValue={listenChangeValue}
+                        modifyKey={listenChangeKey}
+                        isBlurred={blurred}
+                        isDuplicate={findDuplicates(data?.map((item) => item.key + item.type))?.includes(keyPair.key + keyPair.type)}
+                        toggleSidebar={toggleSidebar}
+                        sidebarSecretId={sidebarSecretId}
                       />
-                    </div>
+                    ))}
+                  </div>
+                  <div className="w-full max-w-5xl px-2 pt-3">
+                    <DropZone
+                      setData={addData}
+                      setErrorDragAndDrop={setErrorDragAndDrop}
+                      createNewFile={addRow}
+                      errorDragAndDrop={errorDragAndDrop}
+                      setButtonReady={setButtonReady}
+                      keysExist={true}
+                      numCurrentRows={data.length}
+                    />
                   </div>
                 </div>
               </div>

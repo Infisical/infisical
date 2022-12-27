@@ -65,6 +65,16 @@ const pushKeys = async({ obj, workspaceId, env }: { obj: object; workspaceId: st
       key: randomBytes,
     });
 
+    // encrypt comment
+    const {
+      ciphertext: ciphertextComment,
+      iv: ivComment,
+      tag: tagComment,
+    } = encryptSymmetric({
+      plaintext: obj[key as keyof typeof obj][1],
+      key: randomBytes,
+    });
+
     const visibility = key.charAt(0) == "p" ? "personal" : "shared";
 
     return {
@@ -76,6 +86,10 @@ const pushKeys = async({ obj, workspaceId, env }: { obj: object; workspaceId: st
       ivValue,
       tagValue,
       hashValue: crypto.createHash("sha256").update(obj[key as keyof typeof obj][0]).digest("hex"),
+      ciphertextComment,
+      ivComment,
+      tagComment,
+      hashComment: crypto.createHash("sha256").update(obj[key as keyof typeof obj][1]).digest("hex"),
       type: visibility,
     };
   });

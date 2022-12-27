@@ -25,6 +25,10 @@ interface PushSecret {
 	ivValue: string;
 	tagValue: string;
 	hashValue: string;
+	ciphertextComment: string;
+	ivComment: string;
+	tagComment: string;
+	hashComment: string;
 	type: 'shared' | 'personal';
 }
 
@@ -93,7 +97,8 @@ const pushSecrets = async ({
 		const toUpdate = oldSecrets
 			.filter((s) => {
 				if (`${s.type}-${s.secretKeyHash}` in newSecretsObj) {
-					if (s.secretValueHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashValue) {
+					if (s.secretValueHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashValue 
+					|| s.secretCommentHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashComment) {
 						// case: filter secrets where value changed
 						return true;
 					}
@@ -113,14 +118,22 @@ const pushSecrets = async ({
 					ciphertextValue,
 					ivValue,
 					tagValue,
-					hashValue
+					hashValue,
+					ciphertextComment,
+					ivComment,
+					tagComment,
+					hashComment
 				} = newSecretsObj[`${s.type}-${s.secretKeyHash}`];
 
 				const update: Update = {
 					secretValueCiphertext: ciphertextValue,
 					secretValueIV: ivValue,
 					secretValueTag: tagValue,
-					secretValueHash: hashValue
+					secretValueHash: hashValue,
+					secretCommentCiphertext: ciphertextComment,
+					secretCommentIV: ivComment,
+					secretCommentTag: tagComment,
+					secretCommentHash: hashComment,
 				}
 
 				if (!s.version) {
@@ -192,7 +205,11 @@ const pushSecrets = async ({
 						secretValueCiphertext: s.ciphertextValue,
 						secretValueIV: s.ivValue,
 						secretValueTag: s.tagValue,
-						secretValueHash: s.hashValue
+						secretValueHash: s.hashValue,
+						secretCommentCiphertext: s.ciphertextComment,
+						secretCommentIV: s.ivComment,
+						secretCommentTag: s.tagComment,
+						secretCommentHash: s.hashComment
 					};
 
 					if (toAdd[idx].type === 'personal') {
@@ -315,6 +332,13 @@ const reformatPullSecrets = ({ secrets }: { secrets: ISecret[] }) => {
 				iv: s.secretValueIV,
 				tag: s.secretValueTag,
 				hash: s.secretValueHash
+			},
+			secretComment: {
+				workspace: s.workspace,
+				ciphertext: s.secretCommentCiphertext,
+				iv: s.secretCommentIV,
+				tag: s.secretCommentTag,
+				hash: s.secretCommentHash
 			}
 		}));
 	} catch (err) {

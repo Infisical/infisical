@@ -21,6 +21,10 @@ interface PushSecret {
 	ivValue: string;
 	tagValue: string;
 	hashValue: string;
+	ciphertextComment: string;
+	ivComment: string;
+	tagComment: string;
+	hashComment: string;
 	type: 'shared' | 'personal';
 }
 
