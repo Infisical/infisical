@@ -5,6 +5,7 @@ import SecretVersionList from 'ee/components/SecretVersionList';
 
 import Button from '../basic/buttons/Button';
 import Toggle from '../basic/Toggle';
+import CommentField from './CommentField';
 import DashboardInputField from './DashboardInputField';
 import GenerateSecretMenu from './GenerateSecretMenu';
 
@@ -15,6 +16,7 @@ interface SecretProps {
   pos: number;
   type: string;
   id: string;
+  comment: string;
 }
 
 interface OverrideProps {
@@ -22,6 +24,7 @@ interface OverrideProps {
   keyName: string;
   value: string;
   pos: number;
+  comment: string;
 }
 
 interface SideBarProps {
@@ -29,6 +32,7 @@ interface SideBarProps {
   data: SecretProps[];
   modifyKey: (value: string, position: number) => void; 
   modifyValue: (value: string, position: number) => void; 
+  modifyComment: (value: string, position: number) => void; 
   addOverride: (value: OverrideProps) => void; 
   deleteOverride: (id: string) => void; 
   buttonReady: boolean;
@@ -56,6 +60,7 @@ const SideBar = ({
   data, 
   modifyKey, 
   modifyValue, 
+  modifyComment,
   addOverride, 
   deleteOverride, 
   buttonReady, 
@@ -115,6 +120,7 @@ const SideBar = ({
             value={data[0].value}
             pos={data[0].pos}
             id={data[0].id}
+            comment={data[0].comment}
             deleteOverride={deleteOverride}
             sharedToHide={sharedToHide}
             setSharedToHide={setSharedToHide}
@@ -143,17 +149,7 @@ const SideBar = ({
           isFull={true}
         />
       </div> */}
-      <div className={`relative mt-4 px-4 pt-4`}>
-        <div className='flex flex-row justify-between'>
-          <p className='text-sm text-bunker-300'>Comments & notes</p>
-          <div className="bg-yellow rounded-md h-min">
-            <p className="relative text-black text-xs px-1.5 h-min">Coming soon!</p>
-          </div>
-        </div>
-        <div className='h-32 opacity-50 w-full bg-bunker-800 p-2 rounded-md border border-mineshaft-500 rounded-md text-sm text-bunker-300'> 
-          Leave your comment here...
-        </div>
-      </div>
+      <CommentField comment={data.filter(secret => secret.type == "shared")[0]?.comment} modifyComment={modifyComment} position={data[0].pos} />
     </div>
     <div className={`flex justify-start max-w-sm mt-4 px-4 mt-full mb-[4.7rem]`}>
       <Button

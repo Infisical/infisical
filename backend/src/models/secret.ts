@@ -23,6 +23,10 @@ export interface ISecret {
 	secretValueIV: string;
 	secretValueTag: string;
 	secretValueHash: string;
+	secretCommentCiphertext?: string;
+	secretCommentIV?: string;
+	secretCommentTag?: string;
+	secretCommentHash?: string;
 }
 
 const secretSchema = new Schema<ISecret>(
@@ -82,6 +86,22 @@ const secretSchema = new Schema<ISecret>(
 		secretValueHash: {
 			type: String,
 			required: true
+		},
+		secretCommentCiphertext: {
+			type: String,
+			required: false
+		},
+		secretCommentIV: {
+			type: String, // symmetric
+			required: false
+		},
+		secretCommentTag: {
+			type: String, // symmetric
+			required: false
+		},
+		secretCommentHash: {
+			type: String,
+			required: false
 		}
 	},
 	{

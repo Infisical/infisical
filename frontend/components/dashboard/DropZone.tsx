@@ -126,7 +126,7 @@ const DropZone = ({
     </div>
   ) : keysExist ? (
     <div
-      className="opacity-60 hover:opacity-100 duration-200 relative bg-bunker outline max-w-[calc(100%-1rem)] w-full outline-dashed outline-gray-600 rounded-md outline-2 flex flex-col items-center justify-center mb-16 mx-auto mt-1 py-8 px-2"
+      className="opacity-60 hover:opacity-100 duration-200 relative bg-mineshaft-900 outline max-w-[calc(100%-1rem)] w-full outline-dashed outline-chicago-600 rounded-md outline-2 flex flex-col items-center justify-center mb-16 mx-auto mt-1 py-8 px-2"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -147,9 +147,9 @@ const DropZone = ({
       <div className="flex flex-row">
         <FontAwesomeIcon
           icon={faUpload}
-          className="text-gray-300 text-3xl mr-6"
+          className="text-bunker-300 text-3xl mr-6"
         />
-        <p className="text-gray-300 mt-1">
+        <p className="text-bunker-300 mt-1">
           Drag and drop your .env file here to add more keys.
         </p>
       </div>
