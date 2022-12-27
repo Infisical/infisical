@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ButtonHTMLAttributes } from "react";
 import Image from "next/image";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import {
@@ -16,8 +16,9 @@ type ButtonProps = {
   size: string;
   icon?: IconProp;
   active?: boolean;
-  iconDisabled?: string;
+  iconDisabled?: IconProp;
   textDisabled?: string;
+  type?: ButtonHTMLAttributes<any>['type'];
 };
 
 /**
@@ -72,15 +73,16 @@ export default function Button(props: ButtonProps): JSX.Element {
 
     // Setting the text color for the text and icon
     props.color == "mineshaft" && "text-gray-400",
-    props.color != "mineshaft" && props.color != "red" && "text-black",
+    props.color != "mineshaft" && props.color != "red" && props.color != "none" && "text-black",
     props.color == "red" && "text-gray-200",
-    activityStatus && props.color != "red" ? "group-hover:text-black" : "",
+    props.color == "none" && "text-gray-200 text-xl",
+    activityStatus && props.color != "red" && props.color != "none" ? "group-hover:text-black" : "",
 
     props.size == "icon" && "flex items-center justify-center"
   );
 
   const textStyle = classNames(
-    "relative duration-200",
+    "relative duration-200 text-center w-full",
 
     // Show the loading sign if the loading indicator is on
     props.loading ? "opacity-0" : "opacity-100",
@@ -91,6 +93,7 @@ export default function Button(props: ButtonProps): JSX.Element {
   const button = (
     <button
       disabled={!activityStatus}
+      type={props.type}
       onClick={props.onButtonPressed}
       className={styleButton}
     >

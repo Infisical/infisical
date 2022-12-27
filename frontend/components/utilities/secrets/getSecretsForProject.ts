@@ -10,6 +10,13 @@ const {
 const nacl = require('tweetnacl');
 nacl.util = require('tweetnacl-util');
 
+interface SecretProps { 
+  key: string; 
+  value: string; 
+  type: 'personal' | 'shared'; 
+  comment: string; 
+}
+
 interface Props {
   env: keyof typeof envMapping;
   setFileState: any;
@@ -34,12 +41,12 @@ const getSecretsForProject = async ({
     } catch (error) {
       console.log('ERROR: Not able to access the latest file');
     }
-    // This is called isKeyAvilable but what it really means is if a person is able to create new key pairs
+    // This is called isKeyAvailable but what it really means is if a person is able to create new key pairs
     setIsKeyAvailable(!file.key ? file.secrets.length == 0 : true);
 
     const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
 
-    const tempFileState: { key: string; value: string; type: string }[] = [];
+    const tempFileState: SecretProps[] = [];
     if (file.key) {
       // assymmetrically decrypt symmetric key with local private key
       const key = decryptAssymmetric({
@@ -64,10 +71,24 @@ const getSecretsForProject = async ({
           tag: secretPair.secretValue.tag,
           key
         });
+
+        let plainTextComment;
+        if (secretPair.secretComment.ciphertext) {
+          plainTextComment = decryptSymmetric({
+            ciphertext: secretPair.secretComment.ciphertext,
+            iv: secretPair.secretComment.iv,
+            tag: secretPair.secretComment.tag,
+            key
+          });
+        } else {
+          plainTextComment = "";
+        }
+
         tempFileState.push({
           key: plainTextKey,
           value: plainTextValue,
-          type: secretPair.type
+          type: secretPair.type,
+          comment: plainTextComment
         });
       });
     }
@@ -80,7 +101,8 @@ const getSecretsForProject = async ({
           pos: index,
           key: line['key'],
           value: line['value'],
-          type: line['type']
+          type: line['type'],
+          comment: line['comment']
         };
       })
     );
@@ -91,13 +113,14 @@ const getSecretsForProject = async ({
         pos: index,
         key: line['key'],
         value: line['value'],
-        type: line['type']
+        type: line['type'],
+        comment: line['comment']
       };
     });
   } catch (error) {
     console.log('Something went wrong during accessing or decripting secrets.');
   }
-  return true;
+  return [];
 };
 
 export default getSecretsForProject;

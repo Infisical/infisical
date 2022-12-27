@@ -3,12 +3,11 @@ package util
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
+	"github.com/99designs/keyring"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
-	"github.com/zalando/go-keyring"
 )
 
 const SERVICE_NAME = "infisical"
@@ -17,32 +16,48 @@ const SERVICE_NAME = "infisical"
 func StoreUserCredsInKeyRing(userCred *models.UserCredentials) error {
 	userCredMarshalled, err := json.Marshal(userCred)
 	if err != nil {
-		return fmt.Errorf("Something went wrong when marshalling user creds:", err)
+		return fmt.Errorf("StoreUserCredsInKeyRing: something went wrong when marshalling user creds [err=%s]", err)
 	}
 
-	err = keyring.Set(SERVICE_NAME, userCred.Email, string(userCredMarshalled))
+	// Get keyring
+	configuredKeyring, err := GetKeyRing()
 	if err != nil {
-		return fmt.Errorf("Unable to store user credentials:", err)
+		return fmt.Errorf("StoreUserCredsInKeyRing: unable to get keyring instance with [err=%s]", err)
+	}
+
+	err = configuredKeyring.Set(keyring.Item{
+		Key:  userCred.Email,
+		Data: []byte(string(userCredMarshalled)),
+	})
+
+	if err != nil {
+		return fmt.Errorf("StoreUserCredsInKeyRing: unable to store user credentials because [err=%s]", err)
 	}
 
 	return err
 }
 
 func GetUserCredsFromKeyRing(userEmail string) (credentials models.UserCredentials, err error) {
-	credentialsString, err := keyring.Get(SERVICE_NAME, userEmail)
+	// Get keyring
+	configuredKeyring, err := GetKeyRing()
 	if err != nil {
-		return models.UserCredentials{}, fmt.Errorf("Unable to get key from Keyring:", err)
+		return models.UserCredentials{}, fmt.Errorf("GetUserCredsFromKeyRing: unable to get keyring instance with [err=%s]", err)
+	}
+
+	credentialsValue, err := configuredKeyring.Get(userEmail)
+	if err != nil {
+		return models.UserCredentials{}, fmt.Errorf("GetUserCredsFromKeyRing: unable to get key from Keyring. could not find login credentials in your Keyring. This is common if you have switched vault backend recently. If so, please login in again and retry [err=%s]", err)
 	}
 
 	var userCredentials models.UserCredentials
 
-	err = json.Unmarshal([]byte(credentialsString), &userCredentials)
+	err = json.Unmarshal([]byte(credentialsValue.Data), &userCredentials)
 	if err != nil {
-		return models.UserCredentials{}, fmt.Errorf("Something went wrong when unmarshalling user creds:", err)
+		return models.UserCredentials{}, fmt.Errorf("getUserCredsFromKeyRing: Something went wrong when unmarshalling user creds [err=%s]", err)
 	}
 
 	if err != nil {
-		return models.UserCredentials{}, fmt.Errorf("Unable to store user credentials", err)
+		return models.UserCredentials{}, fmt.Errorf("GetUserCredsFromKeyRing: Unable to store user credentials [err=%s]", err)
 	}
 
 	return userCredentials, err
@@ -50,23 +65,13 @@ func GetUserCredsFromKeyRing(userEmail string) (credentials models.UserCredentia
 
 func IsUserLoggedIn() (hasUserLoggedIn bool, theUsersEmail string, err error) {
 	if ConfigFileExists() {
-		fullConfigFilePath, _, err := GetFullConfigFilePath()
+		configFile, err := GetConfigFile()
 		if err != nil {
-			log.Debugln("Error gettting full path:", err)
-			return false, "", err
+			return false, "", fmt.Errorf("IsUserLoggedIn: unable to get logged in user from config file [err=%s]", err)
 		}
 
-		configFileAsBytes, err := os.ReadFile(fullConfigFilePath)
-		if err != nil {
-			log.Debugln("Unable to read config file:", err)
-			return false, "", err
-		}
-
-		var configFile models.ConfigFile
-		err = json.Unmarshal(configFileAsBytes, &configFile)
-		if err != nil {
-			log.Debugln("Unable to unmarshal config file:", err)
-			return false, "", err
+		if configFile.LoggedInUserEmail == "" {
+			return false, "", nil
 		}
 
 		userCreds, err := GetUserCredsFromKeyRing(configFile.LoggedInUserEmail)
@@ -89,7 +94,7 @@ func IsUserLoggedIn() (hasUserLoggedIn bool, theUsersEmail string, err error) {
 
 		if response.StatusCode() > 299 {
 			log.Infoln("Login expired, please login again.")
-			return false, "", fmt.Errorf("Login expired, please login again.")
+			return false, "", fmt.Errorf("GetUserCredsFromKeyRing: Login expired, please login again.")
 		}
 
 		return true, configFile.LoggedInUserEmail, nil

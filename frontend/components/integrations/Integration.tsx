@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import {
     faArrowRight,
@@ -203,7 +203,7 @@ const Integration = ({
                     context: integrationContext ? reverseContextNetlifyMapping[integrationContext] : null,
                     siteId
                   });
-                  
+
                   router.reload();
                 }}
                 color="mineshaft"

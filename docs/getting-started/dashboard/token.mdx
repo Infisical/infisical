@@ -11,6 +11,12 @@ To generate the the token, head over to your project settings as shown below.
 
 ![token add](../../images/project-token-add.png)
 
+## Feeding Infisical Token to the CLI
+
+The Infisical CLI checks for the presence of an environment variable called `INFISICAL_TOKEN`. 
+If it detects this variable in the terminal where it is being run, it will use it to authenticate and retrieve the environment variables that the token is authorized to access.
+This allows you to use the CLI in environments where you are unable to run the `infisical login` command.
+
 <Note>
   The token grants read-only access to a particular environment and project for
   a specified amount of time. Once the token is expired, the CLI using it will no longer be able to make
