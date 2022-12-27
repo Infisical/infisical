@@ -12,7 +12,6 @@ import {
     decryptSymmetric,
     decryptAsymmetric
 } from '../utils/crypto';
-import { decryptSecrets } from '../helpers/secret';
 import { ENCRYPTION_KEY } from '../config';
 import { SECRET_SHARED } from '../variables';
 

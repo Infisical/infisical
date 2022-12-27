@@ -15,7 +15,6 @@ import {
   workspace as eeWorkspaceRouter,
   secret as eeSecretRouter
 } from './ee/routes/v1';
-
 import {
   signup as v1SignupRouter,
   auth as v1AuthRouter,
@@ -35,6 +34,10 @@ import {
   integration as v1IntegrationRouter,
   integrationAuth as v1IntegrationAuthRouter
 } from './routes/v1';
+import {
+  secret as v2SecretRouter,
+  workspace as v2WorkspaceRouter
+} from './routes/v2';
 
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
@@ -63,7 +66,7 @@ if (NODE_ENV === 'production') {
   app.use(helmet());
 }
 
-// (EE) routers
+// (EE) routes
 app.use('/api/v1/secret', eeSecretRouter);
 app.use('/api/v1/workspace', eeWorkspaceRouter);
 
@@ -85,6 +88,11 @@ app.use('/api/v1/password', v1PasswordRouter);
 app.use('/api/v1/stripe', v1StripeRouter);
 app.use('/api/v1/integration', v1IntegrationRouter);
 app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
+
+// v2 routes
+app.use('/api/v2/workspace', v2WorkspaceRouter);
+app.use('/api/v2/secret', v2SecretRouter);
+
 
 //* Handle unrouted requests and respond with proper error message as well as status code
 app.use((req, res, next)=>{
