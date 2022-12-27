@@ -1,7 +1,0 @@
-{
-	"i18n-ally.localesPaths": [
-		"locales",
-		"public/locales"
-	],
-	"i18n-ally.sourceLanguage": "en"
-}

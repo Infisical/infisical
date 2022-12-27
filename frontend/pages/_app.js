@@ -20,7 +20,7 @@ const App = ({ Component, pageProps, ...appProps }) => {
   useEffect(() => {
     const storedLang = localStorage.getItem("lang");
     if (router.locale ?? "en" !== storedLang ?? "en") {
-      router.push(router.pathname, router.pathname, {
+      router.push(router.asPath, router.asPath, {
         locale: storedLang ?? "en",
       });
     }
