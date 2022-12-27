@@ -64,7 +64,6 @@ export default function Toggle ({
             id
           ])
         } else {
-          setSharedToHide(sharedToHide!.filter(tempId => tempId != id))
           deleteOverride(id);
         }
         setEnabled(!enabled);

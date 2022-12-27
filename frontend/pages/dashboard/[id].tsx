@@ -249,6 +249,15 @@ export default function Dashboard() {
    */
   const deleteOverride = (id: string) => {
     setButtonReady(true);
+
+    // find which shared secret corresponds to the overriden version
+    const sharedVersionOfOverride = data!.filter(secret => secret.type == "shared" && secret.key == data!.filter(row => row.id == id)[0]?.key)[0]?.id;
+    
+    // change the sidebar to this shared secret; and unhide it
+    toggleSidebar(sharedVersionOfOverride)
+    setSharedToHide(sharedToHide!.filter(tempId => tempId != sharedVersionOfOverride))
+
+    // resort secrets
     const tempData = data!.filter((row: SecretDataProps) => !(row.id == id && row.type == 'personal'))
     sortValuesHandler(tempData, sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical")
   };
@@ -419,7 +428,7 @@ export default function Dashboard() {
       <div className="flex flex-row">
         {sidebarSecretId != "None" && <SideBar 
           toggleSidebar={toggleSidebar} 
-          data={data.filter((row: SecretDataProps) => row.id == sidebarSecretId)} 
+          data={data.filter((row: SecretDataProps) => row.key == data.filter(row => row.id == sidebarSecretId)[0]?.key)} 
           modifyKey={listenChangeKey} 
           modifyValue={listenChangeValue} 
           modifyComment={listenChangeComment}

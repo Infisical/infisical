@@ -83,8 +83,8 @@ const SideBar = ({
         <DashboardInputField
           onChangeHandler={modifyKey}
           type="varName"
-          position={data[0].pos}
-          value={data[0].key}
+          position={data[0]?.pos}
+          value={data[0]?.key}
           isDuplicate={false}
           blurred={false}
         />
@@ -116,11 +116,11 @@ const SideBar = ({
             enabled={overrideEnabled} 
             setEnabled={setOverrideEnabled} 
             addOverride={addOverride} 
-            keyName={data[0].key}
-            value={data[0].value}
-            pos={data[0].pos}
-            id={data[0].id}
-            comment={data[0].comment}
+            keyName={data[0]?.key}
+            value={data[0]?.value}
+            pos={data[0]?.pos}
+            id={data[0]?.id}
+            comment={data[0]?.comment}
             deleteOverride={deleteOverride}
             sharedToHide={sharedToHide}
             setSharedToHide={setSharedToHide}
@@ -130,13 +130,13 @@ const SideBar = ({
           <DashboardInputField
             onChangeHandler={modifyValue}
             type="value"
-            position={overrideEnabled ? data.filter(secret => secret.type == "personal")[0].pos : data[0].pos}
-            value={overrideEnabled ? data.filter(secret => secret.type == "personal")[0].value : data[0].value}
+            position={overrideEnabled ? data.filter(secret => secret.type == "personal")[0]?.pos : data[0]?.pos}
+            value={overrideEnabled ? data.filter(secret => secret.type == "personal")[0]?.value : data[0]?.value}
             isDuplicate={false}
             blurred={true}
           />
           <div className='absolute right-[0.57rem] top-[0.3rem] z-50'>
-            <GenerateSecretMenu modifyValue={modifyValue} position={overrideEnabled ? data.filter(secret => secret.type == "personal")[0].pos : data[0].pos} />
+            <GenerateSecretMenu modifyValue={modifyValue} position={overrideEnabled ? data.filter(secret => secret.type == "personal")[0]?.pos : data[0]?.pos} />
           </div>
         </div>
       </div>
@@ -149,8 +149,8 @@ const SideBar = ({
           isFull={true}
         />
       </div> */}
-      <SecretVersionList secretId={data[0].id} />
-      <CommentField comment={data.filter(secret => secret.type == "shared")[0]?.comment} modifyComment={modifyComment} position={data[0].pos} />
+      <SecretVersionList secretId={data[0]?.id} />
+      <CommentField comment={data.filter(secret => secret.type == "shared")[0]?.comment} modifyComment={modifyComment} position={data[0]?.pos} />
     </div>
     <div className={`flex justify-start max-w-sm mt-4 px-4 mt-full mb-[4.7rem]`}>
       <Button
