@@ -92,7 +92,7 @@ export default function Login() {
       >
         <div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-4 pt-8 px-6 rounded-xl drop-shadow-xl">
           <p className="text-3xl w-max mx-auto flex justify-center font-semibold text-bunker-100 mb-6">
-            {t("login:login-to")}
+            {t("login:login")}
           </p>
           <div className="flex items-center justify-center w-full md:p-2 rounded-lg mt-4 md:mt-0 max-h-24 md:max-h-28">
             <InputField
