@@ -23,5 +23,19 @@ router.get(
 	workspaceController.getWorkspaceSecretSnapshots
 );
 
+router.get(
+	'/:workspaceId/logs',
+	requireAuth,
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		acceptedStatuses: [GRANTED]
+	}),
+	param('workspaceId').exists().trim(),
+	query('offset').exists().isInt(),
+	query('limit').exists().isInt(),
+	query('filters').exists(),
+	validateRequest,
+	workspaceController.getWorkspaceLogs
+);
 
 export default router;

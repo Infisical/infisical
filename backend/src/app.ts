@@ -13,7 +13,8 @@ import { apiLimiter } from './helpers/rateLimiter';
 
 import {
   workspace as eeWorkspaceRouter,
-  secret as eeSecretRouter
+  secret as eeSecretRouter,
+  log as eeLogRouter,
 } from './ee/routes/v1';
 import {
   signup as v1SignupRouter,
@@ -69,6 +70,7 @@ if (NODE_ENV === 'production') {
 // (EE) routes
 app.use('/api/v1/secret', eeSecretRouter);
 app.use('/api/v1/workspace', eeWorkspaceRouter);
+app.use('/api/v1/log', eeLogRouter);
 
 // v1 routes
 app.use('/api/v1/signup', v1SignupRouter);

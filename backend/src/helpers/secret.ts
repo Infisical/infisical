@@ -1,19 +1,29 @@
 import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
 import {
 	Secret,
 	ISecret,
 } from '../models';
 import {
-	EESecretService
+	EESecretService,
+	EELogService
 } from '../ee/services';
 import {
-	SecretVersion
+	SecretVersion,
+	Action,
+	IAction
 } from '../ee/models';
 import {
 	takeSecretSnapshotHelper
 } from '../ee/helpers/secret';
 import { decryptSymmetric } from '../utils/crypto';
-import { SECRET_SHARED, SECRET_PERSONAL } from '../variables';
+import { 
+	SECRET_SHARED, 
+	SECRET_PERSONAL,
+	ACTION_ADD_SECRETS,
+	ACTION_UPDATE_SECRETS,
+	ACTION_DELETE_SECRETS
+} from '../variables';
 
 interface V1PushSecret {
 	ciphertextKey: string;
@@ -284,20 +294,28 @@ const v1PushSecrets = async ({
  * @param {String} obj.workspaceId - id of workspace to push to
  * @param {String} obj.environment - environment for secrets
  * @param {Object[]} obj.secrets - secrets to push
+ * @param {String} obj.channel - channel (web/cli/auto)
+ * @param {String} obj.ipAddress - ip address of request to push secrets
  */
  const v2PushSecrets = async ({
 	userId,
 	workspaceId,
 	environment,
-	secrets
+	secrets,
+	channel,
+	ipAddress
 }: {
 	userId: string;
 	workspaceId: string;
 	environment: string;
 	secrets: V2PushSecret[];
+	channel: string;
+	ipAddress: string;
 }): Promise<void> => {
 	// TODO: clean up function and fix up types
 	try {
+		const actions: IAction[] = [];
+		
 		// construct useful data structures
 		const oldSecrets = await pullSecrets({
 			userId,
@@ -327,7 +345,37 @@ const v1PushSecrets = async ({
 				secret: { $in: toDelete }
 			}, {
 				isDeleted: true
+			}, {
+				new: true
 			});
+
+			// add audit log for deleted secrets
+			const deletedLatestSecretVersions = (await SecretVersion.aggregate([
+				{
+					$match: { secret: { $in: toDelete } }
+				},
+				{
+					$group: {
+						_id: '$secret',
+						version: { $max: '$version' }
+					}
+				},
+				{
+					$sort: { version: -1 }
+				}
+				])
+				.exec())
+				.map((s) => s._id);
+			
+			const deleteAction = await new Action({
+				name: ACTION_DELETE_SECRETS,
+				user: new Types.ObjectId(userId),
+				workspace: new Types.ObjectId(workspaceId),
+				payload: {
+					secretVersions: deletedLatestSecretVersions
+				}
+			}).save();
+			actions.push(deleteAction);
 		}
 		
 		const toUpdate = oldSecrets
@@ -348,88 +396,119 @@ const v1PushSecrets = async ({
 				return false;
 			});
 
-		const operations = toUpdate
-			.map((s) => {
-				const {
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash,
-					secretCommentCiphertext,
-					secretCommentIV,
-					secretCommentTag,
-					secretCommentHash,
-				} = newSecretsObj[`${s.type}-${s.secretKeyHash}`];
+		if (toUpdate.length > 0) {
+			const operations = toUpdate
+				.map((s) => {
+					const {
+						secretValueCiphertext,
+						secretValueIV,
+						secretValueTag,
+						secretValueHash,
+						secretCommentCiphertext,
+						secretCommentIV,
+						secretCommentTag,
+						secretCommentHash,
+					} = newSecretsObj[`${s.type}-${s.secretKeyHash}`];
 
-				const update: Update = {
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash,
-					secretCommentCiphertext,
-					secretCommentIV,
-					secretCommentTag,
-					secretCommentHash,
-				}
-
-				if (!s.version) {
-					// case: (legacy) secret was not versioned
-					update.version = 1;
-				} else {
-					update['$inc'] = {
-						version: 1
+					const update: Update = {
+						secretValueCiphertext,
+						secretValueIV,
+						secretValueTag,
+						secretValueHash,
+						secretCommentCiphertext,
+						secretCommentIV,
+						secretCommentTag,
+						secretCommentHash,
 					}
-				}
 
-				if (s.type === SECRET_PERSONAL) {
-					// attach user associated with the personal secret
-					update['user'] = userId;
-				}
-
-				return {
-					updateOne: {
-						filter: {
-							_id: oldSecretsObj[`${s.type}-${s.secretKeyHash}`]._id
-						},
-						update
+					if (!s.version) {
+						// case: (legacy) secret was not versioned
+						update.version = 1;
+					} else {
+						update['$inc'] = {
+							version: 1
+						}
 					}
-				};
+
+					if (s.type === SECRET_PERSONAL) {
+						// attach user associated with the personal secret
+						update['user'] = userId;
+					}
+
+					return {
+						updateOne: {
+							filter: {
+								_id: oldSecretsObj[`${s.type}-${s.secretKeyHash}`]._id
+							},
+							update
+						}
+					};
+				});
+			await Secret.bulkWrite(operations as any);
+			
+			// (EE) add secret versions for updated secrets
+			await EESecretService.addSecretVersions({
+				secretVersions: toUpdate.map((s) => {
+					const {
+						secretKeyCiphertext,
+						secretKeyIV,
+						secretKeyTag,
+						secretKeyHash,
+						secretValueCiphertext,
+						secretValueIV,
+						secretValueTag,
+						secretValueHash,
+						secretCommentCiphertext,
+						secretCommentIV,
+						secretCommentTag,
+						secretCommentHash,
+					} = newSecretsObj[`${s.type}-${s.secretKeyHash}`];
+
+					return ({
+						secret: s._id,
+						version: s.version ? s.version + 1 : 1,
+						isDeleted: false,
+						secretKeyCiphertext,
+						secretKeyIV,
+						secretKeyTag,
+						secretKeyHash,
+						secretValueCiphertext,
+						secretValueIV,
+						secretValueTag,
+						secretValueHash
+					})
+				}) 
 			});
-		await Secret.bulkWrite(operations as any);
-		
-		// (EE) add secret versions for updated secrets
-		await EESecretService.addSecretVersions({
-			secretVersions: toUpdate.map((s) => {
-				const {
-					secretKeyCiphertext,
-					secretKeyIV,
-					secretKeyTag,
-					secretKeyHash,
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash,
-					secretCommentCiphertext,
-					secretCommentIV,
-					secretCommentTag,
-					secretCommentHash,
-				} = newSecretsObj[`${s.type}-${s.secretKeyHash}`];
 
-				return ({
-					secret: s._id,
-					version: s.version ? s.version + 1 : 1,
-					isDeleted: false,
-					secretKeyCiphertext,
-					secretKeyIV,
-					secretKeyTag,
-					secretKeyHash,
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash
-				})
-			}) 
-		});
+			// add audit log for updated secrets
+			const updatedLatestSecretVersions = (await SecretVersion.aggregate([
+				{
+					$match: { secret: { $in: toUpdate.map((u) => u._id) } }
+				},
+				{
+					$group: {
+						_id: '$secret',
+						version: { $max: '$version' }
+					}
+				},
+				{
+					$sort: { version: -1 }
+				}
+				])
+				.exec())
+				.map((s) => s._id);
+			
+			const updateAction = await new Action({
+				name: ACTION_UPDATE_SECRETS,
+				user: new Types.ObjectId(userId),
+				workspace: new Types.ObjectId(workspaceId),
+				payload: {
+					secretVersions: updatedLatestSecretVersions
+				}
+			}).save();
+
+			actions.push(updateAction);
+		}
 
 		// handle adding new secrets
 		const toAdd = secrets.filter((s) => !(`${s.type}-${s.secretKeyHash}` in oldSecretsObj));
@@ -504,12 +583,51 @@ const v1PushSecrets = async ({
 					secretValueHash
 				}))
 			});
+
+			// add audit log for new secrets
+			const newLatestSecretVersions = (await SecretVersion.aggregate([
+				{
+					$match: { secret: { $in: newSecrets.map((n) => n._id) } }
+				},
+				{
+				$group: {
+					_id: '$secret',
+					version: { $max: '$version' }
+				}
+				},
+				{
+				$sort: { version: -1 }
+				}
+			])
+			.exec())
+			.map((s) => s._id);
+			
+			const addAction = await new Action({
+				name: ACTION_ADD_SECRETS,
+				user: new Types.ObjectId(userId),
+				workspace: new Types.ObjectId(workspaceId),
+				payload: {
+					secretVersions: newLatestSecretVersions
+				}
+			}).save();
+			
+			actions.push(addAction);
 		}
 		
 		// (EE) take a secret snapshot
 		await EESecretService.takeSecretSnapshot({
 			workspaceId
 		})
+
+		if (actions.length > 0) {
+			await EELogService.createLog({
+				userId,
+				workspaceId,
+				actions,
+				channel,
+				ipAddress
+			});
+		}
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);

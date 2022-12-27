@@ -15,7 +15,6 @@ import password from './password';
 import stripe from './stripe';
 import integration from './integration';
 import integrationAuth from './integrationAuth';
-import log from './log';
 
 export {
 	signup,
@@ -34,6 +33,5 @@ export {
 	password,
 	stripe,
 	integration,
-	integrationAuth,
-	log
+	integrationAuth
 };

@@ -389,7 +389,9 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
 			userId: req.user._id,
 			workspaceId,
 			environment,
-			secrets
+			secrets,
+			channel: channel ? channel : 'cli',
+			ipAddress: req.ip
 		});
 
 		await pushKeys({
