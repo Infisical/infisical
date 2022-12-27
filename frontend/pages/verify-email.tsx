@@ -1,14 +1,7 @@
-<<<<<<< HEAD
-import React, { useState } from "react";
+import { useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
-=======
-import { useState } from 'react';
-import Head from 'next/head';
-import Image from 'next/image';
-import Link from 'next/link';
->>>>>>> 876c5f51c2caabf92b47d5a18a9b98e601806bf4
 
 import Button from "~/components/basic/buttons/Button";
 import InputField from "~/components/basic/InputField";

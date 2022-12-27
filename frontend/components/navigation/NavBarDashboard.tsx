@@ -1,18 +1,10 @@
 /* eslint-disable react/jsx-key */
-<<<<<<< HEAD
-import React, { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import { TFunction, useTranslation } from "next-i18next";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
-=======
-import { Fragment, useEffect, useState } from 'react';
-import Image from 'next/image';
-import { useRouter } from 'next/router';
-import { faGithub, faSlack } from '@fortawesome/free-brands-svg-icons';
-import { faCircleQuestion } from '@fortawesome/free-regular-svg-icons';
->>>>>>> 876c5f51c2caabf92b47d5a18a9b98e601806bf4
 import {
   faAngleDown,
   faBook,

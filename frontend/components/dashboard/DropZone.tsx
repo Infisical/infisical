@@ -152,13 +152,7 @@ const DropZone = ({
           icon={faUpload}
           className="text-bunker-300 text-3xl mr-6"
         />
-<<<<<<< HEAD
         <p className="text-bunker-300 mt-1">{t("common:drop-zone-keys")}</p>
-=======
-        <p className="text-bunker-300 mt-1">
-          Drag and drop your .env file here to add more keys.
-        </p>
->>>>>>> 876c5f51c2caabf92b47d5a18a9b98e601806bf4
       </div>
       {errorDragAndDrop ? (
         <div className="mt-8 max-w-xl opacity-80">
