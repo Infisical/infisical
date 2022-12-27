@@ -39,8 +39,6 @@ const learningItem = ({
   userAction,
   link
 }: ItemProps): JSX.Element => {
-  const { t } = useTranslation();
-
   if (link) {
     return (
       <Link href={link}>
