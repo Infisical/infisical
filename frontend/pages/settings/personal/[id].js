@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useCallback, useEffect, useState } from "react";
+=======
+import { useEffect, useState } from "react";
+>>>>>>> 876c5f51c2caabf92b47d5a18a9b98e601806bf4
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { useTranslation } from "next-i18next";

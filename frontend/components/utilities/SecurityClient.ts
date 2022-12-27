@@ -16,12 +16,19 @@ export default class SecurityClient {
     const req = new Request(resource, options);
 
     if (this.#token == '') {
-      this.setToken(await token());
+      try {
+        // TODO: This should be moved to a context to do it only once when app loads
+        // this try catch saves route guard from a stuck state
+        this.setToken(await token());
+      } catch (error) {
+        console.error("Unauthorized access");
+      }
     }
 
     if (this.#token) {
       req.headers.set('Authorization', 'Bearer ' + this.#token);
-      return fetch(req);
     }
+
+    return fetch(req);
   }
 }

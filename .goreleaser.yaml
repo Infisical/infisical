@@ -30,13 +30,13 @@ builds:
       - openbsd
       - windows
     goarch:
-      - 386
+      - "386"
       - amd64
       - arm
       - arm64
     goarm:
-      - 6
-      - 7
+      - "6"
+      - "7"
     ignore:
       - goos: windows
         goarch: "386"
@@ -85,7 +85,7 @@ nfpms:
   homepage: https://infisical.com/
   maintainer: Infisical, Inc
   description: The offical Infisical CLI
-  license: Apache 2.0
+  license: MIT
   formats:
   - rpm
   - deb
@@ -101,7 +101,23 @@ scoop:
     email: ai@infisical.com
   homepage: "https://infisical.com"
   description: "The official Infisical CLI"
-  license: Apache-2.0
+  license: MIT
+aurs:
+  -
+    name: infisical-bin
+    homepage: "https://infisical.com"
+    description: "The official Infisical CLI"
+    maintainers:
+      - Infisical, Inc <support@infisical.com>
+    license: MIT
+    private_key: '{{ .Env.AUR_KEY }}'
+    git_url: 'ssh://aur@aur.archlinux.org/infisical-bin.git'
+    package: |-
+      # bin
+      install -Dm755 "./infisical" "${pkgdir}/usr/bin/infisical"
+      # license
+      install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/infisical/LICENSE"
+
 # dockers:
 #   - dockerfile: goreleaser.dockerfile
 #     goos: linux

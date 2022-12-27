@@ -26,7 +26,7 @@ const validateMembership = async ({
 		membership = await Membership.findOne({
 			user: userId,
 			workspace: workspaceId
-		});
+		}).populate("workspace");
 		
 		if (!membership) throw new Error('Failed to find membership');
 		

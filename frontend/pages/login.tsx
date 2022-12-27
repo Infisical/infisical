@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
@@ -6,6 +7,15 @@ import { useRouter } from "next/router";
 import { useTranslation } from "next-i18next";
 import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+=======
+import { useEffect, useState } from 'react';
+import Head from 'next/head';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { faWarning } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+>>>>>>> 876c5f51c2caabf92b47d5a18a9b98e601806bf4
 
 import Button from "~/components/basic/buttons/Button";
 import Error from "~/components/basic/Error";

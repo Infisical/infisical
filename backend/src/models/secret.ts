@@ -10,6 +10,7 @@ import {
 
 export interface ISecret {
 	_id: Types.ObjectId;
+	version: number;
 	workspace: Types.ObjectId;
 	type: string;
 	user: Types.ObjectId;
@@ -22,10 +23,18 @@ export interface ISecret {
 	secretValueIV: string;
 	secretValueTag: string;
 	secretValueHash: string;
+	secretCommentCiphertext?: string;
+	secretCommentIV?: string;
+	secretCommentTag?: string;
+	secretCommentHash?: string;
 }
 
 const secretSchema = new Schema<ISecret>(
 	{
+		version: {
+			type: Number,
+			required: true
+		},
 		workspace: {
 			type: Schema.Types.ObjectId,
 			ref: 'Workspace',
@@ -77,6 +86,22 @@ const secretSchema = new Schema<ISecret>(
 		secretValueHash: {
 			type: String,
 			required: true
+		},
+		secretCommentCiphertext: {
+			type: String,
+			required: false
+		},
+		secretCommentIV: {
+			type: String, // symmetric
+			required: false
+		},
+		secretCommentTag: {
+			type: String, // symmetric
+			required: false
+		},
+		secretCommentHash: {
+			type: String,
+			required: false
 		}
 	},
 	{

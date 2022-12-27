@@ -21,7 +21,6 @@ import {
   CLIENT_SECRET_NETLIFY,
   CLIENT_SECRET_GITHUB
 } from '../config';
-import { user } from '../routes';
 
 interface ExchangeCodeHerokuResponse {
   token_type: string;
