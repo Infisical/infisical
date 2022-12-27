@@ -22,7 +22,8 @@ import {
 	SECRET_PERSONAL,
 	ACTION_ADD_SECRETS,
 	ACTION_UPDATE_SECRETS,
-	ACTION_DELETE_SECRETS
+	ACTION_DELETE_SECRETS,
+	ACTION_READ_SECRETS
 } from '../variables';
 
 interface V1PushSecret {
@@ -78,7 +79,7 @@ const v1PushSecrets = async ({
 	userId,
 	workspaceId,
 	environment,
-	secrets
+	secrets,
 }: {
 	userId: string;
 	workspaceId: string;
@@ -88,7 +89,7 @@ const v1PushSecrets = async ({
 	// TODO: clean up function and fix up types
 	try {
 		// construct useful data structures
-		const oldSecrets = await pullSecrets({
+		const oldSecrets = await getSecrets({
 			userId,
 			workspaceId,
 			environment
@@ -317,7 +318,7 @@ const v1PushSecrets = async ({
 		const actions: IAction[] = [];
 		
 		// construct useful data structures
-		const oldSecrets = await pullSecrets({
+		const oldSecrets = await getSecrets({
 			userId,
 			workspaceId,
 			environment
@@ -642,9 +643,8 @@ const v1PushSecrets = async ({
  * @param {String} obj.userId -id of user to pull secrets for
  * @param {String} obj.workspaceId - id of workspace to pull from
  * @param {String} obj.environment - environment for secrets
- *
  */
-const pullSecrets = async ({
+ const getSecrets = async ({
 	userId,
 	workspaceId,
 	environment
@@ -682,8 +682,83 @@ const pullSecrets = async ({
 };
 
 /**
+ * Pull secrets for user with id [userId] for workspace
+ * with id [workspaceId] with environment [environment]
+ * @param {Object} obj
+ * @param {String} obj.userId -id of user to pull secrets for
+ * @param {String} obj.workspaceId - id of workspace to pull from
+ * @param {String} obj.environment - environment for secrets
+ * @param {String} obj.channel - channel (web/cli/auto)
+ * @param {String} obj.ipAddress - ip address of request to push secrets
+ */
+const pullSecrets = async ({
+	userId,
+	workspaceId,
+	environment,
+	channel,
+	ipAddress
+}: {
+	userId: string;
+	workspaceId: string;
+	environment: string;
+	channel: string;
+	ipAddress: string;
+}): Promise<ISecret[]> => {
+	let secrets: any; // TODO: FIX any
+	
+	try {
+		secrets = await getSecrets({
+			userId,
+			workspaceId,
+			environment
+		})
+		
+		// add audit log for new secrets
+		const readLatestSecretVersions = (await SecretVersion.aggregate([
+			{
+				$match: { secret: { $in: secrets.map((n: any) => n._id) } }
+			},
+			{
+			$group: {
+				_id: '$secret',
+				version: { $max: '$version' }
+			}
+			},
+			{
+			$sort: { version: -1 }
+			}
+		])
+		.exec())
+		.map((s) => s._id);
+
+		const readAction = await new Action({
+			name: ACTION_READ_SECRETS,
+			user: new Types.ObjectId(userId),
+			workspace: new Types.ObjectId(workspaceId),
+			payload: {
+				secretVersions: readLatestSecretVersions
+			}
+		}).save();
+
+		await EELogService.createLog({
+			userId,
+			workspaceId,
+			actions: [readAction],
+			channel,
+			ipAddress
+		});
+	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
+		throw new Error('Failed to pull shared and personal secrets');
+	}
+
+	return secrets;
+};
+
+/**
  * Reformat output of pullSecrets() to be compatible with how existing
- * clients handle secrets
+ * web client handle secrets
  * @param {Object} obj
  * @param {Object} obj.secrets
  */
