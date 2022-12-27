@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import Head from 'next/head';
-import { useRouter } from 'next/router';
+import { useEffect, useState } from "react";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import { useTranslation } from "next-i18next";
 import {
   faMagnifyingGlass,
   faPlus,
@@ -9,13 +10,14 @@ import {
 import { faCheck } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import Button from '~/components/basic/buttons/Button';
-import AddIncidentContactDialog from '~/components/basic/dialog/AddIncidentContactDialog';
-import AddUserDialog from '~/components/basic/dialog/AddUserDialog';
-import InputField from '~/components/basic/InputField';
-import UserTable from '~/components/basic/table/UserTable';
-import NavHeader from '~/components/navigation/NavHeader';
-import guidGenerator from '~/utilities/randomId';
+import Button from "~/components/basic/buttons/Button";
+import AddIncidentContactDialog from "~/components/basic/dialog/AddIncidentContactDialog";
+import AddUserDialog from "~/components/basic/dialog/AddUserDialog";
+import InputField from "~/components/basic/InputField";
+import UserTable from "~/components/basic/table/UserTable";
+import NavHeader from "~/components/navigation/NavHeader";
+import guidGenerator from "~/utilities/randomId";
+import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
 import addUserToOrg from '../../api/organization/addUserToOrg';
 import deleteIncidentContact from '../../api/organization/deleteIncidentContact';
@@ -48,6 +50,8 @@ export default function SettingsOrg() {
   let workspaceIdTemp;
   const [email, setEmail] = useState('');
   const [currentPlan, setCurrentPlan] = useState('');
+
+  const { t } = useTranslation();
 
   useEffect(async () => {
     let org = await getOrganization({
@@ -156,12 +160,14 @@ export default function SettingsOrg() {
   return (
     <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
       <Head>
-        <title>Settings</title>
+        <title>
+          {t("common:head-title", { title: t("settings-org:title") })}
+        </title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
       <div className="flex flex-row">
         <div className="w-full max-h-screen pb-2 overflow-y-auto">
-          <NavHeader pageName="Organization Settings" />
+          <NavHeader pageName={t("settings-org:title")} />
           <AddIncidentContactDialog
             isOpen={isAddIncidentContactOpen}
             closeModal={closeAddIncidentContactModal}
@@ -172,10 +178,10 @@ export default function SettingsOrg() {
           <div className="flex flex-row justify-between items-center ml-6 my-8 text-xl max-w-5xl">
             <div className="flex flex-col justify-start items-start text-3xl">
               <p className="font-semibold mr-4 text-gray-200">
-                Organization Settings
+                {t("settings-org:title")}
               </p>
               <p className="font-normal mr-4 text-gray-400 text-base">
-                View and manage your organization here.
+                {t("settings-org:description")}
               </p>
             </div>
           </div>
@@ -185,7 +191,7 @@ export default function SettingsOrg() {
                 <div className="bg-white/5 rounded-md px-6 py-4 flex flex-col items-start flex flex-col items-start w-full mb-6">
                   <div className="max-h-28 w-full max-w-md mr-auto">
                     <p className="font-semibold mr-4 text-gray-200 text-xl mb-2">
-                      Display Name
+                      {t("common:display-name")}
                     </p>
                     <InputField
                       // label="Organization Name"
@@ -199,13 +205,13 @@ export default function SettingsOrg() {
                   <div className="flex justify-start w-full">
                     <div className={`flex justify-start max-w-sm mt-4 mb-2`}>
                       <Button
-                        text="Save Changes"
+                        text={t("common:save-changes")}
                         onButtonPressed={() => submitChanges(orgName)}
                         color="mineshaft"
                         size="md"
                         active={buttonReady}
                         iconDisabled={faCheck}
-                        textDisabled="Saved"
+                        textDisabled={t("common:saved")}
                       />
                     </div>
                   </div>
@@ -214,11 +220,10 @@ export default function SettingsOrg() {
             </div>
             <div className="bg-white/5 rounded-md px-6 pt-6 pb-2 flex flex-col items-start flex flex-col items-start w-full mb-6">
               <p className="font-semibold mr-4 text-white text-xl">
-                Organization Members
+                {t("section-members:org-members")}
               </p>
               <p className="mr-4 text-gray-400 mt-2 mb-2">
-                Manage members of your organization. These users could
-                afterwards be formed into projects.
+                {t("section-members:org-members-description")}
               </p>
               <AddUserDialog
                 isOpen={isAddUserOpen}
@@ -241,12 +246,12 @@ export default function SettingsOrg() {
                     className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
                     value={searchUsers}
                     onChange={(e) => setSearchUsers(e.target.value)}
-                    placeholder={'Search members...'}
+                    placeholder={t("section-members:search-members")}
                   />
                 </div>
                 <div className="mt-2 ml-2 min-w-max flex flex-row items-start justify-start">
                   <Button
-                    text="Add Member"
+                    text={t("section-members:add-member")}
                     onButtonPressed={openAddUserModal}
                     color="mineshaft"
                     size="md"
@@ -276,16 +281,15 @@ export default function SettingsOrg() {
               <div className="flex flex-row max-w-5xl justify-between items-center w-full">
                 <div className="flex flex-col justify-between w-full max-w-3xl">
                   <p className="text-xl font-semibold mb-3 min-w-max">
-                    Incident Contacts
+                    {t("section-incident:incident-contacts")}
                   </p>
                   <p className="text-xs text-gray-500 mb-2 min-w-max">
-                    These contacts will be notified in the unlikely event of a
-                    severe incident.
+                    {t("section-incident:incident-contacts-description")}
                   </p>
                 </div>
                 <div className="mt-4 mb-2 min-w-max flex flex-row items-end justify-end justify-center">
                   <Button
-                    text="Add Contact"
+                    text={t("section-incident:add-contact")}
                     onButtonPressed={openAddIncidentContactModal}
                     color="mineshaft"
                     size="md"
@@ -302,7 +306,7 @@ export default function SettingsOrg() {
                   className="pl-2 text-gray-400 rounded-tr-md bg-white/5 w-full h-full outline-none"
                   value={searchIncidentContact}
                   onChange={(e) => setSearchIncidentContact(e.target.value)}
-                  placeholder={'Search...'}
+                  placeholder={t("common:search")}
                 />
               </div>
               {incidentContacts?.filter((email) =>
@@ -330,7 +334,9 @@ export default function SettingsOrg() {
                   ))
               ) : (
                 <div className="w-full flex flex-row justify-center mt-6 max-w-4xl ml-6">
-                  <p className="text-gray-400">No incident contacts found.</p>
+                  <p className="text-gray-400">
+                    {t("section-incident:no-incident-contacts")}
+                  </p>
                 </div>
               )}
             </div>
@@ -378,3 +384,10 @@ export default function SettingsOrg() {
 }
 
 SettingsOrg.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps([
+  "settings",
+  "settings-org",
+  "section-incident",
+  "section-members",
+]);

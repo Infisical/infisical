@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 import Head from "next/head";
+import { useRouter } from "next/router";
+import { useTranslation } from "next-i18next";
 import { faCheck, faX } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import Button from "~/components/basic/buttons/Button";
 import InputField from "~/components/basic/InputField";
+import ListBox from "~/components/basic/Listbox";
 import NavHeader from "~/components/navigation/NavHeader";
 import changePassword from "~/components/utilities/cryptography/changePassword";
 import issueBackupKey from "~/components/utilities/cryptography/issueBackupKey";
 import passwordCheck from "~/utilities/checks/PasswordCheck";
+import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
 import getUser from "../../api/user/getUser";
 
@@ -26,6 +30,15 @@ export default function PersonalSettings() {
   const [backupKeyIssued, setBackupKeyIssued] = useState(false);
   const [backupKeyError, setBackupKeyError] = useState(false);
 
+  const { t } = useTranslation();
+  const router = useRouter();
+  const lang = router.locale ?? "en";
+
+  const setLanguage = async (to) => {
+    router.push(router.asPath, router.asPath, { locale: to });
+    localStorage.setItem("lang", to);
+  };
+
   useEffect(async () => {
     let user = await getUser();
     setPersonalEmail(user.email);
@@ -35,19 +48,24 @@ export default function PersonalSettings() {
   return (
     <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
       <Head>
-        <title>Personal Settings</title>
+        <title>
+          {t("common:head-title", { title: t("settings-personal:title") })}
+        </title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
       <div className="flex flex-row">
         <div className="w-full max-h-screen pb-2 overflow-y-auto">
-          <NavHeader pageName="Personal Settings" isProjectRelated={false} />
+          <NavHeader
+            pageName={t("settings-personal:title")}
+            isProjectRelated={false}
+          />
           <div className="flex flex-row justify-between items-center ml-6 mt-8 mb-6 text-xl max-w-5xl">
             <div className="flex flex-col justify-start items-start text-3xl">
               <p className="font-semibold mr-4 text-gray-200">
-                Personal Settings
+                {t("settings-personal:title")}
               </p>
               <p className="font-normal mr-4 text-gray-400 text-base">
-                View and manage your personal information here.
+                {t("settings-personal:description")}
               </p>
             </div>
           </div>
@@ -100,17 +118,32 @@ export default function PersonalSettings() {
 								</div> */}
               </div>
             </div>
+            <div className="bg-white/5 rounded-md px-6 pt-6 pb-6 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4">
+              <p className="text-xl font-semibold self-start">
+                {t("settings-personal:change-language")}
+              </p>
+              <div className="max-h-28 w-ful mt-4">
+                <ListBox
+                  selected={lang}
+                  onChange={setLanguage}
+                  data={["en", "ko"]}
+                  width="full"
+                  text={`${t("common:language")}: `}
+                />
+              </div>
+            </div>
+
             <div className="bg-white/5 rounded-md px-6 pt-5 pb-6 flex flex-col items-start flex flex-col items-start w-full mb-6">
               <div className="flex flex-row max-w-5xl justify-between items-center w-full">
                 <div className="flex flex-col justify-between w-full max-w-3xl">
                   <p className="text-xl font-semibold mb-3 min-w-max">
-                    Change password
+                    {t("section-password:change")}
                   </p>
                 </div>
               </div>
               <div className="max-w-xl w-full">
                 <InputField
-                  label="Current Password"
+                  label={t("section-password:current")}
                   onChangeHandler={(password) => {
                     setCurrentPassword(password);
                   }}
@@ -118,13 +151,13 @@ export default function PersonalSettings() {
                   value={currentPassword}
                   isRequired
                   error={currentPasswordError}
-                  errorText="The current password may be wrong"
+                  errorText={t("section-password:current-wrong")}
                   autoComplete="current-password"
                   id="current-password"
                 />
                 <div className="py-2"></div>
                 <InputField
-                  label="New Password"
+                  label={t("section-password:new")}
                   onChangeHandler={(password) => {
                     setNewPassword(password);
                     passwordCheck({
@@ -152,7 +185,7 @@ export default function PersonalSettings() {
               passwordErrorNumber ? (
                 <div className="w-full mt-3 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md max-w-xl mb-2">
                   <div className={`text-gray-400 text-sm mb-1`}>
-                    Password should contain at least:
+                    {t("section-password:validate-base")}
                   </div>
                   <div className="flex flex-row justify-start items-center ml-1">
                     {passwordErrorLength ? (
@@ -171,7 +204,7 @@ export default function PersonalSettings() {
                         passwordErrorLength ? "text-gray-400" : "text-gray-600"
                       } text-sm`}
                     >
-                      14 characters
+                      {t("section-password:validate-length")}
                     </div>
                   </div>
                   <div className="flex flex-row justify-start items-center ml-1">
@@ -193,7 +226,7 @@ export default function PersonalSettings() {
                           : "text-gray-600"
                       } text-sm`}
                     >
-                      1 lowercase character
+                      {t("section-password:validate-case")}
                     </div>
                   </div>
                   <div className="flex flex-row justify-start items-center ml-1">
@@ -213,7 +246,7 @@ export default function PersonalSettings() {
                         passwordErrorNumber ? "text-gray-400" : "text-gray-600"
                       } text-sm`}
                     >
-                      1 number
+                      {t("section-password:validate-number")}
                     </div>
                   </div>
                 </div>
@@ -222,7 +255,7 @@ export default function PersonalSettings() {
               )}
               <div className="flex flex-row items-center mt-3 w-52 pr-3">
                 <Button
-                  text="Change Password"
+                  text={t("section-password:change")}
                   onButtonPressed={() => {
                     if (
                       !passwordErrorLength &&
@@ -251,7 +284,7 @@ export default function PersonalSettings() {
                       passwordErrorNumber
                     )
                   }
-                  textDisabled="Change Password"
+                  textDisabled={t("section-password:change")}
                 />
                 <FontAwesomeIcon
                   icon={faCheck}
@@ -266,34 +299,32 @@ export default function PersonalSettings() {
               <div className="flex flex-row max-w-5xl justify-between items-center w-full">
                 <div className="flex flex-col justify-between w-full max-w-3xl">
                   <p className="text-xl font-semibold mb-3 min-w-max">
-                    Emergency Kit
+                    {t("settings-personal:emergency.name")}
                   </p>
                   <p className="text-sm text-mineshaft-300 min-w-max">
-                    Your Emergency Kit contains the information you’ll need to
-                    sign in to your Infisical account.
+                    {t("settings-personal:emergency.text1")}
                   </p>
                   <p className="text-sm text-mineshaft-300 mb-5 min-w-max">
-                    Only the latest issued Emergency Kit remains valid. To get a
-                    new Emergency Kit, verify your password.
+                    {t("settings-personal:emergency.text2")}
                   </p>
                 </div>
               </div>
               <div className="w-full max-w-xl mb-4">
                 <InputField
-                  label="Current Password"
+                  label={t("section-password:current")}
                   onChangeHandler={setBackupPassword}
                   type="password"
                   value={backupPassword}
                   isRequired
                   error={backupKeyError}
-                  errorText="The current password is wrong"
+                  errorText={t("section-password:current-wrong")}
                   autoComplete="current-password"
                   id="current-password"
                 />
               </div>
               <div className="flex flex-row items-center mt-3 w-full w-60">
                 <Button
-                  text="Download Emergency Kit"
+                  text={t("settings-personal:emergency.download")}
                   onButtonPressed={() => {
                     issueBackupKey({
                       email: personalEmail,
@@ -306,7 +337,7 @@ export default function PersonalSettings() {
                   color="mineshaft"
                   size="md"
                   active={backupPassword != ""}
-                  textDisabled="Download Emergency Kit"
+                  textDisabled={t("settings-personal:emergency.download")}
                 />
                 <FontAwesomeIcon
                   icon={faCheck}
@@ -324,3 +355,9 @@ export default function PersonalSettings() {
 }
 
 PersonalSettings.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps([
+  "settings",
+  "settings-personal",
+  "section-password",
+]);

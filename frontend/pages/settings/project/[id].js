@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
+import { useTranslation } from "next-i18next";
 import { faCheck, faPlus } from "@fortawesome/free-solid-svg-icons";
 
 import Button from "~/components/basic/buttons/Button";
@@ -8,6 +9,7 @@ import AddServiceTokenDialog from "~/components/basic/dialog/AddServiceTokenDial
 import InputField from "~/components/basic/InputField";
 import ServiceTokenTable from "~/components/basic/table/ServiceTokenTable";
 import NavHeader from "~/components/navigation/NavHeader";
+import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
 import getServiceTokens from "../../api/serviceToken/getServiceTokens";
 import deleteWorkspace from "../../api/workspace/deleteWorkspace";
@@ -24,6 +26,8 @@ export default function SettingsBasic() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   let [isAddServiceTokenDialogOpen, setIsAddServiceTokenDialogOpen] =
     useState(false);
+
+  const { t } = useTranslation();
 
   useEffect(async () => {
     let userWorkspaces = await getWorkspaces();
@@ -89,7 +93,9 @@ export default function SettingsBasic() {
   return (
     <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
       <Head>
-        <title>Settings</title>
+        <title>
+          {t("common:head-title", { title: t("settings-project:title") })}
+        </title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
       <AddServiceTokenDialog
@@ -100,14 +106,17 @@ export default function SettingsBasic() {
       />
       <div className="flex flex-row mr-6 max-w-5xl">
         <div className="w-full max-h-screen pb-2 overflow-y-auto">
-          <NavHeader pageName="Project Settings" isProjectRelated={true} />
+          <NavHeader
+            pageName={t("settings-project:title")}
+            isProjectRelated={true}
+          />
           <div className="flex flex-row justify-between items-center ml-6 my-8 text-xl max-w-5xl">
             <div className="flex flex-col justify-start items-start text-3xl">
               <p className="font-semibold mr-4 text-gray-200">
-                Project Settings
+                {t("settings-project:title")}
               </p>
               <p className="font-normal mr-4 text-gray-400 text-base">
-                These settings only apply to the currently selected Project.
+                {t("settings-project:description")}
               </p>
             </div>
           </div>
@@ -115,7 +124,9 @@ export default function SettingsBasic() {
             <div className="flex flex-col">
               <div className="min-w-md mt-2 flex flex-col items-start">
                 <div className="bg-white/5 rounded-md px-6 pt-6 pb-4 flex flex-col items-start flex flex-col items-start w-full mb-6 pt-2">
-                  <p className="text-xl font-semibold mb-4">Display Name</p>
+                  <p className="text-xl font-semibold mb-4">
+                    {t("common:display-name")}
+                  </p>
                   <div className="max-h-28 w-full max-w-md mr-auto">
                     <InputField
                       onChangeHandler={modifyWorkspaceName}
@@ -128,7 +139,7 @@ export default function SettingsBasic() {
                   <div className="flex justify-start w-full">
                     <div className={`flex justify-start max-w-sm mt-4 mb-2`}>
                       <Button
-                        text="Save Changes"
+                        text={t("common:save-changes")}
                         onButtonPressed={() => submitChanges(workspaceName)}
                         color="mineshaft"
                         size="md"
@@ -140,15 +151,14 @@ export default function SettingsBasic() {
                   </div>
                 </div>
                 <div className="bg-white/5 rounded-md px-6 pt-6 pb-2 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4">
-                  <p className="text-xl font-semibold self-start">Project ID</p>
+                  <p className="text-xl font-semibold self-start">
+                    {t("common:project-id")}
+                  </p>
                   <p className="text-base text-gray-400 font-normal self-start mt-4">
-                    To integrate Infisical into your code base and get automatic
-                    injection of environmental variables, you should use the
-                    following Project ID.
+                    {t("settings-project:project-id-description")}
                   </p>
                   <p className="text-base text-gray-400 font-normal self-start">
-                    For more guidance, including code snipets for various
-                    languages and frameworks, see{" "}
+                    {t("settings-project:project-id-description2")}
                     {/* eslint-disable-next-line react/jsx-no-target-blank */}
                     <a
                       href="https://infisical.com/docs/getting-started/introduction"
@@ -156,7 +166,7 @@ export default function SettingsBasic() {
                       rel="noopener"
                       className="text-primary hover:opacity-80 duration-200"
                     >
-                      Infisical Docs.
+                      {t("settings-project:docs")}
                     </a>
                   </p>
                   <div className="max-h-28 w-ful">
@@ -166,7 +176,7 @@ export default function SettingsBasic() {
                       placeholder=""
                       isRequired
                       static
-                      text="This is your project&apos;s auto-generated unique identifier. It can&apos;t be changed."
+                      text={t("settings-project:auto-generated")}
                     />
                   </div>
                 </div>
@@ -174,16 +184,15 @@ export default function SettingsBasic() {
                   <div className="flex flex-row justify-between w-full">
                     <div className="flex flex-col w-full">
                       <p className="text-xl font-semibold mb-3">
-                        Service Tokens
+                        {t("section-token:service-tokens")}
                       </p>
                       <p className="text-base text-gray-400 mb-4">
-                        Every service token is specific to you, a certain
-                        project and a certain environment within this project.
+                        {t("section-token:service-tokens-description")}
                       </p>
                     </div>
                     <div className="w-48">
                       <Button
-                        text="Add New Token"
+                        text={t("section-token:add-new")}
                         onButtonPressed={() => {
                           setIsAddServiceTokenDialogOpen(true);
                         }}
@@ -237,15 +246,15 @@ export default function SettingsBasic() {
               </div>
             </div>
             <div className="bg-white/5 rounded-md px-6 pt-6 pb-6 border-l border-red pl-6 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4 pb-4 pt-2">
-              <p className="text-xl font-bold text-red">Danger Zone</p>
+              <p className="text-xl font-bold text-red">
+                {t("settings-project:danger-zone")}
+              </p>
               <p className="mt-2 text-md text-gray-400">
-                As soon as you delete this project, you will not be able to undo
-                it. This will immediately remove all the keys. If you still want
-                to do that, please enter the name of the project below.
+                {t("settings-project:danger-zone-note")}
               </p>
               <div className="max-h-28 w-full max-w-md mr-auto mt-4">
                 <InputField
-                  label="Project to be Deleted"
+                  label={t("settings-project:project-to-delete")}
                   onChangeHandler={setWorkspaceToBeDeletedName}
                   type="varName"
                   value={workspaceToBeDeletedName}
@@ -258,11 +267,10 @@ export default function SettingsBasic() {
                 className="max-w-md mt-6 w-full inline-flex justify-center rounded-md border border-transparent bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-400 hover:bg-red hover:text-white hover:font-semibold hover:text-semibold duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                 onClick={executeDeletingWorkspace}
               >
-                Delete Project
+                {t("settings-project:delete-project")}
               </button>
               <p className="mt-0.5 ml-1 text-xs text-gray-500">
-                Note: You can only delete a project in case you have more than
-                one.
+                {t("settings-project:delete-project-note")}
               </p>
             </div>
           </div>
@@ -273,3 +281,9 @@ export default function SettingsBasic() {
 }
 
 SettingsBasic.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps([
+  "settings",
+  "settings-project",
+  "section-token",
+]);

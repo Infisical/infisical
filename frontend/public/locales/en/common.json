@@ -1,0 +1,26 @@
+{
+  "head-title": "{{title}} | Infiscal",
+  "error_project-already-exists": "A project with this name already exists.",
+  "no-mobile": " To use Infisical, please log in through a device with larger dimensions. ",
+  "email": "Email",
+  "password": "Password",
+  "first-name": "First Name",
+  "last-name": "Last Name",
+  "logout": "Log Out",
+  "validate-required": "Please input your {{name}}",
+
+  "maintenance-alert": "We are experiencing minor technical difficulties. We are working on solving it right now. Please come back in a few minutes.",
+  "click-to-copy": "Click to copy",
+  "project-id": "Project ID",
+  "save-changes": "Save Changes",
+  "saved": "Saved",
+  "drop-zone": "Drag and drop your .env file here.",
+  "drop-zone-keys": "Drag and drop your .env file here to add more keys.",
+  "role": "Role",
+  "role_admin": "admin",
+  "display-name": "Display Name",
+  "environment": "Environment",
+  "expired-in": "Expires in",
+  "language": "Language",
+  "search": "Search..."
+}
