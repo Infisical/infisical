@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import { Key, Secret } from '../../models';
 import {
-	pushSecrets as push,
+	v1PushSecrets as push,
 	pullSecrets as pull,
 	reformatPullSecrets
 } from '../../helpers/secret';

@@ -66,7 +66,7 @@ if (NODE_ENV === 'production') {
   app.use(helmet());
 }
 
-// (EE) routers
+// (EE) routes
 app.use('/api/v1/secret', eeSecretRouter);
 app.use('/api/v1/workspace', eeWorkspaceRouter);
 
@@ -89,9 +89,9 @@ app.use('/api/v1/stripe', v1StripeRouter);
 app.use('/api/v1/integration', v1IntegrationRouter);
 app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
 
-// v2 routes (new)
-app.use('/api/v1/workspace', v2WorkspaceRouter);
-app.use('/api/v1/secret', v2SecretRouter);
+// v2 routes
+app.use('/api/v2/workspace', v2WorkspaceRouter);
+app.use('/api/v2/secret', v2SecretRouter);
 
 
 //* Handle unrouted requests and respond with proper error message as well as status code

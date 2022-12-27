@@ -15,7 +15,7 @@ import {
 	deleteWorkspace as deleteWork
 } from '../../helpers/workspace';
 import {
-	pushSecrets as push,
+	v2PushSecrets as push,
 	pullSecrets as pull,
 	reformatPullSecrets
 } from '../../helpers/secret';
@@ -24,17 +24,20 @@ import { addMemberships } from '../../helpers/membership';
 import { postHogClient, EventService } from '../../services';
 import { eventPushSecrets } from '../../events';
 import { ADMIN, COMPLETED, GRANTED, ENV_SET } from '../../variables';
-
-interface PushSecret {
-	ciphertextKey: string;
-	ivKey: string;
-	tagKey: string;
-	hashKey: string;
-	ciphertextValue: string;
-	ivValue: string;
-	tagValue: string;
-	hashValue: string;
-	type: 'shared' | 'personal';
+interface V2PushSecret {
+	type: string; // personal or shared
+	secretKeyCiphertext: string;
+	secretKeyIV: string;
+	secretKeyTag: string;
+	secretKeyHash: string;
+	secretValueCiphertext: string;
+	secretValueIV: string;
+	secretValueTag: string;
+	secretValueHash: string;
+	secretCommentCiphertext?: string;
+	secretCommentIV?: string;
+	secretCommentTag?: string;
+	secretCommentHash?: string;
 }
 
 /**
@@ -364,11 +367,11 @@ export const getWorkspaceServiceTokens = async (
  * @param res
  * @returns
  */
-export const pushSecrets = async (req: Request, res: Response) => {
+export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
 	// upload (encrypted) secrets to workspace with id [workspaceId]
 
 	try {
-		let { secrets }: { secrets: PushSecret[] } = req.body;
+		let { secrets }: { secrets: V2PushSecret[] } = req.body;
 		const { keys, environment, channel } = req.body;
 		const { workspaceId } = req.params;
 
@@ -379,7 +382,7 @@ export const pushSecrets = async (req: Request, res: Response) => {
 
 		// sanitize secrets
 		secrets = secrets.filter(
-			(s: PushSecret) => s.ciphertextKey !== '' && s.ciphertextValue !== ''
+			(s: V2PushSecret) => s.secretKeyCiphertext !== '' && s.secretValueCiphertext !== ''
 		);
 
 		await push({
@@ -437,6 +440,8 @@ export const pushSecrets = async (req: Request, res: Response) => {
  * @returns
  */
 export const pullSecrets = async (req: Request, res: Response) => {
+	// TODO: only return secrets, do not return workspace key
+
 	let secrets;
 	let key;
 	try {

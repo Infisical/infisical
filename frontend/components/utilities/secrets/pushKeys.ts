@@ -47,9 +47,9 @@ const pushKeys = async({ obj, workspaceId, env }: { obj: object; workspaceId: st
   const secrets = Object.keys(obj).map((key) => {
     // encrypt key
     const {
-      ciphertext: ciphertextKey,
-      iv: ivKey,
-      tag: tagKey,
+      ciphertext: secretKeyCiphertext,
+      iv: secretKeyIV,
+      tag: secretKeyTag,
     } = encryptSymmetric({
       plaintext: key.slice(1),
       key: randomBytes,
@@ -57,9 +57,9 @@ const pushKeys = async({ obj, workspaceId, env }: { obj: object; workspaceId: st
 
     // encrypt value
     const {
-      ciphertext: ciphertextValue,
-      iv: ivValue,
-      tag: tagValue,
+      ciphertext: secretValueCiphertext,
+      iv: secretValueIV,
+      tag: secretValueTag,
     } = encryptSymmetric({
       plaintext: obj[key as keyof typeof obj][0],
       key: randomBytes,
@@ -67,9 +67,9 @@ const pushKeys = async({ obj, workspaceId, env }: { obj: object; workspaceId: st
 
     // encrypt comment
     const {
-      ciphertext: ciphertextComment,
-      iv: ivComment,
-      tag: tagComment,
+      ciphertext: secretCommentCiphertext,
+      iv: secretCommentIV,
+      tag: secretCommentTag,
     } = encryptSymmetric({
       plaintext: obj[key as keyof typeof obj][1],
       key: randomBytes,
@@ -78,18 +78,18 @@ const pushKeys = async({ obj, workspaceId, env }: { obj: object; workspaceId: st
     const visibility = key.charAt(0) == "p" ? "personal" : "shared";
 
     return {
-      ciphertextKey,
-      ivKey,
-      tagKey,
-      hashKey: crypto.createHash("sha256").update(key.slice(1)).digest("hex"),
-      ciphertextValue,
-      ivValue,
-      tagValue,
-      hashValue: crypto.createHash("sha256").update(obj[key as keyof typeof obj][0]).digest("hex"),
-      ciphertextComment,
-      ivComment,
-      tagComment,
-      hashComment: crypto.createHash("sha256").update(obj[key as keyof typeof obj][1]).digest("hex"),
+      secretKeyCiphertext,
+      secretKeyIV,
+      secretKeyTag,
+      secretKeyHash: crypto.createHash("sha256").update(key.slice(1)).digest("hex"),
+      secretValueCiphertext,
+      secretValueIV,
+      secretValueTag,
+      secretValueHash: crypto.createHash("sha256").update(obj[key as keyof typeof obj][0]).digest("hex"),
+      secretCommentCiphertext,
+      secretCommentIV,
+      secretCommentTag,
+      secretCommentHash: crypto.createHash("sha256").update(obj[key as keyof typeof obj][1]).digest("hex"),
       type: visibility,
     };
   });

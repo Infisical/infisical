@@ -120,7 +120,7 @@ router.get(
 	workspaceController.getWorkspaceIntegrationAuthorizations
 );
 
-router.get(
+router.get( // TODO: modify
 	'/:workspaceId/service-tokens',
 	requireAuth,
 	requireWorkspaceAuth({
@@ -145,7 +145,7 @@ router.post(
 	body('channel'),
 	param('workspaceId').exists().trim(),
 	validateRequest,
-	workspaceController.pushSecrets
+	workspaceController.pushWorkspaceSecrets
 );
 
 router.get(
