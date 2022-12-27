@@ -48,6 +48,7 @@ export default function RouteGuard({ children }) {
     // Check if the user is authenticated
     const response = await checkAuth();
     // #TODO: figure our why sometimes it doesn't output a response
+    // ANS(akhilmhdh): Because inside the security client the await token() doesn't have try/catch
     if (!publicPaths.includes(path)) {
       try {
         if (response.status !== 200) {

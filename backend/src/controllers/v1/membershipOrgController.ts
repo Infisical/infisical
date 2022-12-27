@@ -218,12 +218,6 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 		const { email, code } = req.body;
 
 		user = await User.findOne({ email }).select('+publicKey');
-		if (user && user?.publicKey) {
-			// case: user has already completed account
-			return res.status(403).send({
-				error: 'Failed email magic link verification for complete account'
-			});
-		}
 
 		const membershipOrg = await MembershipOrg.findOne({
 			inviteEmail: email,
@@ -237,6 +231,18 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 			email,
 			code
 		});
+
+		if (user && user?.publicKey) {
+			// case: user has already completed account
+			// membership can be approved and redirected to login/dashboard
+			membershipOrg.status = ACCEPTED;
+			await membershipOrg.save();
+
+			return res.status(200).send({
+				message: 'Successfully verified email',
+				user,
+			});
+        }
 
 		if (!user) {
 			// initialize user account
