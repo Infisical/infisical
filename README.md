@@ -270,13 +270,13 @@ We're currently setting the foundation and building [integrations](https://infis
     </tr>
     <tr>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/frameworks/rails?ref=github.com">
-          ✔️ Ruby on Rails
+        <a href="https://infisical.com/docs/integrations/frameworks/vue?ref=github.com">
+          ✔️ Vue
         </a>
       </td>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/frameworks/vue?ref=github.com">
-          ✔️ Vue
+        <a href="https://infisical.com/docs/integrations/frameworks/rails?ref=github.com">
+          ✔️ Ruby on Rails
         </a>
       </td>
     </tr>
@@ -290,6 +290,16 @@ We're currently setting the foundation and building [integrations](https://infis
         <a href="https://infisical.com/docs/integrations/frameworks/nuxt?ref=github.com">
           ✔️ Nuxt
         </a>
+      </td>
+    </tr>
+    <tr>
+      <td align="left" valign="middle">
+        <a href="https://infisical.com/docs/integrations/frameworks/dotnet?ref=github.com">
+          ✔️ .NET
+        </a>
+      </td>
+      <td align="left" valign="middle">
+        And more...
       </td>
     </tr>
   </tbody>
