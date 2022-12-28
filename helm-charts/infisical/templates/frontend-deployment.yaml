@@ -48,3 +48,6 @@ spec:
     - protocol: TCP
       port: 3000 # service
       targetPort: 3000 # container port 
+      {{- if eq .Values.frontend.service.type "NodePort" }}
+      nodePort: {{ .Values.frontend.service.nodePort }}
+      {{- end }}

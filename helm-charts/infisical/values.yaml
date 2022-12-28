@@ -11,7 +11,10 @@ frontend:
     tag: "latest"
     # kubeSecretRef: some-kube-secret-name
   service:
+    # type of the frontend service
     type: ClusterIP
+    # define the nodePort if service type is NodePort
+    # nodePort: 
 
 backend:
   replicaCount: 1
