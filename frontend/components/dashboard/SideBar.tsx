@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from "next-i18next";
 import { faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import SecretVersionList from 'ee/components/SecretVersionList';
@@ -69,17 +70,18 @@ const SideBar = ({
   setSharedToHide 
 }: SideBarProps) => {
   const [overrideEnabled, setOverrideEnabled] = useState(data.map(secret => secret.type).includes("personal"));
+  const { t } = useTranslation();
 
   return <div className='absolute border-l border-mineshaft-500 bg-bunker fixed h-full w-96 top-14 right-0 z-50 shadow-xl flex flex-col justify-between'>
     <div className='h-min overflow-y-auto'>
       <div className="flex flex-row px-4 py-3 border-b border-mineshaft-500 justify-between items-center">
-        <p className="font-semibold text-lg text-bunker-200">Secret</p>
+        <p className="font-semibold text-lg text-bunker-200">{t("dashboard:sidebar.secret")}</p>
         <div className='p-1' onClick={() => toggleSidebar("None")}>
           <FontAwesomeIcon icon={faX} className='w-4 h-4 text-bunker-300 cursor-pointer'/>
         </div>
       </div>
       <div className='mt-4 px-4 pointer-events-none'>
-        <p className='text-sm text-bunker-300'>Key</p>
+        <p className='text-sm text-bunker-300'>{t("dashboard:sidebar.key")}</p>
         <DashboardInputField
           onChangeHandler={modifyKey}
           type="varName"
@@ -91,7 +93,7 @@ const SideBar = ({
       </div>
       {data.filter(secret => secret.type == "shared")[0]?.value 
         ? <div className={`relative mt-2 px-4 ${overrideEnabled && "opacity-40 pointer-events-none"} duration-200`}>
-        <p className='text-sm text-bunker-300'>Value</p>
+        <p className='text-sm text-bunker-300'>{t("dashboard:sidebar.value")}</p>
         <DashboardInputField
           onChangeHandler={modifyValue}
           type="value"
@@ -105,13 +107,13 @@ const SideBar = ({
         </div>
       </div>
         : <div className='px-4 text-sm text-bunker-300 pt-4'>
-          <span className='py-0.5 px-1 rounded-md bg-primary-200/10 mr-1'>Note:</span>
-          This secret is personal. It is not shared with any of your teammates.
+          <span className='py-0.5 px-1 rounded-md bg-primary-200/10 mr-1'>{t("common:note")}:</span>
+          {t("dashboard:sidebar.personal-explanation")}
         </div>}
       <div className='mt-4 px-4'>
         {data.filter(secret => secret.type == "shared")[0]?.value &&
         <div className='flex flex-row items-center justify-between my-2 pl-1 pr-2'>
-          <p className='text-sm text-bunker-300'>Override value with a personal value</p>
+          <p className='text-sm text-bunker-300'>{t("dashboard:sidebar.override")}</p>
           <Toggle 
             enabled={overrideEnabled} 
             setEnabled={setOverrideEnabled} 
@@ -154,7 +156,7 @@ const SideBar = ({
     </div>
     <div className={`flex justify-start max-w-sm mt-4 px-4 mt-full mb-[4.7rem]`}>
       <Button
-        text="Save Changes"
+        text={String(t("common:save-changes"))}
         onButtonPressed={savePush}
         color="primary"
         size="md"

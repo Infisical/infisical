@@ -18,9 +18,9 @@
   "role": "Role",
   "role_admin": "admin",
   "display-name": "표시 이름",
-
   "environment": "환경",
   "expired-in": "만료 기한:",
   "language": "언어",
-  "search": "검색하기..."
+  "search": "검색하기...",
+  "note": "Note"
 }

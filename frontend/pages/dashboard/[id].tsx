@@ -422,8 +422,8 @@ export default function Dashboard() {
         <title>{t("common:head-title", { title: t("dashboard:title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("dashboard:og-title")} />
-        <meta name="og:description" content={t("dashboard:og-description")} />
+        <meta property="og:title" content={String(t("dashboard:og-title"))} />
+        <meta name="og:description" content={String(t("dashboard:og-description"))} />
       </Head>
       <div className="flex flex-row">
         {sidebarSecretId != "None" && <SideBar 
@@ -494,13 +494,13 @@ export default function Dashboard() {
               {(data?.length !== 0 || buttonReady) && (
                 <div className={`flex justify-start max-w-sm mt-2`}>
                   <Button
-                    text={t("common:save-changes")}
+                    text={String(t("common:save-changes"))}
                     onButtonPressed={savePush}
                     color="primary"
                     size="md"
                     active={buttonReady}
                     iconDisabled={faCheck}
-                    textDisabled={t("common:saved")}
+                    textDisabled={String(t("common:saved"))}
                   />
                 </div>
               )}
@@ -525,7 +525,7 @@ export default function Dashboard() {
                         className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
                         value={searchKeys}
                         onChange={(e) => setSearchKeys(e.target.value)}
-                        placeholder={t("dashboard:search-keys")}
+                        placeholder={String(t("dashboard:search-keys"))}
                       />
                     </div>
                     <div className="ml-2 min-w-max flex flex-row items-start justify-start">
@@ -558,7 +558,7 @@ export default function Dashboard() {
                     </div>
                     <div className="relative ml-2 min-w-max flex flex-row items-start justify-end">
                       <Button
-                        text={t("dashboard:add-key")}
+                        text={String(t("dashboard:add-key"))}
                         onButtonPressed={addRow}
                         color="mineshaft"
                         icon={faPlus}

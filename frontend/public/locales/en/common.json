@@ -8,7 +8,6 @@
   "last-name": "Last Name",
   "logout": "Log Out",
   "validate-required": "Please input your {{name}}",
-
   "maintenance-alert": "We are experiencing minor technical difficulties. We are working on solving it right now. Please come back in a few minutes.",
   "click-to-copy": "Click to copy",
   "project-id": "Project ID",
@@ -22,5 +21,6 @@
   "environment": "Environment",
   "expired-in": "Expires in",
   "language": "Language",
-  "search": "Search..."
+  "search": "Search...",
+  "note": "Note"
 }

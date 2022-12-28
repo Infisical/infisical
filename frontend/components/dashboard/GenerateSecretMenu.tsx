@@ -1,4 +1,5 @@
 import { Fragment,useState } from 'react';
+import { useTranslation } from "next-i18next";
 import { faShuffle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Menu, Transition } from '@headlessui/react';
@@ -10,6 +11,7 @@ import { Menu, Transition } from '@headlessui/react';
  */
 const GenerateSecretMenu = ({ modifyValue, position }: { modifyValue: (value: string, position: number) => void; position: number; }) => {
   const [randomStringLength, setRandomStringLength] = useState(32);
+  const { t } = useTranslation();
 
   return <Menu as="div" className="relative inline-block text-left">
     <div>
@@ -51,8 +53,8 @@ const GenerateSecretMenu = ({ modifyValue, position }: { modifyValue: (value: st
             icon={faShuffle}
           />
           <div className="text-sm justify-between flex flex-row w-full">
-            <p>Generate Random Hex</p>
-            <p>digits</p>
+            <p>{t("dashboard:sidebar.generate-random-hex")}</p>
+            <p>{t("dashboard:sidebar.digits")}</p>
           </div>
         </div>
         <div className="flex flex-row absolute bottom-[0.4rem] right-[3.3rem] w-16 bg-bunker-800 border border-chicago-700 rounded-md text-bunker-200 ">

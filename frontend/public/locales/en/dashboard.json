@@ -15,5 +15,16 @@
     "title": "Good job!",
     "line1": "Congrats on adding more secrets.",
     "line2": "Here is how to connect them to your codebase."
+  },
+  "sidebar": {
+    "secret": "Secret",
+    "key": "Key",
+    "value": "Value",
+    "override": "Override value with a personal value",
+    "version-history": "Version History",
+    "comments": "Comments & Notes",
+    "personal-explanation": "This secret is personal. It is not shared with any of your teammates.",
+    "generate-random-hex": "Generate Random Hex",
+    "digits": "digits"
   }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useTranslation } from "next-i18next";
 import { faCircle, faDotCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import getSecretVersions from 'ee/api/secrets/GetSecretVersions';
@@ -25,6 +26,7 @@ interface EncrypetedSecretVersionListProps {
  */
 const SecretVersionList = ({ secretId }: { secretId: string; }) => {
   const router = useRouter();
+  const { t } = useTranslation();
   const [secretVersions, setSecretVersions] = useState<DecryptedSecretVersionListProps[]>([{createdAt: "123", value: "124"}]);
   
   useEffect(() => {
@@ -67,7 +69,7 @@ const SecretVersionList = ({ secretId }: { secretId: string; }) => {
   }, []);
 
   return <div className='w-full h-52 px-4 mt-4 text-sm text-bunker-300 overflow-x-none'>
-  <p className=''>Version History</p>
+  <p className=''>{t("dashboard:sidebar.version-history")}</p>
   <div className='p-1 rounded-md bg-bunker-800 border border-mineshaft-500 overflow-x-none'>
     <div className='h-48 overflow-y-auto overflow-x-none'>
       {secretVersions?.sort((a, b) => b.createdAt.localeCompare(a.createdAt))

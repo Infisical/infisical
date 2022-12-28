@@ -15,5 +15,16 @@
     "title": "좋았어요!",
     "line1": "더 많은 시크릿들을 추가한 것을 축하합니다.",
     "line2": "코드와 연결하는 사용하는 방법을 한번 알아보지 않을래요?"
+  },
+  "sidebar": {
+    "secret": "Secret",
+    "key": "Key",
+    "value": "Value",
+    "override": "Override value with a personal value",
+    "version-history": "Version History",
+    "comments": "Comments & Notes",
+    "personal-explanation": "This secret is personal. It is not shared with any of your teammates.",
+    "generate-random-hex": "Generate Random Hex",
+    "digits": "digits"
   }
 }
