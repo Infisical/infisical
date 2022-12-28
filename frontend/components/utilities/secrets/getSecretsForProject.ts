@@ -15,6 +15,7 @@ interface SecretProps {
   value: string; 
   type: 'personal' | 'shared'; 
   comment: string; 
+  id: string;
 }
 
 interface Props {
@@ -85,6 +86,7 @@ const getSecretsForProject = async ({
         }
 
         tempFileState.push({
+          id: secretPair._id,
           key: plainTextKey,
           value: plainTextValue,
           type: secretPair.type,
@@ -97,7 +99,7 @@ const getSecretsForProject = async ({
     setData(
       tempFileState.map((line, index) => {
         return {
-          id: guidGenerator(),
+          id: line['id'],
           pos: index,
           key: line['key'],
           value: line['value'],
@@ -109,7 +111,7 @@ const getSecretsForProject = async ({
 
     return tempFileState.map((line, index) => {
       return {
-        id: guidGenerator(),
+        id: line['id'],
         pos: index,
         key: line['key'],
         value: line['value'],

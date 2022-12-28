@@ -1,4 +1,5 @@
 import { Fragment, useState } from "react";
+import { useTranslation } from "next-i18next";
 import { Dialog, Transition } from "@headlessui/react";
 
 import addIncidentContact from "~/pages/api/organization/addIncidentContact";
@@ -14,6 +15,7 @@ const AddIncidentContactDialog = ({
   setIncidentContacts,
 }) => {
   let [incidentContactEmail, setIncidentContactEmail] = useState("");
+  const { t } = useTranslation();
 
   const submit = () => {
     setIncidentContacts(
@@ -59,17 +61,16 @@ const AddIncidentContactDialog = ({
                     as="h3"
                     className="text-lg font-medium leading-6 text-gray-400"
                   >
-                    Add an Incident Contact
+                    {t("section-incident:add-dialog.title")}
                   </Dialog.Title>
                   <div className="mt-2 mb-2">
                     <p className="text-sm text-gray-500">
-                      This contact will be notified in the unlikely event of a
-                      severe incident.
+                      {t("section-incident:add-dialog.description")}
                     </p>
                   </div>
                   <div className="max-h-28">
                     <InputField
-                      label="Email"
+                      label={t("common:email")}
                       onChangeHandler={setIncidentContactEmail}
                       type="varName"
                       value={incidentContactEmail}
@@ -81,7 +82,7 @@ const AddIncidentContactDialog = ({
                     <Button
                       onButtonPressed={submit}
                       color="mineshaft"
-                      text="Add Incident Contact"
+                      text={t("section-incident:add-dialog.add-incident")}
                       size="md"
                     />
                   </div>

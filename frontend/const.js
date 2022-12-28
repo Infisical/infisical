@@ -16,3 +16,8 @@ export const publicPaths = [
   `/terms`,
   `/subprocessors`,
 ];
+
+export const languageMap = {
+  en: "English",
+  ko: "한국어",
+};
