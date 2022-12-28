@@ -32,9 +32,9 @@ import {
   GRANTED
 } from './organization';
 import { SECRET_SHARED, SECRET_PERSONAL } from './secret';
-import { PLAN_STARTER, PLAN_PRO } from './stripe';
 import { EVENT_PUSH_SECRETS, EVENT_PULL_SECRETS } from './event';
-import { ACTION_PUSH_TO_HEROKU } from './action';
+import { SMTP_HOST_SENDGRID, SMTP_HOST_MAILGUN } from './smtp';
+import { PLAN_STARTER, PLAN_PRO } from './stripe';
 
 export {
   OWNER,
@@ -44,8 +44,6 @@ export {
   ACCEPTED,
   COMPLETED,
   GRANTED,
-  PLAN_STARTER,
-  PLAN_PRO,
   SECRET_SHARED,
   SECRET_PERSONAL,
   ENV_DEV,
@@ -69,6 +67,9 @@ export {
   INTEGRATION_GITHUB_API_URL,
   EVENT_PUSH_SECRETS,
   EVENT_PULL_SECRETS,
-  ACTION_PUSH_TO_HEROKU,
-  INTEGRATION_OPTIONS
+  INTEGRATION_OPTIONS,
+  SMTP_HOST_SENDGRID,
+  SMTP_HOST_MAILGUN,
+  PLAN_STARTER,
+  PLAN_PRO,
 };

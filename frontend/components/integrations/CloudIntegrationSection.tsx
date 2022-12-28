@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "next-i18next";
 
 import CloudIntegration from "./CloudIntegration";
 
@@ -24,12 +25,14 @@ const CloudIntegrationSection = ({
     integrationOptionPress,
     integrationAuths
 }: Props) => {
+    const { t } = useTranslation();
+
     return (
         <>
             <div className={`flex flex-col justify-between items-start m-4 mt-7 text-xl max-w-5xl px-2`}>
-                <h1 className="font-semibold text-3xl">Cloud Integrations</h1>
+                <h1 className="font-semibold text-3xl">{t("integrations:cloud-integrations")}</h1>
                 <p className="text-base text-gray-400">
-                    Click on an integration to begin syncing secrets to it.
+                    {t("integrations:click-to-start")}
                 </p>
             </div>
             <div className="grid gap-4 grid-cols-4 grid-rows-2 mx-6 max-w-5xl">

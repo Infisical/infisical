@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   goreleaser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
         with:
@@ -24,6 +24,15 @@ jobs:
           go-version: '>=1.19.3'
           cache: true
           cache-dependency-path: cli/go.sum
+      - name: libssl1.1 => libssl1.0-dev for OSXCross
+        run: |
+          echo 'deb http://security.ubuntu.com/ubuntu bionic-security main' | sudo tee -a /etc/apt/sources.list
+          sudo apt update && apt-cache policy libssl1.0-dev
+          sudo apt-get install libssl1.0-dev
+      - name: OSXCross for CGO Support
+        run: |
+          mkdir ../../osxcross
+          git clone https://github.com/plentico/osxcross-target.git ../../osxcross/target
       - uses: goreleaser/goreleaser-action@v2
         with:
           distribution: goreleaser
@@ -32,6 +41,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GO_RELEASER_GITHUB_TOKEN }}
           FURY_TOKEN: ${{ secrets.FURYPUSHTOKEN }}
+          AUR_KEY: ${{ secrets.AUR_KEY }}
       - uses: actions/setup-python@v4
       - run: pip install --upgrade cloudsmith-cli
       - name: Publish to CloudSmith 

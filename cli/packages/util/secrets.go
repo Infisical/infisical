@@ -14,6 +14,9 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
+const PERSONAL_SECRET_TYPE_NAME = "personal"
+const SHARED_SECRET_TYPE_NAME = "shared"
+
 func getSecretsByWorkspaceIdAndEnvName(httpClient resty.Client, envName string, workspace models.WorkspaceConfigFile, userCreds models.UserCredentials) (listOfSecrets []models.SingleEnvironmentVariable, err error) {
 	var pullSecretsRequestResponse models.PullSecretsResponse
 	response, err := httpClient.
@@ -78,6 +81,7 @@ func getSecretsByWorkspaceIdAndEnvName(httpClient resty.Client, envName string, 
 		env := models.SingleEnvironmentVariable{
 			Key:   string(plainTextKey),
 			Value: string(plainTextValue),
+			Type:  string(secret.Type),
 		}
 
 		listOfEnv = append(listOfEnv, env)
@@ -187,6 +191,7 @@ func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, envName string,
 		env := models.SingleEnvironmentVariable{
 			Key:   string(plainTextKey),
 			Value: string(plainTextValue),
+			Type:  string(secret.Type),
 		}
 
 		listOfEnv = append(listOfEnv, env)
@@ -335,9 +340,48 @@ func SubstituteSecrets(secrets []models.SingleEnvironmentVariable) []models.Sing
 		expandedSecrets = append(expandedSecrets, models.SingleEnvironmentVariable{
 			Key:   secret.Key,
 			Value: expandedVariable,
+			Type:  secret.Type,
 		})
 
 	}
 
 	return expandedSecrets
+}
+
+// if two secrets with the same name are found, the one that has type `personal` will be in the returned list
+func OverrideWithPersonalSecrets(secrets []models.SingleEnvironmentVariable) []models.SingleEnvironmentVariable {
+	personalSecret := make(map[string]models.SingleEnvironmentVariable)
+	sharedSecret := make(map[string]models.SingleEnvironmentVariable)
+	secretsToReturn := []models.SingleEnvironmentVariable{}
+
+	for _, secret := range secrets {
+		if secret.Type == PERSONAL_SECRET_TYPE_NAME {
+			personalSecret[secret.Key] = models.SingleEnvironmentVariable{
+				Key:   secret.Key,
+				Value: secret.Value,
+				Type:  secret.Type,
+			}
+		}
+
+		if secret.Type == SHARED_SECRET_TYPE_NAME {
+			sharedSecret[secret.Key] = models.SingleEnvironmentVariable{
+				Key:   secret.Key,
+				Value: secret.Value,
+				Type:  secret.Type,
+			}
+		}
+	}
+
+	for _, secret := range secrets {
+		personalValue, personalExists := personalSecret[secret.Key]
+		sharedValue, sharedExists := sharedSecret[secret.Key]
+
+		if personalExists && sharedExists || personalExists && !sharedExists {
+			secretsToReturn = append(secretsToReturn, personalValue)
+		} else {
+			secretsToReturn = append(secretsToReturn, sharedValue)
+		}
+	}
+
+	return secretsToReturn
 }

@@ -1,12 +1,13 @@
-import { type ChangeEvent, type DragEvent, useState } from 'react';
-import Image from 'next/image';
-import { faUpload } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { type ChangeEvent, type DragEvent, useState } from "react";
+import Image from "next/image";
+import { useTranslation } from "next-i18next";
+import { faUpload } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import Button from '../basic/buttons/Button';
-import Error from '../basic/Error';
-import parse from '../utilities/file';
-import guidGenerator from '../utilities/randomId';
+import Button from "../basic/buttons/Button";
+import Error from "../basic/Error";
+import parse from "../utilities/file";
+import guidGenerator from "../utilities/randomId";
 
 interface DropZoneProps {
   // TODO: change Data type from any
@@ -26,8 +27,10 @@ const DropZone = ({
   errorDragAndDrop,
   setButtonReady,
   keysExist,
-  numCurrentRows
+  numCurrentRows,
 }: DropZoneProps) => {
+  const { t } = useTranslation();
+
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -43,7 +46,7 @@ const DropZone = ({
     e.stopPropagation();
 
     // set dropEffect to copy i.e copy of the source item
-    e.dataTransfer.dropEffect = 'copy';
+    e.dataTransfer.dropEffect = "copy";
   };
 
   const [loading, setLoading] = useState(false);
@@ -54,7 +57,7 @@ const DropZone = ({
     setTimeout(() => setLoading(false), 5000);
     e.preventDefault();
     e.stopPropagation();
-    e.dataTransfer.dropEffect = 'copy';
+    e.dataTransfer.dropEffect = "copy";
 
     const file = e.dataTransfer.files[0];
     const reader = new FileReader();
@@ -69,7 +72,7 @@ const DropZone = ({
           pos: numCurrentRows + index,
           key: key,
           value: keyPairs[key as keyof typeof keyPairs],
-          type: 'shared'
+          type: "shared",
         };
       });
       setData(newData);
@@ -96,16 +99,16 @@ const DropZone = ({
     reader.onload = (event) => {
       if (event.target === null || event.target.result === null) return;
       const { result } = event.target;
-      if (typeof result === 'string') {
+      if (typeof result === "string") {
         const newData = result
-          .split('\n')
+          .split("\n")
           .map((line: string, index: number) => {
             return {
               id: guidGenerator(),
               pos: numCurrentRows + index,
-              key: line.split('=')[0],
-              value: line.split('=').slice(1, line.split('=').length).join('='),
-              type: 'shared'
+              key: line.split("=")[0],
+              value: line.split("=").slice(1, line.split("=").length).join("="),
+              type: "shared",
             };
           });
         setData(newData);
@@ -126,7 +129,7 @@ const DropZone = ({
     </div>
   ) : keysExist ? (
     <div
-      className="opacity-60 hover:opacity-100 duration-200 relative bg-bunker outline max-w-[calc(100%-1rem)] w-full outline-dashed outline-gray-600 rounded-md outline-2 flex flex-col items-center justify-center mb-16 mx-auto mt-1 py-8 px-2"
+      className="opacity-60 hover:opacity-100 duration-200 relative bg-mineshaft-900 outline max-w-[calc(100%-1rem)] w-full outline-dashed outline-chicago-600 rounded-md outline-2 flex flex-col items-center justify-center mb-16 mx-auto mt-1 py-8 px-2"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -147,11 +150,9 @@ const DropZone = ({
       <div className="flex flex-row">
         <FontAwesomeIcon
           icon={faUpload}
-          className="text-gray-300 text-3xl mr-6"
+          className="text-bunker-300 text-3xl mr-6"
         />
-        <p className="text-gray-300 mt-1">
-          Drag and drop your .env file here to add more keys.
-        </p>
+        <p className="text-bunker-300 mt-1">{t("common:drop-zone-keys")}</p>
       </div>
       {errorDragAndDrop ? (
         <div className="mt-8 max-w-xl opacity-80">
@@ -170,7 +171,7 @@ const DropZone = ({
       onDrop={handleDrop}
     >
       <FontAwesomeIcon icon={faUpload} className="text-7xl mb-8" />
-      <p className="">Drag and drop your .env file here.</p>
+      <p className="">{t("common:drop-zone")}</p>
       <input
         id="fileSelect"
         type="file"

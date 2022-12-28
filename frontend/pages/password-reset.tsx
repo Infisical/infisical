@@ -1,34 +1,35 @@
-import React, { useState } from 'react';
-import Image from 'next/image';
-import { useRouter } from 'next/router';
-import { faCheck, faX } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/router";
+import { faCheck, faX } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import Button from '~/components/basic/buttons/Button';
-import InputField from '~/components/basic/InputField';
-import passwordCheck from '~/components/utilities/checks/PasswordCheck';
-import Aes256Gcm from '~/components/utilities/cryptography/aes-256-gcm';
+import Button from "~/components/basic/buttons/Button";
+import InputField from "~/components/basic/InputField";
+import passwordCheck from "~/components/utilities/checks/PasswordCheck";
+import Aes256Gcm from "~/components/utilities/cryptography/aes-256-gcm";
 
-import EmailVerifyOnPasswordReset from './api/auth/EmailVerifyOnPasswordReset';
-import getBackupEncryptedPrivateKey from './api/auth/getBackupEncryptedPrivateKey';
-import resetPasswordOnAccountRecovery from './api/auth/resetPasswordOnAccountRecovery';
+import EmailVerifyOnPasswordReset from "./api/auth/EmailVerifyOnPasswordReset";
+import getBackupEncryptedPrivateKey from "./api/auth/getBackupEncryptedPrivateKey";
+import resetPasswordOnAccountRecovery from "./api/auth/resetPasswordOnAccountRecovery";
+import { getTranslatedStaticProps } from "~/components/utilities/withTranslateProps";
 
-const queryString = require('query-string');
-const nacl = require('tweetnacl');
-const jsrp = require('jsrp');
-nacl.util = require('tweetnacl-util');
+const queryString = require("query-string");
+const nacl = require("tweetnacl");
+const jsrp = require("jsrp");
+nacl.util = require("tweetnacl-util");
 const client = new jsrp.client();
 
 export default function PasswordReset() {
   const router = useRouter();
-  const parsedUrl = queryString.parse(router.asPath.split('?')[1]);
+  const parsedUrl = queryString.parse(router.asPath.split("?")[1]);
   const token = parsedUrl.token;
-  const email = parsedUrl.to?.replace(' ', '+').trim();
-  const [verificationToken, setVerificationToken] = useState('');
+  const email = parsedUrl.to?.replace(" ", "+").trim();
+  const [verificationToken, setVerificationToken] = useState("");
   const [step, setStep] = useState(1);
-  const [backupKey, setBackupKey] = useState('');
-  const [privateKey, setPrivateKey] = useState('');
-  const [newPassword, setNewPassword] = useState('');
+  const [backupKey, setBackupKey] = useState("");
+  const [privateKey, setPrivateKey] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [backupKeyError, setBackupKeyError] = useState(false);
   const [passwordErrorLength, setPasswordErrorLength] = useState(false);
   const [passwordErrorNumber, setPasswordErrorNumber] = useState(false);
@@ -43,7 +44,7 @@ export default function PasswordReset() {
           ciphertext: result.encryptedPrivateKey,
           iv: result.iv,
           tag: result.tag,
-          secret: backupKey
+          secret: backupKey,
         })
       );
       setStep(3);
@@ -60,7 +61,7 @@ export default function PasswordReset() {
       setPasswordErrorLength,
       setPasswordErrorNumber,
       setPasswordErrorLowerCase,
-      currentErrorCheck: errorCheck
+      currentErrorCheck: errorCheck,
     });
 
     if (!errorCheck) {
@@ -72,14 +73,14 @@ export default function PasswordReset() {
           .padStart(
             32 +
               (newPassword.slice(0, 32).length - new Blob([newPassword]).size),
-            '0'
-          )
+            "0"
+          ),
       }) as { ciphertext: string; iv: string; tag: string };
 
       client.init(
         {
           username: email,
-          password: newPassword
+          password: newPassword,
         },
         async () => {
           client.createVerifier(
@@ -90,12 +91,12 @@ export default function PasswordReset() {
                 iv,
                 tag,
                 salt: result.salt,
-                verifier: result.verifier
+                verifier: result.verifier,
               });
 
               // if everything works, go the main dashboard page.
               if (response?.status === 200) {
-                router.push('/login');
+                router.push("/login");
               }
             }
           );
@@ -122,14 +123,14 @@ export default function PasswordReset() {
           onButtonPressed={async () => {
             const response = await EmailVerifyOnPasswordReset({
               email,
-              code: token
+              code: token,
             });
             if (response.status == 200) {
               setVerificationToken((await response.json()).token);
               setStep(2);
             } else {
-              console.log('ERROR', response);
-              router.push('/email-not-verified');
+              console.log("ERROR", response);
+              router.push("/email-not-verified");
             }
           }}
           size="lg"
@@ -195,7 +196,7 @@ export default function PasswordReset() {
               setPasswordErrorLength,
               setPasswordErrorNumber,
               setPasswordErrorLowerCase,
-              currentErrorCheck: false
+              currentErrorCheck: false,
             });
           }}
           type="password"
@@ -224,7 +225,7 @@ export default function PasswordReset() {
             )}
             <div
               className={`${
-                passwordErrorLength ? 'text-gray-400' : 'text-gray-600'
+                passwordErrorLength ? "text-gray-400" : "text-gray-600"
               } text-sm`}
             >
               14 characters
@@ -241,7 +242,7 @@ export default function PasswordReset() {
             )}
             <div
               className={`${
-                passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'
+                passwordErrorLowerCase ? "text-gray-400" : "text-gray-600"
               } text-sm`}
             >
               1 lowercase character
@@ -258,7 +259,7 @@ export default function PasswordReset() {
             )}
             <div
               className={`${
-                passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'
+                passwordErrorNumber ? "text-gray-400" : "text-gray-600"
               } text-sm`}
             >
               1 number
@@ -288,3 +289,5 @@ export default function PasswordReset() {
     </div>
   );
 }
+
+export const getServerSideProps = getTranslatedStaticProps([]);

@@ -14,6 +14,8 @@ declare global {
 			JWT_SIGNUP_SECRET: string;
       MONGO_URL: string;
       NODE_ENV: 'development' | 'staging' | 'testing' | 'production';
+      VERBOSE_ERROR_OUTPUT: string;
+      LOKI_HOST: string;
       CLIENT_ID_HEROKU: string;
       CLIENT_ID_VERCEL: string;
       CLIENT_ID_NETLIFY: string;

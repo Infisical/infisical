@@ -1,15 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import Head from 'next/head';
-import Image from 'next/image';
-import { useRouter } from 'next/router';
-import { faMagnifyingGlass, faPlus } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useEffect, useState } from "react";
+import Head from "next/head";
+import Image from "next/image";
+import { useRouter } from "next/router";
+import { useTranslation } from "next-i18next";
+import { faMagnifyingGlass, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import Button from '~/components/basic/buttons/Button';
-import AddProjectMemberDialog from '~/components/basic/dialog/AddProjectMemberDialog';
-import UserTable from '~/components/basic/table/UserTable';
-import NavHeader from '~/components/navigation/NavHeader';
-import guidGenerator from '~/utilities/randomId';
+import Button from "~/components/basic/buttons/Button";
+import AddProjectMemberDialog from "~/components/basic/dialog/AddProjectMemberDialog";
+import UserTable from "~/components/basic/table/UserTable";
+import NavHeader from "~/components/navigation/NavHeader";
+import guidGenerator from "~/utilities/randomId";
+import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
 import getOrganizationUsers from '../api/organization/GetOrgUsers';
 import getUser from '../api/user/getUser';
@@ -34,6 +36,8 @@ export default function Users() {
   let [email, setEmail] = useState('');
   const [personalEmail, setPersonalEmail] = useState('');
   const [searchUsers, setSearchUsers] = useState('');
+
+  const { t } = useTranslation();
 
   const router = useRouter();
   let workspaceId;
@@ -124,14 +128,21 @@ export default function Users() {
   return userList ? (
     <div className="bg-bunker-800 md:h-screen flex flex-col justify-start">
       <Head>
-        <title>Users</title>
+        <title>
+          {t("common:head-title", { title: t("settings-members:title") })}
+        </title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      <NavHeader pageName="Project Members" isProjectRelated={true} />
+      <NavHeader
+        pageName={t("settings-members:title")}
+        isProjectRelated={true}
+      />
       <div className="flex flex-col justify-start items-start px-6 py-6 pb-4 text-3xl">
-        <p className="font-semibold mr-4 text-white">Project Members</p>
+        <p className="font-semibold mr-4 text-white">
+          {t("settings-members:title")}
+        </p>
         <p className="mr-4 text-base text-gray-400">
-          This pages shows the members of the selected project.
+          {t("settings-members:description")}
         </p>
       </div>
       <AddProjectMemberDialog
@@ -159,12 +170,12 @@ export default function Users() {
             className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
             value={searchUsers}
             onChange={(e) => setSearchUsers(e.target.value)}
-            placeholder={'Search members...'}
+            placeholder={t("section-members:search-members")}
           />
         </div>
         <div className="mt-2 ml-2 min-w-max flex flex-row items-start justify-start mr-4">
           <Button
-            text="Add Member"
+            text={t("section-members:add-member")}
             onButtonPressed={openAddModal}
             color="mineshaft"
             size="md"
@@ -201,3 +212,9 @@ export default function Users() {
 }
 
 Users.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps([
+  "settings",
+  "settings-members",
+  "section-members",
+]);
