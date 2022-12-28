@@ -1,22 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mongodb-deployment 
+  name: {{ include "infisical.mongodb.fullname" . }}
   labels:
-    app: mongodb
+    {{- include "infisical.mongodb.labels" . | nindent 4 }}
 spec:
   replicas: 1 # Cannot be scaled. To scale, you must set up Stateful Set
   selector:
     matchLabels:
-      app: mongodb 
+      {{- include "infisical.mongodb.matchLabels" . | nindent 6 }}
   template:
     metadata: 
       labels:
-        app: mongodb 
+        {{- include "infisical.mongodb.matchLabels" . | nindent 8 }}
     spec:
       containers:
-      - name: mongodb 
-        image: mongo
+      - name: {{ template "infisical.name" . }}-{{ .Values.mongodb.name }}  
+        image: "{{ .Values.mongodb.image.repository }}:{{ .Values.mongodb.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
         ports: 
         - containerPort: 27017
         env:
@@ -28,10 +29,12 @@ spec:
 apiVersion: v1
 kind: Service 
 metadata:
-  name: mongodb-service
+  name: {{ include "infisical.mongodb.fullname" . }}
+  labels:
+    {{- include "infisical.mongodb.labels" . | nindent 4 }}
 spec:
   selector:
-    app: mongodb 
+    {{- include "infisical.mongodb.matchLabels" . | nindent 8 }}
   ports:
     - protocol: TCP
       port: 27017

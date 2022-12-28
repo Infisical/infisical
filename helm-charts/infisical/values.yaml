@@ -3,7 +3,10 @@
 # PLEASE REPLACE VALUES/EDIT AS REQUIRED 
 #####
 
+nameOverride: ""
+
 frontend:
+  name: frontend
   replicaCount: 1
   image:
     repository: infisical/frontend
@@ -17,12 +20,20 @@ frontend:
     # nodePort: 
 
 backend:
+  name: backend
   replicaCount: 1
   image:
     repository: infisical/backend
     pullPolicy: IfNotPresent
     tag: "latest"
     # kubeSecretRef: some-kube-secret-name
+
+mongodb:
+  name: mongodb
+  image:
+    repository: mongo
+    pullPolicy: IfNotPresent
+    tag: "latest"
 
 ingress:
   enabled: true
