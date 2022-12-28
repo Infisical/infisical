@@ -54,6 +54,7 @@ jobs:
           context: backend
           tags: ${{ steps.meta.outputs.tags }}
           platforms: linux/amd64,linux/arm64
+          labels: ${{ steps.meta.outputs.labels }}
 
   frontend-image:
     name: Build frontend image
@@ -101,5 +102,6 @@ jobs:
           context: frontend
           tags: ${{ steps.meta.outputs.tags }}
           platforms: linux/amd64,linux/arm64
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
