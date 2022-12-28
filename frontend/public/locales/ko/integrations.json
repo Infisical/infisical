@@ -5,5 +5,12 @@
   "description": "외부 서비스와 함께 Infisical을 연동하고 관리하세요",
   "no-integrations1": "연동된 서비스가 없어요. 연동하게 된다면 이곳에서 표시돼요.",
   "no-integrations2": "시작하려면, 아래의 옵션을 클릭하세요. 대체로 5분 이내로 가능해요.",
-  "title": "프로젝트 연동"
+  "title": "프로젝트 연동",
+  "cloud-integrations": "Cloud Integrations",
+  "framework-integrations": "Framework Integrations",
+  "click-to-start": "Click on an integration to begin syncing secrets to it.",
+  "click-to-setup": "Click on a framework to get the setup instructions.",
+  "grant-access-to-secrets": "Grant Infisical access to your secrets",
+  "why-infisical-needs-access": "Most cloud integrations require Infisical to be able to decrypt your secrets so they can be forwarded over.",
+  "grant-access-button": "Grant access"
 }
