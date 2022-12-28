@@ -41,6 +41,7 @@ kind: Service
 metadata:
   name: infisical-frontend-service 
 spec:
+  type: {{ .Values.frontend.service.type }}
   selector:
     app: frontend 
   ports:

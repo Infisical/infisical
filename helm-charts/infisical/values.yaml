@@ -10,7 +10,8 @@ frontend:
     pullPolicy: IfNotPresent
     tag: "latest"
     # kubeSecretRef: some-kube-secret-name
-
+  service:
+    type: ClusterIP
 
 backend:
   replicaCount: 1
