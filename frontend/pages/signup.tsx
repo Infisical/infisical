@@ -341,7 +341,7 @@ export default function SignUp() {
         />
       </div>
       {codeError && <Error text={t("signup:step2-code-error")} />}
-      <div className="flex max-w-min flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
+      <div className="flex max-w-max min-w-28 flex-col items-center justify-center md:p-2 max-h-24 mx-auto text-lg px-4 mt-4 mb-2">
         <Button
           text={t("signup:verify") ?? ""}
           onButtonPressed={incrementStep}

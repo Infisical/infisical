@@ -10,11 +10,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Button from "~/components/basic/buttons/Button";
 import Error from "~/components/basic/Error";
 import InputField from "~/components/basic/InputField";
+import ListBox from "~/components/basic/Listbox";
 import { getTranslatedStaticProps } from "~/components/utilities/withTranslateProps";
 import attemptLogin from "~/utilities/attemptLogin";
 
 import getWorkspaces from "./api/workspace/getWorkspaces";
-import ListBox from "~/components/basic/Listbox";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -155,7 +155,7 @@ export default function Login() {
           </Link>
         </div>
       </form>
-      <div className="mt-4 flex items-center justify-center w-full">
+      <div className="absolute right-4 top-0 mt-4 flex items-center justify-center">
         <div className="w-48 mx-auto">
           <ListBox
             selected={lang}

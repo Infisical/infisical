@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
+import { useTranslation } from "next-i18next";
 import {
   faArrowDownAZ,
   faArrowDownZA,
@@ -26,6 +27,7 @@ import SideBar from '~/components/dashboard/SideBar';
 import NavHeader from '~/components/navigation/NavHeader';
 import getSecretsForProject from '~/components/utilities/secrets/getSecretsForProject';
 import pushKeys from '~/components/utilities/secrets/pushKeys';
+import { getTranslatedServerSideProps } from '~/components/utilities/withTranslateProps';
 import guidGenerator from '~/utilities/randomId';
 
 import { envMapping } from '../../public/data/frequentConstants';
@@ -91,6 +93,7 @@ export default function Dashboard() {
   const [sidebarSecretId, toggleSidebar] = useState("None");
   const [sharedToHide, setSharedToHide] = useState<string[]>([]);
 
+  const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
 
   // #TODO: fix save message for changing reroutes
@@ -416,14 +419,11 @@ export default function Dashboard() {
   return data ? (
     <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
       <Head>
-        <title>Secrets</title>
+        <title>{t("common:head-title", { title: t("dashboard:title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content="Manage your .env files in seconds" />
-        <meta
-          name="og:description"
-          content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
-        />
+        <meta property="og:title" content={t("dashboard:og-title")} />
+        <meta name="og:description" content={t("dashboard:og-description")} />
       </Head>
       <div className="flex flex-row">
         {sidebarSecretId != "None" && <SideBar 
@@ -440,21 +440,21 @@ export default function Dashboard() {
           setSharedToHide={setSharedToHide}
         />}
         <div className="w-full max-h-96 pb-2">
-          <NavHeader pageName="Secrets" isProjectRelated={true} />
+          <NavHeader pageName={t("dashboard:title")} isProjectRelated={true} />
           {checkDocsPopUpVisible && (
             <BottonRightPopup
-              buttonText="Check Docs"
+              buttonText={t("dashboard:check-docs.button")}
               buttonLink="https://infisical.com/docs/getting-started/introduction"
-              titleText="Good job!"
+              titleText={t("dashboard:check-docs.title")}
               emoji="🎉"
-              textLine1="Congrats on adding more secrets."
-              textLine2="Here is how to connect them to your codebase."
+              textLine1={t("dashboard:check-docs.line1")}
+              textLine2={t("dashboard:check-docs.line2")}
               setCheckDocsPopUpVisible={setCheckDocsPopUpVisible}
             />
           )}
           <div className="flex flex-row justify-between items-center mx-6 mt-6 mb-3 text-xl max-w-5xl">
             <div className="flex flex-row justify-start items-center text-3xl">
-              <p className="font-semibold mr-4 mt-1">Secrets</p>
+              <p className="font-semibold mr-4 mt-1">{t("dashboard:title")}</p>
               {data?.length == 0 && (
                 <ListBox
                   selected={env}
@@ -465,7 +465,9 @@ export default function Dashboard() {
             </div>
             <div className="flex flex-row">
               <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400">
-                <p className="mr-2 font-bold pl-4">Project ID:</p>
+                <p className="mr-2 font-bold pl-4">{`${t(
+                  "common:project-id"
+                )}:`}</p>
                 <input
                   type="text"
                   value={workspaceId}
@@ -485,20 +487,20 @@ export default function Dashboard() {
                     )}
                   </button>
                   <span className="absolute hidden group-hover:flex group-hover:animate-popup duration-300 w-28 -left-8 -top-20 translate-y-full pl-3 py-2 bg-white/10 rounded-md text-center text-gray-400 text-sm">
-                    Click to Copy
+                    {t("common:click-to-copy")}
                   </span>
                 </div>
               </div>
               {(data?.length !== 0 || buttonReady) && (
                 <div className={`flex justify-start max-w-sm mt-2`}>
                   <Button
-                    text="Save Changes"
+                    text={t("common:save-changes")}
                     onButtonPressed={savePush}
                     color="primary"
                     size="md"
                     active={buttonReady}
                     iconDisabled={faCheck}
-                    textDisabled="Saved"
+                    textDisabled={t("common:saved")}
                   />
                 </div>
               )}
@@ -523,7 +525,7 @@ export default function Dashboard() {
                         className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
                         value={searchKeys}
                         onChange={(e) => setSearchKeys(e.target.value)}
-                        placeholder={'Search keys...'}
+                        placeholder={t("dashboard:search-keys")}
                       />
                     </div>
                     <div className="ml-2 min-w-max flex flex-row items-start justify-start">
@@ -556,7 +558,7 @@ export default function Dashboard() {
                     </div>
                     <div className="relative ml-2 min-w-max flex flex-row items-start justify-end">
                       <Button
-                        text="Add Key"
+                        text={t("dashboard:add-key")}
                         onButtonPressed={addRow}
                         color="mineshaft"
                         icon={faPlus}
@@ -656,3 +658,5 @@ export default function Dashboard() {
 }
 
 Dashboard.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps(["dashboard"]);
