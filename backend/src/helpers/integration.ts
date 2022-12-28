@@ -7,8 +7,6 @@ import {
 import { exchangeCode, exchangeRefresh, syncSecrets } from '../integrations';
 import { BotService } from '../services';
 import {
-    ENV_DEV,
-    EVENT_PUSH_SECRETS,
     INTEGRATION_VERCEL,
     INTEGRATION_NETLIFY
 } from '../variables';
@@ -36,11 +34,13 @@ interface Update {
 const handleOAuthExchangeHelper = async ({
     workspaceId,
     integration,
-    code
+    code,
+    environment
 }: {
     workspaceId: string;
     integration: string;
     code: string;
+    environment: string;
 }) => {
     let action;
     let integrationAuth;
@@ -102,9 +102,9 @@ const handleOAuthExchangeHelper = async ({
         // initialize new integration after exchange
         await new Integration({
             workspace: workspaceId,
-            environment: ENV_DEV,
             isActive: false,
             app: null,
+            environment,
             integration,
             integrationAuth: integrationAuth._id
         }).save();

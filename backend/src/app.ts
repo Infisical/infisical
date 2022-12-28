@@ -46,6 +46,7 @@ import {
   workspace as v2WorkspaceRouter,
   serviceTokenData as v2ServiceTokenDataRouter,
   apiKeyData as v2APIKeyDataRouter,
+  environment as v2EnvironmentRouter,
 } from './routes/v2';
 
 import { healthCheck } from './routes/status';
@@ -108,6 +109,7 @@ app.use('/api/v2/secret', v2SecretRouter); // stop supporting, TODO: revise
 app.use('/api/v2/secrets', v2SecretsRouter);
 app.use('/api/v2/service-token', v2ServiceTokenDataRouter); // TODO: turn into plural route
 app.use('/api/v2/api-key-data', v2APIKeyDataRouter);
+app.use('/api/v2/environments', v2EnvironmentRouter);
 
 // api docs 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile))
