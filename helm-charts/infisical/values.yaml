@@ -6,7 +6,7 @@
 frontend:
   replicaCount: 1
   image:
-    repository: 
+    repository: infisical/frontend
     pullPolicy: IfNotPresent
     tag: "latest"
     # kubeSecretRef: some-kube-secret-name
@@ -15,7 +15,7 @@ frontend:
 backend:
   replicaCount: 1
   image:
-    repository: 
+    repository: infisical/backend
     pullPolicy: IfNotPresent
     tag: "latest"
     # kubeSecretRef: some-kube-secret-name

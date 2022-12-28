@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: frontend 
-        image: infisical/frontend
+        image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
         {{- if .Values.frontend.kubeSecretRef }}
         envFrom:

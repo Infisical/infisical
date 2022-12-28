@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: backend 
-        image: infisical/backend
+        image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
         ports: 
         - containerPort: 4000
