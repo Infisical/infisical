@@ -13,6 +13,10 @@ spec:
     metadata: 
       labels:
         {{- include "infisical.mongodb.matchLabels" . | nindent 8 }}
+      {{- with .Values.mongodb.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
       containers:
       - name: {{ template "infisical.name" . }}-{{ .Values.mongodb.name }}  
@@ -32,6 +36,10 @@ metadata:
   name: {{ include "infisical.mongodb.fullname" . }}
   labels:
     {{- include "infisical.mongodb.labels" . | nindent 4 }}
+  {{- with .Values.mongodb.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   selector:
     {{- include "infisical.mongodb.matchLabels" . | nindent 8 }}

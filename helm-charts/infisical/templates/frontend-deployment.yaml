@@ -13,6 +13,10 @@ spec:
     metadata: 
       labels:
         {{- include "infisical.frontend.matchLabels" . | nindent 8 }}
+      {{- with .Values.frontend.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
       containers:
       - name: {{ template "infisical.name" . }}-{{ .Values.frontend.name }}
@@ -42,6 +46,10 @@ metadata:
   name: {{ include "infisical.frontend.fullname" . }}
   labels:
     {{- include "infisical.frontend.labels" . | nindent 4 }}
+  {{- with .Values.frontend.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.frontend.service.type }}
   selector:
