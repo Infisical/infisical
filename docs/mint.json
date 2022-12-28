@@ -166,7 +166,8 @@
         "integrations/frameworks/django",
         "integrations/frameworks/flask",
         "integrations/frameworks/laravel",
-        "integrations/frameworks/rails"
+        "integrations/frameworks/rails",
+        "integrations/frameworks/dotnet"
       ]
     },
     {

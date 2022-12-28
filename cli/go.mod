@@ -13,6 +13,7 @@ require (
 
 require (
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
+	github.com/Luzifer/go-openssl/v4 v4.1.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/danieljoos/wincred v1.1.2 // indirect
@@ -34,6 +35,7 @@ require (
 )
 
 require (
+	github.com/Luzifer/go-openssl v2.0.0+incompatible
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/jedib0t/go-pretty v4.3.0+incompatible
