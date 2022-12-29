@@ -62,7 +62,7 @@ component: {{ .Values.mongodb.name | quote }}
 {{- end -}}
 
 {{/*
-Create a fully qualified backend proxy name.
+Create a fully qualified backend name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
 {{- define "infisical.backend.fullname" -}}
@@ -79,7 +79,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end -}}
 
 {{/*
-Create a fully qualified frontend manager name.
+Create a fully qualified frontend name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
 {{- define "infisical.frontend.fullname" -}}
@@ -96,7 +96,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end -}}
 
 {{/*
-Create a fully qualified mongodb collector name.
+Create a fully qualified mongodb name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
 {{- define "infisical.mongodb.fullname" -}}
