@@ -102,17 +102,6 @@ export default function Dashboard() {
     };
   }, [buttonReady]);
 
-  /**
-   * Reorder rows alphabetically or in the opprosite order
-   */
-  const reorderRows = (dataToReorder) => {
-    setSortMethod((prevSort) =>
-      prevSort == 'alphabetical' ? '-alphabetical' : 'alphabetical'
-    );
-
-    sortValuesHandler(dataToReorder);
-  };
-
   useEffect(() => {
     (async () => {
       try {
@@ -157,6 +146,17 @@ export default function Dashboard() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [env]);
+
+  /**
+  * Reorder rows alphabetically or in the opprosite order
+  */
+  const reorderRows = (dataToReorder) => {
+    setSortMethod((prevSort) =>
+      prevSort == 'alphabetical' ? '-alphabetical' : 'alphabetical'
+    );
+
+    sortValuesHandler(dataToReorder);
+  };
 
   const addRow = () => {
     setIsNew(false);
