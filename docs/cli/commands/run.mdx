@@ -34,3 +34,4 @@ Inject environment variables from the platform into an application process.
 | `--projectId`  | Used to link a local project to the platform (required only if injecting via the service token method)      | None        |
 | `--expand`     | Parse shell parameter expansions in your secrets (e.g., `${DOMAIN}`)      | `true`        |
 | `--command`    | Pass secrets into chained commands (e.g., `"first-command && second-command; more-commands..."`)      | None        |
+| `--secret-overriding`|  Prioritizes personal secrets with the same name over shared secrets      | `true`        |

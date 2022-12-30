@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useRouter } from "next/router";
+import { appWithTranslation } from "next-i18next";
 import { config } from "@fortawesome/fontawesome-svg-core";
 
 import Layout from "~/components/basic/Layout";
@@ -15,6 +16,15 @@ config.autoAddCss = false;
 
 const App = ({ Component, pageProps, ...appProps }) => {
   const router = useRouter();
+
+  useEffect(() => {
+    const storedLang = localStorage.getItem("lang");
+    if (router.locale ?? "en" !== storedLang ?? "en") {
+      router.push(router.asPath, router.asPath, {
+        locale: storedLang ?? "en",
+      });
+    }
+  }, [router.locale, router.pathname]);
 
   useEffect(() => {
     // Init for auto capturing
@@ -52,7 +62,7 @@ const App = ({ Component, pageProps, ...appProps }) => {
   );
 };
 
-export default App;
+export default appWithTranslation(App);
 
 {
   /* <Script

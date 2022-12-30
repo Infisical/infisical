@@ -1,7 +1,6 @@
 import React from "react";
 import Image from "next/image";
-import { faFolderOpen } from "@fortawesome/free-regular-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
 export default function NoProjects() {
   return (
@@ -31,3 +30,5 @@ export default function NoProjects() {
 }
 
 NoProjects.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps(["noprojects"]);

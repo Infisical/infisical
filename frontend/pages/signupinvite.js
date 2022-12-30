@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -159,8 +159,17 @@ export default function SignupInvite() {
               code: token
             });
             if (response.status == 200) {
-              setVerificationToken((await response.json()).token);
-              setStep(2);
+              const res = await response.json();
+              // user will have temp token if doesn't have an account
+              // then continue with account setup workflow
+              if(res?.token){
+                setVerificationToken(res.token);
+                setStep(2);
+              } else {
+                // user will be redirected to dashboard
+                // if not logged in gets kicked out to login 
+                router.push("/dashboard")
+              }
             } else {
               console.log('ERROR', response);
               router.push('/requestnewinvite');

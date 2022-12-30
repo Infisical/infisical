@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { IconProp } from '@fortawesome/fontawesome-svg-core';
@@ -13,10 +13,12 @@ import {
   faUserPlus
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useTranslation } from "next-i18next";
 
 import onboardingCheck from '~/components/utilities/checks/OnboardingCheck';
 
 import registerUserAction from '../api/userActions/registerUserAction';
+import { getTranslatedServerSideProps } from '~/components/utilities/withTranslateProps';
 
 type ItemProps = {
   text: string;
@@ -139,6 +141,8 @@ export default function Home() {
   const [hasUserPushedSecrets, setHasUserPushedSecrets] = useState(false);
   const [usersInOrg, setUsersInOrg] = useState(false);
 
+  const { t } = useTranslation();
+
   useEffect(() => {
     onboardingCheck({
       setHasUserClickedIntro,
@@ -226,3 +230,5 @@ export default function Home() {
 }
 
 Home.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps(["home"]);

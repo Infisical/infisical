@@ -1,12 +1,7 @@
 import { Fragment } from "react";
+import { useTranslation } from "next-i18next";
 import { Dialog, Transition } from "@headlessui/react";
 
-import setBotActiveStatus from "../../../pages/api/bot/setBotActiveStatus";
-import getLatestFileKey from "../../../pages/api/workspace/getLatestFileKey";
-import { 
-    decryptAssymmetric,
-    encryptAssymmetric
-} from "../../utilities/cryptography/crypto";
 import Button from "../buttons/Button";
 
 const ActivateBotDialog = ({
@@ -16,6 +11,7 @@ const ActivateBotDialog = ({
     handleBotActivate,
     handleIntegrationOption
 }) => {
+    const { t } = useTranslation();
     
     const submit = async () => {
         try {
@@ -64,18 +60,18 @@ const ActivateBotDialog = ({
                                     as="h3"
                                     className="text-lg font-medium leading-6 text-gray-400"
                                 >
-                                    Grant Infisical access to your secrets
+                                    {t("integrations:grant-access-to-secrets")}
                                 </Dialog.Title>
                                 <div className="mt-2 mb-2">
                                     <p className="text-sm text-gray-500">
-                                        Most cloud integrations require Infisical to be able to decrypt your secrets so they can be forwarded over.
+                                        {t("integrations:why-infisical-needs-access")}
                                     </p>
                                 </div>
                                 <div className="mt-6 max-w-max">
                                     <Button 
                                         onButtonPressed={submit}
                                         color="mineshaft"
-                                        text="Grant access"
+                                        text={t("integrations:grant-access-button")}
                                         size="md"
                                     />
                                 </div>

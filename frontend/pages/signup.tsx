@@ -1,71 +1,73 @@
-import React, { useEffect, useState } from 'react';
-import ReactCodeInput from 'react-code-input';
-import Head from 'next/head';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { faCheck, faWarning, faX } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useEffect, useState } from "react";
+import ReactCodeInput from "react-code-input";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { useTranslation } from "next-i18next";
+import { faCheck, faWarning, faX } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import Button from '~/components/basic/buttons/Button';
-import Error from '~/components/basic/Error';
-import InputField from '~/components/basic/InputField';
-import Aes256Gcm from '~/components/utilities/cryptography/aes-256-gcm';
-import issueBackupKey from '~/components/utilities/cryptography/issueBackupKey';
-import attemptLogin from '~/utilities/attemptLogin';
-import passwordCheck from '~/utilities/checks/PasswordCheck';
+import Button from "~/components/basic/buttons/Button";
+import Error from "~/components/basic/Error";
+import InputField from "~/components/basic/InputField";
+import Aes256Gcm from "~/components/utilities/cryptography/aes-256-gcm";
+import issueBackupKey from "~/components/utilities/cryptography/issueBackupKey";
+import { getTranslatedStaticProps } from "~/components/utilities/withTranslateProps";
+import attemptLogin from "~/utilities/attemptLogin";
+import passwordCheck from "~/utilities/checks/PasswordCheck";
 
-import checkEmailVerificationCode from './api/auth/CheckEmailVerificationCode';
-import completeAccountInformationSignup from './api/auth/CompleteAccountInformationSignup';
-import sendVerificationEmail from './api/auth/SendVerificationEmail';
-import getWorkspaces from './api/workspace/getWorkspaces';
+import checkEmailVerificationCode from "./api/auth/CheckEmailVerificationCode";
+import completeAccountInformationSignup from "./api/auth/CompleteAccountInformationSignup";
+import sendVerificationEmail from "./api/auth/SendVerificationEmail";
+import getWorkspaces from "./api/workspace/getWorkspaces";
 
 // const ReactCodeInput = dynamic(import("react-code-input"));
-const nacl = require('tweetnacl');
-const jsrp = require('jsrp');
-nacl.util = require('tweetnacl-util');
+const nacl = require("tweetnacl");
+const jsrp = require("jsrp");
+nacl.util = require("tweetnacl-util");
 const client = new jsrp.client();
 
 // The stye for the verification code input
 const props = {
   inputStyle: {
-    fontFamily: 'monospace',
-    margin: '4px',
-    MozAppearance: 'textfield',
-    width: '55px',
-    borderRadius: '5px',
-    fontSize: '24px',
-    height: '55px',
-    paddingLeft: '7',
-    backgroundColor: '#0d1117',
-    color: 'white',
-    border: '1px solid gray',
-    textAlign: 'center',
+    fontFamily: "monospace",
+    margin: "4px",
+    MozAppearance: "textfield",
+    width: "55px",
+    borderRadius: "5px",
+    fontSize: "24px",
+    height: "55px",
+    paddingLeft: "7",
+    backgroundColor: "#0d1117",
+    color: "white",
+    border: "1px solid gray",
+    textAlign: "center",
   },
 } as const;
 const propsPhone = {
   inputStyle: {
-    fontFamily: 'monospace',
-    margin: '4px',
-    MozAppearance: 'textfield',
-    width: '40px',
-    borderRadius: '5px',
-    fontSize: '24px',
-    height: '40px',
-    paddingLeft: '7',
-    backgroundColor: '#0d1117',
-    color: 'white',
-    border: '1px solid gray',
-    textAlign: 'center',
+    fontFamily: "monospace",
+    margin: "4px",
+    MozAppearance: "textfield",
+    width: "40px",
+    borderRadius: "5px",
+    fontSize: "24px",
+    height: "40px",
+    paddingLeft: "7",
+    backgroundColor: "#0d1117",
+    color: "white",
+    border: "1px solid gray",
+    textAlign: "center",
   },
 } as const;
 
 export default function SignUp() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [code, setCode] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState(false);
   const [firstNameError, setFirstNameError] = useState(false);
   const [lastNameError, setLastNameError] = useState(false);
@@ -76,23 +78,26 @@ export default function SignUp() {
   const [passwordErrorSpecialChar, setPasswordErrorSpecialChar] =
     useState(false);
   const [emailError, setEmailError] = useState(false);
-  const [emailErrorMessage, setEmailErrorMessage] = useState('');
+  const [emailErrorMessage, setEmailErrorMessage] = useState("");
   const [step, setStep] = useState(1);
   const router = useRouter();
   const [errorLogin, setErrorLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isResendingVerificationEmail, setIsResendingVerificationEmail] = useState(false);
+  const [isResendingVerificationEmail, setIsResendingVerificationEmail] =
+    useState(false);
   const [backupKeyError, setBackupKeyError] = useState(false);
-  const [verificationToken, setVerificationToken] = useState('');
+  const [verificationToken, setVerificationToken] = useState("");
   const [backupKeyIssued, setBackupKeyIssued] = useState(false);
+
+  const { t } = useTranslation();
 
   useEffect(() => {
     const tryAuth = async () => {
       try {
         const userWorkspaces = await getWorkspaces();
-        router.push('/dashboard/' + userWorkspaces[0]._id);
+        router.push("/dashboard/" + userWorkspaces[0]._id);
       } catch (error) {
-        console.log('Error - Not logged in yet');
+        console.log("Error - Not logged in yet");
       }
     };
     tryAuth();
@@ -110,7 +115,7 @@ export default function SignUp() {
     } else if (step == 2) {
       // Checking if the code matches the email.
       const response = await checkEmailVerificationCode({ email, code });
-      if (response.status === 200 || code == '111222') {
+      if (response.status === 200 || code == "111222") {
         setVerificationToken((await response.json()).token);
         setStep(3);
       } else {
@@ -128,15 +133,15 @@ export default function SignUp() {
     let emailCheckBool = false;
     if (!email) {
       setEmailError(true);
-      setEmailErrorMessage('Please enter your email.');
+      setEmailErrorMessage("Please enter your email.");
       emailCheckBool = true;
     } else if (
-      !email.includes('@') ||
-      !email.includes('.') ||
+      !email.includes("@") ||
+      !email.includes(".") ||
       !/[a-z]/.test(email)
     ) {
       setEmailError(true);
-      setEmailErrorMessage('Please enter a valid email.');
+      setEmailErrorMessage("Please enter a valid email.");
       emailCheckBool = true;
     } else {
       setEmailError(false);
@@ -188,11 +193,11 @@ export default function SignUp() {
           .slice(0, 32)
           .padStart(
             32 + (password.slice(0, 32).length - new Blob([password]).size),
-            '0',
+            "0"
           ),
       }) as { ciphertext: string; iv: string; tag: string };
 
-      localStorage.setItem('PRIVATE_KEY', PRIVATE_KEY);
+      localStorage.setItem("PRIVATE_KEY", PRIVATE_KEY);
 
       client.init(
         {
@@ -206,7 +211,7 @@ export default function SignUp() {
                 email,
                 firstName,
                 lastName,
-                organizationName: firstName + '\'s organization',
+                organizationName: firstName + "'s organization",
                 publicKey: PUBLIC_KEY,
                 ciphertext,
                 iv,
@@ -220,10 +225,10 @@ export default function SignUp() {
               if (response.status === 200) {
                 // response = await response.json();
 
-                localStorage.setItem('publicKey', PUBLIC_KEY);
-                localStorage.setItem('encryptedPrivateKey', ciphertext);
-                localStorage.setItem('iv', iv);
-                localStorage.setItem('tag', tag);
+                localStorage.setItem("publicKey", PUBLIC_KEY);
+                localStorage.setItem("encryptedPrivateKey", ciphertext);
+                localStorage.setItem("iv", iv);
+                localStorage.setItem("tag", tag);
 
                 try {
                   await attemptLogin(
@@ -232,16 +237,16 @@ export default function SignUp() {
                     setErrorLogin,
                     router,
                     true,
-                    false,
+                    false
                   );
                   incrementStep();
                 } catch (error) {
                   setIsLoading(false);
                 }
               }
-            },
+            }
           );
-        },
+        }
       );
     } else {
       setIsLoading(false);
@@ -284,8 +289,7 @@ export default function SignUp() {
           </div> */}
         <div className="flex flex-col items-center justify-center w-5/6 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto mt-4 md:mt-4 text-sm text-center md:text-left">
           <p className="text-gray-400 mt-2 md:mx-0.5">
-            By creating an account, you agree to our Terms and have read and
-            acknowledged the Privacy Policy.
+            {t("signup:step1-privacy")}
           </p>
           <div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
             <Button text="Get Started" type="submit" onButtonPressed={emailCheck} size="lg" />
@@ -296,7 +300,7 @@ export default function SignUp() {
         <Link href="/login">
           <button type="button" className="w-max pb-3 hover:opacity-90 duration-200">
             <u className="font-normal text-sm text-primary-500">
-              Have an account? Log in
+              {t("signup:already-have-account")}
             </u>
           </button>
         </Link>
@@ -309,10 +313,10 @@ export default function SignUp() {
   const step2 = (
     <div className="bg-bunker w-max mx-auto h-7/12 pt-10 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-16">
       <p className="text-l flex justify-center text-gray-400">
-        {'We\'ve'} sent a verification email to{' '}
+        {"We've"} sent a verification email to{" "}
       </p>
       <p className="text-l flex justify-center font-semibold my-2 text-gray-400">
-        {email}{' '}
+        {email}{" "}
       </p>
       <div className="hidden md:block">
         <ReactCodeInput
@@ -336,11 +340,13 @@ export default function SignUp() {
           className="mt-2 mb-6"
         />
       </div>
-      {codeError && (
-        <Error text="Oops. Your code is wrong. Please try again." />
-      )}
-      <div className="flex max-w-min flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
-        <Button text="Verify" onButtonPressed={incrementStep} size="lg" />
+      {codeError && <Error text={t("signup:step2-code-error")} />}
+      <div className="flex max-w-max min-w-28 flex-col items-center justify-center md:p-2 max-h-24 mx-auto text-lg px-4 mt-4 mb-2">
+        <Button
+          text={t("signup:verify") ?? ""}
+          onButtonPressed={incrementStep}
+          size="lg"
+        />
       </div>
       <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
         <div className="flex flex-row items-baseline gap-1 text-sm">
@@ -349,12 +355,12 @@ export default function SignUp() {
           </span>
           <u className={`font-normal ${isResendingVerificationEmail ? 'text-gray-400' : 'text-primary-500 hover:opacity-90 duration-200'}`}>
             <button disabled={isLoading} onClick={resendVerificationEmail}>
-              {isResendingVerificationEmail ? 'Resending...' : 'Resend'}
+              {isResendingVerificationEmail ? "Resending..." : "Resend"}
             </button>
           </u>
         </div>
         <p className="text-sm text-gray-500 pb-2">
-          Make sure to check your spam inbox.
+          {t("signup:step2-spam-alert")}
         </p>
       </div>
     </div>
@@ -364,35 +370,43 @@ export default function SignUp() {
   const step3 = (
     <div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-36 md:mb-16">
       <p className="text-4xl font-bold flex justify-center mb-6 text-gray-400 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-        Almost there!
+        {t("signup:step3-message")}
       </p>
       <div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">
         <InputField
-          label="First Name"
+          label={t("common:first-name")}
           onChangeHandler={setFirstName}
           type="name"
           value={firstName}
           isRequired
-          errorText="Please input your first name."
+          errorText={
+            t("common:validate-required", {
+              name: t("common:first-name"),
+            }) as string
+          }
           error={firstNameError}
           autoComplete="given-name"
         />
       </div>
       <div className="mt-2 flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
         <InputField
-          label="Last Name"
+          label={t("common:last-name")}
           onChangeHandler={setLastName}
           type="name"
           value={lastName}
           isRequired
-          errorText="Please input your last name."
+          errorText={
+            t("common:validate-required", {
+              name: t("common:last-name"),
+            }) as string
+          }
           error={lastNameError}
           autoComplete="family-name"
         />
       </div>
       <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
         <InputField
-          label="Password"
+          label={t("section-password:password")}
           onChangeHandler={(password: string) => {
             setPassword(password);
             passwordCheck({
@@ -417,7 +431,7 @@ export default function SignUp() {
         passwordErrorNumber ? (
           <div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
             <div className={`text-gray-400 text-sm mb-1`}>
-              Password should contain at least:
+              {t("section-password:validate-base")}
             </div>
             <div className="flex flex-row justify-start items-center ml-1">
               {passwordErrorLength ? (
@@ -433,10 +447,10 @@ export default function SignUp() {
               )}
               <div
                 className={`${
-                  passwordErrorLength ? 'text-gray-400' : 'text-gray-600'
+                  passwordErrorLength ? "text-gray-400" : "text-gray-600"
                 } text-sm`}
               >
-                14 characters
+                {t("section-password:validate-length")}
               </div>
             </div>
             <div className="flex flex-row justify-start items-center ml-1">
@@ -453,10 +467,10 @@ export default function SignUp() {
               )}
               <div
                 className={`${
-                  passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'
+                  passwordErrorLowerCase ? "text-gray-400" : "text-gray-600"
                 } text-sm`}
               >
-                1 lowercase character
+                {t("section-password:validate-case")}
               </div>
             </div>
             <div className="flex flex-row justify-start items-center ml-1">
@@ -473,10 +487,10 @@ export default function SignUp() {
               )}
               <div
                 className={`${
-                  passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'
+                  passwordErrorNumber ? "text-gray-400" : "text-gray-600"
                 } text-sm`}
               >
-                1 number
+                {t("section-password:validate-number")}
               </div>
             </div>
           </div>
@@ -486,7 +500,7 @@ export default function SignUp() {
       </div>
       <div className="flex flex-col items-center justify-center md:p-2 max-h-48 max-w-max mx-auto text-lg px-2 py-3">
         <Button
-          text="Sign Up"
+          text={t("signup:signup") ?? ""}
           loading={isLoading}
           onButtonPressed={signupErrorCheck}
           size="lg"
@@ -499,21 +513,15 @@ export default function SignUp() {
   const step4 = (
     <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg mx-auto h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
       <p className="text-4xl text-center font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
-        Save your Emergency Kit
+        {t("signup:step4-message")}
       </p>
       <div className="flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2">
-        <div>
-          If you get locked out of your account, your Emergency Kit is the only
-          way to sign in.
-        </div>
-        <div className="mt-3">
-          We recommend you download it and keep it somewhere safe.
-        </div>
+        <div>{t("signup:step4-description1")}</div>
+        <div className="mt-3">{t("signup:step4-description2")}</div>
       </div>
       <div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-400 rounded-md max-w-xs md:max-w-md mx-auto mt-4">
         <FontAwesomeIcon icon={faWarning} className="ml-2 mr-4 text-4xl" />
-        It contains your Secret Key which we cannot access or recover for you if
-        you lose it.
+        {t("signup:step4-description3")}
       </div>
       <div className="flex flex-col items-center justify-center md:px-4 md:py-5 mt-2 px-2 py-3 max-h-24 max-w-max mx-auto text-lg">
         <Button
@@ -522,11 +530,13 @@ export default function SignUp() {
             await issueBackupKey({
               email,
               password,
-              personalName: firstName + ' ' + lastName,
+              personalName: firstName + " " + lastName,
               setBackupKeyError,
-              setBackupKeyIssued
+              setBackupKeyIssued,
             });
-            router.push('/dashboard/');
+            const userWorkspaces = await getWorkspaces();
+            const userWorkspace = userWorkspaces[0]._id;
+            router.push("/home/" + userWorkspace);
           }}
           size="lg"
         />
@@ -549,16 +559,13 @@ export default function SignUp() {
   return (
     <div className="bg-bunker-800 h-screen flex flex-col items-center justify-center">
       <Head>
-        <title>Infiscal | Sign Up</title>
+        <title>{t("common:head-title", { title: t("signup:title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta
-          property="og:title"
-          content="Replace .env files with 1 line of code. Sign Up for Infisical in 3 minutes."
-        />
+        <meta property="og:title" content={t("signup:og-title") as string} />
         <meta
           name="og:description"
-          content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage API-keys and environemntal variables.  Works with Node.js, Next.js, Gatsby, Nest.js..."
+          content={t("signup:og-description") as string}
         />
       </Head>
       <div className="flex flex-col justify-center items-center">
@@ -579,3 +586,9 @@ export default function SignUp() {
     </div>
   );
 }
+
+export const getStaticProps = getTranslatedStaticProps([
+  "auth",
+  "signup",
+  "section-password",
+]);
