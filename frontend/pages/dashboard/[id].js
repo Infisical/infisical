@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, createContext } from 'react';
+import React, { useCallback, useEffect, useState, useRef, createContext } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
@@ -35,6 +35,7 @@ import checkUserAction from '../api/userActions/checkUserAction';
 import registerUserAction from '../api/userActions/registerUserAction';
 import getWorkspaces from '../api/workspace/getWorkspaces';
 
+import { copyToClipboard, downloadAsEnv } from "../../components/helpers/dashboard";
 
 /**
  * This is the main component for the dashboard (aka the screen with all the encironemnt variable & secrets)
@@ -43,6 +44,7 @@ import getWorkspaces from '../api/workspace/getWorkspaces';
 export const KeypairContext = createContext()
 
 export default function Dashboard() {
+  const copyTextRef = useRef()
   const [data, setData] = useState();
   const [fileState, setFileState] = useState([]);
   const [buttonReady, setButtonReady] = useState(false);
@@ -284,36 +286,10 @@ export default function Dashboard() {
     setData(sortedData);
   };
 
-  // This function downloads the secrets as a .env file
-  const download = () => {
-    const file = data
-      .map((item) => [item.key, item.value].join('='))
-      .join('\n');
-    const blob = new Blob([file]);
-    const fileDownloadUrl = URL.createObjectURL(blob);
-    let alink = document.createElement('a');
-    alink.href = fileDownloadUrl;
-    alink.download = envMapping[env] + '.env';
-    alink.click();
-  };
-
-  const deleteCertainRow = (id) => {
-    deleteRow(id);
-  };
-
-  /**
-   * This function copies the project id to the clipboard
-   */
-  function copyToClipboard() {
-    var copyText = document.getElementById('myInput');
-
-    copyText.select();
-    copyText.setSelectionRange(0, 99999); // For mobile devices
-
-    navigator.clipboard.writeText(copyText.value);
-
-    setProjectIdCopied(true);
-    setTimeout(() => setProjectIdCopied(false), 2000);
+  const copyToClipboardHandler = () => {
+    copyToClipboard(copyTextRef)
+    setProjectIdCopied(true)
+    setTimeout(() => setProjectIdCopied(false), 2000)
   }
 
   const keyPairHandlers = {
@@ -321,7 +297,7 @@ export default function Dashboard() {
     listenChangeKey,
     listenChangeVisibility,
     blurred,
-    deleteCertainRow,
+    deleteRow,
     toggleSidebar,
     sidebarSecretNumber,
   }
@@ -379,13 +355,13 @@ export default function Dashboard() {
                   <input
                     type="text"
                     value={workspaceId}
-                    id="myInput"
+                    ref={copyTextRef}
                     className="bg-white/0 text-gray-400 py-2 w-60 px-2 min-w-md outline-none"
                     disabled
                   ></input>
                   <div className="group font-normal group relative inline-block text-gray-400 underline hover:text-primary duration-200">
                     <button
-                      onClick={copyToClipboard}
+                      onClick={copyToClipboardHandler}
                       className="pl-4 pr-4 border-l border-white/20 py-2 hover:bg-white/[0.12] duration-200"
                     >
                       {projectIdCopied ? (
@@ -452,7 +428,7 @@ export default function Dashboard() {
                       </div>
                       <div className="ml-2 min-w-max flex flex-row items-start justify-start">
                         <Button
-                          onButtonPressed={download}
+                          onButtonPressed={() => downloadAsEnv(data, envMapping, env)}
                           color="mineshaft"
                           size="icon-md"
                           icon={faDownload}
