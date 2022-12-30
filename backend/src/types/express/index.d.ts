@@ -15,6 +15,7 @@ declare global {
 			bot: any;
 			serviceToken: any;
 			accessToken: any;
+			serviceTokenData: any;
 			query?: any;
 		}
 	}

@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { APIKeyData } from '../models';
+import { ServiceToken, ServiceTokenData } from '../models';
 import { validateMembership } from '../helpers/membership';
 import { AccountNotFoundError } from '../utils/errors';
 
 type req = 'params' | 'body' | 'query';
 
-const requireAPIKeyDataAuth = ({
+const requireServiceTokenDataAuth = ({
     acceptedRoles,
     acceptedStatuses,
     location = 'params'
@@ -16,25 +16,25 @@ const requireAPIKeyDataAuth = ({
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
     
-        // req.user
+        const serviceTokenData = await ServiceTokenData
+            .findById(req[location].serviceTokenDataId)
+            .select('+encryptedKey +iv +tag');
         
-        const apiKeyData = await APIKeyData.findById(req[location].apiKeyDataId);
-        
-        if (!apiKeyData) {
-            return next(AccountNotFoundError({message: 'Failed to locate API Key data'}));
+        if (!serviceTokenData) {
+            return next(AccountNotFoundError({message: 'Failed to locate service token data'}));
         }
         
         await validateMembership({
             userId: req.user._id.toString(),
-            workspaceId: apiKeyData?.workspace.toString(),
+            workspaceId: serviceTokenData.workspace.toString(),
             acceptedRoles,
             acceptedStatuses
         });
         
-        req.apiKeyData = '' // ??
+        req.serviceTokenData = serviceTokenData;
         
         next();
     }
 }
 
-export default requireAPIKeyDataAuth;
+export default requireServiceTokenDataAuth;

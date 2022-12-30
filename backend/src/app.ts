@@ -34,7 +34,7 @@ import {
   stripe as stripeRouter,
   integration as integrationRouter,
   integrationAuth as integrationAuthRouter,
-  apiKey as apiKeyRouter
+  serviceTokenData as serviceTokenDataRouter
 } from './routes';
 
 import { getLogger } from './utils/logger';
@@ -86,7 +86,7 @@ app.use('/api/v1/password', passwordRouter);
 app.use('/api/v1/stripe', stripeRouter);
 app.use('/api/v1/integration', integrationRouter);
 app.use('/api/v1/integration-auth', integrationAuthRouter);
-app.use('/api/v1/api-key', apiKeyRouter);
+app.use('/api/v1/service-token-data', serviceTokenDataRouter);
 
 //* Handle unrouted requests and respond with proper error message as well as status code
 app.use((req, res, next)=>{

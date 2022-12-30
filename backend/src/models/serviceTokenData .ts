@@ -1,36 +1,33 @@
 import { Schema, model, Types } from 'mongoose';
 import { ENV_DEV, ENV_TESTING, ENV_STAGING, ENV_PROD } from '../variables';
 
-export interface IAPIKeyData {
+export interface IServiceTokenData {
     name: string;
-    workspaces: { 
-        workspace: Types.ObjectId,
-        environments: string[]
-    }[];
+    workspace: Types.ObjectId;
+    environment: string; // TODO: adapt to upcoming environment id
     expiresAt: Date;
     prefix: string;
-    apiKeyHash: string;
+    serviceTokenHash: string;
     encryptedKey: string;
     iv: string;
     tag: string;
 }
 
-const apiKeyDataSchema = new Schema<IAPIKeyData>(
+const serviceTokenDataSchema = new Schema<IServiceTokenData>(
     {
         name: {
             type: String,
             required: true
         },
-        workspaces: [{
-            workspace: {
-                type: Schema.Types.ObjectId,
-                ref: 'Workspace'
-            },
-            environments: [{
-                type: String,
-                enum: [ENV_DEV, ENV_TESTING, ENV_STAGING, ENV_PROD]
-            }]
-        }],
+        workspace: {
+            type: Schema.Types.ObjectId,
+            ref: 'Workspace',
+            required: true
+        },
+        environment: { // TODO: adapt to upcoming environment id
+            type: String,
+            required: true
+        },
         expiresAt: {
             type: Date
         },
@@ -38,7 +35,7 @@ const apiKeyDataSchema = new Schema<IAPIKeyData>(
             type: String,
             required: true
         },
-        apiKeyHash: {
+        serviceTokenHash: {
             type: String,
             unique: true,
             required: true
@@ -61,6 +58,6 @@ const apiKeyDataSchema = new Schema<IAPIKeyData>(
     }
 );
 
-const APIKeyData = model<IAPIKeyData>('APIKeyData', apiKeyDataSchema);
+const ServiceTokenData = model<IServiceTokenData>('ServiceTokenData', serviceTokenDataSchema);
     
-export default APIKeyData;
+export default ServiceTokenData;

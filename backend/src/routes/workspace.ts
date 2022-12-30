@@ -119,7 +119,7 @@ router.get(
 );
 
 router.get(
-	'/:workspaceId/service-tokens',
+	'/:workspaceId/service-tokens', // deprecate
 	requireAuth,
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -128,6 +128,18 @@ router.get(
 	param('workspaceId').exists().trim(),
 	validateRequest,
 	workspaceController.getWorkspaceServiceTokens
+);
+
+router.get(
+	'/:workspaceId/service-token-data',
+	requireAuth,
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		acceptedStatuses: [GRANTED]
+	}),
+	param('workspaceId').exists().trim(),
+	validateRequest,
+	workspaceController.getWorkspaceServiceTokenData
 );
 
 export default router;

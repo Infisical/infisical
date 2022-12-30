@@ -4,6 +4,7 @@ import { ServiceToken } from '../models';
 import { JWT_SERVICE_SECRET } from '../config';
 import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
 
+// TODO: deprecate
 declare module 'jsonwebtoken' {
 	export interface UserIDJwtPayload extends jwt.JwtPayload {
 		userId: string;
