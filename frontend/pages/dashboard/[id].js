@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, createContext } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
@@ -40,6 +40,8 @@ import getWorkspaces from '../api/workspace/getWorkspaces';
  * This is the main component for the dashboard (aka the screen with all the encironemnt variable & secrets)
  * @returns
  */
+export const KeypairContext = createContext()
+
 export default function Dashboard() {
   const [data, setData] = useState();
   const [fileState, setFileState] = useState([]);
@@ -314,296 +316,294 @@ export default function Dashboard() {
     setTimeout(() => setProjectIdCopied(false), 2000);
   }
 
+  const keyPairHandlers = {
+    listenChangeValue,
+    listenChangeKey,
+    listenChangeVisibility,
+    blurred,
+    deleteCertainRow,
+    toggleSidebar,
+    sidebarSecretNumber,
+  }
+
   return data ? (
-    <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
-      <Head>
-        <title>Secrets</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content="Manage your .env files in seconds" />
-        <meta
-          name="og:description"
-          content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
-        />
-      </Head>
-      <div className="flex flex-row">
-        {sidebarSecretNumber != -1  && <SideBar 
-          toggleSidebar={toggleSidebar} 
-          data={data.filter(row => row.pos == sidebarSecretNumber)} 
-          modifyKey={listenChangeKey} 
-          modifyValue={listenChangeValue} 
-          modifyVisibility={listenChangeVisibility} 
-        />}
-        <div className="w-full max-h-96 pb-2">
-          <NavHeader pageName="Secrets" isProjectRelated={true} />
-          {checkDocsPopUpVisible && (
-            <BottonRightPopup
-              buttonText="Check Docs"
-              buttonLink="https://infisical.com/docs/getting-started/introduction"
-              titleText="Good job!"
-              emoji="🎉"
-              textLine1="Congrats on adding more secrets."
-              textLine2="Here is how to connect them to your codebase."
-              setCheckDocsPopUpVisible={setCheckDocsPopUpVisible}
-            />
-          )}
-          <div className="flex flex-row justify-between items-center mx-6 mt-6 mb-3 text-xl max-w-5xl">
-            <div className="flex flex-row justify-start items-center text-3xl">
-              <p className="font-semibold mr-4 mt-1">Secrets</p>
-              {data?.length == 0 && (
-                <ListBox
-                  selected={env}
-                  data={['Development', 'Staging', 'Production', 'Testing']}
-                  // ref={useRef(123)}
-                  onChange={setEnv}
-                  className="z-40"
-                />
-              )}
-            </div>
-            <div className="flex flex-row">
-              <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400">
-                <p className="mr-2 font-bold pl-4">Project ID:</p>
-                <input
-                  type="text"
-                  value={workspaceId}
-                  id="myInput"
-                  className="bg-white/0 text-gray-400 py-2 w-60 px-2 min-w-md outline-none"
-                  disabled
-                ></input>
-                <div className="group font-normal group relative inline-block text-gray-400 underline hover:text-primary duration-200">
-                  <button
-                    onClick={copyToClipboard}
-                    className="pl-4 pr-4 border-l border-white/20 py-2 hover:bg-white/[0.12] duration-200"
-                  >
-                    {projectIdCopied ? (
-                      <FontAwesomeIcon icon={faCheck} className="pr-0.5" />
-                    ) : (
-                      <FontAwesomeIcon icon={faCopy} />
-                    )}
-                  </button>
-                  <span className="absolute hidden group-hover:flex group-hover:animate-popup duration-300 w-28 -left-8 -top-20 translate-y-full pl-3 py-2 bg-white/10 rounded-md text-center text-gray-400 text-sm">
-                    Click to Copy
-                  </span>
-                </div>
-              </div>
-              {(data?.length !== 0 || buttonReady) && (
-                <div className={`flex justify-start max-w-sm mt-2`}>
-                  <Button
-                    text="Save Changes"
-                    onButtonPressed={savePush}
-                    color="primary"
-                    size="md"
-                    active={buttonReady}
-                    iconDisabled={faCheck}
-                    textDisabled="Saved"
+    <KeypairContext.Provider value={keyPairHandlers}>
+      <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
+        <Head>
+          <title>Secrets</title>
+          <link rel="icon" href="/infisical.ico" />
+          <meta property="og:image" content="/images/message.png" />
+          <meta property="og:title" content="Manage your .env files in seconds" />
+          <meta
+            name="og:description"
+            content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
+          />
+        </Head>
+        <div className="flex flex-row">
+          {sidebarSecretNumber != -1  && <SideBar 
+            toggleSidebar={toggleSidebar} 
+            data={data.filter(row => row.pos == sidebarSecretNumber)} 
+            modifyKey={listenChangeKey} 
+            modifyValue={listenChangeValue} 
+            modifyVisibility={listenChangeVisibility} 
+          />}
+          <div className="w-full max-h-96 pb-2">
+            <NavHeader pageName="Secrets" isProjectRelated={true} />
+            {checkDocsPopUpVisible && (
+              <BottonRightPopup
+                buttonText="Check Docs"
+                buttonLink="https://infisical.com/docs/getting-started/introduction"
+                titleText="Good job!"
+                emoji="🎉"
+                textLine1="Congrats on adding more secrets."
+                textLine2="Here is how to connect them to your codebase."
+                setCheckDocsPopUpVisible={setCheckDocsPopUpVisible}
+              />
+            )}
+            <div className="flex flex-row justify-between items-center mx-6 mt-6 mb-3 text-xl max-w-5xl">
+              <div className="flex flex-row justify-start items-center text-3xl">
+                <p className="font-semibold mr-4 mt-1">Secrets</p>
+                {data?.length == 0 && (
+                  <ListBox
+                    selected={env}
+                    data={['Development', 'Staging', 'Production', 'Testing']}
+                    // ref={useRef(123)}
+                    onChange={setEnv}
+                    className="z-40"
                   />
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="mx-6 w-full pr-12">
-            <div className="flex flex-col max-w-5xl pb-1">
-              <div className="w-full flex flex-row items-start">
-                {data?.length !== 0 && (
-                  <>
-                    <ListBox
-                      selected={env}
-                      data={['Development', 'Staging', 'Production', 'Testing']}
-                      // ref={useRef(123)}
-                      onChange={setEnv}
-                      className="z-40"
-                    />
-                    <div className="h-10 w-full bg-white/5 hover:bg-white/10 ml-2 flex items-center rounded-md flex flex-row items-center">
-                      <FontAwesomeIcon
-                        className="bg-white/5 rounded-l-md py-3 pl-4 pr-2 text-gray-400"
-                        icon={faMagnifyingGlass}
-                      />
-                      <input
-                        className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
-                        value={searchKeys}
-                        onChange={(e) => setSearchKeys(e.target.value)}
-                        placeholder={'Search keys...'}
-                      />
-                    </div>
-                    <div className="ml-2 min-w-max flex flex-row items-start justify-start">
-                      <Button
-                        onButtonPressed={() => reorderRows(1)}
-                        color="mineshaft"
-                        size="icon-md"
-                        icon={
-                          sortMethod == 'alphabetical'
-                            ? faArrowDownAZ
-                            : faArrowDownZA
-                        }
-                      />
-                    </div>
-                    <div className="ml-2 min-w-max flex flex-row items-start justify-start">
-                      <Button
-                        onButtonPressed={download}
-                        color="mineshaft"
-                        size="icon-md"
-                        icon={faDownload}
-                      />
-                    </div>
-                    <div className="ml-2 min-w-max flex flex-row items-start justify-start">
-                      <Button
-                        onButtonPressed={changeBlurred}
-                        color="mineshaft"
-                        size="icon-md"
-                        icon={blurred ? faEye : faEyeSlash}
-                      />
-                    </div>
-                    <div className="relative ml-2 min-w-max flex flex-row items-start justify-end">
-                      <Button
-                        text="Add Key"
-                        onButtonPressed={addRow}
-                        color="mineshaft"
-                        icon={faPlus}
-                        size="md"
-                      />
-                      {isNew && (
-                        <span className="absolute right-0 flex h-3 w-3 items-center justify-center ml-4 mb-4">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/50 opacity-75 h-4 w-4"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-                        </span>
+                )}
+              </div>
+              <div className="flex flex-row">
+                <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400">
+                  <p className="mr-2 font-bold pl-4">Project ID:</p>
+                  <input
+                    type="text"
+                    value={workspaceId}
+                    id="myInput"
+                    className="bg-white/0 text-gray-400 py-2 w-60 px-2 min-w-md outline-none"
+                    disabled
+                  ></input>
+                  <div className="group font-normal group relative inline-block text-gray-400 underline hover:text-primary duration-200">
+                    <button
+                      onClick={copyToClipboard}
+                      className="pl-4 pr-4 border-l border-white/20 py-2 hover:bg-white/[0.12] duration-200"
+                    >
+                      {projectIdCopied ? (
+                        <FontAwesomeIcon icon={faCheck} className="pr-0.5" />
+                      ) : (
+                        <FontAwesomeIcon icon={faCopy} />
                       )}
-                    </div>
-                  </>
+                    </button>
+                    <span className="absolute hidden group-hover:flex group-hover:animate-popup duration-300 w-28 -left-8 -top-20 translate-y-full pl-3 py-2 bg-white/10 rounded-md text-center text-gray-400 text-sm">
+                      Click to Copy
+                    </span>
+                  </div>
+                </div>
+                {(data?.length !== 0 || buttonReady) && (
+                  <div className={`flex justify-start max-w-sm mt-2`}>
+                    <Button
+                      text="Save Changes"
+                      onButtonPressed={savePush}
+                      color="primary"
+                      size="md"
+                      active={buttonReady}
+                      iconDisabled={faCheck}
+                      textDisabled="Saved"
+                    />
+                  </div>
                 )}
               </div>
             </div>
-            {data?.length !== 0 ? (
-              <div
-                id="dataall"
-                className="flex flex-col max-h-40 grow max-h-[calc(100vh-240px)] w-full overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar"
-              >
-                <div
-                  className={`bg-white/5 mt-1 mb-1 rounded-md pb-2 max-w-5xl overflow-visible`}
-                >
-                  <div className="rounded-t-md sticky top-0 z-20 bg-bunker flex flex-row pl-4 pr-6 pt-4 pb-2 items-center justify-between text-gray-300 font-bold">
-                    {/* <FontAwesomeIcon icon={faAngleDown} /> */}
-                    <div className="flex flex-row items-center">
-                      <p className="pl-2 text-lg">Personal</p>
-                      <div className="group font-normal group relative inline-block text-gray-300 underline hover:text-primary duration-200">
+            <div className="mx-6 w-full pr-12">
+              <div className="flex flex-col max-w-5xl pb-1">
+                <div className="w-full flex flex-row items-start">
+                  {data?.length !== 0 && (
+                    <>
+                      <ListBox
+                        selected={env}
+                        data={['Development', 'Staging', 'Production', 'Testing']}
+                        // ref={useRef(123)}
+                        onChange={setEnv}
+                        className="z-40"
+                      />
+                      <div className="h-10 w-full bg-white/5 hover:bg-white/10 ml-2 flex items-center rounded-md flex flex-row items-center">
                         <FontAwesomeIcon
-                          className="ml-3 mt-1 text-lg"
-                          icon={faCircleInfo}
+                          className="bg-white/5 rounded-l-md py-3 pl-4 pr-2 text-gray-400"
+                          icon={faMagnifyingGlass}
                         />
-                        <span className="absolute hidden group-hover:flex group-hover:animate-popdown duration-300 w-44 -left-16 -top-7 translate-y-full px-2 py-2 bg-gray-700 rounded-md text-center text-gray-100 text-sm after:content-[''] after:absolute after:left-1/2 after:bottom-[100%] after:-translate-x-1/2 after:border-8 after:border-x-transparent after:border-t-transparent after:border-b-gray-700">
-                          Personal keys are only visible to you
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div id="data1" className="px-1">
-                    <KeyList
-                      keyPairs={data}
-                      type={'personal'}
-                      searchKeys={searchKeys}
-                      modifyValue={listenChangeValue}
-                      modifyKey={listenChangeKey}
-                      isBlurred={blurred}
-                      deleteCertainRow={deleteCertainRow}
-                      modifyVisibility={listenChangeVisibility}
-                      toggleSidebar={toggleSidebar}
-                      sidebarSecretNumber={sidebarSecretNumber}
-                    />
-                  </div>
-                </div>
-                <div
-                  className={`bg-white/5 mt-1 mb-2 rounded-md p-1 pb-2 max-w-5xl ${
-                    data?.length > 8 ? 'h-3/4' : 'h-min'
-                  }`}
-                >
-                  <div className="sticky top-0 z-40 bg-bunker flex flex-row pl-4 pr-5 pt-4 pb-2 items-center justify-between text-gray-300 font-bold">
-                    {/* <FontAwesomeIcon icon={faAngleDown} /> */}
-                    <div className="flex flex-row items-center">
-                      <p className="pl-2 text-lg">Shared</p>
-                      <div className="group font-normal group relative inline-block text-gray-300 underline hover:text-primary duration-200">
-                        <FontAwesomeIcon
-                          className="ml-3 text-lg mt-1"
-                          icon={faCircleInfo}
+                        <input
+                          className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
+                          value={searchKeys}
+                          onChange={(e) => setSearchKeys(e.target.value)}
+                          placeholder={'Search keys...'}
                         />
-                        <span className="absolute hidden group-hover:flex group-hover:animate-popdown duration-300 w-44 -left-16 -top-7 translate-y-full px-2 py-2 bg-gray-700 rounded-md text-center text-gray-100 text-sm after:content-[''] after:absolute after:left-1/2 after:bottom-[100%] after:-translate-x-1/2 after:border-8 after:border-x-transparent after:border-t-transparent after:border-b-gray-700">
-                          Shared keys are visible to your whole team
-                        </span>
                       </div>
-                    </div>
-                  </div>
-                  <div id="data2" className="data2">
-                    <KeyList
-                      keyPairs={data}
-                      type={"shared"}
-                      searchKeys={searchKeys}
-                      modifyValue={listenChangeValue}
-                      modifyKey={listenChangeKey}
-                      isBlurred={blurred}
-                      deleteCertainRow={deleteCertainRow}
-                      modifyVisibility={listenChangeVisibility}
-                      toggleSidebar={toggleSidebar}
-                      sidebarSecretNumber={sidebarSecretNumber}
-                    />
-                  </div>
-                </div>
-                <div className="w-full max-w-5xl">
-                  <DropZone
-                    setData={addData}
-                    setErrorDragAndDrop={setErrorDragAndDrop}
-                    createNewFile={addRow}
-                    errorDragAndDrop={errorDragAndDrop}
-                    setButtonReady={setButtonReady}
-                    keysExist={true}
-                    numCurrentRows={data.length}
-                  />
+                      <div className="ml-2 min-w-max flex flex-row items-start justify-start">
+                        <Button
+                          onButtonPressed={() => reorderRows(1)}
+                          color="mineshaft"
+                          size="icon-md"
+                          icon={
+                            sortMethod == 'alphabetical'
+                              ? faArrowDownAZ
+                              : faArrowDownZA
+                          }
+                        />
+                      </div>
+                      <div className="ml-2 min-w-max flex flex-row items-start justify-start">
+                        <Button
+                          onButtonPressed={download}
+                          color="mineshaft"
+                          size="icon-md"
+                          icon={faDownload}
+                        />
+                      </div>
+                      <div className="ml-2 min-w-max flex flex-row items-start justify-start">
+                        <Button
+                          onButtonPressed={changeBlurred}
+                          color="mineshaft"
+                          size="icon-md"
+                          icon={blurred ? faEye : faEyeSlash}
+                        />
+                      </div>
+                      <div className="relative ml-2 min-w-max flex flex-row items-start justify-end">
+                        <Button
+                          text="Add Key"
+                          onButtonPressed={addRow}
+                          color="mineshaft"
+                          icon={faPlus}
+                          size="md"
+                        />
+                        {isNew && (
+                          <span className="absolute right-0 flex h-3 w-3 items-center justify-center ml-4 mb-4">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/50 opacity-75 h-4 w-4"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-xl text-gray-400 max-w-5xl mt-28">
-                {fileState.message != "There's nothing to pull" &&
-                  fileState.message != undefined && (
-                    <FontAwesomeIcon
-                      className="text-7xl mb-8"
-                      icon={faFolderOpen}
-                    />
-                  )}
-                {(fileState.message == "There's nothing to pull" ||
-                  fileState.message == undefined) &&
-                  isKeyAvailable && (
+              {data?.length !== 0 ? (
+                <div
+                  id="dataall"
+                  className="flex flex-col max-h-40 grow max-h-[calc(100vh-240px)] w-full overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar"
+                >
+                  <div
+                    className={`bg-white/5 mt-1 mb-1 rounded-md pb-2 max-w-5xl overflow-visible`}
+                  >
+                    <div className="rounded-t-md sticky top-0 z-20 bg-bunker flex flex-row pl-4 pr-6 pt-4 pb-2 items-center justify-between text-gray-300 font-bold">
+                      {/* <FontAwesomeIcon icon={faAngleDown} /> */}
+                      <div className="flex flex-row items-center">
+                        <p className="pl-2 text-lg">Personal</p>
+                        <div className="group font-normal group relative inline-block text-gray-300 underline hover:text-primary duration-200">
+                          <FontAwesomeIcon
+                            className="ml-3 mt-1 text-lg"
+                            icon={faCircleInfo}
+                          />
+                          <span className="absolute hidden group-hover:flex group-hover:animate-popdown duration-300 w-44 -left-16 -top-7 translate-y-full px-2 py-2 bg-gray-700 rounded-md text-center text-gray-100 text-sm after:content-[''] after:absolute after:left-1/2 after:bottom-[100%] after:-translate-x-1/2 after:border-8 after:border-x-transparent after:border-t-transparent after:border-b-gray-700">
+                            Personal keys are only visible to you
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div id="data1" className="px-1">
+                      <KeyList
+                        keyPairs={data}
+                        type={'personal'}
+                        searchKeys={searchKeys}
+                      />
+                    </div>
+                  </div>
+                  <div
+                    className={`bg-white/5 mt-1 mb-2 rounded-md p-1 pb-2 max-w-5xl ${
+                      data?.length > 8 ? 'h-3/4' : 'h-min'
+                    }`}
+                  >
+                    <div className="sticky top-0 z-40 bg-bunker flex flex-row pl-4 pr-5 pt-4 pb-2 items-center justify-between text-gray-300 font-bold">
+                      {/* <FontAwesomeIcon icon={faAngleDown} /> */}
+                      <div className="flex flex-row items-center">
+                        <p className="pl-2 text-lg">Shared</p>
+                        <div className="group font-normal group relative inline-block text-gray-300 underline hover:text-primary duration-200">
+                          <FontAwesomeIcon
+                            className="ml-3 text-lg mt-1"
+                            icon={faCircleInfo}
+                          />
+                          <span className="absolute hidden group-hover:flex group-hover:animate-popdown duration-300 w-44 -left-16 -top-7 translate-y-full px-2 py-2 bg-gray-700 rounded-md text-center text-gray-100 text-sm after:content-[''] after:absolute after:left-1/2 after:bottom-[100%] after:-translate-x-1/2 after:border-8 after:border-x-transparent after:border-t-transparent after:border-b-gray-700">
+                            Shared keys are visible to your whole team
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div id="data2" className="data2">
+                      <KeyList
+                        keyPairs={data}
+                        type={"shared"}
+                        searchKeys={searchKeys}
+                      />
+                    </div>
+                  </div>
+                  <div className="w-full max-w-5xl">
                     <DropZone
-                      setData={setData}
+                      setData={addData}
                       setErrorDragAndDrop={setErrorDragAndDrop}
                       createNewFile={addRow}
                       errorDragAndDrop={errorDragAndDrop}
                       setButtonReady={setButtonReady}
+                      keysExist={true}
                       numCurrentRows={data.length}
                     />
-                  )}
-                {fileState.message ==
-                  'Failed membership validation for workspace' && (
-                  <p>You are not authorized to view this project.</p>
-                )}
-                {fileState.message == 'Access needed to pull the latest file' ||
-                  (!isKeyAvailable && (
-                    <>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-xl text-gray-400 max-w-5xl mt-28">
+                  {fileState.message != "There's nothing to pull" &&
+                    fileState.message != undefined && (
                       <FontAwesomeIcon
-                        className="text-7xl mt-20 mb-8"
+                        className="text-7xl mb-8"
                         icon={faFolderOpen}
                       />
-                      <p>
-                        To view this file, contact your administrator for
-                        permission.
-                      </p>
-                      <p className="mt-1">
-                        They need to grant you access in the team tab.
-                      </p>
-                    </>
-                  ))}
-              </div>
-            )}
+                    )}
+                  {(fileState.message == "There's nothing to pull" ||
+                    fileState.message == undefined) &&
+                    isKeyAvailable && (
+                      <DropZone
+                        setData={setData}
+                        setErrorDragAndDrop={setErrorDragAndDrop}
+                        createNewFile={addRow}
+                        errorDragAndDrop={errorDragAndDrop}
+                        setButtonReady={setButtonReady}
+                        numCurrentRows={data.length}
+                      />
+                    )}
+                  {fileState.message ==
+                    'Failed membership validation for workspace' && (
+                    <p>You are not authorized to view this project.</p>
+                  )}
+                  {fileState.message == 'Access needed to pull the latest file' ||
+                    (!isKeyAvailable && (
+                      <>
+                        <FontAwesomeIcon
+                          className="text-7xl mt-20 mb-8"
+                          icon={faFolderOpen}
+                        />
+                        <p>
+                          To view this file, contact your administrator for
+                          permission.
+                        </p>
+                        <p className="mt-1">
+                          They need to grant you access in the team tab.
+                        </p>
+                      </>
+                    ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </KeypairContext.Provider>
   ) : (
     <div className="relative z-10 w-10/12 mr-auto h-full ml-2 bg-bunker-800 flex flex-col items-center justify-center">
       <div className="absolute top-0 bg-bunker h-14 border-b border-mineshaft-700 w-full"></div>
