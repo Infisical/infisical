@@ -7,12 +7,24 @@ import { KeypairContext } from "../../pages/dashboard/[id]"
 
 /**
  * This component represent a single row for an environemnt variable on the dashboard
- * @param {String[]} obj.keyPair - data related to the environment variable (id, pos, key, value, public/private)
- * @param {string[]} obj.duplicates - list of all the duplicates secret names on the dashboard
- * @returns
- */
+ * @param {KeyPair} keyPair - data related to the environment variable (id, pos, key, value, public/private)
+ * @param {string[]} duplicates - list of all the duplicate secret names on the dashboard
+*/
 
-const KeyPair = ({ keyPair, duplicates }) => {
+interface KeyPairProps {
+  keyPair: KeyPair
+  duplicates: string[]
+}
+
+interface KeyPair {
+  id: string
+  pos: number
+  key: string
+  value: string
+  type: string
+}
+
+const KeyPair = ({ keyPair, duplicates }: KeyPairProps) => {
   const {
     listenChangeValue,
     listenChangeKey,
