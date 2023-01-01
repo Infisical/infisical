@@ -21,9 +21,5 @@
   "devDependencies": {
     "eslint": "^8.29.0",
     "husky": "^8.0.2"
-  },
-  "dependencies": {
-    "await-to-js": "^3.0.0",
-    "utility-types": "^3.10.0"
   }
 }

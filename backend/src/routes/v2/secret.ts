@@ -4,11 +4,12 @@ import { ISecret, Secret } from '../../models';
 import { decryptSymmetric } from '../../utils/crypto';
 import { getLogger } from '../../utils/logger';
 import { body, param, query, check } from 'express-validator';
-import { BadRequestError, UnauthorizedRequestError } from '../../utils/errors';
+import { BadRequestError, InternalServerError, UnauthorizedRequestError } from '../../utils/errors';
 import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../variables';
-import { ModifySecretPayload } from '../../types/secret';
+import { ModifySecretPayload, SafeUpdateSecret } from '../../types/secret/types';
 import { AnyBulkWriteOperation } from 'mongodb';
 import to from 'await-to-js';
+import { Types } from 'mongoose';
 
 const router = express.Router();
 
@@ -141,66 +142,59 @@ router.delete(
 
 /**
  * Apply modifications to many existing secrets in a given workspace and environment
- * Note: although we do not check access for environments, we will in the future
  */
 router.patch(
   '/bulk-modify/:workspaceId/:environmentName',
   requireAuth,
   body('secrets').exists().isArray().custom((value) => value.every((item: ISecret) => typeof item === 'object')),
-  param('workspaceId').exists().trim(),
+  param('workspaceId').exists().isMongoId().trim(),
   param('environmentName').exists().trim(),
-  // requireWorkspaceAuth({
-  //   acceptedRoles: [ADMIN, MEMBER],
-  //   acceptedStatuses: [COMPLETED, GRANTED]
-  // }),
+  requireWorkspaceAuth({
+    acceptedRoles: [ADMIN, MEMBER],
+    acceptedStatuses: [COMPLETED, GRANTED]
+  }),
   validateRequest, async (req: Request, res: Response) => {
-    try {
-      const { workspaceId, environmentName } = req.params
-      const secretsModificationsRequested: ModifySecretPayload[] = req.body.secrets;
+    const { workspaceId, environmentName } = req.params
+    const secretsModificationsRequested: ModifySecretPayload[] = req.body.secrets;
 
-      const secretsUserCanModify: ISecret[] = await Secret.find({ workspace: workspaceId, environment: environmentName })
-
-      const secretsUserCanModifyMapBySecretId: Map<string, ISecret> = new Map<string, ISecret>();
-      secretsUserCanModify.forEach(secret => secretsUserCanModifyMapBySecretId.set(secret._id.toString(), secret))
-
-      // Check if the entity has access to the secret ids it wants to modify
-      const updateOperationsToPerform: AnyBulkWriteOperation<ISecret>[] = []
-      secretsModificationsRequested.forEach(userModifiedSecret => {
-        const canModifyRequestedSecret = secretsUserCanModifyMapBySecretId.has(userModifiedSecret._id.toString())
-        if (canModifyRequestedSecret) {
-          const oldSecretInDB = secretsUserCanModifyMapBySecretId.get(userModifiedSecret._id.toString())
-
-          if (oldSecretInDB !== undefined) {
-            oldSecretInDB.secretKeyCiphertext = userModifiedSecret.secretKeyCiphertext
-            oldSecretInDB.secretKeyIV = userModifiedSecret.secretKeyIV
-            oldSecretInDB.secretKeyTag = userModifiedSecret.secretKeyTag
-            oldSecretInDB.secretKeyHash = userModifiedSecret.secretKeyHash
-            oldSecretInDB.secretValueCiphertext = userModifiedSecret.secretValueCiphertext
-            oldSecretInDB.secretValueIV = userModifiedSecret.secretValueIV
-            oldSecretInDB.secretValueTag = userModifiedSecret.secretValueTag
-            oldSecretInDB.secretValueHash = userModifiedSecret.secretValueHash
-            oldSecretInDB.secretCommentCiphertext = userModifiedSecret.secretCommentCiphertext
-            oldSecretInDB.secretCommentIV = userModifiedSecret.secretCommentIV
-            oldSecretInDB.secretCommentTag = userModifiedSecret.secretCommentTag
-            oldSecretInDB.secretCommentHash = userModifiedSecret.secretCommentHash
-
-            const updateOperation = { updateOne: { filter: { _id: oldSecretInDB._id, workspace: oldSecretInDB.workspace }, update: { $inc: { version: 1 }, $set: oldSecretInDB } } }
-            updateOperationsToPerform.push(updateOperation)
-          }
-        } else {
-          throw UnauthorizedRequestError({ message: "You do not have permission to modify one or more of the requested secrets" })
-        }
-      })
-
-      const bulkModificationInfo = await Secret.bulkWrite(updateOperationsToPerform);
-
-      return res.status(200).json({
-        bulkModificationInfo
-      })
-
-    } catch (e) {
-      throw BadRequestError()
+    const [secretIdsUserCanModifyError, secretIdsUserCanModify] = await to(Secret.find({ workspace: workspaceId, environment: environmentName }, { _id: 1 }).then())
+    if (secretIdsUserCanModifyError) {
+      throw InternalServerError({ message: "Unable to fetch secrets you own" })
     }
+
+    const secretsUserCanModifySet: Set<string> = new Set(secretIdsUserCanModify.map(objectId => objectId._id.toString()));
+    const updateOperationsToPerform: any = []
+
+    secretsModificationsRequested.forEach(userModifiedSecret => {
+      if (secretsUserCanModifySet.has(userModifiedSecret._id.toString())) {
+        const safeUpdateFields: SafeUpdateSecret = {
+          secretKeyCiphertext: userModifiedSecret.secretKeyCiphertext,
+          secretKeyIV: userModifiedSecret.secretKeyIV,
+          secretKeyTag: userModifiedSecret.secretKeyTag,
+          secretKeyHash: userModifiedSecret.secretKeyHash,
+          secretValueCiphertext: userModifiedSecret.secretValueCiphertext,
+          secretValueIV: userModifiedSecret.secretValueIV,
+          secretValueTag: userModifiedSecret.secretValueTag,
+          secretValueHash: userModifiedSecret.secretValueHash,
+          secretCommentCiphertext: userModifiedSecret.secretCommentCiphertext,
+          secretCommentIV: userModifiedSecret.secretCommentIV,
+          secretCommentTag: userModifiedSecret.secretCommentTag,
+          secretCommentHash: userModifiedSecret.secretCommentHash,
+        }
+
+        const updateOperation = { updateOne: { filter: { _id: userModifiedSecret._id, workspace: workspaceId }, update: { $inc: { version: 1 }, $set: safeUpdateFields } } }
+        updateOperationsToPerform.push(updateOperation)
+      } else {
+        throw UnauthorizedRequestError({ message: "You do not have permission to modify one or more of the requested secrets" })
+      }
+    })
+
+    const [bulkModificationInfoError, bulkModificationInfo] = await to(Secret.bulkWrite(updateOperationsToPerform).then())
+    if (bulkModificationInfoError) {
+      throw InternalServerError({ message: "Unable to apply modifications, please try again" })
+    }
+
+    return res.status(200).send()
   }
 );
 
