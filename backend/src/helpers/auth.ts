@@ -1,14 +1,68 @@
 import jwt from 'jsonwebtoken';
 import * as Sentry from '@sentry/node';
+import bcrypt from 'bcrypt';
 import {
-	User
+	User,
+	ServiceTokenData
 } from '../models';
 import {
 	JWT_AUTH_LIFETIME,
 	JWT_AUTH_SECRET,
 	JWT_REFRESH_LIFETIME,
-	JWT_REFRESH_SECRET
+	JWT_REFRESH_SECRET,
+	SALT_ROUNDS
 } from '../config';
+
+/**
+ * Attach auth payload
+ * @param {Object} obj
+ * @param {String} obj.authTokenValue
+ */
+const attachAuthPayload = async ({
+	authTokenValue
+}: {
+	authTokenValue: string;
+}) => {
+	let serviceTokenHash, decodedToken; // intermediate variables
+	let serviceTokenData, user; // payloads
+	try {
+		switch (authTokenValue.split('.', 1)[0]) {
+			case 'st':
+				// case: service token auth mode
+				serviceTokenHash = await bcrypt.hash(authTokenValue, SALT_ROUNDS);
+				serviceTokenData = await ServiceTokenData
+					.findOne({
+						serviceTokenHash
+					})
+					.select('+encryptedKey +iv +tag');
+				
+				if (!serviceTokenData) {
+					throw new Error('Account not found error');
+				}
+
+				return serviceTokenData;
+			default:
+				//  case: JWT token auth mode
+				decodedToken = <jwt.UserIDJwtPayload>(
+					jwt.verify(authTokenValue, JWT_AUTH_SECRET)
+				);
+				
+				user = await User.findOne({
+					_id: decodedToken.userId
+				}).select('+publicKey');
+
+				if (!user) 
+					throw new Error('Account not found error');
+
+				if (!user?.publicKey)
+					throw new Error('Unable to authenticate due to partially set up account');
+
+				return user;
+		}
+	} catch (err) {
+		throw new Error('Failed to attach auth payload');
+	}
+}
 
 /**
  * Return newly issued (JWT) auth and refresh tokens to user with id [userId]
@@ -99,4 +153,9 @@ const createToken = ({
 	}
 };
 
-export { createToken, issueTokens, clearTokens };
+export { 
+	attachAuthPayload,
+	createToken, 
+	issueTokens, 
+	clearTokens 
+};

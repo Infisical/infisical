@@ -1,5 +1,6 @@
 import { Fragment, useState } from "react";
 import { useRouter } from "next/router";
+import { Trans, useTranslation } from "next-i18next";
 import { Dialog, Transition } from "@headlessui/react";
 
 import Button from "../buttons/Button";
@@ -15,6 +16,7 @@ const AddProjectMemberDialog = ({
   setEmail,
 }) => {
   const router = useRouter();
+  const { t } = useTranslation();
 
   return (
     <div className="z-50">
@@ -49,48 +51,55 @@ const AddProjectMemberDialog = ({
                       as="h3"
                       className="text-lg font-medium leading-6 text-gray-400 z-50"
                     >
-                      Add a member to your project
+                      {t("section-members:add-dialog.add-member-to-project")}
                     </Dialog.Title>
                   ) : (
                     <Dialog.Title
                       as="h3"
                       className="text-lg font-medium leading-6 text-gray-400 z-50"
                     >
-                      All the users in your organization are already invited.
+                      {t("section-members:add-dialog.already-all-invited")}
                     </Dialog.Title>
                   )}
                   <div className="mt-2 mb-4">
                     {data?.length > 0 ? (
                       <div className="flex flex-col">
                         <p className="text-sm text-gray-500">
-                          The user will receive an email with the instructions.
+                          {t("section-members:add-dialog.user-will-email")}
                         </p>
                         <div className="">
-                          <button
-                            type="button"
-                            className="inline-flex justify-center rounded-md py-1 text-sm text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                            onClick={() =>
-                              router.push("/settings/org/" + router.query.id)
-                            }
-                          >
-                            If you are looking to add users to your org,
-                          </button>
-                          <button
-                            type="button"
-                            className="ml-1 inline-flex justify-center rounded-md py-1 text-sm text-gray-500 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                            onClick={() =>
-                              router.push(
-                                "/settings/org/" + router.query.id + "?invite"
-                              )
-                            }
-                          >
-                            click here.
-                          </button>
+                          <Trans
+                            i18nKey="section-members:add-dialog.looking-add"
+                            components={[
+                              // eslint-disable-next-line react/jsx-key
+                              <button
+                                type="button"
+                                className="inline-flex justify-center rounded-md py-1 text-sm text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                                onClick={() =>
+                                  router.push(
+                                    "/settings/org/" + router.query.id
+                                  )
+                                }
+                              />,
+                              // eslint-disable-next-line react/jsx-key
+                              <button
+                                type="button"
+                                className="ml-1 inline-flex justify-center rounded-md py-1 text-sm text-gray-500 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                                onClick={() =>
+                                  router.push(
+                                    "/settings/org/" +
+                                      router.query.id +
+                                      "?invite"
+                                  )
+                                }
+                              />,
+                            ]}
+                          />
                         </div>
                       </div>
                     ) : (
                       <p className="text-sm text-gray-500">
-                        Add more users to the organization first.
+                        {t("section-members:add-dialog.add-user-org-first")}
                       </p>
                     )}
                   </div>
@@ -110,7 +119,7 @@ const AddProjectMemberDialog = ({
                         <Button
                           onButtonPressed={submitModal}
                           color="mineshaft"
-                          text="Add Member"
+                          text={t("section-members:add-member")}
                           size="md"
                         />
                       </div>
@@ -120,7 +129,7 @@ const AddProjectMemberDialog = ({
                           router.push("/settings/org/" + router.query.id)
                         }
                         color="mineshaft"
-                        text="Add Users to Organization"
+                        text={t("section-members:add-dialog.add-user-to-org")}
                         size="md"
                       />
                     )}

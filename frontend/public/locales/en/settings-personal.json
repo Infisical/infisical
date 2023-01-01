@@ -1,0 +1,11 @@
+{
+  "title": "Personal Settings",
+  "description": "View and manage your personal information here.",
+  "emergency": {
+    "name": "Emergency Kit",
+    "text1": "Your Emergency Kit contains the information you’ll need to sign in to your Infisical account.",
+    "text2": "Only the latest issued Emergency Kit remains valid. To get a new Emergency Kit, verify your password.",
+    "download": "Download Emergency Kit"
+  },
+  "change-language": "Change Language"
+}

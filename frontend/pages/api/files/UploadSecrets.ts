@@ -22,7 +22,7 @@ const uploadSecrets = async ({
   keys,
   environment
 }: Props) => {
-  return SecurityClient.fetchCall('/api/v1/secret/' + workspaceId, {
+  return SecurityClient.fetchCall('/api/v2/workspace/' + workspaceId + '/secrets', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

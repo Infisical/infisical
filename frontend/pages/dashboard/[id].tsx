@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
+import { useTranslation } from "next-i18next";
 import {
   faArrowDownAZ,
   faArrowDownZA,
@@ -26,6 +27,7 @@ import SideBar from '~/components/dashboard/SideBar';
 import NavHeader from '~/components/navigation/NavHeader';
 import getSecretsForProject from '~/components/utilities/secrets/getSecretsForProject';
 import pushKeys from '~/components/utilities/secrets/pushKeys';
+import { getTranslatedServerSideProps } from '~/components/utilities/withTranslateProps';
 import guidGenerator from '~/utilities/randomId';
 
 import { envMapping } from '../../public/data/frequentConstants';
@@ -41,6 +43,7 @@ interface SecretDataProps {
   key: string;
   value: string;
   id: string;
+  comment: string;
 }
 
 /**
@@ -90,6 +93,7 @@ export default function Dashboard() {
   const [sidebarSecretId, toggleSidebar] = useState("None");
   const [sharedToHide, setSharedToHide] = useState<string[]>([]);
 
+  const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
 
   // #TODO: fix save message for changing reroutes
@@ -199,7 +203,8 @@ export default function Dashboard() {
         pos: data!.length,
         key: '',
         value: '',
-        type: 'shared'
+        type: 'shared',
+        comment: '',
       }
     ]);
   };
@@ -209,6 +214,7 @@ export default function Dashboard() {
     keyName: string;
     value: string;
     pos: number;
+    comment: string;
   }
 
   /**
@@ -219,7 +225,7 @@ export default function Dashboard() {
    * @param {string} obj.value - value of this secret
    * @param {string} obj.pos - position of this secret on the dashboard 
    */
-  const addOverride = ({ id, keyName, value, pos }: overrideProps) => {
+  const addOverride = ({ id, keyName, value, pos, comment }: overrideProps) => {
     setIsNew(false);
     const tempdata: SecretDataProps[] | 1 = [
       ...data!,
@@ -228,7 +234,8 @@ export default function Dashboard() {
         pos: pos,
         key: keyName,
         value: value,
-        type: 'personal'
+        type: 'personal',
+        comment: comment
       }
     ];
     sortValuesHandler(tempdata, sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical");
@@ -245,6 +252,15 @@ export default function Dashboard() {
    */
   const deleteOverride = (id: string) => {
     setButtonReady(true);
+
+    // find which shared secret corresponds to the overriden version
+    const sharedVersionOfOverride = data!.filter(secret => secret.type == "shared" && secret.key == data!.filter(row => row.id == id)[0]?.key)[0]?.id;
+    
+    // change the sidebar to this shared secret; and unhide it
+    toggleSidebar(sharedVersionOfOverride)
+    setSharedToHide(sharedToHide!.filter(tempId => tempId != sharedVersionOfOverride))
+
+    // resort secrets
     const tempData = data!.filter((row: SecretDataProps) => !(row.id == id && row.type == 'personal'))
     sortValuesHandler(tempData, sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical")
   };
@@ -273,6 +289,14 @@ export default function Dashboard() {
     setButtonReady(true);
   };
 
+  const modifyComment = (value: string, pos: number) => {
+    setData((oldData) => {
+      oldData![pos].comment = value;
+      return [...oldData!];
+    });
+    setButtonReady(true);
+  };
+
   // For speed purposes and better perforamance, we are using useCallback
   const listenChangeValue = useCallback((value: string, pos: number) => {
     modifyValue(value, pos);
@@ -286,6 +310,10 @@ export default function Dashboard() {
     modifyVisibility(value, pos);
   }, []);
 
+  const listenChangeComment = useCallback((value: string, pos: number) => {
+    modifyComment(value, pos);
+  }, []);
+
   /**
    * Save the changes of environment variables and push them to the database
    */
@@ -293,7 +321,7 @@ export default function Dashboard() {
     // Format the new object with environment variables
     const obj = Object.assign(
       {},
-      ...data!.map((row: SecretDataProps) => ({ [row.type.charAt(0) + row.key]: [row.value, row.type] }))
+      ...data!.map((row: SecretDataProps) => ({ [row.type.charAt(0) + row.key]: [row.value, row.comment] }))
     );
 
     // Checking if any of the secret keys start with a number - if so, don't do anything
@@ -315,8 +343,6 @@ export default function Dashboard() {
         type: 'error'
       });
     }
-
-    console.log('pushing', obj)
 
     // Once "Save changed is clicked", disable that button
     setButtonReady(false);
@@ -352,7 +378,6 @@ export default function Dashboard() {
         pos: index
       };
     });
-    console.log('override', sortedData)
 
     setData(sortedData);
   };
@@ -394,21 +419,19 @@ export default function Dashboard() {
   return data ? (
     <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
       <Head>
-        <title>Secrets</title>
+        <title>{t("common:head-title", { title: t("dashboard:title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content="Manage your .env files in seconds" />
-        <meta
-          name="og:description"
-          content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
-        />
+        <meta property="og:title" content={String(t("dashboard:og-title"))} />
+        <meta name="og:description" content={String(t("dashboard:og-description"))} />
       </Head>
       <div className="flex flex-row">
         {sidebarSecretId != "None" && <SideBar 
           toggleSidebar={toggleSidebar} 
-          data={data.filter((row: SecretDataProps) => row.id == sidebarSecretId)} 
+          data={data.filter((row: SecretDataProps) => row.key == data.filter(row => row.id == sidebarSecretId)[0]?.key)} 
           modifyKey={listenChangeKey} 
           modifyValue={listenChangeValue} 
+          modifyComment={listenChangeComment}
           addOverride={addOverride}
           deleteOverride={deleteOverride}
           buttonReady={buttonReady}
@@ -417,33 +440,34 @@ export default function Dashboard() {
           setSharedToHide={setSharedToHide}
         />}
         <div className="w-full max-h-96 pb-2">
-          <NavHeader pageName="Secrets" isProjectRelated={true} />
+          <NavHeader pageName={t("dashboard:title")} isProjectRelated={true} />
           {checkDocsPopUpVisible && (
             <BottonRightPopup
-              buttonText="Check Docs"
+              buttonText={t("dashboard:check-docs.button")}
               buttonLink="https://infisical.com/docs/getting-started/introduction"
-              titleText="Good job!"
+              titleText={t("dashboard:check-docs.title")}
               emoji="🎉"
-              textLine1="Congrats on adding more secrets."
-              textLine2="Here is how to connect them to your codebase."
+              textLine1={t("dashboard:check-docs.line1")}
+              textLine2={t("dashboard:check-docs.line2")}
               setCheckDocsPopUpVisible={setCheckDocsPopUpVisible}
             />
           )}
           <div className="flex flex-row justify-between items-center mx-6 mt-6 mb-3 text-xl max-w-5xl">
             <div className="flex flex-row justify-start items-center text-3xl">
-              <p className="font-semibold mr-4 mt-1">Secrets</p>
+              <p className="font-semibold mr-4 mt-1">{t("dashboard:title")}</p>
               {data?.length == 0 && (
                 <ListBox
                   selected={env}
                   data={['Development', 'Staging', 'Production', 'Testing']}
-                  // ref={useRef(123)}
                   onChange={setEnv}
                 />
               )}
             </div>
             <div className="flex flex-row">
               <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400">
-                <p className="mr-2 font-bold pl-4">Project ID:</p>
+                <p className="mr-2 font-bold pl-4">{`${t(
+                  "common:project-id"
+                )}:`}</p>
                 <input
                   type="text"
                   value={workspaceId}
@@ -463,20 +487,20 @@ export default function Dashboard() {
                     )}
                   </button>
                   <span className="absolute hidden group-hover:flex group-hover:animate-popup duration-300 w-28 -left-8 -top-20 translate-y-full pl-3 py-2 bg-white/10 rounded-md text-center text-gray-400 text-sm">
-                    Click to Copy
+                    {t("common:click-to-copy")}
                   </span>
                 </div>
               </div>
               {(data?.length !== 0 || buttonReady) && (
                 <div className={`flex justify-start max-w-sm mt-2`}>
                   <Button
-                    text="Save Changes"
+                    text={String(t("common:save-changes"))}
                     onButtonPressed={savePush}
                     color="primary"
                     size="md"
                     active={buttonReady}
                     iconDisabled={faCheck}
-                    textDisabled="Saved"
+                    textDisabled={String(t("common:saved"))}
                   />
                 </div>
               )}
@@ -490,7 +514,6 @@ export default function Dashboard() {
                     <ListBox
                       selected={env}
                       data={['Development', 'Staging', 'Production', 'Testing']}
-                      // ref={useRef(123)}
                       onChange={setEnv}
                     />
                     <div className="h-10 w-full bg-white/5 hover:bg-white/10 ml-2 flex items-center rounded-md flex flex-row items-center">
@@ -502,7 +525,7 @@ export default function Dashboard() {
                         className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
                         value={searchKeys}
                         onChange={(e) => setSearchKeys(e.target.value)}
-                        placeholder={'Search keys...'}
+                        placeholder={String(t("dashboard:search-keys"))}
                       />
                     </div>
                     <div className="ml-2 min-w-max flex flex-row items-start justify-start">
@@ -535,7 +558,7 @@ export default function Dashboard() {
                     </div>
                     <div className="relative ml-2 min-w-max flex flex-row items-start justify-end">
                       <Button
-                        text="Add Key"
+                        text={String(t("dashboard:add-key"))}
                         onButtonPressed={addRow}
                         color="mineshaft"
                         icon={faPlus}
@@ -554,36 +577,34 @@ export default function Dashboard() {
             </div>
             {data?.length !== 0 ? (
               <div className="flex flex-col w-full mt-1 mb-2">
-                <div className='bg-mineshaft-800 rounded-md px-2 py-2 max-w-5xl'>
-                  <div
-                    className={`mt-1 max-h-[calc(100vh-280px)] overflow-hidden overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar`}
-                  >
-                    <div className="px-1 pt-2">
-                      {data?.filter(row => !(sharedToHide.includes(row.id) && row.type == 'shared')).map((keyPair) => (
-                        <KeyPair 
-                          key={keyPair.id}
-                          keyPair={keyPair}
-                          deleteRow={deleteCertainRow}
-                          modifyValue={listenChangeValue}
-                          modifyKey={listenChangeKey}
-                          isBlurred={blurred}
-                          isDuplicate={findDuplicates(data?.map((item) => item.key + item.type))?.includes(keyPair.key + keyPair.type)}
-                          toggleSidebar={toggleSidebar}
-                          sidebarSecretId={sidebarSecretId}
-                        />
-                      ))}
-                    </div>
-                    <div className="w-full max-w-5xl px-2 pt-2">
-                      <DropZone
-                        setData={addData}
-                        setErrorDragAndDrop={setErrorDragAndDrop}
-                        createNewFile={addRow}
-                        errorDragAndDrop={errorDragAndDrop}
-                        setButtonReady={setButtonReady}
-                        keysExist={true}
-                        numCurrentRows={data.length}
+                <div
+                  className={`max-w-5xl mt-1 max-h-[calc(100vh-280px)] overflow-hidden overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar`}
+                >
+                  <div className="px-1 pt-2 bg-mineshaft-800 rounded-md p-2">
+                    {data?.filter(row => !(sharedToHide.includes(row.id) && row.type == 'shared')).map((keyPair) => (
+                      <KeyPair 
+                        key={keyPair.id}
+                        keyPair={keyPair}
+                        deleteRow={deleteCertainRow}
+                        modifyValue={listenChangeValue}
+                        modifyKey={listenChangeKey}
+                        isBlurred={blurred}
+                        isDuplicate={findDuplicates(data?.map((item) => item.key + item.type))?.includes(keyPair.key + keyPair.type)}
+                        toggleSidebar={toggleSidebar}
+                        sidebarSecretId={sidebarSecretId}
                       />
-                    </div>
+                    ))}
+                  </div>
+                  <div className="w-full max-w-5xl px-2 pt-3">
+                    <DropZone
+                      setData={addData}
+                      setErrorDragAndDrop={setErrorDragAndDrop}
+                      createNewFile={addRow}
+                      errorDragAndDrop={errorDragAndDrop}
+                      setButtonReady={setButtonReady}
+                      keysExist={true}
+                      numCurrentRows={data.length}
+                    />
                   </div>
                 </div>
               </div>
@@ -637,3 +658,5 @@ export default function Dashboard() {
 }
 
 Dashboard.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps(["dashboard"]);

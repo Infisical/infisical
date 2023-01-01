@@ -4,6 +4,8 @@ go 1.19
 
 require (
 	github.com/99designs/keyring v1.2.2
+	github.com/muesli/mango-cobra v1.2.0
+	github.com/muesli/roff v0.1.0
 	github.com/spf13/cobra v1.6.1
 	golang.org/x/crypto v0.3.0
 	golang.org/x/term v0.3.0
@@ -22,6 +24,8 @@ require (
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
 	github.com/mtibben/percent v0.2.1 // indirect
+	github.com/muesli/mango v0.1.0 // indirect
+	github.com/muesli/mango-pflag v0.1.0 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	go.mongodb.org/mongo-driver v1.10.0 // indirect

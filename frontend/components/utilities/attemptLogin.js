@@ -52,6 +52,7 @@ const attemptLogin = async (
           // if everything works, go the main dashboard page.
           const { token, publicKey, encryptedPrivateKey, iv, tag } =
             await login2(email, clientProof);
+          
           SecurityClient.setToken(token);
 
           const privateKey = Aes256Gcm.decrypt({
@@ -108,15 +109,16 @@ const attemptLogin = async (
           if (isSignUp) {
             await pushKeys({
               obj: {
-                DATABASE_URL: [
+                sDATABASE_URL: [
                   'mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net',
-                  'personal'
+                  'This is an example of secret referencing.'
                 ],
-                DB_USERNAME: ['user1234', 'personal'],
-                DB_PASSWORD: ['example_password', 'personal'],
-                TWILIO_AUTH_TOKEN: ['example_twillion_token', 'shared'],
-                WEBSITE_URL: ['http://localhost:3000', 'shared'],
-                STRIPE_SECRET_KEY: ['sk_test_7348oyho4hfq398HIUOH78', 'shared']
+                sDB_USERNAME: ['OVERRIDE_THIS', ''],
+                sDB_PASSWORD: ['OVERRIDE_THIS', ''],
+                pDB_USERNAME: ['user1234', 'This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need.'],
+                pDB_PASSWORD: ['example_password', 'This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need.'],
+                sTWILIO_AUTH_TOKEN: ['example_twillio_token', ''],
+                sWEBSITE_URL: ['http://localhost:3000', ''],
               },
               workspaceId: projectToLogin,
               env: 'Development'

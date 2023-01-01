@@ -7,6 +7,7 @@ interface OverrideProps {
   keyName: string;
   value: string;
   pos: number;
+  comment: string;
 }
 
 interface ToggleProps { 
@@ -17,6 +18,7 @@ interface ToggleProps {
   value: string;
   pos: number;
   id: string;
+  comment: string;
   deleteOverride: (id: string) => void; 
   sharedToHide: string[];
   setSharedToHide: (values: string[]) => void;
@@ -46,6 +48,7 @@ export default function Toggle ({
   value, 
   pos, 
   id, 
+  comment,
   deleteOverride,
   sharedToHide,
   setSharedToHide
@@ -55,13 +58,12 @@ export default function Toggle ({
       checked={enabled}
       onChange={() => {
         if (enabled == false) {
-          addOverride({ id, keyName, value, pos });
+          addOverride({ id, keyName, value, pos, comment });
           setSharedToHide([
             ...sharedToHide!,
             id
           ])
         } else {
-          setSharedToHide(sharedToHide!.filter(tempId => tempId != id))
           deleteOverride(id);
         }
         setEnabled(!enabled);

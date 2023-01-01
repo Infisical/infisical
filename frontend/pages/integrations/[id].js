@@ -2,14 +2,21 @@ import { useEffect, useState } from "react";
 import Head from "next/head";
 import Image from "next/image";
 import { useRouter } from "next/router";
+import { useTranslation } from "next-i18next";
+import {
+  faArrowRight,
+  faCheck,
+  faRotate,
+  faX,
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import ActivateBotDialog from "~/components/basic/dialog/ActivateBotDialog";
-import IntegrationAccessTokenDialog from "~/components/basic/dialog/IntegrationAccessTokenDialog";
 import CloudIntegrationSection from "~/components/integrations/CloudIntegrationSection";
 import FrameworkIntegrationSection from "~/components/integrations/FrameworkIntegrationSection";
-import Integration from "~/components/integrations/Integration";
 import IntegrationSection from "~/components/integrations/IntegrationSection";
 import NavHeader from "~/components/navigation/NavHeader";
+import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
 import frameworkIntegrationOptions from "../../public/json/frameworkIntegrations.json";
 import getBot from "../api/bot/getBot";
@@ -34,6 +41,8 @@ export default function Integrations() {
   const [selectedIntegrationOption, setSelectedIntegrationOption] = useState(null); 
 
   const router = useRouter();
+
+  const { t } = useTranslation();
 
   useEffect(async () => {
     try {
@@ -181,18 +190,17 @@ export default function Integrations() {
   return (
     <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
       <Head>
-        <title>Dashboard</title>
+        <title>
+            {t("common:head-title", { title: t("integrations:title") })}
+        </title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
         <meta property="og:title" content="Manage your .env files in seconds" />
-        <meta
-          name="og:description"
-          content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."
-        />
+        <meta name="og:description" content={t("integrations:description")} />
       </Head>
       <div className="w-full max-h-96 pb-2 h-screen max-h-[calc(100vh-10px)] overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
         <NavHeader 
-          pageName="Project Integrations" 
+          pageName={t("integrations:title")}
           isProjectRelated={true} 
         />
         <ActivateBotDialog 
@@ -229,3 +237,7 @@ export default function Integrations() {
 }
 
 Integrations.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps([
+  "integrations",
+]);

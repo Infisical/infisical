@@ -14,8 +14,8 @@ var rootCmd = &cobra.Command{
 	Use:               "infisical",
 	Short:             "Infisical CLI is used to inject environment variables into any process",
 	Long:              `Infisical is a simple, end-to-end encrypted service that enables teams to sync and manage their environment variables across their development life cycle.`,
-	CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
-	Version:           "0.1.15",
+	CompletionOptions: cobra.CompletionOptions{HiddenDefaultCmd: true},
+	Version:           "0.1.16",
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

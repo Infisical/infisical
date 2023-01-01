@@ -1,0 +1,173 @@
+import express from 'express';
+const router = express.Router();
+import { body, param, query } from 'express-validator';
+import {
+	requireAuth,
+	requireWorkspaceAuth,
+	validateRequest
+} from '../../middleware';
+import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../variables';
+import { workspaceController, membershipController } from '../../controllers/v1';
+
+router.get(
+	'/:workspaceId/keys',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		acceptedStatuses: [COMPLETED, GRANTED]
+	}),
+	param('workspaceId').exists().trim(),
+	validateRequest,
+	workspaceController.getWorkspacePublicKeys
+);
+
+router.get(
+	'/:workspaceId/users',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		acceptedStatuses: [COMPLETED, GRANTED]
+	}),
+	param('workspaceId').exists().trim(),
+	validateRequest,
+	workspaceController.getWorkspaceMemberships
+);
+
+router.get(
+	'/', 
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}), 
+	workspaceController.getWorkspaces
+);
+
+router.get(
+	'/:workspaceId',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		acceptedStatuses: [COMPLETED, GRANTED]
+	}),
+	param('workspaceId').exists().trim(),
+	validateRequest,
+	workspaceController.getWorkspace
+);
+
+router.post(
+	'/',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	body('workspaceName').exists().trim().notEmpty(),
+	body('organizationId').exists().trim().notEmpty(),
+	validateRequest,
+	workspaceController.createWorkspace
+);
+
+router.delete(
+	'/:workspaceId',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN],
+		acceptedStatuses: [GRANTED]
+	}),
+	param('workspaceId').exists().trim(),
+	validateRequest,
+	workspaceController.deleteWorkspace
+);
+
+router.post(
+	'/:workspaceId/name',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		acceptedStatuses: [COMPLETED, GRANTED]
+	}),
+	param('workspaceId').exists().trim(),
+	body('name').exists().trim().notEmpty(),
+	validateRequest,
+	workspaceController.changeWorkspaceName
+);
+
+router.post(
+	'/:workspaceId/invite-signup',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		acceptedStatuses: [GRANTED]
+	}),
+	param('workspaceId').exists().trim(),
+	body('email').exists().trim().notEmpty(),
+	validateRequest,
+	membershipController.inviteUserToWorkspace
+);
+
+router.get(
+	'/:workspaceId/integrations',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		acceptedStatuses: [GRANTED]
+	}),
+	param('workspaceId').exists().trim(),
+	validateRequest,
+	workspaceController.getWorkspaceIntegrations
+);
+
+router.get(
+	'/:workspaceId/authorizations',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		acceptedStatuses: [GRANTED]
+	}),
+	param('workspaceId').exists().trim(),
+	validateRequest,
+	workspaceController.getWorkspaceIntegrationAuthorizations
+);
+
+router.get(
+	'/:workspaceId/service-tokens', // deprecate
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		acceptedStatuses: [GRANTED]
+	}),
+	param('workspaceId').exists().trim(),
+	validateRequest,
+	workspaceController.getWorkspaceServiceTokens
+);
+
+router.get(
+	'/:workspaceId/service-token-data',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		acceptedStatuses: [GRANTED]
+	}),
+	param('workspaceId').exists().trim(),
+	validateRequest,
+	workspaceController.getWorkspaceServiceTokenData
+);
+
+export default router;

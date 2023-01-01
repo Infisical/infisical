@@ -1,38 +1,39 @@
 /* eslint-disable no-unexpected-multiline */
 /* eslint-disable react-hooks/exhaustive-deps */
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { useTranslation } from "next-i18next";
 import {
   faBookOpen,
   faGear,
   faKey,
   faMobile,
   faPlug,
-  faUser
-} from '@fortawesome/free-solid-svg-icons';
-import { faPlus } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+  faUser,
+} from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import getOrganizations from '~/pages/api/organization/getOrgs';
-import getOrganizationUserProjects from '~/pages/api/organization/GetOrgUserProjects';
-import getOrganizationUsers from '~/pages/api/organization/GetOrgUsers';
-import checkUserAction from '~/pages/api/userActions/checkUserAction';
-import addUserToWorkspace from '~/pages/api/workspace/addUserToWorkspace';
-import createWorkspace from '~/pages/api/workspace/createWorkspace';
-import getWorkspaces from '~/pages/api/workspace/getWorkspaces';
-import uploadKeys from '~/pages/api/workspace/uploadKeys';
+import getOrganizations from "~/pages/api/organization/getOrgs";
+import getOrganizationUserProjects from "~/pages/api/organization/GetOrgUserProjects";
+import getOrganizationUsers from "~/pages/api/organization/GetOrgUsers";
+import checkUserAction from "~/pages/api/userActions/checkUserAction";
+import addUserToWorkspace from "~/pages/api/workspace/addUserToWorkspace";
+import createWorkspace from "~/pages/api/workspace/createWorkspace";
+import getWorkspaces from "~/pages/api/workspace/getWorkspaces";
+import uploadKeys from "~/pages/api/workspace/uploadKeys";
 
-import NavBarDashboard from '../navigation/NavBarDashboard';
-import onboardingCheck from '../utilities/checks/OnboardingCheck';
-import { tempLocalStorage } from '../utilities/checks/tempLocalStorage';
+import NavBarDashboard from "../navigation/NavBarDashboard";
+import onboardingCheck from "../utilities/checks/OnboardingCheck";
+import { tempLocalStorage } from "../utilities/checks/tempLocalStorage";
 import {
   decryptAssymmetric,
-  encryptAssymmetric
-} from '../utilities/cryptography/crypto';
-import Button from './buttons/Button';
-import AddWorkspaceDialog from './dialog/AddWorkspaceDialog';
-import Listbox from './Listbox';
+  encryptAssymmetric,
+} from "../utilities/cryptography/crypto";
+import Button from "./buttons/Button";
+import AddWorkspaceDialog from "./dialog/AddWorkspaceDialog";
+import Listbox from "./Listbox";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -41,14 +42,16 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const router = useRouter();
   const [workspaceList, setWorkspaceList] = useState([]);
-  const [workspaceMapping, setWorkspaceMapping] = useState([{ '1': '2' }]);
-  const [workspaceSelected, setWorkspaceSelected] = useState('∞');
-  const [newWorkspaceName, setNewWorkspaceName] = useState('');
+  const [workspaceMapping, setWorkspaceMapping] = useState([{ "1": "2" }]);
+  const [workspaceSelected, setWorkspaceSelected] = useState("∞");
+  const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [totalOnboardingActionsDone, setTotalOnboardingActionsDone] =
     useState(0);
+
+  const { t } = useTranslation();
 
   function closeModal() {
     setIsOpen(false);
@@ -75,35 +78,35 @@ export default function Layout({ children }: LayoutProps) {
       if (!currentWorkspaces.includes(workspaceName)) {
         const newWorkspace = await createWorkspace({
           workspaceName,
-          organizationId: tempLocalStorage('orgData.id')
+          organizationId: tempLocalStorage("orgData.id"),
         });
         const newWorkspaceId = newWorkspace._id;
 
         if (addAllUsers) {
           const orgUsers = await getOrganizationUsers({
-            orgId: tempLocalStorage('orgData.id')
+            orgId: tempLocalStorage("orgData.id"),
           });
           orgUsers.map(async (user: any) => {
-            if (user.status == 'accepted') {
+            if (user.status == "accepted") {
               const result = await addUserToWorkspace(
                 user.user.email,
                 newWorkspaceId
               );
               if (result?.invitee && result?.latestKey) {
-                const PRIVATE_KEY = tempLocalStorage('PRIVATE_KEY');
+                const PRIVATE_KEY = tempLocalStorage("PRIVATE_KEY");
 
                 // assymmetrically decrypt symmetric key with local private key
                 const key = decryptAssymmetric({
                   ciphertext: result.latestKey.encryptedKey,
                   nonce: result.latestKey.nonce,
                   publicKey: result.latestKey.sender.publicKey,
-                  privateKey: PRIVATE_KEY
+                  privateKey: PRIVATE_KEY,
                 });
 
                 const { ciphertext, nonce } = encryptAssymmetric({
                   plaintext: key,
                   publicKey: result.invitee.publicKey,
-                  privateKey: PRIVATE_KEY
+                  privateKey: PRIVATE_KEY,
                 }) as { ciphertext: string; nonce: string };
 
                 uploadKeys(
@@ -116,11 +119,11 @@ export default function Layout({ children }: LayoutProps) {
             }
           });
         }
-        router.push('/dashboard/' + newWorkspaceId + '?Development');
+        router.push("/dashboard/" + newWorkspaceId + "?Development");
         setIsOpen(false);
-        setNewWorkspaceName('');
+        setNewWorkspaceName("");
       } else {
-        console.error('A project with this name already exists.');
+        console.error("A project with this name already exists.");
         setError(true);
         setLoading(false);
       }
@@ -131,62 +134,65 @@ export default function Layout({ children }: LayoutProps) {
     }
   }
 
-  const menuItems = [
-    {
-      href:
-        '/dashboard/' +
-        workspaceMapping[workspaceSelected as any] +
-        '?Development',
-      title: 'Secrets',
-      emoji: <FontAwesomeIcon icon={faKey} />
-    },
-    {
-      href: '/users/' + workspaceMapping[workspaceSelected as any],
-      title: 'Members',
-      emoji: <FontAwesomeIcon icon={faUser} />
-    },
-    {
-      href: '/integrations/' + workspaceMapping[workspaceSelected as any],
-      title: 'Integrations',
-      emoji: <FontAwesomeIcon icon={faPlug} />
-    },
-    {
-      href: '/settings/project/' + workspaceMapping[workspaceSelected as any],
-      title: 'Project Settings',
-      emoji: <FontAwesomeIcon icon={faGear} />
-    }
-  ];
+  const menuItems = useMemo(
+    () => [
+      {
+        href:
+          "/dashboard/" +
+          workspaceMapping[workspaceSelected as any] +
+          "?Development",
+        title: t("nav:menu.secrets"),
+        emoji: <FontAwesomeIcon icon={faKey} />,
+      },
+      {
+        href: "/users/" + workspaceMapping[workspaceSelected as any],
+        title: t("nav:menu.members"),
+        emoji: <FontAwesomeIcon icon={faUser} />,
+      },
+      {
+        href: "/integrations/" + workspaceMapping[workspaceSelected as any],
+        title: t("nav:menu.integrations"),
+        emoji: <FontAwesomeIcon icon={faPlug} />,
+      },
+      {
+        href: "/settings/project/" + workspaceMapping[workspaceSelected as any],
+        title: t("nav:menu.project-settings"),
+        emoji: <FontAwesomeIcon icon={faGear} />,
+      },
+    ],
+    [t, workspaceMapping, workspaceSelected]
+  );
 
   useEffect(() => {
     // Put a user in a workspace if they're not in one yet
     const putUserInWorkSpace = async () => {
-      if (tempLocalStorage('orgData.id') === '') {
+      if (tempLocalStorage("orgData.id") === "") {
         const userOrgs = await getOrganizations();
-        localStorage.setItem('orgData.id', userOrgs[0]._id);
+        localStorage.setItem("orgData.id", userOrgs[0]._id);
       }
 
       const orgUserProjects = await getOrganizationUserProjects({
-        orgId: tempLocalStorage('orgData.id')
+        orgId: tempLocalStorage("orgData.id"),
       });
       const userWorkspaces = orgUserProjects;
       if (
         userWorkspaces.length == 0 &&
-        router.asPath != '/noprojects' &&
-        !router.asPath.includes('settings')
+        router.asPath != "/noprojects" &&
+        !router.asPath.includes("settings")
       ) {
-        router.push('/noprojects');
-      } else if (router.asPath != '/noprojects') {
+        router.push("/noprojects");
+      } else if (router.asPath != "/noprojects") {
         const intendedWorkspaceId = router.asPath
-          .split('/')
-          [router.asPath.split('/').length - 1].split('?')[0];
+          .split("/")
+          [router.asPath.split("/").length - 1].split("?")[0];
         // If a user is not a member of a workspace they are trying to access, just push them to one of theirs
         if (
-          intendedWorkspaceId != 'heroku' &&
+          intendedWorkspaceId != "heroku" &&
           !userWorkspaces
             .map((workspace: { _id: string }) => workspace._id)
             .includes(intendedWorkspaceId)
         ) {
-          router.push('/dashboard/' + userWorkspaces[0]._id + '?Development');
+          router.push("/dashboard/" + userWorkspaces[0]._id + "?Development");
         } else {
           setWorkspaceList(
             userWorkspaces.map((workspace: any) => workspace.name)
@@ -195,7 +201,7 @@ export default function Layout({ children }: LayoutProps) {
             Object.fromEntries(
               userWorkspaces.map((workspace: any) => [
                 workspace.name,
-                workspace._id
+                workspace._id,
               ])
             ) as any
           );
@@ -203,12 +209,12 @@ export default function Layout({ children }: LayoutProps) {
             Object.fromEntries(
               userWorkspaces.map((workspace: any) => [
                 workspace._id,
-                workspace.name
+                workspace.name,
               ])
             )[
               router.asPath
-                .split('/')
-                [router.asPath.split('/').length - 1].split('?')[0]
+                .split("/")
+                [router.asPath.split("/").length - 1].split("?")[0]
             ]
           );
         }
@@ -224,16 +230,16 @@ export default function Layout({ children }: LayoutProps) {
         workspaceMapping[workspaceSelected as any] &&
         `${workspaceMapping[workspaceSelected as any]}` !==
           router.asPath
-            .split('/')
-            [router.asPath.split('/').length - 1].split('?')[0]
+            .split("/")
+            [router.asPath.split("/").length - 1].split("?")[0]
       ) {
         router.push(
-          '/dashboard/' +
+          "/dashboard/" +
             workspaceMapping[workspaceSelected as any] +
-            '?Development'
+            "?Development"
         );
         localStorage.setItem(
-          'projectData.id',
+          "projectData.id",
           `${workspaceMapping[workspaceSelected as any]}`
         );
       }
@@ -257,7 +263,7 @@ export default function Layout({ children }: LayoutProps) {
               <div>
                 <div className="flex justify-center w-full mt-[4.5rem] mb-6 bg-bunker-600 h-20 flex-col items-center px-4">
                   <div className="text-gray-400 self-start ml-1 mb-1 text-xs font-semibold tracking-wide">
-                    PROJECT
+                    {t("nav:menu.project")}
                   </div>
                   {workspaceList.length > 0 ? (
                     <Listbox
@@ -282,11 +288,11 @@ export default function Layout({ children }: LayoutProps) {
                   {workspaceList.length > 0 &&
                     menuItems.map(({ href, title, emoji }) => (
                       <li className="mt-0.5 mx-2" key={title}>
-                        {router.asPath.split('/')[1] === href.split('/')[1] &&
-                        (['project', 'billing', 'org', 'personal'].includes(
-                          router.asPath.split('/')[2]
+                        {router.asPath.split("/")[1] === href.split("/")[1] &&
+                        (["project", "billing", "org", "personal"].includes(
+                          router.asPath.split("/")[2]
                         )
-                          ? router.asPath.split('/')[2] === href.split('/')[2]
+                          ? router.asPath.split("/")[2] === href.split("/")[2]
                           : true) ? (
                           <div
                             className={`flex relative px-0.5 py-2.5 text-white text-sm rounded cursor-pointer bg-primary-50/10`}
@@ -297,7 +303,7 @@ export default function Layout({ children }: LayoutProps) {
                             </p>
                             {title}
                           </div>
-                        ) : router.asPath == '/noprojects' ? (
+                        ) : router.asPath == "/noprojects" ? (
                           <div
                             className={`flex p-2.5 text-white text-sm rounded`}
                           >
@@ -323,7 +329,7 @@ export default function Layout({ children }: LayoutProps) {
                 </ul>
               </div>
               <div className="w-full mt-40 mb-4 px-2">
-                {router.asPath.split('/')[1] === 'home' ? (
+                {router.asPath.split("/")[1] === "home" ? (
                   <div
                     className={`flex relative px-0.5 py-2.5 text-white text-sm rounded cursor-pointer bg-primary-50/10`}
                   >
@@ -334,12 +340,12 @@ export default function Layout({ children }: LayoutProps) {
                     Infisical Guide
                     <img
                       src={`/images/progress-${
-                        totalOnboardingActionsDone == 0 ? '0' : ''
-                      }${totalOnboardingActionsDone == 1 ? '14' : ''}${
-                        totalOnboardingActionsDone == 2 ? '28' : ''
-                      }${totalOnboardingActionsDone == 3 ? '43' : ''}${
-                        totalOnboardingActionsDone == 4 ? '57' : ''
-                      }${totalOnboardingActionsDone == 5 ? '71' : ''}.svg`}
+                        totalOnboardingActionsDone == 0 ? "0" : ""
+                      }${totalOnboardingActionsDone == 1 ? "14" : ""}${
+                        totalOnboardingActionsDone == 2 ? "28" : ""
+                      }${totalOnboardingActionsDone == 3 ? "43" : ""}${
+                        totalOnboardingActionsDone == 4 ? "57" : ""
+                      }${totalOnboardingActionsDone == 5 ? "71" : ""}.svg`}
                       height={58}
                       width={58}
                       alt="progress bar"
@@ -359,12 +365,12 @@ export default function Layout({ children }: LayoutProps) {
                       Infisical Guide
                       <img
                         src={`/images/progress-${
-                          totalOnboardingActionsDone == 0 ? '0' : ''
-                        }${totalOnboardingActionsDone == 1 ? '14' : ''}${
-                          totalOnboardingActionsDone == 2 ? '28' : ''
-                        }${totalOnboardingActionsDone == 3 ? '43' : ''}${
-                          totalOnboardingActionsDone == 4 ? '57' : ''
-                        }${totalOnboardingActionsDone == 5 ? '71' : ''}.svg`}
+                          totalOnboardingActionsDone == 0 ? "0" : ""
+                        }${totalOnboardingActionsDone == 1 ? "14" : ""}${
+                          totalOnboardingActionsDone == 2 ? "28" : ""
+                        }${totalOnboardingActionsDone == 3 ? "43" : ""}${
+                          totalOnboardingActionsDone == 4 ? "57" : ""
+                        }${totalOnboardingActionsDone == 5 ? "71" : ""}.svg`}
                         height={58}
                         width={58}
                         alt="progress bar"
@@ -394,9 +400,7 @@ export default function Layout({ children }: LayoutProps) {
           className="text-gray-300 text-7xl mb-8"
         />
         <p className="text-gray-200 px-6 text-center text-lg max-w-sm">
-          {' '}
-          To use Infisical, please log in through a device with larger
-          dimensions.{' '}
+          {` ${t("common:no-mobile")} `}
         </p>
       </div>
     </>
