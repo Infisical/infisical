@@ -55,7 +55,6 @@ router.post(
     })
 
     const [bulkCreateError, newlyCreatedSecrets] = await to(Secret.insertMany(sanitizedSecretesToCreate).then())
-
     if (bulkCreateError) {
       if (bulkCreateError instanceof ValidationError) {
         throw RouteValidationError({ message: bulkCreateError.message, stack: bulkCreateError.stack })
@@ -64,7 +63,7 @@ router.post(
       throw InternalServerError({ message: "Unable to process your batch create request. Please try again", stack: bulkCreateError.stack })
     }
 
-    res.status(200).send(newlyCreatedSecrets)
+    res.status(200).send()
   }
 );
 
@@ -134,7 +133,7 @@ router.delete(
  * Apply modifications to many existing secrets in a given workspace and environment
  */
 router.patch(
-  '/batch-modify/:workspaceId/:environmentName',
+  '/batch-modify/workspace/:workspaceId/environment/:environmentName',
   requireAuth,
   body('secrets').exists().isArray().custom((value) => value.every((item: ISecret) => typeof item === 'object')),
   param('workspaceId').exists().isMongoId().trim(),
