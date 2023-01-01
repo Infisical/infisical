@@ -15,7 +15,7 @@ const requireBotAuth = ({
     location?: req;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
-        const bot = await Bot.findOne({ _id: req[location].botId });
+        const bot = await Bot.findById(req[location].botId);
         
         if (!bot) {
             return next(AccountNotFoundError({message: 'Failed to locate Bot account'}))

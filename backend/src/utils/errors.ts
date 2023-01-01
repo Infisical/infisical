@@ -8,7 +8,7 @@ export const RouteNotFoundError = (error?: Partial<RequestErrorContext>) => new 
     message: error?.message ?? 'The requested source was not found',
     context: error?.context,
     stack: error?.stack
-})
+});
 
 export const MethodNotAllowedError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.INFO,
@@ -17,7 +17,7 @@ export const MethodNotAllowedError = (error?: Partial<RequestErrorContext>) => n
     message: error?.message ?? 'The requested method is not allowed for the resource',
     context: error?.context,
     stack: error?.stack
-})
+});
 
 export const UnauthorizedRequestError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.INFO,
@@ -26,7 +26,7 @@ export const UnauthorizedRequestError = (error?: Partial<RequestErrorContext>) =
     message: error?.message ?? 'You are not authorized to access this resource',
     context: error?.context,
     stack: error?.stack
-})
+});
   
 export const ForbiddenRequestError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.INFO,
@@ -35,7 +35,7 @@ export const ForbiddenRequestError = (error?: Partial<RequestErrorContext>) => n
     message: error?.message ?? 'You are not allowed to access this resource',
     context: error?.context,
     stack: error?.stack
-})
+});
 
 export const BadRequestError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.INFO,
@@ -44,7 +44,7 @@ export const BadRequestError = (error?: Partial<RequestErrorContext>) => new Req
     message: error?.message ?? 'The request is invalid or cannot be served',
     context: error?.context,
     stack: error?.stack
-})
+});
 
 export const InternalServerError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.ERROR,
@@ -53,7 +53,7 @@ export const InternalServerError = (error?: Partial<RequestErrorContext>) => new
     message: error?.message ?? 'The server encountered an error while processing the request',
     context: error?.context,
     stack: error?.stack
-})
+});
 
 export const ServiceUnavailableError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.ERROR,
@@ -62,7 +62,7 @@ export const ServiceUnavailableError = (error?: Partial<RequestErrorContext>) =>
     message: error?.message ?? 'The service is currently unavailable. Please try again later.',
     context: error?.context,
     stack: error?.stack
-})
+});
 
 export const ValidationError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.ERROR,
@@ -71,7 +71,7 @@ export const ValidationError = (error?: Partial<RequestErrorContext>) => new Req
     message: error?.message ?? 'The request failed validation',
     context: error?.context,
     stack: error?.stack
-})
+});
 
 //* ----->[INTEGRATION ERRORS]<-----
 export const IntegrationNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
@@ -81,7 +81,7 @@ export const IntegrationNotFoundError = (error?: Partial<RequestErrorContext>) =
     message: error?.message ?? 'The requested integration was not found',
     context: error?.context,
     stack: error?.stack
-})
+});
 
 //* ----->[WORKSPACE ERRORS]<-----
 export const WorkspaceNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
@@ -91,7 +91,7 @@ export const WorkspaceNotFoundError = (error?: Partial<RequestErrorContext>) => 
     message: error?.message ?? 'The requested workspace was not found',
     context: error?.context,
     stack: error?.stack
-})
+});
 
 //* ----->[ORGANIZATION ERRORS]<-----
 export const OrganizationNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
@@ -101,7 +101,7 @@ export const OrganizationNotFoundError = (error?: Partial<RequestErrorContext>) 
     message: error?.message ?? 'The requested organization was not found',
     context: error?.context,
     stack: error?.stack
-})
+});
 
 //* ----->[ACCOUNT ERRORS]<-----
 export const AccountNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
@@ -111,6 +111,16 @@ export const AccountNotFoundError = (error?: Partial<RequestErrorContext>) => ne
     message: error?.message ?? 'The requested account was not found',
     context: error?.context,
     stack: error?.stack
-})
+});
+
+//* ----->[SECRET ERRORS]<-----
+export const SecretNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? 'secret_not_found_error',
+    message: error?.message ?? 'The requested secret was not found',
+    context: error?.context,
+    stack: error?.stack
+});
 
 //* ----->[MISC ERRORS]<-----

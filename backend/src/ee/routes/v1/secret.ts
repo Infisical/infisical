@@ -2,7 +2,7 @@ import express from 'express';
 const router = express.Router();
 import {
     requireAuth,
-    requireWorkspaceAuth,
+	requireSecretAuth,
     validateRequest
 } from '../../../middleware';
 import { body, query, param } from 'express-validator';
@@ -12,7 +12,7 @@ import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../../variables';
 router.get(
 	'/:secretId/secret-versions',
 	requireAuth,
-	requireWorkspaceAuth({
+	requireSecretAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [COMPLETED, GRANTED]
 	}),
