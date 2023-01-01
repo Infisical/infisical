@@ -51,7 +51,8 @@ export const getWorkspaceLogs = async (req: Request, res: Response) => {
 		logs = await Log.find(filters)
 		.skip(offset)
 		.limit(limit)
-		.populate('actions');
+		.populate('actions')
+		.populate('user');
 
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
