@@ -4,7 +4,7 @@ import { ISecret, Secret } from '../../models';
 import { body, param, query, check } from 'express-validator';
 import { BadRequestError, InternalServerError, UnauthorizedRequestError, ValidationError as RouteValidationError } from '../../utils/errors';
 import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../variables';
-import { SanitizedSecretModify, SecretUserInput, SanitizedSecretForCreate } from '../../types/secret/types';
+import { SanitizedSecretModify, CreateSecretRequestBody, SanitizedSecretForCreate, ModifySecretRequestBody } from '../../types/secret/types';
 import to from 'await-to-js';
 import mongoose, { Types } from 'mongoose';
 import { AnyBulkWriteOperation } from 'mongodb';
@@ -27,7 +27,7 @@ router.post(
   body('secrets').exists().isArray().custom((value) => value.every((item: ISecret) => typeof item === 'object')),
   validateRequest,
   async (req: Request, res: Response) => {
-    const secretsToCreate: SecretUserInput[] = req.body.secrets;
+    const secretsToCreate: CreateSecretRequestBody[] = req.body.secrets;
     const { workspaceId, environmentName } = req.params
     const sanitizedSecretesToCreate: SanitizedSecretForCreate[] = []
 
@@ -144,7 +144,7 @@ router.patch(
   }),
   validateRequest, async (req: Request, res: Response) => {
     const { workspaceId, environmentName } = req.params
-    const secretsModificationsRequested: SecretUserInput[] = req.body.secrets;
+    const secretsModificationsRequested: ModifySecretRequestBody[] = req.body.secrets;
 
     const [secretIdsUserCanModifyError, secretIdsUserCanModify] = await to(Secret.find({ workspace: workspaceId, environment: environmentName }, { _id: 1 }).then())
     if (secretIdsUserCanModifyError) {
