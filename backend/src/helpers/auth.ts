@@ -12,56 +12,112 @@ import {
 	JWT_REFRESH_SECRET,
 	SALT_ROUNDS
 } from '../config';
+import {
+	AccountNotFoundError,
+	ServiceTokenDataNotFoundError,
+	UnauthorizedRequestError
+} from '../utils/errors';
 
 /**
- * Attach auth payload
+ * Validate that auth token value [authTokenValue] falls under one of
+ * accepted auth modes [acceptedAuthModes].
  * @param {Object} obj
- * @param {String} obj.authTokenValue
+ * @param {String} obj.authTokenValue - auth token value (e.g. JWT or service token value)
+ * @param {String[]} obj.acceptedAuthModes - accepted auth modes (e.g. jwt, serviceToken)
+ * @returns {String} authMode - auth mode
  */
-const attachAuthPayload = async ({
+const validateAuthMode = ({
+	authTokenValue,
+	acceptedAuthModes
+}: {
+	authTokenValue: string;
+	acceptedAuthModes: string[];
+}) => {
+	let authMode;
+	try {
+		switch (authTokenValue.split('.', 1)[0]) {
+			case 'st':
+				authMode = 'serviceToken';
+				break;
+			default:
+				authMode = 'jwt';
+				break;
+		}
+		
+		if (!acceptedAuthModes.includes(authMode)) 
+			throw UnauthorizedRequestError({ message: 'Failed to authenticated auth mode' });
+
+	} catch (err) {
+		throw UnauthorizedRequestError({ message: 'Failed to authenticated auth mode' });
+	}
+	
+	return authMode;
+}
+
+/**
+ * Return user payload corresponding to JWT token [authTokenValue]
+ * @param {Object} obj
+ * @param {String} obj.authTokenValue - JWT token value
+ * @returns {User} user - user corresponding to JWT token
+ */
+const getAuthUserPayload = async ({
 	authTokenValue
 }: {
 	authTokenValue: string;
 }) => {
-	let serviceTokenHash, decodedToken; // intermediate variables
-	let serviceTokenData, user; // payloads
+	let user;
 	try {
-		switch (authTokenValue.split('.', 1)[0]) {
-			case 'st':
-				// case: service token auth mode
-				serviceTokenHash = await bcrypt.hash(authTokenValue, SALT_ROUNDS);
-				serviceTokenData = await ServiceTokenData
-					.findOne({
-						serviceTokenHash
-					})
-					.select('+encryptedKey +iv +tag');
-				
-				if (!serviceTokenData) {
-					throw new Error('Account not found error');
-				}
+		const decodedToken = <jwt.UserIDJwtPayload>(
+			jwt.verify(authTokenValue, JWT_AUTH_SECRET)
+		);
 
-				return serviceTokenData;
-			default:
-				//  case: JWT token auth mode
-				decodedToken = <jwt.UserIDJwtPayload>(
-					jwt.verify(authTokenValue, JWT_AUTH_SECRET)
-				);
-				
-				user = await User.findOne({
-					_id: decodedToken.userId
-				}).select('+publicKey');
+		user = await User.findOne({
+			_id: decodedToken.userId
+		}).select('+publicKey');
 
-				if (!user) 
-					throw new Error('Account not found error');
+		if (!user) throw AccountNotFoundError({ message: 'Failed to find User' });
 
-				if (!user?.publicKey)
-					throw new Error('Unable to authenticate due to partially set up account');
+		if (!user?.publicKey) throw UnauthorizedRequestError({ message: 'Failed to authenticate User with partially set up account' });
 
-				return user;
-		}
 	} catch (err) {
-		throw new Error('Failed to attach auth payload');
+		throw UnauthorizedRequestError({
+			message: 'Failed to authenticate JWT token'
+		});
 	}
+	
+	return user;
+}
+
+/**
+ * Return service token data payload corresponding to service token [authTokenValue]
+ * @param {Object} obj
+ * @param {String} obj.authTokenValue - service token value
+ * @returns {ServiceTokenData} serviceTokenData - service token data
+ */
+const getAuthSTDPayload = async ({
+	authTokenValue
+}: {
+	authTokenValue: string;
+}) => {
+	let serviceTokenData;
+	try {
+		const serviceTokenHash = await bcrypt.hash(authTokenValue, SALT_ROUNDS);
+
+		serviceTokenData = await ServiceTokenData
+			.findOne({
+				serviceTokenHash
+			})
+			.select('+encryptedKey +iv +tag');
+		
+		if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
+
+	} catch (err) {
+		throw UnauthorizedRequestError({
+			message: 'Failed to authenticate service token'
+		});
+	}
+	
+	return serviceTokenData;
 }
 
 /**
@@ -154,7 +210,9 @@ const createToken = ({
 };
 
 export { 
-	attachAuthPayload,
+	validateAuthMode,
+	getAuthUserPayload,
+	getAuthSTDPayload,
 	createToken, 
 	issueTokens, 
 	clearTokens 

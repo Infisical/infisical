@@ -11,7 +11,7 @@ import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../variables';
 import { membershipController } from '../../controllers/v1';
 import { workspaceController } from '../../controllers/v2';
 
-router.post( // unfinished
+router.post(
 	'/:workspaceId/secrets',
 	requireAuth({
 		acceptedAuthModes: ['jwt']
@@ -29,10 +29,10 @@ router.post( // unfinished
 	workspaceController.pushWorkspaceSecrets
 );
 
-router.get( // unfinished, check that it works with st
+router.get(
 	'/:workspaceId/secrets',
 	requireAuth({
-		acceptedAuthModes: ['jwt', 'st']
+		acceptedAuthModes: ['jwt', 'serviceToken']
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],

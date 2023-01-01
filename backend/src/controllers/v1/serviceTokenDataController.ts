@@ -48,7 +48,8 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
 		const expiresAt = new Date();
 		expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
         
-        serviceTokenData = await new ServiceTokenData({
+        // create service token data
+        serviceTokenData = new ServiceTokenData({
             name,
             workspace: workspaceId,
             environment,
@@ -59,7 +60,12 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             encryptedKey,
             iv,
             tag
-        }).save();
+        })
+        
+        await serviceTokenData.save();
+
+        // return service token data without sensitive data
+        serviceTokenData = await ServiceTokenData.findById(serviceTokenData._id);
         
     } catch (err) {
         Sentry.setUser({ email: req.user.email });

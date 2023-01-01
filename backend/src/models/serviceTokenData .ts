@@ -45,19 +45,19 @@ const serviceTokenDataSchema = new Schema<IServiceTokenData>(
             type: String,
             unique: true,
             required: true,
-            select: true
+            select: false
         },
         encryptedKey: {
             type: String,
-            select: true
+            select: false
         },
         iv: {
             type: String,
-            select: true
+            select: false
         },
         tag: {
             type: String,
-            select: true
+            select: false
         }
     }, 
     {

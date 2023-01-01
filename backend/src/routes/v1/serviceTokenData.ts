@@ -18,7 +18,7 @@ import { serviceTokenDataController } from '../../controllers/v1';
 router.get(
     '/',
     requireAuth({
-        acceptedAuthModes: ['st']
+        acceptedAuthModes: ['serviceToken']
     }),
     param('serviceTokenDataId').exists().trim(),
     validateRequest,

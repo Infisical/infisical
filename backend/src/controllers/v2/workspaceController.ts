@@ -139,7 +139,7 @@ export const pullSecrets = async (req: Request, res: Response) => {
 			environment
 		});
 		
-		if (channel !== 'cli') { // TODO: fix frontend to get rid of this reformat bs
+		if (channel !== 'cli') {
 			secrets = reformatPullSecrets({ secrets });
 		}
 

@@ -2,7 +2,9 @@ import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import { User, ServiceTokenData } from '../models';
 import {
-	attachAuthPayload
+	validateAuthMode,
+	getAuthUserPayload,
+	getAuthSTDPayload
 } from '../helpers/auth';
 import { JWT_AUTH_SECRET } from '../config';
 import { AccountNotFoundError, BadRequestError, UnauthorizedRequestError } from '../utils/errors';
@@ -37,30 +39,25 @@ const requireAuth  = ({
 		if(AUTH_TOKEN_VALUE === null) 
 			return next(BadRequestError({message: 'Missing Authorization Body in the request header'}))
 		
-		// validate auth mode
-		let authMode;
-		switch (AUTH_TOKEN_VALUE.split('.', 1)[0]) {
-			case 'st':
-				authMode = 'st';
-				break;
-			default:
-				authMode = 'jwt';
-				break;
-		}
-		
-		if (!acceptedAuthModes.includes(authMode)) throw new Error('Failed to validate auth mode');
-
-		// attach auth request payload
-		const payload = await attachAuthPayload({
-			authTokenValue: AUTH_TOKEN_VALUE
+		// validate auth token against 
+		const authMode = validateAuthMode({
+			authTokenValue: AUTH_TOKEN_VALUE,
+			acceptedAuthModes
 		});
 		
+		if (!acceptedAuthModes.includes(authMode)) throw new Error('Failed to validate auth mode');
+		
+		// attach auth payloads
 		switch (authMode) {
-			case 'st':
-				req.serviceTokenData = payload;
+			case 'serviceToken':
+				req.serviceTokenData = await getAuthSTDPayload({
+					authTokenValue: AUTH_TOKEN_VALUE
+				});
 				break;
 			default:
-				req.user = payload;
+				req.user = await getAuthUserPayload({
+					authTokenValue: AUTH_TOKEN_VALUE
+				});
 				break;
 		}
 
