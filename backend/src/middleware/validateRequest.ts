@@ -15,7 +15,7 @@ const validate = (req: Request, res: Response, next: NextFunction) => {
 	try {
 		const errors = validationResult(req);
 		if (!errors.isEmpty()) {
-			return next(ValidationError({ context: { errors: `One or more of your paramters are invalid [error=${errors.array}]` } }))
+			return next(ValidationError({ context: { errors: `One or more of your parameters are invalid [error(s)=${(JSON.stringify(errors))}]` } }))
 		}
 
 		return next();
