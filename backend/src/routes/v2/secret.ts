@@ -24,7 +24,7 @@ router.post(
   }),
   param('workspaceId').exists().isMongoId().trim(),
   param('environmentName').exists().trim(),
-  body('secrets').exists().isArray().custom((value) => value.every((item: ISecret) => typeof item === 'object')),
+  body('secrets').exists().isArray().custom((value) => value.every((item: CreateSecretRequestBody) => typeof item === 'object')),
   validateRequest,
   async (req: Request, res: Response) => {
     const secretsToCreate: CreateSecretRequestBody[] = req.body.secrets;
@@ -94,7 +94,7 @@ router.delete(
   requireAuth,
   param('workspaceId').exists().isMongoId().trim(),
   param('environmentName').exists().trim(),
-  body('secretIds').exists().isArray(),
+  body('secretIds').exists().isArray().custom(array => array.length > 0),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
     acceptedStatuses: [COMPLETED, GRANTED]

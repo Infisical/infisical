@@ -81,6 +81,7 @@ func getSecretsByWorkspaceIdAndEnvName(httpClient resty.Client, envName string, 
 			Key:   string(plainTextKey),
 			Value: string(plainTextValue),
 			Type:  string(secret.Type),
+			ID:    secret.ID,
 		}
 
 		listOfEnv = append(listOfEnv, env)
@@ -192,6 +193,7 @@ func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, envName string,
 			Key:   string(plainTextKey),
 			Value: string(plainTextValue),
 			Type:  string(secret.Type),
+			ID:    secret.ID,
 		}
 
 		listOfEnv = append(listOfEnv, env)

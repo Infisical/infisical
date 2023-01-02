@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"io"
 
+	"github.com/Infisical/infisical-merge/packages/models"
 	"golang.org/x/crypto/nacl/box"
 )
 
@@ -39,15 +40,15 @@ func GenerateNewKey() (newKey []byte, keyErr error) {
 }
 
 // Will encrypt a plain text with the provided key
-func EncryptSymmetric(plaintext []byte, key []byte) (cipherText []byte, iv []byte, tag []byte, err error) {
+func EncryptSymmetric(plaintext []byte, key []byte) (result models.SymmetricEncryptionResult, err error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, nil, nil, err
+		return models.SymmetricEncryptionResult{}, err
 	}
 
 	aesgcm, err := cipher.NewGCMWithNonceSize(block, 16) // default is 12, 16 because https://github.com/Infisical/infisical/blob/bea0ff6e05a4de73a5db625d4ae181a015b50855/backend/src/utils/aes-gcm.ts#L4
 	if err != nil {
-		return nil, nil, nil, err
+		return models.SymmetricEncryptionResult{}, err
 	}
 
 	// create a nonce
@@ -62,7 +63,11 @@ func EncryptSymmetric(plaintext []byte, key []byte) (cipherText []byte, iv []byt
 
 	authTag := ciphertext[len(ciphertext)-16:]
 
-	return ciphertextOnly, nonce, authTag, nil
+	return models.SymmetricEncryptionResult{
+		CipherText: ciphertextOnly,
+		AuthTag:    authTag,
+		Nonce:      nonce,
+	}, nil
 }
 
 func DecryptAsymmetric(ciphertext []byte, nonce []byte, publicKey []byte, privateKey []byte) (plainText []byte) {
