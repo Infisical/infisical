@@ -1,7 +1,9 @@
+import { Types } from 'mongoose';
 import { ISecretVersion } from '../models';
 import { 
     takeSecretSnapshotHelper,
-    addSecretVersionsHelper
+    addSecretVersionsHelper,
+    markDeletedSecretVersionsHelper
 } from '../helpers/secret';
 import EELicenseService from './EELicenseService';
 
@@ -28,7 +30,7 @@ class EESecretService {
     }
     
     /**
-     * Adds secret versions [secretVersions] to the SecretVersion collection.
+     * Add secret versions [secretVersions] to the SecretVersion collection.
      * @param {Object} obj
      * @param {SecretVersion} obj.secretVersions
      */
@@ -38,8 +40,25 @@ class EESecretService {
         secretVersions: ISecretVersion[];
     }) {
         if (!EELicenseService.isLicenseValid) return;
-        await addSecretVersionsHelper({
+        return await addSecretVersionsHelper({
             secretVersions
+        });
+    }
+
+    /**
+     * Mark secret versions associated with secrets with ids [secretIds]
+     * as deleted.
+     * @param {Object} obj
+     * @param {ObjectId[]} obj.secretIds - secret ids
+     */
+    static async markDeletedSecretVersions({
+        secretIds
+    }: {
+        secretIds: Types.ObjectId[];
+    }) {
+        if (!EELicenseService.isLicenseValid) return;
+        await markDeletedSecretVersionsHelper({
+            secretIds
         });
     }
 }

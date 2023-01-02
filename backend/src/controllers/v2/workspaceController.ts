@@ -369,7 +369,6 @@ export const getWorkspaceServiceTokens = async (
  */
 export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
 	// upload (encrypted) secrets to workspace with id [workspaceId]
-
 	try {
 		let { secrets }: { secrets: V2PushSecret[] } = req.body;
 		const { keys, environment, channel } = req.body;
@@ -399,7 +398,6 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
 			workspaceId,
 			keys
 		});
-		
 		
 		if (postHogClient) {
 			postHogClient.capture({

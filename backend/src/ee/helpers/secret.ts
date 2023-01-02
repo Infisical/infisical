@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import * as Sentry from '@sentry/node';
 import {
     Secret
@@ -59,16 +60,40 @@ const addSecretVersionsHelper = async ({
 }: {
 	secretVersions: ISecretVersion[]
 }) => {
+	let newSecretVersions;
 	try {
-		await SecretVersion.insertMany(secretVersions);
+		newSecretVersions = await SecretVersion.insertMany(secretVersions);
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
 		throw new Error('Failed to add secret versions');
 	}
+	
+	return newSecretVersions;
+}
+
+const markDeletedSecretVersionsHelper = async ({
+	secretIds
+}: {
+	secretIds: Types.ObjectId[];
+}) => {
+	try {
+		await SecretVersion.updateMany({
+			secret: { $in: secretIds }
+		}, {
+			isDeleted: true
+		}, {
+			new: true
+		});
+	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
+		throw new Error('Failed to mark secret versions as deleted');
+	}
 }
 
 export {
     takeSecretSnapshotHelper,
-	addSecretVersionsHelper
+	addSecretVersionsHelper,
+	markDeletedSecretVersionsHelper
 }

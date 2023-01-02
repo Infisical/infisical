@@ -33,7 +33,6 @@ router.get(
 	param('workspaceId').exists().trim(),
 	query('offset').exists().isInt(),
 	query('limit').exists().isInt(),
-	query('filters').exists(),
 	validateRequest,
 	workspaceController.getWorkspaceLogs
 );

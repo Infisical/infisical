@@ -22,6 +22,7 @@ const createLogHelper = async ({
         log = await new Log({
             user: userId,
             workspace: workspaceId,
+            actionNames: actions.map((a) => a.name),
             actions,
             channel,
             ipAddress

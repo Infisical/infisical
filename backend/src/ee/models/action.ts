@@ -26,8 +26,14 @@ const actionSchema = new Schema<IAction>(
         },
         payload: {
             secretVersions: [{
-                type: Schema.Types.ObjectId,
-                ref: 'SecretVersion'
+                oldSecretVersion: {
+                    type: Schema.Types.ObjectId,
+                    ref: 'SecretVersion'
+                },
+                newSecretVersion: {
+                    type: Schema.Types.ObjectId,
+                    ref: 'SecretVersion'
+                }
             }]
         }
     }, {

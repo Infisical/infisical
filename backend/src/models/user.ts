@@ -52,7 +52,8 @@ const userSchema = new Schema<IUser>(
 		},
 		refreshVersion: {
 			type: Number,
-			default: 0
+			default: 0,
+			select: false
 		}
 	},
 	{

@@ -285,6 +285,9 @@ const v1PushSecrets = async ({
 	}
 };
 
+// TODO: optimize this route.
+// TODO: ensure that it's possible to query for and filter logs
+
 /**
  * Push secrets for user with id [userId] to workspace
  * with id [workspaceId] with environment [environment]. Follow steps:
@@ -341,42 +344,19 @@ const v1PushSecrets = async ({
 			await Secret.deleteMany({
 				_id: { $in: toDelete }
 			});
+
+			await EESecretService.markDeletedSecretVersions({
+				secretIds: toDelete
+			});
 			
-			await SecretVersion.updateMany({
-				secret: { $in: toDelete }
-			}, {
-				isDeleted: true
-			}, {
-				new: true
+			const deleteAction = await EELogService.createActionSecret({
+				name: ACTION_DELETE_SECRETS,
+				userId,
+				workspaceId,
+				secretIds: toDelete
 			});
 
-			// add audit log for deleted secrets
-			const deletedLatestSecretVersions = (await SecretVersion.aggregate([
-				{
-					$match: { secret: { $in: toDelete } }
-				},
-				{
-					$group: {
-						_id: '$secret',
-						version: { $max: '$version' }
-					}
-				},
-				{
-					$sort: { version: -1 }
-				}
-				])
-				.exec())
-				.map((s) => s._id);
-			
-			const deleteAction = await new Action({
-				name: ACTION_DELETE_SECRETS,
-				user: new Types.ObjectId(userId),
-				workspace: new Types.ObjectId(workspaceId),
-				payload: {
-					secretVersions: deletedLatestSecretVersions
-				}
-			}).save();
-			actions.push(deleteAction);
+			deleteAction && actions.push(deleteAction);
 		}
 		
 		const toUpdate = oldSecrets
@@ -459,10 +439,6 @@ const v1PushSecrets = async ({
 						secretValueIV,
 						secretValueTag,
 						secretValueHash,
-						secretCommentCiphertext,
-						secretCommentIV,
-						secretCommentTag,
-						secretCommentHash,
 					} = newSecretsObj[`${s.type}-${s.secretKeyHash}`];
 
 					return ({
@@ -481,34 +457,14 @@ const v1PushSecrets = async ({
 				}) 
 			});
 
-			// add audit log for updated secrets
-			const updatedLatestSecretVersions = (await SecretVersion.aggregate([
-				{
-					$match: { secret: { $in: toUpdate.map((u) => u._id) } }
-				},
-				{
-					$group: {
-						_id: '$secret',
-						version: { $max: '$version' }
-					}
-				},
-				{
-					$sort: { version: -1 }
-				}
-				])
-				.exec())
-				.map((s) => s._id);
-			
-			const updateAction = await new Action({
+			const updateAction = await EELogService.createActionSecret({
 				name: ACTION_UPDATE_SECRETS,
-				user: new Types.ObjectId(userId),
-				workspace: new Types.ObjectId(workspaceId),
-				payload: {
-					secretVersions: updatedLatestSecretVersions
-				}
-			}).save();
+				userId,
+				workspaceId,
+				secretIds: toUpdate.map((u) => u._id)
+			});
 
-			actions.push(updateAction);
+			updateAction && actions.push(updateAction);
 		}
 
 		// handle adding new secrets
@@ -517,45 +473,14 @@ const v1PushSecrets = async ({
 		if (toAdd.length > 0) {
 			// add secrets
 			const newSecrets = await Secret.insertMany(
-				toAdd.map(({
-					secretKeyCiphertext,
-					secretKeyIV,
-					secretKeyTag,
-					secretKeyHash,
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash,
-					secretCommentCiphertext,
-					secretCommentIV,
-					secretCommentTag,
-					secretCommentHash,
-				}, idx) => {
-					const obj: any = {
-						version: 1,
-						workspace: workspaceId,
-						type: toAdd[idx].type,
-						environment,
-						secretKeyCiphertext,
-						secretKeyIV,
-						secretKeyTag,
-						secretKeyHash,
-						secretValueCiphertext,
-						secretValueIV,
-						secretValueTag,
-						secretValueHash,
-						secretCommentCiphertext,
-						secretCommentIV,
-						secretCommentTag,
-						secretCommentHash
-					};
-
-					if (toAdd[idx].type === 'personal') {
-						obj['user' as keyof typeof obj] = userId;
-					}
-
-					return obj;
-				})
+				toAdd.map((s, idx) => ({
+					...s,
+					version: 1,
+					workspace: workspaceId,
+					type: toAdd[idx].type,
+					environment,
+					...( toAdd[idx].type === 'personal' ? { user: userId } : {})
+				}))
 			);
 
 			// (EE) add secret versions for new secrets
@@ -584,35 +509,14 @@ const v1PushSecrets = async ({
 					secretValueHash
 				}))
 			});
-
-			// add audit log for new secrets
-			const newLatestSecretVersions = (await SecretVersion.aggregate([
-				{
-					$match: { secret: { $in: newSecrets.map((n) => n._id) } }
-				},
-				{
-				$group: {
-					_id: '$secret',
-					version: { $max: '$version' }
-				}
-				},
-				{
-				$sort: { version: -1 }
-				}
-			])
-			.exec())
-			.map((s) => s._id);
 			
-			const addAction = await new Action({
+			const addAction = await EELogService.createActionSecret({
 				name: ACTION_ADD_SECRETS,
-				user: new Types.ObjectId(userId),
-				workspace: new Types.ObjectId(workspaceId),
-				payload: {
-					secretVersions: newLatestSecretVersions
-				}
-			}).save();
-			
-			actions.push(addAction);
+				userId,
+				workspaceId,
+				secretIds: newSecrets.map((n) => n._id)
+			});
+			addAction && actions.push(addAction);
 		}
 		
 		// (EE) take a secret snapshot
@@ -620,6 +524,7 @@ const v1PushSecrets = async ({
 			workspaceId
 		})
 
+		// (EE) create (audit) log
 		if (actions.length > 0) {
 			await EELogService.createLog({
 				userId,
@@ -637,7 +542,7 @@ const v1PushSecrets = async ({
 };
 
 /**
- * Pull secrets for user with id [userId] for workspace
+ * Get secrets for user with id [userId] for workspace
  * with id [workspaceId] with environment [environment]
  * @param {Object} obj
  * @param {String} obj.userId -id of user to pull secrets for
@@ -704,7 +609,7 @@ const pullSecrets = async ({
 	channel: string;
 	ipAddress: string;
 }): Promise<ISecret[]> => {
-	let secrets: any; // TODO: FIX any
+	let secrets: any;
 	
 	try {
 		secrets = await getSecrets({
@@ -712,35 +617,15 @@ const pullSecrets = async ({
 			workspaceId,
 			environment
 		})
-		
-		// add audit log for new secrets
-		const readLatestSecretVersions = (await SecretVersion.aggregate([
-			{
-				$match: { secret: { $in: secrets.map((n: any) => n._id) } }
-			},
-			{
-			$group: {
-				_id: '$secret',
-				version: { $max: '$version' }
-			}
-			},
-			{
-			$sort: { version: -1 }
-			}
-		])
-		.exec())
-		.map((s) => s._id);
 
-		const readAction = await new Action({
+		const readAction = await EELogService.createActionSecret({
 			name: ACTION_READ_SECRETS,
-			user: new Types.ObjectId(userId),
-			workspace: new Types.ObjectId(workspaceId),
-			payload: {
-				secretVersions: readLatestSecretVersions
-			}
-		}).save();
+			userId,
+			workspaceId,
+			secretIds: secrets.map((n: any) => n._id)
+		});
 
-		await EELogService.createLog({
+		readAction && await EELogService.createLog({
 			userId,
 			workspaceId,
 			actions: [readAction],

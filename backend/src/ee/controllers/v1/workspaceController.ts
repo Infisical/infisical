@@ -41,14 +41,23 @@ export const getWorkspaceLogs = async (req: Request, res: Response) => {
 	let logs
 	try {
 		const { workspaceId } = req.params;
+		const { userId, actionNames } = req.query;
 
 		const offset: number = parseInt(req.query.offset as string);
 		const limit: number = parseInt(req.query.limit as string);
-		const filters: any = req.query.filters || {};
 		
-		filters.workspace = workspaceId;
-		
-		logs = await Log.find(filters)
+		logs = await Log.find({
+			workspace: workspaceId,
+			...( userId ? { user: userId } : {}),
+			...( 
+				actionNames 
+				? { 
+					actionNames: {
+						$in: actionNames
+					}
+				} : {}
+			)
+		})
 		.skip(offset)
 		.limit(limit)
 		.populate('actions')
