@@ -49,6 +49,7 @@ export const getWorkspaceLogs = async (req: Request, res: Response) => {
 		filters.workspace = workspaceId;
 		
 		logs = await Log.find(filters)
+		.sort({ createdAt: -1 })
 		.skip(offset)
 		.limit(limit)
 		.populate('actions')
