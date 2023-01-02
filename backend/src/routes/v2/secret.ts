@@ -120,9 +120,12 @@ router.delete(
       }
     })
 
-    const [bulkModificationInfoError, bulkModificationInfo] = await to(Secret.bulkWrite(deleteOperationsToPerform).then())
-    if (bulkModificationInfoError) {
-      throw InternalServerError({ message: "Unable to apply modifications, please try again" })
+    const [bulkDeleteError, bulkDelete] = await to(Secret.bulkWrite(deleteOperationsToPerform).then())
+    if (bulkDeleteError) {
+      if (bulkDeleteError instanceof ValidationError) {
+        throw RouteValidationError({ message: "Unable to apply modifications, please try again", stack: bulkDeleteError.stack })
+      }
+      throw InternalServerError()
     }
 
     res.status(200).send()
@@ -135,7 +138,7 @@ router.delete(
 router.patch(
   '/batch-modify/workspace/:workspaceId/environment/:environmentName',
   requireAuth,
-  body('secrets').exists().isArray().custom((value) => value.every((item: ISecret) => typeof item === 'object')),
+  body('secrets').exists().isArray().custom((secrets: ModifySecretRequestBody[]) => secrets.length > 0),
   param('workspaceId').exists().isMongoId().trim(),
   param('environmentName').exists().trim(),
   requireWorkspaceAuth({
@@ -145,7 +148,6 @@ router.patch(
   validateRequest, async (req: Request, res: Response) => {
     const { workspaceId, environmentName } = req.params
     const secretsModificationsRequested: ModifySecretRequestBody[] = req.body.secrets;
-
     const [secretIdsUserCanModifyError, secretIdsUserCanModify] = await to(Secret.find({ workspace: workspaceId, environment: environmentName }, { _id: 1 }).then())
     if (secretIdsUserCanModifyError) {
       throw InternalServerError({ message: "Unable to fetch secrets you own" })
@@ -153,6 +155,7 @@ router.patch(
 
     const secretsUserCanModifySet: Set<string> = new Set(secretIdsUserCanModify.map(objectId => objectId._id.toString()));
     const updateOperationsToPerform: any = []
+
 
     secretsModificationsRequested.forEach(userModifiedSecret => {
       if (secretsUserCanModifySet.has(userModifiedSecret._id.toString())) {
@@ -180,7 +183,11 @@ router.patch(
 
     const [bulkModificationInfoError, bulkModificationInfo] = await to(Secret.bulkWrite(updateOperationsToPerform).then())
     if (bulkModificationInfoError) {
-      throw InternalServerError({ message: "Unable to apply modifications, please try again" })
+      if (bulkModificationInfoError instanceof ValidationError) {
+        throw RouteValidationError({ message: "Unable to apply modifications, please try again", stack: bulkModificationInfoError.stack })
+      }
+
+      throw InternalServerError()
     }
 
     return res.status(200).send()
