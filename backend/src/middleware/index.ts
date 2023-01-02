@@ -7,6 +7,7 @@ import requireIntegrationAuth from './requireIntegrationAuth';
 import requireIntegrationAuthorizationAuth from './requireIntegrationAuthorizationAuth';
 import requireServiceTokenAuth from './requireServiceTokenAuth';
 import requireServiceTokenDataAuth from './requireServiceTokenDataAuth';
+import requireSecretAuth from './requireSecretAuth';
 import validateRequest from './validateRequest';
 
 export {
@@ -19,5 +20,6 @@ export {
 	requireIntegrationAuthorizationAuth,
 	requireServiceTokenAuth,
 	requireServiceTokenDataAuth,
+	requireSecretAuth,
 	validateRequest
 };

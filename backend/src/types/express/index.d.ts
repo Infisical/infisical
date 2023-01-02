@@ -1,6 +1,5 @@
 import * as express from 'express';
 
-
 // TODO: fix (any) types
 declare global {
 	namespace Express {
@@ -8,11 +7,12 @@ declare global {
 			user: any;
 			workspace: any;
 			membership: any;
-			organizationt: any;
+			organization: any;
 			membershipOrg: any;
 			integration: any;
 			integrationAuth: any;
 			bot: any;
+			secret: any;
 			serviceToken: any;
 			accessToken: any;
 			serviceTokenData: any;
