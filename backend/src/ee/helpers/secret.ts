@@ -147,7 +147,7 @@ const initSecretVersioningHelper = async () => {
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
-		throw new Error('Failed to ensure secrets are versioned');
+		throw new Error('Failed to ensure that secrets are versioned');
 	}
 }
 

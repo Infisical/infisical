@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/node';
-import { Types } from 'mongoose';
 import {
 	Secret,
 	ISecret,
@@ -10,13 +9,8 @@ import {
 } from '../ee/services';
 import {
 	SecretVersion,
-	Action,
 	IAction
 } from '../ee/models';
-import {
-	takeSecretSnapshotHelper
-} from '../ee/helpers/secret';
-import { decryptSymmetric } from '../utils/crypto';
 import { 
 	SECRET_SHARED, 
 	SECRET_PERSONAL,
@@ -61,8 +55,6 @@ interface V2PushSecret {
 interface Update {
 	[index: string]: any;
 }
-
-type DecryptSecretType = 'text' | 'object' | 'expanded';
 
 /**
  * Push secrets for user with id [userId] to workspace
@@ -284,9 +276,6 @@ const v1PushSecrets = async ({
 		throw new Error('Failed to push shared and personal secrets');
 	}
 };
-
-// TODO: optimize this route.
-// TODO: ensure that it's possible to query for and filter logs
 
 /**
  * Push secrets for user with id [userId] to workspace
