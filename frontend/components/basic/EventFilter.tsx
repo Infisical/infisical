@@ -1,60 +1,50 @@
 import React from 'react';
 import { Fragment } from 'react';
+import { useTranslation } from "next-i18next";
 import {
   faAngleDown,
-  faCheck,
-  faDownload,
+  faEye,
   faPlus,
-  faUpload,
+  faShuffle,
   faX
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Listbox, Transition } from '@headlessui/react';
 
-import guidGenerator from '../utilities/randomId';
-import Button from './buttons/Button';
-
 interface ListBoxProps {
   selected: string;
   select: (event: string) => void;
-  data: string[];
-  text?: string;
-  buttonAction?: () => void;
-  isFull?: boolean;
 }
 
 const eventOptions = [
   {
-    name: 'Secrets Pushed',
-    icon: faUpload
+    name: 'addSecrets',
+    icon: faPlus
   },
   {
-    name: 'Secrets Pulled',
-    icon: faDownload
+    name: 'readSecrets',
+    icon: faEye
+  },
+  {
+    name: 'updateSecrets',
+    icon: faShuffle
   }
 ];
 
 /**
- * This is the component that we use for drop down lists.
+ * This is the component that we use for the event picker in the activity logs tab.
  * @param {object} obj
- * @param {string} obj.selected - the item that is currently selected
- * @param {function} obj.select - what happends if you select the item inside a list
- * @param {string[]} obj.data - all the options available
- * @param {string} obj.text - the text that shows us in front of the select option
- * @param {function} obj.buttonAction - if there is a button at the bottom of the list, this is the action that happens when you click the button
- * @param {string} obj.width - button width
- * @returns
+ * @param {string} obj.selected - the event that is currently selected
+ * @param {function} obj.select - an action that happens when an item is selected
  */
 export default function EventFilter({
   selected,
-  select,
-  data,
-  text,
-  buttonAction,
-  isFull
+  select
 }: ListBoxProps): JSX.Element {
+  const { t } = useTranslation();
+
   return (
-    <Listbox value={selected} onChange={select}>
+    <Listbox value={t("activity:event." + selected)} onChange={select}>
       <div className="relative">
         <Listbox.Button className="bg-mineshaft-800 hover:bg-mineshaft-700 duration-200 cursor-pointer rounded-md h-10 flex items-center justify-between pl-4 pr-2 w-52 text-bunker-200 text-sm">
           {selected != '' ? (
@@ -84,9 +74,9 @@ export default function EventFilter({
                 <Listbox.Option
                   key={id}
                   className={`px-4 h-10 flex items-center text-sm cursor-pointer hover:bg-mineshaft-700 text-bunker-200 rounded-md ${
-                    selected == event.name && 'bg-mineshaft-700'
+                    selected == t("activity:event." + event.name) && 'bg-mineshaft-700'
                   }`}
-                  value={event.name}
+                  value={t("activity:event." + event.name)}
                 >
                   {({ selected }) => (
                     <>
@@ -96,7 +86,7 @@ export default function EventFilter({
                         }`}
                       >
                         <FontAwesomeIcon icon={event.icon} className="pr-4" />{' '}
-                        {event.name}
+                        {t("activity:event." + event.name)}
                       </span>
                     </>
                   )}

@@ -1,137 +1,90 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useTranslation } from "next-i18next";
+import ActivitySideBar from 'ee/components/ActivitySideBar';
 
+import Button from '~/components/basic/buttons/Button';
 import EventFilter from '~/components/basic/EventFilter';
-import ActivityTable from '~/components/basic/table/ActivityTable';
 import NavHeader from '~/components/navigation/NavHeader';
-import onboardingCheck from '~/components/utilities/checks/OnboardingCheck';
+import { getTranslatedServerSideProps } from '~/components/utilities/withTranslateProps';
 
-const data = [
-  {
-    eventName: 'Secrets Pulled',
-    user: 'matsiiako@gmail.com',
-    source: 'CLI',
-    time: new Date()
-  },
-  {
-    eventName: 'Secrets Pushed',
-    user: 'matsiiako@gmail.com',
-    source: 'Web',
-    time: new Date()
-  },
-  {
-    eventName: 'Secrets Pulled',
-    user: 'matsiiako@gmail.com',
-    source: 'CLI',
-    time: new Date()
-  },
-  {
-    eventName: 'Secrets Pushed',
-    user: 'matsiiako@gmail.com',
-    source: 'Web',
-    time: new Date()
-  },
-  {
-    eventName: 'Secrets Pulled',
-    user: 'matsiiako@gmail.com',
-    source: 'CLI',
-    time: new Date()
-  },
-  {
-    eventName: 'Secrets Pushed',
-    user: 'matsiiako@gmail.com',
-    source: 'Web',
-    time: new Date()
-  },
-  {
-    eventName: 'Secrets Pulled',
-    user: 'matsiiako@gmail.com',
-    source: 'CLI',
-    time: new Date()
-  },
-  {
-    eventName: 'Secrets Pushed',
-    user: 'matsiiako@gmail.com',
-    source: 'Web',
-    time: new Date()
-  },
-  {
-    eventName: 'Secrets Pulled',
-    user: 'matsiiako@gmail.com',
-    source: 'CLI',
-    time: new Date()
-  },
-  {
-    eventName: 'Secrets Pushed',
-    user: 'matsiiako@gmail.com',
-    source: 'Web',
-    time: new Date()
-  },
-  {
-    eventName: 'Secrets Pulled',
-    user: 'matsiiako@gmail.com',
-    source: 'CLI',
-    time: new Date()
-  },
-  {
-    eventName: 'Secrets Pushed',
-    user: 'matsiiako@gmail.com',
-    source: 'Web',
-    time: new Date()
-  },
-  {
-    eventName: 'Secrets Pulled',
-    user: 'matsiiako@gmail.com',
-    source: 'CLI',
-    time: new Date()
-  },
-  {
-    eventName: 'Secrets Pushed',
-    user: 'matsiiako@gmail.com',
-    source: 'Web',
-    time: new Date()
-  },
-  {
-    eventName: 'Secrets Pulled',
-    user: 'matsiiako@gmail.com',
-    source: 'CLI',
-    time: new Date()
-  },
-  {
-    eventName: 'Secrets Pushed',
-    user: 'matsiiako@gmail.com',
-    source: 'Web',
-    time: new Date()
-  }
-];
+import getProjectLogs from '../../ee/api/secrets/GetProjectLogs';
+import ActivityTable from '../../ee/components/ActivityTable';
+
+
+interface logData {
+  _id: string;
+  channel: string;
+  createdAt: string;
+  ipAddress: string;
+  user: {
+    email: string;
+  };
+  actions: {
+    name: string;
+    payload: {
+      secretVersions: string[];
+    }
+  }[]
+}
+
+interface PayloadProps {
+  name: string; 
+  secretVersions: string[];
+}
+
+interface logDataPoint {
+  _id: string;
+  channel: string;
+  createdAt: string;
+  ipAddress: string;
+  user: string;
+  payload: PayloadProps[];
+}
 
 /**
- * This tab is called Home because in the future it will include some company news,
- * updates, roadmap, relavant blogs, etc. Currently it only has the setup instruction
- * for the new users
+ * This is the tab that includes all of the user activity logs
  */
 export default function Activity() {
   const router = useRouter();
-  const [hasUserClickedSlack, setHasUserClickedSlack] = useState(false);
-  const [hasUserClickedIntro, setHasUserClickedIntro] = useState(false);
-  const [hasUserStarred, setHasUserStarred] = useState(false);
-  const [hasUserPushedSecrets, setHasUserPushedSecrets] = useState(false);
-  const [usersInOrg, setUsersInOrg] = useState(false);
   const [eventChosen, setEventChosen] = useState('');
+  const [logsData, setLogsData] = useState<logDataPoint[]>([]);
+  const [currentOffset, setCurrentOffset] = useState(0);
+  const currentLimit = 10;
+  const [sidebarData, toggleSidebar] = useState<string[]>([])
+  const [currentEvent, setCurrentEvent] = useState("");
+  const { t } = useTranslation();
 
   useEffect(() => {
-    onboardingCheck({
-      setHasUserClickedIntro,
-      setHasUserClickedSlack,
-      setHasUserPushedSecrets,
-      setHasUserStarred,
-      setUsersInOrg
-    });
-  }, []);
+    const getLogData = async () => {
+      const tempLogsData = await getProjectLogs({ workspaceId: String(router.query.id), offset: currentOffset, limit: currentLimit, filters: {} })
+      setLogsData(logsData.concat(tempLogsData.map((log: logData) => {
+        return {
+          _id: log._id, 
+          channel: log.channel, 
+          createdAt: log.createdAt, 
+          ipAddress: log.ipAddress, 
+          user: log.user.email, 
+          payload: log.actions.map(action => {
+            return {
+              name: action.name,
+              secretVersions: action.payload.secretVersions
+            }
+          })
+        }
+      })))
+    }
+    getLogData();
+  }, [currentLimit, currentOffset]);
+
+  const loadMoreLogs = () => {
+    setCurrentOffset(currentOffset + currentLimit);
+  }
 
   return (
     <div className="mx-6 lg:mx-0 w-full overflow-y-scroll h-screen">
       <NavHeader pageName="Project Activity" isProjectRelated={true} />
+      {sidebarData.length > 0 && <ActivitySideBar sidebarData={sidebarData} toggleSidebar={toggleSidebar} currentEvent={currentEvent} />}
       <div className="flex flex-col justify-between items-start mx-4 mt-6 mb-4 text-xl max-w-5xl px-2">
         <div className="flex flex-row justify-start items-center text-3xl">
           <p className="font-semibold mr-4 text-bunker-100">Activity Logs</p>
@@ -140,22 +93,32 @@ export default function Activity() {
           Event history limited to the last 12 months.
         </p>
       </div>
-      {/* Licence Required 
       <div className="px-6 h-8 mt-2">
         <EventFilter 
           selected={eventChosen}
           select={setEventChosen}
-          data={["Secrets Pulled", "Secrets Pushed"]}
+          data={["readSecrets", "updateSecrets", "addSecrets"]}
           isFull={false}
         />
-      </div> */}
+      </div>
       <ActivityTable
-        data={data.filter((event) =>
-          eventChosen != '' ? event.eventName == eventChosen : event
-        )}
+        data={logsData!.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          .filter((log) =>
+            eventChosen != '' ? log.payload?.map(action => t("activity:event." + action.name)).includes(eventChosen) : true
+          )
+        }
+        toggleSidebar={toggleSidebar}
+        setCurrentEvent={setCurrentEvent}
       />
+      <div className='flex justify-center w-full mb-6'>
+        <div className='items-center w-60'>
+          <Button text="View More" textDisabled="End of History" active={logsData.length % 10 == 0 ? true : false} onButtonPressed={loadMoreLogs} size="md" color="mineshaft"/>
+        </div>
+      </div>
     </div>
   );
 }
 
 Activity.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps(["activity"]);
