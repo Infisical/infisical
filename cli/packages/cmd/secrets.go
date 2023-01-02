@@ -35,7 +35,6 @@ var secretsCmd = &cobra.Command{
 		}
 
 		visualize.PrintAllSecretDetails(secrets)
-
 	},
 }
 
@@ -94,7 +93,19 @@ var secretsSetCmd = &cobra.Command{
 
 		// decrypt workspace key
 		plainTextEncryptionKey := util.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
-		secretsToUpload := []models.Secret{}
+
+		// pull current secrets
+		secrets, err := util.GetAllEnvironmentVariables("", "dev")
+		if err != nil {
+			log.Error("Unable to retrieve secrets. Run with -d to see full logs")
+			log.Debug(err)
+		}
+
+		secretsToCreate := []models.Secret{}
+		secretsToModify := []models.Secret{}
+
+		secretByKey := getSecretsByKeys(secrets)
+
 		for _, arg := range args {
 			splitKeyValueFromArg := strings.SplitN(arg, "=", 2)
 			if len(splitKeyValueFromArg) < 2 {
@@ -104,46 +115,78 @@ var secretsSetCmd = &cobra.Command{
 			key := splitKeyValueFromArg[0]
 			value := splitKeyValueFromArg[1]
 
+			fmt.Println("key", key, "value", value)
+
+			hashedKey := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))
 			encryptedKey, err := util.EncryptSymmetric([]byte(key), []byte(plainTextEncryptionKey))
 			if err != nil {
 				log.Errorf("unable to encrypt your secrets [err=%v]", err)
 			}
 
-			hashedKey := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))
-
+			hashedValue := fmt.Sprintf("%x", sha256.Sum256([]byte(value)))
 			encryptedValue, err := util.EncryptSymmetric([]byte(value), []byte(plainTextEncryptionKey))
 			if err != nil {
 				log.Errorf("unable to encrypt your secrets [err=%v]", err)
 			}
 
-			hashedValue := fmt.Sprintf("%x", sha256.Sum256([]byte(value)))
-
-			fullEncryptedSecret := models.Secret{
-				SecretKeyCiphertext:   base64.StdEncoding.EncodeToString(encryptedKey.CipherText),
-				SecretKeyIV:           base64.StdEncoding.EncodeToString(encryptedKey.Nonce),
-				SecretKeyTag:          base64.StdEncoding.EncodeToString(encryptedKey.AuthTag),
-				SecretKeyHash:         hashedKey,
-				SecretValueCiphertext: base64.StdEncoding.EncodeToString(encryptedValue.CipherText),
-				SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
-				SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
-				SecretValueHash:       hashedValue,
-				Type:                  "shared",
+			if value, ok := secretByKey[key]; ok {
+				// case: secret exists in project so it needs to be modified
+				encryptedSecretDetails := models.Secret{
+					ID:                    value.ID,
+					SecretValueCiphertext: base64.StdEncoding.EncodeToString(encryptedValue.CipherText),
+					SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
+					SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
+					SecretValueHash:       hashedValue,
+				}
+				secretsToModify = append(secretsToModify, encryptedSecretDetails)
+			} else {
+				// case: secret doesn't exist in project so it needs to be created
+				encryptedSecretDetails := models.Secret{
+					SecretKeyCiphertext:   base64.StdEncoding.EncodeToString(encryptedKey.CipherText),
+					SecretKeyIV:           base64.StdEncoding.EncodeToString(encryptedKey.Nonce),
+					SecretKeyTag:          base64.StdEncoding.EncodeToString(encryptedKey.AuthTag),
+					SecretKeyHash:         hashedKey,
+					SecretValueCiphertext: base64.StdEncoding.EncodeToString(encryptedValue.CipherText),
+					SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
+					SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
+					SecretValueHash:       hashedValue,
+					Type:                  "shared",
+				}
+				secretsToCreate = append(secretsToCreate, encryptedSecretDetails)
 			}
-			secretsToUpload = append(secretsToUpload, fullEncryptedSecret)
 		}
 
-		batchCreateRequest := models.BatchCreateSecretsByWorkspaceAndEnvRequest{
-			WorkspaceId:     "63b0c1dbf2a30bdfddcfe1ac",
-			EnvironmentName: "dev",
-			Secrets:         secretsToUpload,
-		}
-		err = http.CallBatchCreateSecretsByWorkspaceAndEnv(httpClient, batchCreateRequest)
-		if err != nil {
-			log.Errorf("Unable to complete your request because %v", err)
-			return
+		if len(secretsToCreate) > 0 {
+			fmt.Println("create")
+			batchCreateRequest := models.BatchCreateSecretsByWorkspaceAndEnvRequest{
+				WorkspaceId:     "63b0c1dbf2a30bdfddcfe1ac",
+				EnvironmentName: "dev",
+				Secrets:         secretsToCreate,
+			}
+
+			err = http.CallBatchCreateSecretsByWorkspaceAndEnv(httpClient, batchCreateRequest)
+			if err != nil {
+				log.Errorf("Unable to process new secret creations because %v", err)
+				return
+			}
 		}
 
-		log.Infof("secret name(s) [%v] have been created", strings.Join(args, ", "))
+		if len(secretsToModify) > 0 {
+			fmt.Println("modify")
+			batchModifyRequest := models.BatchModifySecretsByWorkspaceAndEnvRequest{
+				WorkspaceId:     "63b0c1dbf2a30bdfddcfe1ac",
+				EnvironmentName: "dev",
+				Secrets:         secretsToModify,
+			}
+
+			err = http.CallBatchModifySecretsByWorkspaceAndEnv(httpClient, batchModifyRequest)
+			if err != nil {
+				log.Errorf("Unable to process the modifications to your secrets because %v", err)
+				return
+			}
+		}
+
+		log.Infof("secret name(s) [%v] have been set", strings.Join(args, ", "))
 	},
 }
 
