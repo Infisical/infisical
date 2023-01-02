@@ -21,6 +21,7 @@ interface logData {
     email: string;
   };
   actions: {
+    _id: string;
     name: string;
     payload: {
       secretVersions: string[];
@@ -29,6 +30,7 @@ interface logData {
 }
 
 interface PayloadProps {
+  _id: string;
   name: string; 
   secretVersions: string[];
 }
@@ -51,8 +53,7 @@ export default function Activity() {
   const [logsData, setLogsData] = useState<logDataPoint[]>([]);
   const [currentOffset, setCurrentOffset] = useState(0);
   const currentLimit = 10;
-  const [sidebarData, toggleSidebar] = useState<string[]>([])
-  const [currentEvent, setCurrentEvent] = useState("");
+  const [currentSidebarAction, toggleSidebar] = useState<string>()
   const { t } = useTranslation();
 
   // this use effect updates the data in case of a new filter being added
@@ -69,6 +70,7 @@ export default function Activity() {
           user: log.user.email, 
           payload: log.actions.map(action => {
             return {
+              _id: action._id,
               name: action.name,
               secretVersions: action.payload.secretVersions
             }
@@ -92,6 +94,7 @@ export default function Activity() {
           user: log.user.email, 
           payload: log.actions.map(action => {
             return {
+              _id: action._id,
               name: action.name,
               secretVersions: action.payload.secretVersions
             }
@@ -109,13 +112,13 @@ export default function Activity() {
   return (
     <div className="mx-6 lg:mx-0 w-full overflow-y-scroll h-screen">
       <NavHeader pageName="Project Activity" isProjectRelated={true} />
-      {sidebarData.length > 0 && <ActivitySideBar sidebarData={sidebarData} toggleSidebar={toggleSidebar} currentEvent={currentEvent} />}
+      {currentSidebarAction && <ActivitySideBar toggleSidebar={toggleSidebar} currentAction={currentSidebarAction} />}
       <div className="flex flex-col justify-between items-start mx-4 mt-6 mb-4 text-xl max-w-5xl px-2">
         <div className="flex flex-row justify-start items-center text-3xl">
           <p className="font-semibold mr-4 text-bunker-100">Activity Logs</p>
         </div>
         <p className="mr-4 text-base text-gray-400">
-          Event history limited to the last 12 months.
+          Event history for this Infisical project.
         </p>
       </div>
       <div className="px-6 h-8 mt-2">
@@ -127,7 +130,6 @@ export default function Activity() {
       <ActivityTable
         data={logsData}
         toggleSidebar={toggleSidebar}
-        setCurrentEvent={setCurrentEvent}
       />
       <div className='flex justify-center w-full mb-6'>
         <div className='items-center w-60'>

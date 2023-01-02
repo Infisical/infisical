@@ -6,6 +6,7 @@ import {
   faEye,
   faPlus,
   faShuffle,
+  faTrash,
   faX
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -28,6 +29,10 @@ const eventOptions = [
   {
     name: 'updateSecrets',
     icon: faShuffle
+  },
+  {
+    name: 'deleteSecrets',
+    icon: faTrash
   }
 ];
 
