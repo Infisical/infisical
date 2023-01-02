@@ -59,6 +59,7 @@ export const getWorkspaceLogs = async (req: Request, res: Response) => {
 				} : {}
 			)
 		})
+		.sort({ createdAt: -1 })
 		.skip(offset)
 		.limit(limit)
 		.populate('actions')

@@ -55,9 +55,34 @@ export default function Activity() {
   const [currentEvent, setCurrentEvent] = useState("");
   const { t } = useTranslation();
 
+  // this use effect updates the data in case of a new filter being added
+  useEffect(() => {
+    setCurrentOffset(0);
+    const getLogData = async () => {
+      const tempLogsData = await getProjectLogs({ workspaceId: String(router.query.id), offset: 0, limit: currentLimit, userId: "", actionNames: eventChosen })
+      setLogsData(tempLogsData.map((log: logData) => {
+        return {
+          _id: log._id, 
+          channel: log.channel, 
+          createdAt: log.createdAt, 
+          ipAddress: log.ipAddress, 
+          user: log.user.email, 
+          payload: log.actions.map(action => {
+            return {
+              name: action.name,
+              secretVersions: action.payload.secretVersions
+            }
+          })
+        }
+      }))
+    }
+    getLogData();
+  }, [eventChosen]);
+
+  // this use effect adds more data in case 'View More' button is clicked
   useEffect(() => {
     const getLogData = async () => {
-      const tempLogsData = await getProjectLogs({ workspaceId: String(router.query.id), offset: currentOffset, limit: currentLimit, filters: {} })
+      const tempLogsData = await getProjectLogs({ workspaceId: String(router.query.id), offset: currentOffset, limit: currentLimit, userId: "", actionNames: eventChosen })
       setLogsData(logsData.concat(tempLogsData.map((log: logData) => {
         return {
           _id: log._id, 
@@ -97,16 +122,10 @@ export default function Activity() {
         <EventFilter 
           selected={eventChosen}
           select={setEventChosen}
-          data={["readSecrets", "updateSecrets", "addSecrets"]}
-          isFull={false}
         />
       </div>
       <ActivityTable
-        data={logsData!.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-          .filter((log) =>
-            eventChosen != '' ? log.payload?.map(action => t("activity:event." + action.name)).includes(eventChosen) : true
-          )
-        }
+        data={logsData}
         toggleSidebar={toggleSidebar}
         setCurrentEvent={setCurrentEvent}
       />
