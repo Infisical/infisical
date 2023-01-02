@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 const router = express.Router();
 import {
     requireAuth,
@@ -20,8 +20,6 @@ router.get(
     requireAuth({
         acceptedAuthModes: ['serviceToken']
     }),
-    param('serviceTokenDataId').exists().trim(),
-    validateRequest,
     serviceTokenDataController.getServiceTokenData
 );
 

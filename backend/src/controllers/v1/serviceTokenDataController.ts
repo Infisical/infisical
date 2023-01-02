@@ -15,7 +15,7 @@ import {
  * @param res 
  * @returns 
  */
-export const getServiceTokenData = async (req: Request, res: Response) => ({
+export const getServiceTokenData = async (req: Request, res: Response) => res.status(200).send({
     serviceTokenData: req.serviceTokenData
 });
 
@@ -38,35 +38,32 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             tag,
             expiresIn
         } = req.body;
+
+        const secret = crypto.randomBytes(16).toString('hex');
+        const secretHash = await bcrypt.hash(secret, SALT_ROUNDS);
         
-        // create 41-char service token with first 9-char being the prefix
-        serviceToken = `st.${crypto.randomBytes(19).toString('hex')}`;
-
-        const serviceTokenHash = await bcrypt.hash(serviceToken, SALT_ROUNDS);
-
-        // compute access token expiration date
 		const expiresAt = new Date();
 		expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
         
-        // create service token data
-        serviceTokenData = new ServiceTokenData({
+        serviceTokenData = await new ServiceTokenData({
             name,
             workspace: workspaceId,
             environment,
             user: req.user._id,
             expiresAt,
-            prefix: serviceToken.substring(0, 9),
-            serviceTokenHash,
+            secretHash,
             encryptedKey,
             iv,
             tag
-        })
+        }).save();
         
-        await serviceTokenData.save();
-
         // return service token data without sensitive data
         serviceTokenData = await ServiceTokenData.findById(serviceTokenData._id);
         
+        if (!serviceTokenData) throw new Error('Failed to find service token data');
+        
+        serviceToken = `st.${serviceTokenData._id.toString()}.${secret}`;
+
     } catch (err) {
         Sentry.setUser({ email: req.user.email });
         Sentry.captureException(err);

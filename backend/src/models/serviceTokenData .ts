@@ -7,8 +7,7 @@ export interface IServiceTokenData {
     environment: string; // TODO: adapt to upcoming environment id
     user: Types.ObjectId;
     expiresAt: Date;
-    prefix: string;
-    serviceTokenHash: string;
+    secretHash: string;
     encryptedKey: string;
     iv: string;
     tag: string;
@@ -37,11 +36,7 @@ const serviceTokenDataSchema = new Schema<IServiceTokenData>(
         expiresAt: {
             type: Date
         },
-        prefix: {
-            type: String,
-            required: true
-        },
-        serviceTokenHash: {
+        secretHash: {
             type: String,
             unique: true,
             required: true,

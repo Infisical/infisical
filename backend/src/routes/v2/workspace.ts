@@ -4,11 +4,9 @@ import { body, param, query } from 'express-validator';
 import {
 	requireAuth,
 	requireWorkspaceAuth,
-	requireServiceTokenAuth,
 	validateRequest
 } from '../../middleware';
 import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../variables';
-import { membershipController } from '../../controllers/v1';
 import { workspaceController } from '../../controllers/v2';
 
 router.post(

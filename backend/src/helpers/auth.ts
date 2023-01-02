@@ -15,7 +15,8 @@ import {
 import {
 	AccountNotFoundError,
 	ServiceTokenDataNotFoundError,
-	UnauthorizedRequestError
+	UnauthorizedRequestError,
+	BadRequestError
 } from '../utils/errors';
 
 /**
@@ -101,15 +102,30 @@ const getAuthSTDPayload = async ({
 }) => {
 	let serviceTokenData;
 	try {
-		const serviceTokenHash = await bcrypt.hash(authTokenValue, SALT_ROUNDS);
+		const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
+
+		// TODO: optimize double query
+		serviceTokenData = await ServiceTokenData
+			.findById(TOKEN_IDENTIFIER, 'secretHash expiresAt');
+		
+		if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
+			// case: service token expired
+			await ServiceTokenData.findByIdAndDelete(serviceTokenData._id);
+			throw UnauthorizedRequestError({
+				message: 'Failed to authenticate expired service token'
+			});
+		}
+
+		if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
+
+		const isMatch = await bcrypt.compare(TOKEN_SECRET, serviceTokenData.secretHash);
+		if (!isMatch) throw UnauthorizedRequestError({
+			message: 'Failed to authenticate service token'
+		});
 
 		serviceTokenData = await ServiceTokenData
-			.findOne({
-				serviceTokenHash
-			})
+			.findById(TOKEN_IDENTIFIER)
 			.select('+encryptedKey +iv +tag');
-		
-		if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
 
 	} catch (err) {
 		throw UnauthorizedRequestError({

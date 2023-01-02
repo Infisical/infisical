@@ -6,8 +6,7 @@ import {
 	getAuthUserPayload,
 	getAuthSTDPayload
 } from '../helpers/auth';
-import { JWT_AUTH_SECRET } from '../config';
-import { AccountNotFoundError, BadRequestError, UnauthorizedRequestError } from '../utils/errors';
+import { BadRequestError } from '../utils/errors';
 
 declare module 'jsonwebtoken' {
 	export interface UserIDJwtPayload extends jwt.JwtPayload {
