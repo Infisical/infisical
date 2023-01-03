@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
+	"unicode"
 
 	"crypto/sha256"
 
@@ -27,7 +28,14 @@ var secretsCmd = &cobra.Command{
 	PreRun:                toggleDebug,
 	Args:                  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		secrets, err := util.GetAllEnvironmentVariables("", "dev")
+		environmentName, err := cmd.Flags().GetString("env")
+		if err != nil {
+			log.Errorln("Unable to parse the environment name flag")
+			log.Debugln(err)
+			return
+		}
+
+		secrets, err := util.GetAllEnvironmentVariables("", environmentName)
 		secrets = util.SubstituteSecrets(secrets)
 		if err != nil {
 			log.Debugln(err)
@@ -56,6 +64,41 @@ var secretsSetCmd = &cobra.Command{
 	PreRun:                toggleDebug,
 	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		secretType, err := cmd.Flags().GetString("type")
+		if err != nil {
+			log.Errorln("Unable to parse the secret type flag")
+			log.Debugln(err)
+			return
+		}
+
+		if !util.IsSecretTypeValid(secretType) {
+			log.Errorf("secret type can only be `personal` or `shared`. You have entered [%v]", secretType)
+			return
+		}
+
+		environmentName, err := cmd.Flags().GetString("env")
+		if err != nil {
+			log.Errorln("Unable to parse the environment name flag")
+			log.Debugln(err)
+			return
+		}
+
+		if !util.IsSecretEnvironmentValid(environmentName) {
+			log.Errorln("You have entered a invalid environment name. Environment names can only be prod, dev, test or staging")
+			return
+		}
+
+		workspaceFileExists := util.WorkspaceConfigFileExistsInCurrentPath()
+		if !workspaceFileExists {
+			log.Error("You have not yet connected to an Infisical Project. Please run [infisical init]")
+		}
+
+		workspaceFile, err := util.GetWorkSpaceFromFile()
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
 		if err != nil {
 			log.Error(err)
@@ -77,7 +120,7 @@ var secretsSetCmd = &cobra.Command{
 			SetHeader("Accept", "application/json")
 
 		request := models.GetEncryptedWorkspaceKeyRequest{
-			WorkspaceId: "63b0c1dbf2a30bdfddcfe1ac",
+			WorkspaceId: workspaceFile.WorkspaceId,
 		}
 
 		workspaceKeyResponse, err := http.CallGetEncryptedWorkspaceKey(httpClient, request)
@@ -95,9 +138,9 @@ var secretsSetCmd = &cobra.Command{
 		plainTextEncryptionKey := util.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
 		// pull current secrets
-		secrets, err := util.GetAllEnvironmentVariables("", "dev")
+		secrets, err := util.GetAllEnvironmentVariables("", environmentName)
 		if err != nil {
-			log.Error("Unable to retrieve secrets. Run with -d to see full logs")
+			log.Error("unable to retrieve secrets. Run with -d to see full logs")
 			log.Debug(err)
 		}
 
@@ -108,14 +151,18 @@ var secretsSetCmd = &cobra.Command{
 
 		for _, arg := range args {
 			splitKeyValueFromArg := strings.SplitN(arg, "=", 2)
-			if len(splitKeyValueFromArg) < 2 {
-				splitKeyValueFromArg[1] = ""
+			if splitKeyValueFromArg[0] == "" || splitKeyValueFromArg[1] == "" {
+				log.Error("ensure that each secret has a none empty key and value. Modify the input and try again")
+				return
+			}
+
+			if unicode.IsNumber(rune(splitKeyValueFromArg[0][0])) {
+				log.Error("keys of secrets cannot start with a number. Modify the key name(s) and try again")
+				return
 			}
 
 			key := splitKeyValueFromArg[0]
 			value := splitKeyValueFromArg[1]
-
-			fmt.Println("key", key, "value", value)
 
 			hashedKey := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))
 			encryptedKey, err := util.EncryptSymmetric([]byte(key), []byte(plainTextEncryptionKey))
@@ -129,16 +176,21 @@ var secretsSetCmd = &cobra.Command{
 				log.Errorf("unable to encrypt your secrets [err=%v]", err)
 			}
 
-			if value, ok := secretByKey[key]; ok {
+			if existingSecret, ok := secretByKey[key]; ok {
 				// case: secret exists in project so it needs to be modified
 				encryptedSecretDetails := models.Secret{
-					ID:                    value.ID,
+					ID:                    existingSecret.ID,
 					SecretValueCiphertext: base64.StdEncoding.EncodeToString(encryptedValue.CipherText),
 					SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
 					SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
 					SecretValueHash:       hashedValue,
 				}
-				secretsToModify = append(secretsToModify, encryptedSecretDetails)
+
+				// Only add to modifications if the value is different
+				if existingSecret.Value != value {
+					secretsToModify = append(secretsToModify, encryptedSecretDetails)
+				}
+
 			} else {
 				// case: secret doesn't exist in project so it needs to be created
 				encryptedSecretDetails := models.Secret{
@@ -150,17 +202,16 @@ var secretsSetCmd = &cobra.Command{
 					SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
 					SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
 					SecretValueHash:       hashedValue,
-					Type:                  "shared",
+					Type:                  secretType,
 				}
 				secretsToCreate = append(secretsToCreate, encryptedSecretDetails)
 			}
 		}
 
 		if len(secretsToCreate) > 0 {
-			fmt.Println("create")
 			batchCreateRequest := models.BatchCreateSecretsByWorkspaceAndEnvRequest{
-				WorkspaceId:     "63b0c1dbf2a30bdfddcfe1ac",
-				EnvironmentName: "dev",
+				WorkspaceId:     workspaceFile.WorkspaceId,
+				EnvironmentName: environmentName,
 				Secrets:         secretsToCreate,
 			}
 
@@ -172,10 +223,9 @@ var secretsSetCmd = &cobra.Command{
 		}
 
 		if len(secretsToModify) > 0 {
-			fmt.Println("modify")
 			batchModifyRequest := models.BatchModifySecretsByWorkspaceAndEnvRequest{
-				WorkspaceId:     "63b0c1dbf2a30bdfddcfe1ac",
-				EnvironmentName: "dev",
+				WorkspaceId:     workspaceFile.WorkspaceId,
+				EnvironmentName: environmentName,
 				Secrets:         secretsToModify,
 			}
 
@@ -186,7 +236,7 @@ var secretsSetCmd = &cobra.Command{
 			}
 		}
 
-		log.Infof("secret name(s) [%v] have been set", strings.Join(args, ", "))
+		log.Infoln("secrets have been successfully set")
 	},
 }
 
@@ -198,6 +248,13 @@ var secretsDeleteCmd = &cobra.Command{
 	PreRun:                toggleDebug,
 	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		environmentName, err := cmd.Flags().GetString("env")
+		if err != nil {
+			log.Errorln("Unable to parse the environment name flag")
+			log.Debugln(err)
+			return
+		}
+
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
 		if err != nil {
 			log.Error(err)
@@ -214,7 +271,18 @@ var secretsDeleteCmd = &cobra.Command{
 			return
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables("", "dev")
+		workspaceFileExists := util.WorkspaceConfigFileExistsInCurrentPath()
+		if !workspaceFileExists {
+			log.Error("You have not yet connected to an Infisical Project. Please run [infisical init]")
+		}
+
+		workspaceFile, err := util.GetWorkSpaceFromFile()
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		secrets, err := util.GetAllEnvironmentVariables("", environmentName)
 		if err != nil {
 			log.Error("Unable to retrieve secrets. Run with -d to see full logs")
 			log.Debug(err)
@@ -233,13 +301,13 @@ var secretsDeleteCmd = &cobra.Command{
 		}
 
 		if len(invalidSecretNamesThatDoNotExist) != 0 {
-			log.Errorf("secret name(s) [%v] does not exist in your project. Please remove and re-run the command", strings.Join(invalidSecretNamesThatDoNotExist, ", "))
+			log.Errorf("secret name(s) [%v] does not exist in your project. To see which secrets exist run [infisical secrets]", strings.Join(invalidSecretNamesThatDoNotExist, ", "))
 			return
 		}
 
 		request := models.BatchDeleteSecretsBySecretIdsRequest{
-			WorkspaceId:     "63b0c1dbf2a30bdfddcfe1ac",
-			EnvironmentName: "dev",
+			WorkspaceId:     workspaceFile.WorkspaceId,
+			EnvironmentName: environmentName,
 			SecretIds:       validSecretIdsToDelete,
 		}
 
@@ -260,13 +328,22 @@ var secretsDeleteCmd = &cobra.Command{
 
 func init() {
 	secretsCmd.AddCommand(secretsGetCmd)
+	secretsSetCmd.Flags().String("type", "shared", "Used to set the type for secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
 	secretsCmd.AddCommand(secretsDeleteCmd)
+	secretsCmd.PersistentFlags().String("env", "dev", "Used to define the environment name on which actions should be taken on")
 	rootCmd.AddCommand(secretsCmd)
 }
 
 func getSecretsByNames(cmd *cobra.Command, args []string) {
-	secrets, err := util.GetAllEnvironmentVariables("", "dev")
+	environmentName, err := cmd.Flags().GetString("env")
+	if err != nil {
+		log.Errorln("Unable to parse the environment name flag")
+		log.Debugln(err)
+		return
+	}
+
+	secrets, err := util.GetAllEnvironmentVariables("", environmentName)
 	if err != nil {
 		log.Error("Unable to retrieve secrets. Run with -d to see full logs")
 		log.Debug(err)

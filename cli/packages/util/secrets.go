@@ -388,3 +388,17 @@ func OverrideWithPersonalSecrets(secrets []models.SingleEnvironmentVariable) []m
 
 	return secretsToReturn
 }
+
+func IsSecretEnvironmentValid(env string) bool {
+	if env == "prod" || env == "dev" || env == "test" || env == "staging" {
+		return true
+	}
+	return false
+}
+
+func IsSecretTypeValid(s string) bool {
+	if s == "personal" || s == "shared" {
+		return true
+	}
+	return false
+}
