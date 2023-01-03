@@ -6,6 +6,7 @@ import {
   faEye,
   faPlus,
   faShuffle,
+  faTrash,
   faX
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -28,6 +29,10 @@ const eventOptions = [
   {
     name: 'updateSecrets',
     icon: faShuffle
+  },
+  {
+    name: 'deleteSecrets',
+    icon: faTrash
   }
 ];
 
@@ -48,7 +53,7 @@ export default function EventFilter({
       <div className="relative">
         <Listbox.Button className="bg-mineshaft-800 hover:bg-mineshaft-700 duration-200 cursor-pointer rounded-md h-10 flex items-center justify-between pl-4 pr-2 w-52 text-bunker-200 text-sm">
           {selected != '' ? (
-            <p className="select-none text-bunker-100">{selected}</p>
+            <p className="select-none text-bunker-100">{t("activity:event." + selected)}</p>
           ) : (
             <p className="select-none">Select an event</p>
           )}
@@ -76,7 +81,7 @@ export default function EventFilter({
                   className={`px-4 h-10 flex items-center text-sm cursor-pointer hover:bg-mineshaft-700 text-bunker-200 rounded-md ${
                     selected == t("activity:event." + event.name) && 'bg-mineshaft-700'
                   }`}
-                  value={t("activity:event." + event.name)}
+                  value={event.name}
                 >
                   {({ selected }) => (
                     <>
@@ -90,7 +95,6 @@ export default function EventFilter({
                       </span>
                     </>
                   )}
-                  {/* <FontAwesomeIcon icon={event.icon} className="pr-4" /> {event.name} */}
                 </Listbox.Option>
               );
             })}
