@@ -12,7 +12,9 @@ import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../variables';
 
 router.get(
     '/:workspaceId',
-	requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [COMPLETED, GRANTED]
@@ -24,7 +26,9 @@ router.get(
 
 router.patch(
     '/:botId/active',
-    requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
     requireBotAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [COMPLETED, GRANTED]

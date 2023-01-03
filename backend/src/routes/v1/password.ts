@@ -7,7 +7,9 @@ import { passwordLimiter } from '../../helpers/rateLimiter';
 
 router.post(
 	'/srp1',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	body('clientPublicKey').exists().trim().notEmpty(),
 	validateRequest,
 	passwordController.srp1
@@ -16,7 +18,9 @@ router.post(
 router.post(
 	'/change-password',
 	passwordLimiter,
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	body('clientProof').exists().trim().notEmpty(),
 	body('encryptedPrivateKey').exists().trim().notEmpty().notEmpty(), // private key encrypted under new pwd
 	body('iv').exists().trim().notEmpty(), // new iv for private key
@@ -54,7 +58,9 @@ router.get(
 router.post(
 	'/backup-private-key',
 	passwordLimiter,
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	body('clientProof').exists().trim().notEmpty(),
 	body('encryptedPrivateKey').exists().trim().notEmpty(), // (backup) private key encrypted under a strong key
 	body('iv').exists().trim().notEmpty(), // new iv for (backup) private key

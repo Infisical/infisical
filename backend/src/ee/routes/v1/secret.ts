@@ -11,7 +11,9 @@ import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../../variables';
 
 router.get(
 	'/:secretId/secret-versions',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireSecretAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [COMPLETED, GRANTED]

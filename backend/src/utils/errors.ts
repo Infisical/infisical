@@ -133,4 +133,14 @@ export const ActionNotFoundError = (error?: Partial<RequestErrorContext>) => new
     stack: error?.stack
 });
 
+//* ----->[SERVICE TOKEN DATA ERRORS]<-----
+export const ServiceTokenDataNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? 'service_token_data_not_found_error',
+    message: error?.message ?? 'The requested service token data was not found',
+    context: error?.context,
+    stack: error?.stack
+})
+
 //* ----->[MISC ERRORS]<-----

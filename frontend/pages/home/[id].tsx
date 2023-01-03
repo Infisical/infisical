@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useTranslation } from "next-i18next";
 import { IconProp } from '@fortawesome/fontawesome-svg-core';
 import { faSlack } from '@fortawesome/free-brands-svg-icons';
 import {
@@ -13,12 +14,11 @@ import {
   faUserPlus
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useTranslation } from "next-i18next";
 
 import onboardingCheck from '~/components/utilities/checks/OnboardingCheck';
+import { getTranslatedServerSideProps } from '~/components/utilities/withTranslateProps';
 
 import registerUserAction from '../api/userActions/registerUserAction';
-import { getTranslatedServerSideProps } from '~/components/utilities/withTranslateProps';
 
 type ItemProps = {
   text: string;

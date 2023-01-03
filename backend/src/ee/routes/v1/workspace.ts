@@ -11,7 +11,9 @@ import { workspaceController } from '../../controllers/v1';
 
 router.get(
 	'/:workspaceId/secret-snapshots',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED]
@@ -22,6 +24,5 @@ router.get(
 	validateRequest,
 	workspaceController.getWorkspaceSecretSnapshots
 );
-
 
 export default router;

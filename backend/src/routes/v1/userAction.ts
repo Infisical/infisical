@@ -6,7 +6,9 @@ import { userActionController } from '../../controllers/v1';
 
 router.post(
 	'/',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	body('action'),
 	validateRequest,
 	userActionController.addUserAction
@@ -14,7 +16,9 @@ router.post(
 
 router.get(
 	'/',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	query('action'),
 	validateRequest,
 	userActionController.getUserAction

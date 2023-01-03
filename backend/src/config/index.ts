@@ -1,6 +1,7 @@
 const PORT = process.env.PORT || 4000;
 const EMAIL_TOKEN_LIFETIME = process.env.EMAIL_TOKEN_LIFETIME! || '86400';
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
+const SALT_ROUNDS = parseInt(process.env.SALT_ROUNDS!) || 10;
 const JWT_AUTH_LIFETIME = process.env.JWT_AUTH_LIFETIME! || '10d';
 const JWT_AUTH_SECRET = process.env.JWT_AUTH_SECRET!;
 const JWT_REFRESH_LIFETIME = process.env.JWT_REFRESH_LIFETIME! || '90d';
@@ -47,6 +48,7 @@ export {
   PORT,
   EMAIL_TOKEN_LIFETIME,
   ENCRYPTION_KEY,
+  SALT_ROUNDS,
   JWT_AUTH_LIFETIME,
   JWT_AUTH_SECRET,
   JWT_REFRESH_LIFETIME,
