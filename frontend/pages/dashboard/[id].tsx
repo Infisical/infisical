@@ -241,9 +241,14 @@ export default function Dashboard() {
     sortValuesHandler(tempdata, sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical");
   };
 
-  const deleteRow = (id: string) => {
+  const deleteRow = ({ ids, secretName }: { ids: string[]; secretName: string; }) => {
     setButtonReady(true);
-    setData(data!.filter((row: SecretDataProps) => row.id !== id));
+    toggleSidebar("None");
+    createNotification({
+      text: `${secretName} has been deleted. Remember to save changes.`,
+      type: 'error'
+    });
+    setData(data!.filter((row: SecretDataProps) => !ids.includes(row.id)));
   };
 
   /**
@@ -395,8 +400,8 @@ export default function Dashboard() {
     alink.click();
   };
 
-  const deleteCertainRow = (id: string) => {
-    deleteRow(id);
+  const deleteCertainRow = ({ ids, secretName }: { ids: string[]; secretName: string; }) => {
+    deleteRow({ids, secretName});
   };
 
   /**
@@ -438,6 +443,7 @@ export default function Dashboard() {
           savePush={savePush}
           sharedToHide={sharedToHide}
           setSharedToHide={setSharedToHide}
+          deleteRow={deleteCertainRow}
         />}
         <div className="w-full max-h-96 pb-2">
           <NavHeader pageName={t("dashboard:title")} isProjectRelated={true} />
@@ -585,7 +591,6 @@ export default function Dashboard() {
                       <KeyPair 
                         key={keyPair.id}
                         keyPair={keyPair}
-                        deleteRow={deleteCertainRow}
                         modifyValue={listenChangeValue}
                         modifyKey={listenChangeKey}
                         isBlurred={blurred}

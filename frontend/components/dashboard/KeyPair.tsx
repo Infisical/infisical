@@ -15,7 +15,6 @@ interface SecretDataProps {
 
 interface KeyPairProps {
   keyPair: SecretDataProps;
-  deleteRow: (id: string) => void;
   modifyKey: (value: string, position: number) => void; 
   modifyValue: (value: string, position: number) => void; 
   isBlurred: boolean;
@@ -28,7 +27,6 @@ interface KeyPairProps {
  * This component represent a single row for an environemnt variable on the dashboard
  * @param {object} obj
  * @param {String[]} obj.keyPair - data related to the environment variable (id, pos, key, value, public/private)
- * @param {function} obj.deleteRow - a function to delete a certain keyPair
  * @param {function} obj.modifyKey - modify the key of a certain environment variable
  * @param {function} obj.modifyValue - modify the value of a certain environment variable
  * @param {boolean} obj.isBlurred - if the blurring setting is turned on
@@ -39,7 +37,6 @@ interface KeyPairProps {
  */
 const KeyPair = ({
   keyPair,
-  deleteRow,
   modifyKey,
   modifyValue,
   isBlurred,
@@ -57,7 +54,7 @@ const KeyPair = ({
         </span>
       </div>}
         <div className="min-w-xl w-96">
-          <div className="flex pr-1 items-center rounded-lg mt-4 md:mt-0 max-h-16">
+          <div className="flex pr-1.5 items-center rounded-lg mt-4 md:mt-0 max-h-16">
             <DashboardInputField
               onChangeHandler={modifyKey}
               type="varName"
@@ -67,8 +64,8 @@ const KeyPair = ({
             />
           </div>
         </div>
-        <div className="w-full min-w-5xl">
-          <div className="flex min-w-7xl items-center pl-1 pr-1.5 rounded-lg mt-4 md:mt-0 max-h-10 ">
+        <div className="w-full min-w-xl">
+          <div className="flex min-w-xl items-center pr-1.5 rounded-lg mt-4 md:mt-0 max-h-10">
             <DashboardInputField
               onChangeHandler={modifyValue}
               type="value"
@@ -79,19 +76,10 @@ const KeyPair = ({
             />
           </div>
         </div>
-        <div onClick={() => toggleSidebar(keyPair.id)} className="cursor-pointer w-9 h-9 bg-mineshaft-700 hover:bg-chicago-700 rounded-md flex flex-row justify-center items-center duration-200">
+        <div onClick={() => toggleSidebar(keyPair.id)} className="cursor-pointer w-[2.35rem] h-[2.35rem] bg-mineshaft-700 hover:bg-chicago-700 rounded-md flex flex-row justify-center items-center duration-200">
           <FontAwesomeIcon
             className="text-gray-300 px-2.5 text-lg mt-0.5"
             icon={faEllipsis}
-          />
-        </div>
-        <div className="w-2"></div>
-        <div className="bg-[#9B3535] hover:bg-red rounded-md duration-200">
-          <Button
-            onButtonPressed={() => deleteRow(keyPair.id)}
-            color="none"
-            size="icon-sm"
-            icon={faX}
           />
         </div>
       </div>

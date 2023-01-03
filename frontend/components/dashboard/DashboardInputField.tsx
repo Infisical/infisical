@@ -53,7 +53,7 @@ const DashboardInputField = ({
     return (
       <div className="flex-col w-full">
         <div
-          className={`group relative flex flex-col justify-center w-full max-w-2xl border ${
+          className={`group relative flex flex-col justify-center w-full border ${
             error ? 'border-red' : 'border-mineshaft-500'
           } rounded-md`}
         >
@@ -85,7 +85,7 @@ const DashboardInputField = ({
     return (
       <div className="flex-col w-full">
         <div
-          className={`group relative whitespace-pre	flex flex-col justify-center w-full max-w-2xl border border-mineshaft-500 rounded-md`}
+          className={`group relative whitespace-pre	flex flex-col justify-center w-full border border-mineshaft-500 rounded-md`}
         >
           {override == true && <div className='bg-primary-300 absolute top-[0.1rem] right-[0.1rem] z-10 w-min text-xxs px-1 text-black opacity-80 rounded-md'>Override enabled</div>}
           <input
@@ -108,9 +108,9 @@ const DashboardInputField = ({
             } ${
               override ? 'text-primary-300' : 'text-gray-400'
             }
-            absolute flex flex-row whitespace-pre font-mono z-0 ph-no-capture max-w-2xl overflow-x-scroll bg-bunker-800 h-9 rounded-md text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
+            absolute flex flex-row whitespace-pre font-mono z-0 ph-no-capture overflow-x-scroll bg-bunker-800 h-9 rounded-md text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
           >
-            {value.split(REGEX).map((word, id) => {
+            {value?.split(REGEX).map((word, id) => {
               if (word.match(REGEX) !== null) {
                 return (
                   <span className="ph-no-capture text-yellow" key={id}>
@@ -139,7 +139,7 @@ const DashboardInputField = ({
             })}
           </div>
           {blurred && (
-            <div className="absolute flex flex-row items-center z-20 peer pr-2 bg-bunker-800 group-hover:hidden peer-hover:hidden peer-focus:hidden peer-active:invisible h-9 w-full max-w-2xl rounded-md text-gray-400/50 text-clip">
+            <div className="absolute flex flex-row items-center z-20 peer pr-2 bg-bunker-800 group-hover:hidden peer-hover:hidden peer-focus:hidden peer-active:invisible h-9 w-full rounded-md text-gray-400/50 text-clip">
               <div className="px-2 flex flex-row items-center overflow-x-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
                 {value.split('').map(() => (
                   <FontAwesomeIcon
