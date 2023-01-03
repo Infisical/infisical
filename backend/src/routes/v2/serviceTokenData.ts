@@ -13,7 +13,7 @@ import {
     COMPLETED,
     GRANTED
 } from '../../variables';
-import { serviceTokenDataController } from '../../controllers/v1';
+import { serviceTokenDataController } from '../../controllers/v2';
 
 router.get(
     '/',

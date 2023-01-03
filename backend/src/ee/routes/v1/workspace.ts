@@ -25,5 +25,4 @@ router.get(
 	workspaceController.getWorkspaceSecretSnapshots
 );
 
-
 export default router;
