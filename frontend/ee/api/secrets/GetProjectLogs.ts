@@ -25,6 +25,7 @@ const getProjectLogs = async ({ workspaceId, offset, limit, userId, actionNames 
     payload = {
       offset: String(offset),
       limit: String(limit),
+      sortBy: 'recent',
       userId: JSON.stringify(userId),
       actionNames: actionNames
     }
@@ -32,18 +33,21 @@ const getProjectLogs = async ({ workspaceId, offset, limit, userId, actionNames 
     payload = {
       offset: String(offset),
       limit: String(limit),
+      sortBy: 'recent',
       userId: JSON.stringify(userId)
     }
   } else if (actionNames != "") {
     payload = {
       offset: String(offset),
       limit: String(limit),
+      sortBy: 'recent',
       actionNames: actionNames
     }
   } else {
     payload = {
       offset: String(offset),
-      limit: String(limit)
+      limit: String(limit),
+      sortBy: 'recent' 
     }
   }
   

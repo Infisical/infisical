@@ -37,6 +37,12 @@ import {
 	});
 }
 
+/**
+ * Return (audit) logs for workspace with id [workspaceId]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
 export const getWorkspaceLogs = async (req: Request, res: Response) => {
 	let logs
 	try {
@@ -44,6 +50,7 @@ export const getWorkspaceLogs = async (req: Request, res: Response) => {
 
 		const offset: number = parseInt(req.query.offset as string);
 		const limit: number = parseInt(req.query.limit as string);
+		const sortBy: string = req.query.sortBy as string;
 		const userId: string = req.query.userId as string;
 		const actionNames: string = req.query.actionNames as string;
 		
@@ -59,7 +66,7 @@ export const getWorkspaceLogs = async (req: Request, res: Response) => {
 				} : {}
 			)
 		})
-		.sort({ createdAt: -1 })
+		.sort({ createdAt: sortBy === 'recent' ? -1 : 1 })
 		.skip(offset)
 		.limit(limit)
 		.populate('actions')

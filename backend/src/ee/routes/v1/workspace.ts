@@ -33,6 +33,9 @@ router.get(
 	param('workspaceId').exists().trim(),
 	query('offset').exists().isInt(),
 	query('limit').exists().isInt(),
+	query('sortBy'),
+	query('userId'),
+	query('actionNames'),
 	validateRequest,
 	workspaceController.getWorkspaceLogs
 );
