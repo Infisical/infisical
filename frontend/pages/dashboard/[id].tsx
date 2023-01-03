@@ -86,7 +86,6 @@ export default function Dashboard() {
   const [isNew, setIsNew] = useState(false);
   const [searchKeys, setSearchKeys] = useState('');
   const [errorDragAndDrop, setErrorDragAndDrop] = useState(false);
-  const [projectIdCopied, setProjectIdCopied] = useState(false);
   const [sortMethod, setSortMethod] = useState('alphabetical');
   const [checkDocsPopUpVisible, setCheckDocsPopUpVisible] = useState(false);
   const [hasUserEverPushed, setHasUserEverPushed] = useState(false);
@@ -404,23 +403,6 @@ export default function Dashboard() {
     deleteRow({ids, secretName});
   };
 
-  /**
-   * This function copies the project id to the clipboard
-   */
-  function copyToClipboard() {
-    const copyText = document.getElementById('myInput') as HTMLInputElement;
-    
-    if (copyText) {
-      copyText.select();
-      copyText.setSelectionRange(0, 99999); // For mobile devices
-
-      navigator.clipboard.writeText(copyText.value);
-  
-      setProjectIdCopied(true);
-      setTimeout(() => setProjectIdCopied(false), 2000);
-    }
-  }
-
   return data ? (
     <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
       <Head>
@@ -470,33 +452,6 @@ export default function Dashboard() {
               )}
             </div>
             <div className="flex flex-row">
-              <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400">
-                <p className="mr-2 font-bold pl-4">{`${t(
-                  "common:project-id"
-                )}:`}</p>
-                <input
-                  type="text"
-                  value={workspaceId}
-                  id="myInput"
-                  className="bg-white/0 text-gray-400 py-2 w-60 px-2 min-w-md outline-none"
-                  disabled
-                ></input>
-                <div className="group font-normal group relative inline-block text-gray-400 underline hover:text-primary duration-200">
-                  <button
-                    onClick={copyToClipboard}
-                    className="pl-4 pr-4 border-l border-white/20 py-2 hover:bg-white/[0.12] duration-200"
-                  >
-                    {projectIdCopied ? (
-                      <FontAwesomeIcon icon={faCheck} className="pr-0.5" />
-                    ) : (
-                      <FontAwesomeIcon icon={faCopy} />
-                    )}
-                  </button>
-                  <span className="absolute hidden group-hover:flex group-hover:animate-popup duration-300 w-28 -left-8 -top-20 translate-y-full pl-3 py-2 bg-white/10 rounded-md text-center text-gray-400 text-sm">
-                    {t("common:click-to-copy")}
-                  </span>
-                </div>
-              </div>
               {(data?.length !== 0 || buttonReady) && (
                 <div className={`flex justify-start max-w-sm mt-2`}>
                   <Button

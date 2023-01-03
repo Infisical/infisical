@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { useTranslation } from "next-i18next";
-import { faCheck, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import Button from "~/components/basic/buttons/Button";
 import AddServiceTokenDialog from "~/components/basic/dialog/AddServiceTokenDialog";
@@ -16,6 +17,7 @@ import deleteWorkspace from "../../api/workspace/deleteWorkspace";
 import getWorkspaces from "../../api/workspace/getWorkspaces";
 import renameWorkspace from "../../api/workspace/renameWorkspace";
 
+
 export default function SettingsBasic() {
   const [buttonReady, setButtonReady] = useState(false);
   const router = useRouter();
@@ -26,8 +28,27 @@ export default function SettingsBasic() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   let [isAddServiceTokenDialogOpen, setIsAddServiceTokenDialogOpen] =
     useState(false);
+  const [projectIdCopied, setProjectIdCopied] = useState(false);
 
   const { t } = useTranslation();
+
+  /**
+   * This function copies the project id to the clipboard
+   */
+  function copyToClipboard() {
+    // const copyText = document.getElementById('myInput') as HTMLInputElement;
+    const copyText = document.getElementById('myInput')
+    
+    if (copyText) {
+      copyText.select();
+      copyText.setSelectionRange(0, 99999); // For mobile devices
+
+      navigator.clipboard.writeText(copyText.value);
+  
+      setProjectIdCopied(true);
+      setTimeout(() => setProjectIdCopied(false), 2000);
+    }
+  }
 
   useEffect(async () => {
     let userWorkspaces = await getWorkspaces();
@@ -169,15 +190,33 @@ export default function SettingsBasic() {
                       {t("settings-project:docs")}
                     </a>
                   </p>
-                  <div className="max-h-28 w-ful">
-                    <InputField
-                      type="varName"
-                      value={router.query.id}
-                      placeholder=""
-                      isRequired
-                      static
-                      text={t("settings-project:auto-generated")}
-                    />
+                  <p className="mt-4 text-xs text-bunker-300">{t("settings-project:auto-generated")}</p>
+                  <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mb-3 mr-2 rounded-md text-gray-400">
+                    <p className="mr-2 font-bold pl-4">{`${t(
+                      "common:project-id"
+                    )}:`}</p>
+                    <input
+                      type="text"
+                      value={workspaceId}
+                      id="myInput"
+                      className="bg-white/0 text-gray-400 py-2 w-60 px-2 min-w-md outline-none"
+                      disabled
+                    ></input>
+                    <div className="group font-normal group relative inline-block text-gray-400 underline hover:text-primary duration-200">
+                      <button
+                        onClick={copyToClipboard}
+                        className="pl-4 pr-4 border-l border-white/20 py-2 hover:bg-white/[0.12] duration-200"
+                      >
+                        {projectIdCopied ? (
+                          <FontAwesomeIcon icon={faCheck} className="pr-0.5" />
+                        ) : (
+                          <FontAwesomeIcon icon={faCopy} />
+                        )}
+                      </button>
+                      <span className="absolute hidden group-hover:flex group-hover:animate-popup duration-300 w-28 -left-8 -top-20 translate-y-full pl-3 py-2 bg-bunker-800 rounded-md text-center text-gray-400 text-sm">
+                        {t("common:click-to-copy")}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="bg-white/5 rounded-md px-6 pt-6 flex flex-col items-start flex flex-col items-start w-full mt-4 mb-4 pt-2">
