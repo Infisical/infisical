@@ -35,6 +35,12 @@ var secretsCmd = &cobra.Command{
 			return
 		}
 
+		workspaceFileExists := util.WorkspaceConfigFileExistsInCurrentPath()
+		if !workspaceFileExists {
+			log.Error("You have not yet connected to an Infisical Project. Please run [infisical init]")
+			return
+		}
+
 		secrets, err := util.GetAllEnvironmentVariables("", environmentName)
 		secrets = util.SubstituteSecrets(secrets)
 		if err != nil {
@@ -57,24 +63,24 @@ var secretsGetCmd = &cobra.Command{
 }
 
 var secretsSetCmd = &cobra.Command{
-	Example:               `secrets set <secret name A> <secret value A> <secret name B> <secret value B>..."`,
-	Short:                 "Used update retrieve secrets by name",
+	Example:               `secrets set <secretName=secretValue> <secretName=secretValue>..."`,
+	Short:                 "Used set secrets",
 	Use:                   "set [secrets]",
 	DisableFlagsInUseLine: true,
 	PreRun:                toggleDebug,
 	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		secretType, err := cmd.Flags().GetString("type")
-		if err != nil {
-			log.Errorln("Unable to parse the secret type flag")
-			log.Debugln(err)
-			return
-		}
+		// secretType, err := cmd.Flags().GetString("type")
+		// if err != nil {
+		// 	log.Errorln("Unable to parse the secret type flag")
+		// 	log.Debugln(err)
+		// 	return
+		// }
 
-		if !util.IsSecretTypeValid(secretType) {
-			log.Errorf("secret type can only be `personal` or `shared`. You have entered [%v]", secretType)
-			return
-		}
+		// if !util.IsSecretTypeValid(secretType) {
+		// 	log.Errorf("secret type can only be `personal` or `shared`. You have entered [%v]", secretType)
+		// 	return
+		// }
 
 		environmentName, err := cmd.Flags().GetString("env")
 		if err != nil {
@@ -91,6 +97,7 @@ var secretsSetCmd = &cobra.Command{
 		workspaceFileExists := util.WorkspaceConfigFileExistsInCurrentPath()
 		if !workspaceFileExists {
 			log.Error("You have not yet connected to an Infisical Project. Please run [infisical init]")
+			return
 		}
 
 		workspaceFile, err := util.GetWorkSpaceFromFile()
@@ -144,8 +151,15 @@ var secretsSetCmd = &cobra.Command{
 			log.Debug(err)
 		}
 
+		type SecretSetOperation struct {
+			SecretKey       string
+			SecretValue     string
+			SecretOperation string
+		}
+
 		secretsToCreate := []models.Secret{}
 		secretsToModify := []models.Secret{}
+		secretOperations := []SecretSetOperation{}
 
 		secretByKey := getSecretsByKeys(secrets)
 
@@ -161,7 +175,8 @@ var secretsSetCmd = &cobra.Command{
 				return
 			}
 
-			key := splitKeyValueFromArg[0]
+			// Key and value from argument
+			key := strings.ToUpper(splitKeyValueFromArg[0])
 			value := splitKeyValueFromArg[1]
 
 			hashedKey := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))
@@ -189,6 +204,18 @@ var secretsSetCmd = &cobra.Command{
 				// Only add to modifications if the value is different
 				if existingSecret.Value != value {
 					secretsToModify = append(secretsToModify, encryptedSecretDetails)
+					secretOperations = append(secretOperations, SecretSetOperation{
+						SecretKey:       key,
+						SecretValue:     value,
+						SecretOperation: "SECRET VALUE MODIFIED",
+					})
+				} else {
+					// Current value is same as exisitng so no change
+					secretOperations = append(secretOperations, SecretSetOperation{
+						SecretKey:       key,
+						SecretValue:     value,
+						SecretOperation: "SECRET VALUE UNCHANGED",
+					})
 				}
 
 			} else {
@@ -202,9 +229,14 @@ var secretsSetCmd = &cobra.Command{
 					SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
 					SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
 					SecretValueHash:       hashedValue,
-					Type:                  secretType,
+					Type:                  util.SECRET_TYPE_SHARED,
 				}
 				secretsToCreate = append(secretsToCreate, encryptedSecretDetails)
+				secretOperations = append(secretOperations, SecretSetOperation{
+					SecretKey:       key,
+					SecretValue:     value,
+					SecretOperation: "SECRET CREATED",
+				})
 			}
 		}
 
@@ -236,7 +268,14 @@ var secretsSetCmd = &cobra.Command{
 			}
 		}
 
-		log.Infoln("secrets have been successfully set")
+		// Print secret operations
+		headers := []string{"SECRET NAME", "SECRET VALUE", "STATUS"}
+		rows := [][]string{}
+		for _, secretOperation := range secretOperations {
+			rows = append(rows, []string{secretOperation.SecretKey, secretOperation.SecretValue, secretOperation.SecretOperation})
+		}
+
+		visualize.Table(headers, rows)
 	},
 }
 
@@ -274,6 +313,7 @@ var secretsDeleteCmd = &cobra.Command{
 		workspaceFileExists := util.WorkspaceConfigFileExistsInCurrentPath()
 		if !workspaceFileExists {
 			log.Error("You have not yet connected to an Infisical Project. Please run [infisical init]")
+			return
 		}
 
 		workspaceFile, err := util.GetWorkSpaceFromFile()
@@ -340,6 +380,12 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Errorln("Unable to parse the environment name flag")
 		log.Debugln(err)
+		return
+	}
+
+	workspaceFileExists := util.WorkspaceConfigFileExistsInCurrentPath()
+	if !workspaceFileExists {
+		log.Error("You have not yet connected to an Infisical Project. Please run [infisical init]")
 		return
 	}
 

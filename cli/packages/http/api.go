@@ -80,3 +80,23 @@ func CallGetEncryptedWorkspaceKey(httpClient *resty.Client, request models.GetEn
 
 	return result, nil
 }
+
+func CallGetEncryptedSecretsByWorkspaceIdAndEnv(httpClient resty.Client, request models.GetSecretsByWorkspaceIdAndEnvironmentRequest) (models.PullSecretsResponse, error) {
+	var pullSecretsRequestResponse models.PullSecretsResponse
+	response, err := httpClient.
+		R().
+		SetQueryParam("environment", request.EnvironmentName).
+		SetQueryParam("channel", "cli").
+		SetResult(&pullSecretsRequestResponse).
+		Get(fmt.Sprintf("%v/v1/secret/%v", util.INFISICAL_URL, request.WorkspaceId))
+
+	if err != nil {
+		return models.PullSecretsResponse{}, fmt.Errorf("CallGetEncryptedSecretsByWorkspaceIdAndEnv: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.StatusCode() > 299 {
+		return models.PullSecretsResponse{}, fmt.Errorf("CallGetEncryptedSecretsByWorkspaceIdAndEnv: Unsuccessful response: [response=%s]", response)
+	}
+
+	return pullSecretsRequestResponse, nil
+}

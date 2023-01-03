@@ -8,7 +8,7 @@ func PrintAllSecretDetails(secrets []models.SingleEnvironmentVariable) {
 		rows = append(rows, []string{secret.Key, secret.Value, secret.Type})
 	}
 
-	headers := []string{"Secret name", "Secret vaule", "Secret type"}
+	headers := []string{"SECRET NAME", "SECRET VALUE", "SECRET TYPE"}
 
 	Table(headers, rows)
 }

@@ -191,3 +191,8 @@ type GetEncryptedWorkspaceKeyResponse struct {
 		UpdatedAt time.Time `json:"updatedAt"`
 	} `json:"latestKey"`
 }
+
+type GetSecretsByWorkspaceIdAndEnvironmentRequest struct {
+	EnvironmentName string `json:"environmentName"`
+	WorkspaceId     string `json:"workspaceId"`
+}
