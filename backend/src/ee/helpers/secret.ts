@@ -23,34 +23,44 @@ import {
 }: {
 	workspaceId: string;
 }) => {
+	
 	let secretSnapshot;
 	try {
-		const secrets = await Secret.find({
+		const secretIds = (await Secret.find({
 			workspace: workspaceId
-		});
+		}, '_id')).map((s) => s._id);
 		
+		const latestSecretVersions = (await SecretVersion.aggregate([
+			{
+				$match: { 
+					secret: { 
+						$in: secretIds 
+					} 
+				}
+			},
+			{
+				$group: {
+					_id: '$secret',
+					version: { $max: '$version' },
+					versionId: { $max: '$_id' } // secret version id
+				}
+			},
+			{
+				$sort: { version: -1 }
+			}
+			])
+			.exec())
+			.map((s) => s.versionId);
+			
 		const latestSecretSnapshot = await SecretSnapshot.findOne({
 			workspace: workspaceId
 		}).sort({ version: -1 });
 		
-		if (!latestSecretSnapshot) {
-			// case: no snapshots exist for workspace -> create first snapshot
-			await new SecretSnapshot({
-				workspace: workspaceId,
-				version: 1,
-				secrets 
-			}).save();	
-
-			return;
-		}
-		
-		// case: snapshots exist for workspace
 		secretSnapshot = await new SecretSnapshot({
 			workspace: workspaceId,
-			version: latestSecretSnapshot.version + 1,
-			secrets 
+			version: latestSecretSnapshot ? latestSecretSnapshot.version + 1 : 1,
+			secretVersions: latestSecretVersions
 		}).save();
-		
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);

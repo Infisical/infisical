@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
 import {
 	Secret,
 	ISecret,
@@ -8,7 +9,6 @@ import {
 	EELogService
 } from '../ee/services';
 import {
-	SecretVersion,
 	IAction
 } from '../ee/models';
 import { 
@@ -104,11 +104,9 @@ const v1PushSecrets = async ({
 			await Secret.deleteMany({
 				_id: { $in: toDelete }
 			});
-			
-			await SecretVersion.updateMany({
-				secret: { $in: toDelete }
-			}, {
-				isDeleted: true
+
+			await EESecretService.markDeletedSecretVersions({
+				secretIds: toDelete
 			});
 		}
 		
@@ -191,6 +189,10 @@ const v1PushSecrets = async ({
 				return ({
 					secret: _id,
 					version: version ? version + 1 : 1,
+					workspace: new Types.ObjectId(workspaceId),
+					type: newSecret.type,
+					user: new Types.ObjectId(userId),
+					environment,
 					isDeleted: false,
 					secretKeyCiphertext: newSecret.ciphertextKey,
 					secretKeyIV: newSecret.ivKey,
@@ -242,6 +244,11 @@ const v1PushSecrets = async ({
 			EESecretService.addSecretVersions({
 				secretVersions: newSecrets.map(({
 					_id,
+					version,
+					workspace,
+					type,
+					user,
+					environment,
 					secretKeyCiphertext,
 					secretKeyIV,
 					secretKeyTag,
@@ -252,7 +259,11 @@ const v1PushSecrets = async ({
 					secretValueHash
 				}) => ({
 					secret: _id,
-					version: 1,
+					version,
+					workspace,
+					type,
+					user,
+					environment,
 					isDeleted: false,
 					secretKeyCiphertext,
 					secretKeyIV,
@@ -419,29 +430,14 @@ const v1PushSecrets = async ({
 			// (EE) add secret versions for updated secrets
 			await EESecretService.addSecretVersions({
 				secretVersions: toUpdate.map((s) => {
-					const {
-						secretKeyCiphertext,
-						secretKeyIV,
-						secretKeyTag,
-						secretKeyHash,
-						secretValueCiphertext,
-						secretValueIV,
-						secretValueTag,
-						secretValueHash,
-					} = newSecretsObj[`${s.type}-${s.secretKeyHash}`];
-
 					return ({
+						...newSecretsObj[`${s.type}-${s.secretKeyHash}`],
 						secret: s._id,
 						version: s.version ? s.version + 1 : 1,
-						isDeleted: false,
-						secretKeyCiphertext,
-						secretKeyIV,
-						secretKeyTag,
-						secretKeyHash,
-						secretValueCiphertext,
-						secretValueIV,
-						secretValueTag,
-						secretValueHash
+						workspace: new Types.ObjectId(workspaceId),
+						user: s.user,
+						environment: s.environment,
+						isDeleted: false
 					})
 				}) 
 			});
@@ -474,31 +470,13 @@ const v1PushSecrets = async ({
 
 			// (EE) add secret versions for new secrets
 			EESecretService.addSecretVersions({
-				secretVersions: newSecrets.map(({
-					_id,
-					secretKeyCiphertext,
-					secretKeyIV,
-					secretKeyTag,
-					secretKeyHash,
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash
-				}) => ({
-					secret: _id,
-					version: 1,
-					isDeleted: false,
-					secretKeyCiphertext,
-					secretKeyIV,
-					secretKeyTag,
-					secretKeyHash,
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash
+				secretVersions: newSecrets.map((s) => ({
+					...s,
+					secret: s._id,
+					isDeleted: false
 				}))
 			});
-			
+
 			const addAction = await EELogService.createActionSecret({
 				name: ACTION_ADD_SECRETS,
 				userId,

@@ -5,7 +5,7 @@ import {
 	requireSecretAuth,
     validateRequest
 } from '../../../middleware';
-import { body, query, param } from 'express-validator';
+import { query, param } from 'express-validator';
 import { secretController } from '../../controllers/v1';
 import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../../variables';
 

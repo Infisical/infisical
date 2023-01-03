@@ -13,6 +13,7 @@ declare global {
 			integrationAuth: any;
 			bot: any;
 			secret: any;
+			secretSnapshot: any;
 			serviceToken: any;
 			accessToken: any;
 			query?: any;

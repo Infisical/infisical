@@ -123,6 +123,16 @@ export const SecretNotFoundError = (error?: Partial<RequestErrorContext>) => new
     stack: error?.stack
 });
 
+//* ----->[SECRET SNAPSHOT ERRORS]<-----
+export const SecretSnapshotNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? 'secret_snapshot_not_found_error',
+    message: error?.message ?? 'The requested secret snapshot was not found',
+    context: error?.context,
+    stack: error?.stack
+});
+
 //* ----->[ACTION ERRORS]<-----
 export const ActionNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.ERROR,

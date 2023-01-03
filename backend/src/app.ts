@@ -14,6 +14,7 @@ import { apiLimiter } from './helpers/rateLimiter';
 import {
   workspace as eeWorkspaceRouter,
   secret as eeSecretRouter,
+  secretSnapshot as eeSecretSnapshotRouter,
   action as eeActionRouter
 } from './ee/routes/v1';
 import {
@@ -69,6 +70,7 @@ if (NODE_ENV === 'production') {
 
 // (EE) routes
 app.use('/api/v1/secret', eeSecretRouter);
+app.use('/api/v1/secret-snapshot', eeSecretSnapshotRouter);
 app.use('/api/v1/workspace', eeWorkspaceRouter);
 app.use('/api/v1/action', eeActionRouter);
 
