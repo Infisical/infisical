@@ -11,7 +11,9 @@ import { workspaceController, membershipController } from '../../controllers/v1'
 
 router.get(
 	'/:workspaceId/keys',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [COMPLETED, GRANTED]
@@ -23,7 +25,9 @@ router.get(
 
 router.get(
 	'/:workspaceId/users',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [COMPLETED, GRANTED]
@@ -33,11 +37,19 @@ router.get(
 	workspaceController.getWorkspaceMemberships
 );
 
-router.get('/', requireAuth, workspaceController.getWorkspaces);
+router.get(
+	'/', 
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}), 
+	workspaceController.getWorkspaces
+);
 
 router.get(
 	'/:workspaceId',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [COMPLETED, GRANTED]
@@ -49,7 +61,9 @@ router.get(
 
 router.post(
 	'/',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	body('workspaceName').exists().trim().notEmpty(),
 	body('organizationId').exists().trim().notEmpty(),
 	validateRequest,
@@ -58,7 +72,9 @@ router.post(
 
 router.delete(
 	'/:workspaceId',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN],
 		acceptedStatuses: [GRANTED]
@@ -70,7 +86,9 @@ router.delete(
 
 router.post(
 	'/:workspaceId/name',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [COMPLETED, GRANTED]
@@ -83,7 +101,9 @@ router.post(
 
 router.post(
 	'/:workspaceId/invite-signup',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED]
@@ -96,7 +116,9 @@ router.post(
 
 router.get(
 	'/:workspaceId/integrations',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED]
@@ -108,7 +130,9 @@ router.get(
 
 router.get(
 	'/:workspaceId/authorizations',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED]
@@ -119,8 +143,10 @@ router.get(
 );
 
 router.get(
-	'/:workspaceId/service-tokens',
-	requireAuth,
+	'/:workspaceId/service-tokens', // deprecate
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED]
@@ -128,6 +154,20 @@ router.get(
 	param('workspaceId').exists().trim(),
 	validateRequest,
 	workspaceController.getWorkspaceServiceTokens
+);
+
+router.get(
+	'/:workspaceId/service-token-data',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		acceptedStatuses: [GRANTED]
+	}),
+	param('workspaceId').exists().trim(),
+	validateRequest,
+	workspaceController.getWorkspaceServiceTokenData
 );
 
 export default router;

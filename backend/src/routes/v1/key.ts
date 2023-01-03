@@ -11,7 +11,9 @@ import { keyController } from '../../controllers/v1';
 
 router.post(
 	'/:workspaceId',
-	requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [COMPLETED, GRANTED]
@@ -24,7 +26,9 @@ router.post(
 
 router.get(
 	'/:workspaceId/latest',
-	requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [COMPLETED, GRANTED]

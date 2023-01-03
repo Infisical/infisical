@@ -10,7 +10,7 @@ import { body } from 'express-validator';
 import { ADMIN, MEMBER, GRANTED } from '../../variables';
 import { serviceTokenController } from '../../controllers/v1';
 
-// TODO: revoke service token
+// note: deprecate service-token routes in favor of service-token data routes/structure
 
 router.get(
 	'/',
@@ -20,7 +20,9 @@ router.get(
 
 router.post(
 	'/',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED],

@@ -16,6 +16,7 @@ declare global {
 			secretSnapshot: any;
 			serviceToken: any;
 			accessToken: any;
+			serviceTokenData: any;
 			query?: any;
 		}
 	}

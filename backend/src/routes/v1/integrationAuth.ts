@@ -12,13 +12,17 @@ import { integrationAuthController } from '../../controllers/v1';
 
 router.get(
 	'/integration-options',
-	requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
 	integrationAuthController.getIntegrationOptions
 );
 
 router.post(
 	'/oauth-token',
-	requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED],
@@ -33,7 +37,9 @@ router.post(
 
 router.get(
 	'/:integrationAuthId/apps',
-	requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED]
@@ -45,7 +51,9 @@ router.get(
 
 router.delete(
 	'/:integrationAuthId',
-	requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED],

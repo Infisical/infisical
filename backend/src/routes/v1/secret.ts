@@ -12,7 +12,9 @@ import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../variables';
 
 router.post(
 	'/:workspaceId',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [COMPLETED, GRANTED]
@@ -28,7 +30,9 @@ router.post(
 
 router.get(
 	'/:workspaceId',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [COMPLETED, GRANTED]

@@ -11,7 +11,9 @@ import { integrationController } from '../../controllers/v1';
 
 router.patch(
 	'/:integrationId',
-	requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
 	requireIntegrationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED]
@@ -29,7 +31,9 @@ router.patch(
 
 router.delete(
 	'/:integrationId',
-	requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
 	requireIntegrationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED]

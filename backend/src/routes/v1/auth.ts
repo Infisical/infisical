@@ -25,7 +25,19 @@ router.post(
   authController.login2
 );
 
-router.post('/logout', requireAuth, authController.logout);
-router.post('/checkAuth', requireAuth, authController.checkAuth);
+router.post(
+  '/logout', 
+  requireAuth({
+    acceptedAuthModes: ['jwt']
+  }), 
+  authController.logout
+);
+router.post(
+  '/checkAuth', 
+  requireAuth({
+    acceptedAuthModes: ['jwt']
+  }), 
+  authController.checkAuth
+);
 
 export default router;

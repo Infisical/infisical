@@ -1,14 +1,140 @@
 import jwt from 'jsonwebtoken';
 import * as Sentry from '@sentry/node';
+import bcrypt from 'bcrypt';
 import {
-	User
+	User,
+	ServiceTokenData
 } from '../models';
 import {
 	JWT_AUTH_LIFETIME,
 	JWT_AUTH_SECRET,
 	JWT_REFRESH_LIFETIME,
-	JWT_REFRESH_SECRET
+	JWT_REFRESH_SECRET,
+	SALT_ROUNDS
 } from '../config';
+import {
+	AccountNotFoundError,
+	ServiceTokenDataNotFoundError,
+	UnauthorizedRequestError,
+	BadRequestError
+} from '../utils/errors';
+
+/**
+ * Validate that auth token value [authTokenValue] falls under one of
+ * accepted auth modes [acceptedAuthModes].
+ * @param {Object} obj
+ * @param {String} obj.authTokenValue - auth token value (e.g. JWT or service token value)
+ * @param {String[]} obj.acceptedAuthModes - accepted auth modes (e.g. jwt, serviceToken)
+ * @returns {String} authMode - auth mode
+ */
+const validateAuthMode = ({
+	authTokenValue,
+	acceptedAuthModes
+}: {
+	authTokenValue: string;
+	acceptedAuthModes: string[];
+}) => {
+	let authMode;
+	try {
+		switch (authTokenValue.split('.', 1)[0]) {
+			case 'st':
+				authMode = 'serviceToken';
+				break;
+			default:
+				authMode = 'jwt';
+				break;
+		}
+		
+		if (!acceptedAuthModes.includes(authMode)) 
+			throw UnauthorizedRequestError({ message: 'Failed to authenticated auth mode' });
+
+	} catch (err) {
+		throw UnauthorizedRequestError({ message: 'Failed to authenticated auth mode' });
+	}
+	
+	return authMode;
+}
+
+/**
+ * Return user payload corresponding to JWT token [authTokenValue]
+ * @param {Object} obj
+ * @param {String} obj.authTokenValue - JWT token value
+ * @returns {User} user - user corresponding to JWT token
+ */
+const getAuthUserPayload = async ({
+	authTokenValue
+}: {
+	authTokenValue: string;
+}) => {
+	let user;
+	try {
+		const decodedToken = <jwt.UserIDJwtPayload>(
+			jwt.verify(authTokenValue, JWT_AUTH_SECRET)
+		);
+
+		user = await User.findOne({
+			_id: decodedToken.userId
+		}).select('+publicKey');
+
+		if (!user) throw AccountNotFoundError({ message: 'Failed to find User' });
+
+		if (!user?.publicKey) throw UnauthorizedRequestError({ message: 'Failed to authenticate User with partially set up account' });
+
+	} catch (err) {
+		throw UnauthorizedRequestError({
+			message: 'Failed to authenticate JWT token'
+		});
+	}
+	
+	return user;
+}
+
+/**
+ * Return service token data payload corresponding to service token [authTokenValue]
+ * @param {Object} obj
+ * @param {String} obj.authTokenValue - service token value
+ * @returns {ServiceTokenData} serviceTokenData - service token data
+ */
+const getAuthSTDPayload = async ({
+	authTokenValue
+}: {
+	authTokenValue: string;
+}) => {
+	let serviceTokenData;
+	try {
+		const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
+
+		// TODO: optimize double query
+		serviceTokenData = await ServiceTokenData
+			.findById(TOKEN_IDENTIFIER, 'secretHash expiresAt');
+		
+		if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
+			// case: service token expired
+			await ServiceTokenData.findByIdAndDelete(serviceTokenData._id);
+			throw UnauthorizedRequestError({
+				message: 'Failed to authenticate expired service token'
+			});
+		}
+
+		if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
+
+		const isMatch = await bcrypt.compare(TOKEN_SECRET, serviceTokenData.secretHash);
+		if (!isMatch) throw UnauthorizedRequestError({
+			message: 'Failed to authenticate service token'
+		});
+
+		serviceTokenData = await ServiceTokenData
+			.findById(TOKEN_IDENTIFIER)
+			.select('+encryptedKey +iv +tag');
+
+	} catch (err) {
+		throw UnauthorizedRequestError({
+			message: 'Failed to authenticate service token'
+		});
+	}
+	
+	return serviceTokenData;
+}
 
 /**
  * Return newly issued (JWT) auth and refresh tokens to user with id [userId]
@@ -99,4 +225,11 @@ const createToken = ({
 	}
 };
 
-export { createToken, issueTokens, clearTokens };
+export { 
+	validateAuthMode,
+	getAuthUserPayload,
+	getAuthSTDPayload,
+	createToken, 
+	issueTokens, 
+	clearTokens 
+};
