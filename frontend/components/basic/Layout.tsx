@@ -6,6 +6,7 @@ import { useRouter } from "next/router";
 import { useTranslation } from "next-i18next";
 import {
   faBookOpen,
+  faFileLines,
   faGear,
   faKey,
   faMobile,
@@ -158,7 +159,7 @@ export default function Layout({ children }: LayoutProps) {
       {
         href: '/activity/' + workspaceMapping[workspaceSelected as any],
         title: 'Activity Logs',
-        emoji: <FontAwesomeIcon icon={faTimeline} />
+        emoji: <FontAwesomeIcon icon={faFileLines} />
       },
       {
         href: "/settings/project/" + workspaceMapping[workspaceSelected as any],
