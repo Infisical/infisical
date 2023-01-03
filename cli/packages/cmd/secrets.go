@@ -35,6 +35,13 @@ var secretsCmd = &cobra.Command{
 			return
 		}
 
+		shouldExpandSecrets, err := cmd.Flags().GetBool("expand")
+		if err != nil {
+			log.Errorln("Unable to parse the substitute flag")
+			log.Debugln(err)
+			return
+		}
+
 		workspaceFileExists := util.WorkspaceConfigFileExistsInCurrentPath()
 		if !workspaceFileExists {
 			log.Error("You have not yet connected to an Infisical Project. Please run [infisical init]")
@@ -42,7 +49,11 @@ var secretsCmd = &cobra.Command{
 		}
 
 		secrets, err := util.GetAllEnvironmentVariables("", environmentName)
-		secrets = util.SubstituteSecrets(secrets)
+
+		if shouldExpandSecrets {
+			secrets = util.SubstituteSecrets(secrets)
+		}
+
 		if err != nil {
 			log.Debugln(err)
 			return
@@ -333,7 +344,7 @@ var secretsDeleteCmd = &cobra.Command{
 		invalidSecretNamesThatDoNotExist := []string{}
 
 		for _, secretKeyFromArg := range args {
-			if value, ok := secretByKey[secretKeyFromArg]; ok {
+			if value, ok := secretByKey[strings.ToUpper(secretKeyFromArg)]; ok {
 				validSecretIdsToDelete = append(validSecretIdsToDelete, value.ID)
 			} else {
 				invalidSecretNamesThatDoNotExist = append(invalidSecretNamesThatDoNotExist, secretKeyFromArg)
@@ -368,10 +379,11 @@ var secretsDeleteCmd = &cobra.Command{
 
 func init() {
 	secretsCmd.AddCommand(secretsGetCmd)
-	secretsSetCmd.Flags().String("type", "shared", "Used to set the type for secrets")
+	// secretsSetCmd.Flags().String("type", "shared", "Used to set the type for secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
 	secretsCmd.AddCommand(secretsDeleteCmd)
 	secretsCmd.PersistentFlags().String("env", "dev", "Used to define the environment name on which actions should be taken on")
+	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	rootCmd.AddCommand(secretsCmd)
 }
 
@@ -403,7 +415,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 	}
 
 	for _, secretKeyFromArg := range args {
-		if value, ok := secretsMap[secretKeyFromArg]; ok {
+		if value, ok := secretsMap[strings.ToUpper(secretKeyFromArg)]; ok {
 			requestedSecrets = append(requestedSecrets, value)
 		} else {
 			requestedSecrets = append(requestedSecrets, models.SingleEnvironmentVariable{
