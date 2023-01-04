@@ -3,21 +3,24 @@ import * as Sentry from '@sentry/node';
 import bcrypt from 'bcrypt';
 import {
 	User,
-	ServiceTokenData
+	ServiceTokenData,
+	APIKeyData
 } from '../models';
 import {
 	JWT_AUTH_LIFETIME,
 	JWT_AUTH_SECRET,
 	JWT_REFRESH_LIFETIME,
-	JWT_REFRESH_SECRET,
-	SALT_ROUNDS
+	JWT_REFRESH_SECRET
 } from '../config';
 import {
 	AccountNotFoundError,
 	ServiceTokenDataNotFoundError,
-	UnauthorizedRequestError,
-	BadRequestError
+	APIKeyDataNotFoundError,
+	UnauthorizedRequestError
 } from '../utils/errors';
+
+// TODO 1: check if API key works
+// TODO 2: optimize middleware
 
 /**
  * Validate that auth token value [authTokenValue] falls under one of
@@ -39,6 +42,9 @@ const validateAuthMode = ({
 		switch (authTokenValue.split('.', 1)[0]) {
 			case 'st':
 				authMode = 'serviceToken';
+				break;
+			case 'ak':
+				authMode = 'apiKey';
 				break;
 			default:
 				authMode = 'jwt';
@@ -106,17 +112,17 @@ const getAuthSTDPayload = async ({
 
 		// TODO: optimize double query
 		serviceTokenData = await ServiceTokenData
-			.findById(TOKEN_IDENTIFIER, 'secretHash expiresAt');
+			.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt');
 		
-		if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
+		if (!serviceTokenData) {
+			throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
+		} else if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
 			// case: service token expired
 			await ServiceTokenData.findByIdAndDelete(serviceTokenData._id);
 			throw UnauthorizedRequestError({
 				message: 'Failed to authenticate expired service token'
 			});
 		}
-
-		if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
 
 		const isMatch = await bcrypt.compare(TOKEN_SECRET, serviceTokenData.secretHash);
 		if (!isMatch) throw UnauthorizedRequestError({
@@ -134,6 +140,50 @@ const getAuthSTDPayload = async ({
 	}
 	
 	return serviceTokenData;
+}
+
+/**
+ * Return API key data payload corresponding to API key [authTokenValue]
+ * @param {Object} obj
+ * @param {String} obj.authTokenValue - API key value
+ * @returns {APIKeyData} apiKeyData - API key data
+ */
+const getAuthAPIKeyPayload = async ({
+	authTokenValue
+}: {
+	authTokenValue: string;
+}) => {
+	let user;
+	try {
+		const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
+		
+		const apiKeyData = await APIKeyData
+			.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt')
+			.populate('user', '+publicKey');
+		
+		if (!apiKeyData) {
+			throw APIKeyDataNotFoundError({ message: 'Failed to find API key data' });
+		} else if (apiKeyData?.expiresAt && new Date(apiKeyData.expiresAt) < new Date()) {
+			// case: API key expired
+			await APIKeyData.findByIdAndDelete(apiKeyData._id);
+			throw UnauthorizedRequestError({
+				message: 'Failed to authenticate expired API key'
+			});
+		}
+
+		const isMatch = await bcrypt.compare(TOKEN_SECRET, apiKeyData.secretHash);
+		if (!isMatch) throw UnauthorizedRequestError({
+			message: 'Failed to authenticate API key'
+		});
+		
+		user = apiKeyData.user;
+	} catch (err) {
+		throw UnauthorizedRequestError({
+			message: 'Failed to authenticate API key'
+		});
+	}
+	
+	return user;
 }
 
 /**
@@ -229,6 +279,7 @@ export {
 	validateAuthMode,
 	getAuthUserPayload,
 	getAuthSTDPayload,
+	getAuthAPIKeyPayload,
 	createToken, 
 	issueTokens, 
 	clearTokens 

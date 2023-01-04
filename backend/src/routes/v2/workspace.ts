@@ -67,5 +67,4 @@ router.get(
 	workspaceController.getWorkspaceServiceTokenData
 );
 
-
 export default router;

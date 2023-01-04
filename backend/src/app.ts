@@ -38,6 +38,7 @@ import {
   secret as v2SecretRouter,
   workspace as v2WorkspaceRouter,
   serviceTokenData as v2ServiceTokenDataRouter,
+  apiKeyData as v2APIKeyDataRouter,
 } from './routes/v2';
 
 import { getLogger } from './utils/logger';
@@ -94,6 +95,7 @@ app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
 app.use('/api/v2/workspace', v2WorkspaceRouter);
 app.use('/api/v2/secret', v2SecretRouter);
 app.use('/api/v2/service-token-data', v2ServiceTokenDataRouter);
+app.use('/api/v2/api-key-data', v2APIKeyDataRouter);
 
 //* Handle unrouted requests and respond with proper error message as well as status code
 app.use((req, res, next)=>{

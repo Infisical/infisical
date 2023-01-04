@@ -4,7 +4,8 @@ import { User, ServiceTokenData } from '../models';
 import {
 	validateAuthMode,
 	getAuthUserPayload,
-	getAuthSTDPayload
+	getAuthSTDPayload,
+	getAuthAPIKeyPayload
 } from '../helpers/auth';
 import { BadRequestError } from '../utils/errors';
 
@@ -50,6 +51,11 @@ const requireAuth  = ({
 		switch (authMode) {
 			case 'serviceToken':
 				req.serviceTokenData = await getAuthSTDPayload({
+					authTokenValue: AUTH_TOKEN_VALUE
+				});
+				break;
+			case 'apiKey':
+				req.user = await getAuthAPIKeyPayload({
 					authTokenValue: AUTH_TOKEN_VALUE
 				});
 				break;
