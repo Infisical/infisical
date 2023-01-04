@@ -78,3 +78,29 @@ export const createAPIKeyData = async (req: Request, res: Response) => {
         apiKeyData
     });
 }
+
+/**
+ * Delete API key data with id [apiKeyDataId].
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const deleteAPIKeyData = async (req: Request, res: Response) => {
+    let apiKeyData;
+    try {
+        const { apiKeyDataId } = req.params;
+
+        apiKeyData = await APIKeyData.findByIdAndDelete(apiKeyDataId);
+        
+    } catch (err) {
+        Sentry.setUser({ email: req.user.email });
+        Sentry.captureException(err);
+        return res.status(400).send({
+            message: 'Failed to delete API key data'
+        });
+    }
+    
+    return res.status(200).send({
+        apiKeyData
+    });
+}

@@ -4,7 +4,7 @@ import {
     requireAuth,
     validateRequest
 } from '../../middleware';
-import { body } from 'express-validator';
+import { param, body } from 'express-validator';
 import { apiKeyDataController } from '../../controllers/v2';
 
 router.get(
@@ -24,6 +24,16 @@ router.post(
     body('expiresIn'), // measured in ms
     validateRequest,
     apiKeyDataController.createAPIKeyData
+);
+
+router.delete(
+    '/:apiKeyDataId',
+    requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
+    param('apiKeyDataId').exists().trim(),
+    validateRequest,
+    apiKeyDataController.deleteAPIKeyData
 );
 
 export default router;
