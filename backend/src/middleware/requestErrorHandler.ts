@@ -9,7 +9,7 @@ import { NODE_ENV } from "../config";
 
 export const requestErrorHandler: ErrorRequestHandler = (error: RequestError | Error, req, res, next) => {
     if (res.headersSent) return next();
-    if (NODE_ENV !== "production" && error instanceof RequestError) {
+    if (NODE_ENV !== "production") {
         /* eslint-disable no-console */
         console.log(error)
         /* eslint-enable no-console */
