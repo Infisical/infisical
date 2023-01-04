@@ -16,6 +16,7 @@ declare global {
 			serviceToken: any;
 			accessToken: any;
 			serviceTokenData: any;
+			apiKeyData: any;
 			query?: any;
 		}
 	}
