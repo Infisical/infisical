@@ -12,7 +12,9 @@ const router = express.Router();
  */
 router.post(
   '/batch-create/workspace/:workspaceId/environment/:environmentName',
-  requireAuth,
+  requireAuth({
+    acceptedAuthModes: ['jwt']
+  }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER]
   }),
@@ -27,7 +29,11 @@ router.post(
  * Get a single secret by secret id
  */
 router.get(
-  '/:secretId', requireAuth, param('secretId').exists().trim(),
+  '/:secretId',
+  requireAuth({
+    acceptedAuthModes: ['jwt']
+  }),
+  param('secretId').exists().trim(),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER]
   }),
@@ -40,7 +46,9 @@ router.get(
  */
 router.delete(
   '/batch/workspace/:workspaceId/environment/:environmentName',
-  requireAuth,
+  requireAuth({
+    acceptedAuthModes: ['jwt']
+  }),
   param('workspaceId').exists().isMongoId().trim(),
   param('environmentName').exists().trim(),
   body('secretIds').exists().isArray().custom(array => array.length > 0),
@@ -57,7 +65,9 @@ router.delete(
  */
 router.patch(
   '/batch-modify/workspace/:workspaceId/environment/:environmentName',
-  requireAuth,
+  requireAuth({
+    acceptedAuthModes: ['jwt']
+  }),
   body('secrets').exists().isArray().custom((secrets: ModifySecretRequestBody[]) => secrets.length > 0),
   param('workspaceId').exists().isMongoId().trim(),
   param('environmentName').exists().trim(),
