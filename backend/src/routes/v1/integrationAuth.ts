@@ -7,7 +7,7 @@ import {
 	requireIntegrationAuthorizationAuth,
 	validateRequest
 } from '../../middleware';
-import { ADMIN, MEMBER, GRANTED } from '../../variables';
+import { ADMIN, MEMBER } from '../../variables';
 import { integrationAuthController } from '../../controllers/v1';
 
 router.get(
@@ -25,7 +25,6 @@ router.post(
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [GRANTED],
 		location: 'body'
 	}),
 	body('workspaceId').exists().trim().notEmpty(),
@@ -41,8 +40,7 @@ router.get(
         acceptedAuthModes: ['jwt']
     }),
 	requireIntegrationAuthorizationAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [GRANTED]
+		acceptedRoles: [ADMIN, MEMBER]
 	}),
 	param('integrationAuthId'),
 	validateRequest,
@@ -56,7 +54,6 @@ router.delete(
     }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [GRANTED],
 		attachAccessToken: false
 	}),
 	param('integrationAuthId'),

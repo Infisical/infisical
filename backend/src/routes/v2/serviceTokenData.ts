@@ -10,8 +10,6 @@ import { param, body } from 'express-validator';
 import {
     ADMIN,
     MEMBER,
-    COMPLETED,
-    GRANTED
 } from '../../variables';
 import { serviceTokenDataController } from '../../controllers/v2';
 
@@ -30,7 +28,6 @@ router.post(
 	}),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
-        acceptedStatuses: [COMPLETED, GRANTED],
         location: 'body'
     }),
     body('name').exists().trim(),
@@ -50,8 +47,7 @@ router.delete(
 		acceptedAuthModes: ['jwt']
 	}),
     requireServiceTokenDataAuth({
-        acceptedRoles: [ADMIN, MEMBER],
-        acceptedStatuses: [COMPLETED, GRANTED],
+        acceptedRoles: [ADMIN, MEMBER]
     }),
     param('serviceTokenDataId').exists().trim(),
     validateRequest,

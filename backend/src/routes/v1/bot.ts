@@ -8,7 +8,7 @@ import {
     validateRequest
 } from '../../middleware';
 import { botController } from '../../controllers/v1';
-import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../variables';
+import { ADMIN, MEMBER } from '../../variables';
 
 router.get(
     '/:workspaceId',
@@ -16,8 +16,7 @@ router.get(
         acceptedAuthModes: ['jwt']
     }),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [COMPLETED, GRANTED]
+		acceptedRoles: [ADMIN, MEMBER]
 	}),
     param('workspaceId').exists().trim().notEmpty(),
     validateRequest,
@@ -30,8 +29,7 @@ router.patch(
         acceptedAuthModes: ['jwt']
     }),
     requireBotAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [COMPLETED, GRANTED]
+		acceptedRoles: [ADMIN, MEMBER]
     }),
     body('isActive').isBoolean(),
     body('botKey'),

@@ -28,8 +28,6 @@ import {
   MEMBER,
   INVITED,
   ACCEPTED,
-  COMPLETED,
-  GRANTED
 } from './organization';
 import { SECRET_SHARED, SECRET_PERSONAL } from './secret';
 import { EVENT_PUSH_SECRETS, EVENT_PULL_SECRETS } from './event';
@@ -42,8 +40,6 @@ export {
   MEMBER,
   INVITED,
   ACCEPTED,
-  COMPLETED,
-  GRANTED,
   SECRET_SHARED,
   SECRET_PERSONAL,
   ENV_DEV,
