@@ -10,6 +10,8 @@ const (
 	CONFIG_FOLDER_NAME                   = ".infisical"
 	INFISICAL_WORKSPACE_CONFIG_FILE_NAME = ".infisical.json"
 	INFISICAL_TOKEN_NAME                 = "INFISICAL_TOKEN"
+	SECRET_TYPE_PERSONAL                 = "personal"
+	SECRET_TYPE_SHARED                   = "shared"
 )
 
 var INFISICAL_URL = "https://app.infisical.com/api"

@@ -12,6 +12,12 @@ import (
 
 const SERVICE_NAME = "infisical"
 
+type LoggedInUserDetails struct {
+	IsUserLoggedIn  bool
+	LoginExpired    bool
+	UserCredentials models.UserCredentials
+}
+
 // To do: what happens if the user doesn't have a keyring in their system?
 func StoreUserCredsInKeyRing(userCred *models.UserCredentials) error {
 	userCredMarshalled, err := json.Marshal(userCred)
@@ -100,5 +106,52 @@ func IsUserLoggedIn() (hasUserLoggedIn bool, theUsersEmail string, err error) {
 		return true, configFile.LoggedInUserEmail, nil
 	} else {
 		return false, "", nil
+	}
+}
+
+func GetCurrentLoggedInUserDetails() (LoggedInUserDetails, error) {
+	if ConfigFileExists() {
+		configFile, err := GetConfigFile()
+		if err != nil {
+			return LoggedInUserDetails{}, fmt.Errorf("getCurrentLoggedInUserDetails: unable to get logged in user from config file [err=%s]", err)
+		}
+
+		if configFile.LoggedInUserEmail == "" {
+			return LoggedInUserDetails{}, nil
+		}
+
+		userCreds, err := GetUserCredsFromKeyRing(configFile.LoggedInUserEmail)
+		if err != nil {
+			return LoggedInUserDetails{}, fmt.Errorf("getCurrentLoggedInUserDetails: unable to your credentials from Keyring [err=%s]", err)
+		}
+
+		// check to to see if the JWT is still valid
+		httpClient := resty.New().
+			SetAuthToken(userCreds.JTWToken).
+			SetHeader("Accept", "application/json")
+
+		response, err := httpClient.
+			R().
+			Post(fmt.Sprintf("%v/v1/auth/checkAuth", INFISICAL_URL))
+
+		if err != nil {
+			return LoggedInUserDetails{}, err
+		}
+
+		if response.StatusCode() > 299 {
+			return LoggedInUserDetails{
+				IsUserLoggedIn:  true,
+				LoginExpired:    true,
+				UserCredentials: userCreds,
+			}, nil
+		}
+
+		return LoggedInUserDetails{
+			IsUserLoggedIn:  true,
+			LoginExpired:    false,
+			UserCredentials: userCreds,
+		}, nil
+	} else {
+		return LoggedInUserDetails{}, nil
 	}
 }

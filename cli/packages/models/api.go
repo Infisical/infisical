@@ -128,3 +128,71 @@ type Workspace struct {
 	V            int    `json:"__v"`
 	Organization string `json:"organization,omitempty"`
 }
+
+type Secret struct {
+	SecretKeyCiphertext     string `json:"secretKeyCiphertext,omitempty"`
+	SecretKeyIV             string `json:"secretKeyIV,omitempty"`
+	SecretKeyTag            string `json:"secretKeyTag,omitempty"`
+	SecretKeyHash           string `json:"secretKeyHash,omitempty"`
+	SecretValueCiphertext   string `json:"secretValueCiphertext,omitempty"`
+	SecretValueIV           string `json:"secretValueIV,omitempty"`
+	SecretValueTag          string `json:"secretValueTag,omitempty"`
+	SecretValueHash         string `json:"secretValueHash,omitempty"`
+	SecretCommentCiphertext string `json:"secretCommentCiphertext,omitempty"`
+	SecretCommentIV         string `json:"secretCommentIV,omitempty"`
+	SecretCommentTag        string `json:"secretCommentTag,omitempty"`
+	SecretCommentHash       string `json:"secretCommentHash,omitempty"`
+	Type                    string `json:"type,omitempty"`
+	ID                      string `json:"_id,omitempty"`
+}
+
+type BatchCreateSecretsByWorkspaceAndEnvRequest struct {
+	EnvironmentName string   `json:"environmentName"`
+	WorkspaceId     string   `json:"workspaceId"`
+	Secrets         []Secret `json:"secrets"`
+}
+
+type BatchModifySecretsByWorkspaceAndEnvRequest struct {
+	EnvironmentName string   `json:"environmentName"`
+	WorkspaceId     string   `json:"workspaceId"`
+	Secrets         []Secret `json:"secrets"`
+}
+
+type BatchDeleteSecretsBySecretIdsRequest struct {
+	EnvironmentName string   `json:"environmentName"`
+	WorkspaceId     string   `json:"workspaceId"`
+	SecretIds       []string `json:"secretIds"`
+}
+
+type GetEncryptedWorkspaceKeyRequest struct {
+	WorkspaceId string `json:"workspaceId"`
+}
+
+type GetEncryptedWorkspaceKeyResponse struct {
+	LatestKey struct {
+		ID           string `json:"_id"`
+		EncryptedKey string `json:"encryptedKey"`
+		Nonce        string `json:"nonce"`
+		Sender       struct {
+			ID             string    `json:"_id"`
+			Email          string    `json:"email"`
+			RefreshVersion int       `json:"refreshVersion"`
+			CreatedAt      time.Time `json:"createdAt"`
+			UpdatedAt      time.Time `json:"updatedAt"`
+			V              int       `json:"__v"`
+			FirstName      string    `json:"firstName"`
+			LastName       string    `json:"lastName"`
+			PublicKey      string    `json:"publicKey"`
+		} `json:"sender"`
+		Receiver  string    `json:"receiver"`
+		Workspace string    `json:"workspace"`
+		V         int       `json:"__v"`
+		CreatedAt time.Time `json:"createdAt"`
+		UpdatedAt time.Time `json:"updatedAt"`
+	} `json:"latestKey"`
+}
+
+type GetSecretsByWorkspaceIdAndEnvironmentRequest struct {
+	EnvironmentName string `json:"environmentName"`
+	WorkspaceId     string `json:"workspaceId"`
+}

@@ -11,7 +11,6 @@ import (
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/crypto/nacl/box"
 )
 
 const PERSONAL_SECRET_TYPE_NAME = "personal"
@@ -56,7 +55,7 @@ func getSecretsByWorkspaceIdAndEnvName(httpClient resty.Client, envName string, 
 	}
 
 	// log.Debugln("workspaceKey", workspaceKey, "nonce", nonce, "senderPublicKey", senderPublicKey, "currentUsersPrivateKey", currentUsersPrivateKey)
-	workspaceKeyInBytes, _ := box.Open(nil, workspaceKey, (*[24]byte)(nonce), (*[32]byte)(senderPublicKey), (*[32]byte)(currentUsersPrivateKey))
+	workspaceKeyInBytes := DecryptAsymmetric(workspaceKey, nonce, senderPublicKey, currentUsersPrivateKey)
 	var listOfEnv []models.SingleEnvironmentVariable
 
 	for _, secret := range pullSecretsRequestResponse.Secrets {
@@ -82,6 +81,7 @@ func getSecretsByWorkspaceIdAndEnvName(httpClient resty.Client, envName string, 
 			Key:   string(plainTextKey),
 			Value: string(plainTextValue),
 			Type:  string(secret.Type),
+			ID:    secret.ID,
 		}
 
 		listOfEnv = append(listOfEnv, env)
@@ -166,7 +166,8 @@ func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, envName string,
 		return nil, err
 	}
 
-	workspaceKeyInBytes, _ := box.Open(nil, workspaceKey, (*[24]byte)(nonce), (*[32]byte)(senderPublicKey), (*[32]byte)(currentUsersPrivateKey))
+	// workspaceKeyInBytes, _ := box.Open(nil, workspaceKey, (*[24]byte)(nonce), (*[32]byte)(senderPublicKey), (*[32]byte)(currentUsersPrivateKey))
+	workspaceKeyInBytes := DecryptAsymmetric(workspaceKey, nonce, senderPublicKey, currentUsersPrivateKey)
 	var listOfEnv []models.SingleEnvironmentVariable
 
 	for _, secret := range pullSecretsByInfisicalTokenResponse.Secrets {
@@ -192,6 +193,7 @@ func GetSecretsFromAPIUsingInfisicalToken(infisicalToken string, envName string,
 			Key:   string(plainTextKey),
 			Value: string(plainTextValue),
 			Type:  string(secret.Type),
+			ID:    secret.ID,
 		}
 
 		listOfEnv = append(listOfEnv, env)
@@ -223,6 +225,7 @@ func GetAllEnvironmentVariables(projectId string, envName string) ([]models.Sing
 			return nil, err
 		}
 
+		// TODO: Should be based on flag. I.e only get all workspaces if desired, otherwise only get the one in the current root of project
 		workspaceConfigs, err := GetAllWorkSpaceConfigsStartingFromCurrentPath()
 		if err != nil {
 			return nil, fmt.Errorf("unable to check if you have a %s file in your current directory", INFISICAL_WORKSPACE_CONFIG_FILE_NAME)
@@ -384,4 +387,18 @@ func OverrideWithPersonalSecrets(secrets []models.SingleEnvironmentVariable) []m
 	}
 
 	return secretsToReturn
+}
+
+func IsSecretEnvironmentValid(env string) bool {
+	if env == "prod" || env == "dev" || env == "test" || env == "staging" {
+		return true
+	}
+	return false
+}
+
+func IsSecretTypeValid(s string) bool {
+	if s == "personal" || s == "shared" {
+		return true
+	}
+	return false
 }
