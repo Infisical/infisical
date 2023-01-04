@@ -1,7 +1,7 @@
 import express from 'express';
 import { requireAuth, requireWorkspaceAuth, validateRequest } from '../../middleware';
 import { body, param } from 'express-validator';
-import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../variables';
+import { ADMIN, MEMBER } from '../../variables';
 import { CreateSecretRequestBody, ModifySecretRequestBody } from '../../types/secret/types';
 import { secretController } from '../../controllers/v2';
 
@@ -14,8 +14,7 @@ router.post(
   '/batch-create/workspace/:workspaceId/environment/:environmentName',
   requireAuth,
   requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    acceptedStatuses: [COMPLETED, GRANTED]
+    acceptedRoles: [ADMIN, MEMBER]
   }),
   param('workspaceId').exists().isMongoId().trim(),
   param('environmentName').exists().trim(),
@@ -30,8 +29,7 @@ router.post(
 router.get(
   '/:secretId', requireAuth, param('secretId').exists().trim(),
   requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    acceptedStatuses: [COMPLETED, GRANTED]
+    acceptedRoles: [ADMIN, MEMBER]
   }),
   validateRequest,
   secretController.createSingleSecret
@@ -47,8 +45,7 @@ router.delete(
   param('environmentName').exists().trim(),
   body('secretIds').exists().isArray().custom(array => array.length > 0),
   requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    acceptedStatuses: [COMPLETED, GRANTED]
+    acceptedRoles: [ADMIN, MEMBER]
   }),
   validateRequest,
   secretController.batchDeleteSecrets
@@ -65,8 +62,7 @@ router.patch(
   param('workspaceId').exists().isMongoId().trim(),
   param('environmentName').exists().trim(),
   requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER],
-    acceptedStatuses: [COMPLETED, GRANTED]
+    acceptedRoles: [ADMIN, MEMBER]
   }),
   validateRequest,
   secretController.batchModifySecrets
