@@ -13,7 +13,9 @@ import { secretSnapshotController } from '../../controllers/v1';
 
 router.get(
     '/:secretSnapshotId',
-    requireAuth,
+    requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
     requireSecretSnapshotAuth({
         acceptedRoles: [ADMIN, MEMBER],
 		acceptedStatuses: [GRANTED]
