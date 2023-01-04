@@ -9,15 +9,12 @@ import {
  * Validate if user on request has proper membership to modify secret.
  * @param {Object} obj
  * @param {String[]} obj.acceptedRoles - accepted workspace roles
- * @param {String[]} obj.acceptedStatuses - accepted workspace statuses
  * @param {String[]} obj.location - location of [workspaceId] on request (e.g. params, body) for parsing
  */
 const requireSecretAuth = ({
-    acceptedRoles,
-    acceptedStatuses
+    acceptedRoles
 }: {
     acceptedRoles: string[];
-    acceptedStatuses: string[];
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
         try {
@@ -34,8 +31,7 @@ const requireSecretAuth = ({
             await validateMembership({
                 userId: req.user._id.toString(),
                 workspaceId: secret.workspace.toString(),
-                acceptedRoles,
-                acceptedStatuses
+                acceptedRoles
             });
             
             req.secret = secret as any;

@@ -153,4 +153,14 @@ export const ServiceTokenDataNotFoundError = (error?: Partial<RequestErrorContex
     stack: error?.stack
 })
 
+//* ----->[API KEY DATA ERRORS]<-----
+export const APIKeyDataNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? 'service_token_data_not_found_error',
+    message: error?.message ?? 'The requested service token data was not found',
+    context: error?.context,
+    stack: error?.stack
+})
+
 //* ----->[MISC ERRORS]<-----

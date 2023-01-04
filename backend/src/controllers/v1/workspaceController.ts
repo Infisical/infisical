@@ -15,7 +15,7 @@ import {
 	deleteWorkspace as deleteWork
 } from '../../helpers/workspace';
 import { addMemberships } from '../../helpers/membership';
-import { ADMIN, COMPLETED, GRANTED } from '../../variables';
+import { ADMIN } from '../../variables';
 
 /**
  * Return public keys of members of workspace with id [workspaceId]
@@ -33,13 +33,12 @@ export const getWorkspacePublicKeys = async (req: Request, res: Response) => {
 				workspace: workspaceId
 			}).populate<{ user: IUser }>('user', 'publicKey')
 		)
-			.filter((m) => m.status === COMPLETED || m.status === GRANTED)
-			.map((member) => {
-				return {
-					publicKey: member.user.publicKey,
-					userId: member.user._id
-				};
-			});
+		.map((member) => {
+			return {
+				publicKey: member.user.publicKey,
+				userId: member.user._id
+			};
+		});
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
@@ -169,8 +168,7 @@ export const createWorkspace = async (req: Request, res: Response) => {
 		await addMemberships({
 			userIds: [req.user._id],
 			workspaceId: workspace._id.toString(),
-			roles: [ADMIN],
-			statuses: [GRANTED]
+			roles: [ADMIN]
 		});
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
@@ -335,31 +333,4 @@ export const getWorkspaceServiceTokens = async (
 	return res.status(200).send({
 		serviceTokens
 	});
-}
-
-export const getWorkspaceServiceTokenData = async (
-	req: Request,
-	res: Response
-) => {
-	let serviceTokenData;
-        try {
-            const { workspaceId } = req.query;
-
-            serviceTokenData = await ServiceTokenData
-				.find({
-					workspace: workspaceId
-				})
-				.select('+encryptedKey +iv +tag');
-
-        } catch (err) {
-            Sentry.setUser({ email: req.user.email });
-            Sentry.captureException(err);
-            return res.status(400).send({
-                message: 'Failed to get workspace service token data'
-            });
-        }
-        
-        return res.status(200).send({
-            serviceTokenData
-        });
 }

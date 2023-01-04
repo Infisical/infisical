@@ -14,10 +14,8 @@ import {
  */
 const requireSecretSnapshotAuth = ({
     acceptedRoles,
-    acceptedStatuses
 }: {
     acceptedRoles: string[];
-    acceptedStatuses: string[];
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
         try {
@@ -34,8 +32,7 @@ const requireSecretSnapshotAuth = ({
             await validateMembership({
                 userId: req.user._id.toString(),
                 workspaceId: secretSnapshot.workspace.toString(),
-                acceptedRoles,
-                acceptedStatuses
+                acceptedRoles
             });
             
             req.secretSnapshot = secretSnapshot as any;

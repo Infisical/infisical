@@ -7,11 +7,9 @@ type req = 'params' | 'body' | 'query';
 
 const requireBotAuth = ({
     acceptedRoles,
-    acceptedStatuses,
     location = 'params'
 }: {
     acceptedRoles: string[];
-    acceptedStatuses: string[];
     location?: req;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
@@ -24,8 +22,7 @@ const requireBotAuth = ({
         await validateMembership({
             userId: req.user._id.toString(),
             workspaceId: bot.workspace.toString(),
-            acceptedRoles,
-            acceptedStatuses
+            acceptedRoles
         });
         
         req.bot = bot;

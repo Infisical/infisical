@@ -9,16 +9,13 @@ type req = 'params' | 'body' | 'query';
  * on request params.
  * @param {Object} obj
  * @param {String[]} obj.acceptedRoles - accepted workspace roles for JWT auth
- * @param {String[]} obj.acceptedStatuses - accepted workspace statuses for JWT auth
  * @param {String[]} obj.location - location of [workspaceId] on request (e.g. params, body) for parsing
  */
 const requireWorkspaceAuth = ({
 	acceptedRoles,
-	acceptedStatuses,
 	location = 'params'
 }: {
 	acceptedRoles: string[];
-	acceptedStatuses: string[];
 	location?: req;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
@@ -30,8 +27,7 @@ const requireWorkspaceAuth = ({
 				const membership = await validateMembership({
 					userId: req.user._id.toString(),
 					workspaceId,
-					acceptedRoles,
-					acceptedStatuses
+					acceptedRoles
 				});
 
 				req.membership = membership;

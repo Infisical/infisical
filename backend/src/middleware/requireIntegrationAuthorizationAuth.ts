@@ -10,16 +10,13 @@ import { UnauthorizedRequestError } from '../utils/errors';
  * with the integration authorization on request params.
  * @param {Object} obj
  * @param {String[]} obj.acceptedRoles - accepted workspace roles
- * @param {String[]} obj.acceptedStatuses - accepted workspace statuses
  * @param {Boolean} obj.attachAccessToken - whether or not to decrypt and attach integration authorization access token onto request
  */
 const requireIntegrationAuthorizationAuth = ({
 	acceptedRoles,
-	acceptedStatuses,
 	attachAccessToken = true
 }: {
 	acceptedRoles: string[];
-	acceptedStatuses: string[];
 	attachAccessToken?: boolean;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
@@ -38,8 +35,7 @@ const requireIntegrationAuthorizationAuth = ({
 		await validateMembership({
 			userId: req.user._id.toString(),
 			workspaceId: integrationAuth.workspace.toString(),
-			acceptedRoles,
-			acceptedStatuses
+			acceptedRoles
 		});
 
 		req.integrationAuth = integrationAuth;

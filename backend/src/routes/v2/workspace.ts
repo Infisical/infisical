@@ -6,7 +6,7 @@ import {
 	requireWorkspaceAuth,
 	validateRequest
 } from '../../middleware';
-import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../variables';
+import { ADMIN, MEMBER } from '../../variables';
 import { workspaceController } from '../../controllers/v2';
 
 router.post(
@@ -15,8 +15,7 @@ router.post(
 		acceptedAuthModes: ['jwt']
 	}),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [COMPLETED, GRANTED]
+		acceptedRoles: [ADMIN, MEMBER]
 	}),
 	body('secrets').exists(),
 	body('keys').exists(),
@@ -33,8 +32,7 @@ router.get(
 		acceptedAuthModes: ['jwt', 'serviceToken']
 	}),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [COMPLETED, GRANTED]
+		acceptedRoles: [ADMIN, MEMBER]
 	}),
 	query('environment').exists().trim(),
 	query('channel'),
@@ -49,12 +47,24 @@ router.get(
 		acceptedAuthModes: ['jwt']
 	}),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [COMPLETED, GRANTED]
+		acceptedRoles: [ADMIN, MEMBER]
 	}),	
 	param('workspaceId').exists().trim(),
 	validateRequest,	
 	workspaceController.getWorkspaceKey
+);
+
+router.get(
+	'/:workspaceId/service-token-data',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER]
+	}),
+	param('workspaceId').exists().trim(),
+	validateRequest,
+	workspaceController.getWorkspaceServiceTokenData
 );
 
 export default router;

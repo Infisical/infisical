@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 // 300 requests per 15 minutes
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 400,
+  max: 450,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (request) => request.path === '/healthcheck'
@@ -20,7 +20,7 @@ const signupLimiter = rateLimit({
 // 10 requests per hour
 const loginLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 20,
+  max: 25,
   standardHeaders: true,
   legacyHeaders: false
 });

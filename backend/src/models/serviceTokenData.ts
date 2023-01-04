@@ -1,5 +1,4 @@
 import { Schema, model, Types } from 'mongoose';
-import { ENV_DEV, ENV_TESTING, ENV_STAGING, ENV_PROD } from '../variables';
 
 export interface IServiceTokenData {
     name: string;
@@ -38,7 +37,6 @@ const serviceTokenDataSchema = new Schema<IServiceTokenData>(
         },
         secretHash: {
             type: String,
-            unique: true,
             required: true,
             select: false
         },

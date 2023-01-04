@@ -8,7 +8,7 @@ import {
 } from '../../middleware';
 import { body, query, param } from 'express-validator';
 import { secretController } from '../../controllers/v1';
-import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../variables';
+import { ADMIN, MEMBER } from '../../variables';
 
 router.post(
 	'/:workspaceId',
@@ -16,8 +16,7 @@ router.post(
 		acceptedAuthModes: ['jwt']
 	}),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [COMPLETED, GRANTED]
+		acceptedRoles: [ADMIN, MEMBER]
 	}),
 	body('secrets').exists(),
 	body('keys').exists(),
@@ -34,8 +33,7 @@ router.get(
 		acceptedAuthModes: ['jwt']
 	}),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [COMPLETED, GRANTED]
+		acceptedRoles: [ADMIN, MEMBER]
 	}),
 	query('environment').exists().trim(),
 	query('channel'),

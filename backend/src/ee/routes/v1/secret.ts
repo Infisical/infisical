@@ -7,7 +7,7 @@ import {
 } from '../../../middleware';
 import { query, param } from 'express-validator';
 import { secretController } from '../../controllers/v1';
-import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../../variables';
+import { ADMIN, MEMBER } from '../../../variables';
 
 router.get(
 	'/:secretId/secret-versions',
@@ -15,8 +15,7 @@ router.get(
 		acceptedAuthModes: ['jwt']
 	}),
 	requireSecretAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [COMPLETED, GRANTED]
+		acceptedRoles: [ADMIN, MEMBER]
 	}),
 	param('secretId').exists().trim(),
 	query('offset').exists().isInt(),

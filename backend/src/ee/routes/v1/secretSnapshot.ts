@@ -8,7 +8,7 @@ import {
     validateRequest
 } from '../../../middleware';
 import { param } from 'express-validator';
-import { ADMIN, MEMBER, GRANTED } from '../../../variables';
+import { ADMIN, MEMBER } from '../../../variables';
 import { secretSnapshotController } from '../../controllers/v1';
 
 router.get(
@@ -17,8 +17,7 @@ router.get(
 		acceptedAuthModes: ['jwt']
 	}),
     requireSecretSnapshotAuth({
-        acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [GRANTED]
+        acceptedRoles: [ADMIN, MEMBER]
     }),
     param('secretSnapshotId').exists().trim(),
     validateRequest,
