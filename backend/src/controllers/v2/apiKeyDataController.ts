@@ -10,11 +10,36 @@ import {
 } from '../../config';
 
 /**
- * Create new API key for user with id [req.user._id]
+ * Return API key data for user with id [req.user_id]
+ * @param req
+ * @param res 
+ * @returns 
+ */
+export const getAPIKeyData = async (req: Request, res: Response) => {
+    let apiKeyData;
+    try {
+        apiKeyData = await APIKeyData.find({
+            user: req.user._id
+        });
+    } catch (err) {
+        Sentry.setUser({ email: req.user.email });
+        Sentry.captureException(err);
+        return res.status(400).send({
+            message: 'Failed to get API key data'
+        });
+    }
+    
+    return res.status(200).send({
+        apiKeyData
+    });
+}
+
+/**
+ * Create new API key data for user with id [req.user._id]
  * @param req 
  * @param res 
  */
-export const createAPIKey = async (req: Request, res: Response) => {
+export const createAPIKeyData = async (req: Request, res: Response) => {
     let apiKey, apiKeyData;
     try {
         const { name, expiresIn } = req.body;
@@ -30,7 +55,7 @@ export const createAPIKey = async (req: Request, res: Response) => {
             expiresAt,
             user: req.user._id,
             secretHash
-        });
+        }).save();
         
         // return api key data without sensitive data
         apiKeyData = await APIKeyData.findById(apiKeyData._id);
@@ -40,10 +65,11 @@ export const createAPIKey = async (req: Request, res: Response) => {
         apiKey = `ak.${apiKeyData._id.toString()}.${secret}`;
             
     } catch (err) {
+        console.error(err);
         Sentry.setUser({ email: req.user.email });
         Sentry.captureException(err);
         return res.status(400).send({
-            message: 'Failed to create service token data'
+            message: 'Failed to API key data'
         });
     }
     

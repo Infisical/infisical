@@ -7,6 +7,14 @@ import {
 import { body } from 'express-validator';
 import { apiKeyDataController } from '../../controllers/v2';
 
+router.get(
+    '/',
+    requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
+    apiKeyDataController.getAPIKeyData
+);
+
 router.post(
     '/',
     requireAuth({
@@ -15,7 +23,7 @@ router.post(
     body('name').exists().trim(),
     body('expiresIn'), // measured in ms
     validateRequest,
-    apiKeyDataController.createAPIKey
+    apiKeyDataController.createAPIKeyData
 );
 
 export default router;
