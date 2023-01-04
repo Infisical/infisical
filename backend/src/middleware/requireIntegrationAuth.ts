@@ -9,14 +9,11 @@ import { IntegrationNotFoundError, UnauthorizedRequestError } from '../utils/err
  * with the integration on request params.
  * @param {Object} obj
  * @param {String[]} obj.acceptedRoles - accepted workspace roles
- * @param {String[]} obj.acceptedStatuses - accepted workspace statuses
  */
 const requireIntegrationAuth = ({
-	acceptedRoles,
-	acceptedStatuses
+	acceptedRoles
 }: {
 	acceptedRoles: string[];
-	acceptedStatuses: string[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
 		// integration authorization middleware
@@ -35,8 +32,7 @@ const requireIntegrationAuth = ({
 		await validateMembership({
 			userId: req.user._id.toString(),
 			workspaceId: integration.workspace.toString(),
-			acceptedRoles,
-			acceptedStatuses
+			acceptedRoles
 		});
 
 		const integrationAuth = await IntegrationAuth.findOne({

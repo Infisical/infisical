@@ -7,7 +7,7 @@ import {
 	validateRequest
 } from '../../middleware';
 import { body } from 'express-validator';
-import { ADMIN, MEMBER, GRANTED } from '../../variables';
+import { ADMIN, MEMBER } from '../../variables';
 import { serviceTokenController } from '../../controllers/v1';
 
 // note: deprecate service-token routes in favor of service-token data routes/structure
@@ -25,7 +25,6 @@ router.post(
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [GRANTED],
 		location: 'body'
 	}),
 	body('name').exists().trim().notEmpty(),

@@ -7,11 +7,9 @@ type req = 'params' | 'body' | 'query';
 
 const requireServiceTokenDataAuth = ({
     acceptedRoles,
-    acceptedStatuses,
     location = 'params'
 }: {
     acceptedRoles: string[];
-    acceptedStatuses: string[];
     location?: req;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
@@ -30,8 +28,7 @@ const requireServiceTokenDataAuth = ({
             await validateMembership({
                 userId: req.user._id.toString(),
                 workspaceId: serviceTokenData.workspace.toString(),
-                acceptedRoles,
-                acceptedStatuses
+                acceptedRoles
             });
         }
         

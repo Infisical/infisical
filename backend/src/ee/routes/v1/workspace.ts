@@ -6,7 +6,7 @@ import {
 	validateRequest
 } from '../../../middleware';
 import { param, query } from 'express-validator';
-import { ADMIN, MEMBER, GRANTED } from '../../../variables';
+import { ADMIN, MEMBER } from '../../../variables';
 import { workspaceController } from '../../controllers/v1';
 
 router.get(
@@ -15,8 +15,7 @@ router.get(
 		acceptedAuthModes: ['jwt']
 	}),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [GRANTED]
+		acceptedRoles: [ADMIN, MEMBER]
 	}),
 	param('workspaceId').exists().trim(),
 	query('offset').exists().isInt(),

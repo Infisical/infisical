@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import { Key } from '../../models';
 import { findMembership } from '../../helpers/membership';
-import { GRANTED } from '../../variables';
 
 /**
  * Add (encrypted) copy of workspace key for workspace with id [workspaceId] for user with
@@ -25,9 +24,6 @@ export const uploadKey = async (req: Request, res: Response) => {
 		if (!receiverMembership) {
 			throw new Error('Failed receiver membership validation for workspace');
 		}
-
-		receiverMembership.status = GRANTED;
-		await receiverMembership.save();
 
 		await new Key({
 			encryptedKey: key.encryptedKey,
