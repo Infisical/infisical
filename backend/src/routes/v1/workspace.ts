@@ -156,18 +156,4 @@ router.get(
 	workspaceController.getWorkspaceServiceTokens
 );
 
-router.get(
-	'/:workspaceId/service-token-data',
-	requireAuth({
-		acceptedAuthModes: ['jwt']
-	}),
-	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [GRANTED]
-	}),
-	param('workspaceId').exists().trim(),
-	validateRequest,
-	workspaceController.getWorkspaceServiceTokenData
-);
-
 export default router;

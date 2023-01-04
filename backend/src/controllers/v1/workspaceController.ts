@@ -336,30 +336,3 @@ export const getWorkspaceServiceTokens = async (
 		serviceTokens
 	});
 }
-
-export const getWorkspaceServiceTokenData = async (
-	req: Request,
-	res: Response
-) => {
-	let serviceTokenData;
-        try {
-            const { workspaceId } = req.query;
-
-            serviceTokenData = await ServiceTokenData
-				.find({
-					workspace: workspaceId
-				})
-				.select('+encryptedKey +iv +tag');
-
-        } catch (err) {
-            Sentry.setUser({ email: req.user.email });
-            Sentry.captureException(err);
-            return res.status(400).send({
-                message: 'Failed to get workspace service token data'
-            });
-        }
-        
-        return res.status(200).send({
-            serviceTokenData
-        });
-}
