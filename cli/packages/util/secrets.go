@@ -46,7 +46,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string) ([]models.Singl
 		return nil, fmt.Errorf("unable to decode symmetric encryption details [err=%v]", err)
 	}
 
-	plainTextWorkspaceKey, err := crypto.DecryptSymmetric(decodedSymmetricEncryptionDetails.Key, decodedSymmetricEncryptionDetails.Cipher, decodedSymmetricEncryptionDetails.Tag, decodedSymmetricEncryptionDetails.IV)
+	plainTextWorkspaceKey, err := crypto.DecryptSymmetric([]byte(serviceTokenParts[3]), decodedSymmetricEncryptionDetails.Cipher, decodedSymmetricEncryptionDetails.Tag, decodedSymmetricEncryptionDetails.IV)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decrypt the required workspace key")
 	}
