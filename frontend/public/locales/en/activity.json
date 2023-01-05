@@ -2,6 +2,7 @@
   "event": {
     "readSecrets": "Secrets Viewed",
     "updateSecrets": "Secrets Updated",
-    "addSecrets": "Secrets Added"
+    "addSecrets": "Secrets Added",
+    "deleteSecrets": "Secrets Deleted"
   }
 }

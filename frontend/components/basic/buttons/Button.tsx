@@ -115,7 +115,7 @@ export default function Button(props: ButtonProps): JSX.Element {
           <FontAwesomeIcon
             icon={props.icon}
             className={`flex my-auto font-extrabold ${
-              props.size == "icon-sm" ? "text-sm" : "text-md"
+              props.size == "icon-sm" ? "text-sm" : "text-sm"
             } ${(props.text || props.textDisabled) && "mr-2"}`}
           />
         )}

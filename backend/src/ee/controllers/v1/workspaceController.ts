@@ -21,6 +21,7 @@ import {
 		secretSnapshots = await SecretSnapshot.find({
 			workspace: workspaceId
 		})
+		.sort({ createdAt: -1 })
 		.skip(offset)
 		.limit(limit);
 

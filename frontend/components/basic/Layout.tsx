@@ -121,7 +121,7 @@ export default function Layout({ children }: LayoutProps) {
             }
           });
         }
-        router.push("/dashboard/" + newWorkspaceId + "?Development");
+        router.push("/dashboard/" + newWorkspaceId);
         setIsOpen(false);
         setNewWorkspaceName("");
       } else {
@@ -141,8 +141,7 @@ export default function Layout({ children }: LayoutProps) {
       {
         href:
           "/dashboard/" +
-          workspaceMapping[workspaceSelected as any] +
-          "?Development",
+          workspaceMapping[workspaceSelected as any],
         title: t("nav:menu.secrets"),
         emoji: <FontAwesomeIcon icon={faKey} />,
       },
@@ -199,7 +198,7 @@ export default function Layout({ children }: LayoutProps) {
             .map((workspace: { _id: string }) => workspace._id)
             .includes(intendedWorkspaceId)
         ) {
-          router.push("/dashboard/" + userWorkspaces[0]._id + "?Development");
+          router.push("/dashboard/" + userWorkspaces[0]._id);
         } else {
           setWorkspaceList(
             userWorkspaces.map((workspace: any) => workspace.name)
@@ -242,8 +241,7 @@ export default function Layout({ children }: LayoutProps) {
       ) {
         router.push(
           "/dashboard/" +
-            workspaceMapping[workspaceSelected as any] +
-            "?Development"
+            workspaceMapping[workspaceSelected as any]
         );
         localStorage.setItem(
           "projectData.id",

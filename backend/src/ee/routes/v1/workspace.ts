@@ -39,7 +39,9 @@ router.get(
 
 router.get(
 	'/:workspaceId/logs',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER]
 	}),

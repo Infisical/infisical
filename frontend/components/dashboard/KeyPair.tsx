@@ -21,6 +21,7 @@ interface KeyPairProps {
   isDuplicate: boolean;
   toggleSidebar: (id: string) => void;
   sidebarSecretId: string;
+  isSnapshot: boolean;
 }
 
 /**
@@ -33,6 +34,7 @@ interface KeyPairProps {
  * @param {boolean} obj.isDuplicate - list of all the duplicates secret names on the dashboard
  * @param {function} obj.toggleSidebar - open/close/switch sidebar
  * @param {string} obj.sidebarSecretId - the id of a secret for the side bar is displayed
+ * @param {boolean} obj.isSnapshot - whether this keyPair is in a snapshot. If so, it won't have some features like sidebar 
  * @returns
  */
 const KeyPair = ({
@@ -42,10 +44,11 @@ const KeyPair = ({
   isBlurred,
   isDuplicate,
   toggleSidebar,
-  sidebarSecretId
+  sidebarSecretId,
+  isSnapshot
 }: KeyPairProps) => {
   return (
-    <div className={`mx-1 flex flex-col items-center ml-1 ${keyPair.id == sidebarSecretId && "bg-mineshaft-500 duration-200"} rounded-md`}>
+    <div className={`mx-1 flex flex-col items-center ml-1 ${isSnapshot && "pointer-events-none"} ${keyPair.id == sidebarSecretId && "bg-mineshaft-500 duration-200"} rounded-md`}>
       <div className="relative flex flex-row justify-between w-full max-w-5xl mr-auto max-h-14 my-1 items-start px-1">
       {keyPair.type == "personal" && <div className="group font-normal group absolute top-[1rem] left-[0.2rem] z-40 inline-block text-gray-300 underline hover:text-primary duration-200">
         <div className='w-1 h-1 rounded-full bg-primary z-40'></div>
@@ -65,7 +68,7 @@ const KeyPair = ({
           </div>
         </div>
         <div className="w-full min-w-xl">
-          <div className="flex min-w-xl items-center pr-1.5 rounded-lg mt-4 md:mt-0 max-h-10">
+          <div className={`flex min-w-xl items-center ${!isSnapshot && "pr-1.5"} rounded-lg mt-4 md:mt-0 max-h-10`}>
             <DashboardInputField
               onChangeHandler={modifyValue}
               type="value"
@@ -76,15 +79,15 @@ const KeyPair = ({
             />
           </div>
         </div>
-        <div onClick={() => toggleSidebar(keyPair.id)} className="cursor-pointer w-[2.35rem] h-[2.35rem] bg-mineshaft-700 hover:bg-chicago-700 rounded-md flex flex-row justify-center items-center duration-200">
+        {!isSnapshot && <div onClick={() => toggleSidebar(keyPair.id)} className="cursor-pointer w-[2.35rem] h-[2.35rem] bg-mineshaft-700 hover:bg-chicago-700 rounded-md flex flex-row justify-center items-center duration-200">
           <FontAwesomeIcon
             className="text-gray-300 px-2.5 text-lg mt-0.5"
             icon={faEllipsis}
           />
-        </div>
+        </div>}
       </div>
     </div>
   );
 };
 
-export default React.memo(KeyPair);
+export default KeyPair;

@@ -470,11 +470,12 @@ const v1PushSecrets = async ({
 
 			// (EE) add secret versions for new secrets
 			EESecretService.addSecretVersions({
-				secretVersions: newSecrets.map((s) => ({
-					...s,
-					secret: s._id,
-					isDeleted: false
-				}))
+				secretVersions: newSecrets.map((secretDocument) => { 
+					return {
+						...secretDocument.toObject(),
+						secret: secretDocument._id,
+						isDeleted: false
+				}})
 			});
 
 			const addAction = await EELogService.createActionSecret({
