@@ -33,6 +33,8 @@ const AddServiceTokenDialog = ({
   closeModal,
   workspaceId,
   workspaceName,
+  serviceTokens,
+  setServiceTokens
 }) => {
   const [serviceToken, setServiceToken] = useState("");
   const [serviceTokenName, setServiceTokenName] = useState("");
@@ -71,7 +73,8 @@ const AddServiceTokenDialog = ({
       tag
     });
 
-    setServiceToken(newServiceToken);
+    setServiceTokens(serviceTokens.concat([newServiceToken.serviceTokenData]));
+    setServiceToken(newServiceToken.serviceToken + "." + randomBytes);
   };
 
   function copyToClipboard() {
@@ -211,7 +214,7 @@ const AddServiceTokenDialog = ({
                       </div>
                     </div>
                     <div className="w-full">
-                      <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400 w-full h-14">
+                      <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400 w-full h-20">
                         <input
                           type="text"
                           value={serviceToken}

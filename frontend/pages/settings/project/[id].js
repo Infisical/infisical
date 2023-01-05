@@ -124,6 +124,8 @@ export default function SettingsBasic() {
         workspaceId={router.query.id}
         closeModal={closeAddServiceTokenModal}
         workspaceName={workspaceName}
+        serviceTokens={serviceTokens}
+        setServiceTokens={setServiceTokens}
       />
       <div className="flex flex-row mr-6 max-w-5xl">
         <div className="w-full max-h-screen pb-2 overflow-y-auto">

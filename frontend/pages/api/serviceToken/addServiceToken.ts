@@ -47,7 +47,7 @@ const addServiceToken = ({
     })
   }).then(async (res) => {
     if (res && res.status == 200) {
-      return (await res.json()).serviceToken;
+      return (await res.json());
     } else {
       console.log('Failed to add service tokens');
     }

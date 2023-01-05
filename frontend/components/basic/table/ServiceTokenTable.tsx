@@ -30,25 +30,24 @@ interface ServiceTokensProps {
  * @returns
  */
 const ServiceTokenTable = ({ data, workspaceName, setServiceTokens }: ServiceTokensProps) => {
-  console.log(data)
   const { createNotification } = useNotificationContext();
 
   return (
     <div className="table-container w-full bg-bunker rounded-md mb-6 border border-mineshaft-700 relative mt-1">
       <div className="absolute rounded-t-md w-full h-12 bg-white/5"></div>
       <table className="w-full my-1">
-        <thead className="text-bunker-300">
+        <thead className="text-bunker-300 text-sm font-light">
           <tr>
-            <th className="text-left pl-6 pt-2.5 pb-2">Token name</th>
-            <th className="text-left pl-6 pt-2.5 pb-2">Project</th>
-            <th className="text-left pl-6 pt-2.5 pb-2">Environment</th>
-            <th className="text-left pl-6 pt-2.5 pb-2">Valid until</th>
+            <th className="text-left pl-6 pt-2.5 pb-2">TOKEN NAME</th>
+            <th className="text-left pl-6 pt-2.5 pb-2">PROJECT</th>
+            <th className="text-left pl-6 pt-2.5 pb-2">ENVIRONMENT</th>
+            <th className="text-left pl-6 pt-2.5 pb-2">VAILD UNTIL</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           {data?.length > 0 ? (
-            data.map((row) => {
+            data?.map((row) => {
               return (
                 <tr
                   key={guidGenerator()}
@@ -88,7 +87,7 @@ const ServiceTokenTable = ({ data, workspaceName, setServiceTokens }: ServiceTok
             })
           ) : (
             <tr>
-              <td className="text-center pt-7 pb-4 text-bunker-400 col-span-4">
+              <td colSpan={4} className="text-center pt-7 pb-5 text-bunker-300 text-sm">
                 No service tokens yet
               </td>
             </tr>
