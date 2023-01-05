@@ -11,7 +11,8 @@ import (
 
 	"crypto/sha256"
 
-	"github.com/Infisical/infisical-merge/packages/http"
+	"github.com/Infisical/infisical-merge/packages/api"
+	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/Infisical/infisical-merge/packages/visualize"
@@ -30,33 +31,21 @@ var secretsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, err := cmd.Flags().GetString("env")
 		if err != nil {
-			log.Errorln("Unable to parse the environment name flag")
-			log.Debugln(err)
-			return
+			util.HandleError(err)
 		}
 
 		shouldExpandSecrets, err := cmd.Flags().GetBool("expand")
 		if err != nil {
-			log.Errorln("Unable to parse the substitute flag")
-			log.Debugln(err)
-			return
+			util.HandleError(err)
 		}
 
-		workspaceFileExists := util.WorkspaceConfigFileExistsInCurrentPath()
-		if !workspaceFileExists {
-			log.Error("You have not yet connected to an Infisical Project. Please run [infisical init]")
-			return
+		secrets, err := util.GetAllEnvironmentVariables(environmentName)
+		if err != nil {
+			util.HandleError(err)
 		}
-
-		secrets, err := util.GetAllEnvironmentVariables("", environmentName)
 
 		if shouldExpandSecrets {
 			secrets = util.SubstituteSecrets(secrets)
-		}
-
-		if err != nil {
-			log.Debugln(err)
-			return
 		}
 
 		visualize.PrintAllSecretDetails(secrets)
@@ -81,85 +70,50 @@ var secretsSetCmd = &cobra.Command{
 	PreRun:                toggleDebug,
 	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		// secretType, err := cmd.Flags().GetString("type")
-		// if err != nil {
-		// 	log.Errorln("Unable to parse the secret type flag")
-		// 	log.Debugln(err)
-		// 	return
-		// }
-
-		// if !util.IsSecretTypeValid(secretType) {
-		// 	log.Errorf("secret type can only be `personal` or `shared`. You have entered [%v]", secretType)
-		// 	return
-		// }
-
 		environmentName, err := cmd.Flags().GetString("env")
 		if err != nil {
-			log.Errorln("Unable to parse the environment name flag")
-			log.Debugln(err)
-			return
+			util.HandleError(err, "Unable to parse flag")
 		}
 
 		if !util.IsSecretEnvironmentValid(environmentName) {
-			log.Errorln("You have entered a invalid environment name. Environment names can only be prod, dev, test or staging")
-			return
-		}
-
-		workspaceFileExists := util.WorkspaceConfigFileExistsInCurrentPath()
-		if !workspaceFileExists {
-			log.Error("You have not yet connected to an Infisical Project. Please run [infisical init]")
-			return
+			util.PrintMessageAndExit("You have entered a invalid environment name", "Environment names can only be prod, dev, test or staging")
 		}
 
 		workspaceFile, err := util.GetWorkSpaceFromFile()
 		if err != nil {
-			log.Error(err)
-			return
+			util.HandleError(err, "Unable to get your local config details")
 		}
 
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
 		if err != nil {
-			log.Error(err)
-			return
-		}
-
-		if !loggedInUserDetails.IsUserLoggedIn {
-			log.Error("You are not logged in yet. Please run [infisical login] then try again")
-			return
-		}
-
-		if loggedInUserDetails.IsUserLoggedIn && loggedInUserDetails.LoginExpired {
-			log.Error("Your login has expired. Please run [infisical login] then try again")
-			return
+			util.HandleError(err, "Unable to authenticate")
 		}
 
 		httpClient := resty.New().
 			SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken).
 			SetHeader("Accept", "application/json")
 
-		request := models.GetEncryptedWorkspaceKeyRequest{
+		request := api.GetEncryptedWorkspaceKeyRequest{
 			WorkspaceId: workspaceFile.WorkspaceId,
 		}
 
-		workspaceKeyResponse, err := http.CallGetEncryptedWorkspaceKey(httpClient, request)
+		workspaceKeyResponse, err := api.CallGetEncryptedWorkspaceKey(httpClient, request)
 		if err != nil {
-			log.Errorf("unable to get your encrypted workspace key. [err=%v]", err)
-			return
+			util.HandleError(err, "unable to get your encrypted workspace key")
 		}
 
-		encryptedWorkspaceKey, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.LatestKey.EncryptedKey)
-		encryptedWorkspaceKeySenderPublicKey, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.LatestKey.Sender.PublicKey)
-		encryptedWorkspaceKeyNonce, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.LatestKey.Nonce)
+		encryptedWorkspaceKey, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.EncryptedKey)
+		encryptedWorkspaceKeySenderPublicKey, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.Sender.PublicKey)
+		encryptedWorkspaceKeyNonce, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.Nonce)
 		currentUsersPrivateKey, _ := base64.StdEncoding.DecodeString(loggedInUserDetails.UserCredentials.PrivateKey)
 
 		// decrypt workspace key
-		plainTextEncryptionKey := util.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
+		plainTextEncryptionKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
 		// pull current secrets
-		secrets, err := util.GetAllEnvironmentVariables("", environmentName)
+		secrets, err := util.GetAllEnvironmentVariables(environmentName)
 		if err != nil {
-			log.Error("unable to retrieve secrets. Run with -d to see full logs")
-			log.Debug(err)
+			util.HandleError(err, "unable to retrieve secrets")
 		}
 
 		type SecretSetOperation struct {
@@ -168,8 +122,8 @@ var secretsSetCmd = &cobra.Command{
 			SecretOperation string
 		}
 
-		secretsToCreate := []models.Secret{}
-		secretsToModify := []models.Secret{}
+		secretsToCreate := []api.Secret{}
+		secretsToModify := []api.Secret{}
 		secretOperations := []SecretSetOperation{}
 
 		secretByKey := getSecretsByKeys(secrets)
@@ -177,13 +131,11 @@ var secretsSetCmd = &cobra.Command{
 		for _, arg := range args {
 			splitKeyValueFromArg := strings.SplitN(arg, "=", 2)
 			if splitKeyValueFromArg[0] == "" || splitKeyValueFromArg[1] == "" {
-				log.Error("ensure that each secret has a none empty key and value. Modify the input and try again")
-				return
+				util.PrintMessageAndExit("ensure that each secret has a none empty key and value. Modify the input and try again")
 			}
 
 			if unicode.IsNumber(rune(splitKeyValueFromArg[0][0])) {
-				log.Error("keys of secrets cannot start with a number. Modify the key name(s) and try again")
-				return
+				util.PrintMessageAndExit("keys of secrets cannot start with a number. Modify the key name(s) and try again")
 			}
 
 			// Key and value from argument
@@ -191,20 +143,20 @@ var secretsSetCmd = &cobra.Command{
 			value := splitKeyValueFromArg[1]
 
 			hashedKey := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))
-			encryptedKey, err := util.EncryptSymmetric([]byte(key), []byte(plainTextEncryptionKey))
+			encryptedKey, err := crypto.EncryptSymmetric([]byte(key), []byte(plainTextEncryptionKey))
 			if err != nil {
-				log.Errorf("unable to encrypt your secrets [err=%v]", err)
+				util.HandleError(err, "unable to encrypt your secrets")
 			}
 
 			hashedValue := fmt.Sprintf("%x", sha256.Sum256([]byte(value)))
-			encryptedValue, err := util.EncryptSymmetric([]byte(value), []byte(plainTextEncryptionKey))
+			encryptedValue, err := crypto.EncryptSymmetric([]byte(value), []byte(plainTextEncryptionKey))
 			if err != nil {
-				log.Errorf("unable to encrypt your secrets [err=%v]", err)
+				util.HandleError(err, "unable to encrypt your secrets")
 			}
 
 			if existingSecret, ok := secretByKey[key]; ok {
 				// case: secret exists in project so it needs to be modified
-				encryptedSecretDetails := models.Secret{
+				encryptedSecretDetails := api.Secret{
 					ID:                    existingSecret.ID,
 					SecretValueCiphertext: base64.StdEncoding.EncodeToString(encryptedValue.CipherText),
 					SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
@@ -231,7 +183,7 @@ var secretsSetCmd = &cobra.Command{
 
 			} else {
 				// case: secret doesn't exist in project so it needs to be created
-				encryptedSecretDetails := models.Secret{
+				encryptedSecretDetails := api.Secret{
 					SecretKeyCiphertext:   base64.StdEncoding.EncodeToString(encryptedKey.CipherText),
 					SecretKeyIV:           base64.StdEncoding.EncodeToString(encryptedKey.Nonce),
 					SecretKeyTag:          base64.StdEncoding.EncodeToString(encryptedKey.AuthTag),
@@ -252,29 +204,29 @@ var secretsSetCmd = &cobra.Command{
 		}
 
 		if len(secretsToCreate) > 0 {
-			batchCreateRequest := models.BatchCreateSecretsByWorkspaceAndEnvRequest{
+			batchCreateRequest := api.BatchCreateSecretsByWorkspaceAndEnvRequest{
 				WorkspaceId:     workspaceFile.WorkspaceId,
 				EnvironmentName: environmentName,
 				Secrets:         secretsToCreate,
 			}
 
-			err = http.CallBatchCreateSecretsByWorkspaceAndEnv(httpClient, batchCreateRequest)
+			err = api.CallBatchCreateSecretsByWorkspaceAndEnv(httpClient, batchCreateRequest)
 			if err != nil {
-				log.Errorf("Unable to process new secret creations because %v", err)
+				util.HandleError(err, "Unable to process new secret creations")
 				return
 			}
 		}
 
 		if len(secretsToModify) > 0 {
-			batchModifyRequest := models.BatchModifySecretsByWorkspaceAndEnvRequest{
+			batchModifyRequest := api.BatchModifySecretsByWorkspaceAndEnvRequest{
 				WorkspaceId:     workspaceFile.WorkspaceId,
 				EnvironmentName: environmentName,
 				Secrets:         secretsToModify,
 			}
 
-			err = http.CallBatchModifySecretsByWorkspaceAndEnv(httpClient, batchModifyRequest)
+			err = api.CallBatchModifySecretsByWorkspaceAndEnv(httpClient, batchModifyRequest)
 			if err != nil {
-				log.Errorf("Unable to process the modifications to your secrets because %v", err)
+				util.HandleError(err, "Unable to process the modifications to your secrets")
 				return
 			}
 		}
@@ -307,36 +259,17 @@ var secretsDeleteCmd = &cobra.Command{
 
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
 		if err != nil {
-			log.Error(err)
-			return
-		}
-
-		if !loggedInUserDetails.IsUserLoggedIn {
-			log.Error("You are not logged in yet. Please run [infisical login] then try again")
-			return
-		}
-
-		if loggedInUserDetails.IsUserLoggedIn && loggedInUserDetails.LoginExpired {
-			log.Error("Your login has expired. Please run [infisical login] then try again")
-			return
-		}
-
-		workspaceFileExists := util.WorkspaceConfigFileExistsInCurrentPath()
-		if !workspaceFileExists {
-			log.Error("You have not yet connected to an Infisical Project. Please run [infisical init]")
-			return
+			util.HandleError(err, "Unable to authenticate")
 		}
 
 		workspaceFile, err := util.GetWorkSpaceFromFile()
 		if err != nil {
-			log.Error(err)
-			return
+			util.HandleError(err, "Unable to get local project details")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables("", environmentName)
+		secrets, err := util.GetAllEnvironmentVariables(environmentName)
 		if err != nil {
-			log.Error("Unable to retrieve secrets. Run with -d to see full logs")
-			log.Debug(err)
+			util.HandleError(err, "Unable to fetch secrets")
 		}
 
 		secretByKey := getSecretsByKeys(secrets)
@@ -352,11 +285,11 @@ var secretsDeleteCmd = &cobra.Command{
 		}
 
 		if len(invalidSecretNamesThatDoNotExist) != 0 {
-			log.Errorf("secret name(s) [%v] does not exist in your project. To see which secrets exist run [infisical secrets]", strings.Join(invalidSecretNamesThatDoNotExist, ", "))
-			return
+			message := fmt.Sprintf("secret name(s) [%v] does not exist in your project. To see which secrets exist run [infisical secrets]", strings.Join(invalidSecretNamesThatDoNotExist, ", "))
+			util.PrintMessageAndExit(message)
 		}
 
-		request := models.BatchDeleteSecretsBySecretIdsRequest{
+		request := api.BatchDeleteSecretsBySecretIdsRequest{
 			WorkspaceId:     workspaceFile.WorkspaceId,
 			EnvironmentName: environmentName,
 			SecretIds:       validSecretIdsToDelete,
@@ -366,45 +299,43 @@ var secretsDeleteCmd = &cobra.Command{
 			SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken).
 			SetHeader("Accept", "application/json")
 
-		err = http.CallBatchDeleteSecretsByWorkspaceAndEnv(httpClient, request)
+		err = api.CallBatchDeleteSecretsByWorkspaceAndEnv(httpClient, request)
 		if err != nil {
-			log.Errorf("Unable to complete your request because %v", err)
-			return
+			util.HandleError(err, "Unable to complete your batch delete request")
 		}
 
-		log.Infof("secret name(s) [%v] have been deleted from your project", strings.Join(args, ", "))
+		fmt.Printf("secret name(s) [%v] have been deleted from your project \n", strings.Join(args, ", "))
 
 	},
 }
 
 func init() {
 	secretsCmd.AddCommand(secretsGetCmd)
-	// secretsSetCmd.Flags().String("type", "shared", "Used to set the type for secrets")
 	secretsCmd.AddCommand(secretsSetCmd)
 	secretsCmd.AddCommand(secretsDeleteCmd)
 	secretsCmd.PersistentFlags().String("env", "dev", "Used to define the environment name on which actions should be taken on")
 	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
+	secretsCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		util.RequireLogin()
+		util.RequireLocalWorkspaceFile()
+	}
 	rootCmd.AddCommand(secretsCmd)
 }
 
 func getSecretsByNames(cmd *cobra.Command, args []string) {
 	environmentName, err := cmd.Flags().GetString("env")
 	if err != nil {
-		log.Errorln("Unable to parse the environment name flag")
-		log.Debugln(err)
-		return
+		util.HandleError(err, "Unable to parse flag")
 	}
 
 	workspaceFileExists := util.WorkspaceConfigFileExistsInCurrentPath()
 	if !workspaceFileExists {
-		log.Error("You have not yet connected to an Infisical Project. Please run [infisical init]")
-		return
+		util.HandleError(err, "Unable to parse flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables("", environmentName)
+	secrets, err := util.GetAllEnvironmentVariables(environmentName)
 	if err != nil {
-		log.Error("Unable to retrieve secrets. Run with -d to see full logs")
-		log.Debug(err)
+		util.HandleError(err, "To fetch all secrets")
 	}
 
 	requestedSecrets := []models.SingleEnvironmentVariable{}
