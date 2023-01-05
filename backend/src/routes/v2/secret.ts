@@ -1,9 +1,10 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { requireAuth, requireWorkspaceAuth, validateRequest } from '../../middleware';
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import { ADMIN, MEMBER } from '../../variables';
 import { CreateSecretRequestBody, ModifySecretRequestBody } from '../../types/secret/types';
 import { secretController } from '../../controllers/v2';
+import { fetchAllSecrets } from '../../controllers/v2/secretController';
 
 const router = express.Router();
 
@@ -26,19 +27,20 @@ router.post(
 );
 
 /**
- * Get a single secret by secret id
+ * Get all secrets for a given environment and workspace id
  */
 router.get(
-  '/:secretId',
+  '/workspace/:workspaceId',
+  param('workspaceId').exists().trim(),
+  query("environment").exists(),
   requireAuth({
-    acceptedAuthModes: ['jwt']
+    acceptedAuthModes: ['jwt', 'serviceToken']
   }),
-  param('secretId').exists().trim(),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER]
   }),
   validateRequest,
-  secretController.createSingleSecret
+  fetchAllSecrets
 );
 
 /**

@@ -6,6 +6,7 @@ import { CreateSecretRequestBody, ModifySecretRequestBody, SanitizedSecretForCre
 const { ValidationError } = mongoose.Error;
 import { BadRequestError, InternalServerError, UnauthorizedRequestError, ValidationError as RouteValidationError } from '../../utils/errors';
 import { AnyBulkWriteOperation } from 'mongodb';
+import { SECRET_PERSONAL, SECRET_SHARED } from "../../variables";
 
 export const batchCreateSecrets = async (req: Request, res: Response) => {
   const secretsToCreate: CreateSecretRequestBody[] = req.body.secrets;
@@ -135,4 +136,33 @@ export const batchModifySecrets = async (req: Request, res: Response) => {
   }
 
   return res.status(200).send()
+}
+
+export const fetchAllSecrets = async (req: Request, res: Response) => {
+  const { environment } = req.query;
+  const { workspaceId } = req.params;
+
+  let userId: string | undefined = undefined // Used for choosing the personal secrets to fetch in 
+  if (req.user) {
+    userId = req.user._id.toString();
+  }
+
+  if (req.serviceTokenData) {
+    userId = req.serviceTokenData.user._id
+  }
+
+  const [retriveAllSecretsError, allSecrets] = await to(Secret.find(
+    {
+      workspace: workspaceId,
+      environment,
+      $or: [{ user: userId }, { user: { $exists: false } }],
+      type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
+    }
+  ).then())
+
+  if (retriveAllSecretsError instanceof ValidationError) {
+    throw RouteValidationError({ message: "Unable to get secrets, please try again", stack: retriveAllSecretsError.stack })
+  }
+
+  return res.json(allSecrets)
 }
