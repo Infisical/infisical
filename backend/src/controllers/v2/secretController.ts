@@ -2,7 +2,7 @@ import to from "await-to-js";
 import { Request, Response } from "express";
 import mongoose, { Types } from "mongoose";
 import Secret, { ISecret } from "../../models/secret";
-import { CreateSecretRequestBody, ModifySecretRequestBody, SanitizedSecretForCreate, SanitizedSecretModify } from "../../types/secret/types";
+import { CreateSecretRequestBody, ModifySecretRequestBody, SanitizedSecretForCreate, SanitizedSecretModify } from "../../types/secret";
 const { ValidationError } = mongoose.Error;
 import { BadRequestError, InternalServerError, UnauthorizedRequestError, ValidationError as RouteValidationError } from '../../utils/errors';
 import { AnyBulkWriteOperation } from 'mongodb';

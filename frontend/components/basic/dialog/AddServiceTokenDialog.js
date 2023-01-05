@@ -72,6 +72,8 @@ const AddServiceTokenDialog = ({
       iv, 
       tag
     });
+    
+    console.log('newServiceToken', newServiceToken);
 
     setServiceTokens(serviceTokens.concat([newServiceToken.serviceTokenData]));
     setServiceToken(newServiceToken.serviceToken + "." + randomBytes);

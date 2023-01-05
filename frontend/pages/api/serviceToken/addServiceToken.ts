@@ -31,7 +31,7 @@ const addServiceToken = ({
   iv, 
   tag
 }: Props) => {
-  return SecurityClient.fetchCall('/api/v2/service-token-data/', {
+  return SecurityClient.fetchCall('/api/v2/service-token/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

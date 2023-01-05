@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import { requireAuth, requireWorkspaceAuth, validateRequest } from '../../middleware';
 import { body, param, query } from 'express-validator';
 import { ADMIN, MEMBER } from '../../variables';
-import { CreateSecretRequestBody, ModifySecretRequestBody } from '../../types/secret/types';
+import { CreateSecretRequestBody, ModifySecretRequestBody } from '../../types/secret';
 import { secretController } from '../../controllers/v2';
 import { fetchAllSecrets } from '../../controllers/v2/secretController';
 

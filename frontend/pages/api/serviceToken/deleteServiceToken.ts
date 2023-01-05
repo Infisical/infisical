@@ -13,7 +13,7 @@ interface Props {
 const deleteServiceToken = ({
   serviceTokenId,
 }: Props) => {
-  return SecurityClient.fetchCall('/api/v2/service-token-data/' + serviceTokenId, {
+  return SecurityClient.fetchCall('/api/v2/service-token/' + serviceTokenId, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json'
