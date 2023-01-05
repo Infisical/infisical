@@ -1,4 +1,7 @@
-import { EVENT_PUSH_SECRETS } from '../variables';
+import { 
+    EVENT_PUSH_SECRETS, 
+    EVENT_PULL_SECRETS 
+} from '../variables';
 
 interface PushSecret {
 	ciphertextKey: string;
@@ -19,12 +22,32 @@ interface PushSecret {
  * @returns 
  */
 const eventPushSecrets = ({
-    workspaceId,
+    workspaceId
 }: {
     workspaceId: string;
 }) => {
     return ({
         name: EVENT_PUSH_SECRETS,
+        workspaceId,
+        payload: {
+
+        }
+    });
+}
+
+/**
+ * Return event for pulling secrets
+ * @param {Object} obj
+ * @param {String} obj.workspaceId - id of workspace to pull secrets from
+ * @returns 
+ */
+const eventPullSecrets = ({
+    workspaceId,
+}: {
+    workspaceId: string;
+}) => {
+    return ({
+        name: EVENT_PULL_SECRETS,
         workspaceId,
         payload: {
 

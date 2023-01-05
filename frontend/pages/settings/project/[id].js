@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { useTranslation } from "next-i18next";
-import { faCheck, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import Button from "~/components/basic/buttons/Button";
 import AddServiceTokenDialog from "~/components/basic/dialog/AddServiceTokenDialog";
 import InputField from "~/components/basic/InputField";
-import ServiceTokenTable from "~/components/basic/table/ServiceTokenTable";
+import ServiceTokenTable from "~/components/basic/table/ServiceTokenTable.tsx";
 import NavHeader from "~/components/navigation/NavHeader";
 import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
@@ -15,6 +16,7 @@ import getServiceTokens from "../../api/serviceToken/getServiceTokens";
 import deleteWorkspace from "../../api/workspace/deleteWorkspace";
 import getWorkspaces from "../../api/workspace/getWorkspaces";
 import renameWorkspace from "../../api/workspace/renameWorkspace";
+
 
 export default function SettingsBasic() {
   const [buttonReady, setButtonReady] = useState(false);
@@ -26,8 +28,27 @@ export default function SettingsBasic() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   let [isAddServiceTokenDialogOpen, setIsAddServiceTokenDialogOpen] =
     useState(false);
+  const [projectIdCopied, setProjectIdCopied] = useState(false);
 
   const { t } = useTranslation();
+
+  /**
+   * This function copies the project id to the clipboard
+   */
+  function copyToClipboard() {
+    // const copyText = document.getElementById('myInput') as HTMLInputElement;
+    const copyText = document.getElementById('myInput')
+    
+    if (copyText) {
+      copyText.select();
+      copyText.setSelectionRange(0, 99999); // For mobile devices
+
+      navigator.clipboard.writeText(copyText.value);
+  
+      setProjectIdCopied(true);
+      setTimeout(() => setProjectIdCopied(false), 2000);
+    }
+  }
 
   useEffect(async () => {
     let userWorkspaces = await getWorkspaces();
@@ -103,6 +124,8 @@ export default function SettingsBasic() {
         workspaceId={router.query.id}
         closeModal={closeAddServiceTokenModal}
         workspaceName={workspaceName}
+        serviceTokens={serviceTokens}
+        setServiceTokens={setServiceTokens}
       />
       <div className="flex flex-row mr-6 max-w-5xl">
         <div className="w-full max-h-screen pb-2 overflow-y-auto">
@@ -124,7 +147,7 @@ export default function SettingsBasic() {
             <div className="flex flex-col">
               <div className="min-w-md mt-2 flex flex-col items-start">
                 <div className="bg-white/5 rounded-md px-6 pt-6 pb-4 flex flex-col items-start flex flex-col items-start w-full mb-6 pt-2">
-                  <p className="text-xl font-semibold mb-4">
+                  <p className="text-xl font-semibold mb-4 mt-2">
                     {t("common:display-name")}
                   </p>
                   <div className="max-h-28 w-full max-w-md mr-auto">
@@ -150,7 +173,7 @@ export default function SettingsBasic() {
                     </div>
                   </div>
                 </div>
-                <div className="bg-white/5 rounded-md px-6 pt-6 pb-2 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4">
+                <div className="bg-white/5 rounded-md px-6 pt-4 pb-2 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4">
                   <p className="text-xl font-semibold self-start">
                     {t("common:project-id")}
                   </p>
@@ -169,18 +192,36 @@ export default function SettingsBasic() {
                       {t("settings-project:docs")}
                     </a>
                   </p>
-                  <div className="max-h-28 w-ful">
-                    <InputField
-                      type="varName"
-                      value={router.query.id}
-                      placeholder=""
-                      isRequired
-                      static
-                      text={t("settings-project:auto-generated")}
-                    />
+                  <p className="mt-4 text-xs text-bunker-300">{t("settings-project:auto-generated")}</p>
+                  <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mb-3 mr-2 rounded-md text-gray-400">
+                    <p className="mr-2 font-bold pl-4">{`${t(
+                      "common:project-id"
+                    )}:`}</p>
+                    <input
+                      type="text"
+                      value={workspaceId}
+                      id="myInput"
+                      className="bg-white/0 text-gray-400 py-2 w-60 px-2 min-w-md outline-none"
+                      disabled
+                    ></input>
+                    <div className="group font-normal group relative inline-block text-gray-400 underline hover:text-primary duration-200">
+                      <button
+                        onClick={copyToClipboard}
+                        className="pl-4 pr-4 border-l border-white/20 py-2 hover:bg-white/[0.12] duration-200"
+                      >
+                        {projectIdCopied ? (
+                          <FontAwesomeIcon icon={faCheck} className="pr-0.5" />
+                        ) : (
+                          <FontAwesomeIcon icon={faCopy} />
+                        )}
+                      </button>
+                      <span className="absolute hidden group-hover:flex group-hover:animate-popup duration-300 w-28 -left-8 -top-20 translate-y-full pl-3 py-2 bg-bunker-800 rounded-md text-center text-gray-400 text-sm">
+                        {t("common:click-to-copy")}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <div className="bg-white/5 rounded-md px-6 pt-6 flex flex-col items-start flex flex-col items-start w-full mt-4 mb-4 pt-2">
+                <div className="bg-white/5 rounded-md px-6 pt-4 flex flex-col items-start flex flex-col items-start w-full mt-4 mb-4 pt-2">
                   <div className="flex flex-row justify-between w-full">
                     <div className="flex flex-col w-full">
                       <p className="text-xl font-semibold mb-3">
@@ -205,47 +246,12 @@ export default function SettingsBasic() {
                   <ServiceTokenTable
                     data={serviceTokens}
                     workspaceName={workspaceName}
+                    setServiceTokens={setServiceTokens}
                   />
                 </div>
-
-                {/* <div className="bg-white/5 rounded-md px-6 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4 pb-6 pt-6">
-									<p className="text-xl font-semibold self-start">
-										Project Environments
-									</p>
-									<p className="text-md mr-1 text-gray-400 mt-2 self-start">
-										Choose which environments will show up
-										in your Dashboard. Some common ones
-										include Development, Staging, and
-										Production. Often, teams choose to add
-										Testing.
-									</p>
-									<p className="text-sm mr-1 text-gray-500 self-start">
-										Note: the text in brackets shows how
-										these environmant should be accessed in
-										CLI.
-									</p>
-									<div className="rounded-md h-10 w-full mr-auto mt-4 flex flex-row">
-										{envOptions.map((env) => (
-											<div className="bg-white/5 hover:bg-white/10 duration-200 h-full w-max px-3 flex flex-row items-center justify-between rounded-md mr-1 text-sm">
-												{env}
-												<XIcon
-													className="h-5 w-5 ml-2 mt-0.5 text-white cursor-pointer"
-													aria-hidden="true"
-												/>
-											</div>
-										))}
-										<div className="group bg-white/5 hover:bg-primary hover:text-black duration-200 h-full w-max py-1 px-3 flex flex-row items-center justify-between rounded-md mr-1 cursor-pointer text-sm font-semibold">
-											<PlusIcon
-												className="h-5 w-5 text-white mr-2 group-hover:text-black"
-												aria-hidden="true"
-											/>
-											Add
-										</div>
-									</div>
-								</div> */}
               </div>
             </div>
-            <div className="bg-white/5 rounded-md px-6 pt-6 pb-6 border-l border-red pl-6 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4 pb-4 pt-2">
+            <div className="bg-white/5 rounded-md px-6 pt-4 pb-6 border-l border-red pl-6 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4 pb-4 pt-2">
               <p className="text-xl font-bold text-red">
                 {t("settings-project:danger-zone")}
               </p>

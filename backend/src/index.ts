@@ -4,12 +4,12 @@ dotenv.config();
 import * as Sentry from '@sentry/node';
 import { SENTRY_DSN, NODE_ENV, MONGO_URL } from './config';
 import { server } from './app';
-import { initDatabase } from './services/database';
+import { DatabaseService } from './services';
 import { setUpHealthEndpoint } from './services/health';
 import { initSmtp } from './services/smtp';
 import { setTransporter } from './helpers/nodemailer';
 
-initDatabase(MONGO_URL);
+DatabaseService.initDatabase(MONGO_URL);
 
 setUpHealthEndpoint(server);
 

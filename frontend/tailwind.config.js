@@ -1238,6 +1238,7 @@ module.exports = {
   content: [
     "./pages/**/*.{js,ts,jsx,tsx}",
     "./components/**/*.{js,ts,jsx,tsx}",
+    "./ee/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
@@ -1382,12 +1383,12 @@ module.exports = {
         "0%": {
           transform: "scale(0.2)",
           opacity: 0,
-          transform: "translateY(120%)",
+          // transform: "translateY(120%)",
         },
         "100%": {
           transform: "scale(1)",
           opacity: 1,
-          transform: "translateY(100%)",
+          // transform: "translateY(100%)",
         },
       },
       popright: {
@@ -1410,12 +1411,12 @@ module.exports = {
         "0%": {
           transform: "scale(0.2)",
           opacity: 0,
-          transform: "translateY(80%)",
+          // transform: "translateY(80%)",
         },
         "100%": {
           transform: "scale(1)",
           opacity: 1,
-          transform: "translateY(100%)",
+          // transform: "translateY(100%)",
         },
       },
     },

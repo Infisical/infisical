@@ -36,7 +36,7 @@ const Notification = ({
 
   return (
     <div
-      className="relative w-full flex items-center justify-between px-4 py-6 rounded-md border border-bunker-500 pointer-events-auto bg-bunker-500"
+      className="relative w-full flex items-center justify-between px-4 py-4 rounded-md border border-bunker-500 pointer-events-auto bg-bunker-500"
       role="alert"
     >
       {notification.type === 'error' && (
@@ -56,7 +56,7 @@ const Notification = ({
         onClick={() => clearNotification(notification.text)}
       >
         <FontAwesomeIcon
-          className="text-white w-4 h-3 hover:text-red"
+          className="text-white pl-2 w-4 h-3 hover:text-red"
           icon={faX}
         />
       </button>

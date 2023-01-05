@@ -17,7 +17,7 @@ interface secretVersionProps {
  */
 const getSecretVersions = async ({ secretId, offset, limit }: secretVersionProps) => {
   return SecurityClient.fetchCall(
-    '/api/v1/secret/' + secretId + '/secret-versions?'+
+    '/api/v1/secret/' + secretId + '/secret-versions?' +
       new URLSearchParams({
         offset: String(offset),
         limit: String(limit)
@@ -32,7 +32,7 @@ const getSecretVersions = async ({ secretId, offset, limit }: secretVersionProps
     if (res && res.status == 200) {
       return await res.json();
     } else {
-      console.log('Failed to get project secrets');
+      console.log('Failed to get secret version history');
     }
   });
 };
