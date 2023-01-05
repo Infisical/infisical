@@ -55,36 +55,26 @@ var runCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		envName, err := cmd.Flags().GetString("env")
 		if err != nil {
-			log.Errorln("Unable to parse the environment flag")
-			log.Debugln(err)
-			return
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		if !util.IsSecretEnvironmentValid(envName) {
+			util.PrintMessageAndExit("Invalid environment name passed. Environment names can only be prod, dev, test or staging")
 		}
 
 		secretOverriding, err := cmd.Flags().GetBool("secret-overriding")
 		if err != nil {
-			log.Errorln("Unable to parse the secret-overriding flag")
-			log.Debugln(err)
-			return
+			util.HandleError(err, "Unable to parse flag")
 		}
 
 		shouldExpandSecrets, err := cmd.Flags().GetBool("expand")
 		if err != nil {
-			log.Errorln("Unable to parse the substitute flag")
-			log.Debugln(err)
-			return
+			util.HandleError(err, "Unable to parse flag")
 		}
 
-		projectId, err := cmd.Flags().GetString("projectId")
+		secrets, err := util.GetAllEnvironmentVariables(envName)
 		if err != nil {
-			log.Errorln("Unable to parse the project id flag")
-			log.Debugln(err)
-			return
-		}
-
-		secrets, err := util.GetAllEnvironmentVariables(projectId, envName)
-		if err != nil {
-			log.Debugln(err)
-			return
+			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
 		}
 
 		if shouldExpandSecrets {
@@ -97,29 +87,26 @@ var runCmd = &cobra.Command{
 
 		if cmd.Flags().Changed("command") {
 			command := cmd.Flag("command").Value.String()
+
 			err = executeMultipleCommandWithEnvs(command, secrets)
 			if err != nil {
-				log.Errorf("Something went wrong when executing your command [error=%s]", err)
-				return
+				util.HandleError(err, "Unable to execute your chained command")
 			}
+
 		} else {
 			err = executeSingleCommandWithEnvs(args, secrets)
 			if err != nil {
-				log.Errorf("Something went wrong when executing your command [error=%s]", err)
-				return
+				util.HandleError(err, "Unable to execute your single command")
 			}
-			return
 		}
-
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(runCmd)
 	runCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
-	runCmd.Flags().String("projectId", "", "The project ID from which your secrets should be pulled from")
 	runCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
-	runCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets with the same name over shared secrets")
+	runCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	runCmd.Flags().StringP("command", "c", "", "chained commands to execute (e.g. \"npm install && npm run dev; echo ...\")")
 }
 
@@ -130,6 +117,7 @@ func executeSingleCommandWithEnvs(args []string, secrets []models.SingleEnvironm
 	numberOfSecretsInjected := fmt.Sprintf("\u2713 Injected %v Infisical secrets into your application process successfully", len(secrets))
 	log.Infof("\x1b[%dm%s\x1b[0m", 32, numberOfSecretsInjected)
 	log.Debugf("executing command: %s %s \n", command, strings.Join(argsForCommand, " "))
+	log.Debugf("Secrets injected: %v", secrets)
 
 	cmd := exec.Command(command, argsForCommand...)
 	cmd.Stdin = os.Stdin
@@ -157,6 +145,7 @@ func executeMultipleCommandWithEnvs(fullCommand string, secrets []models.SingleE
 	numberOfSecretsInjected := fmt.Sprintf("\u2713 Injected %v Infisical secrets into your application process successfully", len(secrets))
 	log.Infof("\x1b[%dm%s\x1b[0m", 32, numberOfSecretsInjected)
 	log.Debugf("executing command: %s %s %s \n", shell[0], shell[1], fullCommand)
+	log.Debugf("Secrets injected: %v", secrets)
 
 	return execCmd(cmd)
 }

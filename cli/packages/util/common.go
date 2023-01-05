@@ -5,15 +5,6 @@ import (
 	"os"
 )
 
-const (
-	CONFIG_FILE_NAME                     = "infisical-config.json"
-	CONFIG_FOLDER_NAME                   = ".infisical"
-	INFISICAL_WORKSPACE_CONFIG_FILE_NAME = ".infisical.json"
-	INFISICAL_TOKEN_NAME                 = "INFISICAL_TOKEN"
-	SECRET_TYPE_PERSONAL                 = "personal"
-	SECRET_TYPE_SHARED                   = "shared"
-)
-
 func GetHomeDir() (string, error) {
 	directory, err := os.UserHomeDir()
 	return directory, err
@@ -23,7 +14,7 @@ func GetHomeDir() (string, error) {
 func WriteToFile(fileName string, dataToWrite []byte, filePerm os.FileMode) error {
 	err := os.WriteFile(fileName, dataToWrite, filePerm)
 	if err != nil {
-		return fmt.Errorf("Unable to wrote to file", err)
+		return fmt.Errorf("unable to wrote to file [err=%v]", err)
 	}
 
 	return nil

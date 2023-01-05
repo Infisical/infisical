@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/models"
@@ -29,18 +30,15 @@ var loginCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	PreRun:                toggleDebug,
 	Run: func(cmd *cobra.Command, args []string) {
-		hasUserLoggedInbefore, currentLoggedInUserEmail, err := util.IsUserLoggedIn()
-
+		currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
 		if err != nil {
-			log.Debugln("Unable to get current logged in user.", err)
+			util.HandleError(err)
 		}
 
-		if hasUserLoggedInbefore {
-			shouldOverride, err := shouldOverrideLoginPrompt(currentLoggedInUserEmail)
+		if currentLoggedInUserDetails.IsUserLoggedIn {
+			shouldOverride, err := shouldOverrideLoginPrompt(currentLoggedInUserDetails.UserCredentials.Email)
 			if err != nil {
-				log.Errorln("Unable to parse your answer")
-				log.Debug(err)
-				return
+				util.HandleError(err)
 			}
 
 			if !shouldOverride {
@@ -50,14 +48,12 @@ var loginCmd = &cobra.Command{
 
 		email, password, err := askForLoginCredentials()
 		if err != nil {
-			log.Errorln("Unable to parse email and password for authentication")
-			log.Debugln(err)
-			return
+			util.HandleError(err, "Unable to parse email and password for authentication")
 		}
 
 		userCredentials, err := getFreshUserCredentials(email, password)
 		if err != nil {
-			log.Errorln("Unable to authenticate with the provided credentials, please try again")
+			log.Infoln("Unable to authenticate with the provided credentials, please try again")
 			log.Debugln(err)
 			return
 		}
@@ -65,14 +61,12 @@ var loginCmd = &cobra.Command{
 		encryptedPrivateKey, _ := base64.StdEncoding.DecodeString(userCredentials.EncryptedPrivateKey)
 		tag, err := base64.StdEncoding.DecodeString(userCredentials.Tag)
 		if err != nil {
-			log.Errorln("Unable to decode the auth tag")
-			log.Debugln(err)
+			util.HandleError(err)
 		}
 
 		IV, err := base64.StdEncoding.DecodeString(userCredentials.IV)
 		if err != nil {
-			log.Errorln("Unable to decode the IV/Nonce")
-			log.Debugln(err)
+			util.HandleError(err)
 		}
 
 		paddedPassword := fmt.Sprintf("%032s", password)
@@ -80,9 +74,7 @@ var loginCmd = &cobra.Command{
 
 		decryptedPrivateKey, err := crypto.DecryptSymmetric(key, encryptedPrivateKey, tag, IV)
 		if err != nil || len(decryptedPrivateKey) == 0 {
-			log.Errorln("There was an issue decrypting your keys")
-			log.Debugln(err)
-			return
+			util.HandleError(err)
 		}
 
 		userCredentialsToBeStored := &models.UserCredentials{
@@ -102,9 +94,7 @@ var loginCmd = &cobra.Command{
 
 		err = util.WriteInitalConfig(userCredentialsToBeStored)
 		if err != nil {
-			log.Errorln("Unable to write write to Infisical Config file. Please try again")
-			log.Debugln(err)
-			return
+			util.HandleError(err, "Unable to write write to Infisical Config file. Please try again")
 		}
 
 		log.Infoln("Nice! You are loggin as:", email)
@@ -158,7 +148,7 @@ func askForLoginCredentials() (email string, password string, err error) {
 	return userEmail, userPassword, nil
 }
 
-func getFreshUserCredentials(email string, password string) (*models.LoginTwoResponse, error) {
+func getFreshUserCredentials(email string, password string) (*api.LoginTwoResponse, error) {
 	log.Debugln("getFreshUserCredentials:", "email", email, "password", password)
 	httpClient := resty.New()
 	httpClient.SetRetryCount(5)
@@ -169,12 +159,12 @@ func getFreshUserCredentials(email string, password string) (*models.LoginTwoRes
 	srpA := hex.EncodeToString(srpClient.ComputeA())
 
 	// ** Login one
-	loginOneRequest := models.LoginOneRequest{
+	loginOneRequest := api.LoginOneRequest{
 		Email:           email,
 		ClientPublicKey: srpA,
 	}
 
-	var loginOneResponseResult models.LoginOneResponse
+	var loginOneResponseResult api.LoginOneResponse
 
 	loginOneResponse, err := httpClient.
 		R().
@@ -206,12 +196,12 @@ func getFreshUserCredentials(email string, password string) (*models.LoginTwoRes
 
 	srpM1 := srpClient.ComputeM1()
 
-	LoginTwoRequest := models.LoginTwoRequest{
+	LoginTwoRequest := api.LoginTwoRequest{
 		Email:       email,
 		ClientProof: hex.EncodeToString(srpM1),
 	}
 
-	var loginTwoResponseResult models.LoginTwoResponse
+	var loginTwoResponseResult api.LoginTwoResponse
 	loginTwoResponse, err := httpClient.
 		R().
 		SetBody(LoginTwoRequest).

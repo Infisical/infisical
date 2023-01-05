@@ -1,4 +1,4 @@
-package models
+package api
 
 import "time"
 
@@ -119,14 +119,13 @@ type PullSecretsByInfisicalTokenResponse struct {
 }
 
 type GetWorkSpacesResponse struct {
-	Workspaces []Workspace `json:"workspaces"`
-}
-type Workspace struct {
-	ID           string `json:"_id"`
-	Name         string `json:"name"`
-	Plan         string `json:"plan,omitempty"`
-	V            int    `json:"__v"`
-	Organization string `json:"organization,omitempty"`
+	Workspaces []struct {
+		ID           string `json:"_id"`
+		Name         string `json:"name"`
+		Plan         string `json:"plan,omitempty"`
+		V            int    `json:"__v"`
+		Organization string `json:"organization,omitempty"`
+	} `json:"workspaces"`
 }
 
 type Secret struct {
