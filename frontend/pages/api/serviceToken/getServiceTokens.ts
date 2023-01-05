@@ -7,7 +7,7 @@ import SecurityClient from '~/utilities/SecurityClient';
  */
 const getServiceTokens = ({ workspaceId }: { workspaceId: string }) => {
   return SecurityClient.fetchCall(
-    '/api/v1/workspace/' + workspaceId + '/service-tokens',
+    '/api/v2/workspace/' + workspaceId + '/service-token-data',
     {
       method: 'GET',
       headers: {
@@ -16,7 +16,7 @@ const getServiceTokens = ({ workspaceId }: { workspaceId: string }) => {
     }
   ).then(async (res) => {
     if (res && res.status == 200) {
-      return (await res.json()).serviceTokens;
+      return (await res.json()).serviceTokenData;
     } else {
       console.log('Failed to get service tokens');
     }

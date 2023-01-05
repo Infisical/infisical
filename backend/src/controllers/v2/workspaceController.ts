@@ -190,7 +190,7 @@ export const getWorkspaceServiceTokenData = async (
 ) => {
 	let serviceTokenData;
 	try {
-		const { workspaceId } = req.query;
+		const { workspaceId } = req.params;
 
 		serviceTokenData = await ServiceTokenData
 			.find({

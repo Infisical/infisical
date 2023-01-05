@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Button from "~/components/basic/buttons/Button";
 import AddServiceTokenDialog from "~/components/basic/dialog/AddServiceTokenDialog";
 import InputField from "~/components/basic/InputField";
-import ServiceTokenTable from "~/components/basic/table/ServiceTokenTable";
+import ServiceTokenTable from "~/components/basic/table/ServiceTokenTable.tsx";
 import NavHeader from "~/components/navigation/NavHeader";
 import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
@@ -145,7 +145,7 @@ export default function SettingsBasic() {
             <div className="flex flex-col">
               <div className="min-w-md mt-2 flex flex-col items-start">
                 <div className="bg-white/5 rounded-md px-6 pt-6 pb-4 flex flex-col items-start flex flex-col items-start w-full mb-6 pt-2">
-                  <p className="text-xl font-semibold mb-4">
+                  <p className="text-xl font-semibold mb-4 mt-2">
                     {t("common:display-name")}
                   </p>
                   <div className="max-h-28 w-full max-w-md mr-auto">
@@ -171,7 +171,7 @@ export default function SettingsBasic() {
                     </div>
                   </div>
                 </div>
-                <div className="bg-white/5 rounded-md px-6 pt-6 pb-2 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4">
+                <div className="bg-white/5 rounded-md px-6 pt-4 pb-2 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4">
                   <p className="text-xl font-semibold self-start">
                     {t("common:project-id")}
                   </p>
@@ -219,7 +219,7 @@ export default function SettingsBasic() {
                     </div>
                   </div>
                 </div>
-                <div className="bg-white/5 rounded-md px-6 pt-6 flex flex-col items-start flex flex-col items-start w-full mt-4 mb-4 pt-2">
+                <div className="bg-white/5 rounded-md px-6 pt-4 flex flex-col items-start flex flex-col items-start w-full mt-4 mb-4 pt-2">
                   <div className="flex flex-row justify-between w-full">
                     <div className="flex flex-col w-full">
                       <p className="text-xl font-semibold mb-3">
@@ -244,47 +244,12 @@ export default function SettingsBasic() {
                   <ServiceTokenTable
                     data={serviceTokens}
                     workspaceName={workspaceName}
+                    setServiceTokens={setServiceTokens}
                   />
                 </div>
-
-                {/* <div className="bg-white/5 rounded-md px-6 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4 pb-6 pt-6">
-									<p className="text-xl font-semibold self-start">
-										Project Environments
-									</p>
-									<p className="text-md mr-1 text-gray-400 mt-2 self-start">
-										Choose which environments will show up
-										in your Dashboard. Some common ones
-										include Development, Staging, and
-										Production. Often, teams choose to add
-										Testing.
-									</p>
-									<p className="text-sm mr-1 text-gray-500 self-start">
-										Note: the text in brackets shows how
-										these environmant should be accessed in
-										CLI.
-									</p>
-									<div className="rounded-md h-10 w-full mr-auto mt-4 flex flex-row">
-										{envOptions.map((env) => (
-											<div className="bg-white/5 hover:bg-white/10 duration-200 h-full w-max px-3 flex flex-row items-center justify-between rounded-md mr-1 text-sm">
-												{env}
-												<XIcon
-													className="h-5 w-5 ml-2 mt-0.5 text-white cursor-pointer"
-													aria-hidden="true"
-												/>
-											</div>
-										))}
-										<div className="group bg-white/5 hover:bg-primary hover:text-black duration-200 h-full w-max py-1 px-3 flex flex-row items-center justify-between rounded-md mr-1 cursor-pointer text-sm font-semibold">
-											<PlusIcon
-												className="h-5 w-5 text-white mr-2 group-hover:text-black"
-												aria-hidden="true"
-											/>
-											Add
-										</div>
-									</div>
-								</div> */}
               </div>
             </div>
-            <div className="bg-white/5 rounded-md px-6 pt-6 pb-6 border-l border-red pl-6 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4 pb-4 pt-2">
+            <div className="bg-white/5 rounded-md px-6 pt-4 pb-6 border-l border-red pl-6 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4 pb-4 pt-2">
               <p className="text-xl font-bold text-red">
                 {t("settings-project:danger-zone")}
               </p>
