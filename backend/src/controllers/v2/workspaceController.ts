@@ -127,7 +127,7 @@ export const pullSecrets = async (req: Request, res: Response) => {
 			userId,
 			workspaceId,
 			environment,
-			channel,
+			channel: channel ? channel : 'cli',
 			ipAddress: req.ip
 		});
 		
