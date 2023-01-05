@@ -227,11 +227,22 @@ export default function SettingsBasic() {
                       <p className="text-xl font-semibold mb-3">
                         {t("section-token:service-tokens")}
                       </p>
-                      <p className="text-base text-gray-400 mb-4">
+                      <p className="text-sm text-gray-400">
                         {t("section-token:service-tokens-description")}
                       </p>
+                      <p className="text-sm text-gray-400 mb-4">
+                        Please, make sure you are on the 
+                        <a 
+                          className="text-primary underline underline-offset-2 ml-1" 
+                          href="https://infisical.com/docs/cli/overview"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                            latest version of CLI
+                        </a>.
+                      </p>
                     </div>
-                    <div className="w-48">
+                    <div className="w-48 mt-2">
                       <Button
                         text={t("section-token:add-new")}
                         onButtonPressed={() => {

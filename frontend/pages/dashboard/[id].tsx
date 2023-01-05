@@ -577,7 +577,7 @@ export default function Dashboard() {
           <div className="mx-6 w-full pr-12">
             <div className="flex flex-col max-w-5xl pb-1">
               <div className="w-full flex flex-row items-start">
-                {(!snapshotData || data?.length !== 0) && (
+                {(snapshotData || data?.length !== 0) && (
                   <>
                     {!snapshotData 
                     ? <ListBox
