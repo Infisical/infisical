@@ -40,6 +40,11 @@
       "url": "self-hosting"
     },
     {
+      "name": "API Reference",
+      "icon": "cloud",
+      "url": "self-hosting"
+    },
+    {
       "name": "Integrations",
       "icon": "plug",
       "url": "integrations"
