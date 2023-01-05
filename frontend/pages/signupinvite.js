@@ -141,16 +141,16 @@ export default function SignupInvite() {
   // Step 4 of the sign up process (download the emergency kit pdf)
   const stepConfirmEmail = (
     <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg mx-auto h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
-      <p className="text-4xl text-center font-semibold mb-8 flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
+      <p className="text-4xl text-center font-semibold mb-6 flex justify-center text-primary-100">
         Confirm your email
       </p>
       <Image
-        src="/images/envelope.svg"
+        src="/images/dragon-signupinvite.svg"
         height={262}
         width={410}
         alt="verify email"
       ></Image>
-      <div className="flex max-w-max flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
+      <div className="flex max-w-max flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-10 mb-2">
         <Button
           text="Confirm Email"
           onButtonPressed={async () => {
