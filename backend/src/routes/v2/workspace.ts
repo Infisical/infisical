@@ -42,15 +42,15 @@ router.get(
 );
 
 router.get(
-	'/:workspaceId/key',
+	'/:workspaceId/encrypted-key',
 	requireAuth({
 		acceptedAuthModes: ['jwt']
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER]
-	}),	
+	}),
 	param('workspaceId').exists().trim(),
-	validateRequest,	
+	validateRequest,
 	workspaceController.getWorkspaceKey
 );
 

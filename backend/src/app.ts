@@ -98,13 +98,13 @@ app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
 // v2 routes
 app.use('/api/v2/workspace', v2WorkspaceRouter);
 app.use('/api/v2/secret', v2SecretRouter);
-app.use('/api/v2/service-token-data', v2ServiceTokenDataRouter);
+app.use('/api/v2/service-token', v2ServiceTokenDataRouter);
 app.use('/api/v2/api-key-data', v2APIKeyDataRouter);
 
 //* Handle unrouted requests and respond with proper error message as well as status code
-app.use((req, res, next)=>{
-  if(res.headersSent) return next();
-  next(RouteNotFoundError({message: `The requested source '(${req.method})${req.url}' was not found`}))
+app.use((req, res, next) => {
+  if (res.headersSent) return next();
+  next(RouteNotFoundError({ message: `The requested source '(${req.method})${req.url}' was not found` }))
 })
 
 //* Error Handling Middleware (must be after all routing logic)

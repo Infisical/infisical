@@ -25,28 +25,28 @@ declare module 'jsonwebtoken' {
  * @param {String[]} obj.acceptedAuthModes - accepted modes of authentication (jwt/st)
  * @returns
  */
-const requireAuth  = ({
+const requireAuth = ({
 	acceptedAuthModes = ['jwt']
 }: {
 	acceptedAuthModes: string[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
-		const [ AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE ] = <[string, string]>req.headers['authorization']?.split(' ', 2) ?? [null, null]
-		if(AUTH_TOKEN_TYPE === null) 
-			return next(BadRequestError({message: `Missing Authorization Header in the request header.`}))
-		if(AUTH_TOKEN_TYPE.toLowerCase() !== 'bearer') 
-			return next(BadRequestError({message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.`}))
-		if(AUTH_TOKEN_VALUE === null) 
-			return next(BadRequestError({message: 'Missing Authorization Body in the request header'}))
-		
+		const [AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE] = <[string, string]>req.headers['authorization']?.split(' ', 2) ?? [null, null]
+		if (AUTH_TOKEN_TYPE === null)
+			return next(BadRequestError({ message: `Missing Authorization Header in the request header.` }))
+		if (AUTH_TOKEN_TYPE.toLowerCase() !== 'bearer')
+			return next(BadRequestError({ message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.` }))
+		if (AUTH_TOKEN_VALUE === null)
+			return next(BadRequestError({ message: 'Missing Authorization Body in the request header' }))
+
 		// validate auth token against 
 		const authMode = validateAuthMode({
 			authTokenValue: AUTH_TOKEN_VALUE,
 			acceptedAuthModes
 		});
-		
+
 		if (!acceptedAuthModes.includes(authMode)) throw new Error('Failed to validate auth mode');
-		
+
 		// attach auth payloads
 		switch (authMode) {
 			case 'serviceToken':

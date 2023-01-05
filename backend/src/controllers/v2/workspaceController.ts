@@ -1,7 +1,14 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import {
-    Key,
+	Workspace,
+	Membership,
+	MembershipOrg,
+	Integration,
+	IntegrationAuth,
+	Key,
+	IUser,
+	ServiceToken,
 	ServiceTokenData
 } from '../../models';
 import {
@@ -68,7 +75,7 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
 			workspaceId,
 			keys
 		});
-		
+
 		if (postHogClient) {
 			postHogClient.capture({
 				event: 'secrets pushed',
@@ -115,7 +122,7 @@ export const pullSecrets = async (req: Request, res: Response) => {
 		const environment: string = req.query.environment as string;
 		const channel: string = req.query.channel as string;
 		const { workspaceId } = req.params;
-		
+
 		let userId;
 		if (req.user) {
 			userId = req.user._id.toString();
@@ -130,7 +137,7 @@ export const pullSecrets = async (req: Request, res: Response) => {
 			channel: channel ? channel : 'cli',
 			ipAddress: req.ip
 		});
-		
+
 		if (channel !== 'cli') {
 			secrets = reformatPullSecrets({ secrets });
 		}
@@ -170,7 +177,7 @@ export const getWorkspaceKey = async (req: Request, res: Response) => {
 			workspace: workspaceId,
 			receiver: req.user._id
 		}).populate('sender', '+publicKey');
-		
+
 		if (!key) throw new Error('Failed to find workspace key');
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
@@ -180,9 +187,7 @@ export const getWorkspaceKey = async (req: Request, res: Response) => {
 		});
 	}
 
-	return res.status(200).send({
-		key
-	});
+	return res.status(200).json(key);
 }
 export const getWorkspaceServiceTokenData = async (
 	req: Request,
@@ -205,7 +210,7 @@ export const getWorkspaceServiceTokenData = async (
 			message: 'Failed to get workspace service token data'
 		});
 	}
-	
+
 	return res.status(200).send({
 		serviceTokenData
 	});

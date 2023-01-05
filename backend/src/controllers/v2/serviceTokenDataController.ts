@@ -15,9 +15,7 @@ import {
  * @param res 
  * @returns 
  */
-export const getServiceTokenData = async (req: Request, res: Response) => res.status(200).send({
-    serviceTokenData: req.serviceTokenData
-});
+export const getServiceTokenData = async (req: Request, res: Response) => res.status(200).json(req.serviceTokenData);
 
 /**
  * Create new service token data for workspace with id [workspaceId] and
@@ -29,9 +27,9 @@ export const getServiceTokenData = async (req: Request, res: Response) => res.st
 export const createServiceTokenData = async (req: Request, res: Response) => {
     let serviceToken, serviceTokenData;
     try {
-        const { 
+        const {
             name,
-            workspaceId, 
+            workspaceId,
             environment,
             encryptedKey,
             iv,
@@ -41,10 +39,10 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
 
         const secret = crypto.randomBytes(16).toString('hex');
         const secretHash = await bcrypt.hash(secret, SALT_ROUNDS);
-        
-		const expiresAt = new Date();
-		expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
-        
+
+        const expiresAt = new Date();
+        expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
+
         serviceTokenData = await new ServiceTokenData({
             name,
             workspace: workspaceId,
@@ -56,12 +54,12 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             iv,
             tag
         }).save();
-        
+
         // return service token data without sensitive data
         serviceTokenData = await ServiceTokenData.findById(serviceTokenData._id);
-        
+
         if (!serviceTokenData) throw new Error('Failed to find service token data');
-        
+
         serviceToken = `st.${serviceTokenData._id.toString()}.${secret}`;
 
     } catch (err) {
@@ -90,7 +88,7 @@ export const deleteServiceTokenData = async (req: Request, res: Response) => {
         const { serviceTokenDataId } = req.params;
 
         serviceTokenData = await ServiceTokenData.findByIdAndDelete(serviceTokenDataId);
-        
+
     } catch (err) {
         Sentry.setUser({ email: req.user.email });
         Sentry.captureException(err);
@@ -98,7 +96,7 @@ export const deleteServiceTokenData = async (req: Request, res: Response) => {
             message: 'Failed to delete service token data'
         });
     }
-    
+
     return res.status(200).send({
         serviceTokenData
     });
