@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/99designs/keyring"
+	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
@@ -92,7 +93,7 @@ func IsUserLoggedIn() (hasUserLoggedIn bool, theUsersEmail string, err error) {
 
 		response, err := httpClient.
 			R().
-			Post(fmt.Sprintf("%v/v1/auth/checkAuth", INFISICAL_URL))
+			Post(fmt.Sprintf("%v/v1/auth/checkAuth", config.INFISICAL_URL))
 
 		if err != nil {
 			return false, "", err
@@ -132,7 +133,7 @@ func GetCurrentLoggedInUserDetails() (LoggedInUserDetails, error) {
 
 		response, err := httpClient.
 			R().
-			Post(fmt.Sprintf("%v/v1/auth/checkAuth", INFISICAL_URL))
+			Post(fmt.Sprintf("%v/v1/auth/checkAuth", config.INFISICAL_URL))
 
 		if err != nil {
 			return LoggedInUserDetails{}, err

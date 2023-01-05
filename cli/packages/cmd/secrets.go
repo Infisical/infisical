@@ -11,6 +11,7 @@ import (
 
 	"crypto/sha256"
 
+	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/http"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
@@ -147,13 +148,13 @@ var secretsSetCmd = &cobra.Command{
 			return
 		}
 
-		encryptedWorkspaceKey, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.LatestKey.EncryptedKey)
-		encryptedWorkspaceKeySenderPublicKey, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.LatestKey.Sender.PublicKey)
-		encryptedWorkspaceKeyNonce, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.LatestKey.Nonce)
+		encryptedWorkspaceKey, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.EncryptedKey)
+		encryptedWorkspaceKeySenderPublicKey, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.Sender.PublicKey)
+		encryptedWorkspaceKeyNonce, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.Nonce)
 		currentUsersPrivateKey, _ := base64.StdEncoding.DecodeString(loggedInUserDetails.UserCredentials.PrivateKey)
 
 		// decrypt workspace key
-		plainTextEncryptionKey := util.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
+		plainTextEncryptionKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
 		// pull current secrets
 		secrets, err := util.GetAllEnvironmentVariables("", environmentName)
@@ -191,13 +192,13 @@ var secretsSetCmd = &cobra.Command{
 			value := splitKeyValueFromArg[1]
 
 			hashedKey := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))
-			encryptedKey, err := util.EncryptSymmetric([]byte(key), []byte(plainTextEncryptionKey))
+			encryptedKey, err := crypto.EncryptSymmetric([]byte(key), []byte(plainTextEncryptionKey))
 			if err != nil {
 				log.Errorf("unable to encrypt your secrets [err=%v]", err)
 			}
 
 			hashedValue := fmt.Sprintf("%x", sha256.Sum256([]byte(value)))
-			encryptedValue, err := util.EncryptSymmetric([]byte(value), []byte(plainTextEncryptionKey))
+			encryptedValue, err := crypto.EncryptSymmetric([]byte(value), []byte(plainTextEncryptionKey))
 			if err != nil {
 				log.Errorf("unable to encrypt your secrets [err=%v]", err)
 			}

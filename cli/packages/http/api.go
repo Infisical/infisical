@@ -3,13 +3,13 @@ package http
 import (
 	"fmt"
 
+	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
-	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/go-resty/resty/v2"
 )
 
 func CallBatchModifySecretsByWorkspaceAndEnv(httpClient *resty.Client, request models.BatchModifySecretsByWorkspaceAndEnvRequest) error {
-	endpoint := fmt.Sprintf("%v/v2/secret/batch-modify/workspace/%v/environment/%v", util.INFISICAL_URL, request.WorkspaceId, request.EnvironmentName)
+	endpoint := fmt.Sprintf("%v/v2/secret/batch-modify/workspace/%v/environment/%v", config.INFISICAL_URL, request.WorkspaceId, request.EnvironmentName)
 	response, err := httpClient.
 		R().
 		SetBody(request).
@@ -27,7 +27,7 @@ func CallBatchModifySecretsByWorkspaceAndEnv(httpClient *resty.Client, request m
 }
 
 func CallBatchCreateSecretsByWorkspaceAndEnv(httpClient *resty.Client, request models.BatchCreateSecretsByWorkspaceAndEnvRequest) error {
-	endpoint := fmt.Sprintf("%v/v2/secret/batch-create/workspace/%v/environment/%v", util.INFISICAL_URL, request.WorkspaceId, request.EnvironmentName)
+	endpoint := fmt.Sprintf("%v/v2/secret/batch-create/workspace/%v/environment/%v", config.INFISICAL_URL, request.WorkspaceId, request.EnvironmentName)
 	response, err := httpClient.
 		R().
 		SetBody(request).
@@ -45,7 +45,7 @@ func CallBatchCreateSecretsByWorkspaceAndEnv(httpClient *resty.Client, request m
 }
 
 func CallBatchDeleteSecretsByWorkspaceAndEnv(httpClient *resty.Client, request models.BatchDeleteSecretsBySecretIdsRequest) error {
-	endpoint := fmt.Sprintf("%v/v2/secret/batch/workspace/%v/environment/%v", util.INFISICAL_URL, request.WorkspaceId, request.EnvironmentName)
+	endpoint := fmt.Sprintf("%v/v2/secret/batch/workspace/%v/environment/%v", config.INFISICAL_URL, request.WorkspaceId, request.EnvironmentName)
 	response, err := httpClient.
 		R().
 		SetBody(request).
@@ -63,7 +63,7 @@ func CallBatchDeleteSecretsByWorkspaceAndEnv(httpClient *resty.Client, request m
 }
 
 func CallGetEncryptedWorkspaceKey(httpClient *resty.Client, request models.GetEncryptedWorkspaceKeyRequest) (models.GetEncryptedWorkspaceKeyResponse, error) {
-	endpoint := fmt.Sprintf("%v/v1/key/%v/latest", util.INFISICAL_URL, request.WorkspaceId)
+	endpoint := fmt.Sprintf("%v/v2/workspace/%v/encrypted-key", config.INFISICAL_URL, request.WorkspaceId)
 	var result models.GetEncryptedWorkspaceKeyResponse
 	response, err := httpClient.
 		R().
@@ -81,22 +81,39 @@ func CallGetEncryptedWorkspaceKey(httpClient *resty.Client, request models.GetEn
 	return result, nil
 }
 
-func CallGetEncryptedSecretsByWorkspaceIdAndEnv(httpClient resty.Client, request models.GetSecretsByWorkspaceIdAndEnvironmentRequest) (models.PullSecretsResponse, error) {
-	var pullSecretsRequestResponse models.PullSecretsResponse
+func CallGetServiceTokenDetailsV2(httpClient *resty.Client) (models.GetServiceTokenDetailsResponse, error) {
+	var tokenDetailsResponse models.GetServiceTokenDetailsResponse
 	response, err := httpClient.
 		R().
-		SetQueryParam("environment", request.EnvironmentName).
-		SetQueryParam("channel", "cli").
-		SetResult(&pullSecretsRequestResponse).
-		Get(fmt.Sprintf("%v/v1/secret/%v", util.INFISICAL_URL, request.WorkspaceId))
+		SetResult(&tokenDetailsResponse).
+		Get(fmt.Sprintf("%v/v2/service-token", config.INFISICAL_URL))
 
 	if err != nil {
-		return models.PullSecretsResponse{}, fmt.Errorf("CallGetEncryptedSecretsByWorkspaceIdAndEnv: Unable to complete api request [err=%s]", err)
+		return models.GetServiceTokenDetailsResponse{}, fmt.Errorf("CallGetServiceTokenDetails: Unable to complete api request [err=%s]", err)
 	}
 
 	if response.StatusCode() > 299 {
-		return models.PullSecretsResponse{}, fmt.Errorf("CallGetEncryptedSecretsByWorkspaceIdAndEnv: Unsuccessful response: [response=%s]", response)
+		return models.GetServiceTokenDetailsResponse{}, fmt.Errorf("CallGetServiceTokenDetails: Unsuccessful response: [response=%s]", response)
 	}
 
-	return pullSecretsRequestResponse, nil
+	return tokenDetailsResponse, nil
+}
+
+func CallGetSecretsV2(httpClient *resty.Client, request models.GetEncryptedSecretsV2Request) (models.GetEncryptedSecretsV2Response, error) {
+	var secretsResponse models.GetEncryptedSecretsV2Response
+	response, err := httpClient.
+		R().
+		SetResult(&secretsResponse).
+		SetQueryParam("environment", request.EnvironmentName).
+		Get(fmt.Sprintf("%v/v2/secret/workspace/%v", config.INFISICAL_URL, request.WorkspaceId))
+
+	if err != nil {
+		return models.GetEncryptedSecretsV2Response{}, fmt.Errorf("CallGetSecretsV2: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.StatusCode() > 299 {
+		return models.GetEncryptedSecretsV2Response{}, fmt.Errorf("CallGetSecretsV2: Unsuccessful response: [response=%s]", response)
+	}
+
+	return secretsResponse, nil
 }

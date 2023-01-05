@@ -6,7 +6,7 @@ package cmd
 import (
 	"os"
 
-	"github.com/Infisical/infisical-merge/packages/util"
+	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,7 @@ func Execute() {
 func init() {
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	rootCmd.PersistentFlags().BoolVarP(&debugLogging, "debug", "d", false, "Enable verbose logging")
-	rootCmd.PersistentFlags().StringVar(&util.INFISICAL_URL, "domain", "https://app.infisical.com/api", "Point the CLI to your own backend")
+	rootCmd.PersistentFlags().StringVar(&config.INFISICAL_URL, "domain", "http://localhost:8080/api", "Point the CLI to your own backend")
 	// rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 	// }
 }

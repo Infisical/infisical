@@ -130,7 +130,6 @@ func executeSingleCommandWithEnvs(args []string, secrets []models.SingleEnvironm
 	numberOfSecretsInjected := fmt.Sprintf("\u2713 Injected %v Infisical secrets into your application process successfully", len(secrets))
 	log.Infof("\x1b[%dm%s\x1b[0m", 32, numberOfSecretsInjected)
 	log.Debugf("executing command: %s %s \n", command, strings.Join(argsForCommand, " "))
-	log.Debugln("Secrets injected:", secrets)
 
 	cmd := exec.Command(command, argsForCommand...)
 	cmd.Stdin = os.Stdin
@@ -158,7 +157,6 @@ func executeMultipleCommandWithEnvs(fullCommand string, secrets []models.SingleE
 	numberOfSecretsInjected := fmt.Sprintf("\u2713 Injected %v Infisical secrets into your application process successfully", len(secrets))
 	log.Infof("\x1b[%dm%s\x1b[0m", 32, numberOfSecretsInjected)
 	log.Debugf("executing command: %s %s %s \n", shell[0], shell[1], fullCommand)
-	log.Debugln("Secrets injected:", secrets)
 
 	return execCmd(cmd)
 }

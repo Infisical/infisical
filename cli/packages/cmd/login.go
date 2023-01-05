@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/Infisical/infisical-merge/packages/config"
+	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/srp"
 	"github.com/Infisical/infisical-merge/packages/util"
@@ -76,7 +78,7 @@ var loginCmd = &cobra.Command{
 		paddedPassword := fmt.Sprintf("%032s", password)
 		key := []byte(paddedPassword)
 
-		decryptedPrivateKey, err := util.DecryptSymmetric(key, encryptedPrivateKey, tag, IV)
+		decryptedPrivateKey, err := crypto.DecryptSymmetric(key, encryptedPrivateKey, tag, IV)
 		if err != nil || len(decryptedPrivateKey) == 0 {
 			log.Errorln("There was an issue decrypting your keys")
 			log.Debugln(err)
@@ -178,7 +180,7 @@ func getFreshUserCredentials(email string, password string) (*models.LoginTwoRes
 		R().
 		SetBody(loginOneRequest).
 		SetResult(&loginOneResponseResult).
-		Post(fmt.Sprintf("%v/v1/auth/login1", util.INFISICAL_URL))
+		Post(fmt.Sprintf("%v/v1/auth/login1", config.INFISICAL_URL))
 
 	if err != nil {
 		return nil, err
@@ -214,7 +216,7 @@ func getFreshUserCredentials(email string, password string) (*models.LoginTwoRes
 		R().
 		SetBody(LoginTwoRequest).
 		SetResult(&loginTwoResponseResult).
-		Post(fmt.Sprintf("%v/v1/auth/login2", util.INFISICAL_URL))
+		Post(fmt.Sprintf("%v/v1/auth/login2", config.INFISICAL_URL))
 
 	if err != nil {
 		return nil, err

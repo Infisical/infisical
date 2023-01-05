@@ -14,8 +14,6 @@ const (
 	SECRET_TYPE_SHARED                   = "shared"
 )
 
-var INFISICAL_URL = "https://app.infisical.com/api"
-
 func GetHomeDir() (string, error) {
 	directory, err := os.UserHomeDir()
 	return directory, err
