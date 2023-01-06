@@ -21,6 +21,14 @@ type SingleEnvironmentVariable struct {
 	ID    string `json:"_id"`
 }
 
+type Workspace struct {
+	ID           string `json:"_id"`
+	Name         string `json:"name"`
+	Plan         string `json:"plan,omitempty"`
+	V            int    `json:"__v"`
+	Organization string `json:"organization,omitempty"`
+}
+
 type WorkspaceConfigFile struct {
 	WorkspaceId string `json:"workspaceId"`
 }

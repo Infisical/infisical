@@ -1,9 +1,30 @@
 import { Schema, model, Types } from 'mongoose';
+import {
+	SECRET_SHARED,
+	SECRET_PERSONAL,
+	ENV_DEV,
+	ENV_TESTING,
+	ENV_STAGING,
+	ENV_PROD
+} from '../../variables';
+
+/**
+ * TODO: 
+ * 1. Modify SecretVersion to also contain XX
+ * - type
+ * - user
+ * - environment
+ * 2. Modify SecretSnapshot to point to arrays of SecretVersion
+ */
 
 export interface ISecretVersion {
     _id?: Types.ObjectId;
     secret: Types.ObjectId;
     version: number;
+	workspace: Types.ObjectId; // new
+	type: string; // new
+	user: Types.ObjectId; // new
+	environment: string; // new
     isDeleted: boolean;
     secretKeyCiphertext: string;
 	secretKeyIV: string;
@@ -27,6 +48,26 @@ const secretVersionSchema = new Schema<ISecretVersion>(
             default: 1,
             required: true
         },
+		workspace: {
+			type: Schema.Types.ObjectId,
+			ref: 'Workspace',
+			required: true
+		},
+		type: {
+			type: String,
+			enum: [SECRET_SHARED, SECRET_PERSONAL],
+			required: true
+		},
+		user: {
+			// user associated with the personal secret
+			type: Schema.Types.ObjectId,
+			ref: 'User'
+		},
+		environment: {
+			type: String,
+			enum: [ENV_DEV, ENV_TESTING, ENV_STAGING, ENV_PROD],
+			required: true
+		},
         isDeleted: {
             type: Boolean,
             default: false,

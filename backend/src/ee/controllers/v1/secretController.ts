@@ -18,6 +18,7 @@ import { SecretVersion } from '../../models';
 		secretVersions = await SecretVersion.find({
 			secret: secretId
 		})
+		.sort({ createdAt: -1 })
 		.skip(offset)
 		.limit(limit);
 

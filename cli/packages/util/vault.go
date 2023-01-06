@@ -29,13 +29,13 @@ func GetKeyRing() (keyring.Keyring, error) {
 
 	keyringInstanceConfig := keyring.Config{
 		FilePasswordFunc:               fileKeyringPassphrasePrompt,
-		ServiceName:                    SERVICE_NAME,
-		LibSecretCollectionName:        SERVICE_NAME,
-		KWalletAppID:                   SERVICE_NAME,
-		KWalletFolder:                  SERVICE_NAME,
+		ServiceName:                    KEYRING_SERVICE_NAME,
+		LibSecretCollectionName:        KEYRING_SERVICE_NAME,
+		KWalletAppID:                   KEYRING_SERVICE_NAME,
+		KWalletFolder:                  KEYRING_SERVICE_NAME,
 		KeychainTrustApplication:       true,
-		WinCredPrefix:                  SERVICE_NAME,
-		FileDir:                        fmt.Sprintf("~/%s-file-vault", SERVICE_NAME),
+		WinCredPrefix:                  KEYRING_SERVICE_NAME,
+		FileDir:                        fmt.Sprintf("~/%s-file-vault", KEYRING_SERVICE_NAME),
 		KeychainAccessibleWhenUnlocked: true,
 	}
 

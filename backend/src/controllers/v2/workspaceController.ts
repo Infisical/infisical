@@ -12,10 +12,6 @@ import {
 	ServiceTokenData
 } from '../../models';
 import {
-	createWorkspace as create,
-	deleteWorkspace as deleteWork
-} from '../../helpers/workspace';
-import {
 	v2PushSecrets as push,
 	pullSecrets as pull,
 	reformatPullSecrets
@@ -50,7 +46,6 @@ interface V2PushSecret {
  */
 export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
 	// upload (encrypted) secrets to workspace with id [workspaceId]
-
 	try {
 		let { secrets }: { secrets: V2PushSecret[] } = req.body;
 		const { keys, environment, channel } = req.body;
@@ -70,7 +65,9 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
 			userId: req.user._id,
 			workspaceId,
 			environment,
-			secrets
+			secrets,
+			channel: channel ? channel : 'cli',
+			ipAddress: req.ip
 		});
 
 		await pushKeys({
@@ -136,7 +133,9 @@ export const pullSecrets = async (req: Request, res: Response) => {
 		secrets = await pull({
 			userId,
 			workspaceId,
-			environment
+			environment,
+			channel: channel ? channel : 'cli',
+			ipAddress: req.ip
 		});
 
 		if (channel !== 'cli') {
@@ -196,7 +195,7 @@ export const getWorkspaceServiceTokenData = async (
 ) => {
 	let serviceTokenData;
 	try {
-		const { workspaceId } = req.query;
+		const { workspaceId } = req.params;
 
 		serviceTokenData = await ServiceTokenData
 			.find({

@@ -38,7 +38,7 @@ const NotificationProvider = ({ children }: NotificationProviderProps) => {
   const createNotification = ({
     text,
     type = 'success',
-    timeoutMs = 5000
+    timeoutMs = 4000
   }: Notification) => {
     const doesNotifExist = notifications.some((notif) => notif.text === text);
 

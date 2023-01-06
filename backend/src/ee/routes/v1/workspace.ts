@@ -24,4 +24,35 @@ router.get(
 	workspaceController.getWorkspaceSecretSnapshots
 );
 
+router.get(
+	'/:workspaceId/secret-snapshots/count',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER]
+	}),
+	param('workspaceId').exists().trim(),
+	validateRequest,
+	workspaceController.getWorkspaceSecretSnapshotsCount
+);
+
+router.get(
+	'/:workspaceId/logs',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER]
+	}),
+	param('workspaceId').exists().trim(),
+	query('offset').exists().isInt(),
+	query('limit').exists().isInt(),
+	query('sortBy'),
+	query('userId'),
+	query('actionNames'),
+	validateRequest,
+	workspaceController.getWorkspaceLogs
+);
+
 export default router;
