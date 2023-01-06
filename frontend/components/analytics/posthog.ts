@@ -14,8 +14,6 @@ export const initPostHog = () => {
           api_host: POSTHOG_HOST
         });
       }
-
-      console.log("Outside of posthog")
     }
 
     return posthog;
