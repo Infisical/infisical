@@ -53,9 +53,10 @@ func GetKeyRing() (keyring.Keyring, error) {
 }
 
 func fileKeyringPassphrasePrompt(prompt string) (string, error) {
-	fmt.Println("You may set the `INFISICAL_VAULT_FILE_PASSPHRASE` environment variable to avoid typing password")
 	if password, ok := os.LookupEnv("INFISICAL_VAULT_FILE_PASSPHRASE"); ok {
 		return password, nil
+	} else {
+		fmt.Println("You may set the `INFISICAL_VAULT_FILE_PASSPHRASE` environment variable to avoid typing password")
 	}
 
 	fmt.Fprintf(os.Stderr, "%s:", prompt)
