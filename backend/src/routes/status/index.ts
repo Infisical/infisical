@@ -1,4 +1,4 @@
-import healthCheck from './healthCheck';
+import healthCheck from './status';
 
 export {
   healthCheck
