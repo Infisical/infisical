@@ -4,25 +4,25 @@
   "subscription": "Inscrição",
   "starter": {
     "name": "Iniciante",
-    "price-explanation": "up to 5 team members",
-    "text": "Manage any project with 5 members for free!",
-    "subtext": "$5 per member/month afterwards."
+    "price-explanation": "Até 5 membros da equipe",
+    "text": "Gerencie qualquer projeto com 5 membros gratuitamente!",
+    "subtext": "$5 por membro / mês depois."
   },
   "professional": {
-    "name": "Professional",
-    "price-explanation": "/member/month",
-    "subtext": "Includes unlimited projects & members.",
-    "text": "Keep up with key management as you grow."
+    "name": "Profissional",
+    "price-explanation": "/membro/mês",
+    "subtext": "Inclui projetos e membros ilimitados.",
+    "text": "Acompanhe o gerenciamento de chaves à medida que você cresce."
   },
   "enterprise": {
-    "name": "Enterprise",
-    "text": "Keep up with key management as you grow."
+    "name": "Empreendimento",
+    "text": "Acompanhe o gerenciamento de chaves à medida que você cresce."
   },
-  "current-usage": "Current Usage",
-  "free": "Free",
-  "downgrade": "Downgrade",
-  "upgrade": "Upgrade",
-  "learn-more": "Learn More",
-  "custom-pricing": "Custom Pricing",
-  "schedule-demo": "Schedule a Demo"
+  "current-usage": "Uso atual",
+  "free": "Grátis",
+  "downgrade": "Reduzir",
+  "upgrade": "Melhoria",
+  "learn-more": "Saber Mais",
+  "custom-pricing": "Preço Personalizado",
+  "schedule-demo": "Agende uma Demonstração"
 }
