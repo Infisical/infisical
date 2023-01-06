@@ -77,7 +77,7 @@ const SideBar = ({
   const [overrideEnabled, setOverrideEnabled] = useState(data.map(secret => secret.type).includes("personal"));
   const { t } = useTranslation();
 
-  return <div className='absolute border-l border-mineshaft-500 bg-bunker fixed h-full w-96 top-14 right-0 z-50 shadow-xl flex flex-col justify-between'>
+  return <div className='absolute border-l border-mineshaft-500 bg-bunker fixed h-full w-96 top-14 right-0 z-40 shadow-xl flex flex-col justify-between'>
     {isLoading ? (
       <div className="flex items-center justify-center h-full">
         <Image

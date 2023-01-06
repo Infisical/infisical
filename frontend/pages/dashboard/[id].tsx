@@ -157,7 +157,6 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
-        console.log(1, 'reloaded')
         const tempNumSnapshots = await getProjectSercetSnapshotsCount({ workspaceId: String(router.query.id) })
         setNumSnapshots(tempNumSnapshots);
         const userWorkspaces = await getWorkspaces();
@@ -396,7 +395,7 @@ export default function Dashboard() {
     }
 
     // increasing the number of project commits
-    setNumSnapshots(numSnapshots ?? 0 + 1);
+    setNumSnapshots((numSnapshots ?? 0) + 1);
   };
 
   const addData = (newData: SecretDataProps[]) => {

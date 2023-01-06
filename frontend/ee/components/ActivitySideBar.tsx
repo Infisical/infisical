@@ -132,7 +132,7 @@ const ActivitySideBar = ({
     getLogData();
   }, [currentAction]);
 
-  return <div className={`absolute border-l border-mineshaft-500 ${isLoading ? "bg-bunker-800" : "bg-bunker"} fixed h-full w-96 top-14 right-0 z-50 shadow-xl flex flex-col justify-between`}>
+  return <div className={`absolute border-l border-mineshaft-500 ${isLoading ? "bg-bunker-800" : "bg-bunker"} fixed h-full w-96 top-14 right-0 z-40 shadow-xl flex flex-col justify-between`}>
     {isLoading ? (
       <div className="flex items-center justify-center h-full mb-8">
         <Image
