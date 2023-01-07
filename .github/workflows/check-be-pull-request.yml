@@ -24,7 +24,7 @@ jobs:
           cache: "npm"
           cache-dependency-path: backend/package-lock.json
       - name: 📦 Install dependencies
-        run: npm ci --only-production --ignore-scripts
+        run: npm ci --only-production
         working-directory: backend
       - name: 🧪 Run tests
         run: npm run test:ci

@@ -10,7 +10,7 @@ class Capturer {
   capture(item) {
     if (ENV == "production" && TELEMETRY_CAPTURING_ENABLED) {
       try {
-        api.capture(item);
+        this.api.capture(item);
       } catch (error) {
         console.error("PostHog", error);
       }
@@ -20,7 +20,7 @@ class Capturer {
   identify(id) {
     if (ENV == "production" && TELEMETRY_CAPTURING_ENABLED) {
       try {
-        api.identify(id);
+        this.api.identify(id);
       } catch (error) {
         console.error("PostHog", error);
       }
@@ -29,7 +29,7 @@ class Capturer {
 
 }
 
-class Telemetry {
+export default class Telemetry {
   constructor() {
       if (!Telemetry.instance) {
         Telemetry.instance = new Capturer();
@@ -40,5 +40,3 @@ class Telemetry {
       return Telemetry.instance;
   }
 }
-
-module.exports = Telemetry;

@@ -9,16 +9,10 @@ const INVITED = 'invited';
 // -- organization
 const ACCEPTED = 'accepted';
 
-// -- workspace
-const COMPLETED = 'completed';
-const GRANTED = 'granted';
-
 export {
     OWNER,
     ADMIN,
     MEMBER,
     INVITED,
-    ACCEPTED,
-    COMPLETED,
-    GRANTED
+    ACCEPTED
 }

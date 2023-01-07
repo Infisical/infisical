@@ -25,6 +25,11 @@
     "comments": "Comments & Notes",
     "personal-explanation": "This secret is personal. It is not shared with any of your teammates.",
     "generate-random-hex": "Generate Random Hex",
-    "digits": "digits"
+    "digits": "digits",
+    "delete-key-dialog": {
+      "title": "Delete Key",
+      "confirm-delete-message": "Are you sure you want to delete this secret? This cannot be undone."
+    }
   }
+
 }

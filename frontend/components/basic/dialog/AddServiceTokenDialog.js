@@ -12,6 +12,7 @@ import { envMapping } from "../../../public/data/frequentConstants";
 import {
   decryptAssymmetric,
   encryptAssymmetric,
+  encryptSymmetric,
 } from "../../utilities/cryptography/crypto";
 import Button from "../buttons/Button";
 import InputField from "../InputField";
@@ -25,11 +26,15 @@ const expiryMapping = {
   "12 months": 31104000,
 };
 
+const crypto = require('crypto');
+
 const AddServiceTokenDialog = ({
   isOpen,
   closeModal,
   workspaceId,
   workspaceName,
+  serviceTokens,
+  setServiceTokens
 }) => {
   const [serviceToken, setServiceToken] = useState("");
   const [serviceTokenName, setServiceTokenName] = useState("");
@@ -48,16 +53,14 @@ const AddServiceTokenDialog = ({
       privateKey: localStorage.getItem("PRIVATE_KEY"),
     });
 
-    // generate new public/private key pair
-    const pair = nacl.box.keyPair();
-    const publicKey = nacl.util.encodeBase64(pair.publicKey);
-    const privateKey = nacl.util.encodeBase64(pair.secretKey);
-
-    // encrypt workspace key under newly-generated public key
-    const { ciphertext: encryptedKey, nonce } = encryptAssymmetric({
+    const randomBytes = crypto.randomBytes(16).toString('hex');
+    const {
+      ciphertext,
+      iv,
+      tag,
+    } = encryptSymmetric({
       plaintext: key,
-      publicKey,
-      privateKey,
+      key: randomBytes,
     });
 
     let newServiceToken = await addServiceToken({
@@ -65,13 +68,15 @@ const AddServiceTokenDialog = ({
       workspaceId,
       environment: envMapping[serviceTokenEnv],
       expiresIn: expiryMapping[serviceTokenExpiresIn],
-      publicKey,
-      encryptedKey,
-      nonce,
+      encryptedKey: ciphertext,
+      iv, 
+      tag
     });
+    
+    console.log('newServiceToken', newServiceToken);
 
-    const serviceToken = newServiceToken + "," + privateKey;
-    setServiceToken(serviceToken);
+    setServiceTokens(serviceTokens.concat([newServiceToken.serviceTokenData]));
+    setServiceToken(newServiceToken.serviceToken + "." + randomBytes);
   };
 
   function copyToClipboard() {
@@ -161,7 +166,7 @@ const AddServiceTokenDialog = ({
                           "Production",
                           "Testing",
                         ]}
-                        width="full"
+                        isFull={true}
                         text={`${t("common:environment")}: `}
                       />
                     </div>
@@ -176,7 +181,7 @@ const AddServiceTokenDialog = ({
                           "6 months",
                           "12 months",
                         ]}
-                        width="full"
+                        isFull={true}
                         text={`${t("common:expired-in")}: `}
                       />
                     </div>
@@ -211,7 +216,7 @@ const AddServiceTokenDialog = ({
                       </div>
                     </div>
                     <div className="w-full">
-                      <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400 w-full h-44">
+                      <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400 w-full h-20">
                         <input
                           type="text"
                           value={serviceToken}
@@ -236,7 +241,7 @@ const AddServiceTokenDialog = ({
                             )}
                           </button>
                           <span className="absolute hidden group-hover:flex group-hover:animate-popup duration-300 w-28 -left-8 -top-20 translate-y-full px-3 py-2 bg-chicago-900 rounded-md text-center text-gray-400 text-sm">
-                            {t("common.click-to-copy")}
+                            {t("common:click-to-copy")}
                           </span>
                         </div>
                       </div>

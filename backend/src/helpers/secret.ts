@@ -1,19 +1,24 @@
 import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
 import {
 	Secret,
 	ISecret,
 } from '../models';
 import {
-	EESecretService
+	EESecretService,
+	EELogService
 } from '../ee/services';
 import {
-	SecretVersion
+	IAction
 } from '../ee/models';
-import {
-	takeSecretSnapshotHelper
-} from '../ee/helpers/secret';
-import { decryptSymmetric } from '../utils/crypto';
-import { SECRET_SHARED, SECRET_PERSONAL } from '../variables';
+import { 
+	SECRET_SHARED, 
+	SECRET_PERSONAL,
+	ACTION_ADD_SECRETS,
+	ACTION_UPDATE_SECRETS,
+	ACTION_DELETE_SECRETS,
+	ACTION_READ_SECRETS
+} from '../variables';
 
 interface V1PushSecret {
 	ciphertextKey: string;
@@ -51,8 +56,6 @@ interface Update {
 	[index: string]: any;
 }
 
-type DecryptSecretType = 'text' | 'object' | 'expanded';
-
 /**
  * Push secrets for user with id [userId] to workspace
  * with id [workspaceId] with environment [environment]. Follow steps:
@@ -68,7 +71,7 @@ const v1PushSecrets = async ({
 	userId,
 	workspaceId,
 	environment,
-	secrets
+	secrets,
 }: {
 	userId: string;
 	workspaceId: string;
@@ -78,7 +81,7 @@ const v1PushSecrets = async ({
 	// TODO: clean up function and fix up types
 	try {
 		// construct useful data structures
-		const oldSecrets = await pullSecrets({
+		const oldSecrets = await getSecrets({
 			userId,
 			workspaceId,
 			environment
@@ -101,11 +104,9 @@ const v1PushSecrets = async ({
 			await Secret.deleteMany({
 				_id: { $in: toDelete }
 			});
-			
-			await SecretVersion.updateMany({
-				secret: { $in: toDelete }
-			}, {
-				isDeleted: true
+
+			await EESecretService.markDeletedSecretVersions({
+				secretIds: toDelete
 			});
 		}
 		
@@ -188,6 +189,10 @@ const v1PushSecrets = async ({
 				return ({
 					secret: _id,
 					version: version ? version + 1 : 1,
+					workspace: new Types.ObjectId(workspaceId),
+					type: newSecret.type,
+					user: new Types.ObjectId(userId),
+					environment,
 					isDeleted: false,
 					secretKeyCiphertext: newSecret.ciphertextKey,
 					secretKeyIV: newSecret.ivKey,
@@ -239,6 +244,11 @@ const v1PushSecrets = async ({
 			EESecretService.addSecretVersions({
 				secretVersions: newSecrets.map(({
 					_id,
+					version,
+					workspace,
+					type,
+					user,
+					environment,
 					secretKeyCiphertext,
 					secretKeyIV,
 					secretKeyTag,
@@ -249,7 +259,11 @@ const v1PushSecrets = async ({
 					secretValueHash
 				}) => ({
 					secret: _id,
-					version: 1,
+					version,
+					workspace,
+					type,
+					user,
+					environment,
 					isDeleted: false,
 					secretKeyCiphertext,
 					secretKeyIV,
@@ -284,22 +298,30 @@ const v1PushSecrets = async ({
  * @param {String} obj.workspaceId - id of workspace to push to
  * @param {String} obj.environment - environment for secrets
  * @param {Object[]} obj.secrets - secrets to push
+ * @param {String} obj.channel - channel (web/cli/auto)
+ * @param {String} obj.ipAddress - ip address of request to push secrets
  */
  const v2PushSecrets = async ({
 	userId,
 	workspaceId,
 	environment,
-	secrets
+	secrets,
+	channel,
+	ipAddress
 }: {
 	userId: string;
 	workspaceId: string;
 	environment: string;
 	secrets: V2PushSecret[];
+	channel: string;
+	ipAddress: string;
 }): Promise<void> => {
 	// TODO: clean up function and fix up types
 	try {
+		const actions: IAction[] = [];
+		
 		// construct useful data structures
-		const oldSecrets = await pullSecrets({
+		const oldSecrets = await getSecrets({
 			userId,
 			workspaceId,
 			environment
@@ -322,12 +344,19 @@ const v1PushSecrets = async ({
 			await Secret.deleteMany({
 				_id: { $in: toDelete }
 			});
-			
-			await SecretVersion.updateMany({
-				secret: { $in: toDelete }
-			}, {
-				isDeleted: true
+
+			await EESecretService.markDeletedSecretVersions({
+				secretIds: toDelete
 			});
+			
+			const deleteAction = await EELogService.createActionSecret({
+				name: ACTION_DELETE_SECRETS,
+				userId,
+				workspaceId,
+				secretIds: toDelete
+			});
+
+			deleteAction && actions.push(deleteAction);
 		}
 		
 		const toUpdate = oldSecrets
@@ -348,118 +377,10 @@ const v1PushSecrets = async ({
 				return false;
 			});
 
-		const operations = toUpdate
-			.map((s) => {
-				const {
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash,
-					secretCommentCiphertext,
-					secretCommentIV,
-					secretCommentTag,
-					secretCommentHash,
-				} = newSecretsObj[`${s.type}-${s.secretKeyHash}`];
-
-				const update: Update = {
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash,
-					secretCommentCiphertext,
-					secretCommentIV,
-					secretCommentTag,
-					secretCommentHash,
-				}
-
-				if (!s.version) {
-					// case: (legacy) secret was not versioned
-					update.version = 1;
-				} else {
-					update['$inc'] = {
-						version: 1
-					}
-				}
-
-				if (s.type === SECRET_PERSONAL) {
-					// attach user associated with the personal secret
-					update['user'] = userId;
-				}
-
-				return {
-					updateOne: {
-						filter: {
-							_id: oldSecretsObj[`${s.type}-${s.secretKeyHash}`]._id
-						},
-						update
-					}
-				};
-			});
-		await Secret.bulkWrite(operations as any);
-		
-		// (EE) add secret versions for updated secrets
-		await EESecretService.addSecretVersions({
-			secretVersions: toUpdate.map((s) => {
-				const {
-					secretKeyCiphertext,
-					secretKeyIV,
-					secretKeyTag,
-					secretKeyHash,
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash,
-					secretCommentCiphertext,
-					secretCommentIV,
-					secretCommentTag,
-					secretCommentHash,
-				} = newSecretsObj[`${s.type}-${s.secretKeyHash}`];
-
-				return ({
-					secret: s._id,
-					version: s.version ? s.version + 1 : 1,
-					isDeleted: false,
-					secretKeyCiphertext,
-					secretKeyIV,
-					secretKeyTag,
-					secretKeyHash,
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash
-				})
-			}) 
-		});
-
-		// handle adding new secrets
-		const toAdd = secrets.filter((s) => !(`${s.type}-${s.secretKeyHash}` in oldSecretsObj));
-
-		if (toAdd.length > 0) {
-			// add secrets
-			const newSecrets = await Secret.insertMany(
-				toAdd.map(({
-					secretKeyCiphertext,
-					secretKeyIV,
-					secretKeyTag,
-					secretKeyHash,
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash,
-					secretCommentCiphertext,
-					secretCommentIV,
-					secretCommentTag,
-					secretCommentHash,
-				}, idx) => {
-					const obj: any = {
-						version: 1,
-						workspace: workspaceId,
-						type: toAdd[idx].type,
-						environment,
-						secretKeyCiphertext,
-						secretKeyIV,
-						secretKeyTag,
-						secretKeyHash,
+		if (toUpdate.length > 0) {
+			const operations = toUpdate
+				.map((s) => {
+					const {
 						secretValueCiphertext,
 						secretValueIV,
 						secretValueTag,
@@ -467,49 +388,120 @@ const v1PushSecrets = async ({
 						secretCommentCiphertext,
 						secretCommentIV,
 						secretCommentTag,
-						secretCommentHash
-					};
+						secretCommentHash,
+					} = newSecretsObj[`${s.type}-${s.secretKeyHash}`];
 
-					if (toAdd[idx].type === 'personal') {
-						obj['user' as keyof typeof obj] = userId;
+					const update: Update = {
+						secretValueCiphertext,
+						secretValueIV,
+						secretValueTag,
+						secretValueHash,
+						secretCommentCiphertext,
+						secretCommentIV,
+						secretCommentTag,
+						secretCommentHash,
 					}
 
-					return obj;
-				})
+					if (!s.version) {
+						// case: (legacy) secret was not versioned
+						update.version = 1;
+					} else {
+						update['$inc'] = {
+							version: 1
+						}
+					}
+
+					if (s.type === SECRET_PERSONAL) {
+						// attach user associated with the personal secret
+						update['user'] = userId;
+					}
+
+					return {
+						updateOne: {
+							filter: {
+								_id: oldSecretsObj[`${s.type}-${s.secretKeyHash}`]._id
+							},
+							update
+						}
+					};
+				});
+			await Secret.bulkWrite(operations as any);
+			
+			// (EE) add secret versions for updated secrets
+			await EESecretService.addSecretVersions({
+				secretVersions: toUpdate.map((s) => {
+					return ({
+						...newSecretsObj[`${s.type}-${s.secretKeyHash}`],
+						secret: s._id,
+						version: s.version ? s.version + 1 : 1,
+						workspace: new Types.ObjectId(workspaceId),
+						user: s.user,
+						environment: s.environment,
+						isDeleted: false
+					})
+				}) 
+			});
+
+			const updateAction = await EELogService.createActionSecret({
+				name: ACTION_UPDATE_SECRETS,
+				userId,
+				workspaceId,
+				secretIds: toUpdate.map((u) => u._id)
+			});
+
+			updateAction && actions.push(updateAction);
+		}
+
+		// handle adding new secrets
+		const toAdd = secrets.filter((s) => !(`${s.type}-${s.secretKeyHash}` in oldSecretsObj));
+
+		if (toAdd.length > 0) {
+			// add secrets
+			const newSecrets = await Secret.insertMany(
+				toAdd.map((s, idx) => ({
+					...s,
+					version: 1,
+					workspace: workspaceId,
+					type: toAdd[idx].type,
+					environment,
+					...( toAdd[idx].type === 'personal' ? { user: userId } : {})
+				}))
 			);
 
 			// (EE) add secret versions for new secrets
 			EESecretService.addSecretVersions({
-				secretVersions: newSecrets.map(({
-					_id,
-					secretKeyCiphertext,
-					secretKeyIV,
-					secretKeyTag,
-					secretKeyHash,
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash
-				}) => ({
-					secret: _id,
-					version: 1,
-					isDeleted: false,
-					secretKeyCiphertext,
-					secretKeyIV,
-					secretKeyTag,
-					secretKeyHash,
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash
-				}))
+				secretVersions: newSecrets.map((secretDocument) => { 
+					return {
+						...secretDocument.toObject(),
+						secret: secretDocument._id,
+						isDeleted: false
+				}})
 			});
+
+			const addAction = await EELogService.createActionSecret({
+				name: ACTION_ADD_SECRETS,
+				userId,
+				workspaceId,
+				secretIds: newSecrets.map((n) => n._id)
+			});
+			addAction && actions.push(addAction);
 		}
 		
 		// (EE) take a secret snapshot
 		await EESecretService.takeSecretSnapshot({
 			workspaceId
 		})
+
+		// (EE) create (audit) log
+		if (actions.length > 0) {
+			await EELogService.createLog({
+				userId,
+				workspaceId,
+				actions,
+				channel,
+				ipAddress
+			});
+		}
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
@@ -518,15 +510,14 @@ const v1PushSecrets = async ({
 };
 
 /**
- * Pull secrets for user with id [userId] for workspace
+ * Get secrets for user with id [userId] for workspace
  * with id [workspaceId] with environment [environment]
  * @param {Object} obj
  * @param {String} obj.userId -id of user to pull secrets for
  * @param {String} obj.workspaceId - id of workspace to pull from
  * @param {String} obj.environment - environment for secrets
- *
  */
-const pullSecrets = async ({
+ const getSecrets = async ({
 	userId,
 	workspaceId,
 	environment
@@ -564,8 +555,63 @@ const pullSecrets = async ({
 };
 
 /**
+ * Pull secrets for user with id [userId] for workspace
+ * with id [workspaceId] with environment [environment]
+ * @param {Object} obj
+ * @param {String} obj.userId -id of user to pull secrets for
+ * @param {String} obj.workspaceId - id of workspace to pull from
+ * @param {String} obj.environment - environment for secrets
+ * @param {String} obj.channel - channel (web/cli/auto)
+ * @param {String} obj.ipAddress - ip address of request to push secrets
+ */
+const pullSecrets = async ({
+	userId,
+	workspaceId,
+	environment,
+	channel,
+	ipAddress
+}: {
+	userId: string;
+	workspaceId: string;
+	environment: string;
+	channel: string;
+	ipAddress: string;
+}): Promise<ISecret[]> => {
+	let secrets: any;
+	
+	try {
+		secrets = await getSecrets({
+			userId,
+			workspaceId,
+			environment
+		})
+
+		const readAction = await EELogService.createActionSecret({
+			name: ACTION_READ_SECRETS,
+			userId,
+			workspaceId,
+			secretIds: secrets.map((n: any) => n._id)
+		});
+
+		readAction && await EELogService.createLog({
+			userId,
+			workspaceId,
+			actions: [readAction],
+			channel,
+			ipAddress
+		});
+	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
+		throw new Error('Failed to pull shared and personal secrets');
+	}
+
+	return secrets;
+};
+
+/**
  * Reformat output of pullSecrets() to be compatible with how existing
- * clients handle secrets
+ * web client handle secrets
  * @param {Object} obj
  * @param {Object} obj.secrets
  */

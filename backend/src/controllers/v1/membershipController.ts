@@ -7,7 +7,7 @@ import {
 } from '../../helpers/membership';
 import { sendMail } from '../../helpers/nodemailer';
 import { SITE_URL } from '../../config';
-import { ADMIN, MEMBER, GRANTED, ACCEPTED } from '../../variables';
+import { ADMIN, MEMBER, ACCEPTED } from '../../variables';
 
 /**
  * Check that user is a member of workspace with id [workspaceId]
@@ -175,8 +175,7 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
 		// already a member of the workspace
 		const inviteeMembership = await Membership.findOne({
 			user: invitee._id,
-			workspace: workspaceId,
-			status: GRANTED
+			workspace: workspaceId
 		});
 
 		if (inviteeMembership)
@@ -205,8 +204,7 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
 		const m = await new Membership({
 			user: invitee._id,
 			workspace: workspaceId,
-			role: MEMBER,
-			status: GRANTED
+			role: MEMBER
 		}).save();
 
 		await sendMail({

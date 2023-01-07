@@ -3,10 +3,11 @@ import Image from "next/image";
 import { useTranslation } from "next-i18next";
 import { faUpload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { parseDocument, Scalar, YAMLMap } from 'yaml';
 
 import Button from "../basic/buttons/Button";
 import Error from "../basic/Error";
-import parse from "../utilities/file";
+import { parseDotEnv } from '../utilities/parseDotEnv';
 import guidGenerator from "../utilities/randomId";
 
 interface DropZoneProps {
@@ -51,6 +52,53 @@ const DropZone = ({
 
   const [loading, setLoading] = useState(false);
 
+  const getSecrets = (file: ArrayBuffer, fileType: string) => {
+    let secrets;
+    switch (fileType) {
+      case 'env': {
+        const keyPairs = parseDotEnv(file);
+        secrets = Object.keys(keyPairs).map((key, index) => {
+          return {
+            id: guidGenerator(),
+            pos: numCurrentRows + index,
+            key: key,
+            value: keyPairs[key as keyof typeof keyPairs].value,
+            comment: keyPairs[key as keyof typeof keyPairs].comments.join('\n'),
+            type: 'shared',
+          };
+        });
+        break;
+      }
+      case 'yml': {
+        const parsedFile = parseDocument(file.toString());
+        const keyPairs = parsedFile.contents!.toJSON();
+
+        secrets = Object.keys(keyPairs).map((key, index) => {
+          const fileContent = parsedFile.contents as YAMLMap<Scalar, Scalar>;
+          const comment =
+            fileContent!.items
+              .find((item) => item.key.value === key)
+              ?.key?.commentBefore?.split('\n')
+              .map((comment) => comment.trim())
+              .join('\n') ?? '';
+          return {
+            id: guidGenerator(),
+            pos: numCurrentRows + index,
+            key: key,
+            value: keyPairs[key as keyof typeof keyPairs]?.toString() ?? '',
+            comment,
+            type: 'shared',
+          };
+        });
+        break;
+      }
+      default:
+        secrets = '';
+        break;
+    }
+    return secrets;
+  };
+
   // This function function immediately parses the file after it is dropped
   const handleDrop = async (e: DragEvent) => {
     setLoading(true);
@@ -61,20 +109,12 @@ const DropZone = ({
 
     const file = e.dataTransfer.files[0];
     const reader = new FileReader();
+    const fileType = file.name.split('.')[1];
 
     reader.onload = (event) => {
       if (event.target === null || event.target.result === null) return;
       // parse function's argument looks like to be ArrayBuffer
-      const keyPairs = parse(event.target.result as Buffer);
-      const newData = Object.keys(keyPairs).map((key, index) => {
-        return {
-          id: guidGenerator(),
-          pos: numCurrentRows + index,
-          key: key,
-          value: keyPairs[key as keyof typeof keyPairs],
-          type: "shared",
-        };
-      });
+      const newData = getSecrets(event.target.result as ArrayBuffer, fileType);
       setData(newData);
       setButtonReady(true);
     };
@@ -95,25 +135,14 @@ const DropZone = ({
     setTimeout(() => setLoading(false), 5000);
     if (e.currentTarget.files === null) return;
     const file = e.currentTarget.files[0];
+    const fileType = file.name.split('.')[1];
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target === null || event.target.result === null) return;
       const { result } = event.target;
-      if (typeof result === "string") {
-        const newData = result
-          .split("\n")
-          .map((line: string, index: number) => {
-            return {
-              id: guidGenerator(),
-              pos: numCurrentRows + index,
-              key: line.split("=")[0],
-              value: line.split("=").slice(1, line.split("=").length).join("="),
-              type: "shared",
-            };
-          });
-        setData(newData);
-        setButtonReady(true);
-      }
+      const newData = getSecrets(result as ArrayBuffer, fileType);
+      setData(newData);
+      setButtonReady(true);
     };
     reader.readAsText(file);
   };
@@ -139,7 +168,7 @@ const DropZone = ({
         id="fileSelect"
         type="file"
         className="opacity-0 absolute w-full h-full"
-        accept=".txt,.env"
+        accept=".txt,.env,.yml"
         onChange={handleFileSelect}
       />
       {errorDragAndDrop ? (
@@ -176,7 +205,7 @@ const DropZone = ({
         id="fileSelect"
         type="file"
         className="opacity-0 absolute w-full h-full"
-        accept=".txt,.env"
+        accept=".txt,.env,.yml"
         onChange={handleFileSelect}
       />
       <div className="flex flex-row w-full items-center justify-center mb-6 mt-5">

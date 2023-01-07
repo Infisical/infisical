@@ -29,13 +29,13 @@ func GetKeyRing() (keyring.Keyring, error) {
 
 	keyringInstanceConfig := keyring.Config{
 		FilePasswordFunc:               fileKeyringPassphrasePrompt,
-		ServiceName:                    SERVICE_NAME,
-		LibSecretCollectionName:        SERVICE_NAME,
-		KWalletAppID:                   SERVICE_NAME,
-		KWalletFolder:                  SERVICE_NAME,
+		ServiceName:                    KEYRING_SERVICE_NAME,
+		LibSecretCollectionName:        KEYRING_SERVICE_NAME,
+		KWalletAppID:                   KEYRING_SERVICE_NAME,
+		KWalletFolder:                  KEYRING_SERVICE_NAME,
 		KeychainTrustApplication:       true,
-		WinCredPrefix:                  SERVICE_NAME,
-		FileDir:                        fmt.Sprintf("~/%s-file-vault", SERVICE_NAME),
+		WinCredPrefix:                  KEYRING_SERVICE_NAME,
+		FileDir:                        fmt.Sprintf("~/%s-file-vault", KEYRING_SERVICE_NAME),
 		KeychainAccessibleWhenUnlocked: true,
 	}
 
@@ -55,12 +55,15 @@ func GetKeyRing() (keyring.Keyring, error) {
 func fileKeyringPassphrasePrompt(prompt string) (string, error) {
 	if password, ok := os.LookupEnv("INFISICAL_VAULT_FILE_PASSPHRASE"); ok {
 		return password, nil
+	} else {
+		fmt.Println("You may set the `INFISICAL_VAULT_FILE_PASSPHRASE` environment variable to avoid typing password")
 	}
 
-	fmt.Fprintf(os.Stderr, "%s: ", prompt)
+	fmt.Fprintf(os.Stderr, "%s:", prompt)
 	b, err := term.ReadPassword(int(os.Stdin.Fd()))
 	if err != nil {
 		return "", err
 	}
+	fmt.Println("")
 	return string(b), nil
 }

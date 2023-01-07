@@ -7,7 +7,9 @@ import { membershipOrgController } from '../../controllers/v1';
 router.post(
 	// TODO
 	'/membershipOrg/:membershipOrgId/change-role',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	param('membershipOrgId'),
 	validateRequest,
 	membershipOrgController.changeMembershipOrgRole
@@ -15,7 +17,9 @@ router.post(
 
 router.delete(
 	'/:membershipOrgId',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	param('membershipOrgId').exists().trim(),
 	validateRequest,
 	membershipOrgController.deleteMembershipOrg

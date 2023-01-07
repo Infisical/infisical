@@ -6,7 +6,9 @@ import { membershipOrgController } from '../../controllers/v1';
 
 router.post(
 	'/signup',
-	requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
 	body('inviteeEmail').exists().trim().notEmpty().isEmail(),
 	body('organizationId').exists().trim().notEmpty(),
 	validateRequest,

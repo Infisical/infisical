@@ -11,7 +11,7 @@ export interface IUser {
 	tag?: string;
 	salt?: string;
 	verifier?: string;
-	refreshVersion?: Number;
+	refreshVersion?: number;
 }
 
 const userSchema = new Schema<IUser>(
@@ -52,7 +52,8 @@ const userSchema = new Schema<IUser>(
 		},
 		refreshVersion: {
 			type: Number,
-			default: 0
+			default: 0,
+			select: false
 		}
 	},
 	{

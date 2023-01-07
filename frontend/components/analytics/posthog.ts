@@ -5,14 +5,19 @@ import posthog from 'posthog-js';
 import { ENV, POSTHOG_API_KEY, POSTHOG_HOST } from '../utilities/config';
 
 export const initPostHog = () => {
-  if (typeof window !== 'undefined') {
-    // @ts-ignore
-    if (ENV == 'production' && TELEMETRY_CAPTURING_ENABLED) {
-      posthog.init(POSTHOG_API_KEY, {
-        api_host: POSTHOG_HOST
-      });
+  try {
+    if (typeof window !== 'undefined') {
+      // @ts-ignore
+      if (ENV == 'production' && TELEMETRY_CAPTURING_ENABLED) {
+        console.log("Outside of posthog", "POSTHOG_API_KEY", POSTHOG_API_KEY, "POSTHOG_HOST", POSTHOG_HOST)
+        posthog.init(POSTHOG_API_KEY, {
+          api_host: POSTHOG_HOST
+        });
+      }
     }
-  }
 
-  return posthog;
+    return posthog;
+  } catch (e) {
+    console.log("posthog err", e)
+  }
 };

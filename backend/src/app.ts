@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { patchRouterParam } = require('./utils/patchAsyncRoutes');
 
-import express from 'express';
+import express, { Request, Response } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -13,7 +13,9 @@ import { apiLimiter } from './helpers/rateLimiter';
 
 import {
   workspace as eeWorkspaceRouter,
-  secret as eeSecretRouter
+  secret as eeSecretRouter,
+  secretSnapshot as eeSecretSnapshotRouter,
+  action as eeActionRouter
 } from './ee/routes/v1';
 import {
   signup as v1SignupRouter,
@@ -36,8 +38,12 @@ import {
 } from './routes/v1';
 import {
   secret as v2SecretRouter,
-  workspace as v2WorkspaceRouter
+  workspace as v2WorkspaceRouter,
+  serviceTokenData as v2ServiceTokenDataRouter,
+  apiKeyData as v2APIKeyDataRouter,
 } from './routes/v2';
+
+import { healthCheck } from './routes/status';
 
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
@@ -68,7 +74,9 @@ if (NODE_ENV === 'production') {
 
 // (EE) routes
 app.use('/api/v1/secret', eeSecretRouter);
+app.use('/api/v1/secret-snapshot', eeSecretSnapshotRouter);
 app.use('/api/v1/workspace', eeWorkspaceRouter);
+app.use('/api/v1/action', eeActionRouter);
 
 // v1 routes
 app.use('/api/v1/signup', v1SignupRouter);
@@ -83,7 +91,7 @@ app.use('/api/v1/membership', v1MembershipRouter);
 app.use('/api/v1/key', v1KeyRouter);
 app.use('/api/v1/invite-org', v1InviteOrgRouter);
 app.use('/api/v1/secret', v1SecretRouter);
-app.use('/api/v1/service-token', v1ServiceTokenRouter);
+app.use('/api/v1/service-token', v1ServiceTokenRouter); // deprecate
 app.use('/api/v1/password', v1PasswordRouter);
 app.use('/api/v1/stripe', v1StripeRouter);
 app.use('/api/v1/integration', v1IntegrationRouter);
@@ -92,12 +100,17 @@ app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
 // v2 routes
 app.use('/api/v2/workspace', v2WorkspaceRouter);
 app.use('/api/v2/secret', v2SecretRouter);
+app.use('/api/v2/service-token', v2ServiceTokenDataRouter);
+app.use('/api/v2/api-key-data', v2APIKeyDataRouter);
 
+
+// Server status
+app.use('/api', healthCheck)
 
 //* Handle unrouted requests and respond with proper error message as well as status code
-app.use((req, res, next)=>{
-  if(res.headersSent) return next();
-  next(RouteNotFoundError({message: `The requested source '(${req.method})${req.url}' was not found`}))
+app.use((req, res, next) => {
+  if (res.headersSent) return next();
+  next(RouteNotFoundError({ message: `The requested source '(${req.method})${req.url}' was not found` }))
 })
 
 //* Error Handling Middleware (must be after all routing logic)
