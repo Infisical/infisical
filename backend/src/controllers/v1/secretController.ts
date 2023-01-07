@@ -123,7 +123,9 @@ export const pullSecrets = async (req: Request, res: Response) => {
 		secrets = await pull({
 			userId: req.user._id.toString(),
 			workspaceId,
-			environment
+			environment,
+			channel: channel ? channel : 'cli',
+			ipAddress: req.ip
 		});
 
 		key = await Key.findOne({
@@ -188,7 +190,9 @@ export const pullSecretsServiceToken = async (req: Request, res: Response) => {
 		secrets = await pull({
 			userId: req.serviceToken.user._id.toString(),
 			workspaceId,
-			environment
+			environment,
+			channel: 'cli',
+			ipAddress: req.ip
 		});
 
 		key = {

@@ -5,16 +5,17 @@ import {
 	requireIntegrationAuth,
 	validateRequest
 } from '../../middleware';
-import { ADMIN, MEMBER, GRANTED } from '../../variables';
+import { ADMIN, MEMBER } from '../../variables';
 import { body, param } from 'express-validator';
 import { integrationController } from '../../controllers/v1';
 
 router.patch(
 	'/:integrationId',
-	requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
 	requireIntegrationAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [GRANTED]
+		acceptedRoles: [ADMIN, MEMBER]
 	}),
 	param('integrationId').exists().trim(),
 	body('app').exists().trim(),
@@ -29,10 +30,11 @@ router.patch(
 
 router.delete(
 	'/:integrationId',
-	requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
 	requireIntegrationAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [GRANTED]
+		acceptedRoles: [ADMIN, MEMBER]
 	}),
 	param('integrationId').exists().trim(),
 	validateRequest,

@@ -1,5 +1,6 @@
 import React from "react";
 import Image from "next/image";
+
 import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
 export default function NoProjects() {

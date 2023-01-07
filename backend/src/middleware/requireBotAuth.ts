@@ -7,15 +7,13 @@ type req = 'params' | 'body' | 'query';
 
 const requireBotAuth = ({
     acceptedRoles,
-    acceptedStatuses,
     location = 'params'
 }: {
     acceptedRoles: string[];
-    acceptedStatuses: string[];
     location?: req;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
-        const bot = await Bot.findOne({ _id: req[location].botId });
+        const bot = await Bot.findById(req[location].botId);
         
         if (!bot) {
             return next(AccountNotFoundError({message: 'Failed to locate Bot account'}))
@@ -24,8 +22,7 @@ const requireBotAuth = ({
         await validateMembership({
             userId: req.user._id.toString(),
             workspaceId: bot.workspace.toString(),
-            acceptedRoles,
-            acceptedStatuses
+            acceptedRoles
         });
         
         req.bot = bot;

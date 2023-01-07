@@ -6,7 +6,9 @@ import { membershipController } from '../../controllers/v1';
 
 router.get( // used for CLI (deprecate)
 	'/:workspaceId/connect',
-	requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
 	param('workspaceId').exists().trim(),
 	validateRequest,
 	membershipController.validateMembership
@@ -14,7 +16,9 @@ router.get( // used for CLI (deprecate)
 
 router.delete(
 	'/:membershipId',
-	requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
 	param('membershipId').exists().trim(),
 	validateRequest,
 	membershipController.deleteMembership
@@ -22,7 +26,9 @@ router.delete(
 
 router.post(
 	'/:membershipId/change-role',
-	requireAuth,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
 	body('role').exists().trim(),
 	validateRequest,
 	membershipController.changeMembershipRole

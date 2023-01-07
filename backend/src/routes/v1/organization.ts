@@ -11,13 +11,17 @@ import { organizationController } from '../../controllers/v1';
 
 router.get(
 	'/',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	organizationController.getOrganizations
 );
 
 router.post( // not used on frontend
 	'/',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	body('organizationName').exists().trim().notEmpty(),
 	validateRequest,
 	organizationController.createOrganization
@@ -25,7 +29,9 @@ router.post( // not used on frontend
 
 router.get(
 	'/:organizationId',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
 		acceptedStatuses: [ACCEPTED]
@@ -37,7 +43,9 @@ router.get(
 
 router.get(
 	'/:organizationId/users',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
 		acceptedStatuses: [ACCEPTED]
@@ -49,7 +57,9 @@ router.get(
 
 router.get(
 	'/:organizationId/my-workspaces',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
 		acceptedStatuses: [ACCEPTED]
@@ -61,7 +71,9 @@ router.get(
 
 router.patch(
 	'/:organizationId/name',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
 		acceptedStatuses: [ACCEPTED]
@@ -74,7 +86,9 @@ router.patch(
 
 router.get(
 	'/:organizationId/incidentContactOrg',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
 		acceptedStatuses: [ACCEPTED]
@@ -86,7 +100,9 @@ router.get(
 
 router.post(
 	'/:organizationId/incidentContactOrg',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
 		acceptedStatuses: [ACCEPTED]
@@ -99,7 +115,9 @@ router.post(
 
 router.delete(
 	'/:organizationId/incidentContactOrg',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
 		acceptedStatuses: [ACCEPTED]
@@ -112,7 +130,9 @@ router.delete(
 
 router.post(
 	'/:organizationId/customer-portal-session',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
 		acceptedStatuses: [ACCEPTED]
@@ -124,7 +144,9 @@ router.post(
 
 router.get(
 	'/:organizationId/subscriptions',
-	requireAuth,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
 	requireOrganizationAuth({
 		acceptedRoles: [OWNER, ADMIN, MEMBER],
 		acceptedStatuses: [ACCEPTED]

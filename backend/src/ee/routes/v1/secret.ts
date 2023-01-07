@@ -2,19 +2,20 @@ import express from 'express';
 const router = express.Router();
 import {
     requireAuth,
-    requireWorkspaceAuth,
+	requireSecretAuth,
     validateRequest
 } from '../../../middleware';
-import { body, query, param } from 'express-validator';
+import { query, param } from 'express-validator';
 import { secretController } from '../../controllers/v1';
-import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../../variables';
+import { ADMIN, MEMBER } from '../../../variables';
 
 router.get(
 	'/:secretId/secret-versions',
-	requireAuth,
-	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		acceptedStatuses: [COMPLETED, GRANTED]
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireSecretAuth({
+		acceptedRoles: [ADMIN, MEMBER]
 	}),
 	param('secretId').exists().trim(),
 	query('offset').exists().isInt(),

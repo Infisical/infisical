@@ -8,13 +8,14 @@ import {
 	IntegrationAuth,
 	IUser,
 	ServiceToken,
+	ServiceTokenData
 } from '../../models';
 import {
 	createWorkspace as create,
 	deleteWorkspace as deleteWork
 } from '../../helpers/workspace';
 import { addMemberships } from '../../helpers/membership';
-import { ADMIN, COMPLETED, GRANTED } from '../../variables';
+import { ADMIN } from '../../variables';
 
 /**
  * Return public keys of members of workspace with id [workspaceId]
@@ -32,13 +33,12 @@ export const getWorkspacePublicKeys = async (req: Request, res: Response) => {
 				workspace: workspaceId
 			}).populate<{ user: IUser }>('user', 'publicKey')
 		)
-			.filter((m) => m.status === COMPLETED || m.status === GRANTED)
-			.map((member) => {
-				return {
-					publicKey: member.user.publicKey,
-					userId: member.user._id
-				};
-			});
+		.map((member) => {
+			return {
+				publicKey: member.user.publicKey,
+				userId: member.user._id
+			};
+		});
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
@@ -168,8 +168,7 @@ export const createWorkspace = async (req: Request, res: Response) => {
 		await addMemberships({
 			userIds: [req.user._id],
 			workspaceId: workspace._id.toString(),
-			roles: [ADMIN],
-			statuses: [GRANTED]
+			roles: [ADMIN]
 		});
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });

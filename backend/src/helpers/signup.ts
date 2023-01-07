@@ -5,7 +5,7 @@ import { createOrganization } from './organization';
 import { addMembershipsOrg } from './membershipOrg';
 import { createWorkspace } from './workspace';
 import { addMemberships } from './membership';
-import { OWNER, ADMIN, ACCEPTED, GRANTED } from '../variables';
+import { OWNER, ADMIN, ACCEPTED } from '../variables';
 import { sendMail } from '../helpers/nodemailer';
 
 /**
@@ -113,8 +113,7 @@ const initializeDefaultOrg = async ({
 		await addMemberships({
 			userIds: [user._id.toString()],
 			workspaceId: workspace._id.toString(),
-			roles: [ADMIN],
-			statuses: [GRANTED]
+			roles: [ADMIN]
 		});
 	} catch (err) {
 		throw new Error('Failed to initialize default organization and workspace');

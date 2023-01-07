@@ -8,11 +8,11 @@ import Button from "~/components/basic/buttons/Button";
 import InputField from "~/components/basic/InputField";
 import passwordCheck from "~/components/utilities/checks/PasswordCheck";
 import Aes256Gcm from "~/components/utilities/cryptography/aes-256-gcm";
+import { getTranslatedStaticProps } from "~/components/utilities/withTranslateProps";
 
 import EmailVerifyOnPasswordReset from "./api/auth/EmailVerifyOnPasswordReset";
 import getBackupEncryptedPrivateKey from "./api/auth/getBackupEncryptedPrivateKey";
 import resetPasswordOnAccountRecovery from "./api/auth/resetPasswordOnAccountRecovery";
-import { getTranslatedStaticProps } from "~/components/utilities/withTranslateProps";
 
 const queryString = require("query-string");
 const nacl = require("tweetnacl");

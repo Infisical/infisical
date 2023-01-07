@@ -11,7 +11,6 @@ import { JWT_SERVICE_SECRET } from '../../config';
  * @returns
  */
 export const getServiceToken = async (req: Request, res: Response) => {
-	// get service token
 	return res.status(200).send({
 		serviceToken: req.serviceToken
 	});

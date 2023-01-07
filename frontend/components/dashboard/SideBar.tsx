@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Image from 'next/image';
 import { useTranslation } from "next-i18next";
 import { faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -40,6 +41,7 @@ interface SideBarProps {
   savePush: () => void;
   sharedToHide: string[];
   setSharedToHide: (values: string[]) => void;
+  deleteRow: any;
 }
 
 /**
@@ -54,6 +56,7 @@ interface SideBarProps {
  * @param {function} obj.savePush - save changes andp ush secrets
  * @param {string[]} obj.sharedToHide - an array of shared secrets that we want to hide visually because they are overriden. 
  * @param {function} obj.setSharedToHide - a function that updates the array of secrets that we want to hide visually
+ * @param {function} obj.deleteRow - a function to delete a certain keyPair
  * @returns the sidebar with 'secret's settings'
  */
 const SideBar = ({ 
@@ -67,93 +70,97 @@ const SideBar = ({
   buttonReady, 
   savePush,
   sharedToHide,
-  setSharedToHide 
+  setSharedToHide,
+  deleteRow
 }: SideBarProps) => {
+  const [isLoading, setIsLoading] = useState(false);
   const [overrideEnabled, setOverrideEnabled] = useState(data.map(secret => secret.type).includes("personal"));
   const { t } = useTranslation();
 
-  return <div className='absolute border-l border-mineshaft-500 bg-bunker fixed h-full w-96 top-14 right-0 z-50 shadow-xl flex flex-col justify-between'>
-    <div className='h-min overflow-y-auto'>
-      <div className="flex flex-row px-4 py-3 border-b border-mineshaft-500 justify-between items-center">
-        <p className="font-semibold text-lg text-bunker-200">{t("dashboard:sidebar.secret")}</p>
-        <div className='p-1' onClick={() => toggleSidebar("None")}>
-          <FontAwesomeIcon icon={faX} className='w-4 h-4 text-bunker-300 cursor-pointer'/>
+  return <div className='absolute border-l border-mineshaft-500 bg-bunker fixed h-full w-96 top-14 right-0 z-40 shadow-xl flex flex-col justify-between'>
+    {isLoading ? (
+      <div className="flex items-center justify-center h-full">
+        <Image
+          src="/images/loading/loading.gif"
+          height={60}
+          width={100}
+          alt="infisical loading indicator"
+        ></Image>
+      </div> 
+      ) : (
+      <div className='h-min overflow-y-auto'>
+        <div className="flex flex-row px-4 py-3 border-b border-mineshaft-500 justify-between items-center">
+          <p className="font-semibold text-lg text-bunker-200">{t("dashboard:sidebar.secret")}</p>
+          <div className='p-1' onClick={() => toggleSidebar("None")}>
+            <FontAwesomeIcon icon={faX} className='w-4 h-4 text-bunker-300 cursor-pointer'/>
+          </div>
         </div>
-      </div>
-      <div className='mt-4 px-4 pointer-events-none'>
-        <p className='text-sm text-bunker-300'>{t("dashboard:sidebar.key")}</p>
-        <DashboardInputField
-          onChangeHandler={modifyKey}
-          type="varName"
-          position={data[0]?.pos}
-          value={data[0]?.key}
-          isDuplicate={false}
-          blurred={false}
-        />
-      </div>
-      {data.filter(secret => secret.type == "shared")[0]?.value 
-        ? <div className={`relative mt-2 px-4 ${overrideEnabled && "opacity-40 pointer-events-none"} duration-200`}>
-        <p className='text-sm text-bunker-300'>{t("dashboard:sidebar.value")}</p>
-        <DashboardInputField
-          onChangeHandler={modifyValue}
-          type="value"
-          position={data.filter(secret => secret.type == "shared")[0]?.pos}
-          value={data.filter(secret => secret.type == "shared")[0]?.value}
-          isDuplicate={false}
-          blurred={true}     
-        />
-        <div className='absolute bg-bunker-800 right-[1.07rem] top-[1.6rem] z-50'>
-          <GenerateSecretMenu modifyValue={modifyValue} position={data.filter(secret => secret.type == "shared")[0]?.pos} />
-        </div>
-      </div>
-        : <div className='px-4 text-sm text-bunker-300 pt-4'>
-          <span className='py-0.5 px-1 rounded-md bg-primary-200/10 mr-1'>{t("common:note")}:</span>
-          {t("dashboard:sidebar.personal-explanation")}
-        </div>}
-      <div className='mt-4 px-4'>
-        {data.filter(secret => secret.type == "shared")[0]?.value &&
-        <div className='flex flex-row items-center justify-between my-2 pl-1 pr-2'>
-          <p className='text-sm text-bunker-300'>{t("dashboard:sidebar.override")}</p>
-          <Toggle 
-            enabled={overrideEnabled} 
-            setEnabled={setOverrideEnabled} 
-            addOverride={addOverride} 
-            keyName={data[0]?.key}
-            value={data[0]?.value}
-            pos={data[0]?.pos}
-            id={data[0]?.id}
-            comment={data[0]?.comment}
-            deleteOverride={deleteOverride}
-            sharedToHide={sharedToHide}
-            setSharedToHide={setSharedToHide}
+        <div className='mt-4 px-4 pointer-events-none'>
+          <p className='text-sm text-bunker-300'>{t("dashboard:sidebar.key")}</p>
+          <DashboardInputField
+            onChangeHandler={modifyKey}
+            type="varName"
+            position={data[0]?.pos}
+            value={data[0]?.key}
+            isDuplicate={false}
+            blurred={false}
           />
-        </div>}
-        <div className={`relative ${!overrideEnabled && "opacity-40 pointer-events-none"} duration-200`}>
+        </div>
+        {data.filter(secret => secret.type == "shared")[0]?.value 
+          ? <div className={`relative mt-2 px-4 ${overrideEnabled && "opacity-40 pointer-events-none"} duration-200`}>
+          <p className='text-sm text-bunker-300'>{t("dashboard:sidebar.value")}</p>
           <DashboardInputField
             onChangeHandler={modifyValue}
             type="value"
-            position={overrideEnabled ? data.filter(secret => secret.type == "personal")[0]?.pos : data[0]?.pos}
-            value={overrideEnabled ? data.filter(secret => secret.type == "personal")[0]?.value : data[0]?.value}
+            position={data.filter(secret => secret.type == "shared")[0]?.pos}
+            value={data.filter(secret => secret.type == "shared")[0]?.value}
             isDuplicate={false}
-            blurred={true}
+            blurred={true}     
           />
-          <div className='absolute right-[0.57rem] top-[0.3rem] z-50'>
-            <GenerateSecretMenu modifyValue={modifyValue} position={overrideEnabled ? data.filter(secret => secret.type == "personal")[0]?.pos : data[0]?.pos} />
+          <div className='absolute bg-bunker-800 right-[1.07rem] top-[1.6rem] z-50'>
+            <GenerateSecretMenu modifyValue={modifyValue} position={data.filter(secret => secret.type == "shared")[0]?.pos} />
           </div>
         </div>
+          : <div className='px-4 text-sm text-bunker-300 pt-4'>
+            <span className='py-0.5 px-1 rounded-md bg-primary-200/10 mr-1'>{t("common:note")}:</span>
+            {t("dashboard:sidebar.personal-explanation")}
+          </div>}
+        <div className='mt-4 px-4'>
+          {data.filter(secret => secret.type == "shared")[0]?.value &&
+          <div className='flex flex-row items-center justify-between my-2 pl-1 pr-2'>
+            <p className='text-sm text-bunker-300'>{t("dashboard:sidebar.override")}</p>
+            <Toggle 
+              enabled={overrideEnabled} 
+              setEnabled={setOverrideEnabled} 
+              addOverride={addOverride} 
+              keyName={data[0]?.key}
+              value={data[0]?.value}
+              pos={data[0]?.pos}
+              id={data[0]?.id}
+              comment={data[0]?.comment}
+              deleteOverride={deleteOverride}
+              sharedToHide={sharedToHide}
+              setSharedToHide={setSharedToHide}
+            />
+          </div>}
+          <div className={`relative ${!overrideEnabled && "opacity-40 pointer-events-none"} duration-200`}>
+            <DashboardInputField
+              onChangeHandler={modifyValue}
+              type="value"
+              position={overrideEnabled ? data.filter(secret => secret.type == "personal")[0]?.pos : data[0]?.pos}
+              value={overrideEnabled ? data.filter(secret => secret.type == "personal")[0]?.value : data[0]?.value}
+              isDuplicate={false}
+              blurred={true}
+            />
+            <div className='absolute right-[0.57rem] top-[0.3rem] z-50'>
+              <GenerateSecretMenu modifyValue={modifyValue} position={overrideEnabled ? data.filter(secret => secret.type == "personal")[0]?.pos : data[0]?.pos} />
+            </div>
+          </div>
+        </div>
+        <SecretVersionList secretId={data[0]?.id} />
+        <CommentField comment={data.filter(secret => secret.type == "shared")[0]?.comment} modifyComment={modifyComment} position={data[0]?.pos} />
       </div>
-      {/* <div className={`relative mt-4 px-4 opacity-80 duration-200`}>
-        <p className='text-sm text-bunker-200'>Group</p>
-        <ListBox
-          selected={"Database Secrets"}
-          onChange={() => {}}
-          data={["Group1"]}
-          isFull={true}
-        />
-      </div> */}
-      <SecretVersionList secretId={data[0]?.id} />
-      <CommentField comment={data.filter(secret => secret.type == "shared")[0]?.comment} modifyComment={modifyComment} position={data[0]?.pos} />
-    </div>
+    )}
     <div className={`flex justify-start max-w-sm mt-4 px-4 mt-full mb-[4.7rem]`}>
       <Button
         text={String(t("common:save-changes"))}
@@ -163,6 +170,14 @@ const SideBar = ({
         active={buttonReady}
         textDisabled="Saved"
       />
+      <div className="bg-[#9B3535] opacity-70 hover:opacity-100 w-[4.5rem] h-[2.5rem] rounded-md duration-200 ml-2">
+        <Button
+          text={String(t("Delete"))}
+          onButtonPressed={() => deleteRow({ ids: overrideEnabled ? data.map(secret => secret.id) : [data.filter(secret => secret.type == "shared")[0]?.id], secretName: data[0]?.key })}
+          color="red"
+          size="md"
+        />
+      </div>
     </div>
   </div>
 };
