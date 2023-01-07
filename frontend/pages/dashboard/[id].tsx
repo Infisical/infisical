@@ -687,6 +687,7 @@ export default function Dashboard() {
                             color="mineshaft"
                             size="icon-md"
                             icon={faDownload}
+                            onButtonPressed={() => {}}
                           />
                         </Menu.Button>
                         <Transition
