@@ -2,6 +2,12 @@ import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import { SecretSnapshot } from '../../models';
 
+/**
+ * Return secret snapshot with id [secretSnapshotId]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
 export const getSecretSnapshot = async (req: Request, res: Response) => {
     let secretSnapshot;
     try {
