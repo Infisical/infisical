@@ -9,6 +9,7 @@ import { AnyBulkWriteOperation } from 'mongodb';
 import { SECRET_PERSONAL, SECRET_SHARED } from "../../variables";
 import { validateMembership } from "../../helpers/membership";
 import { ADMIN, MEMBER } from '../../variables';
+import { postHogClient } from '../../services';
 
 export const createSingleSecret = async (req: Request, res: Response) => {
   const secretToCreate: CreateSecretRequestBody = req.body.secret;
@@ -36,6 +37,20 @@ export const createSingleSecret = async (req: Request, res: Response) => {
   const [error, newlyCreatedSecret] = await to(Secret.create(sanitizedSecret).then())
   if (error instanceof ValidationError) {
     throw RouteValidationError({ message: error.message, stack: error.stack })
+  }
+
+  if (postHogClient) {
+    postHogClient.capture({
+      event: 'secrets added',
+      distinctId: req.user.email,
+      properties: {
+        numberOfSecrets: 1,
+        environment: environmentName,
+        workspaceId,
+        // #TODO: why does this route have no channel? 
+        // channel: channel ? channel : 'cli'
+      }
+    });
   }
 
   res.status(200).send()
@@ -78,6 +93,20 @@ export const batchCreateSecrets = async (req: Request, res: Response) => {
     throw InternalServerError({ message: "Unable to process your batch create request. Please try again", stack: bulkCreateError.stack })
   }
 
+  if (postHogClient) {
+    postHogClient.capture({
+      event: 'secrets added',
+      distinctId: req.user.email,
+      properties: {
+        numberOfSecrets: (secretsToCreate ?? []).length,
+        environment: environmentName,
+        workspaceId,
+        // #TODO: why does this route have no channel? 
+        // channel: channel ? channel : 'cli'
+      }
+    });
+  }
+
   res.status(200).send()
 }
 
@@ -93,10 +122,12 @@ export const batchDeleteSecrets = async (req: Request, res: Response) => {
   const secretsUserCanDeleteSet: Set<string> = new Set(secretIdsUserCanDelete.map(objectId => objectId._id.toString()));
   const deleteOperationsToPerform: AnyBulkWriteOperation<ISecret>[] = []
 
+  let numSecretsDeleted = 0;
   secretIdsToDelete.forEach(secretIdToDelete => {
     if (secretsUserCanDeleteSet.has(secretIdToDelete)) {
       const deleteOperation = { deleteOne: { filter: { _id: new Types.ObjectId(secretIdToDelete) } } }
       deleteOperationsToPerform.push(deleteOperation)
+      numSecretsDeleted++;
     } else {
       throw RouteValidationError({ message: "You cannot delete secrets that you do not have access to" })
     }
@@ -108,6 +139,20 @@ export const batchDeleteSecrets = async (req: Request, res: Response) => {
       throw RouteValidationError({ message: "Unable to apply modifications, please try again", stack: bulkDeleteError.stack })
     }
     throw InternalServerError()
+  }
+
+  if (postHogClient) {
+    postHogClient.capture({
+      event: 'secrets deleted',
+      distinctId: req.user.email,
+      properties: {
+        numberOfSecrets: numSecretsDeleted,
+        environment: environmentName,
+        workspaceId,
+        // #TODO: why does this route have no channel? 
+        // channel: channel ? channel : 'cli'
+      }
+    });
   }
 
   res.status(200).send()
@@ -133,6 +178,21 @@ export const deleteSingleSecret = async (req: Request, res: Response) => {
     }
 
     await Secret.findByIdAndDelete(secretId)
+
+    if (postHogClient) {
+      postHogClient.capture({
+        event: 'secrets deleted',
+        distinctId: req.user.email,
+        properties: {
+          numberOfSecrets: 1,
+          // #TODO: how do we get env name ans project id? 
+          // environment: environmentName,
+          // workspaceId,
+          // #TODO: why does this route have no channel? 
+          // channel: channel ? channel : 'cli'
+        }
+      });
+    }
 
     res.status(200).send()
   } else {
@@ -184,9 +244,24 @@ export const batchModifySecrets = async (req: Request, res: Response) => {
     throw InternalServerError()
   }
 
+  if (postHogClient) {
+    postHogClient.capture({
+      event: 'secrets modified',
+      distinctId: req.user.email,
+      properties: {
+        numberOfSecrets: (secretsModificationsRequested ?? []).length,
+        environment: environmentName,
+        workspaceId,
+        // #TODO: why does this route have no channel? 
+        // channel: channel ? channel : 'cli'
+      }
+    });
+  }
+
   return res.status(200).send()
 }
 
+// #TODO: I assume this should be '...Secret'? 
 export const modifySingleSecrets = async (req: Request, res: Response) => {
   const { workspaceId, environmentName } = req.params
   const secretModificationsRequested: ModifySecretRequestBody = req.body.secret;
@@ -214,6 +289,20 @@ export const modifySingleSecrets = async (req: Request, res: Response) => {
   const [error, singleModificationUpdate] = await to(Secret.updateOne({ _id: secretModificationsRequested._id, workspace: workspaceId }, { $inc: { version: 1 }, $set: sanitizedSecret }).then())
   if (error instanceof ValidationError) {
     throw RouteValidationError({ message: "Unable to apply modifications, please try again", stack: error.stack })
+  }
+
+  if (postHogClient) {
+    postHogClient.capture({
+      event: 'secrets modified',
+      distinctId: req.user.email,
+      properties: {
+        numberOfSecrets: 1,
+        environment: environmentName,
+        workspaceId,
+        // #TODO: why does this route have no channel? 
+        // channel: channel ? channel : 'cli'
+      }
+    });
   }
 
   return res.status(200).send(singleModificationUpdate)
@@ -245,6 +334,20 @@ export const fetchAllSecrets = async (req: Request, res: Response) => {
     throw RouteValidationError({ message: "Unable to get secrets, please try again", stack: retriveAllSecretsError.stack })
   }
 
+  if (postHogClient) {
+    postHogClient.capture({
+      event: 'secrets pulled',
+      distinctId: req.user.email,
+      properties: {
+        numberOfSecrets: (allSecrets ?? []).length,
+        environment,
+        workspaceId,
+        // #TODO: why does this route have no channel? 
+        // channel: channel ? channel : 'cli'
+      }
+    });
+  }
+
   return res.json(allSecrets)
 }
 
@@ -269,6 +372,21 @@ export const fetchSingleSecret = async (req: Request, res: Response) => {
     }
 
     res.json(singleSecretRetrieved)
+
+    if (postHogClient) {
+      postHogClient.capture({
+        event: 'secrets pulled',
+        distinctId: req.user.email,
+        properties: {
+          numberOfSecrets: 1,
+          // #TODO: how do we get environment and workspace here? Do we need that? When is this route used?
+          // environment,
+          // workspaceId,
+          // #TODO: why does this route have no channel? 
+          // channel: channel ? channel : 'cli'
+        }
+      });
+    }
 
   } else {
     throw BadRequestError()
