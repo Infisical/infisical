@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
+import React, { useState } from 'react';
+import Image from 'next/image';
 import { useTranslation } from "next-i18next";
 import {
   faAngleDown,
@@ -69,23 +69,25 @@ const ActivityLogsRow = ({ row, toggleSidebar }: { row: logData, toggleSidebar: 
       {payloadOpened &&
       <tr className='h-9 text-bunker-200 border-mineshaft-700 border-t text-sm'>
         <td></td>
-        <td>Timestamp</td>
+        <td>{String(t("common:timestamp"))}</td>
         <td>{row.createdAt}</td>
       </tr>}
       {payloadOpened &&
-      row.payload?.map((action, index) => 
-      <tr key={index} className="h-9 text-bunker-200 border-mineshaft-700 border-t text-sm">
-        <td></td>
-        <td className="">{t("activity:event." + action.name)}</td>
-        <td className="text-primary-300 cursor-pointer hover:text-primary duration-200" onClick={() => toggleSidebar(action._id)}>
-          {action.secretVersions.length + (action.secretVersions.length != 1 ? " secrets" : " secret")}
-          <FontAwesomeIcon icon={faUpRightFromSquare} className="ml-2 mb-0.5 font-light w-3 h-3"/>
-        </td>
-      </tr>)}
+      row.payload?.map((action, index) => { 
+        action.secretVersions.length > 0 &&
+        <tr key={index} className="h-9 text-bunker-200 border-mineshaft-700 border-t text-sm">
+          <td></td>
+          <td className="">{t("activity:event." + action.name)}</td>
+          <td className="text-primary-300 cursor-pointer hover:text-primary duration-200" onClick={() => toggleSidebar(action._id)}>
+            {action.secretVersions.length + (action.secretVersions.length != 1 ? " secrets" : " secret")}
+            <FontAwesomeIcon icon={faUpRightFromSquare} className="ml-2 mb-0.5 font-light w-3 h-3"/>
+          </td>
+        </tr>
+      })}
       {payloadOpened &&
       <tr className='h-9 text-bunker-200 border-mineshaft-700 border-t text-sm'>
         <td></td>
-        <td>IP Address</td>
+        <td>{String(t("common:ip-address"))}</td>
         <td>{row.ipAddress}</td>
       </tr>}
     </>
@@ -97,9 +99,12 @@ const ActivityLogsRow = ({ row, toggleSidebar }: { row: logData, toggleSidebar: 
  * @param {object} obj
  * @param {logData} obj.data - data for user activity logs
  * @param {function} obj.toggleSidebar - function that opens or closes the sidebar
+ * @param {boolean} obj.isLoading - whether the log data has been loaded yet or not
  * @returns
  */
-const ActivityTable = ({ data, toggleSidebar }: { data: logData[], toggleSidebar: (value: string) => void; }) => {
+const ActivityTable = ({ data, toggleSidebar, isLoading }: { data: logData[], toggleSidebar: (value: string) => void; isLoading: boolean; }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="w-full px-6 mt-8">
       <div className="table-container w-full bg-bunker rounded-md mb-6 border border-mineshaft-700 relative">
@@ -108,10 +113,10 @@ const ActivityTable = ({ data, toggleSidebar }: { data: logData[], toggleSidebar
           <thead className="text-bunker-300">
             <tr className='text-sm'>
               <th className="text-left pl-6 pt-2.5 pb-3"></th>
-              <th className="text-left font-semibold pt-2.5 pb-3">EVENT</th>
-              <th className="text-left font-semibold pl-6 pt-2.5 pb-3">USER</th>
-              <th className="text-left font-semibold pl-6 pt-2.5 pb-3">SOURCE</th>
-              <th className="text-left font-semibold pl-6 pt-2.5 pb-3">TIME</th>
+              <th className="text-left font-semibold pt-2.5 pb-3">{String(t("common:event")).toUpperCase()}</th>
+              <th className="text-left font-semibold pl-6 pt-2.5 pb-3">{String(t("common:user")).toUpperCase()}</th>
+              <th className="text-left font-semibold pl-6 pt-2.5 pb-3">{String(t("common:source")).toUpperCase()}</th>
+              <th className="text-left font-semibold pl-6 pt-2.5 pb-3">{String(t("common:time")).toUpperCase()}</th>
               <th></th>
             </tr>
           </thead>
@@ -122,6 +127,12 @@ const ActivityTable = ({ data, toggleSidebar }: { data: logData[], toggleSidebar
           </tbody>
         </table>
       </div>
+      {isLoading && <div className='w-full flex justify-center mb-8 mt-4'><Image
+        src="/images/loading/loading.gif"
+        height={60}
+        width={100}
+        alt="loading animation"
+      ></Image></div>}
     </div>
   );
 };

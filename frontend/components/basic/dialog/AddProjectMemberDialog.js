@@ -109,7 +109,7 @@ const AddProjectMemberDialog = ({
                         selected={email ? email : data[0]}
                         onChange={setEmail}
                         data={data}
-                        width="full"
+                        isFull={true}
                       />
                     )}
                   </div>
