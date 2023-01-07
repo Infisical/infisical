@@ -29,7 +29,7 @@ class Capturer {
 
 }
 
-class Telemetry {
+export default class Telemetry {
   constructor() {
       if (!Telemetry.instance) {
         Telemetry.instance = new Capturer();
@@ -40,5 +40,3 @@ class Telemetry {
       return Telemetry.instance;
   }
 }
-
-module.exports = Telemetry;
