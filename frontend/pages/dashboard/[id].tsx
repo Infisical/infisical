@@ -18,9 +18,9 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Menu, Transition } from '@headlessui/react';
-import { Document, YAMLSeq } from 'yaml';
 import getProjectSercetSnapshotsCount from 'ee/api/secrets/GetProjectSercetSnapshotsCount';
 import PITRecoverySidebar from 'ee/components/PITRecoverySidebar';
+import { Document, YAMLSeq } from 'yaml';
 
 import Button from '~/components/basic/buttons/Button';
 import ListBox from '~/components/basic/Listbox';
@@ -673,7 +673,7 @@ export default function Dashboard() {
                             : faArrowDownZA
                         }
                       />
-                    </div>
+                    </div>}
                     {!snapshotData && <div className="ml-2 min-w-max flex flex-row items-start justify-start">
                       <Menu
                         as="div"
