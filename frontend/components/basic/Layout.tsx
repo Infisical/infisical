@@ -11,7 +11,6 @@ import {
   faKey,
   faMobile,
   faPlug,
-  faTimeline,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
