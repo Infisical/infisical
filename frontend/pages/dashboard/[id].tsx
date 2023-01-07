@@ -6,8 +6,9 @@ import { useTranslation } from "next-i18next";
 import {
   faArrowDownAZ,
   faArrowDownZA,
+  faArrowLeft,
   faCheck,
-  faCopy,
+  faClockRotateLeft,
   faDownload,
   faEye,
   faEyeSlash,
@@ -16,6 +17,10 @@ import {
   faPlus,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Menu, Transition } from '@headlessui/react';
+import getProjectSercetSnapshotsCount from 'ee/api/secrets/GetProjectSercetSnapshotsCount';
+import PITRecoverySidebar from 'ee/components/PITRecoverySidebar';
+import { Document, YAMLSeq } from 'yaml';
 
 import Button from '~/components/basic/buttons/Button';
 import ListBox from '~/components/basic/Listbox';
@@ -30,12 +35,13 @@ import pushKeys from '~/components/utilities/secrets/pushKeys';
 import { getTranslatedServerSideProps } from '~/components/utilities/withTranslateProps';
 import guidGenerator from '~/utilities/randomId';
 
-import { envMapping } from '../../public/data/frequentConstants';
+import { envMapping, reverseEnvMapping } from '../../public/data/frequentConstants';
 import getUser from '../api/user/getUser';
 import checkUserAction from '../api/userActions/checkUserAction';
 import registerUserAction from '../api/userActions/registerUserAction';
 import getWorkspaces from '../api/workspace/getWorkspaces';
 
+const queryString = require("query-string");
 
 interface SecretDataProps {
   type: 'personal' | 'shared';
@@ -44,6 +50,19 @@ interface SecretDataProps {
   value: string;
   id: string;
   comment: string;
+}
+
+interface SnapshotProps {
+  id: string;
+  createdAt: string;
+  secretVersions: {
+    id: string;
+    pos: number;
+    type: "personal" | "shared";
+    environment: string;
+    key: string;
+    value: string;
+  }[];
 }
 
 /**
@@ -76,22 +95,20 @@ export default function Dashboard() {
   const [workspaceId, setWorkspaceId] = useState('');
   const [blurred, setBlurred] = useState(true);
   const [isKeyAvailable, setIsKeyAvailable] = useState(true);
-  const [env, setEnv] = useState(
-    router.asPath.split('?').length == 1
-      ? 'Development'
-      : Object.keys(envMapping).includes(router.asPath.split('?')[1])
-      ? router.asPath.split('?')[1]
-      : 'Development'
-  );
+  const [env, setEnv] = useState('Development');
+  const [snapshotEnv, setSnapshotEnv] = useState('Development');
   const [isNew, setIsNew] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchKeys, setSearchKeys] = useState('');
   const [errorDragAndDrop, setErrorDragAndDrop] = useState(false);
-  const [projectIdCopied, setProjectIdCopied] = useState(false);
   const [sortMethod, setSortMethod] = useState('alphabetical');
   const [checkDocsPopUpVisible, setCheckDocsPopUpVisible] = useState(false);
   const [hasUserEverPushed, setHasUserEverPushed] = useState(false);
   const [sidebarSecretId, toggleSidebar] = useState("None");
+  const [PITSidebarOpen, togglePITSidebar] = useState(false);
   const [sharedToHide, setSharedToHide] = useState<string[]>([]);
+  const [snapshotData, setSnapshotData] = useState<SnapshotProps>();
+  const [numSnapshots, setNumSnapshots] = useState<number>();
 
   const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
@@ -142,17 +159,38 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
+        const tempNumSnapshots = await getProjectSercetSnapshotsCount({ workspaceId: String(router.query.id) })
+        setNumSnapshots(tempNumSnapshots);
         const userWorkspaces = await getWorkspaces();
         const listWorkspaces = userWorkspaces.map((workspace) => workspace._id);
         if (
-          !listWorkspaces.includes(router.asPath.split('/')[2].split('?')[0])
+          !listWorkspaces.includes(router.asPath.split('/')[2])
         ) {
           router.push('/dashboard/' + listWorkspaces[0]);
         }
 
-        if (env != router.asPath.split('?')[1]) {
-          router.push(router.asPath.split('?')[0] + '?' + env);
-        }
+        const user = await getUser();
+        setIsNew(
+          (Date.parse(String(new Date())) - Date.parse(user.createdAt)) / 60000 < 3
+            ? true
+            : false
+        );
+
+        const userAction = await checkUserAction({
+          action: 'first_time_secrets_pushed'
+        });
+        setHasUserEverPushed(userAction ? true : false);
+      } catch (error) {
+        console.log('Error', error);
+        setData(undefined);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setIsLoading(true);
         setBlurred(true);
         setWorkspaceId(String(router.query.id));
 
@@ -174,18 +212,7 @@ export default function Dashboard() {
               dataToSort?.map((item) => item.key).indexOf(item)
           ).includes(row.key) && row.type == 'shared'))?.map((item) => item.id)
         )
-
-        const user = await getUser();
-        setIsNew(
-          (Date.parse(String(new Date())) - Date.parse(user.createdAt)) / 60000 < 3
-            ? true
-            : false
-        );
-
-        const userAction = await checkUserAction({
-          action: 'first_time_secrets_pushed'
-        });
-        setHasUserEverPushed(userAction ? true : false);
+        setIsLoading(false);
       } catch (error) {
         console.log('Error', error);
         setData(undefined);
@@ -241,9 +268,14 @@ export default function Dashboard() {
     sortValuesHandler(tempdata, sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical");
   };
 
-  const deleteRow = (id: string) => {
+  const deleteRow = ({ ids, secretName }: { ids: string[]; secretName: string; }) => {
     setButtonReady(true);
-    setData(data!.filter((row: SecretDataProps) => row.id !== id));
+    toggleSidebar("None");
+    createNotification({
+      text: `${secretName} has been deleted. Remember to save changes.`,
+      type: 'error'
+    });
+    setData(data!.filter((row: SecretDataProps) => !ids.includes(row.id)));
   };
 
   /**
@@ -317,12 +349,21 @@ export default function Dashboard() {
   /**
    * Save the changes of environment variables and push them to the database
    */
-  const savePush = async () => {
-    // Format the new object with environment variables
-    const obj = Object.assign(
-      {},
-      ...data!.map((row: SecretDataProps) => ({ [row.type.charAt(0) + row.key]: [row.value, row.comment] }))
-    );
+  const savePush = async (dataToPush?: any[], envToPush?: string) => {
+    let obj;
+    // dataToPush is mostly used for rollbacks, otherwise we always take the current state data
+    if ((dataToPush ?? [])?.length > 0) {
+      obj = Object.assign(
+        {},
+        ...dataToPush!.map((row: SecretDataProps) => ({ [row.type.charAt(0) + row.key]: [row.value, row.comment ?? ''] }))
+      );
+    } else {
+      // Format the new object with environment variables
+      obj = Object.assign(
+        {},
+        ...data!.map((row: SecretDataProps) => ({ [row.type.charAt(0) + row.key]: [row.value, row.comment ?? ''] }))
+      );
+    }
 
     // Checking if any of the secret keys start with a number - if so, don't do anything
     const nameErrors = !Object.keys(obj)
@@ -346,13 +387,17 @@ export default function Dashboard() {
 
     // Once "Save changed is clicked", disable that button
     setButtonReady(false);
-    pushKeys({ obj, workspaceId: String(router.query.id), env });
+    console.log(envToPush ? envToPush : env, env, envToPush)
+    pushKeys({ obj, workspaceId: String(router.query.id), env: envToPush ? envToPush : env });
 
     // If this user has never saved environment variables before, show them a prompt to read docs
     if (!hasUserEverPushed) {
       setCheckDocsPopUpVisible(true);
       await registerUserAction({ action: 'first_time_secrets_pushed' });
     }
+
+    // increasing the number of project commits
+    setNumSnapshots((numSnapshots ?? 0) + 1);
   };
 
   const addData = (newData: SecretDataProps[]) => {
@@ -382,39 +427,81 @@ export default function Dashboard() {
     setData(sortedData);
   };
 
+  // check if there are secrets with an override
+  const checkOverrides = (data: SecretDataProps[]) => {
+    let secrets : SecretDataProps[] = data!.map((secret) => Object.create(secret));
+    const overridenSecrets = data!.filter(
+      (secret) => secret.type === 'personal'
+    );
+    if (overridenSecrets.length) {
+      overridenSecrets.forEach((secret) => {
+        const index = secrets!.findIndex(
+          (_secret) => _secret.key === secret.key && _secret.type === 'shared'
+        );
+        secrets![index].value = secret.value;
+      });
+      secrets = secrets!.filter((secret) => secret.type === 'shared');
+    }
+    return secrets;
+  };
   // This function downloads the secrets as a .env file
-  const download = () => {
-    const file = data!
-      .map((item: SecretDataProps) => [item.key, item.value].join('='))
+  const downloadDotEnv = () => {
+    if (!data) return;
+    const secrets = checkOverrides(data)
+
+    const file = secrets!
+      .map(
+        (item: SecretDataProps) =>
+          `${
+            item.comment
+              ? item.comment
+                  .split('\n')
+                  .map((comment) => '# '.concat(comment))
+                  .join('\n') + '\n'
+              : ''
+          }` + [item.key, item.value].join('=')
+      )
       .join('\n');
+
+        const blob = new Blob([file]);
+        const fileDownloadUrl = URL.createObjectURL(blob);
+        const alink = document.createElement('a');
+        alink.href = fileDownloadUrl;
+        alink.download = envMapping[env] + '.env';
+        alink.click();
+  };
+
+  // This function downloads the secrets as a .yml file
+  const downloadYaml = () => {
+    if (!data) return;
+    const doc = new Document(new YAMLSeq());
+    const secrets = checkOverrides(data);
+    secrets.forEach((secret) => {
+      const pair = doc.createNode({ [secret.key]: secret.value });
+      pair.commentBefore = secret.comment
+        .split('\n')
+        .map((line) => (line ? ' '.concat(line) : ''))
+        .join('\n');
+      doc.add(pair);
+    });
+
+    const file = doc
+      .toString()
+      .split('\n')
+      .map((line) => (line.startsWith('-') ? line.replace('- ', '') : line))
+      .join('\n');
+
     const blob = new Blob([file]);
     const fileDownloadUrl = URL.createObjectURL(blob);
     const alink = document.createElement('a');
     alink.href = fileDownloadUrl;
-    alink.download = envMapping[env] + '.env';
+    alink.download = envMapping[env] + '.yml';
     alink.click();
   };
 
-  const deleteCertainRow = (id: string) => {
-    deleteRow(id);
+  const deleteCertainRow = ({ ids, secretName }: { ids: string[]; secretName: string; }) => {
+    deleteRow({ids, secretName});
   };
-
-  /**
-   * This function copies the project id to the clipboard
-   */
-  function copyToClipboard() {
-    const copyText = document.getElementById('myInput') as HTMLInputElement;
-    
-    if (copyText) {
-      copyText.select();
-      copyText.setSelectionRange(0, 99999); // For mobile devices
-
-      navigator.clipboard.writeText(copyText.value);
-  
-      setProjectIdCopied(true);
-      setTimeout(() => setProjectIdCopied(false), 2000);
-    }
-  }
 
   return data ? (
     <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
@@ -438,6 +525,12 @@ export default function Dashboard() {
           savePush={savePush}
           sharedToHide={sharedToHide}
           setSharedToHide={setSharedToHide}
+          deleteRow={deleteCertainRow}
+        />}
+        {PITSidebarOpen && <PITRecoverySidebar 
+          toggleSidebar={togglePITSidebar} 
+          chosenSnapshot={String(snapshotData?.id ? snapshotData.id : "")}
+          setSnapshotData={setSnapshotData}
         />}
         <div className="w-full max-h-96 pb-2">
           <NavHeader pageName={t("dashboard:title")} isProjectRelated={true} />
@@ -453,9 +546,22 @@ export default function Dashboard() {
             />
           )}
           <div className="flex flex-row justify-between items-center mx-6 mt-6 mb-3 text-xl max-w-5xl">
+            {snapshotData && 
+            <div className={`flex justify-start max-w-sm mt-1 mr-2`}>
+              <Button
+                text={String(t("Go back to current"))}
+                onButtonPressed={() => setSnapshotData(undefined)}
+                color="mineshaft"
+                size="md"
+                icon={faArrowLeft}
+              />
+            </div>}
             <div className="flex flex-row justify-start items-center text-3xl">
-              <p className="font-semibold mr-4 mt-1">{t("dashboard:title")}</p>
-              {data?.length == 0 && (
+              <div className="font-semibold mr-4 mt-1 flex flex-row items-center">
+                <p>{snapshotData ? "Secret Snapshot" : t("dashboard:title")}</p>
+                {snapshotData && <span className='bg-primary-800 text-sm ml-4 mt-1 px-1.5 rounded-md'>{new Date(snapshotData.createdAt).toLocaleString()}</span>}
+              </div>
+              {!snapshotData && data?.length == 0 && (
                 <ListBox
                   selected={env}
                   data={['Development', 'Staging', 'Production', 'Testing']}
@@ -464,35 +570,17 @@ export default function Dashboard() {
               )}
             </div>
             <div className="flex flex-row">
-              <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400">
-                <p className="mr-2 font-bold pl-4">{`${t(
-                  "common:project-id"
-                )}:`}</p>
-                <input
-                  type="text"
-                  value={workspaceId}
-                  id="myInput"
-                  className="bg-white/0 text-gray-400 py-2 w-60 px-2 min-w-md outline-none"
-                  disabled
-                ></input>
-                <div className="group font-normal group relative inline-block text-gray-400 underline hover:text-primary duration-200">
-                  <button
-                    onClick={copyToClipboard}
-                    className="pl-4 pr-4 border-l border-white/20 py-2 hover:bg-white/[0.12] duration-200"
-                  >
-                    {projectIdCopied ? (
-                      <FontAwesomeIcon icon={faCheck} className="pr-0.5" />
-                    ) : (
-                      <FontAwesomeIcon icon={faCopy} />
-                    )}
-                  </button>
-                  <span className="absolute hidden group-hover:flex group-hover:animate-popup duration-300 w-28 -left-8 -top-20 translate-y-full pl-3 py-2 bg-white/10 rounded-md text-center text-gray-400 text-sm">
-                    {t("common:click-to-copy")}
-                  </span>
-                </div>
+              <div className={`flex justify-start max-w-sm mt-1 mr-2`}>
+                <Button
+                  text={String(numSnapshots + " " + t("Commits"))}
+                  onButtonPressed={() => togglePITSidebar(true)}
+                  color="mineshaft"
+                  size="md"
+                  icon={faClockRotateLeft}
+                />
               </div>
-              {(data?.length !== 0 || buttonReady) && (
-                <div className={`flex justify-start max-w-sm mt-2`}>
+              {(data?.length !== 0 || buttonReady) && !snapshotData && (
+                <div className={`flex justify-start max-w-sm mt-1`}>
                   <Button
                     text={String(t("common:save-changes"))}
                     onButtonPressed={savePush}
@@ -504,18 +592,64 @@ export default function Dashboard() {
                   />
                 </div>
               )}
+              {snapshotData && <div className={`flex justify-start max-w-sm mt-1`}>
+                <Button
+                  text={String(t("Rollback to this snapshot"))}
+                  onButtonPressed={async () => {
+                    const envsToRollback = snapshotData.secretVersions.map(sv => sv.environment).filter((v, i, a) => a.indexOf(v) === i);
+
+                    // Update secrets in the state only for the current environment
+                    setData(
+                      snapshotData.secretVersions
+                      .filter(row => reverseEnvMapping[row.environment] == env)
+                      .map((sv, position) => { 
+                        return {
+                          id: sv.id, pos: position, type: sv.type, key: sv.key, value: sv.value, comment: ''
+                        }
+                      })
+                    );
+
+                    // Rollback each of the environments in the snapshot
+                    // #TODO: clean up other environments
+                    envsToRollback.map(async (envToRollback) => {
+                      await savePush(
+                        snapshotData.secretVersions
+                        .filter(row => row.environment == envToRollback)
+                        .map((sv, position) => { 
+                          return {id: sv.id, pos: position, type: sv.type, key: sv.key, value: sv.value, comment: ''}
+                        }),
+                        reverseEnvMapping[envToRollback]
+                      );
+                    });
+                    setSnapshotData(undefined);
+                    createNotification({
+                      text: `Rollback has been performed successfully.`,
+                      type: 'success'
+                    });
+                  }}
+                  color="primary"
+                  size="md"
+                  active={buttonReady}
+                />
+              </div>}
             </div>
           </div>
           <div className="mx-6 w-full pr-12">
             <div className="flex flex-col max-w-5xl pb-1">
               <div className="w-full flex flex-row items-start">
-                {data?.length !== 0 && (
+                {(snapshotData || data?.length !== 0) && (
                   <>
-                    <ListBox
+                    {!snapshotData 
+                    ? <ListBox
                       selected={env}
                       data={['Development', 'Staging', 'Production', 'Testing']}
                       onChange={setEnv}
                     />
+                    : <ListBox
+                      selected={snapshotEnv}
+                      data={['Development', 'Staging', 'Production', 'Testing']}
+                      onChange={setSnapshotEnv}
+                    />}
                     <div className="h-10 w-full bg-white/5 hover:bg-white/10 ml-2 flex items-center rounded-md flex flex-row items-center">
                       <FontAwesomeIcon
                         className="bg-white/5 rounded-l-md py-3 pl-4 pr-2 text-gray-400"
@@ -528,7 +662,7 @@ export default function Dashboard() {
                         placeholder={String(t("dashboard:search-keys"))}
                       />
                     </div>
-                    <div className="ml-2 min-w-max flex flex-row items-start justify-start">
+                    {!snapshotData && <div className="ml-2 min-w-max flex flex-row items-start justify-start">
                       <Button
                         onButtonPressed={() => reorderRows(1)}
                         color="mineshaft"
@@ -539,15 +673,53 @@ export default function Dashboard() {
                             : faArrowDownZA
                         }
                       />
-                    </div>
-                    <div className="ml-2 min-w-max flex flex-row items-start justify-start">
-                      <Button
-                        onButtonPressed={download}
-                        color="mineshaft"
-                        size="icon-md"
-                        icon={faDownload}
-                      />
-                    </div>
+                    </div>}
+                    {!snapshotData && <div className="ml-2 min-w-max flex flex-row items-start justify-start">
+                      <Menu
+                        as="div"
+                        className="relative inline-block text-left"
+                      >
+                        <Menu.Button
+                          as="div"
+                          className="inline-flex w-full justify-center  text-sm font-medium text-gray-200 rounded-md hover:bg-white/10 duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75"
+                        >
+                          <Button
+                            color="mineshaft"
+                            size="icon-md"
+                            icon={faDownload}
+                            onButtonPressed={() => {}}
+                          />
+                        </Menu.Button>
+                        <Transition
+                          as={Fragment}
+                          enter="transition ease-out duration-100"
+                          enterFrom="transform opacity-0 scale-95"
+                          enterTo="transform opacity-100 scale-100"
+                          leave="transition ease-in duration-75"
+                          leaveFrom="transform opacity-100 scale-100"
+                          leaveTo="transform opacity-0 scale-95"
+                        >
+                          <Menu.Items className="absolute z-50 drop-shadow-xl right-0 mt-0.5 w-[20rem] origin-top-right rounded-md bg-bunker border border-mineshaft-500 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-2 space-y-2">
+                            <Menu.Item>
+                              <Button
+                                color="mineshaft"
+                                onButtonPressed={downloadDotEnv}
+                                size="md"
+                                text="Download as .env"
+                              />
+                            </Menu.Item>
+                            <Menu.Item>
+                              <Button
+                                color="mineshaft"
+                                onButtonPressed={downloadYaml}
+                                size="md"
+                                text="Download as .yml"
+                              />
+                            </Menu.Item>
+                          </Menu.Items>
+                        </Transition>
+                      </Menu>
+                    </div>}
                     <div className="ml-2 min-w-max flex flex-row items-start justify-start">
                       <Button
                         onButtonPressed={changeBlurred}
@@ -556,7 +728,7 @@ export default function Dashboard() {
                         icon={blurred ? faEye : faEyeSlash}
                       />
                     </div>
-                    <div className="relative ml-2 min-w-max flex flex-row items-start justify-end">
+                    {!snapshotData && <div className="relative ml-2 min-w-max flex flex-row items-start justify-end">
                       <Button
                         text={String(t("dashboard:add-key"))}
                         onButtonPressed={addRow}
@@ -570,32 +742,69 @@ export default function Dashboard() {
                           <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
                         </span>
                       )}
-                    </div>
+                    </div>}
                   </>
                 )}
               </div>
             </div>
-            {data?.length !== 0 ? (
+            {isLoading ? (
+            <div className="flex items-center justify-center h-full my-48">
+              <Image
+                src="/images/loading/loading.gif"
+                height={60}
+                width={100}
+                alt="infisical loading indicator"
+              ></Image>
+            </div> 
+            ) : (
+            data?.length !== 0 ? (
               <div className="flex flex-col w-full mt-1 mb-2">
                 <div
                   className={`max-w-5xl mt-1 max-h-[calc(100vh-280px)] overflow-hidden overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar`}
                 >
                   <div className="px-1 pt-2 bg-mineshaft-800 rounded-md p-2">
-                    {data?.filter(row => !(sharedToHide.includes(row.id) && row.type == 'shared')).map((keyPair) => (
+                    {!snapshotData && data?.filter(row => row.key.toUpperCase().includes(searchKeys.toUpperCase()))
+                    .filter(row => !(sharedToHide.includes(row.id) && row.type == 'shared')).map((keyPair) => (
                       <KeyPair 
                         key={keyPair.id}
                         keyPair={keyPair}
-                        deleteRow={deleteCertainRow}
                         modifyValue={listenChangeValue}
                         modifyKey={listenChangeKey}
                         isBlurred={blurred}
-                        isDuplicate={findDuplicates(data?.map((item) => item.key + item.type))?.includes(keyPair.key + keyPair.type)}
+                        isDuplicate={findDuplicates(
+                          data?.map((item) => item.key + item.type)
+                        )?.includes(keyPair.key + keyPair.type)}
                         toggleSidebar={toggleSidebar}
                         sidebarSecretId={sidebarSecretId}
+                        isSnapshot={false}
+                      />
+                    ))}
+                    {snapshotData && snapshotData.secretVersions?.sort((a, b) => a.key.localeCompare(b.key))
+                    .filter(row => reverseEnvMapping[row.environment] == snapshotEnv)
+                    .filter(row => row.key.toUpperCase().includes(searchKeys.toUpperCase()))
+                    .filter(row => !(snapshotData.secretVersions?.filter(row => (snapshotData.secretVersions
+                      ?.map((item) => item.key)
+                      .filter(
+                        (item, index) =>
+                          index !==
+                          snapshotData.secretVersions?.map((item) => item.key).indexOf(item)
+                      ).includes(row.key) && row.type == 'shared'))?.map((item) => item.id).includes(row.id) && row.type == 'shared')).map((keyPair) => (
+                      <KeyPair 
+                        key={keyPair.id}
+                        keyPair={keyPair}
+                        modifyValue={listenChangeValue}
+                        modifyKey={listenChangeKey}
+                        isBlurred={blurred}
+                        isDuplicate={findDuplicates(
+                          data?.map((item) => item.key + item.type)
+                        )?.includes(keyPair.key + keyPair.type)}
+                        toggleSidebar={toggleSidebar}
+                        sidebarSecretId={sidebarSecretId}
+                        isSnapshot={true}
                       />
                     ))}
                   </div>
-                  <div className="w-full max-w-5xl px-2 pt-3">
+                  {!snapshotData && <div className="w-full max-w-5xl px-2 pt-3">
                     <DropZone
                       setData={addData}
                       setErrorDragAndDrop={setErrorDragAndDrop}
@@ -605,12 +814,12 @@ export default function Dashboard() {
                       keysExist={true}
                       numCurrentRows={data.length}
                     />
-                  </div>
+                  </div>}
                 </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-xl text-gray-400 max-w-5xl mt-28">
-                {isKeyAvailable && (
+                {isKeyAvailable && !snapshotData && (
                   <DropZone
                     setData={setData}
                     setErrorDragAndDrop={setErrorDragAndDrop}
@@ -639,7 +848,7 @@ export default function Dashboard() {
                     </>
                   ))}
               </div>
-            )}
+            ))}
           </div>
         </div>
       </div>

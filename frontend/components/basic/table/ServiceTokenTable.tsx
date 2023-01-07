@@ -1,36 +1,53 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
 import { faX } from '@fortawesome/free-solid-svg-icons';
 
+import { useNotificationContext } from '~/components/context/Notifications/NotificationProvider';
+
+import deleteServiceToken from "../../../pages/api/serviceToken/deleteServiceToken";
 import { reverseEnvMapping } from '../../../public/data/frequentConstants';
 import guidGenerator from '../../utilities/randomId';
 import Button from '../buttons/Button';
 
+interface TokenProps {
+  _id: string;
+  name: string;
+  environment: string;
+  expiresAt: string;
+}
+
+interface ServiceTokensProps {
+  data: TokenProps[];
+  workspaceName: string;
+  setServiceTokens: (value: TokenProps[]) => void;
+}
+
 /**
- * This is the component that we utilize for the user table - in future, can reuse it for some other purposes too.
+ * This is the component that we utilize for the service token table
  * #TODO: add the possibility of choosing and doing operations on multiple users.
- * @param {*} props
+ * @param {object} obj
+ * @param {any[]} obj.data - current state of the service token table
+ * @param {string} obj.workspaceName - name of the current project
+ * @param {function} obj.setServiceTokens - updating the state of the service token table
  * @returns
  */
-const ServiceTokenTable = ({ data, workspaceName }) => {
-  const router = useRouter();
+const ServiceTokenTable = ({ data, workspaceName, setServiceTokens }: ServiceTokensProps) => {
+  const { createNotification } = useNotificationContext();
 
   return (
     <div className="table-container w-full bg-bunker rounded-md mb-6 border border-mineshaft-700 relative mt-1">
       <div className="absolute rounded-t-md w-full h-12 bg-white/5"></div>
       <table className="w-full my-1">
-        <thead className="text-bunker-300">
+        <thead className="text-bunker-300 text-sm font-light">
           <tr>
-            <th className="text-left pl-6 pt-2.5 pb-2">Token name</th>
-            <th className="text-left pl-6 pt-2.5 pb-2">Project</th>
-            <th className="text-left pl-6 pt-2.5 pb-2">Environment</th>
-            <th className="text-left pl-6 pt-2.5 pb-2">Valid until</th>
+            <th className="text-left pl-6 pt-2.5 pb-2">TOKEN NAME</th>
+            <th className="text-left pl-6 pt-2.5 pb-2">PROJECT</th>
+            <th className="text-left pl-6 pt-2.5 pb-2">ENVIRONMENT</th>
+            <th className="text-left pl-6 pt-2.5 pb-2">VAILD UNTIL</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           {data?.length > 0 ? (
-            data.map((row, index) => {
+            data?.map((row) => {
               return (
                 <tr
                   key={guidGenerator()}
@@ -51,7 +68,14 @@ const ServiceTokenTable = ({ data, workspaceName }) => {
                   <td className="py-2 border-mineshaft-700 border-t">
                     <div className="opacity-50 hover:opacity-100 duration-200 flex items-center">
                       <Button
-                        onButtonPressed={() => {}}
+                        onButtonPressed={() => {
+                          deleteServiceToken({ serviceTokenId: row._id} );
+                          setServiceTokens(data.filter(token => token._id != row._id));
+                          createNotification({
+                            text: `'${row.name}' token has been revoked.`,
+                            type: 'error'
+                          });
+                        }}
                         color="red"
                         size="icon-sm"
                         icon={faX}
@@ -63,7 +87,7 @@ const ServiceTokenTable = ({ data, workspaceName }) => {
             })
           ) : (
             <tr>
-              <td colSpan="4" className="text-center pt-7 pb-4 text-bunker-400">
+              <td colSpan={4} className="text-center pt-7 pb-5 text-bunker-300 text-sm">
                 No service tokens yet
               </td>
             </tr>

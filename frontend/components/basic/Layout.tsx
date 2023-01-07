@@ -6,10 +6,12 @@ import { useRouter } from "next/router";
 import { useTranslation } from "next-i18next";
 import {
   faBookOpen,
+  faFileLines,
   faGear,
   faKey,
   faMobile,
   faPlug,
+  faTimeline,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
@@ -119,7 +121,7 @@ export default function Layout({ children }: LayoutProps) {
             }
           });
         }
-        router.push("/dashboard/" + newWorkspaceId + "?Development");
+        router.push("/dashboard/" + newWorkspaceId);
         setIsOpen(false);
         setNewWorkspaceName("");
       } else {
@@ -139,8 +141,7 @@ export default function Layout({ children }: LayoutProps) {
       {
         href:
           "/dashboard/" +
-          workspaceMapping[workspaceSelected as any] +
-          "?Development",
+          workspaceMapping[workspaceSelected as any],
         title: t("nav:menu.secrets"),
         emoji: <FontAwesomeIcon icon={faKey} />,
       },
@@ -153,6 +154,11 @@ export default function Layout({ children }: LayoutProps) {
         href: "/integrations/" + workspaceMapping[workspaceSelected as any],
         title: t("nav:menu.integrations"),
         emoji: <FontAwesomeIcon icon={faPlug} />,
+      },
+      {
+        href: '/activity/' + workspaceMapping[workspaceSelected as any],
+        title: 'Activity Logs',
+        emoji: <FontAwesomeIcon icon={faFileLines} />
       },
       {
         href: "/settings/project/" + workspaceMapping[workspaceSelected as any],
@@ -192,7 +198,7 @@ export default function Layout({ children }: LayoutProps) {
             .map((workspace: { _id: string }) => workspace._id)
             .includes(intendedWorkspaceId)
         ) {
-          router.push("/dashboard/" + userWorkspaces[0]._id + "?Development");
+          router.push("/dashboard/" + userWorkspaces[0]._id);
         } else {
           setWorkspaceList(
             userWorkspaces.map((workspace: any) => workspace.name)
@@ -235,8 +241,7 @@ export default function Layout({ children }: LayoutProps) {
       ) {
         router.push(
           "/dashboard/" +
-            workspaceMapping[workspaceSelected as any] +
-            "?Development"
+            workspaceMapping[workspaceSelected as any]
         );
         localStorage.setItem(
           "projectData.id",

@@ -3,7 +3,7 @@ import { Membership, Key } from '../models';
 
 /**
  * Validate that user with id [userId] is a member of workspace with id [workspaceId]
- * and has at least one of the roles in [acceptedRoles] and statuses in [acceptedStatuses]
+ * and has at least one of the roles in [acceptedRoles]
  * @param {Object} obj
  * @param {String} obj.userId - id of user to validate
  * @param {String} obj.workspaceId - id of workspace
@@ -12,12 +12,10 @@ const validateMembership = async ({
 	userId,
 	workspaceId,
 	acceptedRoles,
-	acceptedStatuses
 }: {
 	userId: string;
 	workspaceId: string;
 	acceptedRoles: string[];
-	acceptedStatuses: string[];
 }) => {
 	
 	let membership;
@@ -33,11 +31,6 @@ const validateMembership = async ({
 		if (!acceptedRoles.includes(membership.role)) {
 			throw new Error('Failed to validate membership role');
 		}
-
-		if (!acceptedStatuses.includes(membership.status)) {
-			throw new Error('Failed to validate membership status');
-		}
-		
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
@@ -72,18 +65,15 @@ const findMembership = async (queryObj: any) => {
  * @param {String[]} obj.userIds - id of users.
  * @param {String} obj.workspaceId - id of workspace.
  * @param {String[]} obj.roles - roles of users.
- * @param {String[]} obj.statuses - statuses of users.
  */
 const addMemberships = async ({
 	userIds,
 	workspaceId,
-	roles,
-	statuses
+	roles
 }: {
 	userIds: string[];
 	workspaceId: string;
 	roles: string[];
-	statuses: string[];
 }): Promise<void> => {
 	try {
 		const operations = userIds.map((userId, idx) => {
@@ -92,14 +82,12 @@ const addMemberships = async ({
 					filter: {
 						user: userId,
 						workspace: workspaceId,
-						role: roles[idx],
-						status: statuses[idx]
+						role: roles[idx]
 					},
 					update: {
 						user: userId,
 						workspace: workspaceId,
-						role: roles[idx],
-						status: statuses[idx]
+						role: roles[idx]
 					},
 					upsert: true
 				}

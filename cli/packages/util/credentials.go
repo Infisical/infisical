@@ -5,14 +5,17 @@ import (
 	"fmt"
 
 	"github.com/99designs/keyring"
+	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/go-resty/resty/v2"
-	log "github.com/sirupsen/logrus"
 )
 
-const SERVICE_NAME = "infisical"
+type LoggedInUserDetails struct {
+	IsUserLoggedIn  bool
+	LoginExpired    bool
+	UserCredentials models.UserCredentials
+}
 
-// To do: what happens if the user doesn't have a keyring in their system?
 func StoreUserCredsInKeyRing(userCred *models.UserCredentials) error {
 	userCredMarshalled, err := json.Marshal(userCred)
 	if err != nil {
@@ -63,20 +66,20 @@ func GetUserCredsFromKeyRing(userEmail string) (credentials models.UserCredentia
 	return userCredentials, err
 }
 
-func IsUserLoggedIn() (hasUserLoggedIn bool, theUsersEmail string, err error) {
+func GetCurrentLoggedInUserDetails() (LoggedInUserDetails, error) {
 	if ConfigFileExists() {
 		configFile, err := GetConfigFile()
 		if err != nil {
-			return false, "", fmt.Errorf("IsUserLoggedIn: unable to get logged in user from config file [err=%s]", err)
+			return LoggedInUserDetails{}, fmt.Errorf("getCurrentLoggedInUserDetails: unable to get logged in user from config file [err=%s]", err)
 		}
 
 		if configFile.LoggedInUserEmail == "" {
-			return false, "", nil
+			return LoggedInUserDetails{}, nil
 		}
 
 		userCreds, err := GetUserCredsFromKeyRing(configFile.LoggedInUserEmail)
 		if err != nil {
-			return false, "", err
+			return LoggedInUserDetails{}, fmt.Errorf("getCurrentLoggedInUserDetails: unable to your credentials from Keyring [err=%s]", err)
 		}
 
 		// check to to see if the JWT is still valid
@@ -86,19 +89,26 @@ func IsUserLoggedIn() (hasUserLoggedIn bool, theUsersEmail string, err error) {
 
 		response, err := httpClient.
 			R().
-			Post(fmt.Sprintf("%v/v1/auth/checkAuth", INFISICAL_URL))
+			Post(fmt.Sprintf("%v/v1/auth/checkAuth", config.INFISICAL_URL))
 
 		if err != nil {
-			return false, "", err
+			return LoggedInUserDetails{}, err
 		}
 
 		if response.StatusCode() > 299 {
-			log.Infoln("Login expired, please login again.")
-			return false, "", fmt.Errorf("GetUserCredsFromKeyRing: Login expired, please login again.")
+			return LoggedInUserDetails{
+				IsUserLoggedIn:  true,
+				LoginExpired:    true,
+				UserCredentials: userCreds,
+			}, nil
 		}
 
-		return true, configFile.LoggedInUserEmail, nil
+		return LoggedInUserDetails{
+			IsUserLoggedIn:  true,
+			LoginExpired:    false,
+			UserCredentials: userCreds,
+		}, nil
 	} else {
-		return false, "", nil
+		return LoggedInUserDetails{}, nil
 	}
 }

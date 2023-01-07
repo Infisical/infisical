@@ -1,5 +1,5 @@
 import { Schema, model, Types } from 'mongoose';
-import { ADMIN, MEMBER, INVITED, COMPLETED, GRANTED } from '../variables';
+import { ADMIN, MEMBER } from '../variables';
 
 export interface IMembership {
 	_id: Types.ObjectId;
@@ -7,7 +7,6 @@ export interface IMembership {
 	inviteEmail?: string;
 	workspace: Types.ObjectId;
 	role: 'admin' | 'member';
-	status: 'invited' | 'completed' | 'granted';
 }
 
 const membershipSchema = new Schema(
@@ -27,12 +26,6 @@ const membershipSchema = new Schema(
 		role: {
 			type: String,
 			enum: [ADMIN, MEMBER],
-			required: true
-		},
-		status: {
-			// INVITED, COMPLETED, GRANTED
-			type: String,
-			enum: [INVITED, COMPLETED, GRANTED],
 			required: true
 		}
 	},

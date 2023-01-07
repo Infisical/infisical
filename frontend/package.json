@@ -53,7 +53,8 @@
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "uuid": "^8.3.2",
-    "uuidv4": "^6.2.13"
+    "uuidv4": "^6.2.13",
+    "yaml": "^2.2.0"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.4",

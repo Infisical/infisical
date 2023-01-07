@@ -18,8 +18,23 @@ type SingleEnvironmentVariable struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 	Type  string `json:"type"`
+	ID    string `json:"_id"`
+}
+
+type Workspace struct {
+	ID           string `json:"_id"`
+	Name         string `json:"name"`
+	Plan         string `json:"plan,omitempty"`
+	V            int    `json:"__v"`
+	Organization string `json:"organization,omitempty"`
 }
 
 type WorkspaceConfigFile struct {
 	WorkspaceId string `json:"workspaceId"`
+}
+
+type SymmetricEncryptionResult struct {
+	CipherText []byte
+	Nonce      []byte
+	AuthTag    []byte
 }

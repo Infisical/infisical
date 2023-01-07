@@ -80,6 +80,9 @@
         "getting-started/dashboard/organization",
         "getting-started/dashboard/project",
         "getting-started/dashboard/integrations",
+        "getting-started/dashboard/pit-recovery",
+        "getting-started/dashboard/versioning",
+        "getting-started/dashboard/audit-logs",
         "getting-started/dashboard/token"
       ]
     },
@@ -94,6 +97,7 @@
             "cli/commands/login",
             "cli/commands/init",
             "cli/commands/run",
+            "cli/commands/secrets",
             "cli/commands/export",
             "cli/commands/vault"
           ]
