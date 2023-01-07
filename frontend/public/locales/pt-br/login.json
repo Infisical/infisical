@@ -1,8 +1,8 @@
 {
   "title": "Login",
-  "og-title": "Log In to Infisical",
-  "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files.",
-  "login": "Log In",
-  "need-account": "Need an Infisical account?",
-  "create-account": "Create an account"
+  "og-title": "Entrar no Infisical",
+  "og-description": "Infisical é uma plataforma simples e criptografada de ponta a ponta que permite que as equipes sincronizem e gerenciem seus arquivos .env.",
+  "login": "Entrar",
+  "need-account": "Precisa de uma conta Infisical?",
+  "create-account": "Criar uma conta"
 }
