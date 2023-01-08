@@ -1,14 +1,14 @@
 {
-  "add-member": "Add Member",
-  "org-members": "Organization Members",
-  "org-members-description": "Manage members of your organization. These users could afterwards be formed into projects.",
-  "search-members": "Search members...",
+  "add-member": "Adicionar membro",
+  "org-members": "Membros da Organização",
+  "org-members-description": "Gerencie os membros da sua organização. Esses usuários poderiam posteriormente ser formados em projetos.",
+  "search-members": "Pesquisar membros...",
   "add-dialog": {
-    "add-member-to-project": "Add a member to your project",
-    "already-all-invited": "All the users in your organization are already invited.",
-    "add-user-org-first": "Add more users to the organization first.",
-    "user-will-email": "The user will receive an email with the instructions.",
-    "looking-add": "<0>If you are looking to add users to your org,</0><1>click here</1>",
-    "add-user-to-org": "Add Users to Organization"
+    "add-member-to-project": "Adicionar um membro ao seu projeto",
+    "already-all-invited": "Todos os usuários da sua organização já foram convidados.",
+    "add-user-org-first": "Adicione mais usuários à organização primeiro.",
+    "user-will-email": "O usuário receberá um e-mail com as instruções.",
+    "looking-add": "<0>Se você deseja adicionar usuários à sua organização,</0><1>clique aqui</1>",
+    "add-user-to-org": "Adicionar usuários à organização"
   }
 }
