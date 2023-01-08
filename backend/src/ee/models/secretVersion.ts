@@ -86,8 +86,7 @@ const secretVersionSchema = new Schema<ISecretVersion>(
 			required: true
 		},
 		secretKeyHash: {
-			type: String,
-			required: true
+			type: String
 		},
 		secretValueCiphertext: {
 			type: String,
@@ -102,8 +101,7 @@ const secretVersionSchema = new Schema<ISecretVersion>(
 			required: true
 		},
 		secretValueHash: {
-			type: String,
-			required: true
+			type: String
 		}
     },
     {
