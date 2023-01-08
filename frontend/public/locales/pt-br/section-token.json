@@ -1,13 +1,13 @@
 {
-  "service-tokens": "Service Tokens",
-  "service-tokens-description": "Every service token is specific to you, a certain project and a certain environment within this project.",
-  "add-new": "Add New Token",
+  "service-tokens": "Tokens de Serviço",
+  "service-tokens-description": "Cada token de serviço é específico para você, um determinado projeto e um determinado ambiente dentro deste projeto.",
+  "add-new": "Adicionar novo token",
   "add-dialog": {
-    "title": "Add a service token for {{target}}",
-    "description": "Specify the name, environment, and expiry period. When a token is generated, you will only be able to see it once before it disappears. Make sure to save it somewhere.",
-    "name": "Service Token Name",
-    "add": "Add Service Token",
-    "copy-service-token": "Copy your service token",
-    "copy-service-token-description": "Once you close this popup, you will never see your service token again"
+    "title": "Adicione um token de serviço para {{target}}",
+    "description": "Especifique o nome, o ambiente e o período de expiração. Quando um token é gerado, você só poderá vê-lo uma vez antes que ele desapareça. Certifique-se de salvá-lo em algum lugar.",
+    "name": "Nome do token de serviço",
+    "add": "Adicionar token de serviço",
+    "copy-service-token": "Copie seu token de serviço",
+    "copy-service-token-description": "Depois de fechar este pop-up, você nunca mais verá seu token de serviço"
   }
 }
