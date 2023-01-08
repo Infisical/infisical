@@ -10,6 +10,7 @@
   "shared-description": "Shared keys are visible to your whole team",
   "make-shared": "Make Shared",
   "make-personal": "Make Personal",
+  "add-secret": "Add a new secret",
   "check-docs": {
     "button": "Check Docs",
     "title": "Good job!",

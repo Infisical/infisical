@@ -216,7 +216,7 @@ const DropZone = ({
       <div className="z-10 mb-6">
         <Button
           color="mineshaft"
-          text="Create a new .env file"
+          text={String(t("dashboard:add-secret"))}
           onButtonPressed={createNewFile}
           size="md"
         />

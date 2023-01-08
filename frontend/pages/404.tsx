@@ -20,7 +20,7 @@ export default function Custom404() {
           src="/images/dragon-404.svg"
           height={554}
           width={942}
-          alt="google logo"
+          alt="infisical dragon - page not found"
         ></Image>
       </div>
     </div>

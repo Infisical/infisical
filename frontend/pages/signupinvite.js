@@ -349,7 +349,7 @@ export default function SignupInvite() {
               setBackupKeyError,
               setBackupKeyIssued
             });
-            router.push('/dashboard/');
+            router.push('/noprojects/');
           }}
           size="lg"
         />
