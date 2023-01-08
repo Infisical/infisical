@@ -1,7 +1,7 @@
 import React from 'react';
 import Head from 'next/head';
 
-export default function Activity() {
+export default function EmailNotFeriviedPage() {
   return (
     <div className="bg-bunker-800 md:h-screen flex flex-col justify-between">
       <Head>
