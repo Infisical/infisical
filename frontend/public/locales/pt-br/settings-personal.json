@@ -1,11 +1,11 @@
 {
-  "title": "Personal Settings",
-  "description": "View and manage your personal information here.",
+  "title": "Configurações Pessoais",
+  "description": "Visualize e gerencie suas informações pessoais aqui.",
   "emergency": {
-    "name": "Emergency Kit",
-    "text1": "Your Emergency Kit contains the information you’ll need to sign in to your Infisical account.",
-    "text2": "Only the latest issued Emergency Kit remains valid. To get a new Emergency Kit, verify your password.",
-    "download": "Download Emergency Kit"
+    "name": "Kit de emergência",
+    "text1": "Seu Kit de Emergência contém as informações necessárias para acessar sua conta Infisical.",
+    "text2": "Apenas o último kit de emergência emitido permanece válido. Para obter um novo Kit de emergência, verifique sua senha.",
+    "download": "Baixe o kit de emergência"
   },
-  "change-language": "Change Language"
+  "change-language": "Mudar idioma"
 }
