@@ -16,9 +16,11 @@ import {
   faPlus,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Menu, Transition } from '@headlessui/react';
 import getProjectSercetSnapshotsCount from 'ee/api/secrets/GetProjectSercetSnapshotsCount';
 import performSecretRollback from 'ee/api/secrets/PerformSecretRollback';
 import PITRecoverySidebar from 'ee/components/PITRecoverySidebar';
+import { Document, YAMLSeq } from 'yaml';
 
 import Button from '~/components/basic/buttons/Button';
 import ListBox from '~/components/basic/Listbox';
@@ -441,7 +443,7 @@ export default function Dashboard() {
 
     setData(sortedData);
   };
-
+  
   const deleteCertainRow = ({ ids, secretName }: { ids: string[]; secretName: string; }) => {
     deleteRow({ids, secretName});
   };

@@ -28,6 +28,8 @@ services:
       - ./backend/src:/app/src
       - ./backend/nodemon.json:/app/nodemon.json
       - /app/node_modules
+      - ./backend/api-documentation.json:/app/api-documentation.json
+      - ./backend/swagger.ts:/app/swagger.ts
     command: npm run dev
     env_file: .env
     environment:

@@ -11,7 +11,6 @@ import {
   faKey,
   faMobile,
   faPlug,
-  faTimeline,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
@@ -184,6 +183,7 @@ export default function Layout({ children }: LayoutProps) {
       if (
         userWorkspaces.length == 0 &&
         router.asPath != "/noprojects" &&
+        !router.asPath.includes("home")&&
         !router.asPath.includes("settings")
       ) {
         router.push("/noprojects");
