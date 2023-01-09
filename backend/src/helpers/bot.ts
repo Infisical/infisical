@@ -72,7 +72,7 @@ const getSecretsHelper = async ({
     try {
         const key = await getKey({ workspaceId });
         const secrets = await Secret.find({
-            workspaceId,
+            workspace: workspaceId,
             environment,
             type: SECRET_SHARED
         });
@@ -84,7 +84,7 @@ const getSecretsHelper = async ({
                 tag: secret.secretKeyTag,
                 key
             });
-            
+
             const secretValue = decryptSymmetric({
                 ciphertext: secret.secretValueCiphertext,
                 iv: secret.secretValueIV,

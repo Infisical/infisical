@@ -23,6 +23,7 @@ import {
 interface Integration {
     _id: string;
     app?: string;
+    target?: string;
     environment: string;
     integration: string;
     integrationAuth: string;
@@ -69,7 +70,11 @@ const Integration = ({
         
         switch (integration.integration) {
           case "vercel":
-            setIntegrationTarget("Development");
+            setIntegrationTarget(
+              integration?.target 
+              ? integration.target.charAt(0).toUpperCase() + integration.target.substring(1) 
+              : "Development"
+            );
             break;
           case "netlify":
             setIntegrationContext(integration?.context ? contextNetlifyMapping[integration.context] : "Local development");
@@ -93,11 +98,11 @@ const Integration = ({
                 </div>
                 <ListBox
                   data={!integration.isActive ? [
-                    "Production",
+                    "Development",
                     "Preview",
-                    "Development"
+                    "Production"
                   ] : null}
-                  selected={"Production"}
+                  selected={integrationTarget}
                   onChange={setIntegrationTarget}
                 />
             </div>

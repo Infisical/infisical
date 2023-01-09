@@ -55,7 +55,6 @@ const validateSecrets = async ({
 		});
 		
 	} catch (err) {
-		console.error(err);
 		throw new Error('Failed to validate secrets');
 	}
 
