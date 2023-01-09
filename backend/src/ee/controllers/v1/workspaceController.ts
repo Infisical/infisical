@@ -1,9 +1,17 @@
-import e, { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
+import {
+	Secret
+} from '../../../models';
 import { 
 	SecretSnapshot,
-	Log
+	Log,
+	SecretVersion,
+	ISecretVersion
 } from '../../models';
+import { EESecretService } from '../../services';
+import { getLatestSecretVersionIds } from '../../helpers/secretVersion';
 
 /**
  * Return secret snapshots for workspace with id [workspaceId]
@@ -60,6 +68,159 @@ export const getWorkspaceSecretSnapshotsCount = async (req: Request, res: Respon
 	
 	return res.status(200).send({
 		count
+	});
+}
+
+/**
+ * Rollback secret snapshot with id [secretSnapshotId] to version [version]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Response) => {
+	let secrets;
+    try {	
+        const { workspaceId } = req.params;
+        const { version } = req.body;
+        
+		// validate secret snapshot
+        const secretSnapshot = await SecretSnapshot.findOne({
+        	workspace: workspaceId,
+            version
+        }).populate<{ secretVersions: ISecretVersion[]}>('secretVersions');
+        
+        if (!secretSnapshot) throw new Error('Failed to find secret snapshot');
+
+		// TODO: fix any
+		const oldSecretVersionsObj: any = secretSnapshot.secretVersions
+			.reduce((accumulator, s) => ({ 
+				...accumulator, 
+				[`${s.secret.toString()}`]: s 
+			}), {});	
+		
+		const latestSecretVersionIds = await getLatestSecretVersionIds({
+			secretIds: secretSnapshot.secretVersions.map((sv) => sv.secret)
+		});
+		
+		// TODO: fix any
+		const latestSecretVersions: any = (await SecretVersion.find({
+			_id: {
+				$in: latestSecretVersionIds.map((s) => s.versionId)
+			}
+		}, 'secret version'))
+		.reduce((accumulator, s) => ({ 
+			...accumulator, 
+			[`${s.secret.toString()}`]: s 
+		}), {});
+		
+		// delete existing secrets
+		await Secret.deleteMany({
+			workspace: workspaceId
+		});
+
+		// add secrets
+        secrets = await Secret.insertMany(
+			secretSnapshot.secretVersions.map((sv) => {
+				const secretId = sv.secret;
+				const {
+					workspace,
+					type,
+					user,
+					environment,
+					secretKeyCiphertext,
+					secretKeyIV,
+					secretKeyTag,
+					secretKeyHash,
+					secretValueCiphertext,
+					secretValueIV,
+					secretValueTag,
+					secretValueHash,
+					createdAt
+				} = oldSecretVersionsObj[secretId.toString()];
+				
+				return ({
+					_id: secretId,
+					version: latestSecretVersions[secretId.toString()].version + 1,
+					workspace,
+					type,
+					user,
+					environment,
+					secretKeyCiphertext,
+					secretKeyIV,
+					secretKeyTag,
+					secretKeyHash,
+					secretValueCiphertext,
+					secretValueIV,
+					secretValueTag,
+					secretValueHash,
+					secretCommentCiphertext: '',
+					secretCommentIV: '',
+					secretCommentTag: '',
+					createdAt
+				});
+			})
+		);
+		
+		// add secret versions
+		await SecretVersion.insertMany(
+			secrets.map(({
+				_id,
+				version,
+				workspace,
+				type,
+				user,
+				environment,
+				secretKeyCiphertext,
+				secretKeyIV,
+				secretKeyTag,
+				secretKeyHash,
+				secretValueCiphertext,
+				secretValueIV,
+				secretValueTag,
+				secretValueHash
+			}) => ({
+				_id: new Types.ObjectId(),
+				secret: _id,
+				version,
+				workspace,
+				type,
+				user,
+				environment,
+				isDeleted: false,
+				secretKeyCiphertext,
+				secretKeyIV,
+				secretKeyTag,
+				secretKeyHash,
+				secretValueCiphertext,
+				secretValueIV,
+				secretValueTag,
+				secretValueHash
+			}))
+		);
+		
+		// update secret versions of restored secrets as not deleted
+		await SecretVersion.updateMany({
+			secret: {
+				$in: secretSnapshot.secretVersions.map((sv) => sv.secret)
+			}
+		}, {
+			isDeleted: false
+		});
+		
+        // take secret snapshot
+		await EESecretService.takeSecretSnapshot({
+			workspaceId
+		});
+    } catch (err) {
+        Sentry.setUser({ email: req.user.email });
+		Sentry.captureException(err);
+		return res.status(400).send({
+			message: 'Failed to roll back secret snapshot'
+		}); 
+    }
+    
+	return res.status(200).send({
+		secrets
 	});
 }
 
