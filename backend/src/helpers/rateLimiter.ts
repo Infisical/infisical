@@ -6,7 +6,9 @@ const apiLimiter = rateLimit({
   max: 450,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (request) => request.path === '/healthcheck'
+  skip: (request) => {
+    return request.path === '/healthcheck' || request.path === '/api/status'
+  }
 });
 
 // 5 requests per hour

@@ -7,6 +7,39 @@ const { ValidationError } = mongoose.Error;
 import { BadRequestError, InternalServerError, UnauthorizedRequestError, ValidationError as RouteValidationError } from '../../utils/errors';
 import { AnyBulkWriteOperation } from 'mongodb';
 import { SECRET_PERSONAL, SECRET_SHARED } from "../../variables";
+import { validateMembership } from "../../helpers/membership";
+import { ADMIN, MEMBER } from '../../variables';
+
+export const createSingleSecret = async (req: Request, res: Response) => {
+  const secretToCreate: CreateSecretRequestBody = req.body.secret;
+  const { workspaceId, environmentName } = req.params
+  const sanitizedSecret: SanitizedSecretForCreate = {
+    secretKeyCiphertext: secretToCreate.secretKeyCiphertext,
+    secretKeyIV: secretToCreate.secretKeyIV,
+    secretKeyTag: secretToCreate.secretKeyTag,
+    secretKeyHash: secretToCreate.secretKeyHash,
+    secretValueCiphertext: secretToCreate.secretValueCiphertext,
+    secretValueIV: secretToCreate.secretValueIV,
+    secretValueTag: secretToCreate.secretValueTag,
+    secretValueHash: secretToCreate.secretValueHash,
+    secretCommentCiphertext: secretToCreate.secretCommentCiphertext,
+    secretCommentIV: secretToCreate.secretCommentIV,
+    secretCommentTag: secretToCreate.secretCommentTag,
+    secretCommentHash: secretToCreate.secretCommentHash,
+    workspace: new Types.ObjectId(workspaceId),
+    environment: environmentName,
+    type: secretToCreate.type,
+    user: new Types.ObjectId(req.user._id)
+  }
+
+
+  const [error, newlyCreatedSecret] = await to(Secret.create(sanitizedSecret).then())
+  if (error instanceof ValidationError) {
+    throw RouteValidationError({ message: error.message, stack: error.stack })
+  }
+
+  res.status(200).send()
+}
 
 export const batchCreateSecrets = async (req: Request, res: Response) => {
   const secretsToCreate: CreateSecretRequestBody[] = req.body.secrets;
@@ -48,16 +81,6 @@ export const batchCreateSecrets = async (req: Request, res: Response) => {
   res.status(200).send()
 }
 
-
-export const createSingleSecret = async (req: Request, res: Response) => {
-  try {
-    const secretFromDB = await Secret.findById(req.params.secretId)
-    return res.status(200).send(secretFromDB);
-  } catch (e) {
-    throw BadRequestError({ message: "Unable to find the requested secret" })
-  }
-}
-
 export const batchDeleteSecrets = async (req: Request, res: Response) => {
   const { workspaceId, environmentName } = req.params
   const secretIdsToDelete: string[] = req.body.secretIds
@@ -90,6 +113,33 @@ export const batchDeleteSecrets = async (req: Request, res: Response) => {
   res.status(200).send()
 }
 
+export const deleteSingleSecret = async (req: Request, res: Response) => {
+  const { secretId } = req.params;
+
+  const [error, singleSecretRetrieved] = await to(Secret.findById(secretId).then())
+  if (error instanceof ValidationError) {
+    throw RouteValidationError({ message: "Unable to get secret, please try again", stack: error.stack })
+  }
+
+  if (singleSecretRetrieved) {
+    const [membershipValidationError, membership] = await to(validateMembership({
+      userId: req.user._id,
+      workspaceId: singleSecretRetrieved.workspace._id.toString(),
+      acceptedRoles: [ADMIN, MEMBER]
+    }))
+
+    if (membershipValidationError || !membership) {
+      throw UnauthorizedRequestError()
+    }
+
+    await Secret.findByIdAndDelete(secretId)
+
+    res.status(200).send()
+  } else {
+    throw BadRequestError()
+  }
+}
+
 export const batchModifySecrets = async (req: Request, res: Response) => {
   const { workspaceId, environmentName } = req.params
   const secretsModificationsRequested: ModifySecretRequestBody[] = req.body.secrets;
@@ -100,7 +150,6 @@ export const batchModifySecrets = async (req: Request, res: Response) => {
 
   const secretsUserCanModifySet: Set<string> = new Set(secretIdsUserCanModify.map(objectId => objectId._id.toString()));
   const updateOperationsToPerform: any = []
-
 
   secretsModificationsRequested.forEach(userModifiedSecret => {
     if (secretsUserCanModifySet.has(userModifiedSecret._id.toString())) {
@@ -138,6 +187,38 @@ export const batchModifySecrets = async (req: Request, res: Response) => {
   return res.status(200).send()
 }
 
+export const modifySingleSecrets = async (req: Request, res: Response) => {
+  const { workspaceId, environmentName } = req.params
+  const secretModificationsRequested: ModifySecretRequestBody = req.body.secret;
+
+  const [secretIdUserCanModifyError, secretIdUserCanModify] = await to(Secret.findOne({ workspace: workspaceId, environment: environmentName }, { _id: 1 }).then())
+  if (secretIdUserCanModifyError && !secretIdUserCanModify) {
+    throw BadRequestError()
+  }
+
+  const sanitizedSecret: SanitizedSecretModify = {
+    secretKeyCiphertext: secretModificationsRequested.secretKeyCiphertext,
+    secretKeyIV: secretModificationsRequested.secretKeyIV,
+    secretKeyTag: secretModificationsRequested.secretKeyTag,
+    secretKeyHash: secretModificationsRequested.secretKeyHash,
+    secretValueCiphertext: secretModificationsRequested.secretValueCiphertext,
+    secretValueIV: secretModificationsRequested.secretValueIV,
+    secretValueTag: secretModificationsRequested.secretValueTag,
+    secretValueHash: secretModificationsRequested.secretValueHash,
+    secretCommentCiphertext: secretModificationsRequested.secretCommentCiphertext,
+    secretCommentIV: secretModificationsRequested.secretCommentIV,
+    secretCommentTag: secretModificationsRequested.secretCommentTag,
+    secretCommentHash: secretModificationsRequested.secretCommentHash,
+  }
+
+  const [error, singleModificationUpdate] = await to(Secret.updateOne({ _id: secretModificationsRequested._id, workspace: workspaceId }, { $inc: { version: 1 }, $set: sanitizedSecret }).then())
+  if (error instanceof ValidationError) {
+    throw RouteValidationError({ message: "Unable to apply modifications, please try again", stack: error.stack })
+  }
+
+  return res.status(200).send(singleModificationUpdate)
+}
+
 export const fetchAllSecrets = async (req: Request, res: Response) => {
   const { environment } = req.query;
   const { workspaceId } = req.params;
@@ -165,4 +246,31 @@ export const fetchAllSecrets = async (req: Request, res: Response) => {
   }
 
   return res.json(allSecrets)
+}
+
+export const fetchSingleSecret = async (req: Request, res: Response) => {
+  const { secretId } = req.params;
+
+  const [error, singleSecretRetrieved] = await to(Secret.findById(secretId).then())
+
+  if (error instanceof ValidationError) {
+    throw RouteValidationError({ message: "Unable to get secret, please try again", stack: error.stack })
+  }
+
+  if (singleSecretRetrieved) {
+    const [membershipValidationError, membership] = await to(validateMembership({
+      userId: req.user._id,
+      workspaceId: singleSecretRetrieved.workspace._id.toString(),
+      acceptedRoles: [ADMIN, MEMBER]
+    }))
+
+    if (membershipValidationError || !membership) {
+      throw UnauthorizedRequestError()
+    }
+
+    res.json(singleSecretRetrieved)
+
+  } else {
+    throw BadRequestError()
+  }
 }

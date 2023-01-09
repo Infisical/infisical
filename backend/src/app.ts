@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { patchRouterParam } = require('./utils/patchAsyncRoutes');
 
-import express from 'express';
+import express, { Request, Response } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -42,6 +42,8 @@ import {
   serviceTokenData as v2ServiceTokenDataRouter,
   apiKeyData as v2APIKeyDataRouter,
 } from './routes/v2';
+
+import { healthCheck } from './routes/status';
 
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
@@ -100,6 +102,10 @@ app.use('/api/v2/workspace', v2WorkspaceRouter);
 app.use('/api/v2/secret', v2SecretRouter);
 app.use('/api/v2/service-token', v2ServiceTokenDataRouter);
 app.use('/api/v2/api-key-data', v2APIKeyDataRouter);
+
+
+// Server status
+app.use('/api', healthCheck)
 
 //* Handle unrouted requests and respond with proper error message as well as status code
 app.use((req, res, next) => {

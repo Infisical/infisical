@@ -17,8 +17,10 @@ import {
   faPlus,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Menu, Transition } from '@headlessui/react';
 import getProjectSercetSnapshotsCount from 'ee/api/secrets/GetProjectSercetSnapshotsCount';
 import PITRecoverySidebar from 'ee/components/PITRecoverySidebar';
+import { Document, YAMLSeq } from 'yaml';
 
 import Button from '~/components/basic/buttons/Button';
 import ListBox from '~/components/basic/Listbox';
@@ -157,7 +159,6 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
-        console.log(1, 'reloaded')
         const tempNumSnapshots = await getProjectSercetSnapshotsCount({ workspaceId: String(router.query.id) })
         setNumSnapshots(tempNumSnapshots);
         const userWorkspaces = await getWorkspaces();
@@ -396,7 +397,7 @@ export default function Dashboard() {
     }
 
     // increasing the number of project commits
-    setNumSnapshots(numSnapshots ?? 0 + 1);
+    setNumSnapshots((numSnapshots ?? 0) + 1);
   };
 
   const addData = (newData: SecretDataProps[]) => {
@@ -426,16 +427,75 @@ export default function Dashboard() {
     setData(sortedData);
   };
 
+  // check if there are secrets with an override
+  const checkOverrides = (data: SecretDataProps[]) => {
+    let secrets : SecretDataProps[] = data!.map((secret) => Object.create(secret));
+    const overridenSecrets = data!.filter(
+      (secret) => secret.type === 'personal'
+    );
+    if (overridenSecrets.length) {
+      overridenSecrets.forEach((secret) => {
+        const index = secrets!.findIndex(
+          (_secret) => _secret.key === secret.key && _secret.type === 'shared'
+        );
+        secrets![index].value = secret.value;
+      });
+      secrets = secrets!.filter((secret) => secret.type === 'shared');
+    }
+    return secrets;
+  };
   // This function downloads the secrets as a .env file
-  const download = () => {
-    const file = data!
-      .map((item: SecretDataProps) => [item.key, item.value].join('='))
+  const downloadDotEnv = () => {
+    if (!data) return;
+    const secrets = checkOverrides(data)
+
+    const file = secrets!
+      .map(
+        (item: SecretDataProps) =>
+          `${
+            item.comment
+              ? item.comment
+                  .split('\n')
+                  .map((comment) => '# '.concat(comment))
+                  .join('\n') + '\n'
+              : ''
+          }` + [item.key, item.value].join('=')
+      )
       .join('\n');
+
+        const blob = new Blob([file]);
+        const fileDownloadUrl = URL.createObjectURL(blob);
+        const alink = document.createElement('a');
+        alink.href = fileDownloadUrl;
+        alink.download = envMapping[env] + '.env';
+        alink.click();
+  };
+
+  // This function downloads the secrets as a .yml file
+  const downloadYaml = () => {
+    if (!data) return;
+    const doc = new Document(new YAMLSeq());
+    const secrets = checkOverrides(data);
+    secrets.forEach((secret) => {
+      const pair = doc.createNode({ [secret.key]: secret.value });
+      pair.commentBefore = secret.comment
+        .split('\n')
+        .map((line) => (line ? ' '.concat(line) : ''))
+        .join('\n');
+      doc.add(pair);
+    });
+
+    const file = doc
+      .toString()
+      .split('\n')
+      .map((line) => (line.startsWith('-') ? line.replace('- ', '') : line))
+      .join('\n');
+
     const blob = new Blob([file]);
     const fileDownloadUrl = URL.createObjectURL(blob);
     const alink = document.createElement('a');
     alink.href = fileDownloadUrl;
-    alink.download = envMapping[env] + '.env';
+    alink.download = envMapping[env] + '.yml';
     alink.click();
   };
 
@@ -615,12 +675,50 @@ export default function Dashboard() {
                       />
                     </div>}
                     {!snapshotData && <div className="ml-2 min-w-max flex flex-row items-start justify-start">
-                      <Button
-                        onButtonPressed={download}
-                        color="mineshaft"
-                        size="icon-md"
-                        icon={faDownload}
-                      />
+                      <Menu
+                        as="div"
+                        className="relative inline-block text-left"
+                      >
+                        <Menu.Button
+                          as="div"
+                          className="inline-flex w-full justify-center  text-sm font-medium text-gray-200 rounded-md hover:bg-white/10 duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75"
+                        >
+                          <Button
+                            color="mineshaft"
+                            size="icon-md"
+                            icon={faDownload}
+                            onButtonPressed={() => {}}
+                          />
+                        </Menu.Button>
+                        <Transition
+                          as={Fragment}
+                          enter="transition ease-out duration-100"
+                          enterFrom="transform opacity-0 scale-95"
+                          enterTo="transform opacity-100 scale-100"
+                          leave="transition ease-in duration-75"
+                          leaveFrom="transform opacity-100 scale-100"
+                          leaveTo="transform opacity-0 scale-95"
+                        >
+                          <Menu.Items className="absolute z-50 drop-shadow-xl right-0 mt-0.5 w-[20rem] origin-top-right rounded-md bg-bunker border border-mineshaft-500 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-2 space-y-2">
+                            <Menu.Item>
+                              <Button
+                                color="mineshaft"
+                                onButtonPressed={downloadDotEnv}
+                                size="md"
+                                text="Download as .env"
+                              />
+                            </Menu.Item>
+                            <Menu.Item>
+                              <Button
+                                color="mineshaft"
+                                onButtonPressed={downloadYaml}
+                                size="md"
+                                text="Download as .yml"
+                              />
+                            </Menu.Item>
+                          </Menu.Items>
+                        </Transition>
+                      </Menu>
                     </div>}
                     <div className="ml-2 min-w-max flex flex-row items-start justify-start">
                       <Button
@@ -673,7 +771,9 @@ export default function Dashboard() {
                         modifyValue={listenChangeValue}
                         modifyKey={listenChangeKey}
                         isBlurred={blurred}
-                        isDuplicate={findDuplicates(data?.map((item) => item.key + item.type))?.includes(keyPair.key + keyPair.type)}
+                        isDuplicate={findDuplicates(
+                          data?.map((item) => item.key + item.type)
+                        )?.includes(keyPair.key + keyPair.type)}
                         toggleSidebar={toggleSidebar}
                         sidebarSecretId={sidebarSecretId}
                         isSnapshot={false}
@@ -695,7 +795,9 @@ export default function Dashboard() {
                         modifyValue={listenChangeValue}
                         modifyKey={listenChangeKey}
                         isBlurred={blurred}
-                        isDuplicate={findDuplicates(data?.map((item) => item.key + item.type))?.includes(keyPair.key + keyPair.type)}
+                        isDuplicate={findDuplicates(
+                          data?.map((item) => item.key + item.type)
+                        )?.includes(keyPair.key + keyPair.type)}
                         toggleSidebar={toggleSidebar}
                         sidebarSecretId={sidebarSecretId}
                         isSnapshot={true}

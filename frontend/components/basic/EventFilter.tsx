@@ -55,7 +55,7 @@ export default function EventFilter({
           {selected != '' ? (
             <p className="select-none text-bunker-100">{t("activity:event." + selected)}</p>
           ) : (
-            <p className="select-none">Select an event</p>
+            <p className="select-none">{String(t("common:select-event"))}</p>
           )}
           {selected != '' ? (
             <FontAwesomeIcon

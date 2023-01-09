@@ -117,13 +117,13 @@ const UserTable = ({
 
   return (
     <div className="table-container bg-bunker rounded-md mb-6 border border-mineshaft-700 relative mt-1">
-      <div className="absolute rounded-t-md w-full h-14 bg-white/5"></div>
-      <table className="w-full my-1">
-        <thead className="text-gray-400">
+      <div className="absolute rounded-t-md w-full h-[3.25rem] bg-white/5"></div>
+      <table className="w-full my-0.5">
+        <thead className="text-gray-400 text-sm font-light">
           <tr>
-            <th className="text-left pl-6 py-3.5">First Name</th>
-            <th className="text-left pl-6 py-3.5">Last Name</th>
-            <th className="text-left pl-6 py-3.5">Email</th>
+            <th className="text-left pl-6 py-3.5">FIRST NAME</th>
+            <th className="text-left pl-6 py-3.5">LAST NAME</th>
+            <th className="text-left pl-6 py-3.5">EMAIL</th>
             <th></th>
           </tr>
         </thead>

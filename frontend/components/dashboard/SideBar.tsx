@@ -9,6 +9,7 @@ import Button from '../basic/buttons/Button';
 import Toggle from '../basic/Toggle';
 import CommentField from './CommentField';
 import DashboardInputField from './DashboardInputField';
+import { DeleteActionButton } from './DeleteActionButton';
 import GenerateSecretMenu from './GenerateSecretMenu';
 
 
@@ -28,6 +29,10 @@ interface OverrideProps {
   pos: number;
   comment: string;
 }
+export interface DeleteRowFunctionProps { 
+  ids: string[]; 
+  secretName: string; 
+}
 
 interface SideBarProps {
   toggleSidebar: (value: string) => void; 
@@ -41,7 +46,7 @@ interface SideBarProps {
   savePush: () => void;
   sharedToHide: string[];
   setSharedToHide: (values: string[]) => void;
-  deleteRow: any;
+  deleteRow: (props: DeleteRowFunctionProps) => void;
 }
 
 /**
@@ -77,7 +82,7 @@ const SideBar = ({
   const [overrideEnabled, setOverrideEnabled] = useState(data.map(secret => secret.type).includes("personal"));
   const { t } = useTranslation();
 
-  return <div className='absolute border-l border-mineshaft-500 bg-bunker fixed h-full w-96 top-14 right-0 z-50 shadow-xl flex flex-col justify-between'>
+  return <div className='absolute border-l border-mineshaft-500 bg-bunker fixed h-full w-96 top-14 right-0 z-40 shadow-xl flex flex-col justify-between'>
     {isLoading ? (
       <div className="flex items-center justify-center h-full">
         <Image
@@ -170,14 +175,9 @@ const SideBar = ({
         active={buttonReady}
         textDisabled="Saved"
       />
-      <div className="bg-[#9B3535] opacity-70 hover:opacity-100 w-[4.5rem] h-[2.5rem] rounded-md duration-200 ml-2">
-        <Button
-          text={String(t("Delete"))}
-          onButtonPressed={() => deleteRow({ ids: overrideEnabled ? data.map(secret => secret.id) : [data.filter(secret => secret.type == "shared")[0]?.id], secretName: data[0]?.key })}
-          color="red"
-          size="md"
-        />
-      </div>
+      <DeleteActionButton 
+        onSubmit={() => deleteRow({ ids: overrideEnabled ? data.map(secret => secret.id) : [data.filter(secret => secret.type == "shared")[0]?.id], secretName: data[0]?.key })}
+      />
     </div>
   </div>
 };
