@@ -65,7 +65,6 @@ export const createAPIKeyData = async (req: Request, res: Response) => {
         apiKey = `ak.${apiKeyData._id.toString()}.${secret}`;
             
     } catch (err) {
-        console.error(err);
         Sentry.setUser({ email: req.user.email });
         Sentry.captureException(err);
         return res.status(400).send({

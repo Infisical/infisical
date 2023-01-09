@@ -229,6 +229,7 @@ const v1PushSecrets = async ({
 			}) => {
 				const newSecret = newSecretsObj[`${type}-${secretKeyHash}`];
 				return ({
+					_id: new Types.ObjectId(),
 					secret: _id,
 					version: version ? version + 1 : 1,
 					workspace: new Types.ObjectId(workspaceId),

@@ -5,7 +5,7 @@ import {
 	requireWorkspaceAuth,
 	validateRequest
 } from '../../../middleware';
-import { param, query } from 'express-validator';
+import { param, query, body } from 'express-validator';
 import { ADMIN, MEMBER } from '../../../variables';
 import { workspaceController } from '../../controllers/v1';
 
@@ -35,6 +35,20 @@ router.get(
 	param('workspaceId').exists().trim(),
 	validateRequest,
 	workspaceController.getWorkspaceSecretSnapshotsCount
+);
+
+router.post(
+	'/:workspaceId/secret-snapshots/rollback',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER]
+	}),
+	param('workspaceId').exists().trim(),
+	body('version').exists().isInt(),
+	validateRequest,
+	workspaceController.rollbackWorkspaceSecretSnapshot
 );
 
 router.get(

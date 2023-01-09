@@ -9,7 +9,7 @@ import {
 } from '../../variables';
 
 export interface ISecretVersion {
-    _id?: Types.ObjectId;
+	_id: Types.ObjectId;
     secret: Types.ObjectId;
     version: number;
 	workspace: Types.ObjectId; // new
@@ -59,7 +59,7 @@ const secretVersionSchema = new Schema<ISecretVersion>(
 			enum: [ENV_DEV, ENV_TESTING, ENV_STAGING, ENV_PROD],
 			required: true
 		},
-        isDeleted: {
+        isDeleted: { // consider removing field
             type: Boolean,
             default: false,
             required: true

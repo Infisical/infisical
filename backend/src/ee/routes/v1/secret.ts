@@ -5,7 +5,7 @@ import {
 	requireSecretAuth,
     validateRequest
 } from '../../../middleware';
-import { query, param } from 'express-validator';
+import { query, param, body } from 'express-validator';
 import { secretController } from '../../controllers/v1';
 import { ADMIN, MEMBER } from '../../../variables';
 
@@ -22,6 +22,19 @@ router.get(
 	query('limit').exists().isInt(),
 	validateRequest,
 	secretController.getSecretVersions
+);
+
+router.post(
+	'/:secretId/secret-versions/rollback',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireSecretAuth({
+		acceptedRoles: [ADMIN, MEMBER]
+	}),
+	param('secretId').exists().trim(),
+	body('version').exists().isInt(),
+	secretController.rollbackSecretVersion
 );
 
 export default router;
