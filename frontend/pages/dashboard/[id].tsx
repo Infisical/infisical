@@ -9,7 +9,6 @@ import {
   faArrowLeft,
   faCheck,
   faClockRotateLeft,
-  faDownload,
   faEye,
   faEyeSlash,
   faFolderOpen,
@@ -18,28 +17,32 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import getProjectSercetSnapshotsCount from 'ee/api/secrets/GetProjectSercetSnapshotsCount';
+import performSecretRollback from 'ee/api/secrets/PerformSecretRollback';
 import PITRecoverySidebar from 'ee/components/PITRecoverySidebar';
 
 import Button from '~/components/basic/buttons/Button';
 import ListBox from '~/components/basic/Listbox';
 import BottonRightPopup from '~/components/basic/popups/BottomRightPopup';
 import { useNotificationContext } from '~/components/context/Notifications/NotificationProvider';
+import DownloadSecretMenu from '~/components/dashboard/DownloadSecretsMenu';
 import DropZone from '~/components/dashboard/DropZone';
 import KeyPair from '~/components/dashboard/KeyPair';
 import SideBar from '~/components/dashboard/SideBar';
 import NavHeader from '~/components/navigation/NavHeader';
+import encryptSecrets from '~/components/utilities/secrets/encryptSecrets';
 import getSecretsForProject from '~/components/utilities/secrets/getSecretsForProject';
-import pushKeys from '~/components/utilities/secrets/pushKeys';
 import { getTranslatedServerSideProps } from '~/components/utilities/withTranslateProps';
 import guidGenerator from '~/utilities/randomId';
 
 import { envMapping, reverseEnvMapping } from '../../public/data/frequentConstants';
+import addSecrets from '../api/files/AddSecrets';
+import deleteSecrets from '../api/files/DeleteSecrets';
+import updateSecrets from '../api/files/UpdateSecrets';
 import getUser from '../api/user/getUser';
 import checkUserAction from '../api/userActions/checkUserAction';
 import registerUserAction from '../api/userActions/registerUserAction';
 import getWorkspaces from '../api/workspace/getWorkspaces';
 
-const queryString = require("query-string");
 
 interface SecretDataProps {
   type: 'personal' | 'shared';
@@ -50,9 +53,18 @@ interface SecretDataProps {
   comment: string;
 }
 
+interface overrideProps {
+  id: string;
+  keyName: string;
+  value: string;
+  pos: number;
+  comment: string;
+}
+
 interface SnapshotProps {
   id: string;
   createdAt: string;
+  version: number;
   secretVersions: {
     id: string;
     pos: number;
@@ -87,7 +99,7 @@ function findDuplicates(arr: any[]) {
  */
 export default function Dashboard() {
   const [data, setData] = useState<SecretDataProps[] | null>();
-  const [fileState, setFileState] = useState<SecretDataProps[]>([]);
+  const [initialData, setInitialData] = useState<SecretDataProps[]>([]); 
   const [buttonReady, setButtonReady] = useState(false);
   const router = useRouter();
   const [workspaceId, setWorkspaceId] = useState('');
@@ -194,11 +206,11 @@ export default function Dashboard() {
 
         const dataToSort = await getSecretsForProject({
           env,
-          setFileState,
           setIsKeyAvailable,
           setData,
           workspaceId: String(router.query.id)
         });
+        setInitialData(dataToSort);
         reorderRows(dataToSort);
 
         setSharedToHide(
@@ -234,14 +246,6 @@ export default function Dashboard() {
     ]);
   };
 
-  interface overrideProps {
-    id: string;
-    keyName: string;
-    value: string;
-    pos: number;
-    comment: string;
-  }
-
   /**
    * This function add an ovverrided version of a certain secret to the current user
    * @param {object} obj 
@@ -273,12 +277,12 @@ export default function Dashboard() {
       text: `${secretName} has been deleted. Remember to save changes.`,
       type: 'error'
     });
-    setData(data!.filter((row: SecretDataProps) => !ids.includes(row.id)));
+    sortValuesHandler(data!.filter((row: SecretDataProps) => !ids.includes(row.id)), sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical");
   };
 
   /**
    * This function deleted the override of a certain secrer
-   * @param {string} id - id of a secret to be deleted
+   * @param {string} id - id of a shared secret; the override with the same key should be deleted
    */
   const deleteOverride = (id: string) => {
     setButtonReady(true);
@@ -291,7 +295,7 @@ export default function Dashboard() {
     setSharedToHide(sharedToHide!.filter(tempId => tempId != sharedVersionOfOverride))
 
     // resort secrets
-    const tempData = data!.filter((row: SecretDataProps) => !(row.id == id && row.type == 'personal'))
+    const tempData = data!.filter((row: SecretDataProps) => !(row.key == data!.filter(row => row.id == id)[0]?.key && row.type == 'personal'))
     sortValuesHandler(tempData, sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical")
   };
 
@@ -306,14 +310,6 @@ export default function Dashboard() {
   const modifyKey = (value: string, pos: number) => {
     setData((oldData) => {
       oldData![pos].key = value;
-      return [...oldData!];
-    });
-    setButtonReady(true);
-  };
-
-  const modifyVisibility = (value: "shared" | "personal", pos: number) => {
-    setData((oldData) => {
-      oldData![pos].type = value;
       return [...oldData!];
     });
     setButtonReady(true);
@@ -336,10 +332,6 @@ export default function Dashboard() {
     modifyKey(value, pos);
   }, []);
 
-  const listenChangeVisibility = useCallback((value: "shared" | "personal", pos: number) => {
-    modifyVisibility(value, pos);
-  }, []);
-
   const listenChangeComment = useCallback((value: string, pos: number) => {
     modifyComment(value, pos);
   }, []);
@@ -347,21 +339,19 @@ export default function Dashboard() {
   /**
    * Save the changes of environment variables and push them to the database
    */
-  const savePush = async (dataToPush?: any[], envToPush?: string) => {
-    let obj;
+  const savePush = async (dataToPush?: SecretDataProps[]) => {
+    let newData: SecretDataProps[] | null | undefined;
     // dataToPush is mostly used for rollbacks, otherwise we always take the current state data
     if ((dataToPush ?? [])?.length > 0) {
-      obj = Object.assign(
-        {},
-        ...dataToPush!.map((row: SecretDataProps) => ({ [row.type.charAt(0) + row.key]: [row.value, row.comment ?? ''] }))
-      );
+      newData = dataToPush;
     } else {
-      // Format the new object with environment variables
-      obj = Object.assign(
-        {},
-        ...data!.map((row: SecretDataProps) => ({ [row.type.charAt(0) + row.key]: [row.value, row.comment ?? ''] }))
-      );
+      newData = data;
     }
+
+    const obj = Object.assign(
+      {},
+      ...newData!.map((row: SecretDataProps) => ({ [row.type.charAt(0) + row.key]: [row.value, row.comment ?? ''] }))
+    );
 
     // Checking if any of the secret keys start with a number - if so, don't do anything
     const nameErrors = !Object.keys(obj)
@@ -383,10 +373,37 @@ export default function Dashboard() {
       });
     }
 
-    // Once "Save changed is clicked", disable that button
+    // Once "Save changes" is clicked, disable that button
     setButtonReady(false);
-    console.log(envToPush ? envToPush : env, env, envToPush)
-    pushKeys({ obj, workspaceId: String(router.query.id), env: envToPush ? envToPush : env });
+
+    const secretsToBeDeleted 
+      = initialData
+      .filter(initDataPoint => !newData!.map(newDataPoint => newDataPoint.id).includes(initDataPoint.id))
+      .map(secret => secret.id);
+
+    const secretsToBeAdded 
+      = newData!
+      .filter(newDataPoint => !initialData.map(initDataPoint => initDataPoint.id).includes(newDataPoint.id));
+
+    const secretsToBeUpdated 
+      = newData!.filter(newDataPoint => initialData
+      .filter(initDataPoint => newData!.map(newDataPoint => newDataPoint.id).includes(initDataPoint.id) 
+        && (newData!.filter(newDataPoint => newDataPoint.id == initDataPoint.id)[0].value != initDataPoint.value
+        || newData!.filter(newDataPoint => newDataPoint.id == initDataPoint.id)[0].key != initDataPoint.key
+        || newData!.filter(newDataPoint => newDataPoint.id == initDataPoint.id)[0].comment != initDataPoint.comment))
+      .map(secret => secret.id).includes(newDataPoint.id));
+    
+    if (secretsToBeDeleted.length > 0) {
+      await deleteSecrets({ secretIds: secretsToBeDeleted });
+    }
+    if (secretsToBeAdded.length > 0) {
+      const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeAdded, workspaceId, env: envMapping[env] })
+      await addSecrets({ secrets, env: envMapping[env], workspaceId });
+    }
+    if (secretsToBeUpdated.length > 0) {
+      const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeUpdated, workspaceId, env: envMapping[env] })
+      await updateSecrets({ secrets });
+    }
 
     // If this user has never saved environment variables before, show them a prompt to read docs
     if (!hasUserEverPushed) {
@@ -423,19 +440,6 @@ export default function Dashboard() {
     });
 
     setData(sortedData);
-  };
-
-  // This function downloads the secrets as a .env file
-  const download = () => {
-    const file = data!
-      .map((item: SecretDataProps) => [item.key, item.value].join('='))
-      .join('\n');
-    const blob = new Blob([file]);
-    const fileDownloadUrl = URL.createObjectURL(blob);
-    const alink = document.createElement('a');
-    alink.href = fileDownloadUrl;
-    alink.download = envMapping[env] + '.env';
-    alink.click();
   };
 
   const deleteCertainRow = ({ ids, secretName }: { ids: string[]; secretName: string; }) => {
@@ -535,8 +539,6 @@ export default function Dashboard() {
                 <Button
                   text={String(t("Rollback to this snapshot"))}
                   onButtonPressed={async () => {
-                    const envsToRollback = snapshotData.secretVersions.map(sv => sv.environment).filter((v, i, a) => a.indexOf(v) === i);
-
                     // Update secrets in the state only for the current environment
                     setData(
                       snapshotData.secretVersions
@@ -548,18 +550,9 @@ export default function Dashboard() {
                       })
                     );
 
-                    // Rollback each of the environments in the snapshot
-                    // #TODO: clean up other environments
-                    envsToRollback.map(async (envToRollback) => {
-                      await savePush(
-                        snapshotData.secretVersions
-                        .filter(row => row.environment == envToRollback)
-                        .map((sv, position) => { 
-                          return {id: sv.id, pos: position, type: sv.type, key: sv.key, value: sv.value, comment: ''}
-                        }),
-                        reverseEnvMapping[envToRollback]
-                      );
-                    });
+                    // Perform the rollback globally
+                    performSecretRollback({ workspaceId, version: snapshotData.version })
+
                     setSnapshotData(undefined);
                     createNotification({
                       text: `Rollback has been performed successfully.`,
@@ -614,12 +607,7 @@ export default function Dashboard() {
                       />
                     </div>}
                     {!snapshotData && <div className="ml-2 min-w-max flex flex-row items-start justify-start">
-                      <Button
-                        onButtonPressed={download}
-                        color="mineshaft"
-                        size="icon-md"
-                        icon={faDownload}
-                      />
+                      <DownloadSecretMenu data={data} env={env} />
                     </div>}
                     <div className="ml-2 min-w-max flex flex-row items-start justify-start">
                       <Button
@@ -672,7 +660,9 @@ export default function Dashboard() {
                         modifyValue={listenChangeValue}
                         modifyKey={listenChangeKey}
                         isBlurred={blurred}
-                        isDuplicate={findDuplicates(data?.map((item) => item.key + item.type))?.includes(keyPair.key + keyPair.type)}
+                        isDuplicate={findDuplicates(
+                          data?.map((item) => item.key + item.type)
+                        )?.includes(keyPair.key + keyPair.type)}
                         toggleSidebar={toggleSidebar}
                         sidebarSecretId={sidebarSecretId}
                         isSnapshot={false}
@@ -694,7 +684,9 @@ export default function Dashboard() {
                         modifyValue={listenChangeValue}
                         modifyKey={listenChangeKey}
                         isBlurred={blurred}
-                        isDuplicate={findDuplicates(data?.map((item) => item.key + item.type))?.includes(keyPair.key + keyPair.type)}
+                        isDuplicate={findDuplicates(
+                          data?.map((item) => item.key + item.type)
+                        )?.includes(keyPair.key + keyPair.type)}
                         toggleSidebar={toggleSidebar}
                         sidebarSecretId={sidebarSecretId}
                         isSnapshot={true}
@@ -728,7 +720,6 @@ export default function Dashboard() {
                   />
                 )}
                 {
-                // fileState.message == 'Access needed to pull the latest file' ||
                   (!isKeyAvailable && (
                     <>
                       <FontAwesomeIcon

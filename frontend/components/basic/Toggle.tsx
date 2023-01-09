@@ -34,7 +34,7 @@ interface ToggleProps {
  * @param {string} obj.value - value of a certain secret
  * @param {number} obj.pos - position of a certain secret
  #TODO: make the secret id persistent?
- * @param {string} obj.id - id of a certain secret  
+ * @param {string} obj.id - id of a certain secret (NOTE: THIS IS THE ID OF THE MAIN SECRET - NOT OF AN OVERRIDE)
  * @param {function} obj.deleteOverride - a function that deleted an override for a certain secret
  * @param {string[]} obj.sharedToHide - an array of shared secrets that we want to hide visually because they are overriden. 
  * @param {function} obj.setSharedToHide - a function that updates the array of secrets that we want to hide visually

@@ -273,7 +273,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
     });
     await Secret.bulkWrite(ops);
     
-    let newSecretsObj: { [key: string]: PatchSecret } = {};
+    const newSecretsObj: { [key: string]: PatchSecret } = {};
     req.body.secrets.forEach((secret: PatchSecret) => {
         newSecretsObj[secret.id] = secret;
     });
@@ -323,7 +323,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
 
     // group secrets into workspaces so updated secrets can
     // be logged and snapshotted separately for each workspace
-    let workspaceSecretObj: any = {};
+    const workspaceSecretObj: any = {};
     req.secrets.forEach((s: any) => {
         if (s.workspace.toString() in workspaceSecretObj) {
             workspaceSecretObj[s.workspace.toString()].push(s);
@@ -399,7 +399,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
 
     // group secrets into workspaces so deleted secrets can
     // be logged and snapshotted separately for each workspace
-    let workspaceSecretObj: any = {};
+    const workspaceSecretObj: any = {};
     req.secrets.forEach((s: any) => {
         if (s.workspace.toString() in workspaceSecretObj) {
             workspaceSecretObj[s.workspace.toString()].push(s);
@@ -445,7 +445,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
         }
     });
     
-    return res.status(400).send({
+    return res.status(200).send({
         secrets: req.secrets
     });
 }

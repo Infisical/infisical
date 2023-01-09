@@ -138,7 +138,7 @@ router.patch(
 router.delete(
     '/',
     [
-        check('secretIds')
+        body('secretIds')
             .exists()
             .custom((value) => {
                 // case: delete 1 secret

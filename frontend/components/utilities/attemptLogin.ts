@@ -1,13 +1,23 @@
 import Aes256Gcm from '~/components/utilities/cryptography/aes-256-gcm';
 import login1 from '~/pages/api/auth/Login1';
 import login2 from '~/pages/api/auth/Login2';
+import addSecrets from '~/pages/api/files/AddSecrets';
 import getOrganizations from '~/pages/api/organization/getOrgs';
 import getOrganizationUserProjects from '~/pages/api/organization/GetOrgUserProjects';
 
-import pushKeys from './secrets/pushKeys';
+import encryptSecrets from './secrets/encryptSecrets';
 import Telemetry from './telemetry/Telemetry';
 import { saveTokenToLocalStorage } from './saveTokenToLocalStorage';
 import SecurityClient from './SecurityClient';
+
+interface SecretDataProps {
+  type: 'personal' | 'shared';
+  pos: number;
+  key: string;
+  value: string;
+  id: string;
+  comment: string;
+}
 
 const nacl = require('tweetnacl');
 nacl.util = require('tweetnacl-util');
@@ -15,21 +25,22 @@ const jsrp = require('jsrp');
 const client = new jsrp.client();
 
 /**
- * This function loggs in the user (whether it's right after signup, or a normal login)
- * @param {*} email
- * @param {*} password
- * @param {*} setErrorLogin
+ * This function logs in the user (whether it's right after signup, or a normal login)
+ * @param {string} email - email of the user logging in
+ * @param {string} password - password of the user logging in
+ * @param {function} setErrorLogin - function that visually dispay an error is something is wrong
  * @param {*} router
- * @param {*} isSignUp
+ * @param {boolean} isSignUp - whether this log in is a part of signup
+ * @param {boolean} isLogin - ?
  * @returns
  */
 const attemptLogin = async (
-  email,
-  password,
-  setErrorLogin,
-  router,
-  isSignUp,
-  isLogin
+  email: string,
+  password: string,
+  setErrorLogin: (value: boolean) => void,
+  router: any,
+  isSignUp: boolean,
+  isLogin: boolean
 ) => {
   try {
     const telemetry = new Telemetry().getInstance();
@@ -76,7 +87,7 @@ const attemptLogin = async (
           });
           
           const userOrgs = await getOrganizations();
-          const userOrgsData = userOrgs.map((org) => org._id);
+          const userOrgsData = userOrgs.map((org: { _id: string; }) => org._id);
 
           let orgToLogin;
           if (userOrgsData.includes(localStorage.getItem('orgData.id'))) {
@@ -90,7 +101,7 @@ const attemptLogin = async (
             orgId: orgToLogin
           });
 
-          orgUserProjects = orgUserProjects?.map((project) => project._id);
+          orgUserProjects = orgUserProjects?.map((project: { _id: string; }) => project._id);
           let projectToLogin;
           if (
             orgUserProjects.includes(localStorage.getItem('projectData.id'))
@@ -104,26 +115,7 @@ const attemptLogin = async (
               console.log('ERROR: User likely has no projects. ', error);
             }
           }
-
-          // If user is logging in for the first time, add the example keys
-          if (isSignUp) {
-            await pushKeys({
-              obj: {
-                sDATABASE_URL: [
-                  'mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net',
-                  'This is an example of secret referencing.'
-                ],
-                sDB_USERNAME: ['OVERRIDE_THIS', ''],
-                sDB_PASSWORD: ['OVERRIDE_THIS', ''],
-                pDB_USERNAME: ['user1234', 'This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need.'],
-                pDB_PASSWORD: ['example_password', 'This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need.'],
-                sTWILIO_AUTH_TOKEN: ['example_twillio_token', ''],
-                sWEBSITE_URL: ['http://localhost:3000', ''],
-              },
-              workspaceId: projectToLogin,
-              env: 'Development'
-            });
-          }
+          
           if (email) {
             telemetry.identify(email);
             telemetry.capture('User Logged In');
@@ -133,6 +125,7 @@ const attemptLogin = async (
             router.push('/dashboard/');
           }
         } catch (error) {
+          console.log(error)
           setErrorLogin(true);
           console.log('Login response not available');
         }

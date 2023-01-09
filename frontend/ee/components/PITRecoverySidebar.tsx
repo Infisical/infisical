@@ -111,7 +111,7 @@ const PITRecoverySidebar = ({
       }
     })
 
-    setSnapshotData({ id: secretSnapshotData._id, createdAt: secretSnapshotData.createdAt, secretVersions: decryptedSecretVersions })
+    setSnapshotData({ id: secretSnapshotData._id, version: secretSnapshotData.version, createdAt: secretSnapshotData.createdAt, secretVersions: decryptedSecretVersions })
   }
 
   return <div className={`absolute border-l border-mineshaft-500 ${isLoading ? "bg-bunker-800" : "bg-bunker"} fixed h-full w-96 top-14 right-0 z-40 shadow-xl flex flex-col justify-between`}>
