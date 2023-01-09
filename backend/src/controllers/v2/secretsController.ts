@@ -13,6 +13,7 @@ import {
 import { ValidationError } from '../../utils/errors';
 import { EESecretService, EELogService } from '../../ee/services';
 import { postHogClient } from '../../services';
+import { BadRequestError } from '../../utils/errors';
 
 /**
  * Create secret(s) for workspace with id [workspaceId] and environment [environment]
@@ -124,7 +125,7 @@ export const createSecrets = async (req: Request, res: Response) => {
 
     if (postHogClient) {
         postHogClient.capture({
-            event: 'secrets deleted',
+            event: 'secrets added',
             distinctId: req.user.email,
             properties: {
                 numberOfSecrets: toAdd.length,
@@ -190,6 +191,20 @@ export const getSecrets = async (req: Request, res: Response) => {
         channel,
         ipAddress: req.ip
     });
+
+    if (postHogClient) {
+        postHogClient.capture({
+            event: 'secrets deleted',
+            distinctId: req.user.email,
+            properties: {
+                numberOfSecrets: secrets.length,
+                environment,
+                workspaceId,
+                channel,
+                userAgent: req.headers?.['user-agent']
+            }
+        });
+    }
     
     return res.status(200).send({
         secrets
@@ -197,13 +212,12 @@ export const getSecrets = async (req: Request, res: Response) => {
 }
 
 /**
- * Update secret(s) in workspace with id [workspaceId] and environment [environment]
+ * Update secret(s)
  * @param req 
  * @param res 
  */
 export const updateSecrets = async (req: Request, res: Response) => {
     const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli'; 
-    const { workspaceId, environment } = req.body;
     
     // TODO: move type
     interface PatchSecret {
@@ -257,7 +271,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
             }
         });
     });
-    const b = await Secret.bulkWrite(ops);
+    await Secret.bulkWrite(ops);
     
     let newSecretsObj: { [key: string]: PatchSecret } = {};
     req.body.secrets.forEach((secret: PatchSecret) => {
@@ -320,7 +334,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
 
     Object.keys(workspaceSecretObj).forEach(async (key) => {
         const updateAction = await EELogService.createActionSecret({
-            name: ACTION_DELETE_SECRETS,
+            name: ACTION_UPDATE_SECRETS,
             userId: req.user._id.toString(),
             workspaceId: key,
             secretIds: workspaceSecretObj[key].map((secret: ISecret) => secret._id)
@@ -342,7 +356,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
 
         if (postHogClient) {
             postHogClient.capture({
-                event: 'secrets deleted',
+                event: 'secrets modified',
                 distinctId: req.user.email,
                 properties: {
                     numberOfSecrets: workspaceSecretObj[key].length,
@@ -354,41 +368,6 @@ export const updateSecrets = async (req: Request, res: Response) => {
             });
         }
     });
-
-    const updateAction = await EELogService.createActionSecret({
-        name: ACTION_UPDATE_SECRETS,
-        userId: req.user._id.toString(),
-        workspaceId,
-        secretIds: req.secrets.map((secret: ISecret) => secret._id)
-    });
-
-    // (EE) create (audit) log
-    updateAction && await EELogService.createLog({
-        userId: req.user._id.toString(),
-        workspaceId,
-        actions: [updateAction],
-        channel,
-        ipAddress: req.ip
-    });
-
-    // (EE) take a secret snapshot
-    await EESecretService.takeSecretSnapshot({
-        workspaceId
-    });
-
-    if (postHogClient) {
-        postHogClient.capture({
-            event: 'secrets modified',
-            distinctId: req.user.email,
-            properties: {
-                numberOfSecrets: req.secrets.length,
-                environment,
-                workspaceId,
-                channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
-                userAgent: req.headers?.['user-agent']
-            }
-        });
-    }
     
     return res.status(200).send({
         secrets: await Secret.find({
@@ -400,7 +379,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
 }
 
 /**
- * Delete secret(s) in workspace with id [workspaceId] and environment [environment]
+ * Delete secret(s) with id [workspaceId] and environment [environment]
  * @param req 
  * @param res 
  */

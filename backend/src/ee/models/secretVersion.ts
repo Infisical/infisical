@@ -8,15 +8,6 @@ import {
 	ENV_PROD
 } from '../../variables';
 
-/**
- * TODO: 
- * 1. Modify SecretVersion to also contain XX
- * - type
- * - user
- * - environment
- * 2. Modify SecretSnapshot to point to arrays of SecretVersion
- */
-
 export interface ISecretVersion {
     _id?: Types.ObjectId;
     secret: Types.ObjectId;

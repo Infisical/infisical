@@ -36,7 +36,7 @@ router.post(
                         !secret.secretValueIV ||
                         !secret.secretValueTag
                     ) {
-                        throw new Error('secrets array must contain objects that conform to the Secret interface');
+                        throw new Error('secrets array must contain objects that have required secret properties');
                     }
                 }
             } else if (typeof value === 'object') {
@@ -51,7 +51,7 @@ router.post(
                     !value.secretValueIV ||
                     !value.secretValueTag
                 ) {
-                    throw new Error('secrets array must contain objects that conform to the Secret interface');
+                    throw new Error('secrets object is missing required secret properties');
                 } 
             } else {
                 throw new Error('secrets must be an object or an array of objects')
@@ -87,8 +87,6 @@ router.get(
 
 router.patch(
     '/',
-    body('workspaceId').exists().trim(),
-    body('environment').exists().trim().isIn(['dev', 'staging', 'prod', 'test']),
     body('secrets')
         .exists()
         .custom((value) => {
@@ -105,7 +103,7 @@ router.patch(
                         !secret.secretValueIV ||
                         !secret.secretValueTag
                     ) {
-                        throw new Error('secrets array must contain objects that conform to the Secret interface');
+                        throw new Error('secrets array must contain objects that have required secret properties');
                     }
                 }
             } else if (typeof value === 'object') {
@@ -119,7 +117,7 @@ router.patch(
                     !value.secretValueIV ||
                     !value.secretValueTag
                 ) {
-                    throw new Error('secrets array must contain objects that conform to the Secret interface');
+                    throw new Error('secrets object is missing required secret properties');
                 } 
             } else {
                 throw new Error('secrets must be an object or an array of objects')
@@ -130,10 +128,6 @@ router.patch(
     validateRequest,
     requireAuth({
         acceptedAuthModes: ['jwt']
-    }),
-    requireWorkspaceAuth({
-        acceptedRoles: [ADMIN, MEMBER],
-        location: 'body'
     }),
     requireSecretsAuth({
         acceptedRoles: [ADMIN, MEMBER]
