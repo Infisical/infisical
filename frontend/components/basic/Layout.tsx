@@ -19,7 +19,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import getOrganizations from "~/pages/api/organization/getOrgs";
 import getOrganizationUserProjects from "~/pages/api/organization/GetOrgUserProjects";
 import getOrganizationUsers from "~/pages/api/organization/GetOrgUsers";
-import checkUserAction from "~/pages/api/userActions/checkUserAction";
+import getUser from "~/pages/api/user/getUser";
 import addUserToWorkspace from "~/pages/api/workspace/addUserToWorkspace";
 import createWorkspace from "~/pages/api/workspace/createWorkspace";
 import getWorkspaces from "~/pages/api/workspace/getWorkspaces";
@@ -39,6 +39,7 @@ import Listbox from "./Listbox";
 interface LayoutProps {
   children: React.ReactNode;
 }
+const crypto = require("crypto");
 
 export default function Layout({ children }: LayoutProps) {
   const router = useRouter();
@@ -83,12 +84,31 @@ export default function Layout({ children }: LayoutProps) {
         });
         const newWorkspaceId = newWorkspace._id;
 
+        const randomBytes = crypto.randomBytes(16).toString("hex");
+        const PRIVATE_KEY = String(localStorage.getItem("PRIVATE_KEY"));
+
+        const myUser = await getUser();
+
+        const { ciphertext, nonce } = encryptAssymmetric({
+          plaintext: randomBytes,
+          publicKey: myUser.publicKey,
+          privateKey: PRIVATE_KEY,
+        }) as { ciphertext: string; nonce: string };
+
+        await uploadKeys(
+          newWorkspaceId,
+          myUser._id,
+          ciphertext,
+          nonce
+        );
+
         if (addAllUsers) {
+          console.log('adding other users')
           const orgUsers = await getOrganizationUsers({
             orgId: tempLocalStorage("orgData.id"),
           });
           orgUsers.map(async (user: any) => {
-            if (user.status == "accepted") {
+            if (user.status == "accepted" && user.email != myUser.email) {
               const result = await addUserToWorkspace(
                 user.user.email,
                 newWorkspaceId
