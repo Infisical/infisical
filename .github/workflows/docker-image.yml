@@ -28,6 +28,7 @@ jobs:
         uses: depot/build-push-action@v1
         with:
           project: 64mmf0n610
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           load: true
           context: backend
           tags: infisical/backend:test
@@ -44,6 +45,7 @@ jobs:
         uses: depot/build-push-action@v1
         with:
           project: 64mmf0n610
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           push: true
           context: backend
           tags: infisical/backend:${{ steps.commit.outputs.short }}, 
@@ -75,6 +77,7 @@ jobs:
         uses: depot/build-push-action@v1
         with:
           load: true
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           project: 64mmf0n610
           context: frontend
           tags: infisical/frontend:test
@@ -94,6 +97,7 @@ jobs:
         with:
           project: 64mmf0n610
           push: true
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           context: frontend
           tags: infisical/frontend:${{ steps.commit.outputs.short }}, 
                 infisical/frontend:latest
