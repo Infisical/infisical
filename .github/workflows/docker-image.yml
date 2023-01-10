@@ -49,7 +49,7 @@ jobs:
       - name: 🏗️ Build backend and push
         uses: docker/build-push-action@v3
         with:
-          push: true
+          push: false
           context: backend
           tags: infisical/backend:${{ steps.commit.outputs.short }}, 
                 infisical/backend:latest
@@ -110,7 +110,7 @@ jobs:
       - name: 🏗️ Build frontend and push
         uses: docker/build-push-action@v3
         with:
-          push: true
+          push: false
           context: frontend
           tags: infisical/frontend:${{ steps.commit.outputs.short }}, 
                 infisical/frontend:latest
