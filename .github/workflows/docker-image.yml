@@ -21,9 +21,9 @@ jobs:
         uses: actions/cache@v3
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          key: backend-${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-buildx-
+            backend-${{ runner.os }}-buildx-
       - name: 🐋 Login to Docker Hub
         uses: docker/login-action@v2
         with:
@@ -82,9 +82,9 @@ jobs:
         uses: actions/cache@v3
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          key: frontend-${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-buildx-
+            frontend-${{ runner.os }}-buildx-
       - name: 🐋 Login to Docker Hub
         uses: docker/login-action@v2
         with:
