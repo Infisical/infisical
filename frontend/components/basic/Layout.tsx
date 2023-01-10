@@ -211,9 +211,11 @@ export default function Layout({ children }: LayoutProps) {
         const intendedWorkspaceId = router.asPath
           .split("/")
           [router.asPath.split("/").length - 1].split("?")[0];
+        
+        localStorage.setItem("projectData.id", intendedWorkspaceId);
         // If a user is not a member of a workspace they are trying to access, just push them to one of theirs
         if (
-          intendedWorkspaceId != "heroku" &&
+          !["heroku", "vercel", "github", "netlify"].includes(intendedWorkspaceId) &&
           !userWorkspaces
             .map((workspace: { _id: string }) => workspace._id)
             .includes(intendedWorkspaceId)
@@ -259,13 +261,13 @@ export default function Layout({ children }: LayoutProps) {
             .split("/")
             [router.asPath.split("/").length - 1].split("?")[0]
       ) {
-        router.push(
-          "/dashboard/" +
-            workspaceMapping[workspaceSelected as any]
-        );
         localStorage.setItem(
           "projectData.id",
           `${workspaceMapping[workspaceSelected as any]}`
+        );
+        router.push(
+          "/dashboard/" +
+            workspaceMapping[workspaceSelected as any]
         );
       }
     } catch (error) {
