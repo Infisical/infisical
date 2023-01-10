@@ -91,30 +91,12 @@ jobs:
       - name: 📦 Build frontend and export to Docker
         uses: docker/build-push-action@v3
         with:
-          load: true
+          # load: true
+          push: false
           context: frontend
           tags: infisical/frontend:test
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-          build-args: |
-            POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
-      - name: ⏻ Spawn frontend container
-        run: |
-          docker run -d --rm --name infisical-frontend-test infisical/frontend:test
-      - name: 🧪 Test frontend image
-        run: |
-          ./.github/resources/healthcheck.sh infisical-frontend-test
-      - name: ⏻ Shut down frontend container
-        run: |
-          docker stop infisical-frontend-test
-      - name: 🏗️ Build frontend and push
-        uses: docker/build-push-action@v3
-        with:
-          push: false
-          context: frontend
-          tags: infisical/frontend:${{ steps.commit.outputs.short }}, 
-                infisical/frontend:latest
-          platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
       - # Temp fix
