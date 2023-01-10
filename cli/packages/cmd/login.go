@@ -6,6 +6,7 @@ package cmd
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"strings"
 
 	"errors"
 	"fmt"
@@ -31,7 +32,9 @@ var loginCmd = &cobra.Command{
 	PreRun:                toggleDebug,
 	Run: func(cmd *cobra.Command, args []string) {
 		currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
-		if err != nil {
+		if strings.Contains(err.Error(), "The specified item could not be found in the keyring") { // if the key can't be found allow them to override
+			log.Debug(err)
+		} else {
 			util.HandleError(err)
 		}
 
