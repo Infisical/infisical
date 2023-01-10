@@ -69,8 +69,7 @@ const secretSchema = new Schema<ISecret>(
 			required: true
 		},
 		secretKeyHash: {
-			type: String,
-			required: true
+			type: String
 		},
 		secretValueCiphertext: {
 			type: String,
@@ -85,8 +84,7 @@ const secretSchema = new Schema<ISecret>(
 			required: true
 		},
 		secretValueHash: {
-			type: String,
-			required: true
+			type: String
 		},
 		secretCommentCiphertext: {
 			type: String,

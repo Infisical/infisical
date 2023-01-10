@@ -36,7 +36,7 @@ export default function BottonRightPopup({
 }: PopupProps): JSX.Element {
   return (
     <div
-      className="z-50 drop-shadow-xl border-gray-600/50 border flex flex-col items-start bg-bunker max-w-xl text-gray-200 pt-3 pb-4 rounded-xl absolute bottom-0 right-0 mr-6 mb-6"
+      className="z-50 drop-shadow-xl border-gray-600/50 border flex flex-col items-start bg-bunker max-w-xl text-gray-200 pt-3 pb-4 rounded-md absolute bottom-0 right-0 mr-6 mb-6"
       role="alert"
     >
       <div className="flex flex-row items-center justify-between w-full border-b border-gray-600/70 pb-3 px-6">

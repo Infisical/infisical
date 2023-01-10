@@ -1,7 +1,7 @@
 import getSecrets from '~/pages/api/files/GetSecrets';
+import getLatestFileKey from '~/pages/api/workspace/getLatestFileKey';
 
 import { envMapping } from '../../../public/data/frequentConstants';
-import guidGenerator from '../randomId';
 
 const {
   decryptAssymmetric,
@@ -9,6 +9,22 @@ const {
 } = require('../cryptography/crypto');
 const nacl = require('tweetnacl');
 nacl.util = require('tweetnacl-util');
+
+interface EncryptedSecretProps {
+  _id: string;
+  createdAt: string;
+  environment: string;
+  secretCommentCiphertext: string;
+  secretCommentIV: string;
+  secretCommentTag: string;
+  secretKeyCiphertext: string;
+  secretKeyIV: string;
+  secretKeyTag: string;
+  secretValueCiphertext: string;
+  secretValueIV: string;
+  secretValueTag: string;
+  type: "personal" | "shared";
+}
 
 interface SecretProps { 
   key: string; 
@@ -18,107 +34,102 @@ interface SecretProps {
   id: string;
 }
 
-interface Props {
+interface FunctionProps {
   env: keyof typeof envMapping;
-  setFileState: any;
   setIsKeyAvailable: any;
   setData: any;
   workspaceId: string;
 }
 
+/**
+ * Gets the secrets for a certain project
+ * @param {object} obj
+ * @param {string} obj.env - environment for which we are getting secrets
+ * @param {boolean} obj.isKeyAvailable - if a person is able to create new key pairs
+ * @param {function} obj.setData - state function that manages the state of secrets in the dashboard
+ * @param {string} obj.workspaceId - id of a workspace for which we are getting secrets
+ */
 const getSecretsForProject = async ({
   env,
-  setFileState,
   setIsKeyAvailable,
   setData,
   workspaceId
-}: Props) => {
+}: FunctionProps) => {
   try {
-    let file;
+    let encryptedSecrets;
     try {
-      file = await getSecrets(workspaceId, envMapping[env]);
-
-      setFileState(file);
+      encryptedSecrets = await getSecrets(workspaceId, envMapping[env]);
     } catch (error) {
-      console.log('ERROR: Not able to access the latest file');
+      console.log('ERROR: Not able to access the latest version of secrets');
     }
+
+    const latestKey = await getLatestFileKey({ workspaceId })
     // This is called isKeyAvailable but what it really means is if a person is able to create new key pairs
-    setIsKeyAvailable(!file.key ? file.secrets.length == 0 : true);
+    setIsKeyAvailable(!latestKey ? encryptedSecrets.length == 0 : true);
 
     const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
 
-    const tempFileState: SecretProps[] = [];
-    if (file.key) {
+    const tempDecryptedSecrets: SecretProps[] = [];
+    if (latestKey) {
       // assymmetrically decrypt symmetric key with local private key
       const key = decryptAssymmetric({
-        ciphertext: file.key.encryptedKey,
-        nonce: file.key.nonce,
-        publicKey: file.key.sender.publicKey,
+        ciphertext: latestKey.latestKey.encryptedKey,
+        nonce: latestKey.latestKey.nonce,
+        publicKey: latestKey.latestKey.sender.publicKey,
         privateKey: PRIVATE_KEY
       });
 
-      file.secrets.map((secretPair: any) => {
-        // decrypt .env file with symmetric key
+      // decrypt secret keys, values, and comments
+      encryptedSecrets.map((secret: EncryptedSecretProps) => {
         const plainTextKey = decryptSymmetric({
-          ciphertext: secretPair.secretKey.ciphertext,
-          iv: secretPair.secretKey.iv,
-          tag: secretPair.secretKey.tag,
+          ciphertext: secret.secretKeyCiphertext,
+          iv: secret.secretKeyIV,
+          tag: secret.secretKeyTag,
           key
         });
 
         const plainTextValue = decryptSymmetric({
-          ciphertext: secretPair.secretValue.ciphertext,
-          iv: secretPair.secretValue.iv,
-          tag: secretPair.secretValue.tag,
+          ciphertext: secret.secretValueCiphertext,
+          iv: secret.secretValueIV,
+          tag: secret.secretValueTag,
           key
         });
 
         let plainTextComment;
-        if (secretPair.secretComment.ciphertext) {
+        if (secret.secretCommentCiphertext) {
           plainTextComment = decryptSymmetric({
-            ciphertext: secretPair.secretComment.ciphertext,
-            iv: secretPair.secretComment.iv,
-            tag: secretPair.secretComment.tag,
+            ciphertext: secret.secretCommentCiphertext,
+            iv: secret.secretCommentIV,
+            tag: secret.secretCommentTag,
             key
           });
         } else {
           plainTextComment = "";
         }
 
-        tempFileState.push({
-          id: secretPair._id,
+        tempDecryptedSecrets.push({
+          id: secret._id,
           key: plainTextKey,
           value: plainTextValue,
-          type: secretPair.type,
+          type: secret.type,
           comment: plainTextComment
         });
       });
     }
-    setFileState(tempFileState);
 
-    setData(
-      tempFileState.map((line, index) => {
-        return {
-          id: line['id'],
-          pos: index,
-          key: line['key'],
-          value: line['value'],
-          type: line['type'],
-          comment: line['comment']
-        };
-      })
-    );
-
-    return tempFileState.map((line, index) => {
+    const result = tempDecryptedSecrets.map((secret, index) => {
       return {
-        id: line['id'],
+        id: secret['id'],
         pos: index,
-        key: line['key'],
-        value: line['value'],
-        type: line['type'],
-        comment: line['comment']
+        key: secret['key'],
+        value: secret['value'],
+        type: secret['type'],
+        comment: secret['comment']
       };
     });
+
+    setData(result);
+    return result;
   } catch (error) {
     console.log('Something went wrong during accessing or decripting secrets.');
   }

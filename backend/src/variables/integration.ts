@@ -48,7 +48,7 @@ const INTEGRATION_OPTIONS = [
         name: 'Vercel',
         slug: 'vercel',
         image: 'Vercel', 
-        isAvailable: false,
+        isAvailable: true,
         type: 'vercel',
         clientId: '',
         clientSlug: CLIENT_SLUG_VERCEL,
@@ -58,7 +58,7 @@ const INTEGRATION_OPTIONS = [
         name: 'Netlify',
         slug: 'netlify',
         image: 'Netlify', 
-        isAvailable: false,
+        isAvailable: true,
         type: 'oauth2',
         clientId: CLIENT_ID_NETLIFY,
         docsLink: ''
@@ -67,7 +67,7 @@ const INTEGRATION_OPTIONS = [
         name: 'GitHub',
         slug: 'github',
         image: 'GitHub', 
-        isAvailable: false,
+        isAvailable: true,
         type: 'oauth2',
         clientId: CLIENT_ID_GITHUB,
         docsLink: ''

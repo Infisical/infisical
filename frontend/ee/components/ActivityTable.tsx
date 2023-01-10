@@ -72,10 +72,8 @@ const ActivityLogsRow = ({ row, toggleSidebar }: { row: logData, toggleSidebar: 
         <td>{String(t("common:timestamp"))}</td>
         <td>{row.createdAt}</td>
       </tr>}
-      {payloadOpened &&
-      row.payload?.map((action, index) => { 
-        action.secretVersions.length > 0 &&
-        <tr key={index} className="h-9 text-bunker-200 border-mineshaft-700 border-t text-sm">
+      {payloadOpened && row.payload?.map((action, index) => {
+        return action.secretVersions.length > 0 && <tr key={index} className="h-9 text-bunker-200 border-mineshaft-700 border-t text-sm">
           <td></td>
           <td className="">{t("activity:event." + action.name)}</td>
           <td className="text-primary-300 cursor-pointer hover:text-primary duration-200" onClick={() => toggleSidebar(action._id)}>
@@ -87,7 +85,7 @@ const ActivityLogsRow = ({ row, toggleSidebar }: { row: logData, toggleSidebar: 
       {payloadOpened &&
       <tr className='h-9 text-bunker-200 border-mineshaft-700 border-t text-sm'>
         <td></td>
-        <td>{String(t("common:ip-address"))}</td>
+        <td>{String(t("activity:ip-address"))}</td>
         <td>{row.ipAddress}</td>
       </tr>}
     </>

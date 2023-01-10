@@ -1,7 +1,10 @@
 import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
-import { Secret } from '../../models';
 import { SecretVersion, Action } from '../models';
+import { 
+    getLatestSecretVersionIds,
+    getLatestNSecretSecretVersionIds
+} from '../helpers/secretVersion';
 import { ACTION_UPDATE_SECRETS } from '../../variables';
 
 /**
@@ -30,65 +33,23 @@ const createActionSecretHelper = async ({
         if (name === ACTION_UPDATE_SECRETS) {
             // case: action is updating secrets
             // -> add old and new secret versions
-
-            // TODO: make query more efficient
-            latestSecretVersions = (await SecretVersion.aggregate([
-                    {
-                        $match: {
-                        secret: {
-                            $in: secretIds,
-                        },
-                        },
-                    },
-                    {
-                        $sort: { version: -1 },
-                    },
-                    {
-                        $group: {
-                        _id: "$secret",
-                        versions: { $push: "$$ROOT" },
-                        },
-                    },
-                    {
-                        $project: {
-                        _id: 0,
-                        secret: "$_id",
-                        versions: { $slice: ["$versions", 2] },
-                        },
-                    }
-                ]))
-                .map((s) => ({
-                    oldSecretVersion: s.versions[0]._id,
-                    newSecretVersion: s.versions[1]._id
-                }));
-
-
+            latestSecretVersions = (await getLatestNSecretSecretVersionIds({
+                secretIds,
+                n: 2
+            }))
+            .map((s) => ({
+                oldSecretVersion: s.versions[0]._id,
+                newSecretVersion: s.versions[1]._id
+            }));
         } else {
             // case: action is adding, deleting, or reading secrets
             // -> add new secret versions
-            latestSecretVersions = (await SecretVersion.aggregate([
-				{
-					$match: { 
-                        secret: { 
-                            $in: secretIds 
-                        } 
-                    }
-				},
-				{
-					$group: {
-						_id: '$secret',
-						version: { $max: '$version' },
-                        versionId: { $max: '$_id' } // secret version id
-					}
-				},
-				{
-					$sort: { version: -1 }
-				}
-				])
-				.exec())
-                .map((s) => ({
-                    newSecretVersion: s.versionId
-                }));
+            latestSecretVersions = (await getLatestSecretVersionIds({
+                secretIds
+            }))
+            .map((s) => ({
+                newSecretVersion: s.versionId
+            }));
         }
 
         action = await new Action({

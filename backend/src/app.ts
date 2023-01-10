@@ -42,6 +42,7 @@ import {
 } from './routes/v1';
 import {
   secret as v2SecretRouter,
+  secrets as v2SecretsRouter,
   workspace as v2WorkspaceRouter,
   serviceTokenData as v2ServiceTokenDataRouter,
   apiKeyData as v2APIKeyDataRouter,
@@ -95,16 +96,17 @@ app.use('/api/v1/membership', v1MembershipRouter);
 app.use('/api/v1/key', v1KeyRouter);
 app.use('/api/v1/invite-org', v1InviteOrgRouter);
 app.use('/api/v1/secret', v1SecretRouter);
-app.use('/api/v1/service-token', v1ServiceTokenRouter); // deprecate
+app.use('/api/v1/service-token', v1ServiceTokenRouter); // stop supporting
 app.use('/api/v1/password', v1PasswordRouter);
 app.use('/api/v1/stripe', v1StripeRouter);
 app.use('/api/v1/integration', v1IntegrationRouter);
 app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
 
 // v2 routes
-app.use('/api/v2/workspace', v2WorkspaceRouter);
-app.use('/api/v2/secret', v2SecretRouter);
-app.use('/api/v2/service-token', v2ServiceTokenDataRouter);
+app.use('/api/v2/workspace', v2WorkspaceRouter); // TODO: turn into plural route
+app.use('/api/v2/secret', v2SecretRouter); // stop supporting, TODO: revise
+app.use('/api/v2/secrets', v2SecretsRouter);
+app.use('/api/v2/service-token', v2ServiceTokenDataRouter); // TODO: turn into plural route
 app.use('/api/v2/api-key-data', v2APIKeyDataRouter);
 
 // api docs 

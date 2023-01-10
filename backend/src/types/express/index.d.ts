@@ -1,4 +1,5 @@
 import * as express from 'express';
+import { ISecret } from '../../models';
 
 // TODO: fix (any) types
 declare global {
@@ -12,7 +13,8 @@ declare global {
 			integration: any;
 			integrationAuth: any;
 			bot: any;
-			secret: any;
+			_secret: any;
+			secrets: any;
 			secretSnapshot: any;
 			serviceToken: any;
 			accessToken: any;
