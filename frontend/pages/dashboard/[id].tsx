@@ -398,11 +398,11 @@ export default function Dashboard() {
     }
     if (secretsToBeAdded.length > 0) {
       const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeAdded, workspaceId, env: envMapping[env] })
-      await addSecrets({ secrets, env: envMapping[env], workspaceId });
+      secrets && await addSecrets({ secrets, env: envMapping[env], workspaceId });
     }
     if (secretsToBeUpdated.length > 0) {
       const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeUpdated, workspaceId, env: envMapping[env] })
-      await updateSecrets({ secrets });
+      secrets && await updateSecrets({ secrets });
     }
 
     // If this user has never saved environment variables before, show them a prompt to read docs
@@ -661,7 +661,7 @@ export default function Dashboard() {
                   className={`max-w-5xl mt-1 max-h-[calc(100vh-280px)] overflow-hidden overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar`}
                 >
                   <div className="px-1 pt-2 bg-mineshaft-800 rounded-md p-2">
-                    {!snapshotData && data?.filter(row => row.key.toUpperCase().includes(searchKeys.toUpperCase()))
+                    {!snapshotData && data?.filter(row => row.key?.toUpperCase().includes(searchKeys.toUpperCase()))
                     .filter(row => !(sharedToHide.includes(row.id) && row.type == 'shared')).map((keyPair) => (
                       <KeyPair 
                         key={keyPair.id}
