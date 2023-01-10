@@ -13,8 +13,6 @@ jobs:
       - name: Save commit hashes for tag
         id: commit
         uses: pr-mpt/actions-commit-hash@v2
-      - name: 🔧 Set up QEMU
-        uses: docker/setup-qemu-action@v2
       - name: 🔧 Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: 🐋 Login to Docker Hub
@@ -62,8 +60,6 @@ jobs:
       - name: Save commit hashes for tag
         id: commit
         uses: pr-mpt/actions-commit-hash@v2
-      - name: 🔧 Set up QEMU
-        uses: docker/setup-qemu-action@v2
       - name: 🔧 Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: 🐋 Login to Docker Hub
