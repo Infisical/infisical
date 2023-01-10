@@ -49,7 +49,7 @@ jobs:
       - name: 🏗️ Build backend and push
         uses: docker/build-push-action@v3
         with:
-          push: push
+          push: true
           context: backend
           tags: infisical/backend:${{ steps.commit.outputs.short }}, 
                 infisical/backend:latest
