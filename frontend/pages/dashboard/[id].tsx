@@ -16,11 +16,9 @@ import {
   faPlus,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Menu, Transition } from '@headlessui/react';
 import getProjectSercetSnapshotsCount from 'ee/api/secrets/GetProjectSercetSnapshotsCount';
 import performSecretRollback from 'ee/api/secrets/PerformSecretRollback';
 import PITRecoverySidebar from 'ee/components/PITRecoverySidebar';
-import { Document, YAMLSeq } from 'yaml';
 
 import Button from '~/components/basic/buttons/Button';
 import ListBox from '~/components/basic/Listbox';
@@ -542,15 +540,24 @@ export default function Dashboard() {
                   text={String(t("Rollback to this snapshot"))}
                   onButtonPressed={async () => {
                     // Update secrets in the state only for the current environment
-                    setData(
-                      snapshotData.secretVersions
-                      .filter(row => reverseEnvMapping[row.environment] == env)
-                      .map((sv, position) => { 
-                        return {
-                          id: sv.id, pos: position, type: sv.type, key: sv.key, value: sv.value, comment: ''
-                        }
-                      })
-                    );
+                    const rolledBackSecrets = snapshotData.secretVersions
+                    .filter(row => reverseEnvMapping[row.environment] == env)
+                    .map((sv, position) => { 
+                      return {
+                        id: sv.id, pos: position, type: sv.type, key: sv.key, value: sv.value, comment: ''
+                      }
+                    });
+                    setData(rolledBackSecrets);
+
+                    setSharedToHide(
+                      rolledBackSecrets?.filter(row => (rolledBackSecrets
+                      ?.map((item) => item.key)
+                      .filter(
+                        (item, index) =>
+                          index !==
+                          rolledBackSecrets?.map((item) => item.key).indexOf(item)
+                      ).includes(row.key) && row.type == 'shared'))?.map((item) => item.id)
+                    )
 
                     // Perform the rollback globally
                     performSecretRollback({ workspaceId, version: snapshotData.version })

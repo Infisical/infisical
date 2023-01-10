@@ -4,7 +4,10 @@ import login2 from '~/pages/api/auth/Login2';
 import addSecrets from '~/pages/api/files/AddSecrets';
 import getOrganizations from '~/pages/api/organization/getOrgs';
 import getOrganizationUserProjects from '~/pages/api/organization/GetOrgUserProjects';
+import getUser from '~/pages/api/user/getUser';
+import uploadKeys from '~/pages/api/workspace/uploadKeys';
 
+import { encryptAssymmetric } from './cryptography/crypto';
 import encryptSecrets from './secrets/encryptSecrets';
 import Telemetry from './telemetry/Telemetry';
 import { saveTokenToLocalStorage } from './saveTokenToLocalStorage';
@@ -19,6 +22,7 @@ interface SecretDataProps {
   comment: string;
 }
 
+const crypto = require("crypto");
 const nacl = require('tweetnacl');
 nacl.util = require('tweetnacl-util');
 const jsrp = require('jsrp');
@@ -121,8 +125,81 @@ const attemptLogin = async (
             telemetry.capture('User Logged In');
           }
 
+          if (isSignUp) {
+            const randomBytes = crypto.randomBytes(16).toString("hex");
+            const PRIVATE_KEY = String(localStorage.getItem("PRIVATE_KEY"));
+
+            const myUser = await getUser();
+
+            const { ciphertext, nonce } = encryptAssymmetric({
+              plaintext: randomBytes,
+              publicKey: myUser.publicKey,
+              privateKey: PRIVATE_KEY,
+            }) as { ciphertext: string; nonce: string };
+
+            await uploadKeys(
+              projectToLogin,
+              myUser._id,
+              ciphertext,
+              nonce
+            );
+
+            const secretsToBeAdded: SecretDataProps[] = [{
+              type: "shared",
+              pos: 0,
+              key: "DATABASE_URL",
+              value: "mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net",
+              comment: "This is an example of secret referencing.",
+              id: ''
+            }, {
+              type: "shared",
+              pos: 1,
+              key: "DB_USERNAME",
+              value: "OVERRIDE_THIS",
+              comment: "This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need",
+              id: ''
+            }, {
+              type: "personal",
+              pos: 2,
+              key: "DB_USERNAME",
+              value: "user1234",
+              comment: "",
+              id: ''
+            }, {
+              type: "shared",
+              pos: 3,
+              key: "DB_PASSWORD",
+              value: "OVERRIDE_THIS",
+              comment: "This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need",
+              id: ''
+            }, {
+              type: "personal",
+              pos: 4,
+              key: "DB_PASSWORD",
+              value: "example_password",
+              comment: "",
+              id: ''
+            }, {
+              type: "shared",
+              pos: 5,
+              key: "TWILIO_AUTH_TOKEN",
+              value: "example_twillio_token",
+              comment: "This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need",
+              id: ''
+            }, {
+              type: "shared",
+              pos: 6,
+              key: "WEBSITE_URL",
+              value: "http://localhost:3000",
+              comment: "This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need",
+              id: ''
+            }]
+            const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeAdded, workspaceId: String(localStorage.getItem('projectData.id')), env: 'dev' })
+            await addSecrets({ secrets: secrets ?? [], env: "dev", workspaceId: String(localStorage.getItem('projectData.id')) });
+          }
+
           if (isLogin) {
-            router.push('/dashboard/');
+            router.push('/dashboard/' + localStorage.getItem('projectData.id'));
           }
         } catch (error) {
           console.log(error)

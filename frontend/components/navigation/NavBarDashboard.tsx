@@ -112,9 +112,9 @@ export default function Navbar() {
           href="https://infisical.com/docs/getting-started/introduction"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-gray-200 hover:text-primary duration-200">
+          className="text-gray-200 hover:bg-white/10 px-3 rounded-md duration-200 text-sm mr-4 py-2 flex items-center">
+          <FontAwesomeIcon icon={faBook} className="text-xl mr-2" />
           Docs 
-          <FontAwesomeIcon icon={faUpRightFromSquare} className="text-xs mb-[0.1rem] mr-5 ml-1.5" />
         </a>
         <Menu as="div" className="relative inline-block text-left">
           <div className="mr-4">
