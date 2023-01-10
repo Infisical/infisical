@@ -12,8 +12,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -85,16 +85,50 @@ var runCmd = &cobra.Command{
 			secrets = util.OverrideWithPersonalSecrets(secrets)
 		}
 
+		secretsByKey := getSecretsByKeys(secrets)
+		environmentVariables := make(map[string]string)
+
+		// add all existing environment vars
+		for _, s := range os.Environ() {
+			kv := strings.SplitN(s, "=", 2)
+			key := kv[0]
+			value := kv[1]
+			environmentVariables[key] = value
+		}
+
+		// check to see if there are any reserved key words in secrets to inject
+		reservedEnvironmentVariables := []string{"HOME", "PATH", "PS1", "PS2"}
+		for _, reservedEnvName := range reservedEnvironmentVariables {
+			if _, ok := secretsByKey[reservedEnvName]; ok {
+				delete(secretsByKey, reservedEnvName)
+				util.PrintWarning(fmt.Sprintf("Infisical secret named [%v] has been removed because it is a reserved secret name", reservedEnvName))
+			}
+		}
+
+		// now add infisical secrets
+		for k, v := range secretsByKey {
+			environmentVariables[k] = v.Value
+		}
+
+		// turn it back into a list of envs
+		var env []string
+		for key, value := range environmentVariables {
+			s := key + "=" + value
+			env = append(env, s)
+		}
+
+		log.Debugf("injecting the following environment variables into shell: %v", env)
+
 		if cmd.Flags().Changed("command") {
 			command := cmd.Flag("command").Value.String()
 
-			err = executeMultipleCommandWithEnvs(command, secrets)
+			err = executeMultipleCommandWithEnvs(command, len(secretsByKey), env)
 			if err != nil {
 				util.HandleError(err, "Unable to execute your chained command")
 			}
 
 		} else {
-			err = executeSingleCommandWithEnvs(args, secrets)
+			err = executeSingleCommandWithEnvs(args, len(secretsByKey), env)
 			if err != nil {
 				util.HandleError(err, "Unable to execute your single command")
 			}
@@ -111,24 +145,21 @@ func init() {
 }
 
 // Will execute a single command and pass in the given secrets into the process
-func executeSingleCommandWithEnvs(args []string, secrets []models.SingleEnvironmentVariable) error {
+func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string) error {
 	command := args[0]
 	argsForCommand := args[1:]
-	numberOfSecretsInjected := fmt.Sprintf("\u2713 Injected %v Infisical secrets into your application process successfully", len(secrets))
-	log.Infof("\x1b[%dm%s\x1b[0m", 32, numberOfSecretsInjected)
-	log.Debugf("executing command: %s %s \n", command, strings.Join(argsForCommand, " "))
-	log.Debugf("Secrets injected: %v", secrets)
+	color.Green("Injecting %v Infisical secrets into your application process", secretsCount)
 
 	cmd := exec.Command(command, argsForCommand...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = getAllEnvs(secrets)
+	cmd.Env = env
 
 	return execCmd(cmd)
 }
 
-func executeMultipleCommandWithEnvs(fullCommand string, secrets []models.SingleEnvironmentVariable) error {
+func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []string) error {
 	shell := [2]string{"sh", "-c"}
 	if runtime.GOOS == "windows" {
 		shell = [2]string{"cmd", "/C"}
@@ -140,12 +171,10 @@ func executeMultipleCommandWithEnvs(fullCommand string, secrets []models.SingleE
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = getAllEnvs(secrets)
+	cmd.Env = env
 
-	numberOfSecretsInjected := fmt.Sprintf("\u2713 Injected %v Infisical secrets into your application process successfully", len(secrets))
-	log.Infof("\x1b[%dm%s\x1b[0m", 32, numberOfSecretsInjected)
+	color.Green("Injecting %v Infisical secrets into your application process", secretsCount)
 	log.Debugf("executing command: %s %s %s \n", shell[0], shell[1], fullCommand)
-	log.Debugf("Secrets injected: %v", secrets)
 
 	return execCmd(cmd)
 }
@@ -174,24 +203,4 @@ func execCmd(cmd *exec.Cmd) error {
 	waitStatus := cmd.ProcessState.Sys().(syscall.WaitStatus)
 	os.Exit(waitStatus.ExitStatus())
 	return nil
-}
-
-func getAllEnvs(envsToInject []models.SingleEnvironmentVariable) []string {
-	env_map := make(map[string]string)
-
-	for _, env := range os.Environ() {
-		splitEnv := strings.Split(env, "=")
-		env_map[splitEnv[0]] = splitEnv[1]
-	}
-
-	for _, env := range envsToInject {
-		env_map[env.Key] = env.Value // overrite any envs with ones to inject if they clash
-	}
-
-	var allEnvs []string
-	for key, value := range env_map {
-		allEnvs = append(allEnvs, fmt.Sprintf("%s=%s", key, value))
-	}
-
-	return allEnvs
 }
