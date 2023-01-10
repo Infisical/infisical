@@ -27,6 +27,7 @@ jobs:
       - name: 📦 Build backend and export to Docker
         uses: depot/build-push-action@v1
         with:
+          project: 64mmf0n610
           load: true
           context: backend
           tags: infisical/backend:test
@@ -42,6 +43,7 @@ jobs:
       - name: 🏗️ Build backend and push
         uses: depot/build-push-action@v1
         with:
+          project: 64mmf0n610
           push: true
           context: backend
           tags: infisical/backend:${{ steps.commit.outputs.short }}, 
@@ -73,6 +75,7 @@ jobs:
         uses: depot/build-push-action@v1
         with:
           load: true
+          project: 64mmf0n610
           context: frontend
           tags: infisical/frontend:test
           build-args: |
@@ -89,6 +92,7 @@ jobs:
       - name: 🏗️ Build frontend and push
         uses: depot/build-push-action@v1
         with:
+          project: 64mmf0n610
           push: true
           context: frontend
           tags: infisical/frontend:${{ steps.commit.outputs.short }}, 
