@@ -1,8 +1,8 @@
-import YAML from 'yaml';
-import { YAMLSeq } from 'yaml/types'
+// import YAML from 'yaml';
+// import { YAMLSeq } from 'yaml/types';
 
-import { envMapping } from "../../../public/data/frequentConstants";
-import checkOverrides from './checkOverrides';
+// import { envMapping } from "../../../public/data/frequentConstants";
+// import checkOverrides from './checkOverrides';
 
 
 interface SecretDataProps {
@@ -22,31 +22,32 @@ interface SecretDataProps {
  * @returns 
  */
 const downloadYaml = async ({ data, env }: { data: SecretDataProps[]; env: string; }) => {
-  if (!data) return;
-  const doc = new YAML.Document();
-  doc.contents = new YAMLSeq()
-  const secrets = await checkOverrides({ data });
-  secrets.forEach((secret) => {
-    const pair = YAML.createNode({ [secret.key]: secret.value });
-    pair.commentBefore = secret.comment
-      .split('\n')
-      .map((line) => (line ? ' '.concat(line) : ''))
-      .join('\n');
-    doc.add(pair);
-  });
+  // if (!data) return;
+  // const doc = new YAML.Document();
+  // doc.contents = new YAMLSeq();
+  // const secrets = await checkOverrides({ data });
+  // secrets.forEach((secret) => {
+  //   const pair = YAML.createNode({ [secret.key]: secret.value });
+  //   pair.commentBefore = secret.comment
+  //     .split('\n')
+  //     .map((line) => (line ? ' '.concat(line) : ''))
+  //     .join('\n');
+  //   doc.add(pair);
+  // });
 
-  const file = doc
-    .toString()
-    .split('\n')
-    .map((line) => (line.startsWith('-') ? line.replace('- ', '') : line))
-    .join('\n');
+  // const file = doc
+  //   .toString()
+  //   .split('\n')
+  //   .map((line) => (line.startsWith('-') ? line.replace('- ', '') : line))
+  //   .join('\n');
 
-  const blob = new Blob([file]);
-  const fileDownloadUrl = URL.createObjectURL(blob);
-  const alink = document.createElement('a');
-  alink.href = fileDownloadUrl;
-  alink.download = envMapping[env] + '.yml';
-  alink.click();
+  // const blob = new Blob([file]);
+  // const fileDownloadUrl = URL.createObjectURL(blob);
+  // const alink = document.createElement('a');
+  // alink.href = fileDownloadUrl;
+  // alink.download = envMapping[env] + '.yml';
+  // alink.click();
+  return;
 }
 
 export default downloadYaml;
