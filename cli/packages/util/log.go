@@ -23,6 +23,10 @@ func PrintErrorAndExit(exitCode int, err error, messages ...string) {
 	os.Exit(exitCode)
 }
 
+func PrintWarning(message string) {
+	color.Yellow("Warning: %v", message)
+}
+
 func PrintMessageAndExit(messages ...string) {
 	if len(messages) > 0 {
 		for _, message := range messages {

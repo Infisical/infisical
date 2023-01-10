@@ -6,6 +6,10 @@ import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import swaggerUi = require('swagger-ui-express');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const swaggerFile = require('../api-documentation.json')
+
 
 dotenv.config();
 import { PORT, NODE_ENV, SITE_URL } from './config';
@@ -103,6 +107,8 @@ app.use('/api/v2/secret', v2SecretRouter);
 app.use('/api/v2/service-token', v2ServiceTokenDataRouter);
 app.use('/api/v2/api-key-data', v2APIKeyDataRouter);
 
+// api docs 
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile))
 
 // Server status
 app.use('/api', healthCheck)

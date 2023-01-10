@@ -311,14 +311,25 @@ var secretsDeleteCmd = &cobra.Command{
 
 func init() {
 	secretsCmd.AddCommand(secretsGetCmd)
-	secretsCmd.AddCommand(secretsSetCmd)
-	secretsCmd.AddCommand(secretsDeleteCmd)
-	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
-	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
-	secretsCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+	secretsGetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		util.RequireLogin()
 		util.RequireLocalWorkspaceFile()
 	}
+
+	secretsCmd.AddCommand(secretsSetCmd)
+	secretsSetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		util.RequireLogin()
+		util.RequireLocalWorkspaceFile()
+	}
+
+	secretsCmd.AddCommand(secretsDeleteCmd)
+	secretsDeleteCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		util.RequireLogin()
+		util.RequireLocalWorkspaceFile()
+	}
+
+	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
+	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	rootCmd.AddCommand(secretsCmd)
 }
 
