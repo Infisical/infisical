@@ -5,6 +5,9 @@ import {
     validateMembership
 } from '../helpers/membership';
 
+// note: used for old /v1/secret and /v2/secret routes.
+// newer /v2/secrets routes use [requireSecretsAuth] middleware
+
 /**
  * Validate if user on request has proper membership to modify secret.
  * @param {Object} obj
@@ -34,7 +37,7 @@ const requireSecretAuth = ({
                 acceptedRoles
             });
             
-            req.secret = secret as any;
+            req._secret = secret;
 
             next();
         } catch (err) {

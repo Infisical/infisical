@@ -40,11 +40,6 @@
       "url": "self-hosting"
     },
     {
-      "name": "API Reference",
-      "icon": "cloud",
-      "url": "self-hosting"
-    },
-    {
       "name": "Integrations",
       "icon": "plug",
       "url": "integrations"
@@ -86,7 +81,7 @@
         "getting-started/dashboard/project",
         "getting-started/dashboard/integrations",
         "getting-started/dashboard/pit-recovery",
-        "getting-started/dashboard/versioning",
+        "getting-started/dashboard/secret-versioning",
         "getting-started/dashboard/audit-logs",
         "getting-started/dashboard/token"
       ]
