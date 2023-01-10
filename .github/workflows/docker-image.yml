@@ -1,4 +1,4 @@
-name: Push to Docker Hub
+name: Push frontend and backend to Dockerhub
 
 on: [workflow_dispatch]
 
