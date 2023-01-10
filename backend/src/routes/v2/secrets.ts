@@ -137,24 +137,22 @@ router.patch(
 
 router.delete(
     '/',
-    [
-        body('secretIds')
-            .exists()
-            .custom((value) => {
-                // case: delete 1 secret
-                if (typeof value === 'string') return true;
-                
-                if (Array.isArray(value)) {
-                    // case: delete multiple secrets
-                    if (value.length === 0) throw new Error('secrets cannot be an empty array');
-                    return value.every((id: string) => typeof id === 'string')
-                }
-                
-                throw new Error('secretIds must be a string or an array of strings');
-            })
-            .not()
-            .isEmpty()
-    ],
+    body('secretIds')
+        .exists()
+        .custom((value) => {
+            // case: delete 1 secret
+            if (typeof value === 'string') return true;
+            
+            if (Array.isArray(value)) {
+                // case: delete multiple secrets
+                if (value.length === 0) throw new Error('secrets cannot be an empty array');
+                return value.every((id: string) => typeof id === 'string')
+            }
+            
+            throw new Error('secretIds must be a string or an array of strings');
+        })
+        .not()
+        .isEmpty(),
     validateRequest,
     requireAuth({
         acceptedAuthModes: ['jwt']
