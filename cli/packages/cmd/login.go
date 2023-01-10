@@ -32,9 +32,9 @@ var loginCmd = &cobra.Command{
 	PreRun:                toggleDebug,
 	Run: func(cmd *cobra.Command, args []string) {
 		currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
-		if strings.Contains(err.Error(), "The specified item could not be found in the keyring") { // if the key can't be found allow them to override
+		if err != nil && strings.Contains(err.Error(), "The specified item could not be found in the keyring") { // if the key can't be found allow them to override
 			log.Debug(err)
-		} else {
+		} else if err != nil {
 			util.HandleError(err)
 		}
 
