@@ -2,7 +2,7 @@
 title: "Point-in-Time Recovery"
 ---
 
-Point-in-time (PIT) recovery allows environment variables to be rolled back to any point in time. It's powered by snapshots that get captured after mutations to environment variables.
+Point-in-time recovery allows environment variables to be rolled back to any point in time. It's powered by snapshots that get captured after mutations to environment variables.
 
 ## Commits
 
@@ -13,6 +13,11 @@ Similar to Git, a commit in Infisical is a snapshot of your project's secrets at
 
 ## Rolling back
 
-Your project's environment variables can be rolled back to any snapshot.
+Environment variables can be rolled back to any point in time via the "Rollback to this snapshot" button.
 
 ![PIT snapshot](../../images/pit-snapshot.png)
+
+<Note>
+  Rolling back environment variables to a past snapshot creates a new commit and
+  snapshot at the top of the stack and updates secret versions.
+</Note>
