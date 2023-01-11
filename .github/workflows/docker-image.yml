@@ -1,4 +1,4 @@
-name: Push to Docker Hub
+name: Push frontend and backend to Dockerhub
 
 on: [workflow_dispatch]
 
@@ -13,8 +13,6 @@ jobs:
       - name: Save commit hashes for tag
         id: commit
         uses: pr-mpt/actions-commit-hash@v2
-      - name: 🔧 Set up QEMU
-        uses: docker/setup-qemu-action@v2
       - name: 🔧 Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: 🐋 Login to Docker Hub
@@ -22,9 +20,13 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
       - name: 📦 Build backend and export to Docker
-        uses: docker/build-push-action@v3
+        uses: depot/build-push-action@v1
         with:
+          project: 64mmf0n610
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           load: true
           context: backend
           tags: infisical/backend:test
@@ -38,8 +40,10 @@ jobs:
         run: |
           docker compose -f .github/resources/docker-compose.be-test.yml down
       - name: 🏗️ Build backend and push
-        uses: docker/build-push-action@v3
+        uses: depot/build-push-action@v1
         with:
+          project: 64mmf0n610
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           push: true
           context: backend
           tags: infisical/backend:${{ steps.commit.outputs.short }}, 
@@ -56,8 +60,6 @@ jobs:
       - name: Save commit hashes for tag
         id: commit
         uses: pr-mpt/actions-commit-hash@v2
-      - name: 🔧 Set up QEMU
-        uses: docker/setup-qemu-action@v2
       - name: 🔧 Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: 🐋 Login to Docker Hub
@@ -65,10 +67,14 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
       - name: 📦 Build frontend and export to Docker
-        uses: docker/build-push-action@v3
+        uses: depot/build-push-action@v1
         with:
           load: true
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          project: 64mmf0n610
           context: frontend
           tags: infisical/frontend:test
           build-args: |
@@ -83,9 +89,11 @@ jobs:
         run: |
           docker stop infisical-frontend-test
       - name: 🏗️ Build frontend and push
-        uses: docker/build-push-action@v3
+        uses: depot/build-push-action@v1
         with:
+          project: 64mmf0n610
           push: true
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           context: frontend
           tags: infisical/frontend:${{ steps.commit.outputs.short }}, 
                 infisical/frontend:latest
