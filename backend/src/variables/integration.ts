@@ -32,7 +32,6 @@ const INTEGRATION_GITHUB_TOKEN_URL =
 const INTEGRATION_HEROKU_API_URL = 'https://api.heroku.com';
 const INTEGRATION_VERCEL_API_URL = 'https://api.vercel.com';
 const INTEGRATION_NETLIFY_API_URL = 'https://api.netlify.com';
-const INTEGRATION_GITHUB_API_URL = 'https://api.github.com';
 
 const INTEGRATION_OPTIONS = [
     {
@@ -134,6 +133,5 @@ export {
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
-  INTEGRATION_GITHUB_API_URL,
   INTEGRATION_OPTIONS
 };
