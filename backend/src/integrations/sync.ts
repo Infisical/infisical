@@ -12,13 +12,9 @@ import {
   INTEGRATION_GITHUB,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_VERCEL_API_URL,
-  INTEGRATION_NETLIFY_API_URL,
-  INTEGRATION_GITHUB_API_URL
+  INTEGRATION_NETLIFY_API_URL
 } from '../variables';
 import { access, appendFile } from 'fs';
-
-// TODO: need a helper function in the future to handle integration
-// envar priorities (i.e. prioritize secrets within integration or those on Infisical)
 
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
@@ -53,6 +49,7 @@ const syncSecrets = async ({
       case INTEGRATION_VERCEL:
         await syncSecretsVercel({
           integration,
+          integrationAuth,
           secrets,
           accessToken
         });
@@ -139,10 +136,12 @@ const syncSecretsHeroku = async ({
  */
 const syncSecretsVercel = async ({
     integration,
+    integrationAuth,
     secrets,
     accessToken
 }: {
     integration: IIntegration,
+    integrationAuth: IIntegrationAuth,
     secrets: any;
     accessToken: string;
 }) => {
@@ -158,9 +157,12 @@ const syncSecretsVercel = async ({
     try {
         // Get all (decrypted) secrets back from Vercel in
         // decrypted format
-        const params = new URLSearchParams({
-            decrypt: "true"
-        });
+        const params: { [key: string]: string } = {
+          decrypt: 'true',
+          ...( integrationAuth?.teamId ? { 
+            teamId: integrationAuth.teamId
+          } : {})   
+        }
         
         const res = (await Promise.all((await axios.get(
             `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env`, 
@@ -177,10 +179,10 @@ const syncSecretsVercel = async ({
         .map(async (secret: VercelSecret) => (await axios.get(
                 `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
                 {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`
-                    }
-                    
+                  params,
+                  headers: {
+                      Authorization: `Bearer ${accessToken}`
+                  }
                 }
             )).data)
         )).reduce((obj: any, secret: any) => ({
@@ -236,9 +238,10 @@ const syncSecretsVercel = async ({
                 `${INTEGRATION_VERCEL_API_URL}/v10/projects/${integration.app}/env`,
                 newSecrets,
                 {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`
-                    }
+                  params,
+                  headers: {
+                      Authorization: `Bearer ${accessToken}`
+                  }
                 }
             );
         }
@@ -254,9 +257,10 @@ const syncSecretsVercel = async ({
                     `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
                     updatedSecret,
                     {
-                        headers: {
-                            Authorization: `Bearer ${accessToken}` 
-                        }
+                      params,
+                      headers: {
+                          Authorization: `Bearer ${accessToken}` 
+                      }
                     }
                 );
             });
@@ -268,17 +272,18 @@ const syncSecretsVercel = async ({
                 await axios.delete(
                     `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
                     {
-                        headers: {
-                            Authorization: `Bearer ${accessToken}`
-                        }
+                      params,
+                      headers: {
+                          Authorization: `Bearer ${accessToken}`
+                      }
                     }
                 );
             });
         }
     } catch (err) {
-        Sentry.setUser(null);
-        Sentry.captureException(err);
-        throw new Error('Failed to sync secrets to Vercel');
+      Sentry.setUser(null);
+      Sentry.captureException(err);
+      throw new Error('Failed to sync secrets to Vercel');
     }
 }
 

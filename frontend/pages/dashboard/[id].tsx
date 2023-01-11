@@ -222,6 +222,7 @@ export default function Dashboard() {
               dataToSort?.map((item) => item.key).indexOf(item)
           ).includes(row.key) && row.type == 'shared'))?.map((item) => item.id)
         )
+
         setIsLoading(false);
       } catch (error) {
         console.log('Error', error);

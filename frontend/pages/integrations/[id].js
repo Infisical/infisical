@@ -132,9 +132,6 @@ export default function Integrations() {
    * @returns 
    */
   const handleIntegrationOption = async ({ integrationOption }) => {
-    
-    console.log('handleIntegrationOption', integrationOption);
-
     try {
       // generate CSRF token for OAuth2 code-token exchange integrations
       const state = crypto.randomBytes(16).toString("hex");
@@ -218,7 +215,7 @@ export default function Integrations() {
           handleIntegrationOption={handleIntegrationOption}
         /> */}
         <IntegrationSection integrations={integrations} />
-        {cloudIntegrationOptions.length > 0 ? (
+        {(cloudIntegrationOptions.length > 0 && bot) ? (
           <CloudIntegrationSection 
             cloudIntegrationOptions={cloudIntegrationOptions}
             setSelectedIntegrationOption={setSelectedIntegrationOption}
