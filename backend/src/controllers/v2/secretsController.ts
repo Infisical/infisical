@@ -11,6 +11,8 @@ import {
     ACTION_DELETE_SECRETS
 } from '../../variables';
 import { ValidationError } from '../../utils/errors';
+import { EventService } from '../../services';
+import { eventPushSecrets } from '../../events';
 import { EESecretService, EELogService } from '../../ee/services';
 import { postHogClient } from '../../services';
 import { BadRequestError } from '../../utils/errors';
@@ -100,6 +102,13 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretValueTag,
             secretValueHash
         }))
+    });
+
+    // trigger event - push secrets
+    await EventService.handleEvent({
+        event: eventPushSecrets({
+            workspaceId
+        })
     });
 
     const addAction = await EELogService.createActionSecret({
@@ -194,7 +203,7 @@ export const getSecrets = async (req: Request, res: Response) => {
 
     if (postHogClient) {
         postHogClient.capture({
-            event: 'secrets deleted',
+            event: 'secrets added',
             distinctId: req.user.email,
             properties: {
                 numberOfSecrets: secrets.length,
@@ -321,6 +330,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
         })
     });
 
+
     // group secrets into workspaces so updated secrets can
     // be logged and snapshotted separately for each workspace
     const workspaceSecretObj: any = {};
@@ -333,6 +343,13 @@ export const updateSecrets = async (req: Request, res: Response) => {
     });
 
     Object.keys(workspaceSecretObj).forEach(async (key) => {
+        // trigger event - push secrets
+        await EventService.handleEvent({
+            event: eventPushSecrets({
+                workspaceId: key
+            })
+        });
+
         const updateAction = await EELogService.createActionSecret({
             name: ACTION_UPDATE_SECRETS,
             userId: req.user._id.toString(),
@@ -409,6 +426,12 @@ export const deleteSecrets = async (req: Request, res: Response) => {
     });
 
     Object.keys(workspaceSecretObj).forEach(async (key) => {
+        // trigger event - push secrets
+        await EventService.handleEvent({
+            event: eventPushSecrets({
+                workspaceId: key
+            })
+        });
         const deleteAction = await EELogService.createActionSecret({
             name: ACTION_DELETE_SECRETS,
             userId: req.user._id.toString(),
