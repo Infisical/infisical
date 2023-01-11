@@ -7,7 +7,7 @@ const { ValidationError } = mongoose.Error;
 import { BadRequestError, InternalServerError, UnauthorizedRequestError, ValidationError as RouteValidationError } from '../../utils/errors';
 import { AnyBulkWriteOperation } from 'mongodb';
 import { SECRET_PERSONAL, SECRET_SHARED } from "../../variables";
-import { postHogClient } from '../../services';
+// import { postHogClient } from '../../services';
 
 /**
  * Create secret for workspace with id [workspaceId] and environment [environment]
@@ -42,19 +42,19 @@ export const createSecret = async (req: Request, res: Response) => {
     throw RouteValidationError({ message: error.message, stack: error.stack })
   }
 
-  if (postHogClient) {
-    postHogClient.capture({
-      event: 'secrets added',
-      distinctId: req.user.email,
-      properties: {
-        numberOfSecrets: 1,
-        workspaceId,
-        environment,
-        channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
-        userAgent: req.headers?.['user-agent']
-      }
-    });
-  } 
+  // if (postHogClient) {
+  //   postHogClient.capture({
+  //     event: 'secrets added',
+  //     distinctId: req.user.email,
+  //     properties: {
+  //       numberOfSecrets: 1,
+  //       workspaceId,
+  //       environment,
+  //       channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+  //       userAgent: req.headers?.['user-agent']
+  //     }
+  //   });
+  // } 
 
   res.status(200).send({
     secret
@@ -103,19 +103,19 @@ export const createSecrets = async (req: Request, res: Response) => {
     throw InternalServerError({ message: "Unable to process your batch create request. Please try again", stack: bulkCreateError.stack })
   }
 
-  if (postHogClient) {
-    postHogClient.capture({
-      event: 'secrets added',
-      distinctId: req.user.email,
-      properties: {
-        numberOfSecrets: (secretsToCreate ?? []).length,
-        workspaceId,
-        environment,
-        channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
-        userAgent: req.headers?.['user-agent']
-      }
-    });
-  }
+  // if (postHogClient) {
+  //   postHogClient.capture({
+  //     event: 'secrets added',
+  //     distinctId: req.user.email,
+  //     properties: {
+  //       numberOfSecrets: (secretsToCreate ?? []).length,
+  //       workspaceId,
+  //       environment,
+  //       channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+  //       userAgent: req.headers?.['user-agent']
+  //     }
+  //   });
+  // }
 
   res.status(200).send({
     secrets
@@ -158,19 +158,19 @@ export const deleteSecrets = async (req: Request, res: Response) => {
     throw InternalServerError()
   }
 
-  if (postHogClient) {
-    postHogClient.capture({
-      event: 'secrets deleted',
-      distinctId: req.user.email,
-      properties: {
-        numberOfSecrets: numSecretsDeleted,
-        environment: environmentName,
-        workspaceId,
-        channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
-        userAgent: req.headers?.['user-agent']
-      }
-    });
-  }
+  // if (postHogClient) {
+  //   postHogClient.capture({
+  //     event: 'secrets deleted',
+  //     distinctId: req.user.email,
+  //     properties: {
+  //       numberOfSecrets: numSecretsDeleted,
+  //       environment: environmentName,
+  //       workspaceId,
+  //       channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+  //       userAgent: req.headers?.['user-agent']
+  //     }
+  //   });
+  // }
 
   res.status(200).send()
 }
@@ -183,19 +183,19 @@ export const deleteSecrets = async (req: Request, res: Response) => {
 export const deleteSecret = async (req: Request, res: Response) => {
   await Secret.findByIdAndDelete(req._secret._id)
 
-  if (postHogClient) {
-    postHogClient.capture({
-      event: 'secrets deleted',
-      distinctId: req.user.email,
-      properties: {
-        numberOfSecrets: 1,
-        workspaceId: req._secret.workspace.toString(),
-        environment: req._secret.environment,
-        channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
-        userAgent: req.headers?.['user-agent']
-      }
-    });
-  }
+  // if (postHogClient) {
+  //   postHogClient.capture({
+  //     event: 'secrets deleted',
+  //     distinctId: req.user.email,
+  //     properties: {
+  //       numberOfSecrets: 1,
+  //       workspaceId: req._secret.workspace.toString(),
+  //       environment: req._secret.environment,
+  //       channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+  //       userAgent: req.headers?.['user-agent']
+  //     }
+  //   });
+  // }
 
   res.status(200).send({
     secret: req._secret
@@ -252,19 +252,19 @@ export const updateSecrets = async (req: Request, res: Response) => {
     throw InternalServerError()
   }
 
-  if (postHogClient) {
-    postHogClient.capture({
-      event: 'secrets modified',
-      distinctId: req.user.email,
-      properties: {
-        numberOfSecrets: (secretsModificationsRequested ?? []).length,
-        environment: environmentName,
-        workspaceId,
-        channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
-        userAgent: req.headers?.['user-agent']
-      }
-    });
-  }
+  // if (postHogClient) {
+  //   postHogClient.capture({
+  //     event: 'secrets modified',
+  //     distinctId: req.user.email,
+  //     properties: {
+  //       numberOfSecrets: (secretsModificationsRequested ?? []).length,
+  //       environment: environmentName,
+  //       workspaceId,
+  //       channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+  //       userAgent: req.headers?.['user-agent']
+  //     }
+  //   });
+  // }
 
   return res.status(200).send()
 }
@@ -304,19 +304,19 @@ export const updateSecret = async (req: Request, res: Response) => {
     throw RouteValidationError({ message: "Unable to apply modifications, please try again", stack: error.stack })
   }
 
-  if (postHogClient) {
-    postHogClient.capture({
-      event: 'secrets modified',
-      distinctId: req.user.email,
-      properties: {
-        numberOfSecrets: 1,
-        environment: environmentName,
-        workspaceId,
-        channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
-        userAgent: req.headers?.['user-agent']
-      }
-    });
-  }
+  // if (postHogClient) {
+  //   postHogClient.capture({
+  //     event: 'secrets modified',
+  //     distinctId: req.user.email,
+  //     properties: {
+  //       numberOfSecrets: 1,
+  //       environment: environmentName,
+  //       workspaceId,
+  //       channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+  //       userAgent: req.headers?.['user-agent']
+  //     }
+  //   });
+  // }
 
   return res.status(200).send(singleModificationUpdate)
 }
@@ -354,19 +354,19 @@ export const getSecrets = async (req: Request, res: Response) => {
     throw RouteValidationError({ message: "Failed to get secrets, please try again", stack: err.stack })
   }
 
-  if (postHogClient) {
-    postHogClient.capture({
-      event: 'secrets pulled',
-      distinctId: req.user.email,
-      properties: {
-        numberOfSecrets: (secrets ?? []).length,
-        environment,
-        workspaceId,
-        channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
-        userAgent: req.headers?.['user-agent']
-      }
-    });
-  }
+  // if (postHogClient) {
+  //   postHogClient.capture({
+  //     event: 'secrets pulled',
+  //     distinctId: req.user.email,
+  //     properties: {
+  //       numberOfSecrets: (secrets ?? []).length,
+  //       environment,
+  //       workspaceId,
+  //       channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+  //       userAgent: req.headers?.['user-agent']
+  //     }
+  //   });
+  // }
 
   return res.json(secrets)
 }
@@ -378,20 +378,20 @@ export const getSecrets = async (req: Request, res: Response) => {
  * @returns 
  */
 export const getSecret = async (req: Request, res: Response) => {
-  if (postHogClient) {
-    postHogClient.capture({
-      event: 'secrets pulled',
-      distinctId: req.user.email,
-      properties: {
-        numberOfSecrets: 1,
-        workspaceId: req._secret.workspace.toString(),
-        environment: req._secret.environment,
-        channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
-        userAgent: req.headers?.['user-agent']
-      }
-    });
-  }
-  
+  // if (postHogClient) {
+  //   postHogClient.capture({
+  //     event: 'secrets pulled',
+  //     distinctId: req.user.email,
+  //     properties: {
+  //       numberOfSecrets: 1,
+  //       workspaceId: req._secret.workspace.toString(),
+  //       environment: req._secret.environment,
+  //       channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+  //       userAgent: req.headers?.['user-agent']
+  //     }
+  //   });
+  // }
+
   return res.status(200).send({
     secret: req._secret
   });
