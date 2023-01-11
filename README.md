@@ -337,6 +337,10 @@ Infisical officially launched as v.1.0 on November 21st, 2022. There are a lot o
 
 ## 🌎 Translations
 
+<<<<<<< HEAD
 Infisical is currently aviable in English and Korean. Help us translate Infisical to your language!
+=======
+Infisical is currently available in English and Korean. Help us translate Infisical to your language! 
+>>>>>>> 9ce4a52b8da0057c2450cd7af93a8c5758c2476b
 
 You can find all the info in [this issue](https://github.com/Infisical/infisical/issues/181).
