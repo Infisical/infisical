@@ -9,7 +9,7 @@ import {
 export interface IIntegration {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  environment: 'dev' | 'test' | 'staging' | 'prod';
+  environment: string;
   isActive: boolean;
   app: string;
   target: string;

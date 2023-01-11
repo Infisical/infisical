@@ -3,7 +3,7 @@ import * as Sentry from '@sentry/node';
 import axios from 'axios';
 import { readFileSync } from 'fs';
 import { IntegrationAuth, Integration } from '../../models';
-import { INTEGRATION_SET, INTEGRATION_OPTIONS, ENV_DEV } from '../../variables';
+import { INTEGRATION_SET, INTEGRATION_OPTIONS } from '../../variables';
 import { IntegrationService } from '../../services';
 import { getApps, revokeAccess } from '../../integrations';
 

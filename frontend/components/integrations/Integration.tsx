@@ -15,9 +15,7 @@ import getIntegrationApps from "../../pages/api/integrations/GetIntegrationApps"
 import updateIntegration from "../../pages/api/integrations/updateIntegration"
 import {
   contextNetlifyMapping,
-  envMapping,
   reverseContextNetlifyMapping,
-  reverseEnvMapping,
 } from "../../public/data/frequentConstants";
 
 interface Integration {
@@ -41,9 +39,7 @@ const Integration = ({
 }: {
   integration: Integration;
 }) => {
-    const [integrationEnvironment, setIntegrationEnvironment] = useState(
-      reverseEnvMapping[integration.environment]
-    );
+    const [integrationEnvironment, setIntegrationEnvironment] = useState(integration.environment);
     const [fileState, setFileState] = useState([]);
     const router = useRouter();
     const [apps, setApps] = useState<IntegrationApp[]>([]); // integration app objects
@@ -199,9 +195,9 @@ const Integration = ({
                   const siteApp = apps.find((app) => app.name === integrationApp); // obj or undefined
                   const siteId = siteApp?.siteId ? siteApp.siteId : null;
                   
-                  const result = await updateIntegration({
+                   await updateIntegration({
                     integrationId: integration._id,
-                    environment: envMapping[integrationEnvironment],
+                    environment: integrationEnvironment,
                     app: integrationApp,
                     isActive: true,
                     target: integrationTarget ? integrationTarget.toLowerCase() : null,

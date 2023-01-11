@@ -1,4 +1,3 @@
-import { envMapping } from "../../../public/data/frequentConstants";
 import checkOverrides from './checkOverrides';
 
 
@@ -39,7 +38,7 @@ const downloadDotEnv = async ({ data, env }: { data: SecretDataProps[]; env: str
     const fileDownloadUrl = URL.createObjectURL(blob);
     const alink = document.createElement('a');
     alink.href = fileDownloadUrl;
-    alink.download = envMapping[env] + '.env';
+    alink.download = env + '.env';
     alink.click();
 }
 

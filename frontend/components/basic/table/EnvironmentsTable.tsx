@@ -1,15 +1,61 @@
-import { faPencil,faPlus,faX } from '@fortawesome/free-solid-svg-icons';
+import { faPencil, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
 
-import { usePopUp } from '../../../hooks/usePopUp'; 
+import { usePopUp } from '../../../hooks/usePopUp';
 import Button from '../buttons/Button';
-import {AddEnvironmentDialog} from '../dialog/AddEnvironmentDialog';
+import { AddUpdateEnvironmentDialog } from '../dialog/AddUpdateEnvironmentDialog';
 import DeleteActionModal from '../dialog/DeleteActionModal';
 
-const EnvironmentTable = ({ data = [] }) => {
-    const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
-      'createUpdateEnv',
-      'deleteEnv',
-    ] as const);
+type Env = { name: string; slug: string };
+
+type Props = {
+  data: Env[];
+  onCreateEnv: (arg0: Env) => Promise<void>;
+  onUpdateEnv: (oldSlug: string, arg0: Env) => Promise<void>;
+  onDeleteEnv: (slug: string) => Promise<void>;
+};
+
+const EnvironmentTable = ({
+  data = [],
+  onCreateEnv,
+  onDeleteEnv,
+  onUpdateEnv,
+}: Props) => {
+  const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
+    'createUpdateEnv',
+    'deleteEnv',
+  ] as const);
+
+  const onEnvCreateCB = async (env: Env) => {
+    try {
+      await onCreateEnv(env);
+      handlePopUpClose('createUpdateEnv');
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const onEnvUpdateCB = async (env: Env) => {
+    try {
+      await onUpdateEnv(
+        (popUp.createUpdateEnv?.data as Pick<Env, 'slug'>)?.slug,
+        env
+      );
+      handlePopUpClose('createUpdateEnv');
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const onEnvDeleteCB = async () => {
+    try {
+      await onDeleteEnv(
+        (popUp.deleteEnv?.data as Pick<Env, 'slug'>)?.slug
+      );
+      handlePopUpClose('deleteEnv');
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   return (
     <>
@@ -62,7 +108,9 @@ const EnvironmentTable = ({ data = [] }) => {
                     <td className='py-2 border-mineshaft-700 border-t flex'>
                       <div className='opacity-50 hover:opacity-100 duration-200 flex items-center mr-8'>
                         <Button
-                          onButtonPressed={() => handlePopUpOpen("createUpdateEnv",{ name, slug })}
+                          onButtonPressed={() =>
+                            handlePopUpOpen('createUpdateEnv', { name, slug })
+                          }
                           color='red'
                           size='icon-sm'
                           icon={faPencil}
@@ -101,14 +149,15 @@ const EnvironmentTable = ({ data = [] }) => {
           }?`}
           deleteKey={(popUp?.deleteEnv?.data as { slug: string })?.slug || ''}
           onClose={() => handlePopUpClose('deleteEnv')}
-          onSubmit={() => handlePopUpClose('deleteEnv')}
+          onSubmit={onEnvDeleteCB}
         />
-        <AddEnvironmentDialog
+        <AddUpdateEnvironmentDialog
           isOpen={popUp.createUpdateEnv.isOpen}
           isEditMode={Boolean(popUp.createUpdateEnv?.data)}
           initialValues={popUp?.createUpdateEnv?.data as any}
           onClose={() => handlePopUpClose('createUpdateEnv')}
-          onSubmit={() => null}
+          onCreateSubmit={onEnvCreateCB}
+          onEditSubmit={onEnvUpdateCB}
         />
       </div>
     </>

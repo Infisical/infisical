@@ -8,7 +8,6 @@ import nacl from "tweetnacl";
 import addServiceToken from "~/pages/api/serviceToken/addServiceToken";
 import getLatestFileKey from "~/pages/api/workspace/getLatestFileKey";
 
-import { envMapping } from "../../../public/data/frequentConstants";
 import {
   decryptAssymmetric,
   encryptAssymmetric,
@@ -34,11 +33,12 @@ const AddServiceTokenDialog = ({
   workspaceId,
   workspaceName,
   serviceTokens,
+  environments,
   setServiceTokens
 }) => {
   const [serviceToken, setServiceToken] = useState("");
   const [serviceTokenName, setServiceTokenName] = useState("");
-  const [serviceTokenEnv, setServiceTokenEnv] = useState("Development");
+  const [selectedServiceTokenEnv, setSelectedServiceTokenEnv] = useState(environments?.[0]);
   const [serviceTokenExpiresIn, setServiceTokenExpiresIn] = useState("1 day");
   const [serviceTokenCopied, setServiceTokenCopied] = useState(false);
   const { t } = useTranslation();
@@ -66,7 +66,7 @@ const AddServiceTokenDialog = ({
     let newServiceToken = await addServiceToken({
       name: serviceTokenName,
       workspaceId,
-      environment: envMapping[serviceTokenEnv],
+      environment: selectedServiceTokenEnv.slug,
       expiresIn: expiryMapping[serviceTokenExpiresIn],
       encryptedKey: ciphertext,
       iv, 
@@ -101,155 +101,159 @@ const AddServiceTokenDialog = ({
   };
 
   return (
-    <div className="z-50">
+    <div className='z-50'>
       <Transition appear show={isOpen} as={Fragment}>
-        <Dialog as="div" className="relative" onClose={closeModal}>
+        <Dialog as='div' className='relative' onClose={closeModal}>
           <Transition.Child
             as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
+            enter='ease-out duration-300'
+            enterFrom='opacity-0'
+            enterTo='opacity-100'
+            leave='ease-in duration-200'
+            leaveFrom='opacity-100'
+            leaveTo='opacity-0'
           >
-            <div className="fixed inset-0 bg-bunker-700 bg-opacity-80" />
+            <div className='fixed inset-0 bg-bunker-700 bg-opacity-80' />
           </Transition.Child>
 
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4 text-center">
+          <div className='fixed inset-0 overflow-y-auto'>
+            <div className='flex min-h-full items-center justify-center p-4 text-center'>
               <Transition.Child
                 as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
+                enter='ease-out duration-300'
+                enterFrom='opacity-0 scale-95'
+                enterTo='opacity-100 scale-100'
+                leave='ease-in duration-200'
+                leaveFrom='opacity-100 scale-100'
+                leaveTo='opacity-0 scale-95'
               >
-                {serviceToken == "" ? (
-                  <Dialog.Panel className="w-full max-w-md transform rounded-md bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all">
+                {serviceToken == '' ? (
+                  <Dialog.Panel className='w-full max-w-md transform rounded-md bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all'>
                     <Dialog.Title
-                      as="h3"
-                      className="text-lg font-medium leading-6 text-gray-400 z-50"
+                      as='h3'
+                      className='text-lg font-medium leading-6 text-gray-400 z-50'
                     >
-                      {t("section-token:add-dialog.title", {
+                      {t('section-token:add-dialog.title', {
                         target: workspaceName,
                       })}
                     </Dialog.Title>
-                    <div className="mt-2 mb-4">
-                      <div className="flex flex-col">
-                        <p className="text-sm text-gray-500">
-                          {t("section-token:add-dialog.description")}
+                    <div className='mt-2 mb-4'>
+                      <div className='flex flex-col'>
+                        <p className='text-sm text-gray-500'>
+                          {t('section-token:add-dialog.description')}
                         </p>
                       </div>
                     </div>
-                    <div className="max-h-28 mb-2">
+                    <div className='max-h-28 mb-2'>
                       <InputField
-                        label={t("section-token:add-dialog.name")}
+                        label={t('section-token:add-dialog.name')}
                         onChangeHandler={setServiceTokenName}
-                        type="varName"
+                        type='varName'
                         value={serviceTokenName}
-                        placeholder=""
+                        placeholder=''
                         isRequired
                       />
                     </div>
-                    <div className="max-h-28 mb-2">
+                    <div className='max-h-28 mb-2'>
                       <ListBox
-                        selected={serviceTokenEnv}
-                        onChange={setServiceTokenEnv}
-                        data={[
-                          "Development",
-                          "Staging",
-                          "Production",
-                          "Testing",
-                        ]}
+                        selected={selectedServiceTokenEnv?.name}
+                        data={environments.map(({ name }) => name)}
+                        onChange={(envName) =>
+                          setSelectedServiceTokenEnv(
+                            environments.find(
+                              ({ name }) => envName === name
+                            ) || {
+                              name: 'unknown',
+                              slug: 'unknown',
+                            }
+                          )
+                        }
                         isFull={true}
-                        text={`${t("common:environment")}: `}
+                        text={`${t('common:environment')}: `}
                       />
                     </div>
-                    <div className="max-h-28">
+                    <div className='max-h-28'>
                       <ListBox
                         selected={serviceTokenExpiresIn}
                         onChange={setServiceTokenExpiresIn}
                         data={[
-                          "1 day",
-                          "7 days",
-                          "1 month",
-                          "6 months",
-                          "12 months",
+                          '1 day',
+                          '7 days',
+                          '1 month',
+                          '6 months',
+                          '12 months',
                         ]}
                         isFull={true}
-                        text={`${t("common:expired-in")}: `}
+                        text={`${t('common:expired-in')}: `}
                       />
                     </div>
-                    <div className="max-w-max">
-                      <div className="mt-6 flex flex-col justify-start w-max">
+                    <div className='max-w-max'>
+                      <div className='mt-6 flex flex-col justify-start w-max'>
                         <Button
                           onButtonPressed={() => generateServiceToken()}
-                          color="mineshaft"
-                          text={t("section-token:add-dialog.add")}
-                          textDisabled={t("section-token:add-dialog.add")}
-                          size="md"
-                          active={serviceTokenName == "" ? false : true}
+                          color='mineshaft'
+                          text={t('section-token:add-dialog.add')}
+                          textDisabled={t('section-token:add-dialog.add')}
+                          size='md'
+                          active={serviceTokenName == '' ? false : true}
                         />
                       </div>
                     </div>
                   </Dialog.Panel>
                 ) : (
-                  <Dialog.Panel className="w-full max-w-md transform rounded-md bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all">
+                  <Dialog.Panel className='w-full max-w-md transform rounded-md bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all'>
                     <Dialog.Title
-                      as="h3"
-                      className="text-lg font-medium leading-6 text-gray-400 z-50"
+                      as='h3'
+                      className='text-lg font-medium leading-6 text-gray-400 z-50'
                     >
-                      {t("section-token:add-dialog.copy-service-token")}
+                      {t('section-token:add-dialog.copy-service-token')}
                     </Dialog.Title>
-                    <div className="mt-2 mb-4">
-                      <div className="flex flex-col">
-                        <p className="text-sm text-gray-500">
+                    <div className='mt-2 mb-4'>
+                      <div className='flex flex-col'>
+                        <p className='text-sm text-gray-500'>
                           {t(
-                            "section-token:add-dialog.copy-service-token-description"
+                            'section-token:add-dialog.copy-service-token-description'
                           )}
                         </p>
                       </div>
                     </div>
-                    <div className="w-full">
-                      <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400 w-full h-20">
+                    <div className='w-full'>
+                      <div className='flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400 w-full h-20'>
                         <input
-                          type="text"
+                          type='text'
                           value={serviceToken}
-                          id="serviceToken"
-                          className="invisible bg-white/0 text-gray-400 py-2 w-full px-2 min-w-full outline-none"
+                          id='serviceToken'
+                          className='invisible bg-white/0 text-gray-400 py-2 w-full px-2 min-w-full outline-none'
                         ></input>
-                        <div className="bg-white/0 max-w-md text-sm text-gray-400 py-2 w-full pl-14 pr-2 break-words outline-none">
+                        <div className='bg-white/0 max-w-md text-sm text-gray-400 py-2 w-full pl-14 pr-2 break-words outline-none'>
                           {serviceToken}
                         </div>
-                        <div className="group font-normal h-full relative inline-block text-gray-400 underline hover:text-primary duration-200">
+                        <div className='group font-normal h-full relative inline-block text-gray-400 underline hover:text-primary duration-200'>
                           <button
                             onClick={copyToClipboard}
-                            className="h-full pl-3.5 pr-4 border-l border-white/20 py-2 hover:bg-white/[0.12] duration-200"
+                            className='h-full pl-3.5 pr-4 border-l border-white/20 py-2 hover:bg-white/[0.12] duration-200'
                           >
                             {serviceTokenCopied ? (
                               <FontAwesomeIcon
                                 icon={faCheck}
-                                className="pr-0.5"
+                                className='pr-0.5'
                               />
                             ) : (
                               <FontAwesomeIcon icon={faCopy} />
                             )}
                           </button>
-                          <span className="absolute hidden group-hover:flex group-hover:animate-popup duration-300 w-28 -left-8 -top-20 translate-y-full px-3 py-2 bg-chicago-900 rounded-md text-center text-gray-400 text-sm">
-                            {t("common:click-to-copy")}
+                          <span className='absolute hidden group-hover:flex group-hover:animate-popup duration-300 w-28 -left-8 -top-20 translate-y-full px-3 py-2 bg-chicago-900 rounded-md text-center text-gray-400 text-sm'>
+                            {t('common:click-to-copy')}
                           </span>
                         </div>
                       </div>
                     </div>
-                    <div className="mt-6 flex flex-col justify-start w-max">
+                    <div className='mt-6 flex flex-col justify-start w-max'>
                       <Button
                         onButtonPressed={() => closeAddServiceTokenModal()}
-                        color="mineshaft"
-                        text="Close"
-                        size="md"
+                        color='mineshaft'
+                        text='Close'
+                        size='md'
                       />
                     </div>
                   </Dialog.Panel>

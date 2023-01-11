@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 
 import InputField from '../InputField';
@@ -20,6 +20,10 @@ const DeleteActionModal = ({
   deleteKey
 }:Props) => {
   const [deleteInputField, setDeleteInputField] = useState("")
+
+    useEffect(() => {
+      setDeleteInputField("");
+    }, [isOpen]);
 
   return (
     <div>

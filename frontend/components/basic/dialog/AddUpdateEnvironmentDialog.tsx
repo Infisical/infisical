@@ -12,15 +12,24 @@ type Props = {
   // on edit mode load up initial values
   initialValues?: FormFields;
   onClose: () => void;
-  onSubmit: (envName: string, envSlug: string) => void;
+  onCreateSubmit: (data: FormFields) => void;
+  onEditSubmit: (data: FormFields) => void;
 };
 
+// TODO: Migrate to better form management and validation. Preferable react-hook-form + yup
 /**
  * The dialog modal for when the user wants to create a new workspace
  * @param {*} param0
  * @returns
  */
-export const AddEnvironmentDialog = ({ isOpen, onClose, onSubmit, initialValues, isEditMode }: Props) => {
+export const AddUpdateEnvironmentDialog = ({
+  isOpen,
+  onClose,
+  onCreateSubmit,
+  onEditSubmit,
+  initialValues,
+  isEditMode,
+}: Props) => {
   const [formInput, setFormInput] = useState<FormFields>({
     name: '',
     slug: '',
@@ -39,7 +48,15 @@ export const AddEnvironmentDialog = ({ isOpen, onClose, onSubmit, initialValues,
 
   const onFormSubmit: FormEventHandler = (e) => {
     e.preventDefault();
-    console.log(formInput);
+    const data = {
+      name: formInput.name.toLowerCase(),
+      slug: formInput.slug.toLowerCase(),
+    };
+    if (isEditMode) {
+      onEditSubmit(data);
+      return;
+    }
+    onCreateSubmit(data);
   };
 
   return (
@@ -81,7 +98,7 @@ export const AddEnvironmentDialog = ({ isOpen, onClose, onSubmit, initialValues,
                   <form onSubmit={onFormSubmit}>
                     <div className='max-h-28 mt-4'>
                       <InputField
-                        label='Project Name'
+                        label='Environment Name'
                         onChangeHandler={(val) => onInputChange('name', val)}
                         type='varName'
                         value={formInput.name}
@@ -112,6 +129,7 @@ export const AddEnvironmentDialog = ({ isOpen, onClose, onSubmit, initialValues,
                         type='submit'
                         color='mineshaft'
                         text={isEditMode ? 'Update' : 'Create'}
+                        active={formInput.name !== '' && formInput.slug !== ''}
                         size='md'
                       />
                     </div>

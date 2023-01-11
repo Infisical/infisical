@@ -1,6 +1,13 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
-import { Secret, ServiceToken, Workspace, Integration } from '../../models';
+import {
+  Secret,
+  ServiceToken,
+  Workspace,
+  Integration,
+  ServiceTokenData,
+} from '../../models';
+import { SecretVersion } from '../../ee/models';
 
 /**
  * Create new workspace environment named [environmentName] under workspace with id
@@ -12,25 +19,24 @@ export const createWorkspaceEnvironment = async (
   req: Request,
   res: Response
 ) => {
-  const { workspaceId, environmentName, environmentSlug } = req.body;
+  const { workspaceId } = req.params;
+  const { environmentName, environmentSlug } = req.body;
   try {
-    // atomic create the environment
-    const workspace = await Workspace.findOneAndUpdate(
-      {
-        _id: workspaceId,
-        'environments.slug': { $ne: environmentSlug },
-        'environments.name': { $ne: environmentName },
-      },
-      {
-        $addToSet: {
-          environments: { name: environmentName, slug: environmentSlug },
-        },
-      }
-    );
-
-    if (!workspace) {
-      throw new Error('Failed to update workspace environment');
+    const workspace = await Workspace.findById(workspaceId).exec();
+    if (
+      !workspace ||
+      workspace?.environments.find(
+        ({ name, slug }) => slug === environmentSlug || environmentName === name
+      )
+    ) {
+      throw new Error('Failed to create workspace environment');
     }
+
+    workspace?.environments.push({
+      name: environmentName.toLowerCase(),
+      slug: environmentSlug.toLowerCase(),
+    });
+    await workspace.save();
   } catch (err) {
     Sentry.setUser({ email: req.user.email });
     Sentry.captureException(err);
@@ -60,8 +66,8 @@ export const renameWorkspaceEnvironment = async (
   req: Request,
   res: Response
 ) => {
-  const { workspaceId, environmentName, environmentSlug, oldEnvironmentSlug } =
-    req.body;
+  const { workspaceId } = req.params;
+  const { environmentName, environmentSlug, oldEnvironmentSlug } = req.body;
   try {
     // user should pass both new slug and env name
     if (!environmentSlug || !environmentName) {
@@ -69,22 +75,44 @@ export const renameWorkspaceEnvironment = async (
     }
 
     // atomic update the env to avoid conflict
-    const workspace = await Workspace.findOneAndUpdate(
-      { _id: workspaceId, 'environments.slug': oldEnvironmentSlug },
-      {
-        'environments.$.name': environmentName,
-        'environments.$.slug': environmentSlug,
-      }
-    );
+    const workspace = await Workspace.findById(workspaceId).exec();
     if (!workspace) {
-      throw new Error('Failed to update workspace');
+      throw new Error('Failed to create workspace environment');
     }
 
+    const isEnvExist = workspace.environments.some(
+      ({ name, slug }) =>
+        slug !== oldEnvironmentSlug &&
+        (name === environmentName || slug === environmentSlug)
+    );
+    if (isEnvExist) {
+      throw new Error('Invalid environment given');
+    }
+
+    const envIndex = workspace?.environments.findIndex(
+      ({ slug }) => slug === oldEnvironmentSlug
+    );
+    if (envIndex === -1) {
+      throw new Error('Invalid environment given');
+    }
+
+    workspace.environments[envIndex].name = environmentName.toLowerCase();
+    workspace.environments[envIndex].slug = environmentSlug.toLowerCase();
+
+    await workspace.save();
     await Secret.updateMany(
       { workspace: workspaceId, environment: oldEnvironmentSlug },
       { environment: environmentSlug }
     );
+    await SecretVersion.updateMany(
+      { workspace: workspaceId, environment: oldEnvironmentSlug },
+      { environment: environmentSlug }
+    );
     await ServiceToken.updateMany(
+      { workspace: workspaceId, environment: oldEnvironmentSlug },
+      { environment: environmentSlug }
+    );
+    await ServiceTokenData.updateMany(
       { workspace: workspaceId, environment: oldEnvironmentSlug },
       { environment: environmentSlug }
     );
@@ -120,25 +148,31 @@ export const deleteWorkspaceEnvironment = async (
   req: Request,
   res: Response
 ) => {
-  const { workspaceId, environmentSlug } = req.body;
+  const { workspaceId } = req.params;
+  const { environmentSlug } = req.body;
   try {
-    // atomic delete the env in the workspacce
-    const workspace = await Workspace.findOneAndUpdate(
-      { _id: workspaceId },
-      {
-        $pull: {
-          environments: {
-            slug: environmentSlug,
-          },
-        },
-      }
-    );
+    // atomic update the env to avoid conflict
+    const workspace = await Workspace.findById(workspaceId).exec();
     if (!workspace) {
-      throw new Error('Failed to delete workspace environment');
+      throw new Error('Failed to create workspace environment');
     }
+
+    const envIndex = workspace?.environments.findIndex(
+      ({ slug }) => slug === environmentSlug
+    );
+    if (envIndex === -1) {
+      throw new Error('Invalid environment given');
+    }
+
+    workspace.environments.splice(envIndex, 1);
+    await workspace.save();
 
     // clean up
     await Secret.deleteMany({
+      workspace: workspaceId,
+      environment: environmentSlug,
+    });
+    await SecretVersion.deleteMany({
       workspace: workspaceId,
       environment: environmentSlug,
     });
@@ -146,11 +180,14 @@ export const deleteWorkspaceEnvironment = async (
       workspace: workspaceId,
       environment: environmentSlug,
     });
+    await ServiceTokenData.deleteMany({
+      workspace: workspaceId,
+      environment: environmentSlug,
+    });
     await Integration.deleteMany({
       workspace: workspaceId,
       environment: environmentSlug,
     });
-
   } catch (err) {
     Sentry.setUser({ email: req.user.email });
     Sentry.captureException(err);

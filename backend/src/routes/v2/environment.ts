@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Response, Request } from 'express';
 const router = express.Router();
 import { body, param } from 'express-validator';
 import { environmentController } from '../../controllers/v2';
@@ -7,14 +7,15 @@ import {
   requireWorkspaceAuth,
   validateRequest,
 } from '../../middleware';
-import { ADMIN, MEMBER, COMPLETED, GRANTED } from '../../variables';
+import { ADMIN, MEMBER } from '../../variables';
 
 router.post(
-  '/:workspaceId',
-  requireAuth,
+  '/:workspaceId/environments',
+  requireAuth({
+    acceptedAuthModes: ['jwt'],
+  }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    acceptedStatuses: [COMPLETED, GRANTED],
   }),
   param('workspaceId').exists().trim(),
   body('environmentSlug').exists().trim(),
@@ -24,11 +25,12 @@ router.post(
 );
 
 router.put(
-  '/:workspaceId',
-  requireAuth,
+  '/:workspaceId/environments',
+  requireAuth({
+    acceptedAuthModes: ['jwt'],
+  }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    acceptedStatuses: [COMPLETED, GRANTED],
   }),
   param('workspaceId').exists().trim(),
   body('environmentSlug').exists().trim(),
@@ -39,11 +41,12 @@ router.put(
 );
 
 router.delete(
-  '/:workspaceId',
-  requireAuth,
+  '/:workspaceId/environments',
+  requireAuth({
+    acceptedAuthModes: ['jwt'],
+  }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN],
-    acceptedStatuses: [GRANTED],
   }),
   param('workspaceId').exists().trim(),
   body('environmentSlug').exists().trim(),

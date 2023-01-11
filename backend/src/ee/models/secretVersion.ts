@@ -2,10 +2,6 @@ import { Schema, model, Types } from 'mongoose';
 import {
 	SECRET_SHARED,
 	SECRET_PERSONAL,
-	ENV_DEV,
-	ENV_TESTING,
-	ENV_STAGING,
-	ENV_PROD
 } from '../../variables';
 
 export interface ISecretVersion {
@@ -56,7 +52,6 @@ const secretVersionSchema = new Schema<ISecretVersion>(
 		},
 		environment: {
 			type: String,
-			enum: [ENV_DEV, ENV_TESTING, ENV_STAGING, ENV_PROD],
 			required: true
 		},
         isDeleted: { // consider removing field
