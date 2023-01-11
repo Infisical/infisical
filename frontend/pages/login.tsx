@@ -125,7 +125,7 @@ export default function Login() {
             </div>
           </div>
           {!isLoading && errorLogin && (
-            <Error text={t("login:error-login")} />
+            <Error text={t("login:error-login") ?? ""} />
           )}
           <div className="flex flex-col items-center justify-center w-full md:p-2 max-h-20 max-w-md mt-4 mx-auto text-sm">
             <div className="text-l mt-6 m-8 px-8 py-3 text-lg">
