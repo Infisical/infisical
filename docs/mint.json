@@ -40,6 +40,11 @@
       "url": "self-hosting"
     },
     {
+      "name": "API Reference",
+      "icon": "cloud",
+      "url": "api-reference"
+    },
+    {
       "name": "Integrations",
       "icon": "plug",
       "url": "integrations"
@@ -123,6 +128,27 @@
       "pages": [
         "self-hosting/configuration/envars",
         "self-hosting/configuration/email"
+      ]
+    },
+    {
+      "group": "Overview",
+      "pages": [
+        "api-reference/overview/introduction",
+        "api-reference/overview/authentication"
+      ]
+    },
+    {
+      "group": "Endpoints",
+      "pages": [
+        {
+          "group": "Secrets",
+          "pages": [
+            "api-reference/endpoints/secrets/create",
+            "api-reference/endpoints/secrets/read",
+            "api-reference/endpoints/secrets/update",
+            "api-reference/endpoints/secrets/delete"
+          ]
+        }
       ]
     },
     {

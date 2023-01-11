@@ -42,9 +42,9 @@
 - **Navigate Multiple Environments** per project (e.g. development, staging, production, etc.)
 - **Personal overrides** for environment variables
 - **[Integrations](https://infisical.com/docs/integrations/overview)** with CI/CD and production infrastructure
-- **[Secret Versioning](https://infisical.com/docs/getting-started/dashboard/versioning)** - check the history of change for any secret
-- **[Activity Logs](https://infisical.com/docs/getting-started/dashboard/audit-logs)** - check what user in the project is performing what actions with secrets
-- **[Point-in-time Secrets Recovery](https://infisical.com/docs/getting-started/dashboard/pit-recovery)** - roll back to any snapshot of you secrets
+- **[Secret Versioning](https://infisical.com/docs/getting-started/dashboard/versioning)** to view the change history for any secret
+- **[Activity Logs](https://infisical.com/docs/getting-started/dashboard/audit-logs)** to record every action taken in a project.
+- **[Point-in-time Secrets Recovery](https://infisical.com/docs/getting-started/dashboard/pit-recovery)** for rolling back to any snapshot of your secrets
 - 🔜 **1-Click Deploy** to Digital Ocean and Heroku
 - 🔜 **Authentication/Authorization** for projects (read/write controls soon)
 - 🔜 **Automatic Secret Rotation**
@@ -337,6 +337,6 @@ Infisical officially launched as v.1.0 on November 21st, 2022. There are a lot o
 
 ## 🌎 Translations
 
-Infisical is currently aviable in English and Korean. Help us translate Infisical to your language! 
+Infisical is currently aviable in English and Korean. Help us translate Infisical to your language!
 
 You can find all the info in [this issue](https://github.com/Infisical/infisical/issues/181).
