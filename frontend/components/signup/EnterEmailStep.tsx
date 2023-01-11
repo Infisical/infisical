@@ -59,11 +59,11 @@ export default function EnterEmailStep({ email, setEmail, incrementStep }: Downl
     <div>
       <div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-8 md:px-6 mx-1 rounded-xl drop-shadow-xl">
         <p className="text-4xl font-semibold flex justify-center text-primary">
-          {'Let\''}s get started
+          {t("signup:step1-start")}
         </p>
         <div className="flex items-center justify-center w-5/6 md:w-full m-auto md:p-2 rounded-lg max-h-24 mt-4">
           <InputField
-            label="Email"
+            label={t("common:email")}
             onChangeHandler={setEmail}
             type="email"
             value={email}
@@ -79,7 +79,7 @@ export default function EnterEmailStep({ email, setEmail, incrementStep }: Downl
             {t("signup:step1-privacy")}
           </p>
           <div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
-            <Button text="Get Started" type="submit" onButtonPressed={emailCheck} size="lg" />
+            <Button text={t("signup:step1-submit")} type="submit" onButtonPressed={emailCheck} size="lg" />
           </div>
         </div>
       </div>

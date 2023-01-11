@@ -81,7 +81,7 @@ export default function CodeInputStep({ email, incrementStep, setCode, codeError
   return (
     <div className="bg-bunker w-max mx-auto h-7/12 pt-10 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-16">
       <p className="text-l flex justify-center text-bunker-300">
-        {"We've"} sent a verification email to{" "}
+        {t("signup:step2-message")}
       </p>
       <p className="text-l flex justify-center font-semibold my-2 text-bunker-300">
         {email}{" "}
@@ -119,11 +119,11 @@ export default function CodeInputStep({ email, incrementStep, setCode, codeError
       <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
         <div className="flex flex-row items-baseline gap-1 text-sm">
           <span className="text-bunker-400">
-            Not seeing an email?
+            {t("signup:step2-resend-alert")}
           </span>
           <u className={`font-normal ${isResendingVerificationEmail ? 'text-bunker-400' : 'text-primary-700 hover:text-primary duration-200'}`}>
             <button disabled={isLoading} onClick={resendVerificationEmail}>
-              {isResendingVerificationEmail ? "Resending..." : "Resend"}
+              {isResendingVerificationEmail ? t("signup:step2-resend-progress") : t("signup:step2-resend-submit")}
             </button>
           </u>
         </div>
