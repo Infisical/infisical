@@ -1,0 +1,8 @@
+{
+  "event": {
+    "readSecrets": "Segredos Visualizados",
+    "updateSecrets": "Segredos Atualizados",
+    "addSecrets": "Segredos Adicionados",
+    "deleteSecrets": "Segredos Excluídos"
+  }
+}
