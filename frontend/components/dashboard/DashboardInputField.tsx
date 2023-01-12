@@ -9,7 +9,7 @@ const REGEX = /([$]{.*?})/g;
 interface DashboardInputFieldProps {
   position: number;
   onChangeHandler: (value: string, position: number) => void;
-  value: string;
+  value: string | undefined;
   type: 'varName' | 'value';
   blurred?: boolean;
   isDuplicate?: boolean;
@@ -47,7 +47,7 @@ const DashboardInputField = ({
   };
 
   if (type === 'varName') {
-    const startsWithNumber = !isNaN(Number(value.charAt(0))) && value != '';
+    const startsWithNumber = !isNaN(Number(value?.charAt(0))) && value != '';
     const error = startsWithNumber || isDuplicate;
 
     return (
@@ -141,7 +141,7 @@ const DashboardInputField = ({
           {blurred && (
             <div className="absolute flex flex-row items-center z-20 peer pr-2 bg-bunker-800 group-hover:hidden peer-hover:hidden peer-focus:hidden peer-active:invisible h-9 w-full rounded-md text-gray-400/50 text-clip">
               <div className="px-2 flex flex-row items-center overflow-x-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
-                {value.split('').map(() => (
+                {value?.split('').map(() => (
                   <FontAwesomeIcon
                     key={guidGenerator()}
                     className="text-xxs mx-0.5"

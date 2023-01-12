@@ -3,7 +3,6 @@ import Image from "next/image";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import {
   FontAwesomeIcon,
-  FontAwesomeIconProps,
 } from "@fortawesome/react-fontawesome";
 
 const classNames = require("classnames");
@@ -101,7 +100,7 @@ export default function Button(props: ButtonProps): JSX.Element {
         <div
           className={`${
             props.loading == true ? "opacity-100" : "opacity-0"
-          } absolute flex items-center px-2 duration-200`}
+          } absolute flex items-center px-3 bg-primary duration-200 w-full`}
         >
           <Image
             src="/images/loading/loadingblack.gif"

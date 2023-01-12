@@ -1,18 +1,11 @@
 // import YAML from 'yaml';
 // import { YAMLSeq } from 'yaml/types';
 
+import { SecretDataProps } from "public/data/frequentInterfaces";
+
 // import { envMapping } from "../../../public/data/frequentConstants";
 // import checkOverrides from './checkOverrides';
 
-
-interface SecretDataProps {
-  type: 'personal' | 'shared';
-  pos: number;
-  key: string;
-  value: string;
-  id: string;
-  comment: string;
-}
 
 /**
  * This function downloads the secrets as a .yml file

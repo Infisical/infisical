@@ -45,11 +45,12 @@ import getWorkspaces from '../api/workspace/getWorkspaces';
 
 
 interface SecretDataProps {
-  type: 'personal' | 'shared';
   pos: number;
   key: string;
   value: string;
+  valueOverride: string | undefined;
   id: string;
+  idOverride: string | undefined;
   comment: string;
 }
 
@@ -68,10 +69,11 @@ interface SnapshotProps {
   secretVersions: {
     id: string;
     pos: number;
-    type: "personal" | "shared";
     environment: string;
     key: string;
     value: string;
+    valueOverride: string;
+    comment: string;
   }[];
 }
 
@@ -99,7 +101,7 @@ function findDuplicates(arr: any[]) {
  */
 export default function Dashboard() {
   const [data, setData] = useState<SecretDataProps[] | null>();
-  const [initialData, setInitialData] = useState<SecretDataProps[]>([]); 
+  const [initialData, setInitialData] = useState<SecretDataProps[] | null | undefined>([]); 
   const [buttonReady, setButtonReady] = useState(false);
   const router = useRouter();
   const [workspaceId, setWorkspaceId] = useState('');
@@ -119,6 +121,7 @@ export default function Dashboard() {
   const [sharedToHide, setSharedToHide] = useState<string[]>([]);
   const [snapshotData, setSnapshotData] = useState<SnapshotProps>();
   const [numSnapshots, setNumSnapshots] = useState<number>();
+  const [saveLoading, setSaveLoading] = useState(false);
 
   const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
@@ -213,16 +216,6 @@ export default function Dashboard() {
         setInitialData(dataToSort);
         reorderRows(dataToSort);
 
-        setSharedToHide(
-          dataToSort?.filter(row => (dataToSort
-          ?.map((item) => item.key)
-          .filter(
-            (item, index) =>
-              index !==
-              dataToSort?.map((item) => item.key).indexOf(item)
-          ).includes(row.key) && row.type == 'shared'))?.map((item) => item.id)
-        )
-
         setIsLoading(false);
       } catch (error) {
         console.log('Error', error);
@@ -238,37 +231,14 @@ export default function Dashboard() {
       ...data!,
       {
         id: guidGenerator(),
+        idOverride: guidGenerator(),
         pos: data!.length,
         key: '',
         value: '',
-        type: 'shared',
+        valueOverride: undefined,
         comment: '',
       }
     ]);
-  };
-
-  /**
-   * This function add an ovverrided version of a certain secret to the current user
-   * @param {object} obj 
-   * @param {string} obj.id - if of this secret that is about to be overriden
-   * @param {string} obj.keyName - key name of this secret
-   * @param {string} obj.value - value of this secret
-   * @param {string} obj.pos - position of this secret on the dashboard 
-   */
-  const addOverride = ({ id, keyName, value, pos, comment }: overrideProps) => {
-    setIsNew(false);
-    const tempdata: SecretDataProps[] | 1 = [
-      ...data!,
-      {
-        id: id,
-        pos: pos,
-        key: keyName,
-        value: value,
-        type: 'personal',
-        comment: comment
-      }
-    ];
-    sortValuesHandler(tempdata, sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical");
   };
 
   const deleteRow = ({ ids, secretName }: { ids: string[]; secretName: string; }) => {
@@ -289,20 +259,28 @@ export default function Dashboard() {
     setButtonReady(true);
 
     // find which shared secret corresponds to the overriden version
-    const sharedVersionOfOverride = data!.filter(secret => secret.type == "shared" && secret.key == data!.filter(row => row.id == id)[0]?.key)[0]?.id;
+    // const sharedVersionOfOverride = data!.filter(secret => secret.type == "shared" && secret.key == data!.filter(row => row.id == id)[0]?.key)[0]?.id;
     
     // change the sidebar to this shared secret; and unhide it
-    toggleSidebar(sharedVersionOfOverride)
-    setSharedToHide(sharedToHide!.filter(tempId => tempId != sharedVersionOfOverride))
+    // toggleSidebar(sharedVersionOfOverride)
+    // setSharedToHide(sharedToHide!.filter(tempId => tempId != sharedVersionOfOverride))
 
     // resort secrets
-    const tempData = data!.filter((row: SecretDataProps) => !(row.key == data!.filter(row => row.id == id)[0]?.key && row.type == 'personal'))
-    sortValuesHandler(tempData, sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical")
+    // const tempData = data!.filter((row: SecretDataProps) => !(row.key == data!.filter(row => row.id == id)[0]?.key && row.type == 'personal'))
+    // sortValuesHandler(tempData, sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical")
   };
 
   const modifyValue = (value: string, pos: number) => {
     setData((oldData) => {
       oldData![pos].value = value;
+      return [...oldData!];
+    });
+    setButtonReady(true);
+  };
+
+  const modifyValueOverride = (value: string | undefined, pos: number) => {
+    setData((oldData) => {
+      oldData![pos].valueOverride = value;
       return [...oldData!];
     });
     setButtonReady(true);
@@ -329,6 +307,10 @@ export default function Dashboard() {
     modifyValue(value, pos);
   }, []);
 
+  const listenChangeValueOverride = useCallback((value: string | undefined, pos: number) => {
+    modifyValueOverride(value, pos);
+  }, []);
+
   const listenChangeKey = useCallback((value: string, pos: number) => {
     modifyKey(value, pos);
   }, []);
@@ -341,6 +323,7 @@ export default function Dashboard() {
    * Save the changes of environment variables and push them to the database
    */
   const savePush = async (dataToPush?: SecretDataProps[]) => {
+    setSaveLoading(true);
     let newData: SecretDataProps[] | null | undefined;
     // dataToPush is mostly used for rollbacks, otherwise we always take the current state data
     if ((dataToPush ?? [])?.length > 0) {
@@ -349,16 +332,11 @@ export default function Dashboard() {
       newData = data;
     }
 
-    const obj = Object.assign(
-      {},
-      ...newData!.map((row: SecretDataProps) => ({ [row.type.charAt(0) + row.key]: [row.value, row.comment ?? ''] }))
-    );
-
     // Checking if any of the secret keys start with a number - if so, don't do anything
-    const nameErrors = !Object.keys(obj)
-      .map((key) => !isNaN(Number(key[0].charAt(0))))
+    const nameErrors = !newData!
+      .map((secret) => !isNaN(Number(secret.key.charAt(0))))
       .every((v) => v === false);
-    const duplicatesExist = findDuplicates(data!.map((item: SecretDataProps) => item.key + item.type)).length > 0;
+    const duplicatesExist = findDuplicates(data!.map((item: SecretDataProps) => item.key)).length > 0;
 
     if (nameErrors) {
       return createNotification({
@@ -378,33 +356,63 @@ export default function Dashboard() {
     setButtonReady(false);
 
     const secretsToBeDeleted 
-      = initialData
+      = initialData!
       .filter(initDataPoint => !newData!.map(newDataPoint => newDataPoint.id).includes(initDataPoint.id))
       .map(secret => secret.id);
+    console.log('delete', secretsToBeDeleted.length)
 
     const secretsToBeAdded 
       = newData!
-      .filter(newDataPoint => !initialData.map(initDataPoint => initDataPoint.id).includes(newDataPoint.id));
+      .filter(newDataPoint => !initialData!.map(initDataPoint => initDataPoint.id).includes(newDataPoint.id));
+    console.log('add', secretsToBeAdded.length)
 
     const secretsToBeUpdated 
-      = newData!.filter(newDataPoint => initialData
+      = newData!.filter(newDataPoint => initialData!
       .filter(initDataPoint => newData!.map(newDataPoint => newDataPoint.id).includes(initDataPoint.id) 
         && (newData!.filter(newDataPoint => newDataPoint.id == initDataPoint.id)[0].value != initDataPoint.value
         || newData!.filter(newDataPoint => newDataPoint.id == initDataPoint.id)[0].key != initDataPoint.key
         || newData!.filter(newDataPoint => newDataPoint.id == initDataPoint.id)[0].comment != initDataPoint.comment))
       .map(secret => secret.id).includes(newDataPoint.id));
+    console.log('update', secretsToBeUpdated.length)
+
+    const newOverrides = newData!.filter(newDataPoint => newDataPoint.valueOverride != undefined)
+    const initOverrides = initialData!.filter(initDataPoint => initDataPoint.valueOverride != undefined)
+
+    const overridesToBeDeleted 
+      = initOverrides
+      .filter(initDataPoint => !newOverrides!.map(newDataPoint => newDataPoint.id).includes(initDataPoint.id))
+      .map(secret => String(secret.idOverride));
+    console.log('override delete', overridesToBeDeleted.length)
+
+    const overridesToBeAdded 
+      = newOverrides!
+      .filter(newDataPoint => !initOverrides.map(initDataPoint => initDataPoint.id).includes(newDataPoint.id))
+      .map(override => ({pos: override.pos, key: override.key, value: String(override.valueOverride), valueOverride: override.valueOverride, comment: '', id: String(override.idOverride), idOverride: String(override.idOverride)}));
+    console.log('override add', overridesToBeAdded.length)
+
+    const overridesToBeUpdated 
+      = newOverrides!.filter(newDataPoint => initOverrides
+      .filter(initDataPoint => newOverrides!.map(newDataPoint => newDataPoint.id).includes(initDataPoint.id) 
+        && (newOverrides!.filter(newDataPoint => newDataPoint.id == initDataPoint.id)[0].valueOverride != initDataPoint.valueOverride
+        || newOverrides!.filter(newDataPoint => newDataPoint.id == initDataPoint.id)[0].key != initDataPoint.key
+        || newOverrides!.filter(newDataPoint => newDataPoint.id == initDataPoint.id)[0].comment != initDataPoint.comment))
+      .map(secret => secret.id).includes(newDataPoint.id))
+      .map(override => ({pos: override.pos, key: override.key, value: String(override.valueOverride), valueOverride: override.valueOverride, comment: '', id: String(override.idOverride), idOverride: String(override.idOverride)}));
+    console.log('override update', overridesToBeUpdated.length)
     
-    if (secretsToBeDeleted.length > 0) {
-      await deleteSecrets({ secretIds: secretsToBeDeleted });
+    if (secretsToBeDeleted.concat(overridesToBeDeleted).length > 0) {
+      await deleteSecrets({ secretIds: secretsToBeDeleted.concat(overridesToBeDeleted) });
     }
-    if (secretsToBeAdded.length > 0) {
-      const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeAdded, workspaceId, env: envMapping[env] })
+    if (secretsToBeAdded.concat(overridesToBeAdded).length > 0) {
+      const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeAdded.concat(overridesToBeAdded), workspaceId, env: envMapping[env] });
       secrets && await addSecrets({ secrets, env: envMapping[env], workspaceId });
     }
-    if (secretsToBeUpdated.length > 0) {
-      const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeUpdated, workspaceId, env: envMapping[env] })
+    if (secretsToBeUpdated.concat(overridesToBeUpdated).length > 0) {
+      const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeUpdated.concat(overridesToBeUpdated), workspaceId, env: envMapping[env] });
       secrets && await updateSecrets({ secrets });
     }
+
+    setInitialData(newData);
 
     // If this user has never saved environment variables before, show them a prompt to read docs
     if (!hasUserEverPushed) {
@@ -414,6 +422,7 @@ export default function Dashboard() {
 
     // increasing the number of project commits
     setNumSnapshots((numSnapshots ?? 0) + 1);
+    setSaveLoading(false);
   };
 
   const addData = (newData: SecretDataProps[]) => {
@@ -462,9 +471,8 @@ export default function Dashboard() {
           data={data.filter((row: SecretDataProps) => row.key == data.filter(row => row.id == sidebarSecretId)[0]?.key)} 
           modifyKey={listenChangeKey} 
           modifyValue={listenChangeValue} 
+          modifyValueOverride={listenChangeValueOverride}
           modifyComment={listenChangeComment}
-          addOverride={addOverride}
-          deleteOverride={deleteOverride}
           buttonReady={buttonReady}
           savePush={savePush}
           sharedToHide={sharedToHide}
@@ -533,6 +541,7 @@ export default function Dashboard() {
                     active={buttonReady}
                     iconDisabled={faCheck}
                     textDisabled={String(t("common:saved"))}
+                    loading={saveLoading}
                   />
                 </div>
               )}
@@ -545,20 +554,10 @@ export default function Dashboard() {
                     .filter(row => reverseEnvMapping[row.environment] == env)
                     .map((sv, position) => { 
                       return {
-                        id: sv.id, pos: position, type: sv.type, key: sv.key, value: sv.value, comment: ''
+                        id: sv.id, idOverride: sv.id, pos: position, valueOverride: sv.valueOverride, key: sv.key, value: sv.value, comment: ''
                       }
                     });
                     setData(rolledBackSecrets);
-
-                    setSharedToHide(
-                      rolledBackSecrets?.filter(row => (rolledBackSecrets
-                      ?.map((item) => item.key)
-                      .filter(
-                        (item, index) =>
-                          index !==
-                          rolledBackSecrets?.map((item) => item.key).indexOf(item)
-                      ).includes(row.key) && row.type == 'shared'))?.map((item) => item.id)
-                    )
 
                     // Perform the rollback globally
                     performSecretRollback({ workspaceId, version: snapshotData.version })
@@ -663,16 +662,17 @@ export default function Dashboard() {
                 >
                   <div className="px-1 pt-2 bg-mineshaft-800 rounded-md p-2">
                     {!snapshotData && data?.filter(row => row.key?.toUpperCase().includes(searchKeys.toUpperCase()))
-                    .filter(row => !(sharedToHide.includes(row.id) && row.type == 'shared')).map((keyPair) => (
+                    .filter(row => !sharedToHide.includes(row.id)).map((keyPair) => (
                       <KeyPair 
                         key={keyPair.id}
                         keyPair={keyPair}
                         modifyValue={listenChangeValue}
+                        modifyValueOverride={listenChangeValueOverride}
                         modifyKey={listenChangeKey}
                         isBlurred={blurred}
                         isDuplicate={findDuplicates(
-                          data?.map((item) => item.key + item.type)
-                        )?.includes(keyPair.key + keyPair.type)}
+                          data?.map((item) => item.key)
+                        )?.includes(keyPair.key)}
                         toggleSidebar={toggleSidebar}
                         sidebarSecretId={sidebarSecretId}
                         isSnapshot={false}
@@ -681,22 +681,26 @@ export default function Dashboard() {
                     {snapshotData && snapshotData.secretVersions?.sort((a, b) => a.key.localeCompare(b.key))
                     .filter(row => reverseEnvMapping[row.environment] == snapshotEnv)
                     .filter(row => row.key.toUpperCase().includes(searchKeys.toUpperCase()))
-                    .filter(row => !(snapshotData.secretVersions?.filter(row => (snapshotData.secretVersions
+                    .filter(
+                      row => !(snapshotData.secretVersions?.filter(row => (snapshotData.secretVersions
                       ?.map((item) => item.key)
                       .filter(
                         (item, index) =>
                           index !==
                           snapshotData.secretVersions?.map((item) => item.key).indexOf(item)
-                      ).includes(row.key) && row.type == 'shared'))?.map((item) => item.id).includes(row.id) && row.type == 'shared')).map((keyPair) => (
+                      ).includes(row.key)))?.map((item) => item.id).includes(row.id))
+                    )
+                    .map((keyPair) => (
                       <KeyPair 
                         key={keyPair.id}
                         keyPair={keyPair}
                         modifyValue={listenChangeValue}
+                        modifyValueOverride={listenChangeValueOverride}
                         modifyKey={listenChangeKey}
                         isBlurred={blurred}
                         isDuplicate={findDuplicates(
-                          data?.map((item) => item.key + item.type)
-                        )?.includes(keyPair.key + keyPair.type)}
+                          data?.map((item) => item.key)
+                        )?.includes(keyPair.key)}
                         toggleSidebar={toggleSidebar}
                         sidebarSecretId={sidebarSecretId}
                         isSnapshot={true}

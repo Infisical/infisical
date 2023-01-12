@@ -117,15 +117,19 @@ const getSecretsForProject = async ({
       });
     }
 
-    const result = tempDecryptedSecrets.map((secret, index) => {
+    const secretKeys = [...new Set(tempDecryptedSecrets.map(secret => secret.key))];
+
+    
+    const result = secretKeys.map((key, index) => {
       return {
-        id: secret['id'],
+        id: tempDecryptedSecrets.filter(secret => secret.key == key && secret.type == 'shared')[0]?.id,
+        idOverride: tempDecryptedSecrets.filter(secret => secret.key == key && secret.type == 'personal')[0]?.id,
         pos: index,
-        key: secret['key'],
-        value: secret['value'],
-        type: secret['type'],
-        comment: secret['comment']
-      };
+        key: key,
+        value: tempDecryptedSecrets.filter(secret => secret.key == key && secret.type == 'shared')[0]?.value,
+        valueOverride: tempDecryptedSecrets.filter(secret => secret.key == key && secret.type == 'personal')[0]?.value,
+        comment: tempDecryptedSecrets.filter(secret => secret.key == key && secret.type == 'shared')[0]?.comment,
+      }
     });
 
     setData(result);
