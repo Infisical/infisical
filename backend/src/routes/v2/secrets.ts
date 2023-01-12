@@ -8,8 +8,8 @@ import {
 } from '../../middleware';
 import { query, check, body } from 'express-validator';
 import { secretsController } from '../../controllers/v2';
-import { 
-    ADMIN, 
+import {
+    ADMIN,
     MEMBER,
     SECRET_PERSONAL,
     SECRET_SHARED
@@ -27,7 +27,7 @@ router.post(
                 if (value.length === 0) throw new Error('secrets cannot be an empty array')
                 for (const secret of value) {
                     if (
-                        !secret.type || 
+                        !secret.type ||
                         !(secret.type === SECRET_PERSONAL || secret.type === SECRET_SHARED) ||
                         !secret.secretKeyCiphertext ||
                         !secret.secretKeyIV ||
@@ -42,7 +42,7 @@ router.post(
             } else if (typeof value === 'object') {
                 // case: update 1 secret
                 if (
-                    !value.type || 
+                    !value.type ||
                     !(value.type === SECRET_PERSONAL || value.type === SECRET_SHARED) ||
                     !value.secretKeyCiphertext ||
                     !value.secretKeyIV ||
@@ -52,13 +52,13 @@ router.post(
                     !value.secretValueTag
                 ) {
                     throw new Error('secrets object is missing required secret properties');
-                } 
+                }
             } else {
                 throw new Error('secrets must be an object or an array of objects')
             }
-            
+
             return true;
-    }),
+        }),
     validateRequest,
     requireAuth({
         acceptedAuthModes: ['jwt']
@@ -95,36 +95,24 @@ router.patch(
                 if (value.length === 0) throw new Error('secrets cannot be an empty array')
                 for (const secret of value) {
                     if (
-                        !secret.id || 
-                        !secret.secretKeyCiphertext ||
-                        !secret.secretKeyIV ||
-                        !secret.secretKeyTag ||
-                        !secret.secretValueCiphertext ||
-                        !secret.secretValueIV ||
-                        !secret.secretValueTag
+                        !secret.id
                     ) {
-                        throw new Error('secrets array must contain objects that have required secret properties');
+                        throw new Error('Each secret must contain a ID property');
                     }
                 }
             } else if (typeof value === 'object') {
                 // case: update 1 secret
                 if (
-                    !value.id || 
-                    !value.secretKeyCiphertext ||
-                    !value.secretKeyIV ||
-                    !value.secretKeyTag ||
-                    !value.secretValueCiphertext ||
-                    !value.secretValueIV ||
-                    !value.secretValueTag
+                    !value.id
                 ) {
-                    throw new Error('secrets object is missing required secret properties');
-                } 
+                    throw new Error('secret must contain a ID property');
+                }
             } else {
                 throw new Error('secrets must be an object or an array of objects')
             }
-            
+
             return true;
-    }),
+        }),
     validateRequest,
     requireAuth({
         acceptedAuthModes: ['jwt']
@@ -142,13 +130,13 @@ router.delete(
         .custom((value) => {
             // case: delete 1 secret
             if (typeof value === 'string') return true;
-            
+
             if (Array.isArray(value)) {
                 // case: delete multiple secrets
                 if (value.length === 0) throw new Error('secrets cannot be an empty array');
                 return value.every((id: string) => typeof id === 'string')
             }
-            
+
             throw new Error('secretIds must be a string or an array of strings');
         })
         .not()
