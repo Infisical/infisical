@@ -1,22 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-frontend-deployment
+  name: {{ include "infisical.frontend.fullname" . }}
   labels:
-    app: frontend
+    {{- include "infisical.frontend.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.frontend.replicaCount }}
   selector:
     matchLabels:
-      app: frontend 
+      {{- include "infisical.frontend.matchLabels" . | nindent 6 }}
   template:
     metadata: 
       labels:
-        app: frontend 
+        {{- include "infisical.frontend.matchLabels" . | nindent 8 }}
+      {{- with .Values.frontend.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
       containers:
-      - name: frontend 
-        image: infisical/frontend
+      - name: {{ template "infisical.name" . }}-{{ .Values.frontend.name }}
+        image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
         {{- if .Values.frontend.kubeSecretRef }}
         envFrom:
@@ -39,11 +43,21 @@ spec:
 apiVersion: v1
 kind: Service 
 metadata:
-  name: infisical-frontend-service 
+  name: {{ include "infisical.frontend.fullname" . }}
+  labels:
+    {{- include "infisical.frontend.labels" . | nindent 4 }}
+  {{- with .Values.frontend.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
+  type: {{ .Values.frontend.service.type }}
   selector:
-    app: frontend 
+    {{- include "infisical.frontend.matchLabels" . | nindent 8 }}
   ports:
     - protocol: TCP
       port: 3000 # service
       targetPort: 3000 # container port 
+      {{- if eq .Values.frontend.service.type "NodePort" }}
+      nodePort: {{ .Values.frontend.service.nodePort }}
+      {{- end }}

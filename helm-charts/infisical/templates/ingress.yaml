@@ -26,14 +26,14 @@ spec:
         pathType: {{ .Values.ingress.frontend.pathType }}
         backend:
           service:
-            name: infisical-frontend-service 
+            name: {{ include "infisical.frontend.fullname" . }}
             port:
               number: 3000
       - path: {{ .Values.ingress.backend.path }}
         pathType: {{ .Values.ingress.backend.pathType }}
         backend:
           service:
-            name: infisical-backend-service 
+            name: {{ include "infisical.backend.fullname" . }}
             port:
               number: 4000
 {{ end }}

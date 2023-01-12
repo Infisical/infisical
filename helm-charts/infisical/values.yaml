@@ -3,22 +3,45 @@
 # PLEASE REPLACE VALUES/EDIT AS REQUIRED 
 #####
 
+nameOverride: ""
+
 frontend:
+  name: frontend
+  podAnnotations: {}
   replicaCount: 1
   image:
-    repository: 
+    repository: infisical/frontend
     pullPolicy: IfNotPresent
     tag: "latest"
     # kubeSecretRef: some-kube-secret-name
-
+  service:
+    # type of the frontend service
+    type: ClusterIP
+    # define the nodePort if service type is NodePort
+    # nodePort: 
+    annotations: {}
 
 backend:
+  name: backend
+  podAnnotations: {}
   replicaCount: 1
   image:
-    repository: 
+    repository: infisical/backend
     pullPolicy: IfNotPresent
     tag: "latest"
     # kubeSecretRef: some-kube-secret-name
+  service:
+    annotations: {}
+
+mongodb:
+  name: mongodb
+  podAnnotations: {}
+  image:
+    repository: mongo
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    annotations: {}
 
 ingress:
   enabled: true
