@@ -162,12 +162,15 @@ export const getSecrets = async (req: Request, res: Response) => {
     const { workspaceId, environment } = req.query;
 
     let userId: Types.ObjectId | undefined = undefined // used for getting personal secrets for user
+    let userEmail: Types.ObjectId | undefined = undefined // used for posthog 
     if (req.user) {
         userId = req.user._id;
+        userEmail = req.user.email;
     }
 
     if (req.serviceTokenData) {
         userId = req.serviceTokenData.user._id
+        userEmail = req.serviceTokenData.user.email;
     }
 
     const [err, secrets] = await to(Secret.find(
@@ -204,7 +207,7 @@ export const getSecrets = async (req: Request, res: Response) => {
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets added',
-            distinctId: req.user.email,
+            distinctId: userEmail,
             properties: {
                 numberOfSecrets: secrets.length,
                 environment,
