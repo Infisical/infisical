@@ -48,7 +48,7 @@ export default function ListBox({
             {text}
             <span className="ml-1 cursor-pointer block truncate font-semibold text-gray-300">
               {' '}
-              {selected}
+              {selected?.charAt(0).toUpperCase() + selected?.slice(1)}
             </span>
           </div>
           {data && (

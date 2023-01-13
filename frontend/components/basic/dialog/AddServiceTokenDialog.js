@@ -66,7 +66,7 @@ const AddServiceTokenDialog = ({
     let newServiceToken = await addServiceToken({
       name: serviceTokenName,
       workspaceId,
-      environment: selectedServiceTokenEnv.slug,
+      environment: selectedServiceTokenEnv?.slug ? selectedServiceTokenEnv.slug : environments[0]?.name,
       expiresIn: expiryMapping[serviceTokenExpiresIn],
       encryptedKey: ciphertext,
       iv, 
@@ -156,7 +156,7 @@ const AddServiceTokenDialog = ({
                     </div>
                     <div className='max-h-28 mb-2'>
                       <ListBox
-                        selected={selectedServiceTokenEnv?.name}
+                        selected={selectedServiceTokenEnv?.name ? selectedServiceTokenEnv?.name : environments[0]?.name}
                         data={environments.map(({ name }) => name)}
                         onChange={(envName) =>
                           setSelectedServiceTokenEnv(

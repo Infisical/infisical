@@ -25,6 +25,7 @@ type EnvData = {
   name: string;
   slug: string;
 };
+
 export default function SettingsBasic() {
   const [buttonReady, setButtonReady] = useState(false);
   const router = useRouter();

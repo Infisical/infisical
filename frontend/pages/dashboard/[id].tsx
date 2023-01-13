@@ -237,7 +237,9 @@ export default function Dashboard() {
         setInitialData(dataToSort);
         reorderRows(dataToSort);
 
-        setIsLoading(false);
+        setTimeout(
+          () => setIsLoading(false)
+        , 700);
       } catch (error) {
         console.log('Error', error);
         setData(undefined);
@@ -361,67 +363,6 @@ export default function Dashboard() {
     // Once "Save changes" is clicked, disable that button
     setButtonReady(false);
 
-    const secretsToBeDeleted = initialData
-      .filter(
-        (initDataPoint) =>
-          !newData!
-            .map((newDataPoint) => newDataPoint.id)
-            .includes(initDataPoint.id)
-      )
-      .map((secret) => secret.id);
-
-    const secretsToBeAdded = newData!.filter(
-      (newDataPoint) =>
-        !initialData
-          .map((initDataPoint) => initDataPoint.id)
-          .includes(newDataPoint.id)
-    );
-
-    const secretsToBeUpdated = newData!.filter((newDataPoint) =>
-      initialData
-        .filter(
-          (initDataPoint) =>
-            newData!
-              .map((newDataPoint) => newDataPoint.id)
-              .includes(initDataPoint.id) &&
-            (newData!.filter(
-              (newDataPoint) => newDataPoint.id == initDataPoint.id
-            )[0].value != initDataPoint.value ||
-              newData!.filter(
-                (newDataPoint) => newDataPoint.id == initDataPoint.id
-              )[0].key != initDataPoint.key ||
-              newData!.filter(
-                (newDataPoint) => newDataPoint.id == initDataPoint.id
-              )[0].comment != initDataPoint.comment)
-        )
-        .map((secret) => secret.id)
-        .includes(newDataPoint.id)
-    );
-
-    if (secretsToBeDeleted.length > 0) {
-      await deleteSecrets({ secretIds: secretsToBeDeleted });
-    }
-    // ENV
-    if (secretsToBeAdded.length > 0) {
-      const secrets = await encryptSecrets({
-        secretsToEncrypt: secretsToBeAdded,
-        workspaceId,
-        env: selectedEnv.slug,
-      });
-      secrets &&
-        (await addSecrets({
-          secrets,
-          env: selectedEnv.slug,
-          workspaceId,
-        }));
-    }
-    if (secretsToBeUpdated.length > 0) {
-      const secrets = await encryptSecrets({
-        secretsToEncrypt: secretsToBeUpdated,
-        workspaceId,
-        env: selectedEnv.slug,
-      });
-      secrets && (await updateSecrets({ secrets }));
     const secretsToBeDeleted 
       = initialData!
       .filter(initDataPoint => !newData!.map(newDataPoint => newDataPoint.id).includes(initDataPoint.id))
@@ -471,11 +412,11 @@ export default function Dashboard() {
       await deleteSecrets({ secretIds: secretsToBeDeleted.concat(overridesToBeDeleted) });
     }
     if (secretsToBeAdded.concat(overridesToBeAdded).length > 0) {
-      const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeAdded.concat(overridesToBeAdded), workspaceId, env: envMapping[env] });
-      secrets && await addSecrets({ secrets, env: envMapping[env], workspaceId });
+      const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeAdded.concat(overridesToBeAdded), workspaceId, env: selectedEnv.slug });
+      secrets && await addSecrets({ secrets, env: selectedEnv.slug, workspaceId });
     }
     if (secretsToBeUpdated.concat(overridesToBeUpdated).length > 0) {
-      const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeUpdated.concat(overridesToBeUpdated), workspaceId, env: envMapping[env] });
+      const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeUpdated.concat(overridesToBeUpdated), workspaceId, env: selectedEnv.slug });
       secrets && await updateSecrets({ secrets });
     }
 
@@ -643,7 +584,7 @@ export default function Dashboard() {
                   onButtonPressed={async () => {
                     // Update secrets in the state only for the current environment
                     const rolledBackSecrets = snapshotData.secretVersions
-                    .filter(row => reverseEnvMapping[row.environment] == env)
+                    .filter(row => row.environment == selectedEnv.slug)
                     .map((sv, position) => { 
                       return {
                         id: sv.id, idOverride: sv.id, pos: position, valueOverride: sv.valueOverride, key: sv.key, value: sv.value, comment: ''
@@ -799,7 +740,7 @@ export default function Dashboard() {
                       />
                     ))}
                     {snapshotData && snapshotData.secretVersions?.sort((a, b) => a.key.localeCompare(b.key))
-                    .filter(row => reverseEnvMapping[row.environment] == snapshotEnv)
+                    .filter(row => row.environment == selectedSnapshotEnv?.slug)
                     .filter(row => row.key.toUpperCase().includes(searchKeys.toUpperCase()))
                     .filter(
                       row => !(snapshotData.secretVersions?.filter(row => (snapshotData.secretVersions
