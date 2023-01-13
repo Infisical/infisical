@@ -39,7 +39,7 @@ const validateSecrets = async ({
 	try {
 		secrets = await Secret.find({
 			_id: {
-				$in: secretIds
+				$in: secretIds.map((secretId: string) => new Types.ObjectId(secretId))
 			}
 		});
 		

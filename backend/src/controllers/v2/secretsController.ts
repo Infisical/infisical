@@ -67,8 +67,17 @@ export const createSecrets = async (req: Request, res: Response) => {
         }))
     );
 
+    setTimeout(async () => {
+        // trigger event - push secrets
+        await EventService.handleEvent({
+            event: eventPushSecrets({
+                workspaceId
+            })
+        });
+    }, 5000);
+
     // (EE) add secret versions for new secrets
-    EESecretService.addSecretVersions({
+    await EESecretService.addSecretVersions({
         secretVersions: newSecrets.map(({
             _id,
             version,
@@ -102,13 +111,6 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretValueTag,
             secretValueHash
         }))
-    });
-
-    // trigger event - push secrets
-    await EventService.handleEvent({
-        event: eventPushSecrets({
-            workspaceId
-        })
     });
 
     const addAction = await EELogService.createActionSecret({
@@ -342,11 +344,13 @@ export const updateSecrets = async (req: Request, res: Response) => {
 
     Object.keys(workspaceSecretObj).forEach(async (key) => {
         // trigger event - push secrets
-        await EventService.handleEvent({
-            event: eventPushSecrets({
-                workspaceId: key
-            })
-        });
+        setTimeout(async () => {
+            await EventService.handleEvent({
+                event: eventPushSecrets({
+                    workspaceId: key
+                })
+            });
+        }, 10000);
 
         const updateAction = await EELogService.createActionSecret({
             name: ACTION_UPDATE_SECRETS,
