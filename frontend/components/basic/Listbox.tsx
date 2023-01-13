@@ -48,7 +48,7 @@ export default function ListBox({
             {text}
             <span className="ml-1 cursor-pointer block truncate font-semibold text-gray-300">
               {' '}
-              {selected}
+              {selected?.charAt(0).toUpperCase() + selected?.slice(1)}
             </span>
           </div>
           {data && (
@@ -69,7 +69,7 @@ export default function ListBox({
                 <Listbox.Option
                   key={personIdx}
                   className={({ active, selected }) =>
-                    `my-0.5 relative cursor-default select-none py-2 pl-10 pr-4 rounded-md ${
+                    `my-0.5 relative cursor-default select-none py-2 pl-10 pr-4 rounded-md capitalize ${
                       selected ? 'bg-white/10 text-gray-400 font-bold' : ''
                     } ${
                       active && !selected

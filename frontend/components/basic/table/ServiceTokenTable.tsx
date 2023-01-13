@@ -3,7 +3,6 @@ import { faX } from '@fortawesome/free-solid-svg-icons';
 import { useNotificationContext } from '~/components/context/Notifications/NotificationProvider';
 
 import deleteServiceToken from "../../../pages/api/serviceToken/deleteServiceToken";
-import { reverseEnvMapping } from '../../../public/data/frequentConstants';
 import guidGenerator from '../../utilities/randomId';
 import Button from '../buttons/Button';
 
@@ -60,7 +59,7 @@ const ServiceTokenTable = ({ data, workspaceName, setServiceTokens }: ServiceTok
                     {workspaceName}
                   </td>
                   <td className="pl-6 py-2 border-mineshaft-700 border-t text-gray-300">
-                    {reverseEnvMapping[row.environment]}
+                    {row.environment}
                   </td>
                   <td className="pl-6 py-2 border-mineshaft-700 border-t text-gray-300">
                     {new Date(row.expiresAt).toUTCString()}

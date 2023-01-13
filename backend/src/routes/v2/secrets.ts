@@ -18,7 +18,7 @@ import {
 router.post(
     '/',
     body('workspaceId').exists().isString().trim(),
-    body('environment').exists().isString().trim().isIn(['dev', 'staging', 'prod', 'test']),
+    body('environment').exists().isString().trim(),
     body('secrets')
         .exists()
         .custom((value) => {
@@ -73,7 +73,7 @@ router.post(
 router.get(
     '/',
     query('workspaceId').exists().trim(),
-    query('environment').exists().trim().isIn(['dev', 'staging', 'prod', 'test']),
+    query('environment').exists().trim(),
     validateRequest,
     requireAuth({
         acceptedAuthModes: ['jwt', 'serviceToken']
