@@ -100,10 +100,19 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+  manualApprove:
+    needs: [frontend-image, backend-image]
+    environment:
+      name: gamma-deployment
+    runs-on: ubuntu-latest
+    steps:
+    - name: manual approve
+      run: |
+          echo "Manually approved"
   gamma-deployment:
     name: Deploy to gamma
     runs-on: ubuntu-latest
-    needs: [frontend-image, backend-image]
+    needs: [manualApprove]
     if: github.event_name == 'repository_dispatch'
     steps:
       - name: ☁️ Checkout source
