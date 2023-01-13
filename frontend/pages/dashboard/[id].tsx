@@ -412,7 +412,7 @@ export default function Dashboard() {
       secrets && await updateSecrets({ secrets });
     }
 
-    setInitialData(newData);
+    setInitialData(structuredClone(newData));
 
     // If this user has never saved environment variables before, show them a prompt to read docs
     if (!hasUserEverPushed) {
