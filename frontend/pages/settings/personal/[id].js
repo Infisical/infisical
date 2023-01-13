@@ -2,18 +2,20 @@ import { useEffect, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { useTranslation } from "next-i18next";
-import { faCheck, faX } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faPlus, faX } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import Button from "~/components/basic/buttons/Button";
 import InputField from "~/components/basic/InputField";
 import ListBox from "~/components/basic/Listbox";
+import ApiKeyTable from "~/components/basic/table/ApiKeyTable.tsx";
 import NavHeader from "~/components/navigation/NavHeader";
 import changePassword from "~/components/utilities/cryptography/changePassword";
 import issueBackupKey from "~/components/utilities/cryptography/issueBackupKey";
 import passwordCheck from "~/utilities/checks/PasswordCheck";
 import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
+import AddApiKeyDialog from "../../../components/basic/dialog/AddApiKeyDialog";
 import getUser from "../../api/user/getUser";
 
 export default function PersonalSettings() {
@@ -29,6 +31,8 @@ export default function PersonalSettings() {
   const [passwordChanged, setPasswordChanged] = useState(false);
   const [backupKeyIssued, setBackupKeyIssued] = useState(false);
   const [backupKeyError, setBackupKeyError] = useState(false);
+  const [isAddApiKeyDialogOpen, setIsAddApiKeyDialogOpen] = useState(false)
+  const [apiKeys, setApiKeys] = useState([]);
 
   const { t } = useTranslation();
   const router = useRouter();
@@ -45,6 +49,10 @@ export default function PersonalSettings() {
     setPersonalName(user.firstName + " " + user.lastName);
   }, []);
 
+  const closeAddApiKeyModal = () => {
+    setIsAddApiKeyDialogOpen(false);
+  };
+
   return (
     <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
       <Head>
@@ -53,6 +61,13 @@ export default function PersonalSettings() {
         </title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
+      <AddApiKeyDialog
+        isOpen={isAddApiKeyDialogOpen}
+        workspaceId={router.query.id}
+        closeModal={closeAddApiKeyModal}
+        serviceTokens={apiKeys}
+        setServiceTokens={setApiKeys}
+      />
       <div className="flex flex-row">
         <div className="w-full max-h-screen pb-2 overflow-y-auto">
           <NavHeader
@@ -70,54 +85,6 @@ export default function PersonalSettings() {
             </div>
           </div>
           <div className="flex flex-col ml-6 text-mineshaft-50 mr-6 max-w-5xl">
-            <div className="flex flex-col">
-              <div className="min-w-md flex flex-col items-end pb-4">
-                {/* <div className="bg-white/5 rounded-md px-6 py-4 flex flex-col items-start flex flex-col items-start w-full mb-6">
-									<div className="max-h-28 w-full max-w-md mr-auto">
-										<p className="font-semibold mr-4 text-gray-200 text-xl mb-2">
-											Display Name
-										</p>
-										<InputField
-											onChangeHandler={modifyOrgName}
-											type="varName"
-											value={orgName}
-											placeholder=""
-											isRequired
-										/>
-									</div>
-									<div className="flex justify-start w-full">
-										<div
-											className={`flex justify-start max-w-sm mt-4 mb-2 rounded-md bg-gray-800 text-sm ${
-												buttonReady &&
-												"hover:bg-primary hover:text-black hover:text-semibold duration-200 cursor-pointer"
-											} text-gray-400 px-4 py-2.5`}
-										>
-											{buttonReady ? (
-												<button
-													type="button"
-													className="flex flex-start justify-center font-medium px-2"
-													onClick={() =>
-														submitChanges(orgName)
-													}
-												>
-													Save Changes
-												</button>
-											) : (
-												<div className="flex flex-row items-center jutify-center px-4">
-													<FontAwesomeIcon
-														className="text-lg mr-3 text-gray-400"
-														icon={faCheck}
-													/>
-													<p className="font-base">
-														Saved
-													</p>
-												</div>
-											)}
-										</div>
-									</div>
-								</div> */}
-              </div>
-            </div>
             <div className="bg-white/5 rounded-md px-6 pt-6 pb-6 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4">
               <p className="text-xl font-semibold self-start">
                 {t("settings-personal:change-language")}
@@ -131,6 +98,44 @@ export default function PersonalSettings() {
                   text={`${t("common:language")}: `}
                 />
               </div>
+            </div>
+            <div className="bg-white/5 rounded-md px-6 pt-4 flex flex-col items-start flex flex-col items-start w-full mt-2 mb-8 pt-2">
+              <div className="flex flex-row justify-between w-full">
+                <div className="flex flex-col w-full">
+                  <p className="text-xl font-semibold mb-3">
+                    {t("settings-personal:api-keys.title")}
+                  </p>
+                  <p className="text-sm text-gray-400">
+                    {t("settings-personal:api-keys.description")}
+                  </p>
+                  <p className="text-sm text-gray-400 mb-4">
+                    Please, make sure you are on the 
+                    <a 
+                      className="text-primary underline underline-offset-2 ml-1" 
+                      href="https://infisical.com/docs/cli/overview"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                        latest version of CLI
+                    </a>.
+                  </p>
+                </div>
+                <div className="w-48 mt-2">
+                  <Button
+                    text={t("settings-personal:api-keys.add-new")}
+                    onButtonPressed={() => {
+                      setIsAddApiKeyDialogOpen(true);
+                    }}
+                    color="mineshaft"
+                    icon={faPlus}
+                    size="md"
+                  />
+                </div>
+              </div>
+              <ApiKeyTable
+                data={apiKeys}
+                setServiceTokens={setApiKeys}
+              />
             </div>
 
             <div className="bg-white/5 rounded-md px-6 pt-5 pb-6 flex flex-col items-start flex flex-col items-start w-full mb-6">
@@ -295,7 +300,7 @@ export default function PersonalSettings() {
               </div>
             </div>
 
-            <div className="bg-white/5 rounded-md px-6 pt-5 pb-6 mt-4 flex flex-col items-start flex flex-col items-start w-full mb-6">
+            <div className="bg-white/5 rounded-md px-6 pt-5 pb-6 mt-2 flex flex-col items-start flex flex-col items-start w-full mb-6">
               <div className="flex flex-row max-w-5xl justify-between items-center w-full">
                 <div className="flex flex-col justify-between w-full max-w-3xl">
                   <p className="text-xl font-semibold mb-3 min-w-max">

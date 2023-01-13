@@ -7,5 +7,10 @@
     "text2": "Only the latest issued Emergency Kit remains valid. To get a new Emergency Kit, verify your password.",
     "download": "Download Emergency Kit"
   },
-  "change-language": "Change Language"
+  "change-language": "Change Language",
+  "api-keys": {
+    "title": "API Keys",
+    "description": "Manage your personal API Keys to access the Infisical API.",
+    "add-new": "Add new"
+  }
 }
