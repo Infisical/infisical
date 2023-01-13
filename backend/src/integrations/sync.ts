@@ -306,188 +306,188 @@ const syncSecretsNetlify = async ({
 }) => {
     try {
 
-        interface NetlifyValue {
-            id?: string;
-            context: string; // 'dev' | 'branch-deploy' | 'deploy-preview' | 'production',
-            value: string;
-        }
-        
-        interface NetlifySecret {
-            key: string;
-            values: NetlifyValue[];
-        }
-        
-        interface NetlifySecretsRes {
-            [index: string]: NetlifySecret;
-        }
-        
-        const getParams = new URLSearchParams({
-            context_name: 'all', // integration.context or all
-            site_id: integration.siteId
-        });
-        
-        const res = (await axios.get(
-            `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env`,
-            {
-                params: getParams,
-                headers: {
-                    Authorization: `Bearer ${accessToken}`
-                }
-            }
-        ))
-        .data
-        .reduce((obj: any, secret: any) => ({
-            ...obj,
-            [secret.key]: secret
-        }), {});
-        
-        const newSecrets: NetlifySecret[] = []; // createEnvVars
-        const deleteSecrets: string[] = []; // deleteEnvVar
-        const deleteSecretValues: NetlifySecret[] = []; // deleteEnvVarValue
-        const updateSecrets: NetlifySecret[] = []; // setEnvVarValue
+      interface NetlifyValue {
+          id?: string;
+          context: string; // 'dev' | 'branch-deploy' | 'deploy-preview' | 'production',
+          value: string;
+      }
+      
+      interface NetlifySecret {
+          key: string;
+          values: NetlifyValue[];
+      }
+      
+      interface NetlifySecretsRes {
+          [index: string]: NetlifySecret;
+      }
+      
+      const getParams = new URLSearchParams({
+          context_name: 'all', // integration.context or all
+          site_id: integration.siteId
+      });
+      
+      const res = (await axios.get(
+          `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env`,
+          {
+              params: getParams,
+              headers: {
+                  Authorization: `Bearer ${accessToken}`
+              }
+          }
+      ))
+      .data
+      .reduce((obj: any, secret: any) => ({
+          ...obj,
+          [secret.key]: secret
+      }), {});
+      
+      const newSecrets: NetlifySecret[] = []; // createEnvVars
+      const deleteSecrets: string[] = []; // deleteEnvVar
+      const deleteSecretValues: NetlifySecret[] = []; // deleteEnvVarValue
+      const updateSecrets: NetlifySecret[] = []; // setEnvVarValue
+      
+      // identify secrets to create and update
+      Object.keys(secrets).map((key) => {
+          if (!(key in res)) {
+              // case: Infisical secret does not exist in Netlify -> create secret
+              newSecrets.push({
+                  key,
+                  values: [{
+                      value: secrets[key],
+                      context: integration.context
+                  }]
+              });
+          } else {
+              // case: Infisical secret exists in Netlify
+              const contexts = res[key].values
+                  .reduce((obj: any, value: NetlifyValue) => ({
+                      ...obj,
+                      [value.context]: value
+                  }), {});
+              
+              if (integration.context in contexts) {
+                  // case: Netlify secret value exists in integration context
+                  if (secrets[key] !== contexts[integration.context].value) {
+                      // case: Infisical and Netlify secret values are different
+                      // -> update Netlify secret context and value
+                      updateSecrets.push({
+                          key,
+                          values: [{
+                              context: integration.context,
+                              value: secrets[key]
+                          }]
+                      });
+                  }
+              } else {
+                  // case: Netlify secret value does not exist in integration context
+                  // -> add the new Netlify secret context and value
+                  updateSecrets.push({
+                      key,
+                      values: [{
+                          context: integration.context,
+                          value: secrets[key]
+                      }]
+                  });
+              }
+          }
+      })
+      
+      // identify secrets to delete
+      // TODO: revise (patch case where 1 context was deleted but others still there
+      Object.keys(res).map((key) => {
+          // loop through each key's context
+          if (!(key in secrets)) {
+              // case: Netlify secret does not exist in Infisical
+              
+              const numberOfValues = res[key].values.length;
+              
+              res[key].values.forEach((value: NetlifyValue) => {
+                  if (value.context === integration.context) {
+                      if (numberOfValues <= 1) {
+                          // case: Netlify secret value has less than 1 context -> delete secret
+                          deleteSecrets.push(key); 
+                      } else {
+                          // case: Netlify secret value has more than 1 context -> delete secret value context
+                          deleteSecretValues.push({
+                              key,
+                              values: [{
+                                  id: value.id,
+                                  context: integration.context,
+                                  value: value.value
+                              }]
+                          });
+                      }
+                  }
+              });
+          }
+      });
 
-        // identify secrets to create and update
-        Object.keys(secrets).map((key) => {
-            if (!(key in res)) {
-                // case: Infisical secret does not exist in Netlify -> create secret
-                newSecrets.push({
-                    key,
-                    values: [{
-                        value: secrets[key],
-                        context: integration.context
-                    }]
-                });
-            } else {
-                // case: Infisical secret exists in Netlify
-                const contexts = res[key].values
-                    .reduce((obj: any, value: NetlifyValue) => ({
-                        ...obj,
-                        [value.context]: value
-                    }), {});
-                
-                if (integration.context in contexts) {
-                    // case: Netlify secret value exists in integration context
-                    if (secrets[key] !== contexts[integration.context].value) {
-                        // case: Infisical and Netlify secret values are different
-                        // -> update Netlify secret context and value
-                        updateSecrets.push({
-                            key,
-                            values: [{
-                                context: integration.context,
-                                value: secrets[key]
-                            }]
-                        });
-                    }
-                } else {
-                    // case: Netlify secret value does not exist in integration context
-                    // -> add the new Netlify secret context and value
-                    updateSecrets.push({
-                        key,
-                        values: [{
-                            context: integration.context,
-                            value: secrets[key]
-                        }]
-                    });
-                }
-            }
-        })
-        
-        // identify secrets to delete
-        // TODO: revise (patch case where 1 context was deleted but others still there
-        Object.keys(res).map((key) => {
-            // loop through each key's context
-            if (!(key in secrets)) {
-                // case: Netlify secret does not exist in Infisical
-                
-                const numberOfValues = res[key].values.length;
-                
-                res[key].values.forEach((value: NetlifyValue) => {
-                    if (value.context === integration.context) {
-                        if (numberOfValues <= 1) {
-                            // case: Netlify secret value has less than 1 context -> delete secret
-                            deleteSecrets.push(key); 
-                        } else {
-                            // case: Netlify secret value has more than 1 context -> delete secret value context
-                            deleteSecretValues.push({
-                                key,
-                                values: [{
-                                    id: value.id,
-                                    context: integration.context,
-                                    value: value.value
-                                }]
-                            });
-                        }
-                    }
-                });
-            }
-        });
+      const syncParams = new URLSearchParams({
+          site_id: integration.siteId
+      });
 
-        const syncParams = new URLSearchParams({
-            site_id: integration.siteId
-        });
+      if (newSecrets.length > 0) {
+          await axios.post(
+              `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env`,
+              newSecrets,
+              {
+                  params: syncParams,
+                  headers: {
+                      Authorization: `Bearer ${accessToken}`
+                  }
+              }
+          );
+      }
 
-        if (newSecrets.length > 0) {
-            await axios.post(
-                `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env`,
-                newSecrets,
-                {
-                    params: syncParams,
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`
-                    }
-                }
-            );
-        }
+      if (updateSecrets.length > 0) {
+          updateSecrets.forEach(async (secret: NetlifySecret) => {
+              await axios.patch(
+                  `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${secret.key}`,
+                  {
+                      context: secret.values[0].context,
+                      value: secret.values[0].value
+                  },
+                  {
+                      params: syncParams,
+                      headers: {
+                          Authorization: `Bearer ${accessToken}` 
+                      }
+                  }
+              );
+          });
+      }
 
-        if (updateSecrets.length > 0) {
-            updateSecrets.forEach(async (secret: NetlifySecret) => {
-                await axios.patch(
-                    `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${secret.key}`,
-                    {
-                        context: secret.values[0].context,
-                        value: secret.values[0].value
-                    },
-                    {
-                        params: syncParams,
-                        headers: {
-                            Authorization: `Bearer ${accessToken}` 
-                        }
-                    }
-                );
-            });
-        }
+      if (deleteSecrets.length > 0) {
+          deleteSecrets.forEach(async (key: string) => {
+              await axios.delete(
+                  `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${key}`,
+                  {
+                      params: syncParams,
+                      headers: {
+                          Authorization: `Bearer ${accessToken}`
+                      }
+                  }
+              );
+          });
+      }
 
-        if (deleteSecrets.length > 0) {
-            deleteSecrets.forEach(async (key: string) => {
-                await axios.delete(
-                    `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${key}`,
-                    {
-                        params: syncParams,
-                        headers: {
-                            Authorization: `Bearer ${accessToken}`
-                        }
-                    }
-                );
-            });
-        }
-
-        if (deleteSecretValues.length > 0) {
-            deleteSecretValues.forEach(async (secret: NetlifySecret) => {
-                await axios.delete(
-                    `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${secret.key}/value/${secret.values[0].id}`,
-                    {
-                        params: syncParams,
-                        headers: {
-                            Authorization: `Bearer ${accessToken}`
-                        }
-                    }
-                );
-            });
-        }
+      if (deleteSecretValues.length > 0) {
+          deleteSecretValues.forEach(async (secret: NetlifySecret) => {
+              await axios.delete(
+                  `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${secret.key}/value/${secret.values[0].id}`,
+                  {
+                      params: syncParams,
+                      headers: {
+                          Authorization: `Bearer ${accessToken}`
+                      }
+                  }
+              );
+          });
+      }
     } catch (err) {
-        Sentry.setUser(null);
-        Sentry.captureException(err);
-        throw new Error('Failed to sync secrets to Heroku');
+      Sentry.setUser(null);
+      Sentry.captureException(err);
+      throw new Error('Failed to sync secrets to Heroku');
     }
 }
 
