@@ -28,7 +28,13 @@ if (SMTP_SECURE) {
       }
       break;
     default:
-      mailOpts.secure = true;
+      if (SMTP_HOST.includes('amazonaws.com')) {
+        mailOpts.tls = {
+          ciphers: 'TLSv1.2'
+        }
+      } else {
+        mailOpts.secure = true;
+      }
       break;
   }
 }
