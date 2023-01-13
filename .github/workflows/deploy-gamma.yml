@@ -15,8 +15,8 @@ jobs:
           version: v3.10.0
       - name: Install infisical helm chart
         run: |
-        helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
-        helm repo update
+          helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
+          helm repo update
       - name: Install kubectl
         uses: azure/setup-kubectl@v3
       - name: Install doctl
@@ -31,8 +31,8 @@ jobs:
         run: kubectl get ingress
       - name: Write helm values to file 
         run: |
-        echo "${{ secrets.HELM_VALUES_GAMMA }}" > values.yaml
-        cat values.yml
+          echo "${{ secrets.HELM_VALUES_GAMMA }}" > values.yaml
+          cat values.yml
         
 
       
