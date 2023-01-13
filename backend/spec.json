@@ -5,6 +5,16 @@
     "description": "List of all available APIs that can be consumed",
     "version": "1.0.0"
   },
+  "servers": [
+    {
+      "url": "https://infisical.com",
+      "description": "Production server"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "Local server"
+    }
+  ],
   "paths": {
     "/api/v1/secret/{secretId}/secret-versions": {
       "get": {
@@ -39,6 +49,43 @@
           },
           "400": {
             "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v1/secret/{secretId}/secret-versions/rollback": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "secretId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -122,6 +169,43 @@
           },
           "400": {
             "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v1/workspace/{workspaceId}/secret-snapshots/rollback": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -476,7 +560,11 @@
       "post": {
         "description": "",
         "parameters": [],
-        "responses": {}
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       }
     },
     "/api/v1/bot/{workspaceId}": {
@@ -1997,6 +2085,35 @@
         }
       }
     },
+    "/api/v2/users/me": {
+      "get": {
+        "summary": "Retrieve the current user on the request",
+        "description": "Retrieve the current user on the request",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "$ref": "#/components/schemas/CurrentUser",
+                  "description": "Current user on request"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ]
+      }
+    },
     "/api/v2/workspace/{workspaceId}/secrets": {
       "post": {
         "description": "",
@@ -2080,7 +2197,8 @@
     },
     "/api/v2/workspace/{workspaceId}/encrypted-key": {
       "get": {
-        "description": "",
+        "summary": "Return encrypted project key",
+        "description": "Return encrypted project key",
         "parameters": [
           {
             "name": "workspaceId",
@@ -2088,17 +2206,34 @@
             "required": true,
             "schema": {
               "type": "string"
-            }
+            },
+            "description": "ID of project"
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectKey"
+                  },
+                  "description": "Encrypted project key for the given project"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request"
           }
-        }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ]
       }
     },
     "/api/v2/workspace/{workspaceId}/service-token-data": {
@@ -2124,7 +2259,7 @@
         }
       }
     },
-    "/api/v2/secret/batch-create/workspace/{workspaceId}/environment/{environmentName}": {
+    "/api/v2/secret/batch-create/workspace/{workspaceId}/environment/{environment}": {
       "post": {
         "description": "",
         "parameters": [
@@ -2137,7 +2272,7 @@
             }
           },
           {
-            "name": "environmentName",
+            "name": "environment",
             "in": "path",
             "required": true,
             "schema": {
@@ -2166,7 +2301,7 @@
         }
       }
     },
-    "/api/v2/secret/workspace/{workspaceId}/environment/{environmentName}": {
+    "/api/v2/secret/workspace/{workspaceId}/environment/{environment}": {
       "post": {
         "description": "",
         "parameters": [
@@ -2179,47 +2314,7 @@
             }
           },
           {
-            "name": "environmentName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        },
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "secret": {
-                    "example": "any"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "patch": {
-        "description": "",
-        "parameters": [
-          {
-            "name": "workspaceId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "environmentName",
+            "name": "environment",
             "in": "path",
             "required": true,
             "schema": {
@@ -2397,6 +2492,230 @@
         }
       }
     },
+    "/api/v2/secret/workspace/{workspaceId}/environment/{environmentName}": {
+      "patch": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "secret": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/secrets/": {
+      "post": {
+        "summary": "Create new secret(s)",
+        "description": "Create one or many secrets for a given project and environment.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Secret"
+                  },
+                  "description": "Array of newly-created secrets for the given project and environment"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "description": "ID of project"
+                  },
+                  "environment": {
+                    "type": "string",
+                    "description": "Environment within project"
+                  },
+                  "secrets": {
+                    "$ref": "#/components/schemas/CreateSecret",
+                    "description": "Secret(s) to create - object or array of objects"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Read secrets",
+        "description": "Read secrets from a project and environment",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Secret"
+                  },
+                  "description": "Array of secrets for the given project and environment"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "description": "ID of project"
+                  },
+                  "environment": {
+                    "type": "string",
+                    "description": "Environment within project"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update secret(s)",
+        "description": "Update secret(s)",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Secret"
+                  },
+                  "description": "Array of newly-updated secrets for the given project and environment"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "secrets": {
+                    "$ref": "#/components/schemas/UpdateSecret",
+                    "description": "Secret(s) to update - object or array of objects"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete secret(s)",
+        "description": "Delete one or many secrets by their ID(s)",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Secret"
+                  },
+                  "description": "Array of deleted secrets"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "secretIds": {
+                    "type": "string",
+                    "description": "ID(s) of secrets - string or array of strings"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/service-token/": {
       "get": {
         "description": "",
@@ -2557,11 +2876,243 @@
     }
   },
   "components": {
+    "schemas": {
+      "CurrentUser": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": ""
+          },
+          "email": {
+            "type": "string",
+            "example": ""
+          },
+          "firstName": {
+            "type": "string",
+            "example": ""
+          },
+          "lastName": {
+            "type": "string",
+            "example": ""
+          },
+          "publicKey": {
+            "type": "string",
+            "example": ""
+          },
+          "encryptedPrivateKey": {
+            "type": "string",
+            "example": ""
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": ""
+          },
+          "createdAt": {
+            "type": "string",
+            "example": ""
+          }
+        }
+      },
+      "ProjectKey": {
+        "type": "object",
+        "properties": {
+          "encryptedkey": {
+            "type": "string",
+            "example": ""
+          },
+          "nonce": {
+            "type": "string",
+            "example": ""
+          },
+          "sender": {
+            "type": "object",
+            "properties": {
+              "publicKey": {
+                "type": "string",
+                "example": ""
+              }
+            }
+          },
+          "receiver": {
+            "type": "string",
+            "example": ""
+          },
+          "workspace": {
+            "type": "string",
+            "example": ""
+          }
+        }
+      },
+      "CreateSecret": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "shared"
+          },
+          "secretKeyCiphertext": {
+            "type": "string",
+            "example": ""
+          },
+          "secretKeyIV": {
+            "type": "string",
+            "example": ""
+          },
+          "secretKeyTag": {
+            "type": "string",
+            "example": ""
+          },
+          "secretValueCiphertext": {
+            "type": "string",
+            "example": ""
+          },
+          "secretValueIV": {
+            "type": "string",
+            "example": ""
+          },
+          "secretValueTag": {
+            "type": "string",
+            "example": ""
+          },
+          "secretCommentCiphertext": {
+            "type": "string",
+            "example": ""
+          },
+          "secretCommentIV": {
+            "type": "string",
+            "example": ""
+          },
+          "secretCommentTag": {
+            "type": "string",
+            "example": ""
+          }
+        }
+      },
+      "UpdateSecret": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": ""
+          },
+          "secretKeyCiphertext": {
+            "type": "string",
+            "example": ""
+          },
+          "secretKeyIV": {
+            "type": "string",
+            "example": ""
+          },
+          "secretKeyTag": {
+            "type": "string",
+            "example": ""
+          },
+          "secretValueCiphertext": {
+            "type": "string",
+            "example": ""
+          },
+          "secretValueIV": {
+            "type": "string",
+            "example": ""
+          },
+          "secretValueTag": {
+            "type": "string",
+            "example": ""
+          },
+          "secretCommentCiphertext": {
+            "type": "string",
+            "example": ""
+          },
+          "secretCommentIV": {
+            "type": "string",
+            "example": ""
+          },
+          "secretCommentTag": {
+            "type": "string",
+            "example": ""
+          }
+        }
+      },
+      "Secret": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": ""
+          },
+          "version": {
+            "type": "number",
+            "example": 1
+          },
+          "workspace": {
+            "type": "string",
+            "example": ""
+          },
+          "type": {
+            "type": "string",
+            "example": "shared"
+          },
+          "user": {},
+          "secretKeyCiphertext": {
+            "type": "string",
+            "example": ""
+          },
+          "secretKeyIV": {
+            "type": "string",
+            "example": ""
+          },
+          "secretKeyTag": {
+            "type": "string",
+            "example": ""
+          },
+          "secretValueCiphertext": {
+            "type": "string",
+            "example": ""
+          },
+          "secretValueIV": {
+            "type": "string",
+            "example": ""
+          },
+          "secretValueTag": {
+            "type": "string",
+            "example": ""
+          },
+          "secretCommentCiphertext": {
+            "type": "string",
+            "example": ""
+          },
+          "secretCommentIV": {
+            "type": "string",
+            "example": ""
+          },
+          "secretCommentTag": {
+            "type": "string",
+            "example": ""
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": ""
+          },
+          "createdAt": {
+            "type": "string",
+            "example": ""
+          }
+        }
+      }
+    },
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "JWT"
+        "bearerFormat": "JWT",
+        "description": "This security definition uses the HTTP 'bearer' scheme, which allows the client to authenticate using a JSON Web Token (JWT) that is passed in the Authorization header of the request."
+      },
+      "apiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "This security definition uses an API key, which is passed in the header of the request as the value of the \"X-API-Key\" header. The client must provide a valid key in order to access the API."
       }
     }
   }

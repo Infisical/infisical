@@ -169,6 +169,34 @@ export const pullSecrets = async (req: Request, res: Response) => {
 };
 
 export const getWorkspaceKey = async (req: Request, res: Response) => {
+	/* 
+    #swagger.summary = 'Return encrypted project key'
+    #swagger.description = 'Return encrypted project key'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+	#swagger.parameters['workspaceId'] = {
+		"description": "ID of project",
+		"required": true,
+		"type": "string"
+	} 
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": { 
+                    "type": "array",
+                    "items": {
+                        $ref: "#/components/schemas/ProjectKey" 
+                    },
+                    "description": "Encrypted project key for the given project"
+                }
+            }           
+        }
+    }   
+    */
 	let key;
 	try {
 		const { workspaceId } = req.params;

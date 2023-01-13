@@ -21,6 +21,16 @@
       "to": "#F8B7BD"
     }
   },
+  "api": {
+    "baseUrl": [
+      "https://app.infisical.com",
+      "http://localhost:8080"
+    ],
+    "auth": {
+      "method": "api-key",
+      "name": "X-API-KEY"
+    }
+  },
   "topbarLinks": [
     { "name": "Log In", "url": "https://app.infisical.com/login" }
   ],
@@ -134,12 +144,32 @@
       "group": "Overview",
       "pages": [
         "api-reference/overview/introduction",
-        "api-reference/overview/authentication"
+        "api-reference/overview/authentication",
+        {
+          "group": "Examples",
+          "pages": [
+            "api-reference/overview/examples/create-secrets",
+            "api-reference/overview/examples/retrieve-secrets",
+            "api-reference/overview/examples/update-secrets"
+          ]
+        }
       ]
     },
     {
       "group": "Endpoints",
       "pages": [
+        {
+          "group": "Users",
+          "pages": [
+            "api-reference/endpoints/users/me"
+          ]
+        },
+        {
+          "group": "Projects",
+          "pages": [
+            "api-reference/endpoints/workspaces/workspace-key"
+          ]
+        },
         {
           "group": "Secrets",
           "pages": [

@@ -8,7 +8,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import swaggerUi = require('swagger-ui-express');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const swaggerFile = require('../api-documentation.json')
+const swaggerFile = require('../spec.json')
 
 
 dotenv.config();
@@ -41,7 +41,8 @@ import {
   integrationAuth as v1IntegrationAuthRouter
 } from './routes/v1';
 import {
-  secret as v2SecretRouter,
+  users as v2UsersRouter,
+  secret as v2SecretRouter, // begin to phase out
   secrets as v2SecretsRouter,
   workspace as v2WorkspaceRouter,
   serviceTokenData as v2ServiceTokenDataRouter,
@@ -103,6 +104,7 @@ app.use('/api/v1/integration', v1IntegrationRouter);
 app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
 
 // v2 routes
+app.use('/api/v2/users', v2UsersRouter);
 app.use('/api/v2/workspace', v2WorkspaceRouter); // TODO: turn into plural route
 app.use('/api/v2/secret', v2SecretRouter); // stop supporting, TODO: revise
 app.use('/api/v2/secrets', v2SecretsRouter);

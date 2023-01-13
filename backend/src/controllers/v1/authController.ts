@@ -170,10 +170,11 @@ export const logout = async (req: Request, res: Response) => {
  * @param res
  * @returns
  */
-export const checkAuth = async (req: Request, res: Response) =>
-  res.status(200).send({
+export const checkAuth = async (req: Request, res: Response) => {
+  return res.status(200).send({
     message: 'Authenticated'
   });
+}
 
 /**
  * Return new token by redeeming refresh token
