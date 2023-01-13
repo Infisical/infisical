@@ -48,7 +48,7 @@ SMTP_FROM_NAME=Infisical
 ```
 
 <Info>
-    Remember that you will need to restart Infisical for this to work properly.
+  Remember that you will need to restart Infisical for this to work properly.
 </Info>
 
 ## Mailgun
@@ -70,6 +70,28 @@ SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out em
 SMTP_FROM_NAME=Infisical
 ```
 
+## AWS SES
+
+1. Create an account and [configure AWS SES](https://aws.amazon.com/premiumsupport/knowledge-center/ses-set-up-connect-smtp/) to send emails in the Amazon SES console.
+2. Create an IAM user for SMTP authentication and obtain SMTP credentials in SMTP settings > Create SMTP credentials
+
+![opening AWS SES console](../../images/email-aws-ses-console.png)
+
+![creating AWS IAM SES user](../../images/email-aws-ses-user.png)
+
+3. With your AWS SES SMTP credentials, you can now set up your SMTP environment variables:
+
+```
+SMTP_HOST=smtp.mailgun.org # obtained from credentials page
+SMTP_HOST=email-smtp.ap-northeast-1.amazonaws.com # SMTP endpoint obtained from SMTP settings
+SMTP_USERNAME=xxx # your SMTP username
+SMTP_PASSWORD=xxx # your SMTP password
+SMTP_PORT=587
+SMTP_SECURE=true
+SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
+SMTP_FROM_NAME=Infisical
+```
+
 <Info>
-    Remember that you will need to restart Infisical for this to work properly.
+  Remember that you will need to restart Infisical for this to work properly.
 </Info>
