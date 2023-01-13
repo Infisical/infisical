@@ -203,7 +203,7 @@ export const getSecrets = async (req: Request, res: Response) => {
 
     if (postHogClient) {
         postHogClient.capture({
-            event: 'secrets added',
+            event: 'secrets pulled',
             distinctId: req.user.email,
             properties: {
                 numberOfSecrets: secrets.length,
