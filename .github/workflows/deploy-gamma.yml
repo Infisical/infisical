@@ -29,10 +29,11 @@ jobs:
         run: kubectl config set-context --current --namespace=gamma
       - name: test kubectl
         run: kubectl get ingress
-      - name: Write helm values to file 
+      - name: Download helm values to file and upgrade gamma deploy
         run: |
           wget https://raw.githubusercontent.com/Infisical/infisical/main/.github/values.yaml
-          cat values.yaml
+          helm upgrade infisical infisical-helm-charts/infisical  --values values.yaml --recreate-pods
+          
         
 
       
