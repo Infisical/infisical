@@ -31,8 +31,7 @@ jobs:
         run: kubectl get ingress
       - name: Write helm values to file 
         run: |
-          echo "${{ secrets.HELM_VALUES_GAMMA }}" > values.yaml
-          cat values.yml
+          echo "${{ secrets.HELM_VALUES_GAMMA }}"
         
 
       
