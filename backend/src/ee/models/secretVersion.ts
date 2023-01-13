@@ -6,14 +6,14 @@ import {
 
 export interface ISecretVersion {
 	_id: Types.ObjectId;
-    secret: Types.ObjectId;
-    version: number;
+	secret: Types.ObjectId;
+	version: number;
 	workspace: Types.ObjectId; // new
 	type: string; // new
 	user: Types.ObjectId; // new
 	environment: string; // new
-    isDeleted: boolean;
-    secretKeyCiphertext: string;
+	isDeleted: boolean;
+	secretKeyCiphertext: string;
 	secretKeyIV: string;
 	secretKeyTag: string;
 	secretKeyHash: string;
@@ -24,17 +24,17 @@ export interface ISecretVersion {
 }
 
 const secretVersionSchema = new Schema<ISecretVersion>(
-    {
-        secret: { // could be deleted
-            type: Schema.Types.ObjectId,
-            ref: 'Secret',
-            required: true
-        },
-        version: {
-            type: Number,
-            default: 1,
-            required: true
-        },
+	{
+		secret: { // could be deleted
+			type: Schema.Types.ObjectId,
+			ref: 'Secret',
+			required: true
+		},
+		version: {
+			type: Number,
+			default: 1,
+			required: true
+		},
 		workspace: {
 			type: Schema.Types.ObjectId,
 			ref: 'Workspace',
@@ -54,12 +54,12 @@ const secretVersionSchema = new Schema<ISecretVersion>(
 			type: String,
 			required: true
 		},
-        isDeleted: { // consider removing field
-            type: Boolean,
-            default: false,
-            required: true
-        },
-        secretKeyCiphertext: {
+		isDeleted: { // consider removing field
+			type: Boolean,
+			default: false,
+			required: true
+		},
+		secretKeyCiphertext: {
 			type: String,
 			required: true
 		},
@@ -89,10 +89,10 @@ const secretVersionSchema = new Schema<ISecretVersion>(
 		secretValueHash: {
 			type: String
 		}
-    },
-    {
-        timestamps: true
-    }
+	},
+	{
+		timestamps: true
+	}
 );
 
 const SecretVersion = model<ISecretVersion>('SecretVersion', secretVersionSchema);

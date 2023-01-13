@@ -1,11 +1,4 @@
-interface SecretDataProps {
-  type: 'personal' | 'shared';
-  pos: number;
-  key: string;
-  value: string;
-  id: string;
-  comment: string;
-}
+import { SecretDataProps } from "public/data/frequentInterfaces";
 
 /**
  * This function downloads the secrets as a .env file
@@ -16,16 +9,16 @@ interface SecretDataProps {
 const checkOverrides = async ({ data }: { data: SecretDataProps[]; }) => {
   let secrets : SecretDataProps[] = data!.map((secret) => Object.create(secret));
   const overridenSecrets = data!.filter(
-    (secret) => secret.type === 'personal'
+    (secret) => (secret.valueOverride == undefined || secret?.value != secret?.valueOverride) ? 'shared' : 'personal'
   );
   if (overridenSecrets.length) {
     overridenSecrets.forEach((secret) => {
       const index = secrets!.findIndex(
-        (_secret) => _secret.key === secret.key && _secret.type === 'shared'
+        (_secret) => _secret.key === secret.key && (secret.valueOverride == undefined || secret?.value != secret?.valueOverride)
       );
       secrets![index].value = secret.value;
     });
-    secrets = secrets!.filter((secret) => secret.type === 'shared');
+    secrets = secrets!.filter((secret) => (secret.valueOverride == undefined || secret?.value != secret?.valueOverride));
   }
   return secrets;
 }

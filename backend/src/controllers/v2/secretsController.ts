@@ -2,8 +2,8 @@ import to from 'await-to-js';
 import { Types } from 'mongoose';
 import { Request, Response } from 'express';
 import { ISecret, Secret } from '../../models';
-import { 
-    SECRET_PERSONAL, 
+import {
+    SECRET_PERSONAL,
     SECRET_SHARED,
     ACTION_ADD_SECRETS,
     ACTION_READ_SECRETS,
@@ -23,9 +23,9 @@ import { BadRequestError } from '../../utils/errors';
  * @param res 
  */
 export const createSecrets = async (req: Request, res: Response) => {
-    const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli'; 
+    const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli';
     const { workspaceId, environment } = req.body;
-    
+
     let toAdd;
     if (Array.isArray(req.body.secrets)) {
         // case: create multiple secrets
@@ -34,7 +34,7 @@ export const createSecrets = async (req: Request, res: Response) => {
         // case: create 1 secret
         toAdd = [req.body.secrets];
     }
-    
+
     const newSecrets = await Secret.insertMany(
         toAdd.map(({
             type,
@@ -66,7 +66,7 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretValueTag
         }))
     );
-    
+
     // (EE) add secret versions for new secrets
     EESecretService.addSecretVersions({
         secretVersions: newSecrets.map(({
@@ -160,22 +160,25 @@ export const createSecrets = async (req: Request, res: Response) => {
  */
 export const getSecrets = async (req: Request, res: Response) => {
     const { workspaceId, environment } = req.query;
-    
+
     let userId: Types.ObjectId | undefined = undefined // used for getting personal secrets for user
+    let userEmail: Types.ObjectId | undefined = undefined // used for posthog 
     if (req.user) {
         userId = req.user._id;
+        userEmail = req.user.email;
     }
 
     if (req.serviceTokenData) {
         userId = req.serviceTokenData.user._id
+        userEmail = req.serviceTokenData.user.email;
     }
-    
+
     const [err, secrets] = await to(Secret.find(
         {
             workspace: workspaceId,
             environment,
             $or: [
-                { user: userId }, 
+                { user: userId },
                 { user: { $exists: false } }
             ],
             type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
@@ -183,9 +186,9 @@ export const getSecrets = async (req: Request, res: Response) => {
     ).then())
 
     if (err) throw ValidationError({ message: 'Failed to get secrets', stack: err.stack });
-    
+
     const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli';
-    
+
     const readAction = await EELogService.createActionSecret({
         name: ACTION_READ_SECRETS,
         userId: req.user._id.toString(),
@@ -204,7 +207,7 @@ export const getSecrets = async (req: Request, res: Response) => {
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets added',
-            distinctId: req.user.email,
+            distinctId: userEmail,
             properties: {
                 numberOfSecrets: secrets.length,
                 environment,
@@ -214,7 +217,7 @@ export const getSecrets = async (req: Request, res: Response) => {
             }
         });
     }
-    
+
     return res.status(200).send({
         secrets
     });
@@ -226,8 +229,8 @@ export const getSecrets = async (req: Request, res: Response) => {
  * @param res 
  */
 export const updateSecrets = async (req: Request, res: Response) => {
-    const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli'; 
-    
+    const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli';
+
     // TODO: move type
     interface PatchSecret {
         id: string;
@@ -242,7 +245,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
         secretCommentTag: string;
     }
 
-    const ops = req.body.secrets.map((secret: PatchSecret) => {
+    const updateOperationsToPerform = req.body.secrets.map((secret: PatchSecret) => {
         const {
             secretKeyCiphertext,
             secretKeyIV,
@@ -254,6 +257,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
             secretCommentIV,
             secretCommentTag
         } = secret;
+
         return ({
             updateOne: {
                 filter: { _id: new Types.ObjectId(secret.id) },
@@ -268,8 +272,8 @@ export const updateSecrets = async (req: Request, res: Response) => {
                     secretValueIV,
                     secretValueTag,
                     ...((
-                        secretCommentCiphertext && 
-                        secretCommentIV && 
+                        secretCommentCiphertext &&
+                        secretCommentIV &&
                         secretCommentTag
                     ) ? {
                         secretCommentCiphertext,
@@ -280,15 +284,17 @@ export const updateSecrets = async (req: Request, res: Response) => {
             }
         });
     });
-    await Secret.bulkWrite(ops);
-    
-    const newSecretsObj: { [key: string]: PatchSecret } = {};
+
+    await Secret.bulkWrite(updateOperationsToPerform);
+
+    const secretModificationsBySecretId: { [key: string]: PatchSecret } = {};
     req.body.secrets.forEach((secret: PatchSecret) => {
-        newSecretsObj[secret.id] = secret;
+        secretModificationsBySecretId[secret.id] = secret;
     });
 
-    await EESecretService.addSecretVersions({
-        secretVersions: req.secrets.map((secret: ISecret) => {
+    const ListOfSecretsBeforeModifications = req.secrets
+    const secretVersions = {
+        secretVersions: ListOfSecretsBeforeModifications.map((secret: ISecret) => {
             const {
                 secretKeyCiphertext,
                 secretKeyIV,
@@ -298,37 +304,29 @@ export const updateSecrets = async (req: Request, res: Response) => {
                 secretValueTag,
                 secretCommentCiphertext,
                 secretCommentIV,
-                secretCommentTag 
-            } = newSecretsObj[secret._id.toString()]
+                secretCommentTag,
+            } = secretModificationsBySecretId[secret._id.toString()]
+
             return ({
                 secret: secret._id,
                 version: secret.version + 1,
                 workspace: secret.workspace,
                 type: secret.type,
                 environment: secret.environment,
-                isDeleted: false,
-                secretKeyCiphertext,
-                secretKeyIV,
-                secretKeyTag,
-                secretValueCiphertext,
-                secretValueIV,
-                secretValueTag,
-                ...((
-                    secretCommentCiphertext && 
-                    secretCommentIV && 
-                    secretCommentTag
-                ) ? {
-                    secretCommentCiphertext,
-                    secretCommentIV,
-                    secretCommentTag
-                } : {
-                    secretCommentCiphertext: '',
-                    secretCommentIV: '',
-                    secretCommentTag: ''
-                })
+                secretKeyCiphertext: secretKeyCiphertext ? secretKeyCiphertext : secret.secretKeyCiphertext,
+                secretKeyIV: secretKeyIV ? secretKeyIV : secret.secretKeyIV,
+                secretKeyTag: secretKeyTag ? secretKeyTag : secret.secretKeyTag,
+                secretValueCiphertext: secretValueCiphertext ? secretValueCiphertext : secret.secretValueCiphertext,
+                secretValueIV: secretValueIV ? secretValueIV : secret.secretValueIV,
+                secretValueTag: secretValueTag ? secretValueTag : secret.secretValueTag,
+                secretCommentCiphertext: secretCommentCiphertext ? secretCommentCiphertext : secret.secretCommentCiphertext,
+                secretCommentIV: secretCommentIV ? secretCommentIV : secret.secretCommentIV,
+                secretCommentTag: secretCommentTag ? secretCommentTag : secret.secretCommentTag,
             });
         })
-    });
+    }
+
+    await EESecretService.addSecretVersions(secretVersions);
 
 
     // group secrets into workspaces so updated secrets can
@@ -355,7 +353,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
             userId: req.user._id.toString(),
             workspaceId: key,
             secretIds: workspaceSecretObj[key].map((secret: ISecret) => secret._id)
-        }); 
+        });
 
         // (EE) create (audit) log
         updateAction && await EELogService.createLog({
@@ -367,9 +365,9 @@ export const updateSecrets = async (req: Request, res: Response) => {
         });
 
         // (EE) take a secret snapshot
-		await EESecretService.takeSecretSnapshot({
-			workspaceId: key
-		})
+        await EESecretService.takeSecretSnapshot({
+            workspaceId: key
+        })
 
         if (postHogClient) {
             postHogClient.capture({
@@ -385,7 +383,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
             });
         }
     });
-    
+
     return res.status(200).send({
         secrets: await Secret.find({
             _id: {
@@ -401,15 +399,15 @@ export const updateSecrets = async (req: Request, res: Response) => {
  * @param res 
  */
 export const deleteSecrets = async (req: Request, res: Response) => {
-    const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli'; 
+    const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli';
     const toDelete = req.secrets.map((s: any) => s._id);
-    
+
     await Secret.deleteMany({
         _id: {
             $in: toDelete
         }
     });
-    
+
     await EESecretService.markDeletedSecretVersions({
         secretIds: toDelete
     });
@@ -437,7 +435,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
             userId: req.user._id.toString(),
             workspaceId: key,
             secretIds: workspaceSecretObj[key].map((secret: ISecret) => secret._id)
-        }); 
+        });
 
         // (EE) create (audit) log
         deleteAction && await EELogService.createLog({
@@ -449,9 +447,9 @@ export const deleteSecrets = async (req: Request, res: Response) => {
         });
 
         // (EE) take a secret snapshot
-		await EESecretService.takeSecretSnapshot({
-			workspaceId: key
-		})
+        await EESecretService.takeSecretSnapshot({
+            workspaceId: key
+        })
 
         if (postHogClient) {
             postHogClient.capture({
@@ -467,7 +465,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
             });
         }
     });
-    
+
     return res.status(200).send({
         secrets: req.secrets
     });

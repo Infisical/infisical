@@ -1,3 +1,5 @@
+import { SecretDataProps } from 'public/data/frequentInterfaces';
+
 import Aes256Gcm from '~/components/utilities/cryptography/aes-256-gcm';
 import login1 from '~/pages/api/auth/Login1';
 import login2 from '~/pages/api/auth/Login2';
@@ -13,14 +15,6 @@ import Telemetry from './telemetry/Telemetry';
 import { saveTokenToLocalStorage } from './saveTokenToLocalStorage';
 import SecurityClient from './SecurityClient';
 
-interface SecretDataProps {
-  type: 'personal' | 'shared';
-  pos: number;
-  key: string;
-  value: string;
-  id: string;
-  comment: string;
-}
 
 const crypto = require("crypto");
 const nacl = require('tweetnacl');
@@ -145,53 +139,53 @@ const attemptLogin = async (
             );
 
             const secretsToBeAdded: SecretDataProps[] = [{
-              type: "shared",
               pos: 0,
               key: "DATABASE_URL",
               value: "mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net",
+              valueOverride: undefined,
               comment: "This is an example of secret referencing.",
               id: ''
             }, {
-              type: "shared",
               pos: 1,
               key: "DB_USERNAME",
               value: "OVERRIDE_THIS",
+              valueOverride: undefined,
               comment: "This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need",
               id: ''
             }, {
-              type: "personal",
               pos: 2,
+              key: "DB_PASSWORD",
+              value: "OVERRIDE_THIS",
+              valueOverride: undefined,
+              comment: "This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need",
+              id: ''
+            }, {
+              pos: 3,
               key: "DB_USERNAME",
               value: "user1234",
+              valueOverride: "user1234",
               comment: "",
               id: ''
             }, {
-              type: "shared",
-              pos: 3,
-              key: "DB_PASSWORD",
-              value: "OVERRIDE_THIS",
-              comment: "This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need",
-              id: ''
-            }, {
-              type: "personal",
               pos: 4,
               key: "DB_PASSWORD",
               value: "example_password",
+              valueOverride: "example_password",
               comment: "",
               id: ''
             }, {
-              type: "shared",
               pos: 5,
               key: "TWILIO_AUTH_TOKEN",
               value: "example_twillio_token",
-              comment: "This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need",
+              valueOverride: undefined,
+              comment: "",
               id: ''
             }, {
-              type: "shared",
               pos: 6,
               key: "WEBSITE_URL",
               value: "http://localhost:3000",
-              comment: "This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need",
+              valueOverride: undefined,
+              comment: "",
               id: ''
             }]
             const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeAdded, workspaceId: String(localStorage.getItem('projectData.id')), env: 'dev' })
