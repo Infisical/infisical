@@ -57,7 +57,7 @@ const INTEGRATION_OPTIONS = [
         name: 'Netlify',
         slug: 'netlify',
         image: 'Netlify',
-        isAvailable: true,
+        isAvailable: false,
         type: 'oauth2',
         clientId: CLIENT_ID_NETLIFY,
         docsLink: ''
@@ -66,7 +66,7 @@ const INTEGRATION_OPTIONS = [
         name: 'GitHub',
         slug: 'github',
         image: 'GitHub',
-        isAvailable: true,
+        isAvailable: false,
         type: 'oauth2',
         clientId: CLIENT_ID_GITHUB,
         docsLink: ''
