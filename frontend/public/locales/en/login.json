@@ -4,5 +4,7 @@
   "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files.",
   "login": "Log In",
   "need-account": "Need an Infisical account?",
-  "create-account": "Create an account"
+  "create-account": "Create an account",
+  "forgot-password": "Forgot your password?",
+  "error-login": "Wrong credentials."
 }
