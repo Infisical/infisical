@@ -4,7 +4,7 @@ import { body, param } from 'express-validator';
 import { requireAuth, validateRequest } from '../../middleware';
 import { membershipController } from '../../controllers/v1';
 
-router.get( // used for CLI (deprecate)
+router.get( // used for old CLI (deprecate)
 	'/:workspaceId/connect',
 	requireAuth({
         acceptedAuthModes: ['jwt']

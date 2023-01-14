@@ -47,7 +47,7 @@ const INTEGRATION_OPTIONS = [
         name: 'Vercel',
         slug: 'vercel',
         image: 'Vercel',
-        isAvailable: false,
+        isAvailable: true,
         type: 'vercel',
         clientId: '',
         clientSlug: CLIENT_SLUG_VERCEL,

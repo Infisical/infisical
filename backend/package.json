@@ -5,7 +5,7 @@
   "scripts": {
     "start": "npm run build && node build/index.js",
     "dev": "nodemon",
-    "swagger-autogen": "node ./swagger.ts",
+    "swagger-autogen": "node ./swagger/index.ts",
     "build": "rimraf ./build && tsc && cp -R ./src/templates ./build",
     "lint": "eslint . --ext .ts",
     "lint-and-fix": "eslint . --ext .ts --fix",
@@ -94,6 +94,7 @@
     "express-validator": "^6.14.2",
     "handlebars": "^4.7.7",
     "helmet": "^5.1.1",
+    "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.0",
     "jsrp": "^0.2.4",
     "libsodium-wrappers": "^0.7.10",

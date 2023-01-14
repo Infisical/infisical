@@ -164,7 +164,7 @@ export default function Login() {
           <ListBox
             selected={lang}
             onChange={setLanguage}
-            data={["en", "ko", "fr"]}
+            data={["en", "ko", "fr", "pt-BR"]}
             isFull
             text={`${t("common:language")}: `}
           />

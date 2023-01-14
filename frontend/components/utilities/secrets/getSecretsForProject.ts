@@ -1,8 +1,6 @@
 import getSecrets from '~/pages/api/files/GetSecrets';
 import getLatestFileKey from '~/pages/api/workspace/getLatestFileKey';
 
-import { envMapping } from '../../../public/data/frequentConstants';
-
 const {
   decryptAssymmetric,
   decryptSymmetric
@@ -35,7 +33,7 @@ interface SecretProps {
 }
 
 interface FunctionProps {
-  env: keyof typeof envMapping;
+  env: string;
   setIsKeyAvailable: any;
   setData: any;
   workspaceId: string;
@@ -58,7 +56,7 @@ const getSecretsForProject = async ({
   try {
     let encryptedSecrets;
     try {
-      encryptedSecrets = await getSecrets(workspaceId, envMapping[env]);
+      encryptedSecrets = await getSecrets(workspaceId, env);
     } catch (error) {
       console.log('ERROR: Not able to access the latest version of secrets');
     }

@@ -8,6 +8,7 @@ declare global {
 			user: any;
 			workspace: any;
 			membership: any;
+			targetMembership: any;
 			organization: any;
 			membershipOrg: any;
 			integration: any;

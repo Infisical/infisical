@@ -117,11 +117,9 @@ func GetAllEnvironmentVariables(envName string) ([]models.SingleEnvironmentVaria
 		secrets, err := GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId, envName)
 		return secrets, err
 
-	} else if infisicalToken != "" {
+	} else {
 		log.Debug("Trying to fetch secrets using service token")
 		return GetPlainTextSecretsViaServiceToken(infisicalToken)
-	} else {
-		return nil, fmt.Errorf("unable to fetch secrets because we could not find a service token or a logged in user")
 	}
 }
 

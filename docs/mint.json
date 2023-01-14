@@ -21,6 +21,16 @@
       "to": "#F8B7BD"
     }
   },
+  "api": {
+    "baseUrl": [
+      "https://app.infisical.com",
+      "http://localhost:8080"
+    ],
+    "auth": {
+      "method": "api-key",
+      "name": "X-API-KEY"
+    }
+  },
   "topbarLinks": [
     { "name": "Log In", "url": "https://app.infisical.com/login" }
   ],
@@ -38,6 +48,11 @@
       "name": "Self-hosting",
       "icon": "server",
       "url": "self-hosting"
+    },
+    {
+      "name": "API Reference",
+      "icon": "cloud",
+      "url": "api-reference"
     },
     {
       "name": "Integrations",
@@ -123,6 +138,56 @@
       "pages": [
         "self-hosting/configuration/envars",
         "self-hosting/configuration/email"
+      ]
+    },
+    {
+      "group": "Overview",
+      "pages": [
+        "api-reference/overview/introduction",
+        "api-reference/overview/authentication",
+        {
+          "group": "Examples",
+          "pages": [
+            "api-reference/overview/examples/create-secrets",
+            "api-reference/overview/examples/retrieve-secrets",
+            "api-reference/overview/examples/update-secrets",
+            "api-reference/overview/examples/delete-secrets"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Endpoints",
+      "pages": [
+        {
+          "group": "Users",
+          "pages": [
+            "api-reference/endpoints/users/me"
+          ]
+        },
+        {
+          "group": "Projects",
+          "pages": [
+            "api-reference/endpoints/workspaces/memberships",
+            "api-reference/endpoints/workspaces/update-membership",
+            "api-reference/endpoints/workspaces/delete-membership",
+            "api-reference/endpoints/workspaces/workspace-key",
+            "api-reference/endpoints/workspaces/logs",
+            "api-reference/endpoints/workspaces/secret-snapshots",
+            "api-reference/endpoints/workspaces/rollback-snapshot"
+          ]
+        },
+        {
+          "group": "Secrets",
+          "pages": [
+            "api-reference/endpoints/secrets/create",
+            "api-reference/endpoints/secrets/read",
+            "api-reference/endpoints/secrets/update",
+            "api-reference/endpoints/secrets/delete",
+            "api-reference/endpoints/secrets/versions",
+            "api-reference/endpoints/secrets/rollback-version"
+          ]
+        }
       ]
     },
     {

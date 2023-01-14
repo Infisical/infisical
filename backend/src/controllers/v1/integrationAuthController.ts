@@ -3,7 +3,7 @@ import * as Sentry from '@sentry/node';
 import axios from 'axios';
 import { readFileSync } from 'fs';
 import { IntegrationAuth, Integration } from '../../models';
-import { INTEGRATION_SET, INTEGRATION_OPTIONS, ENV_DEV } from '../../variables';
+import { INTEGRATION_SET, INTEGRATION_OPTIONS } from '../../variables';
 import { IntegrationService } from '../../services';
 import { getApps, revokeAccess } from '../../integrations';
 
@@ -31,11 +31,17 @@ export const oAuthExchange = async (
 
 		if (!INTEGRATION_SET.has(integration))
 			throw new Error('Failed to validate integration');
+		
+		const environments = req.membership.workspace?.environments || [];
+		if(environments.length === 0){
+			throw new Error("Failed to get environments")
+		}
 	
 		await IntegrationService.handleOAuthExchange({
 			workspaceId,
 			integration,
-			code
+			code,
+			environment: environments[0].slug,
 		});
 	} catch (err) {
 		Sentry.setUser(null);

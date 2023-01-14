@@ -5,6 +5,7 @@ interface Workspace {
   _id: string;
   name: string;
   organization: string;
+  environments: Array<{name:string, slug:string}>
 }
 
 /**
