@@ -101,7 +101,7 @@ const Integration = ({
           case "vercel":
             return (
               <div>
-                <div className="text-gray-400 text-xs font-semibold mb-2">
+                <div className="text-gray-400 text-xs font-semibold mb-2 w-60">
                     ENVIRONMENT
                 </div>
                 <ListBox
@@ -112,6 +112,7 @@ const Integration = ({
                   ] : null}
                   selected={integrationTarget}
                   onChange={setIntegrationTarget}
+                  isFull={true}
                 />
             </div>
             );
