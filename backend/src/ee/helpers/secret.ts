@@ -1,11 +1,11 @@
 import { Types } from 'mongoose';
 import * as Sentry from '@sentry/node';
 import {
-    Secret,
+	Secret,
 	ISecret
 } from '../../models';
 import {
-    SecretSnapshot,
+	SecretSnapshot,
 	SecretVersion,
 	ISecretVersion
 } from '../models';
@@ -18,24 +18,24 @@ import {
  * @param {String} obj.workspaceId
  * @returns {SecretSnapshot} secretSnapshot - new secret snapshot
  */
- const takeSecretSnapshotHelper = async ({
+const takeSecretSnapshotHelper = async ({
 	workspaceId
 }: {
 	workspaceId: string;
 }) => {
-	
+
 	let secretSnapshot;
 	try {
 		const secretIds = (await Secret.find({
 			workspace: workspaceId
 		}, '_id')).map((s) => s._id);
-		
+
 		const latestSecretVersions = (await SecretVersion.aggregate([
 			{
-				$match: { 
-					secret: { 
-						$in: secretIds 
-					} 
+				$match: {
+					secret: {
+						$in: secretIds
+					}
 				}
 			},
 			{
@@ -48,14 +48,14 @@ import {
 			{
 				$sort: { version: -1 }
 			}
-			])
+		])
 			.exec())
 			.map((s) => s.versionId);
-			
+
 		const latestSecretSnapshot = await SecretSnapshot.findOne({
 			workspace: workspaceId
 		}).sort({ version: -1 });
-		
+
 		secretSnapshot = await new SecretSnapshot({
 			workspace: workspaceId,
 			version: latestSecretSnapshot ? latestSecretSnapshot.version + 1 : 1,
@@ -66,7 +66,7 @@ import {
 		Sentry.captureException(err);
 		throw new Error('Failed to take a secret snapshot');
 	}
-	
+
 	return secretSnapshot;
 }
 
@@ -87,9 +87,9 @@ const addSecretVersionsHelper = async ({
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
-		throw new Error('Failed to add secret versions');
+		throw new Error(`Failed to add secret versions [err=${err}]`);
 	}
-	
+
 	return newSecretVersions;
 }
 
@@ -120,39 +120,39 @@ const markDeletedSecretVersionsHelper = async ({
 const initSecretVersioningHelper = async () => {
 	try {
 
-		await Secret.updateMany( 
+		await Secret.updateMany(
 			{ version: { $exists: false } },
 			{ $set: { version: 1 } }
 		);
-		
-        const unversionedSecrets: ISecret[] = await Secret.aggregate([
-            {
-                $lookup: {
-                from: 'secretversions',
-                localField: '_id',
-                foreignField: 'secret',
-                as: 'versions',
-                },
-            },
-            {
-                $match: {
-                versions: { $size: 0 },
-                },
-            },
-        ]);
-        
-        if (unversionedSecrets.length > 0) {
-            await addSecretVersionsHelper({
-                secretVersions: unversionedSecrets.map((s, idx) => ({
-                    ...s,
-                    secret: s._id,
-                    version: s.version ? s.version : 1,
-                    isDeleted: false,
-                    workspace: s.workspace,
-                    environment: s.environment
-                }))
-            });
-        }
+
+		const unversionedSecrets: ISecret[] = await Secret.aggregate([
+			{
+				$lookup: {
+					from: 'secretversions',
+					localField: '_id',
+					foreignField: 'secret',
+					as: 'versions',
+				},
+			},
+			{
+				$match: {
+					versions: { $size: 0 },
+				},
+			},
+		]);
+
+		if (unversionedSecrets.length > 0) {
+			await addSecretVersionsHelper({
+				secretVersions: unversionedSecrets.map((s, idx) => ({
+					...s,
+					secret: s._id,
+					version: s.version ? s.version : 1,
+					isDeleted: false,
+					workspace: s.workspace,
+					environment: s.environment
+				}))
+			});
+		}
 
 	} catch (err) {
 		Sentry.setUser(null);
@@ -162,7 +162,7 @@ const initSecretVersioningHelper = async () => {
 }
 
 export {
-    takeSecretSnapshotHelper,
+	takeSecretSnapshotHelper,
 	addSecretVersionsHelper,
 	markDeletedSecretVersionsHelper,
 	initSecretVersioningHelper

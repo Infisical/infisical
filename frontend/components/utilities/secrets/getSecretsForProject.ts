@@ -1,8 +1,6 @@
 import getSecrets from '~/pages/api/files/GetSecrets';
 import getLatestFileKey from '~/pages/api/workspace/getLatestFileKey';
 
-import { envMapping } from '../../../public/data/frequentConstants';
-
 const {
   decryptAssymmetric,
   decryptSymmetric
@@ -35,7 +33,7 @@ interface SecretProps {
 }
 
 interface FunctionProps {
-  env: keyof typeof envMapping;
+  env: string;
   setIsKeyAvailable: any;
   setData: any;
   workspaceId: string;
@@ -58,7 +56,7 @@ const getSecretsForProject = async ({
   try {
     let encryptedSecrets;
     try {
-      encryptedSecrets = await getSecrets(workspaceId, envMapping[env]);
+      encryptedSecrets = await getSecrets(workspaceId, env);
     } catch (error) {
       console.log('ERROR: Not able to access the latest version of secrets');
     }
@@ -117,15 +115,19 @@ const getSecretsForProject = async ({
       });
     }
 
-    const result = tempDecryptedSecrets.map((secret, index) => {
+    const secretKeys = [...new Set(tempDecryptedSecrets.map(secret => secret.key))];
+
+    
+    const result = secretKeys.map((key, index) => {
       return {
-        id: secret['id'],
+        id: tempDecryptedSecrets.filter(secret => secret.key == key && secret.type == 'shared')[0]?.id,
+        idOverride: tempDecryptedSecrets.filter(secret => secret.key == key && secret.type == 'personal')[0]?.id,
         pos: index,
-        key: secret['key'],
-        value: secret['value'],
-        type: secret['type'],
-        comment: secret['comment']
-      };
+        key: key,
+        value: tempDecryptedSecrets.filter(secret => secret.key == key && secret.type == 'shared')[0]?.value,
+        valueOverride: tempDecryptedSecrets.filter(secret => secret.key == key && secret.type == 'personal')[0]?.value,
+        comment: tempDecryptedSecrets.filter(secret => secret.key == key && secret.type == 'shared')[0]?.comment,
+      }
     });
 
     setData(result);

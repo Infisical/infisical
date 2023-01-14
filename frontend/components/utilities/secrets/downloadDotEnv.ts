@@ -1,15 +1,8 @@
+import { SecretDataProps } from "public/data/frequentInterfaces";
+
 import { envMapping } from "../../../public/data/frequentConstants";
 import checkOverrides from './checkOverrides';
 
-
-interface SecretDataProps {
-  type: 'personal' | 'shared';
-  pos: number;
-  key: string;
-  value: string;
-  id: string;
-  comment: string;
-}
 
 /**
  * This function downloads the secrets as a .env file
@@ -39,7 +32,7 @@ const downloadDotEnv = async ({ data, env }: { data: SecretDataProps[]; env: str
     const fileDownloadUrl = URL.createObjectURL(blob);
     const alink = document.createElement('a');
     alink.href = fileDownloadUrl;
-    alink.download = envMapping[env] + '.env';
+    alink.download = env + '.env';
     alink.click();
 }
 

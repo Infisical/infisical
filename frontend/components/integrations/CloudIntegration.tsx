@@ -74,7 +74,7 @@ const CloudIntegration = ({
             integrationAuths
             .map((authorization) => authorization.integration)
             .includes(cloudIntegrationOption.name.toLowerCase()) && (
-            <div className="absolute group z-50 top-0 right-0 flex flex-row">
+            <div className="absolute group z-40 top-0 right-0 flex flex-row">
                 <div
                     onClick={(event) => {
                         event.stopPropagation();

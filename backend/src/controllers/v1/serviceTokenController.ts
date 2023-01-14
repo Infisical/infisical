@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { ServiceToken } from '../../models';
 import { createToken } from '../../helpers/auth';
-import { ENV_SET } from '../../variables';
 import { JWT_SERVICE_SECRET } from '../../config';
 
 /**
@@ -36,7 +35,8 @@ export const createServiceToken = async (req: Request, res: Response) => {
 		} = req.body;
 
 		// validate environment
-		if (!ENV_SET.has(environment)) {
+		const workspaceEnvs = req.membership.workspace.environments;
+		if (!workspaceEnvs.find(({ slug }: { slug: string }) => slug === environment)) {
 			throw new Error('Failed to validate environment');
 		}
 

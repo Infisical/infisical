@@ -2,20 +2,11 @@ import { Fragment } from 'react';
 import { useTranslation } from "next-i18next";
 import { faDownload } from '@fortawesome/free-solid-svg-icons';
 import { Menu, Transition } from '@headlessui/react';
+import { SecretDataProps } from 'public/data/frequentInterfaces';
 
 import Button from '../basic/buttons/Button';
 import downloadDotEnv from '../utilities/secrets/downloadDotEnv';
 import downloadYaml from '../utilities/secrets/downloadYaml';
-
-
-interface SecretDataProps {
-  type: 'personal' | 'shared';
-  pos: number;
-  key: string;
-  value: string;
-  id: string;
-  comment: string;
-}
 
 /**
  * This is the menu that is used to download secrets as .env ad .yml files (in future we may have more options)

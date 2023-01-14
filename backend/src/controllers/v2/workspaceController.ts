@@ -21,7 +21,6 @@ import {
 import { pushKeys } from '../../helpers/key';
 import { postHogClient, EventService } from '../../services';
 import { eventPushSecrets } from '../../events';
-import { ENV_SET } from '../../variables';
 
 interface V2PushSecret {
 	type: string; // personal or shared
@@ -54,7 +53,8 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
 		const { workspaceId } = req.params;
 
 		// validate environment
-		if (!ENV_SET.has(environment)) {
+		const workspaceEnvs = req.membership.workspace.environments;
+		if (!workspaceEnvs.find(({ slug }: { slug: string }) => slug === environment)) {
 			throw new Error('Failed to validate environment');
 		}
 
@@ -130,6 +130,11 @@ export const pullSecrets = async (req: Request, res: Response) => {
 			userId = req.user._id.toString();
 		} else if (req.serviceTokenData) {
 			userId = req.serviceTokenData.user._id
+		}
+		// validate environment
+		const workspaceEnvs = req.membership.workspace.environments;
+		if (!workspaceEnvs.find(({ slug }: { slug: string }) => slug === environment)) {
+			throw new Error('Failed to validate environment');
 		}
 
 		secrets = await pull({

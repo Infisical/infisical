@@ -1,0 +1,36 @@
+frontend:
+  replicaCount: 1
+  image:
+    repository: 
+    pullPolicy: Always
+    tag: "latest"
+  kubeSecretRef: managed-secret-frontend
+
+backend:
+  replicaCount: 1
+  image:
+    repository: 
+    pullPolicy: Always
+    tag: "latest"
+  kubeSecretRef: managed-backend-secret
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hostName: gamma.infisical.com
+  frontend: 
+    path: /
+    pathType: Prefix
+  backend:
+    path: /api
+    pathType: Prefix
+  tls:
+    - secretName: echo-tls
+      hosts:
+        - gamma.infisical.com
+
+backendEnvironmentVariables:
+
+frontendEnvironmentVariables:

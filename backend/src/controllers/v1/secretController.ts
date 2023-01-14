@@ -9,7 +9,6 @@ import {
 import { pushKeys } from '../../helpers/key';
 import { eventPushSecrets } from '../../events';
 import { EventService } from '../../services';
-import { ENV_SET } from '../../variables';
 import { postHogClient } from '../../services';
 
 interface PushSecret {
@@ -44,7 +43,8 @@ export const pushSecrets = async (req: Request, res: Response) => {
 		const { workspaceId } = req.params;
 
 		// validate environment
-		if (!ENV_SET.has(environment)) {
+		const workspaceEnvs = req.membership.workspace.environments;
+		if (!workspaceEnvs.find(({ slug }: { slug: string }) => slug === environment)) {
 			throw new Error('Failed to validate environment');
 		}
 
@@ -116,7 +116,8 @@ export const pullSecrets = async (req: Request, res: Response) => {
 		const { workspaceId } = req.params;
 
 		// validate environment
-		if (!ENV_SET.has(environment)) {
+		const workspaceEnvs = req.membership.workspace.environments;
+		if (!workspaceEnvs.find(({ slug }: { slug: string }) => slug === environment)) {
 			throw new Error('Failed to validate environment');
 		}
 
@@ -183,7 +184,8 @@ export const pullSecretsServiceToken = async (req: Request, res: Response) => {
 		const { workspaceId } = req.params;
 
 		// validate environment
-		if (!ENV_SET.has(environment)) {
+		const workspaceEnvs = req.membership.workspace.environments;
+		if (!workspaceEnvs.find(({ slug }: { slug: string }) => slug === environment)) {
 			throw new Error('Failed to validate environment');
 		}
 

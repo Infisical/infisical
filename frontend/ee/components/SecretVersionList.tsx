@@ -52,7 +52,7 @@ const SecretVersionList = ({ secretId }: { secretId: string; }) => {
           });
         }
 
-        const decryptedSecretVersions = encryptedSecretVersions.secretVersions.map((encryptedSecretVersion: EncrypetedSecretVersionListProps) => { 
+        const decryptedSecretVersions = encryptedSecretVersions?.secretVersions.map((encryptedSecretVersion: EncrypetedSecretVersionListProps) => { 
           return {
             createdAt: encryptedSecretVersion.createdAt,
             value: decryptSymmetric({
@@ -87,28 +87,33 @@ const SecretVersionList = ({ secretId }: { secretId: string; }) => {
         </div> 
       ) : (
         <div className='h-48 overflow-y-auto overflow-x-none'>
-          {secretVersions?.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-          .map((version: DecryptedSecretVersionListProps, index: number) =>
-            <div key={index} className='flex flex-row'>
-              <div className='pr-1 flex flex-col items-center'>
-                <div className='p-1'><FontAwesomeIcon icon={index == 0 ? faDotCircle : faCircle} /></div>
-                <div className='w-0 h-full border-l mt-1'></div>
-              </div>
-              <div className='flex flex-col w-full max-w-[calc(100%-2.3rem)]'>
-                <div className='pr-2 pt-1'>
-                  {(new Date(version.createdAt)).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                  })}
+          {secretVersions 
+          ? secretVersions?.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+            .map((version: DecryptedSecretVersionListProps, index: number) =>
+              <div key={index} className='flex flex-row'>
+                <div className='pr-1 flex flex-col items-center'>
+                  <div className='p-1'><FontAwesomeIcon icon={index == 0 ? faDotCircle : faCircle} /></div>
+                  <div className='w-0 h-full border-l mt-1'></div>
                 </div>
-                <div className=''><p className='break-words'><span className='py-0.5 px-1 rounded-md bg-primary-200/10 mr-1.5'>Value:</span>{version.value}</p></div>
+                <div className='flex flex-col w-full max-w-[calc(100%-2.3rem)]'>
+                  <div className='pr-2 pt-1'>
+                    {(new Date(version.createdAt)).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    })}
+                  </div>
+                  <div className=''><p className='break-words'><span className='py-0.5 px-1 rounded-md bg-primary-200/10 mr-1.5'>Value:</span>{version.value}</p></div>
+                </div>
               </div>
-            </div>
-          )}
+            )
+            : (
+              <div className='w-full h-full flex items-center justify-center text-bunker-400'>No version history yet.</div>
+            )
+          }
         </div>
       )}
     </div>

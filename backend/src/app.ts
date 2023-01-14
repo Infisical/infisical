@@ -47,6 +47,7 @@ import {
   workspace as v2WorkspaceRouter,
   serviceTokenData as v2ServiceTokenDataRouter,
   apiKeyData as v2APIKeyDataRouter,
+  environment as v2EnvironmentRouter,
 } from './routes/v2';
 
 import { healthCheck } from './routes/status';
@@ -105,6 +106,7 @@ app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
 
 // v2 routes
 app.use('/api/v2/users', v2UsersRouter);
+app.use('/api/v2/workspace', v2EnvironmentRouter);
 app.use('/api/v2/workspace', v2WorkspaceRouter); // TODO: turn into plural route
 app.use('/api/v2/secret', v2SecretRouter); // stop supporting, TODO: revise
 app.use('/api/v2/secrets', v2SecretsRouter);

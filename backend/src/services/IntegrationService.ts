@@ -11,10 +11,6 @@ import {
     setIntegrationAuthAccessHelper,
 } from '../helpers/integration';
 import { exchangeCode } from '../integrations';
-import { 
-    ENV_DEV, 
-    EVENT_PUSH_SECRETS
-} from '../variables';
 
 // should sync stuff be here too? Probably.
 // TODO: move bot functions to IntegrationService.
@@ -32,22 +28,26 @@ class IntegrationService {
      * - Create bot sequence for integration
      * @param {Object} obj
      * @param {String} obj.workspaceId - id of workspace
+     * @param {String} obj.environment - workspace environment
      * @param {String} obj.integration - name of integration 
      * @param {String} obj.code - code
      */
     static async handleOAuthExchange({ 
         workspaceId,
         integration,
-        code
+        code,
+        environment
     }: { 
         workspaceId: string;
         integration: string;
         code: string;
+        environment: string;
     }) {
         await handleOAuthExchangeHelper({
             workspaceId,
             integration,
-            code
+            code,
+            environment
         });
     }
     

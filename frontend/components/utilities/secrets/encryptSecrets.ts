@@ -1,3 +1,5 @@
+import { SecretDataProps } from "public/data/frequentInterfaces";
+
 import getLatestFileKey from "~/pages/api/workspace/getLatestFileKey";
 
 const crypto = require("crypto");
@@ -8,15 +10,6 @@ const {
 const nacl = require("tweetnacl");
 nacl.util = require("tweetnacl-util");
 
-
-interface SecretDataProps {
-  type: 'personal' | 'shared';
-  pos: number;
-  key: string;
-  value: string;
-  id: string;
-  comment: string;
-}
 
 interface EncryptedSecretProps {
   id: string;
@@ -106,7 +99,7 @@ const encryptSecrets = async ({ secretsToEncrypt, workspaceId, env }: { secretsT
         secretCommentCiphertext,
         secretCommentIV,
         secretCommentTag,
-        type: secret.type,
+        type: (secret.valueOverride == undefined || secret?.value != secret?.valueOverride) ? 'shared' : 'personal',
       };
 
       return result;
