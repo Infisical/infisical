@@ -68,7 +68,7 @@ router.get(
 	workspaceController.getWorkspaceServiceTokenData
 );
 
-// TODO: /POST to create membership
+// TODO: /POST to create membership and re-route inviting user to workspace there
 
 router.get( // new - TODO: rewire dashboard to this route
 	'/:workspaceId/memberships',

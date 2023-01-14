@@ -45,7 +45,8 @@ const requireMembershipAuth = ({
             });
             
             req.targetMembership = targetMembership;
-
+            
+            return next();
         } catch (err) {
             return next(UnauthorizedRequestError({ 
                 message: 'Unable to validate workspace membership' 

@@ -302,7 +302,7 @@ export const getWorkspaceMemberships = async (req: Request, res: Response) => {
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
 		return res.status(400).send({
-			message: 'Failed to get workspace members'
+			message: 'Failed to get workspace memberships'
 		});
 	}
 
