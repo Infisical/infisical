@@ -130,3 +130,9 @@ jobs:
         run: |
           wget https://raw.githubusercontent.com/Infisical/infisical/main/.github/values.yaml
           helm upgrade infisical infisical-helm-charts/infisical  --values values.yaml --recreate-pods
+          if [[ $(helm status infisical) == *"FAILED"* ]]; then
+            echo "Helm upgrade failed"
+            exit 1
+          else
+            echo "Helm upgrade was successful"
+          fi
