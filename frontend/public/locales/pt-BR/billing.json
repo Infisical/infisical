@@ -1,0 +1,28 @@
+{
+  "title": "Uso & Faturamento",
+  "description": "Visualize e gerencie a assinatura da sua organização aqui",
+  "subscription": "Inscrição",
+  "starter": {
+    "name": "Iniciante",
+    "price-explanation": "Até 5 membros da equipe",
+    "text": "Gerencie qualquer projeto com 5 membros gratuitamente!",
+    "subtext": "$5 por membro / mês depois."
+  },
+  "professional": {
+    "name": "Profissional",
+    "price-explanation": "/membro/mês",
+    "subtext": "Inclui projetos e membros ilimitados.",
+    "text": "Acompanhe o gerenciamento de chaves à medida que você cresce."
+  },
+  "enterprise": {
+    "name": "Empreendimento",
+    "text": "Acompanhe o gerenciamento de chaves à medida que você cresce."
+  },
+  "current-usage": "Uso atual",
+  "free": "Grátis",
+  "downgrade": "Reduzir",
+  "upgrade": "Melhoria",
+  "learn-more": "Saber Mais",
+  "custom-pricing": "Preço Personalizado",
+  "schedule-demo": "Agende uma Demonstração"
+}
