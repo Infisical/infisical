@@ -3,7 +3,7 @@
   <img width="300" src="/img/logoname-white.svg#gh-dark-mode-only" alt="infisical">
 </h1>
 <p align="center">
-  <p align="center">Open-source, E2EE, simple tool to manage and sync environment variables across your team and infrastructure.</p>
+  <p align="center">Open-source, E2EE, simple tool to manage secrets and configs across your team and infrastructure.</p>
 </p>
 
 <h4 align="center">
@@ -34,13 +34,13 @@
 
 <img src="/img/infisical_github_repo.png" width="100%" alt="Dashboard" />
 
-**[Infisical](https://infisical.com)** is an open source, E2EE tool to help teams manage and sync environment variables across their development workflow and infrastructure. It's designed to be simple and take minutes to get going.
+**[Infisical](https://infisical.com)** is an open source, E2EE tool to help teams manage and sync secrets and configs across their development workflow and infrastructure. It's designed to be simple and take minutes to get going.
 
-- **[User-Friendly Dashboard](https://infisical.com/docs/getting-started/dashboard/project)** to manage your team's environment variables within projects
-- **[Language-Agnostic CLI](https://infisical.com/docs/cli/overview)** that pulls and injects environment variables into your local workflow
+- **[User-Friendly Dashboard](https://infisical.com/docs/getting-started/dashboard/project)** to manage your team's secrets and configs within projects
+- **[Language-Agnostic CLI](https://infisical.com/docs/cli/overview)** that pulls and injects esecrets and configs into your local workflow
 - **[Complete control over your data](https://infisical.com/docs/self-hosting/overview)** - host it yourself on any infrastructure
 - **Navigate Multiple Environments** per project (e.g. development, staging, production, etc.)
-- **Personal overrides** for environment variables
+- **Personal overrides** for secrets and configs
 - **[Integrations](https://infisical.com/docs/integrations/overview)** with CI/CD and production infrastructure
 - **[Secret Versioning](https://infisical.com/docs/getting-started/dashboard/versioning)** - check the history of change for any secret
 - **[Activity Logs](https://infisical.com/docs/getting-started/dashboard/audit-logs)** - check what user in the project is performing what actions with secrets
