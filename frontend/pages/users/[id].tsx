@@ -20,6 +20,22 @@ import addUserToWorkspace from '../api/workspace/addUserToWorkspace';
 import getWorkspaceUsers from '../api/workspace/getWorkspaceUsers';
 import uploadKeys from '../api/workspace/uploadKeys';
 
+interface UserProps {
+  firstName: string; 
+  lastName: string;
+  email: string;
+  _id: string;
+  publicKey: string;
+}
+
+interface MembershipProps {
+  user: UserProps
+  inviteEmail: string;
+  role: string;
+  status: string;
+  _id: string;
+}
+
 // #TODO: Update all the workspaceIds
 const crypto = require('crypto');
 const {
@@ -30,10 +46,10 @@ const nacl = require('tweetnacl');
 nacl.util = require('tweetnacl-util');
 
 export default function Users() {
-  let [isAddOpen, setIsAddOpen] = useState(false);
+  const [isAddOpen, setIsAddOpen] = useState(false);
   // let [isDeleteOpen, setIsDeleteOpen] = useState(false);
   // let [userIdToBeDeleted, setUserIdToBeDeleted] = useState(false);
-  let [email, setEmail] = useState('');
+  const [email, setEmail] = useState('');
   const [personalEmail, setPersonalEmail] = useState('');
   const [searchUsers, setSearchUsers] = useState('');
 
@@ -59,7 +75,7 @@ export default function Users() {
   // }
 
   async function submitAddModal() {
-    let result = await addUserToWorkspace(email, router.query.id);
+    const result = await addUserToWorkspace(email, String(router.query.id));
     if (result?.invitee && result?.latestKey) {
       const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
 
@@ -77,7 +93,7 @@ export default function Users() {
         privateKey: PRIVATE_KEY
       });
 
-      uploadKeys(router.query.id, result.invitee._id, ciphertext, nonce);
+      uploadKeys(String(router.query.id), result.invitee._id, ciphertext, nonce);
     }
     setEmail('');
     setIsAddOpen(false);
@@ -88,41 +104,45 @@ export default function Users() {
     setIsAddOpen(true);
   }
 
-  const [userList, setUserList] = useState();
+  const [userList, setUserList] = useState([]);
   const [orgUserList, setOrgUserList] = useState([]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(async () => {
-    const user = await getUser();
-    setPersonalEmail(user.email);
 
-    workspaceId = router.query.id;
-    let workspaceUsers = await getWorkspaceUsers({
-      workspaceId
-    });
-    const tempUserList = workspaceUsers.map((user) => ({
-      key: guidGenerator(),
-      firstName: user.user?.firstName,
-      lastName: user.user?.lastName,
-      email: user.user?.email == null ? user.inviteEmail : user.user?.email,
-      role: user?.role,
-      status: user?.status,
-      userId: user.user?._id,
-      membershipId: user._id,
-      publicKey: user.user?.publicKey
-    }));
-    setUserList(tempUserList);
-    const orgUsers = await getOrganizationUsers({
-      orgId: localStorage.getItem('orgData.id')
-    });
-    setOrgUserList(orgUsers);
-    setEmail(
-      orgUsers
-        ?.filter((user) => user.status == 'accepted')
-        .map((user) => user.user.email)
-        .filter(
-          (email) => !tempUserList?.map((user1) => user1.email).includes(email)
-        )[0]
-    );
+  useEffect(() => {
+    (async () => {
+      const user = await getUser();
+      setPersonalEmail(user.email);
+
+      // This part quiries the current users of a project
+      const workspaceUsers = await getWorkspaceUsers({
+        workspaceId: String(router.query.id)
+      });
+      const tempUserList = workspaceUsers.map((membership: MembershipProps) => ({
+        key: guidGenerator(),
+        firstName: membership.user?.firstName,
+        lastName: membership.user?.lastName,
+        email: membership.user?.email == null ? membership.inviteEmail : membership.user?.email,
+        role: membership?.role,
+        status: membership?.status,
+        userId: membership.user?._id,
+        membershipId: membership._id,
+        publicKey: membership.user?.publicKey
+      }));
+      setUserList(tempUserList);
+
+      // This is needed to know wha users from an org (if any), we are able to add to a certain project
+      const orgUsers = await getOrganizationUsers({
+        orgId: String(localStorage.getItem('orgData.id'))
+      });
+      setOrgUserList(orgUsers);
+      setEmail(
+        orgUsers
+          ?.filter((membership: MembershipProps) => membership.status == 'accepted')
+          .map((membership: MembershipProps) => membership.user.email)
+          .filter(
+            (email: string) => !tempUserList?.map((user1: UserProps) => user1.email).includes(email)
+          )[0]
+      );
+    })();
   }, []);
 
   return userList ? (
@@ -151,17 +171,17 @@ export default function Users() {
         submitModal={submitAddModal}
         email={email}
         data={orgUserList
-          ?.filter((user) => user.status == 'accepted')
-          .map((user) => user.user.email)
+          ?.filter((membership: MembershipProps) => membership.status == 'accepted')
+          .map((membership: MembershipProps) => membership.user.email)
           .filter(
-            (email) => !userList?.map((user1) => user1.email).includes(email)
+            (email) => !userList?.map((user1: UserProps) => user1.email).includes(email)
           )}
         workspaceId={workspaceId}
         setEmail={setEmail}
       />
       {/* <DeleteUserDialog isOpen={isDeleteOpen} closeModal={closeDeleteModal} submitModal={deleteMembership} userIdToBeDeleted={userIdToBeDeleted}/> */}
-      <div className="px-2 pb-1 w-full flex flex-row items-start max-w-5xl">
-        <div className="h-10 w-full bg-white/5 mt-2 flex items-center rounded-md flex flex-row items-center ml-4">
+      <div className="px-6 pb-1 w-full flex flex-row items-start min-w-6xl max-w-6xl">
+        <div className="h-10 w-full bg-white/5 mt-2 flex items-center rounded-md flex flex-row items-center">
           <FontAwesomeIcon
             className="bg-white/5 rounded-l-md py-3 pl-4 pr-2 text-gray-400"
             icon={faMagnifyingGlass}
@@ -170,12 +190,12 @@ export default function Users() {
             className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
             value={searchUsers}
             onChange={(e) => setSearchUsers(e.target.value)}
-            placeholder={t("section-members:search-members")}
+            placeholder={String(t("section-members:search-members"))}
           />
         </div>
-        <div className="mt-2 ml-2 min-w-max flex flex-row items-start justify-start mr-4">
+        <div className="mt-2 ml-2 min-w-max flex flex-row items-start justify-start">
           <Button
-            text={t("section-members:add-member")}
+            text={String(t("section-members:add-member"))}
             onButtonPressed={openAddModal}
             color="mineshaft"
             size="md"
@@ -183,7 +203,7 @@ export default function Users() {
           />
         </div>
       </div>
-      <div className="overflow-y-auto max-w-5xl mx-6">
+      <div className="block overflow-y-auto min-w-6xl max-w-6xl px-6">
         <UserTable
           userData={userList}
           changeData={setUserList}
@@ -194,7 +214,6 @@ export default function Users() {
           // onClick={openDeleteModal}
           // deleteUser={deleteMembership}
           // setUserIdToBeDeleted={setUserIdToBeDeleted}
-          className="w-full mx-6"
         />
       </div>
     </div>

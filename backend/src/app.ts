@@ -1,11 +1,15 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { patchRouterParam } = require('./utils/patchAsyncRoutes');
 
-import express from 'express';
+import express, { Request, Response } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import swaggerUi = require('swagger-ui-express');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const swaggerFile = require('../api-documentation.json')
+
 
 dotenv.config();
 import { PORT, NODE_ENV, SITE_URL } from './config';
@@ -38,10 +42,14 @@ import {
 } from './routes/v1';
 import {
   secret as v2SecretRouter,
+  secrets as v2SecretsRouter,
   workspace as v2WorkspaceRouter,
   serviceTokenData as v2ServiceTokenDataRouter,
   apiKeyData as v2APIKeyDataRouter,
+  environment as v2EnvironmentRouter,
 } from './routes/v2';
+
+import { healthCheck } from './routes/status';
 
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
@@ -89,17 +97,25 @@ app.use('/api/v1/membership', v1MembershipRouter);
 app.use('/api/v1/key', v1KeyRouter);
 app.use('/api/v1/invite-org', v1InviteOrgRouter);
 app.use('/api/v1/secret', v1SecretRouter);
-app.use('/api/v1/service-token', v1ServiceTokenRouter); // deprecate
+app.use('/api/v1/service-token', v1ServiceTokenRouter); // stop supporting
 app.use('/api/v1/password', v1PasswordRouter);
 app.use('/api/v1/stripe', v1StripeRouter);
 app.use('/api/v1/integration', v1IntegrationRouter);
 app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
 
 // v2 routes
-app.use('/api/v2/workspace', v2WorkspaceRouter);
-app.use('/api/v2/secret', v2SecretRouter);
-app.use('/api/v2/service-token', v2ServiceTokenDataRouter);
+app.use('/api/v2/workspace', v2EnvironmentRouter);
+app.use('/api/v2/workspace', v2WorkspaceRouter); // TODO: turn into plural route
+app.use('/api/v2/secret', v2SecretRouter); // stop supporting, TODO: revise
+app.use('/api/v2/secrets', v2SecretsRouter);
+app.use('/api/v2/service-token', v2ServiceTokenDataRouter); // TODO: turn into plural route
 app.use('/api/v2/api-key-data', v2APIKeyDataRouter);
+
+// api docs 
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile))
+
+// Server status
+app.use('/api', healthCheck)
 
 //* Handle unrouted requests and respond with proper error message as well as status code
 app.use((req, res, next) => {

@@ -13,6 +13,7 @@ import {
   faGear,
   faPlus,
   faRightFromBracket,
+  faUpRightFromSquare,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Menu, Transition } from "@headlessui/react";
@@ -107,6 +108,14 @@ export default function Navbar() {
         </div>
       </div>
       <div className="relative flex justify-start items-center mx-2 z-40">
+        <a 
+          href="https://infisical.com/docs/getting-started/introduction"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-gray-200 hover:bg-white/10 px-3 rounded-md duration-200 text-sm mr-4 py-2 flex items-center">
+          <FontAwesomeIcon icon={faBook} className="text-xl mr-2" />
+          Docs 
+        </a>
         <Menu as="div" className="relative inline-block text-left">
           <div className="mr-4">
             <Menu.Button className="inline-flex w-full justify-center rounded-md px-2 py-2 text-sm font-medium text-gray-200 rounded-md hover:bg-white/10 duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75">

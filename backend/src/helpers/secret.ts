@@ -3,6 +3,7 @@ import { Types } from 'mongoose';
 import {
 	Secret,
 	ISecret,
+	Membership
 } from '../models';
 import {
 	EESecretService,
@@ -19,6 +20,46 @@ import {
 	ACTION_DELETE_SECRETS,
 	ACTION_READ_SECRETS
 } from '../variables';
+
+/**
+ * Validate that user with id [userId] can modify secrets with ids [secretIds]
+ * @param {Object} obj
+ * @param {Object} obj.userId - id of user to validate
+ * @param {Object} obj.secretIds - secret ids
+ * @returns {Secret[]} secrets
+ */
+const validateSecrets = async ({
+	userId,
+	secretIds
+}: {
+	userId: string;
+	secretIds: string[];
+}) =>{
+	let secrets;
+	try {
+		secrets = await Secret.find({
+			_id: {
+				$in: secretIds.map((secretId: string) => new Types.ObjectId(secretId))
+			}
+		});
+		
+		const workspaceIdsSet = new Set((await Membership.find({
+			user: userId
+		}, 'workspace'))
+		.map((m) => m.workspace.toString()));
+		
+		secrets.forEach((secret: ISecret) => {
+			if (!workspaceIdsSet.has(secret.workspace.toString())) {
+				throw new Error('Failed to validate secret');
+			}
+		});
+		
+	} catch (err) {
+		throw new Error('Failed to validate secrets');
+	}
+
+	return secrets;
+}
 
 interface V1PushSecret {
 	ciphertextKey: string;
@@ -187,6 +228,7 @@ const v1PushSecrets = async ({
 			}) => {
 				const newSecret = newSecretsObj[`${type}-${secretKeyHash}`];
 				return ({
+					_id: new Types.ObjectId(),
 					secret: _id,
 					version: version ? version + 1 : 1,
 					workspace: new Types.ObjectId(workspaceId),
@@ -258,6 +300,7 @@ const v1PushSecrets = async ({
 					secretValueTag,
 					secretValueHash
 				}) => ({
+					_id: new Types.ObjectId(),
 					secret: _id,
 					version,
 					workspace,
@@ -280,7 +323,7 @@ const v1PushSecrets = async ({
 		// (EE) take a secret snapshot
 		await EESecretService.takeSecretSnapshot({
 			workspaceId
-		})
+		});
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
@@ -527,6 +570,7 @@ const v1PushSecrets = async ({
 	environment: string;
 }): Promise<ISecret[]> => {
 	let secrets: any; // TODO: FIX any
+	
 	try {
 		// get shared workspace secrets
 		const sharedSecrets = await Secret.find({
@@ -655,6 +699,7 @@ const reformatPullSecrets = ({ secrets }: { secrets: ISecret[] }) => {
 };
 
 export {
+	validateSecrets,
 	v1PushSecrets,
 	v2PushSecrets,
 	pullSecrets,

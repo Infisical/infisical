@@ -9,13 +9,8 @@ import {
   INTEGRATION_GITHUB,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_VERCEL_API_URL,
-  INTEGRATION_NETLIFY_API_URL,
-  INTEGRATION_GITHUB_API_URL
+  INTEGRATION_NETLIFY_API_URL
 } from '../variables';
-
-interface GitHubApp {
-  name: string;
-}
 
 /**
  * Return list of names of apps for integration named [integration]
@@ -47,6 +42,7 @@ const getApps = async ({
         break;
       case INTEGRATION_VERCEL:
         apps = await getAppsVercel({
+          integrationAuth,
           accessToken
         });
         break;
@@ -110,17 +106,28 @@ const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
  * @returns {Object[]} apps - names of Vercel apps
  * @returns {String} apps.name - name of Vercel app
  */
-const getAppsVercel = async ({ accessToken }: { accessToken: string }) => {
+const getAppsVercel = async ({ 
+  integrationAuth,
+  accessToken 
+}: { 
+  integrationAuth: IIntegrationAuth;
+  accessToken: string;
+}) => {
   let apps;
   try {
     const res = (
       await axios.get(`${INTEGRATION_VERCEL_API_URL}/v9/projects`, {
         headers: {
           Authorization: `Bearer ${accessToken}`
+        },
+       ...( integrationAuth?.teamId ? { 
+        params: {
+          teamId: integrationAuth.teamId
         }
+      } : {}) 
       })
     ).data;
-
+    
     apps = res.projects.map((a: any) => ({
       name: a.name
     }));

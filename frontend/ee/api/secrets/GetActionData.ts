@@ -20,7 +20,6 @@ const getActionData = async ({ actionId }: workspaceProps) => {
       }
     }
   ).then(async (res) => {
-    console.log(188, res)
     if (res && res.status == 200) {
       return (await res.json()).action;
     } else {

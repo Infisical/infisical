@@ -126,7 +126,7 @@ export default function PersonalSettings() {
                 <ListBox
                   selected={lang}
                   onChange={setLanguage}
-                  data={["en", "ko"]}
+                  data={["en", "ko", "fr"]}
                   width="full"
                   text={`${t("common:language")}: `}
                 />

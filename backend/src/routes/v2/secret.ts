@@ -1,18 +1,21 @@
-import express, { Request, Response } from 'express';
-import { requireAuth, requireWorkspaceAuth, validateRequest } from '../../middleware';
+import express from 'express';
+import { 
+  requireAuth, 
+  requireWorkspaceAuth,
+  requireSecretAuth,
+  validateRequest 
+} from '../../middleware';
 import { body, param, query } from 'express-validator';
 import { ADMIN, MEMBER } from '../../variables';
 import { CreateSecretRequestBody, ModifySecretRequestBody } from '../../types/secret';
 import { secretController } from '../../controllers/v2';
-import { fetchAllSecrets } from '../../controllers/v2/secretController';
+
+// note to devs: stop supporting
 
 const router = express.Router();
 
-/**
- * Create many secrets for a given workspace and environmentName
- */
 router.post(
-  '/batch-create/workspace/:workspaceId/environment/:environmentName',
+  '/batch-create/workspace/:workspaceId/environment/:environment',
   requireAuth({
     acceptedAuthModes: ['jwt']
   }),
@@ -20,15 +23,29 @@ router.post(
     acceptedRoles: [ADMIN, MEMBER]
   }),
   param('workspaceId').exists().isMongoId().trim(),
-  param('environmentName').exists().trim(),
+  param('environment').exists().trim(),
   body('secrets').exists().isArray().custom((value) => value.every((item: CreateSecretRequestBody) => typeof item === 'object')),
+  body('channel'),
   validateRequest,
-  secretController.batchCreateSecrets
+  secretController.createSecrets
 );
 
-/**
- * Get all secrets for a given environment and workspace id
- */
+router.post(
+  '/workspace/:workspaceId/environment/:environment',
+  requireAuth({
+    acceptedAuthModes: ['jwt']
+  }),
+  requireWorkspaceAuth({
+    acceptedRoles: [ADMIN, MEMBER]
+  }),
+  param('workspaceId').exists().isMongoId().trim(),
+  param('environment').exists().trim(),
+  body('secret').exists().isObject(),
+  body('channel'),
+  validateRequest,
+  secretController.createSecret
+);
+
 router.get(
   '/workspace/:workspaceId',
   param('workspaceId').exists().trim(),
@@ -39,13 +56,23 @@ router.get(
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER]
   }),
+  query('channel'),
   validateRequest,
-  fetchAllSecrets
+  secretController.getSecrets
 );
 
-/**
- * Batch delete secrets in a given workspace and environment name
- */
+router.get(
+  '/:secretId',
+  requireAuth({
+    acceptedAuthModes: ['jwt', 'serviceToken']
+  }),
+  requireSecretAuth({
+    acceptedRoles: [ADMIN, MEMBER]
+  }),
+  validateRequest,
+  secretController.getSecret
+);
+
 router.delete(
   '/batch/workspace/:workspaceId/environment/:environmentName',
   requireAuth({
@@ -58,13 +85,22 @@ router.delete(
     acceptedRoles: [ADMIN, MEMBER]
   }),
   validateRequest,
-  secretController.batchDeleteSecrets
-
+  secretController.deleteSecrets
 );
 
-/**
- * Apply modifications to many existing secrets in a given workspace and environment
- */
+router.delete(
+  '/:secretId',
+  requireAuth({
+    acceptedAuthModes: ['jwt']
+  }),
+  requireSecretAuth({
+    acceptedRoles: [ADMIN, MEMBER]
+  }),
+  param('secretId').isMongoId(),
+  validateRequest,
+  secretController.deleteSecret
+);
+
 router.patch(
   '/batch-modify/workspace/:workspaceId/environment/:environmentName',
   requireAuth({
@@ -77,7 +113,23 @@ router.patch(
     acceptedRoles: [ADMIN, MEMBER]
   }),
   validateRequest,
-  secretController.batchModifySecrets
+  secretController.updateSecrets
+);
+
+
+router.patch(
+  '/workspace/:workspaceId/environment/:environmentName',
+  requireAuth({
+    acceptedAuthModes: ['jwt']
+  }),
+  body('secret').isObject(),
+  param('workspaceId').exists().isMongoId().trim(),
+  param('environmentName').exists().trim(),
+  requireWorkspaceAuth({
+    acceptedRoles: [ADMIN, MEMBER]
+  }),
+  validateRequest,
+  secretController.updateSecret
 );
 
 export default router;

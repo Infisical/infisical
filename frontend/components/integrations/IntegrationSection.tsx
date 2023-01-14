@@ -5,7 +5,8 @@ import guidGenerator from "~/utilities/randomId";
 import Integration from "./Integration";
 
 interface Props {
-  integrations: any
+  integrations: any;
+  environments: Array<{ name: string; slug: string }>;
 }
 
 interface IntegrationType {
@@ -19,7 +20,8 @@ interface IntegrationType {
 }
 
 const ProjectIntegrationSection = ({
-  integrations
+  integrations,
+  environments = [],
 }: Props) => {
     return integrations.length > 0 ? (
       <div className="mb-12">
@@ -33,6 +35,7 @@ const ProjectIntegrationSection = ({
           <Integration
             key={guidGenerator()}
             integration={integration}
+            environments={environments}
           />
         ))}
       </div>

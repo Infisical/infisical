@@ -13,6 +13,15 @@ import { decryptAssymmetric, decryptSymmetric } from "~/components/utilities/cry
 import getLatestFileKey from "~/pages/api/workspace/getLatestFileKey";
 
 
+export interface SecretDataProps {
+  pos: number;
+  key: string;
+  value: string;
+  type: string;
+  id: string;
+  environment: string;
+}
+
 interface SideBarProps {
   toggleSidebar: (value: boolean) => void; 
   setSnapshotData: (value: any) => void;
@@ -43,8 +52,6 @@ interface EncrypetedSecretVersionListProps {
  * @param {function} obj.toggleSidebar - function that opens or closes the sidebar
  * @param {function} obj.setSnapshotData - state manager for snapshot data
  * @param {string} obj.chosenSnaphshot - the snapshot id which is currently selected
- * 
- * 
  * @returns the sidebar with the options for point-in-time recovery (commits)
  */
 const PITRecoverySidebar = ({ 
@@ -111,7 +118,21 @@ const PITRecoverySidebar = ({
       }
     })
 
-    setSnapshotData({ id: secretSnapshotData._id, createdAt: secretSnapshotData.createdAt, secretVersions: decryptedSecretVersions })
+
+    const secretKeys = [...new Set(decryptedSecretVersions.map((secret: SecretDataProps) => secret.key))];
+    
+    const result = secretKeys.map((key, index) => {
+      return {
+        id: decryptedSecretVersions.filter((secret: SecretDataProps) => secret.key == key && secret.type == 'shared')[0].id,
+        pos: index,
+        key: key,
+        environment: decryptedSecretVersions.filter((secret: SecretDataProps) => secret.key == key && secret.type == 'shared')[0].environment,
+        value: decryptedSecretVersions.filter((secret: SecretDataProps) => secret.key == key && secret.type == 'shared')[0]?.value,
+        valueOverride: decryptedSecretVersions.filter((secret: SecretDataProps) => secret.key == key && secret.type == 'personal')[0]?.value,
+      }
+    });
+
+    setSnapshotData({ id: secretSnapshotData._id, version: secretSnapshotData.version, createdAt: secretSnapshotData.createdAt, secretVersions: result, comment: '' })
   }
 
   return <div className={`absolute border-l border-mineshaft-500 ${isLoading ? "bg-bunker-800" : "bg-bunker"} fixed h-full w-96 top-14 right-0 z-40 shadow-xl flex flex-col justify-between`}>
@@ -125,30 +146,34 @@ const PITRecoverySidebar = ({
         ></Image>
       </div> 
     ) : (
-      <div className='h-min overflow-y-auto'>
+      <div className='h-min'>
         <div className="flex flex-row px-4 py-3 border-b border-mineshaft-500 justify-between items-center">
           <p className="font-semibold text-lg text-bunker-200">{t("Point-in-time Recovery")}</p>
           <div className='p-1' onClick={() => toggleSidebar(false)}>
             <FontAwesomeIcon icon={faX} className='w-4 h-4 text-bunker-300 cursor-pointer'/>
           </div>
         </div>
-        <div className='flex flex-col px-2 py-2'>
-          {secretSnapshotsMetadata?.map((snapshot: SnaphotProps, id: number) => <div key={snapshot._id} className={`${chosenSnapshot == snapshot._id || (id == 0 && chosenSnapshot === "") ? "bg-primary text-black" : "bg-mineshaft-700"} py-3 px-4 mb-2 rounded-md flex flex-row justify-between items-center`}>
-            <div className="flex flex-row items-start">
-              <div className={`${chosenSnapshot == snapshot._id || (id == 0 && chosenSnapshot === "") ? "text-bunker-800" : "text-bunker-200"} text-sm mr-1.5`}>{timeSince(new Date(snapshot.createdAt))}</div>
-              <div className={`${chosenSnapshot == snapshot._id || (id == 0 && chosenSnapshot === "") ? "text-bunker-900" : "text-bunker-300"} text-sm `}>{" - " + snapshot.secretVersions.length + " Secrets"}</div>
-            </div>
+        <div className='flex flex-col px-2 py-2 overflow-y-auto h-[92vh]'>
+          {secretSnapshotsMetadata?.map((snapshot: SnaphotProps, id: number) => 
             <div 
-              onClick={() => exploreSnapshot({ snapshotId: snapshot._id })}
-              className={`${chosenSnapshot == snapshot._id || (id == 0 && chosenSnapshot === "") ? "text-bunker-800 pointer-events-none" : "text-bunker-200 hover:text-primary duration-200 cursor-pointer"} text-sm`}>
-              {id == 0 ? "Current Version" : chosenSnapshot == snapshot._id ? "Currently Viewing" : "Explore"}
+              key={snapshot._id} 
+              onClick={() => exploreSnapshot({ snapshotId: snapshot._id })} 
+              className={`${chosenSnapshot == snapshot._id || (id == 0 && chosenSnapshot === "") ? "bg-primary text-black pointer-events-none" : "bg-mineshaft-700 hover:bg-mineshaft-500 duration-200 cursor-pointer"} py-3 px-4 mb-2 rounded-md flex flex-row justify-between items-center`}
+            >
+              <div className="flex flex-row items-start">
+                <div className={`${chosenSnapshot == snapshot._id || (id == 0 && chosenSnapshot === "") ? "text-bunker-800" : "text-bunker-200"} text-sm mr-1.5`}>{timeSince(new Date(snapshot.createdAt))}</div>
+                <div className={`${chosenSnapshot == snapshot._id || (id == 0 && chosenSnapshot === "") ? "text-bunker-900" : "text-bunker-300"} text-sm `}>{" - " + snapshot.secretVersions.length + " Secrets"}</div>
+              </div>
+              <div 
+                className={`${chosenSnapshot == snapshot._id || (id == 0 && chosenSnapshot === "") ? "text-bunker-800 pointer-events-none" : "text-bunker-200 hover:text-primary duration-200 cursor-pointer"} text-sm`}>
+                {id == 0 ? "Current Version" : chosenSnapshot == snapshot._id ? "Currently Viewing" : "Explore"}
+              </div>
+            </div>)}
+          <div className='flex justify-center w-full mb-14'>
+            <div className='items-center w-40'>
+              <Button text="View More" textDisabled="End of History" active={secretSnapshotsMetadata.length % 15 == 0 ? true : false} onButtonPressed={loadMoreSnapshots} size="md" color="mineshaft"/>
             </div>
-          </div>)}
-        <div className='flex justify-center w-full mb-14'>
-          <div className='items-center w-40'>
-            <Button text="View More" textDisabled="End of History" active={secretSnapshotsMetadata.length % 15 == 0 ? true : false} onButtonPressed={loadMoreSnapshots} size="md" color="mineshaft"/>
           </div>
-        </div>
         </div>
       </div>
     )}

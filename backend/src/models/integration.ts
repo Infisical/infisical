@@ -1,9 +1,5 @@
 import { Schema, model, Types } from 'mongoose';
 import {
-  ENV_DEV,
-  ENV_TESTING,
-  ENV_STAGING,
-  ENV_PROD,
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
@@ -13,7 +9,7 @@ import {
 export interface IIntegration {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  environment: 'dev' | 'test' | 'staging' | 'prod';
+  environment: string;
   isActive: boolean;
   app: string;
   target: string;
@@ -32,7 +28,6 @@ const integrationSchema = new Schema<IIntegration>(
     },
     environment: {
       type: String,
-      enum: [ENV_DEV, ENV_TESTING, ENV_STAGING, ENV_PROD],
       required: true
     },
     isActive: {

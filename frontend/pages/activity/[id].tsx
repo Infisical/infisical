@@ -51,6 +51,7 @@ export default function Activity() {
   const router = useRouter();
   const [eventChosen, setEventChosen] = useState('');
   const [logsData, setLogsData] = useState<logDataPoint[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [currentOffset, setCurrentOffset] = useState(0);
   const currentLimit = 10;
   const [currentSidebarAction, toggleSidebar] = useState<string>()
@@ -60,6 +61,7 @@ export default function Activity() {
   useEffect(() => {
     setCurrentOffset(0);
     const getLogData = async () => {
+      setIsLoading(true);
       const tempLogsData = await getProjectLogs({ workspaceId: String(router.query.id), offset: 0, limit: currentLimit, userId: "", actionNames: eventChosen })
       setLogsData(tempLogsData.map((log: logData) => {
         return {
@@ -77,6 +79,7 @@ export default function Activity() {
           })
         }
       }))
+      setIsLoading(false);
     }
     getLogData();
   }, [eventChosen]);
@@ -84,6 +87,7 @@ export default function Activity() {
   // this use effect adds more data in case 'View More' button is clicked
   useEffect(() => {
     const getLogData = async () => {
+      setIsLoading(true);
       const tempLogsData = await getProjectLogs({ workspaceId: String(router.query.id), offset: currentOffset, limit: currentLimit, userId: "", actionNames: eventChosen })
       setLogsData(logsData.concat(tempLogsData.map((log: logData) => {
         return {
@@ -101,6 +105,7 @@ export default function Activity() {
           })
         }
       })))
+      setIsLoading(false);
     }
     getLogData();
   }, [currentLimit, currentOffset]);
@@ -115,10 +120,10 @@ export default function Activity() {
       {currentSidebarAction && <ActivitySideBar toggleSidebar={toggleSidebar} currentAction={currentSidebarAction} />}
       <div className="flex flex-col justify-between items-start mx-4 mt-6 mb-4 text-xl max-w-5xl px-2">
         <div className="flex flex-row justify-start items-center text-3xl">
-          <p className="font-semibold mr-4 text-bunker-100">Activity Logs</p>
+          <p className="font-semibold mr-4 text-bunker-100">{t("activity:title")}</p>
         </div>
         <p className="mr-4 text-base text-gray-400">
-          Event history for this Infisical project.
+          {t("activity:subtitle")}
         </p>
       </div>
       <div className="px-6 h-8 mt-2">
@@ -130,10 +135,11 @@ export default function Activity() {
       <ActivityTable
         data={logsData}
         toggleSidebar={toggleSidebar}
+        isLoading={isLoading}
       />
       <div className='flex justify-center w-full mb-6'>
         <div className='items-center w-60'>
-          <Button text="View More" textDisabled="End of History" active={logsData.length % 10 == 0 ? true : false} onButtonPressed={loadMoreLogs} size="md" color="mineshaft"/>
+          <Button text={String(t("common:view-more"))} textDisabled={String(t("common:end-of-history"))} active={logsData.length % 10 == 0 ? true : false} onButtonPressed={loadMoreLogs} size="md" color="mineshaft"/>
         </div>
       </div>
     </div>
@@ -142,4 +148,4 @@ export default function Activity() {
 
 Activity.requireAuth = true;
 
-export const getServerSideProps = getTranslatedServerSideProps(["activity"]);
+export const getServerSideProps = getTranslatedServerSideProps(["activity", "common"]);

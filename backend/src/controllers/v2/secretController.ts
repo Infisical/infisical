@@ -7,10 +7,68 @@ const { ValidationError } = mongoose.Error;
 import { BadRequestError, InternalServerError, UnauthorizedRequestError, ValidationError as RouteValidationError } from '../../utils/errors';
 import { AnyBulkWriteOperation } from 'mongodb';
 import { SECRET_PERSONAL, SECRET_SHARED } from "../../variables";
+import { postHogClient } from '../../services';
 
-export const batchCreateSecrets = async (req: Request, res: Response) => {
+/**
+ * Create secret for workspace with id [workspaceId] and environment [environment]
+ * @param req 
+ * @param res 
+ */
+export const createSecret = async (req: Request, res: Response) => {
+  const secretToCreate: CreateSecretRequestBody = req.body.secret;
+  const { workspaceId, environment } = req.params
+  const sanitizedSecret: SanitizedSecretForCreate = {
+    secretKeyCiphertext: secretToCreate.secretKeyCiphertext,
+    secretKeyIV: secretToCreate.secretKeyIV,
+    secretKeyTag: secretToCreate.secretKeyTag,
+    secretKeyHash: secretToCreate.secretKeyHash,
+    secretValueCiphertext: secretToCreate.secretValueCiphertext,
+    secretValueIV: secretToCreate.secretValueIV,
+    secretValueTag: secretToCreate.secretValueTag,
+    secretValueHash: secretToCreate.secretValueHash,
+    secretCommentCiphertext: secretToCreate.secretCommentCiphertext,
+    secretCommentIV: secretToCreate.secretCommentIV,
+    secretCommentTag: secretToCreate.secretCommentTag,
+    secretCommentHash: secretToCreate.secretCommentHash,
+    workspace: new Types.ObjectId(workspaceId),
+    environment,
+    type: secretToCreate.type,
+    user: new Types.ObjectId(req.user._id)
+  }
+
+
+  const [error, secret] = await to(Secret.create(sanitizedSecret).then())
+  if (error instanceof ValidationError) {
+    throw RouteValidationError({ message: error.message, stack: error.stack })
+  }
+
+  if (postHogClient) {
+    postHogClient.capture({
+      event: 'secrets added',
+      distinctId: req.user.email,
+      properties: {
+        numberOfSecrets: 1,
+        workspaceId,
+        environment,
+        channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+        userAgent: req.headers?.['user-agent']
+      }
+    });
+  }
+
+  res.status(200).send({
+    secret
+  })
+}
+
+/**
+ * Create many secrets for workspace wiht id [workspaceId] and environment [environment]
+ * @param req 
+ * @param res 
+ */
+export const createSecrets = async (req: Request, res: Response) => {
   const secretsToCreate: CreateSecretRequestBody[] = req.body.secrets;
-  const { workspaceId, environmentName } = req.params
+  const { workspaceId, environment } = req.params
   const sanitizedSecretesToCreate: SanitizedSecretForCreate[] = []
 
   secretsToCreate.forEach(rawSecret => {
@@ -28,7 +86,7 @@ export const batchCreateSecrets = async (req: Request, res: Response) => {
       secretCommentTag: rawSecret.secretCommentTag,
       secretCommentHash: rawSecret.secretCommentHash,
       workspace: new Types.ObjectId(workspaceId),
-      environment: environmentName,
+      environment,
       type: rawSecret.type,
       user: new Types.ObjectId(req.user._id)
     }
@@ -36,7 +94,7 @@ export const batchCreateSecrets = async (req: Request, res: Response) => {
     sanitizedSecretesToCreate.push(safeUpdateFields)
   })
 
-  const [bulkCreateError, newlyCreatedSecrets] = await to(Secret.insertMany(sanitizedSecretesToCreate).then())
+  const [bulkCreateError, secrets] = await to(Secret.insertMany(sanitizedSecretesToCreate).then())
   if (bulkCreateError) {
     if (bulkCreateError instanceof ValidationError) {
       throw RouteValidationError({ message: bulkCreateError.message, stack: bulkCreateError.stack })
@@ -45,20 +103,31 @@ export const batchCreateSecrets = async (req: Request, res: Response) => {
     throw InternalServerError({ message: "Unable to process your batch create request. Please try again", stack: bulkCreateError.stack })
   }
 
-  res.status(200).send()
-}
-
-
-export const createSingleSecret = async (req: Request, res: Response) => {
-  try {
-    const secretFromDB = await Secret.findById(req.params.secretId)
-    return res.status(200).send(secretFromDB);
-  } catch (e) {
-    throw BadRequestError({ message: "Unable to find the requested secret" })
+  if (postHogClient) {
+    postHogClient.capture({
+      event: 'secrets added',
+      distinctId: req.user.email,
+      properties: {
+        numberOfSecrets: (secretsToCreate ?? []).length,
+        workspaceId,
+        environment,
+        channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+        userAgent: req.headers?.['user-agent']
+      }
+    });
   }
+
+  res.status(200).send({
+    secrets
+  })
 }
 
-export const batchDeleteSecrets = async (req: Request, res: Response) => {
+/**
+ * Delete secrets in workspace with id [workspaceId] and environment [environment]
+ * @param req 
+ * @param res 
+ */
+export const deleteSecrets = async (req: Request, res: Response) => {
   const { workspaceId, environmentName } = req.params
   const secretIdsToDelete: string[] = req.body.secretIds
 
@@ -70,10 +139,12 @@ export const batchDeleteSecrets = async (req: Request, res: Response) => {
   const secretsUserCanDeleteSet: Set<string> = new Set(secretIdsUserCanDelete.map(objectId => objectId._id.toString()));
   const deleteOperationsToPerform: AnyBulkWriteOperation<ISecret>[] = []
 
+  let numSecretsDeleted = 0;
   secretIdsToDelete.forEach(secretIdToDelete => {
     if (secretsUserCanDeleteSet.has(secretIdToDelete)) {
       const deleteOperation = { deleteOne: { filter: { _id: new Types.ObjectId(secretIdToDelete) } } }
       deleteOperationsToPerform.push(deleteOperation)
+      numSecretsDeleted++;
     } else {
       throw RouteValidationError({ message: "You cannot delete secrets that you do not have access to" })
     }
@@ -87,10 +158,57 @@ export const batchDeleteSecrets = async (req: Request, res: Response) => {
     throw InternalServerError()
   }
 
+  if (postHogClient) {
+    postHogClient.capture({
+      event: 'secrets deleted',
+      distinctId: req.user.email,
+      properties: {
+        numberOfSecrets: numSecretsDeleted,
+        environment: environmentName,
+        workspaceId,
+        channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+        userAgent: req.headers?.['user-agent']
+      }
+    });
+  }
+
   res.status(200).send()
 }
 
-export const batchModifySecrets = async (req: Request, res: Response) => {
+/**
+ * Delete secret with id [secretId]
+ * @param req 
+ * @param res
+ */
+export const deleteSecret = async (req: Request, res: Response) => {
+  await Secret.findByIdAndDelete(req._secret._id)
+
+  if (postHogClient) {
+    postHogClient.capture({
+      event: 'secrets deleted',
+      distinctId: req.user.email,
+      properties: {
+        numberOfSecrets: 1,
+        workspaceId: req._secret.workspace.toString(),
+        environment: req._secret.environment,
+        channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+        userAgent: req.headers?.['user-agent']
+      }
+    });
+  }
+
+  res.status(200).send({
+    secret: req._secret
+  })
+}
+
+/**
+ * Update secrets for workspace with id [workspaceId] and environment [environment]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const updateSecrets = async (req: Request, res: Response) => {
   const { workspaceId, environmentName } = req.params
   const secretsModificationsRequested: ModifySecretRequestBody[] = req.body.secrets;
   const [secretIdsUserCanModifyError, secretIdsUserCanModify] = await to(Secret.find({ workspace: workspaceId, environment: environmentName }, { _id: 1 }).then())
@@ -100,7 +218,6 @@ export const batchModifySecrets = async (req: Request, res: Response) => {
 
   const secretsUserCanModifySet: Set<string> = new Set(secretIdsUserCanModify.map(objectId => objectId._id.toString()));
   const updateOperationsToPerform: any = []
-
 
   secretsModificationsRequested.forEach(userModifiedSecret => {
     if (secretsUserCanModifySet.has(userModifiedSecret._id.toString())) {
@@ -135,23 +252,99 @@ export const batchModifySecrets = async (req: Request, res: Response) => {
     throw InternalServerError()
   }
 
+  if (postHogClient) {
+    postHogClient.capture({
+      event: 'secrets modified',
+      distinctId: req.user.email,
+      properties: {
+        numberOfSecrets: (secretsModificationsRequested ?? []).length,
+        environment: environmentName,
+        workspaceId,
+        channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+        userAgent: req.headers?.['user-agent']
+      }
+    });
+  }
+
   return res.status(200).send()
 }
 
-export const fetchAllSecrets = async (req: Request, res: Response) => {
+/**
+ * Update a secret within workspace with id [workspaceId] and environment [environment]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const updateSecret = async (req: Request, res: Response) => {
+  const { workspaceId, environmentName } = req.params
+  const secretModificationsRequested: ModifySecretRequestBody = req.body.secret;
+
+  const [secretIdUserCanModifyError, secretIdUserCanModify] = await to(Secret.findOne({ workspace: workspaceId, environment: environmentName }, { _id: 1 }).then())
+  if (secretIdUserCanModifyError && !secretIdUserCanModify) {
+    throw BadRequestError()
+  }
+
+  const sanitizedSecret: SanitizedSecretModify = {
+    secretKeyCiphertext: secretModificationsRequested.secretKeyCiphertext,
+    secretKeyIV: secretModificationsRequested.secretKeyIV,
+    secretKeyTag: secretModificationsRequested.secretKeyTag,
+    secretKeyHash: secretModificationsRequested.secretKeyHash,
+    secretValueCiphertext: secretModificationsRequested.secretValueCiphertext,
+    secretValueIV: secretModificationsRequested.secretValueIV,
+    secretValueTag: secretModificationsRequested.secretValueTag,
+    secretValueHash: secretModificationsRequested.secretValueHash,
+    secretCommentCiphertext: secretModificationsRequested.secretCommentCiphertext,
+    secretCommentIV: secretModificationsRequested.secretCommentIV,
+    secretCommentTag: secretModificationsRequested.secretCommentTag,
+    secretCommentHash: secretModificationsRequested.secretCommentHash,
+  }
+
+  const [error, singleModificationUpdate] = await to(Secret.updateOne({ _id: secretModificationsRequested._id, workspace: workspaceId }, { $inc: { version: 1 }, $set: sanitizedSecret }).then())
+  if (error instanceof ValidationError) {
+    throw RouteValidationError({ message: "Unable to apply modifications, please try again", stack: error.stack })
+  }
+
+  if (postHogClient) {
+    postHogClient.capture({
+      event: 'secrets modified',
+      distinctId: req.user.email,
+      properties: {
+        numberOfSecrets: 1,
+        environment: environmentName,
+        workspaceId,
+        channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+        userAgent: req.headers?.['user-agent']
+      }
+    });
+  }
+
+  return res.status(200).send(singleModificationUpdate)
+}
+
+/**
+ * Return secrets for workspace with id [workspaceId], environment [environment] and user
+ * with id [req.user._id]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const getSecrets = async (req: Request, res: Response) => {
   const { environment } = req.query;
   const { workspaceId } = req.params;
 
-  let userId: string | undefined = undefined // Used for choosing the personal secrets to fetch in 
+  let userId: Types.ObjectId | undefined = undefined // used for getting personal secrets for user
+  let userEmail: Types.ObjectId | undefined = undefined // used for posthog 
   if (req.user) {
-    userId = req.user._id.toString();
+    userId = req.user._id;
+    userEmail = req.user.email;
   }
 
   if (req.serviceTokenData) {
     userId = req.serviceTokenData.user._id
+    userEmail = req.serviceTokenData.user.email;
   }
 
-  const [retriveAllSecretsError, allSecrets] = await to(Secret.find(
+  const [err, secrets] = await to(Secret.find(
     {
       workspace: workspaceId,
       environment,
@@ -160,9 +353,49 @@ export const fetchAllSecrets = async (req: Request, res: Response) => {
     }
   ).then())
 
-  if (retriveAllSecretsError instanceof ValidationError) {
-    throw RouteValidationError({ message: "Unable to get secrets, please try again", stack: retriveAllSecretsError.stack })
+  if (err) {
+    throw RouteValidationError({ message: "Failed to get secrets, please try again", stack: err.stack })
   }
 
-  return res.json(allSecrets)
+  if (postHogClient) {
+    postHogClient.capture({
+      event: 'secrets pulled',
+      distinctId: userEmail,
+      properties: {
+        numberOfSecrets: (secrets ?? []).length,
+        environment,
+        workspaceId,
+        channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+        userAgent: req.headers?.['user-agent']
+      }
+    });
+  }
+
+  return res.json(secrets)
+}
+
+/**
+ * Return secret with id [secretId]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const getSecret = async (req: Request, res: Response) => {
+  // if (postHogClient) {
+  //   postHogClient.capture({
+  //     event: 'secrets pulled',
+  //     distinctId: req.user.email,
+  //     properties: {
+  //       numberOfSecrets: 1,
+  //       workspaceId: req._secret.workspace.toString(),
+  //       environment: req._secret.environment,
+  //       channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+  //       userAgent: req.headers?.['user-agent']
+  //     }
+  //   });
+  // }
+
+  return res.status(200).send({
+    secret: req._secret
+  });
 }

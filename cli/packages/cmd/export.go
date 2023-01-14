@@ -31,8 +31,8 @@ var exportCmd = &cobra.Command{
 	Args:                  cobra.NoArgs,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		toggleDebug(cmd, args)
-		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
+		// util.RequireLogin()
+		// util.RequireLocalWorkspaceFile()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		envName, err := cmd.Flags().GetString("env")

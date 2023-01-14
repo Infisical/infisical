@@ -6,6 +6,7 @@ package cmd
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"strings"
 
 	"errors"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/srp"
 	"github.com/Infisical/infisical-merge/packages/util"
+	"github.com/fatih/color"
 	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
 	log "github.com/sirupsen/logrus"
@@ -31,7 +33,9 @@ var loginCmd = &cobra.Command{
 	PreRun:                toggleDebug,
 	Run: func(cmd *cobra.Command, args []string) {
 		currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
-		if err != nil {
+		if err != nil && strings.Contains(err.Error(), "The specified item could not be found in the keyring") { // if the key can't be found allow them to override
+			log.Debug(err)
+		} else if err != nil {
 			util.HandleError(err)
 		}
 
@@ -97,7 +101,7 @@ var loginCmd = &cobra.Command{
 			util.HandleError(err, "Unable to write write to Infisical Config file. Please try again")
 		}
 
-		log.Infoln("Nice! You are loggin as:", email)
+		color.Green("Nice! You are logged in as: %v", email)
 
 	},
 }

@@ -9,24 +9,26 @@ import Button from '../basic/buttons/Button';
 import Toggle from '../basic/Toggle';
 import CommentField from './CommentField';
 import DashboardInputField from './DashboardInputField';
+import { DeleteActionButton } from './DeleteActionButton';
 import GenerateSecretMenu from './GenerateSecretMenu';
 
 
 interface SecretProps {
   key: string;
   value: string;
+  valueOverride: string | undefined;
   pos: number;
-  type: string;
   id: string;
   comment: string;
 }
 
 interface OverrideProps {
   id: string;
-  keyName: string;
-  value: string;
-  pos: number;
-  comment: string;
+  valueOverride: string;
+}
+export interface DeleteRowFunctionProps { 
+  ids: string[]; 
+  secretName: string; 
 }
 
 interface SideBarProps {
@@ -34,14 +36,13 @@ interface SideBarProps {
   data: SecretProps[];
   modifyKey: (value: string, position: number) => void; 
   modifyValue: (value: string, position: number) => void; 
+  modifyValueOverride: (value: string | undefined, position: number) => void; 
   modifyComment: (value: string, position: number) => void; 
-  addOverride: (value: OverrideProps) => void; 
-  deleteOverride: (id: string) => void; 
   buttonReady: boolean;
   savePush: () => void;
   sharedToHide: string[];
   setSharedToHide: (values: string[]) => void;
-  deleteRow: any;
+  deleteRow: (props: DeleteRowFunctionProps) => void;
 }
 
 /**
@@ -50,12 +51,9 @@ interface SideBarProps {
  * @param {SecretProps[]} obj.data - data of a certain key valeu pair
  * @param {function} obj.modifyKey - function that modifies the secret key
  * @param {function} obj.modifyValue - function that modifies the secret value
- * @param {function} obj.addOverride - override a certain secret
- * @param {function} obj.deleteOverride - delete the personal override for a certain secret
+ * @param {function} obj.modifyValueOverride - function that modifies the secret value if it is an override
  * @param {boolean} obj.buttonReady - is the button for saving chagnes active
  * @param {function} obj.savePush - save changes andp ush secrets
- * @param {string[]} obj.sharedToHide - an array of shared secrets that we want to hide visually because they are overriden. 
- * @param {function} obj.setSharedToHide - a function that updates the array of secrets that we want to hide visually
  * @param {function} obj.deleteRow - a function to delete a certain keyPair
  * @returns the sidebar with 'secret's settings'
  */
@@ -64,17 +62,14 @@ const SideBar = ({
   data, 
   modifyKey, 
   modifyValue, 
+  modifyValueOverride, 
   modifyComment,
-  addOverride, 
-  deleteOverride, 
   buttonReady, 
   savePush,
-  sharedToHide,
-  setSharedToHide,
   deleteRow
 }: SideBarProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [overrideEnabled, setOverrideEnabled] = useState(data.map(secret => secret.type).includes("personal"));
+  const [overrideEnabled, setOverrideEnabled] = useState(data[0].valueOverride != undefined);
   const { t } = useTranslation();
 
   return <div className='absolute border-l border-mineshaft-500 bg-bunker fixed h-full w-96 top-14 right-0 z-40 shadow-xl flex flex-col justify-between'>
@@ -106,19 +101,19 @@ const SideBar = ({
             blurred={false}
           />
         </div>
-        {data.filter(secret => secret.type == "shared")[0]?.value 
+        {data[0]?.value 
           ? <div className={`relative mt-2 px-4 ${overrideEnabled && "opacity-40 pointer-events-none"} duration-200`}>
           <p className='text-sm text-bunker-300'>{t("dashboard:sidebar.value")}</p>
           <DashboardInputField
             onChangeHandler={modifyValue}
             type="value"
-            position={data.filter(secret => secret.type == "shared")[0]?.pos}
-            value={data.filter(secret => secret.type == "shared")[0]?.value}
+            position={data[0].pos}
+            value={data[0]?.value}
             isDuplicate={false}
             blurred={true}     
           />
           <div className='absolute bg-bunker-800 right-[1.07rem] top-[1.6rem] z-50'>
-            <GenerateSecretMenu modifyValue={modifyValue} position={data.filter(secret => secret.type == "shared")[0]?.pos} />
+            <GenerateSecretMenu modifyValue={modifyValue} position={data[0]?.pos} />
           </div>
         </div>
           : <div className='px-4 text-sm text-bunker-300 pt-4'>
@@ -126,39 +121,32 @@ const SideBar = ({
             {t("dashboard:sidebar.personal-explanation")}
           </div>}
         <div className='mt-4 px-4'>
-          {data.filter(secret => secret.type == "shared")[0]?.value &&
+          {data[0]?.value &&
           <div className='flex flex-row items-center justify-between my-2 pl-1 pr-2'>
             <p className='text-sm text-bunker-300'>{t("dashboard:sidebar.override")}</p>
             <Toggle 
               enabled={overrideEnabled} 
               setEnabled={setOverrideEnabled} 
-              addOverride={addOverride} 
-              keyName={data[0]?.key}
-              value={data[0]?.value}
+              addOverride={modifyValueOverride} 
               pos={data[0]?.pos}
-              id={data[0]?.id}
-              comment={data[0]?.comment}
-              deleteOverride={deleteOverride}
-              sharedToHide={sharedToHide}
-              setSharedToHide={setSharedToHide}
             />
           </div>}
           <div className={`relative ${!overrideEnabled && "opacity-40 pointer-events-none"} duration-200`}>
             <DashboardInputField
-              onChangeHandler={modifyValue}
+              onChangeHandler={modifyValueOverride}
               type="value"
-              position={overrideEnabled ? data.filter(secret => secret.type == "personal")[0]?.pos : data[0]?.pos}
-              value={overrideEnabled ? data.filter(secret => secret.type == "personal")[0]?.value : data[0]?.value}
+              position={data[0]?.pos}
+              value={overrideEnabled ? data[0]?.valueOverride : data[0]?.value}
               isDuplicate={false}
               blurred={true}
             />
             <div className='absolute right-[0.57rem] top-[0.3rem] z-50'>
-              <GenerateSecretMenu modifyValue={modifyValue} position={overrideEnabled ? data.filter(secret => secret.type == "personal")[0]?.pos : data[0]?.pos} />
+              <GenerateSecretMenu modifyValue={modifyValueOverride} position={data[0]?.pos} />
             </div>
           </div>
         </div>
         <SecretVersionList secretId={data[0]?.id} />
-        <CommentField comment={data.filter(secret => secret.type == "shared")[0]?.comment} modifyComment={modifyComment} position={data[0]?.pos} />
+        <CommentField comment={data[0]?.comment} modifyComment={modifyComment} position={data[0]?.pos} />
       </div>
     )}
     <div className={`flex justify-start max-w-sm mt-4 px-4 mt-full mb-[4.7rem]`}>
@@ -170,14 +158,9 @@ const SideBar = ({
         active={buttonReady}
         textDisabled="Saved"
       />
-      <div className="bg-[#9B3535] opacity-70 hover:opacity-100 w-[4.5rem] h-[2.5rem] rounded-md duration-200 ml-2">
-        <Button
-          text={String(t("Delete"))}
-          onButtonPressed={() => deleteRow({ ids: overrideEnabled ? data.map(secret => secret.id) : [data.filter(secret => secret.type == "shared")[0]?.id], secretName: data[0]?.key })}
-          color="red"
-          size="md"
-        />
-      </div>
+      <DeleteActionButton 
+        onSubmit={() => deleteRow({ ids: data.map(secret => secret.id), secretName: data[0]?.key })}
+      />
     </div>
   </div>
 };
