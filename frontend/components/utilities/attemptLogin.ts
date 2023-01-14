@@ -61,7 +61,7 @@ const attemptLogin = async (
           // if everything works, go the main dashboard page.
           const { token, publicKey, encryptedPrivateKey, iv, tag } =
             await login2(email, clientProof);
-          
+
           SecurityClient.setToken(token);
 
           const privateKey = Aes256Gcm.decrypt({

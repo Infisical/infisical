@@ -23,6 +23,58 @@ import { BadRequestError } from '../../utils/errors';
  * @param res 
  */
 export const createSecrets = async (req: Request, res: Response) => {
+    /* 
+    #swagger.summary = 'Create new secret(s)'
+    #swagger.description = 'Create one or many secrets for a given project and environment.'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+    #swagger.requestBody = {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+                "workspaceId": {
+                    "type": "string",
+                    "description": "ID of project",
+                },
+                "environment": {
+                    "type": "string",
+                    "description": "Environment within project"
+                },
+                "secrets": {
+                    $ref: "#/components/schemas/CreateSecret",
+                    "description": "Secret(s) to create - object or array of objects"
+                }
+            }
+          }
+        }
+      }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": { 
+                    "type": "object",
+                    "properties": {
+                        "secrets": {
+                            "type": "array",
+                            "items": {
+                                $ref: "#/components/schemas/Secret" 
+                            },
+                            "description": "Newly-created secrets for the given project and environment"
+                        }
+                    }
+                }
+            }           
+        }
+    }   
+    */
     const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli';
     const { workspaceId, environment } = req.body;
 
@@ -161,6 +213,45 @@ export const createSecrets = async (req: Request, res: Response) => {
  * @returns 
  */
 export const getSecrets = async (req: Request, res: Response) => {
+    /* 
+    #swagger.summary = 'Read secrets'
+    #swagger.description = 'Read secrets from a project and environment'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+    #swagger.parameters['workspaceId'] = {
+		"description": "ID of project",
+		"required": true,
+		"type": "string"
+	}
+
+    #swagger.parameters['environment'] = {
+		"description": "Environment within project",
+		"required": true,
+		"type": "string"
+	}
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": { 
+                    "type": "object",
+                    "properties": {
+                        "secrets": {
+                            "type": "array",
+                            "items": {
+                                $ref: "#/components/schemas/Secret" 
+                            },
+                            "description": "Secrets for the given project and environment"
+                        }
+                    }
+                }
+            }           
+        }
+    }   
+    */
     const { workspaceId, environment } = req.query;
 
     let userId: Types.ObjectId | undefined = undefined // used for getting personal secrets for user
@@ -231,6 +322,50 @@ export const getSecrets = async (req: Request, res: Response) => {
  * @param res 
  */
 export const updateSecrets = async (req: Request, res: Response) => {
+    /* 
+    #swagger.summary = 'Update secret(s)'
+    #swagger.description = 'Update secret(s)'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+    #swagger.requestBody = {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+                "secrets": {
+                    $ref: "#/components/schemas/UpdateSecret",
+                    "description": "Secret(s) to update - object or array of objects"
+                }
+            }
+          }
+        }
+      }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": { 
+                    "type": "object",
+                    "properties": {
+                        "secrets": {
+                            "type": "array",
+                            "items": {
+                                $ref: "#/components/schemas/Secret" 
+                            },
+                            "description": "Updated secrets"
+                        }
+                    }
+                }
+            }           
+        }
+    }
+    */
     const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli';
 
     // TODO: move type
@@ -403,6 +538,50 @@ export const updateSecrets = async (req: Request, res: Response) => {
  * @param res 
  */
 export const deleteSecrets = async (req: Request, res: Response) => {
+    /* 
+    #swagger.summary = 'Delete secret(s)'
+    #swagger.description = 'Delete one or many secrets by their ID(s)'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+    #swagger.requestBody = {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+                "secretIds": {
+                    "type": "string",
+                    "description": "ID(s) of secrets - string or array of strings"
+                },
+            }
+          }
+        }
+      }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": { 
+                    "type": "object",
+                    "properties": {
+                        "secrets": {
+                            "type": "array",
+                            "items": {
+                                $ref: "#/components/schemas/Secret" 
+                            },
+                            "description": "Deleted secrets"
+                        }
+                    }
+                }
+            }           
+        }
+    }   
+    */
     const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli';
     const toDelete = req.secrets.map((s: any) => s._id);
 
