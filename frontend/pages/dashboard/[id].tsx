@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { useTranslation } from "next-i18next";
+import { useTranslation } from 'next-i18next';
 import {
   faArrowDownAZ,
   faArrowDownZA,
@@ -34,7 +34,6 @@ import getSecretsForProject from '~/components/utilities/secrets/getSecretsForPr
 import { getTranslatedServerSideProps } from '~/components/utilities/withTranslateProps';
 import guidGenerator from '~/utilities/randomId';
 
-import { envMapping, reverseEnvMapping } from '../../public/data/frequentConstants';
 import addSecrets from '../api/files/AddSecrets';
 import deleteSecrets from '../api/files/DeleteSecrets';
 import updateSecrets from '../api/files/UpdateSecrets';
@@ -43,6 +42,10 @@ import checkUserAction from '../api/userActions/checkUserAction';
 import registerUserAction from '../api/userActions/registerUserAction';
 import getWorkspaces from '../api/workspace/getWorkspaces';
 
+type WorkspaceEnv = {
+  name: string;
+  slug: string;
+};
 
 interface SecretDataProps {
   pos: number;
@@ -104,11 +107,8 @@ export default function Dashboard() {
   const [initialData, setInitialData] = useState<SecretDataProps[] | null | undefined>([]); 
   const [buttonReady, setButtonReady] = useState(false);
   const router = useRouter();
-  const [workspaceId, setWorkspaceId] = useState('');
   const [blurred, setBlurred] = useState(true);
   const [isKeyAvailable, setIsKeyAvailable] = useState(true);
-  const [env, setEnv] = useState('Development');
-  const [snapshotEnv, setSnapshotEnv] = useState('Development');
   const [isNew, setIsNew] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchKeys, setSearchKeys] = useState('');
@@ -116,7 +116,7 @@ export default function Dashboard() {
   const [sortMethod, setSortMethod] = useState('alphabetical');
   const [checkDocsPopUpVisible, setCheckDocsPopUpVisible] = useState(false);
   const [hasUserEverPushed, setHasUserEverPushed] = useState(false);
-  const [sidebarSecretId, toggleSidebar] = useState("None");
+  const [sidebarSecretId, toggleSidebar] = useState('None');
   const [PITSidebarOpen, togglePITSidebar] = useState(false);
   const [sharedToHide, setSharedToHide] = useState<string[]>([]);
   const [snapshotData, setSnapshotData] = useState<SnapshotProps>();
@@ -125,6 +125,16 @@ export default function Dashboard() {
 
   const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
+
+  const workspaceId = router.query.id as string;
+  const [workspaceEnvs, setWorkspaceEnvs] = useState<WorkspaceEnv[]>([]);
+
+  const [selectedSnapshotEnv, setSelectedSnapshotEnv] =
+    useState<WorkspaceEnv>();
+  const [selectedEnv, setSelectedEnv] = useState<WorkspaceEnv>({
+    name: '',
+    slug: '',
+  });
 
   // #TODO: fix save message for changing reroutes
   // const beforeRouteHandler = (url) => {
@@ -172,25 +182,37 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const tempNumSnapshots = await getProjectSercetSnapshotsCount({ workspaceId: String(router.query.id) })
+        const tempNumSnapshots = await getProjectSercetSnapshotsCount({
+          workspaceId,
+        });
         setNumSnapshots(tempNumSnapshots);
         const userWorkspaces = await getWorkspaces();
-        const listWorkspaces = userWorkspaces.map((workspace) => workspace._id);
-        if (
-          !listWorkspaces.includes(router.asPath.split('/')[2])
-        ) {
-          router.push('/dashboard/' + listWorkspaces[0]);
+        const workspace = userWorkspaces.find(
+          (workspace) => workspace._id === workspaceId
+        );
+        if (!workspace) {
+          router.push('/dashboard/' + userWorkspaces?.[0]?._id);
         }
 
+        setWorkspaceEnvs(workspace?.environments || []);
+        // set env
+        const env = workspace?.environments?.[0] || {
+          name: 'unknown',
+          slug: 'unkown',
+        };
+        setSelectedEnv(env);
+        setSelectedSnapshotEnv(env);
         const user = await getUser();
         setIsNew(
-          (Date.parse(String(new Date())) - Date.parse(user.createdAt)) / 60000 < 3
+          (Date.parse(String(new Date())) - Date.parse(user.createdAt)) /
+            60000 <
+            3
             ? true
             : false
         );
 
         const userAction = await checkUserAction({
-          action: 'first_time_secrets_pushed'
+          action: 'first_time_secrets_pushed',
         });
         setHasUserEverPushed(userAction ? true : false);
       } catch (error) {
@@ -205,25 +227,26 @@ export default function Dashboard() {
       try {
         setIsLoading(true);
         setBlurred(true);
-        setWorkspaceId(String(router.query.id));
-
+        // ENV
         const dataToSort = await getSecretsForProject({
-          env,
+          env: selectedEnv.slug,
           setIsKeyAvailable,
           setData,
-          workspaceId: String(router.query.id)
+          workspaceId,
         });
         setInitialData(dataToSort);
         reorderRows(dataToSort);
 
-        setIsLoading(false);
+        setTimeout(
+          () => setIsLoading(false)
+        , 700);
       } catch (error) {
         console.log('Error', error);
         setData(undefined);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [env]);
+  }, [selectedEnv]);
 
   const addRow = () => {
     setIsNew(false);
@@ -237,37 +260,22 @@ export default function Dashboard() {
         value: '',
         valueOverride: undefined,
         comment: '',
-      }
+      },
     ]);
   };
 
+
   const deleteRow = ({ ids, secretName }: { ids: string[]; secretName: string; }) => {
     setButtonReady(true);
-    toggleSidebar("None");
+    toggleSidebar('None');
     createNotification({
       text: `${secretName} has been deleted. Remember to save changes.`,
-      type: 'error'
+      type: 'error',
     });
-    sortValuesHandler(data!.filter((row: SecretDataProps) => !ids.includes(row.id)), sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical");
-  };
-
-  /**
-   * This function deleted the override of a certain secrer
-   * @param {string} id - id of a shared secret; the override with the same key should be deleted
-   */
-  const deleteOverride = (id: string) => {
-    setButtonReady(true);
-
-    // find which shared secret corresponds to the overriden version
-    // const sharedVersionOfOverride = data!.filter(secret => secret.type == "shared" && secret.key == data!.filter(row => row.id == id)[0]?.key)[0]?.id;
-    
-    // change the sidebar to this shared secret; and unhide it
-    // toggleSidebar(sharedVersionOfOverride)
-    // setSharedToHide(sharedToHide!.filter(tempId => tempId != sharedVersionOfOverride))
-
-    // resort secrets
-    // const tempData = data!.filter((row: SecretDataProps) => !(row.key == data!.filter(row => row.id == id)[0]?.key && row.type == 'personal'))
-    // sortValuesHandler(tempData, sortMethod == "alhpabetical" ? "-alphabetical" : "alphabetical")
+    sortValuesHandler(
+      data!.filter((row: SecretDataProps) => !ids.includes(row.id)),
+      sortMethod == 'alhpabetical' ? '-alphabetical' : 'alphabetical'
+    );
   };
 
   const modifyValue = (value: string, pos: number) => {
@@ -341,14 +349,14 @@ export default function Dashboard() {
     if (nameErrors) {
       return createNotification({
         text: 'Solve all name errors before saving secrets.',
-        type: 'error'
+        type: 'error',
       });
     }
 
     if (duplicatesExist) {
       return createNotification({
         text: 'Remove duplicated secret names before saving.',
-        type: 'error'
+        type: 'error',
       });
     }
 
@@ -404,11 +412,11 @@ export default function Dashboard() {
       await deleteSecrets({ secretIds: secretsToBeDeleted.concat(overridesToBeDeleted) });
     }
     if (secretsToBeAdded.concat(overridesToBeAdded).length > 0) {
-      const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeAdded.concat(overridesToBeAdded), workspaceId, env: envMapping[env] });
-      secrets && await addSecrets({ secrets, env: envMapping[env], workspaceId });
+      const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeAdded.concat(overridesToBeAdded), workspaceId, env: selectedEnv.slug });
+      secrets && await addSecrets({ secrets, env: selectedEnv.slug, workspaceId });
     }
     if (secretsToBeUpdated.concat(overridesToBeUpdated).length > 0) {
-      const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeUpdated.concat(overridesToBeUpdated), workspaceId, env: envMapping[env] });
+      const secrets = await encryptSecrets({ secretsToEncrypt: secretsToBeUpdated.concat(overridesToBeUpdated), workspaceId, env: selectedEnv.slug });
       secrets && await updateSecrets({ secrets });
     }
 
@@ -434,36 +442,49 @@ export default function Dashboard() {
     setBlurred(!blurred);
   };
 
-  const sortValuesHandler = (dataToSort: SecretDataProps[] | 1, specificSortMethod?: 'alphabetical' | '-alphabetical') => {
-    const howToSort = specificSortMethod == undefined ? sortMethod : specificSortMethod;
+  const sortValuesHandler = (
+    dataToSort: SecretDataProps[] | 1,
+    specificSortMethod?: 'alphabetical' | '-alphabetical'
+  ) => {
+    const howToSort =
+      specificSortMethod == undefined ? sortMethod : specificSortMethod;
     const sortedData = (dataToSort != 1 ? dataToSort : data)!
-    .sort((a, b) =>
-      howToSort == 'alphabetical'
-        ? a.key.localeCompare(b.key)
-        : b.key.localeCompare(a.key)
-    )
-    .map((item: SecretDataProps, index: number) => {
-      return {
-        ...item,
-        pos: index
-      };
-    });
+      .sort((a, b) =>
+        howToSort == 'alphabetical'
+          ? a.key.localeCompare(b.key)
+          : b.key.localeCompare(a.key)
+      )
+      .map((item: SecretDataProps, index: number) => {
+        return {
+          ...item,
+          pos: index,
+        };
+      });
 
     setData(sortedData);
   };
-  
-  const deleteCertainRow = ({ ids, secretName }: { ids: string[]; secretName: string; }) => {
-    deleteRow({ids, secretName});
+
+  const deleteCertainRow = ({
+    ids,
+    secretName,
+  }: {
+    ids: string[];
+    secretName: string;
+  }) => {
+    deleteRow({ ids, secretName });
   };
 
   return data ? (
-    <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
+    <div className='bg-bunker-800 max-h-screen flex flex-col justify-between text-white'>
       <Head>
-        <title>{t("common:head-title", { title: t("dashboard:title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={String(t("dashboard:og-title"))} />
-        <meta name="og:description" content={String(t("dashboard:og-description"))} />
+        <title>{t('common:head-title', { title: t('dashboard:title') })}</title>
+        <link rel='icon' href='/infisical.ico' />
+        <meta property='og:image' content='/images/message.png' />
+        <meta property='og:title' content={String(t('dashboard:og-title'))} />
+        <meta
+          name='og:description'
+          content={String(t('dashboard:og-description'))}
+        />
       </Head>
       <div className="flex flex-row">
         {sidebarSecretId != "None" && <SideBar 
@@ -488,56 +509,68 @@ export default function Dashboard() {
           <NavHeader pageName={t("dashboard:title")} isProjectRelated={true} />
           {checkDocsPopUpVisible && (
             <BottonRightPopup
-              buttonText={t("dashboard:check-docs.button")}
-              buttonLink="https://infisical.com/docs/getting-started/introduction"
-              titleText={t("dashboard:check-docs.title")}
-              emoji="🎉"
-              textLine1={t("dashboard:check-docs.line1")}
-              textLine2={t("dashboard:check-docs.line2")}
+              buttonText={t('dashboard:check-docs.button')}
+              buttonLink='https://infisical.com/docs/getting-started/introduction'
+              titleText={t('dashboard:check-docs.title')}
+              emoji='🎉'
+              textLine1={t('dashboard:check-docs.line1')}
+              textLine2={t('dashboard:check-docs.line2')}
               setCheckDocsPopUpVisible={setCheckDocsPopUpVisible}
             />
           )}
-          <div className="flex flex-row justify-between items-center mx-6 mt-6 mb-3 text-xl max-w-5xl">
-            {snapshotData && 
-            <div className={`flex justify-start max-w-sm mt-1 mr-2`}>
-              <Button
-                text={String(t("Go back to current"))}
-                onButtonPressed={() => setSnapshotData(undefined)}
-                color="mineshaft"
-                size="md"
-                icon={faArrowLeft}
-              />
-            </div>}
-            <div className="flex flex-row justify-start items-center text-3xl">
-              <div className="font-semibold mr-4 mt-1 flex flex-row items-center">
-                <p>{snapshotData ? "Secret Snapshot" : t("dashboard:title")}</p>
-                {snapshotData && <span className='bg-primary-800 text-sm ml-4 mt-1 px-1.5 rounded-md'>{new Date(snapshotData.createdAt).toLocaleString()}</span>}
+          <div className='flex flex-row justify-between items-center mx-6 mt-6 mb-3 text-xl max-w-5xl'>
+            {snapshotData && (
+              <div className={`flex justify-start max-w-sm mt-1 mr-2`}>
+                <Button
+                  text={String(t('Go back to current'))}
+                  onButtonPressed={() => setSnapshotData(undefined)}
+                  color='mineshaft'
+                  size='md'
+                  icon={faArrowLeft}
+                />
+              </div>
+            )}
+            <div className='flex flex-row justify-start items-center text-3xl'>
+              <div className='font-semibold mr-4 mt-1 flex flex-row items-center'>
+                <p>{snapshotData ? 'Secret Snapshot' : t('dashboard:title')}</p>
+                {snapshotData && (
+                  <span className='bg-primary-800 text-sm ml-4 mt-1 px-1.5 rounded-md'>
+                    {new Date(snapshotData.createdAt).toLocaleString()}
+                  </span>
+                )}
               </div>
               {!snapshotData && data?.length == 0 && (
                 <ListBox
-                  selected={env}
-                  data={['Development', 'Staging', 'Production', 'Testing']}
-                  onChange={setEnv}
+                  selected={selectedEnv.name}
+                  data={workspaceEnvs.map(({ name }) => name)}
+                  onChange={(envName) =>
+                    setSelectedEnv(
+                      workspaceEnvs.find(({ name }) => envName === name) || {
+                        name: 'unknown',
+                        slug: 'unknown',
+                      }
+                    )
+                  }
                 />
               )}
             </div>
-            <div className="flex flex-row">
+            <div className='flex flex-row'>
               <div className={`flex justify-start max-w-sm mt-1 mr-2`}>
                 <Button
-                  text={String(numSnapshots + " " + t("Commits"))}
+                  text={String(numSnapshots + ' ' + t('Commits'))}
                   onButtonPressed={() => togglePITSidebar(true)}
-                  color="mineshaft"
-                  size="md"
+                  color='mineshaft'
+                  size='md'
                   icon={faClockRotateLeft}
                 />
               </div>
               {(data?.length !== 0 || buttonReady) && !snapshotData && (
                 <div className={`flex justify-start max-w-sm mt-1`}>
                   <Button
-                    text={String(t("common:save-changes"))}
+                    text={String(t('common:save-changes'))}
                     onButtonPressed={savePush}
-                    color="primary"
-                    size="md"
+                    color='primary'
+                    size='md'
                     active={buttonReady}
                     iconDisabled={faCheck}
                     textDisabled={String(t("common:saved"))}
@@ -551,7 +584,7 @@ export default function Dashboard() {
                   onButtonPressed={async () => {
                     // Update secrets in the state only for the current environment
                     const rolledBackSecrets = snapshotData.secretVersions
-                    .filter(row => reverseEnvMapping[row.environment] == env)
+                    .filter(row => row.environment == selectedEnv.slug)
                     .map((sv, position) => { 
                       return {
                         id: sv.id, idOverride: sv.id, pos: position, valueOverride: sv.valueOverride, key: sv.key, value: sv.value, comment: ''
@@ -575,88 +608,116 @@ export default function Dashboard() {
               </div>}
             </div>
           </div>
-          <div className="mx-6 w-full pr-12">
-            <div className="flex flex-col max-w-5xl pb-1">
-              <div className="w-full flex flex-row items-start">
+          <div className='mx-6 w-full pr-12'>
+            <div className='flex flex-col max-w-5xl pb-1'>
+              <div className='w-full flex flex-row items-start'>
                 {(snapshotData || data?.length !== 0) && (
                   <>
-                    {!snapshotData 
-                    ? <ListBox
-                      selected={env}
-                      data={['Development', 'Staging', 'Production', 'Testing']}
-                      onChange={setEnv}
-                    />
-                    : <ListBox
-                      selected={snapshotEnv}
-                      data={['Development', 'Staging', 'Production', 'Testing']}
-                      onChange={setSnapshotEnv}
-                    />}
-                    <div className="h-10 w-full bg-white/5 hover:bg-white/10 ml-2 flex items-center rounded-md flex flex-row items-center">
+                    {!snapshotData ? (
+                      <ListBox
+                        selected={selectedEnv.name}
+                        data={workspaceEnvs.map(({ name }) => name)}
+                        onChange={(envName) =>
+                          setSelectedEnv(
+                            workspaceEnvs.find(
+                              ({ name }) => envName === name
+                            ) || {
+                              name: 'unknown',
+                              slug: 'unknown',
+                            }
+                          )
+                        }
+                      />
+                    ) : (
+                      <ListBox
+                        selected={selectedSnapshotEnv?.name || ''}
+                        data={workspaceEnvs.map(({ name }) => name)}
+                        onChange={(envName) =>
+                          setSelectedSnapshotEnv(
+                            workspaceEnvs.find(
+                              ({ name }) => envName === name
+                            ) || {
+                              name: 'unknown',
+                              slug: 'unknown',
+                            }
+                          )
+                        }
+                      />
+                    )}
+                    <div className='h-10 w-full bg-white/5 hover:bg-white/10 ml-2 flex items-center rounded-md flex flex-row items-center'>
                       <FontAwesomeIcon
-                        className="bg-white/5 rounded-l-md py-3 pl-4 pr-2 text-gray-400"
+                        className='bg-white/5 rounded-l-md py-3 pl-4 pr-2 text-gray-400'
                         icon={faMagnifyingGlass}
                       />
                       <input
-                        className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
+                        className='pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none'
                         value={searchKeys}
                         onChange={(e) => setSearchKeys(e.target.value)}
-                        placeholder={String(t("dashboard:search-keys"))}
+                        placeholder={String(t('dashboard:search-keys'))}
                       />
                     </div>
-                    {!snapshotData && <div className="ml-2 min-w-max flex flex-row items-start justify-start">
-                      <Button
-                        onButtonPressed={() => reorderRows(1)}
-                        color="mineshaft"
-                        size="icon-md"
-                        icon={
-                          sortMethod == 'alphabetical'
-                            ? faArrowDownAZ
-                            : faArrowDownZA
-                        }
-                      />
-                    </div>}
-                    {!snapshotData && <div className="ml-2 min-w-max flex flex-row items-start justify-start">
-                      <DownloadSecretMenu data={data} env={env} />
-                    </div>}
-                    <div className="ml-2 min-w-max flex flex-row items-start justify-start">
+                    {!snapshotData && (
+                      <div className='ml-2 min-w-max flex flex-row items-start justify-start'>
+                        <Button
+                          onButtonPressed={() => reorderRows(1)}
+                          color='mineshaft'
+                          size='icon-md'
+                          icon={
+                            sortMethod == 'alphabetical'
+                              ? faArrowDownAZ
+                              : faArrowDownZA
+                          }
+                        />
+                      </div>
+                    )}
+                    {!snapshotData && (
+                      <div className='ml-2 min-w-max flex flex-row items-start justify-start'>
+                        <DownloadSecretMenu
+                          data={data}
+                          env={selectedEnv.slug}
+                        />
+                      </div>
+                    )}
+                    <div className='ml-2 min-w-max flex flex-row items-start justify-start'>
                       <Button
                         onButtonPressed={changeBlurred}
-                        color="mineshaft"
-                        size="icon-md"
+                        color='mineshaft'
+                        size='icon-md'
                         icon={blurred ? faEye : faEyeSlash}
                       />
                     </div>
-                    {!snapshotData && <div className="relative ml-2 min-w-max flex flex-row items-start justify-end">
-                      <Button
-                        text={String(t("dashboard:add-key"))}
-                        onButtonPressed={addRow}
-                        color="mineshaft"
-                        icon={faPlus}
-                        size="md"
-                      />
-                      {isNew && (
-                        <span className="absolute right-0 flex h-3 w-3 items-center justify-center ml-4 mb-4">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/50 opacity-75 h-4 w-4"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-                        </span>
-                      )}
-                    </div>}
+                    {!snapshotData && (
+                      <div className='relative ml-2 min-w-max flex flex-row items-start justify-end'>
+                        <Button
+                          text={String(t('dashboard:add-key'))}
+                          onButtonPressed={addRow}
+                          color='mineshaft'
+                          icon={faPlus}
+                          size='md'
+                        />
+                        {isNew && (
+                          <span className='absolute right-0 flex h-3 w-3 items-center justify-center ml-4 mb-4'>
+                            <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/50 opacity-75 h-4 w-4'></span>
+                            <span className='relative inline-flex rounded-full h-3 w-3 bg-primary'></span>
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
             </div>
             {isLoading ? (
-            <div className="flex items-center justify-center h-full my-48">
-              <Image
-                src="/images/loading/loading.gif"
-                height={60}
-                width={100}
-                alt="infisical loading indicator"
-              ></Image>
-            </div> 
-            ) : (
-            data?.length !== 0 ? (
-              <div className="flex flex-col w-full mt-1 mb-2">
+              <div className='flex items-center justify-center h-full my-48'>
+                <Image
+                  src='/images/loading/loading.gif'
+                  height={60}
+                  width={100}
+                  alt='infisical loading indicator'
+                ></Image>
+              </div>
+            ) : data?.length !== 0 ? (
+              <div className='flex flex-col w-full mt-1 mb-2'>
                 <div
                   className={`max-w-5xl mt-1 max-h-[calc(100vh-280px)] overflow-hidden overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar`}
                 >
@@ -679,7 +740,7 @@ export default function Dashboard() {
                       />
                     ))}
                     {snapshotData && snapshotData.secretVersions?.sort((a, b) => a.key.localeCompare(b.key))
-                    .filter(row => reverseEnvMapping[row.environment] == snapshotEnv)
+                    .filter(row => row.environment == selectedSnapshotEnv?.slug)
                     .filter(row => row.key.toUpperCase().includes(searchKeys.toUpperCase()))
                     .filter(
                       row => !(snapshotData.secretVersions?.filter(row => (snapshotData.secretVersions
@@ -707,21 +768,23 @@ export default function Dashboard() {
                       />
                     ))}
                   </div>
-                  {!snapshotData && <div className="w-full max-w-5xl px-2 pt-3">
-                    <DropZone
-                      setData={addData}
-                      setErrorDragAndDrop={setErrorDragAndDrop}
-                      createNewFile={addRow}
-                      errorDragAndDrop={errorDragAndDrop}
-                      setButtonReady={setButtonReady}
-                      keysExist={true}
-                      numCurrentRows={data.length}
-                    />
-                  </div>}
+                  {!snapshotData && (
+                    <div className='w-full max-w-5xl px-2 pt-3'>
+                      <DropZone
+                        setData={addData}
+                        setErrorDragAndDrop={setErrorDragAndDrop}
+                        createNewFile={addRow}
+                        errorDragAndDrop={errorDragAndDrop}
+                        setButtonReady={setButtonReady}
+                        keysExist={true}
+                        numCurrentRows={data.length}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-xl text-gray-400 max-w-5xl mt-28">
+              <div className='flex flex-col items-center justify-center h-full text-xl text-gray-400 max-w-5xl mt-28'>
                 {isKeyAvailable && !snapshotData && (
                   <DropZone
                     setData={setData}
@@ -733,36 +796,35 @@ export default function Dashboard() {
                     keysExist={false}
                   />
                 )}
-                {
-                  (!isKeyAvailable && (
-                    <>
-                      <FontAwesomeIcon
-                        className="text-7xl mt-20 mb-8"
-                        icon={faFolderOpen}
-                      />
-                      <p>
-                        To view this file, contact your administrator for
-                        permission.
-                      </p>
-                      <p className="mt-1">
-                        They need to grant you access in the team tab.
-                      </p>
-                    </>
-                  ))}
+                {!isKeyAvailable && (
+                  <>
+                    <FontAwesomeIcon
+                      className='text-7xl mt-20 mb-8'
+                      icon={faFolderOpen}
+                    />
+                    <p>
+                      To view this file, contact your administrator for
+                      permission.
+                    </p>
+                    <p className='mt-1'>
+                      They need to grant you access in the team tab.
+                    </p>
+                  </>
+                )}
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
     </div>
   ) : (
-    <div className="relative z-10 w-10/12 mr-auto h-full ml-2 bg-bunker-800 flex flex-col items-center justify-center">
-      <div className="absolute top-0 bg-bunker h-14 border-b border-mineshaft-700 w-full"></div>
+    <div className='relative z-10 w-10/12 mr-auto h-full ml-2 bg-bunker-800 flex flex-col items-center justify-center'>
+      <div className='absolute top-0 bg-bunker h-14 border-b border-mineshaft-700 w-full'></div>
       <Image
-        src="/images/loading/loading.gif"
+        src='/images/loading/loading.gif'
         height={70}
         width={120}
-        alt="loading animation"
+        alt='loading animation'
       ></Image>
     </div>
   );
@@ -770,4 +832,4 @@ export default function Dashboard() {
 
 Dashboard.requireAuth = true;
 
-export const getServerSideProps = getTranslatedServerSideProps(["dashboard"]);
+export const getServerSideProps = getTranslatedServerSideProps(['dashboard']);

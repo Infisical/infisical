@@ -24,6 +24,7 @@ import setBotActiveStatus from "../api/bot/setBotActiveStatus";
 import getIntegrationOptions from "../api/integrations/GetIntegrationOptions";
 import getWorkspaceAuthorizations from "../api/integrations/getWorkspaceAuthorizations";
 import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
+import getAWorkspace from "../api/workspace/getAWorkspace";
 import getLatestFileKey from "../api/workspace/getLatestFileKey";
 const {
   decryptAssymmetric,
@@ -34,6 +35,7 @@ const crypto = require("crypto");
 export default function Integrations() {
   const [cloudIntegrationOptions, setCloudIntegrationOptions] = useState([]);
   const [integrationAuths, setIntegrationAuths] = useState([]);
+  const [environments,setEnvironments] = useState([])
   const [integrations, setIntegrations] = useState([]);
   const [bot, setBot] = useState(null);
   const [isActivateBotDialogOpen, setIsActivateBotDialogOpen] = useState(false);
@@ -41,11 +43,15 @@ export default function Integrations() {
   const [selectedIntegrationOption, setSelectedIntegrationOption] = useState(null); 
 
   const router = useRouter();
+  const workspaceId = router.query.id;
 
   const { t } = useTranslation();
 
   useEffect(async () => {
     try {
+      const workspace = await getAWorkspace(workspaceId);
+      setEnvironments(workspace.environments);
+
       // get cloud integration options
       setCloudIntegrationOptions(
         await getIntegrationOptions()
@@ -54,23 +60,19 @@ export default function Integrations() {
       // get project integration authorizations
       setIntegrationAuths(
         await getWorkspaceAuthorizations({
-          workspaceId: router.query.id,
+          workspaceId
         })
       );
 
       // get project integrations
       setIntegrations(
         await getWorkspaceIntegrations({
-          workspaceId: router.query.id,
+          workspaceId,
         })
       );
       
       // get project bot
-      setBot(
-        await getBot({
-          workspaceId: router.query.id
-        }
-      ));
+      setBot(await getBot({ workspaceId }));
       
     } catch (err) {
       console.log(err);
@@ -90,7 +92,7 @@ export default function Integrations() {
 
       if (bot) {
         // case: there is a bot
-        const key = await getLatestFileKey({ workspaceId: router.query.id });
+        const key = await getLatestFileKey({ workspaceId });
         const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
         
         const WORKSPACE_KEY = decryptAssymmetric({
@@ -214,7 +216,7 @@ export default function Integrations() {
           handleBotActivate={handleBotActivate}
           handleIntegrationOption={handleIntegrationOption}
         /> */}
-        <IntegrationSection integrations={integrations} />
+        <IntegrationSection integrations={integrations} environments={environments} />
         {(cloudIntegrationOptions.length > 0 && bot) ? (
           <CloudIntegrationSection 
             cloudIntegrationOptions={cloudIntegrationOptions}

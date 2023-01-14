@@ -46,7 +46,7 @@ export default function ListBox({
         >
           <div className="flex flex-row">
             {text}
-            <span className="ml-1 cursor-pointer block truncate font-semibold text-gray-300">
+            <span className="ml-1 cursor-pointer block truncate font-semibold text-gray-300 capitalize">
               {' '}
               {selected}
             </span>
@@ -69,7 +69,7 @@ export default function ListBox({
                 <Listbox.Option
                   key={personIdx}
                   className={({ active, selected }) =>
-                    `my-0.5 relative cursor-default select-none py-2 pl-10 pr-4 rounded-md ${
+                    `my-0.5 relative cursor-default select-none py-2 pl-10 pr-4 rounded-md capitalize ${
                       selected ? 'bg-white/10 text-gray-400 font-bold' : ''
                     } ${
                       active && !selected

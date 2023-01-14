@@ -1,7 +1,4 @@
 import { Schema, model, Types } from 'mongoose';
-import { ENV_DEV, ENV_TESTING, ENV_STAGING, ENV_PROD } from '../variables';
-
-// TODO: deprecate
 export interface IServiceToken {
 	_id: Types.ObjectId;
 	name: string;
@@ -33,7 +30,6 @@ const serviceTokenSchema = new Schema<IServiceToken>(
 		},
 		environment: {
 			type: String,
-			enum: [ENV_DEV, ENV_TESTING, ENV_STAGING, ENV_PROD],
 			required: true
 		},
 		expiresAt: {
