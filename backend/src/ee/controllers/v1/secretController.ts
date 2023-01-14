@@ -10,6 +10,51 @@ import { EESecretService } from '../../services';
  * @param res 
  */
  export const getSecretVersions = async (req: Request, res: Response) => {
+	/* 
+    #swagger.summary = 'Return secret versions'
+    #swagger.description = 'Return secret versions'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+	#swagger.parameters['secretId'] = {
+		"description": "ID of secret",
+		"required": true,
+		"type": "string"
+	} 
+
+	#swagger.parameters['offset'] = {
+		"description": "Number of versions to skip",
+		"required": false,
+		"type": "string"
+	}
+
+	#swagger.parameters['limit'] = {
+		"description": "Maximum number of versions to return",
+		"required": false,
+		"type": "string"
+	}
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                schema: { 
+                    "type": "object",
+					"properties": {
+						"secretVersions": {
+							"type": "array",
+							"items": {
+								$ref: "#/components/schemas/SecretVersion" 
+							},
+							"description": "Secret versions"
+						}
+					}
+                }
+            }           
+        }
+    }   
+    */
 	let secretVersions;
 	try {
 		const { secretId } = req.params;
@@ -44,6 +89,54 @@ import { EESecretService } from '../../services';
  * @returns 
  */
 export const rollbackSecretVersion = async (req: Request, res: Response) => {
+	/* 
+    #swagger.summary = 'Roll back secret to a version.'
+    #swagger.description = 'Roll back secret to a version.'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+	#swagger.parameters['secretId'] = {
+		"description": "ID of secret",
+		"required": true,
+		"type": "string"
+	} 
+
+	#swagger.requestBody = {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+                "version": {
+                    "type": "integer",
+                    "description": "Version of secret to roll back to"
+                }
+            }
+          }
+        }
+      }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                schema: { 
+                    "type": "object",
+					"properties": {
+						"secret": {
+							"type": "object",
+							$ref: "#/components/schemas/Secret",
+							"description": "Secret rolled back to"
+						}
+					}
+                }
+            }           
+        }
+    }   
+    */
 	let secret;
 	try {
 		const { secretId } = req.params;

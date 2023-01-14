@@ -3,6 +3,7 @@ const router = express.Router();
 import { body, param, query } from 'express-validator';
 import {
 	requireAuth,
+	requireMembershipAuth,
 	requireWorkspaceAuth,
 	validateRequest
 } from '../../middleware';
@@ -65,6 +66,56 @@ router.get(
 	param('workspaceId').exists().trim(),
 	validateRequest,
 	workspaceController.getWorkspaceServiceTokenData
+);
+
+// TODO: /POST to create membership
+
+router.get( // new - TODO: rewire dashboard to this route
+	'/:workspaceId/memberships',
+	param('workspaceId').exists().trim(),
+	validateRequest,
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+	}),
+	workspaceController.getWorkspaceMemberships
+);
+
+router.delete( // TODO - rewire dashboard to this route
+	'/:workspaceId/memberships/:membershipId',
+	param('workspaceId').exists().trim(),
+	param('membershipId').exists().trim(),
+	validateRequest,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN],
+	}),
+	requireMembershipAuth({
+		acceptedRoles: [ADMIN]
+	}),
+	workspaceController.deleteWorkspaceMembership
+);
+
+router.patch( // TODO - rewire dashboard to this route
+	'/:workspaceId/memberships/:membershipId',
+	param('workspaceId').exists().trim(),
+	param('membershipId').exists().trim(),
+	body('role').exists().isString().trim().isIn([ADMIN, MEMBER]),
+	validateRequest,
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN],
+	}),
+	requireMembershipAuth({
+		acceptedRoles: [ADMIN]
+	}),
+	workspaceController.updateWorkspaceMembership
 );
 
 export default router;

@@ -18,8 +18,13 @@ export const getMe = async (req: Request, res: Response) => {
             "application/json": {
                 "schema": { 
                     "type": "object",
-                    $ref: "#/components/schemas/CurrentUser",
-                    "description": "Current user on request"
+                    "properties": {
+                        "user": {
+                            "type": "object",
+                            $ref: "#/components/schemas/CurrentUser",
+                            "description": "Current user on request"
+                        }
+                    }
                 }
             }           
         }

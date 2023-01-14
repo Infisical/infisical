@@ -58,11 +58,16 @@ export const createSecrets = async (req: Request, res: Response) => {
         content: {
             "application/json": {
                 "schema": { 
-                    "type": "array",
-                    "items": {
-                        $ref: "#/components/schemas/Secret" 
-                    },
-                    "description": "Array of newly-created secrets for the given project and environment"
+                    "type": "object",
+                    "properties": {
+                        "secrets": {
+                            "type": "array",
+                            "items": {
+                                $ref: "#/components/schemas/Secret" 
+                            },
+                            "description": "Newly-created secrets for the given project and environment"
+                        }
+                    }
                 }
             }           
         }
@@ -205,36 +210,32 @@ export const getSecrets = async (req: Request, res: Response) => {
         "apiKeyAuth": []
     }]
 
-    #swagger.requestBody = {
-      "required": true,
-      "content": {
-        "application/json": {
-          "schema": {
-            "type": "object",
-            "properties": {
-                "workspaceId": {
-                    "type": "string",
-                    "description": "ID of project"
-                },
-                "environment": {
-                    "type": "string",
-                    "description": "Environment within project"
-                }
-            }
-          }
-        }
-      }
-    }
+    #swagger.parameters['workspaceId'] = {
+		"description": "ID of project",
+		"required": true,
+		"type": "string"
+	}
+
+    #swagger.parameters['environment'] = {
+		"description": "Environment within project",
+		"required": true,
+		"type": "string"
+	}
 
     #swagger.responses[200] = {
         content: {
             "application/json": {
                 "schema": { 
-                    "type": "array",
-                    "items": {
-                        $ref: "#/components/schemas/Secret" 
-                    },
-                    "description": "Array of secrets for the given project and environment"
+                    "type": "object",
+                    "properties": {
+                        "secrets": {
+                            "type": "array",
+                            "items": {
+                                $ref: "#/components/schemas/Secret" 
+                            },
+                            "description": "Secrets for the given project and environment"
+                        }
+                    }
                 }
             }           
         }
@@ -307,9 +308,6 @@ export const getSecrets = async (req: Request, res: Response) => {
  * @param res 
  */
 export const updateSecrets = async (req: Request, res: Response) => {
-    
-    // TODO: fix update secret schema
-    
     /* 
     #swagger.summary = 'Update secret(s)'
     #swagger.description = 'Update secret(s)'
@@ -339,15 +337,20 @@ export const updateSecrets = async (req: Request, res: Response) => {
         content: {
             "application/json": {
                 "schema": { 
-                    "type": "array",
-                    "items": {
-                        $ref: "#/components/schemas/Secret" 
-                    },
-                    "description": "Array of newly-updated secrets for the given project and environment"
+                    "type": "object",
+                    "properties": {
+                        "secrets": {
+                            "type": "array",
+                            "items": {
+                                $ref: "#/components/schemas/Secret" 
+                            },
+                            "description": "Updated secrets"
+                        }
+                    }
                 }
             }           
         }
-    }   
+    }
     */
     const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli'; 
     
@@ -544,12 +547,17 @@ export const deleteSecrets = async (req: Request, res: Response) => {
     #swagger.responses[200] = {
         content: {
             "application/json": {
-                schema: { 
-                    "type": "array",
-                    "items": {
-                        $ref: "#/components/schemas/Secret" 
-                    },
-                    "description": "Array of deleted secrets"
+                "schema": { 
+                    "type": "object",
+                    "properties": {
+                        "secrets": {
+                            "type": "array",
+                            "items": {
+                                $ref: "#/components/schemas/Secret" 
+                            },
+                            "description": "Deleted secrets"
+                        }
+                    }
                 }
             }           
         }

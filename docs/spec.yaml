@@ -11,48 +11,81 @@ servers:
 paths:
   /api/v1/secret/{secretId}/secret-versions:
     get:
-      description: ''
+      summary: Return secret versions
+      description: Return secret versions
       parameters:
         - name: secretId
           in: path
           required: true
           schema:
             type: string
+          description: ID of secret
         - name: offset
+          description: Number of versions to skip
+          required: false
           in: query
           schema:
             type: string
         - name: limit
+          description: Maximum number of versions to return
+          required: false
           in: query
           schema:
             type: string
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secretVersions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SecretVersion'
+                    description: Secret versions
         '400':
           description: Bad Request
+      security:
+        - apiKeyAuth: []
   /api/v1/secret/{secretId}/secret-versions/rollback:
     post:
-      description: ''
+      summary: Roll back secret to a version.
+      description: Roll back secret to a version.
       parameters:
         - name: secretId
           in: path
           required: true
           schema:
             type: string
+          description: ID of secret
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret:
+                    type: object
+                    $ref: '#/components/schemas/Secret'
+                    description: Secret rolled back to
         '400':
           description: Bad Request
+      security:
+        - apiKeyAuth: []
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               type: object
               properties:
                 version:
-                  example: any
+                  type: integer
+                  description: Version of secret to roll back to
   /api/v1/secret-snapshot/{secretSnapshotId}:
     get:
       description: ''
@@ -69,26 +102,44 @@ paths:
           description: Bad Request
   /api/v1/workspace/{workspaceId}/secret-snapshots:
     get:
-      description: ''
+      summary: Return project secret snapshot ids
+      description: Return project secret snapshots ids
       parameters:
         - name: workspaceId
           in: path
           required: true
           schema:
             type: string
+          description: ID of project
         - name: offset
+          description: Number of secret snapshots to skip
+          required: false
           in: query
           schema:
             type: string
         - name: limit
+          description: Maximum number of secret snapshots to return
+          required: false
           in: query
           schema:
             type: string
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secretSnapshots:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SecretSnapshot'
+                    description: Project secret snapshots
         '400':
           description: Bad Request
+      security:
+        - apiKeyAuth: []
   /api/v1/workspace/{workspaceId}/secret-snapshots/count:
     get:
       description: ''
@@ -105,60 +156,107 @@ paths:
           description: Bad Request
   /api/v1/workspace/{workspaceId}/secret-snapshots/rollback:
     post:
-      description: ''
+      summary: >-
+        Roll back project secrets to those captured in a secret snapshot
+        version.
+      description: >-
+        Roll back project secrets to those captured in a secret snapshot
+        version.
       parameters:
         - name: workspaceId
           in: path
           required: true
           schema:
             type: string
+          description: ID of project
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secrets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Secret'
+                    description: Secrets rolled back to
         '400':
           description: Bad Request
+      security:
+        - apiKeyAuth: []
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               type: object
               properties:
                 version:
-                  example: any
+                  type: integer
+                  description: Version of secret snapshot to roll back to
   /api/v1/workspace/{workspaceId}/logs:
     get:
-      description: ''
+      summary: Return project (audit) logs
+      description: Return project (audit) logs
       parameters:
         - name: workspaceId
           in: path
           required: true
           schema:
             type: string
+          description: ID of project
+        - name: userId
+          description: ID of project member
+          required: false
+          in: query
+          schema:
+            type: string
         - name: offset
+          description: Number of logs to skip
+          required: false
           in: query
           schema:
             type: string
         - name: limit
+          description: Maximum number of logs to return
+          required: false
           in: query
           schema:
             type: string
         - name: sortBy
-          in: query
+          description: Order to sort the logs by
           schema:
             type: string
-        - name: userId
+            enum:
+              - oldest
+              - recent
+          required: false
           in: query
-          schema:
-            type: string
         - name: actionNames
+          description: Names of log actions (comma-separated)
+          required: false
           in: query
           schema:
             type: string
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Log'
+                    description: Project logs
         '400':
           description: Bad Request
+      security:
+        - apiKeyAuth: []
   /api/v1/action/{actionId}:
     get:
       description: ''
@@ -1285,8 +1383,11 @@ paths:
             application/json:
               schema:
                 type: object
-                $ref: '#/components/schemas/CurrentUser'
-                description: Current user on request
+                properties:
+                  user:
+                    type: object
+                    $ref: '#/components/schemas/CurrentUser'
+                    description: Current user on request
         '400':
           description: Bad Request
       security:
@@ -1379,6 +1480,107 @@ paths:
           description: OK
         '400':
           description: Bad Request
+  /api/v2/workspace/{workspaceId}/memberships:
+    get:
+      summary: Return project memberships
+      description: Return project memberships
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of project
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  memberships:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Membership'
+                    description: Memberships of project
+        '400':
+          description: Bad Request
+      security:
+        - apiKeyAuth: []
+  /api/v2/workspace/{workspaceId}/memberships/{membershipId}:
+    delete:
+      summary: Delete project membership
+      description: Delete project membership
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of project
+        - name: membershipId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of membership
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  membership:
+                    $ref: '#/components/schemas/Membership'
+                    description: Deleted membership
+        '400':
+          description: Bad Request
+      security:
+        - apiKeyAuth: []
+    patch:
+      summary: Update project membership
+      description: Update project membership
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of project
+        - name: membershipId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID of membership
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  membership:
+                    $ref: '#/components/schemas/Membership'
+                    description: Updated membership
+        '400':
+          description: Bad Request
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  description: Role of membership - either admin or member
   /api/v2/secret/batch-create/workspace/{workspaceId}/environment/{environment}:
     post:
       description: ''
@@ -1554,12 +1756,15 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Secret'
-                description: >-
-                  Array of newly-created secrets for the given project and
-                  environment
+                type: object
+                properties:
+                  secrets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Secret'
+                    description: >-
+                      Newly-created secrets for the given project and
+                      environment
       security:
         - apiKeyAuth: []
       requestBody:
@@ -1581,32 +1786,38 @@ paths:
     get:
       summary: Read secrets
       description: Read secrets from a project and environment
-      parameters: []
+      parameters:
+        - name: workspaceId
+          description: ID of project
+          required: true
+          in: query
+          schema:
+            type: string
+        - name: environment
+          description: Environment within project
+          required: true
+          in: query
+          schema:
+            type: string
+        - name: content
+          in: query
+          schema:
+            type: string
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Secret'
-                description: Array of secrets for the given project and environment
+                type: object
+                properties:
+                  secrets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Secret'
+                    description: Secrets for the given project and environment
       security:
         - apiKeyAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                workspaceId:
-                  type: string
-                  description: ID of project
-                environment:
-                  type: string
-                  description: Environment within project
     patch:
       summary: Update secret(s)
       description: Update secret(s)
@@ -1617,12 +1828,13 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Secret'
-                description: >-
-                  Array of newly-updated secrets for the given project and
-                  environment
+                type: object
+                properties:
+                  secrets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Secret'
+                    description: Updated secrets
       security:
         - apiKeyAuth: []
       requestBody:
@@ -1645,10 +1857,13 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Secret'
-                description: Array of deleted secrets
+                type: object
+                properties:
+                  secrets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Secret'
+                    description: Deleted secrets
       security:
         - apiKeyAuth: []
       requestBody:
@@ -1783,12 +1998,51 @@ components:
         encryptedPrivateKey:
           type: string
           example: ''
+        iv:
+          type: string
+          example: ''
+        tag:
+          type: string
+          example: ''
         updatedAt:
           type: string
           example: ''
         createdAt:
           type: string
           example: ''
+    Membership:
+      type: object
+      properties:
+        user:
+          type: object
+          properties:
+            _id:
+              type: string
+              example: ''
+            email:
+              type: string
+              example: ''
+            firstName:
+              type: string
+              example: ''
+            lastName:
+              type: string
+              example: ''
+            publicKey:
+              type: string
+              example: ''
+            updatedAt:
+              type: string
+              example: ''
+            createdAt:
+              type: string
+              example: ''
+        workspace:
+          type: string
+          example: ''
+        role:
+          type: string
+          example: admin
     ProjectKey:
       type: object
       properties:
@@ -1923,6 +2177,135 @@ components:
           type: string
           example: ''
         createdAt:
+          type: string
+          example: ''
+    Log:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: ''
+        user:
+          type: object
+          properties:
+            _id:
+              type: string
+              example: ''
+            email:
+              type: string
+              example: ''
+            firstName:
+              type: string
+              example: ''
+            lastName:
+              type: string
+              example: ''
+        workspace:
+          type: string
+          example: ''
+        actionNames:
+          type: array
+          example:
+            - addSecrets
+          items:
+            type: string
+        actions:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                example: addSecrets
+              user:
+                type: string
+                example: ''
+              workspace:
+                type: string
+                example: ''
+              payload:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    oldSecretVersion:
+                      type: string
+                      example: ''
+                    newSecretVersion:
+                      type: string
+                      example: ''
+        channel:
+          type: string
+          example: cli
+        ipAddress:
+          type: string
+          example: 192.168.0.1
+        updatedAt:
+          type: string
+          example: ''
+        createdAt:
+          type: string
+          example: ''
+    SecretSnapshot:
+      type: object
+      properties:
+        workspace:
+          type: string
+          example: ''
+        version:
+          type: number
+          example: 1
+        secretVersions:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:
+                type: string
+                example: ''
+    SecretVersion:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: ''
+        secret:
+          type: string
+          example: ''
+        version:
+          type: number
+          example: 1
+        workspace:
+          type: string
+          example: ''
+        type:
+          type: string
+          example: ''
+        user:
+          type: string
+          example: ''
+        environment:
+          type: string
+          example: ''
+        isDeleted:
+          type: string
+          example: ''
+        secretKeyCiphertext:
+          type: string
+          example: ''
+        secretKeyIV:
+          type: string
+          example: ''
+        secretKeyTag:
+          type: string
+          example: ''
+        secretValueCiphertext:
+          type: string
+          example: ''
+        secretValueIV:
+          type: string
+          example: ''
+        secretValueTag:
           type: string
           example: ''
   securitySchemes:

@@ -53,6 +53,19 @@ const generateOpenAPISpec = async () => {
         updatedAt: '',
         createdAt: ''
       },
+      Membership: {
+        user: {
+          _id: '',
+          email: '',
+          firstName: '',
+          lastName: '',
+          publicKey: '',
+          updatedAt: '',
+          createdAt: ''
+        },
+        workspace: '',
+        role: 'admin'
+      },
       ProjectKey: {
         encryptedkey: '',
         nonce: '',
@@ -103,6 +116,61 @@ const generateOpenAPISpec = async () => {
         secretCommentTag: '',
         updatedAt: '',
         createdAt: ''
+      },
+      Log: {
+        _id: '',
+        user: {
+          _id: '',
+          email: '',
+          firstName: '',
+          lastName: ''
+        },
+        workspace: '',
+        actionNames: [
+          'addSecrets'
+        ],
+        actions: [
+          {
+            name: 'addSecrets',
+            user: '',
+            workspace: '',
+            payload: [
+              {
+                oldSecretVersion: '',
+                newSecretVersion: ''
+              }
+            ]
+          }
+        ],
+        channel: 'cli',
+        ipAddress: '192.168.0.1',
+        updatedAt: '',
+        createdAt: ''
+      },
+      SecretSnapshot: {
+        workspace: '',
+        version: 1,
+        secretVersions: [
+          {
+            _id: ''
+          }
+        ]
+      },
+      SecretVersion: {
+        _id: '',
+        secret: '',
+        version: 1,
+        workspace: '',
+        type: '',
+        user: '',
+        environment: '',
+        isDeleted: '',
+        secretKeyCiphertext: '',
+        secretKeyIV: '',
+        secretKeyTag: '',
+        secretValueCiphertext: '',
+        secretValueIV: '',
+        secretValueTag: '', 
       }
     }
   };

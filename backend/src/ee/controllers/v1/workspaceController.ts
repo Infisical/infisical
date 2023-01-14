@@ -19,6 +19,51 @@ import { getLatestSecretVersionIds } from '../../helpers/secretVersion';
  * @param res 
  */
  export const getWorkspaceSecretSnapshots = async (req: Request, res: Response) => {
+	/* 
+    #swagger.summary = 'Return project secret snapshot ids'
+    #swagger.description = 'Return project secret snapshots ids'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+	#swagger.parameters['workspaceId'] = {
+		"description": "ID of project",
+		"required": true,
+		"type": "string"
+	} 
+
+	#swagger.parameters['offset'] = {
+		"description": "Number of secret snapshots to skip",
+		"required": false,
+		"type": "string"
+	}
+
+	#swagger.parameters['limit'] = {
+		"description": "Maximum number of secret snapshots to return",
+		"required": false,
+		"type": "string"
+	}
+
+	#swagger.responses[200] = {
+        content: {
+            "application/json": {
+                schema: { 
+					"type": "object",
+					"properties": {
+						"secretSnapshots": {
+							"type": "array",
+							"items": {
+								$ref: "#/components/schemas/SecretSnapshot" 
+							},
+							"description": "Project secret snapshots"
+						}
+					}
+                }
+            }           
+        }
+    }
+    */
 	let secretSnapshots;
 	try {
 		const { workspaceId } = req.params;
@@ -79,8 +124,8 @@ export const getWorkspaceSecretSnapshotsCount = async (req: Request, res: Respon
  */
 export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Response) => {
 	/* 
-    #swagger.summary = 'Roll back project secrets to those captured in a secret snapshot version'
-    #swagger.description = 'Roll back project secrets to those captured in a secret snapshot version'
+    #swagger.summary = 'Roll back project secrets to those captured in a secret snapshot version.'
+    #swagger.description = 'Roll back project secrets to those captured in a secret snapshot version.'
     
     #swagger.security = [{
         "apiKeyAuth": []
@@ -113,11 +158,16 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
         content: {
             "application/json": {
                 schema: { 
-                    "type": "array",
-                    "items": {
-                        $ref: "#/components/schemas/Secret" 
-                    },
-                    "description": "Array of secrets captured in the secret snapshot"
+                    "type": "object",
+					"properties": {
+						"secrets": {
+							"type": "array",
+							"items": {
+								$ref: "#/components/schemas/Secret" 
+							},
+							"description": "Secrets rolled back to"
+						}
+					}
                 }
             }           
         }
@@ -276,6 +326,72 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
  * @returns 
  */
 export const getWorkspaceLogs = async (req: Request, res: Response) => {
+	/* 
+    #swagger.summary = 'Return project (audit) logs'
+    #swagger.description = 'Return project (audit) logs'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+	#swagger.parameters['workspaceId'] = {
+		"description": "ID of project",
+		"required": true,
+		"type": "string"
+	} 
+
+	#swagger.parameters['userId'] = {
+		"description": "ID of project member",
+		"required": false,
+		"type": "string"
+	} 
+
+	#swagger.parameters['offset'] = {
+		"description": "Number of logs to skip",
+		"required": false,
+		"type": "string"
+	}
+
+	#swagger.parameters['limit'] = {
+		"description": "Maximum number of logs to return",
+		"required": false,
+		"type": "string"
+	}
+
+	#swagger.parameters['sortBy'] = {
+		"description": "Order to sort the logs by",
+		"schema": {
+			"type": "string",
+			"@enum": ["oldest", "recent"]
+		},
+		"required": false
+	}
+
+	#swagger.parameters['actionNames'] = {
+		"description": "Names of log actions (comma-separated)",
+		"required": false,
+		"type": "string"
+	}
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                schema: { 
+					"type": "object",
+					"properties": {
+						"logs": {
+							"type": "array",
+							"items": {
+								$ref: "#/components/schemas/Log" 
+							},
+							"description": "Project logs"
+						}
+					}
+                }
+            }           
+        }
+    }   
+    */
 	let logs
 	try {
 		const { workspaceId } = req.params;
