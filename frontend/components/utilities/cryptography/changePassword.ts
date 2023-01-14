@@ -1,11 +1,10 @@
+import jsrp from 'jsrp';
+
 import changePassword2 from '~/pages/api/auth/ChangePassword2';
 import SRP1 from '~/pages/api/auth/SRP1';
 
 import Aes256Gcm from './aes-256-gcm';
 
-const nacl = require('tweetnacl');
-nacl.util = require('tweetnacl-util');
-const jsrp = require('jsrp');
 const clientOldPassword = new jsrp.client();
 const clientNewPassword = new jsrp.client();
 
@@ -19,13 +18,13 @@ const clientNewPassword = new jsrp.client();
  * @returns
  */
 const changePassword = async (
-  email,
-  currentPassword,
-  newPassword,
-  setCurrentPasswordError,
-  setPasswordChanged,
-  setCurrentPassword,
-  setNewPassword
+  email: string,
+  currentPassword: string,
+  newPassword: string,
+  setCurrentPasswordError: (arg: boolean) => void,
+  setPasswordChanged: (arg: boolean) => void,
+  setCurrentPassword: (arg: string) => void,
+  setNewPassword: (arg: string) => void
 ) => {
   try {
     setPasswordChanged(false);
@@ -34,7 +33,7 @@ const changePassword = async (
     clientOldPassword.init(
       {
         username: email,
-        password: currentPassword
+        password: currentPassword,
       },
       async () => {
         const clientPublicKey = clientOldPassword.getPublicKey();
@@ -42,7 +41,7 @@ const changePassword = async (
         let serverPublicKey, salt;
         try {
           const res = await SRP1({
-            clientPublicKey: clientPublicKey
+            clientPublicKey: clientPublicKey,
           });
           serverPublicKey = res.serverPublicKey;
           salt = res.salt;
@@ -58,13 +57,13 @@ const changePassword = async (
         clientNewPassword.init(
           {
             username: email,
-            password: newPassword
+            password: newPassword,
           },
           async () => {
             clientNewPassword.createVerifier(async (err, result) => {
               // The Blob part here is needed to account for symbols that count as 2+ bytes (e.g., é, å, ø)
               const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
-                text: localStorage.getItem('PRIVATE_KEY'),
+                text: localStorage.getItem('PRIVATE_KEY') as string,
                 secret: newPassword
                   .slice(0, 32)
                   .padStart(
@@ -72,7 +71,7 @@ const changePassword = async (
                       (newPassword.slice(0, 32).length -
                         new Blob([newPassword]).size),
                     '0'
-                  )
+                  ),
               });
 
               if (ciphertext) {
@@ -88,11 +87,11 @@ const changePassword = async (
                     tag,
                     salt: result.salt,
                     verifier: result.verifier,
-                    clientProof
+                    clientProof,
                   });
-                  if (res.status == 400) {
+                  if (res && res.status == 400) {
                     setCurrentPasswordError(true);
-                  } else if (res.status == 200) {
+                  } else if (res && res.status == 200) {
                     setPasswordChanged(true);
                     setCurrentPassword('');
                     setNewPassword('');

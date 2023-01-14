@@ -1,23 +1,23 @@
-import { useEffect, useState } from "react";
-import Head from "next/head";
-import { useRouter } from "next/router";
-import { useTranslation } from "next-i18next";
+import { useEffect, useState } from 'react';
+import Head from 'next/head';
+import { useRouter } from 'next/router';
+import { useTranslation } from 'next-i18next';
 import {
   faMagnifyingGlass,
   faPlus,
-  faX
+  faX,
 } from '@fortawesome/free-solid-svg-icons';
 import { faCheck } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import Button from "~/components/basic/buttons/Button";
-import AddIncidentContactDialog from "~/components/basic/dialog/AddIncidentContactDialog";
-import AddUserDialog from "~/components/basic/dialog/AddUserDialog";
-import InputField from "~/components/basic/InputField";
-import UserTable from "~/components/basic/table/UserTable";
-import NavHeader from "~/components/navigation/NavHeader";
-import guidGenerator from "~/utilities/randomId";
-import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
+import Button from '~/components/basic/buttons/Button';
+import AddIncidentContactDialog from '~/components/basic/dialog/AddIncidentContactDialog';
+import AddUserDialog from '~/components/basic/dialog/AddUserDialog';
+import InputField from '~/components/basic/InputField';
+import UserTable from '~/components/basic/table/UserTable';
+import NavHeader from '~/components/navigation/NavHeader';
+import guidGenerator from '~/utilities/randomId';
+import { getTranslatedServerSideProps } from '~/utilities/withTranslateProps';
 
 import addUserToOrg from '../../api/organization/addUserToOrg';
 import deleteIncidentContact from '../../api/organization/deleteIncidentContact';
@@ -37,73 +37,75 @@ export default function SettingsOrg() {
   const [emailUser, setEmailUser] = useState('');
   const [workspaceToBeDeletedName, setWorkspaceToBeDeletedName] = useState('');
   const [searchUsers, setSearchUsers] = useState('');
-  const [workspaceId, setWorkspaceId] = useState('');
   const [isAddIncidentContactOpen, setIsAddIncidentContactOpen] =
     useState(false);
   const [isAddUserOpen, setIsAddUserOpen] = useState(
     router.asPath.split('?')[1] == 'invite'
   );
-  const [incidentContacts, setIncidentContacts] = useState([]);
+  const [incidentContacts, setIncidentContacts] = useState<string[]>([]);
   const [searchIncidentContact, setSearchIncidentContact] = useState('');
-  const [userList, setUserList] = useState();
+  const [userList, setUserList] = useState<any[]>([]);
   const [personalEmail, setPersonalEmail] = useState('');
-  let workspaceIdTemp;
   const [email, setEmail] = useState('');
   const [currentPlan, setCurrentPlan] = useState('');
 
+  const workspaceId = router.query.id as string;
+
   const { t } = useTranslation();
 
-  useEffect(async () => {
-    let org = await getOrganization({
-      orgId: localStorage.getItem('orgData.id')
-    });
-    let orgData = org;
-    setOrgName(orgData.name);
-    let incidentContactsData = await getIncidentContacts(
-      localStorage.getItem('orgData.id')
-    );
+  useEffect(() => {
+    (async () => {
+      const orgId = localStorage.getItem('orgData.id') as string;
+      const org = await getOrganization({
+        orgId,
+      });
 
-    setIncidentContacts(incidentContactsData?.map((contact) => contact.email));
+      setOrgName(org.name);
+      const incidentContactsData = await getIncidentContacts(
+        localStorage.getItem('orgData.id') as string
+      );
 
-    const user = await getUser();
-    setPersonalEmail(user.email);
+      setIncidentContacts(
+        incidentContactsData?.map((contact) => contact.email)
+      );
 
-    workspaceIdTemp = router.query.id;
-    let orgUsers = await getOrganizationUsers({
-      orgId: localStorage.getItem('orgData.id')
-    });
-    setUserList(
-      orgUsers.map((user) => ({
-        key: guidGenerator(),
-        firstName: user.user?.firstName,
-        lastName: user.user?.lastName,
-        email: user.user?.email == null ? user.inviteEmail : user.user?.email,
-        role: user?.role,
-        status: user?.status,
-        userId: user.user?._id,
-        membershipId: user._id,
-        publicKey: user.user?.publicKey
-      }))
-    );
-    const subscriptions = await getOrganizationSubscriptions({
-      orgId: localStorage.getItem('orgData.id')
-    });
-    setCurrentPlan(subscriptions.data[0].plan.product);
+      const user = await getUser();
+      setPersonalEmail(user.email);
+
+      const orgUsers = await getOrganizationUsers({
+        orgId,
+      });
+
+      setUserList(
+        orgUsers.map((user) => ({
+          key: guidGenerator(),
+          firstName: user.user?.firstName,
+          lastName: user.user?.lastName,
+          email: user.user?.email == null ? user.inviteEmail : user.user?.email,
+          role: user?.role,
+          status: user?.status,
+          userId: user.user?._id,
+          membershipId: user._id,
+          publicKey: user.user?.publicKey,
+        }))
+      );
+
+      const subscriptions = await getOrganizationSubscriptions({
+        orgId,
+      });
+      setCurrentPlan(subscriptions.data[0].plan.product);
+    })();
   }, []);
 
-  const modifyOrgName = (newName) => {
+  const modifyOrgName = (newName: string) => {
     setButtonReady(true);
     setOrgName(newName);
   };
 
-  const submitChanges = (newOrgName) => {
-    renameOrg(localStorage.getItem('orgData.id'), newOrgName);
+  const submitChanges = (newOrgName: string) => {
+    renameOrg(localStorage.getItem('orgData.id') as string, newOrgName);
     setButtonReady(false);
   };
-
-  useEffect(async () => {
-    setWorkspaceId(router.query.id);
-  }, []);
 
   function closeAddUserModal() {
     setIsAddUserOpen(false);
@@ -121,18 +123,21 @@ export default function SettingsOrg() {
     setIsAddIncidentContactOpen(true);
   }
 
-  async function submitAddUserModal(email) {
-    await addUserToOrg(email, localStorage.getItem('orgData.id'));
+  async function submitAddUserModal(email: string) {
+    await addUserToOrg(email, localStorage.getItem('orgData.id') as string);
     setEmail('');
     setIsAddUserOpen(false);
     router.reload();
   }
 
-  const deleteIncidentContactFully = (incidentContact) => {
+  const deleteIncidentContactFully = (incidentContact: string) => {
     setIncidentContacts(
       incidentContacts.filter((contact) => contact != incidentContact)
     );
-    deleteIncidentContact(localStorage.getItem('orgData.id'), incidentContact);
+    deleteIncidentContact(
+      localStorage.getItem('orgData.id') as string,
+      incidentContact
+    );
   };
 
   /**
@@ -142,32 +147,31 @@ export default function SettingsOrg() {
    * It then deletes the workspace and forwards the user to another aviable workspace.
    */
   const executeDeletingWorkspace = async () => {
-    let userWorkspaces = await getWorkspaces();
+    const userWorkspaces = await getWorkspaces();
 
     if (userWorkspaces.length > 1) {
       if (
-        userWorkspaces.filter(
-          (workspace) => workspace._id == router.query.id
-        )[0].name == workspaceToBeDeletedName
+        userWorkspaces.filter((workspace) => workspace._id == workspaceId)[0]
+          .name == workspaceToBeDeletedName
       ) {
-        await deleteWorkspace(router.query.id);
-        let userWorkspaces = await getWorkspaces();
+        await deleteWorkspace(workspaceId);
+        const userWorkspaces = await getWorkspaces();
         router.push('/dashboard/' + userWorkspaces[0]._id);
       }
     }
   };
 
   return (
-    <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
+    <div className='bg-bunker-800 max-h-screen flex flex-col justify-between text-white'>
       <Head>
         <title>
-          {t("common:head-title", { title: t("settings-org:title") })}
+          {t('common:head-title', { title: t('settings-org:title') })}
         </title>
-        <link rel="icon" href="/infisical.ico" />
+        <link rel='icon' href='/infisical.ico' />
       </Head>
-      <div className="flex flex-row">
-        <div className="w-full max-h-screen pb-2 overflow-y-auto">
-          <NavHeader pageName={t("settings-org:title")} />
+      <div className='flex flex-row'>
+        <div className='w-full max-h-screen pb-2 overflow-y-auto'>
+          <NavHeader pageName={t('settings-org:title')} />
           <AddIncidentContactDialog
             isOpen={isAddIncidentContactOpen}
             closeModal={closeAddIncidentContactModal}
@@ -175,55 +179,56 @@ export default function SettingsOrg() {
             incidentContacts={incidentContacts}
             setIncidentContacts={setIncidentContacts}
           />
-          <div className="flex flex-row justify-between items-center ml-6 my-8 text-xl max-w-5xl">
-            <div className="flex flex-col justify-start items-start text-3xl">
-              <p className="font-semibold mr-4 text-gray-200">
-                {t("settings-org:title")}
+          <div className='flex flex-row justify-between items-center ml-6 my-8 text-xl max-w-5xl'>
+            <div className='flex flex-col justify-start items-start text-3xl'>
+              <p className='font-semibold mr-4 text-gray-200'>
+                {t('settings-org:title')}
               </p>
-              <p className="font-normal mr-4 text-gray-400 text-base">
-                {t("settings-org:description")}
+              <p className='font-normal mr-4 text-gray-400 text-base'>
+                {t('settings-org:description')}
               </p>
             </div>
           </div>
-          <div className="flex flex-col ml-6 text-mineshaft-50 mr-6 max-w-5xl">
-            <div className="flex flex-col">
-              <div className="min-w-md mt-2 flex flex-col items-end pb-4">
-                <div className="bg-white/5 rounded-md px-6 py-4 flex flex-col items-start flex flex-col items-start w-full mb-6">
-                  <div className="max-h-28 w-full max-w-md mr-auto">
-                    <p className="font-semibold mr-4 text-gray-200 text-xl mb-2">
-                      {t("common:display-name")}
+          <div className='flex flex-col ml-6 text-mineshaft-50 mr-6 max-w-5xl'>
+            <div className='flex flex-col'>
+              <div className='min-w-md mt-2 flex flex-col items-end pb-4'>
+                <div className='bg-white/5 rounded-md px-6 py-4 flex flex-col items-start w-full mb-6'>
+                  <div className='max-h-28 w-full max-w-md mr-auto'>
+                    <p className='font-semibold mr-4 text-gray-200 text-xl mb-2'>
+                      {t('common:display-name')}
                     </p>
                     <InputField
+                      label=''
                       // label="Organization Name"
                       onChangeHandler={modifyOrgName}
-                      type="varName"
+                      type='varName'
                       value={orgName}
-                      placeholder=""
+                      placeholder=''
                       isRequired
                     />
                   </div>
-                  <div className="flex justify-start w-full">
+                  <div className='flex justify-start w-full'>
                     <div className={`flex justify-start max-w-sm mt-4 mb-2`}>
                       <Button
-                        text={t("common:save-changes")}
+                        text={t('common:save-changes') as string}
                         onButtonPressed={() => submitChanges(orgName)}
-                        color="mineshaft"
-                        size="md"
+                        color='mineshaft'
+                        size='md'
                         active={buttonReady}
                         iconDisabled={faCheck}
-                        textDisabled={t("common:saved")}
+                        textDisabled={t('common:saved') as string}
                       />
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="bg-white/5 rounded-md px-6 pt-6 pb-2 flex flex-col items-start flex flex-col items-start w-full mb-6">
-              <p className="font-semibold mr-4 text-white text-xl">
-                {t("section-members:org-members")}
+            <div className='bg-white/5 rounded-md px-6 pt-6 pb-2 flex flex-col items-start w-full mb-6'>
+              <p className='font-semibold mr-4 text-white text-xl'>
+                {t('section-members:org-members')}
               </p>
-              <p className="mr-4 text-gray-400 mt-2 mb-2">
-                {t("section-members:org-members-description")}
+              <p className='mr-4 text-gray-400 mt-2 mb-2'>
+                {t('section-members:org-members-description')}
               </p>
               <AddUserDialog
                 isOpen={isAddUserOpen}
@@ -236,31 +241,31 @@ export default function SettingsOrg() {
                 orgName={orgName}
               />
               {/* <DeleteUserDialog isOpen={isDeleteOpen} closeModal={closeDeleteModal} submitModal={deleteMembership} userIdToBeDeleted={userIdToBeDeleted}/> */}
-              <div className="pb-1 w-full flex flex-row items-start max-w-6xl">
-                <div className="h-10 w-full bg-white/5 mt-2 flex items-center rounded-md flex flex-row items-center">
+              <div className='pb-1 w-full flex flex-row items-start max-w-6xl'>
+                <div className='h-10 w-full bg-white/5 mt-2 flex items-center rounded-md flex-row '>
                   <FontAwesomeIcon
-                    className="bg-white/5 rounded-l-md py-3 pl-4 pr-2 text-gray-400"
+                    className='bg-white/5 rounded-l-md py-3 pl-4 pr-2 text-gray-400'
                     icon={faMagnifyingGlass}
                   />
                   <input
-                    className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
+                    className='pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none'
                     value={searchUsers}
                     onChange={(e) => setSearchUsers(e.target.value)}
-                    placeholder={t("section-members:search-members")}
+                    placeholder={t('section-members:search-members') as string}
                   />
                 </div>
-                <div className="mt-2 ml-2 min-w-max flex flex-row items-start justify-start">
+                <div className='mt-2 ml-2 min-w-max flex flex-row items-start justify-start'>
                   <Button
-                    text={t("section-members:add-member")}
+                    text={t('section-members:add-member') as string}
                     onButtonPressed={openAddUserModal}
-                    color="mineshaft"
-                    size="md"
+                    color='mineshaft'
+                    size='md'
                     icon={faPlus}
                   />
                 </div>
               </div>
               {userList && (
-                <div className="overflow-y-auto max-w-6xl w-full">
+                <div className='overflow-y-auto max-w-6xl w-full'>
                   <UserTable
                     userData={userList}
                     changeData={setUserList}
@@ -271,42 +276,42 @@ export default function SettingsOrg() {
                     // onClick={openDeleteModal}
                     // deleteUser={deleteMembership}
                     // setUserIdToBeDeleted={setUserIdToBeDeleted}
-                    className="w-full"
+                    className='w-full'
                   />
                 </div>
               )}
             </div>
 
-            <div className="bg-white/5 rounded-md px-6 pt-6 pb-6 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4">
-              <div className="flex flex-row max-w-5xl justify-between items-center w-full">
-                <div className="flex flex-col justify-between w-full max-w-3xl">
-                  <p className="text-xl font-semibold mb-3 min-w-max">
-                    {t("section-incident:incident-contacts")}
+            <div className='bg-white/5 rounded-md px-6 pt-6 pb-6 flex flex-col items-start w-full mb-6 mt-4'>
+              <div className='flex flex-row max-w-5xl justify-between items-center w-full'>
+                <div className='flex flex-col justify-between w-full max-w-3xl'>
+                  <p className='text-xl font-semibold mb-3 min-w-max'>
+                    {t('section-incident:incident-contacts')}
                   </p>
-                  <p className="text-xs text-gray-500 mb-2 min-w-max">
-                    {t("section-incident:incident-contacts-description")}
+                  <p className='text-xs text-gray-500 mb-2 min-w-max'>
+                    {t('section-incident:incident-contacts-description')}
                   </p>
                 </div>
-                <div className="mt-4 mb-2 min-w-max flex flex-row items-end justify-end justify-center">
+                <div className='mt-4 mb-2 min-w-max flex flex-row items-end justify-center'>
                   <Button
-                    text={t("section-incident:add-contact")}
+                    text={t('section-incident:add-contact') as string}
                     onButtonPressed={openAddIncidentContactModal}
-                    color="mineshaft"
-                    size="md"
+                    color='mineshaft'
+                    size='md'
                     icon={faPlus}
                   />
                 </div>
               </div>
-              <div className="h-12 w-full max-w-5xl bg-white/5 mt-2 flex items-center rounded-t-md flex flwex-row items-center">
+              <div className='h-12 w-full max-w-5xl bg-white/5 mt-2 flex items-center rounded-t-md flwex-row'>
                 <FontAwesomeIcon
-                  className="bg-white/5 rounded-tl-md py-4 pl-4 pr-2 text-gray-400"
+                  className='bg-white/5 rounded-tl-md py-4 pl-4 pr-2 text-gray-400'
                   icon={faMagnifyingGlass}
                 />
                 <input
-                  className="pl-2 text-gray-400 rounded-tr-md bg-white/5 w-full h-full outline-none"
+                  className='pl-2 text-gray-400 rounded-tr-md bg-white/5 w-full h-full outline-none'
                   value={searchIncidentContact}
                   onChange={(e) => setSearchIncidentContact(e.target.value)}
-                  placeholder={t("common:search")}
+                  placeholder={t('common:search') as string}
                 />
               </div>
               {incidentContacts?.filter((email) =>
@@ -317,25 +322,25 @@ export default function SettingsOrg() {
                   .map((contact) => (
                     <div
                       key={guidGenerator()}
-                      className="flex flex-row items-center justify-between max-w-5xl px-4 py-3 hover:bg-white/5 border-t border-gray-600 w-full"
+                      className='flex flex-row items-center justify-between max-w-5xl px-4 py-3 hover:bg-white/5 border-t border-gray-600 w-full'
                     >
-                      <p className="text-gray-300">{contact}</p>
-                      <div className="opacity-50 hover:opacity-100 duration-200">
+                      <p className='text-gray-300'>{contact}</p>
+                      <div className='opacity-50 hover:opacity-100 duration-200'>
                         <Button
                           onButtonPressed={() =>
                             deleteIncidentContactFully(contact)
                           }
-                          color="red"
-                          size="icon-sm"
+                          color='red'
+                          size='icon-sm'
                           icon={faX}
                         />
                       </div>
                     </div>
                   ))
               ) : (
-                <div className="w-full flex flex-row justify-center mt-6 max-w-4xl ml-6">
-                  <p className="text-gray-400">
-                    {t("section-incident:no-incident-contacts")}
+                <div className='w-full flex flex-row justify-center mt-6 max-w-4xl ml-6'>
+                  <p className='text-gray-400'>
+                    {t('section-incident:no-incident-contacts')}
                   </p>
                 </div>
               )}
@@ -386,8 +391,8 @@ export default function SettingsOrg() {
 SettingsOrg.requireAuth = true;
 
 export const getServerSideProps = getTranslatedServerSideProps([
-  "settings",
-  "settings-org",
-  "section-incident",
-  "section-members",
+  'settings',
+  'settings-org',
+  'section-incident',
+  'section-members',
 ]);

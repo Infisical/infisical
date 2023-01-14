@@ -6,7 +6,8 @@
     "build": "next build",
     "start": "next start",
     "start:docker": "next build && next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "type-check": "tsc --project tsconfig.json"
   },
   "dependencies": {
     "@emotion/css": "^11.10.0",
@@ -58,6 +59,7 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.4",
+    "@types/jsrp": "^0.2.4",
     "@types/node": "18.11.9",
     "@types/react": "^18.0.26",
     "@typescript-eslint/eslint-plugin": "^5.45.0",
