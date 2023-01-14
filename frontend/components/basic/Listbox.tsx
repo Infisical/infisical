@@ -46,9 +46,9 @@ export default function ListBox({
         >
           <div className="flex flex-row">
             {text}
-            <span className="ml-1 cursor-pointer block truncate font-semibold text-gray-300">
+            <span className="ml-1 cursor-pointer block truncate font-semibold text-gray-300 capitalize">
               {' '}
-              {selected?.charAt(0).toUpperCase() + selected?.slice(1)}
+              {selected}
             </span>
           </div>
           {data && (
