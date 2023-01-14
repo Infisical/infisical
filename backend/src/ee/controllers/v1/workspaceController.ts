@@ -78,16 +78,61 @@ export const getWorkspaceSecretSnapshotsCount = async (req: Request, res: Respon
  * @returns 
  */
 export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Response) => {
+	/* 
+    #swagger.summary = 'Roll back project secrets to those captured in a secret snapshot version'
+    #swagger.description = 'Roll back project secrets to those captured in a secret snapshot version'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+	#swagger.parameters['workspaceId'] = {
+		"description": "ID of project",
+		"required": true,
+		"type": "string"
+	} 
+
+	#swagger.requestBody = {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+                "version": {
+                    "type": "integer",
+                    "description": "Version of secret snapshot to roll back to",
+                }
+            }
+          }
+        }
+      }
+    }
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                schema: { 
+                    "type": "array",
+                    "items": {
+                        $ref: "#/components/schemas/Secret" 
+                    },
+                    "description": "Array of secrets captured in the secret snapshot"
+                }
+            }           
+        }
+    }   
+    */
 	let secrets;
     try {	
         const { workspaceId } = req.params;
         const { version } = req.body;
         
 		// validate secret snapshot
-        const secretSnapshot = await SecretSnapshot.findOne({
-        	workspace: workspaceId,
-            version
-        }).populate<{ secretVersions: ISecretVersion[]}>('secretVersions');
+		const secretSnapshot = await SecretSnapshot.findOne({
+			workspace: workspaceId,
+			version
+		}).populate<{ secretVersions: ISecretVersion[]}>('secretVersions');
         
         if (!secretSnapshot) throw new Error('Failed to find secret snapshot');
 

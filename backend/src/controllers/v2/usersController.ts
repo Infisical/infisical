@@ -29,7 +29,7 @@ export const getMe = async (req: Request, res: Response) => {
     try {
         user = await User
             .findById(req.user._id)
-            .select('+publicKey +encryptedPrivateKey');
+            .select('+publicKey +encryptedPrivateKey +iv +tag');
     } catch (err) {
         Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);

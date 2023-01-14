@@ -48,6 +48,8 @@ const generateOpenAPISpec = async () => {
         lastName: '',
         publicKey: '',
         encryptedPrivateKey: '',
+        iv: '',
+        tag: '',
         updatedAt: '',
         createdAt: ''
       },

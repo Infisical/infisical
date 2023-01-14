@@ -175,7 +175,8 @@
     },
     "/api/v1/workspace/{workspaceId}/secret-snapshots/rollback": {
       "post": {
-        "description": "",
+        "summary": "Roll back project secrets to those captured in a secret snapshot version",
+        "description": "Roll back project secrets to those captured in a secret snapshot version",
         "parameters": [
           {
             "name": "workspaceId",
@@ -183,25 +184,44 @@
             "required": true,
             "schema": {
               "type": "string"
-            }
+            },
+            "description": "ID of project"
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Secret"
+                  },
+                  "description": "Array of secrets captured in the secret snapshot"
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request"
           }
         },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
                 "properties": {
                   "version": {
-                    "example": "any"
+                    "type": "integer",
+                    "description": "Version of secret snapshot to roll back to"
                   }
                 }
               }
@@ -2901,6 +2921,14 @@
             "example": ""
           },
           "encryptedPrivateKey": {
+            "type": "string",
+            "example": ""
+          },
+          "iv": {
+            "type": "string",
+            "example": ""
+          },
+          "tag": {
             "type": "string",
             "example": ""
           },
