@@ -220,7 +220,7 @@ export default function Dashboard() {
         setData(undefined);
       }
     })();
-  }, []);
+  }, [workspaceId]);
 
   useEffect(() => {
     (async () => {

@@ -68,18 +68,5 @@ export default function RouteGuard({ children }) {
     }
   }
 
-  if (authorized) {
-    return children;
-  } else {
-    return (
-      <div className="w-screen h-screen bg-bunker-800 flex items-center justify-center">
-        <Image
-          src="/images/loading/loading.gif"
-          height={70}
-          width={120}
-          alt="google logo"
-        ></Image>
-      </div>
-    );
-  }
+  return children;
 }
