@@ -112,3 +112,27 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end -}}
 {{- end -}}
 
+{{/*
+Create the mongodb connection string.
+*/}}
+{{- define "infisical.mongodb.connectionString" -}}
+{{- $host := include "infisical.mongodb.fullname" . -}}
+{{- $port := 27017 -}}
+{{- $user := "root" -}}
+{{- $pass := "root" -}}
+{{- if .Values.mongodbConnection -}}
+{{- if .Values.mongodbConnection.host -}}
+{{- $host = .Values.mongodbConnection.host -}}
+{{- end -}}
+{{- if .Values.mongodbConnection.port -}}
+{{- $port = .Values.mongodbConnection.port -}}
+{{- end -}}
+{{- if .Values.mongodbConnection.username -}}
+{{- $user = .Values.mongodbConnection.username -}}
+{{- end -}}
+{{- if .Values.mongodbConnection.password -}}
+{{- $pass = .Values.mongodbConnection.password -}}
+{{- end -}}
+{{- end -}}
+{{- printf "mongodb://%s:%s@%s:%d/" $user $pass $host $port -}}
+{{- end -}}

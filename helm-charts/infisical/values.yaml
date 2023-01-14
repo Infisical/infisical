@@ -43,6 +43,14 @@ mongodb:
   service:
     annotations: {}
 
+
+# Recommended to replace with Mongo Cloud URI as the DB instance in the cluster does not have persistence yet
+mongodbConnection: {}
+  # host: mymongodb.com # defaults to the internal mongo service
+  # port: 27017
+  # username: root
+  # password: root
+
 ingress:
   enabled: true
   annotations:
@@ -55,6 +63,7 @@ ingress:
     path: /api
     pathType: Prefix
   tls: []
+
 
 ## Complete Ingress example 
 # ingress:
@@ -94,8 +103,4 @@ backendEnvironmentVariables:
   SMTP_USERNAME: MUST_REPLACE
   SMTP_PASSWORD: MUST_REPLACE
 
-  # Recommended to replace with Mongo Cloud URI as the DB instance in the cluster does not have persistence yet
-  MONGO_URL: mongodb://root:root@mongodb-service:27017/
-
 # frontendEnvironmentVariables:
-    
