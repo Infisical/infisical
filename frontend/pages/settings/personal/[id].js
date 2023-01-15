@@ -16,6 +16,8 @@ import passwordCheck from "~/utilities/checks/PasswordCheck";
 import { getTranslatedServerSideProps } from "~/utilities/withTranslateProps";
 
 import AddApiKeyDialog from "../../../components/basic/dialog/AddApiKeyDialog";
+import deleteAPIKey from "../../api/apiKey/deleteAPIKey";
+import getAPIKeys from "../../api/apiKey/getAPIKeys";
 import getUser from "../../api/user/getUser";
 
 export default function PersonalSettings() {
@@ -43,10 +45,21 @@ export default function PersonalSettings() {
     localStorage.setItem("lang", to);
   };
 
-  useEffect(async () => {
-    let user = await getUser();
-    setPersonalEmail(user.email);
-    setPersonalName(user.firstName + " " + user.lastName);
+  useEffect(() => {
+    const load = async () => {
+      try {
+        let user = await getUser();
+        setApiKeys(
+          await getAPIKeys()
+        );
+        setPersonalEmail(user.email);
+        setPersonalName(user.firstName + " " + user.lastName);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    
+    load();
   }, []);
 
   const closeAddApiKeyModal = () => {
@@ -63,10 +76,9 @@ export default function PersonalSettings() {
       </Head>
       <AddApiKeyDialog
         isOpen={isAddApiKeyDialogOpen}
-        workspaceId={router.query.id}
         closeModal={closeAddApiKeyModal}
-        serviceTokens={apiKeys}
-        setServiceTokens={setApiKeys}
+        apiKeys={apiKeys}
+        setApiKeys={setApiKeys}
       />
       <div className="flex flex-row">
         <div className="w-full max-h-screen pb-2 overflow-y-auto">
@@ -108,17 +120,6 @@ export default function PersonalSettings() {
                   <p className="text-sm text-gray-400">
                     {t("settings-personal:api-keys.description")}
                   </p>
-                  <p className="text-sm text-gray-400 mb-4">
-                    Please, make sure you are on the 
-                    <a 
-                      className="text-primary underline underline-offset-2 ml-1" 
-                      href="https://infisical.com/docs/cli/overview"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                        latest version of CLI
-                    </a>.
-                  </p>
                 </div>
                 <div className="w-48 mt-2">
                   <Button
@@ -134,7 +135,7 @@ export default function PersonalSettings() {
               </div>
               <ApiKeyTable
                 data={apiKeys}
-                setServiceTokens={setApiKeys}
+                setApiKeys={setApiKeys}
               />
             </div>
 
@@ -365,4 +366,5 @@ export const getServerSideProps = getTranslatedServerSideProps([
   "settings",
   "settings-personal",
   "section-password",
+  "section-api-key"
 ]);

@@ -111,7 +111,7 @@ app.use('/api/v2/workspace', v2WorkspaceRouter); // TODO: turn into plural route
 app.use('/api/v2/secret', v2SecretRouter); // stop supporting, TODO: revise
 app.use('/api/v2/secrets', v2SecretsRouter);
 app.use('/api/v2/service-token', v2ServiceTokenDataRouter); // TODO: turn into plural route
-app.use('/api/v2/api-key-data', v2APIKeyDataRouter);
+app.use('/api/v2/api-key', v2APIKeyDataRouter);
 
 // api docs 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile))

@@ -61,7 +61,7 @@ router.post(
         }),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: ['jwt', 'apiKey']
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -76,7 +76,7 @@ router.get(
     query('environment').exists().trim(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt', 'serviceToken']
+        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken']
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -115,7 +115,7 @@ router.patch(
         }),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: ['jwt', 'apiKey']
     }),
     requireSecretsAuth({
         acceptedRoles: [ADMIN, MEMBER]
@@ -143,7 +143,7 @@ router.delete(
         .isEmpty(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: ['jwt', 'apiKey']
     }),
     requireSecretsAuth({
         acceptedRoles: [ADMIN, MEMBER]

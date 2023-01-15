@@ -16,49 +16,66 @@ import {
 	AccountNotFoundError,
 	ServiceTokenDataNotFoundError,
 	APIKeyDataNotFoundError,
-	UnauthorizedRequestError
+	UnauthorizedRequestError,
+	BadRequestError
 } from '../utils/errors';
 
-// TODO 1: check if API key works
-// TODO 2: optimize middleware
-
 /**
- * Validate that auth token value [authTokenValue] falls under one of
- * accepted auth modes [acceptedAuthModes].
+ * 
  * @param {Object} obj
- * @param {String} obj.authTokenValue - auth token value (e.g. JWT or service token value)
- * @param {String[]} obj.acceptedAuthModes - accepted auth modes (e.g. jwt, serviceToken)
- * @returns {String} authMode - auth mode
+ * @param {Object} obj.headers - HTTP request headers object
  */
 const validateAuthMode = ({
-	authTokenValue,
+	headers,
 	acceptedAuthModes
 }: {
-	authTokenValue: string;
-	acceptedAuthModes: string[];
+	headers: { [key: string]: string | string[] | undefined },
+	acceptedAuthModes: string[]
 }) => {
-	let authMode;
-	try {
-		switch (authTokenValue.split('.', 1)[0]) {
-			case 'st':
-				authMode = 'serviceToken';
-				break;
-			case 'ak':
-				authMode = 'apiKey';
-				break;
-			default:
-				authMode = 'jwt';
-				break;
-		}
-		
-		if (!acceptedAuthModes.includes(authMode)) 
-			throw UnauthorizedRequestError({ message: 'Failed to authenticated auth mode' });
+	// TODO: refactor middleware
+	const apiKey = headers['x-api-key'];
+	const authHeader = headers['authorization'];
 
-	} catch (err) {
-		throw UnauthorizedRequestError({ message: 'Failed to authenticated auth mode' });
+	let authTokenType, authTokenValue;
+	if (apiKey === undefined && authHeader === undefined) {
+		// case: no auth or X-API-KEY header present
+		throw BadRequestError({ message: 'Missing Authorization or X-API-KEY in request header.' });
 	}
 	
-	return authMode;
+	if (typeof apiKey === 'string') {
+		// case: treat request authentication type as via X-API-KEY (i.e. API Key)
+		authTokenType = 'apiKey';
+		authTokenValue = apiKey;
+	}
+
+	if (typeof authHeader === 'string') {
+		// case: treat request authentication type as via Authorization header (i.e. either JWT or service token)
+		const [tokenType, tokenValue] = <[string, string]>authHeader.split(' ', 2) ?? [null, null]	
+		if (tokenType === null)
+			throw BadRequestError({ message: `Missing Authorization Header in the request header.` });
+		if (tokenType.toLowerCase() !== 'bearer')
+			throw BadRequestError({ message: `The provided authentication type '${tokenType}' is not supported.` });
+		if (tokenValue === null)
+			throw BadRequestError({ message: 'Missing Authorization Body in the request header.' });	
+
+		switch (tokenValue.split('.', 1)[0]) {
+			case 'st':
+				authTokenType = 'serviceToken';
+				break;
+			default:
+				authTokenType = 'jwt';
+		}
+		authTokenValue = tokenValue;
+	}
+	
+	if (!authTokenType || !authTokenValue) throw BadRequestError({ message: 'Missing valid Authorization or X-API-KEY in request header.' });
+	
+	if (!acceptedAuthModes.includes(authTokenType)) throw BadRequestError({ message: 'The provided authentication type is not supported.' });
+	
+	return ({
+		authTokenType,
+		authTokenValue
+	});
 }
 
 /**

@@ -12,7 +12,7 @@ import { workspaceController } from '../../controllers/v1';
 router.get(
 	'/:workspaceId/secret-snapshots',
 	requireAuth({
-		acceptedAuthModes: ['jwt']
+		acceptedAuthModes: ['jwt', 'apiKey']
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER]
@@ -40,7 +40,7 @@ router.get(
 router.post(
 	'/:workspaceId/secret-snapshots/rollback',
 	requireAuth({
-		acceptedAuthModes: ['jwt']
+		acceptedAuthModes: ['jwt', 'apiKey']
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER]
@@ -54,7 +54,7 @@ router.post(
 router.get(
 	'/:workspaceId/logs',
 	requireAuth({
-		acceptedAuthModes: ['jwt']
+		acceptedAuthModes: ['jwt', 'apiKey']
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER]

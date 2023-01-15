@@ -4,9 +4,10 @@ import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Dialog, Transition } from "@headlessui/react";
 
-import addServiceToken from "~/pages/api/serviceToken/addServiceToken";
-import getLatestFileKey from "~/pages/api/workspace/getLatestFileKey";
+import addAPIKey from "~/pages/api/apiKey/addAPIKey";
 
+// import addServiceToken from "~/pages/api/serviceToken/addServiceToken";
+// import getLatestFileKey from "~/pages/api/workspace/getLatestFileKey";
 import { envMapping } from "../../../public/data/frequentConstants";
 import {
   decryptAssymmetric,
@@ -26,58 +27,33 @@ const expiryMapping = {
 
 const crypto = require('crypto');
 
+// TODO: convert to TS
 const AddApiKeyDialog = ({
   isOpen,
   closeModal,
-  workspaceId,
   workspaceName,
-  serviceTokens,
-  setServiceTokens
+  apiKeys,
+  setApiKeys
 }) => {
-  const [serviceToken, setServiceToken] = useState("");
-  const [serviceTokenName, setServiceTokenName] = useState("");
-  const [serviceTokenEnv, setServiceTokenEnv] = useState("Development");
-  const [serviceTokenExpiresIn, setServiceTokenExpiresIn] = useState("1 day");
-  const [serviceTokenCopied, setServiceTokenCopied] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [apiKeyName, setApiKeyName] = useState("");
+  const [apiKeyExpiresIn, setApiKeyExpiresIn] = useState("1 day");
+  const [apiKeyCopied, setApiKeyCopied] = useState(false);
   const { t } = useTranslation();
 
-  const generateServiceToken = async () => {
-    const latestFileKey = await getLatestFileKey({ workspaceId });
-
-    const key = decryptAssymmetric({
-      ciphertext: latestFileKey.latestKey.encryptedKey,
-      nonce: latestFileKey.latestKey.nonce,
-      publicKey: latestFileKey.latestKey.sender.publicKey,
-      privateKey: localStorage.getItem("PRIVATE_KEY"),
-    });
-
-    const randomBytes = crypto.randomBytes(16).toString('hex');
-    const {
-      ciphertext,
-      iv,
-      tag,
-    } = encryptSymmetric({
-      plaintext: key,
-      key: randomBytes,
-    });
-
-    let newServiceToken = await addServiceToken({
-      name: serviceTokenName,
-      workspaceId,
-      environment: envMapping[serviceTokenEnv],
-      expiresIn: expiryMapping[serviceTokenExpiresIn],
-      encryptedKey: ciphertext,
-      iv, 
-      tag
+  const generateAPIKey = async () => {
+    const newApiKey = await addAPIKey({
+      name: apiKeyName,
+      expiresIn: expiryMapping[apiKeyExpiresIn]
     });
     
-    setServiceTokens(serviceTokens.concat([newServiceToken.serviceTokenData]));
-    setServiceToken(newServiceToken.serviceToken + "." + randomBytes);
+    setApiKeys([...apiKeys, newApiKey.apiKeyData])
+    setApiKey(newApiKey.apiKey);
   };
 
   function copyToClipboard() {
     // Get the text field
-    var copyText = document.getElementById("serviceToken");
+    var copyText = document.getElementById("apiKey");
 
     // Select the text field
     copyText.select();
@@ -86,16 +62,16 @@ const AddApiKeyDialog = ({
     // Copy the text inside the text field
     navigator.clipboard.writeText(copyText.value);
 
-    setServiceTokenCopied(true);
-    setTimeout(() => setServiceTokenCopied(false), 2000);
+    setApiKeyCopied(true);
+    setTimeout(() => setApiKeyCopied(false), 2000);
     // Alert the copied text
     // alert("Copied the text: " + copyText.value);
   }
 
-  const closeAddServiceTokenModal = () => {
+  const closeAddApiKeyModal = () => {
     closeModal();
-    setServiceTokenName("");
-    setServiceToken("");
+    setApiKeyName("");
+    setApiKey("");
   };
 
   return (
@@ -125,51 +101,37 @@ const AddApiKeyDialog = ({
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                {serviceToken == "" ? (
+                {apiKey == "" ? (
                   <Dialog.Panel className="w-full max-w-md transform rounded-md bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all">
                     <Dialog.Title
                       as="h3"
                       className="text-lg font-medium leading-6 text-gray-400 z-50"
                     >
-                      {t("section-token:add-dialog.title", {
+                      {t("section-api-key:add-dialog.title", {
                         target: workspaceName,
                       })}
                     </Dialog.Title>
                     <div className="mt-2 mb-4">
                       <div className="flex flex-col">
                         <p className="text-sm text-gray-500">
-                          {t("section-token:add-dialog.description")}
+                          {t("section-api-key:add-dialog.description")}
                         </p>
                       </div>
                     </div>
                     <div className="max-h-28 mb-2">
                       <InputField
-                        label={t("section-token:add-dialog.name")}
-                        onChangeHandler={setServiceTokenName}
+                        label={t("section-api-key:add-dialog.name")}
+                        onChangeHandler={setApiKeyName}
                         type="varName"
-                        value={serviceTokenName}
+                        value={apiKeyName}
                         placeholder=""
                         isRequired
                       />
                     </div>
-                    <div className="max-h-28 mb-2">
-                      <ListBox
-                        selected={serviceTokenEnv}
-                        onChange={setServiceTokenEnv}
-                        data={[
-                          "Development",
-                          "Staging",
-                          "Production",
-                          "Testing",
-                        ]}
-                        isFull={true}
-                        text={`${t("common:environment")}: `}
-                      />
-                    </div>
                     <div className="max-h-28">
                       <ListBox
-                        selected={serviceTokenExpiresIn}
-                        onChange={setServiceTokenExpiresIn}
+                        selected={apiKeyExpiresIn}
+                        onChange={setApiKeyExpiresIn}
                         data={[
                           "1 day",
                           "7 days",
@@ -184,12 +146,12 @@ const AddApiKeyDialog = ({
                     <div className="max-w-max">
                       <div className="mt-6 flex flex-col justify-start w-max">
                         <Button
-                          onButtonPressed={() => generateServiceToken()}
+                          onButtonPressed={() => generateAPIKey()}
                           color="mineshaft"
-                          text={t("section-token:add-dialog.add")}
-                          textDisabled={t("section-token:add-dialog.add")}
+                          text={t("section-api-key:add-dialog.add")}
+                          textDisabled={t("section-api-key:add-dialog.add")}
                           size="md"
-                          active={serviceTokenName == "" ? false : true}
+                          active={apiKeyName == "" ? false : true}
                         />
                       </div>
                     </div>
@@ -200,13 +162,13 @@ const AddApiKeyDialog = ({
                       as="h3"
                       className="text-lg font-medium leading-6 text-gray-400 z-50"
                     >
-                      {t("section-token:add-dialog.copy-service-token")}
+                      {t("section-api-key:add-dialog.copy-service-token")}
                     </Dialog.Title>
                     <div className="mt-2 mb-4">
                       <div className="flex flex-col">
                         <p className="text-sm text-gray-500">
                           {t(
-                            "section-token:add-dialog.copy-service-token-description"
+                            "section-api-key:add-dialog.copy-service-token-description"
                           )}
                         </p>
                       </div>
@@ -215,19 +177,20 @@ const AddApiKeyDialog = ({
                       <div className="flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400 w-full h-20">
                         <input
                           type="text"
-                          value={serviceToken}
-                          id="serviceToken"
+                          value={apiKey}
+                          disabled={true}
+                          id="apiKey"
                           className="invisible bg-white/0 text-gray-400 py-2 w-full px-2 min-w-full outline-none"
                         ></input>
                         <div className="bg-white/0 max-w-md text-sm text-gray-400 py-2 w-full pl-14 pr-2 break-words outline-none">
-                          {serviceToken}
+                          {apiKey}
                         </div>
                         <div className="group font-normal h-full relative inline-block text-gray-400 underline hover:text-primary duration-200">
                           <button
                             onClick={copyToClipboard}
                             className="h-full pl-3.5 pr-4 border-l border-white/20 py-2 hover:bg-white/[0.12] duration-200"
                           >
-                            {serviceTokenCopied ? (
+                            {apiKeyCopied ? (
                               <FontAwesomeIcon
                                 icon={faCheck}
                                 className="pr-0.5"
@@ -244,7 +207,7 @@ const AddApiKeyDialog = ({
                     </div>
                     <div className="mt-6 flex flex-col justify-start w-max">
                       <Button
-                        onButtonPressed={() => closeAddServiceTokenModal()}
+                        onButtonPressed={() => closeAddApiKeyModal()}
                         color="mineshaft"
                         text="Close"
                         size="md"
