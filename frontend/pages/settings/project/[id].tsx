@@ -30,7 +30,7 @@ export default function SettingsBasic() {
   const [buttonReady, setButtonReady] = useState(false);
   const router = useRouter();
   const [workspaceName, setWorkspaceName] = useState('');
-  const [serviceTokens, setServiceTokens] = useState([]);
+  const [serviceTokens, setServiceTokens] = useState<any[]>([]);
   const [environments, setEnvironments] = useState<Array<EnvData>>([]);
   const [workspaceToBeDeletedName, setWorkspaceToBeDeletedName] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);

@@ -1,14 +1,16 @@
 import { Fragment } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 
-import setBotActiveStatus from "../../../pages/api/bot/setBotActiveStatus";
-import getLatestFileKey from "../../../pages/api/workspace/getLatestFileKey";
-import { 
-    decryptAssymmetric,
-    encryptAssymmetric
-} from "../../utilities/cryptography/crypto";
-import Button from "../buttons/Button";
 import InputField from "../InputField";
+
+type Props = {
+  isOpen: boolean;
+  closeModal: () => void;
+  submitModal: (userIdToBeDeleted: string) => void;
+  selectedIntegrationOption: string;
+  handleBotActivate: () => void;
+  handleIntegrationOption: (arg:{integrationOption:string})=>void;
+};
 
 const IntegrationAccessTokenDialog = ({
     isOpen,
@@ -16,7 +18,7 @@ const IntegrationAccessTokenDialog = ({
     selectedIntegrationOption,
     handleBotActivate,
     handleIntegrationOption
-}) => {
+}:Props) => {
     
     const submit = async () => {
         try {

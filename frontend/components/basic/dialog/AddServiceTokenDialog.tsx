@@ -1,31 +1,39 @@
-import { Fragment, useState } from "react";
-import { useTranslation } from "next-i18next";
-import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Dialog, Transition } from "@headlessui/react";
-import nacl from "tweetnacl";
+import crypto from 'crypto';
 
-import addServiceToken from "~/pages/api/serviceToken/addServiceToken";
-import getLatestFileKey from "~/pages/api/workspace/getLatestFileKey";
+import { Fragment, useState } from 'react';
+import { useTranslation } from 'next-i18next';
+import { faCheck, faCopy } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Dialog, Transition } from '@headlessui/react';
+
+import addServiceToken from '~/pages/api/serviceToken/addServiceToken';
+import getLatestFileKey from '~/pages/api/workspace/getLatestFileKey';
 
 import {
   decryptAssymmetric,
-  encryptAssymmetric,
   encryptSymmetric,
-} from "../../utilities/cryptography/crypto";
-import Button from "../buttons/Button";
-import InputField from "../InputField";
-import ListBox from "../Listbox";
+} from '../../utilities/cryptography/crypto';
+import Button from '../buttons/Button';
+import InputField from '../InputField';
+import ListBox from '../Listbox';
 
 const expiryMapping = {
-  "1 day": 86400,
-  "7 days": 604800,
-  "1 month": 2592000,
-  "6 months": 15552000,
-  "12 months": 31104000,
+  '1 day': 86400,
+  '7 days': 604800,
+  '1 month': 2592000,
+  '6 months': 15552000,
+  '12 months': 31104000,
 };
 
-const crypto = require('crypto');
+type Props = {
+  isOpen: boolean;
+  closeModal: () => void;
+  workspaceId: string;
+  workspaceName: string;
+  serviceTokens: any[];
+  environments: Array<{ name: string; slug: string }>;
+  setServiceTokens: (arg: any[]) => void;
+};
 
 const AddServiceTokenDialog = ({
   isOpen,
@@ -34,12 +42,14 @@ const AddServiceTokenDialog = ({
   workspaceName,
   serviceTokens,
   environments,
-  setServiceTokens
-}) => {
-  const [serviceToken, setServiceToken] = useState("");
-  const [serviceTokenName, setServiceTokenName] = useState("");
-  const [selectedServiceTokenEnv, setSelectedServiceTokenEnv] = useState(environments?.[0]);
-  const [serviceTokenExpiresIn, setServiceTokenExpiresIn] = useState("1 day");
+  setServiceTokens,
+}: Props) => {
+  const [serviceToken, setServiceToken] = useState('');
+  const [serviceTokenName, setServiceTokenName] = useState('');
+  const [selectedServiceTokenEnv, setSelectedServiceTokenEnv] = useState(
+    environments?.[0]
+  );
+  const [serviceTokenExpiresIn, setServiceTokenExpiresIn] = useState('1 day');
   const [serviceTokenCopied, setServiceTokenCopied] = useState(false);
   const { t } = useTranslation();
 
@@ -50,36 +60,37 @@ const AddServiceTokenDialog = ({
       ciphertext: latestFileKey.latestKey.encryptedKey,
       nonce: latestFileKey.latestKey.nonce,
       publicKey: latestFileKey.latestKey.sender.publicKey,
-      privateKey: localStorage.getItem("PRIVATE_KEY"),
+      privateKey: localStorage.getItem('PRIVATE_KEY') as string,
     });
 
     const randomBytes = crypto.randomBytes(16).toString('hex');
-    const {
-      ciphertext,
-      iv,
-      tag,
-    } = encryptSymmetric({
+    const { ciphertext, iv, tag } = encryptSymmetric({
       plaintext: key,
       key: randomBytes,
     });
 
-    let newServiceToken = await addServiceToken({
+    const newServiceToken = await addServiceToken({
       name: serviceTokenName,
       workspaceId,
-      environment: selectedServiceTokenEnv?.slug ? selectedServiceTokenEnv.slug : environments[0]?.name,
-      expiresIn: expiryMapping[serviceTokenExpiresIn],
+      environment: selectedServiceTokenEnv?.slug
+        ? selectedServiceTokenEnv.slug
+        : environments[0]?.name,
+      expiresIn:
+        expiryMapping[serviceTokenExpiresIn as keyof typeof expiryMapping],
       encryptedKey: ciphertext,
-      iv, 
-      tag
+      iv,
+      tag,
     });
-    
+
     setServiceTokens(serviceTokens.concat([newServiceToken.serviceTokenData]));
-    setServiceToken(newServiceToken.serviceToken + "." + randomBytes);
+    setServiceToken(newServiceToken.serviceToken + '.' + randomBytes);
   };
 
   function copyToClipboard() {
     // Get the text field
-    var copyText = document.getElementById("serviceToken");
+    const copyText = document.getElementById(
+      'serviceToken'
+    ) as HTMLInputElement;
 
     // Select the text field
     copyText.select();
@@ -96,8 +107,8 @@ const AddServiceTokenDialog = ({
 
   const closeAddServiceTokenModal = () => {
     closeModal();
-    setServiceTokenName("");
-    setServiceToken("");
+    setServiceTokenName('');
+    setServiceToken('');
   };
 
   return (
@@ -156,7 +167,11 @@ const AddServiceTokenDialog = ({
                     </div>
                     <div className='max-h-28 mb-2'>
                       <ListBox
-                        selected={selectedServiceTokenEnv?.name ? selectedServiceTokenEnv?.name : environments[0]?.name}
+                        selected={
+                          selectedServiceTokenEnv?.name
+                            ? selectedServiceTokenEnv?.name
+                            : environments[0]?.name
+                        }
                         data={environments.map(({ name }) => name)}
                         onChange={(envName) =>
                           setSelectedServiceTokenEnv(
@@ -192,8 +207,10 @@ const AddServiceTokenDialog = ({
                         <Button
                           onButtonPressed={() => generateServiceToken()}
                           color='mineshaft'
-                          text={t('section-token:add-dialog.add')}
-                          textDisabled={t('section-token:add-dialog.add')}
+                          text={t('section-token:add-dialog.add') as string}
+                          textDisabled={
+                            t('section-token:add-dialog.add') as string
+                          }
                           size='md'
                           active={serviceTokenName == '' ? false : true}
                         />

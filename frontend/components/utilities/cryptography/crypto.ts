@@ -78,16 +78,18 @@ type encryptSymmetricProps = {
   key: string;
 };
 
+type encryptSymmetricReturn = {
+  ciphertext:string;
+  iv:string;
+  tag:string;
+};
 /**
  * Return symmetrically encrypted [plaintext] using [key].
- * @param {Object} obj
- * @param {String} obj.plaintext - plaintext to encrypt
- * @param {String} obj.key - 16-byte hex key
  */
 const encryptSymmetric = ({
   plaintext,
   key,
-}: encryptSymmetricProps): object => {
+}: encryptSymmetricProps): encryptSymmetricReturn => {
   let ciphertext, iv, tag;
   try {
     const obj = aes.encrypt({ text: plaintext, secret: key });

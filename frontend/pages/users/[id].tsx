@@ -194,7 +194,6 @@ export default function Users() {
             (email) =>
               !userList?.map((user1: UserProps) => user1.email).includes(email)
           )}
-        workspaceId={workspaceId}
         setEmail={setEmail}
       />
       {/* <DeleteUserDialog isOpen={isDeleteOpen} closeModal={closeDeleteModal} submitModal={deleteMembership} userIdToBeDeleted={userIdToBeDeleted}/> */}
