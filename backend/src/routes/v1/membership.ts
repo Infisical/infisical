@@ -4,6 +4,8 @@ import { body, param } from 'express-validator';
 import { requireAuth, validateRequest } from '../../middleware';
 import { membershipController } from '../../controllers/v1';
 
+// note: ALL DEPRECIATED (moved to api/v2/workspace/:workspaceId/memberships/:membershipId)
+
 router.get( // used for old CLI (deprecate)
 	'/:workspaceId/connect',
 	requireAuth({

@@ -13,4 +13,12 @@ router.get(
     usersController.getMe
 );
 
+router.get(
+    '/me/organizations',
+    requireAuth({
+        acceptedAuthModes: ['jwt', 'apiKey']
+    }),
+    usersController.getMyOrganizations
+);
+
 export default router;

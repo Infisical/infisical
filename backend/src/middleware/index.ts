@@ -3,6 +3,7 @@ import requireBotAuth from './requireBotAuth';
 import requireSignupAuth from './requireSignupAuth';
 import requireWorkspaceAuth from './requireWorkspaceAuth';
 import requireMembershipAuth from './requireMembershipAuth';
+import requireMembershipOrgAuth from './requireMembershipOrgAuth';
 import requireOrganizationAuth from './requireOrganizationAuth';
 import requireIntegrationAuth from './requireIntegrationAuth';
 import requireIntegrationAuthorizationAuth from './requireIntegrationAuthorizationAuth';
@@ -18,6 +19,7 @@ export {
 	requireSignupAuth,
 	requireWorkspaceAuth,
 	requireMembershipAuth,
+	requireMembershipOrgAuth,
 	requireOrganizationAuth,
 	requireIntegrationAuth,
 	requireIntegrationAuthorizationAuth,

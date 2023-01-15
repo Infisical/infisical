@@ -2258,6 +2258,368 @@
         ]
       }
     },
+    "/api/v2/users/me/organizations": {
+      "get": {
+        "summary": "Return organizations that current user is part of",
+        "description": "Return organizations that current user is part of",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "organizations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Organization"
+                      },
+                      "description": "Organizations that user is part of"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v2/organizations/{organizationId}/memberships": {
+      "get": {
+        "summary": "Return organization memberships",
+        "description": "Return organization memberships",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "memberships": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MembershipOrg"
+                      },
+                      "description": "Memberships of organization"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v2/organizations/{organizationId}/memberships/{membershipId}": {
+      "patch": {
+        "summary": "Update organization membership",
+        "description": "Update organization membership",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of organization"
+          },
+          {
+            "name": "membershipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of organization membership to update"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "membership": {
+                      "$ref": "#/components/schemas/MembershipOrg",
+                      "description": "Updated organization membership"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "description": "Role of organization membership - either owner, admin, or member"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete organization membership",
+        "description": "Delete organization membership",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of organization"
+          },
+          {
+            "name": "membershipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of organization membership to delete"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "membership": {
+                      "$ref": "#/components/schemas/MembershipOrg",
+                      "description": "Deleted organization membership"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v2/organizations/{organizationId}/workspaces": {
+      "get": {
+        "summary": "Return projects in organization that user is part of",
+        "description": "Return projects in organization that user is part of",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of organization"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "workspaces": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Project"
+                      },
+                      "description": "Projects of organization"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v2/workspace/{workspaceId}/environments": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "environmentName": {
+                    "example": "any"
+                  },
+                  "environmentSlug": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "environmentName": {
+                    "example": "any"
+                  },
+                  "environmentSlug": {
+                    "example": "any"
+                  },
+                  "oldEnvironmentSlug": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "environmentSlug": {
+                    "example": "any"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/workspace/{workspaceId}/secrets": {
       "post": {
         "description": "",
@@ -2450,56 +2812,6 @@
       }
     },
     "/api/v2/workspace/{workspaceId}/memberships/{membershipId}": {
-      "delete": {
-        "summary": "Delete project membership",
-        "description": "Delete project membership",
-        "parameters": [
-          {
-            "name": "workspaceId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "ID of project"
-          },
-          {
-            "name": "membershipId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "ID of membership"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "membership": {
-                      "$ref": "#/components/schemas/Membership",
-                      "description": "Deleted membership"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request"
-          }
-        },
-        "security": [
-          {
-            "apiKeyAuth": []
-          }
-        ]
-      },
       "patch": {
         "summary": "Update project membership",
         "description": "Update project membership",
@@ -2520,7 +2832,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "ID of membership"
+            "description": "ID of project membership to update"
           }
         ],
         "responses": {
@@ -2565,6 +2877,56 @@
             }
           }
         }
+      },
+      "delete": {
+        "summary": "Delete project membership",
+        "description": "Delete project membership",
+        "parameters": [
+          {
+            "name": "workspaceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of project"
+          },
+          {
+            "name": "membershipId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of project membership to delete"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "membership": {
+                      "$ref": "#/components/schemas/Membership",
+                      "description": "Deleted membership"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ]
       }
     },
     "/api/v2/secret/batch-create/workspace/{workspaceId}/environment/{environment}": {
@@ -3131,7 +3493,7 @@
         }
       }
     },
-    "/api/v2/api-key-data/": {
+    "/api/v2/api-key/": {
       "get": {
         "description": "",
         "parameters": [],
@@ -3174,7 +3536,7 @@
         }
       }
     },
-    "/api/v2/api-key-data/{apiKeyDataId}": {
+    "/api/v2/api-key/{apiKeyDataId}": {
       "delete": {
         "description": "",
         "parameters": [
@@ -3299,6 +3661,102 @@
           "role": {
             "type": "string",
             "example": "admin"
+          }
+        }
+      },
+      "MembershipOrg": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "_id": {
+                "type": "string",
+                "example": ""
+              },
+              "email": {
+                "type": "string",
+                "example": ""
+              },
+              "firstName": {
+                "type": "string",
+                "example": ""
+              },
+              "lastName": {
+                "type": "string",
+                "example": ""
+              },
+              "publicKey": {
+                "type": "string",
+                "example": ""
+              },
+              "updatedAt": {
+                "type": "string",
+                "example": ""
+              },
+              "createdAt": {
+                "type": "string",
+                "example": ""
+              }
+            }
+          },
+          "organization": {
+            "type": "string",
+            "example": ""
+          },
+          "role": {
+            "type": "string",
+            "example": "owner"
+          },
+          "status": {
+            "type": "string",
+            "example": "accepted"
+          }
+        }
+      },
+      "Organization": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": ""
+          },
+          "name": {
+            "type": "string",
+            "example": ""
+          },
+          "customerId": {
+            "type": "string",
+            "example": ""
+          }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "My Project"
+          },
+          "organization": {
+            "type": "string",
+            "example": ""
+          },
+          "environments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "development"
+                },
+                "slug": {
+                  "type": "string",
+                  "example": "dev"
+                }
+              }
+            }
           }
         }
       },

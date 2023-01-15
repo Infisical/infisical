@@ -9,7 +9,7 @@ import {
 import { OWNER, ADMIN, MEMBER, ACCEPTED } from '../../variables';
 import { organizationController } from '../../controllers/v1';
 
-router.get(
+router.get( // deprecated (moved to api/v2/users/me/organizations)
 	'/',
 	requireAuth({
 		acceptedAuthModes: ['jwt']
@@ -41,7 +41,7 @@ router.get(
 	organizationController.getOrganization
 );
 
-router.get(
+router.get( // deprecated (moved to api/v2/organizations/:organizationId/memberships)
 	'/:organizationId/users',
 	requireAuth({
 		acceptedAuthModes: ['jwt']
@@ -56,7 +56,7 @@ router.get(
 );
 
 router.get(
-	'/:organizationId/my-workspaces',
+	'/:organizationId/my-workspaces', // deprecated (moved to api/v2/organizations/:organizationId/workspaces)
 	requireAuth({
 		acceptedAuthModes: ['jwt']
 	}),

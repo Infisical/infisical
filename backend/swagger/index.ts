@@ -66,6 +66,33 @@ const generateOpenAPISpec = async () => {
         workspace: '',
         role: 'admin'
       },
+      MembershipOrg: {
+        user: {
+          _id: '',
+          email: '',
+          firstName: '',
+          lastName: '',
+          publicKey: '',
+          updatedAt: '',
+          createdAt: ''
+        },
+        organization: '',
+        role: 'owner',
+        status: 'accepted'
+      },
+      Organization: {
+        _id: '',
+        name: '',
+        customerId: ''
+      },
+      Project: {
+        name: 'My Project',
+        organization: '',
+        environments: [{
+          name: 'development',
+          slug: 'dev'
+        }]
+      },
       ProjectKey: {
         encryptedkey: '',
         nonce: '',

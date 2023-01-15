@@ -6,11 +6,12 @@ import {
 import { validateMembership } from '../helpers/membership';
 
 type req = 'params' | 'body' | 'query';
+
 /**
  * Validate membership with id [membershipId] and that user with id
  * [req.user._id] can modify that membership.
  * @param {Object} obj
- * @param {String[]} obj.acceptedRoles - accepted workspace roles for JWT auth
+ * @param {String[]} obj.acceptedRoles - accepted workspace roles
  * @param {String[]} obj.location - location of [workspaceId] on request (e.g. params, body) for parsing
  */
 const requireMembershipAuth = ({

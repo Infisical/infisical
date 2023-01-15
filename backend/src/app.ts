@@ -42,9 +42,10 @@ import {
 } from './routes/v1';
 import {
   users as v2UsersRouter,
+  organizations as v2OrganizationsRouter,
+  workspace as v2WorkspaceRouter,
   secret as v2SecretRouter, // begin to phase out
   secrets as v2SecretsRouter,
-  workspace as v2WorkspaceRouter,
   serviceTokenData as v2ServiceTokenDataRouter,
   apiKeyData as v2APIKeyDataRouter,
   environment as v2EnvironmentRouter,
@@ -98,7 +99,7 @@ app.use('/api/v1/membership', v1MembershipRouter);
 app.use('/api/v1/key', v1KeyRouter);
 app.use('/api/v1/invite-org', v1InviteOrgRouter);
 app.use('/api/v1/secret', v1SecretRouter);
-app.use('/api/v1/service-token', v1ServiceTokenRouter); // stop supporting
+app.use('/api/v1/service-token', v1ServiceTokenRouter); // deprecated
 app.use('/api/v1/password', v1PasswordRouter);
 app.use('/api/v1/stripe', v1StripeRouter);
 app.use('/api/v1/integration', v1IntegrationRouter);
@@ -106,9 +107,10 @@ app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
 
 // v2 routes
 app.use('/api/v2/users', v2UsersRouter);
+app.use('/api/v2/organizations', v2OrganizationsRouter);
 app.use('/api/v2/workspace', v2EnvironmentRouter);
-app.use('/api/v2/workspace', v2WorkspaceRouter); // TODO: turn into plural route
-app.use('/api/v2/secret', v2SecretRouter); // stop supporting, TODO: revise
+app.use('/api/v2/workspace', v2WorkspaceRouter);
+app.use('/api/v2/secret', v2SecretRouter); // deprecated
 app.use('/api/v2/secrets', v2SecretsRouter);
 app.use('/api/v2/service-token', v2ServiceTokenDataRouter); // TODO: turn into plural route
 app.use('/api/v2/api-key', v2APIKeyDataRouter);
@@ -127,7 +129,6 @@ app.use((req, res, next) => {
 
 //* Error Handling Middleware (must be after all routing logic)
 app.use(requestErrorHandler)
-
 
 export const server = app.listen(PORT, () => {
   getLogger("backend-main").info(`Server started listening at port ${PORT}`)

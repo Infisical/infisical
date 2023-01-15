@@ -162,7 +162,17 @@
         {
           "group": "Users",
           "pages": [
-            "api-reference/endpoints/users/me"
+            "api-reference/endpoints/users/me",
+            "api-reference/endpoints/users/my-organizations"
+          ]
+        },
+        {
+          "group": "Organizations",
+          "pages": [
+            "api-reference/endpoints/organizations/memberships",
+            "api-reference/endpoints/organizations/update-membership",
+            "api-reference/endpoints/organizations/delete-membership",
+            "api-reference/endpoints/organizations/workspaces"
           ]
         },
         {
