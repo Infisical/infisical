@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { useTranslation } from "next-i18next";
+import getSecretVersions from '@app/ee/api/secrets/GetSecretVersions';
 import { faCircle, faDotCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import getSecretVersions from 'ee/api/secrets/GetSecretVersions';
 
 import { decryptAssymmetric, decryptSymmetric } from '~/components/utilities/cryptography/crypto';
 import getLatestFileKey from '~/pages/api/workspace/getLatestFileKey';

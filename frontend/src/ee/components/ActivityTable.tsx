@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { useTranslation } from "next-i18next";
+import timeSince from '@app/ee/utilities/timeSince';
 import {
   faAngleDown,
   faAngleRight,
   faUpRightFromSquare
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import timeSince from 'ee/utilities/timeSince';
 
 import guidGenerator from '../../components/utilities/randomId';
 

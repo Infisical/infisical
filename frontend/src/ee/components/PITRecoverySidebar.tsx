@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import { useTranslation } from "next-i18next";
+import getProjectSecretShanpshots from "@app/ee/api/secrets/GetProjectSercetShanpshots";
+import getSecretSnapshotData from "@app/ee/api/secrets/GetSecretSnapshotData";
+import timeSince from "@app/ee/utilities/timeSince";
 import { faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import getProjectSecretShanpshots from "ee/api/secrets/GetProjectSercetShanpshots";
-import getSecretSnapshotData from "ee/api/secrets/GetSecretSnapshotData";
-import timeSince from "ee/utilities/timeSince";
 
 import Button from "~/components/basic/buttons/Button";
 import { decryptAssymmetric, decryptSymmetric } from "~/components/utilities/cryptography/crypto";

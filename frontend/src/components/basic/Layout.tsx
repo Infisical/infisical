@@ -230,7 +230,6 @@ export default function Layout({ children }: LayoutProps) {
         ) {
           router.push("/dashboard/" + userWorkspaces[0]._id);
         } else {
-          console.log(99, Object.keys(workspaceMapping))
           setWorkspaceMapping(
             Object.fromEntries(
               userWorkspaces.map((workspace: any) => [

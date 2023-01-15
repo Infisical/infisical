@@ -6,6 +6,11 @@ import {
     faX,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+// TODO: This needs to be moved from public folder 
+import {
+  contextNetlifyMapping,
+  reverseContextNetlifyMapping,
+} from "public/data/frequentConstants";
 
 import Button from "~/components/basic/buttons/Button";
 import ListBox from "~/components/basic/Listbox";
@@ -13,10 +18,6 @@ import ListBox from "~/components/basic/Listbox";
 import deleteIntegration from "../../pages/api/integrations/DeleteIntegration"
 import getIntegrationApps from "../../pages/api/integrations/GetIntegrationApps";
 import updateIntegration from "../../pages/api/integrations/updateIntegration"
-import {
-  contextNetlifyMapping,
-  reverseContextNetlifyMapping,
-} from "../../public/data/frequentConstants";
 
 interface Integration {
     _id: string;

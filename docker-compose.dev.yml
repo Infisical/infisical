@@ -46,12 +46,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     volumes:
-      - ./frontend/pages:/app/pages
+      - ./frontend/src/pages:/app/src/pages
+      - ./frontend/src/components:/app/src/components
+      - ./frontend/src/ee:/app/src/ee
+      - ./frontend/src/locales:/app/src/locales
+      - ./frontend/src/styles:/app/src/styles
       - ./frontend/public:/app/public
-      - ./frontend/styles:/app/styles
-      - ./frontend/components:/app/components
-      - ./frontend/ee:/app/ee
-      - ./frontend/locales:/app/locales
       - ./frontend/next-i18next.config.js:/app/next-i18next.config.js
     env_file: .env
     environment:

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
+import frameworkIntegrationOptions from 'public/json/frameworkIntegrations.json';
 
 import ActivateBotDialog from '~/components/basic/dialog/ActivateBotDialog';
 import CloudIntegrationSection from '~/components/integrations/CloudIntegrationSection';
@@ -16,7 +17,6 @@ import {
   decryptAssymmetric,
   encryptAssymmetric,
 } from '../../components/utilities/cryptography/crypto';
-import frameworkIntegrationOptions from '../../public/json/frameworkIntegrations.json';
 import getBot from '../api/bot/getBot';
 import setBotActiveStatus from '../api/bot/setBotActiveStatus';
 import getIntegrationOptions from '../api/integrations/GetIntegrationOptions';
