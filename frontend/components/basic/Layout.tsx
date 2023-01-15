@@ -256,7 +256,7 @@ export default function Layout({ children }: LayoutProps) {
     };
     putUserInWorkSpace();
     onboardingCheck({ setTotalOnboardingActionsDone });
-  }, []);
+  }, [router.query.id]);
 
   useEffect(() => {
     try {
@@ -301,11 +301,10 @@ export default function Layout({ children }: LayoutProps) {
                   {Object.keys(workspaceMapping).length > 0 ? (
                     <Listbox
                       selected={workspaceSelected}
-                      onChange={setWorkspaceSelected as any}
+                      onChange={setWorkspaceSelected}
                       data={Object.keys(workspaceMapping)}
                       buttonAction={openModal}
                       text=""
-                      // workspaceMapping={workspaceMapping as any}
                     />
                   ) : (
                     <Button
