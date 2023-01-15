@@ -83,23 +83,6 @@ router.get( // new - TODO: rewire dashboard to this route
 	workspaceController.getWorkspaceMemberships
 );
 
-router.delete( // TODO - rewire dashboard to this route
-	'/:workspaceId/memberships/:membershipId',
-	param('workspaceId').exists().trim(),
-	param('membershipId').exists().trim(),
-	validateRequest,
-	requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey']
-    }),
-	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN],
-	}),
-	requireMembershipAuth({
-		acceptedRoles: [ADMIN]
-	}),
-	workspaceController.deleteWorkspaceMembership
-);
-
 router.patch( // TODO - rewire dashboard to this route
 	'/:workspaceId/memberships/:membershipId',
 	param('workspaceId').exists().trim(),
@@ -116,6 +99,23 @@ router.patch( // TODO - rewire dashboard to this route
 		acceptedRoles: [ADMIN]
 	}),
 	workspaceController.updateWorkspaceMembership
+);
+
+router.delete( // TODO - rewire dashboard to this route
+	'/:workspaceId/memberships/:membershipId',
+	param('workspaceId').exists().trim(),
+	param('membershipId').exists().trim(),
+	validateRequest,
+	requireAuth({
+        acceptedAuthModes: ['jwt', 'apiKey']
+    }),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN],
+	}),
+	requireMembershipAuth({
+		acceptedRoles: [ADMIN]
+	}),
+	workspaceController.deleteWorkspaceMembership
 );
 
 export default router;

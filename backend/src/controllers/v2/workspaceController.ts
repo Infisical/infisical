@@ -312,76 +312,6 @@ export const getWorkspaceMemberships = async (req: Request, res: Response) => {
 }
 
 /**
- * Delete workspace membership with id [membershipId]
- * @param req 
- * @param res 
- * @returns 
- */
-export const deleteWorkspaceMembership = async (req: Request, res: Response) => {
-	/* 
-    #swagger.summary = 'Delete project membership'
-    #swagger.description = 'Delete project membership'
-    
-    #swagger.security = [{
-        "apiKeyAuth": []
-    }]
-
-	#swagger.parameters['workspaceId'] = {
-		"description": "ID of project",
-		"required": true,
-		"type": "string"
-	} 
-
-	#swagger.parameters['membershipId'] = {
-		"description": "ID of membership",
-		"required": true,
-		"type": "string"
-	} 
-
-    #swagger.responses[200] = {
-        content: {
-            "application/json": {
-                "schema": { 
-					"type": "object",
-					"properties": {
-						"membership": {
-							$ref: "#/components/schemas/Membership",
-							"description": "Deleted membership"
-						}
-					}
-                }
-            }           
-        }
-    }   
-    */
-	let membership;
-	try {
-		const { 
-			membershipId
-		} = req.params;
-		
-		membership = await Membership.findByIdAndDelete(membershipId);
-		
-		if (!membership) throw new Error('Failed to delete workspace membership');
-		
-		await Key.deleteMany({
-			receiver: membership.user,
-			workspace: membership.workspace
-		});
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to delete workspace membership'
-		});	
-	}
-	
-	return res.status(200).send({
-		membership
-	});
-}
-
-/**
  * Update role of membership with id [membershipId] to role [role]
  * @param req 
  * @param res 
@@ -403,7 +333,7 @@ export const updateWorkspaceMembership = async (req: Request, res: Response) => 
 	} 
 
 	#swagger.parameters['membershipId'] = {
-		"description": "ID of membership",
+		"description": "ID of project membership to update",
 		"required": true,
 		"type": "string"
 	} 
@@ -467,4 +397,74 @@ export const updateWorkspaceMembership = async (req: Request, res: Response) => 
 	return res.status(200).send({
 		membership
 	}); 
+}
+
+/**
+ * Delete workspace membership with id [membershipId]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const deleteWorkspaceMembership = async (req: Request, res: Response) => {
+	/* 
+    #swagger.summary = 'Delete project membership'
+    #swagger.description = 'Delete project membership'
+    
+    #swagger.security = [{
+        "apiKeyAuth": []
+    }]
+
+	#swagger.parameters['workspaceId'] = {
+		"description": "ID of project",
+		"required": true,
+		"type": "string"
+	} 
+
+	#swagger.parameters['membershipId'] = {
+		"description": "ID of project membership to delete",
+		"required": true,
+		"type": "string"
+	} 
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": { 
+					"type": "object",
+					"properties": {
+						"membership": {
+							$ref: "#/components/schemas/Membership",
+							"description": "Deleted membership"
+						}
+					}
+                }
+            }           
+        }
+    }   
+    */
+	let membership;
+	try {
+		const { 
+			membershipId
+		} = req.params;
+		
+		membership = await Membership.findByIdAndDelete(membershipId);
+		
+		if (!membership) throw new Error('Failed to delete workspace membership');
+		
+		await Key.deleteMany({
+			receiver: membership.user,
+			workspace: membership.workspace
+		});
+	} catch (err) {
+		Sentry.setUser({ email: req.user.email });
+		Sentry.captureException(err);
+		return res.status(400).send({
+			message: 'Failed to delete workspace membership'
+		});	
+	}
+	
+	return res.status(200).send({
+		membership
+	});
 }

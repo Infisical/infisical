@@ -10,7 +10,7 @@ import { ADMIN, MEMBER } from '../../variables';
 import { CreateSecretRequestBody, ModifySecretRequestBody } from '../../types/secret';
 import { secretController } from '../../controllers/v2';
 
-// note to devs: stop supporting
+// note to devs: stop supporting these routes [deprecated]
 
 const router = express.Router();
 

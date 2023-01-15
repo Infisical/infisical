@@ -7,6 +7,7 @@ import { Membership, Key } from '../models';
  * @param {Object} obj
  * @param {String} obj.userId - id of user to validate
  * @param {String} obj.workspaceId - id of workspace
+ * @returns {Membership} membership - membership of user with id [userId] for workspace with id [workspaceId]
  */
 const validateMembership = async ({
 	userId,

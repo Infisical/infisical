@@ -29,12 +29,6 @@ const productToPriceMap = {
 	cardAuth: STRIPE_PRODUCT_CARD_AUTH
 };
 
-/**
- * Return organizations that user is part of
- * @param req
- * @param res
- * @returns
- */
 export const getOrganizations = async (req: Request, res: Response) => {
 	let organizations;
 	try {
