@@ -9,7 +9,6 @@ import Button from '../buttons/Button';
 interface TokenProps {
   _id: string;
   name: string;
-  environment: string;
   expiresAt: string;
 }
 

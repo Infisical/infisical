@@ -121,7 +121,7 @@ export default function PersonalSettings() {
                 </div>
                 <div className="w-48 mt-2">
                   <Button
-                    text={t("settings-personal:api-keys.add-new")}
+                    text={String(t("settings-personal:api-keys.add-new"))}
                     onButtonPressed={() => {
                       setIsAddApiKeyDialogOpen(true);
                     }}
@@ -133,7 +133,7 @@ export default function PersonalSettings() {
               </div>
               <ApiKeyTable
                 data={apiKeys}
-                setApiKeys={setApiKeys}
+                setApiKeys={setApiKeys as any}
               />
             </div>
 
