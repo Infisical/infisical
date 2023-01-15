@@ -1,6 +1,6 @@
+import { envMapping } from "public/data/frequentConstants";
 import { SecretDataProps } from "public/data/frequentInterfaces";
 
-import { envMapping } from "../../../public/data/frequentConstants";
 import checkOverrides from './checkOverrides';
 
 

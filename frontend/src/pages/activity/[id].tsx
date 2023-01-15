@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useTranslation } from "next-i18next";
-import ActivitySideBar from 'ee/components/ActivitySideBar';
+import ActivitySideBar from '@app/ee/components/ActivitySideBar';
 
 import Button from '~/components/basic/buttons/Button';
 import EventFilter from '~/components/basic/EventFilter';
