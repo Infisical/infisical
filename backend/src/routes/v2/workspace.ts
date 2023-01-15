@@ -45,7 +45,7 @@ router.get(
 router.get(
 	'/:workspaceId/encrypted-key',
 	requireAuth({
-		acceptedAuthModes: ['jwt']
+		acceptedAuthModes: ['jwt', 'apiKey']
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER]
@@ -75,7 +75,7 @@ router.get( // new - TODO: rewire dashboard to this route
 	param('workspaceId').exists().trim(),
 	validateRequest,
 	requireAuth({
-		acceptedAuthModes: ['jwt']
+		acceptedAuthModes: ['jwt', 'apiKey']
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -89,7 +89,7 @@ router.delete( // TODO - rewire dashboard to this route
 	param('membershipId').exists().trim(),
 	validateRequest,
 	requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: ['jwt', 'apiKey']
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN],
@@ -107,7 +107,7 @@ router.patch( // TODO - rewire dashboard to this route
 	body('role').exists().isString().trim().isIn([ADMIN, MEMBER]),
 	validateRequest,
 	requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: ['jwt', 'apiKey']
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN],

@@ -7,7 +7,6 @@ import {
 	getAuthSTDPayload,
 	getAuthAPIKeyPayload
 } from '../helpers/auth';
-import { BadRequestError } from '../utils/errors';
 
 declare module 'jsonwebtoken' {
 	export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -31,37 +30,28 @@ const requireAuth = ({
 	acceptedAuthModes: string[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
-		const [AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE] = <[string, string]>req.headers['authorization']?.split(' ', 2) ?? [null, null]
-		if (AUTH_TOKEN_TYPE === null)
-			return next(BadRequestError({ message: `Missing Authorization Header in the request header.` }))
-		if (AUTH_TOKEN_TYPE.toLowerCase() !== 'bearer')
-			return next(BadRequestError({ message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.` }))
-		if (AUTH_TOKEN_VALUE === null)
-			return next(BadRequestError({ message: 'Missing Authorization Body in the request header' }))
-
-		// validate auth token against 
-		const authMode = validateAuthMode({
-			authTokenValue: AUTH_TOKEN_VALUE,
+		// validate auth token against accepted auth modes [acceptedAuthModes]
+		// and return token type [authTokenType] and value [authTokenValue]
+		const { authTokenType, authTokenValue } = validateAuthMode({
+			headers: req.headers,
 			acceptedAuthModes
 		});
 
-		if (!acceptedAuthModes.includes(authMode)) throw new Error('Failed to validate auth mode');
-
 		// attach auth payloads
-		switch (authMode) {
+		switch (authTokenType) {
 			case 'serviceToken':
 				req.serviceTokenData = await getAuthSTDPayload({
-					authTokenValue: AUTH_TOKEN_VALUE
+					authTokenValue
 				});
 				break;
 			case 'apiKey':
 				req.user = await getAuthAPIKeyPayload({
-					authTokenValue: AUTH_TOKEN_VALUE
+					authTokenValue
 				});
 				break;
 			default:
 				req.user = await getAuthUserPayload({
-					authTokenValue: AUTH_TOKEN_VALUE
+					authTokenValue
 				});
 				break;
 		}

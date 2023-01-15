@@ -11,7 +11,7 @@ interface Props {
 }
 
 /**
- * This route gets service tokens for a specific user in a project
+ * This route adds a service token for a specific user in a project
  * @param {object} obj
  * @param {string} obj.name - name of the service token
  * @param {string} obj.workspaceId - workspace for which we are issuing the token

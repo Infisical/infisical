@@ -12,7 +12,7 @@ import { ADMIN, MEMBER } from '../../../variables';
 router.get(
 	'/:secretId/secret-versions',
 	requireAuth({
-		acceptedAuthModes: ['jwt']
+		acceptedAuthModes: ['jwt', 'apiKey']
 	}),
 	requireSecretAuth({
 		acceptedRoles: [ADMIN, MEMBER]
@@ -27,7 +27,7 @@ router.get(
 router.post(
 	'/:secretId/secret-versions/rollback',
 	requireAuth({
-		acceptedAuthModes: ['jwt']
+		acceptedAuthModes: ['jwt', 'apiKey']
 	}),
 	requireSecretAuth({
 		acceptedRoles: [ADMIN, MEMBER]

@@ -8,7 +8,7 @@ import { usersController } from '../../controllers/v2';
 router.get(
     '/me',
     requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: ['jwt', 'apiKey']
     }),
     usersController.getMe
 );
