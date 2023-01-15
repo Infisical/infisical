@@ -43,8 +43,7 @@ const crypto = require("crypto");
 
 export default function Layout({ children }: LayoutProps) {
   const router = useRouter();
-  const [workspaceList, setWorkspaceList] = useState([]);
-  const [workspaceMapping, setWorkspaceMapping] = useState([{ "1": "2" }]);
+  const [workspaceMapping, setWorkspaceMapping] = useState<Map<string, string>[]>([]);
   const [workspaceSelected, setWorkspaceSelected] = useState("∞");
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -140,7 +139,11 @@ export default function Layout({ children }: LayoutProps) {
             }
           });
         }
-        router.push("/dashboard/" + newWorkspaceId);
+        setWorkspaceMapping((prevState) => ({
+          ...prevState,
+          [workspaceName]: newWorkspaceId
+        }))
+        setWorkspaceSelected(workspaceName);
         setIsOpen(false);
         setNewWorkspaceName("");
       } else {
@@ -227,9 +230,7 @@ export default function Layout({ children }: LayoutProps) {
         ) {
           router.push("/dashboard/" + userWorkspaces[0]._id);
         } else {
-          setWorkspaceList(
-            userWorkspaces.map((workspace: any) => workspace.name)
-          );
+          console.log(99, Object.keys(workspaceMapping))
           setWorkspaceMapping(
             Object.fromEntries(
               userWorkspaces.map((workspace: any) => [
@@ -255,7 +256,7 @@ export default function Layout({ children }: LayoutProps) {
     };
     putUserInWorkSpace();
     onboardingCheck({ setTotalOnboardingActionsDone });
-  }, []);
+  }, [router.query.id]);
 
   useEffect(() => {
     try {
@@ -297,14 +298,13 @@ export default function Layout({ children }: LayoutProps) {
                   <div className="text-gray-400 self-start ml-1 mb-1 text-xs font-semibold tracking-wide">
                     {t("nav:menu.project")}
                   </div>
-                  {workspaceList.length > 0 ? (
+                  {Object.keys(workspaceMapping).length > 0 ? (
                     <Listbox
                       selected={workspaceSelected}
-                      onChange={setWorkspaceSelected as any}
-                      data={workspaceList}
+                      onChange={setWorkspaceSelected}
+                      data={Object.keys(workspaceMapping)}
                       buttonAction={openModal}
                       text=""
-                      // workspaceMapping={workspaceMapping as any}
                     />
                   ) : (
                     <Button
@@ -317,7 +317,7 @@ export default function Layout({ children }: LayoutProps) {
                   )}
                 </div>
                 <ul>
-                  {workspaceList.length > 0 &&
+                  {Object.keys(workspaceMapping).length > 0 &&
                     menuItems.map(({ href, title, emoji }) => (
                       <li className="mt-0.5 mx-2" key={title}>
                         {router.asPath.split("/")[1] === href.split("/")[1] &&
