@@ -101,9 +101,8 @@ export default function SettingsBasic() {
 
     if (userWorkspaces.length > 1) {
       if (
-        userWorkspaces.filter(
-          (workspace) => workspace._id === workspaceId 
-        )[0].name == workspaceToBeDeletedName
+        userWorkspaces.filter((workspace) => workspace._id === workspaceId)[0]
+          .name == workspaceToBeDeletedName
       ) {
         await deleteWorkspace(workspaceId);
         const userWorkspaces = await getWorkspaces();
@@ -323,7 +322,7 @@ export default function SettingsBasic() {
               </p>
               <div className='max-h-28 w-full max-w-md mr-auto mt-4'>
                 <InputField
-                  label={t('settings-project:project-to-delete')}
+                  label={t('settings-project:project-to-delete') as string}
                   onChangeHandler={setWorkspaceToBeDeletedName}
                   type='varName'
                   value={workspaceToBeDeletedName}

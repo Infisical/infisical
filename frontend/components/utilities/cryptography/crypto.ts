@@ -22,8 +22,11 @@ type encryptAsymmetricProps = {
 const encryptAssymmetric = ({
   plaintext,
   publicKey,
-  privateKey
-}: encryptAsymmetricProps): object => {
+  privateKey,
+}: encryptAsymmetricProps): {
+  ciphertext: string;
+  nonce: string;
+} => {
   const nonce = nacl.randomBytes(24);
   const ciphertext = nacl.box(
     nacl.util.decodeUTF8(plaintext),
@@ -34,7 +37,7 @@ const encryptAssymmetric = ({
 
   return {
     ciphertext: nacl.util.encodeBase64(ciphertext),
-    nonce: nacl.util.encodeBase64(nonce)
+    nonce: nacl.util.encodeBase64(nonce),
   };
 };
 
@@ -58,7 +61,7 @@ const decryptAssymmetric = ({
   ciphertext,
   nonce,
   publicKey,
-  privateKey
+  privateKey,
 }: decryptAsymmetricProps): string => {
   const plaintext = nacl.box.open(
     nacl.util.decodeBase64(ciphertext),
@@ -83,7 +86,7 @@ type encryptSymmetricProps = {
  */
 const encryptSymmetric = ({
   plaintext,
-  key
+  key,
 }: encryptSymmetricProps): object => {
   let ciphertext, iv, tag;
   try {
@@ -100,7 +103,7 @@ const encryptSymmetric = ({
   return {
     ciphertext,
     iv,
-    tag
+    tag,
   };
 };
 
@@ -125,7 +128,7 @@ const decryptSymmetric = ({
   ciphertext,
   iv,
   tag,
-  key
+  key,
 }: decryptSymmetricProps): string => {
   let plaintext;
   try {
@@ -142,5 +145,5 @@ export {
   decryptAssymmetric,
   decryptSymmetric,
   encryptAssymmetric,
-  encryptSymmetric
+  encryptSymmetric,
 };
