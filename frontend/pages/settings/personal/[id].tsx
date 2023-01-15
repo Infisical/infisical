@@ -33,7 +33,7 @@ export default function PersonalSettings() {
   const [backupKeyIssued, setBackupKeyIssued] = useState(false);
   const [backupKeyError, setBackupKeyError] = useState(false);
   const [isAddApiKeyDialogOpen, setIsAddApiKeyDialogOpen] = useState(false)
-  const [apiKeys, setApiKeys] = useState([]);
+  const [apiKeys, setApiKeys] = useState<any[]>([]);
 
   const { t } = useTranslation();
   const router = useRouter();
@@ -96,7 +96,7 @@ export default function PersonalSettings() {
             </div>
           </div>
           <div className="flex flex-col ml-6 text-mineshaft-50 mr-6 max-w-5xl">
-            <div className="bg-white/5 rounded-md px-6 pt-6 pb-6 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4">
+            <div className="bg-white/5 rounded-md px-6 pt-6 pb-6 flex flex-col items-start w-full mb-6 mt-4">
               <p className="text-xl font-semibold self-start">
                 {t("settings-personal:change-language")}
               </p>
@@ -109,7 +109,7 @@ export default function PersonalSettings() {
                 />
               </div>
             </div>
-            <div className="bg-white/5 rounded-md px-6 pt-4 flex flex-col items-start flex flex-col items-start w-full mt-2 mb-8 pt-2">
+            <div className="bg-white/5 rounded-md px-6 flex flex-col items-start w-full mt-2 mb-8 pt-2">
               <div className="flex flex-row justify-between w-full">
                 <div className="flex flex-col w-full">
                   <p className="text-xl font-semibold mb-3">

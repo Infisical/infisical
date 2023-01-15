@@ -1,15 +1,23 @@
 import { Fragment, useState } from "react";
-import Image from "next/image";
 import { Dialog, Transition } from "@headlessui/react";
 
 import Button from "../buttons/Button";
 import InputField from "../InputField";
 import { Checkbox } from "../table/Checkbox";
 
+
+type Props = {
+  isOpen: boolean;
+  closeModal: () => void;
+  submitModal: (email: string, addAllUser: boolean) => void;
+  workspaceName: string;
+  setWorkspaceName: (workspaceName: string) => void;
+  error: boolean;
+  loading: boolean;
+};
+
 /**
  * The dialog modal for when the user wants to create a new workspace
- * @param {*} param0
- * @returns
  */
 const AddWorkspaceDialog = ({
   isOpen,
@@ -19,7 +27,7 @@ const AddWorkspaceDialog = ({
   setWorkspaceName,
   error,
   loading,
-}) => {
+}:Props) => {
   const [addAllUsers, setAddAllUsers] = useState(true);
   const submit = () => {
     submitModal(workspaceName, addAllUsers);
@@ -72,8 +80,7 @@ const AddWorkspaceDialog = ({
                       value={workspaceName}
                       placeholder=""
                       isRequired
-                      error={error.length > 0}
-                      errorText={error}
+                      error={error}
                     />
                   </div>
                   <div className="mt-4 ml-1">
