@@ -8,9 +8,9 @@ interface Props {
   plan: {
     name: string;
     price: string;
-    priceExplanation: string;
+    priceExplanation?: string;
     text: string;
-    subtext: string;
+    subtext?: string;
     buttonTextMain: string;
     buttonTextSecondary: string;
     current: boolean;
@@ -27,33 +27,33 @@ export default function Plan({ plan }: Props) {
       }
 			`}
     >
-      <div className="flex flex-col">
-        <div className="flex flex-row justify-between items-center relative z-10">
+      <div className='flex flex-col'>
+        <div className='flex flex-row justify-between items-center relative z-10'>
           <p className={`px-6 py-4 text-3xl font-semibold text-gray-400`}>
             {plan.name}
           </p>
         </div>
-        <div className="flex flwx-row items-end justify-start mb-4">
-          <p className="pl-6 text-3xl font-semibold text-primary">
+        <div className='flex flwx-row items-end justify-start mb-4'>
+          <p className='pl-6 text-3xl font-semibold text-primary'>
             {plan.price}
           </p>
-          <p className="pl-3 mb-1 text-lg text-gray-400">
+          <p className='pl-3 mb-1 text-lg text-gray-400'>
             {plan.priceExplanation}
           </p>
         </div>
-        <p className="relative z-10 max-w-fit px-6 text-base text-gray-400">
+        <p className='relative z-10 max-w-fit px-6 text-base text-gray-400'>
           {plan.text}
         </p>
-        <p className="relative z-10 max-w-fit px-6 text-base text-gray-400">
+        <p className='relative z-10 max-w-fit px-6 text-base text-gray-400'>
           {plan.subtext}
         </p>
       </div>
-      <div className="flex flex-row items-center">
+      <div className='flex flex-row items-center'>
         {plan.current == false ? (
           <>
             {plan.buttonTextMain == 'Schedule a Demo' ? (
-              <a href="/scheduledemo" target='_blank rel="noopener"'>
-                <div className="relative z-10 mx-5 mt-3 mb-4 py-2 px-4 border border-1 border-gray-600 hover:text-black hover:border-primary text-gray-400 font-semibold hover:bg-primary bg-bunker duration-200 cursor-pointer rounded-md flex w-max">
+              <a href='/scheduledemo' target='_blank rel="noopener"'>
+                <div className='relative z-10 mx-5 mt-3 mb-4 py-2 px-4 border border-1 border-gray-600 hover:text-black hover:border-primary text-gray-400 font-semibold hover:bg-primary bg-bunker duration-200 cursor-pointer rounded-md flex w-max'>
                   {plan.buttonTextMain}
                 </div>
               </a>
@@ -68,7 +68,7 @@ export default function Plan({ plan }: Props) {
                 <button
                   onClick={() =>
                     StripeRedirect({
-                      orgId: tempLocalStorage('orgData.id')
+                      orgId: tempLocalStorage('orgData.id'),
                     })
                   }
                 >
@@ -77,10 +77,10 @@ export default function Plan({ plan }: Props) {
               </div>
             )}
             <a
-              href="https://infisical.com/pricing"
+              href='https://infisical.com/pricing'
               target='_blank rel="noopener"'
             >
-              <div className="relative z-10 text-gray-400 font-semibold hover:text-primary duration-200 cursor-pointer mb-0.5">
+              <div className='relative z-10 text-gray-400 font-semibold hover:text-primary duration-200 cursor-pointer mb-0.5'>
                 {plan.buttonTextSecondary}
               </div>
             </a>
@@ -93,7 +93,7 @@ export default function Plan({ plan }: Props) {
                 : 'bg-chicago-700'
             }`}
           >
-            <p className="text-xs text-black font-semibold">CURRENT PLAN</p>
+            <p className='text-xs text-black font-semibold'>CURRENT PLAN</p>
           </div>
         )}
       </div>

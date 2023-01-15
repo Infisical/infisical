@@ -1,16 +1,15 @@
-import React from "react";
-import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faExclamationTriangle } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 export default function Error({ text }: { text: string }): JSX.Element {
   return (
-    <div className="relative flex flex-row justify-center m-auto items-center w-fit rounded-full">
+    <div className='relative flex flex-row justify-center m-auto items-center w-fit rounded-full'>
       <FontAwesomeIcon
         icon={faExclamationTriangle}
-        className="text-red mt-1.5 mb-2 mx-2"
+        className='text-red mt-1.5 mb-2 mx-2'
       />
       {text && (
-        <p className="relative top-0 text-red mr-2 text-sm py-1">{text}</p>
+        <p className='relative top-0 text-red mr-2 text-sm py-1'>{text}</p>
       )}
     </div>
   );

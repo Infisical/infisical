@@ -31,7 +31,6 @@ const crypto = require('crypto');
 const AddApiKeyDialog = ({
   isOpen,
   closeModal,
-  workspaceName,
   apiKeys,
   setApiKeys
 }) => {
@@ -107,9 +106,7 @@ const AddApiKeyDialog = ({
                       as="h3"
                       className="text-lg font-medium leading-6 text-gray-400 z-50"
                     >
-                      {t("section-api-key:add-dialog.title", {
-                        target: workspaceName,
-                      })}
+                      {t("section-api-key:add-dialog.title")}
                     </Dialog.Title>
                     <div className="mt-2 mb-4">
                       <div className="flex flex-col">

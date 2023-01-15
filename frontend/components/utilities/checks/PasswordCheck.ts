@@ -1,6 +1,6 @@
 interface PasswordCheckProps {
   password: string;
-  currentErrorCheck: boolean;
+  errorCheck: boolean;
   setPasswordErrorLength: (value: boolean) => void;
   setPasswordErrorNumber: (value: boolean) => void;
   setPasswordErrorLowerCase: (value: boolean) => void;
@@ -14,9 +14,8 @@ const passwordCheck = ({
   setPasswordErrorLength,
   setPasswordErrorNumber,
   setPasswordErrorLowerCase,
-  currentErrorCheck,
+  errorCheck,
 }: PasswordCheckProps) => {
-  let errorCheck = currentErrorCheck;
   if (!password || password.length < 14) {
     setPasswordErrorLength(true);
     errorCheck = true;
