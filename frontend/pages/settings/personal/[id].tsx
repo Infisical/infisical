@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Button from "~/components/basic/buttons/Button";
 import InputField from "~/components/basic/InputField";
 import ListBox from "~/components/basic/Listbox";
-import ApiKeyTable from "~/components/basic/table/ApiKeyTable.tsx";
+import ApiKeyTable from "~/components/basic/table/ApiKeyTable";
 import NavHeader from "~/components/navigation/NavHeader";
 import changePassword from "~/components/utilities/cryptography/changePassword";
 import issueBackupKey from "~/components/utilities/cryptography/issueBackupKey";
