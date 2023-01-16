@@ -2,11 +2,6 @@
 title: "Introduction"
 ---
 
-<Warning>
-  Infisical's REST API is currently unavailable and scheduled to go live on Jan
-  16!
-</Warning>
-
 Infisical's REST API provides users an alternative way to programmatically access and manage
 secrets via HTTPS requests. This can be useful for automating tasks, such as
 rotating credentials, or for integrating secret management into a larger system.
@@ -24,8 +19,9 @@ Using Infisical's API to manage secrets requires a basic understanding of the sy
 - Infisical uses AES256-GCM and [TweetNaCl.js](https://tweetnacl.js.org/#/) for symmetric and asymmetric encryption/decryption operations.
 
 <Info>
-  Infisical's system ensures greater security such that secrets are
-  encrypted/decrypted on the client-side but requires users to properly
-  implement cryptographic operations to maintain end-to-end encryption (E2EE).
-  We're
+  Infisical's system requires that secrets be encrypted/decrypted on the
+  client-side to maintain E2EE. We strongly recommend you read up on the system
+  prior to using the Infisical API. The (opt-in) ability to retrieve secrets
+  back in decrypted format if you choose to share secrets with Infisical is on
+  our roadmap.
 </Info>
