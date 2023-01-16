@@ -41,17 +41,17 @@ const logSchema = new Schema<ILog>(
             ref: 'Action',
             required: true
         }],
-        channel: { 
+        channel: {
             type: String,
-            enum: ['web', 'cli', 'auto'],
+            enum: ['web', 'cli', 'auto', 'k8-operator', 'other'],
             required: true
         },
         ipAddress: {
             type: String
         }
     }, {
-        timestamps: true
-    }
+    timestamps: true
+}
 );
 
 const Log = model<ILog>('Log', logSchema);
