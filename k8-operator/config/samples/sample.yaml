@@ -3,11 +3,10 @@ kind: InfisicalSecret
 metadata:
   name: infisicalsecret-sample
 spec:
-  projectId: 62faf98ae0b05e8529b5da46
-  environment: dev
+  hostAPI: https://app.infisical.com/api
   tokenSecretReference:
     secretName: service-token
-    secretNamespace: first-project
+    secretNamespace: default
   managedSecretReference:
     secretName: managed-secret
-    secretNamespace: first-project
+    secretNamespace: default
