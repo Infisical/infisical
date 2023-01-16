@@ -2208,31 +2208,31 @@ components:
           example: ''
         email:
           type: string
-          example: ''
+          example: johndoe@gmail.com
         firstName:
           type: string
-          example: ''
+          example: John
         lastName:
           type: string
-          example: ''
+          example: Doe
         publicKey:
           type: string
-          example: ''
+          example: johns_nacl_public_key
         encryptedPrivateKey:
           type: string
-          example: ''
+          example: johns_enc_nacl_private_key
         iv:
           type: string
-          example: ''
+          example: iv_of_enc_nacl_private_key
         tag:
           type: string
-          example: ''
+          example: tag_of_enc_nacl_private_key
         updatedAt:
           type: string
-          example: ''
+          example: '2023-01-13T14:16:12.210Z'
         createdAt:
           type: string
-          example: ''
+          example: '2023-01-13T14:16:12.210Z'
     Membership:
       type: object
       properties:
@@ -2244,22 +2244,22 @@ components:
               example: ''
             email:
               type: string
-              example: ''
+              example: johndoe@gmail.com
             firstName:
               type: string
-              example: ''
+              example: John
             lastName:
               type: string
-              example: ''
+              example: Doe
             publicKey:
               type: string
-              example: ''
+              example: johns_nacl_public_key
             updatedAt:
               type: string
-              example: ''
+              example: '2023-01-13T14:16:12.210Z'
             createdAt:
               type: string
-              example: ''
+              example: '2023-01-13T14:16:12.210Z'
         workspace:
           type: string
           example: ''
@@ -2277,22 +2277,22 @@ components:
               example: ''
             email:
               type: string
-              example: ''
+              example: johndoe@gmail.com
             firstName:
               type: string
-              example: ''
+              example: John
             lastName:
               type: string
-              example: ''
+              example: Doe
             publicKey:
               type: string
-              example: ''
+              example: johns_nacl_public_key
             updatedAt:
               type: string
-              example: ''
+              example: '2023-01-13T14:16:12.210Z'
             createdAt:
               type: string
-              example: ''
+              example: '2023-01-13T14:16:12.210Z'
         organization:
           type: string
           example: ''
@@ -2310,7 +2310,7 @@ components:
           example: ''
         name:
           type: string
-          example: ''
+          example: Acme Corp.
         customerId:
           type: string
           example: ''
@@ -2348,7 +2348,7 @@ components:
           properties:
             publicKey:
               type: string
-              example: ''
+              example: senders_nacl_public_key
         receiver:
           type: string
           example: ''
@@ -2466,10 +2466,10 @@ components:
           example: ''
         updatedAt:
           type: string
-          example: ''
+          example: '2023-01-13T14:16:12.210Z'
         createdAt:
           type: string
-          example: ''
+          example: '2023-01-13T14:16:12.210Z'
     Log:
       type: object
       properties:
@@ -2484,13 +2484,13 @@ components:
               example: ''
             email:
               type: string
-              example: ''
+              example: johndoe@gmail.com
             firstName:
               type: string
-              example: ''
+              example: John
             lastName:
               type: string
-              example: ''
+              example: Doe
         workspace:
           type: string
           example: ''
@@ -2533,10 +2533,10 @@ components:
           example: 192.168.0.1
         updatedAt:
           type: string
-          example: ''
+          example: '2023-01-13T14:16:12.210Z'
         createdAt:
           type: string
-          example: ''
+          example: '2023-01-13T14:16:12.210Z'
     SecretSnapshot:
       type: object
       properties:
@@ -2571,13 +2571,13 @@ components:
           example: ''
         type:
           type: string
-          example: ''
+          example: shared
         user:
           type: string
           example: ''
         environment:
           type: string
-          example: ''
+          example: dev
         isDeleted:
           type: string
           example: ''
