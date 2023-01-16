@@ -2,7 +2,6 @@
 const swaggerAutogen = require('swagger-autogen')({ openapi: '3.0.0' });
 const fs = require('fs').promises;
 const yaml = require('js-yaml');
-const { secretSchema } = require('./schemas/index.ts');
 
 /**
  * Generates OpenAPI specs for all Infisical API endpoints:
@@ -43,25 +42,25 @@ const generateOpenAPISpec = async () => {
     definitions: {
       CurrentUser: {
         _id: '',
-        email: '',
-        firstName: '',
-        lastName: '',
-        publicKey: '',
-        encryptedPrivateKey: '',
-        iv: '',
-        tag: '',
-        updatedAt: '',
-        createdAt: ''
+        email: 'johndoe@gmail.com',
+        firstName: 'John',
+        lastName: 'Doe',
+        publicKey: 'johns_nacl_public_key',
+        encryptedPrivateKey: 'johns_enc_nacl_private_key',
+        iv: 'iv_of_enc_nacl_private_key',
+        tag: 'tag_of_enc_nacl_private_key',
+        updatedAt: '2023-01-13T14:16:12.210Z',
+        createdAt: '2023-01-13T14:16:12.210Z'
       },
       Membership: {
         user: {
           _id: '',
-          email: '',
-          firstName: '',
-          lastName: '',
-          publicKey: '',
-          updatedAt: '',
-          createdAt: ''
+          email: 'johndoe@gmail.com',
+          firstName: 'John',
+          lastName: 'Doe',
+          publicKey: 'johns_nacl_public_key',
+          updatedAt: '2023-01-13T14:16:12.210Z',
+          createdAt: '2023-01-13T14:16:12.210Z'
         },
         workspace: '',
         role: 'admin'
@@ -69,12 +68,12 @@ const generateOpenAPISpec = async () => {
       MembershipOrg: {
         user: {
           _id: '',
-          email: '',
-          firstName: '',
-          lastName: '',
-          publicKey: '',
-          updatedAt: '',
-          createdAt: ''
+          email: 'johndoe@gmail.com',
+          firstName: 'John',
+          lastName: 'Doe',
+          publicKey: 'johns_nacl_public_key',
+          updatedAt: '2023-01-13T14:16:12.210Z',
+          createdAt: '2023-01-13T14:16:12.210Z'
         },
         organization: '',
         role: 'owner',
@@ -82,7 +81,7 @@ const generateOpenAPISpec = async () => {
       },
       Organization: {
         _id: '',
-        name: '',
+        name: 'Acme Corp.',
         customerId: ''
       },
       Project: {
@@ -97,7 +96,7 @@ const generateOpenAPISpec = async () => {
         encryptedkey: '',
         nonce: '',
         sender: {
-          publicKey: ''
+          publicKey: 'senders_nacl_public_key'
         },
         receiver: '',
         workspace: ''
@@ -141,16 +140,16 @@ const generateOpenAPISpec = async () => {
         secretCommentCiphertext: '',
         secretCommentIV: '',
         secretCommentTag: '',
-        updatedAt: '',
-        createdAt: ''
+        updatedAt: '2023-01-13T14:16:12.210Z',
+        createdAt: '2023-01-13T14:16:12.210Z'
       },
       Log: {
         _id: '',
         user: {
           _id: '',
-          email: '',
-          firstName: '',
-          lastName: ''
+          email: 'johndoe@gmail.com',
+          firstName: 'John',
+          lastName: 'Doe'
         },
         workspace: '',
         actionNames: [
@@ -171,8 +170,8 @@ const generateOpenAPISpec = async () => {
         ],
         channel: 'cli',
         ipAddress: '192.168.0.1',
-        updatedAt: '',
-        createdAt: ''
+        updatedAt: '2023-01-13T14:16:12.210Z',
+        createdAt: '2023-01-13T14:16:12.210Z'
       },
       SecretSnapshot: {
         workspace: '',
@@ -188,9 +187,9 @@ const generateOpenAPISpec = async () => {
         secret: '',
         version: 1,
         workspace: '',
-        type: '',
+        type: 'shared',
         user: '',
-        environment: '',
+        environment: 'dev',
         isDeleted: '',
         secretKeyCiphertext: '',
         secretKeyIV: '',
