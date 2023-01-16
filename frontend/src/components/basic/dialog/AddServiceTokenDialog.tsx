@@ -68,13 +68,16 @@ const AddServiceTokenDialog = ({
       plaintext: key,
       key: randomBytes,
     });
-
+    
+    console.log(1234, selectedServiceTokenEnv, environments, selectedServiceTokenEnv?.slug
+      ? selectedServiceTokenEnv.slug
+      : environments[0]?.slug)
     const newServiceToken = await addServiceToken({
       name: serviceTokenName,
       workspaceId,
       environment: selectedServiceTokenEnv?.slug
         ? selectedServiceTokenEnv.slug
-        : environments[0]?.name,
+        : environments[0]?.slug,
       expiresIn:
         expiryMapping[serviceTokenExpiresIn as keyof typeof expiryMapping],
       encryptedKey: ciphertext,
