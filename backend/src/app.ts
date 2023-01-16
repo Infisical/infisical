@@ -8,8 +8,9 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import swaggerUi = require('swagger-ui-express');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const swaggerFile = require('../spec.json')
-
+const swaggerFile = require('../spec.json');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const requestIp = require('request-ip');
 
 dotenv.config();
 import { PORT, NODE_ENV, SITE_URL } from './config';
@@ -71,6 +72,8 @@ app.use(
     origin: SITE_URL
   })
 );
+
+app.use(requestIp.mw())
 
 if (NODE_ENV === 'production') {
   // enable app-wide rate-limiting + helmet security

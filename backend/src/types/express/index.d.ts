@@ -5,6 +5,7 @@ import { ISecret } from '../../models';
 declare global {
 	namespace Express {
 		interface Request {
+			clientIp: any;
 			user: any;
 			workspace: any;
 			membership: any;
