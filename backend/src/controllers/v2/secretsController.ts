@@ -222,16 +222,16 @@ export const getSecrets = async (req: Request, res: Response) => {
     }]
 
     #swagger.parameters['workspaceId'] = {
-		"description": "ID of project",
-		"required": true,
-		"type": "string"
-	}
+        "description": "ID of project",
+        "required": true,
+        "type": "string"
+    }
 
     #swagger.parameters['environment'] = {
-		"description": "Environment within project",
-		"required": true,
-		"type": "string"
-	}
+        "description": "Environment within project",
+        "required": true,
+        "type": "string"
+    }
 
     #swagger.responses[200] = {
         content: {
@@ -254,8 +254,8 @@ export const getSecrets = async (req: Request, res: Response) => {
     */
     const { workspaceId, environment } = req.query;
 
-    let userId: Types.ObjectId | undefined = undefined // used for getting personal secrets for user
-    let userEmail: Types.ObjectId | undefined = undefined // used for posthog 
+    let userId = "" // used for getting personal secrets for user
+    let userEmail = "" // used for posthog 
     if (req.user) {
         userId = req.user._id;
         userEmail = req.user.email;
@@ -284,13 +284,13 @@ export const getSecrets = async (req: Request, res: Response) => {
 
     const readAction = await EELogService.createActionSecret({
         name: ACTION_READ_SECRETS,
-        userId: req.user._id.toString(),
+        userId: userId,
         workspaceId: workspaceId as string,
         secretIds: secrets.map((n: any) => n._id)
     });
 
     readAction && await EELogService.createLog({
-        userId: req.user._id.toString(),
+        userId: userId,
         workspaceId: workspaceId as string,
         actions: [readAction],
         channel,
