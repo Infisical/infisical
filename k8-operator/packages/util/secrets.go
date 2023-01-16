@@ -63,6 +63,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string) ([
 	serviceToken := fmt.Sprintf("%v.%v.%v", serviceTokenParts[0], serviceTokenParts[1], serviceTokenParts[2])
 
 	httpClient := resty.New()
+
 	httpClient.SetAuthToken(serviceToken).
 		SetHeader("Accept", "application/json")
 
@@ -72,9 +73,9 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string) ([
 	}
 
 	encryptedSecretsResponse, err := api.CallGetSecretsV2(httpClient, api.GetEncryptedSecretsV2Request{
-		WorkspaceId:     serviceTokenDetails.Workspace,
-		EnvironmentName: serviceTokenDetails.Environment,
-		ETag:            etag,
+		WorkspaceId: serviceTokenDetails.Workspace,
+		Environment: serviceTokenDetails.Environment,
+		ETag:        etag,
 	})
 
 	if err != nil {

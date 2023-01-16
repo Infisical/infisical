@@ -21,7 +21,7 @@ func CallGetEncryptedWorkspaceKey(httpClient *resty.Client, request GetEncrypted
 		return GetEncryptedWorkspaceKeyResponse{}, fmt.Errorf("CallGetEncryptedWorkspaceKey: Unable to complete api request [err=%s]", err)
 	}
 
-	if response.StatusCode() > 299 {
+	if response.IsError() {
 		return GetEncryptedWorkspaceKeyResponse{}, fmt.Errorf("CallGetEncryptedWorkspaceKey: Unsuccessful response: [response=%s]", response)
 	}
 
@@ -48,18 +48,18 @@ func CallGetServiceTokenDetailsV2(httpClient *resty.Client) (GetServiceTokenDeta
 }
 
 func CallGetSecretsV2(httpClient *resty.Client, request GetEncryptedSecretsV2Request) (GetEncryptedSecretsV2Response, error) {
-	var secretsResponse GetEncryptedSecretsV2Response = GetEncryptedSecretsV2Response{}
+	var encryptedSecretsResponse GetEncryptedSecretsV2Response
 	createHttpRequest := httpClient.
 		R().
-		SetResult(&secretsResponse.Secrets).
-		SetQueryParam("environment", request.EnvironmentName).
+		SetQueryParam("environment", request.Environment).
+		SetQueryParam("workspaceId", request.WorkspaceId).
+		SetResult(&encryptedSecretsResponse).
 		SetHeader("User-Agent", USER_AGENT_NAME)
 
-	if request.ETag != "" {
-		createHttpRequest.SetHeader("If-None-Match", request.ETag)
-	}
+	createHttpRequest.SetHeader("If-None-Match", request.ETag)
 
-	response, err := createHttpRequest.Get(fmt.Sprintf("%v/v2/secret/workspace/%v", API_HOST_URL, request.WorkspaceId))
+	response, err := createHttpRequest.Get(fmt.Sprintf("%v/v2/secrets", API_HOST_URL))
+
 	if err != nil {
 		return GetEncryptedSecretsV2Response{}, fmt.Errorf("CallGetSecretsV2: Unable to complete api request [err=%s]", err)
 	}
@@ -69,12 +69,12 @@ func CallGetSecretsV2(httpClient *resty.Client, request GetEncryptedSecretsV2Req
 	}
 
 	if response.StatusCode() == 304 {
-		secretsResponse.Modified = false
+		encryptedSecretsResponse.Modified = false
 	} else {
-		secretsResponse.Modified = true
+		encryptedSecretsResponse.Modified = true
 	}
 
-	secretsResponse.ETag = response.Header().Get("etag")
+	encryptedSecretsResponse.ETag = response.Header().Get("etag")
 
-	return secretsResponse, nil
+	return encryptedSecretsResponse, nil
 }

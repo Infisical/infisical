@@ -29,35 +29,28 @@ type GetEncryptedWorkspaceKeyResponse struct {
 }
 
 type GetEncryptedSecretsV2Request struct {
-	EnvironmentName string `json:"environmentName"`
-	WorkspaceId     string `json:"workspaceId"`
-	ETag            string `json:"etag,omitempty"`
+	Environment string `json:"environment"`
+	WorkspaceId string `json:"workspaceId"`
+	ETag        string `json:"etag,omitempty"`
 }
 
 type GetEncryptedSecretsV2Response struct {
 	Secrets []struct {
-		ID                      string    `json:"_id"`
-		Version                 int       `json:"version"`
-		Workspace               string    `json:"workspace"`
-		Type                    string    `json:"type"`
-		Environment             string    `json:"environment"`
-		SecretKeyCiphertext     string    `json:"secretKeyCiphertext"`
-		SecretKeyIV             string    `json:"secretKeyIV"`
-		SecretKeyTag            string    `json:"secretKeyTag"`
-		SecretKeyHash           string    `json:"secretKeyHash"`
-		SecretValueCiphertext   string    `json:"secretValueCiphertext"`
-		SecretValueIV           string    `json:"secretValueIV"`
-		SecretValueTag          string    `json:"secretValueTag"`
-		SecretValueHash         string    `json:"secretValueHash"`
-		SecretCommentCiphertext string    `json:"secretCommentCiphertext"`
-		SecretCommentIV         string    `json:"secretCommentIV"`
-		SecretCommentTag        string    `json:"secretCommentTag"`
-		SecretCommentHash       string    `json:"secretCommentHash"`
-		V                       int       `json:"__v"`
-		CreatedAt               time.Time `json:"createdAt"`
-		UpdatedAt               time.Time `json:"updatedAt"`
-		User                    string    `json:"user,omitempty"`
-	}
+		ID                    string    `json:"_id"`
+		Version               int       `json:"version"`
+		Workspace             string    `json:"workspace"`
+		Type                  string    `json:"type"`
+		Environment           string    `json:"environment"`
+		SecretKeyCiphertext   string    `json:"secretKeyCiphertext"`
+		SecretKeyIV           string    `json:"secretKeyIV"`
+		SecretKeyTag          string    `json:"secretKeyTag"`
+		SecretValueCiphertext string    `json:"secretValueCiphertext"`
+		SecretValueIV         string    `json:"secretValueIV"`
+		SecretValueTag        string    `json:"secretValueTag"`
+		CreatedAt             time.Time `json:"createdAt"`
+		UpdatedAt             time.Time `json:"updatedAt"`
+		User                  string    `json:"user,omitempty"`
+	} `json:"secrets"`
 
 	Modified bool   `json:"modified,omitempty"`
 	ETag     string `json:"ETag,omitempty"`
@@ -68,7 +61,6 @@ type GetServiceTokenDetailsResponse struct {
 	Name         string `json:"name"`
 	Workspace    string `json:"workspace"`
 	Environment  string `json:"environment"`
-	User         string `json:"user"`
 	EncryptedKey string `json:"encryptedKey"`
 	Iv           string `json:"iv"`
 	Tag          string `json:"tag"`
