@@ -2,16 +2,17 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/Infisical/infisical/k8-operator/api/v1alpha1"
 	secretsv1alpha1 "github.com/Infisical/infisical/k8-operator/api/v1alpha1"
+	"github.com/Infisical/infisical/k8-operator/packages/api"
 )
 
 // InfisicalSecretReconciler reconciles a InfisicalSecret object
@@ -31,19 +32,18 @@ type InfisicalSecretReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.1/pkg/reconcile
 func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
-
+	requeueTime := time.Minute * 1
 	var infisicalSecretCR v1alpha1.InfisicalSecret
+
 	err := r.Get(ctx, req.NamespacedName, &infisicalSecretCR)
-
-	requeueTime := time.Minute * 5
-
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("Infisical Secret not found")
-			return ctrl.Result{}, nil
+			fmt.Printf("Infisical Secret CRD not found [err=%v]", err)
+			return ctrl.Result{
+				Requeue: false,
+			}, nil
 		} else {
-			log.Error(err, "Unable to fetch Infisical Secret from cluster. Will retry")
+			fmt.Printf("Unable to fetch Infisical Secret CRD from cluster because [err=%v]", err)
 			return ctrl.Result{
 				RequeueAfter: requeueTime,
 			}, nil
@@ -52,13 +52,28 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// Check if the resource is already marked for deletion
 	if infisicalSecretCR.GetDeletionTimestamp() != nil {
-		return ctrl.Result{}, nil
+		return ctrl.Result{
+			Requeue: false,
+		}, nil
 	}
+
+	// set the api url based on the CRD
+	api.API_HOST_URL = infisicalSecretCR.Spec.HostAPI
 
 	err = r.ReconcileInfisicalSecret(ctx, infisicalSecretCR)
 	r.SetReadyToSyncSecretsConditions(ctx, &infisicalSecretCR, err)
+
 	if err != nil {
-		log.Error(err, "Unable to reconcile Infisical Secret and will try again")
+		fmt.Printf("unable to reconcile Infisical Secret because [err=%v]. Will requeue after [requeueTime=%v]\n", err, requeueTime)
+		return ctrl.Result{
+			RequeueAfter: requeueTime,
+		}, nil
+	}
+
+	numDeployments, err := r.ReconcileDeploymentsWithManagedSecrets(ctx, infisicalSecretCR)
+	r.SetInfisicalAutoRedeploymentReady(ctx, &infisicalSecretCR, numDeployments, err)
+	if err != nil {
+		fmt.Printf("unable to reconcile auto redeployment because [err=%v]", err)
 		return ctrl.Result{
 			RequeueAfter: requeueTime,
 		}, nil
@@ -73,6 +88,6 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 // SetupWithManager sets up the controller with the Manager.
 func (r *InfisicalSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&secretsv1alpha1.InfisicalSecret{}). // TODO we should also be watching secrets with the name specifed
+		For(&secretsv1alpha1.InfisicalSecret{}).
 		Complete(r)
 }

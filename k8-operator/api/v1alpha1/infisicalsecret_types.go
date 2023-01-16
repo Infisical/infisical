@@ -16,16 +16,10 @@ type KubeSecretReference struct {
 
 // InfisicalSecretSpec defines the desired state of InfisicalSecret
 type InfisicalSecretSpec struct {
-	TokenSecretReference   KubeSecretReference `json:"tokenSecretReference,omitempty"`
+	// +kubebuilder:validation:Required
+	TokenSecretReference KubeSecretReference `json:"tokenSecretReference,omitempty"`
+	// +kubebuilder:validation:Required
 	ManagedSecretReference KubeSecretReference `json:"managedSecretReference,omitempty"`
-
-	// The Infisical project id
-	// +kubebuilder:validation:Required
-	ProjectId string `json:"projectId"`
-
-	// The Infisical environment such as dev, prod, testing
-	// +kubebuilder:validation:Required
-	Environment string `json:"environment"`
 
 	// Infisical host to pull secrets from
 	// +kubebuilder:default="https://app.infisical.com/api"
