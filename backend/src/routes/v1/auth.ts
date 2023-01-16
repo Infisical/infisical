@@ -3,13 +3,13 @@ const router = express.Router();
 import { body } from 'express-validator';
 import { requireAuth, validateRequest } from '../../middleware';
 import { authController } from '../../controllers/v1';
-import { loginLimiter } from '../../helpers/rateLimiter';
+import { authLimiter } from '../../helpers/rateLimiter';
 
 router.post('/token', validateRequest, authController.getNewToken);
 
 router.post(
   '/login1',
-  loginLimiter,
+  authLimiter,
   body('email').exists().trim().notEmpty(),
   body('clientPublicKey').exists().trim().notEmpty(),
   validateRequest,
@@ -18,7 +18,7 @@ router.post(
 
 router.post(
   '/login2',
-  loginLimiter,
+  authLimiter,
   body('email').exists().trim().notEmpty(),
   body('clientProof').exists().trim().notEmpty(),
   validateRequest,
@@ -27,11 +27,13 @@ router.post(
 
 router.post(
   '/logout', 
+  authLimiter,
   requireAuth({
     acceptedAuthModes: ['jwt']
   }), 
   authController.logout
 );
+
 router.post(
   '/checkAuth', 
   requireAuth({

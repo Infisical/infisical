@@ -3,11 +3,11 @@ const router = express.Router();
 import { body } from 'express-validator';
 import { requireSignupAuth, validateRequest } from '../../middleware';
 import { signupController } from '../../controllers/v1';
-import { signupLimiter } from '../../helpers/rateLimiter';
+import { authLimiter } from '../../helpers/rateLimiter';
 
 router.post(
 	'/email/signup',
-	signupLimiter,
+	authLimiter,
 	body('email').exists().trim().notEmpty().isEmail(),
 	validateRequest,
 	signupController.beginEmailSignup
@@ -15,7 +15,7 @@ router.post(
 
 router.post(
 	'/email/verify',
-	signupLimiter,
+	authLimiter,
 	body('email').exists().trim().notEmpty().isEmail(),
 	body('code').exists().trim().notEmpty(),
 	validateRequest,
@@ -24,7 +24,7 @@ router.post(
 
 router.post(
 	'/complete-account/signup',
-	signupLimiter,
+	authLimiter,
 	requireSignupAuth,
 	body('email').exists().trim().notEmpty().isEmail(),
 	body('firstName').exists().trim().notEmpty(),
@@ -42,7 +42,7 @@ router.post(
 
 router.post(
 	'/complete-account/invite',
-	signupLimiter,
+	authLimiter,
 	requireSignupAuth,
 	body('email').exists().trim().notEmpty().isEmail(),
 	body('firstName').exists().trim().notEmpty(),
