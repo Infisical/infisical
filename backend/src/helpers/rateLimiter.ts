@@ -1,9 +1,9 @@
 import rateLimit from 'express-rate-limit';
 
-// 450 requests per 15 minutes
+// 120 requests per minute
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 450,
+  windowMs: 60 * 1000,
+  max: 120,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (request) => {
