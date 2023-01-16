@@ -24,6 +24,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string) ([]models.Singl
 	serviceToken := fmt.Sprintf("%v.%v.%v", serviceTokenParts[0], serviceTokenParts[1], serviceTokenParts[2])
 
 	httpClient := resty.New()
+
 	httpClient.SetAuthToken(serviceToken).
 		SetHeader("Accept", "application/json")
 
@@ -33,8 +34,8 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string) ([]models.Singl
 	}
 
 	encryptedSecrets, err := api.CallGetSecretsV2(httpClient, api.GetEncryptedSecretsV2Request{
-		WorkspaceId:     serviceTokenDetails.Workspace,
-		EnvironmentName: serviceTokenDetails.Environment,
+		WorkspaceId: serviceTokenDetails.Workspace,
+		Environment: serviceTokenDetails.Environment,
 	})
 
 	if err != nil {
@@ -80,8 +81,8 @@ func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, work
 	plainTextWorkspaceKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
 	encryptedSecrets, err := api.CallGetSecretsV2(httpClient, api.GetEncryptedSecretsV2Request{
-		WorkspaceId:     workspaceId,
-		EnvironmentName: environmentName,
+		WorkspaceId: workspaceId,
+		Environment: environmentName,
 	})
 
 	if err != nil {
@@ -226,7 +227,7 @@ func OverrideWithPersonalSecrets(secrets []models.SingleEnvironmentVariable) []m
 
 func GetPlainTextSecrets(key []byte, encryptedSecrets api.GetEncryptedSecretsV2Response) ([]models.SingleEnvironmentVariable, error) {
 	plainTextSecrets := []models.SingleEnvironmentVariable{}
-	for _, secret := range encryptedSecrets {
+	for _, secret := range encryptedSecrets.Secrets {
 		// Decrypt key
 		key_iv, err := base64.StdEncoding.DecodeString(secret.SecretKeyIV)
 		if err != nil {

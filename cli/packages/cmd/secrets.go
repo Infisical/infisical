@@ -205,9 +205,9 @@ var secretsSetCmd = &cobra.Command{
 
 		if len(secretsToCreate) > 0 {
 			batchCreateRequest := api.BatchCreateSecretsByWorkspaceAndEnvRequest{
-				WorkspaceId:     workspaceFile.WorkspaceId,
-				EnvironmentName: environmentName,
-				Secrets:         secretsToCreate,
+				WorkspaceId: workspaceFile.WorkspaceId,
+				Environment: environmentName,
+				Secrets:     secretsToCreate,
 			}
 
 			err = api.CallBatchCreateSecretsByWorkspaceAndEnv(httpClient, batchCreateRequest)
@@ -219,9 +219,9 @@ var secretsSetCmd = &cobra.Command{
 
 		if len(secretsToModify) > 0 {
 			batchModifyRequest := api.BatchModifySecretsByWorkspaceAndEnvRequest{
-				WorkspaceId:     workspaceFile.WorkspaceId,
-				EnvironmentName: environmentName,
-				Secrets:         secretsToModify,
+				WorkspaceId: workspaceFile.WorkspaceId,
+				Environment: environmentName,
+				Secrets:     secretsToModify,
 			}
 
 			err = api.CallBatchModifySecretsByWorkspaceAndEnv(httpClient, batchModifyRequest)
