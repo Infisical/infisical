@@ -41,7 +41,7 @@ const validateAuthMode = ({
 		// case: no auth or X-API-KEY header present
 		throw BadRequestError({ message: 'Missing Authorization or X-API-KEY in request header.' });
 	}
-	
+
 	if (typeof apiKey === 'string') {
 		// case: treat request authentication type as via X-API-KEY (i.e. API Key)
 		authTokenType = 'apiKey';
@@ -50,13 +50,13 @@ const validateAuthMode = ({
 
 	if (typeof authHeader === 'string') {
 		// case: treat request authentication type as via Authorization header (i.e. either JWT or service token)
-		const [tokenType, tokenValue] = <[string, string]>authHeader.split(' ', 2) ?? [null, null]	
+		const [tokenType, tokenValue] = <[string, string]>authHeader.split(' ', 2) ?? [null, null]
 		if (tokenType === null)
 			throw BadRequestError({ message: `Missing Authorization Header in the request header.` });
 		if (tokenType.toLowerCase() !== 'bearer')
 			throw BadRequestError({ message: `The provided authentication type '${tokenType}' is not supported.` });
 		if (tokenValue === null)
-			throw BadRequestError({ message: 'Missing Authorization Body in the request header.' });	
+			throw BadRequestError({ message: 'Missing Authorization Body in the request header.' });
 
 		switch (tokenValue.split('.', 1)[0]) {
 			case 'st':
@@ -67,11 +67,11 @@ const validateAuthMode = ({
 		}
 		authTokenValue = tokenValue;
 	}
-	
+
 	if (!authTokenType || !authTokenValue) throw BadRequestError({ message: 'Missing valid Authorization or X-API-KEY in request header.' });
-	
+
 	if (!acceptedAuthModes.includes(authTokenType)) throw BadRequestError({ message: 'The provided authentication type is not supported.' });
-	
+
 	return ({
 		authTokenType,
 		authTokenValue
@@ -108,7 +108,7 @@ const getAuthUserPayload = async ({
 			message: 'Failed to authenticate JWT token'
 		});
 	}
-	
+
 	return user;
 }
 
@@ -130,7 +130,7 @@ const getAuthSTDPayload = async ({
 		// TODO: optimize double query
 		serviceTokenData = await ServiceTokenData
 			.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt');
-		
+
 		if (!serviceTokenData) {
 			throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
 		} else if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
@@ -148,14 +148,14 @@ const getAuthSTDPayload = async ({
 
 		serviceTokenData = await ServiceTokenData
 			.findById(TOKEN_IDENTIFIER)
-			.select('+encryptedKey +iv +tag');
+			.select('+encryptedKey +iv +tag').populate('user');
 
 	} catch (err) {
 		throw UnauthorizedRequestError({
 			message: 'Failed to authenticate service token'
 		});
 	}
-	
+
 	return serviceTokenData;
 }
 
@@ -173,11 +173,11 @@ const getAuthAPIKeyPayload = async ({
 	let user;
 	try {
 		const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
-		
+
 		const apiKeyData = await APIKeyData
 			.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt')
 			.populate('user', '+publicKey');
-		
+
 		if (!apiKeyData) {
 			throw APIKeyDataNotFoundError({ message: 'Failed to find API key data' });
 		} else if (apiKeyData?.expiresAt && new Date(apiKeyData.expiresAt) < new Date()) {
@@ -192,14 +192,14 @@ const getAuthAPIKeyPayload = async ({
 		if (!isMatch) throw UnauthorizedRequestError({
 			message: 'Failed to authenticate API key'
 		});
-		
+
 		user = apiKeyData.user;
 	} catch (err) {
 		throw UnauthorizedRequestError({
 			message: 'Failed to authenticate API key'
 		});
 	}
-	
+
 	return user;
 }
 
@@ -292,12 +292,12 @@ const createToken = ({
 	}
 };
 
-export { 
+export {
 	validateAuthMode,
 	getAuthUserPayload,
 	getAuthSTDPayload,
 	getAuthAPIKeyPayload,
-	createToken, 
-	issueTokens, 
-	clearTokens 
+	createToken,
+	issueTokens,
+	clearTokens
 };

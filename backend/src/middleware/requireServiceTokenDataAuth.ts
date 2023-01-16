@@ -17,10 +17,10 @@ const requireServiceTokenDataAuth = ({
 
         const serviceTokenData = await ServiceTokenData
             .findById(req[location].serviceTokenDataId)
-            .select('+encryptedKey +iv +tag');
+            .select('+encryptedKey +iv +tag').populate('user');
 
         if (!serviceTokenData) {
-            return next(AccountNotFoundError({message: 'Failed to locate service token data'}));
+            return next(AccountNotFoundError({ message: 'Failed to locate service token data' }));
         }
 
         if (req.user) {
@@ -31,9 +31,9 @@ const requireServiceTokenDataAuth = ({
                 acceptedRoles
             });
         }
-        
+
         req.serviceTokenData = serviceTokenData;
-        
+
         next();
     }
 }
