@@ -16,6 +16,7 @@ import { eventPushSecrets } from '../../events';
 import { EESecretService, EELogService } from '../../ee/services';
 import { postHogClient } from '../../services';
 import { BadRequestError } from '../../utils/errors';
+import { getChannelFromUserAgent } from '../../utils/posthog';
 
 /**
  * Create secret(s) for workspace with id [workspaceId] and environment [environment]
@@ -75,7 +76,7 @@ export const createSecrets = async (req: Request, res: Response) => {
         }
     }   
     */
-    const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli';
+    const channel = getChannelFromUserAgent(req.headers['user-agent'])
     const { workspaceId, environment } = req.body;
 
     let toAdd;
@@ -194,7 +195,7 @@ export const createSecrets = async (req: Request, res: Response) => {
                 numberOfSecrets: toAdd.length,
                 environment,
                 workspaceId,
-                channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+                channel: channel,
                 userAgent: req.headers?.['user-agent']
             }
         });
@@ -280,7 +281,7 @@ export const getSecrets = async (req: Request, res: Response) => {
 
     if (err) throw ValidationError({ message: 'Failed to get secrets', stack: err.stack });
 
-    const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli';
+    const channel = getChannelFromUserAgent(req.headers['user-agent'])
 
     const readAction = await EELogService.createActionSecret({
         name: ACTION_READ_SECRETS,
@@ -367,6 +368,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
     }
     */
     const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli';
+
 
     // TODO: move type
     interface PatchSecret {
@@ -516,7 +518,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
                     numberOfSecrets: workspaceSecretObj[key].length,
                     environment: workspaceSecretObj[key][0].environment,
                     workspaceId: key,
-                    channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+                    channel: channel,
                     userAgent: req.headers?.['user-agent']
                 }
             });
@@ -582,7 +584,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
         }
     }   
     */
-    const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli';
+    const channel = getChannelFromUserAgent(req.headers['user-agent'])
     const toDelete = req.secrets.map((s: any) => s._id);
 
     await Secret.deleteMany({
@@ -642,7 +644,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
                     numberOfSecrets: workspaceSecretObj[key].length,
                     environment: workspaceSecretObj[key][0].environment,
                     workspaceId: key,
-                    channel: req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli',
+                    channel: channel,
                     userAgent: req.headers?.['user-agent']
                 }
             });
