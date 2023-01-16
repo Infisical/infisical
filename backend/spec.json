@@ -3582,39 +3582,39 @@
           },
           "email": {
             "type": "string",
-            "example": ""
+            "example": "johndoe@gmail.com"
           },
           "firstName": {
             "type": "string",
-            "example": ""
+            "example": "John"
           },
           "lastName": {
             "type": "string",
-            "example": ""
+            "example": "Doe"
           },
           "publicKey": {
             "type": "string",
-            "example": ""
+            "example": "johns_nacl_public_key"
           },
           "encryptedPrivateKey": {
             "type": "string",
-            "example": ""
+            "example": "johns_enc_nacl_private_key"
           },
           "iv": {
             "type": "string",
-            "example": ""
+            "example": "iv_of_enc_nacl_private_key"
           },
           "tag": {
             "type": "string",
-            "example": ""
+            "example": "tag_of_enc_nacl_private_key"
           },
           "updatedAt": {
             "type": "string",
-            "example": ""
+            "example": "2023-01-13T14:16:12.210Z"
           },
           "createdAt": {
             "type": "string",
-            "example": ""
+            "example": "2023-01-13T14:16:12.210Z"
           }
         }
       },
@@ -3630,27 +3630,27 @@
               },
               "email": {
                 "type": "string",
-                "example": ""
+                "example": "johndoe@gmail.com"
               },
               "firstName": {
                 "type": "string",
-                "example": ""
+                "example": "John"
               },
               "lastName": {
                 "type": "string",
-                "example": ""
+                "example": "Doe"
               },
               "publicKey": {
                 "type": "string",
-                "example": ""
+                "example": "johns_nacl_public_key"
               },
               "updatedAt": {
                 "type": "string",
-                "example": ""
+                "example": "2023-01-13T14:16:12.210Z"
               },
               "createdAt": {
                 "type": "string",
-                "example": ""
+                "example": "2023-01-13T14:16:12.210Z"
               }
             }
           },
@@ -3676,27 +3676,27 @@
               },
               "email": {
                 "type": "string",
-                "example": ""
+                "example": "johndoe@gmail.com"
               },
               "firstName": {
                 "type": "string",
-                "example": ""
+                "example": "John"
               },
               "lastName": {
                 "type": "string",
-                "example": ""
+                "example": "Doe"
               },
               "publicKey": {
                 "type": "string",
-                "example": ""
+                "example": "johns_nacl_public_key"
               },
               "updatedAt": {
                 "type": "string",
-                "example": ""
+                "example": "2023-01-13T14:16:12.210Z"
               },
               "createdAt": {
                 "type": "string",
-                "example": ""
+                "example": "2023-01-13T14:16:12.210Z"
               }
             }
           },
@@ -3723,7 +3723,7 @@
           },
           "name": {
             "type": "string",
-            "example": ""
+            "example": "Acme Corp."
           },
           "customerId": {
             "type": "string",
@@ -3776,7 +3776,7 @@
             "properties": {
               "publicKey": {
                 "type": "string",
-                "example": ""
+                "example": "senders_nacl_public_key"
               }
             }
           },
@@ -3938,11 +3938,11 @@
           },
           "updatedAt": {
             "type": "string",
-            "example": ""
+            "example": "2023-01-13T14:16:12.210Z"
           },
           "createdAt": {
             "type": "string",
-            "example": ""
+            "example": "2023-01-13T14:16:12.210Z"
           }
         }
       },
@@ -3962,15 +3962,15 @@
               },
               "email": {
                 "type": "string",
-                "example": ""
+                "example": "johndoe@gmail.com"
               },
               "firstName": {
                 "type": "string",
-                "example": ""
+                "example": "John"
               },
               "lastName": {
                 "type": "string",
-                "example": ""
+                "example": "Doe"
               }
             }
           },
@@ -4033,11 +4033,11 @@
           },
           "updatedAt": {
             "type": "string",
-            "example": ""
+            "example": "2023-01-13T14:16:12.210Z"
           },
           "createdAt": {
             "type": "string",
-            "example": ""
+            "example": "2023-01-13T14:16:12.210Z"
           }
         }
       },
@@ -4087,7 +4087,7 @@
           },
           "type": {
             "type": "string",
-            "example": ""
+            "example": "shared"
           },
           "user": {
             "type": "string",
@@ -4095,7 +4095,7 @@
           },
           "environment": {
             "type": "string",
-            "example": ""
+            "example": "dev"
           },
           "isDeleted": {
             "type": "string",
