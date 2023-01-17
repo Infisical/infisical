@@ -39,10 +39,36 @@ The operator can be install via [Helm](helm.sh) or [kubectl](https://github.com/
 To retrieve secrets from an Infisical project and store them in your Kubernetes cluster, you can use the InfisicalSecret custom resource.
 This resource is available after installing the Infisical operator. In order to specify the Infisical Token location and the location where the retrieved secrets should be stored, you can use the `tokenSecretReference` and `managedSecretReference` fields within the InfisicalSecret resource.
 
+```yaml
+
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  # Name of of this InfisicalSecret resource
+  name: infisicalsecret-sample
+spec:
+  # The host that should be used to pull secrets from. The default value is https://infisical.com/api.
+  hostAPI: https://infisical.com/api
+
+  # The Kubernetes secret the stores the Infisical token
+  tokenSecretReference:
+    # Kubernetes secret name
+    secretName: service-token
+    # The secret namespace
+    secretNamespace: default
+
+  # The Kubernetes secret that Infisical Operator will create and populate with secrets from the above project
+  managedSecretReference:
+    # The name of managed Kubernetes secret that should be created
+    secretName: managed-secret
+    # The namespace the managed secret should be installed in
+    secretNamespace: default
+```
+
 <Accordion title="tokenSecretReference">
   The `tokenSecretReference` field in the InfisicalSecret resource is used to specify the location of the Infisical Token, which is required for authenticating and retrieving secrets from an Infisical project.
   
-  To create a Kubernetes secret containing an [Infisical Token](../../getting-started/dashboard/token), you can run the following command.
+  To create a Kubernetes secret containing an [Infisical Token](../../getting-started/dashboard/token), you can run the command below.
   ``` bash
   kubectl create secret generic service-token --from-literal=infisicalToken=<infisical-token-here> 
   ```
@@ -66,41 +92,9 @@ It is recommended that the managed secret be created in the same namespace as th
 
 </Accordion>
 
-```yaml
-apiVersion: secrets.infisical.com/v1alpha1
-kind: InfisicalSecret
-metadata:
-  # Name of of this InfisicalSecret resource
-  name: infisicalsecret-sample
-spec:
-  # The host that should be used to pull secrets from. The default value is https://infisical.com/api.
-  hostAPI: https://infisical.com/api
+### Verify managed secret creation 
 
-  # The Infisical project from which to pull secrets from
-  projectId: 62faf98ae0b05e8529b5da46
-
-  # The environment (dev, prod, testing, etc.) of the above project from where secrets should be pulled from
-  environment: dev
-
-  # The Kubernetes secret the stores the Infisical token
-  tokenSecretReference:
-    # Kubernetes secret name
-    secretName: service-token
-    # The secret namespace
-    secretNamespace: default
-
-  # The Kubernetes secret that Infisical Operator will create and populate with secrets from the above project
-  managedSecretReference:
-    # The name of managed Kubernetes secret that should be created
-    secretName: managed-secret
-    # The namespace the managed secret should be installed in
-    secretNamespace: default
-```
-
-## Verify
-
-To use the InfisicalSecret custom resource in your deployment, you can simply reference the managed secret specified in the `managedSecretReference` field as you would any other Kubernetes secret.
-To verify that the operator has successfully created the managed secret, you can check the secrets in the namespace that was specified.
+To verify that the operator has successfully created the managed secret, you can check the secrets in the namespace that was specified. 
 
 ```bash
 # Verify managed secret is created
@@ -109,8 +103,188 @@ kubectl get secrets -n <namespace of managed secret>
 
 <Info>
   The Infisical secrets will be synced and stored into the managed secret every
-  5 minutes.
+  1 minutes.
 </Info>
+
+### Using managed secret in your deployment 
+Incorporating the managed secret created by the operator into your deployment can be achieved through several methods. 
+Here, we will highlight three of the most common ways to utilize it. Learn more about Kubernetes secrets [here](https://kubernetes.io/docs/concepts/configuration/secret/)
+
+<Accordion title="envFrom">
+  This will take all the secrets from your managed secret and expose them to your container 
+
+  ```yaml
+    envFrom:
+      - secretRef:
+          name: managed-secret # managed secret name
+    ```
+
+    Example usage in a deployment
+    ```yaml 
+    apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: nginx-deployment
+    labels:
+      app: nginx
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: nginx
+    template:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        containers:
+        - name: nginx
+          image: nginx:1.14.2
+          envFrom:
+          - secretRef:
+              name: managed-secret # <- name of managed secret
+          ports:
+          - containerPort: 80
+  ```
+</Accordion>
+
+
+<Accordion title="env"> 
+  This will allow you to select individual secrets by key name from your managed secret and expose them to your container 
+  
+  ```yaml
+  env:
+    - name: SECRET_NAME # The environment variable's name which is made available in the container
+      valueFrom:
+        secretKeyRef:
+          name: managed-secret # managed secret name
+          key: SOME_SECRET_KEY # The name of the key which  exists in the managed secret
+  ```
+
+  Example usage in a deployment
+    ```yaml 
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: nginx-deployment
+    labels:
+      app: nginx
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: nginx
+    template:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        containers:
+        - name: nginx
+          image: nginx:1.14.2
+          env:
+            - name: STRIPE_API_SECRET 
+              valueFrom:
+                secretKeyRef:
+                  name: managed-secret # <- name of managed secret
+                  key: STRIPE_API_SECRET
+          ports:
+          - containerPort: 80
+  ```
+</Accordion>
+
+<Accordion title="volumes">
+  This will allow you to create a volume on your container which comprises of files holding the secrets in your managed kubernetes secret
+  ```yaml
+  volumes:
+    - name: secrets-volume-name # The name of the volume under which secrets will be stored
+      secret:
+        secretName: managed-secret # managed secret name
+  ```
+
+  You can then mount this volume to the container's filesystem so that your deployment can access the files containing the managed secrets
+  ```yaml
+  volumeMounts:
+    - name: secrets-volume-name
+      mountPath: /etc/secrets
+      readOnly: true
+  ```
+
+  Example usage in a deployment
+  ```yaml 
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: nginx-deployment
+    labels:
+      app: nginx
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: nginx
+    template:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        containers:
+        - name: nginx
+          image: nginx:1.14.2
+          volumeMounts:
+          - name: secrets-volume-name
+            mountPath: /etc/secrets
+            readOnly: true
+          ports:
+          - containerPort: 80
+        volumes:
+        - name: secrets-volume-name
+          secret:
+            secretName: managed-secret # <- managed secrets
+  ```
+</Accordion>
+
+## Auto redeployment 
+Deployments using managed secrets don't reload automatically on updates, so they may use outdated secrets unless manually redeployed. 
+To address this, we added functionality to automatically redeploy your deployment when its managed secret updates.
+
+### Enabling auto redeploy 
+To enable auto redeployment you simply have to add the following annotation to the deployment that consumes a managed secret
+```yaml
+secrets.infisical.com/auto-reload: "true"
+```
+
+<Accordion title="Deployment example with auto redeploy enabled">
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+  annotations: 
+    secrets.infisical.com/auto-reload: "true" # <- redeployment annotation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        envFrom:
+        - secretRef:
+            name: managed-secret
+        ports:
+        - containerPort: 80
+```
+</Accordion>
+
 
 ## Troubleshoot
 
