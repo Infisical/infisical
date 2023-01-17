@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 type NewEnvironmentInfo = {
   environmentSlug: string;
@@ -10,20 +10,19 @@ type NewEnvironmentInfo = {
  * @param {*} workspaceId
  * @returns
  */
-const createEnvironment = (workspaceId:string, newEnv: NewEnvironmentInfo) => {
-  return SecurityClient.fetchCall(`/api/v2/workspace/${workspaceId}/environments`, {
+const createEnvironment = (workspaceId: string, newEnv: NewEnvironmentInfo) =>
+  SecurityClient.fetchCall(`/api/v2/workspace/${workspaceId}/environments`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify(newEnv)
   }).then(async (res) => {
-    if (res && res.status == 200) {
+    if (res && res.status === 200) {
       return res;
-    } else {
-      console.log('Failed to create environment');
     }
+    console.log('Failed to create environment');
+    return undefined;
   });
-};
 
 export default createEnvironment;

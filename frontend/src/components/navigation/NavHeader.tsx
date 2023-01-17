@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import getOrganization from '@app/pages/api/organization/GetOrg';
+import getProjectInfo from '@app/pages/api/workspace/getProjectInfo';
 import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-
-import getOrganization from '~/pages/api/organization/GetOrg';
-import getProjectInfo from '~/pages/api/workspace/getProjectInfo';
 
 /**
  * This is the component at the top of almost every page.
@@ -17,7 +16,7 @@ import getProjectInfo from '~/pages/api/workspace/getProjectInfo';
  */
 export default function NavHeader({
   pageName,
-  isProjectRelated,
+  isProjectRelated
 }: {
   pageName: string;
   isProjectRelated?: boolean;
@@ -30,12 +29,12 @@ export default function NavHeader({
     (async () => {
       const orgId = localStorage.getItem('orgData.id');
       const org = await getOrganization({
-        orgId: orgId ? orgId : '',
+        orgId: orgId || ''
       });
       setOrgName(org.name);
 
       const workspace = await getProjectInfo({
-        projectId: String(router.query.id),
+        projectId: String(router.query.id)
       });
       setWorkspaceName(workspace.name);
     })();
@@ -43,27 +42,19 @@ export default function NavHeader({
   }, []);
 
   return (
-    <div className='pt-20 ml-6 flex flex-row items-center'>
-      <div className='bg-primary-900 h-6 w-6 rounded-md flex items-center justify-center text-mineshaft-100 mr-2'>
+    <div className="pt-20 ml-6 flex flex-row items-center">
+      <div className="bg-primary-900 h-6 w-6 rounded-md flex items-center justify-center text-mineshaft-100 mr-2">
         {orgName?.charAt(0)}
       </div>
-      <div className='text-primary text-sm font-semibold'>{orgName}</div>
+      <div className="text-primary text-sm font-semibold">{orgName}</div>
       {isProjectRelated && (
         <>
-          <FontAwesomeIcon
-            icon={faAngleRight}
-            className='ml-3 text-sm text-gray-400 mr-3'
-          />
-          <div className='font-semibold text-primary text-sm'>
-            {workspaceName}
-          </div>
+          <FontAwesomeIcon icon={faAngleRight} className="ml-3 text-sm text-gray-400 mr-3" />
+          <div className="font-semibold text-primary text-sm">{workspaceName}</div>
         </>
       )}
-      <FontAwesomeIcon
-        icon={faAngleRight}
-        className='ml-3 text-sm text-gray-400 mr-3'
-      />
-      <div className='text-gray-400 text-sm'>{pageName}</div>
+      <FontAwesomeIcon icon={faAngleRight} className="ml-3 text-sm text-gray-400 mr-3" />
+      <div className="text-gray-400 text-sm">{pageName}</div>
     </div>
   );
 }

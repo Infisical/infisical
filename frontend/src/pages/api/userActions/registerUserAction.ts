@@ -1,12 +1,12 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 /**
  * This route registers a certain action for a user
  * @param {*} action
  * @returns
  */
-const registerUserAction = ({ action }: { action: string }) => {
-  return SecurityClient.fetchCall('/api/v1/user-action', {
+const registerUserAction = ({ action }: { action: string }) =>
+  SecurityClient.fetchCall('/api/v1/user-action', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -15,12 +15,11 @@ const registerUserAction = ({ action }: { action: string }) => {
       action
     })
   }).then(async (res) => {
-    if (res && res.status == 200) {
+    if (res && res.status === 200) {
       return res;
-    } else {
-      console.log('Failed to register a user action');
     }
+    console.log('Failed to register a user action');
+    return undefined;
   });
-};
 
 export default registerUserAction;

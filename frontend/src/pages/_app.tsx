@@ -1,14 +1,14 @@
+/* eslint-disable react/jsx-props-no-spreading */
 import { useEffect } from 'react';
 import { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
 import { appWithTranslation } from 'next-i18next';
+import Layout from '@app/components/basic/Layout';
+import NotificationProvider from '@app/components/context/Notifications/NotificationProvider';
+import RouteGuard from '@app/components/RouteGuard';
+import Telemetry from '@app/components/utilities/telemetry/Telemetry';
+import { publicPaths } from '@app/const';
 import { config } from '@fortawesome/fontawesome-svg-core';
-
-import Layout from '~/components/basic/Layout';
-import NotificationProvider from '~/components/context/Notifications/NotificationProvider';
-import RouteGuard from '~/components/RouteGuard';
-import { publicPaths } from '~/const';
-import Telemetry from '~/utilities/telemetry/Telemetry';
 
 import '@fortawesome/fontawesome-svg-core/styles.css';
 import '../styles/globals.css';
@@ -19,18 +19,14 @@ type NextAppProp = AppProps & {
   Component: AppProps['Component'] & { requireAuth: boolean };
 };
 
-const App = ({
-  Component,
-  pageProps,
-  ...appProps
-}: NextAppProp): JSX.Element => {
+const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element => {
   const router = useRouter();
 
   useEffect(() => {
     const storedLang = localStorage.getItem('lang');
-    if (router.locale ?? 'en' !== storedLang ?? 'en') {
+    if (router.locale ?? storedLang !== 'en' ?? 'en') {
       router.push(router.asPath, router.asPath, {
-        locale: storedLang ?? 'en',
+        locale: storedLang ?? 'en'
       });
     }
   }, [router.locale, router.pathname]);
@@ -54,7 +50,7 @@ const App = ({
 
   // If it's one of these routes, don't add the layout (e.g., these routes are external)
   if (
-    publicPaths.includes('/' + appProps.router.pathname.split('/')[1]) ||
+    publicPaths.includes(`/${appProps.router.pathname.split('/')[1]}`) ||
     !Component.requireAuth
   ) {
     return <Component {...pageProps} />;
@@ -73,8 +69,7 @@ const App = ({
 
 export default appWithTranslation(App);
 
-{
-  /* <Script
+/* <Script
 src="https://www.googletagmanager.com/gtag/js?id=G-DQ1XLJJGG1"
 strategy="afterInteractive"
 />
@@ -87,4 +82,3 @@ strategy="afterInteractive"
     gtag('config', 'G-DQ1XLJJGG1');
   `}
 </Script> */
-}

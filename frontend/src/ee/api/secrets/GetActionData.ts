@@ -1,8 +1,7 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
-
-interface workspaceProps {
-  actionId: string; 
+interface WorkspaceProps {
+  actionId: string;
 }
 
 /**
@@ -11,21 +10,18 @@ interface workspaceProps {
  * @param {string} obj.actionId - id of an action for which we are trying to get data
  * @returns
  */
-const getActionData = async ({ actionId }: workspaceProps) => {
-  return SecurityClient.fetchCall(
-    '/api/v1/action/' + actionId, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+const getActionData = async ({ actionId }: WorkspaceProps) =>
+  SecurityClient.fetchCall(`/api/v1/action/${actionId}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
     }
-  ).then(async (res) => {
-    if (res && res.status == 200) {
+  }).then(async (res) => {
+    if (res && res.status === 200) {
       return (await res.json()).action;
-    } else {
-      console.log('Failed to get the info about an action');
     }
+    console.log('Failed to get the info about an action');
+    return undefined;
   });
-};
 
 export default getActionData;

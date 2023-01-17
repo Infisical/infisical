@@ -29,7 +29,7 @@ const CloudIntegrationSection = ({
   return (
     <>
       <div
-        className={`flex flex-col justify-between items-start m-4 mt-7 text-xl max-w-5xl px-2`}
+        className="flex flex-col justify-between items-start m-4 mt-7 text-xl max-w-5xl px-2"
       >
         <h1 className='font-semibold text-3xl'>
           {t('integrations:cloud-integrations')}

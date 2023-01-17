@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 interface Props {
   integrationAuthId: string;
@@ -9,22 +9,18 @@ interface Props {
  * @param {*} integrationAuthId
  * @returns
  */
-const deleteIntegrationAuth = ({ integrationAuthId }: Props) => {
-  return SecurityClient.fetchCall(
-    '/api/v1/integration-auth/' + integrationAuthId,
-    {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+const deleteIntegrationAuth = ({ integrationAuthId }: Props) =>
+  SecurityClient.fetchCall(`/api/v1/integration-auth/${integrationAuthId}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json'
     }
-  ).then(async (res) => {
-    if (res && res.status == 200) {
+  }).then(async (res) => {
+    if (res && res.status === 200) {
       return res;
-    } else {
-      console.log('Failed to delete an integration authorization');
     }
+    console.log('Failed to delete an integration authorization');
+    return undefined;
   });
-};
 
 export default deleteIntegrationAuth;

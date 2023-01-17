@@ -1,8 +1,16 @@
+/* eslint-disable no-nested-ternary */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import Button from '@app/components/basic/buttons/Button';
+import InputField from '@app/components/basic/InputField';
+import attemptLogin from '@app/components/utilities/attemptLogin';
+import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
+import Aes256Gcm from '@app/components/utilities/cryptography/aes-256-gcm';
+import issueBackupKey from '@app/components/utilities/cryptography/issueBackupKey';
 import { faCheck, faWarning, faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import jsrp from 'jsrp';
@@ -10,16 +18,10 @@ import queryString from 'query-string';
 import nacl from 'tweetnacl';
 import { encodeBase64 } from 'tweetnacl-util';
 
-import Button from '~/components/basic/buttons/Button';
-import InputField from '~/components/basic/InputField';
-import Aes256Gcm from '~/components/utilities/cryptography/aes-256-gcm';
-import issueBackupKey from '~/components/utilities/cryptography/issueBackupKey';
-import attemptLogin from '~/utilities/attemptLogin';
-import passwordCheck from '~/utilities/checks/PasswordCheck';
-
 import completeAccountInformationSignupInvite from './api/auth/CompleteAccountInformationSignupInvite';
 import verifySignupInvite from './api/auth/VerifySignupInvite';
 
+// eslint-disable-next-line new-cap
 const client = new jsrp.client();
 
 export default function SignupInvite() {
@@ -64,7 +66,7 @@ export default function SignupInvite() {
       setPasswordErrorLength,
       setPasswordErrorNumber,
       setPasswordErrorLowerCase,
-      errorCheck,
+      errorCheck
     });
 
     if (!errorCheck) {
@@ -79,10 +81,7 @@ export default function SignupInvite() {
         text: PRIVATE_KEY,
         secret: password
           .slice(0, 32)
-          .padStart(
-            32 + (password.slice(0, 32).length - new Blob([password]).size),
-            '0'
-          ),
+          .padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), '0')
       });
 
       localStorage.setItem('PRIVATE_KEY', PRIVATE_KEY);
@@ -90,7 +89,7 @@ export default function SignupInvite() {
       client.init(
         {
           username: email,
-          password: password,
+          password
         },
         async () => {
           client.createVerifier(async (err, result) => {
@@ -104,11 +103,11 @@ export default function SignupInvite() {
               tag,
               salt: result.salt,
               verifier: result.verifier,
-              token: verificationToken,
+              token: verificationToken
             });
 
             // if everything works, go the main dashboard page.
-            if (!errorCheck && response.status == 200) {
+            if (!errorCheck && response.status === 200) {
               response = await response.json();
 
               localStorage.setItem('publicKey', PUBLIC_KEY);
@@ -117,14 +116,7 @@ export default function SignupInvite() {
               localStorage.setItem('tag', tag);
 
               try {
-                await attemptLogin(
-                  email,
-                  password,
-                  setErrorLogin,
-                  router,
-                  false,
-                  false
-                );
+                await attemptLogin(email, password, setErrorLogin, router, false, false);
                 setStep(3);
               } catch (error) {
                 setIsLoading(false);
@@ -141,25 +133,20 @@ export default function SignupInvite() {
 
   // Step 4 of the sign up process (download the emergency kit pdf)
   const stepConfirmEmail = (
-    <div className='bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg mx-auto h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl'>
-      <p className='text-4xl text-center font-semibold mb-6 flex justify-center text-primary-100'>
+    <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
+      <p className="text-4xl text-center font-semibold mb-6 flex justify-center text-primary-100">
         Confirm your email
       </p>
-      <Image
-        src='/images/dragon-signupinvite.svg'
-        height={262}
-        width={410}
-        alt='verify email'
-      ></Image>
-      <div className='flex flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-10 mb-2'>
+      <Image src="/images/dragon-signupinvite.svg" height={262} width={410} alt="verify email" />
+      <div className="flex flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-10 mb-2">
         <Button
-          text='Confirm Email'
+          text="Confirm Email"
           onButtonPressed={async () => {
             const response = await verifySignupInvite({
               email,
-              code: token,
+              code: token
             });
-            if (response.status == 200) {
+            if (response.status === 200) {
               const res = await response.json();
               // user will have temp token if doesn't have an account
               // then continue with account setup workflow
@@ -176,7 +163,7 @@ export default function SignupInvite() {
               router.push('/requestnewinvite');
             }
           }}
-          size='lg'
+          size="lg"
         />
       </div>
     </div>
@@ -184,136 +171,102 @@ export default function SignupInvite() {
 
   // Because this is the invite signup - we directly go to the last step of signup (email is already verified)
   const main = (
-    <div className='bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-32 md:mb-16'>
-      <p className='text-4xl font-bold flex justify-center mb-6 text-gray-400 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary'>
+    <div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-32 md:mb-16">
+      <p className="text-4xl font-bold flex justify-center mb-6 text-gray-400 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
         Almost there!
       </p>
-      <div className='relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24'>
+      <div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">
         <InputField
-          label='First Name'
+          label="First Name"
           onChangeHandler={setFirstName}
-          type='name'
+          type="name"
           value={firstName}
           isRequired
-          errorText='Please input your first name.'
+          errorText="Please input your first name."
           error={firstNameError}
-          autoComplete='given-name'
+          autoComplete="given-name"
         />
       </div>
-      <div className='flex items-center justify-center w-full md:p-2 rounded-lg max-h-24'>
+      <div className="flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
         <InputField
-          label='Last Name'
+          label="Last Name"
           onChangeHandler={setLastName}
-          type='name'
+          type="name"
           value={lastName}
           isRequired
-          errorText='Please input your last name.'
+          errorText="Please input your last name."
           error={lastNameError}
-          autoComplete='family-name'
+          autoComplete="family-name"
         />
       </div>
-      <div className='mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60'>
+      <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
         <InputField
-          label='Password'
-          onChangeHandler={(password) => {
-            setPassword(password);
+          label="Password"
+          onChangeHandler={(pass) => {
+            setPassword(pass);
             passwordCheck({
-              password,
+              password: pass,
               setPasswordErrorLength,
               setPasswordErrorNumber,
               setPasswordErrorLowerCase,
-              errorCheck: false,
+              errorCheck: false
             });
           }}
-          type='password'
+          type="password"
           value={password}
           isRequired
-          error={
-            passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase
-          }
-          autoComplete='new-password'
-          id='new-password'
+          error={passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase}
+          autoComplete="new-password"
+          id="new-password"
         />
-        {passwordErrorLength ||
-        passwordErrorLowerCase ||
-        passwordErrorNumber ? (
-          <div className='w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md'>
-            <div className={`text-gray-400 text-sm mb-1`}>
-              Password should contain at least:
-            </div>
-            <div className='flex flex-row justify-start items-center ml-1'>
+        {passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber ? (
+          <div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
+            <div className="text-gray-400 text-sm mb-1">Password should contain at least:</div>
+            <div className="flex flex-row justify-start items-center ml-1">
               {passwordErrorLength ? (
-                <FontAwesomeIcon
-                  icon={faX}
-                  className='text-md text-red mr-2.5'
-                />
+                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
               ) : (
-                <FontAwesomeIcon
-                  icon={faCheck}
-                  className='text-md text-primary mr-2'
-                />
+                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
               )}
-              <div
-                className={`${
-                  passwordErrorLength ? 'text-gray-400' : 'text-gray-600'
-                } text-sm`}
-              >
+              <div className={`${passwordErrorLength ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
                 14 characters
               </div>
             </div>
-            <div className='flex flex-row justify-start items-center ml-1'>
+            <div className="flex flex-row justify-start items-center ml-1">
               {passwordErrorLowerCase ? (
-                <FontAwesomeIcon
-                  icon={faX}
-                  className='text-md text-red mr-2.5'
-                />
+                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
               ) : (
-                <FontAwesomeIcon
-                  icon={faCheck}
-                  className='text-md text-primary mr-2'
-                />
+                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
               )}
               <div
-                className={`${
-                  passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'
-                } text-sm`}
+                className={`${passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'} text-sm`}
               >
                 1 lowercase character
               </div>
             </div>
-            <div className='flex flex-row justify-start items-center ml-1'>
+            <div className="flex flex-row justify-start items-center ml-1">
               {passwordErrorNumber ? (
-                <FontAwesomeIcon
-                  icon={faX}
-                  className='text-md text-red mr-2.5'
-                />
+                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
               ) : (
-                <FontAwesomeIcon
-                  icon={faCheck}
-                  className='text-md text-primary mr-2'
-                />
+                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
               )}
-              <div
-                className={`${
-                  passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'
-                } text-sm`}
-              >
+              <div className={`${passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
                 1 number
               </div>
             </div>
           </div>
         ) : (
-          <div className='py-2'></div>
+          <div className="py-2" />
         )}
       </div>
-      <div className='flex flex-col items-center justify-center md:px-4 md:py-5 mt-2 px-2 py-3 max-h-24 max-w-max mx-auto text-lg'>
+      <div className="flex flex-col items-center justify-center md:px-4 md:py-5 mt-2 px-2 py-3 max-h-24 max-w-max mx-auto text-lg">
         <Button
-          text='Sign Up'
+          text="Sign Up"
           onButtonPressed={() => {
             signupErrorCheck();
           }}
           loading={isLoading}
-          size='lg'
+          size="lg"
         />
       </div>
     </div>
@@ -321,38 +274,34 @@ export default function SignupInvite() {
 
   // Step 4 of the sign up process (download the emergency kit pdf)
   const step4 = (
-    <div className='bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg mx-auto h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl'>
-      <p className='text-4xl text-center font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary'>
+    <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
+      <p className="text-4xl text-center font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
         Save your Emergency Kit
       </p>
-      <div className='flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2'>
+      <div className="flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2">
         <div>
-          If you get locked out of your account, your Emergency Kit is the only
-          way to sign in.
+          If you get locked out of your account, your Emergency Kit is the only way to sign in.
         </div>
-        <div className='mt-3'>
-          We recommend you download it and keep it somewhere safe.
-        </div>
+        <div className="mt-3">We recommend you download it and keep it somewhere safe.</div>
       </div>
-      <div className='w-full p-2 flex flex-row items-center bg-white/10 text-gray-400 rounded-md max-w-xs md:max-w-md mx-auto mt-4'>
-        <FontAwesomeIcon icon={faWarning} className='ml-2 mr-4 text-4xl' />
-        It contains your Secret Key which we cannot access or recover for you if
-        you lose it.
+      <div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-400 rounded-md max-w-xs md:max-w-md mx-auto mt-4">
+        <FontAwesomeIcon icon={faWarning} className="ml-2 mr-4 text-4xl" />
+        It contains your Secret Key which we cannot access or recover for you if you lose it.
       </div>
-      <div className='flex flex-col items-center justify-center md:px-4 md:py-5 mt-2 px-2 py-3 max-h-24 max-w-max mx-auto text-lg'>
+      <div className="flex flex-col items-center justify-center md:px-4 md:py-5 mt-2 px-2 py-3 max-h-24 max-w-max mx-auto text-lg">
         <Button
-          text='Download PDF'
+          text="Download PDF"
           onButtonPressed={async () => {
             await issueBackupKey({
               email,
               password,
-              personalName: firstName + ' ' + lastName,
+              personalName: `${firstName} ${lastName}`,
               setBackupKeyError,
-              setBackupKeyIssued,
+              setBackupKeyIssued
             });
             router.push('/noprojects/');
           }}
-          size='lg'
+          size="lg"
         />
         {/* <div
 					className="text-l mt-4 text-lg text-gray-400 hover:text-gray-300 duration-200 bg-white/5 px-8 hover:bg-white/10 py-3 rounded-md cursor-pointer"
@@ -371,22 +320,17 @@ export default function SignupInvite() {
   );
 
   return (
-    <div className='bg-bunker-800 h-screen flex flex-col items-center justify-center'>
+    <div className="bg-bunker-800 h-screen flex flex-col items-center justify-center">
       <Head>
         <title>Sign Up</title>
-        <link rel='icon' href='/infisical.ico' />
+        <link rel="icon" href="/infisical.ico" />
       </Head>
-      <Link href='/'>
-        <div className='flex justify-center mb-2 md:mb-4 opacity-80 cursor-pointer'>
-          <Image
-            src='/images/biglogo.png'
-            height={90}
-            width={120}
-            alt='Infisical Wide Logo'
-          />
+      <Link href="/">
+        <div className="flex justify-center mb-2 md:mb-4 opacity-80 cursor-pointer">
+          <Image src="/images/biglogo.png" height={90} width={120} alt="Infisical Wide Logo" />
         </div>
       </Link>
-      {step == 1 ? stepConfirmEmail : step == 2 ? main : step4}
+      {step === 1 ? stepConfirmEmail : step === 2 ? main : step4}
     </div>
   );
 }

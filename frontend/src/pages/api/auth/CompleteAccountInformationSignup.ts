@@ -41,12 +41,11 @@ const completeAccountInformationSignup = ({
   salt,
   verifier,
   token
-}: Props) => {
-  return fetch('/api/v1/signup/complete-account/signup', {
+}: Props) => fetch('/api/v1/signup/complete-account/signup', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + token
+      Authorization: `Bearer ${  token}`
     },
     body: JSON.stringify({
       email,
@@ -61,6 +60,5 @@ const completeAccountInformationSignup = ({
       verifier
     })
   });
-};
 
 export default completeAccountInformationSignup;

@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 interface Props {
   workspaceId: string;
@@ -13,8 +13,8 @@ interface Props {
  * @param {object} obj.integration - integration which a user is trying to turn on
  * @returns
  */
-const AuthorizeIntegration = ({ workspaceId, code, integration }: Props) => {
-  return SecurityClient.fetchCall('/api/v1/integration-auth/oauth-token', {
+const AuthorizeIntegration = ({ workspaceId, code, integration }: Props) =>
+  SecurityClient.fetchCall('/api/v1/integration-auth/oauth-token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -25,12 +25,11 @@ const AuthorizeIntegration = ({ workspaceId, code, integration }: Props) => {
       integration
     })
   }).then(async (res) => {
-    if (res && res.status == 200) {
+    if (res && res.status === 200) {
       return res;
-    } else {
-      console.log('Failed to authorize the integration');
     }
+    console.log('Failed to authorize the integration');
+    return undefined;
   });
-};
 
 export default AuthorizeIntegration;

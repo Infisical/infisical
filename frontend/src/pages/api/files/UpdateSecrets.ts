@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 interface EncryptedSecretProps {
   id: string;
@@ -13,7 +13,7 @@ interface EncryptedSecretProps {
   secretValueCiphertext: string;
   secretValueIV: string;
   secretValueTag: string;
-  type: "personal" | "shared";
+  type: 'personal' | 'shared';
 }
 
 /**
@@ -22,23 +22,21 @@ interface EncryptedSecretProps {
  * @param {EncryptedSecretProps[]} obj.secrets - the ids of secrets that we want to update
  * @returns
  */
-const updateSecrets = async ({ secrets }: { secrets: EncryptedSecretProps[] }) => {
-  return SecurityClient.fetchCall('/api/v2/secrets', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        secrets
-      })
+const updateSecrets = async ({ secrets }: { secrets: EncryptedSecretProps[] }) =>
+  SecurityClient.fetchCall('/api/v2/secrets', {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      secrets
+    })
+  }).then(async (res) => {
+    if (res && res.status === 200) {
+      return res.json();
     }
-  ).then(async (res) => {
-    if (res && res.status == 200) {
-      return await res.json();
-    } else {
-      console.log('Failed to update certain project secrets');
-    }
+    console.log('Failed to update certain project secrets');
+    return undefined;
   });
-};
 
 export default updateSecrets;

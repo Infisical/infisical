@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 type EnvironmentInfo = {
   oldEnvironmentSlug: string;
@@ -11,23 +11,19 @@ type EnvironmentInfo = {
  * @param {*} workspaceId
  * @returns
  */
-const updateEnvironment = (workspaceId: string, env: EnvironmentInfo) => {
-  return SecurityClient.fetchCall(
-    `/api/v2/workspace/${workspaceId}/environments`,
-    {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(env),
-    }
-  ).then(async (res) => {
-    if (res && res.status == 200) {
+const updateEnvironment = (workspaceId: string, env: EnvironmentInfo) =>
+  SecurityClient.fetchCall(`/api/v2/workspace/${workspaceId}/environments`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(env)
+  }).then(async (res) => {
+    if (res && res.status === 200) {
       return res;
-    } else {
-      console.log('Failed to update environment');
     }
+    console.log('Failed to update environment');
+    return undefined;
   });
-};
 
 export default updateEnvironment;

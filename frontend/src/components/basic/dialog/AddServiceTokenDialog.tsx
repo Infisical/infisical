@@ -2,12 +2,11 @@ import crypto from 'crypto';
 
 import { Fragment, useState } from 'react';
 import { useTranslation } from 'next-i18next';
+import addServiceToken from '@app/pages/api/serviceToken/addServiceToken';
+import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
 import { faCheck, faCopy } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Dialog, Transition } from '@headlessui/react';
-
-import addServiceToken from '~/pages/api/serviceToken/addServiceToken';
-import getLatestFileKey from '~/pages/api/workspace/getLatestFileKey';
 
 import {
   decryptAssymmetric,
@@ -86,7 +85,7 @@ const AddServiceTokenDialog = ({
     });
 
     setServiceTokens(serviceTokens.concat([newServiceToken.serviceTokenData]));
-    setServiceToken(newServiceToken.serviceToken + '.' + randomBytes);
+    setServiceToken(`${newServiceToken.serviceToken  }.${  randomBytes}`);
   };
 
   function copyToClipboard() {
@@ -141,7 +140,7 @@ const AddServiceTokenDialog = ({
                 leaveFrom='opacity-100 scale-100'
                 leaveTo='opacity-0 scale-95'
               >
-                {serviceToken == '' ? (
+                {serviceToken === '' ? (
                   <Dialog.Panel className='w-full max-w-md transform rounded-md bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all'>
                     <Dialog.Title
                       as='h3'
@@ -186,7 +185,7 @@ const AddServiceTokenDialog = ({
                             }
                           )
                         }
-                        isFull={true}
+                        isFull
                         text={`${t('common:environment')}: `}
                       />
                     </div>
@@ -201,7 +200,7 @@ const AddServiceTokenDialog = ({
                           '6 months',
                           '12 months',
                         ]}
-                        isFull={true}
+                        isFull
                         text={`${t('common:expired-in')}: `}
                       />
                     </div>
@@ -215,7 +214,7 @@ const AddServiceTokenDialog = ({
                             t('section-token:add-dialog.add') as string
                           }
                           size='md'
-                          active={serviceTokenName == '' ? false : true}
+                          active={serviceTokenName !== ''}
                         />
                       </div>
                     </div>
@@ -244,13 +243,14 @@ const AddServiceTokenDialog = ({
                           value={serviceToken}
                           id='serviceToken'
                           className='invisible bg-white/0 text-gray-400 py-2 w-full px-2 min-w-full outline-none'
-                        ></input>
+                         />
                         <div className='bg-white/0 max-w-md text-sm text-gray-400 py-2 w-full pl-14 pr-2 break-words outline-none'>
                           {serviceToken}
                         </div>
                         <div className='group font-normal h-full relative inline-block text-gray-400 underline hover:text-primary duration-200'>
                           <button
                             onClick={copyToClipboard}
+                            type="button"
                             className='h-full pl-3.5 pr-4 border-l border-white/20 py-2 hover:bg-white/[0.12] duration-200'
                           >
                             {serviceTokenCopied ? (

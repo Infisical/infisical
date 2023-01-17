@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 export interface IMembershipOrg {
   _id: string;
@@ -20,23 +20,18 @@ export interface IMembershipOrg {
  * @param {string} obj.orgId - organization Id
  * @returns
  */
-const getOrganizationUsers = ({
-  orgId,
-}: {
-  orgId: string;
-}): Promise<IMembershipOrg[]> => {
-  return SecurityClient.fetchCall('/api/v1/organization/' + orgId + '/users', {
+const getOrganizationUsers = ({ orgId }: { orgId: string }): Promise<IMembershipOrg[]> =>
+  SecurityClient.fetchCall(`/api/v1/organization/${orgId}/users`, {
     method: 'GET',
     headers: {
-      'Content-Type': 'application/json',
-    },
-  }).then(async (res) => {
-    if (res?.status == 200) {
-      return (await res.json()).users;
-    } else {
-      console.log('Failed to get org users');
+      'Content-Type': 'application/json'
     }
+  }).then(async (res) => {
+    if (res?.status === 200) {
+      return (await res.json()).users;
+    }
+    console.log('Failed to get org users');
+    return undefined;
   });
-};
 
 export default getOrganizationUsers;

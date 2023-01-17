@@ -1,15 +1,15 @@
-import issueBackupPrivateKey from '~/pages/api/auth/IssueBackupPrivateKey';
-import SRP1 from '~/pages/api/auth/SRP1';
+/* eslint-disable new-cap */
+import crypto from 'crypto';
+
+import issueBackupPrivateKey from '@app/pages/api/auth/IssueBackupPrivateKey';
+import SRP1 from '@app/pages/api/auth/SRP1';
+import jsrp from 'jsrp';
 
 import generateBackupPDF from '../generateBackupPDF';
 import Aes256Gcm from './aes-256-gcm';
 
-const nacl = require('tweetnacl');
-nacl.util = require('tweetnacl-util');
-const jsrp = require('jsrp');
 const clientPassword = new jsrp.client();
 const clientKey = new jsrp.client();
-const crypto = require('crypto');
 
 interface BackupKeyProps {
   email: string;
@@ -42,15 +42,16 @@ const issueBackupKey = async ({
     clientPassword.init(
       {
         username: email,
-        password: password
+        password
       },
       async () => {
         const clientPublicKey = clientPassword.getPublicKey();
 
-        let serverPublicKey, salt;
+        let serverPublicKey;
+        let salt;
         try {
           const res = await SRP1({
-            clientPublicKey: clientPublicKey
+            clientPublicKey
           });
           serverPublicKey = res.serverPublicKey;
           salt = res.salt;
@@ -87,9 +88,9 @@ const issueBackupKey = async ({
                   clientProof
                 });
 
-                if (res?.status == 400) {
+                if (res?.status === 400) {
                   setBackupKeyError(true);
-                } else if (res?.status == 200) {
+                } else if (res?.status === 200) {
                   generateBackupPDF({
                     personalName,
                     personalEmail: email,

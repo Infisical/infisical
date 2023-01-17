@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 interface Props {
   integrationId: string;
@@ -11,8 +11,8 @@ interface Props {
  * @param {*} integrationId
  * @returns
  */
-const startIntegration = ({ integrationId, appName, environment }: Props) => {
-  return SecurityClient.fetchCall('/api/v1/integration/' + integrationId, {
+const startIntegration = ({ integrationId, appName, environment }: Props) =>
+  SecurityClient.fetchCall(`/api/v1/integration/${integrationId}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json'
@@ -25,12 +25,11 @@ const startIntegration = ({ integrationId, appName, environment }: Props) => {
       }
     })
   }).then(async (res) => {
-    if (res && res.status == 200) {
+    if (res && res.status === 200) {
       return res;
-    } else {
-      console.log('Failed to start an integration');
     }
+    console.log('Failed to start an integration');
+    return undefined;
   });
-};
 
 export default startIntegration;

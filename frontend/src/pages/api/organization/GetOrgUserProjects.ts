@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 /**
  * This route lets us get all the projects of a certain user in an org.
@@ -6,22 +6,18 @@ import SecurityClient from '~/utilities/SecurityClient';
  * @param {*} res
  * @returns
  */
-const getOrganizationUserProjects = (req: { orgId: string }) => {
-  return SecurityClient.fetchCall(
-    '/api/v1/organization/' + req.orgId + '/my-workspaces',
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+const getOrganizationUserProjects = (req: { orgId: string }) =>
+  SecurityClient.fetchCall(`/api/v1/organization/${req.orgId}/my-workspaces`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
     }
-  ).then(async (res) => {
-    if (res && res.status == 200) {
+  }).then(async (res) => {
+    if (res && res.status === 200) {
       return (await res.json()).workspaces;
-    } else {
-      console.log('Failed to get projects of a user in an org');
     }
+    console.log('Failed to get projects of a user in an org');
+    return undefined;
   });
-};
 
 export default getOrganizationUserProjects;

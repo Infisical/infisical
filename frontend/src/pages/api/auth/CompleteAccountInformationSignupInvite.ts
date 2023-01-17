@@ -38,25 +38,23 @@ const completeAccountInformationSignupInvite = ({
   salt,
   verifier,
   token
-}: Props) => {
-  return fetch('/api/v1/signup/complete-account/invite', {
+}: Props) => fetch('/api/v1/signup/complete-account/invite', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + token
+      Authorization: `Bearer ${  token}`
     },
     body: JSON.stringify({
-      email: email,
-      firstName: firstName,
-      lastName: lastName,
-      publicKey: publicKey,
+      email,
+      firstName,
+      lastName,
+      publicKey,
       encryptedPrivateKey: ciphertext,
-      iv: iv,
-      tag: tag,
-      salt: salt,
-      verifier: verifier
+      iv,
+      tag,
+      salt,
+      verifier
     })
   });
-};
 
 export default completeAccountInformationSignupInvite;

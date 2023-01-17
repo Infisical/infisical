@@ -10,7 +10,6 @@ type Props = {
   isOpen: boolean;
   closeModal: () => void;
   submitModal: (email: string) => void;
-  workspaceId: string;
   email: string;
   setEmail: (email: string) => void;
   currentPlan: string;
@@ -82,13 +81,13 @@ const AddUserDialog = ({
                       isRequired
                     />
                   </div>
-                  {currentPlan == STRIPE_PRODUCT_STARTER && (
+                  {currentPlan === STRIPE_PRODUCT_STARTER && (
                     <div className='flex flex-row'>
                       <button
                         type='button'
                         className='inline-flex justify-center rounded-md py-1 text-sm text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2'
                         onClick={() =>
-                          router.push('/settings/billing/' + router.query.id)
+                          router.push(`/settings/billing/${  router.query.id}`)
                         }
                       >
                         You can add up to 5 members on a Free tier.
@@ -97,7 +96,7 @@ const AddUserDialog = ({
                         type='button'
                         className='ml-1 inline-flex justify-center rounded-md py-1 text-sm text-gray-500 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2'
                         onClick={() =>
-                          router.push('/settings/billing/' + router.query.id)
+                          router.push(`/settings/billing/${  router.query.id}`)
                         }
                       >
                         Upgrade now.
