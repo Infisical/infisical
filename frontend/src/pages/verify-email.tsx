@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
+
 import Button from '@app/components/basic/buttons/Button';
 import InputField from '@app/components/basic/InputField';
 import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';

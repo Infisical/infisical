@@ -1,4 +1,5 @@
 import React from 'react';
+
 import StripeRedirect from '@app/pages/api/organization/StripeRedirect';
 
 import { tempLocalStorage } from '../utilities/checks/tempLocalStorage';

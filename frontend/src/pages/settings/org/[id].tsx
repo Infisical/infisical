@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
+import { faCheck, faMagnifyingGlass, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 import Button from '@app/components/basic/buttons/Button';
 import AddIncidentContactDialog from '@app/components/basic/dialog/AddIncidentContactDialog';
 import AddUserDialog from '@app/components/basic/dialog/AddUserDialog';
@@ -11,8 +14,6 @@ import UserTable from '@app/components/basic/table/UserTable';
 import NavHeader from '@app/components/navigation/NavHeader';
 import guidGenerator from '@app/components/utilities/randomId';
 import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
-import { faCheck, faMagnifyingGlass, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import addUserToOrg from '../../api/organization/addUserToOrg';
 import deleteIncidentContact from '../../api/organization/deleteIncidentContact';

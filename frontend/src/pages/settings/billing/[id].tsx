@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useTranslation } from 'next-i18next';
+
 import Plan from '@app/components/billing/Plan';
 import NavHeader from '@app/components/navigation/NavHeader';
 import { STRIPE_PRODUCT_PRO, STRIPE_PRODUCT_STARTER } from '@app/components/utilities/config';

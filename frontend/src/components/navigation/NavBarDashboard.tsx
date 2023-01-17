@@ -4,7 +4,6 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { TFunction, useTranslation } from 'next-i18next';
-import logout from '@app/pages/api/auth/Logout';
 import { faGithub, faSlack } from '@fortawesome/free-brands-svg-icons';
 import { faCircleQuestion } from '@fortawesome/free-regular-svg-icons';
 import {
@@ -18,6 +17,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Menu, Transition } from '@headlessui/react';
+
+import logout from '@app/pages/api/auth/Logout';
 
 import getOrganization from '../../pages/api/organization/GetOrg';
 import getOrganizations from '../../pages/api/organization/getOrgs';

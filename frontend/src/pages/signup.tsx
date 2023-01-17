@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
+
 import CodeInputStep from '@app/components/signup/CodeInputStep';
 import DownloadBackupPDF from '@app/components/signup/DonwloadBackupPDFStep';
 import EnterEmailStep from '@app/components/signup/EnterEmailStep';

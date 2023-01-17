@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
+import { faCheck, faX } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import jsrp from 'jsrp';
+import queryString from 'query-string';
+
 import Button from '@app/components/basic/buttons/Button';
 import InputField from '@app/components/basic/InputField';
 import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
 import Aes256Gcm from '@app/components/utilities/cryptography/aes-256-gcm';
 import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
-import { faCheck, faX } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import jsrp from 'jsrp';
-import queryString from 'query-string';
 
 import EmailVerifyOnPasswordReset from './api/auth/EmailVerifyOnPasswordReset';
 import getBackupEncryptedPrivateKey from './api/auth/getBackupEncryptedPrivateKey';

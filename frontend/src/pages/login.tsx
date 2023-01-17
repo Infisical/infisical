@@ -4,14 +4,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
+import { faWarning } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 import Button from '@app/components/basic/buttons/Button';
 import Error from '@app/components/basic/Error';
 import InputField from '@app/components/basic/InputField';
 import ListBox from '@app/components/basic/Listbox';
 import attemptLogin from '@app/components/utilities/attemptLogin';
 import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
-import { faWarning } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import getWorkspaces from './api/workspace/getWorkspaces';
 

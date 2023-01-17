@@ -1,7 +1,8 @@
 import crypto from 'crypto';
 
-import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
 import { SecretDataProps } from 'public/data/frequentInterfaces';
+
+import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
 
 import { decryptAssymmetric, encryptSymmetric } from '../cryptography/crypto';
 

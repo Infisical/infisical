@@ -1,7 +1,8 @@
 import { Fragment, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import addIncidentContact from '@app/pages/api/organization/addIncidentContact';
 import { Dialog, Transition } from '@headlessui/react';
+
+import addIncidentContact from '@app/pages/api/organization/addIncidentContact';
 
 import Button from '../buttons/Button';
 import InputField from '../InputField';

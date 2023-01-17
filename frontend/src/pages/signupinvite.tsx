@@ -5,18 +5,19 @@ import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import Button from '@app/components/basic/buttons/Button';
-import InputField from '@app/components/basic/InputField';
-import attemptLogin from '@app/components/utilities/attemptLogin';
-import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
-import Aes256Gcm from '@app/components/utilities/cryptography/aes-256-gcm';
-import issueBackupKey from '@app/components/utilities/cryptography/issueBackupKey';
 import { faCheck, faWarning, faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import jsrp from 'jsrp';
 import queryString from 'query-string';
 import nacl from 'tweetnacl';
 import { encodeBase64 } from 'tweetnacl-util';
+
+import Button from '@app/components/basic/buttons/Button';
+import InputField from '@app/components/basic/InputField';
+import attemptLogin from '@app/components/utilities/attemptLogin';
+import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
+import Aes256Gcm from '@app/components/utilities/cryptography/aes-256-gcm';
+import issueBackupKey from '@app/components/utilities/cryptography/issueBackupKey';
 
 import completeAccountInformationSignupInvite from './api/auth/CompleteAccountInformationSignupInvite';
 import verifySignupInvite from './api/auth/VerifySignupInvite';

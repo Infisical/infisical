@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import completeAccountInformationSignup from '@app/pages/api/auth/CompleteAccountInformationSignup';
 import { faCheck, faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import jsrp from 'jsrp';
 import nacl from 'tweetnacl';
 import { encodeBase64 } from 'tweetnacl-util';
+
+import completeAccountInformationSignup from '@app/pages/api/auth/CompleteAccountInformationSignup';
 
 import Button from '../basic/buttons/Button';
 import InputField from '../basic/InputField';

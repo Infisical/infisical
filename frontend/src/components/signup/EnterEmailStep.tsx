@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'next-i18next';
+
 import sendVerificationEmail from '@app/pages/api/auth/SendVerificationEmail';
 
 import Button from '../basic/buttons/Button';

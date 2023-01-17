@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
+
 import Button from '@app/components/basic/buttons/Button';
 import EventFilter from '@app/components/basic/EventFilter';
 import NavHeader from '@app/components/navigation/NavHeader';

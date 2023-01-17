@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+
 import { publicPaths } from '@app/const';
 import checkAuth from '@app/pages/api/auth/CheckAuth';
 

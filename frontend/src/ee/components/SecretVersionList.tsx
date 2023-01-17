@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
+import { faCircle, faDotCircle } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 import {
   decryptAssymmetric,
   decryptSymmetric
 } from '@app/components/utilities/cryptography/crypto';
 import getSecretVersions from '@app/ee/api/secrets/GetSecretVersions';
 import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
-import { faCircle, faDotCircle } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 interface DecryptedSecretVersionListProps {
   createdAt: string;

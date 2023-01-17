@@ -3,14 +3,15 @@ import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
+import { faMagnifyingGlass, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 import Button from '@app/components/basic/buttons/Button';
 import AddProjectMemberDialog from '@app/components/basic/dialog/AddProjectMemberDialog';
 import UserTable from '@app/components/basic/table/UserTable';
 import NavHeader from '@app/components/navigation/NavHeader';
 import guidGenerator from '@app/components/utilities/randomId';
 import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
-import { faMagnifyingGlass, faPlus } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import {
   decryptAssymmetric,

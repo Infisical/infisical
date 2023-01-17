@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { faX } from '@fortawesome/free-solid-svg-icons';
+
 import deleteUserFromOrganization from '@app/pages/api/organization/deleteUserFromOrganization';
 import changeUserRoleInWorkspace from '@app/pages/api/workspace/changeUserRoleInWorkspace';
 import deleteUserFromWorkspace from '@app/pages/api/workspace/deleteUserFromWorkspace';
 import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
 import uploadKeys from '@app/pages/api/workspace/uploadKeys';
-import { faX } from '@fortawesome/free-solid-svg-icons';
 
 import { decryptAssymmetric, encryptAssymmetric } from '../../utilities/cryptography/crypto';
 import guidGenerator from '../../utilities/randomId';

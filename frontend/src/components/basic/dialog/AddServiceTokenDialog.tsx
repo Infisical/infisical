@@ -2,11 +2,12 @@ import crypto from 'crypto';
 
 import { Fragment, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import addServiceToken from '@app/pages/api/serviceToken/addServiceToken';
-import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
 import { faCheck, faCopy } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Dialog, Transition } from '@headlessui/react';
+
+import addServiceToken from '@app/pages/api/serviceToken/addServiceToken';
+import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
 
 import {
   decryptAssymmetric,

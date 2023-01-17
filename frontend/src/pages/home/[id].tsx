@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import onboardingCheck from '@app/components/utilities/checks/OnboardingCheck';
-import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 import { IconProp } from '@fortawesome/fontawesome-svg-core';
 import { faSlack } from '@fortawesome/free-brands-svg-icons';
 import {
@@ -15,6 +13,9 @@ import {
   faUserPlus
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
+import onboardingCheck from '@app/components/utilities/checks/OnboardingCheck';
+import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 
 import registerUserAction from '../api/userActions/registerUserAction';
 

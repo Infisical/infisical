@@ -1,9 +1,10 @@
 /* eslint-disable new-cap */
 import crypto from 'crypto';
 
+import jsrp from 'jsrp';
+
 import issueBackupPrivateKey from '@app/pages/api/auth/IssueBackupPrivateKey';
 import SRP1 from '@app/pages/api/auth/SRP1';
-import jsrp from 'jsrp';
 
 import generateBackupPDF from '../generateBackupPDF';
 import Aes256Gcm from './aes-256-gcm';

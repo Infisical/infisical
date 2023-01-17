@@ -1,9 +1,10 @@
 import { Fragment, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import addAPIKey from '@app/pages/api/apiKey/addAPIKey';
 import { faCheck, faCopy } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Dialog, Transition } from '@headlessui/react';
+
+import addAPIKey from '@app/pages/api/apiKey/addAPIKey';
 
 import Button from '../buttons/Button';
 import InputField from '../InputField';

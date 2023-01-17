@@ -7,14 +7,6 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import getOrganizations from '@app/pages/api/organization/getOrgs';
-import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserProjects';
-import getOrganizationUsers from '@app/pages/api/organization/GetOrgUsers';
-import getUser from '@app/pages/api/user/getUser';
-import addUserToWorkspace from '@app/pages/api/workspace/addUserToWorkspace';
-import createWorkspace from '@app/pages/api/workspace/createWorkspace';
-import getWorkspaces from '@app/pages/api/workspace/getWorkspaces';
-import uploadKeys from '@app/pages/api/workspace/uploadKeys';
 import {
   faBookOpen,
   faFileLines,
@@ -26,6 +18,15 @@ import {
   faUser
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
+import getOrganizations from '@app/pages/api/organization/getOrgs';
+import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserProjects';
+import getOrganizationUsers from '@app/pages/api/organization/GetOrgUsers';
+import getUser from '@app/pages/api/user/getUser';
+import addUserToWorkspace from '@app/pages/api/workspace/addUserToWorkspace';
+import createWorkspace from '@app/pages/api/workspace/createWorkspace';
+import getWorkspaces from '@app/pages/api/workspace/getWorkspaces';
+import uploadKeys from '@app/pages/api/workspace/uploadKeys';
 
 import NavBarDashboard from '../navigation/NavBarDashboard';
 import onboardingCheck from '../utilities/checks/OnboardingCheck';

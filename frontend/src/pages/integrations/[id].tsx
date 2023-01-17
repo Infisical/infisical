@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
+import frameworkIntegrationOptions from 'public/json/frameworkIntegrations.json';
+
 import ActivateBotDialog from '@app/components/basic/dialog/ActivateBotDialog';
 import CloudIntegrationSection from '@app/components/integrations/CloudIntegrationSection';
 import FrameworkIntegrationSection from '@app/components/integrations/FrameworkIntegrationSection';
 import IntegrationSection from '@app/components/integrations/IntegrationSection';
 import NavHeader from '@app/components/navigation/NavHeader';
 import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
-import frameworkIntegrationOptions from 'public/json/frameworkIntegrations.json';
 
 import {
   decryptAssymmetric,

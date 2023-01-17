@@ -52,6 +52,7 @@ module.exports = {
           ],
           // Packages `react` related packages
           ['^react', '^next', '^@?\\w'],
+          ['^@app'],
           // Internal packages.
           ['^~(/.*|$)'],
           // Relative imports

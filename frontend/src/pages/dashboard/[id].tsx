@@ -4,6 +4,20 @@ import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
+import {
+  faArrowDownAZ,
+  faArrowDownZA,
+  faArrowLeft,
+  faCheck,
+  faClockRotateLeft,
+  faEye,
+  faEyeSlash,
+  faFolderOpen,
+  faMagnifyingGlass,
+  faPlus
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 import Button from '@app/components/basic/buttons/Button';
 import ListBox from '@app/components/basic/Listbox';
 import BottonRightPopup from '@app/components/basic/popups/BottomRightPopup';
@@ -20,19 +34,6 @@ import { getTranslatedServerSideProps } from '@app/components/utilities/withTran
 import getProjectSercetSnapshotsCount from '@app/ee/api/secrets/GetProjectSercetSnapshotsCount';
 import performSecretRollback from '@app/ee/api/secrets/PerformSecretRollback';
 import PITRecoverySidebar from '@app/ee/components/PITRecoverySidebar';
-import {
-  faArrowDownAZ,
-  faArrowDownZA,
-  faArrowLeft,
-  faCheck,
-  faClockRotateLeft,
-  faEye,
-  faEyeSlash,
-  faFolderOpen,
-  faMagnifyingGlass,
-  faPlus
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import addSecrets from '../api/files/AddSecrets';
 import deleteSecrets from '../api/files/DeleteSecrets';

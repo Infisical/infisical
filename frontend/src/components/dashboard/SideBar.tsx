@@ -2,9 +2,10 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useTranslation } from 'next-i18next';
-import SecretVersionList from '@app/ee/components/SecretVersionList';
 import { faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
+import SecretVersionList from '@app/ee/components/SecretVersionList';
 
 import Button from '../basic/buttons/Button';
 import Toggle from '../basic/Toggle';

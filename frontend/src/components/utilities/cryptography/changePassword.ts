@@ -1,7 +1,8 @@
 /* eslint-disable new-cap */
+import jsrp from 'jsrp';
+
 import changePassword2 from '@app/pages/api/auth/ChangePassword2';
 import SRP1 from '@app/pages/api/auth/SRP1';
-import jsrp from 'jsrp';
 
 import Aes256Gcm from './aes-256-gcm';
 

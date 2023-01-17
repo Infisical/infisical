@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
+import { faCheck, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 import Button from '@app/components/basic/buttons/Button';
 import InputField from '@app/components/basic/InputField';
 import ListBox from '@app/components/basic/Listbox';
@@ -11,8 +14,6 @@ import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
 import changePassword from '@app/components/utilities/cryptography/changePassword';
 import issueBackupKey from '@app/components/utilities/cryptography/issueBackupKey';
 import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
-import { faCheck, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import AddApiKeyDialog from '../../../components/basic/dialog/AddApiKeyDialog';
 import getAPIKeys from '../../api/apiKey/getAPIKeys';

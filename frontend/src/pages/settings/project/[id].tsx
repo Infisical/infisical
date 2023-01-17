@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
+import { faCheck, faCopy, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 import Button from '@app/components/basic/buttons/Button';
 import AddServiceTokenDialog from '@app/components/basic/dialog/AddServiceTokenDialog';
 import InputField from '@app/components/basic/InputField';
@@ -11,8 +14,6 @@ import NavHeader from '@app/components/navigation/NavHeader';
 import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 import deleteEnvironment from '@app/pages/api/environments/deleteEnvironment';
 import updateEnvironment from '@app/pages/api/environments/updateEnvironment';
-import { faCheck, faCopy, faPlus } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import createEnvironment from '../../api/environments/createEnvironment';
 import getServiceTokens from '../../api/serviceToken/getServiceTokens';

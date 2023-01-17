@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import Button from '@app/components/basic/buttons/Button';
-import ListBox from '@app/components/basic/Listbox';
 import { faArrowRight, faRotate, faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // TODO: This needs to be moved from public folder
 import { contextNetlifyMapping, reverseContextNetlifyMapping } from 'public/data/frequentConstants';
+
+import Button from '@app/components/basic/buttons/Button';
+import ListBox from '@app/components/basic/Listbox';
 
 import deleteIntegration from '../../pages/api/integrations/DeleteIntegration';
 import getIntegrationApps from '../../pages/api/integrations/GetIntegrationApps';

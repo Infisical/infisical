@@ -3,12 +3,13 @@ import { useEffect } from 'react';
 import { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
 import { appWithTranslation } from 'next-i18next';
+import { config } from '@fortawesome/fontawesome-svg-core';
+
 import Layout from '@app/components/basic/Layout';
 import NotificationProvider from '@app/components/context/Notifications/NotificationProvider';
 import RouteGuard from '@app/components/RouteGuard';
 import Telemetry from '@app/components/utilities/telemetry/Telemetry';
 import { publicPaths } from '@app/const';
-import { config } from '@fortawesome/fontawesome-svg-core';
 
 import '@fortawesome/fontawesome-svg-core/styles.css';
 import '../styles/globals.css';

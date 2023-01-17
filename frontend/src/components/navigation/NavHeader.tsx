@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import getOrganization from '@app/pages/api/organization/GetOrg';
-import getProjectInfo from '@app/pages/api/workspace/getProjectInfo';
 import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
+import getOrganization from '@app/pages/api/organization/GetOrg';
+import getProjectInfo from '@app/pages/api/workspace/getProjectInfo';
 
 /**
  * This is the component at the top of almost every page.

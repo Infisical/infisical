@@ -1,5 +1,6 @@
-import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
 import { faX } from '@fortawesome/free-solid-svg-icons';
+
+import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
 
 import deleteServiceToken from '../../../pages/api/serviceToken/deleteServiceToken';
 import guidGenerator from '../../utilities/randomId';

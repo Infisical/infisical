@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import ReactCodeInput from 'react-code-input';
 import { useTranslation } from 'next-i18next';
+
 import sendVerificationEmail from '@app/pages/api/auth/SendVerificationEmail';
 
 import Button from '../basic/buttons/Button';
