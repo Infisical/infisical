@@ -80,6 +80,7 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	// Sync again after the specified time
+	fmt.Printf("Operator will requeue after [%v] \n", requeueTime)
 	return ctrl.Result{
 		RequeueAfter: requeueTime,
 	}, nil

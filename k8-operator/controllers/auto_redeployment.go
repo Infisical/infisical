@@ -33,40 +33,24 @@ func (r *InfisicalSecretReconciler) ReconcileDeploymentsWithManagedSecrets(ctx c
 		return 0, fmt.Errorf("unable to fetch Kubernetes secret to update deployment: %v", err)
 	}
 
-	// Create a channel to receive errors from goroutines
-	errChan := make(chan error, len(listOfDeployments.Items))
-
-	wg := sync.WaitGroup{}
-	wg.Add(len(listOfDeployments.Items))
-	go func() {
-		wg.Wait()
-		close(errChan)
-	}()
-
+	var wg sync.WaitGroup
 	// Iterate over the deployments and check if they use the managed secret
 	for _, deployment := range listOfDeployments.Items {
 		if deployment.Annotations[AUTO_RELOAD_DEPLOYMENT_ANNOTATION] == "true" && r.IsDeploymentUsingManagedSecret(deployment, infisicalSecret) {
 			// Start a goroutine to reconcile the deployment
+			wg.Add(1)
 			go func(d v1.Deployment, s corev1.Secret) {
 				defer wg.Done()
 				if err := r.ReconcileDeployment(ctx, d, s); err != nil {
-					errChan <- err
+					fmt.Printf("unable to reconcile deployment with [name=%v]. Will try next requeue", deployment.ObjectMeta.Name)
 				}
 			}(deployment, *managedKubeSecret)
 		}
 	}
 
-	// Collect any errors that were sent through the channel
-	var errs []error
-	for err := range errChan {
-		errs = append(errs, err)
-	}
+	wg.Wait()
 
-	if len(errs) > 0 {
-		return 0, fmt.Errorf("unable to reconcile some deployments: %v", errs)
-	}
-
-	return len(listOfDeployments.Items), nil
+	return 0, nil
 }
 
 // Check if the deployment uses managed secrets
