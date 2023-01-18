@@ -24,6 +24,7 @@ router.patch(
 	body('target').exists(),
 	body('context').exists(),
 	body('siteId').exists(),
+	body('owner').exists(),
 	validateRequest,
 	integrationController.updateIntegration
 );

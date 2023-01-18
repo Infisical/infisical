@@ -26,7 +26,8 @@ interface TIntegration {
 
 interface IntegrationApp {
   name: string;
-  siteId: string;
+  siteId?: string;
+  owner?: string;
 }
 
 type Props = {
@@ -42,7 +43,6 @@ const Integration = ({ integration, environments = [] }: Props) => {
       slug: ''
     }
   );
-  const [fileState, setFileState] = useState([]);
   const router = useRouter();
   const [apps, setApps] = useState<IntegrationApp[]>([]); // integration app objects
   const [integrationApp, setIntegrationApp] = useState(''); // integration app name
@@ -51,10 +51,6 @@ const Integration = ({ integration, environments = [] }: Props) => {
 
   useEffect(() => {
     const loadIntegration = async () => {
-      interface App {
-        name: string;
-        siteId?: string;
-      }
 
       const tempApps: [IntegrationApp] = await getIntegrationApps({
         integrationAuthId: integration.integrationAuth
@@ -178,7 +174,8 @@ const Integration = ({ integration, environments = [] }: Props) => {
             text="Start Integration"
             onButtonPressed={async () => {
               const siteApp = apps.find((app) => app.name === integrationApp); // obj or undefined
-              const siteId = siteApp?.siteId ? siteApp.siteId : null;
+              const siteId = siteApp?.siteId ?? null;
+              const owner = siteApp?.owner ?? null;
 
               await updateIntegration({
                 integrationId: integration._id,
@@ -189,9 +186,10 @@ const Integration = ({ integration, environments = [] }: Props) => {
                 context: integrationContext
                   ? reverseContextNetlifyMapping[integrationContext]
                   : null,
-                siteId
+                siteId,
+                owner
               });
-
+              
               router.reload();
             }}
             color="mineshaft"

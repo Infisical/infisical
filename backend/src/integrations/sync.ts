@@ -530,21 +530,20 @@ const syncSecretsGitHub = async ({
       auth: accessToken
     });
 
-    const user = (await octokit.request('GET /user', {})).data;
-    
+    // const user = (await octokit.request('GET /user', {})).data;
     const repoPublicKey: GitHubRepoKey = (await octokit.request(
       'GET /repos/{owner}/{repo}/actions/secrets/public-key',
       {
-        owner: user.login,
+        owner: integration.owner,
         repo: integration.app
       }
     )).data;
 
-    // // Get local copy of decrypted secrets. We cannot decrypt them as we dont have access to GH private key
+    // Get local copy of decrypted secrets. We cannot decrypt them as we dont have access to GH private key
     const encryptedSecrets: GitHubSecretRes = (await octokit.request(
       'GET /repos/{owner}/{repo}/actions/secrets',
       {
-        owner: user.login,
+        owner: integration.owner,
         repo: integration.app
       }
     ))
@@ -560,7 +559,7 @@ const syncSecretsGitHub = async ({
         await octokit.request(
           'DELETE /repos/{owner}/{repo}/actions/secrets/{secret_name}',
           {
-            owner: user.login,
+            owner: integration.owner,
             repo: integration.app,
             secret_name: key
           }
@@ -590,7 +589,7 @@ const syncSecretsGitHub = async ({
           await octokit.request(
             'PUT /repos/{owner}/{repo}/actions/secrets/{secret_name}',
             {
-              owner: user.login,
+              owner: integration.owner,
               repo: integration.app,
               secret_name: key,
               encrypted_value: encryptedSecret,

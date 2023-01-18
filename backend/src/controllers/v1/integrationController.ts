@@ -41,7 +41,8 @@ export const updateIntegration = async (req: Request, res: Response) => {
 			isActive, 
 			target, // vercel-specific integration param
 			context, // netlify-specific integration param
-			siteId // netlify-specific integration param
+			siteId, // netlify-specific integration param
+			owner // github-specific integration param
 		} = req.body;
 		
 		integration = await Integration.findOneAndUpdate(
@@ -54,7 +55,8 @@ export const updateIntegration = async (req: Request, res: Response) => {
 				app,
 				target,
 				context,
-				siteId
+				siteId,
+				owner
 			},
 			{
 				new: true

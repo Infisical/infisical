@@ -15,6 +15,7 @@ export interface IIntegration {
   target: string;
   context: string;
   siteId: string;
+  owner: string;
   integration: 'heroku' | 'vercel' | 'netlify' | 'github';
   integrationAuth: Types.ObjectId;
 }
@@ -51,6 +52,11 @@ const integrationSchema = new Schema<IIntegration>(
     },
     siteId: {
       // netlify-specific site (app) id
+      type: String,
+      default: null
+    },
+    owner: {
+      // github-specific repo owner-login
       type: String,
       default: null
     },

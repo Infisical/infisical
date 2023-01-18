@@ -12,6 +12,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @param {String} obj.target - (optional) target (environment) for Vercel integration
  * @param {String} obj.context - (optional) context (environment) for Netlify integration
  * @param {String} obj.siteId - (optional) app (site_id) for Netlify integration
+ * @param {String} obj.owner - (optional) owner login of repo for GitHub integration
  * @returns
  */
 const updateIntegration = ({
@@ -21,7 +22,8 @@ const updateIntegration = ({
   isActive,
   target,
   context,
-  siteId
+  siteId,
+  owner
 }: {
   integrationId: string;
   app: string;
@@ -30,6 +32,7 @@ const updateIntegration = ({
   target: string | null;
   context: string | null;
   siteId: string | null;
+  owner: string | null;
 }) =>
   SecurityClient.fetchCall(`/api/v1/integration/${integrationId}`, {
     method: 'PATCH',
@@ -42,7 +45,8 @@ const updateIntegration = ({
       isActive,
       target,
       context,
-      siteId
+      siteId,
+      owner
     })
   }).then(async (res) => {
     if (res && res.status === 200) {

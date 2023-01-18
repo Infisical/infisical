@@ -199,13 +199,16 @@ const getAppsGithub = async ({
 
     const repos = (await octokit.request(
       'GET /user/repos{?visibility,affiliation,type,sort,direction,per_page,page,since,before}',
-      {}
+      {
+        per_page: 100
+      }
     )).data;
 
     apps = repos
       .filter((a:any) => a.permissions.admin === true)
       .map((a: any) => ({
-          name: a.name
+          name: a.name,
+          owner: a.owner.login
         })
       );
   } catch (err) {
