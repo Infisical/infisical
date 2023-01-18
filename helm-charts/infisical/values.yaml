@@ -102,4 +102,4 @@ backendEnvironmentVariables:
   SMTP_USERNAME: MUST_REPLACE
   SMTP_PASSWORD: MUST_REPLACE
 
-# frontendEnvironmentVariables:
+frontendEnvironmentVariables: {}
