@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 interface Props {
   name: string;
@@ -12,11 +12,8 @@ interface Props {
  * @param {string} obj.expiresIn - how soon the API key expires in ms
  * @returns
  */
-const addAPIKey = ({
-  name,
-  expiresIn,
-}: Props) => {
-  return SecurityClient.fetchCall('/api/v2/api-key/', {
+const addAPIKey = ({ name, expiresIn }: Props) =>
+  SecurityClient.fetchCall('/api/v2/api-key/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -26,12 +23,11 @@ const addAPIKey = ({
       expiresIn
     })
   }).then(async (res) => {
-    if (res && res.status == 200) {
-        return (await res.json());
-    } else {
-      console.log('Failed to add API key');
+    if (res && res.status === 200) {
+      return res.json();
     }
+    console.log('Failed to add API key');
+    return undefined;
   });
-};
 
 export default addAPIKey;

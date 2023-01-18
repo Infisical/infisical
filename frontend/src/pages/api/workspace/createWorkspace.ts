@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 /**
  * This route creates a new workspace for a user within a certain organization.
@@ -12,23 +12,22 @@ const createWorkspace = ({
 }: {
   workspaceName: string;
   organizationId: string;
-}) => {
-  return SecurityClient.fetchCall('/api/v1/workspace', {
+}) =>
+  SecurityClient.fetchCall('/api/v1/workspace', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      workspaceName: workspaceName,
-      organizationId: organizationId
+      workspaceName,
+      organizationId
     })
   }).then(async (res) => {
-    if (res?.status == 200) {
+    if (res?.status === 200) {
       return (await res.json()).workspace;
-    } else {
-      console.log('Failed to create a project');
     }
+    console.log('Failed to create a project');
+    return undefined;
   });
-};
 
 export default createWorkspace;

@@ -6,7 +6,6 @@ import InputField from "../InputField";
 type Props = {
   isOpen: boolean;
   closeModal: () => void;
-  submitModal: (userIdToBeDeleted: string) => void;
   selectedIntegrationOption: string;
   handleBotActivate: () => void;
   handleIntegrationOption: (arg:{integrationOption:string})=>void;
@@ -20,6 +19,7 @@ const IntegrationAccessTokenDialog = ({
     handleIntegrationOption
 }:Props) => {
     
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const submit = async () => {
         try {
             // 1. activate bot
@@ -85,7 +85,7 @@ const IntegrationAccessTokenDialog = ({
                                         label="Access token"
                                         onChangeHandler={() => {}}
                                         type="varName"
-                                        value={"Hello"}
+                                        value="Hello"
                                         placeholder=""
                                         isRequired
                                     />

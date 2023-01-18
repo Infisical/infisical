@@ -1,32 +1,27 @@
-import token from '~/pages/api/auth/Token';
+import token from '@app/pages/api/auth/Token';
 
 export default class SecurityClient {
   static #token = '';
 
-  constructor() {}
-
-  static setToken(token: string) {
-    this.#token = token;
+  static setToken(tokenStr: string) {
+    this.#token = tokenStr;
   }
 
-  static async fetchCall(
-    resource: RequestInfo,
-    options?: RequestInit | undefined
-  ) {
+  static async fetchCall(resource: RequestInfo, options?: RequestInit | undefined) {
     const req = new Request(resource, options);
 
-    if (this.#token == '') {
+    if (this.#token === '') {
       try {
         // TODO: This should be moved to a context to do it only once when app loads
         // this try catch saves route guard from a stuck state
         this.setToken(await token());
       } catch (error) {
-        console.error("Unauthorized access");
+        console.error('Unauthorized access');
       }
     }
 
     if (this.#token) {
-      req.headers.set('Authorization', 'Bearer ' + this.#token);
+      req.headers.set('Authorization', `Bearer ${this.#token}`);
     }
 
     return fetch(req);

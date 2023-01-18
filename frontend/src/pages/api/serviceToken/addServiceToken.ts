@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 interface Props {
   name: string;
@@ -28,10 +28,10 @@ const addServiceToken = ({
   environment,
   expiresIn,
   encryptedKey,
-  iv, 
+  iv,
   tag
-}: Props) => {
-  return SecurityClient.fetchCall('/api/v2/service-token/', {
+}: Props) =>
+  SecurityClient.fetchCall('/api/v2/service-token/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -42,16 +42,15 @@ const addServiceToken = ({
       environment,
       expiresIn,
       encryptedKey,
-      iv, 
+      iv,
       tag
     })
   }).then(async (res) => {
-    if (res && res.status == 200) {
-      return (await res.json());
-    } else {
-      console.log('Failed to add service tokens');
+    if (res && res.status === 200) {
+      return res.json();
     }
+    console.log('Failed to add service tokens');
+    return undefined;
   });
-};
 
 export default addServiceToken;

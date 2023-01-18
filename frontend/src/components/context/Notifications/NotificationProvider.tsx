@@ -1,17 +1,10 @@
-import { createContext, ReactNode, useContext, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 
+import { TNotification } from './Notification';
 import Notifications from './Notifications';
 
-type NotificationType = 'success' | 'error' | 'info';
-
-export type Notification = {
-  text: string;
-  type?: NotificationType;
-  timeoutMs?: number;
-};
-
 type NotificationContextState = {
-  createNotification: (newNotification: Notification) => void;
+  createNotification: (newNotification: TNotification) => void;
 };
 
 const NotificationContext = createContext<NotificationContextState>({
@@ -24,43 +17,33 @@ interface NotificationProviderProps {
   children: ReactNode;
 }
 
+// TODO: Migration to radix toast
 const NotificationProvider = ({ children }: NotificationProviderProps) => {
-  const [notifications, setNotifications] = useState<Required<Notification>[]>(
-    []
+  const [notifications, setNotifications] = useState<Required<TNotification>[]>([]);
+
+  const clearNotification = (text: string) =>
+    setNotifications((state) => state.filter((notif) => notif.text !== text));
+
+  const createNotification = useCallback(
+    ({ text, type = 'success', timeoutMs = 4000 }: TNotification) => {
+      const doesNotifExist = notifications.some((notif) => notif.text === text);
+
+      if (doesNotifExist) {
+        return;
+      }
+
+      const newNotification: Required<TNotification> = { text, type, timeoutMs };
+
+      setNotifications((state) => [...state, newNotification]);
+    },
+    [notifications]
   );
 
-  const clearNotification = (text: string) => {
-    return setNotifications((state) =>
-      state.filter((notif) => notif.text !== text)
-    );
-  };
-
-  const createNotification = ({
-    text,
-    type = 'success',
-    timeoutMs = 4000
-  }: Notification) => {
-    const doesNotifExist = notifications.some((notif) => notif.text === text);
-
-    if (doesNotifExist) {
-      return;
-    }
-
-    const newNotification: Required<Notification> = { text, type, timeoutMs };
-
-    return setNotifications((state) => [...state, newNotification]);
-  };
+  const value = useMemo(() => ({ createNotification }), [createNotification]);
 
   return (
-    <NotificationContext.Provider
-      value={{
-        createNotification
-      }}
-    >
-      <Notifications
-        notifications={notifications}
-        clearNotification={clearNotification}
-      />
+    <NotificationContext.Provider value={value}>
+      <Notifications notifications={notifications} clearNotification={clearNotification} />
       {children}
     </NotificationContext.Provider>
   );

@@ -15,11 +15,11 @@ export default function DashboardRedirect() {
       let userWorkspace;
       try {
         if (localStorage.getItem('projectData.id')) {
-          router.push('/dashboard/' + localStorage.getItem('projectData.id'));
+          router.push(`/dashboard/${  localStorage.getItem('projectData.id')}`);
         } else {
           const userWorkspaces = await getWorkspaces();
           userWorkspace = userWorkspaces[0]._id;
-          router.push('/dashboard/' + userWorkspace);
+          router.push(`/dashboard/${  userWorkspace}`);
         }
       } catch (error) {
         console.log('Error - Not logged in yet');
@@ -28,7 +28,7 @@ export default function DashboardRedirect() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return <div></div>;
+  return <div />;
 }
 
 DashboardRedirect.requireAuth = true;

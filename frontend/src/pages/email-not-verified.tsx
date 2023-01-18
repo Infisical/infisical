@@ -13,8 +13,7 @@ export default function EmailNotFeriviedPage() {
         <p className="mt-2 mb-1 text-xl">Your email was not verified. </p>
         <p className="text-xl">Please try again.</p>
         <p className="text-md mt-8 text-gray-600 max-w-sm text-center">
-          Note: If it still {"doesn't work"}, please reach out to us at
-          support@infisical.com
+          Note: If it still doesn&apos;t work, please reach out to us at support@infisical.com
         </p>
       </div>
     </div>

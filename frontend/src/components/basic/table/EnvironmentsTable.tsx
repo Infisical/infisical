@@ -14,15 +14,10 @@ type Props = {
   onDeleteEnv: (slug: string) => Promise<void>;
 };
 
-const EnvironmentTable = ({
-  data = [],
-  onCreateEnv,
-  onDeleteEnv,
-  onUpdateEnv,
-}: Props) => {
+const EnvironmentTable = ({ data = [], onCreateEnv, onDeleteEnv, onUpdateEnv }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     'createUpdateEnv',
-    'deleteEnv',
+    'deleteEnv'
   ] as const);
 
   const onEnvCreateCB = async (env: Env) => {
@@ -36,10 +31,7 @@ const EnvironmentTable = ({
 
   const onEnvUpdateCB = async (env: Env) => {
     try {
-      await onUpdateEnv(
-        (popUp.createUpdateEnv?.data as Pick<Env, 'slug'>)?.slug,
-        env
-      );
+      await onUpdateEnv((popUp.createUpdateEnv?.data as Pick<Env, 'slug'>)?.slug, env);
       handlePopUpClose('createUpdateEnv');
     } catch (error) {
       console.error(error);
@@ -48,9 +40,7 @@ const EnvironmentTable = ({
 
   const onEnvDeleteCB = async () => {
     try {
-      await onDeleteEnv(
-        (popUp.deleteEnv?.data as Pick<Env, 'slug'>)?.slug
-      );
+      await onDeleteEnv((popUp.deleteEnv?.data as Pick<Env, 'slug'>)?.slug);
       handlePopUpClose('deleteEnv');
     } catch (error) {
       console.error(error);
@@ -59,83 +49,68 @@ const EnvironmentTable = ({
 
   return (
     <>
-      <div className='flex flex-row justify-between w-full'>
-        <div className='flex flex-col w-full'>
-          <p className='text-xl font-semibold mb-3'>Project Environments</p>
-          <p className='text-base text-gray-400 mb-4'>
-            Choose which environments will show up in your dashboard like
-            development, staging, production
+      <div className="flex flex-row justify-between w-full">
+        <div className="flex flex-col w-full">
+          <p className="text-xl font-semibold mb-3">Project Environments</p>
+          <p className="text-base text-gray-400 mb-4">
+            Choose which environments will show up in your dashboard like development, staging,
+            production
           </p>
-          <p className='text-sm mr-1 text-gray-500 self-start'>
-            Note: the text in slugs shows how these environmant should be
-            accessed in CLI.
+          <p className="text-sm mr-1 text-gray-500 self-start">
+            Note: the text in slugs shows how these environmant should be accessed in CLI.
           </p>
         </div>
-        <div className='w-48'>
+        <div className="w-48">
           <Button
-            text='Add New Env'
+            text="Add New Env"
             onButtonPressed={() => handlePopUpOpen('createUpdateEnv')}
-            color='mineshaft'
+            color="mineshaft"
             icon={faPlus}
-            size='md'
+            size="md"
           />
         </div>
       </div>
-      <div className='table-container w-full bg-bunker rounded-md mb-6 border border-mineshaft-700 relative mt-1'>
-        <div className='absolute rounded-t-md w-full h-12 bg-white/5'></div>
-        <table className='w-full my-1'>
-          <thead className='text-bunker-300'>
+      <div className="table-container w-full bg-bunker rounded-md mb-6 border border-mineshaft-700 relative mt-1">
+        <div className="absolute rounded-t-md w-full h-12 bg-white/5" />
+        <table className="w-full my-1">
+          <thead className="text-bunker-300">
             <tr>
-              <th className='text-left pl-6 pt-2.5 pb-2'>Name</th>
-              <th className='text-left pl-6 pt-2.5 pb-2'>Slug</th>
-              <th></th>
+              <th className="text-left pl-6 pt-2.5 pb-2">Name</th>
+              <th className="text-left pl-6 pt-2.5 pb-2">Slug</th>
+              <th aria-label="buttons" />
             </tr>
           </thead>
           <tbody>
             {data?.length > 0 ? (
-              data.map(({ name, slug }) => {
-                return (
-                  <tr
-                    key={name}
-                    className='bg-bunker-800 hover:bg-bunker-800/5 duration-100'
-                  >
-                    <td className='pl-6 py-2 border-mineshaft-700 border-t text-gray-300 capitalize'>
-                      {name}
-                    </td>
-                    <td className='pl-6 py-2 border-mineshaft-700 border-t text-gray-300'>
-                      {slug}
-                    </td>
-                    <td className='py-2 border-mineshaft-700 border-t flex'>
-                      <div className='opacity-50 hover:opacity-100 duration-200 flex items-center mr-8'>
-                        <Button
-                          onButtonPressed={() =>
-                            handlePopUpOpen('createUpdateEnv', { name, slug })
-                          }
-                          color='red'
-                          size='icon-sm'
-                          icon={faPencil}
-                        />
-                      </div>
-                      <div className='opacity-50 hover:opacity-100 duration-200 flex items-center'>
-                        <Button
-                          onButtonPressed={() =>
-                            handlePopUpOpen('deleteEnv', { name, slug })
-                          }
-                          color='red'
-                          size='icon-sm'
-                          icon={faX}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
+              data.map(({ name, slug }) => (
+                <tr key={name} className="bg-bunker-800 hover:bg-bunker-800/5 duration-100">
+                  <td className="pl-6 py-2 border-mineshaft-700 border-t text-gray-300 capitalize">
+                    {name}
+                  </td>
+                  <td className="pl-6 py-2 border-mineshaft-700 border-t text-gray-300">{slug}</td>
+                  <td className="py-2 border-mineshaft-700 border-t flex">
+                    <div className="opacity-50 hover:opacity-100 duration-200 flex items-center mr-8">
+                      <Button
+                        onButtonPressed={() => handlePopUpOpen('createUpdateEnv', { name, slug })}
+                        color="red"
+                        size="icon-sm"
+                        icon={faPencil}
+                      />
+                    </div>
+                    <div className="opacity-50 hover:opacity-100 duration-200 flex items-center">
+                      <Button
+                        onButtonPressed={() => handlePopUpOpen('deleteEnv', { name, slug })}
+                        color="red"
+                        size="icon-sm"
+                        icon={faX}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))
             ) : (
               <tr>
-                <td
-                  colSpan={4}
-                  className='text-center pt-7 pb-4 text-bunker-400'
-                >
+                <td colSpan={4} className="text-center pt-7 pb-4 text-bunker-400">
                   No environmants found
                 </td>
               </tr>
@@ -143,7 +118,7 @@ const EnvironmentTable = ({
           </tbody>
         </table>
         <DeleteActionModal
-          isOpen={popUp['deleteEnv'].isOpen}
+          isOpen={popUp.deleteEnv.isOpen}
           title={`Are you sure want to delete ${
             (popUp?.deleteEnv?.data as { name: string })?.name || ' '
           }?`}

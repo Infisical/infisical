@@ -6,16 +6,16 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import frameworkIntegrationOptions from 'public/json/frameworkIntegrations.json';
 
-import ActivateBotDialog from '~/components/basic/dialog/ActivateBotDialog';
-import CloudIntegrationSection from '~/components/integrations/CloudIntegrationSection';
-import FrameworkIntegrationSection from '~/components/integrations/FrameworkIntegrationSection';
-import IntegrationSection from '~/components/integrations/IntegrationSection';
-import NavHeader from '~/components/navigation/NavHeader';
-import { getTranslatedServerSideProps } from '~/utilities/withTranslateProps';
+import ActivateBotDialog from '@app/components/basic/dialog/ActivateBotDialog';
+import CloudIntegrationSection from '@app/components/integrations/CloudIntegrationSection';
+import FrameworkIntegrationSection from '@app/components/integrations/FrameworkIntegrationSection';
+import IntegrationSection from '@app/components/integrations/IntegrationSection';
+import NavHeader from '@app/components/navigation/NavHeader';
+import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 
 import {
   decryptAssymmetric,
-  encryptAssymmetric,
+  encryptAssymmetric
 } from '../../components/utilities/cryptography/crypto';
 import getBot from '../api/bot/getBot';
 import setBotActiveStatus from '../api/bot/setBotActiveStatus';
@@ -39,8 +39,7 @@ export default function Integrations() {
   const [bot, setBot] = useState<any>(null);
   const [isActivateBotDialogOpen, setIsActivateBotDialogOpen] = useState(false);
   // const [isIntegrationAccessTokenDialogOpen, setIntegrationAccessTokenDialogOpen] = useState(true);
-  const [selectedIntegrationOption, setSelectedIntegrationOption] =
-    useState(null);
+  const [selectedIntegrationOption, setSelectedIntegrationOption] = useState(null);
 
   const router = useRouter();
   const workspaceId = router.query.id as string;
@@ -59,14 +58,14 @@ export default function Integrations() {
         // get project integration authorizations
         setIntegrationAuths(
           await getWorkspaceAuthorizations({
-            workspaceId,
+            workspaceId
           })
         );
 
         // get project integrations
         setIntegrations(
           await getWorkspaceIntegrations({
-            workspaceId,
+            workspaceId
           })
         );
 
@@ -101,26 +100,26 @@ export default function Integrations() {
           ciphertext: key.latestKey.encryptedKey,
           nonce: key.latestKey.nonce,
           publicKey: key.latestKey.sender.publicKey,
-          privateKey: PRIVATE_KEY,
+          privateKey: PRIVATE_KEY
         });
 
         const { ciphertext, nonce } = encryptAssymmetric({
           plaintext: WORKSPACE_KEY,
           publicKey: bot.publicKey,
-          privateKey: PRIVATE_KEY,
+          privateKey: PRIVATE_KEY
         });
 
         botKey = {
           encryptedKey: ciphertext,
-          nonce,
+          nonce
         };
 
         setBot(
           (
             await setBotActiveStatus({
               botId: bot._id,
-              isActive: bot.isActive ? false : true,
-              botKey,
+              isActive: !bot.isActive,
+              botKey
             })
           ).bot
         );
@@ -139,11 +138,7 @@ export default function Integrations() {
    * @param {String} obj.docsLink
    * @returns
    */
-  const handleIntegrationOption = async ({
-    integrationOption,
-  }: {
-    integrationOption: any;
-  }) => {
+  const handleIntegrationOption = async ({ integrationOption }: { integrationOption: any }) => {
     try {
       // generate CSRF token for OAuth2 code-token exchange integrations
       const state = crypto.randomBytes(16).toString('hex');
@@ -169,6 +164,8 @@ export default function Integrations() {
           window.location.assign(
             `https://github.com/login/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=repo&redirect_uri=${window.location.origin}/github&state=${state}`
           );
+          break;
+        default:
           break;
         // case 'Fly.io':
         //   console.log('fly.io');
@@ -205,21 +202,16 @@ export default function Integrations() {
   };
 
   return (
-    <div className='bg-bunker-800 max-h-screen flex flex-col justify-between text-white'>
+    <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
       <Head>
-        <title>
-          {t('common:head-title', { title: t('integrations:title') })}
-        </title>
-        <link rel='icon' href='/infisical.ico' />
-        <meta property='og:image' content='/images/message.png' />
-        <meta property='og:title' content='Manage your .env files in seconds' />
-        <meta
-          name='og:description'
-          content={t('integrations:description') as string}
-        />
+        <title>{t('common:head-title', { title: t('integrations:title') })}</title>
+        <link rel="icon" href="/infisical.ico" />
+        <meta property="og:image" content="/images/message.png" />
+        <meta property="og:title" content="Manage your .env files in seconds" />
+        <meta name="og:description" content={t('integrations:description') as string} />
       </Head>
-      <div className='w-full pb-2 h-screen max-h-[calc(100vh-10px)] overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar'>
-        <NavHeader pageName={t('integrations:title')} isProjectRelated={true} />
+      <div className="w-full pb-2 h-screen max-h-[calc(100vh-10px)] overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
+        <NavHeader pageName={t('integrations:title')} isProjectRelated />
         <ActivateBotDialog
           isOpen={isActivateBotDialogOpen}
           closeModal={() => setIsActivateBotDialogOpen(false)}
@@ -234,10 +226,7 @@ export default function Integrations() {
           handleBotActivate={handleBotActivate}
           handleIntegrationOption={handleIntegrationOption}
         /> */}
-        <IntegrationSection
-          integrations={integrations}
-          environments={environments}
-        />
+        <IntegrationSection integrations={integrations} environments={environments} />
         {cloudIntegrationOptions.length > 0 && bot ? (
           <CloudIntegrationSection
             cloudIntegrationOptions={cloudIntegrationOptions}
@@ -246,11 +235,9 @@ export default function Integrations() {
             integrationAuths={integrationAuths}
           />
         ) : (
-          <div></div>
+          <div />
         )}
-        <FrameworkIntegrationSection
-          frameworks={frameworkIntegrationOptions as any}
-        />
+        <FrameworkIntegrationSection frameworks={frameworkIntegrationOptions as any} />
       </div>
     </div>
   );
@@ -258,6 +245,4 @@ export default function Integrations() {
 
 Integrations.requireAuth = true;
 
-export const getServerSideProps = getTranslatedServerSideProps([
-  'integrations',
-]);
+export const getServerSideProps = getTranslatedServerSideProps(['integrations']);

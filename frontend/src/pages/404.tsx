@@ -32,7 +32,7 @@ export default function Custom404() {
           height={554}
           width={942}
           alt='infisical dragon - page not found'
-        ></Image>
+         />
       </div>
     </div>
   );

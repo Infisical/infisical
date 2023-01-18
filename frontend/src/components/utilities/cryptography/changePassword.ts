@@ -1,7 +1,8 @@
+/* eslint-disable new-cap */
 import jsrp from 'jsrp';
 
-import changePassword2 from '~/pages/api/auth/ChangePassword2';
-import SRP1 from '~/pages/api/auth/SRP1';
+import changePassword2 from '@app/pages/api/auth/ChangePassword2';
+import SRP1 from '@app/pages/api/auth/SRP1';
 
 import Aes256Gcm from './aes-256-gcm';
 
@@ -33,15 +34,16 @@ const changePassword = async (
     clientOldPassword.init(
       {
         username: email,
-        password: currentPassword,
+        password: currentPassword
       },
       async () => {
         const clientPublicKey = clientOldPassword.getPublicKey();
 
-        let serverPublicKey, salt;
+        let serverPublicKey;
+        let salt;
         try {
           const res = await SRP1({
-            clientPublicKey: clientPublicKey,
+            clientPublicKey
           });
           serverPublicKey = res.serverPublicKey;
           salt = res.salt;
@@ -57,7 +59,7 @@ const changePassword = async (
         clientNewPassword.init(
           {
             username: email,
-            password: newPassword,
+            password: newPassword
           },
           async () => {
             clientNewPassword.createVerifier(async (err, result) => {
@@ -67,11 +69,9 @@ const changePassword = async (
                 secret: newPassword
                   .slice(0, 32)
                   .padStart(
-                    32 +
-                      (newPassword.slice(0, 32).length -
-                        new Blob([newPassword]).size),
+                    32 + (newPassword.slice(0, 32).length - new Blob([newPassword]).size),
                     '0'
-                  ),
+                  )
               });
 
               if (ciphertext) {
@@ -87,18 +87,18 @@ const changePassword = async (
                     tag,
                     salt: result.salt,
                     verifier: result.verifier,
-                    clientProof,
+                    clientProof
                   });
-                  if (res && res.status == 400) {
+                  if (res && res.status === 400) {
                     setCurrentPasswordError(true);
-                  } else if (res && res.status == 200) {
+                  } else if (res && res.status === 200) {
                     setPasswordChanged(true);
                     setCurrentPassword('');
                     setNewPassword('');
                   }
-                } catch (err) {
+                } catch (error) {
                   setCurrentPasswordError(true);
-                  console.log(err);
+                  console.log(error);
                 }
               }
             });

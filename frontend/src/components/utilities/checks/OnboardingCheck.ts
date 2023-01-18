@@ -1,5 +1,5 @@
-import getOrganizationUsers from '~/pages/api/organization/GetOrgUsers';
-import checkUserAction from '~/pages/api/userActions/checkUserAction';
+import getOrganizationUsers from '@app/pages/api/organization/GetOrgUsers';
+import checkUserAction from '@app/pages/api/userActions/checkUserAction';
 
 interface OnboardingCheckProps {
   setTotalOnboardingActionsDone?: (value: number) => void;
@@ -26,46 +26,43 @@ const onboardingCheck = async ({
     action: 'slack_cta_clicked'
   });
   if (userActionSlack) {
-    countActions = countActions + 1;
+    countActions += 1;
   }
-  setHasUserClickedSlack &&
-    setHasUserClickedSlack(userActionSlack ? true : false);
+  if (setHasUserClickedSlack) setHasUserClickedSlack(!!userActionSlack);
 
   const userActionSecrets = await checkUserAction({
     action: 'first_time_secrets_pushed'
   });
   if (userActionSecrets) {
-    countActions = countActions + 1;
+    countActions += 1;
   }
-  setHasUserPushedSecrets &&
-    setHasUserPushedSecrets(userActionSecrets ? true : false);
+  if (setHasUserPushedSecrets) setHasUserPushedSecrets(!!userActionSecrets);
 
   const userActionIntro = await checkUserAction({
     action: 'intro_cta_clicked'
   });
   if (userActionIntro) {
-    countActions = countActions + 1;
+    countActions += 1;
   }
-  setHasUserClickedIntro &&
-    setHasUserClickedIntro(userActionIntro ? true : false);
+  if (setHasUserClickedIntro) setHasUserClickedIntro(!!userActionIntro);
 
   const userActionStar = await checkUserAction({
     action: 'star_cta_clicked'
   });
   if (userActionStar) {
-    countActions = countActions + 1;
+    countActions += 1;
   }
-  setHasUserStarred && setHasUserStarred(userActionStar ? true : false);
+  if (setHasUserStarred) setHasUserStarred(!!userActionStar);
 
   const orgId = localStorage.getItem('orgData.id');
   const orgUsers = await getOrganizationUsers({
-    orgId: orgId ? orgId : ''
+    orgId: orgId || ''
   });
   if (orgUsers.length > 1) {
-    countActions = countActions + 1;
+    countActions += 1;
   }
-  setUsersInOrg && setUsersInOrg(orgUsers.length > 1);
-  setTotalOnboardingActionsDone && setTotalOnboardingActionsDone(countActions);
+  if (setUsersInOrg) setUsersInOrg(orgUsers.length > 1);
+  if (setTotalOnboardingActionsDone) setTotalOnboardingActionsDone(countActions);
 };
 
 export default onboardingCheck;

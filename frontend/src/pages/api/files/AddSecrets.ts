@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 interface EncryptedSecretProps {
   id: string;
@@ -13,7 +13,7 @@ interface EncryptedSecretProps {
   secretValueCiphertext: string;
   secretValueIV: string;
   secretValueTag: string;
-  type: "personal" | "shared";
+  type: 'personal' | 'shared';
 }
 
 /**
@@ -24,25 +24,31 @@ interface EncryptedSecretProps {
  * @param {string} obj.workspaceId - the project to which we are adding secrets
  * @returns
  */
-const addSecrets = async ({ secrets, env, workspaceId }: { secrets: EncryptedSecretProps[]; env: string; workspaceId: string; }) => {
-  return SecurityClient.fetchCall('/api/v2/secrets', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        environment: env,
-        workspaceId,
-        secrets
-      })
+const addSecrets = async ({
+  secrets,
+  env,
+  workspaceId
+}: {
+  secrets: EncryptedSecretProps[];
+  env: string;
+  workspaceId: string;
+}) =>
+  SecurityClient.fetchCall('/api/v2/secrets', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      environment: env,
+      workspaceId,
+      secrets
+    })
+  }).then(async (res) => {
+    if (res && res.status === 200) {
+      return res.json();
     }
-  ).then(async (res) => {
-    if (res && res.status == 200) {
-      return await res.json();
-    } else {
-      console.log('Failed to add certain project secrets');
-    }
+    console.log('Failed to add certain project secrets');
+    return undefined;
   });
-};
 
 export default addSecrets;

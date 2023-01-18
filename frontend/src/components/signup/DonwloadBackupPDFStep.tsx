@@ -25,37 +25,37 @@ export default function DonwloadBackupPDFStep({
   incrementStep,
   email,
   password,
-  name,
+  name
 }: DownloadBackupPDFStepProps): JSX.Element {
   const { t } = useTranslation();
 
   return (
-    <div className='bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg mx-auto h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl'>
-      <p className='text-4xl text-center font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary'>
+    <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
+      <p className="text-4xl text-center font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
         {t('signup:step4-message')}
       </p>
-      <div className='flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2'>
+      <div className="flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2">
         <div>{t('signup:step4-description1')}</div>
-        <div className='mt-3'>{t('signup:step4-description2')}</div>
+        <div className="mt-3">{t('signup:step4-description2')}</div>
       </div>
-      <div className='w-full p-2 flex flex-row items-center bg-white/10 text-gray-400 rounded-md max-w-xs md:max-w-md mx-auto mt-4'>
-        <FontAwesomeIcon icon={faWarning} className='ml-2 mr-4 text-4xl' />
+      <div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-400 rounded-md max-w-xs md:max-w-md mx-auto mt-4">
+        <FontAwesomeIcon icon={faWarning} className="ml-2 mr-4 text-4xl" />
         {t('signup:step4-description3')}
       </div>
-      <div className='flex flex-col items-center justify-center md:px-4 md:py-5 mt-2 px-2 py-3 max-h-24 max-w-max mx-auto text-lg'>
+      <div className="flex flex-col items-center justify-center md:px-4 md:py-5 mt-2 px-2 py-3 max-h-24 max-w-max mx-auto text-lg">
         <Button
-          text='Download PDF'
+          text="Download PDF"
           onButtonPressed={async () => {
             await issueBackupKey({
               email,
               password,
               personalName: name,
-              setBackupKeyError: (value: boolean) => {},
-              setBackupKeyIssued: (value: boolean) => {},
+              setBackupKeyError: () => {},
+              setBackupKeyIssued: () => {}
             });
             incrementStep();
           }}
-          size='lg'
+          size="lg"
         />
       </div>
     </div>

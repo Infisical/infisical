@@ -16,7 +16,7 @@ const SendEmailOnPasswordReset = async ({ email }: Props) => {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      email: email
+      email
     })
   });
   // need precise error handling about the status code

@@ -10,8 +10,7 @@ interface Props {
  * @param {string} obj.code - code that a user received to the abovementioned email
  * @returns
  */
-const verifySignupInvite = ({ email, code }: Props) => {
-  return fetch('/api/v1/invite-org/verify', {
+const verifySignupInvite = ({ email, code }: Props) => fetch('/api/v1/invite-org/verify', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -21,6 +20,5 @@ const verifySignupInvite = ({ email, code }: Props) => {
       code
     })
   });
-};
 
 export default verifySignupInvite;

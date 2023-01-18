@@ -16,7 +16,7 @@ const login1 = async (email: string, clientPublicKey: string) => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      email: email,
+      email,
       clientPublicKey,
     }),
   });

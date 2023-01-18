@@ -1,8 +1,9 @@
-const nacl = require('tweetnacl');
-nacl.util = require('tweetnacl-util');
 import aes from './aes-256-gcm';
 
-type encryptAsymmetricProps = {
+const nacl = require('tweetnacl');
+nacl.util = require('tweetnacl-util');
+
+type EncryptAsymmetricProps = {
   plaintext: string;
   publicKey: string;
   privateKey: string;
@@ -22,8 +23,8 @@ type encryptAsymmetricProps = {
 const encryptAssymmetric = ({
   plaintext,
   publicKey,
-  privateKey,
-}: encryptAsymmetricProps): {
+  privateKey
+}: EncryptAsymmetricProps): {
   ciphertext: string;
   nonce: string;
 } => {
@@ -37,11 +38,11 @@ const encryptAssymmetric = ({
 
   return {
     ciphertext: nacl.util.encodeBase64(ciphertext),
-    nonce: nacl.util.encodeBase64(nonce),
+    nonce: nacl.util.encodeBase64(nonce)
   };
 };
 
-type decryptAsymmetricProps = {
+type DecryptAsymmetricProps = {
   ciphertext: string;
   nonce: string;
   publicKey: string;
@@ -61,8 +62,8 @@ const decryptAssymmetric = ({
   ciphertext,
   nonce,
   publicKey,
-  privateKey,
-}: decryptAsymmetricProps): string => {
+  privateKey
+}: DecryptAsymmetricProps): string => {
   const plaintext = nacl.box.open(
     nacl.util.decodeBase64(ciphertext),
     nacl.util.decodeBase64(nonce),
@@ -73,24 +74,23 @@ const decryptAssymmetric = ({
   return nacl.util.encodeUTF8(plaintext);
 };
 
-type encryptSymmetricProps = {
+type EncryptSymmetricProps = {
   plaintext: string;
   key: string;
 };
 
-type encryptSymmetricReturn = {
-  ciphertext:string;
-  iv:string;
-  tag:string;
+type EncryptSymmetricReturn = {
+  ciphertext: string;
+  iv: string;
+  tag: string;
 };
 /**
  * Return symmetrically encrypted [plaintext] using [key].
  */
-const encryptSymmetric = ({
-  plaintext,
-  key,
-}: encryptSymmetricProps): encryptSymmetricReturn => {
-  let ciphertext, iv, tag;
+const encryptSymmetric = ({ plaintext, key }: EncryptSymmetricProps): EncryptSymmetricReturn => {
+  let ciphertext;
+  let iv;
+  let tag;
   try {
     const obj = aes.encrypt({ text: plaintext, secret: key });
     ciphertext = obj.ciphertext;
@@ -105,11 +105,11 @@ const encryptSymmetric = ({
   return {
     ciphertext,
     iv,
-    tag,
+    tag
   };
 };
 
-type decryptSymmetricProps = {
+type DecryptSymmetricProps = {
   ciphertext: string;
   iv: string;
   tag: string;
@@ -126,12 +126,7 @@ type decryptSymmetricProps = {
  * @param {String} obj.key - 32-byte hex key
  *
  */
-const decryptSymmetric = ({
-  ciphertext,
-  iv,
-  tag,
-  key,
-}: decryptSymmetricProps): string => {
+const decryptSymmetric = ({ ciphertext, iv, tag, key }: DecryptSymmetricProps): string => {
   let plaintext;
   try {
     plaintext = aes.decrypt({ ciphertext, iv, tag, secret: key });
@@ -143,9 +138,4 @@ const decryptSymmetric = ({
   return plaintext;
 };
 
-export {
-  decryptAssymmetric,
-  decryptSymmetric,
-  encryptAssymmetric,
-  encryptSymmetric,
-};
+export { decryptAssymmetric, decryptSymmetric, encryptAssymmetric, encryptSymmetric };

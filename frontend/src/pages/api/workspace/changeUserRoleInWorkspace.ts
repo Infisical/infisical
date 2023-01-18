@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 /**
  * This function change the access of a user in a certain workspace
@@ -6,25 +6,21 @@ import SecurityClient from '~/utilities/SecurityClient';
  * @param {*} role
  * @returns
  */
-const changeUserRoleInWorkspace = (membershipId: string, role: string) => {
-  return SecurityClient.fetchCall(
-    '/api/v1/membership/' + membershipId + '/change-role',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        role: role
-      })
-    }
-  ).then(async (res) => {
-    if (res && res.status == 200) {
+const changeUserRoleInWorkspace = (membershipId: string, role: string) =>
+  SecurityClient.fetchCall(`/api/v1/membership/${membershipId}/change-role`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      role
+    })
+  }).then(async (res) => {
+    if (res && res.status === 200) {
       return res;
-    } else {
-      console.log('Failed to change the user role in a project');
     }
+    console.log('Failed to change the user role in a project');
+    return undefined;
   });
-};
 
 export default changeUserRoleInWorkspace;

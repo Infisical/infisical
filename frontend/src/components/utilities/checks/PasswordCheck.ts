@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 interface PasswordCheckProps {
   password: string;
   errorCheck: boolean;
@@ -14,7 +15,7 @@ const passwordCheck = ({
   setPasswordErrorLength,
   setPasswordErrorNumber,
   setPasswordErrorLowerCase,
-  errorCheck,
+  errorCheck
 }: PasswordCheckProps) => {
   if (!password || password.length < 14) {
     setPasswordErrorLength(true);

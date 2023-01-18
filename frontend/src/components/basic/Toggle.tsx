@@ -16,17 +16,12 @@ interface ToggleProps {
  * @param {number} obj.pos - position of a certain secret
  * @returns
  */
-export default function Toggle({
-  enabled,
-  setEnabled,
-  addOverride,
-  pos,
-}: ToggleProps): JSX.Element {
+const Toggle = ({ enabled, setEnabled, addOverride, pos }: ToggleProps): JSX.Element => {
   return (
     <Switch
       checked={enabled}
       onChange={() => {
-        if (enabled == false) {
+        if (enabled === false) {
           addOverride('', pos);
         } else {
           addOverride(undefined, pos);
@@ -37,7 +32,7 @@ export default function Toggle({
         enabled ? 'bg-primary' : 'bg-bunker-400'
       } relative inline-flex h-5 w-9 items-center rounded-full`}
     >
-      <span className='sr-only'>Enable notifications</span>
+      <span className="sr-only">Enable notifications</span>
       <span
         className={`${
           enabled ? 'translate-x-[1.26rem]' : 'translate-x-0.5'
@@ -45,4 +40,6 @@ export default function Toggle({
       />
     </Switch>
   );
-}
+};
+
+export default Toggle;

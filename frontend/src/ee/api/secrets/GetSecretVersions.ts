@@ -1,9 +1,8 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
-
-interface secretVersionProps {
-  secretId: string; 
-  offset: number; 
+interface SecretVersionProps {
+  secretId: string;
+  offset: number;
   limit: number;
 }
 
@@ -15,13 +14,12 @@ interface secretVersionProps {
  * @param {number} obj.limit - how far our query goes
  * @returns
  */
-const getSecretVersions = async ({ secretId, offset, limit }: secretVersionProps) => {
-  return SecurityClient.fetchCall(
-    '/api/v1/secret/' + secretId + '/secret-versions?' +
-      new URLSearchParams({
-        offset: String(offset),
-        limit: String(limit)
-      }),
+const getSecretVersions = async ({ secretId, offset, limit }: SecretVersionProps) =>
+  SecurityClient.fetchCall(
+    `/api/v1/secret/${secretId}/secret-versions?${new URLSearchParams({
+      offset: String(offset),
+      limit: String(limit)
+    })}`,
     {
       method: 'GET',
       headers: {
@@ -29,12 +27,11 @@ const getSecretVersions = async ({ secretId, offset, limit }: secretVersionProps
       }
     }
   ).then(async (res) => {
-    if (res && res.status == 200) {
-      return await res.json();
-    } else {
-      console.log('Failed to get secret version history');
+    if (res && res.status === 200) {
+      return res.json();
     }
+    console.log('Failed to get secret version history');
+    return undefined;
   });
-};
 
 export default getSecretVersions;
