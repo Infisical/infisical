@@ -29,19 +29,19 @@ const workspaceSchema = new Schema<IWorkspace>({
 		],
 		default: [
 			{
-				name: "development",
+				name: "Development",
 				slug: "dev"
 			},
 			{
-				name: "test",
+				name: "Test",
 				slug: "test"
 			},
 			{
-				name: "staging",
+				name: "Staging",
 				slug: "staging"
 			},
 			{
-				name: "production",
+				name: "Production",
 				slug: "prod"
 			}
 		],

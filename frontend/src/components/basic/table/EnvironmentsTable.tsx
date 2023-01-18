@@ -84,7 +84,7 @@ const EnvironmentTable = ({ data = [], onCreateEnv, onDeleteEnv, onUpdateEnv }: 
             {data?.length > 0 ? (
               data.map(({ name, slug }) => (
                 <tr key={name} className="bg-bunker-800 hover:bg-bunker-800/5 duration-100">
-                  <td className="pl-6 py-2 border-mineshaft-700 border-t text-gray-300 capitalize">
+                  <td className="pl-6 py-2 border-mineshaft-700 border-t text-gray-300">
                     {name}
                   </td>
                   <td className="pl-6 py-2 border-mineshaft-700 border-t text-gray-300">{slug}</td>

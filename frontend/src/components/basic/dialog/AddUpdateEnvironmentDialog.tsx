@@ -49,7 +49,7 @@ export const AddUpdateEnvironmentDialog = ({
   const onFormSubmit: FormEventHandler = (e) => {
     e.preventDefault();
     const data = {
-      name: formInput.name.toLowerCase(),
+      name: formInput.name,
       slug: formInput.slug.toLowerCase(),
     };
     if (isEditMode) {

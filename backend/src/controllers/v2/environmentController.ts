@@ -33,7 +33,7 @@ export const createWorkspaceEnvironment = async (
     }
 
     workspace?.environments.push({
-      name: environmentName.toLowerCase(),
+      name: environmentName,
       slug: environmentSlug.toLowerCase(),
     });
     await workspace.save();
@@ -96,7 +96,7 @@ export const renameWorkspaceEnvironment = async (
       throw new Error('Invalid environment given');
     }
 
-    workspace.environments[envIndex].name = environmentName.toLowerCase();
+    workspace.environments[envIndex].name = environmentName;
     workspace.environments[envIndex].slug = environmentSlug.toLowerCase();
 
     await workspace.save();
