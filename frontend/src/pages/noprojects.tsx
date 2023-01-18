@@ -5,13 +5,13 @@ import { useRouter } from 'next/router';
 import Button from '@app/components/basic/buttons/Button';
 import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 
-import getWorkspaces from './api/workspace/getWorkspaces';
+import getOrganizationUserProjects from './api/organization/GetOrgUserProjects';
 
 export default function NoProjects() {
   const router = useRouter();
 
   const redirectUser = async () => {
-    const workspaces = await getWorkspaces();
+    const workspaces = await getOrganizationUserProjects({ orgId: String(localStorage.getItem("orgData.id")) });
     if (workspaces.length > 0) {
       router.push(`/dashboard/${workspaces[0]._id}`);
     }
