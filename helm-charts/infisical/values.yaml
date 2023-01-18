@@ -1,30 +1,60 @@
 #####
-# INFISICAL K8 DEFAULT VALUES FIL
+# INFISICAL K8 DEFAULT VALUES FILE
 # PLEASE REPLACE VALUES/EDIT AS REQUIRED 
 #####
 
+nameOverride: ""
+
 frontend:
+  name: frontend
+  podAnnotations: {}
   replicaCount: 1
   image:
-    repository: 
+    repository: infisical/frontend
     pullPolicy: IfNotPresent
     tag: "latest"
     # kubeSecretRef: some-kube-secret-name
-
+  service:
+    # type of the frontend service
+    type: ClusterIP
+    # define the nodePort if service type is NodePort
+    # nodePort: 
+    annotations: {}
 
 backend:
+  name: backend
+  podAnnotations: {}
   replicaCount: 1
   image:
-    repository: 
+    repository: infisical/backend
     pullPolicy: IfNotPresent
     tag: "latest"
     # kubeSecretRef: some-kube-secret-name
+  service:
+    annotations: {}
+
+mongodb:
+  name: mongodb
+  podAnnotations: {}
+  image:
+    repository: mongo
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    annotations: {}
+
+# By default the backend will be connected to a Mongo instance in the cluster.
+# However, it is recommended to add a Mongo Cloud connection string as the DB instance in the cluster does not have persistence yet.
+# Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/
+mongodbConnection: {}
+# standardConnectionStringFormat: <>
+# dnsSeedListConnectionFormat: <>
 
 ingress:
   enabled: true
   annotations:
     kubernetes.io/ingress.class: "nginx"
-  hostName: example.com
+  hostName: example.com # replace with your domain 
   frontend: 
     path: /
     pathType: Prefix
@@ -32,6 +62,7 @@ ingress:
     path: /api
     pathType: Prefix
   tls: []
+
 
 ## Complete Ingress example 
 # ingress:
@@ -66,13 +97,9 @@ backendEnvironmentVariables:
 
   # Mail/SMTP
   # Required to send emails
-  SMTP_HOST: MUST_REPLACE 
+  SMTP_HOST: MUST_REPLACE
   SMTP_NAME: MUST_REPLACE
   SMTP_USERNAME: MUST_REPLACE
   SMTP_PASSWORD: MUST_REPLACE
 
-  # Recommended to replace with Mongo Cloud URI as the DB instance in the cluster does not have persistence yet
-  MONGO_URL: mongodb://root:root@mongodb-service:27017/
-
-# frontendEnvironmentVariables:
-    
+frontendEnvironmentVariables: {}
