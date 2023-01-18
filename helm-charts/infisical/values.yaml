@@ -43,19 +43,18 @@ mongodb:
   service:
     annotations: {}
 
-
-# Recommended to replace with Mongo Cloud URI as the DB instance in the cluster does not have persistence yet
+# By default the backend will be connected to a Mongo instance in the cluster.
+# However, it is recommended to add a Mongo Cloud connection string as the DB instance in the cluster does not have persistence yet.
+# Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/
 mongodbConnection: {}
-  # host: mymongodb.com # defaults to the internal mongo service
-  # port: 27017
-  # username: root
-  # password: root
+# standardConnectionStringFormat: <>
+# dnsSeedListConnectionFormat: <>
 
 ingress:
   enabled: true
   annotations:
     kubernetes.io/ingress.class: "nginx"
-  hostName: example.com
+  hostName: example.com # replace with your domain 
   frontend: 
     path: /
     pathType: Prefix
@@ -98,7 +97,7 @@ backendEnvironmentVariables:
 
   # Mail/SMTP
   # Required to send emails
-  SMTP_HOST: MUST_REPLACE 
+  SMTP_HOST: MUST_REPLACE
   SMTP_NAME: MUST_REPLACE
   SMTP_USERNAME: MUST_REPLACE
   SMTP_PASSWORD: MUST_REPLACE

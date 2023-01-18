@@ -120,19 +120,12 @@ Create the mongodb connection string.
 {{- $port := 27017 -}}
 {{- $user := "root" -}}
 {{- $pass := "root" -}}
-{{- if .Values.mongodbConnection -}}
-{{- if .Values.mongodbConnection.host -}}
-{{- $host = .Values.mongodbConnection.host -}}
+{{- $connectionString := printf "mongodb://%s:%s@%s:%d/" $user $pass $host $port -}}
+{{- if .Values.mongodbConnection.standardConnectionStringFormat -}}
+{{- $connectionString = .Values.mongodbConnection.standardConnectionStringFormat -}}
 {{- end -}}
-{{- if .Values.mongodbConnection.port -}}
-{{- $port = .Values.mongodbConnection.port -}}
+{{- if .Values.mongodbConnection.dnsSeedListConnectionFormat -}}
+{{- $connectionString = .Values.mongodbConnection.dnsSeedListConnectionFormat -}}
 {{- end -}}
-{{- if .Values.mongodbConnection.username -}}
-{{- $user = .Values.mongodbConnection.username -}}
-{{- end -}}
-{{- if .Values.mongodbConnection.password -}}
-{{- $pass = .Values.mongodbConnection.password -}}
-{{- end -}}
-{{- end -}}
-{{- printf "mongodb://%s:%s@%s:%d/" $user $pass $host $port -}}
+{{- printf "%s" $connectionString -}}
 {{- end -}}
