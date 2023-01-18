@@ -4,7 +4,14 @@ module.exports = {
     browser: true,
     es2021: true
   },
-  extends: ['airbnb', 'airbnb-typescript', 'airbnb/hooks', 'plugin:react/recommended', 'prettier'],
+  extends: [
+    'airbnb',
+    'airbnb-typescript',
+    'airbnb/hooks',
+    'plugin:react/recommended',
+    'prettier',
+    'plugin:storybook/recommended'
+  ],
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
@@ -20,15 +27,27 @@ module.exports = {
     'import/prefer-default-export': 'off',
     'react-hooks/exhaustive-deps': 'off',
     '@typescript-eslint/ban-ts-comment': 'warn',
+    'react/jsx-props-no-spreading': 'off', // switched off for component building
     // TODO: This rule will be switched ON after complete revamp of frontend
     '@typescript-eslint/no-explicit-any': 'off',
     'no-console': 'off',
     'arrow-body-style': 'off',
-    'no-underscore-dangle': ['error', { allow: ['_id'] }],
-    'jsx-a11y/anchor-is-valid': 'off', // all those <a> tags must be converted to label or a p component
+    'no-underscore-dangle': [
+      'error',
+      {
+        allow: ['_id']
+      }
+    ],
+    'jsx-a11y/anchor-is-valid': 'off',
+    // all those <a> tags must be converted to label or a p component
     //
     'react/require-default-props': 'off',
-    'react/jsx-filename-extension': [1, { extensions: ['.tsx', '.ts'] }],
+    'react/jsx-filename-extension': [
+      1,
+      {
+        extensions: ['.tsx', '.ts']
+      }
+    ],
     // TODO: turn this rule ON after migration. everything should use arrow functions
     'react/function-component-definition': [
       0,
@@ -36,7 +55,12 @@ module.exports = {
         namedComponents: 'arrow-function'
       }
     ],
-    'react/no-unknown-property': ['error', { ignore: ['jsx'] }],
+    'react/no-unknown-property': [
+      'error',
+      {
+        ignore: ['jsx']
+      }
+    ],
     '@typescript-eslint/no-non-null-assertion': 'off',
     'simple-import-sort/exports': 'warn',
     'simple-import-sort/imports': [
