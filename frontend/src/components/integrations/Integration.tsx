@@ -94,7 +94,7 @@ const Integration = ({ integration, environments = [] }: Props) => {
               <div className="text-gray-400 text-xs font-semibold mb-2 w-60">ENVIRONMENT</div>
               <ListBox
                 data={!integration.isActive ? ['Development', 'Preview', 'Production'] : null}
-                selected={integrationTarget}
+                isSelected={integrationTarget}
                 onChange={setIntegrationTarget}
                 isFull
               />
@@ -110,7 +110,7 @@ const Integration = ({ integration, environments = [] }: Props) => {
                     ? ['Production', 'Deploy previews', 'Branch deploys', 'Local development']
                     : null
                 }
-                selected={integrationContext}
+                isSelected={integrationContext}
                 onChange={setIntegrationContext}
               />
             </div>
@@ -134,7 +134,7 @@ const Integration = ({ integration, environments = [] }: Props) => {
           <p className="text-gray-400 text-xs font-semibold mb-2">ENVIRONMENT</p>
           <ListBox
             data={!integration.isActive ? environments.map(({ name }) => name) : null}
-            selected={integrationEnvironment.name}
+            isSelected={integrationEnvironment.name}
             onChange={(envName) =>
               setIntegrationEnvironment(
                 environments.find(({ name }) => envName === name) || {
@@ -159,7 +159,7 @@ const Integration = ({ integration, environments = [] }: Props) => {
           <div className="text-gray-400 text-xs font-semibold mb-2">APP</div>
           <ListBox
             data={!integration.isActive ? apps.map((app) => app.name) : null}
-            selected={integrationApp}
+            isSelected={integrationApp}
             onChange={(app) => {
               setIntegrationApp(app);
             }}

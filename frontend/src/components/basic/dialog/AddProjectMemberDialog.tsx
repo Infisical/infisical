@@ -107,7 +107,7 @@ const AddProjectMemberDialog = ({
                   </div>
                   <div className="max-h-28">
                     {data?.length > 0 && (
-                      <ListBox selected={email || data[0]} onChange={setEmail} data={data} isFull />
+                      <ListBox isSelected={email || data[0]} onChange={setEmail} data={data} isFull />
                     )}
                   </div>
                   <div className="max-w-max">

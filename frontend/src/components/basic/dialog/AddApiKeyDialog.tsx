@@ -126,7 +126,7 @@ const AddApiKeyDialog = ({
                     </div>
                     <div className='max-h-28'>
                       <ListBox
-                        selected={apiKeyExpiresIn}
+                        isSelected={apiKeyExpiresIn}
                         onChange={setApiKeyExpiresIn}
                         data={[
                           '1 day',

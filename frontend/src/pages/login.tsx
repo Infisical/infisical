@@ -151,7 +151,7 @@ export default function Login() {
       <div className="absolute right-4 top-0 mt-4 flex items-center justify-center">
         <div className="w-48 mx-auto">
           <ListBox
-            selected={lang}
+            isSelected={lang}
             onChange={setLanguage}
             data={['en', 'ko', 'fr', 'pt-BR']}
             isFull

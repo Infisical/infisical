@@ -170,7 +170,7 @@ const AddServiceTokenDialog = ({
                     </div>
                     <div className='max-h-28 mb-2'>
                       <ListBox
-                        selected={
+                        isSelected={
                           selectedServiceTokenEnv?.name
                             ? selectedServiceTokenEnv?.name
                             : environments[0]?.name
@@ -192,7 +192,7 @@ const AddServiceTokenDialog = ({
                     </div>
                     <div className='max-h-28'>
                       <ListBox
-                        selected={serviceTokenExpiresIn}
+                        isSelected={serviceTokenExpiresIn}
                         onChange={setServiceTokenExpiresIn}
                         data={[
                           '1 day',

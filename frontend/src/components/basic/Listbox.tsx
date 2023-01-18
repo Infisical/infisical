@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Listbox, Transition } from '@headlessui/react';
 
 interface ListBoxProps {
-  selected: string;
+  isSelected: string;
   onChange: (arg: string) => void;
   data: string[] | null;
   text?: string;
@@ -15,7 +15,7 @@ interface ListBoxProps {
 /**
  * This is the component that we use for drop down lists.
  * @param {object} obj
- * @param {string} obj.selected - the item that is currently selected
+ * @param {string} obj.isSelected - the item that is currently selected
  * @param {function} obj.onChange - what happends if you select the item inside a list
  * @param {string[]} obj.data - all the options available
  * @param {string} obj.text - the text that shows us in front of the select option
@@ -23,7 +23,7 @@ interface ListBoxProps {
  * @returns
  */
 const ListBox = ({
-  selected,
+  isSelected,
   onChange,
   data,
   text,
@@ -31,7 +31,7 @@ const ListBox = ({
   isFull
 }: ListBoxProps): JSX.Element => {
   return (
-    <Listbox value={selected} onChange={onChange}>
+    <Listbox value={isSelected} onChange={onChange}>
       <div className="relative">
         <Listbox.Button
           className={`text-gray-400 relative ${
@@ -40,9 +40,9 @@ const ListBox = ({
         >
           <div className="flex flex-row">
             {text}
-            <span className="ml-1 cursor-pointer block truncate font-semibold text-gray-300 capitalize">
+            <span className="ml-1 cursor-pointer block truncate font-semibold text-gray-300">
               {' '}
-              {selected}
+              {isSelected}
             </span>
           </div>
           {data && (
@@ -62,22 +62,22 @@ const ListBox = ({
               {data.map((person, personIdx) => (
                 <Listbox.Option
                   key={`${person}.${personIdx + 1}`}
-                  className={({ active, selected: isSelected }) =>
-                    `my-0.5 relative cursor-default select-none py-2 pl-10 pr-4 rounded-md capitalize ${
-                      isSelected ? 'bg-white/10 text-gray-400 font-bold' : ''
+                  className={({ active, selected }) =>
+                    `my-0.5 relative cursor-default select-none py-2 pl-10 pr-4 rounded-md ${
+                      selected ? 'bg-white/10 text-gray-400 font-bold' : ''
                     } ${
-                      active && !isSelected
+                      active && !selected
                         ? 'bg-white/5 text-mineshaft-200 cursor-pointer'
                         : 'text-gray-400'
                     } `
                   }
                   value={person}
                 >
-                  {({ selected: isSelected }) => (
+                  {({ selected }) => (
                     <>
                       <span
                         className={`block truncate text-primary${
-                          isSelected ? 'font-medium' : 'font-normal'
+                          selected ? 'font-medium' : 'font-normal'
                         }`}
                       >
                         {person}

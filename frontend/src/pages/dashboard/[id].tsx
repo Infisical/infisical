@@ -564,7 +564,7 @@ export default function Dashboard() {
               </div>
               {!snapshotData && data?.length === 0 && (
                 <ListBox
-                  selected={selectedEnv.name}
+                  isSelected={selectedEnv.name}
                   data={workspaceEnvs.map(({ name }) => name)}
                   onChange={(envName) =>
                     setSelectedEnv(
@@ -644,7 +644,7 @@ export default function Dashboard() {
                   <>
                     {!snapshotData ? (
                       <ListBox
-                        selected={selectedEnv.name}
+                        isSelected={selectedEnv.name}
                         data={workspaceEnvs.map(({ name }) => name)}
                         onChange={(envName) =>
                           setSelectedEnv(
@@ -657,7 +657,7 @@ export default function Dashboard() {
                       />
                     ) : (
                       <ListBox
-                        selected={selectedSnapshotEnv?.name || ''}
+                        isSelected={selectedSnapshotEnv?.name || ''}
                         data={workspaceEnvs.map(({ name }) => name)}
                         onChange={(envName) =>
                           setSelectedSnapshotEnv(

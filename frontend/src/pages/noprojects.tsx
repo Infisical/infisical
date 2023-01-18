@@ -31,7 +31,7 @@ export default function NoProjects() {
       </div>
       <div className="px-4 rounded-md bg-bunker-500 mb-8 text-bunker-300 shadow-xl py-6">
         <div className="max-w-md">
-          You are not part of any projects in this organization yet. When you do, they will appear
+          You are not part of any projects in this organization yet. When you are, they will appear
           here.
         </div>
         <div className="max-w-md mt-4">

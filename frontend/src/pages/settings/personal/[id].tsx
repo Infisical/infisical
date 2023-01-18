@@ -93,7 +93,7 @@ export default function PersonalSettings() {
               </p>
               <div className="max-h-28 w-ful mt-4">
                 <ListBox
-                  selected={lang}
+                  isSelected={lang}
                   onChange={setLanguage}
                   data={['en', 'ko', 'fr']}
                   text={`${t('common:language')}: `}

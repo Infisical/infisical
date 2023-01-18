@@ -204,7 +204,11 @@ const attemptLogin = async (
           }
 
           if (isLogin) {
-            router.push(`/dashboard/${localStorage.getItem('projectData.id')}`);
+            if (localStorage.getItem('projectData.id') !== "undefined") {
+              router.push(`/dashboard/${localStorage.getItem('projectData.id')}`);
+            } else {
+              router.push("/noprojects");
+            }
           }
         } catch (error) {
           console.log(error);

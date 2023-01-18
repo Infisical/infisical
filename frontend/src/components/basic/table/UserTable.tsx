@@ -152,7 +152,7 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
                       ((myRole === 'admin' && row.role !== 'owner') || myRole === 'owner') &&
                       myUser !== row.email ? (
                         <Listbox
-                          selected={row.role}
+                          isSelected={row.role}
                           onChange={(e) => handleRoleUpdate(index, e)}
                           data={
                             myRole === 'owner' ? ['owner', 'admin', 'member'] : ['admin', 'member']
@@ -163,7 +163,7 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
                         row.status !== 'invited' &&
                         row.status !== 'verified' && (
                           <Listbox
-                            selected={row.role}
+                            isSelected={row.role}
                             text="Role: "
                             onChange={() => {
                               throw new Error('Function not implemented.');

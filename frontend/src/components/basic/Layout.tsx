@@ -190,7 +190,8 @@ const Layout = ({ children }: LayoutProps) => {
         userWorkspaces.length === 0 &&
         router.asPath !== '/noprojects' &&
         !router.asPath.includes('home') &&
-        !router.asPath.includes('settings')
+        !router.asPath.includes('settings') ||
+        router.asPath === '/dashboard/undefined'
       ) {
         router.push('/noprojects');
       } else if (router.asPath !== '/noprojects') {
@@ -259,7 +260,7 @@ const Layout = ({ children }: LayoutProps) => {
                   </div>
                   {Object.keys(workspaceMapping).length > 0 ? (
                     <Listbox
-                      selected={workspaceSelected}
+                      isSelected={workspaceSelected}
                       onChange={setWorkspaceSelected}
                       data={Object.keys(workspaceMapping)}
                       buttonAction={openModal}

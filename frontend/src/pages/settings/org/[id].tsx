@@ -72,7 +72,7 @@ export default function SettingsOrg() {
           key: guidGenerator(),
           firstName: orgUser.user?.firstName,
           lastName: orgUser.user?.lastName,
-          email: orgUser.user?.email === null ? orgUser.inviteEmail : orgUser.user?.email,
+          email: orgUser.user?.email == null ? orgUser.inviteEmail : orgUser.user?.email,
           role: orgUser?.role,
           status: orgUser?.status,
           userId: orgUser.user?._id,
@@ -115,7 +115,7 @@ export default function SettingsOrg() {
   };
 
   const submitAddUserModal = async (newUserEmail: string) => {
-    await addUserToOrg(email, localStorage.getItem('orgData.id') as string);
+    await addUserToOrg(newUserEmail, localStorage.getItem('orgData.id') as string);
     setEmail('');
     setIsAddUserOpen(false);
     router.reload();
