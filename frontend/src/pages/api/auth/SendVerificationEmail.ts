@@ -9,7 +9,7 @@ const sendVerificationEmail = (email: string) => {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      email: email
+      email
     })
   });
 };

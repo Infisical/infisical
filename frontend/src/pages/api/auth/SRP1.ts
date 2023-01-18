@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 interface Props {
   clientPublicKey: string;
@@ -9,8 +9,8 @@ interface Props {
  * @param {string} clientPublicKey
  * @returns
  */
-const SRP1 = ({ clientPublicKey }: Props) => {
-  return SecurityClient.fetchCall('/api/v1/password/srp1', {
+const SRP1 = ({ clientPublicKey }: Props) =>
+  SecurityClient.fetchCall('/api/v1/password/srp1', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -19,12 +19,11 @@ const SRP1 = ({ clientPublicKey }: Props) => {
       clientPublicKey
     })
   }).then(async (res) => {
-    if (res && res.status == 200) {
-      return await res.json();
-    } else {
-      console.log('Failed to do the first step of SRP');
+    if (res && res.status === 200) {
+      return res.json();
     }
+    console.log('Failed to do the first step of SRP');
+    return undefined;
   });
-};
 
 export default SRP1;

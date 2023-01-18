@@ -4,7 +4,7 @@ import { faCheck, faCopy } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Dialog, Transition } from '@headlessui/react';
 
-import addAPIKey from '~/pages/api/apiKey/addAPIKey';
+import addAPIKey from '@app/pages/api/apiKey/addAPIKey';
 
 import Button from '../buttons/Button';
 import InputField from '../InputField';
@@ -99,7 +99,7 @@ const AddApiKeyDialog = ({
                 leaveFrom='opacity-100 scale-100'
                 leaveTo='opacity-0 scale-95'
               >
-                {apiKey == '' ? (
+                {apiKey === '' ? (
                   <Dialog.Panel className='w-full max-w-md transform rounded-md bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all'>
                     <Dialog.Title
                       as='h3'
@@ -126,7 +126,7 @@ const AddApiKeyDialog = ({
                     </div>
                     <div className='max-h-28'>
                       <ListBox
-                        selected={apiKeyExpiresIn}
+                        isSelected={apiKeyExpiresIn}
                         onChange={setApiKeyExpiresIn}
                         data={[
                           '1 day',
@@ -135,7 +135,7 @@ const AddApiKeyDialog = ({
                           '6 months',
                           '12 months',
                         ]}
-                        isFull={true}
+                        isFull
                         text={`${t('common:expired-in')}: `}
                       />
                     </div>
@@ -149,7 +149,7 @@ const AddApiKeyDialog = ({
                             t('section-api-key:add-dialog.add') as string
                           }
                           size='md'
-                          active={apiKeyName == '' ? false : true}
+                          active={apiKeyName !== ''}
                         />
                       </div>
                     </div>
@@ -176,15 +176,16 @@ const AddApiKeyDialog = ({
                         <input
                           type='text'
                           value={apiKey}
-                          disabled={true}
+                          disabled
                           id='apiKey'
                           className='invisible bg-white/0 text-gray-400 py-2 w-full px-2 min-w-full outline-none'
-                        ></input>
+                         />
                         <div className='bg-white/0 max-w-md text-sm text-gray-400 py-2 w-full pl-14 pr-2 break-words outline-none'>
                           {apiKey}
                         </div>
                         <div className='group font-normal h-full relative inline-block text-gray-400 underline hover:text-primary duration-200'>
                           <button
+                            type="button"
                             onClick={copyToClipboard}
                             className='h-full pl-3.5 pr-4 border-l border-white/20 py-2 hover:bg-white/[0.12] duration-200'
                           >

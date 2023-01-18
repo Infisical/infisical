@@ -8,7 +8,7 @@ type Props = {
   onSubmit: () => void
 }
 
-export function DeleteActionButton({ onSubmit }: Props) {
+export const DeleteActionButton = ({ onSubmit }: Props) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false)
 

@@ -23,50 +23,47 @@ interface PopupProps {
  * @param {string} org.setCheckDocsPopUpVisible - the functions that closes the popup
  * @returns
  */
-export default function BottonRightPopup({
+const BottonRightPopup = ({
   buttonText,
   buttonLink,
   titleText,
   emoji,
   textLine1,
   textLine2,
-  setCheckDocsPopUpVisible,
-}: PopupProps): JSX.Element {
+  setCheckDocsPopUpVisible
+}: PopupProps): JSX.Element => {
   return (
     <div
-      className='z-50 drop-shadow-xl border-gray-600/50 border flex flex-col items-start bg-bunker max-w-xl text-gray-200 pt-3 pb-4 rounded-md absolute bottom-0 right-0 mr-6 mb-6'
-      role='alert'
+      className="z-50 drop-shadow-xl border-gray-600/50 border flex flex-col items-start bg-bunker max-w-xl text-gray-200 pt-3 pb-4 rounded-md absolute bottom-0 right-0 mr-6 mb-6"
+      role="alert"
     >
-      <div className='flex flex-row items-center justify-between w-full border-b border-gray-600/70 pb-3 px-6'>
-        <div className='font-bold text-xl mr-2 mt-0.5 flex flex-row'>
+      <div className="flex flex-row items-center justify-between w-full border-b border-gray-600/70 pb-3 px-6">
+        <div className="font-bold text-xl mr-2 mt-0.5 flex flex-row">
           <div>{titleText}</div>
-          <div className='ml-2.5'>{emoji}</div>
+          <div className="ml-2.5">{emoji}</div>
         </div>
-        <button
-          className='mt-1'
-          onClick={() => setCheckDocsPopUpVisible(false)}
-        >
+        <button className="mt-1" onClick={() => setCheckDocsPopUpVisible(false)} type="button">
           <FontAwesomeIcon
             icon={faXmark}
-            className='text-gray-400 text-2xl hover:text-red duration-200 cursor-pointer'
+            className="text-gray-400 text-2xl hover:text-red duration-200 cursor-pointer"
           />
         </button>
       </div>
-      <div className='block sm:inline px-6 mt-4 mb-0.5 text-gray-300'>
-        {textLine1}
-      </div>
-      <div className='block sm:inline mb-4 px-6'>{textLine2}</div>
-      <div className='flex flex-row px-6 w-full'>
-        {/*eslint-disable-next-line react/jsx-no-target-blank */}
+      <div className="block sm:inline px-6 mt-4 mb-0.5 text-gray-300">{textLine1}</div>
+      <div className="block sm:inline mb-4 px-6">{textLine2}</div>
+      <div className="flex flex-row px-6 w-full">
+        {/* eslint-disable-next-line react/jsx-no-target-blank */}
         <a
-          className='font-bold p-2 bg-white/10 rounded-md w-full hover:bg-primary duration-200 hover:text-black flex justify-center'
+          className="font-bold p-2 bg-white/10 rounded-md w-full hover:bg-primary duration-200 hover:text-black flex justify-center"
           href={buttonLink}
-          target='_blank'
-          rel='noopener'
+          target="_blank"
+          rel="noopener"
         >
           {buttonText}
         </a>
       </div>
     </div>
   );
-}
+};
+
+export default BottonRightPopup;

@@ -7,8 +7,8 @@ import AuthorizeIntegration from './api/integrations/authorizeIntegration';
 export default function Vercel() {
   const router = useRouter();
   const parsedUrl = queryString.parse(router.asPath.split('?')[1]);
-  const code = parsedUrl.code;
-  const state = parsedUrl.state;
+  const {code} = parsedUrl;
+  const {state} = parsedUrl;
 
   /**
    * Here we forward to the default workspace if a user opens this url
@@ -30,7 +30,7 @@ export default function Vercel() {
           });
 
           router.push(
-            '/integrations/' + localStorage.getItem('projectData.id')
+            `/integrations/${  localStorage.getItem('projectData.id')}`
           );
         }
       } catch (err) {
@@ -40,7 +40,7 @@ export default function Vercel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return <div></div>;
+  return <div />;
 }
 
 Vercel.requireAuth = true;

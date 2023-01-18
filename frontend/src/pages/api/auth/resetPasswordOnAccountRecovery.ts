@@ -25,19 +25,18 @@ const resetPasswordOnAccountRecovery = ({
   tag,
   salt,
   verifier
-}: Props) => {
-  return fetch('/api/v1/password/password-reset', {
+}: Props) => fetch('/api/v1/password/password-reset', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + verificationToken
+      Authorization: `Bearer ${  verificationToken}`
     },
     body: JSON.stringify({
-      encryptedPrivateKey: encryptedPrivateKey,
-      iv: iv,
-      tag: tag,
-      salt: salt,
-      verifier: verifier
+      encryptedPrivateKey,
+      iv,
+      tag,
+      salt,
+      verifier
     })
   }).then(async (res) => {
     if (res?.status !== 200) {
@@ -45,6 +44,5 @@ const resetPasswordOnAccountRecovery = ({
     }
     return res;
   });
-};
 
 export default resetPasswordOnAccountRecovery;

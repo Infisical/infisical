@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 interface Props {
   integrationId: string;
@@ -16,26 +16,22 @@ interface Props {
   }[];
 }
 
-const changeHerokuConfigVars = ({ integrationId, key, secrets }: Props) => {
-  return SecurityClient.fetchCall(
-    '/api/v1/integration/' + integrationId + '/sync',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        key,
-        secrets
-      })
-    }
-  ).then(async (res) => {
-    if (res && res.status == 200) {
+const changeHerokuConfigVars = ({ integrationId, key, secrets }: Props) =>
+  SecurityClient.fetchCall(`/api/v1/integration/${integrationId}/sync`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      key,
+      secrets
+    })
+  }).then(async (res) => {
+    if (res && res.status === 200) {
       return res;
-    } else {
-      console.log('Failed to sync secrets to Heroku');
     }
+    console.log('Failed to sync secrets to Heroku');
+    return undefined;
   });
-};
 
 export default changeHerokuConfigVars;

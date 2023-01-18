@@ -22,7 +22,7 @@ export const saveTokenToLocalStorage = ({
   } catch (err) {
     if (err instanceof Error) {
       throw new Error(
-        "Unable to send the tokens in local storage:" + err.message
+        `Unable to send the tokens in local storage:${  err.message}`
       );
     }
   }

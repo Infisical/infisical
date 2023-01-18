@@ -40,14 +40,14 @@ const DashboardInputField = ({
 }: DashboardInputFieldProps) => {
   const ref = useRef<HTMLDivElement | null>(null);
   const syncScroll = (e: SyntheticEvent<HTMLDivElement>) => {
-    if (ref.current == null) return;
+    if (ref.current === null) return;
 
     ref.current.scrollTop = e.currentTarget.scrollTop;
     ref.current.scrollLeft = e.currentTarget.scrollLeft;
   };
 
   if (type === 'varName') {
-    const startsWithNumber = !isNaN(Number(value?.charAt(0))) && value != '';
+    const startsWithNumber = !Number.isNaN(Number(value?.charAt(0))) && value !== '';
     const error = startsWithNumber || isDuplicate;
 
     return (
@@ -58,9 +58,7 @@ const DashboardInputField = ({
           } rounded-md`}
         >
           <input
-            onChange={(e) =>
-              onChangeHandler(e.target.value.toUpperCase(), position)
-            }
+            onChange={(e) => onChangeHandler(e.target.value.toUpperCase(), position)}
             type={type}
             value={value}
             className={`z-10 peer font-mono ph-no-capture bg-bunker-800 rounded-md caret-white text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 ${
@@ -81,13 +79,16 @@ const DashboardInputField = ({
         )}
       </div>
     );
-  } else if (type === 'value') {
+  }
+  if (type === 'value') {
     return (
       <div className="flex-col w-full">
-        <div
-          className={`group relative whitespace-pre	flex flex-col justify-center w-full border border-mineshaft-500 rounded-md`}
-        >
-          {override == true && <div className='bg-primary-300 absolute top-[0.1rem] right-[0.1rem] z-10 w-min text-xxs px-1 text-black opacity-80 rounded-md'>Override enabled</div>}
+        <div className="group relative whitespace-pre	flex flex-col justify-center w-full border border-mineshaft-500 rounded-md">
+          {override === true && (
+            <div className="bg-primary-300 absolute top-[0.1rem] right-[0.1rem] z-10 w-min text-xxs px-1 text-black opacity-80 rounded-md">
+              Override enabled
+            </div>
+          )}
           <input
             value={value}
             onChange={(e) => onChangeHandler(e.target.value, position)}
@@ -105,20 +106,18 @@ const DashboardInputField = ({
               blurred && !override
                 ? 'text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-400 peer-active:text-gray-400'
                 : ''
-            } ${
-              override ? 'text-primary-300' : 'text-gray-400'
-            }
+            } ${override ? 'text-primary-300' : 'text-gray-400'}
             absolute flex flex-row whitespace-pre font-mono z-0 ph-no-capture overflow-x-scroll bg-bunker-800 h-9 rounded-md text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
           >
             {value?.split(REGEX).map((word, id) => {
               if (word.match(REGEX) !== null) {
                 return (
-                  <span className="ph-no-capture text-yellow" key={id}>
+                  <span className="ph-no-capture text-yellow" key={`${word}.${id + 1}`}>
                     {word.slice(0, 2)}
                     <span className="ph-no-capture text-yellow-200/80">
                       {word.slice(2, word.length - 1)}
                     </span>
-                    {word.slice(word.length - 1, word.length) == '}' ? (
+                    {word.slice(word.length - 1, word.length) === '}' ? (
                       <span className="ph-no-capture text-yellow">
                         {word.slice(word.length - 1, word.length)}
                       </span>
@@ -129,13 +128,12 @@ const DashboardInputField = ({
                     )}
                   </span>
                 );
-              } else {
-                return (
-                  <span key={id} className="ph-no-capture">
-                    {word}
-                  </span>
-                );
               }
+              return (
+                <span key={`${word}_${id + 1}`} className="ph-no-capture">
+                  {word}
+                </span>
+              );
             })}
           </div>
           {blurred && (
@@ -160,7 +158,14 @@ const DashboardInputField = ({
 };
 
 function inputPropsAreEqual(prev: DashboardInputFieldProps, next: DashboardInputFieldProps) {
-  return prev.value === next.value && prev.type === next.type && prev.position === next.position && prev.blurred === next.blurred && prev.override === next.override && prev.isDuplicate === next.isDuplicate;
+  return (
+    prev.value === next.value &&
+    prev.type === next.type &&
+    prev.position === next.position &&
+    prev.blurred === next.blurred &&
+    prev.override === next.override &&
+    prev.isDuplicate === next.isDuplicate
+  );
 }
 
 export default memo(DashboardInputField, inputPropsAreEqual);

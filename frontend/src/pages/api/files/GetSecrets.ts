@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 /**
  * This function fetches the encrypted secrets for a certain project
@@ -6,13 +6,12 @@ import SecurityClient from '~/utilities/SecurityClient';
  * @param {string} env - environment of a project for which a user is trying ot get secrets
  * @returns
  */
-const getSecrets = async (workspaceId: string, env: string) => {
-  return SecurityClient.fetchCall(
-    '/api/v2/secrets?' +
-      new URLSearchParams({
-        environment: env,
-        workspaceId
-      }),
+const getSecrets = async (workspaceId: string, env: string) =>
+  SecurityClient.fetchCall(
+    `/api/v2/secrets?${new URLSearchParams({
+      environment: env,
+      workspaceId
+    })}`,
     {
       method: 'GET',
       headers: {
@@ -20,12 +19,11 @@ const getSecrets = async (workspaceId: string, env: string) => {
       }
     }
   ).then(async (res) => {
-    if (res && res.status == 200) {
+    if (res && res.status === 200) {
       return (await res.json()).secrets;
-    } else {
-      console.log('Failed to get project secrets');
     }
+    console.log('Failed to get project secrets');
+    return undefined;
   });
-};
 
 export default getSecrets;

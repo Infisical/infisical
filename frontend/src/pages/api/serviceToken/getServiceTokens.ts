@@ -1,26 +1,22 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 /**
  * This route gets service tokens for a specific user in a project
  * @param {*} param0
  * @returns
  */
-const getServiceTokens = ({ workspaceId }: { workspaceId: string }) => {
-  return SecurityClient.fetchCall(
-    '/api/v2/workspace/' + workspaceId + '/service-token-data',
-    {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+const getServiceTokens = ({ workspaceId }: { workspaceId: string }) =>
+  SecurityClient.fetchCall(`/api/v2/workspace/${workspaceId}/service-token-data`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json'
     }
-  ).then(async (res) => {
-    if (res && res.status == 200) {
+  }).then(async (res) => {
+    if (res && res.status === 200) {
       return (await res.json()).serviceTokenData;
-    } else {
-      console.log('Failed to get service tokens');
     }
+    console.log('Failed to get service tokens');
+    return undefined;
   });
-};
 
 export default getServiceTokens;

@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Dialog, Transition } from '@headlessui/react';
 
-import addIncidentContact from '~/pages/api/organization/addIncidentContact';
+import addIncidentContact from '@app/pages/api/organization/addIncidentContact';
 
 import Button from '../buttons/Button';
 import InputField from '../InputField';
@@ -10,7 +10,6 @@ import InputField from '../InputField';
 type Props = {
   isOpen: boolean;
   closeModal: () => void;
-  workspaceId: string;
   incidentContacts: string[];
   setIncidentContacts: (arg: string[]) => void;
 };

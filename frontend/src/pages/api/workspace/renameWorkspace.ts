@@ -1,4 +1,4 @@
-import SecurityClient from '~/utilities/SecurityClient';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 /**
  * This route lets us rename a certain workspace.
@@ -6,25 +6,21 @@ import SecurityClient from '~/utilities/SecurityClient';
  * @param {*} res
  * @returns
  */
-const renameWorkspace = (workspaceId: string, newWorkspaceName: string) => {
-  return SecurityClient.fetchCall(
-    '/api/v1/workspace/' + workspaceId + '/name',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: newWorkspaceName
-      })
-    }
-  ).then(async (res) => {
-    if (res && res.status == 200) {
+const renameWorkspace = (workspaceId: string, newWorkspaceName: string) =>
+  SecurityClient.fetchCall(`/api/v1/workspace/${workspaceId}/name`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: newWorkspaceName
+    })
+  }).then(async (res) => {
+    if (res && res.status === 200) {
       return res;
-    } else {
-      console.log('Failed to rename a project');
     }
+    console.log('Failed to rename a project');
+    return undefined;
   });
-};
 
 export default renameWorkspace;

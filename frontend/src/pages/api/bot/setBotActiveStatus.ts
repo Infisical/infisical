@@ -1,4 +1,4 @@
-import SecurityClient from "~/utilities/SecurityClient";
+import SecurityClient from '@app/components/utilities/SecurityClient';
 
 interface BotKey {
   encryptedKey: string;
@@ -10,10 +10,10 @@ interface Props {
   isActive: boolean;
   botKey: BotKey;
 }
- 
+
 /**
  * This function sets the active status of a bot and shares a copy of
- * the project key (encrypted under the bot's public key) with the 
+ * the project key (encrypted under the bot's public key) with the
  * project's bot
  * @param {Object} obj
  * @param {String} obj.botId
@@ -21,26 +21,22 @@ interface Props {
  * @param {Object} obj.botKey
  * @returns
  */
-const setBotActiveStatus = async ({ botId, isActive, botKey }: Props) => {
-  return SecurityClient.fetchCall(
-      "/api/v1/bot/" + botId + "/active",
-    {
-        method: "PATCH",
-        headers: {
-        "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            isActive,
-            botKey
-        })
+const setBotActiveStatus = async ({ botId, isActive, botKey }: Props) =>
+  SecurityClient.fetchCall(`/api/v1/bot/${botId}/active`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      isActive,
+      botKey
+    })
+  }).then(async (res) => {
+    if (res && res.status === 200) {
+      return res.json();
     }
-  ).then(async (res) => {
-    if (res && res.status == 200) {
-      return await res.json();
-    } else {
-      console.log("Failed to get bot for project");
-    }
+    console.log('Failed to get bot for project');
+    return undefined;
   });
-};
 
 export default setBotActiveStatus;

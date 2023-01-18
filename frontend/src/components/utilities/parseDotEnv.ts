@@ -29,6 +29,7 @@ export function parseDotEnv(src: ArrayBuffer) {
         let match;
         let item: [string, string, string[]] | [] = [];
 
+        // eslint-disable-next-line no-cond-assign
         while ((match = LINE.exec(line)) !== null) {
           const key = match[1];
 
@@ -58,8 +59,8 @@ export function parseDotEnv(src: ArrayBuffer) {
     })
     .filter((line) => line.length > 1)
     .forEach((line) => {
-      const [key, value, comments] = line;
-      object[key as string] = { value, comments };
+      const [key, value, cmnts] = line;
+      object[key as string] = { value, comments: cmnts };
     });
 
   return object;

@@ -18,8 +18,8 @@ const EmailVerifyOnPasswordReset = async ({ email, code }: Props) => {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      email: email,
-      code: code
+      email,
+      code
     })
   });
   if (response?.status === 200) {
