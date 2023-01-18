@@ -92,24 +92,24 @@ export const updateIntegration = async (req: Request, res: Response) => {
  * @returns
  */
 export const deleteIntegration = async (req: Request, res: Response) => {
-	let deletedIntegration;
+	let integration;
 	try {
 		const { integrationId } = req.params;
 
-		deletedIntegration = await Integration.findOneAndDelete({
+		integration = await Integration.findOneAndDelete({
 			_id: integrationId
 		});
 		
-		if (!deletedIntegration) throw new Error('Failed to find integration');
+		if (!integration) throw new Error('Failed to find integration');
 		
 		const integrations = await Integration.find({
-			workspace: deletedIntegration.workspace
+			workspace: integration.workspace
 		});
 			
 		if (integrations.length === 0) {
 			// case: no integrations left, deactivate bot
 			const bot = await Bot.findOneAndUpdate({
-				workspace: deletedIntegration.workspace
+				workspace: integration.workspace
 			}, {
 				isActive: false
 			}, {
@@ -129,8 +129,8 @@ export const deleteIntegration = async (req: Request, res: Response) => {
 			message: 'Failed to delete integration'
 		});
 	}
-
+	
 	return res.status(200).send({
-		deletedIntegration
+		integration
 	});
 };

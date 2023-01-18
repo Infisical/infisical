@@ -50,7 +50,7 @@ const updateIntegration = ({
     })
   }).then(async (res) => {
     if (res && res.status === 200) {
-      return res;
+      return (await res.json()).integration;
     }
     console.log('Failed to start an integration');
     return undefined;

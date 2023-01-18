@@ -226,7 +226,13 @@ export default function Integrations() {
           handleBotActivate={handleBotActivate}
           handleIntegrationOption={handleIntegrationOption}
         /> */}
-        <IntegrationSection integrations={integrations} environments={environments} />
+        <IntegrationSection 
+          integrations={integrations} 
+          setIntegrations={setIntegrations}
+          bot={bot}
+          setBot={setBot}
+          environments={environments} 
+        />
         {cloudIntegrationOptions.length > 0 && bot ? (
           <CloudIntegrationSection
             cloudIntegrationOptions={cloudIntegrationOptions}

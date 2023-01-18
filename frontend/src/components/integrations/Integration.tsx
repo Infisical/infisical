@@ -32,10 +32,21 @@ interface IntegrationApp {
 
 type Props = {
   integration: TIntegration;
+  integrations: TIntegration[];
+  setIntegrations: any;
+  bot: any;
+  setBot: any;
   environments: Array<{ name: string; slug: string }>;
 };
 
-const Integration = ({ integration, environments = [] }: Props) => {
+const Integration = ({ 
+  integration, 
+  integrations,
+  bot,
+  setBot,
+  setIntegrations,
+  environments = [] 
+}: Props) => {
   // set initial environment. This find will only execute when component is mounting
   const [integrationEnvironment, setIntegrationEnvironment] = useState<Props['environments'][0]>(
     environments.find(({ slug }) => slug === integration.environment) || {
@@ -79,6 +90,56 @@ const Integration = ({ integration, environments = [] }: Props) => {
 
     loadIntegration();
   }, []);
+  
+  const handleStartIntegration = async () => {
+    try {
+      const siteApp = apps.find((app) => app.name === integrationApp); // obj or undefined
+      const siteId = siteApp?.siteId ?? null;
+      const owner = siteApp?.owner ?? null;
+      
+      // return updated integration
+      const updatedIntegration = await updateIntegration({
+        integrationId: integration._id,
+        environment: integrationEnvironment.slug,
+        app: integrationApp,
+        isActive: true,
+        target: integrationTarget ? integrationTarget.toLowerCase() : null,
+        context: integrationContext
+          ? reverseContextNetlifyMapping[integrationContext]
+          : null,
+        siteId,
+        owner
+      });
+      
+      setIntegrations(
+        integrations.map((i) => i._id === updatedIntegration._id ? updatedIntegration : i)
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  
+  const handleDeleteIntegration = async () => {
+    try {
+      const deletedIntegration = await deleteIntegration({
+        integrationId: integration._id
+      });
+      
+      const newIntegrations = integrations.filter((i) => i._id !== deletedIntegration._id);
+      setIntegrations(newIntegrations);
+      
+      if (newIntegrations.length < 1) {
+        // case: no integrations left
+        setBot({
+          ...bot,
+          isActive: false
+        })
+      }
+
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-shadow
   const renderIntegrationSpecificParams = (integration: TIntegration) => {
@@ -172,38 +233,14 @@ const Integration = ({ integration, environments = [] }: Props) => {
         ) : (
           <Button
             text="Start Integration"
-            onButtonPressed={async () => {
-              const siteApp = apps.find((app) => app.name === integrationApp); // obj or undefined
-              const siteId = siteApp?.siteId ?? null;
-              const owner = siteApp?.owner ?? null;
-
-              await updateIntegration({
-                integrationId: integration._id,
-                environment: integrationEnvironment.slug,
-                app: integrationApp,
-                isActive: true,
-                target: integrationTarget ? integrationTarget.toLowerCase() : null,
-                context: integrationContext
-                  ? reverseContextNetlifyMapping[integrationContext]
-                  : null,
-                siteId,
-                owner
-              });
-              
-              router.reload();
-            }}
+            onButtonPressed={() => handleStartIntegration()}
             color="mineshaft"
             size="md"
           />
         )}
         <div className="opacity-50 hover:opacity-100 duration-200 ml-2">
           <Button
-            onButtonPressed={async () => {
-              await deleteIntegration({
-                integrationId: integration._id
-              });
-              router.reload();
-            }}
+            onButtonPressed={() => handleDeleteIntegration()}
             color="red"
             size="icon-md"
             icon={faX}
