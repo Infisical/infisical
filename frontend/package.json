@@ -8,7 +8,7 @@
     "start:docker": "next build && next start",
     "lint": "eslint --fix --ext js,ts,tsx ./src",
     "type-check": "tsc --project tsconfig.json",
-    "storybook": "storybook dev -p 6006",
+    "storybook": "storybook dev -p 6006 -s ./public",
     "build-storybook": "storybook build"
   },
   "dependencies": {
@@ -37,6 +37,7 @@
     "axios-auth-refresh": "^3.3.3",
     "classnames": "^2.3.1",
     "cookies": "^0.8.0",
+    "cva": "npm:class-variance-authority@^0.4.0",
     "fs": "^0.0.1-security",
     "gray-matter": "^4.0.3",
     "http-proxy": "^1.18.1",
