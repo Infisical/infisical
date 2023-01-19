@@ -20,9 +20,90 @@ If you're less technical and looking for a hands-free experience with minimal ov
 
 #### 1. Fill our environment variables
 
-Before you can deploy the Helm chart, you must fill out the required environment variables. To do so, please either download or copy the
-contents of [this file](https://raw.githubusercontent.com/Infisical/infisical/main/helm-charts/infisical/values.yaml) to a `.yaml` file. 
-_Refer to the available [environment variables](../../self-hosting/configuration/envars)_
+Before you can deploy the Helm chart, you must fill out the required environment variables. To do so, please copy the below file to a `.yaml` file. 
+Refer to the available [environment variables](../../self-hosting/configuration/envars) to learn more
+
+<Accordion title="vaules.yaml">
+```yaml
+#####
+# INFISICAL K8 DEFAULT VALUES FIL
+# PLEASE REPLACE VALUES/EDIT AS REQUIRED 
+#####
+
+frontend:
+  replicaCount: 1
+  image:
+    repository: 
+    pullPolicy: IfNotPresent
+    tag: "latest"
+    # kubeSecretRef: some-kube-secret-name
+
+
+backend:
+  replicaCount: 1
+  image:
+    repository: 
+    pullPolicy: IfNotPresent
+    tag: "latest"
+    # kubeSecretRef: some-kube-secret-name
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+  hostName: example.com
+  frontend: 
+    path: /
+    pathType: Prefix
+  backend:
+    path: /api
+    pathType: Prefix
+  tls: []
+
+## Complete Ingress example 
+# ingress:
+#   enabled: true
+#   annotations:
+#     kubernetes.io/ingress.class: "nginx"
+#     cert-manager.io/issuer: letsencrypt-nginx
+#   hostName: k8.infisical.com
+#   frontend: 
+#     path: /
+#     pathType: Prefix
+#   backend:
+#     path: /api
+#     pathType: Prefix
+#   tls:
+#     - secretName: letsencrypt-nginx
+#       hosts:
+#         - k8.infisical.com
+
+###
+### YOU MUST FILL IN ALL SECRETS BELOW
+### 
+backendEnvironmentVariables:
+  # Required keys for platform encryption/decryption ops. Replace with nacl sk keys
+  ENCRYPTION_KEY: MUST_REPLACE
+
+  # JWT
+  # Required secrets to sign JWT tokens
+  JWT_SIGNUP_SECRET: MUST_REPLACE
+  JWT_REFRESH_SECRET: MUST_REPLACE
+  JWT_AUTH_SECRET: MUST_REPLACE
+
+  # Mail/SMTP
+  # Required to send emails
+  SMTP_HOST: MUST_REPLACE 
+  SMTP_NAME: MUST_REPLACE
+  SMTP_USERNAME: MUST_REPLACE
+  SMTP_PASSWORD: MUST_REPLACE
+
+  # Recommended to replace with Mongo Cloud URI as the DB instance in the cluster does not have persistence yet
+  MONGO_URL: mongodb://root:root@mongodb-service:27017/
+
+frontendEnvironmentVariables: {}
+```
+</Accordion>
 
 Once you have a local copy of the values file, fill our the required environment variables and save the file.
 
