@@ -1,3 +1,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+    .select[data-placeholder] {
+            color: theme("colors.gray.500")
+    }
+}
