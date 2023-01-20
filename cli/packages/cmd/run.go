@@ -77,12 +77,14 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
 		}
 
-		if shouldExpandSecrets {
-			secrets = util.SubstituteSecrets(secrets)
+		if secretOverriding {
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
+		} else {
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
 		}
 
-		if secretOverriding {
-			secrets = util.OverrideWithPersonalSecrets(secrets)
+		if shouldExpandSecrets {
+			secrets = util.SubstituteSecrets(secrets)
 		}
 
 		secretsByKey := getSecretsByKeys(secrets)

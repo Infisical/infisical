@@ -195,33 +195,46 @@ func SubstituteSecrets(secrets []models.SingleEnvironmentVariable) []models.Sing
 	return expandedSecrets
 }
 
-//
-
-// if two secrets with the same name are found, the one that has type `personal` will be in the returned list
-func OverrideWithPersonalSecrets(secrets []models.SingleEnvironmentVariable) []models.SingleEnvironmentVariable {
-	personalSecret := make(map[string]models.SingleEnvironmentVariable)
-	sharedSecret := make(map[string]models.SingleEnvironmentVariable)
+func OverrideSecrets(secrets []models.SingleEnvironmentVariable, secretType string) []models.SingleEnvironmentVariable {
+	personalSecrets := make(map[string]models.SingleEnvironmentVariable)
+	sharedSecrets := make(map[string]models.SingleEnvironmentVariable)
 	secretsToReturn := []models.SingleEnvironmentVariable{}
+	secretsToReturnMap := make(map[string]models.SingleEnvironmentVariable)
 
 	for _, secret := range secrets {
 		if secret.Type == PERSONAL_SECRET_TYPE_NAME {
-			personalSecret[secret.Key] = secret
+			personalSecrets[secret.Key] = secret
 		}
-
 		if secret.Type == SHARED_SECRET_TYPE_NAME {
-			sharedSecret[secret.Key] = secret
+			sharedSecrets[secret.Key] = secret
 		}
 	}
 
-	for _, secret := range sharedSecret {
-		personalValue, personalExists := personalSecret[secret.Key]
-		if personalExists {
-			secretsToReturn = append(secretsToReturn, personalValue)
-		} else {
-			secretsToReturn = append(secretsToReturn, secret)
+	if secretType == PERSONAL_SECRET_TYPE_NAME {
+		for _, secret := range secrets {
+			if personalSecret, exists := personalSecrets[secret.Key]; exists {
+				secretsToReturnMap[secret.Key] = personalSecret
+			} else {
+				if _, exists = secretsToReturnMap[secret.Key]; !exists {
+					secretsToReturnMap[secret.Key] = secret
+				}
+			}
+		}
+	} else if secretType == SHARED_SECRET_TYPE_NAME {
+		for _, secret := range secrets {
+			if sharedSecret, exists := sharedSecrets[secret.Key]; exists {
+				secretsToReturnMap[secret.Key] = sharedSecret
+			} else {
+				if _, exists := secretsToReturnMap[secret.Key]; !exists {
+					secretsToReturnMap[secret.Key] = secret
+				}
+			}
 		}
 	}
 
+	for _, secret := range secretsToReturnMap {
+		secretsToReturn = append(secretsToReturn, secret)
+	}
 	return secretsToReturn
 }
 

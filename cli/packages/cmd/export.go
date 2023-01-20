@@ -51,9 +51,20 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
+		secretOverriding, err := cmd.Flags().GetBool("secret-overriding")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		secrets, err := util.GetAllEnvironmentVariables(envName)
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")
+		}
+
+		if secretOverriding {
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_PERSONAL)
+		} else {
+			secrets = util.OverrideSecrets(secrets, util.SECRET_TYPE_SHARED)
 		}
 
 		var output string
@@ -79,6 +90,7 @@ func init() {
 	exportCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
 	exportCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	exportCmd.Flags().StringP("format", "f", "dotenv", "Set the format of the output file (dotenv, json, csv)")
+	exportCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 }
 
 // Format according to the format flag
