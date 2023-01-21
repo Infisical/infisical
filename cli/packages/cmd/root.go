@@ -38,9 +38,10 @@ func init() {
 
 	// if config.INFISICAL_URL is set to the default value, check if INFISICAL_URL is set in the environment
 	// this is used to allow overrides of the default value
-	if config.INFISICAL_URL == util.INFISICAL_DEFAULT_URL {
+	if !rootCmd.Flag("domain").Changed {
 		if envInfisicalURL, ok := os.LookupEnv("INFISICAL_URL"); ok {
 			config.INFISICAL_URL = envInfisicalURL
 		}
 	}
+	
 }
