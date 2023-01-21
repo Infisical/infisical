@@ -7,9 +7,13 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_RENDER,
+  INTEGRATION_FLYIO,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_VERCEL_API_URL,
-  INTEGRATION_NETLIFY_API_URL
+  INTEGRATION_NETLIFY_API_URL,
+  INTEGRATION_RENDER_API_URL,
+  INTEGRATION_FLYIO_API_URL
 } from '../variables';
 
 /**
@@ -29,10 +33,11 @@ const getApps = async ({
 }) => {
   interface App {
     name: string;
-    siteId?: string;
+    appId?: string;
+    owner?: string;
   }
 
-  let apps: App[]; // TODO: add type and define payloads for apps
+  let apps: App[];
   try {
     switch (integrationAuth.integration) {
       case INTEGRATION_HEROKU:
@@ -48,13 +53,21 @@ const getApps = async ({
         break;
       case INTEGRATION_NETLIFY:
         apps = await getAppsNetlify({
-          integrationAuth,
           accessToken
         });
         break;
       case INTEGRATION_GITHUB:
         apps = await getAppsGithub({
-          integrationAuth,
+          accessToken
+        });
+        break;
+      case INTEGRATION_RENDER:
+        apps = await getAppsRender({
+          accessToken
+        });
+        break;
+      case INTEGRATION_FLYIO:
+        apps = await getAppsFlyio({
           accessToken
         });
         break;
@@ -69,7 +82,7 @@ const getApps = async ({
 };
 
 /**
- * Return list of names of apps for Heroku integration
+ * Return list of apps for Heroku integration
  * @param {Object} obj
  * @param {String} obj.accessToken - access token for Heroku API
  * @returns {Object[]} apps - names of Heroku apps
@@ -141,17 +154,15 @@ const getAppsVercel = async ({
 };
 
 /**
- * Return list of names of sites for Netlify integration
+ * Return list of sites for Netlify integration
  * @param {Object} obj
  * @param {String} obj.accessToken - access token for Netlify API
  * @returns {Object[]} apps - names of Netlify sites
  * @returns {String} apps.name - name of Netlify site
  */
 const getAppsNetlify = async ({
-  integrationAuth,
   accessToken
 }: {
-  integrationAuth: IIntegrationAuth;
   accessToken: string;
 }) => {
   let apps;
@@ -166,7 +177,7 @@ const getAppsNetlify = async ({
 
     apps = res.map((a: any) => ({
       name: a.name,
-      siteId: a.site_id
+      appId: a.site_id
     }));
   } catch (err) {
     Sentry.setUser(null);
@@ -178,17 +189,15 @@ const getAppsNetlify = async ({
 };
 
 /**
- * Return list of names of repositories for Github integration
+ * Return list of repositories for Github integration
  * @param {Object} obj
  * @param {String} obj.accessToken - access token for Netlify API
  * @returns {Object[]} apps - names of Netlify sites
  * @returns {String} apps.name - name of Netlify site
  */
 const getAppsGithub = async ({
-  integrationAuth,
   accessToken
 }: {
-  integrationAuth: IIntegrationAuth;
   accessToken: string;
 }) => {
   let apps;
@@ -219,5 +228,95 @@ const getAppsGithub = async ({
 
   return apps;
 };
+
+/**
+ * Return list of services for Render integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Render API
+ * @returns {Object[]} apps - names and ids of Render services
+ * @returns {String} apps.name - name of Render service
+ * @returns {String} apps.appId - id of Render service
+ */
+const getAppsRender = async ({
+  accessToken
+}: {
+  accessToken: string;
+}) => {
+  let apps: any;
+  try {
+    const res = (
+      await axios.get(`${INTEGRATION_RENDER_API_URL}/v1/services`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      })
+    ).data;
+    
+    apps = res
+      .map((a: any) => ({
+        name: a.service.name,
+        appId: a.service.id
+      })); 
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed to get Render services');
+  }
+  
+  return apps;
+}
+
+/**
+ * Return list of apps for Fly.io integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Fly.io API
+ * @returns {Object[]} apps - names and ids of Fly.io apps
+ * @returns {String} apps.name - name of Fly.io apps
+ */
+const getAppsFlyio = async ({
+  accessToken
+}: {
+  accessToken: string;
+}) => {
+  let apps;
+  try {
+    const query = `
+      query($role: String) {
+        apps(type: "container", first: 400, role: $role) {
+          nodes {
+            id
+            name
+            hostname
+          }
+        }
+      }
+    `;
+    
+    const res = (await axios({
+      url: INTEGRATION_FLYIO_API_URL,
+      method: 'post',
+      headers: {
+        'Authorization': 'Bearer ' + accessToken
+      },
+      data: {
+        query,
+        variables: {
+          role: null
+        }
+      }
+    })).data.data.apps.nodes;
+    
+    apps = res
+      .map((a: any) => ({
+        name: a.name
+      })); 
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed to get Fly.io apps');
+  }
+  
+  return apps;
+}
 
 export { getApps };

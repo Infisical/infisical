@@ -1,9 +1,11 @@
 import * as Sentry from '@sentry/node';
 import { Request, Response, NextFunction } from 'express';
-import { IntegrationAuth } from '../models';
+import { IntegrationAuth, IWorkspace } from '../models';
 import { IntegrationService } from '../services';
 import { validateMembership } from '../helpers/membership';
 import { UnauthorizedRequestError } from '../utils/errors';
+
+type req = 'params' | 'body' | 'query';
 
 /**
  * Validate if user on request is a member of workspace with proper roles associated
@@ -14,17 +16,21 @@ import { UnauthorizedRequestError } from '../utils/errors';
  */
 const requireIntegrationAuthorizationAuth = ({
 	acceptedRoles,
-	attachAccessToken = true
+	attachAccessToken = true,
+	location = 'params'
 }: {
 	acceptedRoles: string[];
 	attachAccessToken?: boolean;
+	location?: req;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
-		const { integrationAuthId } = req.params;
+		const { integrationAuthId } = req[location];
 
 		const integrationAuth = await IntegrationAuth.findOne({
 			_id: integrationAuthId
-		}).select(
+		})
+		.populate<{ workspace: IWorkspace }>('workspace')
+		.select(
 			'+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt'
 		);
 
@@ -34,7 +40,7 @@ const requireIntegrationAuthorizationAuth = ({
 		
 		await validateMembership({
 			userId: req.user._id.toString(),
-			workspaceId: integrationAuth.workspace.toString(),
+			workspaceId: integrationAuth.workspace._id.toString(),
 			acceptedRoles
 		});
 

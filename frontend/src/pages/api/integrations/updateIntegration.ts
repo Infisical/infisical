@@ -6,32 +6,29 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * [environment] to the integration [app] with active state [isActive]
  * @param {Object} obj
  * @param {String} obj.integrationId - id of integration
- * @param {String} obj.app - name of app
- * @param {String} obj.environment - project environment to push secrets from
  * @param {Boolean} obj.isActive - active state
- * @param {String} obj.target - (optional) target (environment) for Vercel integration
- * @param {String} obj.context - (optional) context (environment) for Netlify integration
- * @param {String} obj.siteId - (optional) app (site_id) for Netlify integration
+ * @param {String} obj.environment - project environment to push secrets from
+ * @param {String} obj.app - name of app
+ * @param {String} obj.appId - (optional) app ID for integration
+ * @param {String} obj.targetEnvironment - target environment for integration
  * @param {String} obj.owner - (optional) owner login of repo for GitHub integration
  * @returns
  */
 const updateIntegration = ({
   integrationId,
-  app,
-  environment,
   isActive,
-  target,
-  context,
-  siteId,
+  environment,
+  app,
+  appId,
+  targetEnvironment,
   owner
 }: {
   integrationId: string;
-  app: string;
-  environment: string;
   isActive: boolean;
-  target: string | null;
-  context: string | null;
-  siteId: string | null;
+  environment: string;
+  app: string;
+  appId: string | null;
+  targetEnvironment: string | null;
   owner: string | null;
 }) =>
   SecurityClient.fetchCall(`/api/v1/integration/${integrationId}`, {
@@ -43,9 +40,8 @@ const updateIntegration = ({
       app,
       environment,
       isActive,
-      target,
-      context,
-      siteId,
+      appId,
+      targetEnvironment,
       owner
     })
   }).then(async (res) => {

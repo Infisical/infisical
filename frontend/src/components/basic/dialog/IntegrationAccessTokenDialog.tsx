@@ -1,45 +1,60 @@
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 
+import Button from "../buttons/Button";
 import InputField from "../InputField";
+
+interface IntegrationOption {
+  clientId: string;
+  clientSlug?: string; // vercel-integration specific
+  docsLink: string;
+  image: string;
+  isAvailable: boolean;
+  name: string;
+  slug: string;
+  type: string;
+}
 
 type Props = {
   isOpen: boolean;
   closeModal: () => void;
-  selectedIntegrationOption: string;
-  handleBotActivate: () => void;
-  handleIntegrationOption: (arg:{integrationOption:string})=>void;
+  selectedIntegrationOption: IntegrationOption | null
+  handleIntegrationOption: (arg:{
+    integrationOption: IntegrationOption,
+    accessToken?: string;
+})=>void;
 };
 
 const IntegrationAccessTokenDialog = ({
     isOpen,
     closeModal,
     selectedIntegrationOption,
-    handleBotActivate,
     handleIntegrationOption
 }:Props) => {
-    
+    const [accessToken, setAccessToken] = useState('');
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const submit = async () => {
         try {
-            // 1. activate bot
-            await handleBotActivate();
-            
-            // 2. start integration
-            await handleIntegrationOption({
-                integrationOption: selectedIntegrationOption
-            });
+            if (selectedIntegrationOption && accessToken !== '') {
+                handleIntegrationOption({
+                    integrationOption: selectedIntegrationOption,
+                    accessToken
+                });
+                closeModal();
+                setAccessToken('');
+            }
         } catch (err) {
             console.log(err);
         }
-        
-        closeModal();
     }
 
     return (
         <div>
             <Transition appear show={isOpen} as={Fragment}>
-                <Dialog as="div" className="relative z-10" onClose={closeModal}>
+                <Dialog as="div" className="relative z-10" onClose={() => {
+                    console.log('onClose');
+                    closeModal();
+                }}>
                     <Transition.Child
                         as={Fragment}
                         enter="ease-out duration-300"
@@ -67,28 +82,30 @@ const IntegrationAccessTokenDialog = ({
                                     as="h3"
                                     className="text-lg font-medium leading-6 text-gray-400"
                                 >
-                                    Grant Infisical access to your secrets
+                                    {`Enter your ${selectedIntegrationOption?.name} API Key`}
                                 </Dialog.Title>
                                 <div className="mt-2 mb-2">
                                     <p className="text-sm text-gray-500">
-                                        Most cloud integrations require Infisical to be able to decrypt your secrets so they can be forwarded over.
+                                        {`This integration requires you to obtain an API key from ${selectedIntegrationOption?.name ?? ''} and store it with Infisical.`}
                                     </p>
                                 </div>
                                 <div className="mt-6 max-w-max">
-                                    {/* <Button 
-                                        onButtonPressed={submit}
-                                        color="mineshaft"
-                                        text="Grant access"
-                                        size="md"
-                                    /> */}
                                     <InputField
-                                        label="Access token"
-                                        onChangeHandler={() => {}}
+                                        label="API Key"
+                                        onChangeHandler={setAccessToken}
                                         type="varName"
-                                        value="Hello"
+                                        value={accessToken}
                                         placeholder=""
                                         isRequired
                                     />
+                                    <div className="mt-4">
+                                        <Button 
+                                            onButtonPressed={submit}
+                                            color="mineshaft"
+                                            text="Connect"
+                                            size="md"
+                                        />
+                                    </div>
                                 </div>
                                 </Dialog.Panel>
                             </Transition.Child>

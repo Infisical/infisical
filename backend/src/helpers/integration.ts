@@ -127,7 +127,6 @@ const syncIntegrationsHelper = async ({
 }) => {
     let integrations;
     try {
-
         integrations = await Integration.find({
             workspace: workspaceId,
             isActive: true,
@@ -142,7 +141,7 @@ const syncIntegrationsHelper = async ({
                 workspaceId: integration.workspace.toString(),
                 environment: integration.environment
             });
-            
+
             const integrationAuth = await IntegrationAuth.findById(integration.integrationAuth);
             if (!integrationAuth) throw new Error('Failed to find integration auth');
             
@@ -316,7 +315,7 @@ const setIntegrationAuthAccessHelper = async ({
 }: {
     integrationAuthId: string;
     accessToken: string;
-    accessExpiresAt: Date;
+    accessExpiresAt: Date | undefined;
 }) => {
     let integrationAuth;
     try {

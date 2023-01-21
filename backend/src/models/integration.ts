@@ -3,7 +3,9 @@ import {
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
-  INTEGRATION_GITHUB
+  INTEGRATION_GITHUB,
+  INTEGRATION_RENDER,
+  INTEGRATION_FLYIO
 } from '../variables';
 
 export interface IIntegration {
@@ -12,20 +14,19 @@ export interface IIntegration {
   environment: string;
   isActive: boolean;
   app: string;
-  target: string;
-  context: string;
-  siteId: string;
   owner: string;
-  integration: 'heroku' | 'vercel' | 'netlify' | 'github';
+  targetEnvironment: string;
+  appId: string;
+  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'render' | 'flyio';
   integrationAuth: Types.ObjectId;
 }
 
 const integrationSchema = new Schema<IIntegration>(
   {
     workspace: {
-      type: Schema.Types.ObjectId,
-      ref: 'Workspace',
-      required: true
+        type: Schema.Types.ObjectId,
+        ref: 'Workspace',
+        required: true
     },
     environment: {
       type: String,
@@ -40,18 +41,13 @@ const integrationSchema = new Schema<IIntegration>(
       type: String,
       default: null
     },
-    target: {
-      // vercel-specific target (environment)
+    appId: { // (new)
+      // id of app in provider
       type: String,
       default: null
     },
-    context: {
-      // netlify-specific context (deploy)
-      type: String,
-      default: null
-    },
-    siteId: {
-      // netlify-specific site (app) id
+    targetEnvironment: { // (new)
+      // target environment 
       type: String,
       default: null
     },
@@ -66,7 +62,9 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_HEROKU,
         INTEGRATION_VERCEL,
         INTEGRATION_NETLIFY,
-        INTEGRATION_GITHUB
+        INTEGRATION_GITHUB,
+        INTEGRATION_RENDER,
+        INTEGRATION_FLYIO
       ],
       required: true
     },

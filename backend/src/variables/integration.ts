@@ -10,11 +10,15 @@ const INTEGRATION_HEROKU = 'heroku';
 const INTEGRATION_VERCEL = 'vercel';
 const INTEGRATION_NETLIFY = 'netlify';
 const INTEGRATION_GITHUB = 'github';
+const INTEGRATION_RENDER = 'render';
+const INTEGRATION_FLYIO = 'flyio';
 const INTEGRATION_SET = new Set([
     INTEGRATION_HEROKU,
     INTEGRATION_VERCEL,
     INTEGRATION_NETLIFY,
-    INTEGRATION_GITHUB
+    INTEGRATION_GITHUB,
+    INTEGRATION_RENDER,
+    INTEGRATION_FLYIO
 ]);
 
 // integration types
@@ -32,23 +36,25 @@ const INTEGRATION_GITHUB_TOKEN_URL =
 const INTEGRATION_HEROKU_API_URL = 'https://api.heroku.com';
 const INTEGRATION_VERCEL_API_URL = 'https://api.vercel.com';
 const INTEGRATION_NETLIFY_API_URL = 'https://api.netlify.com';
+const INTEGRATION_RENDER_API_URL = 'https://api.render.com';
+const INTEGRATION_FLYIO_API_URL = 'https://api.fly.io/graphql';
 
 const INTEGRATION_OPTIONS = [
     {
         name: 'Heroku',
         slug: 'heroku',
-        image: 'Heroku',
+        image: 'Heroku.png',
         isAvailable: true,
-        type: 'oauth2',
+        type: 'oauth',
         clientId: CLIENT_ID_HEROKU,
         docsLink: ''
     },
     {
         name: 'Vercel',
         slug: 'vercel',
-        image: 'Vercel',
+        image: 'Vercel.png',
         isAvailable: true,
-        type: 'vercel',
+        type: 'oauth',
         clientId: '',
         clientSlug: CLIENT_SLUG_VERCEL,
         docsLink: ''
@@ -56,26 +62,43 @@ const INTEGRATION_OPTIONS = [
     {
         name: 'Netlify',
         slug: 'netlify',
-        image: 'Netlify',
+        image: 'Netlify.png',
         isAvailable: true,
-        type: 'oauth2',
+        type: 'oauth',
         clientId: CLIENT_ID_NETLIFY,
         docsLink: ''
     },
     {
         name: 'GitHub',
         slug: 'github',
-        image: 'GitHub',
+        image: 'GitHub.png',
         isAvailable: true,
-        type: 'oauth2',
+        type: 'oauth',
         clientId: CLIENT_ID_GITHUB,
         docsLink: ''
-
+    },
+    {
+        name: 'Render',
+        slug: 'render',
+        image: 'Render.png',
+        isAvailable: true,
+        type: 'pat',
+        clientId: '',
+        docsLink: ''
+    },
+    {
+        name: 'Fly.io',
+        slug: 'flyio',
+        image: 'Flyio.svg',
+        isAvailable: true,
+        type: 'pat',
+        clientId: '',
+        docsLink: ''
     },
     {
         name: 'Google Cloud Platform',
         slug: 'gcp',
-        image: 'Google Cloud Platform',
+        image: 'Google Cloud Platform.png',
         isAvailable: false,
         type: '',
         clientId: '',
@@ -84,7 +107,7 @@ const INTEGRATION_OPTIONS = [
     {
         name: 'Amazon Web Services',
         slug: 'aws',
-        image: 'Amazon Web Services',
+        image: 'Amazon Web Services.png',
         isAvailable: false,
         type: '',
         clientId: '',
@@ -93,7 +116,7 @@ const INTEGRATION_OPTIONS = [
     {
         name: 'Microsoft Azure',
         slug: 'azure',
-        image: 'Microsoft Azure',
+        image: 'Microsoft Azure.png',
         isAvailable: false,
         type: '',
         clientId: '',
@@ -102,7 +125,7 @@ const INTEGRATION_OPTIONS = [
     {
         name: 'Travis CI',
         slug: 'travisci',
-        image: 'Travis CI',
+        image: 'Travis CI.png',
         isAvailable: false,
         type: '',
         clientId: '',
@@ -111,7 +134,7 @@ const INTEGRATION_OPTIONS = [
     {
         name: 'Circle CI',
         slug: 'circleci',
-        image: 'Circle CI',
+        image: 'Circle CI.png',
         isAvailable: false,
         type: '',
         clientId: '',
@@ -124,6 +147,8 @@ export {
     INTEGRATION_VERCEL,
     INTEGRATION_NETLIFY,
     INTEGRATION_GITHUB,
+    INTEGRATION_RENDER,
+    INTEGRATION_FLYIO,
     INTEGRATION_SET,
     INTEGRATION_OAUTH2,
     INTEGRATION_HEROKU_TOKEN_URL,
@@ -133,5 +158,7 @@ export {
     INTEGRATION_HEROKU_API_URL,
     INTEGRATION_VERCEL_API_URL,
     INTEGRATION_NETLIFY_API_URL,
+    INTEGRATION_RENDER_API_URL,
+    INTEGRATION_FLYIO_API_URL,
     INTEGRATION_OPTIONS
 };

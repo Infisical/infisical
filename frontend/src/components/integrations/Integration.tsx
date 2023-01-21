@@ -13,39 +13,44 @@ import deleteIntegration from '../../pages/api/integrations/DeleteIntegration';
 import getIntegrationApps from '../../pages/api/integrations/GetIntegrationApps';
 import updateIntegration from '../../pages/api/integrations/updateIntegration';
 
-interface TIntegration {
+interface Integration {
   _id: string;
-  app?: string;
-  target?: string;
+  isActive: boolean;
+  app: string | null;
+  appId: string | null;
+  createdAt: string;
+  updatedAt: string;
   environment: string;
   integration: string;
+  targetEnvironment: string;
+  workspace: string;
   integrationAuth: string;
-  isActive: boolean;
-  context: string;
 }
 
 interface IntegrationApp {
   name: string;
-  siteId?: string;
+  appId?: string;
   owner?: string;
 }
 
 type Props = {
-  integration: TIntegration;
-  integrations: TIntegration[];
+  integration: Integration;
+  integrations: Integration[];
   setIntegrations: any;
   bot: any;
   setBot: any;
   environments: Array<{ name: string; slug: string }>;
+  handleDeleteIntegration: (args: { integration: Integration }) => void;
 };
 
-const Integration = ({ 
+const IntegrationTile = ({ 
   integration, 
   integrations,
   bot,
   setBot,
   setIntegrations,
-  environments = [] 
+  environments = [],
+  handleDeleteIntegration
 }: Props) => {
   // set initial environment. This find will only execute when component is mounting
   const [integrationEnvironment, setIntegrationEnvironment] = useState<Props['environments'][0]>(
@@ -57,8 +62,7 @@ const Integration = ({
   const router = useRouter();
   const [apps, setApps] = useState<IntegrationApp[]>([]); // integration app objects
   const [integrationApp, setIntegrationApp] = useState(''); // integration app name
-  const [integrationTarget, setIntegrationTarget] = useState(''); // vercel-specific integration param
-  const [integrationContext, setIntegrationContext] = useState(''); // netlify-specific integration param
+  const [integrationTargetEnvironment, setIntegrationTargetEnvironment] = useState('');
 
   useEffect(() => {
     const loadIntegration = async () => {
@@ -66,21 +70,23 @@ const Integration = ({
       const tempApps: [IntegrationApp] = await getIntegrationApps({
         integrationAuthId: integration.integrationAuth
       });
-
+      
       setApps(tempApps);
       setIntegrationApp(integration.app ? integration.app : tempApps[0].name);
 
       switch (integration.integration) {
         case 'vercel':
-          setIntegrationTarget(
-            integration?.target
-              ? integration.target.charAt(0).toUpperCase() + integration.target.substring(1)
-              : 'Development'
+          setIntegrationTargetEnvironment(
+            integration?.targetEnvironment
+            ? integration.targetEnvironment.charAt(0).toUpperCase() + integration.targetEnvironment.substring(1)
+            : 'Development'
           );
           break;
         case 'netlify':
-          setIntegrationContext(
-            integration?.context ? contextNetlifyMapping[integration.context] : 'Local development'
+          setIntegrationTargetEnvironment(
+            integration?.targetEnvironment 
+            ? contextNetlifyMapping[integration.targetEnvironment] 
+            : 'Local development'
           );
           break;
         default:
@@ -92,22 +98,30 @@ const Integration = ({
   }, []);
   
   const handleStartIntegration = async () => {
+    const reformatTargetEnvironment = (targetEnvironment: string) => {
+      switch (integration.integration) {
+        case 'vercel':
+          return targetEnvironment.toLowerCase();
+        case 'netlify':
+          return reverseContextNetlifyMapping[targetEnvironment];
+        default:
+          return null;
+      }
+    }
+
     try {
       const siteApp = apps.find((app) => app.name === integrationApp); // obj or undefined
-      const siteId = siteApp?.siteId ?? null;
+      const appId = siteApp?.appId ?? null;
       const owner = siteApp?.owner ?? null;
       
       // return updated integration
       const updatedIntegration = await updateIntegration({
         integrationId: integration._id,
         environment: integrationEnvironment.slug,
-        app: integrationApp,
         isActive: true,
-        target: integrationTarget ? integrationTarget.toLowerCase() : null,
-        context: integrationContext
-          ? reverseContextNetlifyMapping[integrationContext]
-          : null,
-        siteId,
+        app: integrationApp,
+        appId,
+        targetEnvironment: reformatTargetEnvironment(integrationTargetEnvironment),
         owner
       });
       
@@ -119,30 +133,8 @@ const Integration = ({
     }
   }
   
-  const handleDeleteIntegration = async () => {
-    try {
-      const deletedIntegration = await deleteIntegration({
-        integrationId: integration._id
-      });
-      
-      const newIntegrations = integrations.filter((i) => i._id !== deletedIntegration._id);
-      setIntegrations(newIntegrations);
-      
-      if (newIntegrations.length < 1) {
-        // case: no integrations left
-        setBot({
-          ...bot,
-          isActive: false
-        })
-      }
-
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
   // eslint-disable-next-line @typescript-eslint/no-shadow
-  const renderIntegrationSpecificParams = (integration: TIntegration) => {
+  const renderIntegrationSpecificParams = (integration: Integration) => {
     try {
       switch (integration.integration) {
         case 'vercel':
@@ -151,8 +143,8 @@ const Integration = ({
               <div className="text-gray-400 text-xs font-semibold mb-2 w-60">ENVIRONMENT</div>
               <ListBox
                 data={!integration.isActive ? ['Development', 'Preview', 'Production'] : null}
-                isSelected={integrationTarget}
-                onChange={setIntegrationTarget}
+                isSelected={integrationTargetEnvironment}
+                onChange={setIntegrationTargetEnvironment}
                 isFull
               />
             </div>
@@ -167,8 +159,8 @@ const Integration = ({
                     ? ['Production', 'Deploy previews', 'Branch deploys', 'Local development']
                     : null
                 }
-                isSelected={integrationContext}
-                onChange={setIntegrationContext}
+                isSelected={integrationTargetEnvironment}
+                onChange={setIntegrationTargetEnvironment}
               />
             </div>
           );
@@ -240,7 +232,9 @@ const Integration = ({
         )}
         <div className="opacity-50 hover:opacity-100 duration-200 ml-2">
           <Button
-            onButtonPressed={() => handleDeleteIntegration()}
+            onButtonPressed={() => handleDeleteIntegration({
+              integration
+            })}
             color="red"
             size="icon-md"
             icon={faX}
@@ -251,4 +245,4 @@ const Integration = ({
   );
 };
 
-export default Integration;
+export default IntegrationTile;

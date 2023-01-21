@@ -1,8 +1,11 @@
 import { Request, Response } from 'express';
+import { Types } from 'mongoose';
 import * as Sentry from '@sentry/node';
-import axios from 'axios';
-import { readFileSync } from 'fs';
-import { IntegrationAuth, Integration } from '../../models';
+import {
+	Integration, 
+	IntegrationAuth,
+	Bot 
+} from '../../models';
 import { INTEGRATION_SET, INTEGRATION_OPTIONS } from '../../variables';
 import { IntegrationService } from '../../services';
 import { getApps, revokeAccess } from '../../integrations';
@@ -44,7 +47,7 @@ export const oAuthExchange = async (
 			environment: environments[0].slug,
 		});
 	} catch (err) {
-		Sentry.setUser(null);
+		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
 		return res.status(400).send({
 			message: 'Failed to get OAuth2 code-token exchange'
@@ -55,6 +58,67 @@ export const oAuthExchange = async (
 		message: 'Successfully enabled integration authorization'
 	});
 };
+
+/**
+ * Save integration access token as part of integration [integration] for workspace with id [workspaceId]
+ * @param req 
+ * @param res 
+ */
+export const saveIntegrationAccessToken = async (
+	req: Request,
+	res: Response
+) => {
+	// TODO: refactor
+	let integrationAuth;
+	try {
+		const {
+			workspaceId,
+			accessToken,
+			integration
+		}: {
+			workspaceId: string;
+			accessToken: string;
+			integration: string;
+		} = req.body;
+
+		integrationAuth = await IntegrationAuth.findOneAndUpdate({
+            workspace: new Types.ObjectId(workspaceId),
+            integration
+        }, {
+            workspace: new Types.ObjectId(workspaceId),
+            integration
+		}, {
+            new: true,
+            upsert: true
+        });
+
+		const bot = await Bot.findOne({
+            workspace: new Types.ObjectId(workspaceId),
+            isActive: true
+        });
+        
+        if (!bot) throw new Error('Bot must be enabled to save integration access token');
+		
+		// encrypt and save integration access token
+		integrationAuth = await IntegrationService.setIntegrationAuthAccess({
+			integrationAuthId: integrationAuth._id.toString(),
+			accessToken,
+			accessExpiresAt: undefined
+		});
+		
+		if (!integrationAuth) throw new Error('Failed to save integration access token');
+	} catch (err) {
+		Sentry.setUser({ email: req.user.email });
+		Sentry.captureException(err);
+		return res.status(400).send({
+			message: 'Failed to save access token for integration'
+		});
+	}
+	
+	return res.status(200).send({
+		integrationAuth
+	});
+}
 
 /**
  * Return list of applications allowed for integration with integration authorization id [integrationAuthId]
@@ -70,7 +134,7 @@ export const getIntegrationAuthApps = async (req: Request, res: Response) => {
 			accessToken: req.accessToken
 		});
 	} catch (err) {
-		Sentry.setUser(null);
+		Sentry.setUser({ email: req.user.email });
         Sentry.captureException(err);	
 		return res.status(400).send({
 			message: 'Failed to get integration authorization applications'
@@ -89,15 +153,14 @@ export const getIntegrationAuthApps = async (req: Request, res: Response) => {
  * @returns
  */
 export const deleteIntegrationAuth = async (req: Request, res: Response) => {
+	let integrationAuth;
 	try {
-		const { integrationAuthId } = req.params;
-
-		await revokeAccess({
+		integrationAuth = await revokeAccess({
 			integrationAuth: req.integrationAuth,
 			accessToken: req.accessToken
 		});
 	} catch (err) {
-		Sentry.setUser(null);
+		Sentry.setUser({ email: req.user.email });
         Sentry.captureException(err);	
 		return res.status(400).send({
 			message: 'Failed to delete integration authorization'
@@ -105,6 +168,6 @@ export const deleteIntegrationAuth = async (req: Request, res: Response) => {
 	}
 	
 	return res.status(200).send({
-		message: 'Successfully deleted integration authorization'
+		integrationAuth
 	});
 }

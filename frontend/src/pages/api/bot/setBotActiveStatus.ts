@@ -8,7 +8,7 @@ interface BotKey {
 interface Props {
   botId: string;
   isActive: boolean;
-  botKey: BotKey;
+  botKey?: BotKey;
 }
 
 /**

@@ -1,25 +1,43 @@
 import { Request, Response } from 'express';
-import { readFileSync } from 'fs';
 import * as Sentry from '@sentry/node';
-import { Integration, Bot, BotKey } from '../../models';
+import { 
+	Integration, 
+	Workspace,
+	Bot, 
+	BotKey 
+} from '../../models';
 import { EventService } from '../../services';
 import { eventPushSecrets } from '../../events';
 
-interface Key {
-	encryptedKey: string;
-	nonce: string;
-}
+/**
+ * Create/initialize an (empty) integration for integration authorization
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const createIntegration = async (req: Request, res: Response) => {
+	let integration;
+	try {
+		// initialize new integration after saving integration access token
+        integration = await new Integration({
+            workspace: req.integrationAuth.workspace._id,
+            isActive: false,
+            app: null,
+            environment: req.integrationAuth.workspace?.environments[0].slug,
+            integration: req.integrationAuth.integration,
+            integrationAuth: req.integrationAuth._id
+        }).save();
+	} catch (err) {
+		Sentry.setUser({ email: req.user.email });
+		Sentry.captureException(err);
+		return res.status(400).send({
+			message: 'Failed to create integration'
+		});
+	}
 
-interface PushSecret {
-	ciphertextKey: string;
-	ivKey: string;
-	tagKey: string;
-	hashKey: string;
-	ciphertextValue: string;
-	ivValue: string;
-	tagValue: string;
-	hashValue: string;
-	type: 'shared' | 'personal';
+	return res.status(200).send({
+		integration
+	});
 }
 
 /**
@@ -36,13 +54,12 @@ export const updateIntegration = async (req: Request, res: Response) => {
 	
 	try {
 		const { 
-			app, 
 			environment, 
 			isActive, 
-			target, // vercel-specific integration param
-			context, // netlify-specific integration param
-			siteId, // netlify-specific integration param
-			owner // github-specific integration param
+			app, 
+			appId,
+			targetEnvironment,
+			owner, // github-specific integration param
 		} = req.body;
 		
 		integration = await Integration.findOneAndUpdate(
@@ -53,9 +70,8 @@ export const updateIntegration = async (req: Request, res: Response) => {
 				environment,
 				isActive,
 				app,
-				target,
-				context,
-				siteId,
+				appId,
+				targetEnvironment,
 				owner
 			},
 			{
@@ -101,27 +117,6 @@ export const deleteIntegration = async (req: Request, res: Response) => {
 		});
 		
 		if (!integration) throw new Error('Failed to find integration');
-		
-		const integrations = await Integration.find({
-			workspace: integration.workspace
-		});
-			
-		if (integrations.length === 0) {
-			// case: no integrations left, deactivate bot
-			const bot = await Bot.findOneAndUpdate({
-				workspace: integration.workspace
-			}, {
-				isActive: false
-			}, {
-				new: true
-			});
-			
-			if (bot) {
-				await BotKey.deleteOne({
-					bot: bot._id
-				});
-			}
-		}
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);

@@ -1,6 +1,11 @@
-import axios from 'axios';
 import * as Sentry from '@sentry/node';
-import { IIntegrationAuth, IntegrationAuth, Integration } from '../models';
+import { 
+  IIntegrationAuth, 
+  IntegrationAuth, 
+  Integration,
+  Bot,
+  BotKey
+} from '../models';
 import {
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
@@ -15,6 +20,7 @@ const revokeAccess = async ({
   integrationAuth: IIntegrationAuth;
   accessToken: string;
 }) => {
+  let deletedIntegrationAuth;
   try {
     // add any integration-specific revocation logic
     switch (integrationAuth.integration) {
@@ -28,7 +34,7 @@ const revokeAccess = async ({
         break;
     }
 
-    const deletedIntegrationAuth = await IntegrationAuth.findOneAndDelete({
+    deletedIntegrationAuth = await IntegrationAuth.findOneAndDelete({
       _id: integrationAuth._id
     });
 
@@ -42,6 +48,8 @@ const revokeAccess = async ({
     Sentry.captureException(err);
     throw new Error('Failed to delete integration authorization');
   }
+  
+  return deletedIntegrationAuth;
 };
 
 export { revokeAccess };

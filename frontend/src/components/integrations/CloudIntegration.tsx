@@ -1,38 +1,42 @@
 import Image from 'next/image';
-import { useRouter } from 'next/router';
 import { faCheck, faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import deleteIntegrationAuth from '../../pages/api/integrations/DeleteIntegrationAuth';
 
-interface CloudIntegrationOption {
+interface IntegrationOption {
+  clientId: string;
+  clientSlug?: string; // vercel-integration specific
+  docsLink: string;
+  image: string;
   isAvailable: boolean;
   name: string;
-  type: string;
-  clientId: string;
-  docsLink: string;
   slug: string;
+  type: string;
 }
-
 interface IntegrationAuth {
   _id: string;
   integration: string;
+  workspace: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface Props {
-  cloudIntegrationOption: CloudIntegrationOption;
-  setSelectedIntegrationOption: (cloudIntegration: CloudIntegrationOption) => void;
-  integrationOptionPress: (cloudIntegrationOption: CloudIntegrationOption) => void;
+  cloudIntegrationOption: IntegrationOption;
+  setSelectedIntegrationOption: (cloudIntegration: IntegrationOption) => void;
+  integrationOptionPress: (cloudIntegrationOption: IntegrationOption) => void;
   integrationAuths: IntegrationAuth[];
+  handleDeleteIntegrationAuth: (args: { integrationAuth: IntegrationAuth }) => void;
 }
 
 const CloudIntegration = ({
   cloudIntegrationOption,
   setSelectedIntegrationOption,
   integrationOptionPress,
-  integrationAuths
+  integrationAuths,
+  handleDeleteIntegrationAuth
 }: Props) => {
-  const router = useRouter();
   return integrationAuths ? (
     <div
       onKeyDown={() => null}
@@ -51,7 +55,7 @@ const CloudIntegration = ({
       key={cloudIntegrationOption.name}
     >
       <Image
-        src={`/images/integrations/${cloudIntegrationOption.name}.png`}
+        src={`/images/integrations/${cloudIntegrationOption.image}`}
         height={70}
         width={70}
         alt="integration logo"
@@ -71,24 +75,26 @@ const CloudIntegration = ({
       {cloudIntegrationOption.isAvailable &&
         integrationAuths
           .map((authorization) => authorization.integration)
-          .includes(cloudIntegrationOption.name.toLowerCase()) && (
+          .includes(cloudIntegrationOption.slug) && (
           <div className="absolute group z-40 top-0 right-0 flex flex-row">
             <div
               onKeyDown={() => null}
               role="button"
               tabIndex={0}
-              onClick={(event) => {
+              onClick={async (event) => {
                 event.stopPropagation();
-                deleteIntegrationAuth({
+                const deletedIntegrationAuth = await deleteIntegrationAuth({
                   integrationAuthId: integrationAuths
                     .filter(
                       (authorization) =>
-                        authorization.integration === cloudIntegrationOption.name.toLowerCase()
+                        authorization.integration === cloudIntegrationOption.slug
                     )
                     .map((authorization) => authorization._id)[0]
                 });
 
-                router.reload();
+                handleDeleteIntegrationAuth({
+                  integrationAuth: deletedIntegrationAuth
+                });
               }}
               className="cursor-pointer w-max bg-red py-0.5 px-2 rounded-b-md text-xs flex flex-row items-center opacity-0 group-hover:opacity-100 duration-200"
             >
