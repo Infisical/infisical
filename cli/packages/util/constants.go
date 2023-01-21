@@ -3,6 +3,7 @@ package util
 const (
 	CONFIG_FILE_NAME                     = "infisical-config.json"
 	CONFIG_FOLDER_NAME                   = ".infisical"
+	INFISICAL_DEFAULT_API_URL            = "https://app.infisical.com/api"
 	INFISICAL_WORKSPACE_CONFIG_FILE_NAME = ".infisical.json"
 	INFISICAL_TOKEN_NAME                 = "INFISICAL_TOKEN"
 	SECRET_TYPE_PERSONAL                 = "personal"

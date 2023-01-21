@@ -16,7 +16,7 @@ The Infisical CLI provides a way to inject environment variables from the platfo
     	brew install infisical/get-cli/infisical
     	```
 
-    	## Updates
+    	### Updates
 
     	```bash
     	brew upgrade infisical
@@ -34,7 +34,7 @@ The Infisical CLI provides a way to inject environment variables from the platfo
     			scoop install infisical
     			```
 
-    		## Updates
+    		### Updates
 
     		```bash
     		scoop update infisical
@@ -99,8 +99,28 @@ The Infisical CLI provides a way to inject environment variables from the platfo
    </Tab>
 </Tabs>
 
-## Log in to the Infisical CLI
+### Log in to the Infisical CLI
 
 ```bash
 infisical login
 ```
+
+<Accordion title="Optional: point CLI to self-hosted">
+The CLI is set to connect to Infisical Cloud by default, but if you're running your own instance of Infisical, you can direct the CLI to it using one of the methods provided below.
+
+#### Export environment variable 
+You can point the CLI to the self hosted Infisical instance by exporting the environment variable `API_URL` in your terminal.
+
+```bash
+# Example
+export API_URL="https://your-self-hosted-infisical.com/api"
+```
+
+#### Set manually on every command
+Another option to point the CLI to your self hosted Infisical instance is to set it via a flag on every command you run.
+
+```bash 
+# Example
+infisical <any-command> --domain="https://your-self-hosted-infisical.com/api"
+```
+</Accordion>
