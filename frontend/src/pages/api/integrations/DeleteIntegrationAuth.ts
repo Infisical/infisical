@@ -17,7 +17,7 @@ const deleteIntegrationAuth = ({ integrationAuthId }: Props) =>
     }
   }).then(async (res) => {
     if (res && res.status === 200) {
-      return res;
+      return (await res.json()).integrationAuth;
     }
     console.log('Failed to delete an integration authorization');
     return undefined;

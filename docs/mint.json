@@ -27,7 +27,7 @@
       "http://localhost:8080"
     ],
     "auth": {
-      "method": "api-key",
+      "method": "key",
       "name": "X-API-KEY"
     }
   },

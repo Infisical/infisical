@@ -2,20 +2,31 @@ import { useTranslation } from 'next-i18next';
 
 import CloudIntegration from './CloudIntegration';
 
-interface CloudIntegrationOption {
+interface IntegrationOption {
+  clientId: string;
+  clientSlug?: string; // vercel-integration specific
+  docsLink: string;
+  image: string;
   isAvailable: boolean;
   name: string;
-  type: string;
-  clientId: string;
-  docsLink: string;
   slug: string;
+  type: string;
+}
+
+interface IntegrationAuth {
+  _id: string;
+  integration: string;
+  workspace: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface Props {
-  cloudIntegrationOptions: CloudIntegrationOption[];
+  cloudIntegrationOptions: IntegrationOption[];
   setSelectedIntegrationOption: () => void;
-  integrationOptionPress: () => void;
-  integrationAuths: any;
+  integrationOptionPress: (integrationOption: IntegrationOption) => void;
+  integrationAuths: IntegrationAuth[];
+  handleDeleteIntegrationAuth: (args: { integrationAuth: IntegrationAuth }) => void;
 }
 
 const CloudIntegrationSection = ({
@@ -23,6 +34,7 @@ const CloudIntegrationSection = ({
   setSelectedIntegrationOption,
   integrationOptionPress,
   integrationAuths,
+  handleDeleteIntegrationAuth
 }: Props) => {
   const { t } = useTranslation();
 
@@ -45,6 +57,7 @@ const CloudIntegrationSection = ({
             setSelectedIntegrationOption={setSelectedIntegrationOption}
             integrationOptionPress={integrationOptionPress}
             integrationAuths={integrationAuths}
+            handleDeleteIntegrationAuth={handleDeleteIntegrationAuth}
             key={`cloud-integration-${cloudIntegrationOption.slug}`}
           />
         ))}

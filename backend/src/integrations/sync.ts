@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import * as Sentry from '@sentry/node';
 import { Octokit } from '@octokit/rest';
 // import * as sodium from 'libsodium-wrappers';
@@ -10,9 +10,13 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_RENDER,
+  INTEGRATION_FLYIO,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_VERCEL_API_URL,
-  INTEGRATION_NETLIFY_API_URL
+  INTEGRATION_NETLIFY_API_URL,
+  INTEGRATION_RENDER_API_URL,
+  INTEGRATION_FLYIO_API_URL
 } from '../variables';
 import { access, appendFile } from 'fs';
 
@@ -21,8 +25,6 @@ import { access, appendFile } from 'fs';
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
  * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
- * @param {Object} obj.app - app in integration
- * @param {Object} obj.target - (optional) target (environment) in integration
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
  * @param {String} obj.accessToken - access token for integration
  */
@@ -69,6 +71,20 @@ const syncSecrets = async ({
           accessToken
         });
         break;
+      case INTEGRATION_RENDER:
+        await syncSecretsRender({
+          integration,
+          secrets,
+          accessToken
+        });
+        break;
+      case INTEGRATION_FLYIO:
+        await syncSecretsFlyio({
+          integration,
+          secrets,
+          accessToken
+        });
+        break;
     }
   } catch (err) {
     Sentry.setUser(null);
@@ -78,10 +94,11 @@ const syncSecrets = async ({
 };
 
 /**
- * Sync/push [secrets] to Heroku [app]
+ * Sync/push [secrets] to Heroku app named [integration.app]
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Heroku integration
  */
 const syncSecretsHeroku = async ({
   integration,
@@ -129,7 +146,7 @@ const syncSecretsHeroku = async ({
 };
 
 /**
- * Sync/push [secrets] to Heroku [app]
+ * Sync/push [secrets] to Vercel project named [integration.app]
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
@@ -174,7 +191,7 @@ const syncSecretsVercel = async ({
       ))
       .data
       .envs
-      .filter((secret: VercelSecret) => secret.target.includes(integration.target))
+      .filter((secret: VercelSecret) => secret.target.includes(integration.targetEnvironment))
       .map(async (secret: VercelSecret) => (await axios.get(
               `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
               {
@@ -201,7 +218,7 @@ const syncSecretsVercel = async ({
                   key: key,
                   value: secrets[key],
                   type: 'encrypted',
-                  target: [integration.target]
+                  target: [integration.targetEnvironment]
               });
           }
       });
@@ -216,7 +233,7 @@ const syncSecretsVercel = async ({
                       key: key,
                       value: secrets[key],
                       type: 'encrypted',
-                      target: [integration.target]
+                      target: [integration.targetEnvironment]
                   });
               }
           } else {
@@ -226,7 +243,7 @@ const syncSecretsVercel = async ({
                   key: key,
                   value: res[key].value,
                   type: 'encrypted',
-                  target: [integration.target],
+                  target: [integration.targetEnvironment],
               });
           }
       });
@@ -287,11 +304,12 @@ const syncSecretsVercel = async ({
 }
 
 /**
- * Sync/push [secrets] to Netlify site [app]
+ * Sync/push [secrets] to Netlify site with id [integration.appId]
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
  * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {Object} obj.accessToken - access token for Netlify integration
  */
 const syncSecretsNetlify = async ({
     integration,
@@ -323,7 +341,7 @@ const syncSecretsNetlify = async ({
       
       const getParams = new URLSearchParams({
           context_name: 'all', // integration.context or all
-          site_id: integration.siteId
+          site_id: integration.appId
       });
       
       const res = (await axios.get(
@@ -354,7 +372,7 @@ const syncSecretsNetlify = async ({
                   key,
                   values: [{
                       value: secrets[key],
-                      context: integration.context
+                      context: integration.targetEnvironment
                   }]
               });
           } else {
@@ -365,15 +383,15 @@ const syncSecretsNetlify = async ({
                       [value.context]: value
                   }), {});
               
-              if (integration.context in contexts) {
+              if (integration.targetEnvironment in contexts) {
                   // case: Netlify secret value exists in integration context
-                  if (secrets[key] !== contexts[integration.context].value) {
+                  if (secrets[key] !== contexts[integration.targetEnvironment].value) {
                       // case: Infisical and Netlify secret values are different
                       // -> update Netlify secret context and value
                       updateSecrets.push({
                           key,
                           values: [{
-                              context: integration.context,
+                              context: integration.targetEnvironment,
                               value: secrets[key]
                           }]
                       });
@@ -384,7 +402,7 @@ const syncSecretsNetlify = async ({
                   updateSecrets.push({
                       key,
                       values: [{
-                          context: integration.context,
+                          context: integration.targetEnvironment,
                           value: secrets[key]
                       }]
                   });
@@ -402,7 +420,7 @@ const syncSecretsNetlify = async ({
               const numberOfValues = res[key].values.length;
               
               res[key].values.forEach((value: NetlifyValue) => {
-                  if (value.context === integration.context) {
+                  if (value.context === integration.targetEnvironment) {
                       if (numberOfValues <= 1) {
                           // case: Netlify secret value has less than 1 context -> delete secret
                           deleteSecrets.push(key); 
@@ -412,7 +430,7 @@ const syncSecretsNetlify = async ({
                               key,
                               values: [{
                                   id: value.id,
-                                  context: integration.context,
+                                  context: integration.targetEnvironment,
                                   value: value.value
                               }]
                           });
@@ -423,7 +441,7 @@ const syncSecretsNetlify = async ({
       });
 
       const syncParams = new URLSearchParams({
-          site_id: integration.siteId
+          site_id: integration.appId
       });
 
       if (newSecrets.length > 0) {
@@ -492,11 +510,12 @@ const syncSecretsNetlify = async ({
 }
 
 /**
- * Sync/push [secrets] to GitHub [repo]
+ * Sync/push [secrets] to GitHub repo with name [integration.app]
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
  * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for GitHub integration 
  */
 const syncSecretsGitHub = async ({
   integration,
@@ -604,5 +623,176 @@ const syncSecretsGitHub = async ({
     throw new Error('Failed to sync secrets to GitHub');
   }
 };
+
+/**
+ * Sync/push [secrets] to Render service with id [integration.appId]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Render integration
+ */
+const syncSecretsRender = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  try {
+    await axios.put(
+      `${INTEGRATION_RENDER_API_URL}/v1/services/${integration.appId}/env-vars`,
+      Object.keys(secrets).map((key) => ({
+        key,
+        value: secrets[key]
+      })),
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    );
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed to sync secrets to Render');
+  }
+}
+
+/**
+ * Sync/push [secrets] to Fly.io app
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Render integration
+ */
+const syncSecretsFlyio = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  try {
+    // set secrets
+    const SetSecrets = `
+      mutation($input: SetSecretsInput!) {
+        setSecrets(input: $input) {
+          release {
+            id
+            version
+            reason
+            description
+            user {
+              id
+              email
+              name
+            }
+            evaluationId
+            createdAt
+          }
+        }
+      }
+    `;
+
+    await axios({
+      url: INTEGRATION_FLYIO_API_URL,
+      method: 'post',
+      headers: {
+        'Authorization': 'Bearer ' + accessToken
+      },
+      data: {
+        query: SetSecrets,
+        variables: {
+          input: {
+            appId: integration.app,
+            secrets: Object.entries(secrets).map(([key, value]) => ({ key, value }))
+          }
+        }
+      }
+    });
+    
+    // get secrets
+    interface FlyioSecret {
+      name: string;
+      digest: string;
+      createdAt: string;
+    }
+    
+    const GetSecrets = `query ($appName: String!) {
+        app(name: $appName) {
+            secrets {
+                name
+                digest
+                createdAt
+            }
+        }
+    }`;
+
+    const getSecretsRes = (await axios({
+        method: 'post',
+        url: INTEGRATION_FLYIO_API_URL,
+        headers: {
+            'Authorization': 'Bearer ' + accessToken,
+            'Content-Type': 'application/json'
+        },
+        data: {
+          query: GetSecrets,
+          variables: {
+            appName: integration.app
+          }
+        }
+    })).data.data.app.secrets;
+    
+    const deleteSecretsKeys = getSecretsRes
+      .filter((secret: FlyioSecret) => !(secret.name in secrets))
+      .map((secret: FlyioSecret) => secret.name);
+    
+    // unset (delete) secrets
+    const DeleteSecrets = `mutation($input: UnsetSecretsInput!) {
+        unsetSecrets(input: $input) {
+            release {
+                id
+                version
+                reason
+                description
+                user {
+                    id
+                    email
+                    name
+                }
+                evaluationId
+                createdAt
+            }
+        }
+    }`;
+
+    await axios({
+        method: 'post',
+        url: INTEGRATION_FLYIO_API_URL,
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        data: {
+          query: DeleteSecrets,
+          variables: {
+            input: {
+              appId: integration.app,
+              keys: deleteSecretsKeys
+            }
+          }
+        }
+    });
+
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed to sync secrets to Fly.io');
+  }
+}
 
 export { syncSecrets };

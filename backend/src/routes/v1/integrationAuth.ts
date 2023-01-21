@@ -34,6 +34,22 @@ router.post(
 	integrationAuthController.oAuthExchange
 );
 
+router.post(
+	'/access-token',
+	requireAuth({
+        acceptedAuthModes: ['jwt', 'apiKey']
+    }),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		location: 'body'
+	}),
+	body('workspaceId').exists().trim().notEmpty(),
+	body('accessToken').exists().trim().notEmpty(),
+	body('integration').exists().trim().notEmpty(),
+	validateRequest,
+	integrationAuthController.saveIntegrationAccessToken
+);
+
 router.get(
 	'/:integrationAuthId/apps',
 	requireAuth({

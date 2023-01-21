@@ -9,7 +9,7 @@ import {
 export interface IIntegrationAuth {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: 'heroku' | 'vercel' | 'netlify' | 'github';
+  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'render' | 'flyio';
   teamId: string;
   accountId: string;
   refreshCiphertext?: string;
@@ -24,8 +24,9 @@ export interface IIntegrationAuth {
 const integrationAuthSchema = new Schema<IIntegrationAuth>(
   {
     workspace: {
-      type: Schema.Types.ObjectId,
-      required: true
+        type: Schema.Types.ObjectId,
+        ref: 'Workspace',
+        required: true
     },
     integration: {
       type: String,

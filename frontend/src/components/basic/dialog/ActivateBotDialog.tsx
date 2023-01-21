@@ -4,12 +4,23 @@ import { Dialog, Transition } from '@headlessui/react';
 
 import Button from '../buttons/Button';
 
+interface IntegrationOption {
+  clientId: string;
+  clientSlug?: string; // vercel-integration specific
+  docsLink: string;
+  image: string;
+  isAvailable: boolean;
+  name: string;
+  slug: string;
+  type: string;
+}
+
 type Props = {
   isOpen: boolean;
   closeModal: () => void;
-  selectedIntegrationOption: never[] | null;
+  selectedIntegrationOption: IntegrationOption | null;
   handleBotActivate: () => Promise<void>;
-  handleIntegrationOption: (arg: { integrationOption: never[] }) => void;
+  integrationOptionPress: (integrationOption: IntegrationOption) => void;
 };
 
 const ActivateBotDialog = ({
@@ -17,7 +28,7 @@ const ActivateBotDialog = ({
   closeModal,
   selectedIntegrationOption,
   handleBotActivate,
-  handleIntegrationOption
+  integrationOptionPress
 }: Props) => {
   const { t } = useTranslation();
 
@@ -28,10 +39,10 @@ const ActivateBotDialog = ({
 
       // type check
       if (!selectedIntegrationOption) return;
-      // 2. start integration
-      await handleIntegrationOption({
-        integrationOption: selectedIntegrationOption
-      });
+      
+      // 2. start integration or probe for PAT
+      integrationOptionPress(selectedIntegrationOption);
+      
     } catch (err) {
       console.log(err);
     }

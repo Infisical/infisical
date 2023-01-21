@@ -122,7 +122,7 @@ class IntegrationService {
      * @param {Object} obj
      * @param {String} obj.integrationAuthId - id of integration auth
      * @param {String} obj.accessToken - access token
-     * @param {String} obj.accessExpiresAt - expiration date of access token
+     * @param {Date} obj.accessExpiresAt - expiration date of access token
      * @returns {IntegrationAuth} - updated integration auth
      */
     static async setIntegrationAuthAccess({ 
@@ -132,7 +132,7 @@ class IntegrationService {
     }: { 
         integrationAuthId: string;
         accessToken: string;
-        accessExpiresAt: Date;
+        accessExpiresAt: Date | undefined;
     }) {
         return await setIntegrationAuthAccessHelper({
             integrationAuthId,
