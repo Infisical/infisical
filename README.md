@@ -24,6 +24,9 @@
   <a href="https://github.com/Infisical/infisical/issues">
     <img src="https://img.shields.io/github/commit-activity/m/infisical/infisical" alt="git commit activity" />
   </a>
+  <a href="https://cloudsmith.io/~infisical/repos/">
+    <img src="https://img.shields.io/badge/Downloads-14.6k-orange" alt="Cloudsmith downloads" />
+  </a>
   <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
   </a>
