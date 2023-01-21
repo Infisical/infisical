@@ -6,8 +6,10 @@ package cmd
 import (
 	"os"
 
-	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/spf13/cobra"
+
+	"github.com/Infisical/infisical-merge/packages/config"
+	"github.com/Infisical/infisical-merge/packages/util"
 )
 
 var rootCmd = &cobra.Command{
@@ -30,7 +32,15 @@ func Execute() {
 func init() {
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	rootCmd.PersistentFlags().BoolVarP(&debugLogging, "debug", "d", false, "Enable verbose logging")
-	rootCmd.PersistentFlags().StringVar(&config.INFISICAL_URL, "domain", "https://app.infisical.com/api", "Point the CLI to your own backend")
+	rootCmd.PersistentFlags().StringVar(&config.INFISICAL_URL, "domain", util.INFISICAL_DEFAULT_URL, "Point the CLI to your own backend [ENV: INFISICAL_URL]")
 	// rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 	// }
+
+	// if config.INFISICAL_URL is set to the default value, check if INFISICAL_URL is set in the environment
+	// this is used to allow overrides of the default value
+	if config.INFISICAL_URL == util.INFISICAL_DEFAULT_URL {
+		if envInfisicalURL, ok := os.LookupEnv("INFISICAL_URL"); ok {
+			config.INFISICAL_URL = envInfisicalURL
+		}
+	}
 }
