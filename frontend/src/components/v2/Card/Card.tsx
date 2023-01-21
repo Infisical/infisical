@@ -34,6 +34,7 @@ export const CardBody = ({ children, className }: CardBodyProps) => (
 
 export type CardProps = {
   children: ReactNode;
+  className?: string;
   isFullHeight?: boolean;
   isRounded?: boolean;
   isPlain?: boolean;
@@ -41,16 +42,17 @@ export type CardProps = {
 };
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ children, isFullHeight, isRounded, isHoverable, isPlain }, ref): JSX.Element => {
+  ({ children, isFullHeight, isRounded, isHoverable, isPlain, className }, ref): JSX.Element => {
     return (
       <div
         ref={ref}
         className={twMerge(
-          'flex flex-col w-full text-gray-200 bg-mineshaft shadow-md',
+          'flex flex-col w-full text-gray-200 bg-mineshaft-700 shadow-md',
           isFullHeight && 'h-full',
           isRounded && 'rounded-md',
           isPlain && 'shadow-none',
-          isHoverable && 'hover:shadow-xl'
+          isHoverable && 'hover:shadow-xl',
+          className
         )}
       >
         {children}
