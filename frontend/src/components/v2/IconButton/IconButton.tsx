@@ -4,14 +4,13 @@ import { twMerge } from 'tailwind-merge';
 
 type Props = {
   children: ReactNode;
+  // This is kept as required because by accessibility convention and eslint
+  // when button doesn't have text an aria-label needs to be passed
+  ariaLabel: string;
   isDisabled?: boolean;
-  leftIcon?: ReactNode;
-  rightIcon?: ReactNode;
-  // loading state
-  isLoading?: boolean;
 };
 
-const buttonVariants = cva(
+const iconButtonVariants = cva(
   [
     'button',
     'transition-all',
@@ -36,19 +35,15 @@ const buttonVariants = cva(
         true: 'bg-opacity-70 cursor-not-allowed',
         false: ''
       },
-      isFullWidth: {
-        true: 'w-full',
-        false: ''
-      },
       isRounded: {
         true: 'rounded-md',
         false: ''
       },
       size: {
         xs: ['text-xs', 'py-1', 'px-2'],
-        sm: ['text-sm', 'py-2', 'px-4'],
-        md: ['text-md', 'py-2', 'px-6'],
-        lg: ['text-lg', 'py-2', 'px-8']
+        sm: ['text-sm', 'py-2', 'px-3'],
+        md: ['text-md', 'py-3', 'px-4'],
+        lg: ['text-lg', 'py-3', 'px-6']
       }
     },
     compoundVariants: [
@@ -91,79 +86,46 @@ const buttonVariants = cva(
   }
 );
 
-export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
-  VariantProps<typeof buttonVariants> &
+export type IconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> &
+  VariantProps<typeof iconButtonVariants> &
   Props;
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
   (
     {
       children,
+      ariaLabel,
       isDisabled = false,
-      className = '',
+      className,
       size = 'md',
       variant = 'solid',
-      isFullWidth,
       isRounded = true,
-      leftIcon,
-      rightIcon,
-      isLoading,
       colorSchema = 'primary',
       ...props
     },
     ref
-  ): JSX.Element => {
-    const loadingToggleClass = isLoading ? 'opacity-0' : 'opacity-100';
-
-    return (
-      <button
-        ref={ref}
-        aria-disabled={isDisabled}
-        type="button"
-        className={twMerge(
-          buttonVariants({
-            className,
-            colorSchema,
-            size,
-            variant,
-            isRounded,
-            isDisabled,
-            isFullWidth
-          })
-        )}
-        disabled={isDisabled}
-        {...props}
-      >
-        {isLoading && (
-          <img
-            src="/images/loading/loadingblack.gif"
-            width={36}
-            alt="loading animation"
-            className="absolute rounded-xl"
-          />
-        )}
-        <span
-          className={twMerge(
-            'transition-all shrink-0 cursor-pointer',
-            loadingToggleClass,
-            size === 'xs' ? 'mr-1' : 'mr-2'
-          )}
-        >
-          {leftIcon}
-        </span>
-        <span className={twMerge('transition-all', loadingToggleClass)}>{children}</span>
-        <span
-          className={twMerge(
-            'transition-all shrink-0 cursor-pointer',
-            loadingToggleClass,
-            size === 'xs' ? 'ml-1' : 'ml-2'
-          )}
-        >
-          {rightIcon}
-        </span>
-      </button>
-    );
-  }
+  ): JSX.Element => (
+    <button
+      ref={ref}
+      aria-disabled={isDisabled}
+      type="button"
+      aria-label={ariaLabel}
+      className={twMerge(
+        iconButtonVariants({
+          className,
+          colorSchema,
+          size,
+          variant,
+          isRounded,
+          isDisabled
+        })
+      )}
+      disabled={isDisabled}
+      {...props}
+    >
+      {children}
+    </button>
+  )
 );
 
-Button.displayName = 'Button';
+IconButton.displayName = 'IconButton';

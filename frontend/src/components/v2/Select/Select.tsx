@@ -13,7 +13,7 @@ type Props = {
   isLoading?: boolean;
 };
 
-type SelectProps = SelectPrimitive.SelectProps & Props;
+export type SelectProps = SelectPrimitive.SelectProps & Props;
 
 export const Select = forwardRef<HTMLButtonElement, SelectProps>(
   ({ children, placeholder, className, isLoading, ...props }, ref): JSX.Element => {
@@ -64,7 +64,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
 
 Select.displayName = 'Select';
 
-type SelectItemProps = Omit<SelectPrimitive.SelectItemProps, 'disabled'> & {
+export type SelectItemProps = Omit<SelectPrimitive.SelectItemProps, 'disabled'> & {
   isDisabled?: boolean;
   isSelected?: boolean;
 };
