@@ -32,16 +32,16 @@ func Execute() {
 func init() {
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	rootCmd.PersistentFlags().BoolVarP(&debugLogging, "debug", "d", false, "Enable verbose logging")
-	rootCmd.PersistentFlags().StringVar(&config.INFISICAL_URL, "domain", util.INFISICAL_DEFAULT_URL, "Point the CLI to your own backend [ENV: INFISICAL_URL]")
+	rootCmd.PersistentFlags().StringVar(&config.INFISICAL_URL, "domain", util.INFISICAL_DEFAULT_API_URL, "Point the CLI to your own backend [can also set via environment variable name: API_URL]")
 	// rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 	// }
 
 	// if config.INFISICAL_URL is set to the default value, check if INFISICAL_URL is set in the environment
 	// this is used to allow overrides of the default value
 	if !rootCmd.Flag("domain").Changed {
-		if envInfisicalURL, ok := os.LookupEnv("INFISICAL_URL"); ok {
-			config.INFISICAL_URL = envInfisicalURL
+		if envInfisicalBackendUrl, ok := os.LookupEnv("API_URL"); ok {
+			config.INFISICAL_URL = envInfisicalBackendUrl
 		}
 	}
-	
+
 }
