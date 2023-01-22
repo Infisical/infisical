@@ -183,6 +183,10 @@ export default function Integrations() {
     accessToken?: string;
   }) => {
     try {
+      if (!bot.isActive) {
+        await handleBotActivate();
+      }
+      
       if (integrationOption.type === 'oauth') {
         // integration is of type OAuth
 
@@ -233,7 +237,7 @@ export default function Integrations() {
         return;
       }
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
   
@@ -247,6 +251,7 @@ export default function Integrations() {
    * @returns
    */
   const integrationOptionPress = async (integrationOption: IntegrationOption) => {
+    // consider: don't start integration until at [handleIntegrationOption] step
     try {
       const integrationAuthX = integrationAuths.find((integrationAuth) => integrationAuth.integration === integrationOption.slug);
       
@@ -264,12 +269,15 @@ export default function Integrations() {
         return;
       }
       
+      if (!bot.isActive) {
+        await handleBotActivate();
+      }
+      
       // case: integration has been authorized before
       // -> create new integration
       const integration = await createIntegration({
         integrationAuthId: integrationAuthX._id
       });
-      
       setIntegrations([...integrations, integration]);
     } catch (err) {
       console.error(err);
@@ -350,7 +358,6 @@ export default function Integrations() {
           isOpen={isActivateBotDialogOpen}
           closeModal={() => setIsActivateBotDialogOpen(false)}
           selectedIntegrationOption={selectedIntegrationOption}
-          handleBotActivate={handleBotActivate}
           integrationOptionPress={integrationOptionPress}
         />
         <IntegrationAccessTokenDialog
@@ -358,7 +365,6 @@ export default function Integrations() {
           closeModal={() => setIntegrationAccessTokenDialogOpen(false)}
           selectedIntegrationOption={selectedIntegrationOption}
           handleIntegrationOption={handleIntegrationOption}
-          
         />
         <IntegrationSection 
           integrations={integrations} 

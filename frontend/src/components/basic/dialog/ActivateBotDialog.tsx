@@ -19,7 +19,6 @@ type Props = {
   isOpen: boolean;
   closeModal: () => void;
   selectedIntegrationOption: IntegrationOption | null;
-  handleBotActivate: () => Promise<void>;
   integrationOptionPress: (integrationOption: IntegrationOption) => void;
 };
 
@@ -27,20 +26,16 @@ const ActivateBotDialog = ({
   isOpen,
   closeModal,
   selectedIntegrationOption,
-  handleBotActivate,
   integrationOptionPress
 }: Props) => {
   const { t } = useTranslation();
 
   const submit = async () => {
     try {
-      // 1. activate bot
-      await handleBotActivate();
-
       // type check
       if (!selectedIntegrationOption) return;
       
-      // 2. start integration or probe for PAT
+      // start integration or probe for PAT
       integrationOptionPress(selectedIntegrationOption);
       
     } catch (err) {
