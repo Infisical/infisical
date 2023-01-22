@@ -30,8 +30,8 @@ const ProjectIntegrationSection = ({
   setBot,
   environments = [],
   handleDeleteIntegration
-}: Props) =>
-  integrations.length > 0 ? (
+}: Props) => {
+  return integrations.length > 0 ? (
     <div className="mb-12">
       <div className="flex flex-col justify-between items-start mx-4 mb-4 mt-6 text-xl max-w-5xl px-2">
         <h1 className="font-semibold text-3xl">Current Integrations</h1>
@@ -40,7 +40,6 @@ const ProjectIntegrationSection = ({
         </p>
       </div>
       {integrations.map((integration: Integration) => {
-        console.log('IntegrationSection integration: ', integration);
         return (
           <IntegrationTile
             key={`integration-${integration._id.toString()}`} 
@@ -58,5 +57,6 @@ const ProjectIntegrationSection = ({
   ) : (
     <div />
   );
-
+}
+  
 export default ProjectIntegrationSection;

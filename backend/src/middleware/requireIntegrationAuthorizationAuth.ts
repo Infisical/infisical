@@ -25,7 +25,6 @@ const requireIntegrationAuthorizationAuth = ({
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
 		const { integrationAuthId } = req[location];
-
 		const integrationAuth = await IntegrationAuth.findOne({
 			_id: integrationAuthId
 		})
