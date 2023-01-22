@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { IconProp } from '@fortawesome/fontawesome-svg-core';
 import { faSlack } from '@fortawesome/free-brands-svg-icons';
@@ -40,47 +39,45 @@ const learningItem = ({
 }: ItemProps): JSX.Element => {
   if (link) {
     return (
-      <Link href={link}>
-        <a
-          target={`${link.includes('https') ? '_blank' : '_self'}`}
-          rel="noopener noreferrer"
-          className="w-full"
-          href="#"
+      <a
+        target={`${link.includes('https') ? '_blank' : '_self'}`}
+        rel="noopener noreferrer"
+        className="w-full"
+        href={link}
+      >
+        <div
+          onKeyDown={() => null}
+          role="button"
+          tabIndex={0}
+          onClick={async () => {
+            if (userAction && userAction !== 'first_time_secrets_pushed') {
+              await registerUserAction({
+                action: userAction
+              });
+            }
+          }}
+          className="relative bg-bunker-700 hover:bg-bunker-500 shadow-xl duration-200 rounded-md border border-dashed border-bunker-400 pl-2 pr-6 py-2 h-[5.5rem] w-full flex items-center justify-between overflow-hidden my-1.5 cursor-pointer"
         >
-          <div
-            onKeyDown={() => null}
-            role="button"
-            tabIndex={0}
-            onClick={async () => {
-              if (userAction && userAction !== 'first_time_secrets_pushed') {
-                await registerUserAction({
-                  action: userAction
-                });
-              }
-            }}
-            className="relative bg-bunker-700 hover:bg-bunker-500 shadow-xl duration-200 rounded-md border border-dashed border-bunker-400 pl-2 pr-6 py-2 h-[5.5rem] w-full flex items-center justify-between overflow-hidden my-1.5 cursor-pointer"
-          >
-            <div className="flex flex-row items-center mr-4">
-              <FontAwesomeIcon icon={icon} className="text-4xl mx-2 w-16" />
-              {complete && (
-                <div className="bg-bunker-700 w-7 h-7 rounded-full absolute left-12 top-10 p-2 flex items-center justify-center">
-                  <FontAwesomeIcon icon={faCheckCircle} className="text-4xl w-5 h-5 text-green" />
-                </div>
-              )}
-              <div className="flex flex-col items-start">
-                <div className="text-xl font-semibold mt-0.5">{text}</div>
-                <div className="text-sm font-normal">{subText}</div>
+          <div className="flex flex-row items-center mr-4">
+            <FontAwesomeIcon icon={icon} className="text-4xl mx-2 w-16" />
+            {complete && (
+              <div className="bg-bunker-700 w-7 h-7 rounded-full absolute left-12 top-10 p-2 flex items-center justify-center">
+                <FontAwesomeIcon icon={faCheckCircle} className="text-4xl w-5 h-5 text-green" />
               </div>
+            )}
+            <div className="flex flex-col items-start">
+              <div className="text-xl font-semibold mt-0.5">{text}</div>
+              <div className="text-sm font-normal">{subText}</div>
             </div>
-            <div
-              className={`pr-4 font-semibold text-sm w-28 text-right ${complete && 'text-green'}`}
-            >
-              {complete ? 'Complete!' : `About ${time}`}
-            </div>
-            {complete && <div className="absolute bottom-0 left-0 h-1 w-full bg-green" />}
           </div>
-        </a>
-      </Link>
+          <div
+            className={`pr-4 font-semibold text-sm w-28 text-right ${complete && 'text-green'}`}
+          >
+            {complete ? 'Complete!' : `About ${time}`}
+          </div>
+          {complete && <div className="absolute bottom-0 left-0 h-1 w-full bg-green" />}
+        </div>
+      </a>
     );
   }
   return (
@@ -157,7 +154,7 @@ export default function Home() {
           icon: faHandPeace,
           time: '3 min',
           userAction: 'intro_cta_clicked',
-          link: 'https://www.youtube.com/watch?v=JS3OKYU2078'
+          link: 'https://www.youtube.com/watch?v=3F7FNYX94zA'
         })}
         {learningItem({
           text: 'Add your secrets',

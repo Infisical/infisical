@@ -90,7 +90,7 @@ const INTEGRATION_OPTIONS = [
         name: 'Fly.io',
         slug: 'flyio',
         image: 'Flyio.svg',
-        isAvailable: true,
+        isAvailable: false,
         type: 'pat',
         clientId: '',
         docsLink: ''
