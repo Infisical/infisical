@@ -1,5 +1,7 @@
+import { BACKEND_API_URL } from '~/components/utilities/config';
+
 const token = async () =>
-  fetch('/api/v1/auth/token', {
+  fetch(`${BACKEND_API_URL}/v1/auth/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

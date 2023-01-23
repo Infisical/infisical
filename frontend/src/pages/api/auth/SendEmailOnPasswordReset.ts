@@ -1,3 +1,5 @@
+import { BACKEND_API_URL } from '~/components/utilities/config';
+
 interface Props {
   email: string;
 }
@@ -10,7 +12,7 @@ interface Props {
  * @returns
  */
 const SendEmailOnPasswordReset = async ({ email }: Props) => {
-  const response = await fetch('/api/v1/password/email/password-reset', {
+  const response = await fetch(`${BACKEND_API_URL}/v1/password/email/password-reset`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -25,9 +27,7 @@ const SendEmailOnPasswordReset = async ({ email }: Props) => {
     return data;
   }
 
-  throw new Error(
-    'Something went wrong while sending the email verification for password reset.'
-  );
+  throw new Error('Something went wrong while sending the email verification for password reset.');
 };
 
 export default SendEmailOnPasswordReset;

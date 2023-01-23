@@ -61,6 +61,7 @@ module.exports = {
         ignore: ['jsx']
       }
     ],
+    'import/extensions': 'off',
     '@typescript-eslint/no-non-null-assertion': 'off',
     'simple-import-sort/exports': 'warn',
     'simple-import-sort/imports': [
