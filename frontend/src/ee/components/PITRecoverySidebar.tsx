@@ -11,7 +11,7 @@ import {
   decryptAssymmetric,
   decryptSymmetric
 } from '@app/components/utilities/cryptography/crypto';
-import getProjectSecretShanpshots from '@app/ee/api/secrets/GetProjectSercetShanpshots';
+import getProjectSecretSnapshots from '@app/ee/api/secrets/GetProjectSercetShanpshots';
 import getSecretSnapshotData from '@app/ee/api/secrets/GetSecretSnapshotData';
 import timeSince from '@app/ee/utilities/timeSince';
 import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
@@ -72,7 +72,7 @@ const PITRecoverySidebar = ({ toggleSidebar, setSnapshotData, chosenSnapshot }: 
   useEffect(() => {
     const getLogData = async () => {
       setIsLoading(true);
-      const results = await getProjectSecretShanpshots({
+      const results = await getProjectSecretSnapshots({
         workspaceId: String(router.query.id),
         limit: currentLimit,
         offset: currentOffset
