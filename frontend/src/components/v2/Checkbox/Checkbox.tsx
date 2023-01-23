@@ -25,7 +25,7 @@ export const Checkbox = ({
   ...props
 }: CheckboxProps): JSX.Element => {
   return (
-    <div className="flex items-center text-bunker-300">
+    <div className="flex items-center font-inter text-bunker-300">
       <CheckboxPrimitive.Root
         className={twMerge(
           'flex items-center justify-center w-5 h-5 mr-3 transition-all rounded shadow hover:bg-bunker-200 bg-bunker-300',

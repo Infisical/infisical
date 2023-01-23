@@ -62,7 +62,7 @@ export const DropdownMenuItem = <T extends ElementType = 'button'>({
   <DropdownMenuPrimitive.Item
     {...props}
     className={twMerge(
-      'text-sm block px-4 py-2 data-[highlighted]:bg-gray-700 00 outline-none cursor-pointer',
+      'text-sm block font-inter px-4 py-2 data-[highlighted]:bg-gray-700 outline-none cursor-pointer',
       className
     )}
   >

@@ -35,7 +35,7 @@ export const MenuItem = <T extends ElementType = 'button'>({
 }: MenuItemProps<T> & ComponentPropsWithRef<T>): JSX.Element => (
   <li
     className={twMerge(
-      'px-2 py-3 flex flex-col text-sm text-white transition-all rounded cursor-pointer hover:bg-gray-700',
+      'px-2 py-3 font-inter flex flex-col text-sm text-white transition-all rounded cursor-pointer hover:bg-gray-700',
       isSelected && 'text-primary',
       isDisabled && 'text-gray-500 hover:bg-transparent cursor-not-allowed',
       className

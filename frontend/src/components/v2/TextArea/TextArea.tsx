@@ -10,7 +10,7 @@ type Props = {
 };
 
 const textAreaVariants = cva(
-  'textarea w-full p-2 border border-solid text-gray-400 placeholder-gray-500 placeholder-opacity-50',
+  'textarea w-full p-2 border border-solid text-gray-400 font-inter placeholder-gray-500 placeholder-opacity-50',
   {
     variants: {
       size: {

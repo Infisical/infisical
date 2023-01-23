@@ -19,7 +19,7 @@ export const Switch = ({
   isRequired,
   ...props
 }: SwitchProps): JSX.Element => (
-  <div className="flex items-center text-bunker-300">
+  <div className="flex items-center text-bunker-300 font-inter">
     <label className="text-sm" htmlFor={id}>
       {children}
       {isRequired && <span className="pl-1 text-red">*</span>}

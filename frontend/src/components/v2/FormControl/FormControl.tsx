@@ -13,7 +13,7 @@ export type FormLabelProps = {
 export const FormLabel = ({ id, label, isRequired }: FormLabelProps) => (
   <Label.Root className="text-mineshaft-300 text-sm font-medium block mb-1 ml-0.5" htmlFor={id}>
     {label}
-    {isRequired && <span className="text-red ml-1">*</span>}
+    {isRequired && <span className="ml-1 text-red">*</span>}
   </Label.Root>
 );
 
@@ -25,7 +25,7 @@ export type FormHelperTextProps = {
 export const FormHelperText = ({ isError, text }: FormHelperTextProps) => (
   <div
     className={twMerge(
-      'text-xs flex items-center opacity-90 text-mineshaft-300 mt-2',
+      'text-xs font-inter flex items-center opacity-90 text-mineshaft-300 mt-2',
       isError && 'text-red-600'
     )}
   >

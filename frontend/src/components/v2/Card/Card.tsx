@@ -47,7 +47,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={twMerge(
-          'flex flex-col w-full text-gray-200 bg-mineshaft-700 shadow-md',
+          'flex flex-col w-full font-inter text-gray-200 bg-mineshaft-700 shadow-md',
           isFullHeight && 'h-full',
           isRounded && 'rounded-md',
           isPlain && 'shadow-none',

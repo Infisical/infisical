@@ -7,6 +7,7 @@ const round = (num) =>
 const rem = (px) => `${round(px / 16)}rem`;
 const em = (px, base) => `${round(px / base)}em`;
 
+// TODO(akhilmhdh): Clean up this later
 let defaultModifiers = {
   sm: {
     css: [
@@ -1238,6 +1239,9 @@ module.exports = {
   content: ['./src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        inter: ['Inter']
+      },
       colors: {
         // You can generate your own colors with this tool: https://javisperez.github.io/tailwindcolorshades/
         primary: {

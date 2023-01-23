@@ -22,8 +22,8 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
         <SelectPrimitive.Trigger
           ref={ref}
           className={twMerge(
-            `select inline-flex items-center justify-between 
-            px-4 py-2.5 text-sm text-white rounded-md bg-mineshaft-800`,
+            `inline-flex items-center justify-between data-[placeholder]:text-gray-500
+            px-4 py-2.5 font-inter text-sm text-white rounded-md bg-mineshaft-800`,
             className
           )}
         >
@@ -36,7 +36,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           <SelectPrimitive.Content
             position="popper"
             sideOffset={5}
-            className="overflow-hidden text-white rounded-md shadow-md bg-mineshaft-800"
+            className="overflow-hidden text-white rounded-md shadow-md font-inter bg-mineshaft-800"
             style={{ width: 'var(--radix-select-trigger-width)' }}
           >
             <SelectPrimitive.ScrollUpButton>
