@@ -10,4 +10,5 @@ export * from './Modal';
 export * from './Select';
 export * from './Spinner';
 export * from './Switch';
+export * from './Table';
 export * from './TextArea';
