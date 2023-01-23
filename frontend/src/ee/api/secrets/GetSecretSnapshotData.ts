@@ -11,7 +11,7 @@ interface SnapshotProps {
  * @returns
  */
 const getSecretSnapshotData = async ({ secretSnapshotId }: SnapshotProps) =>
-  SecurityClient.fetchCall(`/api/v1/secret-snapshot/${secretSnapshotId}`, {
+  SecurityClient.fetchCall(`/v1/secret-snapshot/${secretSnapshotId}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

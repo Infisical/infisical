@@ -6,7 +6,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const getAPIKeys = () =>
-  SecurityClient.fetchCall('/api/v2/api-key', {
+  SecurityClient.fetchCall('/v2/api-key', {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

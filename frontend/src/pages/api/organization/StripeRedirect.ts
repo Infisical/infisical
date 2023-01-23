@@ -7,7 +7,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const StripeRedirect = ({ orgId }: { orgId: string }) =>
-  SecurityClient.fetchCall(`/api/v1/organization/${orgId}/customer-portal-session`, {
+  SecurityClient.fetchCall(`/v1/organization/${orgId}/customer-portal-session`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

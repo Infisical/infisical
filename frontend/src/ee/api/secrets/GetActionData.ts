@@ -11,7 +11,7 @@ interface WorkspaceProps {
  * @returns
  */
 const getActionData = async ({ actionId }: WorkspaceProps) =>
-  SecurityClient.fetchCall(`/api/v1/action/${actionId}`, {
+  SecurityClient.fetchCall(`/v1/action/${actionId}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

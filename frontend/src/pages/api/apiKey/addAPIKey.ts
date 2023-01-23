@@ -13,7 +13,7 @@ interface Props {
  * @returns
  */
 const addAPIKey = ({ name, expiresIn }: Props) =>
-  SecurityClient.fetchCall('/api/v2/api-key/', {
+  SecurityClient.fetchCall('/v2/api-key/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

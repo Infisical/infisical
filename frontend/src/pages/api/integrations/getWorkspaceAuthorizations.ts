@@ -10,7 +10,7 @@ interface Props {
  * @returns
  */
 const getWorkspaceAuthorizations = ({ workspaceId }: Props) =>
-  SecurityClient.fetchCall(`/api/v1/workspace/${workspaceId}/authorizations`, {
+  SecurityClient.fetchCall(`/v1/workspace/${workspaceId}/authorizations`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

@@ -22,7 +22,7 @@ interface Props {
  * @returns
  */
 const setBotActiveStatus = async ({ botId, isActive, botKey }: Props) =>
-  SecurityClient.fetchCall(`/api/v1/bot/${botId}/active`, {
+  SecurityClient.fetchCall(`/v1/bot/${botId}/active`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json'

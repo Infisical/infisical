@@ -6,7 +6,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const getLatestFileKey = ({ workspaceId }: { workspaceId: string }) =>
-  SecurityClient.fetchCall(`/api/v1/key/${workspaceId}/latest`, {
+  SecurityClient.fetchCall(`/v1/key/${workspaceId}/latest`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

@@ -1,7 +1,7 @@
 import SecurityClient from '@app/components/utilities/SecurityClient';
 
 const getIntegrationOptions = () =>
-  SecurityClient.fetchCall('/api/v1/integration-auth/integration-options', {
+  SecurityClient.fetchCall('/v1/integration-auth/integration-options', {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

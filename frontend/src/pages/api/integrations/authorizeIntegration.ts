@@ -14,7 +14,7 @@ interface Props {
  * @returns
  */
 const AuthorizeIntegration = ({ workspaceId, code, integration }: Props) =>
-  SecurityClient.fetchCall('/api/v1/integration-auth/oauth-token', {
+  SecurityClient.fetchCall('/v1/integration-auth/oauth-token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

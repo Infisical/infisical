@@ -9,7 +9,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const uploadKeys = (workspaceId: string, userId: string, encryptedKey: string, nonce: string) =>
-  SecurityClient.fetchCall(`/api/v1/key/${workspaceId}`, {
+  SecurityClient.fetchCall(`/v1/key/${workspaceId}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

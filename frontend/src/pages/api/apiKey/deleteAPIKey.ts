@@ -11,7 +11,7 @@ interface Props {
  * @returns
  */
 const deleteAPIKey = ({ apiKeyId }: Props) =>
-  SecurityClient.fetchCall(`/api/v2/api-key/${apiKeyId}`, {
+  SecurityClient.fetchCall(`/v2/api-key/${apiKeyId}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json'

@@ -6,7 +6,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const deleteWorkspace = (workspaceId: string) =>
-  SecurityClient.fetchCall(`/api/v1/workspace/${workspaceId}`, {
+  SecurityClient.fetchCall(`/v1/workspace/${workspaceId}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json'

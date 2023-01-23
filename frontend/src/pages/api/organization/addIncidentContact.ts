@@ -6,7 +6,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const addIncidentContact = (organizationId: string, email: string) =>
-  SecurityClient.fetchCall(`/api/v1/organization/${organizationId}/incidentContactOrg`, {
+  SecurityClient.fetchCall(`/v1/organization/${organizationId}/incidentContactOrg`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

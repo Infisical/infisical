@@ -11,7 +11,7 @@ export interface IIncidentContactOrg {
  * @returns
  */
 const getIncidentContacts = (organizationId: string): Promise<IIncidentContactOrg[]> =>
-  SecurityClient.fetchCall(`/api/v1/organization/${organizationId}/incidentContactOrg`, {
+  SecurityClient.fetchCall(`/v1/organization/${organizationId}/incidentContactOrg`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

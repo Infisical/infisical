@@ -6,7 +6,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const registerUserAction = ({ action }: { action: string }) =>
-  SecurityClient.fetchCall('/api/v1/user-action', {
+  SecurityClient.fetchCall('/v1/user-action', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

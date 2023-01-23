@@ -14,7 +14,7 @@ const performSecretRollback = async ({
   workspaceId: string;
   version: number;
 }) =>
-  SecurityClient.fetchCall(`/api/v1/workspace/${workspaceId}/secret-snapshots/rollback`, {
+  SecurityClient.fetchCall(`/v1/workspace/${workspaceId}/secret-snapshots/rollback`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

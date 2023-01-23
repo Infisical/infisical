@@ -8,7 +8,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const checkUserAction = ({ action }: { action: string }) =>
   SecurityClient.fetchCall(
-    `/api/v1/user-action` +
+    `/v1/user-action` +
       `?${new URLSearchParams({
         action
       })}`,

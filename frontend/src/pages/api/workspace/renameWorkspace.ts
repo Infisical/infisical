@@ -7,7 +7,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const renameWorkspace = (workspaceId: string, newWorkspaceName: string) =>
-  SecurityClient.fetchCall(`/api/v1/workspace/${workspaceId}/name`, {
+  SecurityClient.fetchCall(`/v1/workspace/${workspaceId}/name`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

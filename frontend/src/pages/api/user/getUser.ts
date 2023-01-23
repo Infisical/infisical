@@ -4,7 +4,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * This route gets the information about a specific user.
  */
 const getUser = () =>
-  SecurityClient.fetchCall('/api/v1/user', {
+  SecurityClient.fetchCall('/v1/user', {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

@@ -5,7 +5,7 @@ interface Props {
 }
 
 const getIntegrationApps = ({ integrationAuthId }: Props) =>
-  SecurityClient.fetchCall(`/api/v1/integration-auth/${integrationAuthId}/apps`, {
+  SecurityClient.fetchCall(`/v1/integration-auth/${integrationAuthId}/apps`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

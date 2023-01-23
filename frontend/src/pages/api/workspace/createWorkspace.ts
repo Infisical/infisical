@@ -13,7 +13,7 @@ const createWorkspace = ({
   workspaceName: string;
   organizationId: string;
 }) =>
-  SecurityClient.fetchCall('/api/v1/workspace', {
+  SecurityClient.fetchCall('/v1/workspace', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
