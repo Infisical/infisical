@@ -23,7 +23,7 @@ interface EncryptedSecretProps {
  * @returns
  */
 const updateSecrets = async ({ secrets }: { secrets: EncryptedSecretProps[] }) =>
-  SecurityClient.fetchCall('/api/v2/secrets', {
+  SecurityClient.fetchCall('/v2/secrets', {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json'

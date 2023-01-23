@@ -11,7 +11,7 @@ interface Props {
  * @returns
  */
 const deleteServiceToken = ({ serviceTokenId }: Props) =>
-  SecurityClient.fetchCall(`/api/v2/service-token/${serviceTokenId}`, {
+  SecurityClient.fetchCall(`/v2/service-token/${serviceTokenId}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json'
