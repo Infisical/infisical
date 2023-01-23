@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { patchRouterParam } = require('./utils/patchAsyncRoutes');
 
-import express, { Request, Response } from 'express';
+import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -124,7 +124,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile))
 // Server status
 app.use('/api', healthCheck)
 
-//* Handle unrouted requests and respond with proper error message as well as status code
+//* Handle un routed requests and respond with proper error message as well as status code
 app.use((req, res, next) => {
   if (res.headersSent) return next();
   next(RouteNotFoundError({ message: `The requested source '(${req.method})${req.url}' was not found` }))
@@ -133,6 +133,6 @@ app.use((req, res, next) => {
 //* Error Handling Middleware (must be after all routing logic)
 app.use(requestErrorHandler)
 
-export const server = app.listen(PORT, () => {
+export const server = app.listen(Number(PORT), '0.0.0.0', () => {
   getLogger("backend-main").info(`Server started listening at port ${PORT}`)
 });

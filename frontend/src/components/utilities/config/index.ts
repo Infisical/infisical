@@ -1,5 +1,5 @@
 // if there is no dedicated backend URL, then we assume that the default NGINX proxy is used
-const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL || '/api';
+const BACKEND_API_URL = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/api` || '/api';
 const ENV = process.env.NEXT_PUBLIC_ENV! || 'development'; // investigate
 const POSTHOG_API_KEY = process.env.NEXT_PUBLIC_POSTHOG_API_KEY!;
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST! || 'https://app.posthog.com';
