@@ -1,3 +1,4 @@
+import * as authController from './authController';
 import * as usersController from './usersController';
 import * as organizationsController from './organizationsController';
 import * as workspaceController from './workspaceController';
@@ -8,6 +9,7 @@ import * as secretsController from './secretsController';
 import * as environmentController from './environmentController';
 
 export {
+    authController,
     usersController,
     organizationsController,
     workspaceController,

@@ -1,14 +1,14 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
-import crypto from 'crypto';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const jsrp = require('jsrp');
 import * as bigintConversion from 'bigint-conversion';
-import { User, Token, BackupPrivateKey } from '../../models';
-import { checkEmailVerification } from '../../helpers/signup';
+import { User, BackupPrivateKey } from '../../models';
 import { createToken } from '../../helpers/auth';
 import { sendMail } from '../../helpers/nodemailer';
+import { TokenService } from '../../services';
 import { JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET, SITE_URL } from '../../config';
+import { TOKEN_EMAIL_PASSWORD_RESET } from '../../variables';
 
 const clientPublicKeys: any = {};
 
@@ -33,17 +33,10 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
 			});
 		}
 		
-		const token = crypto.randomBytes(16).toString('hex');
-
-		await Token.findOneAndUpdate(
-			{ email },
-			{
-				email,
-				token,
-				createdAt: new Date()
-			},
-			{ upsert: true, new: true }
-		);
+		const token = await TokenService.createToken({
+			type: TOKEN_EMAIL_PASSWORD_RESET,
+			email
+		});
 		
 		await sendMail({
 			template: 'passwordReset.handlebars',
@@ -55,7 +48,6 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
 				callback_url: SITE_URL + '/password-reset'
 			}
 		});
-		
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
@@ -88,10 +80,11 @@ export const emailPasswordResetVerify = async (req: Request, res: Response) => {
 				error: 'Failed email verification for password reset'
 			});
 		}
-
-		await checkEmailVerification({
+		
+		await TokenService.validateToken({
+			type: TOKEN_EMAIL_PASSWORD_RESET,
 			email,
-			code
+			token: code
 		});
 		
 		// generate temporary password-reset token

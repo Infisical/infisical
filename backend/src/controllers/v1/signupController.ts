@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
-import { NODE_ENV, JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET } from '../../config';
+import { JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET } from '../../config';
 import { User, MembershipOrg } from '../../models';
 import { completeAccount } from '../../helpers/user';
 import {

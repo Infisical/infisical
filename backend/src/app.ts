@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { patchRouterParam } = require('./utils/patchAsyncRoutes');
 
-import express, { Request, Response } from 'express';
+import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -42,6 +42,7 @@ import {
   integrationAuth as v1IntegrationAuthRouter
 } from './routes/v1';
 import {
+  auth as v2AuthRouter,
   users as v2UsersRouter,
   organizations as v2OrganizationsRouter,
   workspace as v2WorkspaceRouter,
@@ -109,6 +110,7 @@ app.use('/api/v1/integration', v1IntegrationRouter);
 app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
 
 // v2 routes
+app.use('/api/v2/auth', v2AuthRouter);
 app.use('/api/v2/users', v2UsersRouter);
 app.use('/api/v2/organizations', v2OrganizationsRouter);
 app.use('/api/v2/workspace', v2EnvironmentRouter);

@@ -1,4 +1,5 @@
 import { Schema, model, Types } from 'mongoose';
+import { MFA_METHOD_EMAIL } from '../variables';
 
 export interface IUser {
 	_id: Types.ObjectId;
@@ -12,6 +13,7 @@ export interface IUser {
 	salt?: string;
 	verifier?: string;
 	refreshVersion?: number;
+	isMfaEnabled: boolean;
 }
 
 const userSchema = new Schema<IUser>(
@@ -54,6 +56,10 @@ const userSchema = new Schema<IUser>(
 			type: Number,
 			default: 0,
 			select: false
+		},
+		isMfaEnabled: {
+			type: Boolean,
+			default: false
 		}
 	},
 	{

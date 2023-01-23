@@ -10,7 +10,7 @@ import MembershipOrg, { IMembershipOrg } from './membershipOrg';
 import Organization, { IOrganization } from './organization';
 import Secret, { ISecret } from './secret';
 import ServiceToken, { IServiceToken } from './serviceToken';
-import Token, { IToken } from './token';
+import TokenData, { ITokenData } from './tokenData';
 import User, { IUser } from './user';
 import UserAction, { IUserAction } from './userAction';
 import Workspace, { IWorkspace } from './workspace';
@@ -42,8 +42,8 @@ export {
 	ISecret,
 	ServiceToken,
 	IServiceToken,
-	Token,
-	IToken,
+	TokenData,
+	ITokenData,
 	User,
 	IUser,
 	UserAction,
