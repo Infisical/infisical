@@ -11,7 +11,7 @@ import {
   decryptAssymmetric,
   decryptSymmetric
 } from '@app/components/utilities/cryptography/crypto';
-import getProjectSecretSnapshots from '@app/ee/api/secrets/GetProjectSercetShanpshots';
+import getProjectSecretSnapshots from '@app/ee/api/secrets/GetProjectSecretSnapshots';
 import getSecretSnapshotData from '@app/ee/api/secrets/GetSecretSnapshotData';
 import timeSince from '@app/ee/utilities/timeSince';
 import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
@@ -168,8 +168,8 @@ const PITRecoverySidebar = ({ toggleSidebar, setSnapshotData, chosenSnapshot }: 
         </div>
       ) : (
         <div className="h-min">
-          <div className="flex flex-row px-4 py-3 border-b border-mineshaft-500 justify-between items-center">
-            <p className="font-semibold text-lg text-bunker-200">{t('Point-in-time Recovery')}</p>
+          <div className="flex flex-row items-center justify-between px-4 py-3 border-b border-mineshaft-500">
+            <p className="text-lg font-semibold text-bunker-200">{t('Point-in-time Recovery')}</p>
             <div
               onKeyDown={() => null}
               role="button"
@@ -177,7 +177,7 @@ const PITRecoverySidebar = ({ toggleSidebar, setSnapshotData, chosenSnapshot }: 
               className="p-1"
               onClick={() => toggleSidebar(false)}
             >
-              <FontAwesomeIcon icon={faX} className="w-4 h-4 text-bunker-300 cursor-pointer" />
+              <FontAwesomeIcon icon={faX} className="w-4 h-4 cursor-pointer text-bunker-300" />
             </div>
           </div>
           <div className="flex flex-col px-2 py-2 overflow-y-auto h-[92vh]">

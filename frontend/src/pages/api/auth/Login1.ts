@@ -12,6 +12,8 @@ interface Login1 {
  * @returns
  */
 const login1 = async (email: string, clientPublicKey: string) => {
+  console.log(`${BACKEND_API_URL}/v1/auth/login1`);
+
   const response = await fetch(`${BACKEND_API_URL}/v1/auth/login1`, {
     method: 'POST',
     headers: {
