@@ -6,8 +6,7 @@ description: 'This guide will help you set up and run Infisical in development m
 ## Clone the repo
 
 ```bash
-# change location to the path you want Infisical to be installed
-cd ~
+# navigate location to the path you want Infisical to be installed
 
 # clone the repo and cd to Infisical dir
 git clone https://github.com/Infisical/infisical
@@ -16,57 +15,71 @@ cd infisical
 
 ## Set up environment variables
 
-Start by creating a .env file at the root of the Infisical directory. It's best to start with the provided [`.env.example`](https://github.com/Infisical/infisical/blob/main/.env.example) template containing the necessary envars to fill out your .env file — you only have to modify the SMTP parameters.
+
+Start by creating a .env file at the root of the Infisical directory then copy the contents of the file below into the .env file.
+
+<Accordion title=".env file content">
+  ```env 
+    # Keys
+    # Required key for platform encryption/decryption ops
+    ENCRYPTION_KEY=6c1fe4e407b8911c104518103505b218
+
+    # JWT
+    # Required secrets to sign JWT tokens
+    JWT_SIGNUP_SECRET=3679e04ca949f914c03332aaaeba805a
+    JWT_REFRESH_SECRET=5f2f3c8f0159068dc2bbb3a652a716ff
+    JWT_AUTH_SECRET=4be6ba5602e0fa0ac6ac05c3cd4d247f
+    JWT_SERVICE_SECRET=f32f716d70a42c5703f4656015e76200
+
+    # MongoDB
+    # Backend will connect to the MongoDB instance at connection string MONGO_URL which can either be a ref
+    # to the MongoDB container instance or Mongo Cloud
+    # Required
+    MONGO_URL=mongodb://root:example@mongo:27017/?authSource=admin
+
+    # Optional credentials for MongoDB container instance and Mongo-Express
+    MONGO_USERNAME=root
+    MONGO_PASSWORD=example
+
+    # Website URL
+    # Required
+    SITE_URL=http://localhost:8080
+
+    # Mail/SMTP
+    SMTP_HOST='smtp-server'
+    SMTP_PORT='1025'
+    SMTP_NAME='local'
+    SMTP_USERNAME='team@infisical.com'
+    SMTP_PASSWORD=
+  ```
+</Accordion>
 
 <Warning>
-    The pre-populated environment variable values in the `.env.example` file are meant to be used in development only.
-    You'll want to fill in your own values in production, especially concerning encryption keys, secrets, and SMTP parameters.
+    The pre-populated environment variable values below are meant to be used in development only. They should never be used in production.
 </Warning>
 
-Refer to the [environment variable list](https://infisical.com/docs/self-hosting/configuration/envars) for guidance on each envar.
+View all available [environment variables](https://infisical.com/docs/self-hosting/configuration/envars) and guidance for each.
 
-### Helpful tips for developing with Infisical:
+## Starting Infisical for development
 
-<Tip>
-Use the `ENCRYPTION_KEY`, JWT-secret envars, `MONGO_URL`, `MONGO_USERNAME`, `MONGO_PASSWORD` provided in the `.env.example` file.
+We use use Docker to easily spin up all required services to have Infisical up and running for development. If you are unfamiliar with Docker, don't worry, all you have to do is install [Docker](https://docs.docker.com/get-docker/) for your 
+machine and run the commands below to start up the development server. 
 
-If setting your own values: 
-
-- `ENCRYPTION_KEY` should be a [32-byte random hex](https://www.browserling.com/tools/random-hex)
-- `MONGO_URL` should take the form: `mongodb://[MONGO_USERNAME]:[MONGO_PASSWORD]@mongo:27017/?authSource=admin`.
-</Tip>
-
-<Tip>
-Bring and configure your own SMTP server by following our [email configuration guide](https://infisical.com/docs/self-hosting/configuration/email) (we recommend using either SendGrid or Mailgun).
-
-Alternatively, you can use the provided development (Mailhog) SMTP server to send and browse emails sent by the backend on http://localhost:8025; to use this option, set the following `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM_NAME`, `SMTP_USERNAME`, `SMTP_PASSWORD` below.
-</Tip>
-
-```
-SMTP_HOST=smtp-server
-SMTP_PORT=1025
-SMTP_FROM_ADDRESS=team@infisical.com
-SMTP_FROM_NAME=Infisical
-SMTP_USERNAME=team@infisical.com
-SMTP_PASSWORD=
-```
-
-<Warning>
-    If using Mailhog, make sure to leave the `SMTP_PASSWORD` blank so the backend can connect to MailHog.
-</Warning>
-
-## Docker for development
+#### Start local server 
 
 ```bash
-# build and start the services
 docker-compose -f docker-compose.dev.yml up --build --force-recreate
 ```
+#### Access local server 
 
-Then browse http://localhost:8080
+Once all the services have spun up, browse to http://localhost:8080. To sign in, you may use the default credentials listed below.
+
+Email: `test@localhost.local`
+Password: `testInfisical1`
+
+#### Shutdown local server 
 
 ```bash
 # To stop environment use Control+C (on Mac) CTRL+C (on Win) or
 docker-compose -f docker-compose.dev.yml down
-# start services
-docker-compose -f docker-compose.dev.yml up
 ```
