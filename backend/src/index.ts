@@ -8,6 +8,7 @@ import { DatabaseService } from './services';
 import { setUpHealthEndpoint } from './services/health';
 import { initSmtp } from './services/smtp';
 import { setTransporter } from './helpers/nodemailer';
+import { createTestUserForDevelopment } from './utils/addDevelopmentUser';
 
 DatabaseService.initDatabase(MONGO_URL);
 
@@ -23,3 +24,5 @@ if (NODE_ENV !== 'test') {
     environment: NODE_ENV
   });
 }
+
+createTestUserForDevelopment()
