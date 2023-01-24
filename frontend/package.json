@@ -8,12 +8,13 @@
     "start:docker": "next build && next start",
     "lint": "eslint --fix --ext js,ts,tsx ./src",
     "type-check": "tsc --project tsconfig.json",
-    "storybook": "storybook dev -p 6006",
+    "storybook": "storybook dev -p 6006 -s ./public",
     "build-storybook": "storybook build"
   },
   "dependencies": {
     "@emotion/css": "^11.10.0",
     "@emotion/server": "^11.10.0",
+    "@fontsource/inter": "^4.5.15",
     "@fortawesome/fontawesome-svg-core": "^6.1.2",
     "@fortawesome/free-brands-svg-icons": "^6.1.2",
     "@fortawesome/free-regular-svg-icons": "^6.1.1",
@@ -22,7 +23,9 @@
     "@headlessui/react": "^1.6.6",
     "@radix-ui/react-accordion": "^1.1.0",
     "@radix-ui/react-alert-dialog": "^1.0.2",
+    "@radix-ui/react-checkbox": "^1.0.1",
     "@radix-ui/react-dialog": "^1.0.2",
+    "@radix-ui/react-dropdown-menu": "^2.0.2",
     "@radix-ui/react-label": "^2.0.0",
     "@radix-ui/react-popover": "^1.0.3",
     "@radix-ui/react-progress": "^1.0.1",
@@ -37,6 +40,7 @@
     "axios-auth-refresh": "^3.3.3",
     "classnames": "^2.3.1",
     "cookies": "^0.8.0",
+    "cva": "npm:class-variance-authority@^0.4.0",
     "fs": "^0.0.1-security",
     "gray-matter": "^4.0.3",
     "http-proxy": "^1.18.1",
@@ -101,7 +105,7 @@
     "prettier": "^2.8.3",
     "storybook": "^7.0.0-beta.30",
     "storybook-dark-mode": "^2.0.5",
-    "tailwindcss": "^3.1.4",
+    "tailwindcss": "3.2",
     "typescript": "^4.9.3"
   }
 }
