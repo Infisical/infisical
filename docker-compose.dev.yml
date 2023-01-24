@@ -93,7 +93,7 @@ services:
 
   smtp-server:
     container_name: infisical-dev-smtp-server
-    image: mailhog/mailhog
+    image: lytrax/mailhog:latest # https://github.com/mailhog/MailHog/issues/353#issuecomment-821137362
     restart: always
     logging:
       driver: 'none' # disable saving logs
