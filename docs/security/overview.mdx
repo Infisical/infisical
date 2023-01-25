@@ -6,7 +6,7 @@ title: "Overview"
 
 Infisical uses end-to-end encryption (E2EE) whenever possible to securely store and share secrets. It uses secure remote password (SRP) to handle authentication and public-key cryptography for secret sharing and syncing; secrets are symmetrically encrypted at rest by keys decryptable only by members of the project.
 
-Infisical uses AES256-GCM for symmetric encryption and x2519-xsalsa20-poly1305 for asymmetric encryption operations mentioned in this brief; key generation and asymmetric algorithms are implemented with the [TweetNaCl.js](https://tweetnacl.js.org/#/) library which has been well-audited and recommended for use by cybersecurity firm Cure53. Lastly, the secure remote password (SRP) implementation uses [jsrp](https://github.com/alax/jsrp) package for user authentication. As part of our commitment to user privacy and security, we aim to conduct formal security and compliance audits in the following year.
+Infisical uses AES256-GCM for symmetric encryption and x25519-xsalsa20-poly1305 for asymmetric encryption operations mentioned in this brief; key generation and asymmetric algorithms are implemented with the [TweetNaCl.js](https://tweetnacl.js.org/#/) library which has been well-audited and recommended for use by cybersecurity firm Cure53. Lastly, the secure remote password (SRP) implementation uses [jsrp](https://github.com/alax/jsrp) package for user authentication. As part of our commitment to user privacy and security, we aim to conduct formal security and compliance audits in the following year.
 
 ## Scope
 
