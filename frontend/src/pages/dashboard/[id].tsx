@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { UIEvent, useCallback, useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
@@ -135,7 +135,14 @@ export default function Dashboard() {
     name: '',
     slug: ''
   });
+  const [atSecretAreaTop, setAtSecretsAreaTop] = useState(true);
+  const secretsTop = useRef<HTMLDivElement>(null);
 
+  const onSecretsAreaScroll = (event: UIEvent<HTMLDivElement>) => {
+    if (event.currentTarget.scrollTop !== 0) {
+      setAtSecretsAreaTop(false);
+    }
+  };
   // #TODO: fix save message for changing reroutes
   // const beforeRouteHandler = (url) => {
   // 	const warningText =
@@ -256,7 +263,6 @@ export default function Dashboard() {
   const addRow = () => {
     setIsNew(false);
     setData([
-      ...data!,
       {
         id: guidGenerator(),
         idOverride: guidGenerator(),
@@ -265,8 +271,12 @@ export default function Dashboard() {
         value: '',
         valueOverride: undefined,
         comment: ''
-      }
+      },
+      ...data!
     ]);
+    if (!atSecretAreaTop) {
+      secretsTop.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const deleteRow = ({ ids, secretName }: { ids: string[]; secretName: string }) => {
@@ -283,22 +293,22 @@ export default function Dashboard() {
   };
 
   const modifyValue = (value: string, pos: number) => {
-    setData((oldData) => oldData?.map((e, index) => (index === pos ? { ...e, value } : e)));
+    setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, value } : e)));
     setButtonReady(true);
   };
 
   const modifyValueOverride = (valueOverride: string | undefined, pos: number) => {
-    setData((oldData) => oldData?.map((e, index) => (index === pos ? { ...e, valueOverride } : e)));
+    setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, valueOverride } : e)));
     setButtonReady(true);
   };
 
   const modifyKey = (key: string, pos: number) => {
-    setData((oldData) => oldData?.map((e, index) => (index === pos ? { ...e, key } : e)));
+    setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, key } : e)));
     setButtonReady(true);
   };
 
   const modifyComment = (comment: string, pos: number) => {
-    setData((oldData) => oldData?.map((e, index) => (index === pos ? { ...e, comment } : e)));
+    setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, comment } : e)));
     setButtonReady(true);
   };
 
@@ -736,7 +746,11 @@ export default function Dashboard() {
               </div>
             ) : data?.length !== 0 ? (
               <div className="flex flex-col w-full mt-1 mb-2">
-                <div className="max-w-5xl mt-1 max-h-[calc(100vh-280px)] overflow-hidden overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
+                <div
+                  onScroll={onSecretsAreaScroll}
+                  className="max-w-5xl mt-1 max-h-[calc(100vh-280px)] overflow-hidden overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar"
+                >
+                  <div ref={secretsTop} />
                   <div className="px-1 pt-2 bg-mineshaft-800 rounded-md p-2">
                     {!snapshotData &&
                       data
