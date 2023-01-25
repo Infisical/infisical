@@ -166,7 +166,10 @@ func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []
 	if runtime.GOOS == "windows" {
 		shell = [2]string{"cmd", "/C"}
 	} else {
-		shell[0] = os.Getenv("SHELL")
+		currentShell := os.Getenv("SHELL")
+		if currentShell != "" {
+			shell[0] = currentShell
+		}
 	}
 
 	cmd := exec.Command(shell[0], shell[1], fullCommand)
