@@ -9,11 +9,11 @@ declare global {
       JWT_AUTH_SECRET: string;
       JWT_REFRESH_LIFETIME: string;
       JWT_REFRESH_SECRET: string;
-			JWT_SERVICE_SECRET: string;
-			JWT_SIGNUP_LIFETIME: string;
-			JWT_SIGNUP_SECRET: string;
+      JWT_SERVICE_SECRET: string;
+      JWT_SIGNUP_LIFETIME: string;
+      JWT_SIGNUP_SECRET: string;
       MONGO_URL: string;
-      NODE_ENV: 'development' | 'staging' | 'testing' | 'production';
+      NODE_ENV: "development" | "staging" | "testing" | "production";
       VERBOSE_ERROR_OUTPUT: string;
       LOKI_HOST: string;
       CLIENT_ID_HEROKU: string;
@@ -22,8 +22,8 @@ declare global {
       CLIENT_SECRET_HEROKU: string;
       CLIENT_SECRET_VERCEL: string;
       CLIENT_SECRET_NETLIFY: string;
-			POSTHOG_HOST: string;
-			POSTHOG_PROJECT_API_KEY: string;
+      POSTHOG_HOST: string;
+      POSTHOG_PROJECT_API_KEY: string;
       SENTRY_DSN: string;
       SITE_URL: string;
       SMTP_HOST: string;
@@ -36,6 +36,9 @@ declare global {
       STRIPE_PUBLISHABLE_KEY: string;
       STRIPE_SECRET_KEY: string;
       STRIPE_WEBHOOK_SECRET: string;
+      GOOGLE_CLIENT_ID: string;
+      GOOGLE_CLIENT_SECRET: string;
+      GOOGLE_REDIRECT_URL: string;
     }
   }
 }

@@ -1,17 +1,18 @@
 const PORT = process.env.PORT || 4000;
-const EMAIL_TOKEN_LIFETIME = process.env.EMAIL_TOKEN_LIFETIME! || '86400';
+const EMAIL_TOKEN_LIFETIME = process.env.EMAIL_TOKEN_LIFETIME! || "86400";
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
 const SALT_ROUNDS = parseInt(process.env.SALT_ROUNDS!) || 10;
-const JWT_AUTH_LIFETIME = process.env.JWT_AUTH_LIFETIME! || '10d';
+const JWT_AUTH_LIFETIME = process.env.JWT_AUTH_LIFETIME! || "10d";
 const JWT_AUTH_SECRET = process.env.JWT_AUTH_SECRET!;
-const JWT_REFRESH_LIFETIME = process.env.JWT_REFRESH_LIFETIME! || '90d';
+const JWT_REFRESH_LIFETIME = process.env.JWT_REFRESH_LIFETIME! || "90d";
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!;
 const JWT_SERVICE_SECRET = process.env.JWT_SERVICE_SECRET!;
-const JWT_SIGNUP_LIFETIME = process.env.JWT_SIGNUP_LIFETIME! || '15m';
+const JWT_SIGNUP_LIFETIME = process.env.JWT_SIGNUP_LIFETIME! || "15m";
 const JWT_SIGNUP_SECRET = process.env.JWT_SIGNUP_SECRET!;
 const MONGO_URL = process.env.MONGO_URL!;
-const NODE_ENV = process.env.NODE_ENV! || 'production';
-const VERBOSE_ERROR_OUTPUT = process.env.VERBOSE_ERROR_OUTPUT! === 'true' && true;
+const NODE_ENV = process.env.NODE_ENV! || "production";
+const VERBOSE_ERROR_OUTPUT =
+  process.env.VERBOSE_ERROR_OUTPUT! === "true" && true;
 const LOKI_HOST = process.env.LOKI_HOST || undefined;
 const CLIENT_SECRET_HEROKU = process.env.CLIENT_SECRET_HEROKU!;
 const CLIENT_ID_HEROKU = process.env.CLIENT_ID_HEROKU!;
@@ -21,28 +22,31 @@ const CLIENT_ID_GITHUB = process.env.CLIENT_ID_GITHUB!;
 const CLIENT_SECRET_VERCEL = process.env.CLIENT_SECRET_VERCEL!;
 const CLIENT_SECRET_NETLIFY = process.env.CLIENT_SECRET_NETLIFY!;
 const CLIENT_SECRET_GITHUB = process.env.CLIENT_SECRET_GITHUB!;
-const CLIENT_SLUG_VERCEL= process.env.CLIENT_SLUG_VERCEL!;
-const POSTHOG_HOST = process.env.POSTHOG_HOST! || 'https://app.posthog.com';
+const CLIENT_SLUG_VERCEL = process.env.CLIENT_SLUG_VERCEL!;
+const POSTHOG_HOST = process.env.POSTHOG_HOST! || "https://app.posthog.com";
 const POSTHOG_PROJECT_API_KEY =
   process.env.POSTHOG_PROJECT_API_KEY! ||
-  'phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE';
+  "phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE";
 const SENTRY_DSN = process.env.SENTRY_DSN!;
 const SITE_URL = process.env.SITE_URL!;
 const SMTP_HOST = process.env.SMTP_HOST!;
-const SMTP_SECURE = process.env.SMTP_SECURE! === 'true' || false;
+const SMTP_SECURE = process.env.SMTP_SECURE! === "true" || false;
 const SMTP_PORT = parseInt(process.env.SMTP_PORT!) || 587;
 const SMTP_USERNAME = process.env.SMTP_USERNAME!;
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD!;
 const SMTP_FROM_ADDRESS = process.env.SMTP_FROM_ADDRESS!;
-const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME! || 'Infisical';
+const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME! || "Infisical";
 const STRIPE_PRODUCT_CARD_AUTH = process.env.STRIPE_PRODUCT_CARD_AUTH!;
 const STRIPE_PRODUCT_PRO = process.env.STRIPE_PRODUCT_PRO!;
 const STRIPE_PRODUCT_STARTER = process.env.STRIPE_PRODUCT_STARTER!;
 const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY!;
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY!;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET!;
-const TELEMETRY_ENABLED = process.env.TELEMETRY_ENABLED! !== 'false' && true;
+const TELEMETRY_ENABLED = process.env.TELEMETRY_ENABLED! !== "false" && true;
 const LICENSE_KEY = process.env.LICENSE_KEY!;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
+const GOOGLE_REDIRECT_URL = process.env.GOOGLE_REDIRECT_URL!;
 
 export {
   PORT,
@@ -87,5 +91,8 @@ export {
   STRIPE_SECRET_KEY,
   STRIPE_WEBHOOK_SECRET,
   TELEMETRY_ENABLED,
-  LICENSE_KEY
+  LICENSE_KEY,
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  GOOGLE_REDIRECT_URL,
 };
