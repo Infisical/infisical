@@ -28,7 +28,7 @@ const issueBackupPrivateKey = ({
   verifier,
   clientProof
 }: Props) =>
-  SecurityClient.fetchCall('/api/v1/password/backup-private-key', {
+  SecurityClient.fetchCall('/v1/password/backup-private-key', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

@@ -1,5 +1,7 @@
 import token from '@app/pages/api/auth/Token';
 
+import { BACKEND_API_URL } from './config';
+
 export default class SecurityClient {
   static #token = '';
 
@@ -8,7 +10,7 @@ export default class SecurityClient {
   }
 
   static async fetchCall(resource: RequestInfo, options?: RequestInit | undefined) {
-    const req = new Request(resource, options);
+    const req = new Request(`${BACKEND_API_URL}${resource}`, options);
 
     if (this.#token === '') {
       try {

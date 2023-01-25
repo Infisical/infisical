@@ -7,7 +7,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const addUserToWorkspace = (email: string, workspaceId: string) =>
-  SecurityClient.fetchCall(`/api/v1/workspace/${workspaceId}/invite-signup`, {
+  SecurityClient.fetchCall(`/v1/workspace/${workspaceId}/invite-signup`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

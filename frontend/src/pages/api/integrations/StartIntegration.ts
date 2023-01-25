@@ -12,7 +12,7 @@ interface Props {
  * @returns
  */
 const startIntegration = ({ integrationId, appName, environment }: Props) =>
-  SecurityClient.fetchCall(`/api/v1/integration/${integrationId}`, {
+  SecurityClient.fetchCall(`/v1/integration/${integrationId}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json'

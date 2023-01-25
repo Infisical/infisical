@@ -13,7 +13,7 @@ interface Workspace {
  * @returns
  */
 const getWorkspaces = () =>
-  SecurityClient.fetchCall('/api/v1/workspace', {
+  SecurityClient.fetchCall('/v1/workspace', {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

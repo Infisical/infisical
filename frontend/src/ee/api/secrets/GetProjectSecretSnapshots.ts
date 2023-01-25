@@ -14,9 +14,9 @@ interface WorkspaceProps {
  * @param {object} obj.limit - how many snapshots will we output
  * @returns
  */
-const getProjectSecretShanpshots = async ({ workspaceId, offset, limit }: WorkspaceProps) =>
+const getProjectSecretSnapshots = async ({ workspaceId, offset, limit }: WorkspaceProps) =>
   SecurityClient.fetchCall(
-    `/api/v1/workspace/${workspaceId}/secret-snapshots?${new URLSearchParams({
+    `/v1/workspace/${workspaceId}/secret-snapshots?${new URLSearchParams({
       offset: String(offset),
       limit: String(limit)
     })}`,
@@ -34,4 +34,4 @@ const getProjectSecretShanpshots = async ({ workspaceId, offset, limit }: Worksp
     return undefined;
   });
 
-export default getProjectSecretShanpshots;
+export default getProjectSecretSnapshots;

@@ -11,7 +11,7 @@ type NewEnvironmentInfo = {
  * @returns
  */
 const createEnvironment = (workspaceId: string, newEnv: NewEnvironmentInfo) =>
-  SecurityClient.fetchCall(`/api/v2/workspace/${workspaceId}/environments`, {
+  SecurityClient.fetchCall(`/v2/workspace/${workspaceId}/environments`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

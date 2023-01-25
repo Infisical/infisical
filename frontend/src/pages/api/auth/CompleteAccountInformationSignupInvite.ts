@@ -1,3 +1,5 @@
+import { BACKEND_API_URL } from '../../../components/utilities/config';
+
 interface Props {
   email: string;
   firstName: string;
@@ -13,12 +15,12 @@ interface Props {
 
 /**
  * This function is called in the end of the signup process.
- * It sends all the necessary nformation to the server.
+ * It sends all the necessary information to the server.
  * @param {object} obj
- * @param {string} obj.email - email of the user completing signupinvite flow
- * @param {string} obj.firstName - first name of the user completing signupinvite flow
- * @param {string} obj.lastName - last name of the user completing signupinvite flow
- * @param {string} obj.publicKey - public key of the user completing signupinvite flow
+ * @param {string} obj.email - email of the user completing signup invite flow
+ * @param {string} obj.firstName - first name of the user completing signup invite flow
+ * @param {string} obj.lastName - last name of the user completing signup invite flow
+ * @param {string} obj.publicKey - public key of the user completing signup invite flow
  * @param {string} obj.ciphertext
  * @param {string} obj.iv
  * @param {string} obj.tag
@@ -38,11 +40,12 @@ const completeAccountInformationSignupInvite = ({
   salt,
   verifier,
   token
-}: Props) => fetch('/api/v1/signup/complete-account/invite', {
+}: Props) =>
+  fetch(`${BACKEND_API_URL}/v1/signup/complete-account/invite`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${  token}`
+      Authorization: `Bearer ${token}`
     },
     body: JSON.stringify({
       email,

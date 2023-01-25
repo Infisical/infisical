@@ -6,7 +6,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const getProjectInfo = ({ projectId }: { projectId: string }) =>
-  SecurityClient.fetchCall(`/api/v1/workspace/${projectId}`, {
+  SecurityClient.fetchCall(`/v1/workspace/${projectId}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

@@ -10,7 +10,7 @@ interface Props {
  * @returns
  */
 const SRP1 = ({ clientPublicKey }: Props) =>
-  SecurityClient.fetchCall('/api/v1/password/srp1', {
+  SecurityClient.fetchCall('/v1/password/srp1', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

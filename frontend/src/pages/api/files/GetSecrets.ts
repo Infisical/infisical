@@ -8,7 +8,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const getSecrets = async (workspaceId: string, env: string) =>
   SecurityClient.fetchCall(
-    `/api/v2/secrets?${new URLSearchParams({
+    `/v2/secrets?${new URLSearchParams({
       environment: env,
       workspaceId
     })}`,

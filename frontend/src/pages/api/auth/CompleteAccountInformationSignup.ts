@@ -1,3 +1,5 @@
+import { BACKEND_API_URL } from '../../../components/utilities/config';
+
 interface Props {
   email: string;
   firstName: string;
@@ -14,7 +16,7 @@ interface Props {
 
 /**
  * This function is called in the end of the signup process.
- * It sends all the necessary nformation to the server.
+ * It sends all the necessary information to the server.
  * @param {object} obj
  * @param {string} obj.email - email of the user completing signup
  * @param {string} obj.firstName - first name of the user completing signup
@@ -41,11 +43,12 @@ const completeAccountInformationSignup = ({
   salt,
   verifier,
   token
-}: Props) => fetch('/api/v1/signup/complete-account/signup', {
+}: Props) =>
+  fetch(`${BACKEND_API_URL}/v1/signup/complete-account/signup`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${  token}`
+      Authorization: `Bearer ${token}`
     },
     body: JSON.stringify({
       email,

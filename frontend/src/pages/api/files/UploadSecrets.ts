@@ -17,7 +17,7 @@ interface Props {
  * @returns
  */
 const uploadSecrets = async ({ workspaceId, secrets, keys, environment }: Props) =>
-  SecurityClient.fetchCall(`/api/v2/workspace/${workspaceId}/secrets`, {
+  SecurityClient.fetchCall(`/v2/workspace/${workspaceId}/secrets`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

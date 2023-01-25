@@ -1,9 +1,9 @@
 import SecurityClient from '@app/components/utilities/SecurityClient';
 
 interface Props {
-    workspaceId: string | null;
-    integration: string | undefined;
-    accessToken: string;
+  workspaceId: string | null;
+  integration: string | undefined;
+  accessToken: string;
 }
 /**
  * This route creates a new integration authorization for integration [integration]
@@ -16,20 +16,16 @@ interface Props {
  * @param {String} obj.accessToken - access token to save
  * @returns
  */
-const saveIntegrationAccessToken = ({ 
-    workspaceId,
-    integration,
-    accessToken
-}: Props) =>
-  SecurityClient.fetchCall(`/api/v1/integration-auth/access-token`, {
+const saveIntegrationAccessToken = ({ workspaceId, integration, accessToken }: Props) =>
+  SecurityClient.fetchCall(`/v1/integration-auth/access-token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-        workspaceId,
-        integration,
-        accessToken
+      workspaceId,
+      integration,
+      accessToken
     })
   }).then(async (res) => {
     if (res && res.status === 200) {

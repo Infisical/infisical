@@ -6,7 +6,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const deleteSecrets = async ({ secretIds }: { secretIds: string[] }) =>
-  SecurityClient.fetchCall('/api/v2/secrets', {
+  SecurityClient.fetchCall('/v2/secrets', {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json'

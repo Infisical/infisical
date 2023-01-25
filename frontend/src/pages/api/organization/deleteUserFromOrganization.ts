@@ -6,7 +6,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const deleteUserFromOrganization = (membershipId: string) =>
-  SecurityClient.fetchCall(`/api/v1/membership-org/${membershipId}`, {
+  SecurityClient.fetchCall(`/v1/membership-org/${membershipId}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json'

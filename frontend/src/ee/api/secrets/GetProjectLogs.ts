@@ -57,7 +57,7 @@ const getProjectLogs = async ({
   }
 
   return SecurityClient.fetchCall(
-    `/api/v1/workspace/${workspaceId}/logs?${new URLSearchParams(payload)}`,
+    `/v1/workspace/${workspaceId}/logs?${new URLSearchParams(payload)}`,
     {
       method: 'GET',
       headers: {

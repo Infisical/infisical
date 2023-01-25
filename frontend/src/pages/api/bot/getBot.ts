@@ -11,7 +11,7 @@ interface Props {
  * @returns
  */
 const getBot = async ({ workspaceId }: Props) =>
-  SecurityClient.fetchCall(`/api/v1/bot/${workspaceId}`, {
+  SecurityClient.fetchCall(`/v1/bot/${workspaceId}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

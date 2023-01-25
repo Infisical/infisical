@@ -7,7 +7,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const renameOrg = (orgId: string, newOrgName: string) =>
-  SecurityClient.fetchCall(`/api/v1/organization/${orgId}/name`, {
+  SecurityClient.fetchCall(`/v1/organization/${orgId}/name`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json'

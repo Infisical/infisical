@@ -494,7 +494,7 @@ export default function Dashboard() {
   };
 
   return data ? (
-    <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
+    <div className="flex flex-col justify-between max-h-screen text-white bg-bunker-800">
       <Head>
         <title>{t('common:head-title', { title: t('dashboard:title') })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -528,7 +528,7 @@ export default function Dashboard() {
             setSnapshotData={setSnapshotData}
           />
         )}
-        <div className="w-full max-h-96 pb-2">
+        <div className="w-full pb-2 max-h-96">
           <NavHeader pageName={t('dashboard:title')} isProjectRelated />
           {checkDocsPopUpVisible && (
             <BottonRightPopup
@@ -541,7 +541,7 @@ export default function Dashboard() {
               setCheckDocsPopUpVisible={setCheckDocsPopUpVisible}
             />
           )}
-          <div className="flex flex-row justify-between items-center mx-6 mt-6 mb-3 text-xl max-w-5xl">
+          <div className="flex flex-row items-center justify-between max-w-5xl mx-6 mt-6 mb-3 text-xl">
             {snapshotData && (
               <div className="flex justify-start max-w-sm mt-1 mr-2">
                 <Button
@@ -553,8 +553,8 @@ export default function Dashboard() {
                 />
               </div>
             )}
-            <div className="flex flex-row justify-start items-center text-3xl">
-              <div className="font-semibold mr-4 mt-1 flex flex-row items-center">
+            <div className="flex flex-row items-center justify-start text-3xl">
+              <div className="flex flex-row items-center mt-1 mr-4 font-semibold">
                 <p>{snapshotData ? 'Secret Snapshot' : t('dashboard:title')}</p>
                 {snapshotData && (
                   <span className="bg-primary-800 text-sm ml-4 mt-1 px-1.5 rounded-md">
@@ -637,9 +637,9 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-          <div className="mx-6 w-full pr-12">
+          <div className="w-full pr-12 mx-6">
             <div className="flex flex-col max-w-5xl pb-1">
-              <div className="w-full flex flex-row items-start">
+              <div className="flex flex-row items-start w-full">
                 {(snapshotData || data?.length !== 0) && (
                   <>
                     {!snapshotData ? (
@@ -669,20 +669,20 @@ export default function Dashboard() {
                         }
                       />
                     )}
-                    <div className="h-10 w-full bg-white/5 hover:bg-white/10 ml-2 rounded-md flex flex-row items-center">
+                    <div className="flex flex-row items-center w-full h-10 ml-2 rounded-md bg-white/5 hover:bg-white/10">
                       <FontAwesomeIcon
-                        className="bg-white/5 rounded-l-md py-3 pl-4 pr-2 text-gray-400"
+                        className="py-3 pl-4 pr-2 text-gray-400 bg-white/5 rounded-l-md"
                         icon={faMagnifyingGlass}
                       />
                       <input
-                        className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
+                        className="w-full h-full pl-2 text-gray-400 outline-none rounded-r-md bg-white/5"
                         value={searchKeys}
                         onChange={(e) => setSearchKeys(e.target.value)}
                         placeholder={String(t('dashboard:search-keys'))}
                       />
                     </div>
                     {!snapshotData && (
-                      <div className="ml-2 min-w-max flex flex-row items-start justify-start">
+                      <div className="flex flex-row items-start justify-start ml-2 min-w-max">
                         <Button
                           onButtonPressed={() => reorderRows(1)}
                           color="mineshaft"
@@ -692,11 +692,11 @@ export default function Dashboard() {
                       </div>
                     )}
                     {!snapshotData && (
-                      <div className="ml-2 min-w-max flex flex-row items-start justify-start">
+                      <div className="flex flex-row items-start justify-start ml-2 min-w-max">
                         <DownloadSecretMenu data={data} env={selectedEnv.slug} />
                       </div>
                     )}
-                    <div className="ml-2 min-w-max flex flex-row items-start justify-start">
+                    <div className="flex flex-row items-start justify-start ml-2 min-w-max">
                       <Button
                         onButtonPressed={changeBlurred}
                         color="mineshaft"
@@ -705,7 +705,7 @@ export default function Dashboard() {
                       />
                     </div>
                     {!snapshotData && (
-                      <div className="relative ml-2 min-w-max flex flex-row items-start justify-end">
+                      <div className="relative flex flex-row items-start justify-end ml-2 min-w-max">
                         <Button
                           text={String(t('dashboard:add-key'))}
                           onButtonPressed={addRow}
@@ -714,9 +714,9 @@ export default function Dashboard() {
                           size="md"
                         />
                         {isNew && (
-                          <span className="absolute right-0 flex h-3 w-3 items-center justify-center ml-4 mb-4">
-                            <span className="animate-ping absolute inline-flex rounded-full bg-primary/50 opacity-75 h-4 w-4" />
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary" />
+                          <span className="absolute right-0 flex items-center justify-center w-3 h-3 mb-4 ml-4">
+                            <span className="absolute inline-flex w-4 h-4 rounded-full opacity-75 animate-ping bg-primary/50" />
+                            <span className="relative inline-flex w-3 h-3 rounded-full bg-primary" />
                           </span>
                         )}
                       </div>
@@ -737,7 +737,7 @@ export default function Dashboard() {
             ) : data?.length !== 0 ? (
               <div className="flex flex-col w-full mt-1 mb-2">
                 <div className="max-w-5xl mt-1 max-h-[calc(100vh-280px)] overflow-hidden overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
-                  <div className="px-1 pt-2 bg-mineshaft-800 rounded-md p-2">
+                  <div className="p-2 px-1 pt-2 rounded-md bg-mineshaft-800">
                     {!snapshotData &&
                       data
                         ?.filter((row) => row.key?.toUpperCase().includes(searchKeys.toUpperCase()))
@@ -812,7 +812,7 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-xl text-gray-400 max-w-5xl mt-28">
+              <div className="flex flex-col items-center justify-center h-full max-w-5xl text-xl text-gray-400 mt-28">
                 {isKeyAvailable && !snapshotData && (
                   <DropZone
                     setData={setData}
@@ -826,7 +826,7 @@ export default function Dashboard() {
                 )}
                 {!isKeyAvailable && (
                   <>
-                    <FontAwesomeIcon className="text-7xl mt-20 mb-8" icon={faFolderOpen} />
+                    <FontAwesomeIcon className="mt-20 mb-8 text-7xl" icon={faFolderOpen} />
                     <p>To view this file, contact your administrator for permission.</p>
                     <p className="mt-1">They need to grant you access in the team tab.</p>
                   </>
@@ -838,8 +838,8 @@ export default function Dashboard() {
       </div>
     </div>
   ) : (
-    <div className="relative z-10 w-10/12 mr-auto h-full ml-2 bg-bunker-800 flex flex-col items-center justify-center">
-      <div className="absolute top-0 bg-bunker h-14 border-b border-mineshaft-700 w-full" />
+    <div className="relative z-10 flex flex-col items-center justify-center w-10/12 h-full ml-2 mr-auto bg-bunker-800">
+      <div className="absolute top-0 w-full border-b bg-bunker h-14 border-mineshaft-700" />
       <Image src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
     </div>
   );

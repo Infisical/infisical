@@ -10,7 +10,7 @@ interface Props {
  * @returns
  */
 const deleteIntegration = ({ integrationId }: Props) =>
-  SecurityClient.fetchCall(`/api/v1/integration/${integrationId}`, {
+  SecurityClient.fetchCall(`/v1/integration/${integrationId}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json'

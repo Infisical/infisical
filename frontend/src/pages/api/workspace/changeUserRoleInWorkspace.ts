@@ -7,7 +7,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const changeUserRoleInWorkspace = (membershipId: string, role: string) =>
-  SecurityClient.fetchCall(`/api/v1/membership/${membershipId}/change-role`, {
+  SecurityClient.fetchCall(`/v1/membership/${membershipId}/change-role`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

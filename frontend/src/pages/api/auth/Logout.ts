@@ -5,7 +5,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * We first try to log out - if the authorization fails (response.status = 401), we refetch the new token, and then retry
  */
 const logout = async () =>
-  SecurityClient.fetchCall('/api/v1/auth/logout', {
+  SecurityClient.fetchCall('/v1/auth/logout', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

@@ -17,7 +17,7 @@ interface Props {
 }
 
 const changeHerokuConfigVars = ({ integrationId, key, secrets }: Props) =>
-  SecurityClient.fetchCall(`/api/v1/integration/${integrationId}/sync`, {
+  SecurityClient.fetchCall(`/v1/integration/${integrationId}/sync`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

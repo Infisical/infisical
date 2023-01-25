@@ -15,7 +15,7 @@ interface Props {
  * @returns
  */
 const changePassword2 = ({ encryptedPrivateKey, iv, tag, salt, verifier, clientProof }: Props) =>
-  SecurityClient.fetchCall('/api/v1/password/change-password', {
+  SecurityClient.fetchCall('/v1/password/change-password', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

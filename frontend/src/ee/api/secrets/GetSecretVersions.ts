@@ -16,7 +16,7 @@ interface SecretVersionProps {
  */
 const getSecretVersions = async ({ secretId, offset, limit }: SecretVersionProps) =>
   SecurityClient.fetchCall(
-    `/api/v1/secret/${secretId}/secret-versions?${new URLSearchParams({
+    `/v1/secret/${secretId}/secret-versions?${new URLSearchParams({
       offset: String(offset),
       limit: String(limit)
     })}`,

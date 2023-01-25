@@ -21,7 +21,7 @@ export interface IMembershipOrg {
  * @returns
  */
 const getOrganizationUsers = ({ orgId }: { orgId: string }): Promise<IMembershipOrg[]> =>
-  SecurityClient.fetchCall(`/api/v1/organization/${orgId}/users`, {
+  SecurityClient.fetchCall(`/v1/organization/${orgId}/users`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

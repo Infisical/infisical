@@ -6,7 +6,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const deleteUserFromWorkspace = (membershipId: string) =>
-  SecurityClient.fetchCall(`/api/v1/membership/${membershipId}`, {
+  SecurityClient.fetchCall(`/v1/membership/${membershipId}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json'

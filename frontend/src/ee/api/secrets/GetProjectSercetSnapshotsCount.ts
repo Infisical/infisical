@@ -11,7 +11,7 @@ interface WorkspaceProps {
  * @returns
  */
 const getProjectSercetSnapshotsCount = async ({ workspaceId }: WorkspaceProps) =>
-  SecurityClient.fetchCall(`/api/v1/workspace/${workspaceId}/secret-snapshots/count`, {
+  SecurityClient.fetchCall(`/v1/workspace/${workspaceId}/secret-snapshots/count`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

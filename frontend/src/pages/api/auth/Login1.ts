@@ -1,3 +1,5 @@
+import { BACKEND_API_URL } from '~/components/utilities/config';
+
 interface Login1 {
   serverPublicKey: string;
   salt: string;
@@ -10,15 +12,17 @@ interface Login1 {
  * @returns
  */
 const login1 = async (email: string, clientPublicKey: string) => {
-  const response = await fetch("/api/v1/auth/login1", {
-    method: "POST",
+  console.log(`${BACKEND_API_URL}/v1/auth/login1`);
+
+  const response = await fetch(`${BACKEND_API_URL}/v1/auth/login1`, {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({
       email,
-      clientPublicKey,
-    }),
+      clientPublicKey
+    })
   });
   // need precise error handling about the status code
   if (response?.status === 200) {
@@ -26,7 +30,7 @@ const login1 = async (email: string, clientPublicKey: string) => {
     return data;
   }
 
-  throw new Error("Wrong password");
+  throw new Error('Wrong password');
 };
 
 export default login1;

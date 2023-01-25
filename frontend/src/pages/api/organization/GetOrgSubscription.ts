@@ -7,7 +7,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const getOrganizationSubscriptions = (req: { orgId: string }) =>
-  SecurityClient.fetchCall(`/api/v1/organization/${req.orgId}/subscriptions`, {
+  SecurityClient.fetchCall(`/v1/organization/${req.orgId}/subscriptions`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

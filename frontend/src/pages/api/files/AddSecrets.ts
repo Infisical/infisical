@@ -33,7 +33,7 @@ const addSecrets = async ({
   env: string;
   workspaceId: string;
 }) =>
-  SecurityClient.fetchCall('/api/v2/secrets', {
+  SecurityClient.fetchCall('/v2/secrets', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

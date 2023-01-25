@@ -12,7 +12,7 @@ type EnvironmentInfo = {
  * @returns
  */
 const updateEnvironment = (workspaceId: string, env: EnvironmentInfo) =>
-  SecurityClient.fetchCall(`/api/v2/workspace/${workspaceId}/environments`, {
+  SecurityClient.fetchCall(`/v2/workspace/${workspaceId}/environments`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json'

@@ -1,4 +1,7 @@
-const publicKeyInfisical = () => fetch('/api/v1/key/publicKey/infisical', {
+import { BACKEND_API_URL } from '../../../components/utilities/config';
+
+const publicKeyInfisical = () =>
+  fetch(`${BACKEND_API_URL}/v1/key/publicKey/infisical`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

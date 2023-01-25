@@ -6,7 +6,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const getServiceTokens = ({ workspaceId }: { workspaceId: string }) =>
-  SecurityClient.fetchCall(`/api/v2/workspace/${workspaceId}/service-token-data`, {
+  SecurityClient.fetchCall(`/v2/workspace/${workspaceId}/service-token-data`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

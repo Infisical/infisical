@@ -1,3 +1,5 @@
+import { BACKEND_API_URL } from '../../../components/utilities/config';
+
 interface Props {
   verificationToken: string;
   encryptedPrivateKey: string;
@@ -8,7 +10,7 @@ interface Props {
 }
 
 /**
- * This is the route that resets the account password if all the previus steps were passed
+ * This is the route that resets the account password if all the previous steps were passed
  * @param {object} obj
  * @param {object} obj.verificationToken - this is the token that confirms that a user is the right one
  * @param {object} obj.encryptedPrivateKey - the new encrypted private key (encrypted using the new password)
@@ -25,11 +27,12 @@ const resetPasswordOnAccountRecovery = ({
   tag,
   salt,
   verifier
-}: Props) => fetch('/api/v1/password/password-reset', {
+}: Props) =>
+  fetch(`${BACKEND_API_URL}/v1/password/password-reset`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${  verificationToken}`
+      Authorization: `Bearer ${verificationToken}`
     },
     body: JSON.stringify({
       encryptedPrivateKey,

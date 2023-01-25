@@ -6,7 +6,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const getWorkspaceUsers = ({ workspaceId }: { workspaceId: string }) =>
-  SecurityClient.fetchCall(`/api/v1/workspace/${workspaceId}/users`, {
+  SecurityClient.fetchCall(`/v1/workspace/${workspaceId}/users`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json'

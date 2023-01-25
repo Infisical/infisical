@@ -7,7 +7,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const addUserToOrg = (email: string, orgId: string) =>
-  SecurityClient.fetchCall('/api/v1/invite-org/signup', {
+  SecurityClient.fetchCall('/v1/invite-org/signup', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
