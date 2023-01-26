@@ -12,14 +12,14 @@ import {
   JWT_AUTH_SECRET,
   JWT_REFRESH_SECRET
 } from '../../config';
+import LoginSRPDetail from '../../models/LoginSRPDetail';
+import { BadRequestError } from '../../utils/errors';
 
 declare module 'jsonwebtoken' {
   export interface UserIDJwtPayload extends jwt.JwtPayload {
     userId: string;
   }
 }
-
-const clientPublicKeys: any = {};
 
 /**
  * Log in user step 1: Return [salt] and [serverPublicKey] as part of step 1 of SRP protocol
@@ -46,13 +46,15 @@ export const login1 = async (req: Request, res: Response) => {
         salt: user.salt,
         verifier: user.verifier
       },
-      () => {
+      async () => {
         // generate server-side public key
         const serverPublicKey = server.getPublicKey();
-        clientPublicKeys[email] = {
-          clientPublicKey,
-          serverBInt: bigintConversion.bigintToBuf(server.bInt)
-        };
+
+        await LoginSRPDetail.findOneAndReplace({ email: email }, {
+          email: email,
+          clientPublicKey: clientPublicKey,
+          serverBInt: bigintConversion.bigintToBuf(server.bInt),
+        }, { upsert: true, returnNewDocument: false })
 
         return res.status(200).send({
           serverPublicKey,
@@ -85,15 +87,21 @@ export const login2 = async (req: Request, res: Response) => {
 
     if (!user) throw new Error('Failed to find user');
 
+    const loginSRPDetailFromDB = await LoginSRPDetail.findOneAndDelete({ email: email })
+
+    if (!loginSRPDetailFromDB) {
+      return BadRequestError(Error("It looks like some details from the first login are not found. Please try login one again"))
+    }
+
     const server = new jsrp.server();
     server.init(
       {
         salt: user.salt,
         verifier: user.verifier,
-        b: clientPublicKeys[email].serverBInt
+        b: loginSRPDetailFromDB.serverBInt
       },
       async () => {
-        server.setClientPublicKey(clientPublicKeys[email].clientPublicKey);
+        server.setClientPublicKey(loginSRPDetailFromDB.clientPublicKey);
 
         // compare server and client shared keys
         if (server.checkClientProof(clientProof)) {
