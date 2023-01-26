@@ -2,10 +2,7 @@ import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import {
 	SITE_URL,
-	STRIPE_SECRET_KEY,
-	STRIPE_PRODUCT_STARTER,
-	STRIPE_PRODUCT_PRO,
-	STRIPE_PRODUCT_CARD_AUTH
+	STRIPE_SECRET_KEY
 } from '../../config';
 import Stripe from 'stripe';
 
@@ -22,12 +19,6 @@ import {
 import { createOrganization as create } from '../../helpers/organization';
 import { addMembershipsOrg } from '../../helpers/membershipOrg';
 import { OWNER, ACCEPTED } from '../../variables';
-
-const productToPriceMap = {
-	starter: STRIPE_PRODUCT_STARTER,
-	pro: STRIPE_PRODUCT_PRO,
-	cardAuth: STRIPE_PRODUCT_CARD_AUTH
-};
 
 export const getOrganizations = async (req: Request, res: Response) => {
 	let organizations;
@@ -340,7 +331,6 @@ export const createOrganizationPortalSession = async (
 
 		if (paymentMethods.data.length < 1) {
 			// case: no payment method on file
-			productToPriceMap['cardAuth'];
 			session = await stripe.checkout.sessions.create({
 				customer: req.membershipOrg.organization.customerId,
 				mode: 'setup',

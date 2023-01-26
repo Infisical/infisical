@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import {
 	STRIPE_SECRET_KEY,
 	STRIPE_PRODUCT_STARTER,
+	STRIPE_PRODUCT_TEAM,
 	STRIPE_PRODUCT_PRO
 } from '../config';
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
@@ -14,6 +15,7 @@ import { Organization, MembershipOrg } from '../models';
 
 const productToPriceMap = {
 	starter: STRIPE_PRODUCT_STARTER,
+	team: STRIPE_PRODUCT_TEAM,
 	pro: STRIPE_PRODUCT_PRO
 };
 

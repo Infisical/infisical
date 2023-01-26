@@ -3,8 +3,10 @@ export {};
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
+      PORT: string;
       EMAIL_TOKEN_LIFETIME: string;
       ENCRYPTION_KEY: string;
+      SALT_ROUNDS: string;
       JWT_AUTH_LIFETIME: string;
       JWT_AUTH_SECRET: string;
       JWT_REFRESH_LIFETIME: string;
@@ -19,23 +21,31 @@ declare global {
       CLIENT_ID_HEROKU: string;
       CLIENT_ID_VERCEL: string;
       CLIENT_ID_NETLIFY: string;
+      CLIENT_ID_GITHUB: string;
       CLIENT_SECRET_HEROKU: string;
       CLIENT_SECRET_VERCEL: string;
       CLIENT_SECRET_NETLIFY: string;
+      CLIENT_SECRET_GITHUB: string;
+      CLIENT_SLUG_VERCEL: string;
 			POSTHOG_HOST: string;
 			POSTHOG_PROJECT_API_KEY: string;
       SENTRY_DSN: string;
       SITE_URL: string;
       SMTP_HOST: string;
-      SMTP_NAME: string;
-      SMTP_PASSWORD: string;
+      SMTP_SECURE: string;
+      SMTP_PORT: string;
       SMTP_USERNAME: string;
-      STRIPE_PRODUCT_CARD_AUTH: string;
-      STRIPE_PRODUCT_PRO: string;
+      SMTP_PASSWORD: string;
+      SMTP_FROM_ADDRESS: string;
+      SMTP_FROM_NAME: string;
       STRIPE_PRODUCT_STARTER: string;
+      STRIPE_PRODUCT_TEAM: string;
+      STRIPE_PRODUCT_PRO: string;
       STRIPE_PUBLISHABLE_KEY: string;
       STRIPE_SECRET_KEY: string;
       STRIPE_WEBHOOK_SECRET: string;
+      TELEMETRY_ENABLED: string;
+      LICENSE_KEY: string;
     }
   }
 }
