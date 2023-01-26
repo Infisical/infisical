@@ -57,7 +57,7 @@ const createOrganization = async ({
 	} catch (err) {
 		Sentry.setUser({ email });
 		Sentry.captureException(err);
-		throw new Error('Failed to create organization');
+		throw new Error(`Failed to create organization [err=${err}]`);
 	}
 
 	return organization;
