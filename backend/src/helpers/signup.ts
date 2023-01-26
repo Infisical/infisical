@@ -66,7 +66,7 @@ const checkEmailVerification = async ({
 			email,
 			token: code
 		});
-	
+
 		if (!token) throw new Error('Failed to find email verification token');
 	} catch (err) {
 		Sentry.setUser(null);
@@ -116,7 +116,7 @@ const initializeDefaultOrg = async ({
 			roles: [ADMIN]
 		});
 	} catch (err) {
-		throw new Error('Failed to initialize default organization and workspace');
+		throw new Error(`Failed to initialize default organization and workspace [err=${err}]`);
 	}
 };
 
