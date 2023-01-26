@@ -8,7 +8,7 @@ nameOverride: ""
 frontend:
   name: frontend
   podAnnotations: {}
-  replicaCount: 1
+  replicaCount: 2
   image:
     repository: infisical/frontend
     pullPolicy: IfNotPresent
@@ -24,7 +24,7 @@ frontend:
 backend:
   name: backend
   podAnnotations: {}
-  replicaCount: 1
+  replicaCount: 2
   image:
     repository: infisical/backend
     pullPolicy: IfNotPresent
@@ -44,11 +44,10 @@ mongodb:
     annotations: {}
 
 # By default the backend will be connected to a Mongo instance in the cluster.
-# However, it is recommended to add a Mongo Cloud connection string as the DB instance in the cluster does not have persistence yet.
+# However, it is recommended to add a managed document DB connection string because the DB instance in the cluster does not have persistence yet ( data will be deleted on next deploy).
 # Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/
 mongodbConnection: {}
-# standardConnectionStringFormat: <>
-# dnsSeedListConnectionFormat: <>
+  # externalMongoDBConnectionString: <>
 
 ingress:
   enabled: true
