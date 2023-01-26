@@ -4,6 +4,10 @@ metadata:
   name: {{ include "infisical.frontend.fullname" . }}
   labels:
     {{- include "infisical.frontend.labels" . | nindent 4 }}
+    {{- with .Values.frontend.deploymentAnnotations }}
+    annotations:
+      {{- toYaml . | nindent 8 }}
+    {{- end }}
 spec:
   replicas: {{ .Values.frontend.replicaCount }}
   selector:

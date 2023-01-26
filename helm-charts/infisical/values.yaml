@@ -8,12 +8,13 @@ nameOverride: ""
 frontend:
   name: frontend
   podAnnotations: {}
+  deploymentAnnotations: {}
   replicaCount: 2
   image:
     repository: infisical/frontend
     pullPolicy: IfNotPresent
     tag: "latest"
-    # kubeSecretRef: some-kube-secret-name
+  # kubeSecretRef: some-kube-secret-name
   service:
     # type of the frontend service
     type: ClusterIP
@@ -24,12 +25,13 @@ frontend:
 backend:
   name: backend
   podAnnotations: {}
+  deploymentAnnotations: {}
   replicaCount: 2
   image:
     repository: infisical/backend
     pullPolicy: IfNotPresent
     tag: "latest"
-    # kubeSecretRef: some-kube-secret-name
+  # kubeSecretRef: some-kube-secret-name
   service:
     annotations: {}
 
