@@ -2,12 +2,12 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "infisical.backend.fullname" . }}
+  {{- with .Values.backend.deploymentAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 8 }}
+  {{- end }}
   labels:
     {{- include "infisical.backend.labels" . | nindent 4 }}
-    {{- with .Values.backend.deploymentAnnotations }}
-    annotations:
-      {{- toYaml . | nindent 8 }}
-    {{- end }}
 spec:
   replicas: {{ .Values.backend.replicaCount }}
   selector:
