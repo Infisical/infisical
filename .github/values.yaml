@@ -14,7 +14,7 @@ frontend:
     repository: infisical/frontend
     pullPolicy: IfNotPresent
     tag: "latest"
-    # kubeSecretRef: some-kube-secret-name
+    kubeSecretRef: managed-secret-frontend
   service:
     # type of the frontend service
     type: ClusterIP
@@ -31,7 +31,7 @@ backend:
     repository: infisical/backend
     pullPolicy: IfNotPresent
     tag: "latest"
-    # kubeSecretRef: some-kube-secret-name
+    kubeSecretRef: managed-backend-secret
   service:
     annotations: {}
 
