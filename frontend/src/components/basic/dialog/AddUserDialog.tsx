@@ -1,8 +1,8 @@
 import { Fragment } from 'react';
 import { useRouter } from 'next/router';
 import { Dialog, Transition } from '@headlessui/react';
+import { plans } from 'public/data/frequentConstants';
 
-import { STRIPE_PRODUCT_STARTER } from '../../utilities/config';
 import Button from '../buttons/Button';
 import InputField from '../InputField';
 
@@ -81,7 +81,7 @@ const AddUserDialog = ({
                       isRequired
                     />
                   </div>
-                  {currentPlan === STRIPE_PRODUCT_STARTER && (
+                  {currentPlan === plans.starter && (
                     <div className='flex flex-row'>
                       <button
                         type='button'
@@ -90,11 +90,11 @@ const AddUserDialog = ({
                           router.push(`/settings/billing/${  router.query.id}`)
                         }
                       >
-                        You can add up to 5 members on a Free tier.
+                        You can add up to 5 members on the Starter plan.
                       </button>
                       <button
                         type='button'
-                        className='ml-1 inline-flex justify-center rounded-md py-1 text-sm text-gray-500 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2'
+                        className='ml-1 inline-flex justify-center rounded-md py-1 underline underline-offset-2 text-sm text-gray-500 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2'
                         onClick={() =>
                           router.push(`/settings/billing/${  router.query.id}`)
                         }

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useTranslation } from 'next-i18next';
+import { plans as plansConstant } from 'public/data/frequentConstants';
 
 import Plan from '@app/components/billing/Plan';
 import NavHeader from '@app/components/navigation/NavHeader';
-import { STRIPE_PRODUCT_PRO, STRIPE_PRODUCT_STARTER } from '@app/components/utilities/config';
 import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 
 import getOrganizationSubscriptions from '../../api/organization/GetOrgSubscription';
@@ -26,24 +26,34 @@ export default function SettingsBilling() {
       subtext: t('billing:starter.subtext')!,
       buttonTextMain: t('billing:downgrade')!,
       buttonTextSecondary: t('billing:learn-more')!,
-      current: currentPlan === STRIPE_PRODUCT_STARTER
+      current: currentPlan === plansConstant.starter
     },
     {
       key: 2,
-      name: t('billing:professional.name')!,
-      price: '$9',
+      name: 'Team',
+      price: '$7',
       priceExplanation: t('billing:professional.price-explanation')!,
-      subtext: t('billing:professional.subtext')!,
-      text: t('billing:professional.text')!,
+      text: 'For teams that want to improve their efficiency and security.',
       buttonTextMain: t('billing:upgrade')!,
       buttonTextSecondary: t('billing:learn-more')!,
-      current: currentPlan === STRIPE_PRODUCT_PRO
+      current: currentPlan === plansConstant.team
     },
     {
       key: 3,
+      name: t('billing:professional.name')!,
+      price: '$14',
+      priceExplanation: t('billing:professional.price-explanation')!,
+      text: t('billing:enterprise.text')!,
+      subtext: t('billing:professional.subtext')!,
+      buttonTextMain: t('billing:upgrade')!,
+      buttonTextSecondary: t('billing:learn-more')!,
+      current: currentPlan === plansConstant.professional
+    },
+    {
+      key: 4,
       name: t('billing:enterprise.name')!,
       price: t('billing:custom-pricing')!,
-      text: t('billing:enterprise.text')!,
+      text: 'Boost the security and efficiency of your engineering teams.',
       buttonTextMain: t('billing:schedule-demo')!,
       buttonTextSecondary: t('billing:learn-more')!,
       current: false
@@ -57,7 +67,7 @@ export default function SettingsBilling() {
         orgId
       });
 
-      setCurrentPlan(subscriptions.data[0].plan.id);
+      setCurrentPlan(subscriptions.data[0].plan.product);
       const orgUsers = await getOrganizationUsers({
         orgId
       });
@@ -80,9 +90,10 @@ export default function SettingsBilling() {
               <p className="font-normal mr-4 text-gray-400 text-base">{t('billing:description')}</p>
             </div>
           </div>
-          <div className="flex flex-col ml-6 text-mineshaft-50">
+          <div className="flex flex-col ml-6 text-mineshaft-50 w-max">
             <p className="text-xl font-semibold">{t('billing:subscription')}</p>
-            <div className="flex flex-row mt-4 overflow-x-auto">
+            <div className="mt-4 text-bunker-200 h-14 flex justify-center items-center rounded-md bg-bunker-600 mr-4"> If you are looking to get an annual plan, please reach out to <a className="ml-1.5 underline text-primary underline-offset-2" href="mailto:team@infisical.com">team@infisical.com</a></div>
+            <div className="grid grid-cols-2 grid-rows-2 gap-y-6 gap-x-3 mt-4 overflow-x-auto">
               {plans.map((plan) => (
                 <Plan key={plan.name} plan={plan} />
               ))}
