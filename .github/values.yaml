@@ -7,14 +7,15 @@ nameOverride: ""
 
 frontend:
   name: frontend
-  podAnnotations:
+  podAnnotations: {}
+  deploymentAnnotations:
     secrets.infisical.com/auto-reload: "true"
   replicaCount: 2
   image:
     repository: infisical/frontend
     pullPolicy: IfNotPresent
     tag: "latest"
-    kubeSecretRef: managed-secret-frontend
+  kubeSecretRef: managed-secret-frontend
   service:
     # type of the frontend service
     type: ClusterIP
@@ -24,14 +25,15 @@ frontend:
 
 backend:
   name: backend
-  podAnnotations:
+  podAnnotations: {}
+  deploymentAnnotations:
     secrets.infisical.com/auto-reload: "true"
   replicaCount: 2
   image:
     repository: infisical/backend
     pullPolicy: IfNotPresent
     tag: "latest"
-    kubeSecretRef: managed-backend-secret
+  kubeSecretRef: managed-backend-secret
   service:
     annotations: {}
 
