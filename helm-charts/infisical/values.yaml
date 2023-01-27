@@ -83,24 +83,6 @@ ingress:
 #       hosts:
 #         - k8.infisical.com
 
-###
-### YOU MUST FILL IN ALL SECRETS BELOW
-### 
-backendEnvironmentVariables:
-  # Required keys for platform encryption/decryption ops. Replace with nacl sk keys
-  ENCRYPTION_KEY: MUST_REPLACE
-
-  # JWT
-  # Required secrets to sign JWT tokens
-  JWT_SIGNUP_SECRET: MUST_REPLACE
-  JWT_REFRESH_SECRET: MUST_REPLACE
-  JWT_AUTH_SECRET: MUST_REPLACE
-
-  # Mail/SMTP
-  # Required to send emails
-  SMTP_HOST: MUST_REPLACE
-  SMTP_NAME: MUST_REPLACE
-  SMTP_USERNAME: MUST_REPLACE
-  SMTP_PASSWORD: MUST_REPLACE
-
 frontendEnvironmentVariables: {}
+
+backendEnvironmentVariables: {}

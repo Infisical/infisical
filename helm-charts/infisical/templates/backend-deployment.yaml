@@ -33,6 +33,7 @@ spec:
         - secretRef:
             name: {{ .Values.backend.kubeSecretRef }}
         {{- end }}
+        {{- if .Values.backendEnvironmentVariables }}
         env:
         - name: MONGO_URL
           value: {{ include "infisical.mongodb.connectionString" . | quote }}
@@ -42,6 +43,7 @@ spec:
         {{ end }}
         - name: {{ $key }}
           value: {{ quote $value }}
+        {{- end }}
         {{- end }}
 
 ---
