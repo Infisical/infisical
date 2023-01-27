@@ -26,6 +26,12 @@ spec:
       - name: {{ template "infisical.name" . }}-{{ .Values.backend.name }}
         image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+        readinessProbe:
+          httpGet:
+            path: /api/status
+            port: 4000
+          initialDelaySeconds: 10
+          periodSeconds: 10
         ports: 
         - containerPort: 4000
         {{- if .Values.backend.kubeSecretRef }}
