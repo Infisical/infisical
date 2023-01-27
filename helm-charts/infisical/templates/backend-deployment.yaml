@@ -33,10 +33,10 @@ spec:
         - secretRef:
             name: {{ .Values.backend.kubeSecretRef }}
         {{- end }}
-        {{- if .Values.backendEnvironmentVariables }}
         env:
         - name: MONGO_URL
           value: {{ include "infisical.mongodb.connectionString" . | quote }}
+        {{- if .Values.backendEnvironmentVariables }}
         {{- range $key, $value := .Values.backendEnvironmentVariables }}
         {{- if $value | quote | eq "MUST_REPLACE" }}
           {{ fail "Environment variables are not set. Please set all environment variables to continue." }}
