@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import { ISecret, Secret } from '../models';
 import { EESecretService } from '../ee/services';
 import { getLogger } from '../utils/logger';
 
@@ -16,6 +15,10 @@ const initDatabaseHelper = async ({
 }) => {
     try {
         await mongoose.connect(mongoURL);
+    
+        // allow empty strings to pass the required validator
+        mongoose.Schema.Types.String.checkRequired(v => typeof v === 'string');
+
         getLogger("database").info("Database connection established");
         
         await EESecretService.initSecretVersioning();

@@ -105,19 +105,21 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretValueCiphertext: string;
             secretValueIV: string;
             secretValueTag: string;
-        }) => ({
-            version: 1,
-            workspace: new Types.ObjectId(workspaceId),
-            type,
-            user: type === SECRET_PERSONAL ? req.user : undefined,
-            environment,
-            secretKeyCiphertext,
-            secretKeyIV,
-            secretKeyTag,
-            secretValueCiphertext,
-            secretValueIV,
-            secretValueTag
-        }))
+        }) => {
+            return ({
+                version: 1,
+                workspace: new Types.ObjectId(workspaceId),
+                type,
+                user: type === SECRET_PERSONAL ? req.user : undefined,
+                environment,
+                secretKeyCiphertext,
+                secretKeyIV,
+                secretKeyTag,
+                secretValueCiphertext,
+                secretValueIV,
+                secretValueTag
+            });
+        })
     );
 
     setTimeout(async () => {
