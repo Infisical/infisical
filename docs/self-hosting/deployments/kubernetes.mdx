@@ -35,6 +35,7 @@ nameOverride: ""
 frontend:
   name: frontend
   podAnnotations: {}
+  deploymentAnnotations: {}
   replicaCount: 2
   image:
     repository: infisical/frontend
@@ -51,6 +52,7 @@ frontend:
 backend:
   name: backend
   podAnnotations: {}
+  deploymentAnnotations: {}
   replicaCount: 2
   image:
     repository: infisical/backend
