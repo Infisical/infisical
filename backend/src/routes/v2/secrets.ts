@@ -32,7 +32,7 @@ router.post(
                         !secret.secretKeyCiphertext ||
                         !secret.secretKeyIV ||
                         !secret.secretKeyTag ||
-                        !secret.secretValueCiphertext ||
+                        (typeof secret.secretValueCiphertext !== 'string') ||
                         !secret.secretValueIV ||
                         !secret.secretValueTag
                     ) {
