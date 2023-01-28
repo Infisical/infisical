@@ -1,16 +1,18 @@
 {{ if .Values.ingress.enabled }}
+{{- $ingress := .Values.ingress }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: infisical-ingress
-  {{- with .Values.ingress.annotations }}
+  {{- with $ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-{{- if .Values.ingress.tls }}
+  ingressClassName: {{ $ingress.ingressClassName | default "nginx"}}
+{{- if $ingress.tls }}
   tls:
-  {{- range .Values.ingress.tls }}
+  {{- range $ingress.tls }}
     - hosts:
       {{- range .hosts }}
         - {{ . | quote }}
@@ -19,18 +21,18 @@ spec:
   {{- end }}
 {{- end }}
   rules:
-  - host: {{ .Values.ingress.hostName}}
+  - host: {{ $ingress.hostName}}
     http: 
       paths:
-      - path: {{ .Values.ingress.frontend.path }}
-        pathType: {{ .Values.ingress.frontend.pathType }}
+      - path: {{ $ingress.frontend.path }}
+        pathType: {{ $ingress.frontend.pathType }}
         backend:
           service:
             name: {{ include "infisical.frontend.fullname" . }}
             port:
               number: 3000
-      - path: {{ .Values.ingress.backend.path }}
-        pathType: {{ .Values.ingress.backend.pathType }}
+      - path: {{ $ingress.backend.path }}
+        pathType: {{ $ingress.backend.pathType }}
         backend:
           service:
             name: {{ include "infisical.backend.fullname" . }}
