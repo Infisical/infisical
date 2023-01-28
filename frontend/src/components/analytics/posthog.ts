@@ -5,6 +5,9 @@ import posthog from 'posthog-js';
 import { ENV, POSTHOG_API_KEY, POSTHOG_HOST } from '../utilities/config';
 
 export const initPostHog = () => {
+  /* eslint-disable no-console */
+  console.log("Hello World")
+  /* eslint-enable no-console */
   try {
     if (typeof window !== 'undefined') {
       // @ts-ignore
