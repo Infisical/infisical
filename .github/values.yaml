@@ -13,7 +13,7 @@ frontend:
   replicaCount: 2
   image:
     repository: infisical/frontend
-    pullPolicy: IfNotPresent
+    pullPolicy: Always 
     tag: "latest"
   kubeSecretRef: managed-secret-frontend
   service:
@@ -31,7 +31,7 @@ backend:
   replicaCount: 2
   image:
     repository: infisical/backend
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
     tag: "latest"
   kubeSecretRef: managed-backend-secret
   service:
