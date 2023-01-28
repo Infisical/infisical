@@ -103,6 +103,7 @@
     "eslint-plugin-storybook": "^0.6.10",
     "postcss": "^8.4.14",
     "prettier": "^2.8.3",
+    "prettier-plugin-tailwindcss": "^0.2.2",
     "storybook": "^7.0.0-beta.30",
     "storybook-dark-mode": "^2.0.5",
     "tailwindcss": "3.2",
