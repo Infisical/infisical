@@ -118,8 +118,8 @@ Create the mongodb connection string.
 {{- define "infisical.mongodb.connectionString" -}}
 {{- $host := include "infisical.mongodb.fullname" . -}}
 {{- $port := 27017 -}}
-{{- $user := "root" -}}
-{{- $pass := "root" -}}
+{{- $user := .Values.mongodb.creds.user -}}
+{{- $pass := .Values.mongodb.creds.pass -}}
 {{- $connectionString := printf "mongodb://%s:%s@%s:%d/" $user $pass $host $port -}}
 {{- if .Values.mongodbConnection.externalMongoDBConnectionString -}}
 {{- $connectionString = .Values.mongodbConnection.externalMongoDBConnectionString -}}

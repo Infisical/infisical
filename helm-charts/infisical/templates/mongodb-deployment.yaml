@@ -1,3 +1,4 @@
+{{- $mongodb := .Values.mongodb }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -13,30 +14,66 @@ spec:
     metadata: 
       labels:
         {{- include "infisical.mongodb.matchLabels" . | nindent 8 }}
-      {{- with .Values.mongodb.podAnnotations }}
+      {{- with $mongodb.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
       containers:
-      - name: {{ template "infisical.name" . }}-{{ .Values.mongodb.name }}  
-        image: "{{ .Values.mongodb.image.repository }}:{{ .Values.mongodb.image.tag | default .Chart.AppVersion }}"
-        imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
+      - name: {{ template "infisical.name" . }}-{{ $mongodb.name }}
+        image: "{{ $mongodb.image.repository }}:{{ $mongodb.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ $mongodb.image.pullPolicy }}
+        {{- if $mongodb.persistence.enabled }}
+        args: ["--dbpath","/data/db"]
+        {{- end }}
+        livenessProbe:
+          exec:
+            command:
+              - sh
+              - -c
+              - mongosh --eval "db.adminCommand('ping')"
+          initialDelaySeconds: 45
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+        readinessProbe:
+          exec:
+            command:
+              - sh
+              - -c
+              - mongosh --eval 'db.isMaster().ismaster || db.isMaster().secondary' | grep -q 'true'
+          initialDelaySeconds: 45
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
         ports: 
         - containerPort: 27017
-        env:
-        - name: MONGO_INITDB_ROOT_USERNAME
-          value: root
-        - name: MONGO_INITDB_ROOT_PASSWORD
-          value: root
+        envFrom:
+        - secretRef:
+              name: {{ template "infisical.name" . }}-{{ $mongodb.name }}-creds
+        {{- if $mongodb.persistence.enabled }}
+        volumeMounts:
+        - name: "mongo-data-dir"
+          mountPath: "/data/db"
+        {{- end }}
+      {{- if $mongodb.persistence.enabled }}
+      volumes:
+      - name: "mongo-data-dir"
+        persistentVolumeClaim:
+          claimName: "{{ template "infisical.name" . }}-{{ $mongodb.name }}-data"
+      {{- end }}
+
 ---
+
 apiVersion: v1
 kind: Service 
 metadata:
   name: {{ include "infisical.mongodb.fullname" . }}
   labels:
     {{- include "infisical.mongodb.labels" . | nindent 4 }}
-  {{- with .Values.mongodb.service.annotations }}
+  {{- with $mongodb.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -47,3 +84,28 @@ spec:
     - protocol: TCP
       port: 27017
       targetPort: 27017 # container port 
+
+---
+{{- if $mongodb.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ template "infisical.name" . }}-{{ $mongodb.name }}-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ $mongodb.persistence.storage | default "1Gi" }}
+
+---
+{{- end }}
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ template "infisical.name" . }}-{{ $mongodb.name }}-creds
+type: Opaque
+data:
+  MONGO_INITDB_ROOT_USERNAME: {{ $mongodb.creds.user | default "root" | b64enc }}
+  MONGO_INITDB_ROOT_PASSWORD: {{ $mongodb.creds.pass | default "root" | b64enc }}
