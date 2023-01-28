@@ -39,8 +39,8 @@ frontend:
   replicaCount: 2
   image:
     repository: infisical/frontend
-    pullPolicy: IfNotPresent
-    tag: "latest"
+    pullPolicy: Always
+    tag: "latest" # It it highly recommended to select a specific tag for prod deployment so it is easy to rollback: https://hub.docker.com/r/infisical/frontend/tags
     # kubeSecretRef: some-kube-secret-name
   service:
     # type of the frontend service
@@ -56,8 +56,8 @@ backend:
   replicaCount: 2
   image:
     repository: infisical/backend
-    pullPolicy: IfNotPresent
-    tag: "latest"
+    pullPolicy: Always
+    tag: "latest" # It it highly recommended to select a specific tag for prod deployment so it is easy to rollback: https://hub.docker.com/r/infisical/backend/tags
     # kubeSecretRef: some-kube-secret-name
   service:
     annotations: {}
@@ -68,7 +68,7 @@ mongodb:
   image:
     repository: mongo
     pullPolicy: IfNotPresent
-    tag: "latest"
+    tag: "latest" 
   service:
     annotations: {}
 
