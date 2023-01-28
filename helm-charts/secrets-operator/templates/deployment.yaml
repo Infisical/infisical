@@ -1,3 +1,4 @@
+{{- $ctrlManager := .Values.controllerManager }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -19,7 +20,7 @@ metadata:
     control-plane: controller-manager
   {{- include "secrets-operator.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.controllerManager.replicas }}
+  replicas: {{ $ctrlManager.replicas }}
   selector:
     matchLabels:
       control-plane: controller-manager
@@ -57,14 +58,14 @@ spec:
         env:
         - name: KUBERNETES_CLUSTER_DOMAIN
           value: {{ .Values.kubernetesClusterDomain }}
-        image: {{ .Values.controllerManager.kubeRbacProxy.image.repository }}:{{ .Values.controllerManager.kubeRbacProxy.image.tag
+        image: {{ $ctrlManager.kubeRbacProxy.image.repository }}:{{ $ctrlManager.kubeRbacProxy.image.tag
           | default .Chart.AppVersion }}
         name: kube-rbac-proxy
         ports:
         - containerPort: 8443
           name: https
           protocol: TCP
-        resources: {{- toYaml .Values.controllerManager.kubeRbacProxy.resources | nindent
+        resources: {{- toYaml $ctrlManager.kubeRbacProxy.resources | nindent
           10 }}
         securityContext:
           allowPrivilegeEscalation: false
@@ -80,7 +81,7 @@ spec:
         env:
         - name: KUBERNETES_CLUSTER_DOMAIN
           value: {{ .Values.kubernetesClusterDomain }}
-        image: {{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag
+        image: {{ $ctrlManager.manager.image.repository }}:{{ $ctrlManager.manager.image.tag
           | default .Chart.AppVersion }}
         livenessProbe:
           httpGet:
@@ -95,7 +96,7 @@ spec:
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10
-        resources: {{- toYaml .Values.controllerManager.manager.resources | nindent 10
+        resources: {{- toYaml $ctrlManager.manager.resources | nindent 10
           }}
         securityContext:
           allowPrivilegeEscalation: false
