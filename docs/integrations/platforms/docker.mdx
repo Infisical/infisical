@@ -1,5 +1,6 @@
 ---
 title: "Docker"
+description: "How to use Infisical to inject environment variables into a Docker container."
 ---
 
 Infisical can be used in a Dockerfile to inject environment variables into a Docker container.
@@ -43,7 +44,7 @@ Infisical can be used in a Dockerfile to inject environment variables into a Doc
   CMD ["infisical", "run", "---", "npm run start"]
 
   # example with multiple commands 
-  CMD ["infisical", "run", "--command" "npm run start && ..."]
+  CMD ["infisical", "run", "--command", "npm run start && ..."]
   ```
 
   View more options for the `run` command [here](../../cli/commands/run)
