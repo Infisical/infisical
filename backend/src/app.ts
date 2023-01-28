@@ -57,7 +57,7 @@ import { healthCheck } from './routes/status';
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
 import { requestErrorHandler } from './middleware/requestErrorHandler';
-
+// test comment
 // patch async route params to handle Promise Rejections
 patchRouterParam();
 
