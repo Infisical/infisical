@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"errors"
 )
 
 func CheckForUpdate() {
@@ -25,7 +26,7 @@ func getLatestTag(repoOwner string, repoName string) (string, error) {
 		return "", err
 	}
 	if resp.StatusCode != 200 {
-		return "", fmt.Sprintf("GitHub API returned status code %d", resp.StatusCode)
+		return "", errors.New(fmt.Sprintf("GitHub API returned status code %d", resp.StatusCode))
 	}
 
 	defer resp.Body.Close()
