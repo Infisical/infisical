@@ -8,7 +8,7 @@ import (
 )
 
 func CheckForUpdate() {
-	latestVersion, err := getLatestTag("infisical", "infisical")
+	latestVersion, err := getLatestTag("Infisical", "infisical")
 	if err != nil {
 		// do nothing and continue
 		return
@@ -23,6 +23,9 @@ func getLatestTag(repoOwner string, repoName string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err
+	}
+	if resp.StatusCode != 200 {
+		return "", fmt.Sprintf("GitHub API returned status code %d", resp.StatusCode)
 	}
 
 	defer resp.Body.Close()
