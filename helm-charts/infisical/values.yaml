@@ -14,13 +14,16 @@ frontend:
     repository: infisical/frontend
     pullPolicy: IfNotPresent
     tag: "latest"
-  # kubeSecretRef: some-kube-secret-name
+    # Provide your own or leave it empty for default
+    kubeSecretRef: ""
   service:
     # type of the frontend service
     type: ClusterIP
     # define the nodePort if service type is NodePort
     # nodePort: 
     annotations: {}
+  secrets: {}
+    # My_ENV_VAR: MUST_REPLACE
 
 backend:
   name: backend
@@ -31,9 +34,25 @@ backend:
     repository: infisical/backend
     pullPolicy: IfNotPresent
     tag: "latest"
-  # kubeSecretRef: some-kube-secret-name
+    # Provide your own or leave it empty for default
+    kubeSecretRef: ""
   service:
     annotations: {}
+  secrets:
+    # Required keys for platform encryption/decryption ops. (128-bit hex value, 32-characters hex)
+    # e.g. 'hexdump -vn16 -e'4/4 "%08X" 1 "\n"' /dev/urandom', 'openssl rand -hex 16' (from https://stackoverflow.com/a/34329057)
+    ENCRYPTION_KEY: MUST_REPLACE
+    # JWT
+    # Required secrets to sign JWT tokens
+    JWT_SIGNUP_SECRET: MUST_REPLACE
+    JWT_REFRESH_SECRET: MUST_REPLACE
+    JWT_AUTH_SECRET: MUST_REPLACE
+    # Mail/SMTP
+    # Required to send emails
+    SMTP_HOST: MUST_REPLACE
+    SMTP_NAME: MUST_REPLACE
+    SMTP_USERNAME: MUST_REPLACE
+    SMTP_PASSWORD: MUST_REPLACE
 
 mongodb:
   name: mongodb
@@ -44,18 +63,34 @@ mongodb:
     tag: "latest"
   service:
     annotations: {}
+  creds:
+    user: root
+    pass: root
+  persistence:
+    enabled: true
+    storage: 2Gi
 
 # By default the backend will be connected to a Mongo instance in the cluster.
-# However, it is recommended to add a managed document DB connection string because the DB instance in the cluster does not have persistence yet ( data will be deleted on next deploy).
+# However, it is recommended to add a managed document DB connection string for production purposes (to keep your DB aside from your k8s cluster).
 # Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/
 mongodbConnection: {}
-  # externalMongoDBConnectionString: <>
+  # externalMongoDBConnectionString: "mongodb://user:pass@mongo-instance:27017/"
 
 ingress:
   enabled: true
   annotations:
-    kubernetes.io/ingress.class: "nginx"
-  hostName: example.com # replace with your domain 
+    ## Deprecated ingress class definition
+    # kubernetes.io/ingress.class: "nginx"
+    
+    ## Certificate configuration
+    # cert-manager.io/issuer: letsencrypt-nginx
+    # kubernetes.io/tls-acme: "true"
+    # cert-manager.io/issuer-kind: "Issuer" # "Issuer" or "ClusterIssuer"
+
+  # Recommended ingress class definition
+  ingressClassName: "nginx"
+  # Replace with your domain 
+  hostName: infisical.local
   frontend: 
     path: /
     pathType: Prefix
@@ -63,26 +98,6 @@ ingress:
     path: /api
     pathType: Prefix
   tls: []
-
-
-## Complete Ingress example 
-# ingress:
-#   enabled: true
-#   annotations:
-#     kubernetes.io/ingress.class: "nginx"
-#     cert-manager.io/issuer: letsencrypt-nginx
-#   hostName: k8.infisical.com
-#   frontend: 
-#     path: /
-#     pathType: Prefix
-#   backend:
-#     path: /api
-#     pathType: Prefix
-#   tls:
-#     - secretName: letsencrypt-nginx
-#       hosts:
-#         - k8.infisical.com
-
-frontendEnvironmentVariables: {}
-
-backendEnvironmentVariables: {}
+    # - secretName: letsencrypt-nginx
+    #   hosts:
+    #     - k8.infisical.com
