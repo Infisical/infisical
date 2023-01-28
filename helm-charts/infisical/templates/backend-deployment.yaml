@@ -1,3 +1,4 @@
+{{- $backend := .Values.backend }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -9,7 +10,7 @@ metadata:
   labels:
     {{- include "infisical.backend.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.backend.replicaCount }}
+  replicas: {{ $backend.replicaCount }}
   selector:
     matchLabels:
       {{- include "infisical.backend.matchLabels" . | nindent 6 }}
@@ -17,15 +18,15 @@ spec:
     metadata: 
       labels:
         {{- include "infisical.backend.matchLabels" . | nindent 8 }}
-      {{- with .Values.backend.podAnnotations }}
+      {{- with $backend.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
       containers:
-      - name: {{ template "infisical.name" . }}-{{ .Values.backend.name }}
-        image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}"
-        imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+      - name: {{ template "infisical.name" . }}-{{ $backend.name }}
+        image: "{{ $backend.image.repository }}:{{ $backend.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ $backend.image.pullPolicy }}
         readinessProbe:
           httpGet:
             path: /api/status
@@ -34,32 +35,24 @@ spec:
           periodSeconds: 10
         ports: 
         - containerPort: 4000
-        {{- if .Values.backend.kubeSecretRef }}
+        {{- if $backend.kubeSecretRef }}
         envFrom:
         - secretRef:
-            name: {{ .Values.backend.kubeSecretRef }}
+            name: {{ $backend.kubeSecretRef }}
         {{- end }}
         env:
         - name: MONGO_URL
           value: {{ include "infisical.mongodb.connectionString" . | quote }}
-        {{- if .Values.backendEnvironmentVariables }}
-        {{- range $key, $value := .Values.backendEnvironmentVariables }}
-        {{- if $value | quote | eq "MUST_REPLACE" }}
-          {{ fail "Environment variables are not set. Please set all environment variables to continue." }}
-        {{ end }}
-        - name: {{ $key }}
-          value: {{ quote $value }}
-        {{- end }}
-        {{- end }}
 
 ---
+
 apiVersion: v1
 kind: Service 
 metadata:
   name: {{ include "infisical.backend.fullname" . }}
   labels:
     {{- include "infisical.backend.labels" . | nindent 4 }}
-  {{- with .Values.backend.service.annotations }}
+  {{- with $backend.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -74,3 +67,15 @@ spec:
       {{- if eq .Values.backend.service.type "NodePort" }}
       nodePort: {{ .Values.backend.service.nodePort }}
       {{- end }}
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $backend.kubeSecretRef | default "infisical-backend" }}
+type: Opaque
+data:
+  {{- range $key, $value := $backend.secrets }}
+  {{ $key }}: {{ $value | b64enc }}
+  {{- end }}

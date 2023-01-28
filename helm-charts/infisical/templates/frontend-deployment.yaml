@@ -1,3 +1,4 @@
+{{- $frontend := .Values.frontend }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -9,7 +10,7 @@ metadata:
   labels:
     {{- include "infisical.frontend.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.frontend.replicaCount }}
+  replicas: {{ $frontend.replicaCount }}
   selector:
     matchLabels:
       {{- include "infisical.frontend.matchLabels" . | nindent 6 }}
@@ -17,26 +18,27 @@ spec:
     metadata: 
       labels:
         {{- include "infisical.frontend.matchLabels" . | nindent 8 }}
-      {{- with .Values.frontend.podAnnotations }}
+      {{- with $frontend.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
       containers:
-      - name: {{ template "infisical.name" . }}-{{ .Values.frontend.name }}
-        image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"
-        imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+      - name: {{ template "infisical.name" . }}-{{ $frontend.name }}
+        image: "{{ $frontend.image.repository }}:{{ $frontend.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ $frontend.image.pullPolicy }}
         readinessProbe:
           httpGet:
             path: /
             port: 3000
           initialDelaySeconds: 10
           periodSeconds: 10
-        {{- if .Values.frontend.kubeSecretRef }}
+        {{- if $frontend.kubeSecretRef }}
         envFrom:
         - secretRef:
-            name: {{ .Values.frontend.kubeSecretRef }}
+            name: {{ $frontend.kubeSecretRef }}
         {{- end }}
+        # Below variables should be defined available through the above secretRef secret
         {{- if .Values.frontendEnvironmentVariables }}
         env:
         {{- range $key, $value := .Values.frontendEnvironmentVariables }}
@@ -49,25 +51,39 @@ spec:
         {{- end }}
         ports: 
         - containerPort: 3000
+
 ---
+
 apiVersion: v1
 kind: Service 
 metadata:
   name: {{ include "infisical.frontend.fullname" . }}
   labels:
     {{- include "infisical.frontend.labels" . | nindent 4 }}
-  {{- with .Values.frontend.service.annotations }}
+  {{- with $frontend.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  type: {{ .Values.frontend.service.type }}
+  type: {{ $frontend.service.type }}
   selector:
     {{- include "infisical.frontend.matchLabels" . | nindent 8 }}
   ports:
     - protocol: TCP
       port: 3000 # service
       targetPort: 3000 # container port 
-      {{- if eq .Values.frontend.service.type "NodePort" }}
-      nodePort: {{ .Values.frontend.service.nodePort }}
+      {{- if eq $frontend.service.type "NodePort" }}
+      nodePort: {{ $frontend.service.nodePort }}
       {{- end }}
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $frontend.kubeSecretRef | default "infisical-frontend" }}
+type: Opaque
+data:
+  {{- range $key, $value := $frontend.secrets }}
+  {{ $key }}: {{ $value | b64enc }}
+  {{- end }}
