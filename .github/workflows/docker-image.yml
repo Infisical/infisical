@@ -22,7 +22,7 @@ jobs:
       - name: Set up Depot CLI
         uses: depot/setup-action@v1
       - name: 📦 Build backend and export to Docker
-        uses: docker/build-push-action@v3
+        uses: depot/build-push-action@v1
         with:
           project: 64mmf0n610
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
@@ -39,7 +39,7 @@ jobs:
         run: |
           docker compose -f .github/resources/docker-compose.be-test.yml down
       - name: 🏗️ Build backend and push
-        uses: docker/build-push-action@v3
+        uses: depot/build-push-action@v1
         with:
           project: 64mmf0n610
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
@@ -69,7 +69,7 @@ jobs:
       - name: Set up Depot CLI
         uses: depot/setup-action@v1
       - name: 📦 Build frontend and export to Docker
-        uses: docker/build-push-action@v3
+        uses: depot/build-push-action@v1
         with:
           load: true
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
@@ -88,7 +88,7 @@ jobs:
         run: |
           docker stop infisical-frontend-test
       - name: 🏗️ Build frontend and push
-        uses: docker/build-push-action@v3
+        uses: depot/build-push-action@v1
         with:
           project: 64mmf0n610
           push: true
