@@ -66,8 +66,9 @@ export default function SettingsBilling() {
       const subscriptions = await getOrganizationSubscriptions({
         orgId
       });
-
-      setCurrentPlan(subscriptions.data[0].plan.product);
+      if (subscriptions) {
+        setCurrentPlan(subscriptions.data[0].plan.product);
+      }
       const orgUsers = await getOrganizationUsers({
         orgId
       });

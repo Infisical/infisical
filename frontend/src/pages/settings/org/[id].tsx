@@ -87,7 +87,9 @@ export default function SettingsOrg() {
       const subscriptions = await getOrganizationSubscriptions({
         orgId
       });
-      setCurrentPlan(subscriptions.data[0].plan.product);
+      if (subscriptions) {
+        setCurrentPlan(subscriptions.data[0].plan.product);
+      }
     })();
   }, []);
 
