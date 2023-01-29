@@ -1,27 +1,18 @@
-import token from '@app/pages/api/auth/Token';
+import { getAuthToken, setAuthToken } from '@app/reactQuery';
 
+// depreciated: go for apiRequest module in config/api
 export default class SecurityClient {
-  static #token = '';
-
   static setToken(tokenStr: string) {
-    this.#token = tokenStr;
+    setAuthToken(tokenStr);
   }
 
   static async fetchCall(resource: RequestInfo, options?: RequestInit | undefined) {
     const req = new Request(resource, options);
 
-    if (this.#token === '') {
-      try {
-        // TODO: This should be moved to a context to do it only once when app loads
-        // this try catch saves route guard from a stuck state
-        this.setToken(await token());
-      } catch (error) {
-        console.error('Unauthorized access');
-      }
-    }
+    const token = getAuthToken();
 
-    if (this.#token) {
-      req.headers.set('Authorization', `Bearer ${this.#token}`);
+    if (token) {
+      req.headers.set('Authorization', `Bearer ${token}`);
     }
 
     return fetch(req);

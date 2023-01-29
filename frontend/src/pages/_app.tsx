@@ -4,12 +4,14 @@ import { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
 import { appWithTranslation } from 'next-i18next';
 import { config } from '@fortawesome/fontawesome-svg-core';
+import { QueryClientProvider } from '@tanstack/react-query';
 
 import Layout from '@app/components/basic/Layout';
 import NotificationProvider from '@app/components/context/Notifications/NotificationProvider';
-import RouteGuard from '@app/components/RouteGuard';
 import Telemetry from '@app/components/utilities/telemetry/Telemetry';
 import { publicPaths } from '@app/const';
+import { AuthProvider } from '@app/context/AuthContext';
+import { queryClient } from '@app/reactQuery';
 
 import '@fortawesome/fontawesome-svg-core/styles.css';
 import '../styles/globals.css';
@@ -54,17 +56,25 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
     publicPaths.includes(`/${appProps.router.pathname.split('/')[1]}`) ||
     !Component.requireAuth
   ) {
-    return <Component {...pageProps} />;
+    return (
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <Component {...pageProps} />
+        </AuthProvider>
+      </QueryClientProvider>
+    );
   }
 
   return (
-    <RouteGuard>
-      <NotificationProvider>
-        <Layout>
-          <Component {...pageProps} />
-        </Layout>
-      </NotificationProvider>
-    </RouteGuard>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <NotificationProvider>
+          <Layout>
+            <Component {...pageProps} />
+          </Layout>
+        </NotificationProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 };
 

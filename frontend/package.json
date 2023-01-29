@@ -35,6 +35,7 @@
     "@reduxjs/toolkit": "^1.8.3",
     "@stripe/react-stripe-js": "^1.10.0",
     "@stripe/stripe-js": "^1.46.0",
+    "@tanstack/react-query": "^4.23.0",
     "add": "^2.0.6",
     "axios": "^0.27.2",
     "axios-auth-refresh": "^3.3.3",

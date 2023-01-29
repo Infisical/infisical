@@ -13,6 +13,7 @@ import InputField from '@app/components/basic/InputField';
 import ListBox from '@app/components/basic/Listbox';
 import attemptLogin from '@app/components/utilities/attemptLogin';
 import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
+import { isLoggedIn } from '@app/reactQuery';
 
 import getWorkspaces from './api/workspace/getWorkspaces';
 
@@ -31,6 +32,7 @@ export default function Login() {
   };
 
   useEffect(() => {
+    // TODO(akhilmhdh): workspace will be controlled by a workspace context
     const redirectToDashboard = async () => {
       let userWorkspace;
       try {
@@ -41,7 +43,9 @@ export default function Login() {
         console.log('Error - Not logged in yet');
       }
     };
-    redirectToDashboard();
+    if (isLoggedIn()) {
+      redirectToDashboard();
+    }
   }, []);
 
   /**
