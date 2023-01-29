@@ -38,17 +38,6 @@ spec:
         - secretRef:
             name: {{ $frontend.kubeSecretRef }}
         {{- end }}
-        # Below variables should be defined available through the above secretRef secret
-        {{- if .Values.frontendEnvironmentVariables }}
-        env:
-        {{- range $key, $value := .Values.frontendEnvironmentVariables }}
-        {{- if $value | quote | eq "MUST_REPLACE" }}
-          {{ fail "Environment variables are not set. Please set all environment variables to continue." }}
-        {{ end }}
-        - name: {{ $key }}
-          value: {{ quote $value }}
-        {{- end }}
-        {{- end }}
         ports: 
         - containerPort: 3000
 
