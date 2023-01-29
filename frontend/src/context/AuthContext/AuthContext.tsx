@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }: Props): JSX.Element => {
   if (isLoading || !isReady) {
     return (
       <div className="flex items-center justify-center w-screen h-screen bg-bunker-800">
-        <img src="/images/loading/loading.gif" alt="loading animation" className="w-80" />
+        <img src="/images/loading/loading.gif" height={70} width={120} alt="infisical loading indicator" />
       </div>
     );
   }
