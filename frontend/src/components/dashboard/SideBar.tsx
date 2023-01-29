@@ -106,7 +106,7 @@ const SideBar = ({
               blurred={false}
             />
           </div>
-          {data[0]?.value ? (
+          {(data[0]?.value || data[0]?.value === "") ? (
             <div
               className={`relative mt-2 px-4 ${
                 overrideEnabled && 'opacity-40 pointer-events-none'
@@ -134,7 +134,7 @@ const SideBar = ({
             </div>
           )}
           <div className="mt-4 px-4">
-            {data[0]?.value && (
+            {(data[0]?.value || data[0]?.value === "") && (
               <div className="flex flex-row items-center justify-between my-2 pl-1 pr-2">
                 <p className="text-sm text-bunker-300">{t('dashboard:sidebar.override')}</p>
                 <Toggle
