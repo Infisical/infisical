@@ -34,7 +34,9 @@ const EnvironmentTable = ({ data = [], onCreateEnv, onDeleteEnv, onUpdateEnv }: 
       const subscriptions = await getOrganizationSubscriptions({
         orgId
       });
-      setPlan(subscriptions.data[0].plan.product);
+      if (subscriptions) {
+        setPlan(subscriptions.data[0].plan.product)
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
