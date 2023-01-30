@@ -1,5 +1,7 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import crypto from 'crypto';
+
 import { useState } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
@@ -17,6 +19,7 @@ import InputField from '@app/components/basic/InputField';
 import attemptLogin from '@app/components/utilities/attemptLogin';
 import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
 import Aes256Gcm from '@app/components/utilities/cryptography/aes-256-gcm';
+import { deriveArgonKey } from '@app/components/utilities/cryptography/crypto';
 import issueBackupKey from '@app/components/utilities/cryptography/issueBackupKey';
 
 import completeAccountInformationSignupInvite from './api/auth/CompleteAccountInformationSignupInvite';
@@ -75,17 +78,17 @@ export default function SignupInvite() {
       const pair = nacl.box.keyPair();
       const secretKeyUint8Array = pair.secretKey;
       const publicKeyUint8Array = pair.publicKey;
-      const PRIVATE_KEY = encodeBase64(secretKeyUint8Array);
-      const PUBLIC_KEY = encodeBase64(publicKeyUint8Array);
+      const privateKey = encodeBase64(secretKeyUint8Array);
+      const publicKey = encodeBase64(publicKeyUint8Array);
 
-      const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
-        text: PRIVATE_KEY,
-        secret: password
-          .slice(0, 32)
-          .padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), '0')
-      });
+      // const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
+      //   text: PRIVATE_KEY,
+      //   secret: password
+      //     .slice(0, 32)
+      //     .padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), '0')
+      // });
 
-      localStorage.setItem('PRIVATE_KEY', PRIVATE_KEY);
+      localStorage.setItem('PRIVATE_KEY', privateKey);
 
       client.init(
         {
@@ -94,35 +97,73 @@ export default function SignupInvite() {
         },
         async () => {
           client.createVerifier(async (err, result) => {
-            let response = await completeAccountInformationSignupInvite({
-              email,
-              firstName,
-              lastName,
-              publicKey: PUBLIC_KEY,
-              ciphertext,
-              iv,
-              tag,
-              salt: result.salt,
-              verifier: result.verifier,
-              token: verificationToken
-            });
+            try {
+              const derivedKey = await deriveArgonKey({
+                password,
+                salt: result.salt,
+                mem: 65536,
+                time: 3,
+                parallelism: 1,
+                hashLen: 32
+              });
 
-            // if everything works, go the main dashboard page.
-            if (!errorCheck && response.status === 200) {
-              response = await response.json();
+              if (!derivedKey) throw new Error('Failed to derive key from password');
 
-              localStorage.setItem('publicKey', PUBLIC_KEY);
-              localStorage.setItem('encryptedPrivateKey', ciphertext);
-              localStorage.setItem('iv', iv);
-              localStorage.setItem('tag', tag);
+              const key = crypto.randomBytes(32);
+             
+              // create encrypted private key by encrypting the private
+              // key with the symmetric key [key]
+              const {
+                ciphertext: encryptedPrivateKey,
+                iv: encryptedPrivateKeyIV,
+                tag: encryptedPrivateKeyTag
+              } = Aes256Gcm.encrypt({
+                text: privateKey,
+                secret: key
+              });
+              
+              // create the protected key by encrypting the symmetric key
+              // [key] with the derived key
+              const {
+                ciphertext: protectedKey,
+                iv: protectedKeyIV,
+                tag: protectedKeyTag
+              } = Aes256Gcm.encrypt({
+                text: key.toString('hex'),
+                secret: Buffer.from(derivedKey.hash)
+              });
+              
+              let response = await completeAccountInformationSignupInvite({
+                email,
+                firstName,
+                lastName,
+                protectedKey,
+                protectedKeyIV,
+                protectedKeyTag,
+                publicKey,
+                encryptedPrivateKey,
+                encryptedPrivateKeyIV,
+                encryptedPrivateKeyTag,
+                salt: result.salt,
+                verifier: result.verifier,
+                token: verificationToken
+              });
 
-              try {
+              // if everything works, go the main dashboard page.
+              if (!errorCheck && response.status === 200) {
+                response = await response.json();
+
+                localStorage.setItem('publicKey', publicKey);
+                localStorage.setItem('encryptedPrivateKey', encryptedPrivateKey);
+                localStorage.setItem('iv', encryptedPrivateKeyIV);
+                localStorage.setItem('tag', encryptedPrivateKeyTag);
+
                 await attemptLogin(email, password, setErrorLogin, router, false, false);
                 setStep(3);
-              } catch (error) {
-                setIsLoading(false);
-                console.log('Error', error);
               }
+            } catch (error) {
+              setIsLoading(false);
+              console.error(error);
             }
           });
         }

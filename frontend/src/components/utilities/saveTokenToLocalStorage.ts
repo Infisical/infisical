@@ -1,12 +1,18 @@
 interface Props {
-  publicKey: string;
+  protectedKey?: string;
+  protectedKeyIV?: string;
+  protectedKeyTag?: string;
+  publicKey?: string;
   encryptedPrivateKey: string;
   iv: string;
   tag: string;
-  privateKey: string;
+  privateKey?: string;
 }
 
 export const saveTokenToLocalStorage = ({
+  protectedKey,
+  protectedKeyIV,
+  protectedKeyTag,
   publicKey,
   encryptedPrivateKey,
   iv,
@@ -14,11 +20,38 @@ export const saveTokenToLocalStorage = ({
   privateKey,
 }: Props) => {
   try {
-    localStorage.setItem("publicKey", publicKey);
+    localStorage.removeItem("protectedKey");
+    localStorage.removeItem("protectedKeyIV");
+    localStorage.removeItem("protectedKeyTag");
+    localStorage.removeItem("publicKey");
+    localStorage.removeItem("encryptedPrivateKey");
+    localStorage.removeItem("iv");
+    localStorage.removeItem("tag");
+    localStorage.removeItem("PRIVATE_KEY");
+    
+    if (protectedKey) {
+      localStorage.setItem("protectedKey", protectedKey);
+    }
+
+    if (protectedKeyIV) {
+      localStorage.setItem("protectedKeyIV", protectedKeyIV);
+    }
+
+    if (protectedKeyTag) {
+      localStorage.setItem("protectedKeyTag", protectedKeyTag);
+    }
+
+    if (publicKey) {
+      localStorage.setItem("publicKey", publicKey);
+    }
+
+    if (privateKey) {
+      localStorage.setItem("PRIVATE_KEY", privateKey);
+    }
+
     localStorage.setItem("encryptedPrivateKey", encryptedPrivateKey);
     localStorage.setItem("iv", iv);
     localStorage.setItem("tag", tag);
-    localStorage.setItem("PRIVATE_KEY", privateKey);
   } catch (err) {
     if (err instanceof Error) {
       throw new Error(

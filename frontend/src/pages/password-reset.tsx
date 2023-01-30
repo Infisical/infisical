@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
@@ -12,6 +14,7 @@ import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
 import Aes256Gcm from '@app/components/utilities/cryptography/aes-256-gcm';
 import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
 
+import { deriveArgonKey } from '../components/utilities/cryptography/crypto';
 import EmailVerifyOnPasswordReset from './api/auth/EmailVerifyOnPasswordReset';
 import getBackupEncryptedPrivateKey from './api/auth/getBackupEncryptedPrivateKey';
 import resetPasswordOnAccountRecovery from './api/auth/resetPasswordOnAccountRecovery';
@@ -39,6 +42,7 @@ export default function PasswordReset() {
   const getEncryptedKeyHandler = async () => {
     try {
       const result = await getBackupEncryptedPrivateKey({ verificationToken });
+
       setPrivateKey(
         Aes256Gcm.decrypt({
           ciphertext: result.encryptedPrivateKey,
@@ -64,13 +68,12 @@ export default function PasswordReset() {
     });
 
     if (!errorCheck) {
-      // Generate a random pair of a public and a private key
-      const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
-        text: privateKey,
-        secret: newPassword
-          .slice(0, 32)
-          .padStart(32 + (newPassword.slice(0, 32).length - new Blob([newPassword]).size), '0')
-      }) as { ciphertext: string; iv: string; tag: string };
+      // const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
+      //   text: privateKey,
+      //   secret: newPassword
+      //     .slice(0, 32)
+      //     .padStart(32 + (newPassword.slice(0, 32).length - new Blob([newPassword]).size), '0')
+      // }) as { ciphertext: string; iv: string; tag: string };
 
       client.init(
         {
@@ -79,13 +82,51 @@ export default function PasswordReset() {
         },
         async () => {
           client.createVerifier(async (err: any, result: { salt: string; verifier: string }) => {
-            const response = await resetPasswordOnAccountRecovery({
-              verificationToken,
-              encryptedPrivateKey: ciphertext,
-              iv,
-              tag,
+            const derivedKey = await deriveArgonKey({
+              password: newPassword,
               salt: result.salt,
-              verifier: result.verifier
+              mem: 65536,
+              time: 3,
+              parallelism: 1,
+              hashLen: 32
+            });
+            
+            if (!derivedKey) throw new Error('Failed to derive key from password');
+            
+            const key = crypto.randomBytes(32);
+
+            // create encrypted private key by encrypting the private
+            // key with the symmetric key [key]
+            const {
+              ciphertext: encryptedPrivateKey,
+              iv: encryptedPrivateKeyIV,
+              tag: encryptedPrivateKeyTag
+            } = Aes256Gcm.encrypt({
+              text: privateKey,
+              secret: key
+            });
+            
+            // create the protected key by encrypting the symmetric key
+            // [key] with the derived key
+            const {
+              ciphertext: protectedKey,
+              iv: protectedKeyIV,
+              tag: protectedKeyTag
+            } = Aes256Gcm.encrypt({
+              text: key.toString('hex'),
+              secret: Buffer.from(derivedKey.hash)
+            });
+
+            const response = await resetPasswordOnAccountRecovery({
+              protectedKey,
+              protectedKeyIV,
+              protectedKeyTag,
+              encryptedPrivateKey,
+              encryptedPrivateKeyIV,
+              encryptedPrivateKeyTag,
+              salt: result.salt,
+              verifier: result.verifier,
+              verificationToken
             });
 
             // if everything works, go the main dashboard page.

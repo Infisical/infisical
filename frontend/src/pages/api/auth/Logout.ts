@@ -15,11 +15,15 @@ const logout = async () =>
     if (res?.status === 200) {
       SecurityClient.setToken('');
       // Delete the cookie by not setting a value; Alternatively clear the local storage
-      localStorage.setItem('publicKey', '');
-      localStorage.setItem('encryptedPrivateKey', '');
-      localStorage.setItem('iv', '');
-      localStorage.setItem('tag', '');
-      localStorage.setItem('PRIVATE_KEY', '');
+      localStorage.removeItem('protectedKey');
+      localStorage.removeItem('protectedKeyIV');
+      localStorage.removeItem('protectedKeyTag');
+      localStorage.removeItem('publicKey');
+      localStorage.removeItem('encryptedPrivateKey');
+      localStorage.removeItem('iv');
+      localStorage.removeItem('tag');
+      localStorage.removeItem('PRIVATE_KEY');
+
       console.log('User logged out', res);
       return res;
     }

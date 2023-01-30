@@ -165,8 +165,18 @@ export const srp1 = async (req: Request, res: Response) => {
  */
 export const changePassword = async (req: Request, res: Response) => {
 	try {
-		const { clientProof, encryptedPrivateKey, iv, tag, salt, verifier } =
-			req.body;
+		const { 
+			clientProof, 
+			protectedKey,
+			protectedKeyIV,
+			protectedKeyTag,
+			encryptedPrivateKey,
+			encryptedPrivateKeyIV,
+			encryptedPrivateKeyTag,
+			salt,
+			verifier
+		} = req.body;
+
 		const user = await User.findOne({
 			email: req.user.email
 		}).select('+salt +verifier');
@@ -192,9 +202,13 @@ export const changePassword = async (req: Request, res: Response) => {
 					await User.findByIdAndUpdate(
 						req.user._id.toString(),
 						{
+							encryptionVersion: 2,
+							protectedKey,
+							protectedKeyIV,
+							protectedKeyTag,
 							encryptedPrivateKey,
-							iv,
-							tag,
+							iv: encryptedPrivateKeyIV,
+							tag: encryptedPrivateKeyTag,
 							salt,
 							verifier
 						},
@@ -322,9 +336,12 @@ export const getBackupPrivateKey = async (req: Request, res: Response) => {
 export const resetPassword = async (req: Request, res: Response) => {
 	try {
 		const {
+			protectedKey,
+			protectedKeyIV,
+			protectedKeyTag,
 			encryptedPrivateKey,
-			iv,
-			tag,
+			encryptedPrivateKeyIV,
+			encryptedPrivateKeyTag,
 			salt,
 			verifier,
 		} = req.body;
@@ -332,9 +349,13 @@ export const resetPassword = async (req: Request, res: Response) => {
 		await User.findByIdAndUpdate(
 			req.user._id.toString(),
 			{
+				encryptionVersion: 2,
+				protectedKey,
+				protectedKeyIV,
+				protectedKeyTag,	
 				encryptedPrivateKey,
-				iv,
-				tag,
+				iv: encryptedPrivateKeyIV,
+				tag: encryptedPrivateKeyTag,
 				salt,
 				verifier
 			},

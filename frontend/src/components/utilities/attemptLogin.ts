@@ -13,7 +13,7 @@ import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserP
 import getUser from '@app/pages/api/user/getUser';
 import uploadKeys from '@app/pages/api/workspace/uploadKeys';
 
-import { encryptAssymmetric } from './cryptography/crypto';
+import { deriveArgonKey, encryptAssymmetric } from './cryptography/crypto';
 import encryptSecrets from './secrets/encryptSecrets';
 import Telemetry from './telemetry/Telemetry';
 import { saveTokenToLocalStorage } from './saveTokenToLocalStorage';
@@ -59,29 +59,81 @@ const attemptLogin = async (
           const clientProof = client.getProof(); // called M1
 
           // if everything works, go the main dashboard page.
-          const { token, publicKey, encryptedPrivateKey, iv, tag } = await login2(
+          const { // mfaEnabled
+            encryptionVersion,
+            protectedKey,
+            protectedKeyIV,
+            protectedKeyTag,
+            token, 
+            publicKey, 
+            encryptedPrivateKey, 
+            iv, 
+            tag 
+          } = await login2(
             email,
             clientProof
           );
 
           SecurityClient.setToken(token);
 
-          const privateKey = Aes256Gcm.decrypt({
-            ciphertext: encryptedPrivateKey,
-            iv,
-            tag,
-            secret: password
-              .slice(0, 32)
-              .padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), '0')
-          });
+          let privateKey;
+          if (encryptionVersion === 1) {
+            privateKey = Aes256Gcm.decrypt({
+              ciphertext: encryptedPrivateKey,
+              iv,
+              tag,
+              secret: password
+                .slice(0, 32)
+                .padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), '0')
+            });
 
-          saveTokenToLocalStorage({
-            publicKey,
-            encryptedPrivateKey,
-            iv,
-            tag,
-            privateKey
-          });
+            saveTokenToLocalStorage({
+              publicKey,
+              encryptedPrivateKey,
+              iv,
+              tag,
+              privateKey
+            });
+          } else if (encryptionVersion === 2 && protectedKey && protectedKeyIV && protectedKeyTag) {
+            const derivedKey = await deriveArgonKey({
+              password,
+              salt,
+              mem: 65536,
+              time: 3,
+              parallelism: 1,
+              hashLen: 32
+            });
+            
+            if (!derivedKey) throw new Error('Failed to derive key');
+
+            const key = Aes256Gcm.decrypt({
+              ciphertext: protectedKey,
+              iv: protectedKeyIV,
+              tag: protectedKeyTag,
+              secret: Buffer.from(derivedKey.hash)
+            });
+            
+            // decrypt back the private key
+            privateKey = Aes256Gcm.decrypt({
+              ciphertext: encryptedPrivateKey,
+              iv,
+              tag,
+              secret: Buffer.from(key, 'hex')
+            });
+
+            saveTokenToLocalStorage({
+              protectedKey,
+              protectedKeyIV,
+              protectedKeyTag,
+              publicKey,
+              encryptedPrivateKey,
+              iv,
+              tag,
+              privateKey
+            });
+          }
+          
+          if (!privateKey) throw new Error('Failed to decrypt private key');
 
           const userOrgs = await getOrganizations();
           const userOrgsData = userOrgs.map((org: { _id: string }) => org._id);

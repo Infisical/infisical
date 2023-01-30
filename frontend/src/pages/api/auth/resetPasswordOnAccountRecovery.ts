@@ -1,10 +1,13 @@
 interface Props {
-  verificationToken: string;
+  protectedKey: string;
+  protectedKeyIV: string;
+  protectedKeyTag: string;
   encryptedPrivateKey: string;
-  iv: string;
-  tag: string;
+  encryptedPrivateKeyIV: string;
+  encryptedPrivateKeyTag: string;
   salt: string;
   verifier: string;
+  verificationToken: string;
 }
 
 /**
@@ -19,22 +22,28 @@ interface Props {
  * @returns
  */
 const resetPasswordOnAccountRecovery = ({
-  verificationToken,
+  protectedKey,
+  protectedKeyIV,
+  protectedKeyTag,
   encryptedPrivateKey,
-  iv,
-  tag,
+  encryptedPrivateKeyIV,
+  encryptedPrivateKeyTag,
   salt,
-  verifier
+  verifier,
+  verificationToken,
 }: Props) => fetch('/api/v1/password/password-reset', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${  verificationToken}`
+      Authorization: `Bearer ${verificationToken}`
     },
     body: JSON.stringify({
+      protectedKey,
+      protectedKeyIV,
+      protectedKeyTag,
       encryptedPrivateKey,
-      iv,
-      tag,
+      encryptedPrivateKeyIV,
+      encryptedPrivateKeyTag,
       salt,
       verifier
     })

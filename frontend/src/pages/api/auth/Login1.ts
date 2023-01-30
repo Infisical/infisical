@@ -10,7 +10,7 @@ interface Login1 {
  * @returns
  */
 const login1 = async (email: string, clientPublicKey: string) => {
-  const response = await fetch("/api/v1/auth/login1", {
+  const response = await fetch("/api/v2/auth/login1", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

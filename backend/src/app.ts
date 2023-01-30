@@ -42,6 +42,7 @@ import {
   integrationAuth as v1IntegrationAuthRouter
 } from './routes/v1';
 import {
+  signup as v2SignupRouter,
   auth as v2AuthRouter,
   users as v2UsersRouter,
   organizations as v2OrganizationsRouter,
@@ -110,6 +111,7 @@ app.use('/api/v1/integration', v1IntegrationRouter);
 app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
 
 // v2 routes
+app.use('/api/v2/signup', v2SignupRouter);
 app.use('/api/v2/auth', v2AuthRouter);
 app.use('/api/v2/users', v2UsersRouter);
 app.use('/api/v2/organizations', v2OrganizationsRouter);

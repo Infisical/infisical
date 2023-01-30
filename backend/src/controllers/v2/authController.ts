@@ -79,15 +79,11 @@ export const login1 = async (req: Request, res: Response) => {
  * @returns
  */
 export const login2 = async (req: Request, res: Response) => {
-
-    // check to see if user has MFA enabled; if yes then issue MFA-token
-    // TODO: may have to figure out a better token system for tokens with varying expirations
-    // (e.g. for org-invitations vs. auth etc.)
   try {
     const { email, clientProof } = req.body;
     const user = await User.findOne({
       email
-    }).select('+salt +verifier +publicKey +encryptedPrivateKey +iv +tag');
+    }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag');
 
     if (!user) throw new Error('Failed to find user');
 
@@ -142,6 +138,10 @@ export const login2 = async (req: Request, res: Response) => {
           // return (access) token in response
           return res.status(200).send({
             mfaEnabled: false,
+            encryptionVersion: user.encryptionVersion,
+            protectedKey: user.protectedKey ?? null,
+            protectedKeyIV: user.protectedKeyIV ?? null,
+            protectedKeyTag: user.protectedKeyTag ?? null,
             token: tokens.token,
             publicKey: user.publicKey,
             encryptedPrivateKey: user.encryptedPrivateKey,
@@ -182,7 +182,7 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
 
     const user = await User.findOne({
       email
-    }).select('+salt +verifier +publicKey +encryptedPrivateKey +iv +tag');
+    }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag');
 
     if (!user) throw new Error('Failed to find user'); 
 
@@ -200,6 +200,10 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
     // case: user does not have MFA enabled
     // return (access) token in response
     return res.status(200).send({
+      encryptionVersion: user.encryptionVersion,
+      protectedKey: user.protectedKey ?? null,
+      protectedKeyIV: user.protectedKeyIV ?? null,
+      protectedKeyTag: user.protectedKeyTag ?? null,
       token: tokens.token,
       publicKey: user.publicKey,
       encryptedPrivateKey: user.encryptedPrivateKey,

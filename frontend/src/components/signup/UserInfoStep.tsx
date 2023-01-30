@@ -1,3 +1,5 @@
+import crypto from 'crypto';
+
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -14,6 +16,8 @@ import InputField from '../basic/InputField';
 import attemptLogin from '../utilities/attemptLogin';
 import passwordCheck from '../utilities/checks/PasswordCheck';
 import Aes256Gcm from '../utilities/cryptography/aes-256-gcm';
+import { deriveArgonKey } from '../utilities/cryptography/crypto';
+import { saveTokenToLocalStorage } from '../utilities/saveTokenToLocalStorage';
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -94,17 +98,9 @@ export default function UserInfoStep({
       const pair = nacl.box.keyPair();
       const secretKeyUint8Array = pair.secretKey;
       const publicKeyUint8Array = pair.publicKey;
-      const PRIVATE_KEY = encodeBase64(secretKeyUint8Array);
-      const PUBLIC_KEY = encodeBase64(publicKeyUint8Array);
-
-      const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
-        text: PRIVATE_KEY,
-        secret: password
-          .slice(0, 32)
-          .padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), '0')
-      }) as { ciphertext: string; iv: string; tag: string };
-
-      localStorage.setItem('PRIVATE_KEY', PRIVATE_KEY);
+      const privateKey = encodeBase64(secretKeyUint8Array);
+      const publicKey = encodeBase64(publicKeyUint8Array);
+      localStorage.setItem('PRIVATE_KEY', privateKey);
 
       client.init(
         {
@@ -113,35 +109,81 @@ export default function UserInfoStep({
         },
         async () => {
           client.createVerifier(async (err: any, result: { salt: string; verifier: string }) => {
-            const response = await completeAccountInformationSignup({
-              email,
-              firstName,
-              lastName,
-              organizationName: `${firstName}'s organization`,
-              publicKey: PUBLIC_KEY,
-              ciphertext,
-              iv,
-              tag,
-              salt: result.salt,
-              verifier: result.verifier,
-              token: verificationToken
-            });
+            try {
+              const derivedKey = await deriveArgonKey({
+                password,
+                salt: result.salt,
+                mem: 65536,
+                time: 3,
+                parallelism: 1,
+                hashLen: 32
+              });
+              
+              if (!derivedKey) throw new Error('Failed to derive key from password');
 
-            // if everything works, go the main dashboard page.
-            if (response.status === 200) {
-              // response = await response.json();
+              const key = crypto.randomBytes(32);
+             
+              // create encrypted private key by encrypting the private
+              // key with the symmetric key [key]
+              const {
+                ciphertext: encryptedPrivateKey,
+                iv: encryptedPrivateKeyIV,
+                tag: encryptedPrivateKeyTag
+              } = Aes256Gcm.encrypt({
+                text: privateKey,
+                secret: key
+              });
+              
+              // create the protected key by encrypting the symmetric key
+              // [key] with the derived key
+              const {
+                ciphertext: protectedKey,
+                iv: protectedKeyIV,
+                tag: protectedKeyTag
+              } = Aes256Gcm.encrypt({
+                text: key.toString('hex'),
+                secret: Buffer.from(derivedKey.hash)
+              });
+              
+              const response = await completeAccountInformationSignup({
+                email,
+                firstName,
+                lastName,
+                protectedKey,
+                protectedKeyIV,
+                protectedKeyTag,
+                publicKey,
+                encryptedPrivateKey,
+                encryptedPrivateKeyIV,
+                encryptedPrivateKeyTag,
+                salt: result.salt,
+                verifier: result.verifier,
+                token: verificationToken,
+                organizationName: `${firstName}'s organization`
+              });
+              
+              // if everything works, go the main dashboard page.
+              if (response.status === 200) {
+                // response = await response.json();
 
-              localStorage.setItem('publicKey', PUBLIC_KEY);
-              localStorage.setItem('encryptedPrivateKey', ciphertext);
-              localStorage.setItem('iv', iv);
-              localStorage.setItem('tag', tag);
+                saveTokenToLocalStorage({
+                  protectedKey,
+                  protectedKeyIV,
+                  protectedKeyTag,
+                  publicKey,
+                  encryptedPrivateKey,
+                  iv: encryptedPrivateKeyIV,
+                  tag: encryptedPrivateKeyTag,
+                  privateKey
+                });
 
-              try {
                 await attemptLogin(email, password, () => {}, router, true, false);
                 incrementStep();
-              } catch (error) {
-                setIsLoading(false);
               }
+
+            } catch (error) {
+              setIsLoading(false);
+              console.error(error);
             }
           });
         }

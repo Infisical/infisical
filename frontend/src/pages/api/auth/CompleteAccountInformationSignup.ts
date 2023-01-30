@@ -2,11 +2,14 @@ interface Props {
   email: string;
   firstName: string;
   lastName: string;
+  protectedKey: string;
+  protectedKeyIV: string;
+  protectedKeyTag: string;
   publicKey: string;
-  ciphertext: string;
+  encryptedPrivateKey: string;
+  encryptedPrivateKeyIV: string;
+  encryptedPrivateKeyTag: string;
   organizationName: string;
-  iv: string;
-  tag: string;
   salt: string;
   verifier: string;
   token: string;
@@ -19,6 +22,9 @@ interface Props {
  * @param {string} obj.email - email of the user completing signup
  * @param {string} obj.firstName - first name of the user completing signup
  * @param {string} obj.lastName - last name of the user completing sign up
+ * @param {string} obj.protectedKey - protected key in encryption version 2
+ * @param {string} obj.protectedKeyIV - IV of protected key in encryption version 2
+ * @param {string} obj.protectedKeyTag - tag of protected key in encryption version 2
  * @param {string} obj.organizationName - organization name for this user (usually, [FIRST_NAME]'s organization)
  * @param {string} obj.publicKey - public key of the user completing signup
  * @param {string} obj.ciphertext
@@ -33,15 +39,18 @@ const completeAccountInformationSignup = ({
   email,
   firstName,
   lastName,
-  organizationName,
+  protectedKey,
+  protectedKeyIV,
+  protectedKeyTag,
   publicKey,
-  ciphertext,
-  iv,
-  tag,
+  encryptedPrivateKey,
+  encryptedPrivateKeyIV,
+  encryptedPrivateKeyTag,
   salt,
   verifier,
-  token
-}: Props) => fetch('/api/v1/signup/complete-account/signup', {
+  token,
+  organizationName
+}: Props) => fetch('/api/v2/signup/complete-account/signup', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -51,13 +60,16 @@ const completeAccountInformationSignup = ({
       email,
       firstName,
       lastName,
+      protectedKey,
+      protectedKeyIV,
+      protectedKeyTag,
       publicKey,
-      encryptedPrivateKey: ciphertext,
-      organizationName,
-      iv,
-      tag,
+      encryptedPrivateKey,
+      encryptedPrivateKeyIV,
+      encryptedPrivateKeyTag,
       salt,
-      verifier
+      verifier,
+      organizationName
     })
   });
 

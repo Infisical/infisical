@@ -1,4 +1,5 @@
 import * as authController from './authController';
+import * as signupController from './signupController';
 import * as usersController from './usersController';
 import * as organizationsController from './organizationsController';
 import * as workspaceController from './workspaceController';
@@ -10,6 +11,7 @@ import * as environmentController from './environmentController';
 
 export {
     authController,
+    signupController,
     usersController,
     organizationsController,
     workspaceController,

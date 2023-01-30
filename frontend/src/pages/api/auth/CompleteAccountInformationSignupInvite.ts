@@ -2,10 +2,13 @@ interface Props {
   email: string;
   firstName: string;
   lastName: string;
+  protectedKey: string;
+  protectedKeyIV: string;
+  protectedKeyTag: string;
   publicKey: string;
-  ciphertext: string;
-  iv: string;
-  tag: string;
+  encryptedPrivateKey: string;
+  encryptedPrivateKeyIV: string;
+  encryptedPrivateKeyTag: string;
   salt: string;
   verifier: string;
   token: string;
@@ -31,27 +34,33 @@ const completeAccountInformationSignupInvite = ({
   email,
   firstName,
   lastName,
+  protectedKey,
+  protectedKeyIV,
+  protectedKeyTag,
   publicKey,
-  ciphertext,
-  iv,
-  tag,
+  encryptedPrivateKey,
+  encryptedPrivateKeyIV,
+  encryptedPrivateKeyTag,
   salt,
   verifier,
   token
-}: Props) => fetch('/api/v1/signup/complete-account/invite', {
+}: Props) => fetch('/api/v2/signup/complete-account/invite', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${  token}`
+      Authorization: `Bearer ${token}`
     },
     body: JSON.stringify({
       email,
       firstName,
       lastName,
+      protectedKey,
+      protectedKeyIV,
+      protectedKeyTag,
       publicKey,
-      encryptedPrivateKey: ciphertext,
-      iv,
-      tag,
+      encryptedPrivateKey,
+      encryptedPrivateKeyIV,
+      encryptedPrivateKeyTag,
       salt,
       verifier
     })
