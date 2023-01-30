@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
-import { Membership, MembershipOrg, User, Key } from '../../models';
+import { Membership, MembershipOrg, User, Key, IMembership, Workspace } from '../../models';
 import {
 	findMembership,
 	deleteMembership as deleteMember

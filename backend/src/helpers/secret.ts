@@ -12,14 +12,17 @@ import {
 import {
 	IAction
 } from '../ee/models';
-import { 
-	SECRET_SHARED, 
+import {
+	SECRET_SHARED,
 	SECRET_PERSONAL,
 	ACTION_ADD_SECRETS,
 	ACTION_UPDATE_SECRETS,
 	ACTION_DELETE_SECRETS,
 	ACTION_READ_SECRETS
 } from '../variables';
+import _ from 'lodash';
+import { ABILITY_WRITE } from '../variables/organization';
+import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
 
 /**
  * Validate that user with id [userId] can modify secrets with ids [secretIds]
@@ -34,7 +37,7 @@ const validateSecrets = async ({
 }: {
 	userId: string;
 	secretIds: string[];
-}) =>{
+}) => {
 	let secrets;
 	try {
 		secrets = await Secret.find({
@@ -42,20 +45,31 @@ const validateSecrets = async ({
 				$in: secretIds.map((secretId: string) => new Types.ObjectId(secretId))
 			}
 		});
-		
-		const workspaceIdsSet = new Set((await Membership.find({
-			user: userId
-		}, 'workspace'))
-		.map((m) => m.workspace.toString()));
-		
+
+		if (secrets.length != secretIds.length) {
+			throw BadRequestError({ message: 'Unable to validate some secrets' })
+		}
+
+		const userMemberships = await Membership.find({ user: userId })
+		const userMembershipById = _.keyBy(userMemberships, 'workspace');
+		const workspaceIdsSet = new Set(userMemberships.map((m) => m.workspace.toString()));
+
+		// for each secret check if the secret belongs to a workspace the user is a member of
 		secrets.forEach((secret: ISecret) => {
-			if (!workspaceIdsSet.has(secret.workspace.toString())) {
-				throw new Error('Failed to validate secret');
+			if (workspaceIdsSet.has(secret.workspace.toString())) {
+				const deniedMembershipPermissions = userMembershipById[secret.workspace.toString()].deniedPermissions;
+				const isDisallowed = _.some(deniedMembershipPermissions, { environmentSlug: secret.environment, ability: ABILITY_WRITE });
+
+				if (isDisallowed) {
+					throw UnauthorizedRequestError({ message: 'You do not have the required permissions to perform this action' });
+				}
+			} else {
+				throw BadRequestError({ message: 'You cannot edit secrets of a workspace you are not a member of' });
 			}
 		});
-		
+
 	} catch (err) {
-		throw new Error('Failed to validate secrets');
+		throw BadRequestError({ message: 'Unable to validate secrets' })
 	}
 
 	return secrets;
@@ -127,13 +141,13 @@ const v1PushSecrets = async ({
 			workspaceId,
 			environment
 		});
-		
-		const oldSecretsObj: any = oldSecrets.reduce((accumulator, s: any) => 
+
+		const oldSecretsObj: any = oldSecrets.reduce((accumulator, s: any) =>
 			({ ...accumulator, [`${s.type}-${s.secretKeyHash}`]: s })
-		, {});
-		const newSecretsObj: any = secrets.reduce((accumulator, s) => 
+			, {});
+		const newSecretsObj: any = secrets.reduce((accumulator, s) =>
 			({ ...accumulator, [`${s.type}-${s.hashKey}`]: s })
-		, {});
+			, {});
 
 		// handle deleting secrets
 		const toDelete = oldSecrets
@@ -150,12 +164,12 @@ const v1PushSecrets = async ({
 				secretIds: toDelete
 			});
 		}
-		
+
 		const toUpdate = oldSecrets
 			.filter((s) => {
 				if (`${s.type}-${s.secretKeyHash}` in newSecretsObj) {
-					if (s.secretValueHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashValue 
-					|| s.secretCommentHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashComment) {
+					if (s.secretValueHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashValue
+						|| s.secretCommentHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].hashComment) {
 						// case: filter secrets where value or comment changed
 						return true;
 					}
@@ -165,7 +179,7 @@ const v1PushSecrets = async ({
 						return true;
 					}
 				}
-				
+
 				return false;
 			});
 
@@ -217,7 +231,7 @@ const v1PushSecrets = async ({
 				};
 			});
 		await Secret.bulkWrite(operations as any);
-		
+
 		// (EE) add secret versions for updated secrets
 		await EESecretService.addSecretVersions({
 			secretVersions: toUpdate.map(({
@@ -245,7 +259,7 @@ const v1PushSecrets = async ({
 					secretValueTag: newSecret.tagValue,
 					secretValueHash: newSecret.hashValue
 				})
-			}) 
+			})
 		});
 
 		// handle adding new secrets
@@ -319,7 +333,7 @@ const v1PushSecrets = async ({
 				}))
 			});
 		}
-		
+
 		// (EE) take a secret snapshot
 		await EESecretService.takeSecretSnapshot({
 			workspaceId
@@ -344,7 +358,7 @@ const v1PushSecrets = async ({
  * @param {String} obj.channel - channel (web/cli/auto)
  * @param {String} obj.ipAddress - ip address of request to push secrets
  */
- const v2PushSecrets = async ({
+const v2PushSecrets = async ({
 	userId,
 	workspaceId,
 	environment,
@@ -362,20 +376,20 @@ const v1PushSecrets = async ({
 	// TODO: clean up function and fix up types
 	try {
 		const actions: IAction[] = [];
-		
+
 		// construct useful data structures
 		const oldSecrets = await getSecrets({
 			userId,
 			workspaceId,
 			environment
 		});
-		
-		const oldSecretsObj: any = oldSecrets.reduce((accumulator, s: any) => 
+
+		const oldSecretsObj: any = oldSecrets.reduce((accumulator, s: any) =>
 			({ ...accumulator, [`${s.type}-${s.secretKeyHash}`]: s })
-		, {});
-		const newSecretsObj: any = secrets.reduce((accumulator, s) => 
+			, {});
+		const newSecretsObj: any = secrets.reduce((accumulator, s) =>
 			({ ...accumulator, [`${s.type}-${s.secretKeyHash}`]: s })
-		, {});
+			, {});
 
 		// handle deleting secrets
 		const toDelete = oldSecrets
@@ -391,7 +405,7 @@ const v1PushSecrets = async ({
 			await EESecretService.markDeletedSecretVersions({
 				secretIds: toDelete
 			});
-			
+
 			const deleteAction = await EELogService.createActionSecret({
 				name: ACTION_DELETE_SECRETS,
 				userId,
@@ -401,12 +415,12 @@ const v1PushSecrets = async ({
 
 			deleteAction && actions.push(deleteAction);
 		}
-		
+
 		const toUpdate = oldSecrets
 			.filter((s) => {
 				if (`${s.type}-${s.secretKeyHash}` in newSecretsObj) {
-					if (s.secretValueHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].secretValueHash 
-					|| s.secretCommentHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].secretCommentHash) {
+					if (s.secretValueHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].secretValueHash
+						|| s.secretCommentHash !== newSecretsObj[`${s.type}-${s.secretKeyHash}`].secretCommentHash) {
 						// case: filter secrets where value or comment changed
 						return true;
 					}
@@ -416,7 +430,7 @@ const v1PushSecrets = async ({
 						return true;
 					}
 				}
-				
+
 				return false;
 			});
 
@@ -469,7 +483,7 @@ const v1PushSecrets = async ({
 					};
 				});
 			await Secret.bulkWrite(operations as any);
-			
+
 			// (EE) add secret versions for updated secrets
 			await EESecretService.addSecretVersions({
 				secretVersions: toUpdate.map((s) => {
@@ -482,7 +496,7 @@ const v1PushSecrets = async ({
 						environment: s.environment,
 						isDeleted: false
 					})
-				}) 
+				})
 			});
 
 			const updateAction = await EELogService.createActionSecret({
@@ -507,18 +521,19 @@ const v1PushSecrets = async ({
 					workspace: workspaceId,
 					type: toAdd[idx].type,
 					environment,
-					...( toAdd[idx].type === 'personal' ? { user: userId } : {})
+					...(toAdd[idx].type === 'personal' ? { user: userId } : {})
 				}))
 			);
 
 			// (EE) add secret versions for new secrets
 			EESecretService.addSecretVersions({
-				secretVersions: newSecrets.map((secretDocument) => { 
+				secretVersions: newSecrets.map((secretDocument) => {
 					return {
 						...secretDocument.toObject(),
 						secret: secretDocument._id,
 						isDeleted: false
-				}})
+					}
+				})
 			});
 
 			const addAction = await EELogService.createActionSecret({
@@ -529,7 +544,7 @@ const v1PushSecrets = async ({
 			});
 			addAction && actions.push(addAction);
 		}
-		
+
 		// (EE) take a secret snapshot
 		await EESecretService.takeSecretSnapshot({
 			workspaceId
@@ -560,7 +575,7 @@ const v1PushSecrets = async ({
  * @param {String} obj.workspaceId - id of workspace to pull from
  * @param {String} obj.environment - environment for secrets
  */
- const getSecrets = async ({
+const getSecrets = async ({
 	userId,
 	workspaceId,
 	environment
@@ -570,7 +585,7 @@ const v1PushSecrets = async ({
 	environment: string;
 }): Promise<ISecret[]> => {
 	let secrets: any; // TODO: FIX any
-	
+
 	try {
 		// get shared workspace secrets
 		const sharedSecrets = await Secret.find({
@@ -622,7 +637,7 @@ const pullSecrets = async ({
 	ipAddress: string;
 }): Promise<ISecret[]> => {
 	let secrets: any;
-	
+
 	try {
 		secrets = await getSecrets({
 			userId,

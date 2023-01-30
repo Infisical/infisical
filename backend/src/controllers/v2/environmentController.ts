@@ -6,8 +6,12 @@ import {
   Workspace,
   Integration,
   ServiceTokenData,
+  Membership,
 } from '../../models';
 import { SecretVersion } from '../../ee/models';
+import { BadRequestError } from '../../utils/errors';
+import _ from 'lodash';
+import { ABILITY_READ } from '../../variables/organization';
 
 /**
  * Create new workspace environment named [environmentName] under workspace with id
@@ -120,6 +124,15 @@ export const renameWorkspaceEnvironment = async (
       { workspace: workspaceId, environment: oldEnvironmentSlug },
       { environment: environmentSlug }
     );
+    await Membership.updateMany(
+      {
+        workspace: workspaceId,
+        "deniedPermissions.environmentSlug": oldEnvironmentSlug
+      },
+      { $set: { "deniedPermissions.$[element].environmentSlug": environmentSlug } },
+      { arrayFilters: [{ "element.environmentSlug": oldEnvironmentSlug }] }
+    )
+
   } catch (err) {
     Sentry.setUser({ email: req.user.email });
     Sentry.captureException(err);
@@ -188,6 +201,11 @@ export const deleteWorkspaceEnvironment = async (
       workspace: workspaceId,
       environment: environmentSlug,
     });
+    await Membership.updateMany(
+      { workspace: workspaceId },
+      { $pull: { deniedPermissions: { environmentSlug: environmentSlug } } }
+    )
+
   } catch (err) {
     Sentry.setUser({ email: req.user.email });
     Sentry.captureException(err);
@@ -201,4 +219,39 @@ export const deleteWorkspaceEnvironment = async (
     workspace: workspaceId,
     environment: environmentSlug,
   });
+};
+
+
+export const getAllAccessibleEnvironmentsOfWorkspace = async (
+  req: Request,
+  res: Response
+) => {
+  const { workspaceId } = req.params;
+  const workspacesUserIsMemberOf = await Membership.findOne({
+    workspace: workspaceId,
+    user: req.user
+  })
+
+  if (!workspacesUserIsMemberOf) {
+    throw BadRequestError()
+  }
+
+  const accessibleEnvironments: { name: string; slug: string; }[] = []
+  const deniedPermission = workspacesUserIsMemberOf.deniedPermissions
+
+  const relatedWorkspace = await Workspace.findById(workspaceId)
+  if (!relatedWorkspace) {
+    throw BadRequestError()
+  }
+  relatedWorkspace.environments.forEach(environment => {
+    const isReadBlocked = _.some(deniedPermission, { environmentSlug: environment.slug, ability: ABILITY_READ })
+    // const isWriteBlocked = _.some(deniedPermission, { environmentSlug: environment.slug, ability: ABILITY_WRITE })
+    if (isReadBlocked) {
+      return
+    } else {
+      accessibleEnvironments.push(environment)
+    }
+  })
+
+  res.json({ accessibleEnvironments })
 };

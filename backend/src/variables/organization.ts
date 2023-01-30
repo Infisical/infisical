@@ -6,6 +6,10 @@ const MEMBER = 'member';
 // membership statuses
 const INVITED = 'invited';
 
+// membership permissions ability
+const ABILITY_READ = 'read';
+const ABILITY_WRITE = 'write';
+
 // -- organization
 const ACCEPTED = 'accepted';
 
@@ -14,5 +18,7 @@ export {
     ADMIN,
     MEMBER,
     INVITED,
-    ACCEPTED
+    ACCEPTED,
+    ABILITY_READ,
+    ABILITY_WRITE
 }

@@ -1,7 +1,7 @@
 import to from 'await-to-js';
 import { Types } from 'mongoose';
 import { Request, Response } from 'express';
-import { ISecret, Secret } from '../../models';
+import { ISecret, Membership, Secret, Workspace } from '../../models';
 import {
     SECRET_PERSONAL,
     SECRET_SHARED,
@@ -10,13 +10,14 @@ import {
     ACTION_UPDATE_SECRETS,
     ACTION_DELETE_SECRETS
 } from '../../variables';
-import { ValidationError } from '../../utils/errors';
+import { UnauthorizedRequestError, ValidationError } from '../../utils/errors';
 import { EventService } from '../../services';
 import { eventPushSecrets } from '../../events';
 import { EESecretService, EELogService } from '../../ee/services';
 import { postHogClient } from '../../services';
-import { BadRequestError } from '../../utils/errors';
 import { getChannelFromUserAgent } from '../../utils/posthog';
+import { ABILITY_READ, ABILITY_WRITE } from '../../variables/organization';
+import { userHasWorkspaceAccess } from '../../ee/helpers/checkMembershipPermissions';
 
 /**
  * Create secret(s) for workspace with id [workspaceId] and environment [environment]
@@ -76,8 +77,14 @@ export const createSecrets = async (req: Request, res: Response) => {
         }
     }   
     */
+
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
     const { workspaceId, environment } = req.body;
+
+    const hasAccess = await userHasWorkspaceAccess(req.user, workspaceId, environment, ABILITY_WRITE)
+    if (!hasAccess) {
+        throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
+    }
 
     let toAdd;
     if (Array.isArray(req.body.secrets)) {
@@ -269,6 +276,14 @@ export const getSecrets = async (req: Request, res: Response) => {
         userEmail = req.serviceTokenData.user.email;
     }
 
+    // none service token case as service tokens are already scoped
+    if (!req.serviceTokenData) {
+        const hasAccess = await userHasWorkspaceAccess(userId, workspaceId, environment, ABILITY_READ)
+        if (!hasAccess) {
+            throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
+        }
+    }
+
     const [err, secrets] = await to(Secret.find(
         {
             workspace: workspaceId,
@@ -370,7 +385,6 @@ export const updateSecrets = async (req: Request, res: Response) => {
     }
     */
     const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli';
-
 
     // TODO: move type
     interface PatchSecret {
