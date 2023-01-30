@@ -85,10 +85,11 @@ const IntegrationAccessTokenDialog = ({
                                 </Dialog.Title>
                                 <div className="mt-2 mb-2">
                                     <p className="text-sm text-gray-500">
-                                        {`This integration requires you to obtain an API key from ${selectedIntegrationOption?.name ?? ''} and store it with Infisical.`}
+                                        {`This integration requires you to obtain an API key from ${selectedIntegrationOption?.name ?? ''} and store it with Infisical. `}
+                                        You can learn how to do this <a target="_blank" rel="noreferrer" className="text-primary cursor-pointer underline underline-offset-2" href="https://infisical.com/docs/integrations/cloud/render">here</a>.
                                     </p>
                                 </div>
-                                <div className="mt-6 max-w-max">
+                                <div className="mt-4 max-w-full">
                                     <InputField
                                         label="API Key"
                                         onChangeHandler={setAccessToken}
@@ -97,7 +98,7 @@ const IntegrationAccessTokenDialog = ({
                                         placeholder=""
                                         isRequired
                                     />
-                                    <div className="mt-4">
+                                    <div className="mt-4 max-w-[5.5rem]">
                                         <Button 
                                             onButtonPressed={submit}
                                             color="mineshaft"
