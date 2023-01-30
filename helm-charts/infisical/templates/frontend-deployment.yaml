@@ -2,6 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "infisical.frontend.fullname" . }}
+  {{- with .Values.frontend.deploymentAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 8 }}
+  {{- end }}
   labels:
     {{- include "infisical.frontend.labels" . | nindent 4 }}
 spec:
@@ -22,6 +26,12 @@ spec:
       - name: {{ template "infisical.name" . }}-{{ .Values.frontend.name }}
         image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
         {{- if .Values.frontend.kubeSecretRef }}
         envFrom:
         - secretRef:

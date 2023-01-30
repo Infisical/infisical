@@ -5,10 +5,12 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { faCheck, faMagnifyingGlass, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { plans } from 'public/data/frequentConstants';
 
 import Button from '@app/components/basic/buttons/Button';
 import AddIncidentContactDialog from '@app/components/basic/dialog/AddIncidentContactDialog';
 import AddUserDialog from '@app/components/basic/dialog/AddUserDialog';
+import UpgradePlanModal from '@app/components/basic/dialog/UpgradePlan';
 import InputField from '@app/components/basic/InputField';
 import UserTable from '@app/components/basic/table/UserTable';
 import NavHeader from '@app/components/navigation/NavHeader';
@@ -29,6 +31,7 @@ import getWorkspaces from '../../api/workspace/getWorkspaces';
 export default function SettingsOrg() {
   const [buttonReady, setButtonReady] = useState(false);
   const router = useRouter();
+  const host = window.location.origin;
   const [orgName, setOrgName] = useState('');
   const [emailUser, setEmailUser] = useState('');
   const [workspaceToBeDeletedName, setWorkspaceToBeDeletedName] = useState('');
@@ -212,13 +215,18 @@ export default function SettingsOrg() {
                 {t('section-members:org-members-description')}
               </p>
               <AddUserDialog
-                isOpen={isAddUserOpen}
+                isOpen={isAddUserOpen && (userList.length < 5 || currentPlan !== plans.starter || host !== 'https://app.infisical.com')}
                 closeModal={closeAddUserModal}
                 submitModal={submitAddUserModal}
                 email={emailUser}
                 setEmail={setEmailUser}
                 currentPlan={currentPlan}
                 orgName={orgName}
+              />
+              <UpgradePlanModal
+                isOpen={isAddUserOpen && userList.length >= 5 && currentPlan === plans.starter && host === 'https://app.infisical.com'}
+                onClose={closeAddUserModal}
+                text="You can add more members if you switch to Infisical's Team plan."
               />
               {/* <DeleteUserDialog isOpen={isDeleteOpen} closeModal={closeDeleteModal} submitModal={deleteMembership} userIdToBeDeleted={userIdToBeDeleted}/> */}
               <div className="pb-1 w-full flex flex-row items-start max-w-6xl">

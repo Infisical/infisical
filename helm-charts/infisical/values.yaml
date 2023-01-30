@@ -8,12 +8,13 @@ nameOverride: ""
 frontend:
   name: frontend
   podAnnotations: {}
-  replicaCount: 1
+  deploymentAnnotations: {}
+  replicaCount: 2
   image:
     repository: infisical/frontend
     pullPolicy: IfNotPresent
     tag: "latest"
-    # kubeSecretRef: some-kube-secret-name
+  # kubeSecretRef: some-kube-secret-name
   service:
     # type of the frontend service
     type: ClusterIP
@@ -24,12 +25,13 @@ frontend:
 backend:
   name: backend
   podAnnotations: {}
-  replicaCount: 1
+  deploymentAnnotations: {}
+  replicaCount: 2
   image:
     repository: infisical/backend
     pullPolicy: IfNotPresent
     tag: "latest"
-    # kubeSecretRef: some-kube-secret-name
+  # kubeSecretRef: some-kube-secret-name
   service:
     annotations: {}
 
@@ -44,11 +46,10 @@ mongodb:
     annotations: {}
 
 # By default the backend will be connected to a Mongo instance in the cluster.
-# However, it is recommended to add a Mongo Cloud connection string as the DB instance in the cluster does not have persistence yet.
+# However, it is recommended to add a managed document DB connection string because the DB instance in the cluster does not have persistence yet ( data will be deleted on next deploy).
 # Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/
 mongodbConnection: {}
-# standardConnectionStringFormat: <>
-# dnsSeedListConnectionFormat: <>
+  # externalMongoDBConnectionString: <>
 
 ingress:
   enabled: true
@@ -82,24 +83,6 @@ ingress:
 #       hosts:
 #         - k8.infisical.com
 
-###
-### YOU MUST FILL IN ALL SECRETS BELOW
-### 
-backendEnvironmentVariables:
-  # Required keys for platform encryption/decryption ops. Replace with nacl sk keys
-  ENCRYPTION_KEY: MUST_REPLACE
-
-  # JWT
-  # Required secrets to sign JWT tokens
-  JWT_SIGNUP_SECRET: MUST_REPLACE
-  JWT_REFRESH_SECRET: MUST_REPLACE
-  JWT_AUTH_SECRET: MUST_REPLACE
-
-  # Mail/SMTP
-  # Required to send emails
-  SMTP_HOST: MUST_REPLACE
-  SMTP_NAME: MUST_REPLACE
-  SMTP_USERNAME: MUST_REPLACE
-  SMTP_PASSWORD: MUST_REPLACE
-
 frontendEnvironmentVariables: {}
+
+backendEnvironmentVariables: {}

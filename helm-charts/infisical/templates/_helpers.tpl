@@ -121,11 +121,8 @@ Create the mongodb connection string.
 {{- $user := "root" -}}
 {{- $pass := "root" -}}
 {{- $connectionString := printf "mongodb://%s:%s@%s:%d/" $user $pass $host $port -}}
-{{- if .Values.mongodbConnection.standardConnectionStringFormat -}}
-{{- $connectionString = .Values.mongodbConnection.standardConnectionStringFormat -}}
-{{- end -}}
-{{- if .Values.mongodbConnection.dnsSeedListConnectionFormat -}}
-{{- $connectionString = .Values.mongodbConnection.dnsSeedListConnectionFormat -}}
+{{- if .Values.mongodbConnection.externalMongoDBConnectionString -}}
+{{- $connectionString = .Values.mongodbConnection.externalMongoDBConnectionString -}}
 {{- end -}}
 {{- printf "%s" $connectionString -}}
 {{- end -}}

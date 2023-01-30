@@ -11,4 +11,5 @@ const (
 	KEYRING_SERVICE_NAME                 = "infisical"
 	PERSONAL_SECRET_TYPE_NAME            = "personal"
 	SHARED_SECRET_TYPE_NAME              = "shared"
+	CLI_VERSION                          = "v0.2.7"
 )

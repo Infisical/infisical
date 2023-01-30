@@ -2317,6 +2317,9 @@ components:
     Project:
       type: object
       properties:
+        _id:
+          type: string
+          example: ''
         name:
           type: string
           example: My Project

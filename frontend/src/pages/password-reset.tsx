@@ -68,13 +68,6 @@ export default function PasswordReset() {
     });
 
     if (!errorCheck) {
-      // const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
-      //   text: privateKey,
-      //   secret: newPassword
-      //     .slice(0, 32)
-      //     .padStart(32 + (newPassword.slice(0, 32).length - new Blob([newPassword]).size), '0')
-      // }) as { ciphertext: string; iv: string; tag: string };
-
       client.init(
         {
           username: email,

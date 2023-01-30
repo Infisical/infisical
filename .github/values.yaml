@@ -1,36 +1,93 @@
+#####
+# INFISICAL K8 DEFAULT VALUES FILE
+# PLEASE REPLACE VALUES/EDIT AS REQUIRED 
+#####
+
+nameOverride: ""
+
 frontend:
-  replicaCount: 1
+  name: frontend
+  podAnnotations: {}
+  deploymentAnnotations:
+    secrets.infisical.com/auto-reload: "true"
+  replicaCount: 2
   image:
-    repository: 
-    pullPolicy: Always
+    repository: infisical/frontend
+    pullPolicy: Always 
     tag: "latest"
   kubeSecretRef: managed-secret-frontend
+  service:
+    # type of the frontend service
+    type: ClusterIP
+    # define the nodePort if service type is NodePort
+    # nodePort: 
+    annotations: {}
 
 backend:
-  replicaCount: 1
+  name: backend
+  podAnnotations: {}
+  deploymentAnnotations:
+    secrets.infisical.com/auto-reload: "true"
+  replicaCount: 2
   image:
-    repository: 
+    repository: infisical/backend
     pullPolicy: Always
     tag: "latest"
   kubeSecretRef: managed-backend-secret
+  service:
+    annotations: {}
+
+mongodb:
+  name: mongodb
+  podAnnotations: {}
+  image:
+    repository: mongo
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    annotations: {}
+
+# By default the backend will be connected to a Mongo instance in the cluster.
+# However, it is recommended to add a managed document DB connection string because the DB instance in the cluster does not have persistence yet ( data will be deleted on next deploy).
+# Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/
+mongodbConnection: {}
+  # externalMongoDBConnectionString: <>
 
 ingress:
   enabled: true
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-  hostName: gamma.infisical.com
+  hostName: gamma.infisical.com # replace with your domain 
   frontend: 
     path: /
     pathType: Prefix
   backend:
     path: /api
     pathType: Prefix
-  tls:
-    - secretName: echo-tls
-      hosts:
-        - gamma.infisical.com
+  tls: []
 
-backendEnvironmentVariables:
 
-frontendEnvironmentVariables:
+## Complete Ingress example 
+# ingress:
+#   enabled: true
+#   annotations:
+#     kubernetes.io/ingress.class: "nginx"
+#     cert-manager.io/issuer: letsencrypt-nginx
+#   hostName: k8.infisical.com
+#   frontend: 
+#     path: /
+#     pathType: Prefix
+#   backend:
+#     path: /api
+#     pathType: Prefix
+#   tls:
+#     - secretName: letsencrypt-nginx
+#       hosts:
+#         - k8.infisical.com
+
+###
+### YOU MUST FILL IN ALL SECRETS BELOW
+### 
+backendEnvironmentVariables: {}
+
+frontendEnvironmentVariables: {}

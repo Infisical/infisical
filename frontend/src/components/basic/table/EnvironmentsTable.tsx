@@ -1,9 +1,13 @@
+import { useEffect, useState } from 'react';
 import { faPencil, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
+import { plans } from 'public/data/frequentConstants';
 
 import { usePopUp } from '../../../hooks/usePopUp';
+import getOrganizationSubscriptions from '../../../pages/api/organization/GetOrgSubscription';
 import Button from '../buttons/Button';
 import { AddUpdateEnvironmentDialog } from '../dialog/AddUpdateEnvironmentDialog';
 import DeleteActionModal from '../dialog/DeleteActionModal';
+import UpgradePlanModal from '../dialog/UpgradePlan';
 
 type Env = { name: string; slug: string };
 
@@ -17,8 +21,24 @@ type Props = {
 const EnvironmentTable = ({ data = [], onCreateEnv, onDeleteEnv, onUpdateEnv }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     'createUpdateEnv',
-    'deleteEnv'
+    'deleteEnv',
+    'upgradePlan'
   ] as const);
+  const [plan, setPlan] = useState('');
+  const host = window.location.origin;
+
+  useEffect(() => {
+    // on initial load - run auth check
+    (async () => {
+      const orgId = localStorage.getItem('orgData.id') as string;
+      const subscriptions = await getOrganizationSubscriptions({
+        orgId
+      });
+      setPlan(subscriptions.data[0].plan.product);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const onEnvCreateCB = async (env: Env) => {
     try {
@@ -63,7 +83,13 @@ const EnvironmentTable = ({ data = [], onCreateEnv, onDeleteEnv, onUpdateEnv }: 
         <div className="w-48">
           <Button
             text="Add New Env"
-            onButtonPressed={() => handlePopUpOpen('createUpdateEnv')}
+            onButtonPressed={() => {
+              if (plan !== plans.starter || host !== "https://app.infisical.com") {
+                handlePopUpOpen('createUpdateEnv')
+              } else {
+                handlePopUpOpen('upgradePlan')
+              }
+            }}
             color="mineshaft"
             icon={faPlus}
             size="md"
@@ -88,18 +114,30 @@ const EnvironmentTable = ({ data = [], onCreateEnv, onDeleteEnv, onUpdateEnv }: 
                     {name}
                   </td>
                   <td className="pl-6 py-2 border-mineshaft-700 border-t text-gray-300">{slug}</td>
-                  <td className="py-2 border-mineshaft-700 border-t flex">
-                    <div className="opacity-50 hover:opacity-100 duration-200 flex items-center mr-8">
+                  <td className="py-2 border-mineshaft-700 border-t flex justify-end">
+                    <div className="hover:opacity-100 duration-200 flex items-center mr-2">
                       <Button
-                        onButtonPressed={() => handlePopUpOpen('createUpdateEnv', { name, slug })}
-                        color="red"
+                        onButtonPressed={() => {
+                          if (plan !== plans.starter || host !== "https://app.infisical.com") {
+                            handlePopUpOpen('createUpdateEnv', { name, slug })
+                          } else {
+                            handlePopUpOpen('upgradePlan')
+                          }
+                        }}
+                        color="mineshaft"
                         size="icon-sm"
                         icon={faPencil}
                       />
                     </div>
-                    <div className="opacity-50 hover:opacity-100 duration-200 flex items-center">
+                    <div className="opacity-50 hover:opacity-100 duration-200 flex items-center mr-6">
                       <Button
-                        onButtonPressed={() => handlePopUpOpen('deleteEnv', { name, slug })}
+                        onButtonPressed={() => {
+                          if (plan !== plans.starter || host !== "https://app.infisical.com") {
+                            handlePopUpOpen('deleteEnv', { name, slug })
+                          } else {
+                            handlePopUpOpen('upgradePlan')
+                          }
+                        }}
                         color="red"
                         size="icon-sm"
                         icon={faX}
@@ -133,6 +171,11 @@ const EnvironmentTable = ({ data = [], onCreateEnv, onDeleteEnv, onUpdateEnv }: 
           onClose={() => handlePopUpClose('createUpdateEnv')}
           onCreateSubmit={onEnvCreateCB}
           onEditSubmit={onEnvUpdateCB}
+        />
+        <UpgradePlanModal 
+          isOpen={popUp.upgradePlan.isOpen}
+          onClose={() => handlePopUpClose('upgradePlan')}
+          text="You can add custom environments if you switch to Infisical's Team plan."
         />
       </div>
     </>

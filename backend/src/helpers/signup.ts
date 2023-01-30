@@ -108,7 +108,7 @@ const initializeDefaultOrg = async ({
 			roles: [ADMIN]
 		});
 	} catch (err) {
-		throw new Error('Failed to initialize default organization and workspace');
+		throw new Error(`Failed to initialize default organization and workspace [err=${err}]`);
 	}
 };
 
