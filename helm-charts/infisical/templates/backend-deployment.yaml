@@ -35,11 +35,9 @@ spec:
           periodSeconds: 10
         ports: 
         - containerPort: 4000
-        {{- if $backend.kubeSecretRef }}
         envFrom:
         - secretRef:
-            name: {{ $backend.kubeSecretRef }}
-        {{- end }}
+            name: {{ $backend.kubeSecretRef | default "infisical-backend" }}
         env:
         - name: MONGO_URL
           value: {{ include "infisical.mongodb.connectionString" . | quote }}
@@ -66,6 +64,7 @@ spec:
 
 ---
 
+{{ if not $backend.kubeSecretRef }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -75,3 +74,4 @@ data:
   {{- range $key, $value := $backend.secrets }}
   {{ $key }}: {{ $value | b64enc }}
   {{- end }}
+{{- end }}

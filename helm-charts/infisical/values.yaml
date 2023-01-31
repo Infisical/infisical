@@ -14,8 +14,8 @@ frontend:
     repository: infisical/frontend
     pullPolicy: IfNotPresent
     tag: "latest"
-    # Provide your own or leave it empty for default
-    kubeSecretRef: ""
+  # Provide your own or leave it empty for default
+  kubeSecretRef: ""
   service:
     # type of the frontend service
     type: ClusterIP
@@ -34,8 +34,8 @@ backend:
     repository: infisical/backend
     pullPolicy: IfNotPresent
     tag: "latest"
-    # Provide your own or leave it empty for default
-    kubeSecretRef: ""
+  # Provide your own or leave it empty for default
+  kubeSecretRef: ""
   service:
     annotations: {}
   secrets:
