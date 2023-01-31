@@ -107,5 +107,5 @@ metadata:
   name: {{ template "infisical.name" . }}-{{ $mongodb.name }}-creds
 type: Opaque
 data:
-  MONGO_INITDB_ROOT_USERNAME: {{ $mongodb.creds.user | default "root" | b64enc }}
-  MONGO_INITDB_ROOT_PASSWORD: {{ $mongodb.creds.pass | default "root" | b64enc }}
+  MONGO_INITDB_ROOT_USERNAME: {{ $mongodb.creds.user | default "root" | quote | b64enc }}
+  MONGO_INITDB_ROOT_PASSWORD: {{ $mongodb.creds.pass | default "root" | quote | b64enc }}
