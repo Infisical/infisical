@@ -250,7 +250,7 @@ export const getAllAccessibleEnvironmentsOfWorkspace = async (
       return
     } else {
       accessibleEnvironments.push({
-        environment: environment,
+        environmentDetails: environment,
         // readDenied: isReadBlocked,
         isWriteDenied: isWriteBlocked
       })
