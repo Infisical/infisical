@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
       - name: {{ template "infisical.name" . }}-{{ $backend.name }}
-        image: "{{ $backend.image.repository }}:{{ $backend.image.tag | default .Chart.AppVersion }}"
+        image: "{{ $backend.image.repository }}:{{ $backend.image.tag | default "latest" }}"
         imagePullPolicy: {{ $backend.image.pullPolicy }}
         readinessProbe:
           httpGet:
