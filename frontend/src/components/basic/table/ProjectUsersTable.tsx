@@ -264,7 +264,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
                         ? "No Access"
                         : (row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") ? "Read Only" : "Read & Write")
                       }
-                      disabled={myUser === row.email || myRole !== 'admin'}
+                      disabled={myRole !== 'admin'}
                       // onOpenChange={(open) => setIsOpen(open)}
                     >
                       <SelectItem value="No Access">No Access</SelectItem>
