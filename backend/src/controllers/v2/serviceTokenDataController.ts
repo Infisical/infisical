@@ -8,6 +8,8 @@ import {
 import {
     SALT_ROUNDS
 } from '../../config';
+import { userHasWorkspaceAccess } from '../../ee/helpers/checkMembershipPermissions';
+import { ABILITY_READ } from '../../variables/organization';
 
 /**
  * Return service token data associated with service token on request
@@ -36,6 +38,11 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             tag,
             expiresIn
         } = req.body;
+
+        const hasAccess = await userHasWorkspaceAccess(req.user, workspaceId, environment, ABILITY_READ)
+        if (!hasAccess) {
+            throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
+        }
 
         const secret = crypto.randomBytes(16).toString('hex');
         const secretHash = await bcrypt.hash(secret, SALT_ROUNDS);
@@ -100,4 +107,8 @@ export const deleteServiceTokenData = async (req: Request, res: Response) => {
     return res.status(200).send({
         serviceTokenData
     });
+}
+
+function UnauthorizedRequestError(arg0: { message: string; }) {
+    throw new Error('Function not implemented.');
 }
