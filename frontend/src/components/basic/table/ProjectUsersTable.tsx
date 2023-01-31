@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { faX } from '@fortawesome/free-solid-svg-icons';
+import { plans } from 'public/data/frequentConstants';
 
-import deleteUserFromOrganization from '@app/pages/api/organization/deleteUserFromOrganization';
+import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
+import { Select, SelectItem } from '@app/components/v2';
+import updateUserProjectPermission from '@app/ee/api/memberships/UpdateUserProjectPermission';
+import getOrganizationSubscriptions from '@app/pages/api/organization/GetOrgSubscription';
 import changeUserRoleInWorkspace from '@app/pages/api/workspace/changeUserRoleInWorkspace';
 import deleteUserFromWorkspace from '@app/pages/api/workspace/deleteUserFromWorkspace';
 import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
+import getProjectInfo from '@app/pages/api/workspace/getProjectInfo';
 import uploadKeys from '@app/pages/api/workspace/uploadKeys';
 
 import { decryptAssymmetric, encryptAssymmetric } from '../../utilities/cryptography/crypto';
 import guidGenerator from '../../utilities/randomId';
 import Button from '../buttons/Button';
-import Listbox from '../Listbox';
+import UpgradePlanModal from '../dialog/UpgradePlan';
 
 // const roles = ['admin', 'user'];
 // TODO: Set type for this
@@ -20,22 +25,30 @@ type Props = {
   changeData: (users: any[]) => void;
   myUser: string;
   filter: string;
-  resendInvite: (email: string) => void;
-  isOrg: boolean;
 };
 
+type EnvironmentProps = {
+  name: string;
+  slug: string;
+}
+
 /**
- * This is the component that we utilize for the user table - in future, can reuse it for some other purposes too.
+ * This is the component that shows the users of a certin project
  * #TODO: add the possibility of choosing and doing operations on multiple users.
  * @param {*} props
  * @returns
  */
-const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }: Props) => {
+const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
   const [roleSelected, setRoleSelected] = useState(
     Array(userData?.length).fill(userData.map((user) => user.role))
   );
+  const host = window.location.origin;
   const router = useRouter();
   const [myRole, setMyRole] = useState('member');
+  const [currentPlan, setCurrentPlan] = useState('');
+  const [workspaceEnvs, setWorkspaceEnvs] = useState<EnvironmentProps[]>([]);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const { createNotification } = useNotificationContext();
 
   const workspaceId = router.query.id as string;
   // Delete the row in the table (e.g. a user)
@@ -43,11 +56,7 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
   const handleDelete = (membershipId: string, index: number) => {
     // setUserIdToBeDeleted(userId);
     // onClick();
-    if (isOrg) {
-      deleteUserFromOrganization(membershipId);
-    } else {
-      deleteUserFromWorkspace(membershipId);
-    }
+    deleteUserFromWorkspace(membershipId);
     changeData(userData.filter((v, i) => i !== index));
     setRoleSelected([
       ...roleSelected.slice(0, index),
@@ -57,7 +66,7 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
 
   // Update the rold of a certain user
   const handleRoleUpdate = (index: number, e: string) => {
-    changeUserRoleInWorkspace(userData[index].membershipId, e);
+    changeUserRoleInWorkspace(userData[index].membershipId, e.toLowerCase());
     changeData([
       ...userData.slice(0, index),
       ...[
@@ -66,19 +75,85 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
           firstName: userData[index].firstName,
           lastName: userData[index].lastName,
           email: userData[index].email,
-          role: e,
+          role: e.toLocaleLowerCase(),
           status: userData[index].status,
           userId: userData[index].userId,
           membershipId: userData[index].membershipId,
-          publicKey: userData[index].publicKey
+          publicKey: userData[index].publicKey,
+          deniedPermissions: userData[index].deniedPermissions
         }
       ],
       ...userData.slice(index + 1, userData?.length)
     ]);
+    createNotification({
+      text: `Successfully changed user role.`,
+      type: 'success'
+    });
+  };
+
+  const handlePermissionUpdate = (index: number, val: string, membershipId: string, slug: string ) => {
+    let denials: { ability: string; environmentSlug: string; }[];
+    if (val === "Read Only") {
+      denials = [{
+        ability: "write",
+        environmentSlug: slug
+      }];
+    } else if (val === "No Access") {
+      denials = [{
+        ability: "write",
+        environmentSlug: slug
+      }, {
+        ability: "read",
+        environmentSlug: slug
+      }];
+    } else {
+      denials = [];
+    }
+
+    if (currentPlan !== plans.professional && host !== 'https://app.infisical.com') {
+      setIsUpgradeModalOpen(true);
+    } else {
+      const allDenials = userData[index].deniedPermissions.filter((perm: { ability: string; environmentSlug: string; }) => perm.environmentSlug !== slug).concat(denials);
+      updateUserProjectPermission({ membershipId, denials: allDenials});
+      changeData([
+        ...userData.slice(0, index),
+        ...[
+          {
+            key: userData[index].key,
+            firstName: userData[index].firstName,
+            lastName: userData[index].lastName,
+            email: userData[index].email,
+            role: userData[index].role,
+            status: userData[index].status,
+            userId: userData[index].userId,
+            membershipId: userData[index].membershipId,
+            publicKey: userData[index].publicKey,
+            deniedPermissions: allDenials
+          }
+        ],
+        ...userData.slice(index + 1, userData?.length)
+      ]);
+      createNotification({
+        text: `Successfully changed user permissions.`,
+        type: 'success'
+      });
+    }
   };
 
   useEffect(() => {
     setMyRole(userData.filter((user) => user.email === myUser)[0]?.role);
+    (async () => {
+      const result = await getProjectInfo({ projectId: workspaceId });
+      setWorkspaceEnvs(result.environments);
+
+      const orgId = localStorage.getItem('orgData.id') as string;
+      const subscriptions = await getOrganizationSubscriptions({
+        orgId
+      });
+      if (subscriptions) {
+        setCurrentPlan(subscriptions.data[0].plan.product)
+      }
+    })();
   }, [userData, myUser]);
 
   const grantAccess = async (id: string, publicKey: string) => {
@@ -104,20 +179,30 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
     router.reload();
   };
 
-  const deleteMembershipAndResendInvite = (email: string) => {
-    // deleteUserFromWorkspace(membershipId);
-    resendInvite(email);
-  };
+  const closeUpgradeModal = () => {
+    setIsUpgradeModalOpen(false);
+  }
 
   return (
     <div className="table-container bg-bunker rounded-md mb-6 border border-mineshaft-700 relative mt-1 min-w-max">
       <div className="absolute rounded-t-md w-full h-[3.25rem] bg-white/5" />
+      <UpgradePlanModal
+        isOpen={isUpgradeModalOpen}
+        onClose={closeUpgradeModal}
+        text="You can change user permissions if you switch to Infisical's Professional plan."
+      />
       <table className="w-full my-0.5">
         <thead className="text-gray-400 text-sm font-light">
           <tr>
             <th className="text-left pl-4 py-3.5">NAME</th>
             <th className="text-left pl-4 py-3.5">EMAIL</th>
             <th className="text-left pl-6 pr-10 py-3.5">ROLE</th>
+            {workspaceEnvs.map(env => (
+              <th key={guidGenerator()} className="text-left pl-8 py-1 max-w-min break-normal">
+                <span>{env.name.toUpperCase()}<br/></span> 
+                {/* <span>PERMISSION</span> */}
+              </th>
+            ))}
             <th aria-label="buttons" />
           </tr>
         </thead>
@@ -145,38 +230,17 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
                   </td>
                   <td className="pl-6 pr-10 py-2 border-mineshaft-700 border-t text-gray-300">
                     <div className="justify-start h-full flex flex-row items-center">
-                      {row.status === 'granted' &&
-                      ((myRole === 'admin' && row.role !== 'owner') || myRole === 'owner') &&
-                      myUser !== row.email ? (
-                        <Listbox
-                          isSelected={row.role}
-                          onChange={(e) => handleRoleUpdate(index, e)}
-                          data={
-                            myRole === 'owner' ? ['owner', 'admin', 'member'] : ['admin', 'member']
-                          }
-                        />
-                      ) : (
-                        row.status !== 'invited' &&
-                        row.status !== 'verified' && (
-                          <Listbox
-                            isSelected={row.role}
-                            onChange={() => {
-                              throw new Error('Function not implemented.');
-                            }}
-                            data={null}
-                          />
-                        )
-                      )}
-                      {(row.status === 'invited' || row.status === 'verified') && (
-                        <div className="w-full pr-20">
-                          <Button
-                            onButtonPressed={() => deleteMembershipAndResendInvite(row.email)}
-                            color="mineshaft"
-                            text="Resend Invite"
-                            size="md"
-                          />
-                        </div>
-                      )}
+                      <Select 
+                        className="w-36"
+                        // open={isOpen}
+                        onValueChange={(e) => handleRoleUpdate(index, e)}
+                        value={row.role}
+                        disabled={myRole !== 'admin' || myUser === row.email}
+                        // onOpenChange={(open) => setIsOpen(open)}
+                      >
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="member">Member</SelectItem>
+                      </Select>
                       {row.status === 'completed' && myUser !== row.email && (
                         <div className="border border-mineshaft-700 rounded-md bg-white/5 hover:bg-primary text-white hover:text-black duration-200">
                           <Button
@@ -189,6 +253,25 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
                       )}
                     </div>
                   </td>
+                  {workspaceEnvs.map((env) => <td key={guidGenerator()} className="pl-8 py-2 border-mineshaft-700 border-t text-gray-300">
+                    <Select 
+                      className="w-36"
+                      // open={isOpen}
+                      onValueChange={(val) => handlePermissionUpdate(index, val, row.membershipId, env.slug)}
+                      value={
+                        // eslint-disable-next-line no-nested-ternary
+                        (row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") && row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("read"))
+                        ? "No Access"
+                        : (row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") ? "Read Only" : "Read & Write")
+                      }
+                      disabled={myUser === row.email || myRole !== 'admin'}
+                      // onOpenChange={(open) => setIsOpen(open)}
+                    >
+                      <SelectItem value="No Access">No Access</SelectItem>
+                      <SelectItem value="Read Only">Read Only</SelectItem>
+                      <SelectItem value="Read & Write">Read & Write</SelectItem>
+                    </Select>
+                  </td>)}
                   <td className="flex flex-row justify-end pl-8 pr-8 py-2 border-t border-0.5 border-mineshaft-700">
                     {myUser !== row.email &&
                     // row.role !== "admin" &&
@@ -213,4 +296,4 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
   );
 };
 
-export default UserTable;
+export default ProjectUsersTable;

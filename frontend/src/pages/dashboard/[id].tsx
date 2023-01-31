@@ -41,11 +41,13 @@ import updateSecrets from '../api/files/UpdateSecrets';
 import getUser from '../api/user/getUser';
 import checkUserAction from '../api/userActions/checkUserAction';
 import registerUserAction from '../api/userActions/registerUserAction';
+import getWorkspaceEnvironments from '../api/workspace/getWorkspaceEnvironments';
 import getWorkspaces from '../api/workspace/getWorkspaces';
 
 type WorkspaceEnv = {
   name: string;
   slug: string;
+  isWriteDenied: boolean;
 };
 
 interface SecretDataProps {
@@ -133,7 +135,8 @@ export default function Dashboard() {
   const [selectedSnapshotEnv, setSelectedSnapshotEnv] = useState<WorkspaceEnv>();
   const [selectedEnv, setSelectedEnv] = useState<WorkspaceEnv>({
     name: '',
-    slug: ''
+    slug: '',
+    isWriteDenied: false
   });
   const [atSecretAreaTop, setAtSecretsAreaTop] = useState(true);
   const secretsTop = useRef<HTMLDivElement>(null);
@@ -214,9 +217,10 @@ export default function Dashboard() {
           router.push(`/dashboard/${userWorkspaces?.[0]?._id}`);
         }
 
-        setWorkspaceEnvs(workspace?.environments || []);
+        const accessibleEnvironments = await getWorkspaceEnvironments({ workspaceId });
+        setWorkspaceEnvs(accessibleEnvironments || []);
         // set env
-        const env = workspace?.environments?.[0] || {
+        const env = accessibleEnvironments?.[0] || {
           name: 'unknown',
           slug: 'unkown'
         };
@@ -351,6 +355,7 @@ export default function Dashboard() {
       findDuplicates(data!.map((item: SecretDataProps) => item.key)).length > 0;
 
     if (nameErrors) {
+      setSaveLoading(false);
       return createNotification({
         text: 'Solve all name errors before saving secrets.',
         type: 'error'
@@ -358,8 +363,17 @@ export default function Dashboard() {
     }
 
     if (duplicatesExist) {
+      setSaveLoading(false);
       return createNotification({
         text: 'Remove duplicated secret names before saving.',
+        type: 'error'
+      });
+    }
+
+    if (selectedEnv.isWriteDenied) {
+      setSaveLoading(false);
+      return createNotification({
+        text: 'You are not allowed to edit this environment',
         type: 'error'
       });
     }
@@ -580,7 +594,8 @@ export default function Dashboard() {
                     setSelectedEnv(
                       workspaceEnvs.find(({ name }) => envName === name) || {
                         name: 'unknown',
-                        slug: 'unknown'
+                        slug: 'unknown',
+                        isWriteDenied: false
                       }
                     )
                   }
@@ -660,7 +675,8 @@ export default function Dashboard() {
                           setSelectedEnv(
                             workspaceEnvs.find(({ name }) => envName === name) || {
                               name: 'unknown',
-                              slug: 'unknown'
+                              slug: 'unknown',
+                              isWriteDenied: false
                             }
                           )
                         }
@@ -673,7 +689,8 @@ export default function Dashboard() {
                           setSelectedSnapshotEnv(
                             workspaceEnvs.find(({ name }) => envName === name) || {
                               name: 'unknown',
-                              slug: 'unknown'
+                              slug: 'unknown',
+                              isWriteDenied: false
                             }
                           )
                         }
