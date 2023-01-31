@@ -76,6 +76,6 @@ metadata:
 type: Opaque
 data:
   {{- range $key, $value := $backend.secrets }}
-  {{ $key }}: {{ $value | b64enc }}
+  {{ $key }}: {{ $value | quote | b64enc }}
   {{- end }}
 {{- end }}
