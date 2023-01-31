@@ -33,11 +33,9 @@ spec:
             port: 3000
           initialDelaySeconds: 10
           periodSeconds: 10
-        {{- if $frontend.kubeSecretRef }}
         envFrom:
         - secretRef:
-            name: {{ $frontend.kubeSecretRef }}
-        {{- end }}
+            name: {{ $frontend.kubeSecretRef | default "infisical-frontend"  }}
         ports: 
         - containerPort: 3000
 
@@ -67,6 +65,7 @@ spec:
 
 ---
 
+{{ if not $frontend.kubeSecretRef }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -76,3 +75,4 @@ data:
   {{- range $key, $value := $frontend.secrets }}
   {{ $key }}: {{ $value | b64enc }}
   {{- end }}
+{{- end }}
