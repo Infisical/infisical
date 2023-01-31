@@ -110,7 +110,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
       denials = [];
     }
 
-    if (currentPlan !== plans.professional && host !== 'https://app.infisical.com') {
+    if (currentPlan !== plans.professional && host === 'https://app.infisical.com') {
       setIsUpgradeModalOpen(true);
     } else {
       const allDenials = userData[index].deniedPermissions.filter((perm: { ability: string; environmentSlug: string; }) => perm.environmentSlug !== slug).concat(denials);
