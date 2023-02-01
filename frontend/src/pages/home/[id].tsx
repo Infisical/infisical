@@ -167,7 +167,7 @@ export default function Home() {
         })}
         {learningItem({
           text: 'Inject secrets locally',
-          subText: 'Replace .env files with a more secure an efficient alternative.',
+          subText: 'Replace .env files with a more secure and efficient alternative.',
           complete: false,
           icon: faNetworkWired,
           time: '8 min',
