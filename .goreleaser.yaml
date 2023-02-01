@@ -26,6 +26,7 @@ builds:
         goarch: "386"
     dir: ./cli
   - id: all-other-builds
+    ldflags: -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Env.CLI_VERSION }}
     env:
       - CGO_ENABLED=0
     binary: infisical
