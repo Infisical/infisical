@@ -34,16 +34,15 @@ jobs:
         run: |
           mkdir ../../osxcross
           git clone https://github.com/plentico/osxcross-target.git ../../osxcross/target
-      - uses: goreleaser/goreleaser-action@v2
+      - uses: goreleaser/goreleaser-action@v4
         with:
           distribution: goreleaser
           version: latest
-          args: release --rm-dist
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GO_RELEASER_GITHUB_TOKEN }}
           FURY_TOKEN: ${{ secrets.FURYPUSHTOKEN }}
           AUR_KEY: ${{ secrets.AUR_KEY }}
-          CLI_VERSION: ${{github.ref_name}}
       - uses: actions/setup-python@v4
       - run: pip install --upgrade cloudsmith-cli
       - name: Publish to CloudSmith 
