@@ -35,7 +35,7 @@ spec:
           periodSeconds: 10
         envFrom:
         - secretRef:
-            name: {{ $frontend.kubeSecretRef | default "infisical-frontend"  }}
+            name: {{ $frontend.kubeSecretRef | default (include "infisical.frontend.fullname" .)  }}
         ports: 
         - containerPort: 3000
 
@@ -69,7 +69,7 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ $frontend.kubeSecretRef | default "infisical-frontend" }}
+  name: {{ $frontend.kubeSecretRef | default (include "infisical.frontend.fullname" .) }}
 type: Opaque
 data:
   {{- range $key, $value := $frontend.secrets }}
