@@ -4,16 +4,21 @@ import jwt from 'jsonwebtoken';
 import * as Sentry from '@sentry/node';
 import * as bigintConversion from 'bigint-conversion';
 const jsrp = require('jsrp');
-import { User } from '../../models';
+import { User, LoginSRPDetail } from '../../models';
 import { createToken, issueTokens, clearTokens } from '../../helpers/auth';
+import {
+  ACTION_LOGIN,
+  ACTION_LOGOUT
+} from '../../variables';
 import {
   NODE_ENV,
   JWT_AUTH_LIFETIME,
   JWT_AUTH_SECRET,
   JWT_REFRESH_SECRET
 } from '../../config';
-import LoginSRPDetail from '../../models/LoginSRPDetail';
 import { BadRequestError } from '../../utils/errors';
+import { EELogService } from '../../ee/services';
+import { getChannelFromUserAgent } from '../../utils/posthog'; // TODO: move this
 
 declare module 'jsonwebtoken' {
   export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -116,6 +121,18 @@ export const login2 = async (req: Request, res: Response) => {
             secure: NODE_ENV === 'production' ? true : false
           });
 
+          const loginAction = await EELogService.createAction({
+            name: ACTION_LOGIN,
+            userId: user._id
+          });
+          
+          loginAction && await EELogService.createLog({
+            userId: user._id,
+            actions: [loginAction],
+            channel: getChannelFromUserAgent(req.headers['user-agent']),
+            ipAddress: req.ip
+          });
+          
           // return (access) token in response
           return res.status(200).send({
             token: tokens.token,
@@ -159,6 +176,19 @@ export const logout = async (req: Request, res: Response) => {
       sameSite: 'strict',
       secure: NODE_ENV === 'production' ? true : false
     });
+
+    const logoutAction = await EELogService.createAction({
+      name: ACTION_LOGOUT,
+      userId: req.user._id
+    });
+    
+    logoutAction && await EELogService.createLog({
+      userId: req.user._id,
+      actions: [logoutAction],
+      channel: getChannelFromUserAgent(req.headers['user-agent']),
+      ipAddress: req.ip
+    });
+
   } catch (err) {
     Sentry.setUser({ email: req.user.email });
     Sentry.captureException(err);

@@ -79,7 +79,7 @@ export const createSecrets = async (req: Request, res: Response) => {
     */
 
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
-    const { workspaceId, environment } = req.body;
+    const { workspaceId, environment }: { workspaceId: string, environment: string } = req.body;
 
     const hasAccess = await userHasWorkspaceAccess(req.user, workspaceId, environment, ABILITY_WRITE)
     if (!hasAccess) {
@@ -175,17 +175,17 @@ export const createSecrets = async (req: Request, res: Response) => {
         }))
     });
 
-    const addAction = await EELogService.createActionSecret({
+    const addAction = await EELogService.createAction({
         name: ACTION_ADD_SECRETS,
-        userId: req.user._id.toString(),
-        workspaceId,
+        userId: req.user._id,
+        workspaceId: new Types.ObjectId(workspaceId),
         secretIds: newSecrets.map((n) => n._id)
     });
 
     // (EE) create (audit) log
     addAction && await EELogService.createLog({
         userId: req.user._id.toString(),
-        workspaceId,
+        workspaceId: new Types.ObjectId(workspaceId),
         actions: [addAction],
         channel,
         ipAddress: req.ip
@@ -300,16 +300,16 @@ export const getSecrets = async (req: Request, res: Response) => {
 
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
 
-    const readAction = await EELogService.createActionSecret({
+    const readAction = await EELogService.createAction({
         name: ACTION_READ_SECRETS,
-        userId: userId,
-        workspaceId: workspaceId as string,
+        userId: new Types.ObjectId(userId),
+        workspaceId: new Types.ObjectId(workspaceId as string),
         secretIds: secrets.map((n: any) => n._id)
     });
 
     readAction && await EELogService.createLog({
-        userId: userId,
-        workspaceId: workspaceId as string,
+        userId: new Types.ObjectId(userId),
+        workspaceId: new Types.ObjectId(workspaceId as string),
         actions: [readAction],
         channel,
         ipAddress: req.ip
@@ -505,17 +505,17 @@ export const updateSecrets = async (req: Request, res: Response) => {
             });
         }, 10000);
 
-        const updateAction = await EELogService.createActionSecret({
+        const updateAction = await EELogService.createAction({
             name: ACTION_UPDATE_SECRETS,
-            userId: req.user._id.toString(),
-            workspaceId: key,
+            userId: req.user._id,
+            workspaceId: new Types.ObjectId(key),
             secretIds: workspaceSecretObj[key].map((secret: ISecret) => secret._id)
         });
 
         // (EE) create (audit) log
         updateAction && await EELogService.createLog({
             userId: req.user._id.toString(),
-            workspaceId: key,
+            workspaceId: new Types.ObjectId(key),
             actions: [updateAction],
             channel,
             ipAddress: req.ip
@@ -631,17 +631,17 @@ export const deleteSecrets = async (req: Request, res: Response) => {
                 workspaceId: key
             })
         });
-        const deleteAction = await EELogService.createActionSecret({
+        const deleteAction = await EELogService.createAction({
             name: ACTION_DELETE_SECRETS,
-            userId: req.user._id.toString(),
-            workspaceId: key,
+            userId: req.user._id,
+            workspaceId: new Types.ObjectId(key),
             secretIds: workspaceSecretObj[key].map((secret: ISecret) => secret._id)
         });
 
         // (EE) create (audit) log
         deleteAction && await EELogService.createLog({
             userId: req.user._id.toString(),
-            workspaceId: key,
+            workspaceId: new Types.ObjectId(key),
             actions: [deleteAction],
             channel,
             ipAddress: req.ip

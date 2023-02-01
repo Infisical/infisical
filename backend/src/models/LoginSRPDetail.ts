@@ -1,6 +1,14 @@
-import mongoose, { Schema, model } from 'mongoose';
+import mongoose, { Schema, model, Types } from 'mongoose';
 
-const LoginSRPDetailSchema = new Schema(
+export interface ILoginSRPDetail {
+	_id: Types.ObjectId;
+	clientPublicKey: string;
+	email: string;
+	serverBInt: mongoose.Schema.Types.Buffer;
+	expireAt: Date;
+}
+
+const loginSRPDetailSchema = new Schema<ILoginSRPDetail>(
 	{
 		clientPublicKey: {
 			type: String,
@@ -16,7 +24,7 @@ const LoginSRPDetailSchema = new Schema(
 	}
 );
 
-const LoginSRPDetail = model('LoginSRPDetail', LoginSRPDetailSchema);
+const LoginSRPDetail = model('LoginSRPDetail', loginSRPDetailSchema);
 
 // LoginSRPDetailSchema.index({ "expireAt": 1 }, { expireAfterSeconds: 0 });
 

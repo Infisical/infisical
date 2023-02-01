@@ -406,10 +406,10 @@ const v2PushSecrets = async ({
 				secretIds: toDelete
 			});
 
-			const deleteAction = await EELogService.createActionSecret({
+			const deleteAction = await EELogService.createAction({
 				name: ACTION_DELETE_SECRETS,
-				userId,
-				workspaceId,
+				userId: new Types.ObjectId(userId),
+				workspaceId: new Types.ObjectId(userId),
 				secretIds: toDelete
 			});
 
@@ -499,10 +499,10 @@ const v2PushSecrets = async ({
 				})
 			});
 
-			const updateAction = await EELogService.createActionSecret({
+			const updateAction = await EELogService.createAction({
 				name: ACTION_UPDATE_SECRETS,
-				userId,
-				workspaceId,
+				userId: new Types.ObjectId(userId),
+				workspaceId: new Types.ObjectId(workspaceId),
 				secretIds: toUpdate.map((u) => u._id)
 			});
 
@@ -536,10 +536,10 @@ const v2PushSecrets = async ({
 				})
 			});
 
-			const addAction = await EELogService.createActionSecret({
+			const addAction = await EELogService.createAction({
 				name: ACTION_ADD_SECRETS,
-				userId,
-				workspaceId,
+				userId: new Types.ObjectId(userId),
+				workspaceId: new Types.ObjectId(workspaceId),
 				secretIds: newSecrets.map((n) => n._id)
 			});
 			addAction && actions.push(addAction);
@@ -553,8 +553,8 @@ const v2PushSecrets = async ({
 		// (EE) create (audit) log
 		if (actions.length > 0) {
 			await EELogService.createLog({
-				userId,
-				workspaceId,
+				userId: new Types.ObjectId(userId),
+				workspaceId: new Types.ObjectId(workspaceId),
 				actions,
 				channel,
 				ipAddress
@@ -645,16 +645,16 @@ const pullSecrets = async ({
 			environment
 		})
 
-		const readAction = await EELogService.createActionSecret({
+		const readAction = await EELogService.createAction({
 			name: ACTION_READ_SECRETS,
-			userId,
-			workspaceId,
+			userId: new Types.ObjectId(userId),
+			workspaceId: new Types.ObjectId(workspaceId),
 			secretIds: secrets.map((n: any) => n._id)
 		});
 
 		readAction && await EELogService.createLog({
-			userId,
-			workspaceId,
+			userId: new Types.ObjectId(userId),
+			workspaceId: new Types.ObjectId(workspaceId),
 			actions: [readAction],
 			channel,
 			ipAddress
