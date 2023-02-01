@@ -29,7 +29,6 @@ builds:
     dir: ./cli
 
   - id: all-other-builds
-    ldflags: -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Env.CLI_VERSION }}
     env:
       - CGO_ENABLED=0
     binary: infisical
@@ -103,8 +102,8 @@ brews:
     homepage: "https://infisical.com"
     description: "The official Infisical CLI"
     install: |-
-      bin.install infisical
-      bash_completion.install "completions/infisical.bash" => infisical
+      bin.install "infisical"
+      bash_completion.install "completions/infisical.bash" => "infisical"
       zsh_completion.install "completions/infisical.zsh" => "_infisical"
       fish_completion.install "completions/infisical.fish"
       man1.install "manpages/infisical.1.gz"
