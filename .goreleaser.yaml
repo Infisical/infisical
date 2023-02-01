@@ -14,6 +14,7 @@ before:
 builds:
   - id: darwin-build
     binary: infisical
+    ldflags: -X github.com/Infisical/infisical-merge/packages/util/util.CLI_VERSION={{ .Env.CLI_VERSION }}
     env:
       - CGO_ENABLED=1
       - CC=/home/runner/work/osxcross/target/bin/o64-clang

@@ -19,6 +19,7 @@ jobs:
         with:
           fetch-depth: 0
       - run: git fetch --force --tags
+      - run: echo "Ref name ${{github.ref_name}}"
       - uses: actions/setup-go@v3
         with:
           go-version: '>=1.19.3'
@@ -42,6 +43,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GO_RELEASER_GITHUB_TOKEN }}
           FURY_TOKEN: ${{ secrets.FURYPUSHTOKEN }}
           AUR_KEY: ${{ secrets.AUR_KEY }}
+          CLI_VERSION: ${{github.ref_name}}
       - uses: actions/setup-python@v4
       - run: pip install --upgrade cloudsmith-cli
       - name: Publish to CloudSmith 
