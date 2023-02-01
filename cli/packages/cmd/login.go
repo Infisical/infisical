@@ -33,13 +33,13 @@ var loginCmd = &cobra.Command{
 	PreRun:                toggleDebug,
 	Run: func(cmd *cobra.Command, args []string) {
 		currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
-		if err != nil && strings.Contains(err.Error(), "The specified item could not be found in the keyring") { // if the key can't be found allow them to override
+		if err != nil && (strings.Contains(err.Error(), "The specified item could not be found in the keyring") || strings.Contains(err.Error(), "unable to get key from Keyring")) { // if the key can't be found allow them to override
 			log.Debug(err)
 		} else if err != nil {
 			util.HandleError(err)
 		}
 
-		if currentLoggedInUserDetails.IsUserLoggedIn {
+		if currentLoggedInUserDetails.IsUserLoggedIn && !currentLoggedInUserDetails.LoginExpired { // if you are logged in but not expired
 			shouldOverride, err := shouldOverrideLoginPrompt(currentLoggedInUserDetails.UserCredentials.Email)
 			if err != nil {
 				util.HandleError(err)

@@ -5,6 +5,7 @@ import (
 
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/go-resty/resty/v2"
+	log "github.com/sirupsen/logrus"
 )
 
 const USER_AGENT = "cli"
@@ -143,4 +144,25 @@ func CallGetAllWorkSpacesUserBelongsTo(httpClient *resty.Client) (GetWorkSpacesR
 	}
 
 	return workSpacesResponse, nil
+}
+
+func CallIsAuthenticated(httpClient *resty.Client) bool {
+	var workSpacesResponse GetWorkSpacesResponse
+	response, err := httpClient.
+		R().
+		SetResult(&workSpacesResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		Post(fmt.Sprintf("%v/v1/auth/checkAuth", config.INFISICAL_URL))
+
+	log.Debugln(fmt.Errorf("CallIsAuthenticated: Unsuccessful response:  [response=%v]", response))
+
+	if err != nil {
+		return false
+	}
+
+	if response.IsError() {
+		return false
+	}
+
+	return true
 }
