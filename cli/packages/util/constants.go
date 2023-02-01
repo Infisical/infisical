@@ -14,5 +14,5 @@ const (
 )
 
 var (
-	CLI_VERSION = "devel"
+	CLI_VERSION = "v0.2.11"
 )
