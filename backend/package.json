@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "@godaddy/terminus": "^4.11.2",
-    "@sentry/node": "^7.14.0",
+    "@sentry/node": "^7.21.1",
     "@sentry/tracing": "^7.21.1",
     "@types/crypto-js": "^4.1.1",
     "axios": "^1.2.0",
