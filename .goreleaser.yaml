@@ -14,7 +14,9 @@ before:
 builds:
   - id: darwin-build
     binary: infisical
-    ldflags: -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Env.CLI_VERSION }}
+    ldflags: -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Version }}
+    flags:
+      - -trimpath
     env:
       - CGO_ENABLED=1
       - CC=/home/runner/work/osxcross/target/bin/o64-clang
@@ -25,11 +27,14 @@ builds:
       - goos: darwin
         goarch: "386"
     dir: ./cli
+
   - id: all-other-builds
-    ldflags: -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Env.CLI_VERSION }}
     env:
       - CGO_ENABLED=0
     binary: infisical
+    ldflags: -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Version }}
+    flags:
+      - -trimpath
     goos:
       - freebsd
       - linux
@@ -67,8 +72,10 @@ release:
 
 checksum:
   name_template: 'checksums.txt'
+
 snapshot:
-  name_template: "{{ incpatch .Version }}"
+  name_template: "{{ incpatch .Version }}-devel"
+
 changelog:
   sort: asc
   filters:
@@ -82,6 +89,7 @@ changelog:
 #       - infisical
 #     dir: "{{ dir .ArtifactPath }}"
 #     cmd: curl -F package=@{{ .ArtifactName }} https://{{ .Env.FURY_TOKEN }}@push.fury.io/infisical/
+
 brews:
   - name: infisical
     tap:
@@ -93,6 +101,13 @@ brews:
     folder: Formula
     homepage: "https://infisical.com"
     description: "The official Infisical CLI"
+    install: |-
+      bin.install "infisical"
+      bash_completion.install "completions/infisical.bash" => "infisical"
+      zsh_completion.install "completions/infisical.zsh" => "_infisical"
+      fish_completion.install "completions/infisical.fish"
+      man1.install "manpages/infisical.1.gz"
+
 nfpms:
 - id: infisical
   package_name: infisical
@@ -118,6 +133,7 @@ nfpms:
       dst: /usr/share/zsh/site-functions/_infisical
     - src: ./manpages/infisical.1.gz
       dst: /usr/share/man/man1/infisical.1.gz
+
 scoop:
   bucket:
     owner: Infisical
@@ -128,6 +144,7 @@ scoop:
   homepage: "https://infisical.com"
   description: "The official Infisical CLI"
   license: MIT
+
 aurs:
   -
     name: infisical-bin
