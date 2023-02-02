@@ -1,13 +1,12 @@
 ---
-title: 'Developing'
+title: 'Local development'
 description: 'This guide will help you set up and run Infisical in development mode.'
 ---
 
 ## Clone the repo
 
 ```bash
-# change location to the path you want Infisical to be installed
-cd ~
+# navigate location to the path you want Infisical to be installed
 
 # clone the repo and cd to Infisical dir
 git clone https://github.com/Infisical/infisical
@@ -16,80 +15,71 @@ cd infisical
 
 ## Set up environment variables
 
-Before running the docker-compose we have to generate the .env file with the environment variables, you can create your own file or start with the
-`.env.example` as an example guide.
 
-Mandatory variables in the `.env` file:
+Start by creating a .env file at the root of the Infisical directory then copy the contents of the file below into the .env file.
 
-1. Keys and JWT variables
+<Accordion title=".env file content">
+  ```env 
+    # Keys
+    # Required key for platform encryption/decryption ops
+    ENCRYPTION_KEY=6c1fe4e407b8911c104518103505b218
 
-![image](https://user-images.githubusercontent.com/118568289/206791534-9c9d1431-e83d-49c0-8a54-b373ed0df820.png)
+    # JWT
+    # Required secrets to sign JWT tokens
+    JWT_SIGNUP_SECRET=3679e04ca949f914c03332aaaeba805a
+    JWT_REFRESH_SECRET=5f2f3c8f0159068dc2bbb3a652a716ff
+    JWT_AUTH_SECRET=4be6ba5602e0fa0ac6ac05c3cd4d247f
+    JWT_SERVICE_SECRET=f32f716d70a42c5703f4656015e76200
 
-The `.env.example` has these variables empty, you can self generate the `JWT and ENCRYPTION_KEY` with this [32-byte random hex strings generator](https://www.browserling.com/tools/random-hex).
+    # MongoDB
+    # Backend will connect to the MongoDB instance at connection string MONGO_URL which can either be a ref
+    # to the MongoDB container instance or Mongo Cloud
+    # Required
+    MONGO_URL=mongodb://root:example@mongo:27017/?authSource=admin
 
-For the `PRIVATE_KEY and PUBLIC_KEY` you can use the ones shown in the screenshot:
+    # Optional credentials for MongoDB container instance and Mongo-Express
+    MONGO_USERNAME=root
+    MONGO_PASSWORD=example
 
-```
-PRIVATE_KEY='oGVv5rThrpZ7WLgQW27chY1cXngr4wLQIZnGfSKgHPk='
-PUBLIC_KEY='ldr6JaC7AY+tun3omGLdE4SWpkJbtVBOI54KfUP53Xc='
-```
+    # Website URL
+    # Required
+    SITE_URL=http://localhost:8080
 
-2. Mongo variables and site URL
+    # Mail/SMTP
+    SMTP_HOST='smtp-server'
+    SMTP_PORT='1025'
+    SMTP_NAME='local'
+    SMTP_USERNAME='team@infisical.com'
+    SMTP_PASSWORD=
+  ```
+</Accordion>
 
-![image](https://user-images.githubusercontent.com/118568289/206792171-3376e3c6-c3ac-4d5d-8776-d78ee089b520.png)
+<Warning>
+    The pre-populated environment variable values above are meant to be used in development only. They should never be used in production.
+</Warning>
 
-These variables are used to connect the MongoDB and set the URL for the localhost.
+View all available [environment variables](https://infisical.com/docs/self-hosting/configuration/envars) and guidance for each.
 
-For development, you can use `root` for the `MONGO_USERNAME` and `example` for the `MONGO_PASSWORD` as shown in the screenshot.
+## Starting Infisical for development
 
-Take into account that if you use your own `MONGO_USERNAME` and `MONGO_PASSWORD`, you also have to change the `MONGO_URL` with the form of `MONGO_USERNAME:MONGO_PASSWORD` after the `//` part of the URL.
+We use use Docker to easily spin up all required services to have Infisical up and running for development. If you are unfamiliar with Docker, don't worry, all you have to do is install [Docker](https://docs.docker.com/get-docker/) for your 
+machine and run the commands below to start up the development server. 
 
-3. Mail SMTP service variables
-
-![image](https://user-images.githubusercontent.com/118568289/206792653-ba3211d1-1071-43f2-93a7-8b408bbd9e0e.png)
-
-If you want to receive actual emails (e.g. you want to test how the email message will look like), take note of the following.
-
-For the `SMTP_USERNAME` variable, you will need an email with 2-steps-verification.
-
-For the `SMTP_PASSWORD` variable, you will need to [generate an app password](https://support.google.com/mail/answer/185833?hl=en) with the email you used in the `SMTP_USERNAME` variable.
-
-Otherwise, a local SMTP server (MailHog) is available for testing purposes. Set the following values to use this:
-
-```
-SMTP_HOST=smtp-server
-SMTP_PORT=1025
-SMTP_NAME=<whatever you like>
-SMTP_USERNAME=team@infisical.com
-SMTP_PASSWORD=
-```
-
-Make sure to leave the `SMTP_PASSWORD` blank so the backend will be able to connect to MailHog
-
-You can browse `http://localhost:8025/` to browse email messages sent by the backend.
-
-With these environment variables, you will be ready to run the docker-compose.
-
-## Docker for development
+#### Start local server 
 
 ```bash
-# build and start the services
 docker-compose -f docker-compose.dev.yml up --build --force-recreate
 ```
+#### Access local server 
 
-Then browse http://localhost:8080
+Once all the services have spun up, browse to http://localhost:8080. To sign in, you may use the default credentials listed below.
+
+Email: `test@localhost.local`
+Password: `testInfisical1`
+
+#### Shutdown local server 
 
 ```bash
 # To stop environment use Control+C (on Mac) CTRL+C (on Win) or
 docker-compose -f docker-compose.dev.yml down
-# start services
-docker-compose -f docker-compose.dev.yml up
 ```
-
-The docker-compose development environment consists of:
-
-- nginx
-- frontend
-- backend
-- mongo
-- mongo-express

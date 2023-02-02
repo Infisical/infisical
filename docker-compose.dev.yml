@@ -28,6 +28,8 @@ services:
       - ./backend/src:/app/src
       - ./backend/nodemon.json:/app/nodemon.json
       - /app/node_modules
+      - ./backend/api-documentation.json:/app/api-documentation.json
+      - ./backend/swagger.ts:/app/swagger.ts
     command: npm run dev
     env_file: .env
     environment:
@@ -44,14 +46,15 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     volumes:
-      - ./frontend/pages:/app/pages
+      - ./frontend/src:/app/src/ # mounted whole src to avoid missing reload on new files
       - ./frontend/public:/app/public
-      - ./frontend/styles:/app/styles
-      - ./frontend/components:/app/components
+      - ./frontend/next-i18next.config.js:/app/next-i18next.config.js
     env_file: .env
     environment:
       - NEXT_PUBLIC_ENV=development
+      - INFISICAL_TELEMETRY_ENABLED=${TELEMETRY_ENABLED}
       - NEXT_PUBLIC_STRIPE_PRODUCT_PRO=${STRIPE_PRODUCT_PRO}
+      - NEXT_PUBLIC_STRIPE_PRODUCT_TEAM=${STRIPE_PRODUCT_TEAM}
       - NEXT_PUBLIC_STRIPE_PRODUCT_STARTER=${STRIPE_PRODUCT_STARTER}
     networks:
       - infisical-dev
@@ -87,7 +90,7 @@ services:
 
   smtp-server:
     container_name: infisical-dev-smtp-server
-    image: mailhog/mailhog
+    image: lytrax/mailhog:latest # https://github.com/mailhog/MailHog/issues/353#issuecomment-821137362
     restart: always
     logging:
       driver: 'none' # disable saving logs

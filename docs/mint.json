@@ -21,7 +21,19 @@
       "to": "#F8B7BD"
     }
   },
-  "topbarLinks": [{ "name": "Log In", "url": "https://app.infisical.com/login" }],
+  "api": {
+    "baseUrl": [
+      "https://app.infisical.com",
+      "http://localhost:8080"
+    ],
+    "auth": {
+      "method": "key",
+      "name": "X-API-KEY"
+    }
+  },
+  "topbarLinks": [
+    { "name": "Log In", "url": "https://app.infisical.com/login" }
+  ],
   "topbarCtaButton": {
     "name": "Start for Free",
     "url": "https://app.infisical.com/signup"
@@ -36,6 +48,11 @@
       "name": "Self-hosting",
       "icon": "server",
       "url": "self-hosting"
+    },
+    {
+      "name": "API Reference",
+      "icon": "cloud",
+      "url": "api-reference"
     },
     {
       "name": "Integrations",
@@ -78,6 +95,9 @@
         "getting-started/dashboard/organization",
         "getting-started/dashboard/project",
         "getting-started/dashboard/integrations",
+        "getting-started/dashboard/pit-recovery",
+        "getting-started/dashboard/secret-versioning",
+        "getting-started/dashboard/audit-logs",
         "getting-started/dashboard/token"
       ]
     },
@@ -92,46 +112,121 @@
             "cli/commands/login",
             "cli/commands/init",
             "cli/commands/run",
-            "cli/commands/export"
+            "cli/commands/secrets",
+            "cli/commands/export",
+            "cli/commands/vault"
           ]
-        }
+        },
+        "cli/faq"
       ]
     },
     {
       "group": "Self-hosting",
       "pages": [
-        "self-hosting/overview",
+        "self-hosting/overview"
+      ]
+    },
+    {
+      "group": "Deployment options",
+      "pages": [
+        "self-hosting/deployments/linux",
+        "self-hosting/deployments/kubernetes"
+      ]
+    },
+    {
+      "group": "Configuration",
+      "pages": [
+        "self-hosting/configuration/envars",
+        "self-hosting/configuration/email"
+      ]
+    },
+    {
+      "group": "Overview",
+      "pages": [
+        "api-reference/overview/introduction",
+        "api-reference/overview/authentication",
         {
-          "group": "Deployments options",
+          "group": "Examples",
           "pages": [
-            "self-hosting/deployments/linux",
-            "self-hosting/deployments/kubernetes"
+            "api-reference/overview/examples/create-secrets",
+            "api-reference/overview/examples/retrieve-secrets",
+            "api-reference/overview/examples/update-secrets",
+            "api-reference/overview/examples/delete-secrets"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Endpoints",
+      "pages": [
+        {
+          "group": "Users",
+          "pages": [
+            "api-reference/endpoints/users/me",
+            "api-reference/endpoints/users/my-organizations"
           ]
         },
         {
-          "group": "Configuration",
-          "pages": ["self-hosting/configuration/envars"]
+          "group": "Organizations",
+          "pages": [
+            "api-reference/endpoints/organizations/memberships",
+            "api-reference/endpoints/organizations/update-membership",
+            "api-reference/endpoints/organizations/delete-membership",
+            "api-reference/endpoints/organizations/workspaces"
+          ]
+        },
+        {
+          "group": "Projects",
+          "pages": [
+            "api-reference/endpoints/workspaces/memberships",
+            "api-reference/endpoints/workspaces/update-membership",
+            "api-reference/endpoints/workspaces/delete-membership",
+            "api-reference/endpoints/workspaces/workspace-key",
+            "api-reference/endpoints/workspaces/logs",
+            "api-reference/endpoints/workspaces/secret-snapshots",
+            "api-reference/endpoints/workspaces/rollback-snapshot"
+          ]
+        },
+        {
+          "group": "Secrets",
+          "pages": [
+            "api-reference/endpoints/secrets/create",
+            "api-reference/endpoints/secrets/read",
+            "api-reference/endpoints/secrets/update",
+            "api-reference/endpoints/secrets/delete",
+            "api-reference/endpoints/secrets/versions",
+            "api-reference/endpoints/secrets/rollback-version"
+          ]
         }
       ]
-    }, 
+    },
     {
       "group": "Integrations",
-      "pages": [
-        "integrations/overview"
-      ]
+      "pages": ["integrations/overview"]
     },
     {
       "group": "Platforms",
       "pages": [
         "integrations/platforms/docker",
-        "integrations/platforms/docker-compose"
+        "integrations/platforms/docker-compose",
+        "integrations/platforms/kubernetes"
       ]
     },
     {
       "group": "Cloud",
       "pages": [
         "integrations/cloud/heroku",
-        "integrations/cloud/vercel"
+        "integrations/cloud/vercel",
+        "integrations/cloud/netlify",
+        "integrations/cloud/render",
+        "integrations/cloud/flyio"
+      ]
+    },
+    {
+      "group": "CI/CD",
+      "pages": [
+        "integrations/cicd/githubactions",
+        "integrations/cicd/circleci"
       ]
     },
     {
@@ -150,7 +245,8 @@
         "integrations/frameworks/django",
         "integrations/frameworks/flask",
         "integrations/frameworks/laravel",
-        "integrations/frameworks/rails"
+        "integrations/frameworks/rails",
+        "integrations/frameworks/dotnet"
       ]
     },
     {
@@ -166,10 +262,12 @@
       "pages": [
         "contributing/overview",
         "contributing/code-of-conduct",
-        "contributing/developing",
-        "contributing/FAQ"
+        "contributing/developing"
       ]
     }
   ],
-  "backgroundImage": "/images/background.png"
+  "backgroundImage": "/images/background.png",
+  "integrations": {
+    "intercom": "hsg644ru"
+  }
 }

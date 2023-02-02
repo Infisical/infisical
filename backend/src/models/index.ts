@@ -1,4 +1,6 @@
 import BackupPrivateKey, { IBackupPrivateKey } from './backupPrivateKey';
+import Bot, { IBot } from './bot';
+import BotKey, { IBotKey } from './botKey';
 import IncidentContactOrg, { IIncidentContactOrg } from './incidentContactOrg';
 import Integration, { IIntegration } from './integration';
 import IntegrationAuth, { IIntegrationAuth } from './integrationAuth';
@@ -12,10 +14,16 @@ import Token, { IToken } from './token';
 import User, { IUser } from './user';
 import UserAction, { IUserAction } from './userAction';
 import Workspace, { IWorkspace } from './workspace';
+import ServiceTokenData, { IServiceTokenData } from './serviceTokenData';
+import APIKeyData, { IAPIKeyData } from './apiKeyData';
 
 export {
 	BackupPrivateKey,
 	IBackupPrivateKey,
+	Bot,
+	IBot,
+	BotKey,
+	IBotKey,
 	IncidentContactOrg,
 	IIncidentContactOrg,
 	Integration,
@@ -41,5 +49,9 @@ export {
 	UserAction,
 	IUserAction,
 	Workspace,
-	IWorkspace
+	IWorkspace,
+	ServiceTokenData,
+	IServiceTokenData,
+	APIKeyData,
+	IAPIKeyData
 };

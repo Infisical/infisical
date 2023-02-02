@@ -1,36 +1,43 @@
 import rateLimit from 'express-rate-limit';
 
-// 300 requests per 15 minutes
+// 120 requests per minute
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 400,
+  windowMs: 60 * 1000,
+  max: 240,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (request) => request.path === '/healthcheck'
+  skip: (request) => {
+    return request.path === '/healthcheck' || request.path === '/api/status'
+  },
+  keyGenerator: (req, res) => {
+    return req.clientIp
+  }
 });
 
-// 5 requests per hour
-const signupLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
+// 10 requests per minute
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
   max: 10,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  keyGenerator: (req, res) => {
+    return req.clientIp
+  }
 });
 
 // 10 requests per hour
-const loginLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false
-});
-
-// 5 requests per hour
 const passwordLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  keyGenerator: (req, res) => {
+    return req.clientIp
+  }
 });
 
-export { apiLimiter, signupLimiter, loginLimiter, passwordLimiter };
+export { 
+  apiLimiter, 
+  authLimiter,
+  passwordLimiter 
+};
