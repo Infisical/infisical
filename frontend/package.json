@@ -38,7 +38,7 @@
     "@tanstack/react-query": "^4.23.0",
     "add": "^2.0.6",
     "axios": "^0.27.2",
-    "axios-auth-refresh": "^3.3.3",
+    "axios-auth-refresh": "^3.3.6",
     "classnames": "^2.3.1",
     "cookies": "^0.8.0",
     "cva": "npm:class-variance-authority@^0.4.0",
