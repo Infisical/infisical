@@ -8,12 +8,17 @@ export interface IWorkspace {
 		name: string;
 		slug: string;
 	}>;
+	autoCapitalization: boolean;
 }
 
 const workspaceSchema = new Schema<IWorkspace>({
 	name: {
 		type: String,
 		required: true
+	},
+	autoCapitalization: {
+		type: Boolean,
+		default: true,
 	},
 	organization: {
 		type: Schema.Types.ObjectId,
