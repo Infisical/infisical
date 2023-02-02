@@ -1,5 +1,41 @@
 import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
 import { MembershipOrg, Workspace, Membership, Key } from '../models';
+
+/**
+ * Validate that user with id [userId] is a member of organization with id [organizationId]
+ * and has at least one of the roles in [acceptedRoles]
+ *
+ */
+const validateMembership = async ({
+	userId,
+	organizationId,
+	acceptedRoles
+}: {
+	userId: string;
+	organizationId: string;
+	acceptedRoles: string[];
+}) => {
+	let membership;
+	try {
+		membership = await MembershipOrg.findOne({
+			user: new Types.ObjectId(userId),
+			organization: new Types.ObjectId(organizationId)
+		});
+		
+		if (!membership) throw new Error('Failed to find organization membership');
+		
+		if (!acceptedRoles.includes(membership.role)) {
+			throw new Error('Failed to validate organization membership role');
+		}
+	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
+		throw new Error('Failed to validate organization membership');
+	}
+	
+	return membership;
+}
 
 /**
  * Return organization membership matching criteria specified in
@@ -84,6 +120,8 @@ const deleteMembershipOrg = async ({
 			_id: membershipOrgId
 		});
 
+		if (!deletedMembershipOrg) throw new Error('Failed to delete organization membership');
+
 		// delete keys associated with organization membership
 		if (deletedMembershipOrg?.user) {
 			// case: organization membership had a registered user
@@ -117,4 +155,9 @@ const deleteMembershipOrg = async ({
 	return deletedMembershipOrg;
 };
 
-export { findMembershipOrg, addMembershipsOrg, deleteMembershipOrg };
+export {
+	validateMembership,
+	findMembershipOrg,
+	addMembershipsOrg, 
+	deleteMembershipOrg 
+}; 

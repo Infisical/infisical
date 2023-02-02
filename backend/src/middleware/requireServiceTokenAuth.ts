@@ -1,9 +1,10 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-import * as Sentry from '@sentry/node';
 import { ServiceToken } from '../models';
 import { JWT_SERVICE_SECRET } from '../config';
+import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
 
+// TODO: deprecate
 declare module 'jsonwebtoken' {
 	export interface UserIDJwtPayload extends jwt.JwtPayload {
 		userId: string;
@@ -24,33 +25,27 @@ const requireServiceTokenAuth = async (
 	next: NextFunction
 ) => {
 	// JWT service token middleware
-	try {
-		if (!req.headers?.authorization)
-			throw new Error('Failed to locate authorization header');
+	
+	const [ AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE ] = <[string, string]>req.headers['authorization']?.split(' ', 2) ?? [null, null]
+	if(AUTH_TOKEN_TYPE === null) return next(BadRequestError({message: `Missing Authorization Header in the request header.`}))
+	//TODO: Determine what is the actual Token Type for Service Token Authentication (ex. Bearer)
+	//if(AUTH_TOKEN_TYPE.toLowerCase() !== 'bearer') return next(UnauthorizedRequestError({message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.`}))
+	if(AUTH_TOKEN_VALUE === null) return next(BadRequestError({message: 'Missing Authorization Body in the request header'}))
 
-		const token = req.headers.authorization.split(' ')[1];
+	const decodedToken = <jwt.UserIDJwtPayload>(
+		jwt.verify(AUTH_TOKEN_VALUE, JWT_SERVICE_SECRET)
+	);
 
-		const decodedToken = <jwt.UserIDJwtPayload>(
-			jwt.verify(token, JWT_SERVICE_SECRET)
-		);
+	const serviceToken = await ServiceToken.findOne({
+		_id: decodedToken.serviceTokenId
+	})
+		.populate('user', '+publicKey')
+		.select('+encryptedKey +publicKey +nonce');
 
-		const serviceToken = await ServiceToken.findOne({
-			_id: decodedToken.serviceTokenId
-		})
-			.populate('user', '+publicKey')
-			.select('+encryptedKey +publicKey +nonce');
+	if (!serviceToken) return next(UnauthorizedRequestError({message: 'The service token does not match the record in the database'}))
 
-		if (!serviceToken) throw new Error('Failed to find service token');
-
-		req.serviceToken = serviceToken;
-		return next();
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		return res.status(401).send({
-			error: 'Failed to authenticate service token'
-		});
-	}
+	req.serviceToken = serviceToken;
+	return next();
 };
 
 export default requireServiceTokenAuth;

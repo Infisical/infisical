@@ -1,6 +1,6 @@
 ---
 title: "Kubernetes"
-description: "Deploy with Kubernetes"
+description: "How to deploy Infisical with Kubernetes"
 ---
 
 <Info>
@@ -20,9 +20,120 @@ If you're less technical and looking for a hands-free experience with minimal ov
 
 #### 1. Fill our environment variables
 
-Before you can deploy the Helm chart, you must fill out the required environment variables. To do so, please either download or copy the
-contents of [this file](https://raw.githubusercontent.com/Infisical/infisical/main/helm-charts/infisical/values.yaml) to a `.yaml` file. 
-_Refer to the available [environment variables](../../self-hosting/configuration/envars)_
+Before you can deploy the Helm chart, you must fill out the required environment variables. To do so, please copy the below file to a `.yaml` file. 
+Refer to the available [environment variables](../../self-hosting/configuration/envars) to learn more
+
+<Accordion title="values.yaml">
+```yaml
+#####
+# INFISICAL K8 DEFAULT VALUES FILE
+# PLEASE REPLACE VALUES/EDIT AS REQUIRED 
+#####
+
+nameOverride: ""
+
+frontend:
+  name: frontend
+  podAnnotations: {}
+  deploymentAnnotations: {}
+  replicaCount: 2
+  image:
+    repository: infisical/frontend
+    pullPolicy: Always
+    tag: "latest" # It it highly recommended to select a specific tag for prod deployment so it is easy to rollback: https://hub.docker.com/r/infisical/frontend/tags
+    # kubeSecretRef: some-kube-secret-name
+  service:
+    # type of the frontend service
+    type: ClusterIP
+    # define the nodePort if service type is NodePort
+    # nodePort: 
+    annotations: {}
+
+backend:
+  name: backend
+  podAnnotations: {}
+  deploymentAnnotations: {}
+  replicaCount: 2
+  image:
+    repository: infisical/backend
+    pullPolicy: Always
+    tag: "latest" # It it highly recommended to select a specific tag for prod deployment so it is easy to rollback: https://hub.docker.com/r/infisical/backend/tags
+    # kubeSecretRef: some-kube-secret-name
+  service:
+    annotations: {}
+
+mongodb:
+  name: mongodb
+  podAnnotations: {}
+  image:
+    repository: mongo
+    pullPolicy: IfNotPresent
+    tag: "latest" 
+  service:
+    annotations: {}
+
+# By default the backend will be connected to a Mongo instance in the cluster.
+# However, it is recommended to add a managed document DB connection string because the DB instance in the cluster does not have persistence yet ( data will be deleted on next deploy).
+# Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/
+mongodbConnection: {}
+  # externalMongoDBConnectionString: <>
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+  hostName: example.com # replace with your domain 
+  frontend: 
+    path: /
+    pathType: Prefix
+  backend:
+    path: /api
+    pathType: Prefix
+  tls: []
+
+
+## Complete Ingress example 
+# ingress:
+#   enabled: true
+#   annotations:
+#     kubernetes.io/ingress.class: "nginx"
+#     cert-manager.io/issuer: letsencrypt-nginx
+#   hostName: k8.infisical.com
+#   frontend: 
+#     path: /
+#     pathType: Prefix
+#   backend:
+#     path: /api
+#     pathType: Prefix
+#   tls:
+#     - secretName: letsencrypt-nginx
+#       hosts:
+#         - k8.infisical.com
+
+###
+### YOU MUST FILL IN ALL SECRETS BELOW
+### 
+backendEnvironmentVariables:
+  # Required keys for platform encryption/decryption ops. Replace with nacl sk keys
+  ENCRYPTION_KEY: MUST_REPLACE
+
+  # JWT
+  # Required secrets to sign JWT tokens
+  JWT_SIGNUP_SECRET: MUST_REPLACE
+  JWT_REFRESH_SECRET: MUST_REPLACE
+  JWT_AUTH_SECRET: MUST_REPLACE
+
+  # Mail/SMTP
+  # Required to send emails
+  SMTP_HOST: MUST_REPLACE
+  SMTP_NAME: MUST_REPLACE
+  SMTP_USERNAME: MUST_REPLACE
+  SMTP_PASSWORD: MUST_REPLACE
+
+frontendEnvironmentVariables: {}
+
+```
+</Accordion>
 
 Once you have a local copy of the values file, fill our the required environment variables and save the file.
 
@@ -42,7 +153,7 @@ that by adding the `--namespace <namespace-to-install-to>` to your `helm install
 
 ```bash
 ## Installs to default namespace
-helm install infisical-helm-charts/infisical --values <path to the values.yaml you downloaded/created in step 2>
+helm install infisical-helm-charts/infisical --generate-name --values <path to the values.yaml you downloaded/created in step 2>
 ```
 
 <Note>
@@ -50,5 +161,4 @@ If you have not filled out all of the required environment variables, you will s
 do so. 
 </Note>
 
-4. Your Infisical installation is complete and should be running on the host name you specified in Ingress in `values.yaml`.
-Note: Please allow an additional time (2 minutes) for the frontend pods to be fully ready.
+#### 4. Your Infisical installation is complete and should be running on the host name you specified in Ingress in `values.yaml`.

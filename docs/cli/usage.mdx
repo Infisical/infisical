@@ -1,13 +1,31 @@
 ---
 title: "Usage"
+description: "How to manage you secrets with Infisical's CLI?"
 ---
 
 Prerequisite: [Install the CLI](/cli/overview)
 
+## Authenticate
+<Tabs>
+  <Tab title="Local development">
+    To use the Infisical CLI in your development environment, you can run the command below.
+    This will allow you to access the features and functionality provided by the CLI.
+
+    ```bash 
+    infisical login 
+    ```
+  </Tab>
+
+  <Tab title="Infisical Token">
+    To use Infisical CLI in environments where you cannot run the `infisical login` command, you can authenticate via a
+    Infisical Token instead. Learn more about [Infisical Token](../getting-started/dashboard/token).
+  </Tab>
+</Tabs>
+
 ## Initialize Infisical for your project
 
 ```bash
-# move to your project
+# navigate to your project
 cd /path/to/project
 
 # initialize infisical
@@ -21,13 +39,7 @@ infisical init
 infisical run -- [your application start command]
 ```
 
-Options you can specify:
-
-| Option        | Description                                                                                                 | Default value |
-| ------------- | ----------------------------------------------------------------------------------------------------------- | ------------- |
-| `--env`       | Used to set the environment that secrets are pulled from. Accepted values: `dev`, `staging`, `test`, `prod` | `dev`         |
-| `--projectId` | Used to link a local project to the platform (required only if injecting via the service token method)      | `None`        |
-| `--expand`    | Parse shell parameter expansions in your secrets (e.g., `${DOMAIN}`)                                        | `true`        |
+View all available options for `run` command [here](./commands/run)
 
 ## Examples:
 
