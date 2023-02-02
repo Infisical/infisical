@@ -14,6 +14,7 @@ interface KeyPairProps {
   toggleSidebar: (id: string) => void;
   sidebarSecretId: string;
   isSnapshot: boolean;
+  isCapitalized: boolean;
 }
 
 /**
@@ -39,7 +40,8 @@ const KeyPair = ({
   isDuplicate,
   toggleSidebar,
   sidebarSecretId,
-  isSnapshot
+  isSnapshot,
+  isCapitalized
 }: KeyPairProps) => (
   <div
     className={`mx-1 flex flex-col items-center ml-1 ${isSnapshot && 'pointer-events-none'} ${
@@ -58,6 +60,7 @@ const KeyPair = ({
       <div className="min-w-xl w-96">
         <div className="flex pr-1.5 items-center rounded-lg mt-4 md:mt-0 max-h-16">
           <DashboardInputField
+            isCapitalized = {isCapitalized}
             onChangeHandler={modifyKey}
             type="varName"
             position={keyPair.pos}

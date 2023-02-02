@@ -123,6 +123,7 @@ export default function Dashboard() {
   const [snapshotData, setSnapshotData] = useState<SnapshotProps>();
   const [numSnapshots, setNumSnapshots] = useState<number>();
   const [saveLoading, setSaveLoading] = useState(false);
+  const [autoCapitalization, setAutoCapitalization] = useState(false);
 
   const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
@@ -213,6 +214,7 @@ export default function Dashboard() {
         if (!workspace) {
           router.push(`/dashboard/${userWorkspaces?.[0]?._id}`);
         }
+        setAutoCapitalization(workspace?.autoCapitalization ?? true);
 
         setWorkspaceEnvs(workspace?.environments || []);
         // set env
@@ -758,6 +760,7 @@ export default function Dashboard() {
                         .filter((row) => !sharedToHide.includes(row.id))
                         .map((keyPair) => (
                           <KeyPair
+                            isCapitalized={autoCapitalization}
                             key={keyPair.id}
                             keyPair={keyPair}
                             modifyValue={listenChangeValue}
@@ -795,6 +798,7 @@ export default function Dashboard() {
                         )
                         .map((keyPair) => (
                           <KeyPair
+                            isCapitalized={autoCapitalization}
                             key={keyPair.id}
                             keyPair={keyPair}
                             modifyValue={listenChangeValue}

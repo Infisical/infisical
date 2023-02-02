@@ -12,6 +12,7 @@ import EnvironmentTable from '@app/components/basic/table/EnvironmentsTable';
 import ServiceTokenTable from '@app/components/basic/table/ServiceTokenTable';
 import NavHeader from '@app/components/navigation/NavHeader';
 import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
+import { Checkbox } from '@app/components/v2';
 import deleteEnvironment from '@app/pages/api/environments/deleteEnvironment';
 import updateEnvironment from '@app/pages/api/environments/updateEnvironment';
 
@@ -20,6 +21,7 @@ import getServiceTokens from '../../api/serviceToken/getServiceTokens';
 import deleteWorkspace from '../../api/workspace/deleteWorkspace';
 import getWorkspaces from '../../api/workspace/getWorkspaces';
 import renameWorkspace from '../../api/workspace/renameWorkspace';
+import toggleAutoCapitalization from '../../api/workspace/toggleAutoCapitalization';
 
 type EnvData = {
   name: string;
@@ -28,8 +30,10 @@ type EnvData = {
 
 export default function SettingsBasic() {
   const [buttonReady, setButtonReady] = useState(false);
+  const [autoCapitalizationButtonReady, setAutoCapitalizationButtonReady] = useState(false);
   const router = useRouter();
   const [workspaceName, setWorkspaceName] = useState('');
+  const [autoCapitalization, setAutoCapitalization] = useState(false);
   const [serviceTokens, setServiceTokens] = useState<any[]>([]);
   const [environments, setEnvironments] = useState<Array<EnvData>>([]);
   const [workspaceToBeDeletedName, setWorkspaceToBeDeletedName] = useState('');
@@ -63,6 +67,7 @@ export default function SettingsBasic() {
       userWorkspaces.forEach((userWorkspace) => {
         if (userWorkspace._id === workspaceId) {
           setWorkspaceName(userWorkspace.name);
+          setAutoCapitalization(userWorkspace.autoCapitalization ?? true);
           setEnvironments(userWorkspace.environments);
         }
       });
@@ -80,10 +85,21 @@ export default function SettingsBasic() {
     setWorkspaceName(newName);
   };
 
+  const toggleAutoCapitalizationCheckBox = (state: boolean) => {
+    setAutoCapitalizationButtonReady(true);
+    setAutoCapitalization(state);
+  };
+
   const submitChanges = (newWorkspaceName: string) => {
     renameWorkspace(workspaceId, newWorkspaceName);
     setButtonReady(false);
   };
+
+  const submitAutoCapitalizationChanges = () => {
+    toggleAutoCapitalization(workspaceId, autoCapitalization);
+    setAutoCapitalizationButtonReady(false);
+  };
+  
 
   const closeAddServiceTokenModal = () => {
     setIsAddServiceTokenDialogOpen(false);
@@ -190,6 +206,28 @@ export default function SettingsBasic() {
                         color="mineshaft"
                         size="md"
                         active={buttonReady}
+                        iconDisabled={faCheck}
+                        textDisabled="Saved"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white/5 rounded-md px-6 pb-4 flex flex-col items-start w-full mb-6 pt-2">
+                  <p className="text-xl font-semibold mb-4 mt-2">{t('settings-project:auto-capitalization')}</p>
+                    <Checkbox
+                      className='data-[state=checked]:bg-primary' 
+                      id='autoCapitalization'
+                      isChecked={autoCapitalization}
+                      onCheckedChange={(state) => toggleAutoCapitalizationCheckBox(state as boolean)}
+                      > {t('settings-project:auto-capitalization-description')}</Checkbox>
+                  <div className="flex justify-start w-full">
+                    <div className="flex justify-start max-w-sm mt-4 mb-2">
+                      <Button
+                        text={t('common:save-changes') as string}
+                        onButtonPressed={() => submitAutoCapitalizationChanges()}
+                        color="mineshaft"
+                        size="md"
+                        active={autoCapitalizationButtonReady}
                         iconDisabled={faCheck}
                         textDisabled="Saved"
                       />

@@ -14,6 +14,7 @@ interface DashboardInputFieldProps {
   blurred?: boolean;
   isDuplicate?: boolean;
   override?: boolean;
+  isCapitalized?: boolean;
 }
 
 /**
@@ -36,7 +37,8 @@ const DashboardInputField = ({
   value,
   blurred,
   isDuplicate,
-  override
+  override,
+  isCapitalized
 }: DashboardInputFieldProps) => {
   const ref = useRef<HTMLDivElement | null>(null);
   const syncScroll = (e: SyntheticEvent<HTMLDivElement>) => {
@@ -58,7 +60,7 @@ const DashboardInputField = ({
           } rounded-md`}
         >
           <input
-            onChange={(e) => onChangeHandler(e.target.value.toUpperCase(), position)}
+            onChange={(e) => onChangeHandler(isCapitalized ? e.target.value.toUpperCase() : e.target.value, position)}
             type={type}
             value={value}
             className={`z-10 peer font-mono ph-no-capture bg-bunker-800 rounded-md caret-white text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 ${
@@ -164,7 +166,8 @@ function inputPropsAreEqual(prev: DashboardInputFieldProps, next: DashboardInput
     prev.position === next.position &&
     prev.blurred === next.blurred &&
     prev.override === next.override &&
-    prev.isDuplicate === next.isDuplicate
+    prev.isDuplicate === next.isDuplicate && 
+    prev.isCapitalized === next.isCapitalized
   );
 }
 
