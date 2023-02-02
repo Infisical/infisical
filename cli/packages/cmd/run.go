@@ -58,9 +58,9 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		if !util.IsSecretEnvironmentValid(envName) {
-			util.PrintMessageAndExit("Invalid environment name passed. Environment names can only be prod, dev, test or staging")
-		}
+		// if !util.IsSecretEnvironmentValid(envName) {
+		// 	util.PrintMessageAndExit("Invalid environment name passed. Environment names can only be prod, dev, test or staging")
+		// }
 
 		secretOverriding, err := cmd.Flags().GetBool("secret-overriding")
 		if err != nil {
