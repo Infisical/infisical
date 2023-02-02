@@ -1,82 +1,54 @@
-const envMapping = {
+interface Mapping {
+  [key: string]: string;
+}
+
+const envMapping: Mapping = {
   Development: "dev",
   Staging: "staging",
   Production: "prod",
   Testing: "test",
 };
-  
-const reverseEnvMapping = {
+
+const reverseEnvMapping: Mapping = {
   dev: "Development",
   staging: "Staging",
   prod: "Production",
   test: "Testing",
 };
 
-const frameworks = [{
-    "name": "Docker",
-    "image": "Docker",
-    "link": "https://infisical.com/docs/integrations/platforms/docker"
-  }, {
-    "name": "Docker Compose",
-    "image": "Docker Compose",
-    "link": "https://infisical.com/docs/integrations/platforms/docker-compose"
-  }, {
-    "name": "React",
-    "image": "React",
-    "link": "https://infisical.com/docs/integrations/frameworks/react"
-  }, {
-    "name": "Vue",
-    "image": "Vue",
-    "link": "https://infisical.com/docs/integrations/frameworks/vue"
-  }, {
-    "image": "Express",
-    "link": "https://infisical.com/docs/integrations/frameworks/express"
-  },{
-    "image": "Next.js",
-    "link": "https://infisical.com/docs/integrations/frameworks/nextjs"
-  }, {
-    "name": "Django",
-    "image": "Django",
-    "link": "https://infisical.com/docs/integrations/frameworks/django"
-  }, {
-    "name": "NestJS",
-    "image": "NestJS",
-    "link": "https://infisical.com/docs/integrations/frameworks/nestjs"
-  }, {
-    "name": "Nuxt",
-    "image": "Nuxt",
-    "link": "https://infisical.com/docs/integrations/frameworks/nuxt"
-  }, {
-    "name": "Gatsby",
-    "image": "Gatsby",
-    "link": "https://infisical.com/docs/integrations/frameworks/gatsby"
-  }, {
-    "name": "Remix",
-    "image": "Remix",
-    "link": "https://infisical.com/docs/integrations/frameworks/remix"
-  }, {
-    "name": "Vite",
-    "image": "Vite",
-    "link": "https://infisical.com/docs/integrations/frameworks/vite"
-  }, {
-    "image": "Fiber",
-    "link": "https://infisical.com/docs/integrations/frameworks/fiber"
-  }, {
-    "name": "Flask",
-    "image": "Flask",
-    "link": "https://infisical.com/docs/integrations/frameworks/flask"
-  }, {
-    "name": "Laravel",
-    "image": "Laravel",
-    "link": "https://infisical.com/docs/integrations/frameworks/laravel"
-  }, {
-    "image": "Rails",
-    "link": "https://infisical.com/docs/integrations/frameworks/rails"
-  }
-]
+const contextNetlifyMapping: Mapping = {
+  "dev": "Local development",
+  "branch-deploy": "Branch deploys",
+  "deploy-review": "Deploy Previews",
+  "production": "Production"
+}
+
+const reverseContextNetlifyMapping: Mapping = {
+  "Local development": "dev",
+  "Branch deploys": "branch-deploy",
+  "Deploy Previews": "deploy-preview",
+  "Production": "production"
+}
+
+const plansDev: Mapping = {
+  "starter": "prod_Mb4ATFT5QAHoPM",
+  "team": "prod_NEpD2WMXUS2eDn",
+  "professional": "prod_Mb4CetZ2jE7jdl",
+  "enterprise": "licence_key_required"
+}
+
+const plansProd: Mapping = {
+  "starter": "prod_Mb8oR5XNwyFTul",
+  "team": "prod_NEp7fAB3UJWK6A",
+  "professional": "prod_Mb8pUIpA0OUi5N",
+  "enterprise": "licence_key_required"
+}
+
+const plans = plansProd || plansDev;
 
 export {
+  contextNetlifyMapping,
   envMapping,
-  frameworks,
-  reverseEnvMapping
-};
+  plans,
+  reverseContextNetlifyMapping,
+  reverseEnvMapping}

@@ -1,28 +1,61 @@
 #####
-# INFISICAL K8 DEFAULT VALUES FIL
+# INFISICAL K8 DEFAULT VALUES FILE
 # PLEASE REPLACE VALUES/EDIT AS REQUIRED 
 #####
 
-namespace: infisical
+nameOverride: ""
 
 frontend:
-  replicaCount: 1
+  name: frontend
+  podAnnotations: {}
+  deploymentAnnotations: {}
+  replicaCount: 2
   image:
-    repository: 
+    repository: infisical/frontend
     pullPolicy: IfNotPresent
     tag: "latest"
+  # kubeSecretRef: some-kube-secret-name
+  service:
+    # type of the frontend service
+    type: ClusterIP
+    # define the nodePort if service type is NodePort
+    # nodePort: 
+    annotations: {}
 
 backend:
-  replicaCount: 1
+  name: backend
+  podAnnotations: {}
+  deploymentAnnotations: {}
+  replicaCount: 2
   image:
-    repository: 
+    repository: infisical/backend
     pullPolicy: IfNotPresent
     tag: "latest"
+  # kubeSecretRef: some-kube-secret-name
+  service:
+    annotations: {}
+
+mongodb:
+  name: mongodb
+  podAnnotations: {}
+  image:
+    repository: mongo
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    annotations: {}
+
+# By default the backend will be connected to a Mongo instance in the cluster.
+# However, it is recommended to add a managed document DB connection string because the DB instance in the cluster does not have persistence yet ( data will be deleted on next deploy).
+# Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/
+mongodbConnection: {}
+  # externalMongoDBConnectionString: <>
 
 ingress:
   enabled: true
-  annotations: {}
-  hostName: example.com
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+  hostName: example.com # replace with your domain 
   frontend: 
     path: /
     pathType: Prefix
@@ -30,6 +63,7 @@ ingress:
     path: /api
     pathType: Prefix
   tls: []
+
 
 ## Complete Ingress example 
 # ingress:
@@ -49,31 +83,6 @@ ingress:
 #       hosts:
 #         - k8.infisical.com
 
-###
-### YOU MUST FILL IN ALL SECRETS BELOW
-### 
-backendEnvironmentVariables:
-  # Required keys for platform encryption/decryption ops. Replace with nacl sk keys
-  PRIVATE_KEY: MUST_REPLACE
-  PUBLIC_KEY: MUST_REPLACE
-  ENCRYPTION_KEY: MUST_REPLACE
+frontendEnvironmentVariables: {}
 
-  # JWT
-  # Required secrets to sign JWT tokens
-  JWT_SIGNUP_SECRET: MUST_REPLACE
-  JWT_REFRESH_SECRET: MUST_REPLACE
-  JWT_AUTH_SECRET: MUST_REPLACE
-
-  # Mail/SMTP
-  # Required to send emails
-  SMTP_HOST: MUST_REPLACE 
-  SMTP_NAME: MUST_REPLACE
-  SMTP_USERNAME: MUST_REPLACE
-  SMTP_PASSWORD: MUST_REPLACE
-
-  # You may replace with Mongo Cloud URI
-  MONGO_URL: mongodb://root:root@mongodb-service:27017/
-
-# frontendEnvironmentVariables:
-#   INFISICAL_TELEMETRY_ENABLED: true
-    
+backendEnvironmentVariables: {}

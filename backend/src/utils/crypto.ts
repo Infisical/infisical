@@ -1,6 +1,22 @@
 import nacl from 'tweetnacl';
 import util from 'tweetnacl-util';
 import AesGCM from './aes-gcm';
+import * as Sentry from '@sentry/node';
+
+/**
+ * Return new base64, NaCl, public-private key pair.
+ * @returns {Object} obj
+ * @returns {String} obj.publicKey - base64, NaCl, public key
+ * @returns {String} obj.privateKey - base64, NaCl, private key
+ */
+const generateKeyPair = () => {
+	const pair = nacl.box.keyPair();
+	
+	return ({
+		publicKey: util.encodeBase64(pair.publicKey),
+		privateKey: util.encodeBase64(pair.secretKey)
+	});
+}
 
 /**
  * Return assymmetrically encrypted [plaintext] using [publicKey] where
@@ -32,6 +48,8 @@ const encryptAsymmetric = ({
 			util.decodeBase64(privateKey)
 		);
 	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
 		throw new Error('Failed to perform asymmetric encryption');
 	}
 
@@ -71,6 +89,8 @@ const decryptAsymmetric = ({
 			util.decodeBase64(privateKey)
 		);
 	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
 		throw new Error('Failed to perform asymmetric decryption');
 	}
 
@@ -81,7 +101,7 @@ const decryptAsymmetric = ({
  * Return symmetrically encrypted [plaintext] using [key].
  * @param {Object} obj
  * @param {String} obj.plaintext - plaintext to encrypt
- * @param {String} obj.key - 16-byte hex key
+ * @param {String} obj.key - hex key
  */
 const encryptSymmetric = ({
 	plaintext,
@@ -97,6 +117,8 @@ const encryptSymmetric = ({
 		iv = obj.iv;
 		tag = obj.tag;
 	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
 		throw new Error('Failed to perform symmetric encryption');
 	}
 
@@ -114,7 +136,7 @@ const encryptSymmetric = ({
  * @param {String} obj.ciphertext - ciphertext to decrypt
  * @param {String} obj.iv - iv
  * @param {String} obj.tag - tag
- * @param {String} obj.key - 32-byte hex key
+ * @param {String} obj.key - hex key
  *
  */
 const decryptSymmetric = ({
@@ -132,6 +154,8 @@ const decryptSymmetric = ({
 	try {
 		plaintext = AesGCM.decrypt(ciphertext, iv, tag, key);
 	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
 		throw new Error('Failed to perform symmetric decryption');
 	}
 
@@ -139,6 +163,7 @@ const decryptSymmetric = ({
 };
 
 export {
+	generateKeyPair,
 	encryptAsymmetric,
 	decryptAsymmetric,
 	encryptSymmetric,

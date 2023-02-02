@@ -1,0 +1,35 @@
+---
+title: "GitHub Actions"
+description: "How to automatically sync secrets from Infisical into your GitHub Actions."
+---
+
+<Warning>
+    Infisical can sync secrets to GitHub repo secrets only. If your repo uses environment secrets, then stay tuned with this [issue](https://github.com/Infisical/infisical/issues/54).
+</Warning>
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+- Ensure you have admin privileges to the repo you want to sync secrets to.
+
+## Navigate to your project's integrations tab
+
+![integrations](../../images/integrations.png)
+
+## Authorize Infisical for GitHub
+
+Press on the GitHub tile and grant Infisical access to your GitHub account (repo privileges only).
+
+![integrations github authorization](../../images/integrations-github-auth.png)
+
+<Info>
+  If this is your project's first cloud integration, then you'll have to grant Infisical access to your project's environment variables.
+  Although this step breaks E2EE, it's necessary for Infisical to sync the environment variables to the cloud platform.
+</Info>
+
+## Start integration
+
+Select which Infisical environment secrets you want to sync to which GitHub repo and press start integration to start syncing secrets to the repo.
+
+![integrations github](../../images/integrations-github.png)
+

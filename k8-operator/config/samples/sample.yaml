@@ -1,0 +1,12 @@
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  name: infisicalsecret-sample
+spec:
+  hostAPI: https://app.infisical.com/api
+  tokenSecretReference:
+    secretName: service-token
+    secretNamespace: default
+  managedSecretReference:
+    secretName: managed-secret
+    secretNamespace: default

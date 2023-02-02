@@ -1,7 +1,10 @@
 import jwt from 'jsonwebtoken';
 import * as Sentry from '@sentry/node';
+import bcrypt from 'bcrypt';
 import {
-	User
+	User,
+	ServiceTokenData,
+	APIKeyData
 } from '../models';
 import {
 	JWT_AUTH_LIFETIME,
@@ -9,6 +12,196 @@ import {
 	JWT_REFRESH_LIFETIME,
 	JWT_REFRESH_SECRET
 } from '../config';
+import {
+	AccountNotFoundError,
+	ServiceTokenDataNotFoundError,
+	APIKeyDataNotFoundError,
+	UnauthorizedRequestError,
+	BadRequestError
+} from '../utils/errors';
+
+/**
+ * 
+ * @param {Object} obj
+ * @param {Object} obj.headers - HTTP request headers object
+ */
+const validateAuthMode = ({
+	headers,
+	acceptedAuthModes
+}: {
+	headers: { [key: string]: string | string[] | undefined },
+	acceptedAuthModes: string[]
+}) => {
+	// TODO: refactor middleware
+	const apiKey = headers['x-api-key'];
+	const authHeader = headers['authorization'];
+
+	let authTokenType, authTokenValue;
+	if (apiKey === undefined && authHeader === undefined) {
+		// case: no auth or X-API-KEY header present
+		throw BadRequestError({ message: 'Missing Authorization or X-API-KEY in request header.' });
+	}
+
+	if (typeof apiKey === 'string') {
+		// case: treat request authentication type as via X-API-KEY (i.e. API Key)
+		authTokenType = 'apiKey';
+		authTokenValue = apiKey;
+	}
+
+	if (typeof authHeader === 'string') {
+		// case: treat request authentication type as via Authorization header (i.e. either JWT or service token)
+		const [tokenType, tokenValue] = <[string, string]>authHeader.split(' ', 2) ?? [null, null]
+		if (tokenType === null)
+			throw BadRequestError({ message: `Missing Authorization Header in the request header.` });
+		if (tokenType.toLowerCase() !== 'bearer')
+			throw BadRequestError({ message: `The provided authentication type '${tokenType}' is not supported.` });
+		if (tokenValue === null)
+			throw BadRequestError({ message: 'Missing Authorization Body in the request header.' });
+
+		switch (tokenValue.split('.', 1)[0]) {
+			case 'st':
+				authTokenType = 'serviceToken';
+				break;
+			default:
+				authTokenType = 'jwt';
+		}
+		authTokenValue = tokenValue;
+	}
+
+	if (!authTokenType || !authTokenValue) throw BadRequestError({ message: 'Missing valid Authorization or X-API-KEY in request header.' });
+
+	if (!acceptedAuthModes.includes(authTokenType)) throw BadRequestError({ message: 'The provided authentication type is not supported.' });
+
+	return ({
+		authTokenType,
+		authTokenValue
+	});
+}
+
+/**
+ * Return user payload corresponding to JWT token [authTokenValue]
+ * @param {Object} obj
+ * @param {String} obj.authTokenValue - JWT token value
+ * @returns {User} user - user corresponding to JWT token
+ */
+const getAuthUserPayload = async ({
+	authTokenValue
+}: {
+	authTokenValue: string;
+}) => {
+	let user;
+	try {
+		const decodedToken = <jwt.UserIDJwtPayload>(
+			jwt.verify(authTokenValue, JWT_AUTH_SECRET)
+		);
+
+		user = await User.findOne({
+			_id: decodedToken.userId
+		}).select('+publicKey');
+
+		if (!user) throw AccountNotFoundError({ message: 'Failed to find User' });
+
+		if (!user?.publicKey) throw UnauthorizedRequestError({ message: 'Failed to authenticate User with partially set up account' });
+
+	} catch (err) {
+		throw UnauthorizedRequestError({
+			message: 'Failed to authenticate JWT token'
+		});
+	}
+
+	return user;
+}
+
+/**
+ * Return service token data payload corresponding to service token [authTokenValue]
+ * @param {Object} obj
+ * @param {String} obj.authTokenValue - service token value
+ * @returns {ServiceTokenData} serviceTokenData - service token data
+ */
+const getAuthSTDPayload = async ({
+	authTokenValue
+}: {
+	authTokenValue: string;
+}) => {
+	let serviceTokenData;
+	try {
+		const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
+
+		// TODO: optimize double query
+		serviceTokenData = await ServiceTokenData
+			.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt');
+
+		if (!serviceTokenData) {
+			throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
+		} else if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
+			// case: service token expired
+			await ServiceTokenData.findByIdAndDelete(serviceTokenData._id);
+			throw UnauthorizedRequestError({
+				message: 'Failed to authenticate expired service token'
+			});
+		}
+
+		const isMatch = await bcrypt.compare(TOKEN_SECRET, serviceTokenData.secretHash);
+		if (!isMatch) throw UnauthorizedRequestError({
+			message: 'Failed to authenticate service token'
+		});
+
+		serviceTokenData = await ServiceTokenData
+			.findById(TOKEN_IDENTIFIER)
+			.select('+encryptedKey +iv +tag').populate('user');
+
+	} catch (err) {
+		throw UnauthorizedRequestError({
+			message: 'Failed to authenticate service token'
+		});
+	}
+
+	return serviceTokenData;
+}
+
+/**
+ * Return API key data payload corresponding to API key [authTokenValue]
+ * @param {Object} obj
+ * @param {String} obj.authTokenValue - API key value
+ * @returns {APIKeyData} apiKeyData - API key data
+ */
+const getAuthAPIKeyPayload = async ({
+	authTokenValue
+}: {
+	authTokenValue: string;
+}) => {
+	let user;
+	try {
+		const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
+
+		const apiKeyData = await APIKeyData
+			.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt')
+			.populate('user', '+publicKey');
+
+		if (!apiKeyData) {
+			throw APIKeyDataNotFoundError({ message: 'Failed to find API key data' });
+		} else if (apiKeyData?.expiresAt && new Date(apiKeyData.expiresAt) < new Date()) {
+			// case: API key expired
+			await APIKeyData.findByIdAndDelete(apiKeyData._id);
+			throw UnauthorizedRequestError({
+				message: 'Failed to authenticate expired API key'
+			});
+		}
+
+		const isMatch = await bcrypt.compare(TOKEN_SECRET, apiKeyData.secretHash);
+		if (!isMatch) throw UnauthorizedRequestError({
+			message: 'Failed to authenticate API key'
+		});
+
+		user = apiKeyData.user;
+	} catch (err) {
+		throw UnauthorizedRequestError({
+			message: 'Failed to authenticate API key'
+		});
+	}
+
+	return user;
+}
 
 /**
  * Return newly issued (JWT) auth and refresh tokens to user with id [userId]
@@ -99,4 +292,12 @@ const createToken = ({
 	}
 };
 
-export { createToken, issueTokens, clearTokens };
+export {
+	validateAuthMode,
+	getAuthUserPayload,
+	getAuthSTDPayload,
+	getAuthAPIKeyPayload,
+	createToken,
+	issueTokens,
+	clearTokens
+};

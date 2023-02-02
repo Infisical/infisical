@@ -1,18 +1,27 @@
 import * as express from 'express';
+import { ISecret } from '../../models';
 
 // TODO: fix (any) types
 declare global {
 	namespace Express {
 		interface Request {
+			clientIp: any;
 			user: any;
 			workspace: any;
 			membership: any;
-			organizationt: any;
+			targetMembership: any;
+			organization: any;
 			membershipOrg: any;
 			integration: any;
 			integrationAuth: any;
+			bot: any;
+			_secret: any;
+			secrets: any;
+			secretSnapshot: any;
 			serviceToken: any;
 			accessToken: any;
+			serviceTokenData: any;
+			apiKeyData: any;
 			query?: any;
 		}
 	}
