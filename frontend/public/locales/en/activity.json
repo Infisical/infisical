@@ -1,0 +1,11 @@
+{
+  "title": "Activity Logs",
+  "subtitle": "Event history for this Infisical project.",
+  "event": {
+    "readSecrets": "Secrets Viewed",
+    "updateSecrets": "Secrets Updated",
+    "addSecrets": "Secrets Added",
+    "deleteSecrets": "Secrets Deleted"
+  },
+  "ip-address": "IP Address"
+}

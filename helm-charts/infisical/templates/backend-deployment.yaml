@@ -1,26 +1,48 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-backend-deployment
+  name: {{ include "infisical.backend.fullname" . }}
+  {{- with .Values.backend.deploymentAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 8 }}
+  {{- end }}
   labels:
-    app: backend
+    {{- include "infisical.backend.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.backend.replicaCount }}
   selector:
     matchLabels:
-      app: backend 
+      {{- include "infisical.backend.matchLabels" . | nindent 6 }}
   template:
     metadata: 
       labels:
-        app: backend 
+        {{- include "infisical.backend.matchLabels" . | nindent 8 }}
+      {{- with .Values.backend.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
       containers:
-      - name: backend 
-        image: infisical/backend
+      - name: {{ template "infisical.name" . }}-{{ .Values.backend.name }}
+        image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+        readinessProbe:
+          httpGet:
+            path: /api/status
+            port: 4000
+          initialDelaySeconds: 10
+          periodSeconds: 10
         ports: 
         - containerPort: 4000
+        {{- if .Values.backend.kubeSecretRef }}
+        envFrom:
+        - secretRef:
+            name: {{ .Values.backend.kubeSecretRef }}
+        {{- end }}
         env:
+        - name: MONGO_URL
+          value: {{ include "infisical.mongodb.connectionString" . | quote }}
+        {{- if .Values.backendEnvironmentVariables }}
         {{- range $key, $value := .Values.backendEnvironmentVariables }}
         {{- if $value | quote | eq "MUST_REPLACE" }}
           {{ fail "Environment variables are not set. Please set all environment variables to continue." }}
@@ -28,15 +50,22 @@ spec:
         - name: {{ $key }}
           value: {{ quote $value }}
         {{- end }}
+        {{- end }}
 
 ---
 apiVersion: v1
 kind: Service 
 metadata:
-  name: infisical-backend-service 
+  name: {{ include "infisical.backend.fullname" . }}
+  labels:
+    {{- include "infisical.backend.labels" . | nindent 4 }}
+  {{- with .Values.backend.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   selector:
-    app: backend 
+    {{- include "infisical.backend.matchLabels" . | nindent 8 }}
   ports:
     - protocol: TCP
       port: 4000

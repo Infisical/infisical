@@ -2,14 +2,11 @@ import { Schema, model, Types } from 'mongoose';
 import {
 	SECRET_SHARED,
 	SECRET_PERSONAL,
-	ENV_DEV,
-	ENV_TESTING,
-	ENV_STAGING,
-	ENV_PROD
 } from '../variables';
 
 export interface ISecret {
 	_id: Types.ObjectId;
+	version: number;
 	workspace: Types.ObjectId;
 	type: string;
 	user: Types.ObjectId;
@@ -22,10 +19,19 @@ export interface ISecret {
 	secretValueIV: string;
 	secretValueTag: string;
 	secretValueHash: string;
+	secretCommentCiphertext?: string;
+	secretCommentIV?: string;
+	secretCommentTag?: string;
+	secretCommentHash?: string;
 }
 
 const secretSchema = new Schema<ISecret>(
 	{
+		version: {
+			type: Number,
+			required: true,
+			default: 1
+		},
 		workspace: {
 			type: Schema.Types.ObjectId,
 			ref: 'Workspace',
@@ -43,7 +49,6 @@ const secretSchema = new Schema<ISecret>(
 		},
 		environment: {
 			type: String,
-			enum: [ENV_DEV, ENV_TESTING, ENV_STAGING, ENV_PROD],
 			required: true
 		},
 		secretKeyCiphertext: {
@@ -59,8 +64,7 @@ const secretSchema = new Schema<ISecret>(
 			required: true
 		},
 		secretKeyHash: {
-			type: String,
-			required: true
+			type: String
 		},
 		secretValueCiphertext: {
 			type: String,
@@ -75,8 +79,23 @@ const secretSchema = new Schema<ISecret>(
 			required: true
 		},
 		secretValueHash: {
+			type: String
+		},
+		secretCommentCiphertext: {
 			type: String,
-			required: true
+			required: false
+		},
+		secretCommentIV: {
+			type: String, // symmetric
+			required: false
+		},
+		secretCommentTag: {
+			type: String, // symmetric
+			required: false
+		},
+		secretCommentHash: {
+			type: String,
+			required: false
 		}
 	},
 	{

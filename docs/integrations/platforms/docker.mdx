@@ -1,5 +1,6 @@
 ---
 title: "Docker"
+description: "How to use Infisical to inject environment variables into a Docker container."
 ---
 
 Infisical can be used in a Dockerfile to inject environment variables into a Docker container.
@@ -31,25 +32,22 @@ Infisical can be used in a Dockerfile to inject environment variables into a Doc
    </Tab>
 </Tabs>
 
-## Modify the start command in your Dockerfile
+  ## Modify your Dockerfile start command 
 
-```dockerfile
-CMD ["infisical", "--env=[env]", "projectId=[projectId]", "run", "---", "[your application start command]"]
+  To make your Docker container consume Infisical secrets, you can start your application with Infisical.
+  This will automatically pull the necessary secrets and make them available to your application as if they were natively exposed within the container.
 
-# example
-CMD ["infisical", "--env=prod", "projectId=62faf98ae0b05e83239b5da41", "run", "---", "npm run start"]
-```
+  ```dockerfile
+  CMD ["infisical", "run", "---", "[your application start command]"]
 
-Required options:
+  # example with single single command 
+  CMD ["infisical", "run", "---", "npm run start"]
 
-| Option        | Description                                                                                                 | Default value |
-| ------------- | ----------------------------------------------------------------------------------------------------------- | ------------- |
-| `--env`       | Used to set the environment that secrets are pulled from. Accepted values: `dev`, `staging`, `test`, `prod` | `dev`         |
-| `--projectId` | Used to link a local project to the platform                                                                | `None`        |
+  # example with multiple commands 
+  CMD ["infisical", "run", "--command", "npm run start && ..."]
+  ```
 
-## Generate an Infisical Token
-
-[Generate an Infisical Token](../../getting-started/dashboard/token) and keep it handy.
+  View more options for the `run` command [here](../../cli/commands/run)
 
 ## Feed Docker your Infisical Token
 
@@ -58,3 +56,8 @@ The CLI looks out for an environment variable called `INFISICAL_TOKEN`. If the t
 ```bash
  docker run --env INFISICAL_TOKEN=[token]...
 ```
+
+## Generate an Infisical Token
+
+[Generate an Infisical Token](../../getting-started/dashboard/token) and keep it handy.
+

@@ -1,5 +1,4 @@
-name: Push to Docker Hub
-
+name: Build, Publish and Deploy to Gamma
 on: [workflow_dispatch]
 
 jobs:
@@ -10,8 +9,9 @@ jobs:
     steps:
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
-      - name: 🔧 Set up QEMU
-        uses: docker/setup-qemu-action@v2
+      - name: Save commit hashes for tag
+        id: commit
+        uses: pr-mpt/actions-commit-hash@v2
       - name: 🔧 Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: 🐋 Login to Docker Hub
@@ -19,9 +19,13 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
       - name: 📦 Build backend and export to Docker
-        uses: docker/build-push-action@v3
+        uses: depot/build-push-action@v1
         with:
+          project: 64mmf0n610
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           load: true
           context: backend
           tags: infisical/backend:test
@@ -35,11 +39,14 @@ jobs:
         run: |
           docker compose -f .github/resources/docker-compose.be-test.yml down
       - name: 🏗️ Build backend and push
-        uses: docker/build-push-action@v3
+        uses: depot/build-push-action@v1
         with:
+          project: 64mmf0n610
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           push: true
           context: backend
-          tags: infisical/backend:latest
+          tags: infisical/backend:${{ steps.commit.outputs.short }}, 
+                infisical/backend:latest
           platforms: linux/amd64,linux/arm64
 
   frontend-image:
@@ -49,8 +56,9 @@ jobs:
     steps:
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
-      - name: 🔧 Set up QEMU
-        uses: docker/setup-qemu-action@v2
+      - name: Save commit hashes for tag
+        id: commit
+        uses: pr-mpt/actions-commit-hash@v2
       - name: 🔧 Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: 🐋 Login to Docker Hub
@@ -58,10 +66,14 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
       - name: 📦 Build frontend and export to Docker
-        uses: docker/build-push-action@v3
+        uses: depot/build-push-action@v1
         with:
           load: true
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          project: 64mmf0n610
           context: frontend
           tags: infisical/frontend:test
           build-args: |
@@ -76,11 +88,51 @@ jobs:
         run: |
           docker stop infisical-frontend-test
       - name: 🏗️ Build frontend and push
-        uses: docker/build-push-action@v3
+        uses: depot/build-push-action@v1
         with:
+          project: 64mmf0n610
           push: true
+          token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           context: frontend
-          tags: infisical/frontend:latest
+          tags: infisical/frontend:${{ steps.commit.outputs.short }}, 
+                infisical/frontend:latest
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+  gamma-deployment:
+    name: Deploy to gamma
+    runs-on: ubuntu-latest
+    needs: [frontend-image, backend-image]
+    steps:
+      - name: ☁️ Checkout source
+        uses: actions/checkout@v3
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.10.0
+      - name: Install infisical helm chart
+        run: |
+          helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
+          helm repo update
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+      - name: Save DigitalOcean kubeconfig with short-lived credentials
+        run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 k8s-1-25-4-do-0-nyc1-1670645170179
+      - name: switch to gamma namespace 
+        run: kubectl config set-context --current --namespace=gamma
+      - name: test kubectl
+        run: kubectl get ingress
+      - name: Download helm values to file and upgrade gamma deploy
+        run: |
+          wget https://raw.githubusercontent.com/Infisical/infisical/main/.github/values.yaml
+          helm upgrade infisical infisical-helm-charts/infisical  --values values.yaml --recreate-pods
+          if [[ $(helm status infisical) == *"FAILED"* ]]; then
+            echo "Helm upgrade failed"
+            exit 1
+          else
+            echo "Helm upgrade was successful"
+          fi
