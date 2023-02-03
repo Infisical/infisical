@@ -73,7 +73,7 @@ app.use(
   })
 );
 
-// app.use(requestIp.mw())
+app.use(requestIp.mw())
 
 if (NODE_ENV === 'production') {
   // enable app-wide rate-limiting + helmet security
