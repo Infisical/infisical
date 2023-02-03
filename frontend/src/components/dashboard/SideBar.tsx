@@ -71,7 +71,7 @@ const SideBar = ({
   const { t } = useTranslation();
 
   return (
-    <div className="absolute border-l border-mineshaft-500 bg-bunker h-full w-96 top-14 right-0 z-40 shadow-xl flex flex-col justify-between">
+    <div className="absolute border-l border-mineshaft-500 bg-bunker h-full w-96 right-0 z-40 shadow-xl flex flex-col justify-between">
       {isLoading ? (
         <div className="flex items-center justify-center h-full">
           <Image
@@ -171,7 +171,7 @@ const SideBar = ({
           />
         </div>
       )}
-      <div className="flex justify-start max-w-sm mt-4 px-4 mt-full mb-[4.7rem]">
+      <div className="flex justify-start max-w-sm mt-4 px-4 mt-full mb-8">
         <Button
           text={String(t('common:save-changes'))}
           onButtonPressed={savePush}
