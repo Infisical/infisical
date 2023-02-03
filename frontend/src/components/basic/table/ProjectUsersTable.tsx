@@ -110,7 +110,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
       denials = [];
     }
 
-    if (currentPlan !== plans.professional && host !== 'https://app.infisical.com') {
+    if (currentPlan !== plans.professional && host === 'https://app.infisical.com') {
       setIsUpgradeModalOpen(true);
     } else {
       const allDenials = userData[index].deniedPermissions.filter((perm: { ability: string; environmentSlug: string; }) => perm.environmentSlug !== slug).concat(denials);
@@ -264,7 +264,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
                         ? "No Access"
                         : (row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") ? "Read Only" : "Read & Write")
                       }
-                      disabled={myUser === row.email || myRole !== 'admin'}
+                      disabled={myRole !== 'admin'}
                       // onOpenChange={(open) => setIsOpen(open)}
                     >
                       <SelectItem value="No Access">No Access</SelectItem>

@@ -25,6 +25,7 @@ export default function NavHeader({
   const [orgName, setOrgName] = useState('');
   const [workspaceName, setWorkspaceName] = useState('');
   const router = useRouter();
+  const projectId = String(router.query.id);
 
   useEffect(() => {
     (async () => {
@@ -35,12 +36,12 @@ export default function NavHeader({
       setOrgName(org.name);
 
       const workspace = await getProjectInfo({
-        projectId: String(router.query.id)
+        projectId
       });
       setWorkspaceName(workspace.name);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [projectId]);
 
   return (
     <div className="pt-20 ml-6 flex flex-row items-center">

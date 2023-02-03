@@ -1,5 +1,7 @@
 import { jsPDF } from 'jspdf';
 
+import { SITE_URL } from './config';
+
 interface PDFProps {
   personalName: string;
   personalEmail: string;
@@ -73,7 +75,7 @@ function generateBackupPDF({ personalName, personalEmail, generatedKey }: PDFPro
   doc.roundedRect(170, 488, 375, 35, 5, 5, 'F');
   doc.setTextColor(23, 23, 23);
   doc.setFontSize(14);
-  doc.text('https://app.infisical.com/login', 180, 420);
+  doc.text(`${SITE_URL}/login`, 180, 420);
   doc.text(personalEmail, 180, 465);
   doc.text(generatedKey, 180, 510);
   doc.text('Need help? Contact us at support@infisical.com', 32, 575);

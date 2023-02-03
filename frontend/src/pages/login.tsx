@@ -22,6 +22,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [errorLogin, setErrorLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAlreadyLoggedIn, setIsAlreadyLoggedIn] = useState(false);
   const router = useRouter();
   const { t } = useTranslation();
   const lang = router.locale ?? 'en';
@@ -44,6 +45,7 @@ export default function Login() {
       }
     };
     if (isLoggedIn()) {
+      setIsAlreadyLoggedIn(true);
       redirectToDashboard();
     }
   }, []);
@@ -63,6 +65,10 @@ export default function Login() {
       }, 2000);
     });
   };
+
+  if (isAlreadyLoggedIn) {
+    return null
+  }
 
   return (
     <div className="bg-bunker-800 h-screen flex flex-col justify-start px-6">

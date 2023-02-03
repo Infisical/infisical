@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { faX } from '@fortawesome/free-solid-svg-icons';
 
+import changeUserRoleInOrganization from '@app/pages/api/organization/changeUserRoleInOrganization';
 import deleteUserFromOrganization from '@app/pages/api/organization/deleteUserFromOrganization';
-import changeUserRoleInWorkspace from '@app/pages/api/workspace/changeUserRoleInWorkspace';
 import deleteUserFromWorkspace from '@app/pages/api/workspace/deleteUserFromWorkspace';
 import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
 import uploadKeys from '@app/pages/api/workspace/uploadKeys';
@@ -55,9 +55,9 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
     ]);
   };
 
-  // Update the rold of a certain user
+  // Update the role of a certain user
   const handleRoleUpdate = (index: number, e: string) => {
-    changeUserRoleInWorkspace(userData[index].membershipId, e);
+    changeUserRoleInOrganization(String(localStorage.getItem("orgData.id")), userData[index].membershipId, e);
     changeData([
       ...userData.slice(0, index),
       ...[
@@ -145,9 +145,9 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
                   </td>
                   <td className="pl-6 pr-10 py-2 border-mineshaft-700 border-t text-gray-300">
                     <div className="justify-start h-full flex flex-row items-center">
-                      {row.status === 'granted' &&
+                      {row.status === 'accepted' &&
                       ((myRole === 'admin' && row.role !== 'owner') || myRole === 'owner') &&
-                      myUser !== row.email ? (
+                      (myUser !== row.email) ? (
                         <Listbox
                           isSelected={row.role}
                           onChange={(e) => handleRoleUpdate(index, e)}
