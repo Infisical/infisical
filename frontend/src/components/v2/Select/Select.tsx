@@ -10,20 +10,24 @@ type Props = {
   children: ReactNode;
   placeholder?: string;
   className?: string;
+  dropdownContainerClassName?: string;
   isLoading?: boolean;
 };
 
 export type SelectProps = SelectPrimitive.SelectProps & Props;
 
 export const Select = forwardRef<HTMLButtonElement, SelectProps>(
-  ({ children, placeholder, className, isLoading, ...props }, ref): JSX.Element => {
+  (
+    { children, placeholder, className, isLoading, dropdownContainerClassName, ...props },
+    ref
+  ): JSX.Element => {
     return (
       <SelectPrimitive.Root {...props}>
         <SelectPrimitive.Trigger
           ref={ref}
           className={twMerge(
             `inline-flex items-center justify-between rounded-md
-            bg-mineshaft-800 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-gray-500`,
+            bg-bunker-800 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-gray-500`,
             className
           )}
         >
@@ -36,10 +40,10 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
         </SelectPrimitive.Trigger>
         <SelectPrimitive.Portal>
           <SelectPrimitive.Content
-            // position="popper"
-            sideOffset={4}
-            className="overflow-hidden rounded-md bg-mineshaft-800 font-inter text-bunker-100 shadow-md"
-            style={{ width: 'var(--radix-select-trigger-width) + 6' }}
+            className={twMerge(
+              'relative left-4 top-1 overflow-hidden rounded-md bg-bunker-800 font-inter text-bunker-100 shadow-md',
+              dropdownContainerClassName
+            )}
           >
             <SelectPrimitive.ScrollUpButton>
               <FontAwesomeIcon icon={faChevronUp} size="sm" />
