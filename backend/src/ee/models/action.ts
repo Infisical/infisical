@@ -1,10 +1,18 @@
 import { Schema, model, Types } from 'mongoose';
+import {
+    ACTION_LOGIN,
+    ACTION_LOGOUT,
+    ACTION_ADD_SECRETS,
+    ACTION_UPDATE_SECRETS,
+    ACTION_READ_SECRETS,
+    ACTION_DELETE_SECRETS
+} from '../../variables';
 
 export interface IAction {
     name: string;
     user?: Types.ObjectId,
     workspace?: Types.ObjectId,
-    payload: {
+    payload?: {
         secretVersions?: Types.ObjectId[]
     }
 }
@@ -13,7 +21,15 @@ const actionSchema = new Schema<IAction>(
     {
         name: {
             type: String,
-            required: true
+            required: true,
+            enum: [
+                ACTION_LOGIN,
+                ACTION_LOGOUT,
+                ACTION_ADD_SECRETS,
+                ACTION_UPDATE_SECRETS,
+                ACTION_READ_SECRETS,
+                ACTION_DELETE_SECRETS
+            ]
         },
         user: {
             type: Schema.Types.ObjectId,

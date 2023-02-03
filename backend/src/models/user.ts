@@ -12,6 +12,7 @@ export interface IUser {
 	salt?: string;
 	verifier?: string;
 	refreshVersion?: number;
+	seenIps: [string];
 }
 
 const userSchema = new Schema<IUser>(
@@ -54,7 +55,8 @@ const userSchema = new Schema<IUser>(
 			type: Number,
 			default: 0,
 			select: false
-		}
+		},
+		seenIps: [String]
 	},
 	{
 		timestamps: true
