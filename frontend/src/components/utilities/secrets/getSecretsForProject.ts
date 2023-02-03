@@ -29,8 +29,8 @@ interface SecretProps {
 
 interface FunctionProps {
   env: string;
-  setIsKeyAvailable: any;
-  setData: any;
+  setIsKeyAvailable?: any;
+  setData?: any;
   workspaceId: string;
 }
 
@@ -58,7 +58,9 @@ const getSecretsForProject = async ({
 
     const latestKey = await getLatestFileKey({ workspaceId });
     // This is called isKeyAvailable but what it really means is if a person is able to create new key pairs
-    setIsKeyAvailable(!latestKey ? encryptedSecrets.length === 0 : true);
+    if (typeof setIsKeyAvailable === 'function') {
+      setIsKeyAvailable(!latestKey ? encryptedSecrets.length === 0 : true);
+    }
 
     const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
 
@@ -131,7 +133,10 @@ const getSecretsForProject = async ({
       )[0]?.comment
     }));
 
-    setData(result);
+    if (typeof setData === 'function') {
+      setData(result);
+    }
+  
     return result;
   } catch (error) {
     console.log('Something went wrong during accessing or decripting secrets.');
