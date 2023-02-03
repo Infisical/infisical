@@ -14,7 +14,7 @@ const iconButtonVariants = cva(
   [
     'button',
     'transition-all',
-    'font-inter font-medium',
+    'font-inter font-medium user-select-none',
     'cursor-pointer',
     'inline-flex items-center justify-center',
     'relative'

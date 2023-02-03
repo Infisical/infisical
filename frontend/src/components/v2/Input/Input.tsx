@@ -8,6 +8,7 @@ type Props = {
   isRequired?: boolean;
   leftIcon?: ReactNode;
   rightIcon?: ReactNode;
+  isDisabled?: boolean;
 };
 
 const inputVariants = cva(
@@ -46,7 +47,7 @@ const inputParentContainerVariants = cva('inline-flex font-inter items-center bo
     },
     isError: {
       true: 'border-red',
-      false: 'border-mineshaft-400'
+      false: 'border-mineshaft-500'
     },
     isFullWidth: {
       true: 'w-full',
@@ -70,6 +71,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       className,
       isRounded = true,
       isFullWidth = true,
+      isDisabled,
       isError = false,
       isRequired,
       leftIcon,
@@ -87,6 +89,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           {...props}
           required={isRequired}
           ref={ref}
+          disabled={isDisabled}
           className={twMerge(
             leftIcon ? 'pl-9' : 'pl-4',
             rightIcon ? 'pr-9' : 'pr-4',

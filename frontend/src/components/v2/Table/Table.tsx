@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { HTMLAttributes, ReactNode, TdHTMLAttributes } from 'react';
 import { twMerge } from 'tailwind-merge';
 
 export type TableContainerProps = {
@@ -14,7 +14,7 @@ export const TableContainer = ({
 }: TableContainerProps): JSX.Element => (
   <div
     className={twMerge(
-      'overflow-x-auto font-inter shadow-md relative border border-solid border-mineshaft-700',
+      'relative w-full overflow-x-auto border border-solid border-mineshaft-700 font-inter shadow-md',
       isRounded && 'rounded-md',
       className
     )}
@@ -32,7 +32,7 @@ export type TableProps = {
 export const Table = ({ children, className }: TableProps): JSX.Element => (
   <table
     className={twMerge(
-      'bg-bunker-800 p-2 roun  text-gray-300 w-full text-sm text-left rounded-md',
+      'w-full rounded rounded-md  bg-bunker-800 p-2 text-left text-sm text-gray-300',
       className
     )}
   >
@@ -47,7 +47,7 @@ export type THeadProps = {
 };
 
 export const THead = ({ children, className }: THeadProps): JSX.Element => (
-  <thead className={twMerge('text-xs bg-bunker text-bunker-300 uppercase', className)}>
+  <thead className={twMerge('bg-bunker text-xs uppercase text-bunker-300', className)}>
     {children}
   </thead>
 );
@@ -56,15 +56,17 @@ export const THead = ({ children, className }: THeadProps): JSX.Element => (
 export type TrProps = {
   children: ReactNode;
   className?: string;
-};
+} & HTMLAttributes<HTMLTableRowElement>;
 
-export const Tr = ({ children, className }: TrProps): JSX.Element => (
-  <tr className={twMerge('border border-solid border-mineshaft-700', className)}>{children}</tr>
+export const Tr = ({ children, className, ...props }: TrProps): JSX.Element => (
+  <tr className={twMerge('border border-solid border-mineshaft-700', className)} {...props}>
+    {children}
+  </tr>
 );
 
 // table head columns
 export type ThProps = {
-  children: ReactNode;
+  children?: ReactNode;
   className?: string;
 };
 
@@ -84,10 +86,12 @@ export const TBody = ({ children, className }: TBodyProps): JSX.Element => (
 
 // table body columns
 export type TdProps = {
-  children: ReactNode;
+  children?: ReactNode;
   className?: string;
-};
+} & TdHTMLAttributes<HTMLTableCellElement>;
 
-export const Td = ({ children, className }: TdProps): JSX.Element => (
-  <td className={twMerge('text-left px-6 py-3', className)}>{children}</td>
+export const Td = ({ children, className, ...props }: TdProps): JSX.Element => (
+  <td className={twMerge('px-6 py-3 text-left', className)} {...props}>
+    {children}
+  </td>
 );
