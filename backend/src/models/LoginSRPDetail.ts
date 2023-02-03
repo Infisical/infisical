@@ -26,6 +26,4 @@ const loginSRPDetailSchema = new Schema<ILoginSRPDetail>(
 
 const LoginSRPDetail = model('LoginSRPDetail', loginSRPDetailSchema);
 
-// LoginSRPDetailSchema.index({ "expireAt": 1 }, { expireAfterSeconds: 0 });
-
 export default LoginSRPDetail;
