@@ -34,12 +34,17 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
+		infisicalToken, err := cmd.Flags().GetString("token")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		shouldExpandSecrets, err := cmd.Flags().GetBool("expand")
 		if err != nil {
 			util.HandleError(err)
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(environmentName)
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken})
 		if err != nil {
 			util.HandleError(err)
 		}
@@ -111,7 +116,7 @@ var secretsSetCmd = &cobra.Command{
 		plainTextEncryptionKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
 		// pull current secrets
-		secrets, err := util.GetAllEnvironmentVariables(environmentName)
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName})
 		if err != nil {
 			util.HandleError(err, "unable to retrieve secrets")
 		}
@@ -267,7 +272,7 @@ var secretsDeleteCmd = &cobra.Command{
 			util.HandleError(err, "Unable to get local project details")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(environmentName)
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName})
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")
 		}
@@ -309,30 +314,6 @@ var secretsDeleteCmd = &cobra.Command{
 	},
 }
 
-func init() {
-	secretsCmd.AddCommand(secretsGetCmd)
-	secretsGetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
-	}
-
-	secretsCmd.AddCommand(secretsSetCmd)
-	secretsSetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
-	}
-
-	secretsCmd.AddCommand(secretsDeleteCmd)
-	secretsDeleteCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
-	}
-
-	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
-	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
-	rootCmd.AddCommand(secretsCmd)
-}
-
 func getSecretsByNames(cmd *cobra.Command, args []string) {
 	environmentName, err := cmd.Flags().GetString("env")
 	if err != nil {
@@ -344,7 +325,12 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(environmentName)
+	infisicalToken, err := cmd.Flags().GetString("token")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
+	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken})
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
@@ -379,4 +365,26 @@ func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]mod
 	}
 
 	return secretMapByName
+}
+
+func init() {
+	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	secretsCmd.AddCommand(secretsGetCmd)
+
+	secretsCmd.AddCommand(secretsSetCmd)
+	secretsSetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		util.RequireLogin()
+		util.RequireLocalWorkspaceFile()
+	}
+
+	secretsCmd.AddCommand(secretsDeleteCmd)
+	secretsDeleteCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		util.RequireLogin()
+		util.RequireLocalWorkspaceFile()
+	}
+
+	secretsCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
+	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
+	rootCmd.AddCommand(secretsCmd)
 }

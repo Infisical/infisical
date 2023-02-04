@@ -56,7 +56,12 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(envName)
+		infisicalToken, err := cmd.Flags().GetString("token")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: envName, InfisicalToken: infisicalToken})
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")
 		}

@@ -38,3 +38,8 @@ type SymmetricEncryptionResult struct {
 	Nonce      []byte
 	AuthTag    []byte
 }
+
+type GetAllSecretsParameters struct {
+	Environment    string
+	InfisicalToken string
+}

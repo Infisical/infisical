@@ -97,8 +97,13 @@ func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, work
 	return plainTextSecrets, nil
 }
 
-func GetAllEnvironmentVariables(envName string) ([]models.SingleEnvironmentVariable, error) {
-	infisicalToken := os.Getenv(INFISICAL_TOKEN_NAME)
+func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models.SingleEnvironmentVariable, error) {
+	var infisicalToken string
+	if params.InfisicalToken == "" {
+		infisicalToken = os.Getenv(INFISICAL_TOKEN_NAME)
+	} else {
+		infisicalToken = params.InfisicalToken
+	}
 
 	if infisicalToken == "" {
 		RequireLocalWorkspaceFile()
@@ -115,7 +120,7 @@ func GetAllEnvironmentVariables(envName string) ([]models.SingleEnvironmentVaria
 			return nil, err
 		}
 
-		secrets, err := GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId, envName)
+		secrets, err := GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId, params.Environment)
 		return secrets, err
 
 	} else {
