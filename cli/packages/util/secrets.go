@@ -411,3 +411,16 @@ func ReadBackupSecrets(workspace string, environment string, encryptionKey []byt
 	return plainTextSecrets, nil
 
 }
+
+func DeleteBackupSecrets() error {
+	secrets_backup_folder_name := "secrets-backup"
+
+	_, fullConfigFileDirPath, err := GetFullConfigFilePath()
+	if err != nil {
+		return fmt.Errorf("ReadBackupSecrets: unable to write config file because an error occurred when getting config file path [err=%s]", err)
+	}
+
+	fullPathToSecretsBackupFolder := fmt.Sprintf("%s/%s", fullConfigFileDirPath, secrets_backup_folder_name)
+
+	return os.RemoveAll(fullPathToSecretsBackupFolder)
+}
