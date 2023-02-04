@@ -124,7 +124,7 @@ export default function Activity() {
   };
 
   return (
-    <div className="mx-6 lg:mx-0 w-full overflow-y-scroll h-screen">
+    <div className="mx-6 lg:mx-0 w-full h-screen">
       <NavHeader pageName="Project Activity" isProjectRelated />
       {currentSidebarAction && (
         <ActivitySideBar toggleSidebar={toggleSidebar} currentAction={currentSidebarAction} />

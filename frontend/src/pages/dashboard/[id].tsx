@@ -518,7 +518,7 @@ export default function Dashboard() {
   };
 
   return data ? (
-    <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
+    <div className="bg-bunker-800 max-h-screen h-full relative flex flex-col justify-between text-white">
       <Head>
         <title>{t('common:head-title', { title: t('dashboard:title') })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -526,7 +526,7 @@ export default function Dashboard() {
         <meta property="og:title" content={String(t('dashboard:og-title'))} />
         <meta name="og:description" content={String(t('dashboard:og-description'))} />
       </Head>
-      <div className="flex flex-row">
+      <div className="flex flex-row h-full">
         {sidebarSecretId !== 'None' && (
           <SideBar
             toggleSidebar={toggleSidebar}

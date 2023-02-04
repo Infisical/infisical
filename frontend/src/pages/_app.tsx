@@ -10,7 +10,9 @@ import Layout from '@app/components/basic/Layout';
 import NotificationProvider from '@app/components/context/Notifications/NotificationProvider';
 import Telemetry from '@app/components/utilities/telemetry/Telemetry';
 import { publicPaths } from '@app/const';
+import { SubscriptionProvider } from '@app/context';
 import { AuthProvider } from '@app/context/AuthContext';
+import { WorkspaceProvider } from '@app/context/WorkspaceContext';
 import { queryClient } from '@app/reactQuery';
 
 import '@fortawesome/fontawesome-svg-core/styles.css';
@@ -68,11 +70,15 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <NotificationProvider>
-          <Layout>
-            <Component {...pageProps} />
-          </Layout>
-        </NotificationProvider>
+        <WorkspaceProvider>
+          <SubscriptionProvider>
+            <NotificationProvider>
+              <Layout>
+                <Component {...pageProps} />
+              </Layout>
+            </NotificationProvider>
+          </SubscriptionProvider>
+        </WorkspaceProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

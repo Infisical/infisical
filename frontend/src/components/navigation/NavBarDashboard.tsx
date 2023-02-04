@@ -93,7 +93,7 @@ export default function Navbar() {
   };
 
   return (
-    <div className="absolute flex flex-row justify-between w-full bg-bunker text-white border-b border-mineshaft-500 z-50">
+    <div className="flex flex-row justify-between w-full bg-bunker text-white border-b border-mineshaft-500 z-50">
       <div className="m-auto flex justify-start items-center mx-4">
         <div className="flex flex-row items-center">
           <div className="flex justify-center py-4">

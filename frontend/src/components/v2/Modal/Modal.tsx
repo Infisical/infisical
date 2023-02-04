@@ -11,33 +11,34 @@ export type ModalContentProps = DialogPrimitive.DialogContentProps & {
   title?: ReactNode;
   subTitle?: string;
   footerContent?: ReactNode;
+  onClose?: () => void;
 };
 
 export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
-  ({ children, title, subTitle, className, footerContent, ...props }, forwardedRef) => (
+  ({ children, title, subTitle, className, footerContent, onClose, ...props }, forwardedRef) => (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
-        className="fixed inset-0 w-full h-full animate-fadeIn"
-        style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+        className="fixed inset-0 h-full w-full animate-fadeIn"
+        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
       />
       <DialogPrimitive.Content {...props} ref={forwardedRef}>
         <Card
           isRounded
           className={twMerge(
-            'fixed max-w-md animate-popIn top-1/2 left-1/2 -translate-y-2/4 -translate-x-2/4',
+            'fixed top-1/2 left-1/2 max-w-lg -translate-y-2/4 -translate-x-2/4 animate-popIn drop-shadow-md',
             className
           )}
         >
           {title && <CardTitle subTitle={subTitle}>{title}</CardTitle>}
           <CardBody>{children}</CardBody>
           {footerContent && <CardFooter>{footerContent}</CardFooter>}
-          <DialogPrimitive.Close aria-label="Close" asChild>
+          <DialogPrimitive.Close aria-label="Close" asChild onClick={onClose}>
             <IconButton
               variant="plain"
               ariaLabel="close"
-              className="absolute top-2.5 right-2.5 text-white hover:bg-gray-600 rounded"
+              className="absolute top-3 right-3 rounded text-white hover:bg-gray-600"
             >
-              <FontAwesomeIcon icon={faTimes} size="sm" className="cursor-pointer" />
+              <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
             </IconButton>
           </DialogPrimitive.Close>
         </Card>
@@ -55,3 +56,6 @@ export const Modal = ({ isOpen, ...props }: ModalProps) => (
 
 export const ModalTrigger = DialogPrimitive.Trigger;
 export type ModalTriggerProps = DialogPrimitive.DialogTriggerProps;
+
+export const ModalClose = DialogPrimitive.Close;
+export type ModalCloseProps = DialogPrimitive.DialogCloseProps;
