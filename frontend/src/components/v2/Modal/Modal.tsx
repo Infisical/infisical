@@ -25,7 +25,7 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
         <Card
           isRounded
           className={twMerge(
-            'fixed top-1/2 left-1/2 max-w-lg -translate-y-2/4 -translate-x-2/4 animate-popIn drop-shadow-md',
+            'fixed top-1/2 left-1/2 max-w-lg -translate-y-2/4 -translate-x-2/4 animate-popIn drop-shadow-2xl z-50',
             className
           )}
         >
