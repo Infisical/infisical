@@ -1,15 +1,22 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, model, Types } from "mongoose";
 import {
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
-  INTEGRATION_GITHUB
-} from '../variables';
+  INTEGRATION_GITHUB,
+} from "../variables";
 
 export interface IIntegrationAuth {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'render' | 'flyio';
+  integration:
+    | "heroku"
+    | "vercel"
+    | "netlify"
+    | "github"
+    | "render"
+    | "flyio"
+    | "circleci";
   teamId: string;
   accountId: string;
   refreshCiphertext?: string;
@@ -24,9 +31,9 @@ export interface IIntegrationAuth {
 const integrationAuthSchema = new Schema<IIntegrationAuth>(
   {
     workspace: {
-        type: Schema.Types.ObjectId,
-        ref: 'Workspace',
-        required: true
+      type: Schema.Types.ObjectId,
+      ref: "Workspace",
+      required: true,
     },
     integration: {
       type: String,
@@ -34,54 +41,54 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_HEROKU,
         INTEGRATION_VERCEL,
         INTEGRATION_NETLIFY,
-        INTEGRATION_GITHUB
+        INTEGRATION_GITHUB,
       ],
-      required: true
+      required: true,
     },
     teamId: {
       // vercel-specific integration param
-      type: String
+      type: String,
     },
     accountId: {
       // netlify-specific integration param
-      type: String
+      type: String,
     },
     refreshCiphertext: {
       type: String,
-      select: false
+      select: false,
     },
     refreshIV: {
       type: String,
-      select: false
+      select: false,
     },
     refreshTag: {
       type: String,
-      select: false
+      select: false,
     },
     accessCiphertext: {
       type: String,
-      select: false
+      select: false,
     },
     accessIV: {
       type: String,
-      select: false
+      select: false,
     },
     accessTag: {
       type: String,
-      select: false
+      select: false,
     },
     accessExpiresAt: {
       type: Date,
-      select: false
-    }
+      select: false,
+    },
   },
   {
-    timestamps: true
+    timestamps: true,
   }
 );
 
 const IntegrationAuth = model<IIntegrationAuth>(
-  'IntegrationAuth',
+  "IntegrationAuth",
   integrationAuthSchema
 );
 

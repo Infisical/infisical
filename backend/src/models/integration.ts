@@ -1,12 +1,12 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, model, Types } from "mongoose";
 import {
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
   INTEGRATION_RENDER,
-  INTEGRATION_FLYIO
-} from '../variables';
+  INTEGRATION_FLYIO,
+} from "../variables";
 
 export interface IIntegration {
   _id: Types.ObjectId;
@@ -17,44 +17,53 @@ export interface IIntegration {
   owner: string;
   targetEnvironment: string;
   appId: string;
-  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'render' | 'flyio';
+  integration:
+    | "heroku"
+    | "vercel"
+    | "netlify"
+    | "github"
+    | "render"
+    | "flyio"
+    | "circleci";
   integrationAuth: Types.ObjectId;
 }
 
 const integrationSchema = new Schema<IIntegration>(
   {
     workspace: {
-        type: Schema.Types.ObjectId,
-        ref: 'Workspace',
-        required: true
+      type: Schema.Types.ObjectId,
+      ref: "Workspace",
+      required: true,
     },
     environment: {
       type: String,
-      required: true
+      required: true,
     },
     isActive: {
       type: Boolean,
-      required: true
+      required: true,
     },
     app: {
       // name of app in provider
       type: String,
-      default: null
+      default: null,
     },
-    appId: { // (new)
+    appId: {
+      // (new)
       // id of app in provider
       type: String,
-      default: null
+      default: null,
     },
-    targetEnvironment: { // (new)
-      // target environment 
+    targetEnvironment: {
+      // (new)
+      // target environment
       type: String,
-      default: null
+      default: null,
     },
     owner: {
       // github-specific repo owner-login
       type: String,
-      default: null
+      default: null,
     },
     integration: {
       type: String,
@@ -64,21 +73,21 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_NETLIFY,
         INTEGRATION_GITHUB,
         INTEGRATION_RENDER,
-        INTEGRATION_FLYIO
+        INTEGRATION_FLYIO,
       ],
-      required: true
+      required: true,
     },
     integrationAuth: {
       type: Schema.Types.ObjectId,
-      ref: 'IntegrationAuth',
-      required: true
-    }
+      ref: "IntegrationAuth",
+      required: true,
+    },
   },
   {
-    timestamps: true
+    timestamps: true,
   }
 );
 
-const Integration = model<IIntegration>('Integration', integrationSchema);
+const Integration = model<IIntegration>("Integration", integrationSchema);
 
 export default Integration;
