@@ -2,6 +2,7 @@ import crypto from 'crypto';
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'next/router';
 
 import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
 import NavHeader from '@app/components/navigation/NavHeader';
@@ -37,7 +38,8 @@ import {
 
 export const ProjectSettingsPage = () => {
   const { t } = useTranslation();
-  const { currentWorkspace } = useWorkspace();
+  const { currentWorkspace, workspaces } = useWorkspace();
+  const router = useRouter();
   const { data: serviceTokens } = useGetUserWsServiceTokens({
     workspaceID: currentWorkspace?._id || ''
   });
@@ -64,7 +66,6 @@ export const ProjectSettingsPage = () => {
   const host = window.location.origin;
   const isEnvServiceAllowed =
     subscriptionPlan !== plans.starter || host !== 'https://app.infisical.com';
-  
 
   const onRenameWorkspace = async (name: string) => {
     try {
@@ -86,6 +87,9 @@ export const ProjectSettingsPage = () => {
     setIsDeleting.on();
     try {
       await deleteWorkspace.mutateAsync({ workspaceID });
+      // redirect user to first workspace user is part of
+      const ws = workspaces.find(({ _id }) => _id !== workspaceID);
+      router.push(`/dashboard/${ws?._id}`);
       createNotification({
         text: 'Successfully deleted workspace',
         type: 'success'
