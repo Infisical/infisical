@@ -277,7 +277,6 @@ export const ServiceTokenSection = ({
                   <Td>{new Date(row.expiresAt).toUTCString()}</Td>
                   <Td className="flex items-center justify-end">
                     <IconButton
-                      className="mr-4"
                       onClick={() =>
                         handlePopUpOpen('deleteAPITokenConfirmation', {
                           name: row.name,
@@ -294,8 +293,8 @@ export const ServiceTokenSection = ({
               ))
             ) : (
               <Tr>
-                <Td colSpan={4} className="pt-7 pb-4 text-center text-bunker-400">
-                  No environmants found
+                <Td colSpan={4} className="py-6 text-center text-bunker-400">
+                  No service tokens found
                 </Td>
               </Tr>
             )}

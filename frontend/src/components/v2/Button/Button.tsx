@@ -26,7 +26,7 @@ const buttonVariants = cva(
       colorSchema: {
         primary: ['bg-primary', 'text-black', 'border-primary hover:bg-opacity-80'],
         secondary: ['bg-mineshaft', 'text-gray-300', 'border-mineshaft hover:bg-opacity-80'],
-        danger: ['bg-red', 'text-white', 'border-red']
+        danger: ['bg-red', 'text-white', 'border-red hover:bg-opacity-90']
       },
       variant: {
         solid: '',
@@ -34,7 +34,7 @@ const buttonVariants = cva(
         plain: ''
       },
       isDisabled: {
-        true: 'bg-opacity-40 cursor-not-allowed',
+        true: 'bg-mineshaft opacity-40 cursor-not-allowed',
         false: ''
       },
       isFullWidth: {
@@ -147,7 +147,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           className={twMerge(
             'shrink-0 cursor-pointer transition-all',
             loadingToggleClass,
-            size === 'xs' ? 'mr-1' : 'mr-2'
+            leftIcon && 'ml-2',
+            size === 'xs' ? 'mr-1' : 'mr-3'
           )}
         >
           {leftIcon}

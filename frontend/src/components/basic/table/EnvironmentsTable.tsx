@@ -148,7 +148,7 @@ const EnvironmentTable = ({ data = [], onCreateEnv, onDeleteEnv, onUpdateEnv }: 
             ) : (
               <tr>
                 <td colSpan={4} className="pt-7 pb-4 text-center text-bunker-400">
-                  No environmants found
+                  No environments found
                 </td>
               </tr>
             )}

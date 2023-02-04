@@ -64,6 +64,7 @@ export const ProjectSettingsPage = () => {
   const host = window.location.origin;
   const isEnvServiceAllowed =
     subscriptionPlan !== plans.starter || host !== 'https://app.infisical.com';
+  
 
   const onRenameWorkspace = async (name: string) => {
     try {
@@ -188,14 +189,14 @@ export const ProjectSettingsPage = () => {
       });
       console.log(res);
       createNotification({
-        text: 'Successfully created API token',
+        text: 'Successfully created a service token',
         type: 'success'
       });
       return res.serviceToken;
     } catch (error) {
       console.error(error);
       createNotification({
-        text: 'Failed to create API token',
+        text: 'Failed to create a service token',
         type: 'error'
       });
     }
@@ -251,13 +252,13 @@ export const ProjectSettingsPage = () => {
         workspaceName={currentWorkspace?.name || ''}
         onCreateToken={onCreateServiceToken}
       />
-      <div className="mb-6 mt-4 flex w-full flex-col items-start rounded-md border-l border-red bg-white/5 px-6 pl-6 pb-4 pt-2">
+      <div className="mb-6 mt-4 flex w-full flex-col items-start rounded-md border-l border-red bg-white/5 px-6 pl-6 pb-4 pt-4">
         <p className="text-xl font-bold text-red">{t('settings-project:danger-zone')}</p>
         <p className="text-md mt-2 text-gray-400">{t('settings-project:danger-zone-note')}</p>
         <div className="mr-auto mt-4 max-h-28 w-full max-w-md">
           <FormControl
             label={
-              <div className="mb-2 text-sm font-normal text-gray-400">
+              <div className="mb-0.5 text-sm font-normal text-gray-400">
                 Type <span className="font-bold">{currentWorkspace?.name}</span> to delete the
                 workspace
               </div>
@@ -278,7 +279,7 @@ export const ProjectSettingsPage = () => {
         >
           {t('settings-project:delete-project')}
         </Button>
-        <p className="mt-0.5 ml-1 text-xs text-gray-500">
+        <p className="mt-3 ml-0.5 text-xs text-gray-500">
           {t('settings-project:delete-project-note')}
         </p>
       </div>

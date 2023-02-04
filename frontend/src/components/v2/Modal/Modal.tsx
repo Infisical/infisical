@@ -36,9 +36,9 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
             <IconButton
               variant="plain"
               ariaLabel="close"
-              className="absolute top-2.5 right-2.5 rounded text-white hover:bg-gray-600"
+              className="absolute top-3 right-3 rounded text-white hover:bg-gray-600"
             >
-              <FontAwesomeIcon icon={faTimes} size="sm" className="cursor-pointer" />
+              <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
             </IconButton>
           </DialogPrimitive.Close>
         </Card>

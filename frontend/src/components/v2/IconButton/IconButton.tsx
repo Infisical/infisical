@@ -22,9 +22,9 @@ const iconButtonVariants = cva(
   {
     variants: {
       colorSchema: {
-        primary: ['bg-primary', 'text-black', 'border-primary hover:bg-opacity-80'],
-        secondary: ['bg-mineshaft', 'text-gray-300', 'border-mineshaft hover:bg-opacity-80'],
-        danger: ['bg-red', 'text-white', 'border-red']
+        primary: ['bg-primary', 'text-black', 'border-primary hover:opacity-80'],
+        secondary: ['bg-mineshaft', 'text-gray-300', 'border-mineshaft hover:bg-bunker-400'],
+        danger: ['bg-[#973939] hover:bg-red', 'text-white', 'border-red']
       },
       variant: {
         solid: '',
@@ -40,10 +40,10 @@ const iconButtonVariants = cva(
         false: ''
       },
       size: {
-        xs: ['text-xs', 'py-1', 'px-2'],
-        sm: ['text-sm', 'py-2', 'px-3'],
-        md: ['text-md', 'py-3', 'px-4'],
-        lg: ['text-lg', 'py-3', 'px-6']
+        xs: ['text-xs', 'py-2', 'px-2'],
+        sm: ['text-sm', 'py-3', 'px-3'],
+        md: ['text-md', 'py-4', 'px-4'],
+        lg: ['text-lg', 'py-6', 'px-6']
       }
     },
     compoundVariants: [
@@ -97,7 +97,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       ariaLabel,
       isDisabled = false,
       className,
-      size = 'md',
+      size = 'sm',
       variant = 'solid',
       isRounded = true,
       colorSchema = 'primary',

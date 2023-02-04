@@ -1,5 +1,5 @@
 import { Controller, useForm } from 'react-hook-form';
-import { faPencil, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faPencil, faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -100,6 +100,7 @@ export const EnvironmentSection = ({
               }
             }}
             colorSchema="primary"
+            leftIcon={<FontAwesomeIcon icon={faPlus} />}
           >
             Add New Env
           </Button>
@@ -122,7 +123,7 @@ export const EnvironmentSection = ({
                   <Td>{slug}</Td>
                   <Td className="flex items-center justify-end">
                     <IconButton
-                      className="mr-4"
+                      className="mr-3"
                       onClick={() => {
                         if (isEnvServiceAllowed) {
                           handlePopUpOpen('createUpdateEnv', { name, slug });
@@ -154,8 +155,8 @@ export const EnvironmentSection = ({
               ))
             ) : (
               <Tr>
-                <Td colSpan={4} className="pt-7 pb-4 text-center text-bunker-400">
-                  No environmants found
+                <Td colSpan={4} className="pt-7 pb-5 text-center text-bunker-400">
+                  No environments found
                 </Td>
               </Tr>
             )}

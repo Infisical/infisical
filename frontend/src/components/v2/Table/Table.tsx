@@ -59,7 +59,7 @@ export type TrProps = {
 } & HTMLAttributes<HTMLTableRowElement>;
 
 export const Tr = ({ children, className, ...props }: TrProps): JSX.Element => (
-  <tr className={twMerge('border border-solid border-mineshaft-700', className)} {...props}>
+  <tr className={twMerge('border border-solid border-mineshaft-700 hover:bg-bunker-700', className)} {...props}>
     {children}
   </tr>
 );
@@ -71,7 +71,7 @@ export type ThProps = {
 };
 
 export const Th = ({ children, className }: ThProps): JSX.Element => (
-  <th className={twMerge('px-6 py-3 font-medium', className)}>{children}</th>
+  <th className={twMerge('px-5 pt-4 pb-3.5 font-medium font-semibold bg-bunker-500', className)}>{children}</th>
 );
 
 // table body
@@ -91,7 +91,7 @@ export type TdProps = {
 } & TdHTMLAttributes<HTMLTableCellElement>;
 
 export const Td = ({ children, className, ...props }: TdProps): JSX.Element => (
-  <td className={twMerge('px-6 py-3 text-left', className)} {...props}>
+  <td className={twMerge('px-5 py-2 text-left', className)} {...props}>
     {children}
   </td>
 );
