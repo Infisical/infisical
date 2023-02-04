@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useEffect, useMemo } from 'react';
+import { createContext, ReactNode, useContext, useMemo } from 'react';
 import { useRouter } from 'next/router';
 
 import { useGetUserWorkspaces } from '@app/hooks/api';
@@ -29,15 +29,6 @@ export const WorkspaceProvider = ({ children }: Props): JSX.Element => {
       isLoading
     };
   }, [ws, workspaceId, isLoading]);
-
-  useEffect(() => {
-    // not loading and current workspace is empty
-    // ws empty means user has no access to the ws
-    // push to the first workspace
-    if (!isLoading && !value?.currentWorkspace?._id) {
-      router.push(`/dashboard/${value.workspaces?.[0]?._id}`);
-    }
-  }, [value?.currentWorkspace?._id, isLoading, value.workspaces?.[0]?._id, router.pathname]);
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 };
