@@ -18,14 +18,15 @@ const buttonVariants = cva(
     'font-inter font-medium',
     'cursor-pointer',
     'inline-flex items-center justify-center',
-    'relative'
+    'relative',
+    'whitespace-nowrap'
   ],
   {
     variants: {
       colorSchema: {
         primary: ['bg-primary', 'text-black', 'border-primary hover:bg-opacity-80'],
         secondary: ['bg-mineshaft', 'text-gray-300', 'border-mineshaft hover:bg-opacity-80'],
-        danger: ['bg-red', 'text-white', 'border-red']
+        danger: ['bg-red', 'text-white', 'border-red hover:bg-opacity-90']
       },
       variant: {
         solid: '',
@@ -33,7 +34,7 @@ const buttonVariants = cva(
         plain: ''
       },
       isDisabled: {
-        true: 'bg-opacity-70 cursor-not-allowed',
+        true: 'bg-mineshaft opacity-40 cursor-not-allowed',
         false: ''
       },
       isFullWidth: {
@@ -45,9 +46,9 @@ const buttonVariants = cva(
         false: ''
       },
       size: {
-        xs: ['text-xs', 'py-1', 'px-2'],
-        sm: ['text-sm', 'py-2', 'px-4'],
-        md: ['text-md', 'py-2', 'px-6'],
+        xs: ['text-xs', 'py-1', 'px-1'],
+        sm: ['text-sm', 'py-2', 'px-2'],
+        md: ['text-md', 'py-2', 'px-4'],
         lg: ['text-lg', 'py-2', 'px-8']
       }
     },
@@ -75,7 +76,7 @@ const buttonVariants = cva(
       {
         colorSchema: 'secondary',
         variant: 'plain',
-        className: 'text-mineshaft'
+        className: 'text-mineshaft-300'
       },
       {
         colorSchema: 'danger',
@@ -101,7 +102,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       children,
       isDisabled = false,
       className = '',
-      size = 'md',
+      size = 'sm',
       variant = 'solid',
       isFullWidth,
       isRounded = true,
@@ -144,9 +145,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         <span
           className={twMerge(
-            'transition-all shrink-0 cursor-pointer',
+            'shrink-0 cursor-pointer transition-all',
             loadingToggleClass,
-            size === 'xs' ? 'mr-1' : 'mr-2'
+            leftIcon && 'ml-2',
+            size === 'xs' ? 'mr-1' : 'mr-3'
           )}
         >
           {leftIcon}
@@ -154,7 +156,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         <span className={twMerge('transition-all', loadingToggleClass)}>{children}</span>
         <span
           className={twMerge(
-            'transition-all shrink-0 cursor-pointer',
+            'shrink-0 cursor-pointer transition-all',
             loadingToggleClass,
             size === 'xs' ? 'ml-1' : 'ml-2'
           )}
