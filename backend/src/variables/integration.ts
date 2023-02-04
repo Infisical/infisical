@@ -40,7 +40,7 @@ const INTEGRATION_VERCEL_API_URL = "https://api.vercel.com";
 const INTEGRATION_NETLIFY_API_URL = "https://api.netlify.com";
 const INTEGRATION_RENDER_API_URL = "https://api.render.com";
 const INTEGRATION_FLYIO_API_URL = "https://api.fly.io/graphql";
-const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api/v2";
+const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
 
 const INTEGRATION_OPTIONS = [
   {
@@ -164,5 +164,6 @@ export {
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_FLYIO_API_URL,
+  INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_OPTIONS,
 };

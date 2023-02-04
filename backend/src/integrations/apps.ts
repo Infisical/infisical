@@ -15,6 +15,7 @@ import {
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_FLYIO_API_URL,
+  INTEGRATION_CIRCLECI_API_URL,
 } from "../variables";
 
 /**
@@ -313,7 +314,40 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
 };
 
 const getAppsCircleci = async ({ accessToken }: { accessToken: string }) => {
-  return [];
+  // in place of accessToken we have to send Circle-Token i.e. Personal API token from CircleCi
+  let apps: any;
+  try {
+    const circleciOrganizationDetail = (
+      await axios.get(`${INTEGRATION_CIRCLECI_API_URL}/v2/me/collaborations`, {
+        headers: {
+          "Circle-Token": accessToken,
+        },
+      })
+    ).data;
+
+    const { slug } = circleciOrganizationDetail;
+
+    const res = (
+      await axios.get(
+        `${INTEGRATION_CIRCLECI_API_URL}/v2/pipeline/?org-slug=${slug}`,
+        {
+          headers: {
+            "Circle-Token": accessToken,
+          },
+        }
+      )
+    ).data.items;
+
+    apps = res.map((a: any) => ({
+      name: a?.project_slug?.split("/")[2],
+    }));
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error("Failed to get Render services");
+  }
+
+  return apps;
 };
 
 export { getApps };
