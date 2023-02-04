@@ -6,8 +6,7 @@ import { faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import SecretVersionList from '@app/ee/components/SecretVersionList';
-
-import { WorkspaceEnv } from '~/pages/dashboard/[id]';
+import { WorkspaceEnv } from '@app/hooks/api/types';
 
 import Button from '../basic/buttons/Button';
 import Toggle from '../basic/Toggle';
@@ -181,7 +180,7 @@ const SideBar = ({
           />
         </div>
       )}
-      <div className="mt-full mt-4 mb-[4.7rem] flex max-w-sm flex-col justify-start space-y-2 px-4">
+      <div className="mt-full mt-4 mb-4 flex max-w-sm flex-col justify-start space-y-2 px-4">
         <div>
           <Button
             text="Compare secret across environments"

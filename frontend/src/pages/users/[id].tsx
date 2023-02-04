@@ -207,7 +207,6 @@ export default function Users() {
     </div>
   ) : (
     <div className="relative z-10 w-10/12 mr-auto h-full ml-2 bg-bunker-800 flex flex-col items-center justify-center">
-      <div className="absolute top-0 bg-bunker h-14 border-b border-mineshaft-700 w-full" />
       <Image src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
     </div>
   );
