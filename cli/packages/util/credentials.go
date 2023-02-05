@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/99designs/keyring"
-	"github.com/Infisical/infisical-merge/packages/config"
+	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/go-resty/resty/v2"
 )
@@ -87,17 +87,10 @@ func GetCurrentLoggedInUserDetails() (LoggedInUserDetails, error) {
 			SetAuthToken(userCreds.JTWToken).
 			SetHeader("Accept", "application/json")
 
-		response, err := httpClient.
-			R().
-			Post(fmt.Sprintf("%v/v1/auth/checkAuth", config.INFISICAL_URL))
-
-		if err != nil {
-			return LoggedInUserDetails{}, err
-		}
-
-		if response.StatusCode() > 299 {
+		isAuthenticated := api.CallIsAuthenticated(httpClient)
+		if !isAuthenticated {
 			return LoggedInUserDetails{
-				IsUserLoggedIn:  true,
+				IsUserLoggedIn:  true, // was logged in
 				LoginExpired:    true,
 				UserCredentials: userCreds,
 			}, nil

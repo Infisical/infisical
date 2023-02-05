@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import Button from '@app/components/basic/buttons/Button';
 import AddProjectMemberDialog from '@app/components/basic/dialog/AddProjectMemberDialog';
-import UserTable from '@app/components/basic/table/UserTable';
+import ProjectUsersTable from '@app/components/basic/table/ProjectUsersTable';
 import NavHeader from '@app/components/navigation/NavHeader';
 import guidGenerator from '@app/components/utilities/randomId';
 import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
@@ -33,6 +33,7 @@ interface UserProps {
 }
 
 interface MembershipProps {
+  deniedPermissions: any[];
   user: UserProps;
   inviteEmail: string;
   role: string;
@@ -76,6 +77,7 @@ export default function Users() {
         status: membership?.status,
         userId: membership.user?._id,
         membershipId: membership._id,
+        deniedPermissions: membership.deniedPermissions,
         publicKey: membership.user?.publicKey
       }));
       setUserList(tempUserList);
@@ -144,7 +146,7 @@ export default function Users() {
   };
 
   return userList ? (
-    <div className="bg-bunker-800 md:h-screen flex flex-col justify-start">
+    <div className="bg-bunker-800 md:h-screen flex flex-col justify-start max-w-[calc(100vw-240px)]">
       <Head>
         <title>{t('common:head-title', { title: t('settings-members:title') })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -168,7 +170,7 @@ export default function Users() {
         setEmail={setEmail}
       />
       {/* <DeleteUserDialog isOpen={isDeleteOpen} closeModal={closeDeleteModal} submitModal={deleteMembership} userIdToBeDeleted={userIdToBeDeleted}/> */}
-      <div className="px-6 pb-1 w-full flex flex-row items-start min-w-6xl max-w-6xl">
+      <div className="px-6 pb-1 w-full flex flex-row items-start">
         <div className="h-10 w-full bg-white/5 mt-2 rounded-md flex flex-row items-center">
           <FontAwesomeIcon
             className="bg-white/5 rounded-l-md py-3 pl-4 pr-2 text-gray-400"
@@ -191,14 +193,12 @@ export default function Users() {
           />
         </div>
       </div>
-      <div className="block overflow-y-auto min-w-6xl max-w-6xl px-6">
-        <UserTable
+      <div className="block overflow-x-scroll px-6 pb-6 no-scrollbar no-scrollbar::-webkit-scrollbar">
+        <ProjectUsersTable
           userData={userList}
           changeData={setUserList}
           myUser={personalEmail}
           filter={searchUsers}
-          resendInvite={submitAddModal}
-          isOrg={false}
           // onClick={openDeleteModal}
           // deleteUser={deleteMembership}
           // setUserIdToBeDeleted={setUserIdToBeDeleted}
@@ -207,7 +207,6 @@ export default function Users() {
     </div>
   ) : (
     <div className="relative z-10 w-10/12 mr-auto h-full ml-2 bg-bunker-800 flex flex-col items-center justify-center">
-      <div className="absolute top-0 bg-bunker h-14 border-b border-mineshaft-700 w-full" />
       <Image src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
     </div>
   );

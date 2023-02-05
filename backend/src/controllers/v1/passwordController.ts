@@ -4,12 +4,11 @@ import crypto from 'crypto';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const jsrp = require('jsrp');
 import * as bigintConversion from 'bigint-conversion';
-import { User, Token, BackupPrivateKey } from '../../models';
+import { User, Token, BackupPrivateKey, LoginSRPDetail } from '../../models';
 import { checkEmailVerification } from '../../helpers/signup';
 import { createToken } from '../../helpers/auth';
 import { sendMail } from '../../helpers/nodemailer';
 import { JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET, SITE_URL } from '../../config';
-import LoginSRPDetail from '../../models/LoginSRPDetail';
 import { BadRequestError } from '../../utils/errors';
 
 /**

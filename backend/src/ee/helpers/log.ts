@@ -1,9 +1,19 @@
 import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
 import { 
     Log,
     IAction
 } from '../models';
-
+/**
+ * Create an (audit) log
+ * @param {Object} obj
+ * @param {Types.ObjectId} obj.userId - id of user associated with the log
+ * @param {Types.ObjectId} obj.workspaceId - id of workspace associated with the log
+ * @param {IAction[]} obj.actions - actions to include in log
+ * @param {String} obj.channel - channel (web/cli/auto) associated with the log
+ * @param {String} obj.ipAddress - ip address associated with the log
+ * @returns {Log} log - new audit log
+ */
 const createLogHelper = async ({
     userId,
     workspaceId,
@@ -11,8 +21,8 @@ const createLogHelper = async ({
     channel,
     ipAddress
 }: {
-    userId: string;
-    workspaceId: string;
+    userId: Types.ObjectId;
+    workspaceId?: Types.ObjectId;
     actions: IAction[];
     channel: string;
     ipAddress: string;
@@ -21,7 +31,7 @@ const createLogHelper = async ({
     try {
         log = await new Log({
             user: userId,
-            workspace: workspaceId,
+            workspace: workspaceId ?? undefined,
             actionNames: actions.map((a) => a.name),
             actions,
             channel,

@@ -41,11 +41,13 @@ import updateSecrets from '../api/files/UpdateSecrets';
 import getUser from '../api/user/getUser';
 import checkUserAction from '../api/userActions/checkUserAction';
 import registerUserAction from '../api/userActions/registerUserAction';
+import getWorkspaceEnvironments from '../api/workspace/getWorkspaceEnvironments';
 import getWorkspaces from '../api/workspace/getWorkspaces';
 
 type WorkspaceEnv = {
   name: string;
   slug: string;
+  isWriteDenied: boolean;
 };
 
 interface SecretDataProps {
@@ -134,7 +136,8 @@ export default function Dashboard() {
   const [selectedSnapshotEnv, setSelectedSnapshotEnv] = useState<WorkspaceEnv>();
   const [selectedEnv, setSelectedEnv] = useState<WorkspaceEnv>({
     name: '',
-    slug: ''
+    slug: '',
+    isWriteDenied: false
   });
   const [atSecretAreaTop, setAtSecretsAreaTop] = useState(true);
   const secretsTop = useRef<HTMLDivElement>(null);
@@ -216,9 +219,10 @@ export default function Dashboard() {
         }
         setAutoCapitalization(workspace?.autoCapitalization ?? true);
 
-        setWorkspaceEnvs(workspace?.environments || []);
+        const accessibleEnvironments = await getWorkspaceEnvironments({ workspaceId });
+        setWorkspaceEnvs(accessibleEnvironments || []);
         // set env
-        const env = workspace?.environments?.[0] || {
+        const env = accessibleEnvironments?.[0] || {
           name: 'unknown',
           slug: 'unkown'
         };
@@ -353,6 +357,7 @@ export default function Dashboard() {
       findDuplicates(data!.map((item: SecretDataProps) => item.key)).length > 0;
 
     if (nameErrors) {
+      setSaveLoading(false);
       return createNotification({
         text: 'Solve all name errors before saving secrets.',
         type: 'error'
@@ -360,8 +365,17 @@ export default function Dashboard() {
     }
 
     if (duplicatesExist) {
+      setSaveLoading(false);
       return createNotification({
         text: 'Remove duplicated secret names before saving.',
+        type: 'error'
+      });
+    }
+
+    if (selectedEnv.isWriteDenied) {
+      setSaveLoading(false);
+      return createNotification({
+        text: 'You are not allowed to edit this environment',
         type: 'error'
       });
     }
@@ -506,7 +520,7 @@ export default function Dashboard() {
   };
 
   return data ? (
-    <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
+    <div className="bg-bunker-800 max-h-screen h-full relative flex flex-col justify-between text-white">
       <Head>
         <title>{t('common:head-title', { title: t('dashboard:title') })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -514,7 +528,7 @@ export default function Dashboard() {
         <meta property="og:title" content={String(t('dashboard:og-title'))} />
         <meta name="og:description" content={String(t('dashboard:og-description'))} />
       </Head>
-      <div className="flex flex-row">
+      <div className="flex flex-row h-full">
         {sidebarSecretId !== 'None' && (
           <SideBar
             toggleSidebar={toggleSidebar}
@@ -527,6 +541,9 @@ export default function Dashboard() {
             modifyValueOverride={listenChangeValueOverride}
             modifyComment={listenChangeComment}
             buttonReady={buttonReady}
+            workspaceEnvs={workspaceEnvs}
+            selectedEnv={selectedEnv}
+            workspaceId={workspaceId}
             savePush={savePush}
             sharedToHide={sharedToHide}
             setSharedToHide={setSharedToHide}
@@ -582,7 +599,8 @@ export default function Dashboard() {
                     setSelectedEnv(
                       workspaceEnvs.find(({ name }) => envName === name) || {
                         name: 'unknown',
-                        slug: 'unknown'
+                        slug: 'unknown',
+                        isWriteDenied: false
                       }
                     )
                   }
@@ -662,7 +680,8 @@ export default function Dashboard() {
                           setSelectedEnv(
                             workspaceEnvs.find(({ name }) => envName === name) || {
                               name: 'unknown',
-                              slug: 'unknown'
+                              slug: 'unknown',
+                              isWriteDenied: false
                             }
                           )
                         }
@@ -675,7 +694,8 @@ export default function Dashboard() {
                           setSelectedSnapshotEnv(
                             workspaceEnvs.find(({ name }) => envName === name) || {
                               name: 'unknown',
-                              slug: 'unknown'
+                              slug: 'unknown',
+                              isWriteDenied: false
                             }
                           )
                         }
@@ -857,7 +877,6 @@ export default function Dashboard() {
     </div>
   ) : (
     <div className="relative z-10 w-10/12 mr-auto h-full ml-2 bg-bunker-800 flex flex-col items-center justify-center">
-      <div className="absolute top-0 bg-bunker h-14 border-b border-mineshaft-700 w-full" />
       <Image src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
     </div>
   );

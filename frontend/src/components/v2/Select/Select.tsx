@@ -10,39 +10,45 @@ type Props = {
   children: ReactNode;
   placeholder?: string;
   className?: string;
+  dropdownContainerClassName?: string;
   isLoading?: boolean;
 };
 
 export type SelectProps = SelectPrimitive.SelectProps & Props;
 
 export const Select = forwardRef<HTMLButtonElement, SelectProps>(
-  ({ children, placeholder, className, isLoading, ...props }, ref): JSX.Element => {
+  (
+    { children, placeholder, className, isLoading, dropdownContainerClassName, ...props },
+    ref
+  ): JSX.Element => {
     return (
       <SelectPrimitive.Root {...props}>
         <SelectPrimitive.Trigger
           ref={ref}
           className={twMerge(
-            `inline-flex items-center justify-between data-[placeholder]:text-gray-500
-            px-4 py-2.5 font-inter text-sm text-white rounded-md bg-mineshaft-800`,
+            `inline-flex items-center justify-between rounded-md
+            bg-bunker-800 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-gray-500`,
             className
           )}
         >
           <SelectPrimitive.Value placeholder={placeholder} />
-          <SelectPrimitive.Icon className="ml-3">
-            <FontAwesomeIcon icon={faChevronDown} size="sm" />
-          </SelectPrimitive.Icon>
+          {!props.disabled && (
+            <SelectPrimitive.Icon className="ml-3">
+              <FontAwesomeIcon icon={faChevronDown} size="sm" />
+            </SelectPrimitive.Icon>
+          )}
         </SelectPrimitive.Trigger>
         <SelectPrimitive.Portal>
           <SelectPrimitive.Content
-            position="popper"
-            sideOffset={5}
-            className="overflow-hidden text-white rounded-md shadow-md font-inter bg-mineshaft-800"
-            style={{ width: 'var(--radix-select-trigger-width)' }}
+            className={twMerge(
+              'relative left-4 top-1 overflow-hidden rounded-md bg-bunker-800 font-inter text-bunker-100 shadow-md',
+              dropdownContainerClassName
+            )}
           >
             <SelectPrimitive.ScrollUpButton>
               <FontAwesomeIcon icon={faChevronUp} size="sm" />
             </SelectPrimitive.ScrollUpButton>
-            <SelectPrimitive.Viewport className="p-2">
+            <SelectPrimitive.Viewport className="p-1.5">
               {isLoading ? (
                 <div className="flex items-center justify-center">
                   <Spinner size="xs" />
@@ -75,16 +81,16 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
       <SelectPrimitive.Item
         {...props}
         className={twMerge(
-          `text-sm rounded-sm transition-all hover:text-primary 
-          hover:bg-mineshaft-700 flex items-center pl-10 pr-4 py-2 cursor-pointer 
-          select-none outline-none relative`,
-          isSelected && 'text-primary',
-          isDisabled && 'text-gray-600 hover:bg-transparent cursor-not-allowed hover:text-gray-600',
+          `relative flex cursor-pointer
+          select-none items-center rounded-md py-2 pl-10 pr-4 text-sm
+          outline-none transition-all hover:bg-mineshaft-500`,
+          isSelected && 'bg-primary',
+          isDisabled && 'cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-gray-600',
           className
         )}
         ref={forwardedRef}
       >
-        <SelectPrimitive.ItemIndicator className="absolute left-2">
+        <SelectPrimitive.ItemIndicator className="absolute left-3.5">
           <FontAwesomeIcon icon={faCheck} size="sm" />
         </SelectPrimitive.ItemIndicator>
         <SelectPrimitive.ItemText className="">{children}</SelectPrimitive.ItemText>

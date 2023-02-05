@@ -2,10 +2,10 @@ package util
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"errors"
 )
 
 func CheckForUpdate() {
@@ -42,5 +42,5 @@ func getLatestTag(repoOwner string, repoName string) (string, error) {
 
 	json.Unmarshal(body, &tags)
 
-	return tags[0].Name, nil
+	return tags[0].Name[1:], nil
 }

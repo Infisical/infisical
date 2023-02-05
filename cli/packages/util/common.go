@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 )
 
@@ -18,4 +19,12 @@ func WriteToFile(fileName string, dataToWrite []byte, filePerm os.FileMode) erro
 	}
 
 	return nil
+}
+
+func CheckIsConnectedToInternet() (ok bool) {
+	_, err := http.Get("http://clients3.google.com/generate_204")
+	if err != nil {
+		return false
+	}
+	return true
 }

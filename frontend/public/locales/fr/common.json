@@ -1,5 +1,5 @@
 {
-  "head-title": "{{title}} | Infiscal",
+  "head-title": "{{title}} | Infisical",
   "error_project-already-exists": "Un projet avec ce nom existe déjà.",
   "no-mobile": " Pour utiliser Infisical, veuillez vous connecter avec un appareil avec des dimensions plus grandes. ",
   "email": "Email",
@@ -28,7 +28,7 @@
   "select-event": "Sélectionnez un événement",
   "event": "Événement",
   "user": "Utilisateur",
-  "source": "Source", 
-  "time": "Heure", 
+  "source": "Source",
+  "time": "Heure",
   "timestamp": "Horodatage"
 }

@@ -29,7 +29,7 @@ export default function VerifyEmail() {
         <title>Login</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content="Log In to Infisical" />
+        <meta property="og:title" content="Verify your email in Infisical" />
         <meta
           name="og:description"
           content="Infisical a simple end-to-end encrypted platform that enables teams to sync and manage their .env files."

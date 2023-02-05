@@ -1,5 +1,7 @@
 import { Schema, model, Types } from 'mongoose';
 import {
+    ACTION_LOGIN,
+    ACTION_LOGOUT,
     ACTION_ADD_SECRETS,
     ACTION_UPDATE_SECRETS,
     ACTION_READ_SECRETS,
@@ -29,6 +31,8 @@ const logSchema = new Schema<ILog>(
         actionNames: {
             type: [String],
             enum: [
+                ACTION_LOGIN,
+                ACTION_LOGOUT,
                 ACTION_ADD_SECRETS,
                 ACTION_UPDATE_SECRETS,
                 ACTION_READ_SECRETS,

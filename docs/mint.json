@@ -209,7 +209,8 @@
       "pages": [
         "integrations/platforms/docker",
         "integrations/platforms/docker-compose",
-        "integrations/platforms/kubernetes"
+        "integrations/platforms/kubernetes",
+        "integrations/platforms/pm2"
       ]
     },
     {

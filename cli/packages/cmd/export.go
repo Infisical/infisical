@@ -1,5 +1,5 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright (c) 2023 Infisical Inc.
 */
 package cmd
 
@@ -56,7 +56,12 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(envName)
+		infisicalToken, err := cmd.Flags().GetString("token")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: envName, InfisicalToken: infisicalToken})
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")
 		}
@@ -91,6 +96,7 @@ func init() {
 	exportCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	exportCmd.Flags().StringP("format", "f", "dotenv", "Set the format of the output file (dotenv, json, csv)")
 	exportCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
+	exportCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 }
 
 // Format according to the format flag
