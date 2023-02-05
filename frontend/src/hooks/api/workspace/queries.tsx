@@ -42,7 +42,7 @@ export const useToggleAutoCapitalization = () => {
 
   return useMutation<{}, {}, ToggleAutoCapitalizationDTO>({
     mutationFn: ({ workspaceID, state }) =>
-      apiRequest.post(`/api/v2/workspace/${workspaceID}/settings`, { autoCapitalization: state }),
+      apiRequest.patch(`/api/v2/workspace/${workspaceID}/auto-capitalization`, { autoCapitalization: state }),
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }

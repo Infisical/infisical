@@ -475,7 +475,7 @@ export const deleteWorkspaceMembership = async (req: Request, res: Response) => 
  * @param res
  * @returns
  */
-export const toggleAutoCapitilzation = async (req: Request, res: Response) => {
+export const toggleAutoCapitalization = async (req: Request, res: Response) => {
 	let workspace;
 	try {
 		const { workspaceId } = req.params;

@@ -119,8 +119,8 @@ router.delete( // TODO - rewire dashboard to this route
 );
 
 
-router.post(
-	'/:workspaceId/settings',
+router.patch(
+	'/:workspaceId/auto-capitalization',
 	requireAuth({
 		acceptedAuthModes: ['jwt']
 	}),
@@ -130,7 +130,7 @@ router.post(
 	param('workspaceId').exists().trim(),
 	body('autoCapitalization').exists().trim().notEmpty(),
 	validateRequest,
-	workspaceController.toggleAutoCapitilzation
+	workspaceController.toggleAutoCapitalization
 );
 
 export default router;
