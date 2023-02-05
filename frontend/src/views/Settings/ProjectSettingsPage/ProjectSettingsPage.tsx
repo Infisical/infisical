@@ -41,7 +41,6 @@ import {
 export const ProjectSettingsPage = () => {
   const { t } = useTranslation();
   const { currentWorkspace, workspaces } = useWorkspace();
-  console.log(currentWorkspace);
   const router = useRouter();
   const { data: serviceTokens } = useGetUserWsServiceTokens({
     workspaceID: currentWorkspace?._id || ''
