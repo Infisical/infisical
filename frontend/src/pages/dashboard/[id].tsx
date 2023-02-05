@@ -22,6 +22,7 @@ import Button from '@app/components/basic/buttons/Button';
 import ListBox from '@app/components/basic/Listbox';
 import BottonRightPopup from '@app/components/basic/popups/BottomRightPopup';
 import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
+import ConfirmEnvOverwriteModal from '@app/components/dashboard/ConfirmEnvOverwriteModal';
 import DownloadSecretMenu from '@app/components/dashboard/DownloadSecretsMenu';
 import DropZone from '@app/components/dashboard/DropZone';
 import KeyPair from '@app/components/dashboard/KeyPair';
@@ -125,6 +126,7 @@ export default function Dashboard() {
   const [snapshotData, setSnapshotData] = useState<SnapshotProps>();
   const [numSnapshots, setNumSnapshots] = useState<number>();
   const [saveLoading, setSaveLoading] = useState(false);
+  const [dropZoneData, setDropZoneData] = useState<SecretDataProps[]>();
 
   const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
@@ -504,9 +506,31 @@ export default function Dashboard() {
     return undefined;
   };
 
-  const addData = (newData: SecretDataProps[]) => {
-    setData(data!.concat(newData));
+  const addDataWithMerge = (newData: SecretDataProps[], preserve?: 'old' | 'new') => {
+    setData((oldData) => {
+      let filteredOldData = oldData!;
+      let filteredNewData = newData;
+      if (preserve === 'new')
+        filteredOldData = oldData!.filter(
+          (oldDataPoint) => !newData.find((newDataPoint) => newDataPoint.key === oldDataPoint.key)
+        );
+      if (preserve === 'old')
+        filteredNewData = newData.filter(
+          (newDataPoint) => !oldData?.find((oldDataPoint) => oldDataPoint.key === newDataPoint.key)
+        );
+      return filteredOldData.concat(filteredNewData);
+    });
     setButtonReady(true);
+  };
+
+  const addData = (newData: SecretDataProps[]) => {
+    if (
+      newData.some((newDataPoint) => data?.find((dataPoint) => dataPoint.key === newDataPoint.key)) // if newData contains duplicates
+    ) {
+      setDropZoneData(newData);
+      return;
+    }
+    addDataWithMerge(newData);
   };
 
   const changeBlurred = () => {
@@ -527,6 +551,21 @@ export default function Dashboard() {
         <meta name="og:description" content={String(t('dashboard:og-description'))} />
       </Head>
       <div className="flex flex-row h-full">
+        <ConfirmEnvOverwriteModal
+          isOpen={!!dropZoneData}
+          onClose={() => setDropZoneData(undefined)}
+          onOverwriteConfirm={(preserve) => {
+            addDataWithMerge(dropZoneData!, preserve);
+            setDropZoneData(undefined);
+          }}
+          duplicateKeys={
+            dropZoneData
+              ?.filter((newDataPoint) =>
+                data?.find((dataPoint) => dataPoint.key === newDataPoint.key)
+              )
+              .map((duplicate) => duplicate.key) ?? []
+          }
+        />
         {sidebarSecretId !== 'None' && (
           <SideBar
             toggleSidebar={toggleSidebar}
