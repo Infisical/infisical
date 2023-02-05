@@ -24,9 +24,11 @@ import {
   useGetUserWsKey,
   useGetUserWsServiceTokens,
   useRenameWorkspace,
+  useToggleAutoCapitalization,
   useUpdateWsEnvironment
 } from '@app/hooks/api';
 
+import { AutoCapitalizationSection } from './components/AutoCapitalizationSection/AutoCapitalizationSection';
 import {
   CopyProjectIDSection,
   CreateServiceToken,
@@ -39,6 +41,7 @@ import {
 export const ProjectSettingsPage = () => {
   const { t } = useTranslation();
   const { currentWorkspace, workspaces } = useWorkspace();
+  console.log(currentWorkspace);
   const router = useRouter();
   const { data: serviceTokens } = useGetUserWsServiceTokens({
     workspaceID: currentWorkspace?._id || ''
@@ -50,6 +53,8 @@ export const ProjectSettingsPage = () => {
   const [isDeleting, setIsDeleting] = useToggle();
 
   const renameWorkspace = useRenameWorkspace();
+  const toggleAutoCapitalization = useToggleAutoCapitalization();
+  
   const deleteWorkspace = useDeleteWorkspace();
   // env crud operation
   const createWsEnv = useCreateWsEnvironment();
@@ -78,6 +83,26 @@ export const ProjectSettingsPage = () => {
       console.error(error);
       createNotification({
         text: 'Failed to rename workspace',
+        type: 'error'
+      });
+    }
+  };
+
+  const onAutoCapitalizationToggle = async (state: boolean) => {  
+    try {
+      await toggleAutoCapitalization.mutateAsync({
+        workspaceID,
+        state
+      });
+      const text = `Successfully ${state ? 'enabled' : 'disabled'} auto capitalization`;
+      createNotification({
+        text,
+        type: 'success'
+      });
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: 'Failed to update auto capitalization',
         type: 'error'
       });
     }
@@ -240,6 +265,10 @@ export const ProjectSettingsPage = () => {
       <ProjectNameChangeSection
         workspaceName={currentWorkspace?.name}
         onProjectNameChange={onRenameWorkspace}
+      />
+      <AutoCapitalizationSection
+        workspaceAutoCapitalization={currentWorkspace?.autoCapitalization}
+        onAutoCapitalizationChange={onAutoCapitalizationToggle}
       />
       <CopyProjectIDSection workspaceID={currentWorkspace?._id || ''} />
       <EnvironmentSection

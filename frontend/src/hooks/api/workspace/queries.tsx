@@ -7,6 +7,7 @@ import {
   DeleteEnvironmentDTO,
   DeleteWorkspaceDTO,
   RenameWorkspaceDTO,
+  ToggleAutoCapitalizationDTO,
   UpdateEnvironmentDTO,
   Workspace
 } from './types';
@@ -17,7 +18,6 @@ const workspaceKeys = {
 
 const fetchUserWorkspaces = async () => {
   const { data } = await apiRequest.get<{ workspaces: Workspace[] }>('/api/v1/workspace');
-
   return data.workspaces;
 };
 
@@ -31,6 +31,18 @@ export const useRenameWorkspace = () => {
   return useMutation<{}, {}, RenameWorkspaceDTO>({
     mutationFn: ({ workspaceID, newWorkspaceName }) =>
       apiRequest.post(`/api/v1/workspace/${workspaceID}/name`, { name: newWorkspaceName }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
+    }
+  });
+};
+
+export const useToggleAutoCapitalization = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, ToggleAutoCapitalizationDTO>({
+    mutationFn: ({ workspaceID, state }) =>
+      apiRequest.post(`/api/v2/workspace/${workspaceID}/settings`, { autoCapitalization: state }),
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }
