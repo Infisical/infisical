@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useTranslation } from 'next-i18next';
-import { faX } from '@fortawesome/free-solid-svg-icons';
+import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import SecretVersionList from '@app/ee/components/SecretVersionList';
@@ -80,7 +80,7 @@ const SideBar = ({
   const { t } = useTranslation();
 
   return (
-    <div className="absolute border-l border-mineshaft-500 bg-bunker h-full w-96 right-0 z-40 shadow-xl flex flex-col justify-between">
+    <div className="absolute border-l border-mineshaft-500 bg-bunker h-full w-96 right-0 z-[70] shadow-xl flex flex-col justify-between">
       {isLoading ? (
         <div className="flex items-center justify-center h-full">
           <Image
@@ -101,19 +101,21 @@ const SideBar = ({
               className="p-1"
               onClick={() => toggleSidebar('None')}
             >
-              <FontAwesomeIcon icon={faX} className="w-4 h-4 text-bunker-300 cursor-pointer" />
+              <FontAwesomeIcon icon={faXmark} className="w-4 h-4 text-bunker-300 cursor-pointer" />
             </div>
           </div>
           <div className="mt-4 px-4 pointer-events-none">
             <p className="text-sm text-bunker-300">{t('dashboard:sidebar.key')}</p>
-            <DashboardInputField
-              onChangeHandler={modifyKey}
-              type="varName"
-              position={data[0]?.pos}
-              value={data[0]?.key}
-              isDuplicate={false}
-              blurred={false}
-            />
+            <div className='rounded-md border overflow-hidden border-mineshaft-600 bg-white/5'>
+              <DashboardInputField
+                onChangeHandler={modifyKey}
+                type="varName"
+                position={data[0]?.pos}
+                value={data[0]?.key}
+                isDuplicate={false}
+                blurred={false}
+              />
+            </div>
           </div>
           {(data[0]?.value || data[0]?.value === "") ? (
             <div
@@ -122,14 +124,16 @@ const SideBar = ({
               } duration-200`}
             >
               <p className="text-sm text-bunker-300">{t('dashboard:sidebar.value')}</p>
-              <DashboardInputField
-                onChangeHandler={modifyValue}
-                type="value"
-                position={data[0].pos}
-                value={data[0]?.value}
-                isDuplicate={false}
-                blurred
-              />
+              <div className='rounded-md border overflow-hidden border-mineshaft-600 bg-white/5'>
+                <DashboardInputField
+                  onChangeHandler={modifyValue}
+                  type="value"
+                  position={data[0].pos}
+                  value={data[0]?.value}
+                  isDuplicate={false}
+                  blurred
+                />
+              </div>
               <div className="absolute bg-bunker-800 right-[1.07rem] top-[1.6rem] z-50">
                 <GenerateSecretMenu modifyValue={modifyValue} position={data[0]?.pos} />
               </div>
@@ -159,14 +163,16 @@ const SideBar = ({
                 !overrideEnabled && 'opacity-40 pointer-events-none'
               } duration-200`}
             >
-              <DashboardInputField
-                onChangeHandler={modifyValueOverride}
-                type="value"
-                position={data[0]?.pos}
-                value={overrideEnabled ? data[0]?.valueOverride : data[0]?.value}
-                isDuplicate={false}
-                blurred
-              />
+              <div className='rounded-md border overflow-hidden border-mineshaft-600 bg-white/5'>
+                <DashboardInputField
+                  onChangeHandler={modifyValueOverride}
+                  type="value"
+                  position={data[0]?.pos}
+                  value={overrideEnabled ? data[0]?.valueOverride : data[0]?.value}
+                  isDuplicate={false}
+                  blurred
+                />
+              </div>
               <div className="absolute right-[0.57rem] top-[0.3rem] z-50">
                 <GenerateSecretMenu modifyValue={modifyValueOverride} position={data[0]?.pos} />
               </div>

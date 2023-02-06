@@ -58,7 +58,7 @@ const ListBox = ({
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <Listbox.Options className="border border-mineshaft-700 z-50 p-2 absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-bunker text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+            <Listbox.Options className="border border-mineshaft-700 z-[70] p-2 absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-bunker text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm no-scrollbar no-scrollbar::-webkit-scrollbar">
               {data.map((person, personIdx) => (
                 <Listbox.Option
                   key={`${person}.${personIdx + 1}`}
