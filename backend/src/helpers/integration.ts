@@ -44,6 +44,7 @@ const handleOAuthExchangeHelper = async ({
 }) => {
     let action;
     let integrationAuth;
+    let newIntegration;
     try {
         const bot = await Bot.findOne({
             workspace: workspaceId,
@@ -100,7 +101,7 @@ const handleOAuthExchangeHelper = async ({
         }
 
         // initialize new integration after exchange
-        await new Integration({
+        newIntegration = await new Integration({
             workspace: workspaceId,
             isActive: false,
             app: null,
@@ -113,6 +114,11 @@ const handleOAuthExchangeHelper = async ({
         Sentry.captureException(err);
         throw new Error('Failed to handle OAuth2 code-token exchange')
     }
+    
+    return ({
+        integrationAuth,
+        integration: newIntegration
+    });
 }
 /**
  * Sync/push environment variables in workspace with id [workspaceId] to

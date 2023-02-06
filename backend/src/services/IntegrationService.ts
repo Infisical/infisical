@@ -1,7 +1,3 @@
-import * as Sentry from '@sentry/node';
-import {
-    Integration
-} from '../models';
 import { 
     handleOAuthExchangeHelper,
     syncIntegrationsHelper,
@@ -10,7 +6,6 @@ import {
     setIntegrationAuthRefreshHelper,
     setIntegrationAuthAccessHelper,
 } from '../helpers/integration';
-import { exchangeCode } from '../integrations';
 
 // should sync stuff be here too? Probably.
 // TODO: move bot functions to IntegrationService.
@@ -26,11 +21,15 @@ class IntegrationService {
      * - Store integration access and refresh tokens returned from the OAuth2 code-token exchange
      * - Add placeholder inactive integration
      * - Create bot sequence for integration
-     * @param {Object} obj
-     * @param {String} obj.workspaceId - id of workspace
-     * @param {String} obj.environment - workspace environment
-     * @param {String} obj.integration - name of integration 
-     * @param {String} obj.code - code
+     * @param {Object} obj1
+     * @param {String} obj1.workspaceId - id of workspace
+     * @param {String} obj1.environment - workspace environment
+     * @param {String} obj1.integration - name of integration 
+     * @param {String} obj1.code - code
+     * @returns {Object} obj2
+     * @returns {IntegrationAuth} obj2.integrationAuth - integration authorization after OAuth2 code-token exchange
+     * @returns {Integration} obj2.integration - newly-initialized integration OAuth2 code-token exchange
+     * @retrun
      */
     static async handleOAuthExchange({ 
         workspaceId,
@@ -43,7 +42,7 @@ class IntegrationService {
         code: string;
         environment: string;
     }) {
-        await handleOAuthExchangeHelper({
+        return await handleOAuthExchangeHelper({
             workspaceId,
             integration,
             code,

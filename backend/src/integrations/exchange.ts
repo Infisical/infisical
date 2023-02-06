@@ -1,10 +1,12 @@
 import axios from 'axios';
 import * as Sentry from '@sentry/node';
 import {
+  INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_AZURE_TOKEN_URL,
   INTEGRATION_HEROKU_TOKEN_URL,
   INTEGRATION_VERCEL_TOKEN_URL,
   INTEGRATION_NETLIFY_TOKEN_URL,
@@ -12,14 +14,26 @@ import {
 } from '../variables';
 import {
   SITE_URL,
+  CLIENT_ID_AZURE,
   CLIENT_ID_VERCEL,
   CLIENT_ID_NETLIFY,
   CLIENT_ID_GITHUB,
+  CLIENT_SECRET_AZURE,
   CLIENT_SECRET_HEROKU,
   CLIENT_SECRET_VERCEL,
   CLIENT_SECRET_NETLIFY,
   CLIENT_SECRET_GITHUB
 } from '../config';
+
+interface ExchangeCodeAzureResponse {
+  token_type: string;
+  scope: string;
+  expires_in: number;
+  ext_expires_in: number;
+  access_token: string;
+  refresh_token: string;
+  id_token: string;
+}
 
 interface ExchangeCodeHerokuResponse {
   token_type: string;
@@ -75,6 +89,11 @@ const exchangeCode = async ({
 
   try {
     switch (integration) {
+      case INTEGRATION_AZURE_KEY_VAULT:
+        obj = await exchangeCodeAzure({
+          code
+        });
+        break;
       case INTEGRATION_HEROKU:
         obj = await exchangeCodeHeroku({
           code
@@ -104,6 +123,46 @@ const exchangeCode = async ({
 
   return obj;
 };
+
+/**
+ * Return [accessToken] for Azure OAuth2 code-token exchange
+ * @param param0 
+ */
+const exchangeCodeAzure = async ({
+  code
+}: {
+  code: string;
+}) => {
+  const accessExpiresAt = new Date();
+  let res: ExchangeCodeAzureResponse;
+  try {
+    res = (await axios.post(
+      INTEGRATION_AZURE_TOKEN_URL,
+       new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code,
+        scope: 'https://vault.azure.net/.default openid offline_access', // TODO: do we need all these permissions?
+        client_id: CLIENT_ID_AZURE,
+        client_secret: CLIENT_SECRET_AZURE,
+        redirect_uri: `${SITE_URL}/azure-key-vault`
+      } as any)
+    )).data;
+    
+    accessExpiresAt.setSeconds(
+        accessExpiresAt.getSeconds() + res.expires_in
+    );
+  } catch (err: any) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed OAuth2 code-token exchange with Azure');
+  }
+  
+  return ({
+    accessToken: res.access_token,
+    refreshToken: res.refresh_token,
+    accessExpiresAt
+  });
+}
 
 /**
  * Return [accessToken], [accessExpiresAt], and [refreshToken] for Heroku

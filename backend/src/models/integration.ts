@@ -1,5 +1,6 @@
 import { Schema, model, Types } from 'mongoose';
 import {
+  INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
@@ -17,7 +18,7 @@ export interface IIntegration {
   owner: string;
   targetEnvironment: string;
   appId: string;
-  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'render' | 'flyio';
+  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'render' | 'flyio' | 'azure-key-vault';
   integrationAuth: Types.ObjectId;
 }
 
@@ -59,6 +60,7 @@ const integrationSchema = new Schema<IIntegration>(
     integration: {
       type: String,
       enum: [
+        INTEGRATION_AZURE_KEY_VAULT,
         INTEGRATION_HEROKU,
         INTEGRATION_VERCEL,
         INTEGRATION_NETLIFY,

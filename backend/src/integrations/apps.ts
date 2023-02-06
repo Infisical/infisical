@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/node';
 import { Octokit } from '@octokit/rest';
 import { IIntegrationAuth } from '../models';
 import {
+  INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
@@ -40,6 +41,11 @@ const getApps = async ({
   let apps: App[];
   try {
     switch (integrationAuth.integration) {
+      case INTEGRATION_AZURE_KEY_VAULT:
+        apps = await getAppsAzureKeyVault({
+          accessToken
+        });
+      break;
       case INTEGRATION_HEROKU:
         apps = await getAppsHeroku({
           accessToken
@@ -80,6 +86,15 @@ const getApps = async ({
 
   return apps;
 };
+
+const getAppsAzureKeyVault = async ({
+  accessToken
+}: {
+  accessToken: string;
+}) => {
+  // TODO
+  return [];
+}
 
 /**
  * Return list of apps for Heroku integration
