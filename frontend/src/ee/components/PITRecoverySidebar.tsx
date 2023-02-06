@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import { faX } from '@fortawesome/free-solid-svg-icons';
+import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import Button from '@app/components/basic/buttons/Button';
@@ -155,7 +155,7 @@ const PITRecoverySidebar = ({ toggleSidebar, setSnapshotData, chosenSnapshot }: 
     <div
       className={`absolute border-l border-mineshaft-500 ${
         isLoading ? 'bg-bunker-800' : 'bg-bunker'
-      } fixed h-full w-96 top-14 right-0 z-40 shadow-xl flex flex-col justify-between`}
+      } fixed h-full w-96 right-0 z-[70] shadow-xl flex flex-col justify-between`}
     >
       {isLoading ? (
         <div className="flex items-center justify-center h-full mb-8">
@@ -177,7 +177,7 @@ const PITRecoverySidebar = ({ toggleSidebar, setSnapshotData, chosenSnapshot }: 
               className="p-1"
               onClick={() => toggleSidebar(false)}
             >
-              <FontAwesomeIcon icon={faX} className="w-4 h-4 text-bunker-300 cursor-pointer" />
+              <FontAwesomeIcon icon={faXmark} className="w-4 h-4 text-bunker-300 cursor-pointer" />
             </div>
           </div>
           <div className="flex flex-col px-2 py-2 overflow-y-auto h-[92vh]">

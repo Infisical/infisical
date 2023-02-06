@@ -25,13 +25,58 @@ description: "The command that injects your secrets into local environment"
 
 ## Description
 
-Inject environment variables from the platform into an application process.
+Inject secrets from Infisical into your application process.
 
-## Options
 
-| Option         | Description                                                                                                 | Default value |
-| -------------- | ----------------------------------------------------------------------------------------------------------- | ------------- |
-| `--env`        | Used to set the environment that secrets are pulled from. Accepted values: `dev`, `staging`, `test`, `prod` | `dev`         |
-| `--expand`     | Parse shell parameter expansions in your secrets (e.g., `${DOMAIN}`)      | `true`        |
-| `--command`    | Pass secrets into chained commands (e.g., `"first-command && second-command; more-commands..."`)      | None        |
-| `--secret-overriding`|  Prioritizes personal secrets with the same name over shared secrets      | `true`        |
+## Subcommands & flags
+
+<Accordion title="infisical run" defaultOpen="true">
+  Use this command to inject secrets into your applications process
+
+  ```bash
+  $ infisical run -- <your application command>
+
+  # Example 
+  $ infisical run -- npm run dev
+  ```
+
+  ### flags 
+  <Accordion title="--command">
+    Pass secrets into multiple commands at once
+
+    ```bash
+    # Example 
+    infisical run --command="npm run build && npm run dev; more-commands..."
+    ```
+  </Accordion>
+
+  <Accordion title="--token">
+    If you are using a [service token](../../getting-started/dashboard/token) to authenticate, you can pass the token as a flag
+
+    ```bash
+    # Example 
+    infisical run --token="st.63e03c4a97cb4a747186c71e.ed5b46a34c078a8f94e8228f4ab0ff97.4f7f38034811995997d72badf44b42ec" -- npm run start
+    ```
+
+    You may also expose the token to the CLI by setting the environment variable `INFISICAL_TOKEN` before executing the run command. This will have the same effect as setting the token with `--token` flag 
+  </Accordion>
+
+  <Accordion title="--expand">
+    Turn on or off the shell parameter expansion in your secrets. If you have used shell parameters in your secret(s), activating this feature will populate them before injecting them into your application process.
+
+    Default value: `true`
+  </Accordion>
+
+  <Accordion title="--env">
+    This is used to specify the environment from which secrets should be retrieved. The accepted values are the environment slugs defined for your project, such as `dev`, `staging`, `test`, and `prod`.
+    
+    Default value: `dev`
+  </Accordion>
+
+  <Accordion title="--secret-overriding">
+    Prioritizes personal secrets with the same name over shared secrets
+
+    Default value: `true`
+  </Accordion>
+
+</Accordion>

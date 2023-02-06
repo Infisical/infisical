@@ -6,6 +6,7 @@ import * as apiKeyDataController from './apiKeyDataController';
 import * as secretController from './secretController';
 import * as secretsController from './secretsController';
 import * as environmentController from './environmentController';
+import * as tagController from './tagController';
 
 export {
     usersController,
@@ -15,5 +16,6 @@ export {
     apiKeyDataController,
     secretController,
     secretsController,
-    environmentController
+    environmentController,
+    tagController
 }
