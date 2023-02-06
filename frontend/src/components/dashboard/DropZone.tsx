@@ -152,7 +152,7 @@ const DropZone = ({
     </div>
   ) : keysExist ? (
     <div
-      className="opacity-60 hover:opacity-100 duration-200 relative bg-mineshaft-900 max-w-[calc(100%-1rem)] w-full outline-dashed outline-chicago-600 rounded-md outline-2 flex flex-col items-center justify-center mb-16 mx-auto mt-1 py-8 px-2"
+      className="opacity-60 hover:opacity-100 duration-200 relative bg-mineshaft-900 max-w-[calc(100%-1rem)] w-full outline-dashed outline-chicago-600 rounded-md outline-2 flex flex-col items-center justify-center mb-4 mx-auto mt-1 py-8 px-2"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}

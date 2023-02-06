@@ -15,7 +15,7 @@ export const DeleteEnvVar = ({ isOpen, onClose, onSubmit }: Props) => {
   return (
     <div>
       <Transition appear show={isOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-10" onClose={() => {}}>
+        <Dialog as="div" className="relative z-[80]" onClose={() => {}}>
           <div className="fixed inset-0 overflow-y-auto">
             <Transition.Child
               as={Fragment}
