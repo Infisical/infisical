@@ -21,6 +21,7 @@ export interface ISecretVersion {
 	secretValueIV: string;
 	secretValueTag: string;
 	secretValueHash: string;
+	tags?: string[];
 }
 
 const secretVersionSchema = new Schema<ISecretVersion>(
@@ -88,7 +89,12 @@ const secretVersionSchema = new Schema<ISecretVersion>(
 		},
 		secretValueHash: {
 			type: String
-		}
+		},
+		tags: {
+			ref: 'Tag',
+			type: [Schema.Types.ObjectId],
+			default: []
+		},
 	},
 	{
 		timestamps: true

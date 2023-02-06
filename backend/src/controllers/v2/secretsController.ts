@@ -86,17 +86,28 @@ export const createSecrets = async (req: Request, res: Response) => {
         throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
     }
 
-    let toAdd;
+    let listOfSecretsToCreate;
     if (Array.isArray(req.body.secrets)) {
         // case: create multiple secrets
-        toAdd = req.body.secrets;
+        listOfSecretsToCreate = req.body.secrets;
     } else if (typeof req.body.secrets === 'object') {
         // case: create 1 secret
-        toAdd = [req.body.secrets];
+        listOfSecretsToCreate = [req.body.secrets];
     }
 
-    const newSecrets = await Secret.insertMany(
-        toAdd.map(({
+    type secretsToCreateType = {
+        type: string;
+        secretKeyCiphertext: string;
+        secretKeyIV: string;
+        secretKeyTag: string;
+        secretValueCiphertext: string;
+        secretValueIV: string;
+        secretValueTag: string;
+        tags: string[]
+    }
+
+    const newlyCreatedSecrets = await Secret.insertMany(
+        listOfSecretsToCreate.map(({
             type,
             secretKeyCiphertext,
             secretKeyIV,
@@ -104,15 +115,8 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretValueCiphertext,
             secretValueIV,
             secretValueTag,
-        }: {
-            type: string;
-            secretKeyCiphertext: string;
-            secretKeyIV: string;
-            secretKeyTag: string;
-            secretValueCiphertext: string;
-            secretValueIV: string;
-            secretValueTag: string;
-        }) => {
+            tags
+        }: secretsToCreateType) => {
             return ({
                 version: 1,
                 workspace: new Types.ObjectId(workspaceId),
@@ -124,7 +128,8 @@ export const createSecrets = async (req: Request, res: Response) => {
                 secretKeyTag,
                 secretValueCiphertext,
                 secretValueIV,
-                secretValueTag
+                secretValueTag,
+                tags
             });
         })
     );
@@ -140,7 +145,7 @@ export const createSecrets = async (req: Request, res: Response) => {
 
     // (EE) add secret versions for new secrets
     await EESecretService.addSecretVersions({
-        secretVersions: newSecrets.map(({
+        secretVersions: newlyCreatedSecrets.map(({
             _id,
             version,
             workspace,
@@ -154,7 +159,8 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretValueCiphertext,
             secretValueIV,
             secretValueTag,
-            secretValueHash
+            secretValueHash,
+            tags
         }) => ({
             _id: new Types.ObjectId(),
             secret: _id,
@@ -171,7 +177,8 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretValueCiphertext,
             secretValueIV,
             secretValueTag,
-            secretValueHash
+            secretValueHash,
+            tags
         }))
     });
 
@@ -179,7 +186,7 @@ export const createSecrets = async (req: Request, res: Response) => {
         name: ACTION_ADD_SECRETS,
         userId: req.user._id,
         workspaceId: new Types.ObjectId(workspaceId),
-        secretIds: newSecrets.map((n) => n._id)
+        secretIds: newlyCreatedSecrets.map((n) => n._id)
     });
 
     // (EE) create (audit) log
@@ -201,7 +208,7 @@ export const createSecrets = async (req: Request, res: Response) => {
             event: 'secrets added',
             distinctId: req.user.email,
             properties: {
-                numberOfSecrets: toAdd.length,
+                numberOfSecrets: listOfSecretsToCreate.length,
                 environment,
                 workspaceId,
                 channel: channel,
@@ -211,7 +218,7 @@ export const createSecrets = async (req: Request, res: Response) => {
     }
 
     return res.status(200).send({
-        secrets: newSecrets
+        secrets: newlyCreatedSecrets
     });
 }
 
@@ -294,7 +301,7 @@ export const getSecrets = async (req: Request, res: Response) => {
             ],
             type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
         }
-    ).then())
+    ).populate("tags").then())
 
     if (err) throw ValidationError({ message: 'Failed to get secrets', stack: err.stack });
 
@@ -398,6 +405,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
         secretCommentCiphertext: string;
         secretCommentIV: string;
         secretCommentTag: string;
+        tags: string[]
     }
 
     const updateOperationsToPerform = req.body.secrets.map((secret: PatchSecret) => {
@@ -410,7 +418,8 @@ export const updateSecrets = async (req: Request, res: Response) => {
             secretValueTag,
             secretCommentCiphertext,
             secretCommentIV,
-            secretCommentTag
+            secretCommentTag,
+            tags
         } = secret;
 
         return ({
@@ -426,6 +435,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
                     secretValueCiphertext,
                     secretValueIV,
                     secretValueTag,
+                    tags,
                     ...((
                         secretCommentCiphertext &&
                         secretCommentIV &&
@@ -460,6 +470,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
                 secretCommentCiphertext,
                 secretCommentIV,
                 secretCommentTag,
+                tags
             } = secretModificationsBySecretId[secret._id.toString()]
 
             return ({
@@ -477,6 +488,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
                 secretCommentCiphertext: secretCommentCiphertext ? secretCommentCiphertext : secret.secretCommentCiphertext,
                 secretCommentIV: secretCommentIV ? secretCommentIV : secret.secretCommentIV,
                 secretCommentTag: secretCommentTag ? secretCommentTag : secret.secretCommentTag,
+                tags: tags ? tags : secret.tags
             });
         })
     }

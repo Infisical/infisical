@@ -31,7 +31,7 @@ const DownloadSecretMenu = ({ data, env }: { data: SecretDataProps[]; env: strin
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
-        <Menu.Items className="absolute z-50 drop-shadow-xl right-0 mt-0.5 w-[12rem] origin-top-right rounded-md bg-bunker border border-mineshaft-500 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-2 space-y-2">
+        <Menu.Items className="absolute z-[90] drop-shadow-xl right-0 mt-0.5 w-[12rem] origin-top-right rounded-md bg-bunker border border-mineshaft-500 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-2 space-y-2">
           <Menu.Item>
             <Button
               color="mineshaft"

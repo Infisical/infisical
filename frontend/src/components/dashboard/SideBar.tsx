@@ -2,14 +2,16 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useTranslation } from 'next-i18next';
-import { faX } from '@fortawesome/free-solid-svg-icons';
+import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import SecretVersionList from '@app/ee/components/SecretVersionList';
+import { WorkspaceEnv } from '@app/hooks/api/types';
 
 import Button from '../basic/buttons/Button';
 import Toggle from '../basic/Toggle';
 import CommentField from './CommentField';
+import CompareSecretsModal from './CompareSecretsModal';
 import DashboardInputField from './DashboardInputField';
 import { DeleteActionButton } from './DeleteActionButton';
 import GenerateSecretMenu from './GenerateSecretMenu';
@@ -40,6 +42,9 @@ interface SideBarProps {
   sharedToHide: string[];
   setSharedToHide: (values: string[]) => void;
   deleteRow: (props: DeleteRowFunctionProps) => void;
+  workspaceEnvs: WorkspaceEnv[];
+  selectedEnv: WorkspaceEnv;
+  workspaceId: string;
 }
 
 /**
@@ -63,15 +68,19 @@ const SideBar = ({
   modifyComment,
   buttonReady,
   savePush,
-  deleteRow
+  deleteRow,
+  workspaceEnvs,
+  selectedEnv,
+  workspaceId
 }: SideBarProps) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isLoading, setIsLoading] = useState(false);
-  const [overrideEnabled, setOverrideEnabled] = useState(data[0].valueOverride !== undefined);
+  const [overrideEnabled, setOverrideEnabled] = useState(data[0]?.valueOverride !== undefined);
+  const [compareModal, setCompareModal] = useState(false);
   const { t } = useTranslation();
 
   return (
-    <div className="absolute border-l border-mineshaft-500 bg-bunker h-full w-96 right-0 z-40 shadow-xl flex flex-col justify-between">
+    <div className="absolute border-l border-mineshaft-500 bg-bunker h-full w-96 right-0 z-[70] shadow-xl flex flex-col justify-between">
       {isLoading ? (
         <div className="flex items-center justify-center h-full">
           <Image
@@ -92,19 +101,21 @@ const SideBar = ({
               className="p-1"
               onClick={() => toggleSidebar('None')}
             >
-              <FontAwesomeIcon icon={faX} className="w-4 h-4 text-bunker-300 cursor-pointer" />
+              <FontAwesomeIcon icon={faXmark} className="w-4 h-4 text-bunker-300 cursor-pointer" />
             </div>
           </div>
           <div className="mt-4 px-4 pointer-events-none">
             <p className="text-sm text-bunker-300">{t('dashboard:sidebar.key')}</p>
-            <DashboardInputField
-              onChangeHandler={modifyKey}
-              type="varName"
-              position={data[0]?.pos}
-              value={data[0]?.key}
-              isDuplicate={false}
-              blurred={false}
-            />
+            <div className='rounded-md border overflow-hidden border-mineshaft-600 bg-white/5'>
+              <DashboardInputField
+                onChangeHandler={modifyKey}
+                type="varName"
+                position={data[0]?.pos}
+                value={data[0]?.key}
+                isDuplicate={false}
+                blurred={false}
+              />
+            </div>
           </div>
           {(data[0]?.value || data[0]?.value === "") ? (
             <div
@@ -113,14 +124,16 @@ const SideBar = ({
               } duration-200`}
             >
               <p className="text-sm text-bunker-300">{t('dashboard:sidebar.value')}</p>
-              <DashboardInputField
-                onChangeHandler={modifyValue}
-                type="value"
-                position={data[0].pos}
-                value={data[0]?.value}
-                isDuplicate={false}
-                blurred
-              />
+              <div className='rounded-md border overflow-hidden border-mineshaft-600 bg-white/5'>
+                <DashboardInputField
+                  onChangeHandler={modifyValue}
+                  type="value"
+                  position={data[0].pos}
+                  value={data[0]?.value}
+                  isDuplicate={false}
+                  blurred
+                />
+              </div>
               <div className="absolute bg-bunker-800 right-[1.07rem] top-[1.6rem] z-50">
                 <GenerateSecretMenu modifyValue={modifyValue} position={data[0]?.pos} />
               </div>
@@ -150,14 +163,16 @@ const SideBar = ({
                 !overrideEnabled && 'opacity-40 pointer-events-none'
               } duration-200`}
             >
-              <DashboardInputField
-                onChangeHandler={modifyValueOverride}
-                type="value"
-                position={data[0]?.pos}
-                value={overrideEnabled ? data[0]?.valueOverride : data[0]?.value}
-                isDuplicate={false}
-                blurred
-              />
+              <div className='rounded-md border overflow-hidden border-mineshaft-600 bg-white/5'>
+                <DashboardInputField
+                  onChangeHandler={modifyValueOverride}
+                  type="value"
+                  position={data[0]?.pos}
+                  value={overrideEnabled ? data[0]?.valueOverride : data[0]?.value}
+                  isDuplicate={false}
+                  blurred
+                />
+              </div>
               <div className="absolute right-[0.57rem] top-[0.3rem] z-50">
                 <GenerateSecretMenu modifyValue={modifyValueOverride} position={data[0]?.pos} />
               </div>
@@ -171,20 +186,38 @@ const SideBar = ({
           />
         </div>
       )}
-      <div className="flex justify-start max-w-sm mt-4 px-4 mt-full mb-8">
-        <Button
-          text={String(t('common:save-changes'))}
-          onButtonPressed={savePush}
-          color="primary"
-          size="md"
-          active={buttonReady}
-          textDisabled="Saved"
-        />
-        <DeleteActionButton
-          onSubmit={() =>
-            deleteRow({ ids: data.map((secret) => secret.id), secretName: data[0]?.key })
-          }
-        />
+      <div className="mt-full mt-4 mb-4 flex max-w-sm flex-col justify-start space-y-2 px-4">
+        <div>
+          <Button
+            text="Compare secret across environments"
+            color="mineshaft"
+            size="md"
+            onButtonPressed={() => setCompareModal(true)}
+          />
+          <CompareSecretsModal
+            compareModal={compareModal}
+            setCompareModal={setCompareModal}
+            currentSecret={{ key: data[0]?.key, value: data[0]?.value }}
+            workspaceEnvs={workspaceEnvs}
+            selectedEnv={selectedEnv}
+            workspaceId={workspaceId}
+          />
+        </div>
+        <div className="flex">
+          <Button
+            text={String(t('common:save-changes'))}
+            onButtonPressed={savePush}
+            color="primary"
+            size="md"
+            active={buttonReady}
+            textDisabled="Saved"
+          />
+          <DeleteActionButton
+            onSubmit={() =>
+              deleteRow({ ids: data.map((secret) => secret.id), secretName: data[0]?.key })
+            }
+          />
+        </div>
       </div>
     </div>
   );

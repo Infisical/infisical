@@ -34,9 +34,9 @@ type WorkspaceConfigFile struct {
 }
 
 type SymmetricEncryptionResult struct {
-	CipherText []byte
-	Nonce      []byte
-	AuthTag    []byte
+	CipherText []byte `json:"CipherText"`
+	Nonce      []byte `json:"Nonce"`
+	AuthTag    []byte `json:"AuthTag"`
 }
 
 type GetAllSecretsParameters struct {

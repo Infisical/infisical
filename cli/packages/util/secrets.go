@@ -2,6 +2,8 @@ package util
 
 import (
 	"encoding/base64"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -105,10 +107,18 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 		infisicalToken = params.InfisicalToken
 	}
 
+	isConnected := CheckIsConnectedToInternet()
+	var secretsToReturn []models.SingleEnvironmentVariable
+	var errorToReturn error
+
 	if infisicalToken == "" {
-		RequireLocalWorkspaceFile()
-		RequireLogin()
-		log.Debug("Trying to fetch secrets using logged in details")
+		if isConnected {
+			log.Debug("GetAllEnvironmentVariables: Connected to internet, checking logged in creds")
+			RequireLocalWorkspaceFile()
+			RequireLogin()
+		}
+
+		log.Debug("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
 
 		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
 		if err != nil {
@@ -120,13 +130,30 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 			return nil, err
 		}
 
-		secrets, err := GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId, params.Environment)
-		return secrets, err
+		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId, params.Environment)
+		log.Debugf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
+
+		backupSecretsEncryptionKey := []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
+		if errorToReturn == nil {
+			WriteBackupSecrets(workspaceFile.WorkspaceId, params.Environment, backupSecretsEncryptionKey, secretsToReturn)
+		}
+
+		// only attempt to serve cached secrets if no internet connection and if at least one secret cached
+		if !isConnected {
+			backedSecrets, err := ReadBackupSecrets(workspaceFile.WorkspaceId, params.Environment, backupSecretsEncryptionKey)
+			if len(backedSecrets) > 0 {
+				PrintWarning("Unable to fetch latest secret(s) due to connection error, serving secrets from last successful fetch. For more info, run with --debug")
+				secretsToReturn = backedSecrets
+				errorToReturn = err
+			}
+		}
 
 	} else {
 		log.Debug("Trying to fetch secrets using service token")
-		return GetPlainTextSecretsViaServiceToken(infisicalToken)
+		secretsToReturn, errorToReturn = GetPlainTextSecretsViaServiceToken(infisicalToken)
 	}
+
+	return secretsToReturn, errorToReturn
 }
 
 func getExpandedEnvVariable(secrets []models.SingleEnvironmentVariable, variableWeAreLookingFor string, hashMapOfCompleteVariables map[string]string, hashMapOfSelfRefs map[string]string) string {
@@ -299,4 +326,101 @@ func GetPlainTextSecrets(key []byte, encryptedSecrets api.GetEncryptedSecretsV2R
 	}
 
 	return plainTextSecrets, nil
+}
+
+func WriteBackupSecrets(workspace string, environment string, encryptionKey []byte, secrets []models.SingleEnvironmentVariable) error {
+	fileName := fmt.Sprintf("secrets_%s_%s", workspace, environment)
+	secrets_backup_folder_name := "secrets-backup"
+
+	_, fullConfigFileDirPath, err := GetFullConfigFilePath()
+	if err != nil {
+		return fmt.Errorf("WriteBackupSecrets: unable to get full config folder path [err=%s]", err)
+	}
+
+	// create secrets backup directory
+	fullPathToSecretsBackupFolder := fmt.Sprintf("%s/%s", fullConfigFileDirPath, secrets_backup_folder_name)
+	if _, err := os.Stat(fullPathToSecretsBackupFolder); errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir(fullPathToSecretsBackupFolder, os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
+
+	var encryptedSecrets []models.SymmetricEncryptionResult
+	for _, secret := range secrets {
+		marshaledSecrets, _ := json.Marshal(secret)
+		result, err := crypto.EncryptSymmetric(marshaledSecrets, encryptionKey)
+		if err != nil {
+			return err
+		}
+
+		encryptedSecrets = append(encryptedSecrets, result)
+	}
+
+	listOfSecretsMarshalled, _ := json.Marshal(encryptedSecrets)
+	err = os.WriteFile(fmt.Sprintf("%s/%s", fullPathToSecretsBackupFolder, fileName), listOfSecretsMarshalled, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("WriteBackupSecrets: Unable to write backup secrets to file [err=%s]", err)
+	}
+
+	return nil
+}
+
+func ReadBackupSecrets(workspace string, environment string, encryptionKey []byte) ([]models.SingleEnvironmentVariable, error) {
+	fileName := fmt.Sprintf("secrets_%s_%s", workspace, environment)
+	secrets_backup_folder_name := "secrets-backup"
+
+	_, fullConfigFileDirPath, err := GetFullConfigFilePath()
+	if err != nil {
+		return nil, fmt.Errorf("ReadBackupSecrets: unable to write config file because an error occurred when getting config file path [err=%s]", err)
+	}
+
+	fullPathToSecretsBackupFolder := fmt.Sprintf("%s/%s", fullConfigFileDirPath, secrets_backup_folder_name)
+	if _, err := os.Stat(fullPathToSecretsBackupFolder); errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+
+	encryptedBackupSecretsFilePath := fmt.Sprintf("%s/%s", fullPathToSecretsBackupFolder, fileName)
+
+	encryptedBackupSecretsAsBytes, err := os.ReadFile(encryptedBackupSecretsFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	var listOfEncryptedBackupSecrets []models.SymmetricEncryptionResult
+
+	_ = json.Unmarshal(encryptedBackupSecretsAsBytes, &listOfEncryptedBackupSecrets)
+
+	var plainTextSecrets []models.SingleEnvironmentVariable
+	for _, encryptedSecret := range listOfEncryptedBackupSecrets {
+		result, err := crypto.DecryptSymmetric(encryptionKey, encryptedSecret.CipherText, encryptedSecret.AuthTag, encryptedSecret.Nonce)
+		if err != nil {
+			return nil, err
+		}
+
+		var plainTextSecret models.SingleEnvironmentVariable
+
+		err = json.Unmarshal(result, &plainTextSecret)
+		if err != nil {
+			return nil, err
+		}
+
+		plainTextSecrets = append(plainTextSecrets, plainTextSecret)
+	}
+
+	return plainTextSecrets, nil
+
+}
+
+func DeleteBackupSecrets() error {
+	secrets_backup_folder_name := "secrets-backup"
+
+	_, fullConfigFileDirPath, err := GetFullConfigFilePath()
+	if err != nil {
+		return fmt.Errorf("ReadBackupSecrets: unable to write config file because an error occurred when getting config file path [err=%s]", err)
+	}
+
+	fullPathToSecretsBackupFolder := fmt.Sprintf("%s/%s", fullConfigFileDirPath, secrets_backup_folder_name)
+
+	return os.RemoveAll(fullPathToSecretsBackupFolder)
 }
