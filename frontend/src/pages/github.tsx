@@ -25,7 +25,7 @@ export default function Github() {
             integration: 'github',
           });
           router.push(
-            `/integrations/${  localStorage.getItem('projectData.id')}`
+            `/integrations/${localStorage.getItem('projectData.id')}`
           );
         }
       } catch (error) {

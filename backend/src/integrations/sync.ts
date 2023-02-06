@@ -6,6 +6,7 @@ import sodium from 'libsodium-wrappers';
 // const sodium = require('libsodium-wrappers');
 import { IIntegration, IIntegrationAuth } from '../models';
 import {
+  INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
@@ -18,7 +19,6 @@ import {
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_FLYIO_API_URL
 } from '../variables';
-import { access, appendFile } from 'fs';
 
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
@@ -41,6 +41,13 @@ const syncSecrets = async ({
 }) => {
   try {
     switch (integration.integration) {
+      case INTEGRATION_AZURE_KEY_VAULT:
+        await syncSecretsAzureKeyVault({
+          integration,
+          secrets,
+          accessToken
+        });
+        break;
       case INTEGRATION_HEROKU:
         await syncSecretsHeroku({
           integration,
@@ -90,6 +97,151 @@ const syncSecrets = async ({
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error('Failed to sync secrets to integration');
+  }
+};
+
+/**
+ * Sync/push [secrets] to Azure Key Vault with vault URI [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Azure Key Vault integration
+ */
+const syncSecretsAzureKeyVault = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  try {
+
+    interface GetAzureKeyVaultSecret {
+      id: string; // secret URI
+      attributes: {
+        enabled: true,
+        created: number;
+        updated: number;
+        recoveryLevel: string;
+        recoverableDays: number;
+      }
+    }
+    
+    interface AzureKeyVaultSecret extends GetAzureKeyVaultSecret {
+      key: string;
+    }
+    
+    /**
+     * Return all secrets from Azure Key Vault by paginating through URL [url]
+     * @param {String} url - pagination URL to get next set of secrets from Azure Key Vault
+     * @returns 
+     */
+    const paginateAzureKeyVaultSecrets = async (url: string) => {
+      let result: GetAzureKeyVaultSecret[] = [];
+      
+      while (url) {
+        const res = await axios.get(url, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        });
+        
+        result = result.concat(res.data.value);
+        url = res.data.nextLink;
+      }
+      
+      return result;
+    }
+    
+    const getAzureKeyVaultSecrets = await paginateAzureKeyVaultSecrets(`${integration.app}/secrets?api-version=7.3`);
+    
+    let lastSlashIndex: number;
+    const res = (await Promise.all(getAzureKeyVaultSecrets.map(async (getAzureKeyVaultSecret) => {
+      if (!lastSlashIndex) {
+        lastSlashIndex = getAzureKeyVaultSecret.id.lastIndexOf('/');
+      }
+      
+      const azureKeyVaultSecret = await axios.get(`${getAzureKeyVaultSecret.id}?api-version=7.3`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      return ({
+        ...azureKeyVaultSecret.data,
+        key: getAzureKeyVaultSecret.id.substring(lastSlashIndex + 1),
+      });
+    })))
+    .reduce((obj: any, secret: any) => ({
+        ...obj,
+        [secret.key]: secret
+    }), {});
+    
+    const setSecrets: {
+      key: string;
+      value: string;
+    }[] = [];
+
+    Object.keys(secrets).forEach((key) => {
+      const hyphenatedKey = key.replace(/_/g, '-');
+      if (!(hyphenatedKey in res)) {
+        // case: secret has been created
+        setSecrets.push({
+          key: hyphenatedKey,
+          value: secrets[key]
+        });
+      } else {
+        if (secrets[key] !== res[hyphenatedKey].value) {
+          // case: secret has been updated
+          setSecrets.push({
+            key: hyphenatedKey,
+            value: secrets[key]
+          });
+        }
+      }
+    });
+    
+    const deleteSecrets: AzureKeyVaultSecret[] = [];
+    
+    Object.keys(res).forEach((key) => {
+      const underscoredKey = key.replace(/-/g, '_');
+      if (!(underscoredKey in secrets)) {
+        deleteSecrets.push(res[key]);
+      }
+    });
+    
+    // Sync/push set secrets
+    if (setSecrets.length > 0) {
+      setSecrets.forEach(async ({ key, value }) => {
+        await axios.put(
+          `${integration.app}/secrets/${key}?api-version=7.3`,
+          {
+            value
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          }
+        );
+      });
+    }
+    
+    if (deleteSecrets.length > 0) {
+      deleteSecrets.forEach(async (secret) => {
+        await axios.delete(`${integration.app}/secrets/${secret.key}?api-version=7.3`, {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+      });
+    }
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed to sync secrets to Azure Key Vault');
   }
 };
 

@@ -195,6 +195,11 @@ export default function Integrations() {
         localStorage.setItem('latestCSRFToken', state);
 
         switch (integrationOption.slug) {
+          case 'azure-key-vault':
+            window.location.assign(
+              `https://login.microsoftonline.com/${integrationOption.tenantId}/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/azure-key-vault&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`
+            );
+            break;
           case 'heroku':
             window.location.assign(
               `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`
@@ -275,10 +280,15 @@ export default function Integrations() {
       
       // case: integration has been authorized before
       // -> create new integration
-      const integration = await createIntegration({
-        integrationAuthId: integrationAuthX._id
-      });
-      setIntegrations([...integrations, integration]);
+      
+      if (!['azure-key-vault'].includes(integrationOption.slug)) {
+        const integration = await createIntegration({
+          integrationAuthId: integrationAuthX._id
+        });
+        setIntegrations([...integrations, integration]);
+      } else {
+        handleIntegrationOption({ integrationOption });
+      }
     } catch (err) {
       console.error(err);
     }

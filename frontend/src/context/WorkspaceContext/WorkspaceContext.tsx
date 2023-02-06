@@ -35,7 +35,7 @@ export const WorkspaceProvider = ({ children }: Props): JSX.Element => {
     // ws empty means user has no access to the ws
     // push to the first workspace
     if (!isLoading && !value?.currentWorkspace?._id) {
-      router.push(`/dashboard/${value.workspaces?.[0]?._id}`);
+      // router.push(`/dashboard/${value.workspaces?.[0]?._id}`);
     }
   }, [value?.currentWorkspace?._id, isLoading, value.workspaces?.[0]?._id, router.pathname]);
 

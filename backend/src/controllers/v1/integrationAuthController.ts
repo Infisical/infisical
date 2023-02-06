@@ -31,7 +31,7 @@ export const oAuthExchange = async (
 ) => {
 	try {
 		const { workspaceId, code, integration } = req.body;
-
+		
 		if (!INTEGRATION_SET.has(integration))
 			throw new Error('Failed to validate integration');
 		
@@ -40,12 +40,14 @@ export const oAuthExchange = async (
 			throw new Error("Failed to get environments")
 		}
 	
-		await IntegrationService.handleOAuthExchange({
+		const integrationDetails = await IntegrationService.handleOAuthExchange({
 			workspaceId,
 			integration,
 			code,
 			environment: environments[0].slug,
 		});
+		
+		return res.status(200).send(integrationDetails);
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
@@ -53,10 +55,6 @@ export const oAuthExchange = async (
 			message: 'Failed to get OAuth2 code-token exchange'
 		});
 	}
-
-	return res.status(200).send({
-		message: 'Successfully enabled integration authorization'
-	});
 };
 
 /**

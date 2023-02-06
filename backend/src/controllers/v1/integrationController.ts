@@ -16,6 +16,9 @@ import { eventPushSecrets } from '../../events';
  * @returns 
  */
 export const createIntegration = async (req: Request, res: Response) => {
+	
+	// TODO: make this more versatile
+
 	let integration;
 	try {
 		// initialize new integration after saving integration access token
