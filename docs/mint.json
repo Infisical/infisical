@@ -227,6 +227,7 @@
       "group": "CI/CD",
       "pages": [
         "integrations/cicd/githubactions",
+        "integrations/cicd/gitlab",
         "integrations/cicd/circleci"
       ]
     },

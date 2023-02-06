@@ -80,7 +80,7 @@ const iconButtonVariants = cva(
       {
         colorSchema: ['danger', 'primary', 'secondary'],
         variant: ['plain'],
-        className: 'bg-transparent py-1 px-1'
+        className: 'bg-transparent py-1 px-1 text-bunker-300'
       }
     ]
   }

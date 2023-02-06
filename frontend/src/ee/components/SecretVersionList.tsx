@@ -89,7 +89,7 @@ const SecretVersionList = ({ secretId }: { secretId: string }) => {
             />
           </div>
         ) : (
-          <div className="h-48 overflow-y-auto overflow-x-none">
+          <div className="h-48 overflow-y-auto overflow-x-none dark:[color-scheme:dark]">
             {secretVersions ? (
               secretVersions
                 ?.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
