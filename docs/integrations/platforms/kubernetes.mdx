@@ -3,6 +3,9 @@ title: 'Kubernetes'
 description: "This page explains how to use Infisical to inject secrets into Kubernetes clusters."
 ---
 
+![title](../../images/k8-diagram.png)
+
+
 The Infisical Secrets Operator is a custom Kubernetes controller that helps keep secrets in a cluster up to date by synchronizing them.
 It is installed in its own namespace within the cluster and follows strict RBAC policies.
 The operator uses InfisicalSecret custom resources to identify which secrets to sync and where to store them.
