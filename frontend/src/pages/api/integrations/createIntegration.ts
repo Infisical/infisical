@@ -1,7 +1,9 @@
 import SecurityClient from '@app/components/utilities/SecurityClient';
 
 interface Props {
-    integrationAuthId: string;
+  integrationAuthId: string;
+  isActive: boolean;
+  app: string | null;
 }
 /**
  * This route creates a new integration based on the integration authorization with id [integrationAuthId]
@@ -10,7 +12,9 @@ interface Props {
  * @returns
  */
 const createIntegration = ({ 
-    integrationAuthId
+    integrationAuthId,
+    isActive,
+    app
 }: Props) =>
   SecurityClient.fetchCall('/api/v1/integration', {
     method: 'POST',
@@ -18,7 +22,9 @@ const createIntegration = ({
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-        integrationAuthId
+        integrationAuthId,
+        isActive,
+        app
     })
   }).then(async (res) => {
     if (res && res.status === 200) {

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { Types } from 'mongoose';
 import * as Sentry from '@sentry/node';
 import { 
 	Integration, 
@@ -16,20 +17,31 @@ import { eventPushSecrets } from '../../events';
  * @returns 
  */
 export const createIntegration = async (req: Request, res: Response) => {
-	
-	// TODO: make this more versatile
-
 	let integration;
 	try {
+		const {
+			integrationAuthId,
+			app,
+			appId,
+			isActive,
+			targetEnvironment,
+			owner
+		} = req.body;
+
 		// initialize new integration after saving integration access token
         integration = await new Integration({
             workspace: req.integrationAuth.workspace._id,
-            isActive: false,
-            app: null,
             environment: req.integrationAuth.workspace?.environments[0].slug,
+            isActive,
+            app,
+			appId,
+			targetEnvironment,
             integration: req.integrationAuth.integration,
-            integrationAuth: req.integrationAuth._id
+            integrationAuth: new Types.ObjectId(integrationAuthId)
         }).save();
+		
+		// TODO: run sync function
+
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);

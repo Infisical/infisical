@@ -235,7 +235,9 @@ export default function Integrations() {
         setIntegrationAuths([...integrationAuths, integrationAuth])
 
         const integration = await createIntegration({
-          integrationAuthId: integrationAuth._id
+          integrationAuthId: integrationAuth._id,
+          isActive: false,
+          app: null
         });
         
         setIntegrations([...integrations, integration]); 

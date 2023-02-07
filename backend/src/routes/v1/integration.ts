@@ -10,7 +10,7 @@ import { ADMIN, MEMBER } from '../../variables';
 import { body, param } from 'express-validator';
 import { integrationController } from '../../controllers/v1';
 
-router.post( // new: add new integration
+router.post( // new: add new integration for integration auth
 	'/',
 	requireAuth({
         acceptedAuthModes: ['jwt', 'apiKey']
@@ -19,7 +19,12 @@ router.post( // new: add new integration
 		acceptedRoles: [ADMIN, MEMBER],
 		location: 'body'
 	}),
-	body('integrationAuthId').exists().trim(),
+	body('integrationAuthId').exists().isString().trim(),
+	body('app').isString().trim(),
+	body('isActive').exists().isBoolean(),
+	body('appId').trim(),
+	body('targetEnvironment').trim(),
+	body('owner').trim(),
 	validateRequest,
 	integrationController.createIntegration
 );

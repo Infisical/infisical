@@ -13,71 +13,54 @@ import {
   Select, 
   SelectItem 
 } from '../components/v2';
+import { useGetWorkspaceById } from '../hooks/api/workspace';
 import AuthorizeIntegration from './api/integrations/authorizeIntegration';
-import updateIntegration from './api/integrations/updateIntegration';
-import getAWorkspace from './api/workspace/getAWorkspace';
+import createIntegration from './api/integrations/createIntegration';
 
-interface Integration {
+interface IntegrationAuth {
   _id: string;
-  isActive: boolean;
-  app: string | null;
-  appId: string | null;
+  integration: string;
+  workspace: string;
   createdAt: string;
   updatedAt: string;
-  environment: string;
-  integration: string;
-  targetEnvironment: string;
-  workspace: string;
-  integrationAuth: string;
 }
 
 export default function AzureKeyVault() {
   const router = useRouter();
+  const workspaceResult = useGetWorkspaceById(localStorage.getItem('projectData.id') ?? '');
 
-  // query-string variables
-  const parsedUrl = queryString.parse(router.asPath.split('?')[1]);
-  const {code} = parsedUrl;
-  const {state} = parsedUrl;
+  const { code, state } = queryString.parse(router.asPath.split('?')[1]);
 
-  const [integration, setIntegration] = useState<Integration | null>(null);
-  const [environments, setEnvironments] = useState<
-    {
-      name: string;
-      slug: string;
-    }[]
-  >([]);
-  const [environment, setEnvironment] = useState('');
+  const [integrationAuth, setIntegrationAuth] = useState<IntegrationAuth | null>(null);
+  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
+
   const [vaultBaseUrl, setVaultBaseUrl] = useState('');
   const [vaultBaseUrlErrorText, setVaultBaseUrlErrorText] = useState('');
+
   const [isLoading, setIsLoading] = useState(false);
   
   useEffect(() => {
     (async () => {
       try {
-        if (state === localStorage.getItem('latestCSRFToken')) {
-          localStorage.removeItem('latestCSRFToken');
+        if (state !== localStorage.getItem('latestCSRFToken')) return;
+        localStorage.removeItem('latestCSRFToken');
 
-          const integrationDetails = await AuthorizeIntegration({
-            workspaceId: localStorage.getItem('projectData.id') as string,
-            code: code as string,
-            integration: 'azure-key-vault',
-          });
-          
-          setIntegration(integrationDetails.integration);
-          
-          const workspaceId = localStorage.getItem('projectData.id');
-          if (!workspaceId) return;
-
-          const workspace = await getAWorkspace(workspaceId);
-          setEnvironment(workspace.environments[0].slug);
-          setEnvironments(workspace.environments);
-
-        }
+        setIntegrationAuth(await AuthorizeIntegration({
+          workspaceId: localStorage.getItem('projectData.id') as string,
+          code: code as string,
+          integration: 'azure-key-vault',
+        }));
       } catch (error) {
         console.error('Azure Key Vault integration error: ', error);
       }
     })();
   }, []);
+  
+  useEffect(() => {
+    if (workspaceResult && workspaceResult.data) {
+      setSelectedSourceEnvironment(workspaceResult.data.environments[0].slug);
+    }
+  }, [workspaceResult]);
 
   const handleButtonClick = async () => {
     try {
@@ -94,17 +77,13 @@ export default function AzureKeyVault() {
         return;
       }
       
-      if (!integration) return;
+      if (!integrationAuth?._id) return;
       
       setIsLoading(true);
-      await updateIntegration({
-        integrationId: integration._id,
+      await createIntegration({
+        integrationAuthId: integrationAuth?._id,
         isActive: true,
-        environment,
-        app: vaultBaseUrl,
-        appId: null,
-        targetEnvironment: null,
-        owner: null
+        app: vaultBaseUrl
       });
       setIsLoading(false);
       
@@ -117,7 +96,11 @@ export default function AzureKeyVault() {
     }
   }
 
-  return (integration && environments.length > 0) ? (
+  if (!workspaceResult) return <div />
+  
+  const { data: w } = workspaceResult;
+
+  return (integrationAuth && w && selectedSourceEnvironment) ? (
     <div className="h-full w-full flex justify-center items-center">
       <Card className="max-w-md p-8 rounded-md">
         <CardTitle className='text-center'>Azure Key Vault Integration</CardTitle>
@@ -126,13 +109,13 @@ export default function AzureKeyVault() {
           className='mt-4'
         >
           <Select
-            value={environment}
-            onValueChange={(val) => setEnvironment(val)}
+            value={selectedSourceEnvironment}
+            onValueChange={(val) => setSelectedSourceEnvironment(val)}
             className='w-full border border-mineshaft-500'
           >
-            {environments.map((e) => (
-              <SelectItem value={e.slug} key={`azure-key-vault-environment-${e.slug}`}>
-                {e.name}
+            {w?.environments.map((sourceEnvironment) => (
+              <SelectItem value={sourceEnvironment.slug} key={`azure-key-vault-environment-${sourceEnvironment.slug}`}>
+                {sourceEnvironment.name}
               </SelectItem>
             ))}
           </Select>

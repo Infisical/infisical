@@ -40,14 +40,16 @@ export const oAuthExchange = async (
 			throw new Error("Failed to get environments")
 		}
 	
-		const integrationDetails = await IntegrationService.handleOAuthExchange({
+		const integrationAuth = await IntegrationService.handleOAuthExchange({
 			workspaceId,
 			integration,
 			code,
 			environment: environments[0].slug,
 		});
 		
-		return res.status(200).send(integrationDetails);
+		return res.status(200).send({
+			integrationAuth
+		});
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);

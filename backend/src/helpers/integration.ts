@@ -30,6 +30,7 @@ interface Update {
  * @param {String} obj.workspaceId - id of workspace
  * @param {String} obj.integration - name of integration 
  * @param {String} obj.code - code
+ * @returns {IntegrationAuth} integrationAuth - integration auth after OAuth2 code-token exchange
 */
 const handleOAuthExchangeHelper = async ({
     workspaceId,
@@ -44,7 +45,7 @@ const handleOAuthExchangeHelper = async ({
 }) => {
     let action;
     let integrationAuth;
-    let newIntegration;
+    // let newIntegration;
     try {
         const bot = await Bot.findOne({
             workspace: workspaceId,
@@ -100,25 +101,22 @@ const handleOAuthExchangeHelper = async ({
             });
         }
 
-        // initialize new integration after exchange
-        newIntegration = await new Integration({
-            workspace: workspaceId,
-            isActive: false,
-            app: null,
-            environment,
-            integration,
-            integrationAuth: integrationAuth._id
-        }).save();
+        // // initialize new integration after exchange
+        // newIntegration = await new Integration({
+        //     workspace: workspaceId,
+        //     isActive: false,
+        //     app: null,
+        //     environment,
+        //     integration,
+        //     integrationAuth: integrationAuth._id
+        // }).save();
     } catch (err) {
         Sentry.setUser(null);
         Sentry.captureException(err);
         throw new Error('Failed to handle OAuth2 code-token exchange')
     }
     
-    return ({
-        integrationAuth,
-        integration: newIntegration
-    });
+    return integrationAuth;
 }
 /**
  * Sync/push environment variables in workspace with id [workspaceId] to
