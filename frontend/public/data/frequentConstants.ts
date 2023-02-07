@@ -29,7 +29,7 @@ const reverseEnvMapping: Mapping = {
 const contextNetlifyMapping: Mapping = {
   "dev": "Local development",
   "branch-deploy": "Branch deploys",
-  "deploy-review": "Deploy Previews",
+  "deploy-preview": "Deploy Previews",
   "production": "Production"
 }
 
