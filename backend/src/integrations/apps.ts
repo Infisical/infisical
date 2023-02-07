@@ -262,7 +262,9 @@ const getAppsRender = async ({
     const res = (
       await axios.get(`${INTEGRATION_RENDER_API_URL}/v1/services`, {
         headers: {
-          Authorization: `Bearer ${accessToken}`
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Accept-Encoding': 'application/json'
         }
       })
     ).data;
@@ -272,6 +274,7 @@ const getAppsRender = async ({
         name: a.service.name,
         appId: a.service.id
       })); 
+    
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
@@ -311,7 +314,9 @@ const getAppsFlyio = async ({
       url: INTEGRATION_FLYIO_API_URL,
       method: 'post',
       headers: {
-        'Authorization': 'Bearer ' + accessToken
+        'Authorization': 'Bearer ' + accessToken,
+        'Accept': 'application/json',
+        'Accept-Encoding': 'application/json'
       },
       data: {
         query,

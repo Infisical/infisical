@@ -322,7 +322,8 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
           redirect_uri: `${SITE_URL}/integrations/github/oauth2/callback`
         },
         headers: {
-          Accept: 'application/json'
+          'Accept': 'application/json',
+          'Accept-Encoding': 'application/json'
         }
       })
     ).data;

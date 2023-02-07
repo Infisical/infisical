@@ -7,7 +7,6 @@ import AuthorizeIntegration from "../../../api/integrations/authorizeIntegration
 
 export default function GitHubOAuth2CallbackPage() {
     const router = useRouter();
-
     const { code, state } = queryString.parse(router.asPath.split('?')[1]);
     
     useEffect(() => {
