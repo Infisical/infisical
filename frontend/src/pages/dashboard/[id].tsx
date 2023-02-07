@@ -549,7 +549,7 @@ export default function Dashboard() {
             toggleSidebar={toggleSidebar}
             data={data.filter(
               (row: SecretDataProps) =>
-                row.key === data.filter((r) => r.id === sidebarSecretId)[0]?.key
+                row.id === sidebarSecretId
             )}
             modifyKey={listenChangeKey}
             modifyValue={listenChangeValue}
