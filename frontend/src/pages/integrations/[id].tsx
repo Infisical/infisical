@@ -253,7 +253,7 @@ export default function Integrations() {
   const integrationOptionPress = async (integrationOption: IntegrationOption) => {
     try {
       const integrationAuthX = integrationAuths.find((integrationAuth) => integrationAuth.integration === integrationOption.slug);
-
+      
       if (!bot.isActive) {
         await handleBotActivate();
       }
