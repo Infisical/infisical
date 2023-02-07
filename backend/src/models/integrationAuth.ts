@@ -4,6 +4,7 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_CIRCLECI,
 } from "../variables";
 
 export interface IIntegrationAuth {
@@ -42,6 +43,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_VERCEL,
         INTEGRATION_NETLIFY,
         INTEGRATION_GITHUB,
+        INTEGRATION_CIRCLECI,
       ],
       required: true,
     },

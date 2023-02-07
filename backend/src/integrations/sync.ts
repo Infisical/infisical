@@ -87,12 +87,12 @@ const syncSecrets = async ({
           accessToken,
         });
         break;
-      // case INTEGRATION_CIRCLECI:
-      //   await syncSecretsCircleci({
-      //     integration,
-      //     secrets,
-      //     accessToken,
-      //   });
+      case INTEGRATION_CIRCLECI:
+        await syncSecretsCircleci({
+          integration,
+          secrets,
+          accessToken,
+        });
     }
   } catch (err) {
     Sentry.setUser(null);
@@ -831,14 +831,67 @@ const syncSecretsFlyio = async ({
   }
 };
 
-// const syncSecretsCircleci = async ({
-//   integration,
-//   secrets,
-//   accessToken,
-// }: {
-//   integration: IIntegration;
-//   secrets: any;
-//   accessToken: string;
-// }) => {};
+const syncSecretsCircleci = async ({
+  integration,
+  secrets,
+  accessToken,
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  try {
+    const circleciOrganizationDetail = (
+      await axios.get(`${INTEGRATION_CIRCLECI_API_URL}/v2/me/collaborations`, {
+        headers: {
+          "Circle-Token": accessToken,
+          "Accept-Encoding": "application/json",
+        },
+      })
+    ).data[0];
+
+    const { slug } = circleciOrganizationDetail;
+
+    // get secrets from CircleCI
+    const getSecretsRes = (
+      await axios.get(
+        `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar`,
+        {
+          headers: {
+            "Circle-Token": accessToken,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      )
+    ).data?.items;
+
+    console.log(getSecretsRes);
+    console.log(secrets);
+
+    // inject secrets to CircleCI
+    // note: no relivent api end point was found in CircleCI to do entire secrets at a same time so
+    // it is done one by one
+    Object.keys(secrets).forEach(
+      async (key) =>
+        await axios.post(
+          `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar`,
+          {
+            name: key,
+            value: secrets[key],
+          },
+          {
+            headers: {
+              "Circle-Token": accessToken,
+              "Content-Type": "application/json",
+            },
+          }
+        )
+    );
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error("Failed to sync secrets to CircleCI");
+  }
+};
 
 export { syncSecrets };

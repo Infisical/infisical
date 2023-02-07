@@ -6,6 +6,7 @@ import {
   INTEGRATION_GITHUB,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
+  INTEGRATION_CIRCLECI,
 } from "../variables";
 
 export interface IIntegration {
@@ -74,6 +75,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_GITHUB,
         INTEGRATION_RENDER,
         INTEGRATION_FLYIO,
+        INTEGRATION_CIRCLECI,
       ],
       required: true,
     },

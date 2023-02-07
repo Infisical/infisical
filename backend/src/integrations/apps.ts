@@ -321,9 +321,10 @@ const getAppsCircleci = async ({ accessToken }: { accessToken: string }) => {
       await axios.get(`${INTEGRATION_CIRCLECI_API_URL}/v2/me/collaborations`, {
         headers: {
           "Circle-Token": accessToken,
+          "Accept-Encoding": "application/json",
         },
       })
-    ).data;
+    ).data[0];
 
     const { slug } = circleciOrganizationDetail;
 
@@ -333,15 +334,17 @@ const getAppsCircleci = async ({ accessToken }: { accessToken: string }) => {
         {
           headers: {
             "Circle-Token": accessToken,
+            "Accept-Encoding": "application/json",
           },
         }
       )
-    ).data.items;
+    ).data?.items;
 
     apps = res.map((a: any) => ({
       name: a?.project_slug?.split("/")[2],
     }));
   } catch (err) {
+    console.log(err);
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error("Failed to get Render services");
