@@ -11,7 +11,7 @@ import {
     Select, 
     SelectItem 
 } from '../../../components/v2';
-import { useGetIntegrationAuthById } from '../../../hooks/api/integrationAuth';
+import { useGetIntegrationAuthApps,useGetIntegrationAuthById } from '../../../hooks/api/integrationAuth';
 import { useGetWorkspaceById } from '../../../hooks/api/workspace';
 import createIntegration from "../../api/integrations/createIntegration";
 

@@ -14,17 +14,14 @@ export default function HerokuOAuth2CallbackPage() {
         (async () => {
             try {
                 // validate state
-                console.log('A');
                 if (state !== localStorage.getItem('latestCSRFToken')) return;
                 localStorage.removeItem('latestCSRFToken');
-                console.log('B');
                 const integrationAuth = await AuthorizeIntegration({
                     workspaceId: localStorage.getItem('projectData.id') as string,
                     code: code as string,
                     integration: 'heroku'
                 });
 
-                console.log('C');
                 router.push(
                     `/integrations/heroku/create?integrationAuthId=${integrationAuth._id}`
                 );
@@ -32,7 +29,6 @@ export default function HerokuOAuth2CallbackPage() {
             } catch (err) {
                 console.error(err);
             }
-            console.log('D');
         })();
     }, []);
     

@@ -49,6 +49,7 @@ interface Integration {
 }
 
 interface IntegrationOption {
+  tenantId?: string;
   clientId: string;
   clientSlug?: string; // vercel-integration specific
   docsLink: string;
