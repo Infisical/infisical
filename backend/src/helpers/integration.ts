@@ -43,9 +43,7 @@ const handleOAuthExchangeHelper = async ({
     code: string;
     environment: string;
 }) => {
-    let action;
     let integrationAuth;
-    // let newIntegration;
     try {
         const bot = await Bot.findOne({
             workspace: workspaceId,
@@ -100,16 +98,6 @@ const handleOAuthExchangeHelper = async ({
                 accessExpiresAt: res.accessExpiresAt
             });
         }
-
-        // // initialize new integration after exchange
-        // newIntegration = await new Integration({
-        //     workspace: workspaceId,
-        //     isActive: false,
-        //     app: null,
-        //     environment,
-        //     integration,
-        //     integrationAuth: integrationAuth._id
-        // }).save();
     } catch (err) {
         Sentry.setUser(null);
         Sentry.captureException(err);

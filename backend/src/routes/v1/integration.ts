@@ -23,6 +23,7 @@ router.post( // new: add new integration for integration auth
 	body('app').isString().trim(),
 	body('isActive').exists().isBoolean(),
 	body('appId').trim(),
+	body('sourceEnvironment').trim(),
 	body('targetEnvironment').trim(),
 	body('owner').trim(),
 	validateRequest,

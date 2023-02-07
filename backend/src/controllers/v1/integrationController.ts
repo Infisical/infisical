@@ -24,23 +24,34 @@ export const createIntegration = async (req: Request, res: Response) => {
 			app,
 			appId,
 			isActive,
+			sourceEnvironment,
 			targetEnvironment,
 			owner
 		} = req.body;
+		
+		// TODO: validate [sourceEnvironment] and [targetEnvironment]
 
 		// initialize new integration after saving integration access token
         integration = await new Integration({
             workspace: req.integrationAuth.workspace._id,
-            environment: req.integrationAuth.workspace?.environments[0].slug,
+            environment: sourceEnvironment,
             isActive,
             app,
 			appId,
 			targetEnvironment,
+			owner,
             integration: req.integrationAuth.integration,
             integrationAuth: new Types.ObjectId(integrationAuthId)
         }).save();
 		
-		// TODO: run sync function
+		if (integration) {
+			// trigger event - push secrets
+			EventService.handleEvent({
+				event: eventPushSecrets({
+					workspaceId: integration.workspace.toString()
+				})
+			});
+		}
 
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });

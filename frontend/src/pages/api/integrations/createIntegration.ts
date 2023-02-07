@@ -4,6 +4,10 @@ interface Props {
   integrationAuthId: string;
   isActive: boolean;
   app: string | null;
+  appId: string | null;
+  sourceEnvironment: string;
+  targetEnvironment: string | null;
+  owner: string | null;
 }
 /**
  * This route creates a new integration based on the integration authorization with id [integrationAuthId]
@@ -14,7 +18,11 @@ interface Props {
 const createIntegration = ({ 
     integrationAuthId,
     isActive,
-    app
+    app,
+    appId,
+    sourceEnvironment,
+    targetEnvironment,
+    owner
 }: Props) =>
   SecurityClient.fetchCall('/api/v1/integration', {
     method: 'POST',
@@ -24,7 +32,11 @@ const createIntegration = ({
     body: JSON.stringify({
         integrationAuthId,
         isActive,
-        app
+        app,
+        appId,
+        sourceEnvironment,
+        targetEnvironment,
+        owner
     })
   }).then(async (res) => {
     if (res && res.status === 200) {
