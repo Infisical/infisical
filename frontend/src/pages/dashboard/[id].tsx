@@ -446,8 +446,8 @@ export default function Dashboard() {
                 initDataPoint.key ||
               newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].comment !==
                 initDataPoint.comment) ||
-              newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].tags !==
-                initDataPoint.tags
+              newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags !==
+                initDataPoint?.tags
         )
         .map((secret) => secret.id)
         .includes(newDataPoint.id)
@@ -498,8 +498,7 @@ export default function Dashboard() {
                   initDataPoint.key ||
                 newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
                   .comment !== initDataPoint.comment ||
-                newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
-                  .tags !== initDataPoint.tags)
+                newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags !== initDataPoint?.tags)
           )
           .map((secret) => secret.id)
           .includes(newDataPoint.id)
@@ -877,7 +876,7 @@ export default function Dashboard() {
                         .map((keyPair) => (
                           <KeyPair
                             isCapitalized={autoCapitalization}
-                            key={keyPair.id}
+                            key={keyPair.id ? keyPair.id : keyPair.idOverride}
                             keyPair={keyPair}
                             modifyValue={listenChangeValue}
                             modifyValueOverride={listenChangeValueOverride}

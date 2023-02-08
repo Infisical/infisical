@@ -6,10 +6,12 @@ import { Menu, Transition } from '@headlessui/react';
 import { Tag } from 'public/data/frequentInterfaces';
 
 /**
- * This is the menu that is used to download secrets as .env ad .yml files (in future we may have more options)
+ * This is the menu that is used to add more tags to a secret
  * @param {object} obj
- * @param {SecretDataProps[]} obj.data - 
- * 
+ * @param {Tag[]} obj.allTags - all available tags for a vertain project
+ * @param {Tag[]} obj.currentTags - currently selected tags for a certain secret
+ * @param {function} obj.modifyTags - modify tags for a certain secret
+ * @param {Tag[]} obj.position - currently selected tags for a certain secret
  */
 const AddTagsMenu = ({ allTags, currentTags, modifyTags, position }: { allTags: Tag[]; currentTags: Tag[]; modifyTags: (value: Tag[], position: number) => void; position: number; }) => {
   const router = useRouter();
@@ -21,7 +23,7 @@ const AddTagsMenu = ({ allTags, currentTags, modifyTags, position }: { allTags: 
       >
         <div className='bg-mineshaft/30 cursor-pointer rounded-sm text-sm text-mineshaft-200/50 hover:bg-mineshaft/70 duration-200 flex items-center'>
           <FontAwesomeIcon icon={faPlus} className="p-[0.28rem]"/>
-          {currentTags.length > 2 && <span className='pr-2'>{currentTags.length - 2}</span>}
+          {currentTags?.length > 2 && <span className='pr-2'>{currentTags.length - 2}</span>}
         </div>
       </Menu.Button>
       <Transition
@@ -38,10 +40,10 @@ const AddTagsMenu = ({ allTags, currentTags, modifyTags, position }: { allTags: 
             <Menu.Item key={tag._id}>
               <button
                 type="button"
-                className={`${currentTags.map(currentTag => currentTag.name).includes(tag.name) ? "opacity-30 cursor-default" : "hover:bg-mineshaft-700"} w-full text-left bg-mineshaft-800 px-2 py-0.5 text-bunker-200 rounded-sm flex items-center`}
-                onClick={() => {if (!currentTags.map(currentTag => currentTag.name).includes(tag.name)) {modifyTags(currentTags.concat([tag]), position)}}}
+                className={`${currentTags?.map(currentTag => currentTag.name).includes(tag.name) ? "opacity-30 cursor-default" : "hover:bg-mineshaft-700"} w-full text-left bg-mineshaft-800 px-2 py-0.5 text-bunker-200 rounded-sm flex items-center`}
+                onClick={() => {if (!currentTags?.map(currentTag => currentTag.name).includes(tag.name)) {modifyTags(currentTags.concat([tag]), position)}}}
               >
-                {currentTags.map(currentTag => currentTag.name).includes(tag.name) ? <FontAwesomeIcon icon={faCheckSquare} className="text-xs mr-2 text-primary"/> : <FontAwesomeIcon icon={faSquare} className="text-xs mr-2"/>} {tag.name}
+                {currentTags?.map(currentTag => currentTag.name).includes(tag.name) ? <FontAwesomeIcon icon={faCheckSquare} className="text-xs mr-2 text-primary"/> : <FontAwesomeIcon icon={faSquare} className="text-xs mr-2"/>} {tag.name}
               </button>
             </Menu.Item>
           )})}
