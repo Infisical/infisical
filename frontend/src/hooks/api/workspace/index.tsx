@@ -3,6 +3,6 @@ export {
   useDeleteWorkspace,
   useDeleteWsEnvironment,
   useGetUserWorkspaces,
+  useGetWorkspaceById,
   useRenameWorkspace,
-  useUpdateWsEnvironment
-} from './queries';
+  useUpdateWsEnvironment} from './queries';

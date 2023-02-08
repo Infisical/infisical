@@ -26,7 +26,7 @@ const AuthorizeIntegration = ({ workspaceId, code, integration }: Props) =>
     })
   }).then(async (res) => {
     if (res && res.status === 200) {
-      return res;
+      return (await res.json()).integrationAuth;
     }
     console.log('Failed to authorize the integration');
     return undefined;

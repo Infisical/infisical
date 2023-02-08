@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-import { SecretDataProps } from 'public/data/frequentInterfaces';
+import { SecretDataProps, Tag } from 'public/data/frequentInterfaces';
 
 import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
 
@@ -20,6 +20,7 @@ interface EncryptedSecretProps {
   secretValueIV: string;
   secretValueTag: string;
   type: 'personal' | 'shared';
+  tags: Tag[];
 }
 
 /**
@@ -105,7 +106,8 @@ const encryptSecrets = async ({
         type:
           secret.valueOverride === undefined || secret?.value !== secret?.valueOverride
             ? 'shared'
-            : 'personal'
+            : 'personal',
+        tags: secret.tags
       };
 
       return result;

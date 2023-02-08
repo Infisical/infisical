@@ -171,7 +171,9 @@ We're currently setting the foundation and building [integrations](https://infis
         🔜 GCP SM (https://github.com/Infisical/infisical/issues/285)
       </td>
       <td align="left" valign="middle">
-        🔜 GitLab CI/CD (https://github.com/Infisical/infisical/issues/134)
+        <a href="https://infisical.com/docs/integrations/cicd/gitlab">
+          ✔️ GitLab CI/CD 
+        </a>
       </td>
       <td align="left" valign="middle">
         🔜 CircleCI (https://github.com/Infisical/infisical/issues/91)

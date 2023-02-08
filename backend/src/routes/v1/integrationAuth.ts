@@ -18,6 +18,19 @@ router.get(
 	integrationAuthController.getIntegrationOptions
 );
 
+router.get(
+	'/:integrationAuthId',
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
+	requireIntegrationAuthorizationAuth({
+		acceptedRoles: [ADMIN, MEMBER]
+	}),
+	param('integrationAuthId'),
+	validateRequest,
+	integrationAuthController.getIntegrationAuth	
+);
+
 router.post(
 	'/oauth-token',
 	requireAuth({

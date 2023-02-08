@@ -36,7 +36,7 @@ const AddWorkspaceDialog = ({
   return (
     <div>
       <Transition appear show={isOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-20" onClose={closeModal}>
+        <Dialog as="div" className="relative z-[100]" onClose={closeModal}>
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-300"
@@ -49,7 +49,7 @@ const AddWorkspaceDialog = ({
             <div className="fixed inset-0 bg-black bg-opacity-70" />
           </Transition.Child>
 
-          <div className="fixed inset-0 overflow-y-auto z-50">
+          <div className="fixed inset-0 overflow-y-auto">
             <div className="flex min-h-full items-center justify-center p-4 text-center">
               <Transition.Child
                 as={Fragment}
@@ -60,7 +60,7 @@ const AddWorkspaceDialog = ({
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all">
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-md bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all">
                   <Dialog.Title
                     as="h3"
                     className="text-lg font-medium leading-6 text-gray-400"
@@ -69,7 +69,7 @@ const AddWorkspaceDialog = ({
                   </Dialog.Title>
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
-                      This project will contain your environmental variables.
+                      This project will contain your secrets and configs.
                     </p>
                   </div>
                   <div className="max-h-28 mt-4">
