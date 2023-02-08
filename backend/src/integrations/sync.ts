@@ -886,8 +886,9 @@ const syncSecretsFlyio = async ({
         method: 'post',
         url: INTEGRATION_FLYIO_API_URL,
         headers: {
-            'Authorization': 'Bearer ' + accessToken,
-            'Content-Type': 'application/json'
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json',
+          'Accept-Encoding': 'application/json'
         },
         data: {
           query: GetSecrets,

@@ -38,7 +38,7 @@ export default function RenderCreateIntegrationPage() {
     useEffect(() => {
         // TODO: handle case where apps can be empty
         if (integrationAuthApps) {
-            setTargetApp(integrationAuthApps[0].name);
+          setTargetApp(integrationAuthApps[0].name);
         }
     }, [integrationAuthApps]);
         
@@ -52,7 +52,7 @@ export default function RenderCreateIntegrationPage() {
                 integrationAuthId: integrationAuth?._id,
                 isActive: true,
                 app: targetApp,
-                appId: null,
+                appId: (integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp))?.appId ?? null,
                 sourceEnvironment: selectedSourceEnvironment,
                 targetEnvironment: null,
                 owner: null

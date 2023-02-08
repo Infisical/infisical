@@ -48,16 +48,6 @@ const INTEGRATION_FLYIO_API_URL = 'https://api.fly.io/graphql';
 
 const INTEGRATION_OPTIONS = [
     {
-        name: 'Azure Key Vault',
-        slug: 'azure-key-vault',
-        image: 'Microsoft Azure.png',
-        isAvailable: true,
-        type: 'oauth',
-        clientId: CLIENT_ID_AZURE,
-        tenantId: TENANT_ID_AZURE,
-        docsLink: ''
-    },
-    {
         name: 'Heroku',
         slug: 'heroku',
         image: 'Heroku.png',
@@ -110,6 +100,16 @@ const INTEGRATION_OPTIONS = [
         isAvailable: true,
         type: 'pat',
         clientId: '',
+        docsLink: ''
+    },
+    {
+        name: 'Azure Key Vault',
+        slug: 'azure-key-vault',
+        image: 'Microsoft Azure.png',
+        isAvailable: false,
+        type: 'oauth',
+        clientId: CLIENT_ID_AZURE,
+        tenantId: TENANT_ID_AZURE,
         docsLink: ''
     },
     {

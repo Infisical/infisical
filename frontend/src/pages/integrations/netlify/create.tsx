@@ -47,7 +47,6 @@ export default function NetlifyCreateIntegrationPage() {
     useEffect(() => {
         // TODO: handle case where apps can be empty
         if (integrationAuthApps) {
-            console.log(integrationAuthApps)
             setTargetApp(integrationAuthApps[0].name);
         }
     }, [integrationAuthApps]);
