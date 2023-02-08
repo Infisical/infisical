@@ -18,6 +18,7 @@ interface KeyPairProps {
   toggleSidebar: (id: string) => void;
   sidebarSecretId: string;
   isSnapshot: boolean;
+  isCapitalized: boolean;
   deleteRow?: (props: DeleteRowFunctionProps) => void;
   tags: Tag[];
   togglePITSidebar?: (value: boolean) => void;
@@ -75,6 +76,7 @@ const KeyPair = ({
   isDuplicate,
   toggleSidebar,
   sidebarSecretId,
+  isCapitalized,
   isSnapshot, 
   deleteRow,
   togglePITSidebar,
@@ -97,6 +99,7 @@ const KeyPair = ({
         <div className='text-bunker-400 text-xs flex items-center justify-center w-14 h-10 cursor-default'>{keyPair.pos + 1}</div>
         <div className="flex items-center max-h-16">
           <DashboardInputField
+            isCapitalized = {isCapitalized}
             onChangeHandler={modifyKey}
             type="varName"
             position={keyPair.pos}

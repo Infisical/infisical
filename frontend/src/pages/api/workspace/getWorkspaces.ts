@@ -4,6 +4,7 @@ interface Workspace {
   __v: number;
   _id: string;
   name: string;
+  autoCapitalization: boolean;
   organization: string;
   environments: Array<{ name: string; slug: string }>;
 }

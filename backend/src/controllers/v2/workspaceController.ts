@@ -468,3 +468,41 @@ export const deleteWorkspaceMembership = async (req: Request, res: Response) => 
 		membership
 	});
 }
+
+/**
+ * Change autoCapitilzation Rule of workspace
+ * @param req
+ * @param res
+ * @returns
+ */
+export const toggleAutoCapitalization = async (req: Request, res: Response) => {
+	let workspace;
+	try {
+		const { workspaceId } = req.params;
+		const { autoCapitalization } = req.body;
+
+		workspace = await Workspace.findOneAndUpdate(
+			{
+				_id: workspaceId
+			},
+			{
+				autoCapitalization
+			},
+			{
+				new: true
+			}
+		);
+	} catch (err) {
+		Sentry.setUser({ email: req.user.email });
+		Sentry.captureException(err);
+		return res.status(400).send({
+			message: 'Failed to change autoCapitalization setting'
+		});
+	}
+
+	return res.status(200).send({
+		message: 'Successfully changed autoCapitalization setting',
+		workspace
+	});
+};
+

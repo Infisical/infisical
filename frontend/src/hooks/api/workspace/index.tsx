@@ -5,4 +5,6 @@ export {
   useGetUserWorkspaces,
   useGetWorkspaceById,
   useRenameWorkspace,
+  useToggleAutoCapitalization,
   useUpdateWsEnvironment} from './queries';
+  

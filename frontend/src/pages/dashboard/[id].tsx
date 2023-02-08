@@ -132,6 +132,7 @@ export default function Dashboard() {
   const [snapshotData, setSnapshotData] = useState<SnapshotProps>();
   const [numSnapshots, setNumSnapshots] = useState<number>();
   const [saveLoading, setSaveLoading] = useState(false);
+  const [autoCapitalization, setAutoCapitalization] = useState(false);
   const [dropZoneData, setDropZoneData] = useState<SecretDataProps[]>();
   const [projectTags, setProjectTags] = useState<Tag[]>([]);
 
@@ -224,6 +225,7 @@ export default function Dashboard() {
         if (!workspace) {
           router.push(`/dashboard/${userWorkspaces?.[0]?._id}`);
         }
+        setAutoCapitalization(workspace?.autoCapitalization ?? true);
 
         const accessibleEnvironments = await getWorkspaceEnvironments({ workspaceId });
         setWorkspaceEnvs(accessibleEnvironments || []);
@@ -874,6 +876,7 @@ export default function Dashboard() {
                         .filter((row) => !sharedToHide.includes(row.id))
                         .map((keyPair) => (
                           <KeyPair
+                            isCapitalized={autoCapitalization}
                             key={keyPair.id}
                             keyPair={keyPair}
                             modifyValue={listenChangeValue}
@@ -916,6 +919,7 @@ export default function Dashboard() {
                         )
                         .map((keyPair) => (
                           <KeyPair
+                            isCapitalized={autoCapitalization}
                             key={keyPair.id}
                             keyPair={keyPair}
                             modifyValue={listenChangeValue}

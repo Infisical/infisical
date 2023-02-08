@@ -13,6 +13,7 @@ const ProjectSettings = () => {
         <title>{t('common:head-title', { title: t('settings-project:title') })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
+
       <ProjectSettingsPage />
     </>
   );

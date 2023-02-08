@@ -3,6 +3,7 @@ export type Workspace = {
   _id: string;
   name: string;
   organization: string;
+  autoCapitalization: boolean;
   environments: WorkspaceEnv[];
 };
 
@@ -11,6 +12,7 @@ export type WorkspaceTag = { _id: string; name: string; slug: string };
 
 // mutation dto
 export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };
+export type ToggleAutoCapitalizationDTO = { workspaceID: string; state: boolean };
 
 export type DeleteWorkspaceDTO = { workspaceID: string };
 

@@ -14,6 +14,7 @@ interface DashboardInputFieldProps {
   type: 'varName' | 'value' | 'comment';
   blurred?: boolean;
   isDuplicate?: boolean;
+  isCapitalized?: boolean;
   overrideEnabled?: boolean;
   modifyValueOverride?: (value: string | undefined, position: number) => void;
   isSideBarOpen?: boolean;
@@ -41,6 +42,7 @@ const DashboardInputField = ({
   value,
   blurred,
   isDuplicate,
+  isCapitalized,
   overrideEnabled,
   modifyValueOverride,
   isSideBarOpen
@@ -69,7 +71,7 @@ const DashboardInputField = ({
           }`}
         >
           <input
-            onChange={(e) => onChangeHandler(e.target.value.toUpperCase(), position)}
+            onChange={(e) => onChangeHandler(isCapitalized ? e.target.value.toUpperCase() : e.target.value, position)}
             type={type}
             value={value}
             className={`z-10 peer font-mono ph-no-capture bg-transparent h-full caret-bunker-200 text-sm px-2 w-full min-w-16 outline-none ${
@@ -230,6 +232,7 @@ function inputPropsAreEqual(prev: DashboardInputFieldProps, next: DashboardInput
     prev.type === next.type &&
     prev.position === next.position &&
     prev.blurred === next.blurred &&
+    prev.isCapitalized === next.isCapitalized &&
     prev.overrideEnabled === next.overrideEnabled &&
     prev.isDuplicate === next.isDuplicate &&
     prev.isSideBarOpen === next.isSideBarOpen
