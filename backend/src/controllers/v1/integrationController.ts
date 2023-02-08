@@ -23,7 +23,6 @@ export const createIntegration = async (req: Request, res: Response) => {
       integrationAuth: req.integrationAuth._id,
     }).save();
   } catch (err) {
-    console.log(err);
     Sentry.setUser({ email: req.user.email });
     Sentry.captureException(err);
     return res.status(400).send({

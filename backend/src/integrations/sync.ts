@@ -865,12 +865,7 @@ const syncSecretsCircleci = async ({
       )
     ).data?.items;
 
-    console.log(getSecretsRes);
-    console.log(secrets);
-
-    // inject secrets to CircleCI
-    // note: no relivent api end point was found in CircleCI to do entire secrets at a same time so
-    // it is done one by one
+    // inject secrets to CircleCI (one by one)
     Object.keys(secrets).forEach(
       async (key) =>
         await axios.post(
@@ -887,6 +882,19 @@ const syncSecretsCircleci = async ({
           }
         )
     );
+
+    getSecretsRes.forEach(async (sec: any) => {
+      if (!(sec.name in secrets)) {
+        await axios.delete(
+          `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar/${sec.name}`,
+          {
+            headers: {
+              "Circle-Token": accessToken,
+            },
+          }
+        );
+      }
+    });
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);

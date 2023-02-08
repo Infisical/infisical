@@ -1,21 +1,21 @@
-import { Request, Response } from 'express';
-import * as Sentry from '@sentry/node';
+import { Request, Response } from "express";
+import * as Sentry from "@sentry/node";
 import {
-	Workspace,
-	Membership,
-	MembershipOrg,
-	Integration,
-	IntegrationAuth,
-	IUser,
-	ServiceToken,
-	ServiceTokenData
-} from '../../models';
+  Workspace,
+  Membership,
+  MembershipOrg,
+  Integration,
+  IntegrationAuth,
+  IUser,
+  ServiceToken,
+  ServiceTokenData,
+} from "../../models";
 import {
-	createWorkspace as create,
-	deleteWorkspace as deleteWork
-} from '../../helpers/workspace';
-import { addMemberships } from '../../helpers/membership';
-import { ADMIN } from '../../variables';
+  createWorkspace as create,
+  deleteWorkspace as deleteWork,
+} from "../../helpers/workspace";
+import { addMemberships } from "../../helpers/membership";
+import { ADMIN } from "../../variables";
 
 /**
  * Return public keys of members of workspace with id [workspaceId]
@@ -24,32 +24,31 @@ import { ADMIN } from '../../variables';
  * @returns
  */
 export const getWorkspacePublicKeys = async (req: Request, res: Response) => {
-	let publicKeys;
-	try {
-		const { workspaceId } = req.params;
+  let publicKeys;
+  try {
+    const { workspaceId } = req.params;
 
-		publicKeys = (
-			await Membership.find({
-				workspace: workspaceId
-			}).populate<{ user: IUser }>('user', 'publicKey')
-		)
-		.map((member) => {
-			return {
-				publicKey: member.user.publicKey,
-				userId: member.user._id
-			};
-		});
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get workspace member public keys'
-		});
-	}
+    publicKeys = (
+      await Membership.find({
+        workspace: workspaceId,
+      }).populate<{ user: IUser }>("user", "publicKey")
+    ).map((member) => {
+      return {
+        publicKey: member.user.publicKey,
+        userId: member.user._id,
+      };
+    });
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to get workspace member public keys",
+    });
+  }
 
-	return res.status(200).send({
-		publicKeys
-	});
+  return res.status(200).send({
+    publicKeys,
+  });
 };
 
 /**
@@ -59,24 +58,24 @@ export const getWorkspacePublicKeys = async (req: Request, res: Response) => {
  * @returns
  */
 export const getWorkspaceMemberships = async (req: Request, res: Response) => {
-	let users;
-	try {
-		const { workspaceId } = req.params;
+  let users;
+  try {
+    const { workspaceId } = req.params;
 
-		users = await Membership.find({
-			workspace: workspaceId
-		}).populate('user', '+publicKey');
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get workspace members'
-		});
-	}
+    users = await Membership.find({
+      workspace: workspaceId,
+    }).populate("user", "+publicKey");
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to get workspace members",
+    });
+  }
 
-	return res.status(200).send({
-		users
-	});
+  return res.status(200).send({
+    users,
+  });
 };
 
 /**
@@ -86,24 +85,24 @@ export const getWorkspaceMemberships = async (req: Request, res: Response) => {
  * @returns
  */
 export const getWorkspaces = async (req: Request, res: Response) => {
-	let workspaces;
-	try {
-		workspaces = (
-			await Membership.find({
-				user: req.user._id
-			}).populate('workspace')
-		).map((m) => m.workspace);
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get workspaces'
-		});
-	}
+  let workspaces;
+  try {
+    workspaces = (
+      await Membership.find({
+        user: req.user._id,
+      }).populate("workspace")
+    ).map((m) => m.workspace);
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to get workspaces",
+    });
+  }
 
-	return res.status(200).send({
-		workspaces
-	});
+  return res.status(200).send({
+    workspaces,
+  });
 };
 
 /**
@@ -113,24 +112,24 @@ export const getWorkspaces = async (req: Request, res: Response) => {
  * @returns
  */
 export const getWorkspace = async (req: Request, res: Response) => {
-	let workspace;
-	try {
-		const { workspaceId } = req.params;
+  let workspace;
+  try {
+    const { workspaceId } = req.params;
 
-		workspace = await Workspace.findOne({
-			_id: workspaceId
-		});
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get workspace'
-		});
-	}
+    workspace = await Workspace.findOne({
+      _id: workspaceId,
+    });
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to get workspace",
+    });
+  }
 
-	return res.status(200).send({
-		workspace
-	});
+  return res.status(200).send({
+    workspace,
+  });
 };
 
 /**
@@ -141,46 +140,46 @@ export const getWorkspace = async (req: Request, res: Response) => {
  * @returns
  */
 export const createWorkspace = async (req: Request, res: Response) => {
-	let workspace;
-	try {
-		const { workspaceName, organizationId } = req.body;
+  let workspace;
+  try {
+    const { workspaceName, organizationId } = req.body;
 
-		// validate organization membership
-		const membershipOrg = await MembershipOrg.findOne({
-			user: req.user._id,
-			organization: organizationId
-		});
+    // validate organization membership
+    const membershipOrg = await MembershipOrg.findOne({
+      user: req.user._id,
+      organization: organizationId,
+    });
 
-		if (!membershipOrg) {
-			throw new Error('Failed to validate organization membership');
-		}
+    if (!membershipOrg) {
+      throw new Error("Failed to validate organization membership");
+    }
 
-		if (workspaceName.length < 1) {
-			throw new Error('Workspace names must be at least 1-character long');
-		}
+    if (workspaceName.length < 1) {
+      throw new Error("Workspace names must be at least 1-character long");
+    }
 
-		// create workspace and add user as member
-		workspace = await create({
-			name: workspaceName,
-			organizationId
-		});
+    // create workspace and add user as member
+    workspace = await create({
+      name: workspaceName,
+      organizationId,
+    });
 
-		await addMemberships({
-			userIds: [req.user._id],
-			workspaceId: workspace._id.toString(),
-			roles: [ADMIN]
-		});
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to create workspace'
-		});
-	}
+    await addMemberships({
+      userIds: [req.user._id],
+      workspaceId: workspace._id.toString(),
+      roles: [ADMIN],
+    });
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to create workspace",
+    });
+  }
 
-	return res.status(200).send({
-		workspace
-	});
+  return res.status(200).send({
+    workspace,
+  });
 };
 
 /**
@@ -190,24 +189,24 @@ export const createWorkspace = async (req: Request, res: Response) => {
  * @returns
  */
 export const deleteWorkspace = async (req: Request, res: Response) => {
-	try {
-		const { workspaceId } = req.params;
+  try {
+    const { workspaceId } = req.params;
 
-		// delete workspace
-		await deleteWork({
-			id: workspaceId
-		});
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to delete workspace'
-		});
-	}
+    // delete workspace
+    await deleteWork({
+      id: workspaceId,
+    });
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to delete workspace",
+    });
+  }
 
-	return res.status(200).send({
-		message: 'Successfully deleted workspace'
-	});
+  return res.status(200).send({
+    message: "Successfully deleted workspace",
+  });
 };
 
 /**
@@ -217,34 +216,34 @@ export const deleteWorkspace = async (req: Request, res: Response) => {
  * @returns
  */
 export const changeWorkspaceName = async (req: Request, res: Response) => {
-	let workspace;
-	try {
-		const { workspaceId } = req.params;
-		const { name } = req.body;
+  let workspace;
+  try {
+    const { workspaceId } = req.params;
+    const { name } = req.body;
 
-		workspace = await Workspace.findOneAndUpdate(
-			{
-				_id: workspaceId
-			},
-			{
-				name
-			},
-			{
-				new: true
-			}
-		);
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to change workspace name'
-		});
-	}
+    workspace = await Workspace.findOneAndUpdate(
+      {
+        _id: workspaceId,
+      },
+      {
+        name,
+      },
+      {
+        new: true,
+      }
+    );
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to change workspace name",
+    });
+  }
 
-	return res.status(200).send({
-		message: 'Successfully changed workspace name',
-		workspace
-	});
+  return res.status(200).send({
+    message: "Successfully changed workspace name",
+    workspace,
+  });
 };
 
 /**
@@ -254,24 +253,24 @@ export const changeWorkspaceName = async (req: Request, res: Response) => {
  * @returns
  */
 export const getWorkspaceIntegrations = async (req: Request, res: Response) => {
-	let integrations;
-	try {
-		const { workspaceId } = req.params;
+  let integrations;
+  try {
+    const { workspaceId } = req.params;
 
-		integrations = await Integration.find({
-			workspace: workspaceId
-		});
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get workspace integrations'
-		});
-	}
+    integrations = await Integration.find({
+      workspace: workspaceId,
+    });
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to get workspace integrations",
+    });
+  }
 
-	return res.status(200).send({
-		integrations
-	});
+  return res.status(200).send({
+    integrations,
+  });
 };
 
 /**
@@ -281,56 +280,56 @@ export const getWorkspaceIntegrations = async (req: Request, res: Response) => {
  * @returns
  */
 export const getWorkspaceIntegrationAuthorizations = async (
-	req: Request,
-	res: Response
+  req: Request,
+  res: Response
 ) => {
-	let authorizations;
-	try {
-		const { workspaceId } = req.params;
+  let authorizations;
+  try {
+    const { workspaceId } = req.params;
 
-		authorizations = await IntegrationAuth.find({
-			workspace: workspaceId
-		});
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get workspace integration authorizations'
-		});
-	}
+    authorizations = await IntegrationAuth.find({
+      workspace: workspaceId,
+    });
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to get workspace integration authorizations",
+    });
+  }
 
-	return res.status(200).send({
-		authorizations
-	});
+  return res.status(200).send({
+    authorizations,
+  });
 };
 
 /**
  * Return service service tokens for workspace [workspaceId] belonging to user
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const getWorkspaceServiceTokens = async (
-	req: Request,
-	res: Response
+  req: Request,
+  res: Response
 ) => {
-	let serviceTokens;
-	try {
-		const { workspaceId } = req.params;
-		// ?? FIX.
-		serviceTokens = await ServiceToken.find({
-			user: req.user._id,
-			workspace: workspaceId
-		});
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get workspace service tokens'
-		});
-	}
-	
-	return res.status(200).send({
-		serviceTokens
-	});
-}
+  let serviceTokens;
+  try {
+    const { workspaceId } = req.params;
+    // ?? FIX.
+    serviceTokens = await ServiceToken.find({
+      user: req.user._id,
+      workspace: workspaceId,
+    });
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to get workspace service tokens",
+    });
+  }
+
+  return res.status(200).send({
+    serviceTokens,
+  });
+};

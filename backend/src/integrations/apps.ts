@@ -344,7 +344,6 @@ const getAppsCircleci = async ({ accessToken }: { accessToken: string }) => {
       name: a?.project_slug?.split("/")[2],
     }));
   } catch (err) {
-    console.log(err);
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error("Failed to get Render services");

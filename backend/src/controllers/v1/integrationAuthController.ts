@@ -130,7 +130,6 @@ export const getIntegrationAuthApps = async (req: Request, res: Response) => {
       accessToken: req.accessToken,
     });
   } catch (err) {
-    console.log(err); // testing
     Sentry.setUser({ email: req.user.email });
     Sentry.captureException(err);
     return res.status(400).send({
