@@ -7,6 +7,7 @@ export type Workspace = {
 };
 
 export type WorkspaceEnv = { name: string; slug: string };
+export type WorkspaceTag = { _id: string; name: string; slug: string };
 
 // mutation dto
 export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };

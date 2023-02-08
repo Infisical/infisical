@@ -4,5 +4,4 @@ export {
   useDeleteWsEnvironment,
   useGetUserWorkspaces,
   useRenameWorkspace,
-  useUpdateWsEnvironment
-} from './queries';
+  useUpdateWsEnvironment} from './queries';

@@ -14,9 +14,11 @@ import {
   faEyeSlash,
   faFolderOpen,
   faMagnifyingGlass,
-  faPlus
+  faPlus,
+  faXmark
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Tag } from 'public/data/frequentInterfaces';
 
 import Button from '@app/components/basic/buttons/Button';
 import ListBox from '@app/components/basic/Listbox';
@@ -44,6 +46,7 @@ import checkUserAction from '../api/userActions/checkUserAction';
 import registerUserAction from '../api/userActions/registerUserAction';
 import getWorkspaceEnvironments from '../api/workspace/getWorkspaceEnvironments';
 import getWorkspaces from '../api/workspace/getWorkspaces';
+import getWorkspaceTags from '../api/workspace/getWorkspaceTags';
 
 type WorkspaceEnv = {
   name: string;
@@ -59,6 +62,7 @@ interface SecretDataProps {
   id: string;
   idOverride: string | undefined;
   comment: string;
+  tags: Tag[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -82,6 +86,7 @@ interface SnapshotProps {
     value: string;
     valueOverride: string;
     comment: string;
+    tags: Tag[];
   }[];
 }
 
@@ -126,6 +131,7 @@ export default function Dashboard() {
   const [snapshotData, setSnapshotData] = useState<SnapshotProps>();
   const [numSnapshots, setNumSnapshots] = useState<number>();
   const [saveLoading, setSaveLoading] = useState(false);
+  const [projectTags, setProjectTags] = useState<Tag[]>([]);
 
   const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
@@ -233,6 +239,8 @@ export default function Dashboard() {
           action: 'first_time_secrets_pushed'
         });
         setHasUserEverPushed(!!userAction);
+
+        setProjectTags(await getWorkspaceTags({ workspaceId }));
       } catch (error) {
         console.log('Error', error);
         setData(undefined);
@@ -275,7 +283,8 @@ export default function Dashboard() {
         key: '',
         value: '',
         valueOverride: undefined,
-        comment: ''
+        comment: '',
+        tags: []
       },
       ...data!
     ]);
@@ -295,7 +304,8 @@ export default function Dashboard() {
         key: '',
         value: '',
         valueOverride: undefined,
-        comment: ''
+        comment: '',
+        tags: []
       },
     ]);
   };
@@ -333,6 +343,11 @@ export default function Dashboard() {
     setButtonReady(true);
   };
 
+  const modifyTags = (tags: Tag[], pos: number) => {
+    setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, tags } : e)));
+    setButtonReady(true);
+  };
+
   // For speed purposes and better perforamance, we are using useCallback
   const listenChangeValue = useCallback((value: string, pos: number) => {
     modifyValue(value, pos);
@@ -348,6 +363,10 @@ export default function Dashboard() {
 
   const listenChangeComment = useCallback((value: string, pos: number) => {
     modifyComment(value, pos);
+  }, []);
+
+  const listenChangeTags = useCallback((value: Tag[], pos: number) => {
+    modifyTags(value, pos);
   }, []);
 
   /**
@@ -422,7 +441,9 @@ export default function Dashboard() {
               newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].key !==
                 initDataPoint.key ||
               newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].comment !==
-                initDataPoint.comment)
+                initDataPoint.comment) ||
+              newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].tags !==
+                initDataPoint.tags
         )
         .map((secret) => secret.id)
         .includes(newDataPoint.id)
@@ -456,7 +477,8 @@ export default function Dashboard() {
         valueOverride: override.valueOverride,
         comment: '',
         id: String(override.idOverride),
-        idOverride: String(override.idOverride)
+        idOverride: String(override.idOverride),
+        tags: override.tags
       }));
     console.log('override add', overridesToBeAdded.length);
 
@@ -471,7 +493,9 @@ export default function Dashboard() {
                 newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].key !==
                   initDataPoint.key ||
                 newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
-                  .comment !== initDataPoint.comment)
+                  .comment !== initDataPoint.comment ||
+                newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
+                  .tags !== initDataPoint.tags)
           )
           .map((secret) => secret.id)
           .includes(newDataPoint.id)
@@ -483,7 +507,8 @@ export default function Dashboard() {
         valueOverride: override.valueOverride,
         comment: '',
         id: String(override.idOverride),
-        idOverride: String(override.idOverride)
+        idOverride: String(override.idOverride),
+        tags: override.tags
       }));
     console.log('override update', overridesToBeUpdated.length);
 
@@ -544,34 +569,6 @@ export default function Dashboard() {
         <meta name="og:description" content={String(t('dashboard:og-description'))} />
       </Head>
       <div className="flex flex-row h-full dark:[color-scheme:dark]">
-        {sidebarSecretId !== 'None' && (
-          <SideBar
-            toggleSidebar={toggleSidebar}
-            data={data.filter(
-              (row: SecretDataProps) =>
-                row.key === data.filter((r) => r.id === sidebarSecretId)[0]?.key
-            )}
-            modifyKey={listenChangeKey}
-            modifyValue={listenChangeValue}
-            modifyValueOverride={listenChangeValueOverride}
-            modifyComment={listenChangeComment}
-            buttonReady={buttonReady}
-            workspaceEnvs={workspaceEnvs}
-            selectedEnv={selectedEnv!}
-            workspaceId={workspaceId}
-            savePush={savePush}
-            sharedToHide={sharedToHide}
-            setSharedToHide={setSharedToHide}
-            deleteRow={deleteCertainRow}
-          />
-        )}
-        {PITSidebarOpen && (
-          <PITRecoverySidebar
-            toggleSidebar={togglePITSidebar}
-            chosenSnapshot={String(snapshotData?.id ? snapshotData.id : '')}
-            setSnapshotData={setSnapshotData}
-          />
-        )}
         <div className="w-full max-h-96 pb-2 dark:[color-scheme:dark]">
           <NavHeader pageName={t('dashboard:title')} isProjectRelated />
           {checkDocsPopUpVisible && (
@@ -626,7 +623,10 @@ export default function Dashboard() {
               <div className="flex justify-start max-w-sm mt-1 mr-2">
                 <Button
                   text={String(`${numSnapshots} ${t('Commits')}`)}
-                  onButtonPressed={() => togglePITSidebar(true)}
+                  onButtonPressed={() => {
+                    toggleSidebar('None');
+                    togglePITSidebar(true)
+                  }}
                   color="mineshaft"
                   size="md"
                   icon={faClockRotateLeft}
@@ -661,7 +661,8 @@ export default function Dashboard() {
                           valueOverride: sv.valueOverride,
                           key: sv.key,
                           value: sv.value,
-                          comment: ''
+                          comment: '',
+                          tags: sv.tags
                         }));
                       setData(rolledBackSecrets);
 
@@ -779,27 +780,58 @@ export default function Dashboard() {
                   className="mt-1 max-h-[calc(100vh-280px)] overflow-hidden overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar border border-mineshaft-600 rounded-md"
                 >
                   <div ref={secretsTop} />
-                  <div className='bg-mineshaft-800 text-sm rounded-t-md h-10 w-full flex flex-row items-center border-b-2 border-mineshaft-500 sticky top-0 z-[60]'>
-                    <div className='w-14'/>
-                    <div className='text-bunker-300 relative font-semibold h-10 flex items-center w-80 pl-2 border-r border-mineshaft-600'>
-                      <span>Key</span>
-                      {!snapshotData && <IconButton 
-                        ariaLabel="copy icon"
-                        variant="plain"
-                        className="group relative ml-2"
-                        onClick={() => reorderRows(1)}
-                      >
-                          {sortMethod === 'alphabetical' ? <FontAwesomeIcon icon={faArrowUp} /> : <FontAwesomeIcon icon={faArrowDown} />}
-                      </IconButton>}
+                  <div
+                    className='group flex flex-col items-center bg-mineshaft-800 border-b-2 border-mineshaft-500 duration-100 sticky top-0 z-[60]'
+                  >
+                    <div className="relative flex flex-row justify-between w-full mr-auto max-h-14 items-center">
+                      <div className="w-2/12 border-r border-mineshaft-600 flex flex-row items-center">
+                        <div className='text-transparent text-xs flex items-center justify-center w-14 h-10 cursor-default'>0</div>
+                        <span className='px-2 text-bunker-300 font-semibold'>Key</span>
+                        {!snapshotData && <IconButton 
+                          ariaLabel="copy icon"
+                          variant="plain"
+                          className="group relative ml-2"
+                          onClick={() => reorderRows(1)}
+                        >
+                            {sortMethod === 'alphabetical' ? <FontAwesomeIcon icon={faArrowUp} /> : <FontAwesomeIcon icon={faArrowDown} />}
+                        </IconButton>}
+                      </div>
+                      <div className="w-5/12 border-r border-mineshaft-600">
+                        <div
+                          className='flex items-center rounded-lg mt-4 md:mt-0 max-h-10'
+                        >
+                          <div className='text-bunker-300 px-2 font-semibold h-10 flex items-center w-7/12'>Value</div>
+                        </div>
+                      </div>
+                      <div className="w-2/12 border-r border-mineshaft-600">
+                        <div className="flex items-center max-h-16">
+                          <div className='text-bunker-300 px-2 font-semibold h-10 flex items-center w-3/12'>Comment</div>
+                        </div>
+                      </div>
+                      <div className="w-2/12">
+                        <div className="flex items-center max-h-16">
+                          <div className='text-bunker-300 px-2 font-semibold h-10 flex items-center w-3/12'>Tags</div>
+                        </div>
+                      </div>
+                      <div
+                        className="w-[1.5rem] h-[2.35rem] ml-auto rounded-md flex flex-row justify-center items-center"
+                      />
+                      <div className='w-[1.5rem] h-[2.35rem] mr-2 flex items-center justfy-center'>
+                        <div
+                          onKeyDown={() => null}
+                          role="none"
+                          onClick={() => {}}
+                          className="invisible group-hover:visible"
+                        >
+                          <FontAwesomeIcon className="text-bunker-300 hover:text-red pl-2 pr-6 text-lg mt-0.5 invisible" icon={faXmark} />
+                        </div>
+                      </div>
                     </div>
-                    <div className='text-bunker-300 pl-2 font-semibold h-10 flex items-center w-full border-r border-mineshaft-600'>Value</div>
-                    <div className='text-bunker-300 pl-2 font-semibold h-10 flex items-center w-96'>Comment</div>
-                    {!snapshotData && <div className='w-[9.3rem]'/>}
                   </div>
                   <div className="bg-mineshaft-800 rounded-b-md border-bunker-600">
                     {!snapshotData &&
                       data
-                        ?.filter((row) => row.key?.toUpperCase().includes(searchKeys.toUpperCase()))
+                        ?.filter((row) => row.key?.toUpperCase().includes(searchKeys.toUpperCase()) || row.tags?.map(tag => tag.name).join(" ")?.toUpperCase().includes(searchKeys.toUpperCase()))
                         .filter((row) => !sharedToHide.includes(row.id))
                         .map((keyPair) => (
                           <KeyPair
@@ -809,14 +841,17 @@ export default function Dashboard() {
                             modifyValueOverride={listenChangeValueOverride}
                             modifyKey={listenChangeKey}
                             modifyComment={listenChangeComment}
+                            modifyTags={listenChangeTags}
                             isBlurred={blurred}
                             isDuplicate={findDuplicates(data?.map((item) => item.key))?.includes(
                               keyPair.key
                             )}
                             toggleSidebar={toggleSidebar}
+                            togglePITSidebar={togglePITSidebar}
                             sidebarSecretId={sidebarSecretId}
                             isSnapshot={false}
                             deleteRow={deleteCertainRow}
+                            tags={projectTags}
                           />
                         ))}
                     {snapshotData &&
@@ -848,6 +883,7 @@ export default function Dashboard() {
                             modifyValueOverride={listenChangeValueOverride}
                             modifyKey={listenChangeKey}
                             modifyComment={listenChangeComment}
+                            modifyTags={listenChangeTags}
                             isBlurred={blurred}
                             isDuplicate={findDuplicates(data?.map((item) => item.key))?.includes(
                               keyPair.key
@@ -855,6 +891,7 @@ export default function Dashboard() {
                             toggleSidebar={toggleSidebar}
                             sidebarSecretId={sidebarSecretId}
                             isSnapshot
+                            tags={projectTags}
                           />
                         ))}
                     <div className='bg-mineshaft-800 text-sm rounded-t-md hover:bg-mineshaft-700 h-10 w-full flex flex-row items-center border-b-2 border-mineshaft-500 sticky top-0 z-[60]'>
@@ -908,6 +945,34 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+        {sidebarSecretId !== 'None' && (
+          <SideBar
+            toggleSidebar={toggleSidebar}
+            data={data.filter(
+              (row: SecretDataProps) =>
+                row.key === data.filter((r) => r.id === sidebarSecretId)[0]?.key
+            )}
+            modifyKey={listenChangeKey}
+            modifyValue={listenChangeValue}
+            modifyValueOverride={listenChangeValueOverride}
+            modifyComment={listenChangeComment}
+            buttonReady={buttonReady}
+            workspaceEnvs={workspaceEnvs}
+            selectedEnv={selectedEnv!}
+            workspaceId={workspaceId}
+            savePush={savePush}
+            sharedToHide={sharedToHide}
+            setSharedToHide={setSharedToHide}
+            deleteRow={deleteCertainRow}
+          />
+        )}
+        {PITSidebarOpen && (
+          <PITRecoverySidebar
+            toggleSidebar={togglePITSidebar}
+            chosenSnapshot={String(snapshotData?.id ? snapshotData.id : '')}
+            setSnapshotData={setSnapshotData}
+          />
+        )}
       </div>
     </div>
   ) : (

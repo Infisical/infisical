@@ -3,7 +3,6 @@ import { faCircle, faExclamationCircle, faEye, faLayerGroup } from '@fortawesome
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import guidGenerator from '../utilities/randomId';
-import { Button } from '../v2';
 import { HoverObject } from '../v2/HoverCard';
 
 const REGEX = /([$]{.*?})/g;
@@ -99,8 +98,8 @@ const DashboardInputField = ({
         )}
         {!error && <div className={`absolute right-0 top-0 text-red z-50 ${
           overrideEnabled ? 'visible group-hover:bg-mineshaft-700' : 'invisible group-hover:visible bg-mineshaft-700'
-        } cursor-pointer duration-0`}>
-          <Button variant="plain" onClick={() => {
+        } cursor-pointer duration-0 h-10 flex items-center px-2`}>
+          <button type="button" onClick={() => {
             if (modifyValueOverride) {
               if (overrideEnabled === false) {
                 modifyValueOverride('', position);
@@ -114,7 +113,7 @@ const DashboardInputField = ({
               icon={faLayerGroup}
               color={overrideEnabled ? 'primary' : 'bunker-400'}
             />
-          </Button>
+          </button>
         </div>}
       </div>
     );

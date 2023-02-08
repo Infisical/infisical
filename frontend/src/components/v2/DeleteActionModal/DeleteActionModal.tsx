@@ -52,7 +52,7 @@ export const DeleteActionModal = ({
     >
       <ModalContent
         title={title}
-        subTitle="This action is irreversible!!!"
+        subTitle="This action is irreversible!"
         footerContent={
           <div className="flex items-center">
             <Button
