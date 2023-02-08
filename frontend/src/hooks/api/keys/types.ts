@@ -20,3 +20,10 @@ export type Sender = {
   lastName: string;
   publicKey: string;
 };
+
+export type UploadWsKeyDTO = {
+  userId: string;
+  encryptedKey: string;
+  nonce: string;
+  workspaceId: string;
+};
