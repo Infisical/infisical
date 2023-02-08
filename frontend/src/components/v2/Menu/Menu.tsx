@@ -31,18 +31,19 @@ export const MenuItem = <T extends ElementType = 'button'>({
   as: Item = 'button',
   description,
   // wrapping in forward ref with generic component causes the loss of ts definitions on props
-  inputRef
+  inputRef,
+  ...props
 }: MenuItemProps<T> & ComponentPropsWithRef<T>): JSX.Element => (
   <li
     className={twMerge(
-      'px-2 py-3 font-inter flex flex-col text-sm text-white transition-all rounded cursor-pointer hover:bg-gray-700',
-      isSelected && 'text-primary',
+      'px-3 py-3 font-inter flex flex-col text-sm text-white transition-all rounded cursor-pointer hover:bg-gray-700',
+      isSelected && 'text-primary bg-gray-700',
       isDisabled && 'text-gray-500 hover:bg-transparent cursor-not-allowed',
       className
     )}
   >
-    <Item type="button" role="menuitem" class="flex items-center" ref={inputRef}>
-      {icon && <span className="mr-2">{icon}</span>}
+    <Item type="button" role="menuitem" className="flex items-center" ref={inputRef} {...props}>
+      {icon && <span className="mr-3">{icon}</span>}
       <span className="flex-grow text-left">{children}</span>
     </Item>
     {description && <span className="mt-2 text-xs">{description}</span>}

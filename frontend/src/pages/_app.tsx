@@ -6,13 +6,17 @@ import { appWithTranslation } from 'next-i18next';
 import { config } from '@fortawesome/fontawesome-svg-core';
 import { QueryClientProvider } from '@tanstack/react-query';
 
-import Layout from '@app/components/basic/Layout';
 import NotificationProvider from '@app/components/context/Notifications/NotificationProvider';
 import Telemetry from '@app/components/utilities/telemetry/Telemetry';
 import { publicPaths } from '@app/const';
-import { SubscriptionProvider } from '@app/context';
-import { AuthProvider } from '@app/context/AuthContext';
-import { WorkspaceProvider } from '@app/context/WorkspaceContext';
+import {
+  AuthProvider,
+  OrgProvider,
+  SubscriptionProvider,
+  UserProvider,
+  WorkspaceProvider
+} from '@app/context';
+import { AppLayout } from '@app/layouts';
 import { queryClient } from '@app/reactQuery';
 
 import '@fortawesome/fontawesome-svg-core/styles.css';
@@ -71,13 +75,17 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <WorkspaceProvider>
-          <SubscriptionProvider>
-            <NotificationProvider>
-              <Layout>
-                <Component {...pageProps} />
-              </Layout>
-            </NotificationProvider>
-          </SubscriptionProvider>
+          <OrgProvider>
+            <SubscriptionProvider>
+              <UserProvider>
+                <NotificationProvider>
+                  <AppLayout>
+                    <Component {...pageProps} />
+                  </AppLayout>
+                </NotificationProvider>
+              </UserProvider>
+            </SubscriptionProvider>
+          </OrgProvider>
         </WorkspaceProvider>
       </AuthProvider>
     </QueryClientProvider>

@@ -12,13 +12,14 @@ type Props = {
   className?: string;
   dropdownContainerClassName?: string;
   isLoading?: boolean;
+  position?: 'item-aligned' | 'popper';
 };
 
 export type SelectProps = SelectPrimitive.SelectProps & Props;
 
 export const Select = forwardRef<HTMLButtonElement, SelectProps>(
   (
-    { children, placeholder, className, isLoading, dropdownContainerClassName, ...props },
+    { children, placeholder, className, isLoading, dropdownContainerClassName, position, ...props },
     ref
   ): JSX.Element => {
     return (
@@ -44,6 +45,8 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
               'relative left-4 top-1 overflow-hidden rounded-md bg-bunker-800 font-inter text-bunker-100 shadow-md z-[100]',
               dropdownContainerClassName
             )}
+            position={position}
+            style={{ width: 'var(--radix-select-trigger-width)' }}
           >
             <SelectPrimitive.ScrollUpButton>
               <FontAwesomeIcon icon={faChevronUp} size="sm" />
