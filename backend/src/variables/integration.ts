@@ -51,7 +51,7 @@ const INTEGRATION_OPTIONS = [
         name: 'Azure Key Vault',
         slug: 'azure-key-vault',
         image: 'Microsoft Azure.png',
-        isAvailable: true,
+        isAvailable: false,
         type: 'oauth',
         clientId: CLIENT_ID_AZURE,
         tenantId: TENANT_ID_AZURE,
