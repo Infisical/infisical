@@ -15,7 +15,13 @@ export const getSecretSnapshot = async (req: Request, res: Response) => {
 
         secretSnapshot = await SecretSnapshot
             .findById(secretSnapshotId)
-            .populate('secretVersions');
+            .populate({
+                path: 'secretVersions',
+                populate: {
+                    path: 'tags',
+                    model: 'Tag',
+                }
+            });
         
         if (!secretSnapshot) throw new Error('Failed to find secret snapshot');
         

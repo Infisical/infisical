@@ -5,5 +5,4 @@ export {
   useGetUserWorkspaces,
   useGetWorkspaceById,
   useRenameWorkspace,
-  useUpdateWsEnvironment
-} from './queries';
+  useUpdateWsEnvironment} from './queries';

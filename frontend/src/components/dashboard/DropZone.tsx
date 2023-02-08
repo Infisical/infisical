@@ -64,7 +64,8 @@ const DropZone = ({
           key,
           value: keyPairs[key as keyof typeof keyPairs].value,
           comment: keyPairs[key as keyof typeof keyPairs].comments.join('\n'),
-          type: 'shared'
+          type: 'shared',
+          tags: []
         }));
         break;
       }
@@ -86,7 +87,8 @@ const DropZone = ({
             key,
             value: keyPairs[key as keyof typeof keyPairs]?.toString() ?? '',
             comment,
-            type: 'shared'
+            type: 'shared',
+            tags: []
           };
         });
         break;
