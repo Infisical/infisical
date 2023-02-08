@@ -7,6 +7,7 @@ nameOverride: ""
 
 frontend:
   name: frontend
+  fullnameOverride: ""
   podAnnotations: {}
   deploymentAnnotations: {}
   replicaCount: 2
@@ -14,7 +15,7 @@ frontend:
     repository: infisical/frontend
     pullPolicy: IfNotPresent
     tag: "latest"
-  # kubeSecretRef: some-kube-secret-name
+  kubeSecretRef: ""
   service:
     # type of the frontend service
     type: ClusterIP
@@ -24,6 +25,7 @@ frontend:
 
 backend:
   name: backend
+  fullnameOverride: ""
   podAnnotations: {}
   deploymentAnnotations: {}
   replicaCount: 2
@@ -31,31 +33,56 @@ backend:
     repository: infisical/backend
     pullPolicy: IfNotPresent
     tag: "latest"
-  # kubeSecretRef: some-kube-secret-name
+  kubeSecretRef: ""
   service:
     annotations: {}
 
 mongodb:
-  name: mongodb
+  enabled: true
+  name: "mongodb"
+  fullnameOverride: "mongodb"
+  nameOverride: "mongodb"
   podAnnotations: {}
+  useStatefulSet: true
+  architecture: "standalone"
   image:
     repository: mongo
     pullPolicy: IfNotPresent
-    tag: "latest"
+    tag: "6.0"
   service:
     annotations: {}
+  auth:
+    enabled: true
+    usernames:
+      - "infisical"
+    passwords:
+      - "infisical"
+    databases:
+      - "infisical"
+  persistence:
+    enabled: true
+    existingClaim: ""
+    resourcePolicy: "keep"
+    accessModes: ["ReadWriteOnce"]
+    size: 8Gi
+  volumePermissions:
+    enabled: true
+  args:
+    - "--dbpath=/bitnami/mongodb"
 
 # By default the backend will be connected to a Mongo instance in the cluster.
 # However, it is recommended to add a managed document DB connection string because the DB instance in the cluster does not have persistence yet ( data will be deleted on next deploy).
 # Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/
-mongodbConnection: {}
-  # externalMongoDBConnectionString: <>
+mongodbConnection:
+  externalMongoDBConnectionString: ""
+  # externalMongoDBConnectionString: "mongodb://<user>:<pass>@<host>:<port>/<database-name>"
 
 ingress:
   enabled: true
   annotations:
     kubernetes.io/ingress.class: "nginx"
-  hostName: example.com # replace with your domain 
+    # cert-manager.io/issuer: letsencrypt-nginx
+  hostName: infisical.local # replace with your domain 
   frontend: 
     path: /
     pathType: Prefix
@@ -63,26 +90,23 @@ ingress:
     path: /api
     pathType: Prefix
   tls: []
-
-
-## Complete Ingress example 
-# ingress:
-#   enabled: true
-#   annotations:
-#     kubernetes.io/ingress.class: "nginx"
-#     cert-manager.io/issuer: letsencrypt-nginx
-#   hostName: k8.infisical.com
-#   frontend: 
-#     path: /
-#     pathType: Prefix
-#   backend:
-#     path: /api
-#     pathType: Prefix
-#   tls:
-#     - secretName: letsencrypt-nginx
-#       hosts:
-#         - k8.infisical.com
+    # - secretName: letsencrypt-nginx
+    #   hosts:
+    #     - k8.infisical.com
 
 frontendEnvironmentVariables: {}
 
-backendEnvironmentVariables: {}
+backendEnvironmentVariables:
+  # MY_ENV_VAR: my-value
+  # Required keys for platform encryption/decryption ops. (128-bit hex value, 32-characters hex)
+  # e.g. 'hexdump -vn16 -e'4/4 "%08X" 1 "\n"' /dev/urandom', 'openssl rand -hex 16' (from https://stackoverflow.com/a/34329057)
+  ENCRYPTION_KEY: MUST_REPLACE
+  # JWT (required secrets to sign JWT tokens)
+  JWT_SIGNUP_SECRET: MUST_REPLACE
+  JWT_REFRESH_SECRET: MUST_REPLACE
+  JWT_AUTH_SECRET: MUST_REPLACE
+  # Mail/SMTP (required to send emails)
+  SMTP_HOST: MUST_REPLACE
+  SMTP_NAME: MUST_REPLACE
+  SMTP_USERNAME: MUST_REPLACE
+  SMTP_PASSWORD: MUST_REPLACE
