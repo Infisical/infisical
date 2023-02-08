@@ -115,13 +115,13 @@ export const AppLayout = ({ children }: LayoutProps) => {
           .split('/')
           [router.asPath.split('/').length - 1].split('?')[0];
 
-        if (!['heroku', 'vercel', 'github', 'netlify'].includes(intendedWorkspaceId)) {
+        if (!['callback', 'create', 'authorize'].includes(intendedWorkspaceId)) {
           localStorage.setItem('projectData.id', intendedWorkspaceId);
         }
 
         // If a user is not a member of a workspace they are trying to access, just push them to one of theirs
         if (
-          !['heroku', 'vercel', 'github', 'netlify'].includes(intendedWorkspaceId) &&
+          !['callback', 'create', 'authorize'].includes(intendedWorkspaceId) &&
           !userWorkspaces
             .map((workspace: { _id: string }) => workspace._id)
             .includes(intendedWorkspaceId)
