@@ -315,11 +315,34 @@ func GetPlainTextSecrets(key []byte, encryptedSecrets api.GetEncryptedSecretsV2R
 			return nil, fmt.Errorf("unable to symmetrically decrypt secret value")
 		}
 
+		// Decrypt comment
+		comment_iv, err := base64.StdEncoding.DecodeString(secret.SecretCommentIV)
+		if err != nil {
+			return nil, fmt.Errorf("unable to decode secret IV for secret value")
+		}
+
+		comment_tag, err := base64.StdEncoding.DecodeString(secret.SecretCommentTag)
+		if err != nil {
+			return nil, fmt.Errorf("unable to decode secret authentication tag for secret value")
+		}
+
+		comment_ciphertext, _ := base64.StdEncoding.DecodeString(secret.SecretCommentCiphertext)
+		if err != nil {
+			return nil, fmt.Errorf("unable to decode secret cipher text for secret key")
+		}
+
+		plainTextComment, err := crypto.DecryptSymmetric(key, comment_ciphertext, comment_tag, comment_iv)
+		if err != nil {
+			return nil, fmt.Errorf("unable to symmetrically decrypt secret comment")
+		}
+
 		plainTextSecret := models.SingleEnvironmentVariable{
-			Key:   string(plainTextKey),
-			Value: string(plainTextValue),
-			Type:  string(secret.Type),
-			ID:    secret.ID,
+			Key:     string(plainTextKey),
+			Value:   string(plainTextValue),
+			Type:    string(secret.Type),
+			ID:      secret.ID,
+			Tags:    secret.Tags,
+			Comment: string(plainTextComment),
 		}
 
 		plainTextSecrets = append(plainTextSecrets, plainTextSecret)
