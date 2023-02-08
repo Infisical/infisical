@@ -234,7 +234,8 @@ function inputPropsAreEqual(prev: DashboardInputFieldProps, next: DashboardInput
     prev.blurred === next.blurred &&
     prev.isCapitalized === next.isCapitalized &&
     prev.overrideEnabled === next.overrideEnabled &&
-    prev.isDuplicate === next.isDuplicate 
+    prev.isDuplicate === next.isDuplicate &&
+    prev.isSideBarOpen === next.isSideBarOpen
   );
 }
 
