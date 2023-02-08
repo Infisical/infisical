@@ -231,7 +231,8 @@ function inputPropsAreEqual(prev: DashboardInputFieldProps, next: DashboardInput
     prev.position === next.position &&
     prev.blurred === next.blurred &&
     prev.overrideEnabled === next.overrideEnabled &&
-    prev.isDuplicate === next.isDuplicate 
+    prev.isDuplicate === next.isDuplicate &&
+    prev.isSideBarOpen === next.isSideBarOpen
   );
 }
 

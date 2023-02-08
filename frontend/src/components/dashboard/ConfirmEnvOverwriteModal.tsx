@@ -29,8 +29,8 @@ const ConfirmEnvOverwriteModal = ({
         }
         onClose={onClose}
       >
-        <div className="mx-1 flex flex-col gap-2">
-          <p className='text-gray-400'>File contains following duplicate secrets:</p>
+        <div className="flex flex-col gap-2">
+          <p className='text-gray-400'>Your file contains the following duplicate secrets:</p>
           <p className="text-sm text-gray-500">{duplicateKeys.join(', ')}</p>
           <p className='text-md text-gray-400'>Are you sure you want to overwrite these secrets?</p>
         </div>
