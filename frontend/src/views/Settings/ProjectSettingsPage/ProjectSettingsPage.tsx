@@ -228,7 +228,7 @@ export const ProjectSettingsPage = () => {
         text: 'Successfully created a tag',
         type: 'success'
       });
-      return res?.data?.name;
+      return res.name;
     } catch (error) {
       console.error(error);
       createNotification({
