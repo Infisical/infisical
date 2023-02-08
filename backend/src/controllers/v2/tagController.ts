@@ -52,9 +52,9 @@ export const deleteWorkspaceTag = async (req: Request, res: Response) => {
 		UnauthorizedRequestError({ message: 'Failed to validate membership' });
 	}
 
-	await Tag.findByIdAndDelete(tagId)
+	const result = await Tag.findByIdAndDelete(tagId);
 
-	res.sendStatus(200)
+	res.json(result);
 }
 
 export const getWorkspaceTags = async (req: Request, res: Response) => {

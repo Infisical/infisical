@@ -102,7 +102,7 @@ export const EnvironmentSection = ({
             colorSchema="primary"
             leftIcon={<FontAwesomeIcon icon={faPlus} />}
           >
-            Add New Env
+            Add New Environment
           </Button>
         </div>
       </div>

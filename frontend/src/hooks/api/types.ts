@@ -9,5 +9,6 @@ export type {
   RenameWorkspaceDTO,
   UpdateEnvironmentDTO,
   Workspace,
-  WorkspaceEnv
+  WorkspaceEnv,
+  WorkspaceTag
 } from './workspace/types';
