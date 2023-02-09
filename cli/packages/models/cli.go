@@ -1,6 +1,8 @@
 package models
 
-import "github.com/99designs/keyring"
+import (
+	"github.com/99designs/keyring"
+)
 
 type UserCredentials struct {
 	Email      string `json:"email"`
@@ -19,6 +21,13 @@ type SingleEnvironmentVariable struct {
 	Value string `json:"value"`
 	Type  string `json:"type"`
 	ID    string `json:"_id"`
+	Tags  []struct {
+		ID        string `json:"_id"`
+		Name      string `json:"name"`
+		Slug      string `json:"slug"`
+		Workspace string `json:"workspace"`
+	} `json:"tags"`
+	Comment string `json:"comment"`
 }
 
 type Workspace struct {
