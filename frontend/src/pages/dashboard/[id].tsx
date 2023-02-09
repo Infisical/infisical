@@ -446,8 +446,8 @@ export default function Dashboard() {
                 initDataPoint.key ||
               newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].comment !==
                 initDataPoint.comment) ||
-              newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].tags !==
-                initDataPoint.tags
+              newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags !==
+                initDataPoint?.tags
         )
         .map((secret) => secret.id)
         .includes(newDataPoint.id)
@@ -498,8 +498,7 @@ export default function Dashboard() {
                   initDataPoint.key ||
                 newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
                   .comment !== initDataPoint.comment ||
-                newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
-                  .tags !== initDataPoint.tags)
+                newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags !== initDataPoint?.tags)
           )
           .map((secret) => secret.id)
           .includes(newDataPoint.id)
@@ -825,7 +824,7 @@ export default function Dashboard() {
                     className='group flex flex-col items-center bg-mineshaft-800 border-b-2 border-mineshaft-500 duration-100 sticky top-0 z-[60]'
                   >
                     <div className="relative flex flex-row justify-between w-full mr-auto max-h-14 items-center">
-                      <div className="w-2/12 border-r border-mineshaft-600 flex flex-row items-center">
+                      <div className="w-1/5 border-r border-mineshaft-600 flex flex-row items-center">
                         <div className='text-transparent text-xs flex items-center justify-center w-14 h-10 cursor-default'>0</div>
                         <span className='px-2 text-bunker-300 font-semibold'>Key</span>
                         {!snapshotData && <IconButton 
@@ -872,12 +871,15 @@ export default function Dashboard() {
                   <div className="bg-mineshaft-800 rounded-b-md border-bunker-600">
                     {!snapshotData &&
                       data
-                        ?.filter((row) => row.key?.toUpperCase().includes(searchKeys.toUpperCase()) || row.tags?.map(tag => tag.name).join(" ")?.toUpperCase().includes(searchKeys.toUpperCase()))
+                        ?.filter((row) => 
+                          row.key?.toUpperCase().includes(searchKeys.toUpperCase()) 
+                          || row.tags?.map(tag => tag.name).join(" ")?.toUpperCase().includes(searchKeys.toUpperCase())
+                          || row.comment?.toUpperCase().includes(searchKeys.toUpperCase()))
                         .filter((row) => !sharedToHide.includes(row.id))
                         .map((keyPair) => (
                           <KeyPair
                             isCapitalized={autoCapitalization}
-                            key={keyPair.id}
+                            key={keyPair.id ? keyPair.id : keyPair.idOverride}
                             keyPair={keyPair}
                             modifyValue={listenChangeValue}
                             modifyValueOverride={listenChangeValueOverride}
@@ -993,7 +995,7 @@ export default function Dashboard() {
             toggleSidebar={toggleSidebar}
             data={data.filter(
               (row: SecretDataProps) =>
-                row.key === data.filter((r) => r.id === sidebarSecretId)[0]?.key
+                row.id === sidebarSecretId
             )}
             modifyKey={listenChangeKey}
             modifyValue={listenChangeValue}

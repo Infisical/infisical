@@ -24,7 +24,7 @@ func PrintErrorAndExit(exitCode int, err error, messages ...string) {
 }
 
 func PrintWarning(message string) {
-	color.Yellow("Warning: %v", message)
+	color.New(color.FgYellow).Fprintf(os.Stderr, "Warning: %v \n", message)
 }
 
 func PrintMessageAndExit(messages ...string) {

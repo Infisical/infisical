@@ -137,7 +137,7 @@ const attemptLogin = async (
                 // eslint-disable-next-line no-template-curly-in-string
                 value: 'mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net',
                 valueOverride: undefined,
-                comment: 'This is an example of secret referencing.',
+                comment: 'Secret referencing example',
                 id: '',
                 tags: []
               },
@@ -147,7 +147,7 @@ const attemptLogin = async (
                 value: 'OVERRIDE_THIS',
                 valueOverride: undefined,
                 comment:
-                  'This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need',
+                  'Override secrets with personal value',
                 id: '',
                 tags: []
               },
@@ -157,7 +157,7 @@ const attemptLogin = async (
                 value: 'OVERRIDE_THIS',
                 valueOverride: undefined,
                 comment:
-                  'This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need',
+                  'Another secret override',
                 id: '',
                 tags: []
               },
