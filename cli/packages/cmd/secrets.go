@@ -474,7 +474,7 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		listOfKeyValue := []string{}
 
 		for _, secret := range secretDetails.Secrets {
-			re := regexp.MustCompile(`(.*)DEFAULT:(.*)`)
+			re := regexp.MustCompile(`(?s)(.*)DEFAULT:(.*)`)
 			match := re.FindStringSubmatch(secret.Comment)
 			defaultValue := ""
 			comment := secret.Comment
