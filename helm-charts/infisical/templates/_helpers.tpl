@@ -119,7 +119,7 @@ Create the mongodb connection string.
 {{- $host := include "infisical.mongodb.fullname" . -}}
 {{- $port := 27017 -}}
 {{- $user := first .Values.mongodb.auth.usernames | default "root" -}}
-{{- $pass := first .Values.mongodb.auth.usernames | default "root" -}}
+{{- $pass := first .Values.mongodb.auth.passwords | default "root" -}}
 {{- $database := first .Values.mongodb.auth.databases | default "test" -}}
 {{- $connectionString := printf "mongodb://%s:%s@%s:%d/%s" $user $pass $host $port $database -}}
 {{- if .Values.mongodbConnection.externalMongoDBConnectionString -}}
