@@ -9,5 +9,7 @@
   "project-id-description": "To integrate Infisical into your code base and get automatic injection of environmental variables, you should use the following Project ID.",
   "project-id-description2": "For more guidance, including code snipets for various languages and frameworks, see ",
   "auto-generated": "This is your project's auto-generated unique identifier. It can't be changed.",
-  "docs": "Infisical Docs"
+  "docs": "Infisical Docs",
+  "auto-capitalization": "Auto Capitalization",
+  "auto-capitalization-description": "According to standards, Infisical will automatically capitalize your keys. If you want to disable this feature, you can do so here."
 }

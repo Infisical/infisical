@@ -19,7 +19,7 @@ export const DeleteActionButton = ({ onSubmit, isPlain }: Props) => {
     <div className={`${
       !isPlain 
       ? 'bg-[#9B3535] opacity-70 hover:opacity-100 w-[4.5rem] h-[2.5rem] rounded-md duration-200 ml-2'
-      : 'cursor-pointer w-[2.35rem] h-[2.35rem] flex items-center justfy-center'}`}>
+      : 'cursor-pointer w-[1.5rem] h-[2.35rem] mr-2 flex items-center justfy-center'}`}>
       {isPlain 
       ? <div
         onKeyDown={() => null}

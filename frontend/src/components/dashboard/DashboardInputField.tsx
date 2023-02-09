@@ -3,7 +3,6 @@ import { faCircle, faExclamationCircle, faEye, faLayerGroup } from '@fortawesome
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import guidGenerator from '../utilities/randomId';
-import { Button } from '../v2';
 import { HoverObject } from '../v2/HoverCard';
 
 const REGEX = /([$]{.*?})/g;
@@ -15,6 +14,7 @@ interface DashboardInputFieldProps {
   type: 'varName' | 'value' | 'comment';
   blurred?: boolean;
   isDuplicate?: boolean;
+  isCapitalized?: boolean;
   overrideEnabled?: boolean;
   modifyValueOverride?: (value: string | undefined, position: number) => void;
   isSideBarOpen?: boolean;
@@ -42,6 +42,7 @@ const DashboardInputField = ({
   value,
   blurred,
   isDuplicate,
+  isCapitalized,
   overrideEnabled,
   modifyValueOverride,
   isSideBarOpen
@@ -70,7 +71,7 @@ const DashboardInputField = ({
           }`}
         >
           <input
-            onChange={(e) => onChangeHandler(e.target.value.toUpperCase(), position)}
+            onChange={(e) => onChangeHandler(isCapitalized ? e.target.value.toUpperCase() : e.target.value, position)}
             type={type}
             value={value}
             className={`z-10 peer font-mono ph-no-capture bg-transparent h-full caret-bunker-200 text-sm px-2 w-full min-w-16 outline-none ${
@@ -99,8 +100,8 @@ const DashboardInputField = ({
         )}
         {!error && <div className={`absolute right-0 top-0 text-red z-50 ${
           overrideEnabled ? 'visible group-hover:bg-mineshaft-700' : 'invisible group-hover:visible bg-mineshaft-700'
-        } cursor-pointer duration-0`}>
-          <Button variant="plain" onClick={() => {
+        } cursor-pointer duration-0 h-10 flex items-center px-2`}>
+          <button type="button" onClick={() => {
             if (modifyValueOverride) {
               if (overrideEnabled === false) {
                 modifyValueOverride('', position);
@@ -114,7 +115,7 @@ const DashboardInputField = ({
               icon={faLayerGroup}
               color={overrideEnabled ? 'primary' : 'bunker-400'}
             />
-          </Button>
+          </button>
         </div>}
       </div>
     );
@@ -124,7 +125,7 @@ const DashboardInputField = ({
     const error = startsWithNumber || isDuplicate;
 
     return (
-      <div className={`relative flex-col w-full h-10 ${
+      <div title={value} className={`relative flex-col w-full h-10 ${
         isSideBarOpen && 'bg-mineshaft-700 duration-200'
       }`}>
         <div
@@ -136,7 +137,7 @@ const DashboardInputField = ({
             onChange={(e) => onChangeHandler(e.target.value, position)}
             type={type}
             value={value}
-            className='z-10 peer font-mono ph-no-capture bg-transparent py-2.5 caret-bunker-200 text-sm px-2 w-full min-w-16 outline-none text-bunker-300 focus:text-bunker-100 placeholder:text-bunker-400 placeholder:focus:text-transparent placeholder duration-200'
+            className='z-10 peer ph-no-capture bg-transparent py-2.5 caret-bunker-200 text-sm px-2 w-full min-w-16 outline-none text-bunker-300 focus:text-bunker-100 placeholder:text-bunker-400 placeholder:focus:text-transparent placeholder duration-200'
             spellCheck="false"
             placeholder='–'
           />
@@ -208,7 +209,7 @@ const DashboardInputField = ({
                 {value?.split('').map(() => (
                   <FontAwesomeIcon
                     key={guidGenerator()}
-                    className="text-xxs mx-0.5"
+                    className="text-xxs mr-0.5"
                     icon={faCircle}
                   />
                 ))}
@@ -231,8 +232,10 @@ function inputPropsAreEqual(prev: DashboardInputFieldProps, next: DashboardInput
     prev.type === next.type &&
     prev.position === next.position &&
     prev.blurred === next.blurred &&
+    prev.isCapitalized === next.isCapitalized &&
     prev.overrideEnabled === next.overrideEnabled &&
-    prev.isDuplicate === next.isDuplicate 
+    prev.isDuplicate === next.isDuplicate &&
+    prev.isSideBarOpen === next.isSideBarOpen
   );
 }
 

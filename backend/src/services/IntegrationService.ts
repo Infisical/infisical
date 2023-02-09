@@ -26,10 +26,7 @@ class IntegrationService {
      * @param {String} obj1.environment - workspace environment
      * @param {String} obj1.integration - name of integration 
      * @param {String} obj1.code - code
-     * @returns {Object} obj2
-     * @returns {IntegrationAuth} obj2.integrationAuth - integration authorization after OAuth2 code-token exchange
-     * @returns {Integration} obj2.integration - newly-initialized integration OAuth2 code-token exchange
-     * @retrun
+     * @returns {IntegrationAuth} integrationAuth - integration authorization after OAuth2 code-token exchange
      */
     static async handleOAuthExchange({ 
         workspaceId,

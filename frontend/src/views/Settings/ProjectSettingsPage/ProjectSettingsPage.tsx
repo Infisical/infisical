@@ -18,19 +18,29 @@ import { useToggle } from '@app/hooks';
 import {
   useCreateServiceToken,
   useCreateWsEnvironment,
+  useCreateWsTag,
   useDeleteServiceToken,
   useDeleteWorkspace,
   useDeleteWsEnvironment,
+  useDeleteWsTag,
   useGetUserWsKey,
   useGetUserWsServiceTokens,
+  useGetWsTags,
   useRenameWorkspace,
+  useToggleAutoCapitalization,
   useUpdateWsEnvironment
 } from '@app/hooks/api';
+
+
+import { AutoCapitalizationSection } from './components/AutoCapitalizationSection/AutoCapitalizationSection';
+
+import { SecretTagsSection } from './components/SecretTagsSection';
 
 import {
   CopyProjectIDSection,
   CreateServiceToken,
   CreateUpdateEnvFormData,
+  CreateWsTag,
   EnvironmentSection,
   ProjectNameChangeSection,
   ServiceTokenSection
@@ -50,6 +60,8 @@ export const ProjectSettingsPage = () => {
   const [isDeleting, setIsDeleting] = useToggle();
 
   const renameWorkspace = useRenameWorkspace();
+  const toggleAutoCapitalization = useToggleAutoCapitalization();
+  
   const deleteWorkspace = useDeleteWorkspace();
   // env crud operation
   const createWsEnv = useCreateWsEnvironment();
@@ -60,6 +72,11 @@ export const ProjectSettingsPage = () => {
   const { data: latestFileKey } = useGetUserWsKey(workspaceID);
   const createServiceToken = useCreateServiceToken();
   const deleteServiceToken = useDeleteServiceToken();
+
+  // tag
+  const { data: wsTags } = useGetWsTags(workspaceID);
+  const createWsTag = useCreateWsTag();
+  const deleteWsTag = useDeleteWsTag();
 
   // get user subscription
   const { subscriptionPlan } = useSubscription();
@@ -78,6 +95,26 @@ export const ProjectSettingsPage = () => {
       console.error(error);
       createNotification({
         text: 'Failed to rename workspace',
+        type: 'error'
+      });
+    }
+  };
+
+  const onAutoCapitalizationToggle = async (state: boolean) => {  
+    try {
+      await toggleAutoCapitalization.mutateAsync({
+        workspaceID,
+        state
+      });
+      const text = `Successfully ${state ? 'enabled' : 'disabled'} auto capitalization`;
+      createNotification({
+        text,
+        type: 'success'
+      });
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: 'Failed to update auto capitalization',
         type: 'error'
       });
     }
@@ -207,6 +244,44 @@ export const ProjectSettingsPage = () => {
     return '';
   };
 
+  const onCreateWsTag = async ({ name }: CreateWsTag) => {
+    try {
+      const res = await createWsTag.mutateAsync({
+        workspaceID,
+        tagName: name,
+        tagSlug: name.replace(" ", "_")
+      });
+      createNotification({
+        text: 'Successfully created a tag',
+        type: 'success'
+      });
+      return res.name;
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: 'Failed to create a tag',
+        type: 'error'
+      });
+    }
+    return '';
+  };
+
+  const onDeleteTag = async (tagID: string) => {
+    try {
+      await deleteWsTag.mutateAsync({ tagID });
+      createNotification({
+        text: 'Successfully deleted tag',
+        type: 'success'
+      });
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: 'Failed to delete the tag',
+        type: 'error'
+      });
+    }
+  };
+
   const onDeleteServiceToken = async (tokenID: string) => {
     try {
       await deleteServiceToken.mutateAsync(tokenID);
@@ -224,7 +299,7 @@ export const ProjectSettingsPage = () => {
   };
 
   return (
-    <div className="container mx-auto flex flex-col px-8 text-mineshaft-50">
+    <div className="container mx-auto flex flex-col px-8 text-mineshaft-50 dark dark:[color-scheme:dark]">
       {/* TODO(akhilmhdh): Remove this right when layout is refactored  */}
       <div className="relative right-5">
         <NavHeader pageName={t('settings-project:title')} isProjectRelated />
@@ -241,6 +316,10 @@ export const ProjectSettingsPage = () => {
         workspaceName={currentWorkspace?.name}
         onProjectNameChange={onRenameWorkspace}
       />
+      <AutoCapitalizationSection
+        workspaceAutoCapitalization={currentWorkspace?.autoCapitalization}
+        onAutoCapitalizationChange={onAutoCapitalizationToggle}
+      />
       <CopyProjectIDSection workspaceID={currentWorkspace?._id || ''} />
       <EnvironmentSection
         environments={currentWorkspace?.environments || []}
@@ -255,6 +334,12 @@ export const ProjectSettingsPage = () => {
         onDeleteToken={onDeleteServiceToken}
         workspaceName={currentWorkspace?.name || ''}
         onCreateToken={onCreateServiceToken}
+      />
+      <SecretTagsSection
+        tags={wsTags || []}
+        onDeleteTag={onDeleteTag}
+        workspaceName={currentWorkspace?.name || ''}
+        onCreateTag={onCreateWsTag}
       />
       <div className="mb-6 mt-4 flex w-full flex-col items-start rounded-md border-l border-red bg-white/5 px-6 pl-6 pb-4 pt-4">
         <p className="text-xl font-bold text-red">{t('settings-project:danger-zone')}</p>

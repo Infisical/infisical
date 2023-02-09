@@ -158,7 +158,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           className={twMerge(
             'shrink-0 cursor-pointer transition-all',
             loadingToggleClass,
-            size === 'xs' ? 'ml-1' : 'ml-2'
+            size === 'xs' ? 'ml-1' : 'ml-3'
           )}
         >
           {rightIcon}

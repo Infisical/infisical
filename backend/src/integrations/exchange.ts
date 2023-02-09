@@ -144,7 +144,7 @@ const exchangeCodeAzure = async ({
         scope: 'https://vault.azure.net/.default openid offline_access', // TODO: do we need all these permissions?
         client_id: CLIENT_ID_AZURE,
         client_secret: CLIENT_SECRET_AZURE,
-        redirect_uri: `${SITE_URL}/azure-key-vault`
+        redirect_uri: `${SITE_URL}/integrations/azure-key-vault/oauth2/callback`
       } as any)
     )).data;
     
@@ -227,7 +227,7 @@ const exchangeCodeVercel = async ({ code }: { code: string }) => {
           code: code,
           client_id: CLIENT_ID_VERCEL,
           client_secret: CLIENT_SECRET_VERCEL,
-          redirect_uri: `${SITE_URL}/vercel`
+          redirect_uri: `${SITE_URL}/integrations/vercel/oauth2/callback`
         } as any)
       )
     ).data;
@@ -267,7 +267,7 @@ const exchangeCodeNetlify = async ({ code }: { code: string }) => {
           code: code,
           client_id: CLIENT_ID_NETLIFY,
           client_secret: CLIENT_SECRET_NETLIFY,
-          redirect_uri: `${SITE_URL}/netlify`
+          redirect_uri: `${SITE_URL}/integrations/netlify/oauth2/callback`
         } as any)
       )
     ).data;
@@ -319,10 +319,11 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
           client_id: CLIENT_ID_GITHUB,
           client_secret: CLIENT_SECRET_GITHUB,
           code: code,
-          redirect_uri: `${SITE_URL}/github`
+          redirect_uri: `${SITE_URL}/integrations/github/oauth2/callback`
         },
         headers: {
-          Accept: 'application/json'
+          'Accept': 'application/json',
+          'Accept-Encoding': 'application/json'
         }
       })
     ).data;

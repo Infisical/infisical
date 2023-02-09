@@ -12,6 +12,11 @@ import (
 
 // will decrypt cipher text to plain text using iv and tag
 func DecryptSymmetric(key []byte, cipherText []byte, tag []byte, iv []byte) ([]byte, error) {
+	// Case: empty string
+	if len(cipherText) == 0 && len(tag) == 0 && len(iv) == 0 {
+		return []byte{}, nil
+	}
+
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err

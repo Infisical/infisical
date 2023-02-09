@@ -7,18 +7,33 @@ import {
   DeleteEnvironmentDTO,
   DeleteWorkspaceDTO,
   RenameWorkspaceDTO,
+  ToggleAutoCapitalizationDTO,
   UpdateEnvironmentDTO,
   Workspace
 } from './types';
 
+
 const workspaceKeys = {
+  getWorkspaceById: (workspaceId: string) => [{ workspaceId }, 'workspace'] as const,
   getAllUserWorkspace: ['workspaces'] as const
 };
 
+const fetchWorkspaceById = async (workspaceId: string) => {
+  const { data } = await apiRequest.get<{ workspace: Workspace }>(`/api/v1/workspace/${workspaceId}`);
+  return data.workspace; 
+}
+
 const fetchUserWorkspaces = async () => {
   const { data } = await apiRequest.get<{ workspaces: Workspace[] }>('/api/v1/workspace');
-
   return data.workspaces;
+};
+
+export const useGetWorkspaceById = (workspaceId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceById(workspaceId),
+    queryFn: () => fetchWorkspaceById(workspaceId),
+    enabled: true
+  });
 };
 
 export const useGetUserWorkspaces = () =>
@@ -31,6 +46,18 @@ export const useRenameWorkspace = () => {
   return useMutation<{}, {}, RenameWorkspaceDTO>({
     mutationFn: ({ workspaceID, newWorkspaceName }) =>
       apiRequest.post(`/api/v1/workspace/${workspaceID}/name`, { name: newWorkspaceName }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
+    }
+  });
+};
+
+export const useToggleAutoCapitalization = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, ToggleAutoCapitalizationDTO>({
+    mutationFn: ({ workspaceID, state }) =>
+      apiRequest.patch(`/api/v2/workspace/${workspaceID}/auto-capitalization`, { autoCapitalization: state }),
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }

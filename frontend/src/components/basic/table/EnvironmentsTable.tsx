@@ -83,7 +83,7 @@ const EnvironmentTable = ({ data = [], onCreateEnv, onDeleteEnv, onUpdateEnv }: 
         </div>
         <div className="w-48">
           <Button
-            text="Add New Env"
+            text="Add New Environment"
             onButtonPressed={() => {
               if (plan !== plans.starter || host !== 'https://app.infisical.com') {
                 handlePopUpOpen('createUpdateEnv');

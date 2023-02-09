@@ -118,4 +118,19 @@ router.delete( // TODO - rewire dashboard to this route
 	workspaceController.deleteWorkspaceMembership
 );
 
+
+router.patch(
+	'/:workspaceId/auto-capitalization',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER]
+	}),
+	param('workspaceId').exists().trim(),
+	body('autoCapitalization').exists().trim().notEmpty(),
+	validateRequest,
+	workspaceController.toggleAutoCapitalization
+);
+
 export default router;

@@ -1,9 +1,7 @@
 import axios from 'axios';
 import * as Sentry from '@sentry/node';
 import { Octokit } from '@octokit/rest';
-// import * as sodium from 'libsodium-wrappers';
 import sodium from 'libsodium-wrappers';
-// const sodium = require('libsodium-wrappers');
 import { IIntegration, IIntegrationAuth } from '../models';
 import {
   INTEGRATION_AZURE_KEY_VAULT,
@@ -888,8 +886,9 @@ const syncSecretsFlyio = async ({
         method: 'post',
         url: INTEGRATION_FLYIO_API_URL,
         headers: {
-            'Authorization': 'Bearer ' + accessToken,
-            'Content-Type': 'application/json'
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json',
+          'Accept-Encoding': 'application/json'
         },
         data: {
           query: GetSecrets,

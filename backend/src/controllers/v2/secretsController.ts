@@ -103,6 +103,9 @@ export const createSecrets = async (req: Request, res: Response) => {
         secretValueCiphertext: string;
         secretValueIV: string;
         secretValueTag: string;
+        secretCommentCiphertext: string;
+        secretCommentIV: string;
+        secretCommentTag: string;
         tags: string[]
     }
 
@@ -115,6 +118,9 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretValueCiphertext,
             secretValueIV,
             secretValueTag,
+            secretCommentCiphertext,
+            secretCommentIV,
+            secretCommentTag,
             tags
         }: secretsToCreateType) => {
             return ({
@@ -129,6 +135,9 @@ export const createSecrets = async (req: Request, res: Response) => {
                 secretValueCiphertext,
                 secretValueIV,
                 secretValueTag,
+                secretCommentCiphertext,
+                secretCommentIV,
+                secretCommentTag,
                 tags
             });
         })
@@ -160,6 +169,9 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretValueIV,
             secretValueTag,
             secretValueHash,
+            secretCommentCiphertext,
+            secretCommentIV,
+            secretCommentTag,
             tags
         }) => ({
             _id: new Types.ObjectId(),
@@ -178,6 +190,9 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretValueIV,
             secretValueTag,
             secretValueHash,
+            secretCommentCiphertext,
+            secretCommentIV,
+            secretCommentTag,
             tags
         }))
     });
@@ -437,7 +452,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
                     secretValueTag,
                     tags,
                     ...((
-                        secretCommentCiphertext &&
+                        secretCommentCiphertext !== undefined &&
                         secretCommentIV &&
                         secretCommentTag
                     ) ? {

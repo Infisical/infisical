@@ -1,3 +1,5 @@
+import { Tag } from 'public/data/frequentInterfaces';
+
 import getSecrets from '@app/pages/api/files/GetSecrets';
 import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
 
@@ -17,6 +19,7 @@ interface EncryptedSecretProps {
   secretValueIV: string;
   secretValueTag: string;
   type: 'personal' | 'shared';
+  tags: Tag[];
 }
 
 interface SecretProps {
@@ -25,6 +28,7 @@ interface SecretProps {
   type: 'personal' | 'shared';
   comment: string;
   id: string;
+  tags: Tag[];
 }
 
 interface FunctionProps {
@@ -107,7 +111,8 @@ const getSecretsForProject = async ({
           key: plainTextKey,
           value: plainTextValue,
           type: secret.type,
-          comment: plainTextComment
+          comment: plainTextComment,
+          tags: secret.tags
         });
       });
     }
@@ -130,7 +135,10 @@ const getSecretsForProject = async ({
       )[0]?.value,
       comment: tempDecryptedSecrets.filter(
         (secret) => secret.key === key && secret.type === 'shared'
-      )[0]?.comment
+      )[0]?.comment,
+      tags: tempDecryptedSecrets.filter(
+        (secret) => secret.key === key && secret.type === 'shared'
+      )[0]?.tags
     }));
 
     if (typeof setData === 'function') {
