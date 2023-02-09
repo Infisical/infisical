@@ -314,10 +314,6 @@ export const ProjectSettingsPage = () => {
         workspaceName={currentWorkspace?.name}
         onProjectNameChange={onRenameWorkspace}
       />
-      <AutoCapitalizationSection
-        workspaceAutoCapitalization={currentWorkspace?.autoCapitalization}
-        onAutoCapitalizationChange={onAutoCapitalizationToggle}
-      />
       <CopyProjectIDSection workspaceID={currentWorkspace?._id || ''} />
       <EnvironmentSection
         environments={currentWorkspace?.environments || []}
@@ -338,6 +334,10 @@ export const ProjectSettingsPage = () => {
         onDeleteTag={onDeleteTag}
         workspaceName={currentWorkspace?.name || ''}
         onCreateTag={onCreateWsTag}
+      />
+      <AutoCapitalizationSection
+        workspaceAutoCapitalization={currentWorkspace?.autoCapitalization}
+        onAutoCapitalizationChange={onAutoCapitalizationToggle}
       />
       <div className="mb-6 mt-4 flex w-full flex-col items-start rounded-md border-l border-red bg-white/5 px-6 pl-6 pb-4 pt-4">
         <p className="text-xl font-bold text-red">{t('settings-project:danger-zone')}</p>

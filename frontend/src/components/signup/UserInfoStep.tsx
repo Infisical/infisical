@@ -153,7 +153,7 @@ export default function UserInfoStep({
 
   return (
     <div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-36 md:mb-16">
-      <p className="text-4xl font-bold flex justify-center mb-6 text-gray-400 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
+      <p className="text-4xl font-bold flex justify-center mb-6 mx-8 md:mx-16 text-primary">
         {t('signup:step3-message')}
       </p>
       <div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">
