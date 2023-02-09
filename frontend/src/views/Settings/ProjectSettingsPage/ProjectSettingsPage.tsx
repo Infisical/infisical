@@ -31,11 +31,8 @@ import {
   useUpdateWsEnvironment
 } from '@app/hooks/api';
 
-
 import { AutoCapitalizationSection } from './components/AutoCapitalizationSection/AutoCapitalizationSection';
-
 import { SecretTagsSection } from './components/SecretTagsSection';
-
 import {
   CopyProjectIDSection,
   CreateServiceToken,
@@ -226,7 +223,8 @@ export const ProjectSettingsPage = () => {
         environment,
         expiresIn: Number(expiresIn),
         name,
-        workspaceId: workspaceID
+        workspaceId: workspaceID,
+        randomBytes
       });
       console.log(res);
       createNotification({
