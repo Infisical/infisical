@@ -146,7 +146,8 @@ const getAppsVercel = async ({
     const res = (
       await axios.get(`${INTEGRATION_VERCEL_API_URL}/v9/projects`, {
         headers: {
-          Authorization: `Bearer ${accessToken}`
+          Authorization: `Bearer ${accessToken}`,
+          'Accept-Encoding': 'application/json'
         },
        ...( integrationAuth?.teamId ? { 
         params: {
@@ -155,7 +156,7 @@ const getAppsVercel = async ({
       } : {}) 
       })
     ).data;
-    
+
     apps = res.projects.map((a: any) => ({
       name: a.name
     }));
@@ -185,7 +186,8 @@ const getAppsNetlify = async ({
     const res = (
       await axios.get(`${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`, {
         headers: {
-          Authorization: `Bearer ${accessToken}`
+          Authorization: `Bearer ${accessToken}`,
+          'Accept-Encoding': 'application/json'
         }
       })
     ).data;

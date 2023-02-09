@@ -46,7 +46,7 @@ export default function FlyioCreateIntegrationPage() {
     return (
     <div className="h-full w-full flex justify-center items-center">
       <Card className="max-w-md p-8 rounded-md">
-        <CardTitle className='text-center'>Render Integration</CardTitle>
+        <CardTitle className='text-center'>Fly.io Integration</CardTitle>
          <FormControl
           label="Fly.io Access Token"
           errorText={accessTokenErrorText}

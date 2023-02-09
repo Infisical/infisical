@@ -355,7 +355,7 @@ const syncSecretsVercel = async ({
           ...obj,
           [secret.key]: secret
       }), {});
-      
+
       const updateSecrets: VercelSecret[] = [];
       const deleteSecrets: VercelSecret[] = [];
       const newSecrets: VercelSecret[] = [];
