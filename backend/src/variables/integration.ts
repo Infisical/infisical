@@ -1,4 +1,8 @@
 import {
+    CLIENT_ID_AZURE,
+    TENANT_ID_AZURE
+} from '../config';
+import {
   CLIENT_ID_HEROKU,
   CLIENT_ID_NETLIFY,
   CLIENT_ID_GITHUB,
@@ -6,6 +10,7 @@ import {
 } from "../config";
 
 // integrations
+const INTEGRATION_AZURE_KEY_VAULT = 'azure-key-vault';
 const INTEGRATION_HEROKU = "heroku";
 const INTEGRATION_VERCEL = "vercel";
 const INTEGRATION_NETLIFY = "netlify";
@@ -14,6 +19,7 @@ const INTEGRATION_RENDER = "render";
 const INTEGRATION_FLYIO = "flyio";
 const INTEGRATION_CIRCLECI = "circleci";
 const INTEGRATION_SET = new Set([
+    INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
@@ -27,7 +33,8 @@ const INTEGRATION_SET = new Set([
 const INTEGRATION_OAUTH2 = "oauth2";
 
 // integration oauth endpoints
-const INTEGRATION_HEROKU_TOKEN_URL = "https://id.heroku.com/oauth/token";
+const INTEGRATION_AZURE_TOKEN_URL = `https://login.microsoftonline.com/${TENANT_ID_AZURE}/oauth2/v2.0/token`;
+const INTEGRATION_HEROKU_TOKEN_URL = 'https://id.heroku.com/oauth/token';
 const INTEGRATION_VERCEL_TOKEN_URL =
   "https://api.vercel.com/v2/oauth/access_token";
 const INTEGRATION_NETLIFY_TOKEN_URL = "https://api.netlify.com/oauth/token";
@@ -43,6 +50,16 @@ const INTEGRATION_FLYIO_API_URL = "https://api.fly.io/graphql";
 const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
 
 const INTEGRATION_OPTIONS = [
+    {
+        name: 'Azure Key Vault',
+        slug: 'azure-key-vault',
+        image: 'Microsoft Azure.png',
+        isAvailable: false,
+        type: 'oauth',
+        clientId: CLIENT_ID_AZURE,
+        tenantId: TENANT_ID_AZURE,
+        docsLink: ''
+    },
   {
     name: "Heroku",
     slug: "heroku",
@@ -146,6 +163,7 @@ const INTEGRATION_OPTIONS = [
 ];
 
 export {
+    INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
@@ -155,6 +173,7 @@ export {
   INTEGRATION_CIRCLECI,
   INTEGRATION_SET,
   INTEGRATION_OAUTH2,
+    INTEGRATION_AZURE_TOKEN_URL,
   INTEGRATION_HEROKU_TOKEN_URL,
   INTEGRATION_VERCEL_TOKEN_URL,
   INTEGRATION_NETLIFY_TOKEN_URL,

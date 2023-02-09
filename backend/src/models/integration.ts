@@ -1,5 +1,6 @@
 import { Schema, model, Types } from "mongoose";
 import {
+  INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
@@ -25,6 +26,7 @@ export interface IIntegration {
     | "github"
     | "render"
     | "flyio"
+    | "azure-key-vault"
     | "circleci";
   integrationAuth: Types.ObjectId;
 }
@@ -69,6 +71,7 @@ const integrationSchema = new Schema<IIntegration>(
     integration: {
       type: String,
       enum: [
+        INTEGRATION_AZURE_KEY_VAULT,
         INTEGRATION_HEROKU,
         INTEGRATION_VERCEL,
         INTEGRATION_NETLIFY,

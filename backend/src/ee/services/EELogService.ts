@@ -1,14 +1,12 @@
 import { Types } from 'mongoose';
 import { 
-    Log,
-    Action,
     IAction
 } from '../models';
 import {
     createLogHelper
 } from '../helpers/log';
 import {
-    createActionSecretHelper
+    createActionHelper
 } from '../helpers/action';
 import EELicenseService from './EELicenseService';
 
@@ -33,8 +31,8 @@ class EELogService {
         channel,
         ipAddress
     }: {
-        userId: string;
-        workspaceId: string;
+        userId: Types.ObjectId;
+        workspaceId?: Types.ObjectId;
         actions: IAction[];
         channel: string;
         ipAddress: string;
@@ -50,26 +48,26 @@ class EELogService {
     }
     
     /**
-     * Create an (audit) action for secrets including
-     * add, delete, update, and read actions.
+     * Create an (audit) action
      * @param {Object} obj
      * @param {String} obj.name - name of action
-     * @param {ObjectId[]} obj.secretIds - secret ids
+     * @param {Types.ObjectId} obj.userId - id of user associated with the action
+     * @param {Types.ObjectId} obj.workspaceId - id of workspace associated with the action
+     * @param {ObjectId[]} obj.secretIds - ids of secrets associated with the action
      * @returns {Action} action - new action
      */
-    static async createActionSecret({
+    static async createAction({
         name,
         userId,
         workspaceId,
         secretIds
     }: {
         name: string;
-        userId: string;
-        workspaceId: string;
-        secretIds: Types.ObjectId[];
+        userId: Types.ObjectId;
+        workspaceId?: Types.ObjectId;
+        secretIds?: Types.ObjectId[];
     }) {
-        if (!EELicenseService.isLicenseValid) return null; 
-        return await createActionSecretHelper({
+        return await createActionHelper({
             name,
             userId,
             workspaceId,

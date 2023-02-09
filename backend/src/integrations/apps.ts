@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/node";
 import { Octokit } from "@octokit/rest";
 import { IIntegrationAuth } from "../models";
 import {
+  INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
@@ -42,6 +43,11 @@ const getApps = async ({
   let apps: App[];
   try {
     switch (integrationAuth.integration) {
+      case INTEGRATION_AZURE_KEY_VAULT:
+        apps = await getAppsAzureKeyVault({
+          accessToken
+        });
+      break;
       case INTEGRATION_HEROKU:
         apps = await getAppsHeroku({
           accessToken,
@@ -87,6 +93,15 @@ const getApps = async ({
 
   return apps;
 };
+
+const getAppsAzureKeyVault = async ({
+  accessToken
+}: {
+  accessToken: string;
+}) => {
+  // TODO
+  return [];
+}
 
 /**
  * Return list of apps for Heroku integration
@@ -246,14 +261,18 @@ const getAppsRender = async ({ accessToken }: { accessToken: string }) => {
       await axios.get(`${INTEGRATION_RENDER_API_URL}/v1/services`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Accept-Encoding': 'application/json',
         },
       })
     ).data;
-
-    apps = res.map((a: any) => ({
-      name: a.service.name,
-      appId: a.service.id,
-    }));
+    
+    apps = res
+      .map((a: any) => ({
+        name: a.service.name,
+        appId: a.service.id
+      })); 
+    
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
@@ -291,6 +310,8 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
         method: "post",
         headers: {
           Authorization: "Bearer " + accessToken,
+        'Accept': 'application/json',
+        'Accept-Encoding': 'application/json',
         },
         data: {
           query,

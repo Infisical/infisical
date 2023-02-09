@@ -57,7 +57,7 @@ func fileKeyringPassphrasePrompt(prompt string) (string, error) {
 	if password, ok := os.LookupEnv("INFISICAL_VAULT_FILE_PASSPHRASE"); ok {
 		return password, nil
 	} else {
-		fmt.Println("You may set the `INFISICAL_VAULT_FILE_PASSPHRASE` environment variable to avoid typing password")
+		fmt.Println("You may set the environment variable `INFISICAL_VAULT_FILE_PASSPHRASE` with your password to avoid typing it")
 	}
 
 	fmt.Fprintf(os.Stderr, "%s:", prompt)
@@ -65,6 +65,7 @@ func fileKeyringPassphrasePrompt(prompt string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	fmt.Println("")
 	return string(b), nil
 }

@@ -101,6 +101,9 @@ var loginCmd = &cobra.Command{
 			util.HandleError(err, "Unable to write write to Infisical Config file. Please try again")
 		}
 
+		// clear backed up secrets from prev account
+		util.DeleteBackupSecrets()
+
 		color.Green("Nice! You are logged in as: %v", email)
 
 	},

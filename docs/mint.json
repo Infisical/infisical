@@ -209,7 +209,8 @@
       "pages": [
         "integrations/platforms/docker",
         "integrations/platforms/docker-compose",
-        "integrations/platforms/kubernetes"
+        "integrations/platforms/kubernetes",
+        "integrations/platforms/pm2"
       ]
     },
     {
@@ -226,6 +227,7 @@
       "group": "CI/CD",
       "pages": [
         "integrations/cicd/githubactions",
+        "integrations/cicd/gitlab",
         "integrations/cicd/circleci"
       ]
     },

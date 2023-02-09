@@ -2,6 +2,16 @@ interface Mapping {
   [key: string]: string;
 }
 
+const integrationSlugNameMapping: Mapping = {
+  'azure-key-vault': 'Azure Key Vault',
+  'heroku': 'Heroku',
+  'vercel': 'Vercel',
+  'netlify': 'Netlify',
+  'github': 'GitHub',
+  'render': 'Render',
+  'flyio': 'Fly.io'
+}
+
 const envMapping: Mapping = {
   Development: "dev",
   Staging: "staging",
@@ -19,7 +29,7 @@ const reverseEnvMapping: Mapping = {
 const contextNetlifyMapping: Mapping = {
   "dev": "Local development",
   "branch-deploy": "Branch deploys",
-  "deploy-review": "Deploy Previews",
+  "deploy-preview": "Deploy Previews",
   "production": "Production"
 }
 
@@ -49,6 +59,7 @@ const plans = plansProd || plansDev;
 export {
   contextNetlifyMapping,
   envMapping,
+  integrationSlugNameMapping,
   plans,
   reverseContextNetlifyMapping,
   reverseEnvMapping}

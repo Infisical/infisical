@@ -21,7 +21,7 @@ interface UsePopUpReturn<T extends Readonly<string[]> | UsePopUpProps[]> {
   popUp: UsePopUpState<T>;
   handlePopUpOpen: (popUpName: keyof UsePopUpState<T>, data?: unknown) => void;
   handlePopUpClose: (popUpName: keyof UsePopUpState<T>) => void;
-  handlePopUpToggle: (popUpName: keyof UsePopUpState<T>) => void;
+  handlePopUpToggle: (popUpName: keyof UsePopUpState<T>, state?: boolean) => void;
 }
 
 /**
@@ -50,10 +50,10 @@ export const usePopUp = <T extends Readonly<string[]> | UsePopUpProps[]>(
     setPopUp((oldState) => ({ ...oldState, [popUpName]: { isOpen: false } }));
   }, []);
 
-  const handlePopUpToggle = useCallback((popUpName: keyof UsePopUpState<T>) => {
+  const handlePopUpToggle = useCallback((popUpName: keyof UsePopUpState<T>, state?: boolean) => {
     setPopUp((oldState) => ({
       ...oldState,
-      [popUpName]: { isOpen: !oldState[popUpName].isOpen }
+      [popUpName]: { isOpen: typeof state === 'undefined' ? !oldState[popUpName].isOpen : state }
     }));
   }, []);
 
