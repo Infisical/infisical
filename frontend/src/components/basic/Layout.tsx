@@ -246,9 +246,9 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <>
-      <div className="flex h-screen w-full flex-col overflow-x-hidden">
+      <div className="h-screen w-full flex-col overflow-x-hidden hidden md:flex">
         <NavBarDashboard />
-        <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
+        <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row dark">
           <aside className="w-full border-r border-mineshaft-500 bg-bunker-600 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between">
               {/* <div className="py-6"></div> */}
@@ -368,10 +368,10 @@ const Layout = ({ children }: LayoutProps) => {
             error={error}
             loading={loading}
           />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800">{children}</main>
+          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">{children}</main>
         </div>
       </div>
-      <div className="flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 z-[200] md:hidden">
         <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
         <p className="max-w-sm px-6 text-center text-lg text-gray-200">
           {` ${t('common:no-mobile')} `}
