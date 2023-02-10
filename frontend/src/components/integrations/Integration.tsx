@@ -18,6 +18,8 @@ interface Integration {
   isActive: boolean;
   app: string | null;
   appId: string | null;
+  path: string | null;
+  region: string | null;
   createdAt: string;
   updatedAt: string;
   environment: string;
@@ -76,6 +78,8 @@ const IntegrationTile = ({
       
       if (integration?.app) {
         setIntegrationApp(integration.app);
+      } else if (integration?.path && integration?.region) {
+        setIntegrationApp(`${integration.path} (${integration.region})`);
       } else if (tempApps.length > 0) {
           setIntegrationApp(tempApps[0].name)
         } else {

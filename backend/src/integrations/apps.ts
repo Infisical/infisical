@@ -4,6 +4,8 @@ import { Octokit } from '@octokit/rest';
 import { IIntegrationAuth } from '../models';
 import {
   INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_AWS_PARAMETER_STORE,
+  INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
@@ -42,10 +44,14 @@ const getApps = async ({
   try {
     switch (integrationAuth.integration) {
       case INTEGRATION_AZURE_KEY_VAULT:
-        apps = await getAppsAzureKeyVault({
-          accessToken
-        });
-      break;
+        apps = [];
+        break;
+      case INTEGRATION_AWS_PARAMETER_STORE:
+        apps = [];
+        break;
+      case INTEGRATION_AWS_SECRET_MANAGER:
+        apps = [];
+        break;
       case INTEGRATION_HEROKU:
         apps = await getAppsHeroku({
           accessToken
@@ -86,15 +92,6 @@ const getApps = async ({
 
   return apps;
 };
-
-const getAppsAzureKeyVault = async ({
-  accessToken
-}: {
-  accessToken: string;
-}) => {
-  // TODO
-  return [];
-}
 
 /**
  * Return list of apps for Heroku integration

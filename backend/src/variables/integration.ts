@@ -11,6 +11,8 @@ import {
 
 // integrations
 const INTEGRATION_AZURE_KEY_VAULT = 'azure-key-vault';
+const INTEGRATION_AWS_PARAMETER_STORE = 'aws-parameter-store';
+const INTEGRATION_AWS_SECRET_MANAGER = 'aws-secret-manager';
 const INTEGRATION_HEROKU = 'heroku';
 const INTEGRATION_VERCEL = 'vercel';
 const INTEGRATION_NETLIFY = 'netlify';
@@ -47,16 +49,6 @@ const INTEGRATION_RENDER_API_URL = 'https://api.render.com';
 const INTEGRATION_FLYIO_API_URL = 'https://api.fly.io/graphql';
 
 const INTEGRATION_OPTIONS = [
-    {
-        name: 'Azure Key Vault',
-        slug: 'azure-key-vault',
-        image: 'Microsoft Azure.png',
-        isAvailable: false,
-        type: 'oauth',
-        clientId: CLIENT_ID_AZURE,
-        tenantId: TENANT_ID_AZURE,
-        docsLink: ''
-    },
     {
         name: 'Heroku',
         slug: 'heroku',
@@ -113,27 +105,37 @@ const INTEGRATION_OPTIONS = [
         docsLink: ''
     },
     {
+        name: 'AWS Parameter Store',
+        slug: 'aws-parameter-store',
+        image: 'Amazon Web Services.png',
+        isAvailable: true,
+        type: 'custom',
+        clientId: '',
+        docsLink: ''
+    },
+    {
+        name: 'AWS Secret Manager',
+        slug: 'aws-secret-manager',
+        image: 'Amazon Web Services.png',
+        isAvailable: true,
+        type: 'custom',
+        clientId: '',
+        docsLink: ''
+    },
+    {
+        name: 'Azure Key Vault',
+        slug: 'azure-key-vault',
+        image: 'Microsoft Azure.png',
+        isAvailable: false,
+        type: 'oauth',
+        clientId: CLIENT_ID_AZURE,
+        tenantId: TENANT_ID_AZURE,
+        docsLink: ''
+    },
+    {
         name: 'Google Cloud Platform',
         slug: 'gcp',
         image: 'Google Cloud Platform.png',
-        isAvailable: false,
-        type: '',
-        clientId: '',
-        docsLink: ''
-    },
-    {
-        name: 'Amazon Web Services',
-        slug: 'aws',
-        image: 'Amazon Web Services.png',
-        isAvailable: false,
-        type: '',
-        clientId: '',
-        docsLink: ''
-    },
-    {
-        name: 'Microsoft Azure',
-        slug: 'azure',
-        image: 'Microsoft Azure.png',
         isAvailable: false,
         type: '',
         clientId: '',
@@ -161,6 +163,8 @@ const INTEGRATION_OPTIONS = [
 
 export {
     INTEGRATION_AZURE_KEY_VAULT,
+    INTEGRATION_AWS_PARAMETER_STORE,
+    INTEGRATION_AWS_SECRET_MANAGER,
     INTEGRATION_HEROKU,
     INTEGRATION_VERCEL,
     INTEGRATION_NETLIFY,

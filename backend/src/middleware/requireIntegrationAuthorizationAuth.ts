@@ -45,9 +45,10 @@ const requireIntegrationAuthorizationAuth = ({
 
 		req.integrationAuth = integrationAuth;
 		if (attachAccessToken) {
-			req.accessToken = await IntegrationService.getIntegrationAuthAccess({
+			const access = await IntegrationService.getIntegrationAuthAccess({
 				integrationAuthId: integrationAuth._id.toString()
 			});
+			req.accessToken = access.accessToken;
 		}
 		
 		return next();

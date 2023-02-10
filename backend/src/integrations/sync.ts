@@ -1,10 +1,21 @@
 import axios from 'axios';
 import * as Sentry from '@sentry/node';
+import _ from 'lodash';
+import AWS from 'aws-sdk';
+import { 
+  SecretsManagerClient, 
+  UpdateSecretCommand,
+  CreateSecretCommand,
+  GetSecretValueCommand,
+  ResourceNotFoundException
+} from '@aws-sdk/client-secrets-manager';
 import { Octokit } from '@octokit/rest';
 import sodium from 'libsodium-wrappers';
 import { IIntegration, IIntegrationAuth } from '../models';
 import {
   INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_AWS_PARAMETER_STORE,
+  INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
@@ -24,17 +35,20 @@ import {
  * @param {IIntegration} obj.integration - integration details
  * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessId - access id for integration
  * @param {String} obj.accessToken - access token for integration
  */
 const syncSecrets = async ({
   integration,
   integrationAuth,
   secrets,
+  accessId,
   accessToken
 }: {
   integration: IIntegration;
   integrationAuth: IIntegrationAuth;
   secrets: any;
+  accessId: string | null;
   accessToken: string;
 }) => {
   try {
@@ -43,6 +57,22 @@ const syncSecrets = async ({
         await syncSecretsAzureKeyVault({
           integration,
           secrets,
+          accessToken
+        });
+        break;
+      case INTEGRATION_AWS_PARAMETER_STORE:
+        await syncSecretsAWSParameterStore({
+          integration,
+          secrets,
+          accessId,
+          accessToken
+        });
+        break;
+      case INTEGRATION_AWS_SECRET_MANAGER:
+        await syncSecretsAWSSecretManager({
+          integration,
+          secrets,
+          accessId,
           accessToken
         });
         break;
@@ -242,6 +272,188 @@ const syncSecretsAzureKeyVault = async ({
     throw new Error('Failed to sync secrets to Azure Key Vault');
   }
 };
+
+/**
+ * Sync/push [secrets] to AWS parameter store
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessId - access id for AWS parameter store integration
+ * @param {String} obj.accessToken - access token for AWS parameter store integration
+ */
+const syncSecretsAWSParameterStore = async ({
+  integration,
+  secrets,
+  accessId,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessId: string | null;
+  accessToken: string;
+}) => {
+  try {
+    if (!accessId) return;
+
+    AWS.config.update({
+      region: integration.region,
+      accessKeyId: accessId,
+      secretAccessKey: accessToken
+    });
+
+    const ssm = new AWS.SSM({
+      apiVersion: '2014-11-06',
+      region: integration.region
+    });
+    
+    const params = {
+      Path: integration.path,
+      Recursive: true,
+      WithDecryption: true
+    };
+
+    const parameterList = (await ssm.getParametersByPath(params).promise()).Parameters
+    
+    let awsParameterStoreSecretsObj: {
+      [key: string]: any // TODO: fix type
+    } = {};
+
+    if (parameterList) {
+      awsParameterStoreSecretsObj = parameterList.reduce((obj: any, secret: any) => ({
+          ...obj,
+          [secret.Name.split("/").pop()]: secret
+      }), {});
+    }
+
+    // Identify secrets to create
+    Object.keys(secrets).map(async (key) => {
+        if (!(key in awsParameterStoreSecretsObj)) {
+          // case: secret does not exist in AWS parameter store
+          // -> create secret
+          await ssm.putParameter({
+            Name: `${integration.path}${key}`,
+            Type: 'SecureString',
+            Value: secrets[key],
+            Overwrite: true
+          }).promise();
+        } else {
+          // case: secret exists in AWS parameter store
+          
+          if (awsParameterStoreSecretsObj[key].Value !== secrets[key]) {
+            // case: secret value doesn't match one in AWS parameter store
+            // -> update secret
+            await ssm.putParameter({
+              Name: `${integration.path}${key}`,
+              Type: 'SecureString',
+              Value: secrets[key],
+              Overwrite: true
+            }).promise();
+          }
+        }
+    });
+
+    // Identify secrets to delete
+    Object.keys(awsParameterStoreSecretsObj).map(async (key) => {
+        if (!(key in secrets)) {
+          // case: 
+          // -> delete secret
+          await ssm.deleteParameter({
+            Name: awsParameterStoreSecretsObj[key].Name
+          }).promise();
+        }
+    });
+
+    AWS.config.update({
+      region: undefined,
+      accessKeyId: undefined,
+      secretAccessKey: undefined
+    }); 
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed to sync secrets to AWS Parameter Store');
+  }
+}
+
+/**
+ * Sync/push [secrets] to AWS secret manager
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessId - access id for AWS secret manager integration
+ * @param {String} obj.accessToken - access token for AWS secret manager integration
+ */
+const syncSecretsAWSSecretManager = async ({
+  integration,
+  secrets,
+  accessId,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessId: string | null;
+  accessToken: string;
+}) => {
+  let secretsManager;
+  try {
+    if (!accessId) return;
+
+    AWS.config.update({
+      region: integration.region,
+      accessKeyId: accessId,
+      secretAccessKey: accessToken
+    });
+    
+    secretsManager = new SecretsManagerClient({
+      region: integration.region,
+      credentials: {
+        accessKeyId: accessId,
+        secretAccessKey: accessToken
+      }
+    });
+
+    const awsSecretManagerSecret = await secretsManager.send(
+      new GetSecretValueCommand({
+        SecretId: integration.app
+      })
+    );
+    
+    let awsSecretManagerSecretObj: { [key: string]: any } = {};
+    
+    if (awsSecretManagerSecret?.SecretString) {
+      awsSecretManagerSecretObj = JSON.parse(awsSecretManagerSecret.SecretString);
+    }
+    
+    if (!_.isEqual(awsSecretManagerSecretObj, secrets)) {
+      await secretsManager.send(new UpdateSecretCommand({
+        SecretId: integration.app,
+        SecretString: JSON.stringify(secrets)
+      }));
+    }
+
+    AWS.config.update({
+      region: undefined,
+      accessKeyId: undefined,
+      secretAccessKey: undefined
+    }); 
+  } catch (err) {
+    if (err instanceof ResourceNotFoundException && secretsManager) {
+      await secretsManager.send(new CreateSecretCommand({
+        Name: integration.app,
+        SecretString: JSON.stringify(secrets)
+      }));
+    } else {
+      Sentry.setUser(null);
+      Sentry.captureException(err);
+      throw new Error('Failed to sync secrets to AWS Secret Manager'); 
+    }
+    AWS.config.update({
+      region: undefined,
+      accessKeyId: undefined,
+      secretAccessKey: undefined
+    }); 
+  }
+}
 
 /**
  * Sync/push [secrets] to Heroku app named [integration.app]
