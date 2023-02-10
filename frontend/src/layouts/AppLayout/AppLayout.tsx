@@ -210,7 +210,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   return (
     <>
-      <div className="flex h-screen w-full flex-col overflow-x-hidden">
+      <div className="hidden h-screen w-full flex-col overflow-x-hidden md:flex">
         <Navbar />
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <aside className="w-full border-r border-mineshaft-500 bg-mineshaft-800 md:w-60">
@@ -417,10 +417,12 @@ export const AppLayout = ({ children }: LayoutProps) => {
               </form>
             </ModalContent>
           </Modal>
-          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800">{children}</main>
+          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">
+            {children}
+          </main>
         </div>
       </div>
-      <div className="flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
+      <div className="z-[200] flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
         <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
         <p className="max-w-sm px-6 text-center text-lg text-gray-200">
           {` ${t('common:no-mobile')} `}
