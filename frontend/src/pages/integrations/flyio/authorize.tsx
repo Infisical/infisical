@@ -30,6 +30,7 @@ export default function FlyioCreateIntegrationPage() {
             const integrationAuth = await saveIntegrationAccessToken({
                 workspaceId: localStorage.getItem('projectData.id'),
                 integration: 'flyio',
+                accessId: null,
                 accessToken
             });
 

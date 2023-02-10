@@ -30,6 +30,7 @@ export default function RenderCreateIntegrationPage() {
             const integrationAuth = await saveIntegrationAccessToken({
                 workspaceId: localStorage.getItem('projectData.id'),
                 integration: 'render',
+                accessId: null,
                 accessToken: apiKey
             });
 
