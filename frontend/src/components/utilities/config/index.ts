@@ -4,7 +4,7 @@ const POSTHOG_HOST =
   process.env.NEXT_PUBLIC_POSTHOG_HOST! || "https://app.posthog.com";
 const STRIPE_PRODUCT_PRO = process.env.NEXT_PUBLIC_STRIPE_PRODUCT_PRO!;
 const STRIPE_PRODUCT_STARTER = process.env.NEXT_PUBLIC_STRIPE_PRODUCT_STARTER!;
-const {SITE_URL} = process.env
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL!;
 
 export {
   ENV,
