@@ -130,6 +130,12 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 			return nil, err
 		}
 
+		// Verify environment
+		err = ValidateEnvironmentName(params.Environment, workspaceFile.WorkspaceId, loggedInUserDetails.UserCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("unable to validate environment name because [err=%s]", err)
+		}
+
 		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId, params.Environment)
 		log.Debugf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
 
@@ -154,6 +160,33 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 	}
 
 	return secretsToReturn, errorToReturn
+}
+
+func ValidateEnvironmentName(environmentName string, workspaceId string, userLoggedInDetails models.UserCredentials) error {
+	httpClient := resty.New()
+	httpClient.SetAuthToken(userLoggedInDetails.JTWToken).
+		SetHeader("Accept", "application/json")
+
+	response, err := api.CallGetAccessibleEnvironments(httpClient, api.GetAccessibleEnvironmentsRequest{WorkspaceId: workspaceId})
+	if err != nil {
+		return err
+	}
+
+	listOfEnvSlugs := []string{}
+	mapOfEnvSlugs := make(map[string]interface{})
+
+	for _, environment := range response.AccessibleEnvironments {
+		listOfEnvSlugs = append(listOfEnvSlugs, environment.Slug)
+		mapOfEnvSlugs[environment.Slug] = environment
+	}
+
+	_, exists := mapOfEnvSlugs[environmentName]
+	if !exists {
+		HandleError(fmt.Errorf("the environment [%s] does not exist in project with [id=%s]. Only [%s] are available", environmentName, workspaceId, strings.Join(listOfEnvSlugs, ",")))
+	}
+
+	return nil
+
 }
 
 func getExpandedEnvVariable(secrets []models.SingleEnvironmentVariable, variableWeAreLookingFor string, hashMapOfCompleteVariables map[string]string, hashMapOfSelfRefs map[string]string) string {
