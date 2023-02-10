@@ -3,6 +3,7 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
 interface Props {
     workspaceId: string | null;
     integration: string | undefined;
+    accessId: string | null;
     accessToken: string;
 }
 /**
@@ -19,6 +20,7 @@ interface Props {
 const saveIntegrationAccessToken = ({ 
     workspaceId,
     integration,
+    accessId,
     accessToken
 }: Props) =>
   SecurityClient.fetchCall(`/api/v1/integration-auth/access-token`, {
@@ -29,13 +31,14 @@ const saveIntegrationAccessToken = ({
     body: JSON.stringify({
         workspaceId,
         integration,
+        accessId,
         accessToken
     })
   }).then(async (res) => {
     if (res && res.status === 200) {
       return (await res.json()).integrationAuth;
     }
-    console.log('Failed to save integration access token');
+    console.log('Failed to save integration access details');
     return undefined;
   });
 
