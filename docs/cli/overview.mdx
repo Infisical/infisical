@@ -45,19 +45,19 @@ The Infisical CLI provides a way to inject environment variables from the platfo
 	 <Tab title="Alpine">
 	 Install prerequisite
 		```bash
-		sudo apk add --no-cache bash sudo
+		apk add --no-cache bash curl
 		```
 
     	Add Infisical repository
     	```bash
     	curl -1sLf \
     		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' \
-    		| sudo -E bash
+    		| bash
     	```
 
     	Then install CLI
     	```bash
-    	sudo apk update && sudo apk add infisical
+    	apk update && apk add infisical
     	```
 
    </Tab>
@@ -66,12 +66,12 @@ The Infisical CLI provides a way to inject environment variables from the platfo
 		```bash
 		curl -1sLf \
 		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' \
-		| sudo -E bash
+		| bash
 		```
 
     	Then install CLI
     	```bash
-    	sudo yum install infisical
+    	yum install infisical
     	```
 
    </Tab>
@@ -81,12 +81,12 @@ The Infisical CLI provides a way to inject environment variables from the platfo
 		```bash
 		curl -1sLf \
 		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' \
-		| sudo -E bash
+		| bash
 		```
 
     	Then install CLI
     	```bash
-    	sudo apt-get update && sudo apt-get install -y infisical
+    	apt-get update && apt-get install -y infisical
     	```
 
    </Tab>
@@ -109,7 +109,8 @@ infisical login
 <Accordion title="Optional: point CLI to self-hosted">
 The CLI is set to connect to Infisical Cloud by default, but if you're running your own instance of Infisical, you can direct the CLI to it using one of the methods provided below.
 
-#### Export environment variable 
+#### Export environment variable
+
 You can point the CLI to the self hosted Infisical instance by exporting the environment variable `INFISICAL_API_URL` in your terminal.
 
 ```bash
@@ -118,10 +119,12 @@ export INFISICAL_API_URL="https://your-self-hosted-infisical.com/api"
 ```
 
 #### Set manually on every command
+
 Another option to point the CLI to your self hosted Infisical instance is to set it via a flag on every command you run.
 
-```bash 
+```bash
 # Example
 infisical <any-command> --domain="https://your-self-hosted-infisical.com/api"
 ```
+
 </Accordion>
