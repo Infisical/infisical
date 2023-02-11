@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
 import {
-	Membership,
+	Membership, Secret,
 } from '../../models';
 import Tag, { ITag } from '../../models/tag';
 import { Builder } from "builder-pattern"
@@ -53,6 +53,12 @@ export const deleteWorkspaceTag = async (req: Request, res: Response) => {
 	}
 
 	const result = await Tag.findByIdAndDelete(tagId);
+
+	// remove the tag from secrets
+	await Secret.updateMany(
+		{ tags: { $in: [tagId] } },
+		{ $pull: { tags: tagId } }
+	);
 
 	res.json(result);
 }
