@@ -30,7 +30,8 @@ export default function CircleCICreateIntegrationPage() {
             const integrationAuth = await saveIntegrationAccessToken({
                 workspaceId: localStorage.getItem('projectData.id'),
                 integration: 'circleci',
-                accessToken: apiKey
+                accessToken: apiKey,
+                accessId: null,
             });
 
             setIsLoading(false);

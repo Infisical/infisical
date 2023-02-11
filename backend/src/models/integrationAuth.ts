@@ -85,18 +85,6 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
       type: String,
       select: false
     },
-    accessIdCiphertext: {
-      type: String,
-      select: false
-    },
-    accessIdIV: {
-      type: String,
-      select: false
-    },
-    accessIdTag: {
-      type: String,
-      select: false
-    },
     accessCiphertext: {
       type: String,
       select: false,

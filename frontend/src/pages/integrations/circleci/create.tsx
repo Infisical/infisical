@@ -55,7 +55,9 @@ export default function CircleCICreateIntegrationPage() {
                 appId: (integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp))?.appId ?? null,
                 sourceEnvironment: selectedSourceEnvironment,
                 targetEnvironment: null,
-                owner: null
+                owner: null,
+                path: null,
+                region: null,
             }); 
             
             setIsLoading(false);
