@@ -14,11 +14,13 @@ import {
 	MembershipOrg,
 	Organization,
 	Workspace,
-	IncidentContactOrg
+	IncidentContactOrg,
+	IMembershipOrg
 } from '../../models';
 import { createOrganization as create } from '../../helpers/organization';
 import { addMembershipsOrg } from '../../helpers/membershipOrg';
 import { OWNER, ACCEPTED } from '../../variables';
+import _ from 'lodash';
 
 export const getOrganizations = async (req: Request, res: Response) => {
 	let organizations;
@@ -381,4 +383,43 @@ export const getOrganizationSubscriptions = async (
 	return res.status(200).send({
 		subscriptions
 	});
+};
+
+
+/**
+ * Given a org id, return the projects each member of the org belongs to
+ * @param req
+ * @param res
+ * @returns
+ */
+export const getOrganizationMembersAndTheirWorkspaces = async (
+	req: Request,
+	res: Response
+) => {
+	const { organizationId } = req.params;
+	const orgMemberships = await MembershipOrg.find({ organization: organizationId });
+	const userIds = orgMemberships.map(orgMembership => orgMembership.user);
+	const memberships = await Membership.find({ user: { $in: userIds } });
+	const userToWorkspaceIds: any = {};
+
+	memberships.forEach(membership => {
+		const user = membership.user.toString();
+		if (userToWorkspaceIds[user]) {
+			userToWorkspaceIds[user].push(membership.workspace);
+		} else {
+			userToWorkspaceIds[user] = [membership.workspace];
+		}
+	});
+
+	const workspaceIds = Object.values(userToWorkspaceIds).flat()
+	const workspacesList = await Workspace.find({
+		organization: organizationId,
+		_id: { $in: workspaceIds }
+	});
+
+	const populatedUserWorkspaces = _.mapValues(userToWorkspaceIds, workspaceIds =>
+		_.map(workspaceIds, id => _.find(workspacesList, { _id: id }))
+	);
+
+	return res.json(populatedUserWorkspaces);
 };
