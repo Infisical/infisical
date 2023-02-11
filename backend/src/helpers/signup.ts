@@ -7,6 +7,7 @@ import { createWorkspace } from './workspace';
 import { addMemberships } from './membership';
 import { OWNER, ADMIN, ACCEPTED } from '../variables';
 import { sendMail } from '../helpers/nodemailer';
+import { EMAIL_TOKEN_LIFETIME } from '../config';
 
 /**
  * Send magic link to verify email to [email]
@@ -25,7 +26,8 @@ const sendEmailVerification = async ({ email }: { email: string }) => {
 			{
 				email,
 				token,
-				createdAt: new Date()
+				createdAt: new Date(),
+				ttl: Math.floor(+new Date() / 1000) + EMAIL_TOKEN_LIFETIME // time in seconds, i.e unix
 			},
 			{ upsert: true, new: true }
 		);
@@ -62,10 +64,19 @@ const checkEmailVerification = async ({
 	code: string;
 }) => {
 	try {
-		const token = await Token.findOneAndDelete({
+		const token = await Token.findOne({
 			email,
 			token: code
 		});
+
+		if (token && Math.floor(Date.now() / 1000) > token.ttl) {
+			await Token.deleteOne({
+				email,
+				token: code
+			});
+
+			throw new Error('Verification token has expired')
+		}
 
 		if (!token) throw new Error('Failed to find email verification token');
 	} catch (err) {

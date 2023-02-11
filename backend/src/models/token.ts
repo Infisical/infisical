@@ -5,6 +5,7 @@ export interface IToken {
   email: string;
   token: string;
   createdAt: Date;
+  ttl: Number;
 }
 
 const tokenSchema = new Schema<IToken>({
@@ -19,14 +20,13 @@ const tokenSchema = new Schema<IToken>({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  ttl: {
+    type: Number,
   }
 });
 
-tokenSchema.index({ 
-  createdAt: 1 
-}, { 
-  expireAfterSeconds: parseInt(EMAIL_TOKEN_LIFETIME) 
-});
+tokenSchema.index({ email: 1 });
 
 const Token = model<IToken>('Token', tokenSchema);
 

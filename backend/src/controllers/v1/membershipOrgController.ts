@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import crypto from 'crypto';
-import { SITE_URL, JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET } from '../../config';
+import { SITE_URL, JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET, EMAIL_TOKEN_LIFETIME } from '../../config';
 import { MembershipOrg, Organization, User, Token } from '../../models';
 import { deleteMembershipOrg as deleteMemberFromOrg } from '../../helpers/membershipOrg';
 import { checkEmailVerification } from '../../helpers/signup';
@@ -113,14 +113,14 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 		if (!membershipOrg) {
 			throw new Error('Failed to validate organization membership');
 		}
-		
+
 		invitee = await User.findOne({
 			email: inviteeEmail
 		}).select('+publicKey');
 
 		if (invitee) {
 			// case: invitee is an existing user
-			
+
 			inviteeMembershipOrg = await MembershipOrg.findOne({
 				user: invitee._id,
 				organization: organizationId
@@ -170,7 +170,8 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 				{
 					email: inviteeEmail,
 					token,
-					createdAt: new Date()
+					createdAt: new Date(),
+					ttl: Math.floor(+new Date() / 1000) + EMAIL_TOKEN_LIFETIME // time in seconds, i.e unix
 				},
 				{ upsert: true, new: true }
 			);
@@ -241,7 +242,7 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 				message: 'Successfully verified email',
 				user,
 			});
-        }
+		}
 
 		if (!user) {
 			// initialize user account

@@ -8,7 +8,7 @@ import { User, Token, BackupPrivateKey, LoginSRPDetail } from '../../models';
 import { checkEmailVerification } from '../../helpers/signup';
 import { createToken } from '../../helpers/auth';
 import { sendMail } from '../../helpers/nodemailer';
-import { JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET, SITE_URL } from '../../config';
+import { EMAIL_TOKEN_LIFETIME, JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET, SITE_URL } from '../../config';
 import { BadRequestError } from '../../utils/errors';
 
 /**
@@ -39,7 +39,8 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
 			{
 				email,
 				token,
-				createdAt: new Date()
+				createdAt: new Date(),
+				ttl: Math.floor(+new Date() / 1000) + EMAIL_TOKEN_LIFETIME // time in seconds, i.e unix
 			},
 			{ upsert: true, new: true }
 		);
