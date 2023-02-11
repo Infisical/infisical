@@ -4,7 +4,6 @@ Copyright (c) 2023 Infisical Inc.
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/Infisical/infisical-merge/packages/util"
@@ -26,8 +25,6 @@ var resetCmd = &cobra.Command{
 		if err != nil {
 			util.HandleError(err)
 		}
-
-		fmt.Println(pathToDir)
 
 		os.RemoveAll(pathToDir)
 
