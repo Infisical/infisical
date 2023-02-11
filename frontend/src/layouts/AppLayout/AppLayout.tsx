@@ -218,7 +218,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
           <aside className="w-full border-r border-mineshaft-500 bg-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between">
               <div>
-                <div className="w-full p-4 mt-3 mb-4">
+                {currentWorkspace 
+                ? <div className="w-full p-4 mt-3 mb-4">
                   <p className="text-xs font-semibold ml-1.5 mb-1 uppercase text-gray-400">Project</p>
                   <Select
                     defaultValue={currentWorkspace?._id}
@@ -249,7 +250,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     </div>
                   </Select>
                 </div>
-                <div>
+                : <div className="w-full p-4 mt-3 mb-4">
+                  <Button
+                    className="w-full py-2 text-bunker-200 bg-mineshaft-500 hover:bg-primary/90 hover:text-black"
+                    color="mineshaft"
+                    size="sm"
+                    onClick={() => handlePopUpOpen('addNewWs')}
+                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  >
+                    Add Project
+                  </Button>
+                </div>}
+                <div className={`${currentWorkspace ? "block" : "hidden"}`}>
                   <Menu>
                     <Link href={`/dashboard/${currentWorkspace?._id}`} passHref>
                       <a>
