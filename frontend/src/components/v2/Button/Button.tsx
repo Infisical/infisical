@@ -24,7 +24,7 @@ const buttonVariants = cva(
   {
     variants: {
       colorSchema: {
-        primary: ['bg-primary', 'text-black', 'border-primary hover:bg-opacity-80'],
+        primary: ['bg-primary', 'text-black', 'border-primary bg-opacity-80 hover:bg-opacity-100'],
         secondary: ['bg-mineshaft', 'text-gray-300', 'border-mineshaft hover:bg-opacity-80'],
         danger: ['bg-red', 'text-white', 'border-red hover:bg-opacity-90']
       },

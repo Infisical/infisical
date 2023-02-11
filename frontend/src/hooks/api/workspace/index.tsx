@@ -1,4 +1,5 @@
 export {
+  useCreateWorkspace,
   useCreateWsEnvironment,
   useDeleteWorkspace,
   useDeleteWsEnvironment,

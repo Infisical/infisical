@@ -4,6 +4,7 @@ import { apiRequest } from '@app/config/request';
 
 import {
   CreateEnvironmentDTO,
+  CreateWorkspaceDTO,
   DeleteEnvironmentDTO,
   DeleteWorkspaceDTO,
   RenameWorkspaceDTO,
@@ -40,6 +41,18 @@ export const useGetUserWorkspaces = () =>
   useQuery(workspaceKeys.getAllUserWorkspace, fetchUserWorkspaces);
 
 // mutation
+export const useCreateWorkspace = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ data: { workspace: Workspace } }, {}, CreateWorkspaceDTO>({
+    mutationFn: async ({ organizationId, workspaceName }) =>
+      apiRequest.post('/api/v1/workspace', { workspaceName, organizationId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
+    }
+  });
+};
+
 export const useRenameWorkspace = () => {
   const queryClient = useQueryClient();
 

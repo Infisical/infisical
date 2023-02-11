@@ -24,7 +24,7 @@ export const HoverObject = ({
       </a>
     </HoverCard.Trigger>
     <HoverCard.Portal>
-      <HoverCard.Content className="HoverCardContent z-[50]" sideOffset={5}>
+      <HoverCard.Content className="HoverCardContent z-[300]" sideOffset={5}>
         <div className='bg-bunker-700 border border-mineshaft-600 p-2 rounded-md drop-shadow-xl text-bunker-300'>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
             <div>
