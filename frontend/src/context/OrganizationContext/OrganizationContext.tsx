@@ -26,7 +26,7 @@ export const OrgProvider = ({ children }: Props): JSX.Element => {
   // memorize the workspace details for the context
   const value = useMemo<TOrgContext>(
     () => ({
-      org: userOrgs,
+      orgs: userOrgs,
       currentOrg: (userOrgs || []).find(({ _id }) => _id === currentWsOrgID),
       isLoading
     }),
@@ -36,10 +36,10 @@ export const OrgProvider = ({ children }: Props): JSX.Element => {
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;
 };
 
-export const useOrgnization = () => {
+export const useOrganization = () => {
   const ctx = useContext(OrgContext);
   if (!ctx) {
-    throw new Error('useOrgnization to be used within <OrgContext.Provider>');
+    throw new Error('useOrganization to be used within <OrgContext.Provider>');
   }
 
   return ctx;

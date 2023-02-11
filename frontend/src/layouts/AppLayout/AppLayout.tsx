@@ -38,7 +38,7 @@ import {
   Select,
   SelectItem
 } from '@app/components/v2';
-import { useOrgnization, useUser, useWorkspace } from '@app/context';
+import { useOrganization, useUser, useWorkspace } from '@app/context';
 import { usePopUp } from '@app/hooks';
 import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useUploadWsKey } from '@app/hooks/api';
 import getOrganizations from '@app/pages/api/organization/getOrgs';
@@ -61,8 +61,10 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const router = useRouter();
   const { createNotification } = useNotificationContext();
 
-  const { workspaces, currentWorkspace } = useWorkspace();
-  const { currentOrg } = useOrgnization();
+  // eslint-disable-next-line prefer-const
+  let { workspaces, currentWorkspace } = useWorkspace();
+  const { currentOrg } = useOrganization();
+  workspaces = workspaces.filter(ws => ws.organization === currentOrg?._id)
   const { user } = useUser();
 
   const createWs = useCreateWorkspace();
@@ -210,35 +212,35 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   return (
     <>
-      <div className="hidden h-screen w-full flex-col overflow-x-hidden md:flex">
+      <div className="hidden h-screen w-full flex-col overflow-x-hidden md:flex dark">
         <Navbar />
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
-          <aside className="w-full border-r border-mineshaft-500 bg-mineshaft-800 md:w-60">
+          <aside className="w-full border-r border-mineshaft-500 bg-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between">
               <div>
-                <div className="w-full p-4">
-                  <p className="mb-2 text-sm font-medium uppercase text-gray-400">Projects</p>
+                <div className="w-full p-4 mt-3 mb-4">
+                  <p className="text-xs font-semibold ml-1.5 mb-1 uppercase text-gray-400">Project</p>
                   <Select
                     defaultValue={currentWorkspace?._id}
                     value={currentWorkspace?._id}
-                    className="w-full"
+                    className="w-full py-2.5 bg-mineshaft-600 font-medium"
                     onValueChange={(value) => {
                       router.push(`/dashboard/${value}`);
                     }}
                     position="popper"
-                    dropdownContainerClassName="left-0"
+                    dropdownContainerClassName="left-0 text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50"
                   >
                     {workspaces.map(({ _id, name }) => (
-                      <SelectItem key={`ws-layout-list-${_id}`} value={_id}>
+                      <SelectItem key={`ws-layout-list-${_id}`} value={_id} className={`${currentWorkspace?._id === _id && "bg-mineshaft-600"}`}>
                         {name}
                       </SelectItem>
                     ))}
-                    <hr className="my-4 h-px border-0 bg-gray-700" />
-                    <div className="w-full px-2 pb-2">
+                    <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" />
+                    <div className="w-full">
                       <Button
-                        className="w-full py-2"
+                        className="w-full py-2 text-bunker-200 bg-mineshaft-500 hover:bg-primary/90 hover:text-black"
                         color="mineshaft"
-                        size="xs"
+                        size="sm"
                         onClick={() => handlePopUpOpen('addNewWs')}
                         leftIcon={<FontAwesomeIcon icon={faPlus} />}
                       >
@@ -361,7 +363,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
           >
             <ModalContent
               title="Create a new project"
-              subTitle="This project will contain your environment variables"
+              subTitle="This project will contain your secrets and configurations."
             >
               <form onSubmit={handleSubmit(onCreateProject)}>
                 <Controller
@@ -378,7 +380,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     </FormControl>
                   )}
                 />
-                <div>
+                <div className='pl-1 mt-4'>
                   <Controller
                     control={control}
                     name="addMembers"
@@ -395,7 +397,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     )}
                   />
                 </div>
-                <div className="mt-8 flex items-center">
+                <div className="mt-7 flex items-center">
                   <Button
                     isDisabled={isSubmitting}
                     isLoading={isSubmitting}
@@ -404,14 +406,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     type="submit"
                   >
                     Create Project
-                  </Button>
-                  <Button
-                    key="layout-cancel-create-project"
-                    onClick={() => handlePopUpClose('addNewWs')}
-                    variant="plain"
-                    colorSchema="secondary"
-                  >
-                    Cancel
                   </Button>
                 </div>
               </form>

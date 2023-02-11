@@ -1,7 +1,7 @@
 import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import { useOrgnization, useWorkspace } from '@app/context';
+import { useOrganization, useWorkspace } from '@app/context';
 
 /**
  * This is the component at the top of almost every page.
@@ -20,7 +20,7 @@ export default function NavHeader({
   isProjectRelated?: boolean;
 }): JSX.Element {
   const { currentWorkspace } = useWorkspace();
-  const { currentOrg } = useOrgnization();
+  const { currentOrg } = useOrganization();
 
   return (
     <div className="ml-6 flex flex-row items-center pt-8">

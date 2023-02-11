@@ -19,7 +19,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Menu, Transition } from '@headlessui/react';
 
 import guidGenerator from '@app/components/utilities/randomId';
-import { useOrgnization, useUser } from '@app/context';
+import { useOrganization, useUser } from '@app/context';
 import { useLogoutUser } from '@app/hooks/api';
 
 const supportOptions = (t: TFunction) => [
@@ -63,7 +63,7 @@ export interface IUser {
 export const Navbar = () => {
   const router = useRouter();
 
-  const { currentOrg, orgs } = useOrgnization();
+  const { currentOrg, orgs } = useOrganization();
   const { user } = useUser();
 
   const logout = useLogoutUser();
@@ -84,7 +84,7 @@ export const Navbar = () => {
   };
 
   return (
-    <div className="z-50 flex w-full flex-row justify-between border-b border-mineshaft-500 bg-mineshaft-900 text-white">
+    <div className="z-[70] flex w-full flex-row justify-between border-b border-mineshaft-500 bg-mineshaft-900 text-white">
       <div className="m-auto mx-4 flex items-center justify-start">
         <div className="flex flex-row items-center">
           <div className="flex justify-center py-4">
@@ -157,8 +157,8 @@ export const Navbar = () => {
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <Menu.Items className="absolute right-0 z-20 mt-0.5 w-64 origin-top-right divide-y divide-gray-700 rounded-md border border-mineshaft-700 bg-bunker shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-              <div className="px-1 py-1 ">
+            <Menu.Items className="absolute right-0 z-[125] mt-0.5 w-68 origin-top-right divide-y divide-mineshaft-700 drop-shadow-2xl rounded-md border border-mineshaft-700 bg-mineshaft-900 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+              <div className="px-1 py-1">
                 <div className="ml-2 mt-2 self-start text-xs font-semibold tracking-wide text-gray-400">
                   {t('nav:user.signed-in-as')}
                 </div>
@@ -244,7 +244,7 @@ export const Navbar = () => {
                   </div>
                 </button>
               </div>
-              {Boolean(orgs) && (
+              {orgs && orgs?.length > 1 && (
                 <div className="px-1 pt-1">
                   <div className="ml-2 mt-2 self-start text-xs font-semibold tracking-wide text-gray-400">
                     {t('nav:user.other-organizations')}
