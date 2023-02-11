@@ -991,7 +991,7 @@ const syncSecretsCircleci = async ({
   integration: IIntegration;
   secrets: any;
   accessToken: string;
-}) => {
+}) => {  
   try {
     const circleciOrganizationDetail = (
       await axios.get(`${INTEGRATION_CIRCLECI_API_URL}/v2/me/collaborations`, {
@@ -1003,19 +1003,6 @@ const syncSecretsCircleci = async ({
     ).data[0];
 
     const { slug } = circleciOrganizationDetail;
-
-    // get secrets from CircleCI
-    const getSecretsRes = (
-      await axios.get(
-        `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar`,
-        {
-          headers: {
-            "Circle-Token": accessToken,
-            "Accept-Encoding": "application/json",
-          },
-        }
-      )
-    ).data?.items;
 
     // inject secrets to CircleCI (one by one)
     Object.keys(secrets).forEach(
@@ -1035,6 +1022,20 @@ const syncSecretsCircleci = async ({
         )
     );
 
+    // get secrets from CircleCI
+    const getSecretsRes = (
+      await axios.get(
+        `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar`,
+        {
+          headers: {
+            "Circle-Token": accessToken,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      )
+    ).data?.items;
+
+    // delete secrets from CircleCI
     getSecretsRes.forEach(async (sec: any) => {
       if (!(sec.name in secrets)) {
         await axios.delete(
@@ -1042,6 +1043,7 @@ const syncSecretsCircleci = async ({
           {
             headers: {
               "Circle-Token": accessToken,
+              "Content-Type": "application/json",
             },
           }
         );
