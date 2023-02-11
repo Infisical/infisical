@@ -175,7 +175,7 @@ export default function SettingsOrg() {
               </p>
             </div>
           </div>
-          <div className="flex flex-col ml-6 text-mineshaft-50 mr-6 max-w-5xl">
+          <div className="flex flex-col ml-6 text-mineshaft-50 mr-6 max-w-8xl">
             <div className="flex flex-col">
               <div className="min-w-md mt-2 flex flex-col items-end pb-4">
                 <div className="bg-white/5 rounded-md px-6 py-4 flex flex-col items-start w-full mb-6">
@@ -231,7 +231,7 @@ export default function SettingsOrg() {
                 text="You can add more members if you switch to Infisical's Team plan."
               />
               {/* <DeleteUserDialog isOpen={isDeleteOpen} closeModal={closeDeleteModal} submitModal={deleteMembership} userIdToBeDeleted={userIdToBeDeleted}/> */}
-              <div className="pb-1 w-full flex flex-row items-start max-w-6xl">
+              <div className="pb-1 w-full flex flex-row items-start">
                 <div className="h-10 w-full bg-white/5 mt-2 flex items-center rounded-md flex-row ">
                   <FontAwesomeIcon
                     className="bg-white/5 rounded-l-md py-3 pl-4 pr-2 text-gray-400"
@@ -255,7 +255,7 @@ export default function SettingsOrg() {
                 </div>
               </div>
               {userList && (
-                <div className="overflow-y-auto max-w-6xl w-full">
+                <div className="overflow-y-auto w-full">
                   <UserTable
                     userData={userList}
                     changeData={setUserList}
