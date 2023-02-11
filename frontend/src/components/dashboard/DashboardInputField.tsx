@@ -125,7 +125,7 @@ const DashboardInputField = ({
     const error = startsWithNumber || isDuplicate;
 
     return (
-      <div className={`relative flex-col w-full h-10 ${
+      <div title={value} className={`relative flex-col w-full h-10 ${
         isSideBarOpen && 'bg-mineshaft-700 duration-200'
       }`}>
         <div
@@ -137,7 +137,7 @@ const DashboardInputField = ({
             onChange={(e) => onChangeHandler(e.target.value, position)}
             type={type}
             value={value}
-            className='z-10 peer font-mono ph-no-capture bg-transparent py-2.5 caret-bunker-200 text-sm px-2 w-full min-w-16 outline-none text-bunker-300 focus:text-bunker-100 placeholder:text-bunker-400 placeholder:focus:text-transparent placeholder duration-200'
+            className='z-10 peer ph-no-capture bg-transparent py-2.5 caret-bunker-200 text-sm px-2 w-full min-w-16 outline-none text-bunker-300 focus:text-bunker-100 placeholder:text-bunker-400 placeholder:focus:text-transparent placeholder duration-200'
             spellCheck="false"
             placeholder='–'
           />
@@ -209,7 +209,7 @@ const DashboardInputField = ({
                 {value?.split('').map(() => (
                   <FontAwesomeIcon
                     key={guidGenerator()}
-                    className="text-xxs mx-0.5"
+                    className="text-xxs mr-0.5"
                     icon={faCircle}
                   />
                 ))}

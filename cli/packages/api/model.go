@@ -250,3 +250,15 @@ type GetServiceTokenDetailsResponse struct {
 	UpdatedAt    time.Time `json:"updatedAt"`
 	V            int       `json:"__v"`
 }
+
+type GetAccessibleEnvironmentsRequest struct {
+	WorkspaceId string `json:"workspaceId"`
+}
+
+type GetAccessibleEnvironmentsResponse struct {
+	AccessibleEnvironments []struct {
+		Name          string `json:"name"`
+		Slug          string `json:"slug"`
+		IsWriteDenied bool   `json:"isWriteDenied"`
+	} `json:"accessibleEnvironments"`
+}

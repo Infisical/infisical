@@ -81,26 +81,31 @@ export const oAuthExchange = async (
 };
 
 /**
- * Save integration access token as part of integration [integration] for workspace with id [workspaceId]
- * @param req
- * @param res
+ * Save integration access token and (optionally) access id as part of integration
+ * [integration] for workspace with id [workspaceId]
+ * @param req 
+ * @param res 
  */
 export const saveIntegrationAccessToken = async (
   req: Request,
   res: Response
 ) => {
-  // TODO: refactor
-  let integrationAuth;
-  try {
-    const {
-      workspaceId,
-      accessToken,
-      integration,
-    }: {
-      workspaceId: string;
-      accessToken: string;
-      integration: string;
-    } = req.body;
+	// TODO: refactor
+	// TODO: check if access token is valid for each integration
+
+	let integrationAuth;
+	try {
+		const {
+			workspaceId,
+			accessId,
+			accessToken,
+			integration
+		}: {
+			workspaceId: string;
+			accessId: string | null;
+			accessToken: string;
+			integration: string;
+		} = req.body;
 
 		const bot = await Bot.findOne({
             workspace: new Types.ObjectId(workspaceId),
@@ -120,9 +125,10 @@ export const saveIntegrationAccessToken = async (
             upsert: true
         });
 		
-		// encrypt and save integration access token
+		// encrypt and save integration access details
 		integrationAuth = await IntegrationService.setIntegrationAuthAccess({
 			integrationAuthId: integrationAuth._id.toString(),
+			accessId,
 			accessToken,
 			accessExpiresAt: undefined
 		});

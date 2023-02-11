@@ -1,6 +1,8 @@
 import { Schema, model, Types } from "mongoose";
 import {
   INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_AWS_PARAMETER_STORE,
+  INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
@@ -19,15 +21,19 @@ export interface IIntegration {
   owner: string;
   targetEnvironment: string;
   appId: string;
+  path: string;
+  region: string;
   integration:
-    | "heroku"
-    | "vercel"
-    | "netlify"
-    | "github"
-    | "render"
-    | "flyio"
-    | "azure-key-vault"
-    | "circleci";
+    | 'azure-key-vault' 
+    | 'aws-parameter-store'
+    | 'aws-secret-manager'
+    | 'heroku' 
+    | 'vercel' 
+    | 'netlify' 
+    | 'github' 
+    | 'render' 
+    | 'flyio'
+    | 'circleci';
   integrationAuth: Types.ObjectId;
 }
 
@@ -68,10 +74,32 @@ const integrationSchema = new Schema<IIntegration>(
       type: String,
       default: null,
     },
+    path: {
+      // aws-parameter-store-specific path
+      type: String,
+      default: null
+    },
+    region: {
+      // aws-parameter-store-specific path
+      type: String,
+      default: null
+    },
+    path: {
+      // aws-parameter-store-specific path
+      type: String,
+      default: null
+    },
+    region: {
+      // aws-parameter-store-specific path
+      type: String,
+      default: null
+    },
     integration: {
       type: String,
       enum: [
         INTEGRATION_AZURE_KEY_VAULT,
+        INTEGRATION_AWS_PARAMETER_STORE,
+        INTEGRATION_AWS_SECRET_MANAGER,
         INTEGRATION_HEROKU,
         INTEGRATION_VERCEL,
         INTEGRATION_NETLIFY,

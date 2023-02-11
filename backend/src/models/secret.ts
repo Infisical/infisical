@@ -109,6 +109,9 @@ const secretSchema = new Schema<ISecret>(
 	}
 );
 
+
+secretSchema.index({ tags: 1 }, { background: true })
+
 const Secret = model<ISecret>('Secret', secretSchema);
 
 export default Secret;

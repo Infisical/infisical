@@ -114,7 +114,8 @@
             "cli/commands/run",
             "cli/commands/secrets",
             "cli/commands/export",
-            "cli/commands/vault"
+            "cli/commands/vault",
+            "cli/commands/reset"
           ]
         },
         "cli/faq"
@@ -220,7 +221,9 @@
         "integrations/cloud/vercel",
         "integrations/cloud/netlify",
         "integrations/cloud/render",
-        "integrations/cloud/flyio"
+        "integrations/cloud/flyio",
+        "integrations/cloud/aws-parameter-store",
+        "integrations/cloud/aws-secret-manager"
       ]
     },
     {

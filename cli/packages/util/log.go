@@ -27,6 +27,10 @@ func PrintWarning(message string) {
 	color.New(color.FgYellow).Fprintf(os.Stderr, "Warning: %v \n", message)
 }
 
+func PrintSuccessMessage(message string) {
+	color.New(color.FgGreen).Println(message)
+}
+
 func PrintMessageAndExit(messages ...string) {
 	if len(messages) > 0 {
 		for _, message := range messages {

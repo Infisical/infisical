@@ -34,7 +34,10 @@ const colors = [
   'bg-[#cb1c8d]/40',
   'bg-[#badc58]/40',
   'bg-[#ff5400]/40',
-  'bg-[#00bbf9]/40'
+  'bg-[#3AB0FF]/40',
+  'bg-[#6F1AB6]/40',
+  'bg-[#C40B13]/40',
+  'bg-[#332FD0]/40'
 ]
 
 
@@ -43,7 +46,10 @@ const colorsText = [
   'text-[#f2c6e3]/70',
   'text-[#eef6d5]/70',
   'text-[#ffddcc]/70',
-  'text-[#f0fffd]/70'
+  'text-[#f0fffd]/70',
+  'text-[#FFE5F1]/70',
+  'text-[#FFDEDE]/70',
+  'text-[#DFF6FF]/70'
 ]
 
 /**
@@ -95,9 +101,9 @@ const KeyPair = ({
     }`}
   >
     <div className="relative flex flex-row justify-between w-full mr-auto max-h-14 items-center">
-      <div className="w-2/12 border-r border-mineshaft-600 flex flex-row items-center">
+      <div className="w-1/5 border-r border-mineshaft-600 flex flex-row items-center">
         <div className='text-bunker-400 text-xs flex items-center justify-center w-14 h-10 cursor-default'>{keyPair.pos + 1}</div>
-        <div className="flex items-center max-h-16">
+        <div className="flex items-center max-h-16 w-full">
           <DashboardInputField
             isCapitalized = {isCapitalized}
             onChangeHandler={modifyKey}

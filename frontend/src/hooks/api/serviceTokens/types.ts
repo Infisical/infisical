@@ -18,6 +18,7 @@ export type CreateServiceTokenDTO = {
   encryptedKey: string;
   iv: string;
   tag: string;
+  randomBytes: string;
 };
 
 export type CreateServiceTokenRes = {
