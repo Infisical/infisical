@@ -1,5 +1,5 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright (c) 2023 Infisical Inc.
 */
 package cmd
 
@@ -12,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
@@ -58,8 +59,9 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		if !util.IsSecretEnvironmentValid(envName) {
-			util.PrintMessageAndExit("Invalid environment name passed. Environment names can only be prod, dev, test or staging")
+		infisicalToken, err := cmd.Flags().GetString("token")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
 		}
 
 		secretOverriding, err := cmd.Flags().GetBool("secret-overriding")
@@ -72,7 +74,8 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(envName)
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: envName, InfisicalToken: infisicalToken})
+
 		if err != nil {
 			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
 		}
@@ -140,6 +143,7 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(runCmd)
+	runCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	runCmd.Flags().StringP("env", "e", "dev", "Set the environment (dev, prod, etc.) from which your secrets should be pulled from")
 	runCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	runCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")

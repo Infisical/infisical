@@ -7,7 +7,6 @@ import { useTranslation } from 'next-i18next';
 import frameworkIntegrationOptions from 'public/json/frameworkIntegrations.json';
 
 import ActivateBotDialog from '@app/components/basic/dialog/ActivateBotDialog';
-import IntegrationAccessTokenDialog from '@app/components/basic/dialog/IntegrationAccessTokenDialog';
 import CloudIntegrationSection from '@app/components/integrations/CloudIntegrationSection';
 import FrameworkIntegrationSection from '@app/components/integrations/FrameworkIntegrationSection';
 import IntegrationSection from '@app/components/integrations/IntegrationSection';
@@ -20,12 +19,10 @@ import {
 } from '../../components/utilities/cryptography/crypto';
 import getBot from '../api/bot/getBot';
 import setBotActiveStatus from '../api/bot/setBotActiveStatus';
-import createIntegration from '../api/integrations/createIntegration';
 import deleteIntegration from '../api/integrations/DeleteIntegration';
 import getIntegrationOptions from '../api/integrations/GetIntegrationOptions';
 import getWorkspaceAuthorizations from '../api/integrations/getWorkspaceAuthorizations';
 import getWorkspaceIntegrations from '../api/integrations/getWorkspaceIntegrations';
-import saveIntegrationAccessToken from '../api/integrations/saveIntegrationAccessToken';
 import getAWorkspace from '../api/workspace/getAWorkspace';
 import getLatestFileKey from '../api/workspace/getLatestFileKey';
 
@@ -52,6 +49,7 @@ interface Integration {
 }
 
 interface IntegrationOption {
+  tenantId?: string;
   clientId: string;
   clientSlug?: string; // vercel-integration specific
   docsLink: string;
@@ -75,7 +73,6 @@ export default function Integrations() {
   // TODO: These will have its type when migratiing towards react-query
   const [bot, setBot] = useState<any>(null);
   const [isActivateBotDialogOpen, setIsActivateBotDialogOpen] = useState(false);
-  const [isIntegrationAccessTokenDialogOpen, setIntegrationAccessTokenDialogOpen] = useState(false);
   const [selectedIntegrationOption, setSelectedIntegrationOption] = useState<IntegrationOption | null>(null);
 
   const router = useRouter();
@@ -166,80 +163,95 @@ export default function Integrations() {
     }
   };
   
-  /**
-   * Handle integration option authorization for a given integration option [integrationOption]
-   * @param {Object} obj
-   * @param {Object} obj.integrationOption - an integration option
-   * @param {String} obj.name
-   * @param {String} obj.type
-   * @param {String} obj.docsLink
-   * @returns
-   */
-  const handleIntegrationOption = async ({
-    integrationOption,
-    accessToken
-  }: { 
-    integrationOption: IntegrationOption,
-    accessToken?: string;
-  }) => {
+  const handleUnauthorizedIntegrationOptionPress = (integrationOption: IntegrationOption) => {
     try {
-      if (!bot.isActive) {
-        await handleBotActivate();
+      // generate CSRF token for OAuth2 code-token exchange integrations
+      const state = crypto.randomBytes(16).toString('hex');
+      localStorage.setItem('latestCSRFToken', state);
+
+      let link = '';
+      switch (integrationOption.slug) {
+        case 'azure-key-vault':
+          link = `https://login.microsoftonline.com/${integrationOption.tenantId}/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
+          break;
+        case 'aws-parameter-store':
+          link = `${window.location.origin}/integrations/aws-parameter-store/authorize`;
+          break;
+        case 'aws-secret-manager':
+          link = `${window.location.origin}/integrations/aws-secret-manager/authorize`;
+          break;
+        case 'heroku':
+          link = `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`;
+          break;
+        case 'vercel':
+          link = `https://vercel.com/integrations/${integrationOption.clientSlug}/new?state=${state}`;
+          break;
+        case 'netlify':
+          link = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${window.location.origin}/integrations/netlify/oauth2/callback`;
+          break;
+        case 'github':
+          link = `https://github.com/login/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=repo&redirect_uri=${window.location.origin}/integrations/github/oauth2/callback&state=${state}`;
+          break;
+        case 'render':
+          link = `${window.location.origin}/integrations/render/authorize`
+          break;
+        case 'flyio':
+          link = `${window.location.origin}/integrations/flyio/authorize`
+          break;
+        default:
+          break;
       }
-      
-      if (integrationOption.type === 'oauth') {
-        // integration is of type OAuth
 
-        // generate CSRF token for OAuth2 code-token exchange integrations
-        const state = crypto.randomBytes(16).toString('hex');
-        localStorage.setItem('latestCSRFToken', state);
-
-        switch (integrationOption.slug) {
-          case 'heroku':
-            window.location.assign(
-              `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`
-            );
-            break;
-          case 'vercel':
-            window.location.assign(
-              `https://vercel.com/integrations/${integrationOption.clientSlug}/new?state=${state}`
-            );
-            break;
-          case 'netlify':
-            window.location.assign(
-              `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${window.location.origin}/netlify`
-            );
-            break;
-          case 'github':
-            window.location.assign(
-              `https://github.com/login/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=repo&redirect_uri=${window.location.origin}/github&state=${state}`
-            );
-            break;
-          default:
-            break;
-        }
-        return;
-      } if (integrationOption.type === 'pat') {
-        // integration is of type personal access token
-        const integrationAuth = await saveIntegrationAccessToken({
-            workspaceId: localStorage.getItem('projectData.id'),
-            integration: integrationOption.slug,
-            accessToken: accessToken ?? ''
-        });
-
-        setIntegrationAuths([...integrationAuths, integrationAuth])
-
-        const integration = await createIntegration({
-          integrationAuthId: integrationAuth._id
-        });
-        
-        setIntegrations([...integrations, integration]); 
-        return;
+      if (link !== '') {
+        window.location.assign(link);
       }
     } catch (err) {
       console.error(err);
     }
-  };
+  }
+  
+  const handleAuthorizedIntegrationOptionPress = (integrationAuth: IntegrationAuth) => {
+    try {
+      let link = '';
+      switch (integrationAuth.integration) {
+        case 'azure-key-vault':
+          link = `${window.location.origin}/integrations/azure-key-vault/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'aws-parameter-store':
+          link = `${window.location.origin}/integrations/aws-parameter-store/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'aws-secret-manager':
+          link = `${window.location.origin}/integrations/aws-secret-manager/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'heroku':
+          link = `${window.location.origin}/integrations/heroku/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'vercel':
+          link = `${window.location.origin}/integrations/vercel/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'netlify':
+          link = `${window.location.origin}/integrations/netlify/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'github':
+          link = `${window.location.origin}/integrations/github/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'render':
+          link = `${window.location.origin}/integrations/render/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'flyio':
+          link = `${window.location.origin}/integrations/flyio/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        default:
+          break;
+      }
+
+      if (link !== '') {
+        window.location.assign(link);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
   
   /**
    * Open dialog to activate bot if bot is not active.
@@ -251,34 +263,20 @@ export default function Integrations() {
    * @returns
    */
   const integrationOptionPress = async (integrationOption: IntegrationOption) => {
-    // consider: don't start integration until at [handleIntegrationOption] step
     try {
       const integrationAuthX = integrationAuths.find((integrationAuth) => integrationAuth.integration === integrationOption.slug);
-      
-      if (!integrationAuthX) {
-        // case: integration has not been authorized before
-        
-        if (integrationOption.type === 'pat') {
-          // case: integration requires user to input their personal access token for that integration
-          setIntegrationAccessTokenDialogOpen(true);
-          return;
-        }
-        
-        // case: integration does not require user to input their personal access token (i.e. it's an OAuth2 integration)
-        handleIntegrationOption({ integrationOption });
-        return;
-      }
       
       if (!bot.isActive) {
         await handleBotActivate();
       }
       
-      // case: integration has been authorized before
-      // -> create new integration
-      const integration = await createIntegration({
-        integrationAuthId: integrationAuthX._id
-      });
-      setIntegrations([...integrations, integration]);
+      if (!integrationAuthX) {
+        // case: integration has not been authorized
+        handleUnauthorizedIntegrationOptionPress(integrationOption);
+        return;
+      }
+
+      handleAuthorizedIntegrationOptionPress(integrationAuthX);
     } catch (err) {
       console.error(err);
     }
@@ -359,12 +357,6 @@ export default function Integrations() {
           closeModal={() => setIsActivateBotDialogOpen(false)}
           selectedIntegrationOption={selectedIntegrationOption}
           integrationOptionPress={integrationOptionPress}
-        />
-        <IntegrationAccessTokenDialog
-          isOpen={isIntegrationAccessTokenDialogOpen}
-          closeModal={() => setIntegrationAccessTokenDialogOpen(false)}
-          selectedIntegrationOption={selectedIntegrationOption}
-          handleIntegrationOption={handleIntegrationOption}
         />
         <IntegrationSection 
           integrations={integrations} 

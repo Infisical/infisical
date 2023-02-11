@@ -30,7 +30,7 @@ router.patch(
     '/:organizationId/memberships/:membershipId',
     param('organizationId').exists().trim(),
     param('membershipId').exists().trim(),
-    body('role').exists().isString().trim().isIn([ADMIN, MEMBER]),
+    body('role').exists().isString().trim().isIn([OWNER, ADMIN, MEMBER]),
     validateRequest,
     requireAuth({
         acceptedAuthModes: ['jwt', 'apiKey']

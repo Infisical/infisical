@@ -1,8 +1,9 @@
 import { memo, SyntheticEvent, useRef } from 'react';
-import { faCircle } from '@fortawesome/free-solid-svg-icons';
+import { faCircle, faExclamationCircle, faEye, faLayerGroup } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import guidGenerator from '../utilities/randomId';
+import { HoverObject } from '../v2/HoverCard';
 
 const REGEX = /([$]{.*?})/g;
 
@@ -10,10 +11,13 @@ interface DashboardInputFieldProps {
   position: number;
   onChangeHandler: (value: string, position: number) => void;
   value: string | undefined;
-  type: 'varName' | 'value';
+  type: 'varName' | 'value' | 'comment';
   blurred?: boolean;
   isDuplicate?: boolean;
-  override?: boolean;
+  isCapitalized?: boolean;
+  overrideEnabled?: boolean;
+  modifyValueOverride?: (value: string | undefined, position: number) => void;
+  isSideBarOpen?: boolean;
 }
 
 /**
@@ -26,6 +30,8 @@ interface DashboardInputFieldProps {
  * @param {boolean} obj.blurred - whether the input field should be blurred (behind the gray dots) or not; this can be turned on/off in the dashboard
  * @param {boolean} obj.isDuplicate - if the key name is duplicated
  * @param {boolean} obj.override - whether a secret/row should be displalyed as overriden
+ * 
+ * 
  * @returns
  */
 
@@ -36,7 +42,10 @@ const DashboardInputField = ({
   value,
   blurred,
   isDuplicate,
-  override
+  isCapitalized,
+  overrideEnabled,
+  modifyValueOverride,
+  isSideBarOpen
 }: DashboardInputFieldProps) => {
   const ref = useRef<HTMLDivElement | null>(null);
   const syncScroll = (e: SyntheticEvent<HTMLDivElement>) => {
@@ -51,41 +60,97 @@ const DashboardInputField = ({
     const error = startsWithNumber || isDuplicate;
 
     return (
-      <div className="flex-col w-full">
+      <div className={`relative flex-col w-full h-10 ${
+        error && value !== '' ? 'bg-red/[0.15]' : ''
+      } ${
+        isSideBarOpen && 'bg-mineshaft-700 duration-200'
+      }`}>
         <div
-          className={`group relative flex flex-col justify-center w-full border ${
-            error ? 'border-red' : 'border-mineshaft-500'
-          } rounded-md`}
+          className={`group relative flex flex-col justify-center items-center h-full ${
+            error ? 'w-max' : 'w-full'
+          }`}
         >
           <input
-            onChange={(e) => onChangeHandler(e.target.value.toUpperCase(), position)}
+            onChange={(e) => onChangeHandler(isCapitalized ? e.target.value.toUpperCase() : e.target.value, position)}
             type={type}
             value={value}
-            className={`z-10 peer font-mono ph-no-capture bg-bunker-800 rounded-md caret-white text-gray-400 text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 ${
-              error ? 'focus:ring-red/50' : 'focus:ring-primary/50'
+            className={`z-10 peer font-mono ph-no-capture bg-transparent h-full caret-bunker-200 text-sm px-2 w-full min-w-16 outline-none ${
+              error ? 'text-red-600 focus:text-red-500' : 'text-bunker-300 focus:text-bunker-100'
             } duration-200`}
             spellCheck="false"
           />
         </div>
         {startsWithNumber && (
-          <p className="text-red text-xs mt-0.5 mx-1 mb-2 max-w-xs">
-            Should not start with a number
-          </p>
+          <div className='absolute right-2 top-2 text-red z-50'>
+            <HoverObject 
+              text="Secret names should not start with a number"
+              icon={faExclamationCircle}
+              color="red"
+            />
+          </div>
         )}
-        {isDuplicate && !startsWithNumber && (
-          <p className="text-red text-xs mt-0.5 mx-1 mb-2 max-w-xs">
-            Secret names should be unique
-          </p>
+        {isDuplicate && value !== '' && !startsWithNumber && (
+          <div className='absolute right-2 top-2 text-red z-50'>
+            <HoverObject 
+              text="Secret names should be unique"
+              icon={faExclamationCircle}
+              color="red"
+            />
+          </div>
         )}
+        {!error && <div className={`absolute right-0 top-0 text-red z-50 ${
+          overrideEnabled ? 'visible group-hover:bg-mineshaft-700' : 'invisible group-hover:visible bg-mineshaft-700'
+        } cursor-pointer duration-0 h-10 flex items-center px-2`}>
+          <button type="button" onClick={() => {
+            if (modifyValueOverride) {
+              if (overrideEnabled === false) {
+                modifyValueOverride('', position);
+              } else {
+                modifyValueOverride(undefined, position);
+              }
+            }
+          }}>
+            <HoverObject 
+              text={overrideEnabled ? 'This secret is overriden with your personal value' : 'You can override this secret with a personal value'}
+              icon={faLayerGroup}
+              color={overrideEnabled ? 'primary' : 'bunker-400'}
+            />
+          </button>
+        </div>}
+      </div>
+    );
+  }
+  if (type === 'comment') {
+    const startsWithNumber = !Number.isNaN(Number(value?.charAt(0))) && value !== '';
+    const error = startsWithNumber || isDuplicate;
+
+    return (
+      <div title={value} className={`relative flex-col w-full h-10 ${
+        isSideBarOpen && 'bg-mineshaft-700 duration-200'
+      }`}>
+        <div
+          className={`group relative flex flex-col justify-center items-center ${
+            error ? 'w-max' : 'w-full'
+          }`}
+        >
+          <input
+            onChange={(e) => onChangeHandler(e.target.value, position)}
+            type={type}
+            value={value}
+            className='z-10 peer ph-no-capture bg-transparent py-2.5 caret-bunker-200 text-sm px-2 w-full min-w-16 outline-none text-bunker-300 focus:text-bunker-100 placeholder:text-bunker-400 placeholder:focus:text-transparent placeholder duration-200'
+            spellCheck="false"
+            placeholder='–'
+          />
+        </div>
       </div>
     );
   }
   if (type === 'value') {
     return (
       <div className="flex-col w-full">
-        <div className="group relative whitespace-pre	flex flex-col justify-center w-full border border-mineshaft-500 rounded-md">
-          {override === true && (
-            <div className="bg-primary-300 absolute top-[0.1rem] right-[0.1rem] z-10 w-min text-xxs px-1 text-black opacity-80 rounded-md">
+        <div className="group relative whitespace-pre	flex flex-col justify-center w-full">
+          {overrideEnabled === true && (
+            <div className="bg-primary-500 rounded-sm absolute top-[0.1rem] right-[0.1rem] z-0 w-min text-xxs px-1 text-black opacity-80">
               Override enabled
             </div>
           )}
@@ -95,19 +160,19 @@ const DashboardInputField = ({
             onScroll={syncScroll}
             className={`${
               blurred
-                ? 'text-transparent group-hover:text-transparent focus:text-transparent active:text-transparent'
+                ? 'text-transparent focus:text-transparent active:text-transparent'
                 : ''
-            } z-10 peer font-mono ph-no-capture bg-transparent rounded-md caret-white text-transparent text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-200 no-scrollbar no-scrollbar::-webkit-scrollbar`}
+            } z-10 peer font-mono ph-no-capture bg-transparent caret-white text-transparent text-sm px-2 py-2 w-full min-w-16 outline-none duration-200 no-scrollbar no-scrollbar::-webkit-scrollbar`}
             spellCheck="false"
           />
           <div
             ref={ref}
             className={`${
-              blurred && !override
-                ? 'text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-400 peer-active:text-gray-400'
+              blurred && !overrideEnabled
+                ? 'text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-100 peer-active:text-gray-400 duration-200'
                 : ''
-            } ${override ? 'text-primary-300' : 'text-gray-400'}
-            absolute flex flex-row whitespace-pre font-mono z-0 ph-no-capture overflow-x-scroll bg-bunker-800 h-9 rounded-md text-md px-2 py-1.5 w-full min-w-16 outline-none focus:ring-2 focus:ring-primary/50 duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
+            } ${overrideEnabled ? 'text-primary-300' : 'text-gray-400'}
+            absolute flex flex-row whitespace-pre font-mono z-0 ${blurred ? 'invisible' : 'visible'} peer-focus:visible mt-0.5 ph-no-capture overflow-x-scroll bg-transparent h-10 text-sm px-2 py-2 w-full min-w-16 outline-none duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
           >
             {value?.split(REGEX).map((word, id) => {
               if (word.match(REGEX) !== null) {
@@ -137,16 +202,20 @@ const DashboardInputField = ({
             })}
           </div>
           {blurred && (
-            <div className="absolute flex flex-row items-center z-20 peer pr-2 bg-bunker-800 group-hover:hidden peer-hover:hidden peer-focus:hidden peer-active:invisible h-9 w-full rounded-md text-gray-400/50 text-clip">
+            <div className={`absolute flex flex-row justify-between items-center z-0 peer pr-2 ${
+              isSideBarOpen ? 'bg-mineshaft-700 duration-200' : 'bg-mineshaft-800'
+            } peer-active:hidden peer-focus:hidden group-hover:bg-white/[0.00] duration-100 h-10 w-full text-bunker-400 text-clip`}>
               <div className="px-2 flex flex-row items-center overflow-x-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
                 {value?.split('').map(() => (
                   <FontAwesomeIcon
                     key={guidGenerator()}
-                    className="text-xxs mx-0.5"
+                    className="text-xxs mr-0.5"
                     icon={faCircle}
                   />
                 ))}
+                {value?.split('').length === 0 && <span className='text-bunker-400/80'>EMPTY</span>}
               </div>
+              <div className='invisible group-hover:visible cursor-pointer'><FontAwesomeIcon icon={faEye} /></div>
             </div>
           )}
         </div>
@@ -163,8 +232,10 @@ function inputPropsAreEqual(prev: DashboardInputFieldProps, next: DashboardInput
     prev.type === next.type &&
     prev.position === next.position &&
     prev.blurred === next.blurred &&
-    prev.override === next.override &&
-    prev.isDuplicate === next.isDuplicate
+    prev.isCapitalized === next.isCapitalized &&
+    prev.overrideEnabled === next.overrideEnabled &&
+    prev.isDuplicate === next.isDuplicate &&
+    prev.isSideBarOpen === next.isSideBarOpen
   );
 }
 

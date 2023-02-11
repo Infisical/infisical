@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import { faX } from '@fortawesome/free-solid-svg-icons';
+import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import getActionData from '@app/ee/api/secrets/GetActionData';
@@ -154,7 +154,7 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
               tabIndex={0}
               onClick={() => toggleSidebar('')}
             >
-              <FontAwesomeIcon icon={faX} className="w-4 h-4 text-bunker-300 cursor-pointer" />
+              <FontAwesomeIcon icon={faXmark} className="w-4 h-4 text-bunker-300 cursor-pointer" />
             </div>
           </div>
           <div className="flex flex-col px-4">
@@ -163,7 +163,7 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
               actionMetaData?.name === 'deleteSecrets') &&
               actionData?.map((item, id) => (
                 <div key={`secret.${id + 1}`}>
-                  <div className="text-xs text-bunker-200 mt-4 pl-1">
+                  <div className="text-xs text-bunker-200 mt-4 pl-1 ph-no-capture">
                     {item.newSecretVersion.key}
                   </div>
                   <DashboardInputField
@@ -183,7 +183,7 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
                     {item.newSecretVersion.key}
                   </div>
                   <div className="text-bunker-100 font-mono rounded-md overflow-hidden">
-                    <div className="bg-red/30 px-2">
+                    <div className="bg-red/30 px-2 ph-no-capture">
                       -{' '}
                       {patienceDiff(
                         item.oldSecretVersion.value.split(''),
@@ -201,7 +201,7 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
                           )
                       )}
                     </div>
-                    <div className="bg-green-500/30 px-2">
+                    <div className="bg-green-500/30 px-2 ph-no-capture">
                       +{' '}
                       {patienceDiff(
                         item.oldSecretVersion.value.split(''),

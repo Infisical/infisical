@@ -1,4 +1,8 @@
 import {
+    CLIENT_ID_AZURE,
+    TENANT_ID_AZURE
+} from '../config';
+import {
     CLIENT_ID_HEROKU,
     CLIENT_ID_NETLIFY,
     CLIENT_ID_GITHUB,
@@ -6,6 +10,9 @@ import {
 } from '../config';
 
 // integrations
+const INTEGRATION_AZURE_KEY_VAULT = 'azure-key-vault';
+const INTEGRATION_AWS_PARAMETER_STORE = 'aws-parameter-store';
+const INTEGRATION_AWS_SECRET_MANAGER = 'aws-secret-manager';
 const INTEGRATION_HEROKU = 'heroku';
 const INTEGRATION_VERCEL = 'vercel';
 const INTEGRATION_NETLIFY = 'netlify';
@@ -13,6 +20,7 @@ const INTEGRATION_GITHUB = 'github';
 const INTEGRATION_RENDER = 'render';
 const INTEGRATION_FLYIO = 'flyio';
 const INTEGRATION_SET = new Set([
+    INTEGRATION_AZURE_KEY_VAULT,
     INTEGRATION_HEROKU,
     INTEGRATION_VERCEL,
     INTEGRATION_NETLIFY,
@@ -25,6 +33,7 @@ const INTEGRATION_SET = new Set([
 const INTEGRATION_OAUTH2 = 'oauth2';
 
 // integration oauth endpoints
+const INTEGRATION_AZURE_TOKEN_URL = `https://login.microsoftonline.com/${TENANT_ID_AZURE}/oauth2/v2.0/token`;
 const INTEGRATION_HEROKU_TOKEN_URL = 'https://id.heroku.com/oauth/token';
 const INTEGRATION_VERCEL_TOKEN_URL =
     'https://api.vercel.com/v2/oauth/access_token';
@@ -90,33 +99,43 @@ const INTEGRATION_OPTIONS = [
         name: 'Fly.io',
         slug: 'flyio',
         image: 'Flyio.svg',
-        isAvailable: false,
+        isAvailable: true,
         type: 'pat',
         clientId: '',
+        docsLink: ''
+    },
+    {
+        name: 'AWS Parameter Store',
+        slug: 'aws-parameter-store',
+        image: 'Amazon Web Services.png',
+        isAvailable: true,
+        type: 'custom',
+        clientId: '',
+        docsLink: ''
+    },
+    {
+        name: 'AWS Secret Manager',
+        slug: 'aws-secret-manager',
+        image: 'Amazon Web Services.png',
+        isAvailable: true,
+        type: 'custom',
+        clientId: '',
+        docsLink: ''
+    },
+    {
+        name: 'Azure Key Vault',
+        slug: 'azure-key-vault',
+        image: 'Microsoft Azure.png',
+        isAvailable: false,
+        type: 'oauth',
+        clientId: CLIENT_ID_AZURE,
+        tenantId: TENANT_ID_AZURE,
         docsLink: ''
     },
     {
         name: 'Google Cloud Platform',
         slug: 'gcp',
         image: 'Google Cloud Platform.png',
-        isAvailable: false,
-        type: '',
-        clientId: '',
-        docsLink: ''
-    },
-    {
-        name: 'Amazon Web Services',
-        slug: 'aws',
-        image: 'Amazon Web Services.png',
-        isAvailable: false,
-        type: '',
-        clientId: '',
-        docsLink: ''
-    },
-    {
-        name: 'Microsoft Azure',
-        slug: 'azure',
-        image: 'Microsoft Azure.png',
         isAvailable: false,
         type: '',
         clientId: '',
@@ -143,6 +162,9 @@ const INTEGRATION_OPTIONS = [
 ]
 
 export {
+    INTEGRATION_AZURE_KEY_VAULT,
+    INTEGRATION_AWS_PARAMETER_STORE,
+    INTEGRATION_AWS_SECRET_MANAGER,
     INTEGRATION_HEROKU,
     INTEGRATION_VERCEL,
     INTEGRATION_NETLIFY,
@@ -151,6 +173,7 @@ export {
     INTEGRATION_FLYIO,
     INTEGRATION_SET,
     INTEGRATION_OAUTH2,
+    INTEGRATION_AZURE_TOKEN_URL,
     INTEGRATION_HEROKU_TOKEN_URL,
     INTEGRATION_VERCEL_TOKEN_URL,
     INTEGRATION_NETLIFY_TOKEN_URL,

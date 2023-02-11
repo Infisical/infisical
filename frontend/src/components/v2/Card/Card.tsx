@@ -8,9 +8,9 @@ export type CardTitleProps = {
 };
 
 export const CardTitle = ({ children, className, subTitle }: CardTitleProps) => (
-  <div className={twMerge('p-6 pb-4 font-sans text-xl font-medium', className)}>
+  <div className={twMerge('px-6 py-4 mb-5 font-sans text-lg font-normal border-b border-mineshaft-600', className)}>
     {children}
-    {subTitle && <p className="py-1 text-sm font-normal text-gray-400">{subTitle}</p>}
+    {subTitle && <p className="pt-0.5 text-sm font-normal text-gray-400">{subTitle}</p>}
   </div>
 );
 
@@ -29,7 +29,7 @@ export type CardBodyProps = {
 };
 
 export const CardBody = ({ children, className }: CardBodyProps) => (
-  <div className={twMerge('p-6 pt-0', className)}>{children}</div>
+  <div className={twMerge('px-6 pb-6 pt-0', className)}>{children}</div>
 );
 
 export type CardProps = {
@@ -47,7 +47,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={twMerge(
-          'flex flex-col w-full font-inter text-gray-200 bg-mineshaft-700 shadow-md',
+          'flex w-full flex-col bg-mineshaft-800 font-inter text-gray-200 shadow-md',
           isFullHeight && 'h-full',
           isRounded && 'rounded-md',
           isPlain && 'shadow-none',

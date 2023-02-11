@@ -1,6 +1,7 @@
 package util
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -97,4 +98,15 @@ func RequireLocalWorkspaceFile() {
 	if workspaceFile.WorkspaceId == "" {
 		PrintMessageAndExit("Your project id is missing in your local config file. Please add it or run again [infisical init]")
 	}
+}
+
+func GetHashFromStringList(list []string) string {
+	hash := sha256.New()
+
+	for _, item := range list {
+		hash.Write([]byte(item))
+	}
+
+	sum := sha256.Sum256(hash.Sum(nil))
+	return fmt.Sprintf("%x", sum)
 }

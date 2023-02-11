@@ -17,6 +17,7 @@ export interface IUser {
 	verifier?: string;
 	refreshVersion?: number;
 	isMfaEnabled: boolean;
+	seenIps: [string];
 }
 
 const userSchema = new Schema<IUser>(
@@ -80,7 +81,8 @@ const userSchema = new Schema<IUser>(
 		isMfaEnabled: {
 			type: Boolean,
 			default: false
-		}
+		},
+		seenIps: [String]
 	},
 	{
 		timestamps: true

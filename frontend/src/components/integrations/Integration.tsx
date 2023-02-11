@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { faArrowRight, faRotate, faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // TODO: This needs to be moved from public folder
-import { contextNetlifyMapping, reverseContextNetlifyMapping } from 'public/data/frequentConstants';
+import { contextNetlifyMapping, integrationSlugNameMapping, reverseContextNetlifyMapping } from 'public/data/frequentConstants';
 
 import Button from '@app/components/basic/buttons/Button';
 import ListBox from '@app/components/basic/Listbox';
@@ -18,6 +18,8 @@ interface Integration {
   isActive: boolean;
   app: string | null;
   appId: string | null;
+  path: string | null;
+  region: string | null;
   createdAt: string;
   updatedAt: string;
   environment: string;
@@ -52,6 +54,7 @@ const IntegrationTile = ({
   environments = [],
   handleDeleteIntegration
 }: Props) => {
+
   // set initial environment. This find will only execute when component is mounting
   const [integrationEnvironment, setIntegrationEnvironment] = useState<Props['environments'][0]>(
     environments.find(({ slug }) => slug === integration.environment) || {
@@ -72,7 +75,16 @@ const IntegrationTile = ({
       });
       
       setApps(tempApps);
-      setIntegrationApp(integration.app ? integration.app : tempApps[0].name);
+      
+      if (integration?.app) {
+        setIntegrationApp(integration.app);
+      } else if (integration?.path && integration?.region) {
+        setIntegrationApp(`${integration.path} (${integration.region})`);
+      } else if (tempApps.length > 0) {
+          setIntegrationApp(tempApps[0].name)
+        } else {
+          setIntegrationApp('');
+        }
 
       switch (integration.integration) {
         case 'vercel':
@@ -174,7 +186,7 @@ const IntegrationTile = ({
     return <div />;
   };
 
-  if (!integrationApp || apps.length === 0) return <div />;
+  if (!integrationApp) return <div />;
 
   return (
     <div className="max-w-5xl p-6 mx-6 mb-8 rounded-md bg-white/5 flex justify-between">
@@ -201,7 +213,8 @@ const IntegrationTile = ({
         <div className="mr-2">
           <p className="text-gray-400 text-xs font-semibold mb-2">INTEGRATION</p>
           <div className="py-2.5 bg-white/[.07] rounded-md pl-4 pr-10 text-sm font-semibold text-gray-300">
-            {integration.integration.charAt(0).toUpperCase() + integration.integration.slice(1)}
+            {/* {integration.integration.charAt(0).toUpperCase() + integration.integration.slice(1)} */}
+            {integrationSlugNameMapping[integration.integration]}
           </div>
         </div>
         <div className="mr-2">

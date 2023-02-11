@@ -93,7 +93,7 @@ export default function Navbar() {
   };
 
   return (
-    <div className="absolute flex flex-row justify-between w-full bg-bunker text-white border-b border-mineshaft-500 z-50">
+    <div className="flex flex-row justify-between w-full bg-bunker text-white border-b border-mineshaft-500 z-[61]">
       <div className="m-auto flex justify-start items-center mx-4">
         <div className="flex flex-row items-center">
           <div className="flex justify-center py-4">
@@ -166,8 +166,8 @@ export default function Navbar() {
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <Menu.Items className="absolute right-0 mt-0.5 w-64 origin-top-right divide-y divide-gray-700 rounded-md bg-bunker border border-mineshaft-700 shadow-lg ring-1 ring-black z-20 ring-opacity-5 focus:outline-none">
-              <div className="px-1 py-1 ">
+            <Menu.Items className="absolute right-0 mt-0.5 w-64 origin-top-right divide-y divide-gray-700 rounded-md bg-bunker border border-mineshaft-700 shadow-lg ring-1 ring-black z-[65] ring-opacity-5 focus:outline-none">
+              <div className="px-1 py-1 z-[100]">
                 <div className="text-gray-400 self-start ml-2 mt-2 text-xs font-semibold tracking-wide">
                   {t('nav:user.signed-in-as')}
                 </div>

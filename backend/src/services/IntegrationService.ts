@@ -1,7 +1,3 @@
-import * as Sentry from '@sentry/node';
-import {
-    Integration
-} from '../models';
 import { 
     handleOAuthExchangeHelper,
     syncIntegrationsHelper,
@@ -10,7 +6,6 @@ import {
     setIntegrationAuthRefreshHelper,
     setIntegrationAuthAccessHelper,
 } from '../helpers/integration';
-import { exchangeCode } from '../integrations';
 
 // should sync stuff be here too? Probably.
 // TODO: move bot functions to IntegrationService.
@@ -26,11 +21,12 @@ class IntegrationService {
      * - Store integration access and refresh tokens returned from the OAuth2 code-token exchange
      * - Add placeholder inactive integration
      * - Create bot sequence for integration
-     * @param {Object} obj
-     * @param {String} obj.workspaceId - id of workspace
-     * @param {String} obj.environment - workspace environment
-     * @param {String} obj.integration - name of integration 
-     * @param {String} obj.code - code
+     * @param {Object} obj1
+     * @param {String} obj1.workspaceId - id of workspace
+     * @param {String} obj1.environment - workspace environment
+     * @param {String} obj1.integration - name of integration 
+     * @param {String} obj1.code - code
+     * @returns {IntegrationAuth} integrationAuth - integration authorization after OAuth2 code-token exchange
      */
     static async handleOAuthExchange({ 
         workspaceId,
@@ -43,7 +39,7 @@ class IntegrationService {
         code: string;
         environment: string;
     }) {
-        await handleOAuthExchangeHelper({
+        return await handleOAuthExchangeHelper({
             workspaceId,
             integration,
             code,
@@ -116,26 +112,30 @@ class IntegrationService {
     }
 
     /**
-     * Encrypt access token [accessToken] using the bot's copy
-     * of the workspace key for workspace belonging to integration auth
+     * Encrypt access token [accessToken] and (optionally) access id using the 
+     * bot's copy of the workspace key for workspace belonging to integration auth
      * with id [integrationAuthId]
      * @param {Object} obj
      * @param {String} obj.integrationAuthId - id of integration auth
+     * @param {String} obj.accessId - access id
      * @param {String} obj.accessToken - access token
      * @param {Date} obj.accessExpiresAt - expiration date of access token
      * @returns {IntegrationAuth} - updated integration auth
      */
     static async setIntegrationAuthAccess({ 
         integrationAuthId,
+        accessId,
         accessToken,
         accessExpiresAt
     }: { 
         integrationAuthId: string;
+        accessId: string | null;
         accessToken: string;
         accessExpiresAt: Date | undefined;
     }) {
         return await setIntegrationAuthAccessHelper({
             integrationAuthId,
+            accessId,
             accessToken,
             accessExpiresAt
         });

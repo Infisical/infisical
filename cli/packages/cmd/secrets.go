@@ -1,11 +1,13 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright (c) 2023 Infisical Inc.
 */
 package cmd
 
 import (
 	"encoding/base64"
 	"fmt"
+	"regexp"
+	"sort"
 	"strings"
 	"unicode"
 
@@ -22,7 +24,7 @@ import (
 )
 
 var secretsCmd = &cobra.Command{
-	Example:               `infisical secrets"`,
+	Example:               `infisical secrets`,
 	Short:                 "Used to create, read update and delete secrets",
 	Use:                   "secrets",
 	DisableFlagsInUseLine: true,
@@ -34,12 +36,17 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
+		infisicalToken, err := cmd.Flags().GetString("token")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		shouldExpandSecrets, err := cmd.Flags().GetBool("expand")
 		if err != nil {
 			util.HandleError(err)
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(environmentName)
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken})
 		if err != nil {
 			util.HandleError(err)
 		}
@@ -60,6 +67,16 @@ var secretsGetCmd = &cobra.Command{
 	Args:                  cobra.MinimumNArgs(1),
 	PreRun:                toggleDebug,
 	Run:                   getSecretsByNames,
+}
+
+var secretsGenerateExampleEnvCmd = &cobra.Command{
+	Example:               `secrets generate-example-env > .example-env`,
+	Short:                 "Used to generate a example .env file",
+	Use:                   "generate-example-env",
+	DisableFlagsInUseLine: true,
+	Args:                  cobra.NoArgs,
+	PreRun:                toggleDebug,
+	Run:                   generateExampleEnv,
 }
 
 var secretsSetCmd = &cobra.Command{
@@ -111,7 +128,7 @@ var secretsSetCmd = &cobra.Command{
 		plainTextEncryptionKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
 		// pull current secrets
-		secrets, err := util.GetAllEnvironmentVariables(environmentName)
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName})
 		if err != nil {
 			util.HandleError(err, "unable to retrieve secrets")
 		}
@@ -267,7 +284,7 @@ var secretsDeleteCmd = &cobra.Command{
 			util.HandleError(err, "Unable to get local project details")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(environmentName)
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName})
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")
 		}
@@ -309,30 +326,6 @@ var secretsDeleteCmd = &cobra.Command{
 	},
 }
 
-func init() {
-	secretsCmd.AddCommand(secretsGetCmd)
-	secretsGetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
-	}
-
-	secretsCmd.AddCommand(secretsSetCmd)
-	secretsSetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
-	}
-
-	secretsCmd.AddCommand(secretsDeleteCmd)
-	secretsDeleteCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		util.RequireLogin()
-		util.RequireLocalWorkspaceFile()
-	}
-
-	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
-	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
-	rootCmd.AddCommand(secretsCmd)
-}
-
 func getSecretsByNames(cmd *cobra.Command, args []string) {
 	environmentName, err := cmd.Flags().GetString("env")
 	if err != nil {
@@ -344,7 +337,12 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(environmentName)
+	infisicalToken, err := cmd.Flags().GetString("token")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
+	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken})
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
@@ -371,6 +369,171 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 	visualize.PrintAllSecretDetails(requestedSecrets)
 }
 
+func generateExampleEnv(cmd *cobra.Command, args []string) {
+	environmentName, err := cmd.Flags().GetString("env")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
+	workspaceFileExists := util.WorkspaceConfigFileExistsInCurrentPath()
+	if !workspaceFileExists {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
+	infisicalToken, err := cmd.Flags().GetString("token")
+	if err != nil {
+		util.HandleError(err, "Unable to parse flag")
+	}
+
+	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken})
+	if err != nil {
+		util.HandleError(err, "To fetch all secrets")
+	}
+
+	tagsHashToSecretKey := make(map[string]int)
+
+	type TagsAndSecrets struct {
+		Secrets []models.SingleEnvironmentVariable
+		Tags    []struct {
+			ID        string `json:"_id"`
+			Name      string `json:"name"`
+			Slug      string `json:"slug"`
+			Workspace string `json:"workspace"`
+		}
+	}
+
+	// sort secrets by associated tags (most number of tags to least tags)
+	sort.Slice(secrets, func(i, j int) bool {
+		return len(secrets[i].Tags) > len(secrets[j].Tags)
+	})
+
+	for _, secret := range secrets {
+		listOfTagSlugs := []string{}
+
+		for _, tag := range secret.Tags {
+			listOfTagSlugs = append(listOfTagSlugs, tag.Slug)
+		}
+		sort.Strings(listOfTagSlugs)
+
+		tagsHash := util.GetHashFromStringList(listOfTagSlugs)
+
+		tagsHashToSecretKey[tagsHash] += 1
+	}
+
+	finalTagHashToSecretKey := make(map[string]TagsAndSecrets)
+
+	for _, secret := range secrets {
+		listOfTagSlugs := []string{}
+		for _, tag := range secret.Tags {
+			listOfTagSlugs = append(listOfTagSlugs, tag.Slug)
+		}
+
+		// sort the slug so we get the same hash each time
+		sort.Strings(listOfTagSlugs)
+
+		tagsHash := util.GetHashFromStringList(listOfTagSlugs)
+		occurrence, exists := tagsHashToSecretKey[tagsHash]
+		if exists && occurrence > 0 {
+
+			value, exists2 := finalTagHashToSecretKey[tagsHash]
+			allSecretsForTags := append(value.Secrets, secret)
+
+			// sort the the secrets by keys so that they can later be sorted by the first item in the secrets array
+			sort.Slice(allSecretsForTags, func(i, j int) bool {
+				return allSecretsForTags[i].Key < allSecretsForTags[j].Key
+			})
+
+			if exists2 {
+				finalTagHashToSecretKey[tagsHash] = TagsAndSecrets{
+					Tags:    secret.Tags,
+					Secrets: allSecretsForTags,
+				}
+			} else {
+				finalTagHashToSecretKey[tagsHash] = TagsAndSecrets{
+					Tags:    secret.Tags,
+					Secrets: []models.SingleEnvironmentVariable{secret},
+				}
+			}
+
+			tagsHashToSecretKey[tagsHash] -= 1
+		}
+	}
+
+	// sort the fianl result by secret key fo consistent print order
+	listOfsecretDetails := make([]TagsAndSecrets, 0, len(finalTagHashToSecretKey))
+	for _, secretDetails := range finalTagHashToSecretKey {
+		listOfsecretDetails = append(listOfsecretDetails, secretDetails)
+	}
+
+	// sort the order of the headings by the order of the secrets
+	sort.Slice(listOfsecretDetails, func(i, j int) bool {
+		return len(listOfsecretDetails[i].Tags) < len(listOfsecretDetails[j].Tags)
+	})
+
+	for _, secretDetails := range listOfsecretDetails {
+		listOfKeyValue := []string{}
+
+		for _, secret := range secretDetails.Secrets {
+			re := regexp.MustCompile(`(?s)(.*)DEFAULT:(.*)`)
+			match := re.FindStringSubmatch(secret.Comment)
+			defaultValue := ""
+			comment := secret.Comment
+
+			// Case: Only has default value
+			if len(match) == 2 {
+				defaultValue = strings.TrimSpace(match[1])
+			}
+
+			// Case: has a comment and a default value
+			if len(match) == 3 {
+				comment = match[1]
+				defaultValue = match[2]
+			}
+
+			row := ""
+			if comment != "" {
+				comment = addHash(comment)
+				row = fmt.Sprintf("%s \n%s=%s", strings.TrimSpace(comment), strings.TrimSpace(secret.Key), strings.TrimSpace(defaultValue))
+			} else {
+				row = fmt.Sprintf("%s=%s", strings.TrimSpace(secret.Key), strings.TrimSpace(defaultValue))
+			}
+
+			// each secret row to be added to the file
+			listOfKeyValue = append(listOfKeyValue, row)
+		}
+
+		listOfTagNames := []string{}
+		for _, tag := range secretDetails.Tags {
+			listOfTagNames = append(listOfTagNames, tag.Name)
+		}
+
+		heading := CenterString(strings.Join(listOfTagNames, " & "), 80)
+
+		if len(listOfTagNames) == 0 {
+			fmt.Printf("\n%s \n", strings.Join(listOfKeyValue, "\n \n"))
+		} else {
+			fmt.Printf("\n\n\n%s \n%s \n", heading, strings.Join(listOfKeyValue, "\n \n"))
+		}
+	}
+}
+
+func CenterString(s string, numStars int) string {
+	stars := strings.Repeat("*", numStars)
+	padding := (numStars - len(s)) / 2
+	cenetredTextWithStar := stars[:padding] + " " + strings.ToUpper(s) + " " + stars[padding:]
+
+	hashes := strings.Repeat("#", len(cenetredTextWithStar)+2)
+	return fmt.Sprintf("%s \n# %s \n%s", hashes, cenetredTextWithStar, hashes)
+}
+
+func addHash(input string) string {
+	lines := strings.Split(input, "\n")
+	for i, line := range lines {
+		lines[i] = "# " + line
+	}
+	return strings.Join(lines, "\n")
+}
+
 func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]models.SingleEnvironmentVariable {
 	secretMapByName := make(map[string]models.SingleEnvironmentVariable)
 
@@ -379,4 +542,30 @@ func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]mod
 	}
 
 	return secretMapByName
+}
+
+func init() {
+
+	secretsGenerateExampleEnvCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	secretsCmd.AddCommand(secretsGenerateExampleEnvCmd)
+
+	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	secretsCmd.AddCommand(secretsGetCmd)
+
+	secretsCmd.AddCommand(secretsSetCmd)
+	secretsSetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		util.RequireLogin()
+		util.RequireLocalWorkspaceFile()
+	}
+
+	secretsCmd.AddCommand(secretsDeleteCmd)
+	secretsDeleteCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		util.RequireLogin()
+		util.RequireLocalWorkspaceFile()
+	}
+
+	secretsCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
+	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
+	rootCmd.AddCommand(secretsCmd)
 }

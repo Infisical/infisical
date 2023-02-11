@@ -187,10 +187,10 @@ const Layout = ({ children }: LayoutProps) => {
       });
       const userWorkspaces = orgUserProjects;
       if (
-        userWorkspaces.length === 0 &&
-        router.asPath !== '/noprojects' &&
-        !router.asPath.includes('home') &&
-        !router.asPath.includes('settings') ||
+        (userWorkspaces.length === 0 &&
+          router.asPath !== '/noprojects' &&
+          !router.asPath.includes('home') &&
+          !router.asPath.includes('settings')) ||
         router.asPath === '/dashboard/undefined'
       ) {
         router.push('/noprojects');
@@ -199,13 +199,13 @@ const Layout = ({ children }: LayoutProps) => {
           .split('/')
           [router.asPath.split('/').length - 1].split('?')[0];
 
-        if (!['heroku', 'vercel', 'github', 'netlify'].includes(intendedWorkspaceId)) {
+        if (!['callback', 'create', 'authorize'].includes(intendedWorkspaceId)) {
           localStorage.setItem('projectData.id', intendedWorkspaceId);
         }
-
+        
         // If a user is not a member of a workspace they are trying to access, just push them to one of theirs
         if (
-          !['heroku', 'vercel', 'github', 'netlify'].includes(intendedWorkspaceId) &&
+          !['callback', 'create', 'authorize'].includes(intendedWorkspaceId) &&
           !userWorkspaces
             .map((workspace: { _id: string }) => workspace._id)
             .includes(intendedWorkspaceId)
@@ -246,16 +246,15 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <>
-      <div className="fixed w-full md:block flex flex-col h-screen">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.2.2/cdn.js" defer />
+      <div className="h-screen w-full flex-col overflow-x-hidden hidden md:flex">
         <NavBarDashboard />
-        <div className="flex flex-col md:flex-row flex-1">
-          <aside className="bg-bunker-600 border-r border-mineshaft-500 w-full md:w-60 h-screen">
-            <nav className="flex flex-col justify-between items-between h-full">
+        <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row dark">
+          <aside className="w-full border-r border-mineshaft-500 bg-bunker-600 md:w-60">
+            <nav className="items-between flex h-full flex-col justify-between">
               {/* <div className="py-6"></div> */}
               <div>
-                <div className="flex justify-center w-full mt-[4.5rem] mb-6 bg-bunker-600 h-20 flex-col items-center px-4">
-                  <div className="text-gray-400 self-start ml-1 mb-1 text-xs font-semibold tracking-wide">
+                <div className="mt-6 mb-6 flex h-20 w-full flex-col items-center justify-center bg-bunker-600 px-4">
+                  <div className="ml-1 mb-1 self-start text-xs font-semibold tracking-wide text-gray-400">
                     {t('nav:menu.project')}
                   </div>
                   {Object.keys(workspaceMapping).length > 0 ? (
@@ -279,29 +278,29 @@ const Layout = ({ children }: LayoutProps) => {
                 <ul>
                   {Object.keys(workspaceMapping).length > 0 &&
                     menuItems.map(({ href, title, emoji }) => (
-                      <li className="mt-0.5 mx-2" key={title}>
+                      <li className="mx-2 mt-0.5" key={title}>
                         {router.asPath.split('/')[1] === href.split('/')[1] &&
                         (['project', 'billing', 'org', 'personal'].includes(
                           router.asPath.split('/')[2]
                         )
                           ? router.asPath.split('/')[2] === href.split('/')[2]
                           : true) ? (
-                          <div className="flex relative px-0.5 py-2.5 text-white text-sm rounded cursor-pointer bg-primary-50/10">
-                            <div className="absolute top-0 my-1 ml-1 inset-0 bg-primary w-1 rounded-xl mr-1" />
-                            <p className="w-6 ml-4 mr-2 flex items-center justify-center text-lg">
+                          <div className="relative flex cursor-pointer rounded bg-primary-50/10 px-0.5 py-2.5 text-sm text-white">
+                            <div className="absolute inset-0 top-0 my-1 ml-1 mr-1 w-1 rounded-xl bg-primary" />
+                            <p className="ml-4 mr-2 flex w-6 items-center justify-center text-lg">
                               {emoji}
                             </p>
                             {title}
                           </div>
                         ) : router.asPath === '/noprojects' ? (
-                          <div className="flex p-2.5 text-white text-sm rounded">
-                            <p className="w-10 flex items-center justify-center text-lg">{emoji}</p>
+                          <div className="flex rounded p-2.5 text-sm text-white">
+                            <p className="flex w-10 items-center justify-center text-lg">{emoji}</p>
                             {title}
                           </div>
                         ) : (
                           <Link href={href}>
-                            <div className="flex p-2.5 text-white text-sm rounded cursor-pointer hover:bg-primary-50/5">
-                              <p className="w-10 flex items-center justify-center text-lg">
+                            <div className="flex cursor-pointer rounded p-2.5 text-sm text-white hover:bg-primary-50/5">
+                              <p className="flex w-10 items-center justify-center text-lg">
                                 {emoji}
                               </p>
                               {title}
@@ -312,11 +311,11 @@ const Layout = ({ children }: LayoutProps) => {
                     ))}
                 </ul>
               </div>
-              <div className="w-full mt-40 mb-4 px-2">
+              <div className="mt-40 mb-4 w-full px-2">
                 {router.asPath.split('/')[1] === 'home' ? (
-                  <div className="flex relative px-0.5 py-2.5 text-white text-sm rounded cursor-pointer bg-primary-50/10">
-                    <div className="absolute top-0 my-1 ml-1 inset-0 bg-primary w-1 rounded-xl mr-1" />
-                    <p className="w-6 ml-4 mr-2 flex items-center justify-center text-lg">
+                  <div className="relative flex cursor-pointer rounded bg-primary-50/10 px-0.5 py-2.5 text-sm text-white">
+                    <div className="absolute inset-0 top-0 my-1 ml-1 mr-1 w-1 rounded-xl bg-primary" />
+                    <p className="ml-4 mr-2 flex w-6 items-center justify-center text-lg">
                       <FontAwesomeIcon icon={faBookOpen} />
                     </p>
                     Infisical Guide
@@ -336,8 +335,8 @@ const Layout = ({ children }: LayoutProps) => {
                   </div>
                 ) : (
                   <Link href={`/home/${workspaceMapping[workspaceSelected as any]}`}>
-                    <div className="relative flex p-2.5 overflow-visible text-white h-10 text-sm rounded cursor-pointer bg-white/10 hover:bg-primary-50/[0.15] mt-max">
-                      <p className="w-10 flex items-center justify-center text-lg">
+                    <div className="mt-max relative flex h-10 cursor-pointer overflow-visible rounded bg-white/10 p-2.5 text-sm text-white hover:bg-primary-50/[0.15]">
+                      <p className="flex w-10 items-center justify-center text-lg">
                         <FontAwesomeIcon icon={faBookOpen} />
                       </p>
                       Infisical Guide
@@ -369,12 +368,12 @@ const Layout = ({ children }: LayoutProps) => {
             error={error}
             loading={loading}
           />
-          <main className="flex-1 bg-bunker-800">{children}</main>
+          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">{children}</main>
         </div>
       </div>
-      <div className="md:hidden bg-bunker-800 w-screen h-screen flex flex-col justify-center items-center">
-        <FontAwesomeIcon icon={faMobile} className="text-gray-300 text-7xl mb-8" />
-        <p className="text-gray-200 px-6 text-center text-lg max-w-sm">
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 z-[200] md:hidden">
+        <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
+        <p className="max-w-sm px-6 text-center text-lg text-gray-200">
           {` ${t('common:no-mobile')} `}
         </p>
       </div>

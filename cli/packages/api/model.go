@@ -201,21 +201,30 @@ type GetEncryptedSecretsV2Request struct {
 
 type GetEncryptedSecretsV2Response struct {
 	Secrets []struct {
-		ID                    string    `json:"_id"`
-		Version               int       `json:"version"`
-		Workspace             string    `json:"workspace"`
-		Type                  string    `json:"type"`
-		Environment           string    `json:"environment"`
-		SecretKeyCiphertext   string    `json:"secretKeyCiphertext"`
-		SecretKeyIV           string    `json:"secretKeyIV"`
-		SecretKeyTag          string    `json:"secretKeyTag"`
-		SecretValueCiphertext string    `json:"secretValueCiphertext"`
-		SecretValueIV         string    `json:"secretValueIV"`
-		SecretValueTag        string    `json:"secretValueTag"`
-		V                     int       `json:"__v"`
-		CreatedAt             time.Time `json:"createdAt"`
-		UpdatedAt             time.Time `json:"updatedAt"`
-		User                  string    `json:"user,omitempty"`
+		ID                      string    `json:"_id"`
+		Version                 int       `json:"version"`
+		Workspace               string    `json:"workspace"`
+		Type                    string    `json:"type"`
+		Environment             string    `json:"environment"`
+		SecretKeyCiphertext     string    `json:"secretKeyCiphertext"`
+		SecretKeyIV             string    `json:"secretKeyIV"`
+		SecretKeyTag            string    `json:"secretKeyTag"`
+		SecretValueCiphertext   string    `json:"secretValueCiphertext"`
+		SecretValueIV           string    `json:"secretValueIV"`
+		SecretValueTag          string    `json:"secretValueTag"`
+		SecretCommentCiphertext string    `json:"secretCommentCiphertext"`
+		SecretCommentIV         string    `json:"secretCommentIV"`
+		SecretCommentTag        string    `json:"secretCommentTag"`
+		V                       int       `json:"__v"`
+		CreatedAt               time.Time `json:"createdAt"`
+		UpdatedAt               time.Time `json:"updatedAt"`
+		User                    string    `json:"user,omitempty"`
+		Tags                    []struct {
+			ID        string `json:"_id"`
+			Name      string `json:"name"`
+			Slug      string `json:"slug"`
+			Workspace string `json:"workspace"`
+		} `json:"tags"`
 	} `json:"secrets"`
 }
 
@@ -240,4 +249,16 @@ type GetServiceTokenDetailsResponse struct {
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
 	V            int       `json:"__v"`
+}
+
+type GetAccessibleEnvironmentsRequest struct {
+	WorkspaceId string `json:"workspaceId"`
+}
+
+type GetAccessibleEnvironmentsResponse struct {
+	AccessibleEnvironments []struct {
+		Name          string `json:"name"`
+		Slug          string `json:"slug"`
+		IsWriteDenied bool   `json:"isWriteDenied"`
+	} `json:"accessibleEnvironments"`
 }

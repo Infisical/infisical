@@ -1,20 +1,37 @@
 import { Schema, model, Types } from 'mongoose';
 import {
+  INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_AWS_PARAMETER_STORE,
+  INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
-  INTEGRATION_GITHUB
+  INTEGRATION_GITHUB,
+  INTEGRATION_RENDER,
+  INTEGRATION_FLYIO
 } from '../variables';
 
 export interface IIntegrationAuth {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'render' | 'flyio';
-  teamId: string;
-  accountId: string;
+  integration:
+    | 'azure-key-vault'
+    | 'aws-parameter-store'
+    | 'aws-secret-manager'
+    | 'heroku' 
+    | 'vercel' 
+    | 'netlify' 
+    | 'github' 
+    | 'render' 
+    | 'flyio';
+  teamId: string; // TODO: deprecate (vercel) -> move to accessId
+  accountId: string; // TODO: deprecate (netlify) -> move to accessId
   refreshCiphertext?: string;
   refreshIV?: string;
   refreshTag?: string;
+  accessIdCiphertext?: string; // new
+  accessIdIV?: string; // new
+  accessIdTag?: string; // new
   accessCiphertext?: string;
   accessIV?: string;
   accessTag?: string;
@@ -31,10 +48,15 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
     integration: {
       type: String,
       enum: [
+        INTEGRATION_AZURE_KEY_VAULT,
+        INTEGRATION_AWS_PARAMETER_STORE,
+        INTEGRATION_AWS_SECRET_MANAGER,
         INTEGRATION_HEROKU,
         INTEGRATION_VERCEL,
         INTEGRATION_NETLIFY,
-        INTEGRATION_GITHUB
+        INTEGRATION_GITHUB,
+        INTEGRATION_RENDER,
+        INTEGRATION_FLYIO
       ],
       required: true
     },
@@ -55,6 +77,18 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
       select: false
     },
     refreshTag: {
+      type: String,
+      select: false
+    },
+    accessIdCiphertext: {
+      type: String,
+      select: false
+    },
+    accessIdIV: {
+      type: String,
+      select: false
+    },
+    accessIdTag: {
       type: String,
       select: false
     },

@@ -13,6 +13,7 @@ export interface IMembershipOrg {
   organization: string;
   role: 'owner' | 'admin' | 'member';
   status: 'invited' | 'accepted';
+  deniedPermissions: any[];
 }
 /**
  * This route lets us get all the users in an org.

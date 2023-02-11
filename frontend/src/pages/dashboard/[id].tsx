@@ -5,23 +5,26 @@ import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import {
-  faArrowDownAZ,
-  faArrowDownZA,
+  faArrowDown,
   faArrowLeft,
+  faArrowUp,
   faCheck,
   faClockRotateLeft,
   faEye,
   faEyeSlash,
   faFolderOpen,
   faMagnifyingGlass,
-  faPlus
+  faPlus,
+  faXmark
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Tag } from 'public/data/frequentInterfaces';
 
 import Button from '@app/components/basic/buttons/Button';
 import ListBox from '@app/components/basic/Listbox';
 import BottonRightPopup from '@app/components/basic/popups/BottomRightPopup';
 import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
+import ConfirmEnvOverwriteModal from '@app/components/dashboard/ConfirmEnvOverwriteModal';
 import DownloadSecretMenu from '@app/components/dashboard/DownloadSecretsMenu';
 import DropZone from '@app/components/dashboard/DropZone';
 import KeyPair from '@app/components/dashboard/KeyPair';
@@ -31,6 +34,7 @@ import guidGenerator from '@app/components/utilities/randomId';
 import encryptSecrets from '@app/components/utilities/secrets/encryptSecrets';
 import getSecretsForProject from '@app/components/utilities/secrets/getSecretsForProject';
 import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
+import { IconButton } from '@app/components/v2';
 import getProjectSercetSnapshotsCount from '@app/ee/api/secrets/GetProjectSercetSnapshotsCount';
 import performSecretRollback from '@app/ee/api/secrets/PerformSecretRollback';
 import PITRecoverySidebar from '@app/ee/components/PITRecoverySidebar';
@@ -41,11 +45,14 @@ import updateSecrets from '../api/files/UpdateSecrets';
 import getUser from '../api/user/getUser';
 import checkUserAction from '../api/userActions/checkUserAction';
 import registerUserAction from '../api/userActions/registerUserAction';
+import getWorkspaceEnvironments from '../api/workspace/getWorkspaceEnvironments';
 import getWorkspaces from '../api/workspace/getWorkspaces';
+import getWorkspaceTags from '../api/workspace/getWorkspaceTags';
 
 type WorkspaceEnv = {
   name: string;
   slug: string;
+  isWriteDenied: boolean;
 };
 
 interface SecretDataProps {
@@ -56,6 +63,7 @@ interface SecretDataProps {
   id: string;
   idOverride: string | undefined;
   comment: string;
+  tags: Tag[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -79,6 +87,7 @@ interface SnapshotProps {
     value: string;
     valueOverride: string;
     comment: string;
+    tags: Tag[];
   }[];
 }
 
@@ -111,7 +120,7 @@ export default function Dashboard() {
   const [blurred, setBlurred] = useState(true);
   const [isKeyAvailable, setIsKeyAvailable] = useState(true);
   const [isNew, setIsNew] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchKeys, setSearchKeys] = useState('');
   const [errorDragAndDrop, setErrorDragAndDrop] = useState(false);
   const [sortMethod, setSortMethod] = useState('alphabetical');
@@ -123,6 +132,9 @@ export default function Dashboard() {
   const [snapshotData, setSnapshotData] = useState<SnapshotProps>();
   const [numSnapshots, setNumSnapshots] = useState<number>();
   const [saveLoading, setSaveLoading] = useState(false);
+  const [autoCapitalization, setAutoCapitalization] = useState(false);
+  const [dropZoneData, setDropZoneData] = useState<SecretDataProps[]>();
+  const [projectTags, setProjectTags] = useState<Tag[]>([]);
 
   const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
@@ -131,10 +143,7 @@ export default function Dashboard() {
   const [workspaceEnvs, setWorkspaceEnvs] = useState<WorkspaceEnv[]>([]);
 
   const [selectedSnapshotEnv, setSelectedSnapshotEnv] = useState<WorkspaceEnv>();
-  const [selectedEnv, setSelectedEnv] = useState<WorkspaceEnv>({
-    name: '',
-    slug: ''
-  });
+  const [selectedEnv, setSelectedEnv] = useState<WorkspaceEnv>();
   const [atSecretAreaTop, setAtSecretsAreaTop] = useState(true);
   const secretsTop = useRef<HTMLDivElement>(null);
 
@@ -190,15 +199,18 @@ export default function Dashboard() {
       }));
 
     setData(sortedData);
+    setIsLoading(false);
   };
 
   /**
    * Reorder rows alphabetically or in the opprosite order
    */
   const reorderRows = (dataToReorder: SecretDataProps[] | 1) => {
-    setSortMethod((prevSort) => (prevSort === 'alphabetical' ? '-alphabetical' : 'alphabetical'));
+    if (dataToReorder) {
+      setSortMethod((prevSort) => (prevSort === 'alphabetical' ? '-alphabetical' : 'alphabetical'));
 
-    sortValuesHandler(dataToReorder, undefined);
+      sortValuesHandler(dataToReorder, undefined);
+    }
   };
 
   useEffect(() => {
@@ -213,10 +225,12 @@ export default function Dashboard() {
         if (!workspace) {
           router.push(`/dashboard/${userWorkspaces?.[0]?._id}`);
         }
+        setAutoCapitalization(workspace?.autoCapitalization ?? true);
 
-        setWorkspaceEnvs(workspace?.environments || []);
+        const accessibleEnvironments = await getWorkspaceEnvironments({ workspaceId });
+        setWorkspaceEnvs(accessibleEnvironments || []);
         // set env
-        const env = workspace?.environments?.[0] || {
+        const env = accessibleEnvironments?.[0] || {
           name: 'unknown',
           slug: 'unkown'
         };
@@ -229,6 +243,8 @@ export default function Dashboard() {
           action: 'first_time_secrets_pushed'
         });
         setHasUserEverPushed(!!userAction);
+
+        setProjectTags(await getWorkspaceTags({ workspaceId }));
       } catch (error) {
         console.log('Error', error);
         setData(undefined);
@@ -242,16 +258,17 @@ export default function Dashboard() {
         setIsLoading(true);
         setBlurred(true);
         // ENV
-        const dataToSort = await getSecretsForProject({
-          env: selectedEnv.slug,
-          setIsKeyAvailable,
-          setData,
-          workspaceId
-        });
-        setInitialData(dataToSort);
-        reorderRows(dataToSort);
-
-        setTimeout(() => setIsLoading(false), 700);
+        let dataToSort;
+        if (selectedEnv) {
+          dataToSort = await getSecretsForProject({
+            env: selectedEnv.slug,
+            setIsKeyAvailable,
+            setData,
+            workspaceId
+          });
+          setInitialData(dataToSort);
+          reorderRows(dataToSort);
+        }
       } catch (error) {
         console.log('Error', error);
         setData(undefined);
@@ -270,13 +287,31 @@ export default function Dashboard() {
         key: '',
         value: '',
         valueOverride: undefined,
-        comment: ''
+        comment: '',
+        tags: []
       },
       ...data!
     ]);
     if (!atSecretAreaTop) {
       secretsTop.current?.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const addRowToBottom = () => {
+    setIsNew(false);
+    setData([
+      ...data!,
+      {
+        id: guidGenerator(),
+        idOverride: guidGenerator(),
+        pos: data!.length,
+        key: '',
+        value: '',
+        valueOverride: undefined,
+        comment: '',
+        tags: []
+      },
+    ]);
   };
 
   const deleteRow = ({ ids, secretName }: { ids: string[]; secretName: string }) => {
@@ -312,6 +347,11 @@ export default function Dashboard() {
     setButtonReady(true);
   };
 
+  const modifyTags = (tags: Tag[], pos: number) => {
+    setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, tags } : e)));
+    setButtonReady(true);
+  };
+
   // For speed purposes and better perforamance, we are using useCallback
   const listenChangeValue = useCallback((value: string, pos: number) => {
     modifyValue(value, pos);
@@ -327,6 +367,10 @@ export default function Dashboard() {
 
   const listenChangeComment = useCallback((value: string, pos: number) => {
     modifyComment(value, pos);
+  }, []);
+
+  const listenChangeTags = useCallback((value: Tag[], pos: number) => {
+    modifyTags(value, pos);
   }, []);
 
   /**
@@ -351,6 +395,7 @@ export default function Dashboard() {
       findDuplicates(data!.map((item: SecretDataProps) => item.key)).length > 0;
 
     if (nameErrors) {
+      setSaveLoading(false);
       return createNotification({
         text: 'Solve all name errors before saving secrets.',
         type: 'error'
@@ -358,8 +403,17 @@ export default function Dashboard() {
     }
 
     if (duplicatesExist) {
+      setSaveLoading(false);
       return createNotification({
         text: 'Remove duplicated secret names before saving.',
+        type: 'error'
+      });
+    }
+
+    if (selectedEnv?.isWriteDenied) {
+      setSaveLoading(false);
+      return createNotification({
+        text: 'You are not allowed to edit this environment',
         type: 'error'
       });
     }
@@ -391,7 +445,9 @@ export default function Dashboard() {
               newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].key !==
                 initDataPoint.key ||
               newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].comment !==
-                initDataPoint.comment)
+                initDataPoint.comment) ||
+              newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags !==
+                initDataPoint?.tags
         )
         .map((secret) => secret.id)
         .includes(newDataPoint.id)
@@ -425,7 +481,8 @@ export default function Dashboard() {
         valueOverride: override.valueOverride,
         comment: '',
         id: String(override.idOverride),
-        idOverride: String(override.idOverride)
+        idOverride: String(override.idOverride),
+        tags: override.tags
       }));
     console.log('override add', overridesToBeAdded.length);
 
@@ -440,7 +497,8 @@ export default function Dashboard() {
                 newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].key !==
                   initDataPoint.key ||
                 newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
-                  .comment !== initDataPoint.comment)
+                  .comment !== initDataPoint.comment ||
+                newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags !== initDataPoint?.tags)
           )
           .map((secret) => secret.id)
           .includes(newDataPoint.id)
@@ -452,14 +510,15 @@ export default function Dashboard() {
         valueOverride: override.valueOverride,
         comment: '',
         id: String(override.idOverride),
-        idOverride: String(override.idOverride)
+        idOverride: String(override.idOverride),
+        tags: override.tags
       }));
     console.log('override update', overridesToBeUpdated.length);
 
     if (secretsToBeDeleted.concat(overridesToBeDeleted).length > 0) {
       await deleteSecrets({ secretIds: secretsToBeDeleted.concat(overridesToBeDeleted) });
     }
-    if (secretsToBeAdded.concat(overridesToBeAdded).length > 0) {
+    if (selectedEnv && secretsToBeAdded.concat(overridesToBeAdded).length > 0) {
       const secrets = await encryptSecrets({
         secretsToEncrypt: secretsToBeAdded.concat(overridesToBeAdded),
         workspaceId,
@@ -467,7 +526,7 @@ export default function Dashboard() {
       });
       if (secrets) await addSecrets({ secrets, env: selectedEnv.slug, workspaceId });
     }
-    if (secretsToBeUpdated.concat(overridesToBeUpdated).length > 0) {
+    if (selectedEnv && secretsToBeUpdated.concat(overridesToBeUpdated).length > 0) {
       const secrets = await encryptSecrets({
         secretsToEncrypt: secretsToBeUpdated.concat(overridesToBeUpdated),
         workspaceId,
@@ -490,9 +549,31 @@ export default function Dashboard() {
     return undefined;
   };
 
-  const addData = (newData: SecretDataProps[]) => {
-    setData(data!.concat(newData));
+  const addDataWithMerge = (newData: SecretDataProps[], preserve?: 'old' | 'new') => {
+    setData((oldData) => {
+      let filteredOldData = oldData!;
+      let filteredNewData = newData;
+      if (preserve === 'new')
+        filteredOldData = oldData!.filter(
+          (oldDataPoint) => !newData.find((newDataPoint) => newDataPoint.key === oldDataPoint.key)
+        );
+      if (preserve === 'old')
+        filteredNewData = newData.filter(
+          (newDataPoint) => !oldData?.find((oldDataPoint) => oldDataPoint.key === newDataPoint.key)
+        );
+      return filteredOldData.concat(filteredNewData);
+    });
     setButtonReady(true);
+  };
+
+  const addData = (newData: SecretDataProps[]) => {
+    if (
+      newData.some((newDataPoint) => data?.find((dataPoint) => dataPoint.key === newDataPoint.key)) // if newData contains duplicates
+    ) {
+      setDropZoneData(newData);
+      return;
+    }
+    addDataWithMerge(newData);
   };
 
   const changeBlurred = () => {
@@ -504,7 +585,7 @@ export default function Dashboard() {
   };
 
   return data ? (
-    <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
+    <div className="bg-bunker-800 max-h-screen h-full relative flex flex-col justify-between text-white dark">
       <Head>
         <title>{t('common:head-title', { title: t('dashboard:title') })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -512,33 +593,23 @@ export default function Dashboard() {
         <meta property="og:title" content={String(t('dashboard:og-title'))} />
         <meta name="og:description" content={String(t('dashboard:og-description'))} />
       </Head>
-      <div className="flex flex-row">
-        {sidebarSecretId !== 'None' && (
-          <SideBar
-            toggleSidebar={toggleSidebar}
-            data={data.filter(
-              (row: SecretDataProps) =>
-                row.key === data.filter((r) => r.id === sidebarSecretId)[0]?.key
-            )}
-            modifyKey={listenChangeKey}
-            modifyValue={listenChangeValue}
-            modifyValueOverride={listenChangeValueOverride}
-            modifyComment={listenChangeComment}
-            buttonReady={buttonReady}
-            savePush={savePush}
-            sharedToHide={sharedToHide}
-            setSharedToHide={setSharedToHide}
-            deleteRow={deleteCertainRow}
-          />
-        )}
-        {PITSidebarOpen && (
-          <PITRecoverySidebar
-            toggleSidebar={togglePITSidebar}
-            chosenSnapshot={String(snapshotData?.id ? snapshotData.id : '')}
-            setSnapshotData={setSnapshotData}
-          />
-        )}
-        <div className="w-full max-h-96 pb-2">
+      <div className="flex flex-row h-full">
+        <ConfirmEnvOverwriteModal
+          isOpen={!!dropZoneData}
+          onClose={() => setDropZoneData(undefined)}
+          onOverwriteConfirm={(preserve) => {
+            addDataWithMerge(dropZoneData!, preserve);
+            setDropZoneData(undefined);
+          }}
+          duplicateKeys={
+            dropZoneData
+              ?.filter((newDataPoint) =>
+                data?.find((dataPoint) => dataPoint.key === newDataPoint.key)
+              )
+              .map((duplicate) => duplicate.key) ?? []
+          }
+        />
+        <div className="w-full max-h-96 pb-2 dark:[color-scheme:dark]">
           <NavHeader pageName={t('dashboard:title')} isProjectRelated />
           {checkDocsPopUpVisible && (
             <BottonRightPopup
@@ -551,7 +622,7 @@ export default function Dashboard() {
               setCheckDocsPopUpVisible={setCheckDocsPopUpVisible}
             />
           )}
-          <div className="flex flex-row justify-between items-center mx-6 mt-6 mb-3 text-xl max-w-5xl">
+          <div className="flex flex-row justify-between items-center mx-6 mt-6 mb-3 text-xl">
             {snapshotData && (
               <div className="flex justify-start max-w-sm mt-1 mr-2">
                 <Button
@@ -572,7 +643,7 @@ export default function Dashboard() {
                   </span>
                 )}
               </div>
-              {!snapshotData && data?.length === 0 && (
+              {!snapshotData && data?.length === 0 && selectedEnv && (
                 <ListBox
                   isSelected={selectedEnv.name}
                   data={workspaceEnvs.map(({ name }) => name)}
@@ -580,7 +651,8 @@ export default function Dashboard() {
                     setSelectedEnv(
                       workspaceEnvs.find(({ name }) => envName === name) || {
                         name: 'unknown',
-                        slug: 'unknown'
+                        slug: 'unknown',
+                        isWriteDenied: false
                       }
                     )
                   }
@@ -591,7 +663,10 @@ export default function Dashboard() {
               <div className="flex justify-start max-w-sm mt-1 mr-2">
                 <Button
                   text={String(`${numSnapshots} ${t('Commits')}`)}
-                  onButtonPressed={() => togglePITSidebar(true)}
+                  onButtonPressed={() => {
+                    toggleSidebar('None');
+                    togglePITSidebar(true)
+                  }}
                   color="mineshaft"
                   size="md"
                   icon={faClockRotateLeft}
@@ -611,7 +686,7 @@ export default function Dashboard() {
                   />
                 </div>
               )}
-              {snapshotData && (
+              {snapshotData && selectedEnv && (
                 <div className="flex justify-start max-w-sm mt-1">
                   <Button
                     text={String(t('Rollback to this snapshot'))}
@@ -626,7 +701,8 @@ export default function Dashboard() {
                           valueOverride: sv.valueOverride,
                           key: sv.key,
                           value: sv.value,
-                          comment: ''
+                          comment: '',
+                          tags: sv.tags
                         }));
                       setData(rolledBackSecrets);
 
@@ -638,6 +714,7 @@ export default function Dashboard() {
                         text: `Rollback has been performed successfully.`,
                         type: 'success'
                       });
+                      setButtonReady(false);
                     }}
                     color="primary"
                     size="md"
@@ -648,9 +725,9 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="mx-6 w-full pr-12">
-            <div className="flex flex-col max-w-5xl pb-1">
+            <div className="flex flex-col pb-1">
               <div className="w-full flex flex-row items-start">
-                {(snapshotData || data?.length !== 0) && (
+                {(snapshotData || data?.length !== 0) && selectedEnv && (
                   <>
                     {!snapshotData ? (
                       <ListBox
@@ -660,7 +737,8 @@ export default function Dashboard() {
                           setSelectedEnv(
                             workspaceEnvs.find(({ name }) => envName === name) || {
                               name: 'unknown',
-                              slug: 'unknown'
+                              slug: 'unknown',
+                              isWriteDenied: false
                             }
                           )
                         }
@@ -673,34 +751,25 @@ export default function Dashboard() {
                           setSelectedSnapshotEnv(
                             workspaceEnvs.find(({ name }) => envName === name) || {
                               name: 'unknown',
-                              slug: 'unknown'
+                              slug: 'unknown',
+                              isWriteDenied: false
                             }
                           )
                         }
                       />
                     )}
-                    <div className="h-10 w-full bg-white/5 hover:bg-white/10 ml-2 rounded-md flex flex-row items-center">
+                    <div className="h-10 w-full bg-mineshaft-700 hover:bg-white/10 ml-2 rounded-md flex flex-row items-center">
                       <FontAwesomeIcon
-                        className="bg-white/5 rounded-l-md py-3 pl-4 pr-2 text-gray-400"
+                        className="bg-transparent rounded-l-md py-[0.7rem] pl-4 pr-2 text-bunker-300 text-sm"
                         icon={faMagnifyingGlass}
                       />
                       <input
-                        className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
+                        className="pl-2 text-bunker-300 rounded-r-md bg-transparent w-full h-full outline-none text-sm placeholder:hover:text-bunker-200 placeholder:focus:text-transparent"
                         value={searchKeys}
                         onChange={(e) => setSearchKeys(e.target.value)}
                         placeholder={String(t('dashboard:search-keys'))}
                       />
                     </div>
-                    {!snapshotData && (
-                      <div className="ml-2 min-w-max flex flex-row items-start justify-start">
-                        <Button
-                          onButtonPressed={() => reorderRows(1)}
-                          color="mineshaft"
-                          size="icon-md"
-                          icon={sortMethod === 'alphabetical' ? faArrowDownAZ : faArrowDownZA}
-                        />
-                      </div>
-                    )}
                     {!snapshotData && (
                       <div className="ml-2 min-w-max flex flex-row items-start justify-start">
                         <DownloadSecretMenu data={data} env={selectedEnv.slug} />
@@ -745,31 +814,88 @@ export default function Dashboard() {
                 />
               </div>
             ) : data?.length !== 0 ? (
-              <div className="flex flex-col w-full mt-1 mb-2">
+              <div className="flex flex-col w-full mt-1">
                 <div
                   onScroll={onSecretsAreaScroll}
-                  className="max-w-5xl mt-1 max-h-[calc(100vh-280px)] overflow-hidden overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar"
+                  className="mt-1 max-h-[calc(100vh-280px)] overflow-hidden overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar border border-mineshaft-600 rounded-md"
                 >
                   <div ref={secretsTop} />
-                  <div className="px-1 pt-2 bg-mineshaft-800 rounded-md p-2">
+                  <div
+                    className='group flex flex-col items-center bg-mineshaft-800 border-b-2 border-mineshaft-500 duration-100 sticky top-0 z-[60]'
+                  >
+                    <div className="relative flex flex-row justify-between w-full mr-auto max-h-14 items-center">
+                      <div className="w-1/5 border-r border-mineshaft-600 flex flex-row items-center">
+                        <div className='text-transparent text-xs flex items-center justify-center w-14 h-10 cursor-default'>0</div>
+                        <span className='px-2 text-bunker-300 font-semibold'>Key</span>
+                        {!snapshotData && <IconButton 
+                          ariaLabel="copy icon"
+                          variant="plain"
+                          className="group relative ml-2"
+                          onClick={() => reorderRows(1)}
+                        >
+                            {sortMethod === 'alphabetical' ? <FontAwesomeIcon icon={faArrowUp} /> : <FontAwesomeIcon icon={faArrowDown} />}
+                        </IconButton>}
+                      </div>
+                      <div className="w-5/12 border-r border-mineshaft-600">
+                        <div
+                          className='flex items-center rounded-lg mt-4 md:mt-0 max-h-10'
+                        >
+                          <div className='text-bunker-300 px-2 font-semibold h-10 flex items-center w-7/12'>Value</div>
+                        </div>
+                      </div>
+                      <div className="w-2/12 border-r border-mineshaft-600">
+                        <div className="flex items-center max-h-16">
+                          <div className='text-bunker-300 px-2 font-semibold h-10 flex items-center w-3/12'>Comment</div>
+                        </div>
+                      </div>
+                      <div className="w-2/12">
+                        <div className="flex items-center max-h-16">
+                          <div className='text-bunker-300 px-2 font-semibold h-10 flex items-center w-3/12'>Tags</div>
+                        </div>
+                      </div>
+                      <div
+                        className="w-[1.5rem] h-[2.35rem] ml-auto rounded-md flex flex-row justify-center items-center"
+                      />
+                      <div className='w-[1.5rem] h-[2.35rem] mr-2 flex items-center justfy-center'>
+                        <div
+                          onKeyDown={() => null}
+                          role="none"
+                          onClick={() => {}}
+                          className="invisible group-hover:visible"
+                        >
+                          <FontAwesomeIcon className="text-bunker-300 hover:text-red pl-2 pr-6 text-lg mt-0.5 invisible" icon={faXmark} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-mineshaft-800 rounded-b-md border-bunker-600">
                     {!snapshotData &&
                       data
-                        ?.filter((row) => row.key?.toUpperCase().includes(searchKeys.toUpperCase()))
+                        ?.filter((row) => 
+                          row.key?.toUpperCase().includes(searchKeys.toUpperCase()) 
+                          || row.tags?.map(tag => tag.name).join(" ")?.toUpperCase().includes(searchKeys.toUpperCase())
+                          || row.comment?.toUpperCase().includes(searchKeys.toUpperCase()))
                         .filter((row) => !sharedToHide.includes(row.id))
                         .map((keyPair) => (
                           <KeyPair
-                            key={keyPair.id}
+                            isCapitalized={autoCapitalization}
+                            key={keyPair.id ? keyPair.id : keyPair.idOverride}
                             keyPair={keyPair}
                             modifyValue={listenChangeValue}
                             modifyValueOverride={listenChangeValueOverride}
                             modifyKey={listenChangeKey}
+                            modifyComment={listenChangeComment}
+                            modifyTags={listenChangeTags}
                             isBlurred={blurred}
                             isDuplicate={findDuplicates(data?.map((item) => item.key))?.includes(
                               keyPair.key
                             )}
                             toggleSidebar={toggleSidebar}
+                            togglePITSidebar={togglePITSidebar}
                             sidebarSecretId={sidebarSecretId}
                             isSnapshot={false}
+                            deleteRow={deleteCertainRow}
+                            tags={projectTags}
                           />
                         ))}
                     {snapshotData &&
@@ -795,11 +921,14 @@ export default function Dashboard() {
                         )
                         .map((keyPair) => (
                           <KeyPair
+                            isCapitalized={autoCapitalization}
                             key={keyPair.id}
                             keyPair={keyPair}
                             modifyValue={listenChangeValue}
                             modifyValueOverride={listenChangeValueOverride}
                             modifyKey={listenChangeKey}
+                            modifyComment={listenChangeComment}
+                            modifyTags={listenChangeTags}
                             isBlurred={blurred}
                             isDuplicate={findDuplicates(data?.map((item) => item.key))?.includes(
                               keyPair.key
@@ -807,11 +936,23 @@ export default function Dashboard() {
                             toggleSidebar={toggleSidebar}
                             sidebarSecretId={sidebarSecretId}
                             isSnapshot
+                            tags={projectTags}
                           />
                         ))}
+                    <div className='bg-mineshaft-800 text-sm rounded-t-md hover:bg-mineshaft-700 h-10 w-full flex flex-row items-center border-b-2 border-mineshaft-500 sticky top-0 z-[60]'>
+                      <div className='w-10'/>
+                      <button 
+                        type="button"
+                        className='text-bunker-300 relative font-normal h-10 flex items-center w-full cursor-pointer'
+                        onClick={addRowToBottom}
+                      >
+                        <FontAwesomeIcon icon={faPlus} className='mr-3'/>
+                        <span className='text-sm'>Add Secret</span>
+                      </button>
+                    </div>
                   </div>
                   {!snapshotData && (
-                    <div className="w-full max-w-5xl px-2 pt-3">
+                    <div className="w-full px-2 pt-3">
                       <DropZone
                         setData={addData}
                         setErrorDragAndDrop={setErrorDragAndDrop}
@@ -826,7 +967,7 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-xl text-gray-400 max-w-5xl mt-28">
+              <div className="flex flex-col items-center justify-center h-full text-xl text-gray-400 mt-28">
                 {isKeyAvailable && !snapshotData && (
                   <DropZone
                     setData={setData}
@@ -849,11 +990,38 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+        {sidebarSecretId !== 'None' && (
+          <SideBar
+            toggleSidebar={toggleSidebar}
+            data={data.filter(
+              (row: SecretDataProps) =>
+                row.id === sidebarSecretId
+            )}
+            modifyKey={listenChangeKey}
+            modifyValue={listenChangeValue}
+            modifyValueOverride={listenChangeValueOverride}
+            modifyComment={listenChangeComment}
+            buttonReady={buttonReady}
+            workspaceEnvs={workspaceEnvs}
+            selectedEnv={selectedEnv!}
+            workspaceId={workspaceId}
+            savePush={savePush}
+            sharedToHide={sharedToHide}
+            setSharedToHide={setSharedToHide}
+            deleteRow={deleteCertainRow}
+          />
+        )}
+        {PITSidebarOpen && (
+          <PITRecoverySidebar
+            toggleSidebar={togglePITSidebar}
+            chosenSnapshot={String(snapshotData?.id ? snapshotData.id : '')}
+            setSnapshotData={setSnapshotData}
+          />
+        )}
       </div>
     </div>
   ) : (
     <div className="relative z-10 w-10/12 mr-auto h-full ml-2 bg-bunker-800 flex flex-col items-center justify-center">
-      <div className="absolute top-0 bg-bunker h-14 border-b border-mineshaft-700 w-full" />
       <Image src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
     </div>
   );

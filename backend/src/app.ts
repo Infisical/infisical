@@ -52,6 +52,7 @@ import {
   serviceTokenData as v2ServiceTokenDataRouter,
   apiKeyData as v2APIKeyDataRouter,
   environment as v2EnvironmentRouter,
+  tags as v2TagsRouter,
 } from './routes/v2';
 
 import { healthCheck } from './routes/status';
@@ -116,6 +117,7 @@ app.use('/api/v2/auth', v2AuthRouter);
 app.use('/api/v2/users', v2UsersRouter);
 app.use('/api/v2/organizations', v2OrganizationsRouter);
 app.use('/api/v2/workspace', v2EnvironmentRouter);
+app.use('/api/v2/workspace', v2TagsRouter);
 app.use('/api/v2/workspace', v2WorkspaceRouter);
 app.use('/api/v2/secret', v2SecretRouter); // deprecated
 app.use('/api/v2/secrets', v2SecretsRouter);

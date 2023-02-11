@@ -16,6 +16,7 @@ import UserAction, { IUserAction } from './userAction';
 import Workspace, { IWorkspace } from './workspace';
 import ServiceTokenData, { IServiceTokenData } from './serviceTokenData';
 import APIKeyData, { IAPIKeyData } from './apiKeyData';
+import LoginSRPDetail, { ILoginSRPDetail } from './loginSRPDetail';
 
 export {
 	BackupPrivateKey,
@@ -53,5 +54,7 @@ export {
 	ServiceTokenData,
 	IServiceTokenData,
 	APIKeyData,
-	IAPIKeyData
+	IAPIKeyData,
+	LoginSRPDetail,
+	ILoginSRPDetail
 };

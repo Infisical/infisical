@@ -189,8 +189,9 @@ const attemptLogin = async (
                 // eslint-disable-next-line no-template-curly-in-string
                 value: 'mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net',
                 valueOverride: undefined,
-                comment: 'This is an example of secret referencing.',
-                id: ''
+                comment: 'Secret referencing example',
+                id: '',
+                tags: []
               },
               {
                 pos: 1,
@@ -198,8 +199,9 @@ const attemptLogin = async (
                 value: 'OVERRIDE_THIS',
                 valueOverride: undefined,
                 comment:
-                  'This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need',
-                id: ''
+                  'Override secrets with personal value',
+                id: '',
+                tags: []
               },
               {
                 pos: 2,
@@ -207,8 +209,9 @@ const attemptLogin = async (
                 value: 'OVERRIDE_THIS',
                 valueOverride: undefined,
                 comment:
-                  'This is an example of secret overriding. Your team can have a shared value of a secret, while you can override it to whatever value you need',
-                id: ''
+                  'Another secret override',
+                id: '',
+                tags: []
               },
               {
                 pos: 3,
@@ -216,7 +219,8 @@ const attemptLogin = async (
                 value: 'user1234',
                 valueOverride: 'user1234',
                 comment: '',
-                id: ''
+                id: '',
+                tags: []
               },
               {
                 pos: 4,
@@ -224,7 +228,8 @@ const attemptLogin = async (
                 value: 'example_password',
                 valueOverride: 'example_password',
                 comment: '',
-                id: ''
+                id: '',
+                tags: []
               },
               {
                 pos: 5,
@@ -232,7 +237,8 @@ const attemptLogin = async (
                 value: 'example_twillio_token',
                 valueOverride: undefined,
                 comment: '',
-                id: ''
+                id: '',
+                tags: []
               },
               {
                 pos: 6,
@@ -240,7 +246,8 @@ const attemptLogin = async (
                 value: 'http://localhost:3000',
                 valueOverride: undefined,
                 comment: '',
-                id: ''
+                id: '',
+                tags: []
               }
             ];
             const secrets = await encryptSecrets({

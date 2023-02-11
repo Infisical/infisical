@@ -1,3 +1,5 @@
+import { Tag } from 'public/data/frequentInterfaces';
+
 import getSecrets from '@app/pages/api/files/GetSecrets';
 import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
 
@@ -17,6 +19,7 @@ interface EncryptedSecretProps {
   secretValueIV: string;
   secretValueTag: string;
   type: 'personal' | 'shared';
+  tags: Tag[];
 }
 
 interface SecretProps {
@@ -25,12 +28,13 @@ interface SecretProps {
   type: 'personal' | 'shared';
   comment: string;
   id: string;
+  tags: Tag[];
 }
 
 interface FunctionProps {
   env: string;
-  setIsKeyAvailable: any;
-  setData: any;
+  setIsKeyAvailable?: any;
+  setData?: any;
   workspaceId: string;
 }
 
@@ -58,7 +62,9 @@ const getSecretsForProject = async ({
 
     const latestKey = await getLatestFileKey({ workspaceId });
     // This is called isKeyAvailable but what it really means is if a person is able to create new key pairs
-    setIsKeyAvailable(!latestKey ? encryptedSecrets.length === 0 : true);
+    if (typeof setIsKeyAvailable === 'function') {
+      setIsKeyAvailable(!latestKey ? encryptedSecrets.length === 0 : true);
+    }
 
     const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
 
@@ -105,7 +111,8 @@ const getSecretsForProject = async ({
           key: plainTextKey,
           value: plainTextValue,
           type: secret.type,
-          comment: plainTextComment
+          comment: plainTextComment,
+          tags: secret.tags
         });
       });
     }
@@ -128,10 +135,16 @@ const getSecretsForProject = async ({
       )[0]?.value,
       comment: tempDecryptedSecrets.filter(
         (secret) => secret.key === key && secret.type === 'shared'
-      )[0]?.comment
+      )[0]?.comment,
+      tags: tempDecryptedSecrets.filter(
+        (secret) => secret.key === key && secret.type === 'shared'
+      )[0]?.tags
     }));
 
-    setData(result);
+    if (typeof setData === 'function') {
+      setData(result);
+    }
+  
     return result;
   } catch (error) {
     console.log('Something went wrong during accessing or decripting secrets.');

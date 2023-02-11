@@ -3,9 +3,11 @@ title: "Docker"
 description: "How to use Infisical to inject environment variables into a Docker container."
 ---
 
-Infisical can be used in a Dockerfile to inject environment variables into a Docker container.
+Prerequisites:
 
-## Add the CLI to your Dockerfile
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+
+## Add the Infisical CLI to your Dockerfile
 
 <Tabs>
 	 <Tab title="Alpine">
@@ -32,32 +34,32 @@ Infisical can be used in a Dockerfile to inject environment variables into a Doc
    </Tab>
 </Tabs>
 
-  ## Modify your Dockerfile start command 
+## Modify the start command in your Dockerfile
 
-  To make your Docker container consume Infisical secrets, you can start your application with Infisical.
-  This will automatically pull the necessary secrets and make them available to your application as if they were natively exposed within the container.
+Starting your service with the Infisical CLI pulls your secrets from Infisical and injects them into your service.
 
-  ```dockerfile
-  CMD ["infisical", "run", "---", "[your application start command]"]
+```dockerfile
+CMD ["infisical", "run", "---", "[your service start command]"]
 
-  # example with single single command 
-  CMD ["infisical", "run", "---", "npm run start"]
+# example with single single command
+CMD ["infisical", "run", "---", "npm run start"]
 
-  # example with multiple commands 
-  CMD ["infisical", "run", "--command", "npm run start && ..."]
-  ```
+# example with multiple commands
+CMD ["infisical", "run", "--command", "npm run start && ..."]
+```
 
-  View more options for the `run` command [here](../../cli/commands/run)
+## Generate an Infisical Token
+
+Head to your project settings in Infisical Cloud to generate an [Infisical Token](https://infisical.com/docs/getting-started/dashboard/token).
 
 ## Feed Docker your Infisical Token
-
-The CLI looks out for an environment variable called `INFISICAL_TOKEN`. If the token is detected, the CLI will authenticate, retrieve, and inject the environment variables which the token is authorized for.
 
 ```bash
  docker run --env INFISICAL_TOKEN=[token]...
 ```
 
-## Generate an Infisical Token
+<Info>
 
-[Generate an Infisical Token](../../getting-started/dashboard/token) and keep it handy.
+The Infisical CLI uses the detected `INFISICAL_TOKEN` environment variable to authenticate, retrieve, and inject the environment variables which the token is authorized for.
 
+</Info>

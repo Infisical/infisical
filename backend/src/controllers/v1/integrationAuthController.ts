@@ -10,6 +10,31 @@ import { INTEGRATION_SET, INTEGRATION_OPTIONS } from '../../variables';
 import { IntegrationService } from '../../services';
 import { getApps, revokeAccess } from '../../integrations';
 
+/***
+ * Return integration authorization with id [integrationAuthId]
+ */
+export const getIntegrationAuth = async (req: Request, res: Response) => {
+	let integrationAuth;
+	try {
+		const { integrationAuthId } = req.params;
+		integrationAuth = await IntegrationAuth.findById(integrationAuthId);
+		
+		if (!integrationAuth) return res.status(400).send({
+			message: 'Failed to find integration authorization'
+		});
+	} catch (err) {
+		Sentry.setUser({ email: req.user.email });
+		Sentry.captureException(err);
+		return res.status(400).send({
+			message: 'Failed to get integration authorization'
+		});	
+	}
+	
+	return res.status(200).send({
+		integrationAuth
+	});
+}
+
 export const getIntegrationOptions = async (
 	req: Request,
 	res: Response
@@ -31,7 +56,6 @@ export const oAuthExchange = async (
 ) => {
 	try {
 		const { workspaceId, code, integration } = req.body;
-
 		if (!INTEGRATION_SET.has(integration))
 			throw new Error('Failed to validate integration');
 		
@@ -40,11 +64,15 @@ export const oAuthExchange = async (
 			throw new Error("Failed to get environments")
 		}
 	
-		await IntegrationService.handleOAuthExchange({
+		const integrationAuth = await IntegrationService.handleOAuthExchange({
 			workspaceId,
 			integration,
 			code,
 			environment: environments[0].slug,
+		});
+		
+		return res.status(200).send({
+			integrationAuth
 		});
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
@@ -53,14 +81,11 @@ export const oAuthExchange = async (
 			message: 'Failed to get OAuth2 code-token exchange'
 		});
 	}
-
-	return res.status(200).send({
-		message: 'Successfully enabled integration authorization'
-	});
 };
 
 /**
- * Save integration access token as part of integration [integration] for workspace with id [workspaceId]
+ * Save integration access token and (optionally) access id as part of integration
+ * [integration] for workspace with id [workspaceId]
  * @param req 
  * @param res 
  */
@@ -69,17 +94,28 @@ export const saveIntegrationAccessToken = async (
 	res: Response
 ) => {
 	// TODO: refactor
+	// TODO: check if access token is valid for each integration
+
 	let integrationAuth;
 	try {
 		const {
 			workspaceId,
+			accessId,
 			accessToken,
 			integration
 		}: {
 			workspaceId: string;
+			accessId: string | null;
 			accessToken: string;
 			integration: string;
 		} = req.body;
+
+		const bot = await Bot.findOne({
+            workspace: new Types.ObjectId(workspaceId),
+            isActive: true
+        });
+        
+        if (!bot) throw new Error('Bot must be enabled to save integration access token');
 
 		integrationAuth = await IntegrationAuth.findOneAndUpdate({
             workspace: new Types.ObjectId(workspaceId),
@@ -91,17 +127,11 @@ export const saveIntegrationAccessToken = async (
             new: true,
             upsert: true
         });
-
-		const bot = await Bot.findOne({
-            workspace: new Types.ObjectId(workspaceId),
-            isActive: true
-        });
-        
-        if (!bot) throw new Error('Bot must be enabled to save integration access token');
 		
-		// encrypt and save integration access token
+		// encrypt and save integration access details
 		integrationAuth = await IntegrationService.setIntegrationAuthAccess({
 			integrationAuthId: integrationAuth._id.toString(),
+			accessId,
 			accessToken,
 			accessExpiresAt: undefined
 		});

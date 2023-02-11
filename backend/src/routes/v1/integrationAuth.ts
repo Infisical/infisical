@@ -18,6 +18,19 @@ router.get(
 	integrationAuthController.getIntegrationOptions
 );
 
+router.get(
+	'/:integrationAuthId',
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
+	requireIntegrationAuthorizationAuth({
+		acceptedRoles: [ADMIN, MEMBER]
+	}),
+	param('integrationAuthId'),
+	validateRequest,
+	integrationAuthController.getIntegrationAuth	
+);
+
 router.post(
 	'/oauth-token',
 	requireAuth({
@@ -44,6 +57,7 @@ router.post(
 		location: 'body'
 	}),
 	body('workspaceId').exists().trim().notEmpty(),
+	body('accessId').trim(),
 	body('accessToken').exists().trim().notEmpty(),
 	body('integration').exists().trim().notEmpty(),
 	validateRequest,

@@ -76,8 +76,6 @@ export const changeMembershipOrgRole = async (req: Request, res: Response) => {
 	// change role for (target) organization membership with id
 	// [membershipOrgId]
 
-	// TODO
-
 	let membershipToChangeRole;
 	// try {
 	// } catch (err) {

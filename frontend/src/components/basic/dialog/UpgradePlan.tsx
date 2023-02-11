@@ -42,15 +42,15 @@ const UpgradePlanModal = ({
                 leaveFrom='opacity-100 scale-100'
                 leaveTo='opacity-0 scale-95'
               >
-                <Dialog.Panel className='w-full max-w-md transform overflow-hidden rounded-md bg-bunker border border-bunker-400 p-6 pt-5 text-left align-middle shadow-xl transition-all'>
+                <Dialog.Panel className='w-full max-w-md transform overflow-hidden rounded-md bg-bunker border border-mineshaft-500 p-6 pt-5 text-left align-middle shadow-xl transition-all'>
                   <Dialog.Title
                     as='h3'
-                    className='text-lg font-medium leading-6 text-bunker-200'
+                    className='text-xl font-medium leading-6 text-primary'
                   >
                     Unleash Infisical&apos;s Full Power
                   </Dialog.Title>
                   <div className='mt-2'>
-                    <p className='text-sm text-bunker-300 mb-0.5'>
+                    <p className='text-sm text-bunker-300 mb-1'>
                       {text}
                     </p>
                     <p className='text-sm text-bunker-300'>
@@ -60,7 +60,7 @@ const UpgradePlanModal = ({
                   <div className='mt-4'>
                     <button
                       type='button'
-                      className='inline-flex justify-center rounded-md border border-transparent bg-primary opacity-90 hover:opacity-100 px-4 py-2 text-sm font-medium text-black hover:text-semibold duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2'
+                      className='inline-flex justify-center rounded-md border border-transparent bg-primary opacity-80 hover:opacity-100 px-4 py-2 text-sm font-medium text-black hover:text-semibold duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2'
                       onClick={() => router.push(`/settings/billing/${localStorage.getItem("projectData.id")}`)}
                     >
                       Upgrade Now

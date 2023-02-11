@@ -3,14 +3,13 @@ import * as Sentry from '@sentry/node';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const jsrp = require('jsrp');
 import * as bigintConversion from 'bigint-conversion';
-import { User, BackupPrivateKey } from '../../models';
+import { User, BackupPrivateKey, LoginSRPDetail } from '../../models';
 import { createToken } from '../../helpers/auth';
 import { sendMail } from '../../helpers/nodemailer';
 import { TokenService } from '../../services';
 import { JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET, SITE_URL } from '../../config';
 import { TOKEN_EMAIL_PASSWORD_RESET } from '../../variables';
-
-const clientPublicKeys: any = {};
+import { BadRequestError } from '../../utils/errors';
 
 /**
  * Password reset step 1: Send email verification link to email [email] 
@@ -53,9 +52,9 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
 		Sentry.captureException(err);
 		return res.status(400).send({
 			message: 'Failed to send email for account recovery'
-		});	
+		});
 	}
-	
+
 	return res.status(200).send({
 		message: `Sent an email for account recovery to ${email}`
 	});
@@ -71,7 +70,7 @@ export const emailPasswordResetVerify = async (req: Request, res: Response) => {
 	let user, token;
 	try {
 		const { email, code } = req.body;
-		
+
 		user = await User.findOne({ email }).select('+publicKey');
 		if (!user || !user?.publicKey) {
 			// case: user doesn't exist with email [email] or 
@@ -86,7 +85,7 @@ export const emailPasswordResetVerify = async (req: Request, res: Response) => {
 			email,
 			token: code
 		});
-		
+
 		// generate temporary password-reset token
 		token = createToken({
 			payload: {
@@ -100,7 +99,7 @@ export const emailPasswordResetVerify = async (req: Request, res: Response) => {
 		Sentry.captureException(err);
 		return res.status(400).send({
 			message: 'Failed email verification for password reset'
-		});	
+		});
 	}
 
 	return res.status(200).send({
@@ -123,7 +122,7 @@ export const srp1 = async (req: Request, res: Response) => {
 		const user = await User.findOne({
 			email: req.user.email
 		}).select('+salt +verifier');
-		
+
 		if (!user) throw new Error('Failed to find user');
 
 		const server = new jsrp.server();
@@ -132,13 +131,15 @@ export const srp1 = async (req: Request, res: Response) => {
 				salt: user.salt,
 				verifier: user.verifier
 			},
-			() => {
+			async () => {
 				// generate server-side public key
 				const serverPublicKey = server.getPublicKey();
-				clientPublicKeys[req.user.email] = {
-					clientPublicKey,
-					serverBInt: bigintConversion.bigintToBuf(server.bInt)
-				};
+
+				await LoginSRPDetail.findOneAndReplace({ email: req.user.email }, {
+					email: req.user.email,
+					clientPublicKey: clientPublicKey,
+					serverBInt: bigintConversion.bigintToBuf(server.bInt),
+				}, { upsert: true, returnNewDocument: false })
 
 				return res.status(200).send({
 					serverPublicKey,
@@ -183,17 +184,21 @@ export const changePassword = async (req: Request, res: Response) => {
 
 		if (!user) throw new Error('Failed to find user');
 
+		const loginSRPDetailFromDB = await LoginSRPDetail.findOneAndDelete({ email: req.user.email })
+
+		if (!loginSRPDetailFromDB) {
+			return BadRequestError(Error("It looks like some details from the first login are not found. Please try login one again"))
+		}
+
 		const server = new jsrp.server();
 		server.init(
 			{
 				salt: user.salt,
 				verifier: user.verifier,
-				b: clientPublicKeys[req.user.email].serverBInt
+				b: loginSRPDetailFromDB.serverBInt
 			},
 			async () => {
-				server.setClientPublicKey(
-					clientPublicKeys[req.user.email].clientPublicKey
-				);
+				server.setClientPublicKey(loginSRPDetailFromDB.clientPublicKey);
 
 				// compare server and client shared keys
 				if (server.checkClientProof(clientProof)) {
@@ -256,16 +261,22 @@ export const createBackupPrivateKey = async (req: Request, res: Response) => {
 
 		if (!user) throw new Error('Failed to find user');
 
+		const loginSRPDetailFromDB = await LoginSRPDetail.findOneAndDelete({ email: req.user.email })
+
+		if (!loginSRPDetailFromDB) {
+			return BadRequestError(Error("It looks like some details from the first login are not found. Please try login one again"))
+		}
+
 		const server = new jsrp.server();
 		server.init(
 			{
 				salt: user.salt,
 				verifier: user.verifier,
-				b: clientPublicKeys[req.user.email].serverBInt
+				b: loginSRPDetailFromDB.serverBInt
 			},
 			async () => {
 				server.setClientPublicKey(
-					clientPublicKeys[req.user.email].clientPublicKey
+					loginSRPDetailFromDB.clientPublicKey
 				);
 
 				// compare server and client shared keys
@@ -318,16 +329,16 @@ export const getBackupPrivateKey = async (req: Request, res: Response) => {
 		backupPrivateKey = await BackupPrivateKey.findOne({
 			user: req.user._id
 		}).select('+encryptedPrivateKey +iv +tag');
-		
+
 		if (!backupPrivateKey) throw new Error('Failed to find backup private key');
 	} catch (err) {
-		Sentry.setUser({ email: req.user.email});
+		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
 		return res.status(400).send({
 			message: 'Failed to get backup private key'
 		});
 	}
-	
+
 	return res.status(200).send({
 		backupPrivateKey
 	});
@@ -362,15 +373,15 @@ export const resetPassword = async (req: Request, res: Response) => {
 			{
 				new: true
 			}
-		);	
+		);
 	} catch (err) {
-		Sentry.setUser({ email: req.user.email});
+		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
 		return res.status(400).send({
 			message: 'Failed to get backup private key'
-		});	
+		});
 	}
-	
+
 	return res.status(200).send({
 		message: 'Successfully reset password'
 	});

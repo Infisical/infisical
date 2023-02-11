@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { IconProp } from '@fortawesome/fontawesome-svg-core';
 import { faSlack } from '@fortawesome/free-brands-svg-icons';
@@ -141,7 +142,11 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="mx-6 lg:mx-0 w-full overflow-y-scroll pt-20 h-screen">
+    <div className="mx-6 lg:mx-0 w-full overflow-y-scroll pt-4">
+      <Head>
+        <title>Infisical Guide</title>
+        <link rel="icon" href="/infisical.ico" />
+      </Head>
       <div className="flex flex-col items-center text-gray-300 text-lg mx-auto max-w-2xl lg:max-w-3xl xl:max-w-4xl py-6">
         <div className="text-3xl font-bold text-left w-full">Your quick start guide</div>
         <div className="text-md text-left w-full pt-2 pb-4 text-bunker-300">
@@ -167,7 +172,7 @@ export default function Home() {
         })}
         {learningItem({
           text: 'Inject secrets locally',
-          subText: 'Replace .env files with a more secure an efficient alternative.',
+          subText: 'Replace .env files with a more secure and efficient alternative.',
           complete: false,
           icon: faNetworkWired,
           time: '8 min',

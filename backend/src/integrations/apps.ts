@@ -3,6 +3,9 @@ import * as Sentry from '@sentry/node';
 import { Octokit } from '@octokit/rest';
 import { IIntegrationAuth } from '../models';
 import {
+  INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_AWS_PARAMETER_STORE,
+  INTEGRATION_AWS_SECRET_MANAGER,
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
@@ -40,6 +43,15 @@ const getApps = async ({
   let apps: App[];
   try {
     switch (integrationAuth.integration) {
+      case INTEGRATION_AZURE_KEY_VAULT:
+        apps = [];
+        break;
+      case INTEGRATION_AWS_PARAMETER_STORE:
+        apps = [];
+        break;
+      case INTEGRATION_AWS_SECRET_MANAGER:
+        apps = [];
+        break;
       case INTEGRATION_HEROKU:
         apps = await getAppsHeroku({
           accessToken
@@ -131,7 +143,8 @@ const getAppsVercel = async ({
     const res = (
       await axios.get(`${INTEGRATION_VERCEL_API_URL}/v9/projects`, {
         headers: {
-          Authorization: `Bearer ${accessToken}`
+          Authorization: `Bearer ${accessToken}`,
+          'Accept-Encoding': 'application/json'
         },
        ...( integrationAuth?.teamId ? { 
         params: {
@@ -140,7 +153,7 @@ const getAppsVercel = async ({
       } : {}) 
       })
     ).data;
-    
+
     apps = res.projects.map((a: any) => ({
       name: a.name
     }));
@@ -170,7 +183,8 @@ const getAppsNetlify = async ({
     const res = (
       await axios.get(`${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`, {
         headers: {
-          Authorization: `Bearer ${accessToken}`
+          Authorization: `Bearer ${accessToken}`,
+          'Accept-Encoding': 'application/json'
         }
       })
     ).data;
@@ -247,7 +261,9 @@ const getAppsRender = async ({
     const res = (
       await axios.get(`${INTEGRATION_RENDER_API_URL}/v1/services`, {
         headers: {
-          Authorization: `Bearer ${accessToken}`
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Accept-Encoding': 'application/json'
         }
       })
     ).data;
@@ -257,6 +273,7 @@ const getAppsRender = async ({
         name: a.service.name,
         appId: a.service.id
       })); 
+    
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
@@ -296,7 +313,9 @@ const getAppsFlyio = async ({
       url: INTEGRATION_FLYIO_API_URL,
       method: 'post',
       headers: {
-        'Authorization': 'Bearer ' + accessToken
+        'Authorization': 'Bearer ' + accessToken,
+        'Accept': 'application/json',
+        'Accept-Encoding': 'application/json'
       },
       data: {
         query,

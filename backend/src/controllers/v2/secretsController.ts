@@ -1,7 +1,7 @@
 import to from 'await-to-js';
 import { Types } from 'mongoose';
 import { Request, Response } from 'express';
-import { ISecret, Secret } from '../../models';
+import { ISecret, Membership, Secret, Workspace } from '../../models';
 import {
     SECRET_PERSONAL,
     SECRET_SHARED,
@@ -10,13 +10,14 @@ import {
     ACTION_UPDATE_SECRETS,
     ACTION_DELETE_SECRETS
 } from '../../variables';
-import { ValidationError } from '../../utils/errors';
+import { UnauthorizedRequestError, ValidationError } from '../../utils/errors';
 import { EventService } from '../../services';
 import { eventPushSecrets } from '../../events';
 import { EESecretService, EELogService } from '../../ee/services';
 import { postHogClient } from '../../services';
-import { BadRequestError } from '../../utils/errors';
 import { getChannelFromUserAgent } from '../../utils/posthog';
+import { ABILITY_READ, ABILITY_WRITE } from '../../variables/organization';
+import { userHasWorkspaceAccess } from '../../ee/helpers/checkMembershipPermissions';
 
 /**
  * Create secret(s) for workspace with id [workspaceId] and environment [environment]
@@ -76,20 +77,40 @@ export const createSecrets = async (req: Request, res: Response) => {
         }
     }   
     */
-    const channel = getChannelFromUserAgent(req.headers['user-agent'])
-    const { workspaceId, environment } = req.body;
 
-    let toAdd;
-    if (Array.isArray(req.body.secrets)) {
-        // case: create multiple secrets
-        toAdd = req.body.secrets;
-    } else if (typeof req.body.secrets === 'object') {
-        // case: create 1 secret
-        toAdd = [req.body.secrets];
+    const channel = getChannelFromUserAgent(req.headers['user-agent'])
+    const { workspaceId, environment }: { workspaceId: string, environment: string } = req.body;
+
+    const hasAccess = await userHasWorkspaceAccess(req.user, workspaceId, environment, ABILITY_WRITE)
+    if (!hasAccess) {
+        throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
     }
 
-    const newSecrets = await Secret.insertMany(
-        toAdd.map(({
+    let listOfSecretsToCreate;
+    if (Array.isArray(req.body.secrets)) {
+        // case: create multiple secrets
+        listOfSecretsToCreate = req.body.secrets;
+    } else if (typeof req.body.secrets === 'object') {
+        // case: create 1 secret
+        listOfSecretsToCreate = [req.body.secrets];
+    }
+
+    type secretsToCreateType = {
+        type: string;
+        secretKeyCiphertext: string;
+        secretKeyIV: string;
+        secretKeyTag: string;
+        secretValueCiphertext: string;
+        secretValueIV: string;
+        secretValueTag: string;
+        secretCommentCiphertext: string;
+        secretCommentIV: string;
+        secretCommentTag: string;
+        tags: string[]
+    }
+
+    const newlyCreatedSecrets = await Secret.insertMany(
+        listOfSecretsToCreate.map(({
             type,
             secretKeyCiphertext,
             secretKeyIV,
@@ -97,15 +118,11 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretValueCiphertext,
             secretValueIV,
             secretValueTag,
-        }: {
-            type: string;
-            secretKeyCiphertext: string;
-            secretKeyIV: string;
-            secretKeyTag: string;
-            secretValueCiphertext: string;
-            secretValueIV: string;
-            secretValueTag: string;
-        }) => {
+            secretCommentCiphertext,
+            secretCommentIV,
+            secretCommentTag,
+            tags
+        }: secretsToCreateType) => {
             return ({
                 version: 1,
                 workspace: new Types.ObjectId(workspaceId),
@@ -117,7 +134,11 @@ export const createSecrets = async (req: Request, res: Response) => {
                 secretKeyTag,
                 secretValueCiphertext,
                 secretValueIV,
-                secretValueTag
+                secretValueTag,
+                secretCommentCiphertext,
+                secretCommentIV,
+                secretCommentTag,
+                tags
             });
         })
     );
@@ -133,7 +154,7 @@ export const createSecrets = async (req: Request, res: Response) => {
 
     // (EE) add secret versions for new secrets
     await EESecretService.addSecretVersions({
-        secretVersions: newSecrets.map(({
+        secretVersions: newlyCreatedSecrets.map(({
             _id,
             version,
             workspace,
@@ -147,7 +168,11 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretValueCiphertext,
             secretValueIV,
             secretValueTag,
-            secretValueHash
+            secretValueHash,
+            secretCommentCiphertext,
+            secretCommentIV,
+            secretCommentTag,
+            tags
         }) => ({
             _id: new Types.ObjectId(),
             secret: _id,
@@ -164,21 +189,25 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretValueCiphertext,
             secretValueIV,
             secretValueTag,
-            secretValueHash
+            secretValueHash,
+            secretCommentCiphertext,
+            secretCommentIV,
+            secretCommentTag,
+            tags
         }))
     });
 
-    const addAction = await EELogService.createActionSecret({
+    const addAction = await EELogService.createAction({
         name: ACTION_ADD_SECRETS,
-        userId: req.user._id.toString(),
-        workspaceId,
-        secretIds: newSecrets.map((n) => n._id)
+        userId: req.user._id,
+        workspaceId: new Types.ObjectId(workspaceId),
+        secretIds: newlyCreatedSecrets.map((n) => n._id)
     });
 
     // (EE) create (audit) log
     addAction && await EELogService.createLog({
         userId: req.user._id.toString(),
-        workspaceId,
+        workspaceId: new Types.ObjectId(workspaceId),
         actions: [addAction],
         channel,
         ipAddress: req.ip
@@ -194,7 +223,7 @@ export const createSecrets = async (req: Request, res: Response) => {
             event: 'secrets added',
             distinctId: req.user.email,
             properties: {
-                numberOfSecrets: toAdd.length,
+                numberOfSecrets: listOfSecretsToCreate.length,
                 environment,
                 workspaceId,
                 channel: channel,
@@ -204,7 +233,7 @@ export const createSecrets = async (req: Request, res: Response) => {
     }
 
     return res.status(200).send({
-        secrets: newSecrets
+        secrets: newlyCreatedSecrets
     });
 }
 
@@ -269,6 +298,14 @@ export const getSecrets = async (req: Request, res: Response) => {
         userEmail = req.serviceTokenData.user.email;
     }
 
+    // none service token case as service tokens are already scoped
+    if (!req.serviceTokenData) {
+        const hasAccess = await userHasWorkspaceAccess(userId, workspaceId, environment, ABILITY_READ)
+        if (!hasAccess) {
+            throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
+        }
+    }
+
     const [err, secrets] = await to(Secret.find(
         {
             workspace: workspaceId,
@@ -279,22 +316,22 @@ export const getSecrets = async (req: Request, res: Response) => {
             ],
             type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
         }
-    ).then())
+    ).populate("tags").then())
 
     if (err) throw ValidationError({ message: 'Failed to get secrets', stack: err.stack });
 
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
 
-    const readAction = await EELogService.createActionSecret({
+    const readAction = await EELogService.createAction({
         name: ACTION_READ_SECRETS,
-        userId: userId,
-        workspaceId: workspaceId as string,
+        userId: new Types.ObjectId(userId),
+        workspaceId: new Types.ObjectId(workspaceId as string),
         secretIds: secrets.map((n: any) => n._id)
     });
 
     readAction && await EELogService.createLog({
-        userId: userId,
-        workspaceId: workspaceId as string,
+        userId: new Types.ObjectId(userId),
+        workspaceId: new Types.ObjectId(workspaceId as string),
         actions: [readAction],
         channel,
         ipAddress: req.ip
@@ -371,7 +408,6 @@ export const updateSecrets = async (req: Request, res: Response) => {
     */
     const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli';
 
-
     // TODO: move type
     interface PatchSecret {
         id: string;
@@ -384,6 +420,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
         secretCommentCiphertext: string;
         secretCommentIV: string;
         secretCommentTag: string;
+        tags: string[]
     }
 
     const updateOperationsToPerform = req.body.secrets.map((secret: PatchSecret) => {
@@ -396,7 +433,8 @@ export const updateSecrets = async (req: Request, res: Response) => {
             secretValueTag,
             secretCommentCiphertext,
             secretCommentIV,
-            secretCommentTag
+            secretCommentTag,
+            tags
         } = secret;
 
         return ({
@@ -412,8 +450,9 @@ export const updateSecrets = async (req: Request, res: Response) => {
                     secretValueCiphertext,
                     secretValueIV,
                     secretValueTag,
+                    tags,
                     ...((
-                        secretCommentCiphertext &&
+                        secretCommentCiphertext !== undefined &&
                         secretCommentIV &&
                         secretCommentTag
                     ) ? {
@@ -446,6 +485,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
                 secretCommentCiphertext,
                 secretCommentIV,
                 secretCommentTag,
+                tags
             } = secretModificationsBySecretId[secret._id.toString()]
 
             return ({
@@ -463,6 +503,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
                 secretCommentCiphertext: secretCommentCiphertext ? secretCommentCiphertext : secret.secretCommentCiphertext,
                 secretCommentIV: secretCommentIV ? secretCommentIV : secret.secretCommentIV,
                 secretCommentTag: secretCommentTag ? secretCommentTag : secret.secretCommentTag,
+                tags: tags ? tags : secret.tags
             });
         })
     }
@@ -491,17 +532,17 @@ export const updateSecrets = async (req: Request, res: Response) => {
             });
         }, 10000);
 
-        const updateAction = await EELogService.createActionSecret({
+        const updateAction = await EELogService.createAction({
             name: ACTION_UPDATE_SECRETS,
-            userId: req.user._id.toString(),
-            workspaceId: key,
+            userId: req.user._id,
+            workspaceId: new Types.ObjectId(key),
             secretIds: workspaceSecretObj[key].map((secret: ISecret) => secret._id)
         });
 
         // (EE) create (audit) log
         updateAction && await EELogService.createLog({
             userId: req.user._id.toString(),
-            workspaceId: key,
+            workspaceId: new Types.ObjectId(key),
             actions: [updateAction],
             channel,
             ipAddress: req.ip
@@ -617,17 +658,17 @@ export const deleteSecrets = async (req: Request, res: Response) => {
                 workspaceId: key
             })
         });
-        const deleteAction = await EELogService.createActionSecret({
+        const deleteAction = await EELogService.createAction({
             name: ACTION_DELETE_SECRETS,
-            userId: req.user._id.toString(),
-            workspaceId: key,
+            userId: req.user._id,
+            workspaceId: new Types.ObjectId(key),
             secretIds: workspaceSecretObj[key].map((secret: ISecret) => secret._id)
         });
 
         // (EE) create (audit) log
         deleteAction && await EELogService.createLog({
             userId: req.user._id.toString(),
-            workspaceId: key,
+            workspaceId: new Types.ObjectId(key),
             actions: [deleteAction],
             channel,
             ipAddress: req.ip

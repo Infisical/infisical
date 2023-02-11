@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { faX } from '@fortawesome/free-solid-svg-icons';
 
+import changeUserRoleInOrganization from '@app/pages/api/organization/changeUserRoleInOrganization';
 import deleteUserFromOrganization from '@app/pages/api/organization/deleteUserFromOrganization';
-import changeUserRoleInWorkspace from '@app/pages/api/workspace/changeUserRoleInWorkspace';
 import deleteUserFromWorkspace from '@app/pages/api/workspace/deleteUserFromWorkspace';
 import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
 import uploadKeys from '@app/pages/api/workspace/uploadKeys';
@@ -55,9 +55,9 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
     ]);
   };
 
-  // Update the rold of a certain user
+  // Update the role of a certain user
   const handleRoleUpdate = (index: number, e: string) => {
-    changeUserRoleInWorkspace(userData[index].membershipId, e);
+    changeUserRoleInOrganization(String(localStorage.getItem("orgData.id")), userData[index].membershipId, e);
     changeData([
       ...userData.slice(0, index),
       ...[
@@ -110,14 +110,14 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
   };
 
   return (
-    <div className="table-container bg-bunker rounded-md mb-6 border border-mineshaft-700 relative mt-1">
+    <div className="table-container bg-bunker rounded-md mb-6 border border-mineshaft-700 relative mt-1 min-w-max">
       <div className="absolute rounded-t-md w-full h-[3.25rem] bg-white/5" />
       <table className="w-full my-0.5">
         <thead className="text-gray-400 text-sm font-light">
           <tr>
-            <th className="text-left pl-6 py-3.5">FIRST NAME</th>
-            <th className="text-left pl-6 py-3.5">LAST NAME</th>
-            <th className="text-left pl-6 py-3.5">EMAIL</th>
+            <th className="text-left pl-4 py-3.5">NAME</th>
+            <th className="text-left pl-4 py-3.5">EMAIL</th>
+            <th className="text-left pl-6 pr-10 py-3.5">ROLE</th>
             <th aria-label="buttons" />
           </tr>
         </thead>
@@ -136,35 +136,30 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
                   user.email?.toLowerCase().includes(filter)
               )
               .map((row, index) => (
-                <tr key={guidGenerator()} className="bg-bunker-800 hover:bg-bunker-800/5">
-                  <td className="pl-6 py-2 border-mineshaft-700 border-t text-gray-300">
-                    {row.firstName}
+                <tr key={guidGenerator()} className="bg-bunker-800 hover:bg-bunker-700">
+                  <td className="pl-4 py-2 border-mineshaft-700 border-t text-gray-300">
+                    {row.firstName} {row.lastName}
                   </td>
-                  <td className="pl-6 py-2 border-mineshaft-700 border-t text-gray-300">
-                    {row.lastName}
-                  </td>
-                  <td className="pl-6 py-2 border-mineshaft-700 border-t text-gray-300">
+                  <td className="pl-4 py-2 border-mineshaft-700 border-t text-gray-300">
                     {row.email}
                   </td>
-                  <td className="flex flex-row justify-end pr-8 py-2 border-t border-0.5 border-mineshaft-700">
-                    <div className="justify-end mr-6 mx-2 w-full h-full flex flex-row items-center">
-                      {row.status === 'granted' &&
+                  <td className="pl-6 pr-10 py-2 border-mineshaft-700 border-t text-gray-300">
+                    <div className="justify-start h-full flex flex-row items-center">
+                      {row.status === 'accepted' &&
                       ((myRole === 'admin' && row.role !== 'owner') || myRole === 'owner') &&
-                      myUser !== row.email ? (
+                      (myUser !== row.email) ? (
                         <Listbox
                           isSelected={row.role}
                           onChange={(e) => handleRoleUpdate(index, e)}
                           data={
                             myRole === 'owner' ? ['owner', 'admin', 'member'] : ['admin', 'member']
                           }
-                          text="Role: "
                         />
                       ) : (
                         row.status !== 'invited' &&
                         row.status !== 'verified' && (
                           <Listbox
                             isSelected={row.role}
-                            text="Role: "
                             onChange={() => {
                               throw new Error('Function not implemented.');
                             }}
@@ -173,7 +168,7 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
                         )
                       )}
                       {(row.status === 'invited' || row.status === 'verified') && (
-                        <div className="w-full pl-9">
+                        <div className="w-full pr-20">
                           <Button
                             onButtonPressed={() => deleteMembershipAndResendInvite(row.email)}
                             color="mineshaft"
@@ -193,10 +188,12 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
                         </div>
                       )}
                     </div>
+                  </td>
+                  <td className="flex flex-row justify-end pl-8 pr-8 py-2 border-t border-0.5 border-mineshaft-700">
                     {myUser !== row.email &&
                     // row.role !== "admin" &&
                     myRole !== 'member' ? (
-                      <div className="opacity-50 hover:opacity-100 flex items-center">
+                      <div className="opacity-50 hover:opacity-100 flex items-center mt-0.5">
                         <Button
                           onButtonPressed={() => handleDelete(row.membershipId, index)}
                           color="red"

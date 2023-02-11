@@ -114,7 +114,8 @@
             "cli/commands/run",
             "cli/commands/secrets",
             "cli/commands/export",
-            "cli/commands/vault"
+            "cli/commands/vault",
+            "cli/commands/reset"
           ]
         },
         "cli/faq"
@@ -209,7 +210,8 @@
       "pages": [
         "integrations/platforms/docker",
         "integrations/platforms/docker-compose",
-        "integrations/platforms/kubernetes"
+        "integrations/platforms/kubernetes",
+        "integrations/platforms/pm2"
       ]
     },
     {
@@ -219,13 +221,16 @@
         "integrations/cloud/vercel",
         "integrations/cloud/netlify",
         "integrations/cloud/render",
-        "integrations/cloud/flyio"
+        "integrations/cloud/flyio",
+        "integrations/cloud/aws-parameter-store",
+        "integrations/cloud/aws-secret-manager"
       ]
     },
     {
       "group": "CI/CD",
       "pages": [
         "integrations/cicd/githubactions",
+        "integrations/cicd/gitlab",
         "integrations/cicd/circleci"
       ]
     },

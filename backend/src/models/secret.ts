@@ -23,6 +23,7 @@ export interface ISecret {
 	secretCommentIV?: string;
 	secretCommentTag?: string;
 	secretCommentHash?: string;
+	tags?: string[];
 }
 
 const secretSchema = new Schema<ISecret>(
@@ -46,6 +47,11 @@ const secretSchema = new Schema<ISecret>(
 			// user associated with the personal secret
 			type: Schema.Types.ObjectId,
 			ref: 'User'
+		},
+		tags: {
+			ref: 'Tag',
+			type: [Schema.Types.ObjectId],
+			default: []
 		},
 		environment: {
 			type: String,
@@ -102,6 +108,9 @@ const secretSchema = new Schema<ISecret>(
 		timestamps: true
 	}
 );
+
+
+secretSchema.index({ tags: 1 }, { background: true })
 
 const Secret = model<ISecret>('Secret', secretSchema);
 

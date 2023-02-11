@@ -13,6 +13,7 @@ import InputField from '@app/components/basic/InputField';
 import ListBox from '@app/components/basic/Listbox';
 import attemptLogin from '@app/components/utilities/attemptLogin';
 import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
+import { isLoggedIn } from '@app/reactQuery';
 
 import getWorkspaces from './api/workspace/getWorkspaces';
 
@@ -21,6 +22,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [errorLogin, setErrorLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAlreadyLoggedIn, setIsAlreadyLoggedIn] = useState(false);
   const router = useRouter();
   const { t } = useTranslation();
   const lang = router.locale ?? 'en';
@@ -31,6 +33,7 @@ export default function Login() {
   };
 
   useEffect(() => {
+    // TODO(akhilmhdh): workspace will be controlled by a workspace context
     const redirectToDashboard = async () => {
       let userWorkspace;
       try {
@@ -41,7 +44,10 @@ export default function Login() {
         console.log('Error - Not logged in yet');
       }
     };
-    redirectToDashboard();
+    if (isLoggedIn()) {
+      setIsAlreadyLoggedIn(true);
+      redirectToDashboard();
+    }
   }, []);
 
   /**
@@ -59,6 +65,10 @@ export default function Login() {
       }, 2000);
     });
   };
+
+  if (isAlreadyLoggedIn) {
+    return null
+  }
 
   return (
     <div className="bg-bunker-800 h-screen flex flex-col justify-start px-6">
