@@ -54,6 +54,9 @@ export default function Login() {
    * This function check if the user entered the correct credentials and should be allowed to log in.
    */
   const loginCheck = async () => {
+
+    // #TODO: IF 2FA IS ENABLED REDIRECT TO <2FASTEP /> AND 'return;'
+
     if (!email || !password) {
       return;
     }
