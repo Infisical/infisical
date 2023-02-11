@@ -84,16 +84,6 @@ const integrationSchema = new Schema<IIntegration>(
       type: String,
       default: null
     },
-    path: {
-      // aws-parameter-store-specific path
-      type: String,
-      default: null
-    },
-    region: {
-      // aws-parameter-store-specific path
-      type: String,
-      default: null
-    },
     integration: {
       type: String,
       enum: [
