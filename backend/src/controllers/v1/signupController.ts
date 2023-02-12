@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
-import { NODE_ENV, JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET } from '../../config';
+import { NODE_ENV, JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET, DISABLE_NEW_SIGN_UP } from '../../config';
 import { User, MembershipOrg } from '../../models';
 import { completeAccount } from '../../helpers/user';
 import {
@@ -11,6 +11,7 @@ import {
 import { issueTokens, createToken } from '../../helpers/auth';
 import { INVITED, ACCEPTED } from '../../variables';
 import axios from 'axios';
+import { BadRequestError } from '../../utils/errors';
 
 /**
  * Signup step 1: Initialize account for user under email [email] and send a verification code
@@ -23,6 +24,10 @@ export const beginEmailSignup = async (req: Request, res: Response) => {
 	let email: string;
 	try {
 		email = req.body.email;
+
+		if (DISABLE_NEW_SIGN_UP) {
+			throw BadRequestError({ message: "New signups are not permitted at this time" })
+		}
 
 		const user = await User.findOne({ email }).select('+publicKey');
 		if (user && user?.publicKey) {
@@ -129,7 +134,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 
 		// get user
 		user = await User.findOne({ email });
-		
+
 		if (!user || (user && user?.publicKey)) {
 			// case 1: user doesn't exist.
 			// case 2: user has already completed account
