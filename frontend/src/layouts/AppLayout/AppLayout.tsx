@@ -64,7 +64,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   // eslint-disable-next-line prefer-const
   let { workspaces, currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
-  workspaces = workspaces.filter(ws => ws.organization === currentOrg?._id)
+  workspaces = workspaces.filter((ws) => ws.organization === currentOrg?._id);
   const { user } = useUser();
 
   const createWs = useCreateWorkspace();
@@ -218,50 +218,58 @@ export const AppLayout = ({ children }: LayoutProps) => {
           <aside className="w-full border-r border-mineshaft-500 bg-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between">
               <div>
-                {currentWorkspace 
-                ? <div className="w-full p-4 mt-3 mb-4">
-                  <p className="text-xs font-semibold ml-1.5 mb-1 uppercase text-gray-400">Project</p>
-                  <Select
-                    defaultValue={currentWorkspace?._id}
-                    value={currentWorkspace?._id}
-                    className="w-full py-2.5 bg-mineshaft-600 font-medium"
-                    onValueChange={(value) => {
-                      router.push(`/dashboard/${value}`);
-                    }}
-                    position="popper"
-                    dropdownContainerClassName="left-0 text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50"
-                  >
-                    {workspaces.map(({ _id, name }) => (
-                      <SelectItem key={`ws-layout-list-${_id}`} value={_id} className={`${currentWorkspace?._id === _id && "bg-mineshaft-600"}`}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                    <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" />
-                    <div className="w-full">
-                      <Button
-                        className="w-full py-2 text-bunker-200 bg-mineshaft-500 hover:bg-primary/90 hover:text-black"
-                        color="mineshaft"
-                        size="sm"
-                        onClick={() => handlePopUpOpen('addNewWs')}
-                        leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                      >
-                        Add Project
-                      </Button>
-                    </div>
-                  </Select>
-                </div>
-                : <div className="w-full p-4 mt-3 mb-4">
-                  <Button
-                    className="w-full py-2 text-bunker-200 bg-mineshaft-500 hover:bg-primary/90 hover:text-black"
-                    color="mineshaft"
-                    size="sm"
-                    onClick={() => handlePopUpOpen('addNewWs')}
-                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  >
-                    Add Project
-                  </Button>
-                </div>}
-                <div className={`${currentWorkspace ? "block" : "hidden"}`}>
+                {currentWorkspace ? (
+                  <div className="w-full p-4 mt-3 mb-4">
+                    <p className="text-xs font-semibold ml-1.5 mb-1 uppercase text-gray-400">
+                      Project
+                    </p>
+                    <Select
+                      defaultValue={currentWorkspace?._id}
+                      value={currentWorkspace?._id}
+                      className="w-full py-2.5 bg-mineshaft-600 font-medium"
+                      onValueChange={(value) => {
+                        router.push(`/dashboard/${value}`);
+                      }}
+                      position="popper"
+                      dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50"
+                    >
+                      {workspaces.map(({ _id, name }) => (
+                        <SelectItem
+                          key={`ws-layout-list-${_id}`}
+                          value={_id}
+                          className={`${currentWorkspace?._id === _id && 'bg-mineshaft-600'}`}
+                        >
+                          {name}
+                        </SelectItem>
+                      ))}
+                      <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" />
+                      <div className="w-full">
+                        <Button
+                          className="w-full py-2 text-bunker-200 bg-mineshaft-500 hover:bg-primary/90 hover:text-black"
+                          color="mineshaft"
+                          size="sm"
+                          onClick={() => handlePopUpOpen('addNewWs')}
+                          leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                        >
+                          Add Project
+                        </Button>
+                      </div>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="w-full p-4 mt-3 mb-4">
+                    <Button
+                      className="w-full py-2 text-bunker-200 bg-mineshaft-500 hover:bg-primary/90 hover:text-black"
+                      color="mineshaft"
+                      size="sm"
+                      onClick={() => handlePopUpOpen('addNewWs')}
+                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                    >
+                      Add Project
+                    </Button>
+                  </div>
+                )}
+                <div className={`${currentWorkspace ? 'block' : 'hidden'}`}>
                   <Menu>
                     <Link href={`/dashboard/${currentWorkspace?._id}`} passHref>
                       <a>
@@ -392,7 +400,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     </FormControl>
                   )}
                 />
-                <div className='pl-1 mt-4'>
+                <div className="pl-1 mt-4">
                   <Controller
                     control={control}
                     name="addMembers"
@@ -414,10 +422,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     isDisabled={isSubmitting}
                     isLoading={isSubmitting}
                     key="layout-create-project-submit"
-                    className=""
+                    className="mr-4"
                     type="submit"
                   >
                     Create Project
+                  </Button>
+                  <Button
+                    key="layout-cancel-create-project"
+                    onClick={() => handlePopUpClose('addNewWs')}
+                    variant="plain"
+                    colorSchema="secondary"
+                  >
+                    Cancel
                   </Button>
                 </div>
               </form>

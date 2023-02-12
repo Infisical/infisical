@@ -38,6 +38,13 @@ export const Secondary: Story = {
   }
 };
 
+export const Star: Story = {
+  args: {
+    children: 'Hello Infisical',
+    variant: 'star'
+  }
+};
+
 export const Danger: Story = {
   args: {
     children: 'Hello Infisical',
