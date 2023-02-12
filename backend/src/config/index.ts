@@ -1,6 +1,6 @@
 const PORT = process.env.PORT || 4000;
 const EMAIL_TOKEN_LIFETIME = parseInt(process.env.EMAIL_TOKEN_LIFETIME! || '86400');
-const DISABLE_NEW_SIGN_UP = process.env.DISABLE_NEW_SIGN_UP == undefined ? false : process.env.DISABLE_NEW_SIGN_UP
+const INVITE_ONLY_SIGNUP = process.env.INVITE_ONLY_SIGNUP == undefined ? false : process.env.INVITE_ONLY_SIGNUP
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
 const SALT_ROUNDS = parseInt(process.env.SALT_ROUNDS!) || 10;
 const JWT_AUTH_LIFETIME = process.env.JWT_AUTH_LIFETIME! || '10d';
@@ -51,7 +51,7 @@ const LICENSE_KEY = process.env.LICENSE_KEY!;
 export {
   PORT,
   EMAIL_TOKEN_LIFETIME,
-  DISABLE_NEW_SIGN_UP,
+  INVITE_ONLY_SIGNUP,
   ENCRYPTION_KEY,
   SALT_ROUNDS,
   JWT_AUTH_LIFETIME,
