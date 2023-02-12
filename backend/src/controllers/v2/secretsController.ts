@@ -17,7 +17,7 @@ import { EESecretService, EELogService } from '../../ee/services';
 import { postHogClient } from '../../services';
 import { getChannelFromUserAgent } from '../../utils/posthog';
 import { ABILITY_READ, ABILITY_WRITE } from '../../variables/organization';
-import { userHasWorkspaceAccess } from '../../ee/helpers/checkMembershipPermissions';
+import { userHasNoAbility, userHasWorkspaceAccess, userHasWriteOnlyAbility } from '../../ee/helpers/checkMembershipPermissions';
 
 /**
  * Create secret(s) for workspace with id [workspaceId] and environment [environment]
@@ -298,27 +298,42 @@ export const getSecrets = async (req: Request, res: Response) => {
         userEmail = req.serviceTokenData.user.email;
     }
 
-    // none service token case as service tokens are already scoped
+    // none service token case as service tokens are already scoped to env and project
+    let hasWriteOnlyAccess
     if (!req.serviceTokenData) {
-        const hasAccess = await userHasWorkspaceAccess(userId, workspaceId, environment, ABILITY_READ)
-        if (!hasAccess) {
+        hasWriteOnlyAccess = await userHasWriteOnlyAbility(userId, workspaceId, environment)
+        const hasNoAccess = await userHasNoAbility(userId, workspaceId, environment)
+        if (hasNoAccess) {
             throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
         }
     }
-
-    const [err, secrets] = await to(Secret.find(
-        {
-            workspace: workspaceId,
-            environment,
-            $or: [
-                { user: userId },
-                { user: { $exists: false } }
-            ],
-            type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
-        }
-    ).populate("tags").then())
-
-    if (err) throw ValidationError({ message: 'Failed to get secrets', stack: err.stack });
+    let secrets: any
+    if (hasWriteOnlyAccess) {
+        secrets = await Secret.find(
+            {
+                workspace: workspaceId,
+                environment,
+                $or: [
+                    { user: userId },
+                    { user: { $exists: false } }
+                ],
+                type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
+            }
+        )
+            .select("secretKeyCiphertext secretKeyIV secretKeyTag")
+    } else {
+        secrets = await Secret.find(
+            {
+                workspace: workspaceId,
+                environment,
+                $or: [
+                    { user: userId },
+                    { user: { $exists: false } }
+                ],
+                type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
+            }
+        ).populate("tags")
+    }
 
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
 
@@ -353,6 +368,59 @@ export const getSecrets = async (req: Request, res: Response) => {
 
     return res.status(200).send({
         secrets
+    });
+}
+
+
+export const getOnlySecretKeys = async (req: Request, res: Response) => {
+    const { workspaceId, environment } = req.query;
+
+    let userId = "" // used for getting personal secrets for user
+    let userEmail = "" // used for posthog 
+    if (req.user) {
+        userId = req.user._id;
+        userEmail = req.user.email;
+    }
+
+    if (req.serviceTokenData) {
+        userId = req.serviceTokenData.user._id
+        userEmail = req.serviceTokenData.user.email;
+    }
+
+    // none service token case as service tokens are already scoped
+    if (!req.serviceTokenData) {
+        const hasAccess = await userHasWorkspaceAccess(userId, workspaceId, environment, ABILITY_READ)
+        if (!hasAccess) {
+            throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
+        }
+    }
+
+    const [err, secretKeys] = await to(Secret.find(
+        {
+            workspace: workspaceId,
+            environment,
+            $or: [
+                { user: userId },
+                { user: { $exists: false } }
+            ],
+            type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
+        }
+    )
+        .select("secretKeyIV secretKeyTag secretKeyCiphertext")
+        .then())
+
+    if (err) throw ValidationError({ message: 'Failed to get secrets', stack: err.stack });
+
+    // readAction && await EELogService.createLog({
+    //     userId: new Types.ObjectId(userId),
+    //     workspaceId: new Types.ObjectId(workspaceId as string),
+    //     actions: [readAction],
+    //     channel,
+    //     ipAddress: req.ip
+    // });
+
+    return res.status(200).send({
+        secretKeys
     });
 }
 
