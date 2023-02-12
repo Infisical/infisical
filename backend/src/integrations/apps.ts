@@ -350,7 +350,7 @@ const getAppsCircleci = async ({ accessToken }: { accessToken: string }) => {
 
     const res = (
       await axios.get(
-        `${INTEGRATION_CIRCLECI_API_URL}/v2/pipeline/?org-slug=${slug}`,
+        `${INTEGRATION_CIRCLECI_API_URL}/v2/insights/${slug}/summary`,
         {
           headers: {
             "Circle-Token": accessToken,
@@ -358,11 +358,13 @@ const getAppsCircleci = async ({ accessToken }: { accessToken: string }) => {
           },
         }
       )
-    ).data?.items;
+    ).data
 
-    apps = res.map((a: any) => ({
-      name: a?.project_slug?.split("/")[2],
-    }));
+    apps = res?.all_projects?.map((a: any) => {
+      return {
+        name: a
+      }
+    })
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
