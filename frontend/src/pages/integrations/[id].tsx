@@ -198,6 +198,9 @@ export default function Integrations() {
         case 'flyio':
           link = `${window.location.origin}/integrations/flyio/authorize`
           break;
+        case 'circleci':
+          link = `${window.location.origin}/integrations/circleci/authorize`
+          break;
         default:
           break;
       }
@@ -240,6 +243,9 @@ export default function Integrations() {
           break;
         case 'flyio':
           link = `${window.location.origin}/integrations/flyio/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'circleci':
+          link = `${window.location.origin}/integrations/circleci/create?integrationAuthId=${integrationAuth._id}`;
           break;
         default:
           break;

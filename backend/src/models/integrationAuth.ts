@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, model, Types } from "mongoose";
 import {
   INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_AWS_PARAMETER_STORE,
@@ -8,24 +8,16 @@ import {
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
   INTEGRATION_RENDER,
-  INTEGRATION_FLYIO
-} from '../variables';
+  INTEGRATION_FLYIO,
+  INTEGRATION_CIRCLECI,
+} from "../variables";
 
 export interface IIntegrationAuth {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration:
-    | 'azure-key-vault'
-    | 'aws-parameter-store'
-    | 'aws-secret-manager'
-    | 'heroku' 
-    | 'vercel' 
-    | 'netlify' 
-    | 'github' 
-    | 'render' 
-    | 'flyio';
-  teamId: string; // TODO: deprecate (vercel) -> move to accessId
-  accountId: string; // TODO: deprecate (netlify) -> move to accessId
+  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'render' | 'flyio' | 'azure-key-vault' | 'circleci' | 'aws-parameter-store' | 'aws-secret-manager';
+  teamId: string;
+  accountId: string;
   refreshCiphertext?: string;
   refreshIV?: string;
   refreshTag?: string;
@@ -41,9 +33,9 @@ export interface IIntegrationAuth {
 const integrationAuthSchema = new Schema<IIntegrationAuth>(
   {
     workspace: {
-        type: Schema.Types.ObjectId,
-        ref: 'Workspace',
-        required: true
+      type: Schema.Types.ObjectId,
+      ref: "Workspace",
+      required: true,
     },
     integration: {
       type: String,
@@ -56,29 +48,30 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_NETLIFY,
         INTEGRATION_GITHUB,
         INTEGRATION_RENDER,
-        INTEGRATION_FLYIO
+        INTEGRATION_FLYIO,
+        INTEGRATION_CIRCLECI,
       ],
-      required: true
+      required: true,
     },
     teamId: {
       // vercel-specific integration param
-      type: String
+      type: String,
     },
     accountId: {
       // netlify-specific integration param
-      type: String
+      type: String,
     },
     refreshCiphertext: {
       type: String,
-      select: false
+      select: false,
     },
     refreshIV: {
       type: String,
-      select: false
+      select: false,
     },
     refreshTag: {
       type: String,
-      select: false
+      select: false,
     },
     accessIdCiphertext: {
       type: String,
@@ -94,28 +87,28 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
     },
     accessCiphertext: {
       type: String,
-      select: false
+      select: false,
     },
     accessIV: {
       type: String,
-      select: false
+      select: false,
     },
     accessTag: {
       type: String,
-      select: false
+      select: false,
     },
     accessExpiresAt: {
       type: Date,
-      select: false
-    }
+      select: false,
+    },
   },
   {
-    timestamps: true
+    timestamps: true,
   }
 );
 
 const IntegrationAuth = model<IIntegrationAuth>(
-  'IntegrationAuth',
+  "IntegrationAuth",
   integrationAuthSchema
 );
 
