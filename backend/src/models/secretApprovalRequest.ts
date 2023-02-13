@@ -17,20 +17,20 @@ interface IApprover {
 	status: ApprovalStatus;
 }
 
-enum ApprovalStatus {
+export enum ApprovalStatus {
 	PENDING = 'pending',
 	APPROVED = 'approved',
 	REJECTED = 'rejected'
 }
 
-enum RequestType {
+export enum RequestType {
 	UPDATE = 'update',
 	DELETE = 'delete',
 	CREATE = 'create'
 }
 
 const approverSchema = new mongoose.Schema({
-	userId: {
+	user: {
 		type: mongoose.Schema.Types.ObjectId,
 		ref: 'User',
 		required: true
@@ -41,7 +41,6 @@ const approverSchema = new mongoose.Schema({
 		default: ApprovalStatus.PENDING
 	}
 });
-
 
 const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
 	{
