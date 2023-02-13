@@ -574,6 +574,8 @@ export default function Dashboard() {
       if (snapshotData) setSelectedSnapshotEnv(selectedWorkspaceEnv);
       else setSelectedEnv(selectedWorkspaceEnv);
     }
+
+    setHasUnsavedChanges(false);
   };
 
   return data ? (
