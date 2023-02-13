@@ -112,14 +112,14 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 		if (!membershipOrg) {
 			throw new Error('Failed to validate organization membership');
 		}
-		
+
 		invitee = await User.findOne({
 			email: inviteeEmail
 		}).select('+publicKey');
 
 		if (invitee) {
 			// case: invitee is an existing user
-			
+
 			inviteeMembershipOrg = await MembershipOrg.findOne({
 				user: invitee._id,
 				organization: organizationId
@@ -236,7 +236,7 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 				message: 'Successfully verified email',
 				user,
 			});
-        }
+		}
 
 		if (!user) {
 			// initialize user account

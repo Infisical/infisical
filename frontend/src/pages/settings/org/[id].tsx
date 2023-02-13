@@ -159,7 +159,7 @@ export default function SettingsOrg() {
         <link rel="icon" href="/infisical.ico" />
       </Head>
       <div className="flex flex-row">
-        <div className="w-full max-h-screen pb-2 overflow-y-auto">
+        <div className="w-full max-h-screen pb-2">
           <NavHeader pageName={t('settings-org:title')} />
           <AddIncidentContactDialog
             isOpen={isAddIncidentContactOpen}

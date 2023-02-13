@@ -1,5 +1,6 @@
 import _ from "lodash";
 import { Membership } from "../../models";
+import { ABILITY_READ, ABILITY_WRITE } from "../../variables/organization";
 
 export const userHasWorkspaceAccess = async (userId: any, workspaceId: any, environment: any, action: any) => {
   const membershipForWorkspace = await Membership.findOne({ workspace: workspaceId, user: userId })
@@ -15,4 +16,39 @@ export const userHasWorkspaceAccess = async (userId: any, workspaceId: any, envi
   }
 
   return true
+}
+
+export const userHasWriteOnlyAbility = async (userId: any, workspaceId: any, environment: any) => {
+  const membershipForWorkspace = await Membership.findOne({ workspace: workspaceId, user: userId })
+  if (!membershipForWorkspace) {
+    return false
+  }
+
+  const deniedMembershipPermissions = membershipForWorkspace.deniedPermissions;
+  const isWriteDisallowed = _.some(deniedMembershipPermissions, { environmentSlug: environment, ability: ABILITY_WRITE });
+  const isReadDisallowed = _.some(deniedMembershipPermissions, { environmentSlug: environment, ability: ABILITY_READ });
+
+  // case: you have write only if read is blocked and write is not
+  if (isReadDisallowed && !isWriteDisallowed) {
+    return true
+  }
+
+  return false
+}
+
+export const userHasNoAbility = async (userId: any, workspaceId: any, environment: any) => {
+  const membershipForWorkspace = await Membership.findOne({ workspace: workspaceId, user: userId })
+  if (!membershipForWorkspace) {
+    return true
+  }
+
+  const deniedMembershipPermissions = membershipForWorkspace.deniedPermissions;
+  const isWriteDisallowed = _.some(deniedMembershipPermissions, { environmentSlug: environment, ability: ABILITY_WRITE });
+  const isReadBlocked = _.some(deniedMembershipPermissions, { environmentSlug: environment, ability: ABILITY_READ });
+
+  if (isReadBlocked && isWriteDisallowed) {
+    return true
+  }
+
+  return false
 }

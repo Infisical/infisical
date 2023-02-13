@@ -77,7 +77,7 @@ export default function PersonalSettings() {
         setApiKeys={setApiKeys}
       />
       <div className="flex flex-row">
-        <div className="w-full max-h-screen pb-2 overflow-y-auto">
+        <div className="w-full max-h-screen pb-2">
           <NavHeader pageName={t('settings-personal:title')} isProjectRelated={false} />
           <div className="flex flex-row justify-between items-center ml-6 mt-8 mb-6 text-xl max-w-5xl">
             <div className="flex flex-col justify-start items-start text-3xl">

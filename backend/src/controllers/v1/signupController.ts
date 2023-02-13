@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
-import { JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET } from '../../config';
 import { User } from '../../models';
+import { JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET, INVITE_ONLY_SIGNUP } from '../../config';
 import {
 	sendEmailVerification,
 	checkEmailVerification,
 } from '../../helpers/signup';
 import { createToken } from '../../helpers/auth';
+import { BadRequestError } from '../../utils/errors';
 
 /**
  * Signup step 1: Initialize account for user under email [email] and send a verification code
@@ -19,6 +20,14 @@ export const beginEmailSignup = async (req: Request, res: Response) => {
 	let email: string;
 	try {
 		email = req.body.email;
+
+		if (INVITE_ONLY_SIGNUP) {
+			// Only one user can create an account without being invited. The rest need to be invited in order to make an account
+			const userCount = await User.countDocuments({})
+			if (userCount != 0) {
+				throw BadRequestError({ message: "New user sign ups are not allowed at this time. You must be invited to sign up." })
+			}
+		}
 
 		const user = await User.findOne({ email }).select('+publicKey');
 		if (user && user?.publicKey) {

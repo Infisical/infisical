@@ -132,7 +132,7 @@ const KeyPair = ({
           />
         </div>
       </div>
-      <div className="w-2/12 border-r border-mineshaft-600">
+      <div className="w-[calc(10%)] border-r border-mineshaft-600">
         <div className="flex items-center max-h-16">
           <DashboardInputField
             onChangeHandler={modifyComment}
@@ -171,12 +171,26 @@ const KeyPair = ({
         <FontAwesomeIcon className="text-bunker-300 hover:text-primary text-lg" icon={faEllipsis} />
       </div>
       <div className={`group-hover:bg-mineshaft-700 z-50 ${isSnapshot ?? 'invisible'}`}>
-        <DeleteActionButton
+        {keyPair.key || keyPair.value 
+        ? <DeleteActionButton
           onSubmit={() => { if (deleteRow) {
             deleteRow({ ids: [keyPair.id], secretName: keyPair?.key })
           }}}
           isPlain
         />
+      :  <div className='cursor-pointer w-[1.5rem] h-[2.35rem] mr-2 flex items-center justfy-center'>
+        <div
+          onKeyDown={() => null}
+          role="button"
+          tabIndex={0}
+          onClick={() => { if (deleteRow) {
+            deleteRow({ ids: [keyPair.id], secretName: keyPair?.key })
+          }}}
+          className="invisible group-hover:visible"
+        >
+          <FontAwesomeIcon className="text-bunker-300 hover:text-red pl-2 pr-6 text-lg mt-0.5" icon={faXmark} />
+        </div>
+      </div>}
       </div>
     </div>
   </div>

@@ -1,5 +1,6 @@
 const PORT = process.env.PORT || 4000;
-const EMAIL_TOKEN_LIFETIME = process.env.EMAIL_TOKEN_LIFETIME! || '86400';
+const EMAIL_TOKEN_LIFETIME = parseInt(process.env.EMAIL_TOKEN_LIFETIME! || '86400');
+const INVITE_ONLY_SIGNUP = process.env.INVITE_ONLY_SIGNUP == undefined ? false : process.env.INVITE_ONLY_SIGNUP
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
 const SALT_ROUNDS = parseInt(process.env.SALT_ROUNDS!) || 10;
 const JWT_AUTH_LIFETIME = process.env.JWT_AUTH_LIFETIME! || '10d';
@@ -26,7 +27,7 @@ const CLIENT_SECRET_HEROKU = process.env.CLIENT_SECRET_HEROKU!;
 const CLIENT_SECRET_VERCEL = process.env.CLIENT_SECRET_VERCEL!;
 const CLIENT_SECRET_NETLIFY = process.env.CLIENT_SECRET_NETLIFY!;
 const CLIENT_SECRET_GITHUB = process.env.CLIENT_SECRET_GITHUB!;
-const CLIENT_SLUG_VERCEL= process.env.CLIENT_SLUG_VERCEL!;
+const CLIENT_SLUG_VERCEL = process.env.CLIENT_SLUG_VERCEL!;
 const POSTHOG_HOST = process.env.POSTHOG_HOST! || 'https://app.posthog.com';
 const POSTHOG_PROJECT_API_KEY =
   process.env.POSTHOG_PROJECT_API_KEY! ||
@@ -52,6 +53,7 @@ const LICENSE_KEY = process.env.LICENSE_KEY!;
 export {
   PORT,
   EMAIL_TOKEN_LIFETIME,
+  INVITE_ONLY_SIGNUP,
   ENCRYPTION_KEY,
   SALT_ROUNDS,
   JWT_AUTH_LIFETIME,
