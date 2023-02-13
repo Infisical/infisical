@@ -76,7 +76,7 @@ const encryptSecrets = async ({
         iv: secretValueIV,
         tag: secretValueTag
       } = encryptSymmetric({
-        plaintext: secret.value,
+        plaintext: secret.value ?? '',
         key: randomBytes
       });
 

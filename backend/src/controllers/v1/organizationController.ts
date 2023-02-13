@@ -397,9 +397,21 @@ export const getOrganizationMembersAndTheirWorkspaces = async (
 	res: Response
 ) => {
 	const { organizationId } = req.params;
-	const orgMemberships = await MembershipOrg.find({ organization: organizationId });
-	const userIds = orgMemberships.map(orgMembership => orgMembership.user);
-	const memberships = await Membership.find({ user: { $in: userIds } });
+
+	const workspacesSet = (
+			await Workspace.find(
+				{
+					organization: organizationId
+				},
+				'_id'
+			)
+		).map((w) => w._id.toString());
+
+	const memberships = (
+		await Membership.find({
+			workspace: { $in: workspacesSet }
+		}).populate('workspace')
+	);
 	const userToWorkspaceIds: any = {};
 
 	memberships.forEach(membership => {
@@ -411,15 +423,5 @@ export const getOrganizationMembersAndTheirWorkspaces = async (
 		}
 	});
 
-	const workspaceIds = Object.values(userToWorkspaceIds).flat()
-	const workspacesList = await Workspace.find({
-		organization: organizationId,
-		_id: { $in: workspaceIds }
-	});
-
-	const populatedUserWorkspaces = _.mapValues(userToWorkspaceIds, workspaceIds =>
-		_.map(workspaceIds, id => _.find(workspacesList, { _id: id }))
-	);
-
-	return res.json(populatedUserWorkspaces);
+	return res.json(userToWorkspaceIds);
 };

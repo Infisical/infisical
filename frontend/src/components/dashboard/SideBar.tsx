@@ -18,7 +18,7 @@ import GenerateSecretMenu from './GenerateSecretMenu';
 
 interface SecretProps {
   key: string;
-  value: string;
+  value: string | undefined;
   valueOverride: string | undefined;
   pos: number;
   id: string;
@@ -80,9 +80,9 @@ const SideBar = ({
   const { t } = useTranslation();
 
   return (
-    <div className="absolute border-l border-mineshaft-500 bg-bunker h-full w-[28rem] sticky top-0 right-0 z-[70] shadow-xl flex flex-col justify-between">
+    <div className="absolute border-l border-mineshaft-500 bg-bunker h-full w-full min-w-sm max-w-sm sticky top-0 right-0 z-[70] shadow-xl flex flex-col justify-between">
       {isLoading ? (
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center h-full w-full">
           <Image
             src="/images/loading/loading.gif"
             height={60}
@@ -91,7 +91,7 @@ const SideBar = ({
           />
         </div>
       ) : (
-        <div className="h-min overflow-y-auto">
+        <div className="h-min overflow-y-auto w-full">
           <div className="flex flex-row px-4 py-3 border-b border-mineshaft-500 justify-between items-center">
             <p className="font-semibold text-lg text-bunker-200">{t('dashboard:sidebar.secret')}</p>
             <div
@@ -186,7 +186,7 @@ const SideBar = ({
           />
         </div>
       )}
-      <div className="mt-full mt-4 mb-4 flex max-w-sm flex-col justify-start space-y-2 px-4">
+      <div className="mt-full w-96 mt-4 mb-4 flex max-w-sm flex-col justify-start space-y-2 px-4">
         <div>
           <Button
             text="Compare secret across environments"
@@ -197,7 +197,7 @@ const SideBar = ({
           <CompareSecretsModal
             compareModal={compareModal}
             setCompareModal={setCompareModal}
-            currentSecret={{ key: data[0]?.key, value: data[0]?.value }}
+            currentSecret={{ key: data[0]?.key, value: data[0]?.value ?? '' }}
             workspaceEnvs={workspaceEnvs}
             selectedEnv={selectedEnv}
             workspaceId={workspaceId}

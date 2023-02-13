@@ -1,9 +1,10 @@
 import { memo, SyntheticEvent, useRef } from 'react';
-import { faCircle, faExclamationCircle, faEye, faLayerGroup } from '@fortawesome/free-solid-svg-icons';
+import { faCircle, faCodeBranch, faExclamationCircle, faEye } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import guidGenerator from '../utilities/randomId';
 import { HoverObject } from '../v2/HoverCard';
+import { PopoverObject } from '../v2/Popover/Popover';
 
 const REGEX = /([$]{.*?})/g;
 
@@ -112,7 +113,7 @@ const DashboardInputField = ({
           }}>
             <HoverObject 
               text={overrideEnabled ? 'This secret is overriden with your personal value' : 'You can override this secret with a personal value'}
-              icon={faLayerGroup}
+              icon={faCodeBranch}
               color={overrideEnabled ? 'primary' : 'bunker-400'}
             />
           </button>
@@ -125,24 +126,24 @@ const DashboardInputField = ({
     const error = startsWithNumber || isDuplicate;
 
     return (
-      <div title={value} className={`relative flex-col w-full h-10 ${
-        isSideBarOpen && 'bg-mineshaft-700 duration-200'
-      }`}>
-        <div
-          className={`group relative flex flex-col justify-center items-center ${
-            error ? 'w-max' : 'w-full'
-          }`}
-        >
-          <input
-            onChange={(e) => onChangeHandler(e.target.value, position)}
-            type={type}
-            value={value}
-            className='z-10 peer ph-no-capture bg-transparent py-2.5 caret-bunker-200 text-sm px-2 w-full min-w-16 outline-none text-bunker-300 focus:text-bunker-100 placeholder:text-bunker-400 placeholder:focus:text-transparent placeholder duration-200'
-            spellCheck="false"
-            placeholder='–'
-          />
+      <PopoverObject text={value || ''} onChangeHandler={onChangeHandler} position={position}>
+        <div title={value} className={`relative flex-col w-full h-10 overflow-hidden ${
+          isSideBarOpen && 'bg-mineshaft-700 duration-200'
+        }`}>
+          <div
+            className={`group relative flex flex-col justify-center items-center h-full ${
+              error ? 'w-max' : 'w-full'
+            }`}
+          >
+            {value?.split("\n")[0] ? <span className='ph-no-capture truncate break-all bg-transparent leading-tight text-xs px-2 w-full min-w-16 outline-none text-bunker-300 focus:text-bunker-100 placeholder:text-bunker-400 placeholder:focus:text-transparent placeholder duration-200'>
+              {value?.split("\n")[0]}
+            </span> : <span className='text-bunker-400'>-</span> }
+            {value?.split("\n")[1] && <span className='ph-no-capture truncate break-all bg-transparent leading-tight text-xs px-2 w-full min-w-16 outline-none text-bunker-300 focus:text-bunker-100 placeholder:text-bunker-400 placeholder:focus:text-transparent placeholder duration-200'>
+              {value?.split("\n")[1]}
+            </span>}
+          </div>
         </div>
-      </div>
+      </PopoverObject>
     );
   }
   if (type === 'value') {
@@ -215,7 +216,7 @@ const DashboardInputField = ({
                 ))}
                 {value?.split('').length === 0 && <span className='text-bunker-400/80'>EMPTY</span>}
               </div>
-              <div className='invisible group-hover:visible cursor-pointer'><FontAwesomeIcon icon={faEye} /></div>
+              <div className='invisible group-hover:visible cursor-default z-[100]'><FontAwesomeIcon icon={faEye} /></div>
             </div>
           )}
         </div>
