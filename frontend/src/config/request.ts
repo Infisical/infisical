@@ -11,6 +11,9 @@ export const apiRequest = axios.create({
 
 apiRequest.interceptors.request.use((config) => {
   const token = getAuthToken();
+  console.log('interceptors');
+  console.log('token', token);
+  console.log('config.headers', config.headers);
   if (token && config.headers) {
     // eslint-disable-next-line no-param-reassign
     config.headers.Authorization = `Bearer ${token}`;
