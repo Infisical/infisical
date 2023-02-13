@@ -113,7 +113,7 @@ const SecretVersionList = ({ secretId }: { secretId: string }) => {
                         })}
                       </div>
                       <div className="">
-                        <p className="break-words">
+                        <p className="break-words ph-no-capture">
                           <span className="py-0.5 px-1 rounded-md bg-primary-200/10 mr-1.5">
                             Value:
                           </span>

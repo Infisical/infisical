@@ -14,6 +14,8 @@ interface Integration {
   isActive: boolean;
   app: string | null;
   appId: string | null;
+  path: string | null;
+  region: string | null;
   createdAt: string;
   updatedAt: string;
   environment: string;

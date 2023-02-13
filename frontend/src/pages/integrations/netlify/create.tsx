@@ -58,13 +58,15 @@ export default function NetlifyCreateIntegrationPage() {
             if (!integrationAuth?._id) return;
 
             await createIntegration({
-                integrationAuthId: integrationAuth?._id,
-                isActive: true,
-                app: targetApp,
-                appId: (integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp))?.appId ?? null,
-                sourceEnvironment: selectedSourceEnvironment,
-                targetEnvironment,
-                owner: null
+              integrationAuthId: integrationAuth?._id,
+              isActive: true,
+              app: targetApp,
+              appId: (integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp))?.appId ?? null,
+              sourceEnvironment: selectedSourceEnvironment,
+              targetEnvironment,
+              owner: null,
+              path: null,
+              region: null
             }); 
             
             setIsLoading(false);

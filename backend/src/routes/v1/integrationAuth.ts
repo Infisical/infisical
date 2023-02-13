@@ -57,6 +57,7 @@ router.post(
 		location: 'body'
 	}),
 	body('workspaceId').exists().trim().notEmpty(),
+	body('accessId').trim(),
 	body('accessToken').exists().trim().notEmpty(),
 	body('integration').exists().trim().notEmpty(),
 	validateRequest,

@@ -57,7 +57,9 @@ export default function GitHubCreateIntegrationPage() {
                 appId: null,
                 sourceEnvironment: selectedSourceEnvironment,
                 targetEnvironment: null,
-                owner
+                owner,
+                path: null,
+                region: null
             }); 
             
             setIsLoading(false);

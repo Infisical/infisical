@@ -174,6 +174,12 @@ export default function Integrations() {
         case 'azure-key-vault':
           link = `https://login.microsoftonline.com/${integrationOption.tenantId}/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
           break;
+        case 'aws-parameter-store':
+          link = `${window.location.origin}/integrations/aws-parameter-store/authorize`;
+          break;
+        case 'aws-secret-manager':
+          link = `${window.location.origin}/integrations/aws-secret-manager/authorize`;
+          break;
         case 'heroku':
           link = `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`;
           break;
@@ -213,6 +219,12 @@ export default function Integrations() {
       switch (integrationAuth.integration) {
         case 'azure-key-vault':
           link = `${window.location.origin}/integrations/azure-key-vault/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'aws-parameter-store':
+          link = `${window.location.origin}/integrations/aws-parameter-store/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'aws-secret-manager':
+          link = `${window.location.origin}/integrations/aws-secret-manager/create?integrationAuthId=${integrationAuth._id}`;
           break;
         case 'heroku':
           link = `${window.location.origin}/integrations/heroku/create?integrationAuthId=${integrationAuth._id}`;

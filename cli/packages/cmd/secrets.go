@@ -512,7 +512,7 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		if len(listOfTagNames) == 0 {
 			fmt.Printf("\n%s \n", strings.Join(listOfKeyValue, "\n \n"))
 		} else {
-			fmt.Printf("\n\n\n%s\n \n%s \n", heading, strings.Join(listOfKeyValue, "\n \n"))
+			fmt.Printf("\n\n\n%s \n%s \n", heading, strings.Join(listOfKeyValue, "\n \n"))
 		}
 	}
 }

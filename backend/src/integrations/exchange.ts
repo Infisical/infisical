@@ -141,7 +141,7 @@ const exchangeCodeAzure = async ({
        new URLSearchParams({
         grant_type: 'authorization_code',
         code: code,
-        scope: 'https://vault.azure.net/.default openid offline_access', // TODO: do we need all these permissions?
+        scope: 'https://vault.azure.net/.default openid offline_access',
         client_id: CLIENT_ID_AZURE,
         client_secret: CLIENT_SECRET_AZURE,
         redirect_uri: `${SITE_URL}/integrations/azure-key-vault/oauth2/callback`

@@ -56,13 +56,15 @@ export default function VercelCreateIntegrationPage() {
 
             setIsLoading(true);
             await createIntegration({
-                integrationAuthId: integrationAuth?._id,
-                isActive: true,
-                app: targetApp,
-                appId: null,
-                sourceEnvironment: selectedSourceEnvironment,
-                targetEnvironment,
-                owner: null
+              integrationAuthId: integrationAuth?._id,
+              isActive: true,
+              app: targetApp,
+              appId: null,
+              sourceEnvironment: selectedSourceEnvironment,
+              targetEnvironment,
+              owner: null,
+              path: null,
+              region: null
             }); 
             
             setIsLoading(false);

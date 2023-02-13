@@ -49,13 +49,15 @@ export default function FlyioCreateIntegrationPage() {
             setIsLoading(true);
             
             await createIntegration({
-                integrationAuthId: integrationAuth?._id,
-                isActive: true,
-                app: targetApp,
-                appId: null,
-                sourceEnvironment: selectedSourceEnvironment,
-                targetEnvironment: null,
-                owner: null
+              integrationAuthId: integrationAuth?._id,
+              isActive: true,
+              app: targetApp,
+              appId: null,
+              sourceEnvironment: selectedSourceEnvironment,
+              targetEnvironment: null,
+              owner: null,
+              path: null,
+              region: null
             }); 
             
             setIsLoading(false);

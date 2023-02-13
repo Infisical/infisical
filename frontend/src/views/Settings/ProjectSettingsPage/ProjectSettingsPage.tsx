@@ -223,7 +223,8 @@ export const ProjectSettingsPage = () => {
         environment,
         expiresIn: Number(expiresIn),
         name,
-        workspaceId: workspaceID
+        workspaceId: workspaceID,
+        randomBytes
       });
       console.log(res);
       createNotification({

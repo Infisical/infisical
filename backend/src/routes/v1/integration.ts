@@ -20,12 +20,14 @@ router.post( // new: add new integration for integration auth
 		location: 'body'
 	}),
 	body('integrationAuthId').exists().isString().trim(),
-	body('app').isString().trim(),
+	body('app').trim(),
 	body('isActive').exists().isBoolean(),
 	body('appId').trim(),
 	body('sourceEnvironment').trim(),
 	body('targetEnvironment').trim(),
 	body('owner').trim(),
+	body('path').trim(),
+	body('region').trim(),
 	validateRequest,
 	integrationController.createIntegration
 );

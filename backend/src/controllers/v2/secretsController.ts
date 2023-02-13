@@ -452,7 +452,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
                     secretValueTag,
                     tags,
                     ...((
-                        secretCommentCiphertext &&
+                        secretCommentCiphertext !== undefined &&
                         secretCommentIV &&
                         secretCommentTag
                     ) ? {

@@ -26,7 +26,9 @@ export const createIntegration = async (req: Request, res: Response) => {
 			isActive,
 			sourceEnvironment,
 			targetEnvironment,
-			owner
+			owner,
+			path,
+			region
 		} = req.body;
 		
 		// TODO: validate [sourceEnvironment] and [targetEnvironment]
@@ -40,6 +42,8 @@ export const createIntegration = async (req: Request, res: Response) => {
 			appId,
 			targetEnvironment,
 			owner,
+			path,
+			region,
             integration: req.integrationAuth.integration,
             integrationAuth: new Types.ObjectId(integrationAuthId)
         }).save();

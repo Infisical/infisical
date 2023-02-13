@@ -12,13 +12,14 @@ type Props = {
   className?: string;
   dropdownContainerClassName?: string;
   isLoading?: boolean;
+  position?: 'item-aligned' | 'popper';
 };
 
 export type SelectProps = SelectPrimitive.SelectProps & Props;
 
 export const Select = forwardRef<HTMLButtonElement, SelectProps>(
   (
-    { children, placeholder, className, isLoading, dropdownContainerClassName, ...props },
+    { children, placeholder, className, isLoading, dropdownContainerClassName, position, ...props },
     ref
   ): JSX.Element => {
     return (
@@ -44,11 +45,13 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
               'relative left-4 top-1 overflow-hidden rounded-md bg-bunker-800 font-inter text-bunker-100 shadow-md z-[100]',
               dropdownContainerClassName
             )}
+            position={position}
+            style={{ width: 'var(--radix-select-trigger-width)' }}
           >
             <SelectPrimitive.ScrollUpButton>
               <FontAwesomeIcon icon={faChevronUp} size="sm" />
             </SelectPrimitive.ScrollUpButton>
-            <SelectPrimitive.Viewport className="p-1.5">
+            <SelectPrimitive.Viewport className="p-1">
               {isLoading ? (
                 <div className="flex items-center justify-center">
                   <Spinner size="xs" />
@@ -82,7 +85,7 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
         {...props}
         className={twMerge(
           `relative flex cursor-pointer
-          select-none items-center rounded-md py-2 pl-10 pr-4 text-sm
+          select-none items-center rounded-md py-2 pl-10 pr-4 mb-0.5 text-sm
           outline-none transition-all hover:bg-mineshaft-500`,
           isSelected && 'bg-primary',
           isDisabled && 'cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-gray-600',
@@ -90,8 +93,8 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
         )}
         ref={forwardedRef}
       >
-        <SelectPrimitive.ItemIndicator className="absolute left-3.5">
-          <FontAwesomeIcon icon={faCheck} size="sm" />
+        <SelectPrimitive.ItemIndicator className="absolute left-3.5 text-primary">
+          <FontAwesomeIcon icon={faCheck} />
         </SelectPrimitive.ItemIndicator>
         <SelectPrimitive.ItemText className="">{children}</SelectPrimitive.ItemText>
       </SelectPrimitive.Item>
