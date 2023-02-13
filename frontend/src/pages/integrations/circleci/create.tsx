@@ -38,7 +38,7 @@ export default function CircleCICreateIntegrationPage() {
     useEffect(() => {
         // TODO: handle case where apps can be empty
         if (integrationAuthApps) {
-          setTargetApp(integrationAuthApps[0].name);
+          setTargetApp(integrationAuthApps[0]?.name);
         }
     }, [integrationAuthApps]);
         
