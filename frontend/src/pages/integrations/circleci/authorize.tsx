@@ -54,7 +54,7 @@ export default function CircleCICreateIntegrationPage() {
           isError={apiKeyErrorText !== '' ?? false}
         >
           <Input
-            placeholder='rnd_xxx'
+            placeholder=''
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
           />

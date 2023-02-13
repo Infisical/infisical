@@ -126,6 +126,15 @@ const INTEGRATION_OPTIONS = [
         docsLink: ''
     },
     {
+        name: 'Circle CI',
+        slug: 'circleci',
+        image: 'Circle CI.png',
+        isAvailable: true,
+        type: 'pat',
+        clientId: '',
+        docsLink: ''
+    },
+    {
         name: 'Azure Key Vault',
         slug: 'azure-key-vault',
         image: 'Microsoft Azure.png',
@@ -150,15 +159,6 @@ const INTEGRATION_OPTIONS = [
         image: 'Travis CI.png',
         isAvailable: false,
         type: '',
-        clientId: '',
-        docsLink: ''
-    },
-    {
-        name: 'Circle CI',
-        slug: 'circleci',
-        image: 'Circle CI.png',
-        isAvailable: true,
-        type: 'pat',
         clientId: '',
         docsLink: ''
     }

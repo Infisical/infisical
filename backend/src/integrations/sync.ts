@@ -124,7 +124,7 @@ const syncSecrets = async ({
         });
         break;
       case INTEGRATION_CIRCLECI:
-        await syncSecretsCircleci({
+        await syncSecretsCircleCI({
           integration,
           secrets,
           accessToken,
@@ -1185,7 +1185,14 @@ const syncSecretsFlyio = async ({
   }
 };
 
-const syncSecretsCircleci = async ({
+/**
+ * Sync/push [secrets] to CircleCI project
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for CircleCI integration
+ */
+const syncSecretsCircleCI = async ({
   integration,
   secrets,
   accessToken,
@@ -1206,7 +1213,7 @@ const syncSecretsCircleci = async ({
 
     const { slug } = circleciOrganizationDetail;
 
-    // inject secrets to CircleCI (one by one)
+    // sync secrets to CircleCI
     Object.keys(secrets).forEach(
       async (key) =>
         await axios.post(
