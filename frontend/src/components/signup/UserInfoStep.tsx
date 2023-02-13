@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { faCheck, faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -10,20 +9,21 @@ import nacl from 'tweetnacl';
 import { encodeBase64 } from 'tweetnacl-util';
 
 import completeAccountInformationSignup from '@app/pages/api/auth/CompleteAccountInformationSignup';
+import getOrganizations from '@app/pages/api/organization/getOrgs';
+import ProjectService from '@app/services/ProjectService';
 
 import Button from '../basic/buttons/Button';
 import InputField from '../basic/InputField';
-import attemptLogin from '../utilities/attemptLogin';
 import passwordCheck from '../utilities/checks/PasswordCheck';
 import Aes256Gcm from '../utilities/cryptography/aes-256-gcm';
 import { deriveArgonKey } from '../utilities/cryptography/crypto';
 import { saveTokenToLocalStorage } from '../utilities/saveTokenToLocalStorage';
+import SecurityClient from '../utilities/SecurityClient';
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
 
 interface UserInfoStepProps {
-  verificationToken: string;
   incrementStep: () => void;
   email: string;
   password: string;
@@ -48,7 +48,6 @@ interface UserInfoStepProps {
  * @param {string} obj.setLastName - function managing the state of user's last name
  */
 export default function UserInfoStep({
-  verificationToken,
   incrementStep,
   email,
   password,
@@ -66,7 +65,6 @@ export default function UserInfoStep({
 
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
-  const router = useRouter();
 
   // Verifies if the information that the users entered (name, workspace)
   // is there, and if the password matches the criteria.
@@ -110,6 +108,8 @@ export default function UserInfoStep({
         async () => {
           client.createVerifier(async (err: any, result: { salt: string; verifier: string }) => {
             try {
+
+              // TODO: moduralize into KeyService
               const derivedKey = await deriveArgonKey({
                 password,
                 salt: result.salt,
@@ -158,28 +158,29 @@ export default function UserInfoStep({
                 encryptedPrivateKeyTag,
                 salt: result.salt,
                 verifier: result.verifier,
-                token: verificationToken,
                 organizationName: `${firstName}'s organization`
               });
               
-              // if everything works, go the main dashboard page.
-              if (response.status === 200) {
-                // response = await response.json();
+              SecurityClient.setToken(response.token);
 
-                saveTokenToLocalStorage({
-                  protectedKey,
-                  protectedKeyIV,
-                  protectedKeyTag,
-                  publicKey,
-                  encryptedPrivateKey,
-                  iv: encryptedPrivateKeyIV,
-                  tag: encryptedPrivateKeyTag,
-                  privateKey
-                });
+              saveTokenToLocalStorage({
+                protectedKey,
+                protectedKeyIV,
+                protectedKeyTag,
+                publicKey,
+                encryptedPrivateKey,
+                iv: encryptedPrivateKeyIV,
+                tag: encryptedPrivateKeyTag,
+                privateKey
+              });
 
-                await attemptLogin(email, password, () => {}, router, true, false);
-                incrementStep();
-              }
+              incrementStep();
+
+              const userOrgs = await getOrganizations();
+              await ProjectService.initProject({
+                organizationId: userOrgs[0]?._id,
+                projectName: 'Example Project'
+              });
 
             } catch (error) {
               setIsLoading(false);

@@ -25,7 +25,7 @@ const login1 = async (email: string, clientPublicKey: string) => {
     const data = (await response.json()) as unknown as Login1;
     return data;
   }
-
+  
   throw new Error("Wrong password");
 };
 

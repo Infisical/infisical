@@ -2,9 +2,7 @@ import * as Sentry from '@sentry/node';
 import { IUser } from '../models';
 import { createOrganization } from './organization';
 import { addMembershipsOrg } from './membershipOrg';
-import { createWorkspace } from './workspace';
-import { addMemberships } from './membership';
-import { OWNER, ADMIN, ACCEPTED } from '../variables';
+import { OWNER, ACCEPTED } from '../variables';
 import { sendMail } from '../helpers/nodemailer';
 import { TokenService } from '../services';
 import { TOKEN_EMAIL_CONFIRMATION } from '../variables';
@@ -94,18 +92,6 @@ const initializeDefaultOrg = async ({
 			organizationId: organization._id.toString(),
 			roles: [OWNER],
 			statuses: [ACCEPTED]
-		});
-
-		// initialize a default workspace inside the new organization
-		const workspace = await createWorkspace({
-			name: `Example Project`,
-			organizationId: organization._id.toString()
-		});
-
-		await addMemberships({
-			userIds: [user._id.toString()],
-			workspaceId: workspace._id.toString(),
-			roles: [ADMIN]
 		});
 	} catch (err) {
 		throw new Error(`Failed to initialize default organization and workspace [err=${err}]`);

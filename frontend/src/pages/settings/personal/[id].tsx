@@ -101,10 +101,7 @@ export default function PersonalSettings() {
                 />
               </div>
             </div>
-            <SecuritySection 
-              isTwoFAEnabled
-              onIsTwoFAEnabledChange={(value: boolean) => console.log(value)}
-            />
+            <SecuritySection />
             <div className="bg-white/5 rounded-md px-6 flex flex-col items-start w-full mt-2 mb-8 pt-2">
               <div className="flex flex-row justify-between w-full">
                 <div className="flex flex-col w-full">

@@ -1,3 +1,5 @@
+import SecurityClient from '@app/components/utilities/SecurityClient';
+
 interface Props {
   email: string;
   firstName: string;
@@ -12,7 +14,6 @@ interface Props {
   organizationName: string;
   salt: string;
   verifier: string;
-  token: string;
 }
 
 /**
@@ -32,7 +33,6 @@ interface Props {
  * @param {string} obj.tag
  * @param {string} obj.salt
  * @param {string} obj.verifier
- * @param {string} obj.token - token that confirms a user's identity
  * @returns
  */
 const completeAccountInformationSignup = ({
@@ -48,13 +48,11 @@ const completeAccountInformationSignup = ({
   encryptedPrivateKeyTag,
   salt,
   verifier,
-  token,
   organizationName
-}: Props) => fetch('/api/v2/signup/complete-account/signup', {
+}: Props) => SecurityClient.fetchCall('/api/v2/signup/complete-account/signup', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${  token}`
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({
       email,
@@ -71,6 +69,12 @@ const completeAccountInformationSignup = ({
       verifier,
       organizationName
     })
+  }).then(async (res) => {
+    if (res && res?.status === 200) {
+      return res.json();
+    }
+    console.log('Failed to verify MFA code');
+    throw new Error('Something went wrong during MFA code verification');
   });
 
 export default completeAccountInformationSignup;

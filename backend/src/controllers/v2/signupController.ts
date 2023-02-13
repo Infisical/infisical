@@ -5,11 +5,9 @@ import { completeAccount } from '../../helpers/user';
 import {
 	initializeDefaultOrg
 } from '../../helpers/signup';
-import { issueTokens } from '../../helpers/auth';
+import { issueAuthTokens } from '../../helpers/auth';
 import { INVITED, ACCEPTED } from '../../variables';
 import axios from 'axios';
-
-// TODO: finish
 
 /**
  * Complete setting up user by adding their personal and auth information as part of the
@@ -102,7 +100,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 		);
 
 		// issue tokens
-		const tokens = await issueTokens({
+		const tokens = await issueAuthTokens({
 			userId: user._id.toString()
 		});
 
@@ -216,7 +214,7 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 		);
 
 		// issue tokens
-		const tokens = await issueTokens({
+		const tokens = await issueAuthTokens({
 			userId: user._id.toString()
 		});
 

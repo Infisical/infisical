@@ -1,14 +1,14 @@
 interface Login2Response {
   mfaEnabled: boolean;
-  encryptionVersion: number;
+  token: string;
+  encryptionVersion?: number;
   protectedKey?: string;
   protectedKeyIV?: string;
   protectedKeyTag?: string;
-  token: string;
-  publicKey: string;
-  encryptedPrivateKey: string;
-  iv: string;
-  tag: string;
+  publicKey?: string;
+  encryptedPrivateKey?: string;
+  iv?: string;
+  tag?: string;
 }
 
 /**

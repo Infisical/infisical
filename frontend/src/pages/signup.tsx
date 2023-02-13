@@ -11,6 +11,7 @@ import DownloadBackupPDF from '@app/components/signup/DonwloadBackupPDFStep';
 import EnterEmailStep from '@app/components/signup/EnterEmailStep';
 import TeamInviteStep from '@app/components/signup/TeamInviteStep';
 import UserInfoStep from '@app/components/signup/UserInfoStep';
+import SecurityClient from '@app/components/utilities/SecurityClient';
 import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
 
 import checkEmailVerificationCode from './api/auth/CheckEmailVerificationCode';
@@ -28,7 +29,6 @@ export default function SignUp() {
   const [codeError, setCodeError] = useState(false);
   const [step, setStep] = useState(1);
   const router = useRouter();
-  const [verificationToken, setVerificationToken] = useState('');
 
   const { t } = useTranslation();
 
@@ -59,7 +59,7 @@ export default function SignUp() {
       // Checking if the code matches the email.
       const response = await checkEmailVerificationCode({ email, code });
       if (response.status === 200) {
-        setVerificationToken((await response.json()).token);
+        SecurityClient.setToken((await response.json()).token);
         setStep(3);
       } else {
         setCodeError(true);
@@ -94,7 +94,6 @@ export default function SignUp() {
             />
           ) : step === 3 ? (
             <UserInfoStep
-              verificationToken={verificationToken}
               incrementStep={incrementStep}
               email={email}
               password={password}

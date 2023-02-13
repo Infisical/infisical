@@ -5,11 +5,13 @@ import * as Sentry from '@sentry/node';
 import * as bigintConversion from 'bigint-conversion';
 const jsrp = require('jsrp');
 import { User } from '../../models';
-import { issueTokens } from '../../helpers/auth';
+import { issueAuthTokens, createToken } from '../../helpers/auth';
 import { sendMail } from '../../helpers/nodemailer';
 import { TokenService } from '../../services';
 import {
-  NODE_ENV
+  NODE_ENV,
+  JWT_MFA_LIFETIME,
+  JWT_MFA_SECRET
 } from '../../config';
 import {
   TOKEN_EMAIL_MFA
@@ -102,6 +104,15 @@ export const login2 = async (req: Request, res: Response) => {
 
           if (user.isMfaEnabled) {
             // case: user has MFA enabled
+
+            // generate temporary MFA token
+            const token = createToken({
+              payload: {
+                userId: user._id.toString()
+              },
+              expiresIn: JWT_MFA_LIFETIME,
+              secret: JWT_MFA_SECRET
+            });
           
             const code = await TokenService.createToken({
               type: TOKEN_EMAIL_MFA,
@@ -119,12 +130,13 @@ export const login2 = async (req: Request, res: Response) => {
             });
             
             return res.status(200).send({
-              mfaEnabled: true
+              mfaEnabled: true,
+              token
             });
           }
 
           // issue tokens
-          const tokens = await issueTokens({ userId: user._id.toString() });
+          const tokens = await issueAuthTokens({ userId: user._id.toString() });
 
           // store (refresh) token in httpOnly cookie
           res.cookie('jid', tokens.refreshToken, {
@@ -136,18 +148,41 @@ export const login2 = async (req: Request, res: Response) => {
 
           // case: user does not have MFA enabled
           // return (access) token in response
-          return res.status(200).send({
+
+          interface ResponseData {
+            mfaEnabled: boolean;
+            encryptionVersion: any;
+            protectedKey?: string;
+            protectedKeyIV?: string;
+            protectedKeyTag?: string;
+            token: string;
+            publicKey?: string;
+            encryptedPrivateKey?: string;
+            iv?: string;
+            tag?: string;
+          }
+          
+          const response: ResponseData = {
             mfaEnabled: false,
             encryptionVersion: user.encryptionVersion,
-            protectedKey: user.protectedKey ?? null,
-            protectedKeyIV: user.protectedKeyIV ?? null,
-            protectedKeyTag: user.protectedKeyTag ?? null,
             token: tokens.token,
             publicKey: user.publicKey,
             encryptedPrivateKey: user.encryptedPrivateKey,
             iv: user.iv,
             tag: user.tag
-          });
+          }
+          
+          if (
+            user?.protectedKey &&
+            user?.protectedKeyIV &&
+            user?.protectedKeyTag
+          ) {
+            response.protectedKey = user.protectedKey;
+            response.protectedKeyIV = user.protectedKeyIV
+            response.protectedKeyTag = user.protectedKeyTag;
+          }
+          
+          return res.status(200).send(response);
         }
 
         return res.status(400).send({
@@ -163,6 +198,43 @@ export const login2 = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * Send MFA token to email [email]
+ * @param req 
+ * @param res 
+ */
+export const sendMfaToken = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    const code = await TokenService.createToken({
+      type: TOKEN_EMAIL_MFA,
+      email
+    });
+    
+    // send MFA code [code] to [email]
+    await sendMail({
+      template: 'emailMfa.handlebars',
+      subjectLine: 'Infisical MFA code',
+      recipients: [email],
+      substitutions: {
+        code
+      }
+    });
+    
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: 'Failed to send MFA code'
+    }); 
+  }
+  
+  return res.status(200).send({
+    message: 'Successfully sent new MFA code'
+  });
+}
 
 /**
  * Verify MFA token [mfaToken] and issue JWT and refresh tokens if the
@@ -187,7 +259,7 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
     if (!user) throw new Error('Failed to find user'); 
 
     // issue tokens
-    const tokens = await issueTokens({ userId: user._id.toString() });
+    const tokens = await issueAuthTokens({ userId: user._id.toString() });
 
     // store (refresh) token in httpOnly cookie
     res.cookie('jid', tokens.refreshToken, {
@@ -196,7 +268,7 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
       sameSite: 'strict',
       secure: NODE_ENV === 'production' ? true : false
     });
-
+    
     // case: user does not have MFA enabled
     // return (access) token in response
     return res.status(200).send({
@@ -218,3 +290,4 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
     });
   }
 }
+

@@ -29,6 +29,7 @@ import verifySignupInvite from './api/auth/VerifySignupInvite';
 const client = new jsrp.client();
 
 export default function SignupInvite() {
+  console.log('SignupInvite');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -133,6 +134,7 @@ export default function SignupInvite() {
                 secret: Buffer.from(derivedKey.hash)
               });
               
+              console.log('SignupInvite A');
               let response = await completeAccountInformationSignupInvite({
                 email,
                 firstName,
@@ -148,17 +150,19 @@ export default function SignupInvite() {
                 verifier: result.verifier,
                 token: verificationToken
               });
+              console.log('SignupInvite B');
 
               // if everything works, go the main dashboard page.
               if (!errorCheck && response.status === 200) {
                 response = await response.json();
 
+                console.log('SignupInvite C');
                 localStorage.setItem('publicKey', publicKey);
                 localStorage.setItem('encryptedPrivateKey', encryptedPrivateKey);
                 localStorage.setItem('iv', encryptedPrivateKeyIV);
                 localStorage.setItem('tag', encryptedPrivateKeyTag);
+                console.log('SignupInvite D');
 
-                await attemptLogin(email, password, setErrorLogin, router, false, false);
                 setStep(3);
               }
             } catch (error) {
