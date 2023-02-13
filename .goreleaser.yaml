@@ -168,12 +168,13 @@ aurs:
       install -Dm644 "./completions/infisical.fish" "${pkgdir}/usr/share/fish/vendor_completions.d/infisical.fish"
       # man pages
       install -Dm644 "./manpages/infisical.1.gz" "${pkgdir}/usr/share/man/man1/infisical.1.gz"
-dockers:
-  - dockerfile: cli/docker/Dockerfile
-    goos: linux
-    goarch: amd64
-    ids:
-      - infisical
-    image_templates:
-      - "infisical/cli:{{ .Version }}"
-      - "infisical/cli:latest"
+
+# dockers:
+#   - dockerfile: cli/docker/Dockerfile
+#     goos: linux
+#     goarch: amd64
+#     ids:
+#       - infisical
+#     image_templates:
+#       - "infisical/cli:{{ .Version }}"
+#       - "infisical/cli:latest"
