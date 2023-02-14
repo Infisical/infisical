@@ -74,6 +74,7 @@ router.get(
     '/',
     query('workspaceId').exists().trim(),
     query('environment').exists().trim(),
+    query('tagSlugs'),
     validateRequest,
     requireAuth({
         acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken']

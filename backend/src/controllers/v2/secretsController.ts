@@ -18,6 +18,8 @@ import { postHogClient } from '../../services';
 import { getChannelFromUserAgent } from '../../utils/posthog';
 import { ABILITY_READ, ABILITY_WRITE } from '../../variables/organization';
 import { userHasNoAbility, userHasWorkspaceAccess, userHasWriteOnlyAbility } from '../../ee/helpers/checkMembershipPermissions';
+import Tag from '../../models/tag';
+import _ from 'lodash';
 
 /**
  * Create secret(s) for workspace with id [workspaceId] and environment [environment]
@@ -284,7 +286,10 @@ export const getSecrets = async (req: Request, res: Response) => {
         }
     }   
     */
-    const { workspaceId, environment } = req.query;
+
+
+    const { workspaceId, environment, tagSlugs } = req.query;
+    const tagNamesList = typeof tagSlugs === 'string' ? tagSlugs.split(',') : [];
 
     let userId = "" // used for getting personal secrets for user
     let userEmail = "" // used for posthog 
@@ -308,31 +313,42 @@ export const getSecrets = async (req: Request, res: Response) => {
         }
     }
     let secrets: any
-    if (hasWriteOnlyAccess) {
-        secrets = await Secret.find(
-            {
-                workspace: workspaceId,
-                environment,
-                $or: [
-                    { user: userId },
-                    { user: { $exists: false } }
-                ],
-                type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
-            }
-        )
-            .select("secretKeyCiphertext secretKeyIV secretKeyTag")
+    let secretQuery: any
+
+    if (tagNamesList != undefined && tagNamesList.length != 0) {
+        const workspaceFromDB = await Tag.find({ workspace: workspaceId })
+
+        const tagIds = _.map(tagNamesList, (tagName) => {
+            const tag = _.find(workspaceFromDB, { slug: tagName });
+            return tag ? tag.id : null;
+        });
+
+        secretQuery = {
+            workspace: workspaceId,
+            environment,
+            $or: [
+                { user: userId },
+                { user: { $exists: false } }
+            ],
+            tags: { $in: tagIds },
+            type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
+        }
     } else {
-        secrets = await Secret.find(
-            {
-                workspace: workspaceId,
-                environment,
-                $or: [
-                    { user: userId },
-                    { user: { $exists: false } }
-                ],
-                type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
-            }
-        ).populate("tags")
+        secretQuery = {
+            workspace: workspaceId,
+            environment,
+            $or: [
+                { user: userId },
+                { user: { $exists: false } }
+            ],
+            type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
+        }
+    }
+
+    if (hasWriteOnlyAccess) {
+        secrets = await Secret.find(secretQuery).select("secretKeyCiphertext secretKeyIV secretKeyTag")
+    } else {
+        secrets = await Secret.find(secretQuery).populate("tags")
     }
 
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
