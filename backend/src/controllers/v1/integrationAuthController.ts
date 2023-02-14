@@ -35,14 +35,11 @@ export const getIntegrationAuth = async (req: Request, res: Response) => {
 	});
 }
 
-export const getIntegrationOptions = async (
-	req: Request,
-	res: Response
-) => {
-	return res.status(200).send({
-		integrationOptions: INTEGRATION_OPTIONS
-	});
-}
+export const getIntegrationOptions = async (req: Request, res: Response) => {
+  return res.status(200).send({
+    integrationOptions: INTEGRATION_OPTIONS,
+  });
+};
 
 /**
  * Perform OAuth2 code-token exchange as part of integration [integration] for workspace with id [workspaceId]
@@ -90,8 +87,8 @@ export const oAuthExchange = async (
  * @param res 
  */
 export const saveIntegrationAccessToken = async (
-	req: Request,
-	res: Response
+  req: Request,
+  res: Response
 ) => {
 	// TODO: refactor
 	// TODO: check if access token is valid for each integration
@@ -157,23 +154,23 @@ export const saveIntegrationAccessToken = async (
  * @returns
  */
 export const getIntegrationAuthApps = async (req: Request, res: Response) => {
-	let apps;
-	try {
-		apps = await getApps({
-			integrationAuth: req.integrationAuth,
-			accessToken: req.accessToken
-		});
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-        Sentry.captureException(err);	
-		return res.status(400).send({
-			message: 'Failed to get integration authorization applications'
-		});
-	}
+  let apps;
+  try {
+    apps = await getApps({
+      integrationAuth: req.integrationAuth,
+      accessToken: req.accessToken,
+    });
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to get integration authorization applications",
+    });
+  }
 
-	return res.status(200).send({
-		apps
-	});
+  return res.status(200).send({
+    apps,
+  });
 };
 
 /**
@@ -183,21 +180,21 @@ export const getIntegrationAuthApps = async (req: Request, res: Response) => {
  * @returns
  */
 export const deleteIntegrationAuth = async (req: Request, res: Response) => {
-	let integrationAuth;
-	try {
-		integrationAuth = await revokeAccess({
-			integrationAuth: req.integrationAuth,
-			accessToken: req.accessToken
-		});
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-        Sentry.captureException(err);	
-		return res.status(400).send({
-			message: 'Failed to delete integration authorization'
-		});
-	}
-	
-	return res.status(200).send({
-		integrationAuth
-	});
-}
+  let integrationAuth;
+  try {
+    integrationAuth = await revokeAccess({
+      integrationAuth: req.integrationAuth,
+      accessToken: req.accessToken,
+    });
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to delete integration authorization",
+    });
+  }
+
+  return res.status(200).send({
+    integrationAuth,
+  });
+};

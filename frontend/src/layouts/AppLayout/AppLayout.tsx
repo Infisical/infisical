@@ -97,7 +97,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
     const putUserInWorkSpace = async () => {
       if (tempLocalStorage('orgData.id') === '') {
         const userOrgs = await getOrganizations();
-        localStorage.setItem('orgData.id', userOrgs[0]._id);
+        localStorage.setItem('orgData.id', userOrgs[0]?._id);
       }
 
       const orgUserProjects = await getOrganizationUserProjects({
@@ -123,7 +123,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
         // If a user is not a member of a workspace they are trying to access, just push them to one of theirs
         if (
-          !['callback', 'create', 'authorize'].includes(intendedWorkspaceId) &&
+          !['callback', 'create', 'authorize'].includes(intendedWorkspaceId) && userWorkspaces[0]?._id !== undefined &&
           !userWorkspaces
             .map((workspace: { _id: string }) => workspace._id)
             .includes(intendedWorkspaceId)

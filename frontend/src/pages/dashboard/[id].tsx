@@ -53,12 +53,13 @@ type WorkspaceEnv = {
   name: string;
   slug: string;
   isWriteDenied: boolean;
+  isReadDenied: boolean;
 };
 
 interface SecretDataProps {
   pos: number;
   key: string;
-  value: string;
+  value: string | undefined;
   valueOverride: string | undefined;
   id: string;
   idOverride: string | undefined;
@@ -268,6 +269,8 @@ export default function Dashboard() {
           });
           setInitialData(dataToSort);
           reorderRows(dataToSort);
+        } else {
+          setIsLoading(false);
         }
       } catch (error) {
         console.log('Error', error);
@@ -318,7 +321,7 @@ export default function Dashboard() {
     setButtonReady(true);
     toggleSidebar('None');
     createNotification({
-      text: `${secretName} has been deleted. Remember to save changes.`,
+      text: `${secretName || 'Secret'} has been deleted. Remember to save changes.`,
       type: 'error'
     });
     sortValuesHandler(
@@ -526,7 +529,7 @@ export default function Dashboard() {
       });
       if (secrets) await addSecrets({ secrets, env: selectedEnv.slug, workspaceId });
     }
-    if (selectedEnv && secretsToBeUpdated.concat(overridesToBeUpdated).length > 0) {
+    if (selectedEnv && !selectedEnv.isReadDenied && secretsToBeUpdated.concat(overridesToBeUpdated).length > 0) {
       const secrets = await encryptSecrets({
         secretsToEncrypt: secretsToBeUpdated.concat(overridesToBeUpdated),
         workspaceId,
@@ -642,6 +645,11 @@ export default function Dashboard() {
                     {new Date(snapshotData.createdAt).toLocaleString()}
                   </span>
                 )}
+                {selectedEnv?.isReadDenied && (
+                  <span className="bg-primary-500 text-black text-sm ml-4 mt-1 px-1.5 rounded-md">
+                    Add Only Mode
+                  </span>
+                )}
               </div>
               {!snapshotData && data?.length === 0 && selectedEnv && (
                 <ListBox
@@ -652,7 +660,8 @@ export default function Dashboard() {
                       workspaceEnvs.find(({ name }) => envName === name) || {
                         name: 'unknown',
                         slug: 'unknown',
-                        isWriteDenied: false
+                        isWriteDenied: false,
+                        isReadDenied: false
                       }
                     )
                   }
@@ -661,7 +670,7 @@ export default function Dashboard() {
             </div>
             <div className="flex flex-row">
               <div className="flex justify-start max-w-sm mt-1 mr-2">
-                <Button
+                {!selectedEnv?.isReadDenied && <Button
                   text={String(`${numSnapshots} ${t('Commits')}`)}
                   onButtonPressed={() => {
                     toggleSidebar('None');
@@ -670,7 +679,7 @@ export default function Dashboard() {
                   color="mineshaft"
                   size="md"
                   icon={faClockRotateLeft}
-                />
+                />}
               </div>
               {(data?.length !== 0 || buttonReady) && !snapshotData && (
                 <div className="flex justify-start max-w-sm mt-1">
@@ -738,7 +747,8 @@ export default function Dashboard() {
                             workspaceEnvs.find(({ name }) => envName === name) || {
                               name: 'unknown',
                               slug: 'unknown',
-                              isWriteDenied: false
+                              isWriteDenied: false,
+                              isReadDenied: false
                             }
                           )
                         }
@@ -752,7 +762,8 @@ export default function Dashboard() {
                             workspaceEnvs.find(({ name }) => envName === name) || {
                               name: 'unknown',
                               slug: 'unknown',
-                              isWriteDenied: false
+                              isWriteDenied: false,
+                              isReadDenied: false
                             }
                           )
                         }
@@ -770,7 +781,7 @@ export default function Dashboard() {
                         placeholder={String(t('dashboard:search-keys'))}
                       />
                     </div>
-                    {!snapshotData && (
+                    {!snapshotData && !selectedEnv.isReadDenied && (
                       <div className="ml-2 min-w-max flex flex-row items-start justify-start">
                         <DownloadSecretMenu data={data} env={selectedEnv.slug} />
                       </div>
@@ -825,7 +836,7 @@ export default function Dashboard() {
                   >
                     <div className="relative flex flex-row justify-between w-full mr-auto max-h-14 items-center">
                       <div className="w-1/5 border-r border-mineshaft-600 flex flex-row items-center">
-                        <div className='text-transparent text-xs flex items-center justify-center w-14 h-10 cursor-default'>0</div>
+                        <div className='text-transparent text-xs flex items-center justify-center w-12 h-10 cursor-default'>0</div>
                         <span className='px-2 text-bunker-300 font-semibold'>Key</span>
                         {!snapshotData && <IconButton 
                           ariaLabel="copy icon"
@@ -843,7 +854,7 @@ export default function Dashboard() {
                           <div className='text-bunker-300 px-2 font-semibold h-10 flex items-center w-7/12'>Value</div>
                         </div>
                       </div>
-                      <div className="w-2/12 border-r border-mineshaft-600">
+                      <div className="w-[calc(10%)] border-r border-mineshaft-600">
                         <div className="flex items-center max-h-16">
                           <div className='text-bunker-300 px-2 font-semibold h-10 flex items-center w-3/12'>Comment</div>
                         </div>
@@ -876,6 +887,7 @@ export default function Dashboard() {
                           || row.tags?.map(tag => tag.name).join(" ")?.toUpperCase().includes(searchKeys.toUpperCase())
                           || row.comment?.toUpperCase().includes(searchKeys.toUpperCase()))
                         .filter((row) => !sharedToHide.includes(row.id))
+                        .filter((row) => row.value !== undefined)
                         .map((keyPair) => (
                           <KeyPair
                             isCapitalized={autoCapitalization}
@@ -995,7 +1007,7 @@ export default function Dashboard() {
             toggleSidebar={toggleSidebar}
             data={data.filter(
               (row: SecretDataProps) =>
-                row.id === sidebarSecretId
+                row.id === sidebarSecretId && row.value !== undefined
             )}
             modifyKey={listenChangeKey}
             modifyValue={listenChangeValue}

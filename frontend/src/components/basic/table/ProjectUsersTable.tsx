@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { faX } from '@fortawesome/free-solid-svg-icons';
+import { faEye, faEyeSlash, faPenToSquare, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
 import { plans } from 'public/data/frequentConstants';
 
 import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
@@ -106,6 +106,11 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
         ability: "read",
         environmentSlug: slug
       }];
+    } else if (val === "Add Only") {
+      denials = [{
+        ability: "read",
+        environmentSlug: slug
+      }];
     } else {
       denials = [];
     }
@@ -185,21 +190,21 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
 
   return (
     <div className="table-container bg-bunker rounded-md mb-6 border border-mineshaft-700 relative mt-1 min-w-max">
-      <div className="absolute rounded-t-md w-full h-[3.25rem] bg-white/5" />
+      <div className="absolute rounded-t-md w-full h-[3.1rem] bg-white/5" />
       <UpgradePlanModal
         isOpen={isUpgradeModalOpen}
         onClose={closeUpgradeModal}
         text="You can change user permissions if you switch to Infisical's Professional plan."
       />
       <table className="w-full my-0.5">
-        <thead className="text-gray-400 text-sm font-light">
+        <thead className="text-gray-400 text-xs font-light">
           <tr>
             <th className="text-left pl-4 py-3.5">NAME</th>
             <th className="text-left pl-4 py-3.5">EMAIL</th>
             <th className="text-left pl-6 pr-10 py-3.5">ROLE</th>
             {workspaceEnvs.map(env => (
-              <th key={guidGenerator()} className="text-left pl-8 py-1 max-w-min break-normal">
-                <span>{env.name.toUpperCase()}<br/></span> 
+              <th key={guidGenerator()} className="text-left pl-2 py-1 max-w-min break-normal">
+                <span>{env.slug.toUpperCase()}<br/></span> 
                 {/* <span>PERMISSION</span> */}
               </th>
             ))}
@@ -221,7 +226,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
                   user.email?.toLowerCase().includes(filter)
               )
               .map((row, index) => (
-                <tr key={guidGenerator()} className="bg-bunker-800 hover:bg-bunker-700">
+                <tr key={guidGenerator()} className="bg-bunker-600 text-sm hover:bg-bunker-500">
                   <td className="pl-4 py-2 border-mineshaft-700 border-t text-gray-300">
                     {row.firstName} {row.lastName}
                   </td>
@@ -231,7 +236,8 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
                   <td className="pl-6 pr-10 py-2 border-mineshaft-700 border-t text-gray-300">
                     <div className="justify-start h-full flex flex-row items-center">
                       <Select 
-                        className="w-36"
+                        className="w-36 bg-mineshaft-700"
+                        dropdownContainerClassName="bg-mineshaft-700"
                         // open={isOpen}
                         onValueChange={(e) => handleRoleUpdate(index, e)}
                         value={row.role}
@@ -253,23 +259,36 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
                       )}
                     </div>
                   </td>
-                  {workspaceEnvs.map((env) => <td key={guidGenerator()} className="pl-8 py-2 border-mineshaft-700 border-t text-gray-300">
+                  {workspaceEnvs.map((env) => <td key={guidGenerator()} className="pl-2 py-2 border-mineshaft-700 border-t text-gray-300">
                     <Select 
-                      className="w-36"
+                      className="w-16 bg-mineshaft-700"
+                      dropdownContainerClassName="bg-mineshaft-700"
+                      position="item-aligned"
                       // open={isOpen}
                       onValueChange={(val) => handlePermissionUpdate(index, val, row.membershipId, env.slug)}
                       value={
                         // eslint-disable-next-line no-nested-ternary
                         (row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") && row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("read"))
                         ? "No Access"
-                        : (row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") ? "Read Only" : "Read & Write")
+                        // eslint-disable-next-line no-nested-ternary
+                        : (row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") && !row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("read") ? "Read Only" 
+                        : !row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") && row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("read") ? "Add Only" : "Read & Write")
+                      }
+                      icon={
+                        // eslint-disable-next-line no-nested-ternary
+                        (row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") && row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("read"))
+                        ? faEyeSlash
+                        // eslint-disable-next-line no-nested-ternary
+                        : (row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") && !row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("read") ? faEye 
+                        : !row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") && row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("read") ? faPlus : faPenToSquare)
                       }
                       disabled={myRole !== 'admin'}
                       // onOpenChange={(open) => setIsOpen(open)}
                     >
-                      <SelectItem value="No Access">No Access</SelectItem>
-                      <SelectItem value="Read Only">Read Only</SelectItem>
-                      <SelectItem value="Read & Write">Read & Write</SelectItem>
+                      <SelectItem value="No Access" customIcon={faEyeSlash}>No Access</SelectItem>
+                      <SelectItem value="Read Only" customIcon={faEye}>Read Only</SelectItem>
+                      <SelectItem value="Add Only"  customIcon={faPlus}>Add Only</SelectItem>
+                      <SelectItem value="Read & Write" customIcon={faPenToSquare}>Read & Write</SelectItem>
                     </Select>
                   </td>)}
                   <td className="flex flex-row justify-end pl-8 pr-8 py-2 border-t border-0.5 border-mineshaft-700">

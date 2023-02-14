@@ -26,7 +26,7 @@ interface Integration {
 }
 
 const ProjectIntegrationSection = ({
-  integrations, 
+  integrations,
   setIntegrations,
   bot,
   setBot,
@@ -35,22 +35,20 @@ const ProjectIntegrationSection = ({
 }: Props) => {
   return integrations.length > 0 ? (
     <div className="mb-12">
-      <div className="flex flex-col justify-between items-start mx-4 mb-4 mt-6 text-xl max-w-5xl px-2">
-        <h1 className="font-semibold text-3xl">Current Integrations</h1>
-        <p className="text-base text-gray-400">
-          Manage integrations with third-party services.
-        </p>
+      <div className="mx-4 mb-4 mt-6 flex max-w-5xl flex-col items-start justify-between px-2 text-xl">
+        <h1 className="text-3xl font-semibold">Current Integrations</h1>
+        <p className="text-base text-gray-400">Manage integrations with third-party services.</p>
       </div>
       {integrations.map((integration: Integration) => {
         return (
           <IntegrationTile
-            key={`integration-${integration._id.toString()}`} 
-            integration={integration} 
+            key={`integration-${integration?._id.toString()}`}
+            integration={integration}
             integrations={integrations}
             bot={bot}
             setBot={setBot}
             setIntegrations={setIntegrations}
-            environments={environments} 
+            environments={environments}
             handleDeleteIntegration={handleDeleteIntegration}
           />
         );
@@ -59,6 +57,6 @@ const ProjectIntegrationSection = ({
   ) : (
     <div />
   );
-}
-  
+};
+
 export default ProjectIntegrationSection;

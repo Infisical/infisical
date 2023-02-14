@@ -45,8 +45,8 @@ type Props = {
   handleDeleteIntegration: (args: { integration: Integration }) => void;
 };
 
-const IntegrationTile = ({ 
-  integration, 
+const IntegrationTile = ({
+  integration,
   integrations,
   bot,
   setBot,
@@ -57,7 +57,7 @@ const IntegrationTile = ({
 
   // set initial environment. This find will only execute when component is mounting
   const [integrationEnvironment, setIntegrationEnvironment] = useState<Props['environments'][0]>(
-    environments.find(({ slug }) => slug === integration.environment) || {
+    environments.find(({ slug }) => slug === integration?.environment) || {
       name: '',
       slug: ''
     }
@@ -69,11 +69,10 @@ const IntegrationTile = ({
 
   useEffect(() => {
     const loadIntegration = async () => {
-
       const tempApps: [IntegrationApp] = await getIntegrationApps({
-        integrationAuthId: integration.integrationAuth
+        integrationAuthId: integration?.integrationAuth
       });
-      
+
       setApps(tempApps);
       
       if (integration?.app) {
@@ -90,15 +89,16 @@ const IntegrationTile = ({
         case 'vercel':
           setIntegrationTargetEnvironment(
             integration?.targetEnvironment
-            ? integration.targetEnvironment.charAt(0).toUpperCase() + integration.targetEnvironment.substring(1)
-            : 'Development'
+              ? integration.targetEnvironment.charAt(0).toUpperCase() +
+                  integration.targetEnvironment.substring(1)
+              : 'Development'
           );
           break;
         case 'netlify':
           setIntegrationTargetEnvironment(
-            integration?.targetEnvironment 
-            ? contextNetlifyMapping[integration.targetEnvironment] 
-            : 'Local development'
+            integration?.targetEnvironment
+              ? contextNetlifyMapping[integration.targetEnvironment]
+              : 'Local development'
           );
           break;
         default:
@@ -108,7 +108,7 @@ const IntegrationTile = ({
 
     loadIntegration();
   }, []);
-  
+
   const handleStartIntegration = async () => {
     const reformatTargetEnvironment = (targetEnvironment: string) => {
       switch (integration.integration) {
@@ -119,13 +119,13 @@ const IntegrationTile = ({
         default:
           return null;
       }
-    }
+    };
 
     try {
       const siteApp = apps.find((app) => app.name === integrationApp); // obj or undefined
       const appId = siteApp?.appId ?? null;
       const owner = siteApp?.owner ?? null;
-      
+
       // return updated integration
       const updatedIntegration = await updateIntegration({
         integrationId: integration._id,
@@ -136,15 +136,15 @@ const IntegrationTile = ({
         targetEnvironment: reformatTargetEnvironment(integrationTargetEnvironment),
         owner
       });
-      
+
       setIntegrations(
-        integrations.map((i) => i._id === updatedIntegration._id ? updatedIntegration : i)
+        integrations.map((i) => (i._id === updatedIntegration._id ? updatedIntegration : i))
       );
     } catch (err) {
       console.error(err);
     }
-  }
-  
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-shadow
   const renderIntegrationSpecificParams = (integration: Integration) => {
     try {
@@ -152,7 +152,7 @@ const IntegrationTile = ({
         case 'vercel':
           return (
             <div>
-              <div className="text-gray-400 text-xs font-semibold mb-2 w-60">ENVIRONMENT</div>
+              <div className="mb-2 w-60 text-xs font-semibold text-gray-400">ENVIRONMENT</div>
               <ListBox
                 data={!integration.isActive ? ['Development', 'Preview', 'Production'] : null}
                 isSelected={integrationTargetEnvironment}
@@ -164,7 +164,7 @@ const IntegrationTile = ({
         case 'netlify':
           return (
             <div>
-              <div className="text-gray-400 text-xs font-semibold mb-2">CONTEXT</div>
+              <div className="mb-2 text-xs font-semibold text-gray-400">CONTEXT</div>
               <ListBox
                 data={
                   !integration.isActive
@@ -189,10 +189,10 @@ const IntegrationTile = ({
   if (!integrationApp) return <div />;
 
   return (
-    <div className="max-w-5xl p-6 mx-6 mb-8 rounded-md bg-white/5 flex justify-between">
+    <div className="mx-6 mb-8 flex max-w-5xl justify-between rounded-md bg-white/5 p-6">
       <div className="flex">
         <div>
-          <p className="text-gray-400 text-xs font-semibold mb-2">ENVIRONMENT</p>
+          <p className="mb-2 text-xs font-semibold text-gray-400">ENVIRONMENT</p>
           <ListBox
             data={!integration.isActive ? environments.map(({ name }) => name) : null}
             isSelected={integrationEnvironment.name}
@@ -208,7 +208,7 @@ const IntegrationTile = ({
           />
         </div>
         <div className="pt-2">
-          <FontAwesomeIcon icon={faArrowRight} className="mx-4 text-gray-400 mt-8" />
+          <FontAwesomeIcon icon={faArrowRight} className="mx-4 mt-8 text-gray-400" />
         </div>
         <div className="mr-2">
           <p className="text-gray-400 text-xs font-semibold mb-2">INTEGRATION</p>
@@ -218,7 +218,7 @@ const IntegrationTile = ({
           </div>
         </div>
         <div className="mr-2">
-          <div className="text-gray-400 text-xs font-semibold mb-2">APP</div>
+          <div className="mb-2 text-xs font-semibold text-gray-400">APP</div>
           <ListBox
             data={!integration.isActive ? apps.map((app) => app.name) : null}
             isSelected={integrationApp}
@@ -231,9 +231,9 @@ const IntegrationTile = ({
       </div>
       <div className="flex items-end">
         {integration.isActive ? (
-          <div className="max-w-5xl flex flex-row items-center bg-white/5 p-2 rounded-md px-4">
-            <FontAwesomeIcon icon={faRotate} className="text-lg mr-2.5 text-primary animate-spin" />
-            <div className="text-gray-300 font-semibold">In Sync</div>
+          <div className="flex max-w-5xl flex-row items-center rounded-md bg-white/5 p-2 px-4">
+            <FontAwesomeIcon icon={faRotate} className="mr-2.5 animate-spin text-lg text-primary" />
+            <div className="font-semibold text-gray-300">In Sync</div>
           </div>
         ) : (
           <Button
@@ -243,11 +243,13 @@ const IntegrationTile = ({
             size="md"
           />
         )}
-        <div className="opacity-50 hover:opacity-100 duration-200 ml-2">
+        <div className="ml-2 opacity-50 duration-200 hover:opacity-100">
           <Button
-            onButtonPressed={() => handleDeleteIntegration({
-              integration
-            })}
+            onButtonPressed={() =>
+              handleDeleteIntegration({
+                integration
+              })
+            }
             color="red"
             size="icon-md"
             icon={faX}
