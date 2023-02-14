@@ -104,6 +104,10 @@ var secretsSetCmd = &cobra.Command{
 			util.HandleError(err, "Unable to get your local config details")
 		}
 
+		if environmentName == '' {
+			environmentName := workspaceFile.environment
+		}
+
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
 		if err != nil {
 			util.HandleError(err, "Unable to authenticate")

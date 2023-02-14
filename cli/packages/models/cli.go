@@ -40,6 +40,7 @@ type Workspace struct {
 
 type WorkspaceConfigFile struct {
 	WorkspaceId string `json:"workspaceId"`
+	Environment string `json:"environment"`
 }
 
 type SymmetricEncryptionResult struct {
