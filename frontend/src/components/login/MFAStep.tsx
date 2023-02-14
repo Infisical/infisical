@@ -30,6 +30,18 @@ const props = {
   }
 } as const;
 
+interface VerifyMfaTokenError {
+  response: {
+    data: {
+      context: {
+        code: string;
+        triesLeft: number;
+      }
+    },
+    status: number;
+  }
+}
+
 /**
  * 2nd step of login - users enter their MFA code
  * @param {Object} obj
@@ -73,7 +85,15 @@ export default function MFAStep({
       }
       
     } catch (err) {
-      console.error(err);
+      const error = err as VerifyMfaTokenError;
+      
+      if (error?.response?.status === 500) {
+        window.location.reload();
+      } else if (error?.response?.data?.context?.triesLeft === 0) {
+        window.location.reload();
+        router.push('/login'); 
+      }
+
       setIsLoading(false);
       setCodeError(true);
     }

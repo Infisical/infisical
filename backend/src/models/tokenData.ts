@@ -6,6 +6,7 @@ export interface ITokenData {
   phoneNumber?: string;
   organization?: Types.ObjectId;
   tokenHash: string;
+  triesLeft?: number;
   expiresAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -36,6 +37,9 @@ const tokenDataSchema = new Schema<ITokenData>({
     type: String,
     select: false,
     required: true
+  },
+  triesLeft: {
+    type: Number
   },
   expiresAt: {
     type: Date,

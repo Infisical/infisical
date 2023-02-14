@@ -243,7 +243,6 @@ export const sendMfaToken = async (req: Request, res: Response) => {
  * @param res 
  */
 export const verifyMfaToken = async (req: Request, res: Response) => {
-  try {
     const { email, mfaToken } = req.body;
 
     await TokenService.validateToken({
@@ -296,15 +295,6 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
       resObj.protectedKeyTag = user.protectedKeyTag;
     }
     
-    // case: user does not have MFA enabled
-    // return (access) token in response
     return res.status(200).send(resObj); 
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    return res.status(400).send({
-      message: 'Failed to authenticate. Try again?'
-    });
-  }
 }
 

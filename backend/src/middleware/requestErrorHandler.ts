@@ -17,9 +17,7 @@ export const requestErrorHandler: ErrorRequestHandler = (error: RequestError | E
     }
 
     //TODO: Find better way to type check for error. In current setting you need to cast type to get the functions and variables from RequestError
-    if (error instanceof TokenExpiredError) {
-        error = UnauthorizedRequestError({ stack: error.stack, message: 'Token expired' });
-    } else if (!(error instanceof RequestError)) {
+    if (!(error instanceof RequestError)) {
         error = InternalServerError({ context: { exception: error.message }, stack: error.stack })
         getLogger('backend-main').log((<RequestError>error).levelName.toLowerCase(), (<RequestError>error).message)
     }

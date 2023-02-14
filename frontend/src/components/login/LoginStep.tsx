@@ -63,7 +63,6 @@ export default function LoginStep ({
             }
 
         } catch (err) {
-            console.error(err);
             setLoginError(true);
         }
         

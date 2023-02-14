@@ -12,7 +12,7 @@ import {
 import {
     SALT_ROUNDS
 } from '../config';
-import { ForbiddenRequestError } from '../utils/errors';
+import { UnauthorizedRequestError } from '../utils/errors';
 
 /**
  * Create and store a token in the database for purpose [type]
@@ -34,7 +34,7 @@ const createTokenHelper = async ({
     phoneNumber?: string;
     organizationId?: Types.ObjectId
 }) => {
-    let token, expiresAt;
+    let token, expiresAt, triesLeft;
     try {
         // generate random token based on specified token use-case
         // type [type]
@@ -47,6 +47,7 @@ const createTokenHelper = async ({
             case TOKEN_EMAIL_MFA:
                 // generate random 6-digit code
                 token = String(crypto.randomInt(Math.pow(10, 5), Math.pow(10, 6) - 1));
+                triesLeft = 5;
                 expiresAt = new Date((new Date()).getTime() + 300000);
                 break;
             case TOKEN_EMAIL_ORG_INVITATION:
@@ -78,6 +79,7 @@ const createTokenHelper = async ({
             phoneNumber?: string;
             organization?: Types.ObjectId;
             tokenHash: string;
+            triesLeft?: number;
             expiresAt: Date;
         }
 
@@ -100,6 +102,10 @@ const createTokenHelper = async ({
             query.organization = organizationId 
             update.organization = organizationId 
         } 
+        
+        if (triesLeft) {
+            update.triesLeft = triesLeft;
+        }
        
         await TokenData.findOneAndUpdate(
             query,
@@ -157,19 +163,51 @@ const validateTokenHelper = async ({
     if (!tokenData) throw new Error('Failed to find token to validate');
     
     if (tokenData.expiresAt < new Date()) {
+        // case: token expired
         await TokenData.findByIdAndDelete(tokenData._id);
-        throw ForbiddenRequestError({
-            message: 'Failed token data validation due to token is no longer valid'
+        throw UnauthorizedRequestError({
+            message: 'MFA session expired. Please log in again',
+            context: {
+                code: 'mfa_expired'
+            }
         });
     }
 
     const isValid = await bcrypt.compare(token, tokenData.tokenHash);
     if (!isValid) {
-        throw ForbiddenRequestError({
-            message: 'Failed token data validation due to incorrect token'
+        // case: token is not valid
+        if (tokenData?.triesLeft !== undefined) {
+            // case: token has a try-limit
+            if (tokenData.triesLeft === 1) {
+                // case: token is out of tries
+                await TokenData.findByIdAndDelete(tokenData._id);
+            } else {
+                // case: token has more than 1 try left
+                await TokenData.findByIdAndUpdate(tokenData._id, {
+                    triesLeft: tokenData.triesLeft - 1
+                }, {
+                    new: true
+                });
+            }
+
+            throw UnauthorizedRequestError({
+                message: 'MFA code is invalid',
+                context: {
+                    code: 'mfa_invalid',
+                    triesLeft: tokenData.triesLeft - 1
+                }
+            });
+        }
+
+        throw UnauthorizedRequestError({
+            message: 'MFA code is invalid',
+            context: {
+                code: 'mfa_invalid'
+            }
         });
     }
 
+    // case: token is valid
     await TokenData.findByIdAndDelete(tokenData._id);
 }
 
