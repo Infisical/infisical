@@ -269,19 +269,36 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
       secure: NODE_ENV === 'production' ? true : false
     });
     
+    interface VerifyMfaTokenRes {
+      encryptionVersion: number;
+      protectedKey?: string;
+      protectedKeyIV?: string;
+      protectedKeyTag?: string;
+      token: string;
+      publicKey: string;
+      encryptedPrivateKey: string;
+      iv: string;
+      tag: string;
+    }
+
+    const resObj: VerifyMfaTokenRes = {
+      encryptionVersion: user.encryptionVersion,
+      token: tokens.token,
+      publicKey: user.publicKey as string,
+      encryptedPrivateKey: user.encryptedPrivateKey as string,
+      iv: user.iv as string,
+      tag: user.tag as string
+    }
+    
+    if (user?.protectedKey && user?.protectedKeyIV && user?.protectedKeyTag) {
+      resObj.protectedKey = user.protectedKey;
+      resObj.protectedKeyIV = user.protectedKeyIV;
+      resObj.protectedKeyTag = user.protectedKeyTag;
+    }
+    
     // case: user does not have MFA enabled
     // return (access) token in response
-    return res.status(200).send({
-      encryptionVersion: user.encryptionVersion,
-      protectedKey: user.protectedKey ?? null,
-      protectedKeyIV: user.protectedKeyIV ?? null,
-      protectedKeyTag: user.protectedKeyTag ?? null,
-      token: tokens.token,
-      publicKey: user.publicKey,
-      encryptedPrivateKey: user.encryptedPrivateKey,
-      iv: user.iv,
-      tag: user.tag
-    }); 
+    return res.status(200).send(resObj); 
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);

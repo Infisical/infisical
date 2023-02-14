@@ -93,6 +93,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   // Placing the localstorage as much as possible
   // Wait till tony integrates the azure and its launched
   useEffect(() => {
+
     // Put a user in a workspace if they're not in one yet
     const putUserInWorkSpace = async () => {
       if (tempLocalStorage('orgData.id') === '') {

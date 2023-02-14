@@ -87,7 +87,6 @@ export default function Navbar() {
   }, []);
 
   const closeApp = async () => {
-    console.log('Logging out...');
     await logout();
     router.push('/login');
   };

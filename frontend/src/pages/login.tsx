@@ -17,7 +17,6 @@ export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isAlreadyLoggedIn, setIsAlreadyLoggedIn] = useState(false);
   const [step, setStep] = useState(1);
   const { t } = useTranslation();
   const lang = router.locale ?? 'en';
@@ -41,7 +40,6 @@ export default function Login() {
       }
     };
     if (isLoggedIn()) {
-      setIsAlreadyLoggedIn(true);
       redirectToDashboard();
     }
   }, []);
@@ -70,10 +68,6 @@ export default function Login() {
       default:
         return <div />
     }
-  }
-
-  if (isAlreadyLoggedIn) {
-    return null
   }
 
   return (
@@ -106,4 +100,4 @@ export default function Login() {
   );
 }
 
-export const getStaticProps = getTranslatedStaticProps(['auth', 'login']);
+export const getStaticProps = getTranslatedStaticProps(['auth', 'login', 'signup']);

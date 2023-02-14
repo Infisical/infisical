@@ -1,11 +1,12 @@
 import { ErrorRequestHandler } from "express";
 
 import * as Sentry from '@sentry/node';
-import { InternalServerError } from "../utils/errors";
+import { InternalServerError, UnauthorizedRequestError } from "../utils/errors";
 import { getLogger } from "../utils/logger";
 import RequestError, { LogLevel } from "../utils/requestError";
 import { NODE_ENV } from "../config";
 
+import { TokenExpiredError } from 'jsonwebtoken';
 
 export const requestErrorHandler: ErrorRequestHandler = (error: RequestError | Error, req, res, next) => {
     if (res.headersSent) return next();
@@ -16,7 +17,9 @@ export const requestErrorHandler: ErrorRequestHandler = (error: RequestError | E
     }
 
     //TODO: Find better way to type check for error. In current setting you need to cast type to get the functions and variables from RequestError
-    if (!(error instanceof RequestError)) {
+    if (error instanceof TokenExpiredError) {
+        error = UnauthorizedRequestError({ stack: error.stack, message: 'Token expired' });
+    } else if (!(error instanceof RequestError)) {
         error = InternalServerError({ context: { exception: error.message }, stack: error.stack })
         getLogger('backend-main').log((<RequestError>error).levelName.toLowerCase(), (<RequestError>error).message)
     }

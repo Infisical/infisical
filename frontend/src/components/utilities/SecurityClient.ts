@@ -1,7 +1,15 @@
-import { getAuthToken, setAuthToken , setMfaTempToken } from '@app/reactQuery';
+import {
+  getAuthToken, 
+  setAuthToken,
+  setMfaTempToken,
+  setSignupTempToken} from '@app/reactQuery';
 
 // depreciated: go for apiRequest module in config/api
 export default class SecurityClient {
+  static setSignupToken(tokenStr: string) {
+    setSignupTempToken(tokenStr);
+  }
+
   static setMfaToken(tokenStr: string) {
     setMfaTempToken(tokenStr);
   }

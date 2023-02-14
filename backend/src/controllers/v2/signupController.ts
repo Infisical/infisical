@@ -7,6 +7,7 @@ import {
 } from '../../helpers/signup';
 import { issueAuthTokens } from '../../helpers/auth';
 import { INVITED, ACCEPTED } from '../../variables';
+import { NODE_ENV } from '../../config';
 import axios from 'axios';
 
 /**
@@ -105,7 +106,6 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 		});
 
 		token = tokens.token;
-		refreshToken = tokens.refreshToken;
 
 		// sending a welcome email to new users
 		if (process.env.LOOPS_API_KEY) {
@@ -121,6 +121,14 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 				},
 			});
 		}
+
+		// store (refresh) token in httpOnly cookie
+		res.cookie('jid', tokens.refreshToken, {
+			httpOnly: true,
+			path: '/',
+			sameSite: 'strict',
+			secure: NODE_ENV === 'production' ? true : false
+		});
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
@@ -132,8 +140,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 	return res.status(200).send({
 		message: 'Successfully set up account',
 		user,
-		token,
-		refreshToken
+		token
 	});
 };
 
@@ -219,7 +226,14 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 		});
 
 		token = tokens.token;
-		refreshToken = tokens.refreshToken;
+
+		// store (refresh) token in httpOnly cookie
+		res.cookie('jid', tokens.refreshToken, {
+			httpOnly: true,
+			path: '/',
+			sameSite: 'strict',
+			secure: NODE_ENV === 'production' ? true : false
+		});
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
@@ -227,11 +241,10 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 			message: 'Failed to complete account setup'
 		});
 	}
-
+	
 	return res.status(200).send({
 		message: 'Successfully set up account',
 		user,
-		token,
-		refreshToken
+		token
 	});
 };

@@ -12,7 +12,7 @@ import {
 import {
     SALT_ROUNDS
 } from '../config';
-import { UnauthorizedRequestError } from '../utils/errors';
+import { ForbiddenRequestError } from '../utils/errors';
 
 /**
  * Create and store a token in the database for purpose [type]
@@ -65,29 +65,45 @@ const createTokenHelper = async ({
                 break;
         }
         
-       interface Query {
+       interface TokenDataQuery {
             type: string;
             email?: string;
             phoneNumber?: string;
             organization?: Types.ObjectId;
         }
+        
+        interface TokenDataUpdate {
+            type: string;
+            email?: string;
+            phoneNumber?: string;
+            organization?: Types.ObjectId;
+            tokenHash: string;
+            expiresAt: Date;
+        }
 
-        const query: Query = { type };
+        const query: TokenDataQuery = { type };
+        const update: TokenDataUpdate = {
+            type,
+            tokenHash: await bcrypt.hash(token, SALT_ROUNDS),
+            expiresAt
+        }
 
-        if (email) { query.email = email; }
-        if (phoneNumber) { query.phoneNumber = phoneNumber; }
-        if (organizationId) { query.organization = organizationId } 
+        if (email) {
+            query.email = email; 
+            update.email = email; 
+        }
+        if (phoneNumber) { 
+            query.phoneNumber = phoneNumber; 
+            update.phoneNumber = phoneNumber; 
+        }
+        if (organizationId) { 
+            query.organization = organizationId 
+            update.organization = organizationId 
+        } 
        
         await TokenData.findOneAndUpdate(
             query,
-            {
-                type,
-                email,
-                phoneNumber,
-                organization: organizationId,
-                tokenHash: await bcrypt.hash(token, SALT_ROUNDS),
-                expiresAt
-            },
+            update,
             {
                 new: true,
                 upsert: true
@@ -123,37 +139,38 @@ const validateTokenHelper = async ({
     organizationId?: Types.ObjectId;
     token: string;
 }) => {
-    try {
-        interface Query {
-            type: string;
-            email?: string;
-            phoneNumber?: string;
-            organization?: Types.ObjectId;
-        }
+    interface Query {
+        type: string;
+        email?: string;
+        phoneNumber?: string;
+        organization?: Types.ObjectId;
+    }
 
-        const query: Query = { type };
+    const query: Query = { type };
 
-        if (email) { query.email = email; }
-        if (phoneNumber) { query.phoneNumber = phoneNumber; }
-        if (organizationId) { query.organization = organizationId; }
+    if (email) { query.email = email; }
+    if (phoneNumber) { query.phoneNumber = phoneNumber; }
+    if (organizationId) { query.organization = organizationId; }
 
-        const tokenData = await TokenData.findOneAndDelete(query);
-        
-        if (!tokenData) throw new Error('Failed to find token to validate');
-        
-        if (tokenData.expiresAt < new Date()) throw new Error('Token has expired');
-        
-        const isValid = await bcrypt.compare(token, tokenData.tokenHash);
-        if (!isValid) throw UnauthorizedRequestError({
+    const tokenData = await TokenData.findOne(query).select('+tokenHash');
+    
+    if (!tokenData) throw new Error('Failed to find token to validate');
+    
+    if (tokenData.expiresAt < new Date()) {
+        await TokenData.findByIdAndDelete(tokenData._id);
+        throw ForbiddenRequestError({
+            message: 'Failed token data validation due to token is no longer valid'
+        });
+    }
+
+    const isValid = await bcrypt.compare(token, tokenData.tokenHash);
+    if (!isValid) {
+        throw ForbiddenRequestError({
             message: 'Failed token data validation due to incorrect token'
         });
-    } catch (err) {
-        Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error(
-			"Failed to validate token data"
-		); 
     }
+
+    await TokenData.findByIdAndDelete(tokenData._id);
 }
 
 export {

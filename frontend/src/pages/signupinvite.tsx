@@ -21,6 +21,10 @@ import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
 import Aes256Gcm from '@app/components/utilities/cryptography/aes-256-gcm';
 import { deriveArgonKey } from '@app/components/utilities/cryptography/crypto';
 import issueBackupKey from '@app/components/utilities/cryptography/issueBackupKey';
+import { saveTokenToLocalStorage } from '@app/components/utilities/saveTokenToLocalStorage';
+import SecurityClient from '@app/components/utilities/SecurityClient';
+import getOrganizations from '@app/pages/api/organization/getOrgs';
+import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserProjects';
 
 import completeAccountInformationSignupInvite from './api/auth/CompleteAccountInformationSignupInvite';
 import verifySignupInvite from './api/auth/VerifySignupInvite';
@@ -29,7 +33,6 @@ import verifySignupInvite from './api/auth/VerifySignupInvite';
 const client = new jsrp.client();
 
 export default function SignupInvite() {
-  console.log('SignupInvite');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -82,13 +85,6 @@ export default function SignupInvite() {
       const privateKey = encodeBase64(secretKeyUint8Array);
       const publicKey = encodeBase64(publicKeyUint8Array);
 
-      // const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
-      //   text: PRIVATE_KEY,
-      //   secret: password
-      //     .slice(0, 32)
-      //     .padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), '0')
-      // });
-
       localStorage.setItem('PRIVATE_KEY', privateKey);
 
       client.init(
@@ -134,8 +130,9 @@ export default function SignupInvite() {
                 secret: Buffer.from(derivedKey.hash)
               });
               
-              console.log('SignupInvite A');
-              let response = await completeAccountInformationSignupInvite({
+              const {
+                token: jwtToken
+              } = await completeAccountInformationSignupInvite({
                 email,
                 firstName,
                 lastName,
@@ -147,24 +144,30 @@ export default function SignupInvite() {
                 encryptedPrivateKeyIV,
                 encryptedPrivateKeyTag,
                 salt: result.salt,
-                verifier: result.verifier,
-                token: verificationToken
+                verifier: result.verifier
               });
-              console.log('SignupInvite B');
+              
+              // unset temporary signup JWT token and set JWT token
+              SecurityClient.setSignupToken('');
+              SecurityClient.setToken(jwtToken);
 
-              // if everything works, go the main dashboard page.
-              if (!errorCheck && response.status === 200) {
-                response = await response.json();
+              saveTokenToLocalStorage({
+                  protectedKey,
+                  protectedKeyIV,
+                  protectedKeyTag,
+                  publicKey,
+                  encryptedPrivateKey,
+                  iv: encryptedPrivateKeyIV,
+                  tag: encryptedPrivateKeyTag,
+                  privateKey
+              });
 
-                console.log('SignupInvite C');
-                localStorage.setItem('publicKey', publicKey);
-                localStorage.setItem('encryptedPrivateKey', encryptedPrivateKey);
-                localStorage.setItem('iv', encryptedPrivateKeyIV);
-                localStorage.setItem('tag', encryptedPrivateKeyTag);
-                console.log('SignupInvite D');
+              const userOrgs = await getOrganizations(); 
 
-                setStep(3);
-              }
+              const orgId = userOrgs[0]._id;
+              localStorage.setItem('orgData.id', orgId);
+
+              setStep(3);
             } catch (error) {
               setIsLoading(false);
               console.error(error);
@@ -197,7 +200,7 @@ export default function SignupInvite() {
               // user will have temp token if doesn't have an account
               // then continue with account setup workflow
               if (res?.token) {
-                setVerificationToken(res.token);
+                SecurityClient.setSignupToken(res.token);
                 setStep(2);
               } else {
                 // user will be redirected to dashboard

@@ -161,6 +161,8 @@ export default function UserInfoStep({
                 organizationName: `${firstName}'s organization`
               });
               
+              // unset signup JWT token and set JWT token
+              SecurityClient.setSignupToken('');
               SecurityClient.setToken(response.token);
 
               saveTokenToLocalStorage({
@@ -174,13 +176,17 @@ export default function UserInfoStep({
                 privateKey
               });
 
-              incrementStep();
-
               const userOrgs = await getOrganizations();
-              await ProjectService.initProject({
-                organizationId: userOrgs[0]?._id,
+              const orgId = userOrgs[0]?._id;
+              const project = await ProjectService.initProject({
+                organizationId: orgId,
                 projectName: 'Example Project'
               });
+
+              localStorage.setItem('orgData.id', orgId);
+              localStorage.setItem('projectData.id', project._id);
+
+              incrementStep();
 
             } catch (error) {
               setIsLoading(false);

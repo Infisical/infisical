@@ -1,4 +1,4 @@
-import SecurityClient from "@app/components/utilities/SecurityClient";
+import { apiRequest } from "@app/config/request";
 
 /**
  * Verify MFA token [mfaToken] for user with email [email]
@@ -13,23 +13,13 @@ const verifyMfaToken = async ({
 }: {
     email: string;
     mfaToken: string;
-}) => SecurityClient.fetchCall('/api/v2/auth/mfa/verify', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      email,
-      mfaToken
-    })
-  }).then(async (res) => {
-    if (res && res?.status === 200) {
-      return res.json();
-    }
-    console.log('Failed to verify MFA code');
-    throw new Error('Something went wrong during MFA code verification');
-  });
-
-
+}) => {
+  const { data } = await apiRequest.post('/api/v2/auth/mfa/verify', {
+    email,
+    mfaToken
+  });  
+  
+  return data;
+}
 
 export default verifyMfaToken;

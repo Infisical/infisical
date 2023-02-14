@@ -59,7 +59,8 @@ export default function SignUp() {
       // Checking if the code matches the email.
       const response = await checkEmailVerificationCode({ email, code });
       if (response.status === 200) {
-        SecurityClient.setToken((await response.json()).token);
+        const {token} = await response.json();
+        SecurityClient.setSignupToken(token);
         setStep(3);
       } else {
         setCodeError(true);

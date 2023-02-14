@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
 import attemptLoginMfa from '@app/components/utilities/attemptLoginMfa';
-import resendMfaToken from '@app/pages/api/auth/resendMfaToken';
+import { useSendMfaToken } from '@app/hooks/api/auth';
 
 import Button from '../basic/buttons/Button';
 import Error from '../basic/Error';
@@ -50,6 +50,8 @@ export default function MFAStep({
   const [mfaCode, setMfaCode] = useState('');
   const [codeError, setCodeError] = useState(false);
 
+  const sendMfaToken = useSendMfaToken();
+
   const { t } = useTranslation();
 
   const handleLoginMfa = async () => {
@@ -72,15 +74,14 @@ export default function MFAStep({
       
     } catch (err) {
       console.error(err);
+      setIsLoading(false);
       setCodeError(true);
     }
   }
   
   const handleResendMfaCode = async () => {
     try {
-      await resendMfaToken({
-        email
-      });
+      await sendMfaToken.mutateAsync({ email });
     } catch (err) {
       console.error(err);
     }

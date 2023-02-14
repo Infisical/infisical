@@ -3,6 +3,8 @@ import jsrp from 'jsrp';
 
 import login1 from '@app/pages/api/auth/Login1';
 import verifyMfaToken from '@app/pages/api/auth/verifyMfaToken';
+import getOrganizations from '@app/pages/api/organization/getOrgs';
+import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserProjects';
 import KeyService from '@app/services/KeyService';
 
 import { saveTokenToLocalStorage } from './saveTokenToLocalStorage';
@@ -51,7 +53,8 @@ const attemptLoginMfa = async ({
                     mfaToken
                 });
 
-                // set JWT token
+                // unset temporary (MFA) JWT token and set JWT token
+                SecurityClient.setMfaToken('');
                 SecurityClient.setToken(token);
 
                 const privateKey = await KeyService.decryptPrivateKey({
@@ -76,6 +79,18 @@ const attemptLoginMfa = async ({
                     tag,
                     privateKey
                 });
+
+                // TODO: in the future - move this logic elsewhere
+                // because this function is about logging the user in
+                // and not initializing the login details
+                const userOrgs = await getOrganizations(); 
+                const orgId = userOrgs[0]._id;
+                localStorage.setItem('orgData.id', orgId);
+
+                const orgUserProjects = await getOrganizationUserProjects({
+                orgId
+                });
+                localStorage.setItem('projectData.id', orgUserProjects[0]._id);
 
                 resolve(true);
             } catch (err) {
