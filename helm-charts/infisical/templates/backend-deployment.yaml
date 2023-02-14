@@ -64,9 +64,13 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
+  type: {{ .Values.backend.service.type }}
   selector:
     {{- include "infisical.backend.matchLabels" . | nindent 8 }}
   ports:
     - protocol: TCP
       port: 4000
       targetPort: 4000 # container port 
+      {{- if eq .Values.frontend.service.type "NodePort" }}
+      nodePort: {{ .Values.frontend.service.nodePort }}
+      {{- end }}
