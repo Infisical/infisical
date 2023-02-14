@@ -35,11 +35,11 @@ import encryptSecrets from '@app/components/utilities/secrets/encryptSecrets';
 import getSecretsForProject from '@app/components/utilities/secrets/getSecretsForProject';
 import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 import { IconButton } from '@app/components/v2';
+import { leaveConfirmDefaultMessage } from '@app/const';
 import getProjectSercetSnapshotsCount from '@app/ee/api/secrets/GetProjectSercetSnapshotsCount';
 import performSecretRollback from '@app/ee/api/secrets/PerformSecretRollback';
 import PITRecoverySidebar from '@app/ee/components/PITRecoverySidebar';
 import { useLeaveConfirm } from '@app/hooks';
-import { leaveConfirmDefaultMessage } from '@app/const';
 
 import addSecrets from '../api/files/AddSecrets';
 import deleteSecrets from '../api/files/DeleteSecrets';
@@ -561,13 +561,15 @@ export default function Dashboard() {
 
   const handleOnEnvironmentChange = (envName: string) => {
     if(hasUnsavedChanges) {
+      // eslint-disable-next-line no-restricted-globals
       if (!confirm(leaveConfirmDefaultMessage)) return;
     }
 
     const selectedWorkspaceEnv = workspaceEnvs.find(({ name }: { name: string }) => envName === name) || {
       name: 'unknown',
       slug: 'unknown',
-      isWriteDenied: false
+      isWriteDenied: false,
+      isReadDenied: false
     };
 
     if (selectedWorkspaceEnv) {
