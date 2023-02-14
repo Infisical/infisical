@@ -35,9 +35,11 @@ import encryptSecrets from '@app/components/utilities/secrets/encryptSecrets';
 import getSecretsForProject from '@app/components/utilities/secrets/getSecretsForProject';
 import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 import { IconButton } from '@app/components/v2';
+import { leaveConfirmDefaultMessage } from '@app/const';
 import getProjectSercetSnapshotsCount from '@app/ee/api/secrets/GetProjectSercetSnapshotsCount';
 import performSecretRollback from '@app/ee/api/secrets/PerformSecretRollback';
 import PITRecoverySidebar from '@app/ee/components/PITRecoverySidebar';
+import { useLeaveConfirm } from '@app/hooks';
 
 import addSecrets from '../api/files/AddSecrets';
 import deleteSecrets from '../api/files/DeleteSecrets';
@@ -116,7 +118,6 @@ function findDuplicates(arr: any[]) {
 export default function Dashboard() {
   const [data, setData] = useState<SecretDataProps[] | null>();
   const [initialData, setInitialData] = useState<SecretDataProps[] | null | undefined>([]);
-  const [buttonReady, setButtonReady] = useState(false);
   const router = useRouter();
   const [blurred, setBlurred] = useState(true);
   const [isKeyAvailable, setIsKeyAvailable] = useState(true);
@@ -137,6 +138,7 @@ export default function Dashboard() {
   const [dropZoneData, setDropZoneData] = useState<SecretDataProps[]>();
   const [projectTags, setProjectTags] = useState<Tag[]>([]);
 
+  const { hasUnsavedChanges, setHasUnsavedChanges } = useLeaveConfirm({initialValue: false});
   const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
 
@@ -153,36 +155,6 @@ export default function Dashboard() {
       setAtSecretsAreaTop(false);
     }
   };
-  // #TODO: fix save message for changing reroutes
-  // const beforeRouteHandler = (url) => {
-  // 	const warningText =
-  // 		"Do you want to save your results bfore leaving this page?";
-  // 	if (!buttonReady) return;
-  // 	if (router.asPath !== url && !confirm(warningText)) {
-  // 		// router.events.emit('routeChangeError');
-  // 		// setData(data)
-  // 		savePush();
-  // 		throw `Route change to "${url}" was aborted (this error can be safely ignored).`;
-  // 	} else {
-  // 		setButtonReady(false);
-  // 	}
-  // };
-
-  // prompt the user if they try and leave with unsaved changes
-  useEffect(() => {
-    const warningText = 'Do you want to save your results before leaving this page?';
-    const handleWindowClose = (e: any) => {
-      if (!buttonReady) return;
-      e.preventDefault();
-      e.returnValue = warningText;
-    };
-    window.addEventListener('beforeunload', handleWindowClose);
-    // router.events.on('routeChangeStart', beforeRouteHandler);
-    return () => {
-      window.removeEventListener('beforeunload', handleWindowClose);
-      // router.events.off('routeChangeStart', beforeRouteHandler);
-    };
-  }, [buttonReady]);
 
   // TODO(akhilmhdh): change to FP
   const sortValuesHandler = (
@@ -318,7 +290,7 @@ export default function Dashboard() {
   };
 
   const deleteRow = ({ ids, secretName }: { ids: string[]; secretName: string }) => {
-    setButtonReady(true);
+    setHasUnsavedChanges(true);
     toggleSidebar('None');
     createNotification({
       text: `${secretName || 'Secret'} has been deleted. Remember to save changes.`,
@@ -332,27 +304,27 @@ export default function Dashboard() {
 
   const modifyValue = (value: string, pos: number) => {
     setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, value } : e)));
-    setButtonReady(true);
+    setHasUnsavedChanges(true);
   };
 
   const modifyValueOverride = (valueOverride: string | undefined, pos: number) => {
     setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, valueOverride } : e)));
-    setButtonReady(true);
+    setHasUnsavedChanges(true);
   };
 
   const modifyKey = (key: string, pos: number) => {
     setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, key } : e)));
-    setButtonReady(true);
+    setHasUnsavedChanges(true);
   };
 
   const modifyComment = (comment: string, pos: number) => {
     setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, comment } : e)));
-    setButtonReady(true);
+    setHasUnsavedChanges(true);
   };
 
   const modifyTags = (tags: Tag[], pos: number) => {
     setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, tags } : e)));
-    setButtonReady(true);
+    setHasUnsavedChanges(true);
   };
 
   // For speed purposes and better perforamance, we are using useCallback
@@ -422,7 +394,7 @@ export default function Dashboard() {
     }
 
     // Once "Save changes" is clicked, disable that button
-    setButtonReady(false);
+    setHasUnsavedChanges(false);
 
     const secretsToBeDeleted = initialData!
       .filter(
@@ -566,7 +538,7 @@ export default function Dashboard() {
         );
       return filteredOldData.concat(filteredNewData);
     });
-    setButtonReady(true);
+    setHasUnsavedChanges(true);
   };
 
   const addData = (newData: SecretDataProps[]) => {
@@ -585,6 +557,26 @@ export default function Dashboard() {
 
   const deleteCertainRow = ({ ids, secretName }: { ids: string[]; secretName: string }) => {
     deleteRow({ ids, secretName });
+  };
+
+  const handleOnEnvironmentChange = (envName: string) => {
+    if(hasUnsavedChanges) {
+      if (!window.confirm(leaveConfirmDefaultMessage)) return;
+    }
+
+    const selectedWorkspaceEnv = workspaceEnvs.find(({ name }: { name: string }) => envName === name) || {
+      name: 'unknown',
+      slug: 'unknown',
+      isWriteDenied: false,
+      isReadDenied: false
+    };
+
+    if (selectedWorkspaceEnv) {
+      if (snapshotData) setSelectedSnapshotEnv(selectedWorkspaceEnv);
+      else setSelectedEnv(selectedWorkspaceEnv);
+    }
+
+    setHasUnsavedChanges(false);
   };
 
   return data ? (
@@ -655,16 +647,7 @@ export default function Dashboard() {
                 <ListBox
                   isSelected={selectedEnv.name}
                   data={workspaceEnvs.map(({ name }) => name)}
-                  onChange={(envName) =>
-                    setSelectedEnv(
-                      workspaceEnvs.find(({ name }) => envName === name) || {
-                        name: 'unknown',
-                        slug: 'unknown',
-                        isWriteDenied: false,
-                        isReadDenied: false
-                      }
-                    )
-                  }
+                  onChange={handleOnEnvironmentChange}
                 />
               )}
             </div>
@@ -681,14 +664,14 @@ export default function Dashboard() {
                   icon={faClockRotateLeft}
                 />}
               </div>
-              {(data?.length !== 0 || buttonReady) && !snapshotData && (
+              {(data?.length !== 0 || hasUnsavedChanges) && !snapshotData && (
                 <div className="flex justify-start max-w-sm mt-1">
                   <Button
                     text={String(t('common:save-changes'))}
                     onButtonPressed={savePush}
                     color="primary"
                     size="md"
-                    active={buttonReady}
+                    active={hasUnsavedChanges}
                     iconDisabled={faCheck}
                     textDisabled={String(t('common:saved'))}
                     loading={saveLoading}
@@ -723,11 +706,11 @@ export default function Dashboard() {
                         text: `Rollback has been performed successfully.`,
                         type: 'success'
                       });
-                      setButtonReady(false);
+                      setHasUnsavedChanges(false);
                     }}
                     color="primary"
                     size="md"
-                    active={buttonReady}
+                    active={hasUnsavedChanges}
                   />
                 </div>
               )}
@@ -742,31 +725,13 @@ export default function Dashboard() {
                       <ListBox
                         isSelected={selectedEnv.name}
                         data={workspaceEnvs.map(({ name }) => name)}
-                        onChange={(envName) =>
-                          setSelectedEnv(
-                            workspaceEnvs.find(({ name }) => envName === name) || {
-                              name: 'unknown',
-                              slug: 'unknown',
-                              isWriteDenied: false,
-                              isReadDenied: false
-                            }
-                          )
-                        }
+                        onChange={handleOnEnvironmentChange}
                       />
                     ) : (
                       <ListBox
                         isSelected={selectedSnapshotEnv?.name || ''}
                         data={workspaceEnvs.map(({ name }) => name)}
-                        onChange={(envName) =>
-                          setSelectedSnapshotEnv(
-                            workspaceEnvs.find(({ name }) => envName === name) || {
-                              name: 'unknown',
-                              slug: 'unknown',
-                              isWriteDenied: false,
-                              isReadDenied: false
-                            }
-                          )
-                        }
+                        onChange={handleOnEnvironmentChange}
                       />
                     )}
                     <div className="h-10 w-full bg-mineshaft-700 hover:bg-white/10 ml-2 rounded-md flex flex-row items-center">
@@ -970,7 +935,7 @@ export default function Dashboard() {
                         setErrorDragAndDrop={setErrorDragAndDrop}
                         createNewFile={addRow}
                         errorDragAndDrop={errorDragAndDrop}
-                        setButtonReady={setButtonReady}
+                        setButtonReady={setHasUnsavedChanges}
                         keysExist
                         numCurrentRows={data.length}
                       />
@@ -986,7 +951,7 @@ export default function Dashboard() {
                     setErrorDragAndDrop={setErrorDragAndDrop}
                     createNewFile={addRow}
                     errorDragAndDrop={errorDragAndDrop}
-                    setButtonReady={setButtonReady}
+                    setButtonReady={setHasUnsavedChanges}
                     numCurrentRows={data.length}
                     keysExist={false}
                   />
@@ -1013,7 +978,7 @@ export default function Dashboard() {
             modifyValue={listenChangeValue}
             modifyValueOverride={listenChangeValueOverride}
             modifyComment={listenChangeComment}
-            buttonReady={buttonReady}
+            buttonReady={hasUnsavedChanges}
             workspaceEnvs={workspaceEnvs}
             selectedEnv={selectedEnv!}
             workspaceId={workspaceId}
