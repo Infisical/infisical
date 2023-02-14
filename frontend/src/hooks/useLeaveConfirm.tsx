@@ -22,11 +22,12 @@ export function useLeaveConfirm({
 
   const onRouteChangeStart = useCallback(() => {
     if (hasUnsavedChanges) {
-      if (confirm(message)) {
+      if (window.confirm(message)) {
         return true
       }
-      throw "Abort route change by user's confirmation."
+      throw new Error("Abort route change by user's confirmation.")
     }
+    return false;
   }, [hasUnsavedChanges])
 
   const handleWindowClose = useCallback((e: any) => {
@@ -35,7 +36,7 @@ export function useLeaveConfirm({
     }
     e.preventDefault();
     e.returnValue = message;
-  });
+  }, []);
 
   useEffect(() => {
     router.events.on("routeChangeStart", onRouteChangeStart);

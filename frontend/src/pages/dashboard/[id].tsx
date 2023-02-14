@@ -561,8 +561,7 @@ export default function Dashboard() {
 
   const handleOnEnvironmentChange = (envName: string) => {
     if(hasUnsavedChanges) {
-      // eslint-disable-next-line no-restricted-globals
-      if (!confirm(leaveConfirmDefaultMessage)) return;
+      if (!window.confirm(leaveConfirmDefaultMessage)) return;
     }
 
     const selectedWorkspaceEnv = workspaceEnvs.find(({ name }: { name: string }) => envName === name) || {
