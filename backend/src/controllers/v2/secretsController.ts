@@ -289,8 +289,7 @@ export const getSecrets = async (req: Request, res: Response) => {
 
 
     const { workspaceId, environment, tagSlugs } = req.query;
-    const tagNamesList = typeof tagSlugs === 'string' ? tagSlugs.split(',') : [];
-
+    const tagNamesList = typeof tagSlugs === 'string' && tagSlugs !== '' ? tagSlugs.split(',') : [];
     let userId = "" // used for getting personal secrets for user
     let userEmail = "" // used for posthog 
     if (req.user) {
