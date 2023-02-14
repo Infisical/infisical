@@ -92,13 +92,11 @@ var secretsSetCmd = &cobra.Command{
 	PreRun:                toggleDebug,
 	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		util.RequireLocalWorkspaceFile()
+
 		environmentName, err := cmd.Flags().GetString("env")
 		if err != nil {
 			util.HandleError(err, "Unable to parse flag")
-		}
-
-		if !util.IsSecretEnvironmentValid(environmentName) {
-			util.PrintMessageAndExit("You have entered a invalid environment name", "Environment names can only be prod, dev, test or staging")
 		}
 
 		workspaceFile, err := util.GetWorkSpaceFromFile()
@@ -153,11 +151,11 @@ var secretsSetCmd = &cobra.Command{
 		for _, arg := range args {
 			splitKeyValueFromArg := strings.SplitN(arg, "=", 2)
 			if splitKeyValueFromArg[0] == "" || splitKeyValueFromArg[1] == "" {
-				util.PrintMessageAndExit("ensure that each secret has a none empty key and value. Modify the input and try again")
+				util.PrintErrorMessageAndExit("ensure that each secret has a none empty key and value. Modify the input and try again")
 			}
 
 			if unicode.IsNumber(rune(splitKeyValueFromArg[0][0])) {
-				util.PrintMessageAndExit("keys of secrets cannot start with a number. Modify the key name(s) and try again")
+				util.PrintErrorMessageAndExit("keys of secrets cannot start with a number. Modify the key name(s) and try again")
 			}
 
 			// Key and value from argument
@@ -308,7 +306,7 @@ var secretsDeleteCmd = &cobra.Command{
 
 		if len(invalidSecretNamesThatDoNotExist) != 0 {
 			message := fmt.Sprintf("secret name(s) [%v] does not exist in your project. To see which secrets exist run [infisical secrets]", strings.Join(invalidSecretNamesThatDoNotExist, ", "))
-			util.PrintMessageAndExit(message)
+			util.PrintErrorMessageAndExit(message)
 		}
 
 		request := api.BatchDeleteSecretsBySecretIdsRequest{
@@ -334,11 +332,6 @@ var secretsDeleteCmd = &cobra.Command{
 func getSecretsByNames(cmd *cobra.Command, args []string) {
 	environmentName, err := cmd.Flags().GetString("env")
 	if err != nil {
-		util.HandleError(err, "Unable to parse flag")
-	}
-
-	workspaceFileExists := util.WorkspaceConfigFileExistsInCurrentPath()
-	if !workspaceFileExists {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
@@ -382,11 +375,6 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 func generateExampleEnv(cmd *cobra.Command, args []string) {
 	environmentName, err := cmd.Flags().GetString("env")
 	if err != nil {
-		util.HandleError(err, "Unable to parse flag")
-	}
-
-	workspaceFileExists := util.WorkspaceConfigFileExistsInCurrentPath()
-	if !workspaceFileExists {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
