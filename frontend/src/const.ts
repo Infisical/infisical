@@ -44,3 +44,5 @@ const plansProd: Mapping = {
 };
 
 export const plans = plansProd || plansDev;
+
+export const leaveConfirmDefaultMessage = 'Do you want to save your results before leaving this page?';

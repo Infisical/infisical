@@ -1,7 +1,7 @@
-import axios from 'axios';
-import * as Sentry from '@sentry/node';
-import { Octokit } from '@octokit/rest';
-import { IIntegrationAuth } from '../models';
+import axios from "axios";
+import * as Sentry from "@sentry/node";
+import { Octokit } from "@octokit/rest";
+import { IIntegrationAuth } from "../models";
 import {
   INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_AWS_PARAMETER_STORE,
@@ -12,12 +12,14 @@ import {
   INTEGRATION_GITHUB,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
+  INTEGRATION_CIRCLECI,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,
-  INTEGRATION_FLYIO_API_URL
-} from '../variables';
+  INTEGRATION_FLYIO_API_URL,
+  INTEGRATION_CIRCLECI_API_URL,
+} from "../variables";
 
 /**
  * Return list of names of apps for integration named [integration]
@@ -29,7 +31,7 @@ import {
  */
 const getApps = async ({
   integrationAuth,
-  accessToken
+  accessToken,
 }: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
@@ -54,40 +56,45 @@ const getApps = async ({
         break;
       case INTEGRATION_HEROKU:
         apps = await getAppsHeroku({
-          accessToken
+          accessToken,
         });
         break;
       case INTEGRATION_VERCEL:
         apps = await getAppsVercel({
           integrationAuth,
-          accessToken
+          accessToken,
         });
         break;
       case INTEGRATION_NETLIFY:
         apps = await getAppsNetlify({
-          accessToken
+          accessToken,
         });
         break;
       case INTEGRATION_GITHUB:
         apps = await getAppsGithub({
-          accessToken
+          accessToken,
         });
         break;
       case INTEGRATION_RENDER:
         apps = await getAppsRender({
-          accessToken
+          accessToken,
         });
         break;
       case INTEGRATION_FLYIO:
         apps = await getAppsFlyio({
-          accessToken
+          accessToken,
+        });
+        break;
+      case INTEGRATION_CIRCLECI:
+        apps = await getAppsCircleCI({
+          accessToken,
         });
         break;
     }
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error('Failed to get integration apps');
+    throw new Error("Failed to get integration apps");
   }
 
   return apps;
@@ -106,19 +113,19 @@ const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
     const res = (
       await axios.get(`${INTEGRATION_HEROKU_API_URL}/apps`, {
         headers: {
-          Accept: 'application/vnd.heroku+json; version=3',
-          Authorization: `Bearer ${accessToken}`
-        }
+          Accept: "application/vnd.heroku+json; version=3",
+          Authorization: `Bearer ${accessToken}`,
+        },
       })
     ).data;
 
     apps = res.map((a: any) => ({
-      name: a.name
+      name: a.name,
     }));
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error('Failed to get Heroku integration apps');
+    throw new Error("Failed to get Heroku integration apps");
   }
 
   return apps;
@@ -131,10 +138,10 @@ const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
  * @returns {Object[]} apps - names of Vercel apps
  * @returns {String} apps.name - name of Vercel app
  */
-const getAppsVercel = async ({ 
+const getAppsVercel = async ({
   integrationAuth,
-  accessToken 
-}: { 
+  accessToken,
+}: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
 }) => {
@@ -146,21 +153,23 @@ const getAppsVercel = async ({
           Authorization: `Bearer ${accessToken}`,
           'Accept-Encoding': 'application/json'
         },
-       ...( integrationAuth?.teamId ? { 
-        params: {
-          teamId: integrationAuth.teamId
-        }
-      } : {}) 
+        ...(integrationAuth?.teamId
+          ? {
+              params: {
+                teamId: integrationAuth.teamId,
+              },
+            }
+          : {}),
       })
     ).data;
 
     apps = res.projects.map((a: any) => ({
-      name: a.name
+      name: a.name,
     }));
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error('Failed to get Vercel integration apps');
+    throw new Error("Failed to get Vercel integration apps");
   }
 
   return apps;
@@ -173,11 +182,7 @@ const getAppsVercel = async ({
  * @returns {Object[]} apps - names of Netlify sites
  * @returns {String} apps.name - name of Netlify site
  */
-const getAppsNetlify = async ({
-  accessToken
-}: {
-  accessToken: string;
-}) => {
+const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
   let apps;
   try {
     const res = (
@@ -191,12 +196,12 @@ const getAppsNetlify = async ({
 
     apps = res.map((a: any) => ({
       name: a.name,
-      appId: a.site_id
+      appId: a.site_id,
     }));
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error('Failed to get Netlify integration apps');
+    throw new Error("Failed to get Netlify integration apps");
   }
 
   return apps;
@@ -209,35 +214,32 @@ const getAppsNetlify = async ({
  * @returns {Object[]} apps - names of Netlify sites
  * @returns {String} apps.name - name of Netlify site
  */
-const getAppsGithub = async ({
-  accessToken
-}: {
-  accessToken: string;
-}) => {
+const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
   let apps;
   try {
     const octokit = new Octokit({
-      auth: accessToken
+      auth: accessToken,
     });
 
-    const repos = (await octokit.request(
-      'GET /user/repos{?visibility,affiliation,type,sort,direction,per_page,page,since,before}',
-      {
-        per_page: 100
-      }
-    )).data;
+    const repos = (
+      await octokit.request(
+        "GET /user/repos{?visibility,affiliation,type,sort,direction,per_page,page,since,before}",
+        {
+          per_page: 100,
+        }
+      )
+    ).data;
 
     apps = repos
-      .filter((a:any) => a.permissions.admin === true)
+      .filter((a: any) => a.permissions.admin === true)
       .map((a: any) => ({
-          name: a.name,
-          owner: a.owner.login
-        })
-      );
+        name: a.name,
+        owner: a.owner.login,
+      }));
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error('Failed to get Github repos');
+    throw new Error("Failed to get Github repos");
   }
 
   return apps;
@@ -251,11 +253,7 @@ const getAppsGithub = async ({
  * @returns {String} apps.name - name of Render service
  * @returns {String} apps.appId - id of Render service
  */
-const getAppsRender = async ({
-  accessToken
-}: {
-  accessToken: string;
-}) => {
+const getAppsRender = async ({ accessToken }: { accessToken: string }) => {
   let apps: any;
   try {
     const res = (
@@ -263,8 +261,8 @@ const getAppsRender = async ({
         headers: {
           Authorization: `Bearer ${accessToken}`,
           Accept: 'application/json',
-          'Accept-Encoding': 'application/json'
-        }
+          'Accept-Encoding': 'application/json',
+        },
       })
     ).data;
     
@@ -277,11 +275,11 @@ const getAppsRender = async ({
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error('Failed to get Render services');
+    throw new Error("Failed to get Render services");
   }
-  
+
   return apps;
-}
+};
 
 /**
  * Return list of apps for Fly.io integration
@@ -290,11 +288,7 @@ const getAppsRender = async ({
  * @returns {Object[]} apps - names and ids of Fly.io apps
  * @returns {String} apps.name - name of Fly.io apps
  */
-const getAppsFlyio = async ({
-  accessToken
-}: {
-  accessToken: string;
-}) => {
+const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
   let apps;
   try {
     const query = `
@@ -308,34 +302,71 @@ const getAppsFlyio = async ({
         }
       }
     `;
-    
-    const res = (await axios({
-      url: INTEGRATION_FLYIO_API_URL,
-      method: 'post',
-      headers: {
-        'Authorization': 'Bearer ' + accessToken,
+
+    const res = (
+      await axios({
+        url: INTEGRATION_FLYIO_API_URL,
+        method: "post",
+        headers: {
+          Authorization: "Bearer " + accessToken,
         'Accept': 'application/json',
-        'Accept-Encoding': 'application/json'
-      },
-      data: {
-        query,
-        variables: {
-          role: null
-        }
-      }
-    })).data.data.apps.nodes;
-    
-    apps = res
-      .map((a: any) => ({
-        name: a.name
-      })); 
+        'Accept-Encoding': 'application/json',
+        },
+        data: {
+          query,
+          variables: {
+            role: null,
+          },
+        },
+      })
+    ).data.data.apps.nodes;
+
+    apps = res.map((a: any) => ({
+      name: a.name,
+    }));
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error('Failed to get Fly.io apps');
+    throw new Error("Failed to get Fly.io apps");
+  }
+
+  return apps;
+};
+
+/**
+ * Return list of projects for CircleCI integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for CircleCI API
+ * @returns {Object[]} apps -
+ * @returns {String} apps.name - name of CircleCI apps
+ */
+const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
+  let apps: any;
+  try {    
+    const res = (
+      await axios.get(
+        `${INTEGRATION_CIRCLECI_API_URL}/v1.1/projects`,
+        {
+          headers: {
+            "Circle-Token": accessToken,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      )
+    ).data
+
+    apps = res?.map((a: any) => {
+      return {
+        name: a?.reponame
+      }
+    });
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error("Failed to get CircleCI projects");
   }
   
   return apps;
-}
+};
 
 export { getApps };

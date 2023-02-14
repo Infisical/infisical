@@ -51,4 +51,5 @@ type SymmetricEncryptionResult struct {
 type GetAllSecretsParameters struct {
 	Environment    string
 	InfisicalToken string
+	TagSlugs       string
 }

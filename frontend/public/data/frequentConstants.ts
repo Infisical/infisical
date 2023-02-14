@@ -11,7 +11,8 @@ const integrationSlugNameMapping: Mapping = {
   'netlify': 'Netlify',
   'github': 'GitHub',
   'render': 'Render',
-  'flyio': 'Fly.io'
+  'flyio': 'Fly.io',
+  "circleci": 'CircleCI'
 }
 
 const envMapping: Mapping = {

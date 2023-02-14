@@ -38,7 +38,6 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
   const router = useRouter();
   const [myRole, setMyRole] = useState('member');
   const [userProjectMemberships, setUserProjectMemberships] = useState<any[]>([]);
-  console.log(123, userData)
 
   const workspaceId = router.query.id as string;
   // Delete the row in the table (e.g. a user)
@@ -198,15 +197,15 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
                     </div>
                   </td>
                   <td className="pl-4 py-2 border-mineshaft-700 border-t text-gray-300">
-                  <td className="flex items-center max-h-16 overflow-x-auto w-full max-w-xl">
-                    {userProjectMemberships[row.userId] 
-                    ? userProjectMemberships[row.userId]?.map((project: any) => (
-                      <div key={project.id} className='mx-1 min-w-max px-1.5 bg-mineshaft-500 rounded-sm text-sm text-bunker-200 flex items-center'>
-                        <span className='mb-0.5 cursor-default'>{project.name}</span>
-                      </div>
-                    ))
-                    : <span className='ml-1 text-bunker-100 rounded-sm px-1 py-0.5 text-sm bg-red/80'>This user isn&apos;t part of any projects yet.</span>}
-                  </td>
+                    <div className="flex items-center max-h-16 overflow-x-auto w-full max-w-xl break-all">
+                      {userProjectMemberships[row.userId] 
+                      ? userProjectMemberships[row.userId]?.map((project: any) => (
+                        <div key={project._id} className='mx-1 min-w-max px-1.5 bg-mineshaft-500 rounded-sm text-sm text-bunker-200 flex items-center'>
+                          <span className='mb-0.5 cursor-default'>{project.name}</span>
+                        </div>
+                      ))
+                      : <span className='ml-1 text-bunker-100 rounded-sm px-1 py-0.5 text-sm bg-red/80'>This user isn&apos;t part of any projects yet.</span>}
+                    </div>
                   </td>
                   <td className="flex flex-row justify-end pl-8 pr-8 py-2 border-t border-0.5 border-mineshaft-700">
                     {myUser !== row.email &&

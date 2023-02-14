@@ -114,6 +114,7 @@ func CallGetSecretsV2(httpClient *resty.Client, request GetEncryptedSecretsV2Req
 		SetHeader("User-Agent", USER_AGENT).
 		SetQueryParam("environment", request.Environment).
 		SetQueryParam("workspaceId", request.WorkspaceId).
+		SetQueryParam("tagSlugs", request.TagSlugs).
 		Get(fmt.Sprintf("%v/v2/secrets", config.INFISICAL_URL))
 
 	if err != nil {
@@ -154,13 +155,12 @@ func CallIsAuthenticated(httpClient *resty.Client) bool {
 		SetHeader("User-Agent", USER_AGENT).
 		Post(fmt.Sprintf("%v/v1/auth/checkAuth", config.INFISICAL_URL))
 
-	log.Debugln(fmt.Errorf("CallIsAuthenticated: Unsuccessful response:  [response=%v]", response))
-
 	if err != nil {
 		return false
 	}
 
 	if response.IsError() {
+		log.Debugln(fmt.Errorf("CallIsAuthenticated: Unsuccessful response:  [response=%v]", response))
 		return false
 	}
 
@@ -174,8 +174,6 @@ func CallGetAccessibleEnvironments(httpClient *resty.Client, request GetAccessib
 		SetResult(&accessibleEnvironmentsResponse).
 		SetHeader("User-Agent", USER_AGENT).
 		Get(fmt.Sprintf("%v/v2/workspace/%s/environments", config.INFISICAL_URL, request.WorkspaceId))
-
-	log.Debugln(fmt.Errorf("CallGetAccessibleEnvironments: Unsuccessful response:  [response=%v]", response))
 
 	if err != nil {
 		return GetAccessibleEnvironmentsResponse{}, err

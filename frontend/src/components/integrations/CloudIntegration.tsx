@@ -44,9 +44,9 @@ const CloudIntegration = ({
       tabIndex={0}
       className={`relative ${
         cloudIntegrationOption.isAvailable
-          ? 'hover:bg-white/10 duration-200 cursor-pointer'
+          ? 'cursor-pointer duration-200 hover:bg-white/10'
           : 'opacity-50'
-      } flex flex-row bg-white/5 h-32 rounded-md p-4 items-center`}
+      } flex h-32 flex-row items-center rounded-md bg-white/5 p-4`}
       onClick={() => {
         if (!cloudIntegrationOption.isAvailable) return;
         setSelectedIntegrationOption(cloudIntegrationOption);
@@ -61,22 +61,22 @@ const CloudIntegration = ({
         alt="integration logo"
       />
       {cloudIntegrationOption.name.split(' ').length > 2 ? (
-        <div className="font-semibold text-gray-300 group-hover:text-gray-200 duration-200 text-3xl ml-4 max-w-xs">
+        <div className="ml-4 max-w-xs text-3xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
           <div>{cloudIntegrationOption.name.split(' ')[0]}</div>
           <div className="text-base">
             {cloudIntegrationOption.name.split(' ')[1]} {cloudIntegrationOption.name.split(' ')[2]}
           </div>
         </div>
       ) : (
-        <div className="font-semibold text-gray-300 group-hover:text-gray-200 duration-200 text-xl ml-4 max-w-xs">
+        <div className="ml-4 max-w-xs text-xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
           {cloudIntegrationOption.name}
         </div>
       )}
       {cloudIntegrationOption.isAvailable &&
         integrationAuths
-          .map((authorization) => authorization.integration)
+          .map((authorization) => authorization?.integration)
           .includes(cloudIntegrationOption.slug) && (
-          <div className="absolute group z-40 top-0 right-0 flex flex-row">
+          <div className="group absolute top-0 right-0 z-40 flex flex-row">
             <div
               onKeyDown={() => null}
               role="button"
@@ -86,8 +86,7 @@ const CloudIntegration = ({
                 const deletedIntegrationAuth = await deleteIntegrationAuth({
                   integrationAuthId: integrationAuths
                     .filter(
-                      (authorization) =>
-                        authorization.integration === cloudIntegrationOption.slug
+                      (authorization) => authorization.integration === cloudIntegrationOption.slug
                     )
                     .map((authorization) => authorization._id)[0]
                 });
@@ -96,20 +95,20 @@ const CloudIntegration = ({
                   integrationAuth: deletedIntegrationAuth
                 });
               }}
-              className="cursor-pointer w-max bg-red py-0.5 px-2 rounded-b-md text-xs flex flex-row items-center opacity-0 group-hover:opacity-100 duration-200"
+              className="flex w-max cursor-pointer flex-row items-center rounded-b-md bg-red py-0.5 px-2 text-xs opacity-0 duration-200 group-hover:opacity-100"
             >
-              <FontAwesomeIcon icon={faX} className="text-xs mr-2 py-px" />
+              <FontAwesomeIcon icon={faX} className="mr-2 py-px text-xs" />
               Revoke
             </div>
-            <div className="w-max bg-primary py-0.5 px-2 rounded-bl-md rounded-tr-md text-xs flex flex-row items-center text-black opacity-90 group-hover:opacity-100 duration-200">
-              <FontAwesomeIcon icon={faCheck} className="text-xs mr-2" />
+            <div className="flex w-max flex-row items-center rounded-bl-md rounded-tr-md bg-primary py-0.5 px-2 text-xs text-black opacity-90 duration-200 group-hover:opacity-100">
+              <FontAwesomeIcon icon={faCheck} className="mr-2 text-xs" />
               Authorized
             </div>
           </div>
         )}
       {!cloudIntegrationOption.isAvailable && (
-        <div className="absolute group z-50 top-0 right-0 flex flex-row">
-          <div className="w-max bg-yellow py-0.5 px-2 rounded-bl-md rounded-tr-md text-xs flex flex-row items-center text-black opacity-90">
+        <div className="group absolute top-0 right-0 z-50 flex flex-row">
+          <div className="flex w-max flex-row items-center rounded-bl-md rounded-tr-md bg-yellow py-0.5 px-2 text-xs text-black opacity-90">
             Coming Soon
           </div>
         </div>
