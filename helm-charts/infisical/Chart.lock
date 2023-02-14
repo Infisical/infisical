@@ -2,5 +2,8 @@ dependencies:
 - name: mongodb
   repository: https://charts.bitnami.com/bitnami
   version: 13.6.7
-digest: sha256:f3a15cf01e2df1fc410b635cd7af684222d16b76d7e6a4d112883dc32b092249
-generated: "2023-02-08T00:14:41.706253573+01:00"
+- name: mailhog
+  repository: https://codecentric.github.io/helm-charts
+  version: 5.2.3
+digest: sha256:a54ae9ee60775f6f1aa916b59aee55b3ed5234b6bd88185fcb118b7f69539d70
+generated: "2023-02-13T14:13:27.525541038+01:00"
