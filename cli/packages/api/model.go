@@ -197,6 +197,7 @@ type GetSecretsByWorkspaceIdAndEnvironmentRequest struct {
 type GetEncryptedSecretsV2Request struct {
 	Environment string `json:"environment"`
 	WorkspaceId string `json:"workspaceId"`
+	TagSlugs    string `json:"tagSlugs"`
 }
 
 type GetEncryptedSecretsV2Response struct {
