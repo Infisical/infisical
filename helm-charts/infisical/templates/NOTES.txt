@@ -43,7 +43,7 @@
 │
 │   Infisical / All-in-one open-source SecretOps solution to manage your secrets across your infra! 🔒🔑
 │
-│   Visit < https://infisical.com/docs > for further documentation about self-hosting!
+│   Visit < https://infisical.com/docs/self-hosting/overview > for further documentation about self-hosting!
 │
 │   Current installation (infisical) :
 │   • infisical-frontend : {{ .Values.frontend.enabled }}

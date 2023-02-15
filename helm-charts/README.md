@@ -1,6 +1,6 @@
 # Infisical Helm Charts
 
-Welcome to Infisical Helm Charts repository! Find below the instrcutions to setup and install our charts.
+Welcome to Infisical Helm Charts repository! Find instructions below to setup and install our charts.
 
 ```sh
 # Add the Infisical repository
