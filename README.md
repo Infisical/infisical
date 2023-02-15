@@ -69,8 +69,8 @@ And more.
 To quickly get started, visit our [get started guide](https://infisical.com/docs/getting-started/introduction).
 
 <p>
-  <a href="https://infisical.com/docs/self-hosting/overview" target="_blank"><img src="https://user-images.githubusercontent.com/78047717/218910609-18a75846-51a9-420a-a9a9-5958ac9c5505.png" height=200 /> </a>
-  <a href="https://app.infisical.com/signup" target="_blank"><img src="https://user-images.githubusercontent.com/78047717/218910520-b36a607f-af66-4a06-af10-6a2191ab02de.png" height=200></a>
+  <a href="https://infisical.com/docs/self-hosting/overview" target="_blank"><img src="https://user-images.githubusercontent.com/78047717/218910609-18a75846-51a9-420a-a9a9-5958ac9c5505.png" height=150 /> </a>
+  <a href="https://app.infisical.com/signup" target="_blank"><img src="https://user-images.githubusercontent.com/78047717/218910520-b36a607f-af66-4a06-af10-6a2191ab02de.png" height=150></a>
 </p>
 
 ## 🔥 What's cool about this?
