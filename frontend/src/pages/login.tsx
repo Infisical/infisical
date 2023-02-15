@@ -100,4 +100,4 @@ export default function Login() {
   );
 }
 
-export const getStaticProps = getTranslatedStaticProps(['auth', 'login', 'signup']);
+export const getStaticProps = getTranslatedStaticProps(['auth', 'login', 'mfa']);
