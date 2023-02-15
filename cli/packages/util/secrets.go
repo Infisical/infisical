@@ -131,6 +131,10 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 			return nil, err
 		}
 
+		if workspaceFile.DefaultEnvironment != "" {
+			params.Environment = workspaceFile.DefaultEnvironment
+		}
+
 		// Verify environment
 		err = ValidateEnvironmentName(params.Environment, workspaceFile.WorkspaceId, loggedInUserDetails.UserCredentials)
 		if err != nil {

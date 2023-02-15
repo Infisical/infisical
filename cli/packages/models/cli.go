@@ -39,7 +39,8 @@ type Workspace struct {
 }
 
 type WorkspaceConfigFile struct {
-	WorkspaceId string `json:"workspaceId"`
+	WorkspaceId        string `json:"workspaceId"`
+	DefaultEnvironment string `json:"defaultEnvironment"`
 }
 
 type SymmetricEncryptionResult struct {
