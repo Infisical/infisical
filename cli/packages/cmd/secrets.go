@@ -394,6 +394,11 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 	}
 
 	tagsHashToSecretKey := make(map[string]int)
+	slugsToFilerBy := make(map[string]int)
+
+	for _, slug := range strings.Split(tagSlugs, ",") {
+		slugsToFilerBy[slug] = 1
+	}
 
 	type TagsAndSecrets struct {
 		Secrets []models.SingleEnvironmentVariable
@@ -409,6 +414,25 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 	sort.Slice(secrets, func(i, j int) bool {
 		return len(secrets[i].Tags) > len(secrets[j].Tags)
 	})
+
+	for i, secret := range secrets {
+		filteredTag := []struct {
+			ID        string "json:\"_id\""
+			Name      string "json:\"name\""
+			Slug      string "json:\"slug\""
+			Workspace string "json:\"workspace\""
+		}{}
+
+		for _, secretTag := range secret.Tags {
+			_, exists := slugsToFilerBy[secretTag.Slug]
+			if !exists {
+				filteredTag = append(filteredTag, secretTag)
+			}
+		}
+
+		secret.Tags = filteredTag
+		secrets[i] = secret
+	}
 
 	for _, secret := range secrets {
 		listOfTagSlugs := []string{}
@@ -473,6 +497,8 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		return len(listOfsecretDetails[i].Tags) < len(listOfsecretDetails[j].Tags)
 	})
 
+	tableOfContents := []string{}
+	fullyGeneratedDocuments := []string{}
 	for _, secretDetails := range listOfsecretDetails {
 		listOfKeyValue := []string{}
 
@@ -513,11 +539,22 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		heading := CenterString(strings.Join(listOfTagNames, " & "), 80)
 
 		if len(listOfTagNames) == 0 {
-			fmt.Printf("\n%s \n", strings.Join(listOfKeyValue, "\n \n"))
+			fullyGeneratedDocuments = append(fullyGeneratedDocuments, fmt.Sprintf("\n%s \n", strings.Join(listOfKeyValue, "\n")))
 		} else {
-			fmt.Printf("\n\n\n%s \n%s \n", heading, strings.Join(listOfKeyValue, "\n \n"))
+			fullyGeneratedDocuments = append(fullyGeneratedDocuments, fmt.Sprintf("\n\n\n%s \n%s \n", heading, strings.Join(listOfKeyValue, "\n")))
+			tableOfContents = append(tableOfContents, strings.ToUpper(strings.Join(listOfTagNames, " & ")))
 		}
 	}
+
+	dashedList := []string{}
+	for _, item := range tableOfContents {
+		dashedList = append(dashedList, fmt.Sprintf("# - %s \n", item))
+	}
+	if len(dashedList) > 0 {
+		fmt.Println(CenterString("TABLE OF CONTENTS", 80))
+		fmt.Println(strings.Join(dashedList, ""))
+	}
+	fmt.Println(strings.Join(fullyGeneratedDocuments, ""))
 }
 
 func CenterString(s string, numStars int) string {
