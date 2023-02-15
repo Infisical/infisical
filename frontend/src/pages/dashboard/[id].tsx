@@ -138,7 +138,7 @@ export default function Dashboard() {
   const [dropZoneData, setDropZoneData] = useState<SecretDataProps[]>();
   const [projectTags, setProjectTags] = useState<Tag[]>([]);
 
-  const { hasUnsavedChanges, setHasUnsavedChanges } = useLeaveConfirm({initialValue: false});
+  const { hasUnsavedChanges, setHasUnsavedChanges } = useLeaveConfirm({ initialValue: false });
   const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
 
@@ -189,6 +189,7 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
+        const { push, query } = router
         const tempNumSnapshots = await getProjectSercetSnapshotsCount({
           workspaceId
         });
@@ -196,19 +197,35 @@ export default function Dashboard() {
         const userWorkspaces = await getWorkspaces();
         const workspace = userWorkspaces.find((wp) => wp._id === workspaceId);
         if (!workspace) {
-          router.push(`/dashboard/${userWorkspaces?.[0]?._id}`);
+          push(`/dashboard/${userWorkspaces?.[0]?._id}`);
         }
         setAutoCapitalization(workspace?.autoCapitalization ?? true);
 
         const accessibleEnvironments = await getWorkspaceEnvironments({ workspaceId });
         setWorkspaceEnvs(accessibleEnvironments || []);
+
         // set env
         const env = accessibleEnvironments?.[0] || {
           name: 'unknown',
-          slug: 'unkown'
+          slug: 'unknown'
         };
         setSelectedEnv(env);
         setSelectedSnapshotEnv(env);
+
+        if (query.env) {
+          const index = accessibleEnvironments?.findIndex(({ slug }: { slug: string }) => slug === query.env)
+
+          setSelectedEnv({
+            name: accessibleEnvironments?.[index]?.name as string,
+            slug: query.env as string
+          })
+          setSelectedSnapshotEnv({
+            name: accessibleEnvironments?.[index]?.name as string,
+            slug: query.env as string
+          })
+
+        }
+
         const user = await getUser();
         setIsNew((Date.parse(String(new Date())) - Date.parse(user.createdAt)) / 60000 < 3);
 
@@ -418,11 +435,11 @@ export default function Dashboard() {
             (newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].value !==
               initDataPoint.value ||
               newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].key !==
-                initDataPoint.key ||
+              initDataPoint.key ||
               newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].comment !==
-                initDataPoint.comment) ||
-              newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags !==
-                initDataPoint?.tags
+              initDataPoint.comment) ||
+            newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags !==
+            initDataPoint?.tags
         )
         .map((secret) => secret.id)
         .includes(newDataPoint.id)
@@ -470,7 +487,7 @@ export default function Dashboard() {
               (newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
                 .valueOverride !== initDataPoint.valueOverride ||
                 newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].key !==
-                  initDataPoint.key ||
+                initDataPoint.key ||
                 newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
                   .comment !== initDataPoint.comment ||
                 newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags !== initDataPoint?.tags)
@@ -560,7 +577,7 @@ export default function Dashboard() {
   };
 
   const handleOnEnvironmentChange = (envName: string) => {
-    if(hasUnsavedChanges) {
+    if (hasUnsavedChanges) {
       if (!window.confirm(leaveConfirmDefaultMessage)) return;
     }
 
@@ -577,6 +594,10 @@ export default function Dashboard() {
     }
 
     setHasUnsavedChanges(false);
+    router.push({
+      pathname: router.pathname,
+      query: { ...router.query, env: selectedWorkspaceEnv.slug },
+    })
   };
 
   return data ? (
@@ -803,13 +824,13 @@ export default function Dashboard() {
                       <div className="w-1/5 border-r border-mineshaft-600 flex flex-row items-center">
                         <div className='text-transparent text-xs flex items-center justify-center w-12 h-10 cursor-default'>0</div>
                         <span className='px-2 text-bunker-300 font-semibold'>Key</span>
-                        {!snapshotData && <IconButton 
+                        {!snapshotData && <IconButton
                           ariaLabel="copy icon"
                           variant="plain"
                           className="group relative ml-2"
                           onClick={() => reorderRows(1)}
                         >
-                            {sortMethod === 'alphabetical' ? <FontAwesomeIcon icon={faArrowUp} /> : <FontAwesomeIcon icon={faArrowDown} />}
+                          {sortMethod === 'alphabetical' ? <FontAwesomeIcon icon={faArrowUp} /> : <FontAwesomeIcon icon={faArrowDown} />}
                         </IconButton>}
                       </div>
                       <div className="w-5/12 border-r border-mineshaft-600">
@@ -836,7 +857,7 @@ export default function Dashboard() {
                         <div
                           onKeyDown={() => null}
                           role="none"
-                          onClick={() => {}}
+                          onClick={() => { }}
                           className="invisible group-hover:visible"
                         >
                           <FontAwesomeIcon className="text-bunker-300 hover:text-red pl-2 pr-6 text-lg mt-0.5 invisible" icon={faXmark} />
@@ -847,8 +868,8 @@ export default function Dashboard() {
                   <div className="bg-mineshaft-800 rounded-b-md border-bunker-600">
                     {!snapshotData &&
                       data
-                        ?.filter((row) => 
-                          row.key?.toUpperCase().includes(searchKeys.toUpperCase()) 
+                        ?.filter((row) =>
+                          row.key?.toUpperCase().includes(searchKeys.toUpperCase())
                           || row.tags?.map(tag => tag.name).join(" ")?.toUpperCase().includes(searchKeys.toUpperCase())
                           || row.comment?.toUpperCase().includes(searchKeys.toUpperCase()))
                         .filter((row) => !sharedToHide.includes(row.id))
@@ -917,13 +938,13 @@ export default function Dashboard() {
                           />
                         ))}
                     <div className='bg-mineshaft-800 text-sm rounded-t-md hover:bg-mineshaft-700 h-10 w-full flex flex-row items-center border-b-2 border-mineshaft-500 sticky top-0 z-[60]'>
-                      <div className='w-10'/>
-                      <button 
+                      <div className='w-10' />
+                      <button
                         type="button"
                         className='text-bunker-300 relative font-normal h-10 flex items-center w-full cursor-pointer'
                         onClick={addRowToBottom}
                       >
-                        <FontAwesomeIcon icon={faPlus} className='mr-3'/>
+                        <FontAwesomeIcon icon={faPlus} className='mr-3' />
                         <span className='text-sm'>Add Secret</span>
                       </button>
                     </div>
