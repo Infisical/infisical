@@ -28,8 +28,9 @@ Here's the link to our charts corresponding documentation :
 We're trying to follow a documentation convention across our charts, allowing us to auto-generate markdown documentation thanks to [this tool](https://github.com/bitnami-labs/readme-generator-for-helm)
 
 Steps to update the documentation :
+1. `cd helm-charts/<chart>`
 1. `git clone https://github.com/bitnami-labs/readme-generator-for-helm`
 2. `npm install ./readme-generator-for-helm`
-3. `npm exec readme-generator -- --readme <chart>/README.md --values <chart>/values.yaml`
+3. `npm exec readme-generator -- --readme README.md --values values.yaml`
    - It'll insert the table below the `## Parameters` title
    - It'll output errors if some of the path aren't documented

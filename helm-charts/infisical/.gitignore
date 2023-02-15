@@ -1,1 +1,3 @@
 charts/
+node_modules/
+package*.json
