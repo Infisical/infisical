@@ -6,8 +6,9 @@ import {
     requireSecretsAuth,
     validateRequest
 } from '../../middleware';
-import { query, check, body } from 'express-validator';
+import { query, body } from 'express-validator';
 import { secretsController } from '../../controllers/v2';
+import { validateSecrets } from '../../helpers/secret';
 import {
     ADMIN,
     MEMBER,
@@ -15,14 +16,12 @@ import {
     SECRET_SHARED
 } from '../../variables';
 
-// TODO: create batch update endpoint
+import {
+    BatchSecretRequest
+} from '../../types/secret';
 
 router.post(
     '/batch',
-    body('workspaceId').exists().isString().trim(),
-    body('environment').exists().isString().trim(),
-    body('requests').exists(), // perform validation for batch requests
-    validateRequest,
     requireAuth({
         acceptedAuthModes: ['jwt', 'apiKey']
     }),
@@ -30,8 +29,30 @@ router.post(
         acceptedRoles: [ADMIN, MEMBER],
         location: 'body'
     }),
+    body('workspaceId').exists().isString().trim(),
+    body('environment').exists().isString().trim(),
+    body('requests')
+        .exists()
+        .custom(async (requests: BatchSecretRequest[], { req }) => {
+            if (Array.isArray(requests)) {
+                const secretIds = requests
+                    .map((request) => request.secret._id)
+                    .filter((secretId) => secretId !== undefined)
+                
+                if (secretIds.length > 0) {
+                    const relevantSecrets = await validateSecrets({
+                        userId: req.user._id.toString(),
+                        secretIds
+                    });
+                    
+                    req.secrets = relevantSecrets;
+                }
+            }
+        return true;
+    }),
+    validateRequest,
     secretsController.batchSecrets
-)
+);
 
 router.post(
     '/',

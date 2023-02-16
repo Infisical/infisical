@@ -44,23 +44,15 @@ export const batchSecrets = async (req: Request, res: Response) => {
     }= req.body;
     
     // construct object containing all secrets
-    // listed across requests
     const listedSecretsObj: {
         [key: string]: { 
             version: number;
             type: string;
         }
-    } = (await Secret.find({
-        _id: {
-            $in: requests
-                .map((request) => request.secret._id)
-                .filter((secretId) => secretId !== undefined)
-        }
-    }).select('version type')).reduce((obj: any, secret: ISecret) => ({
+    } = req.secrets.reduce((obj: any, secret: ISecret) => ({
         ...obj,
         [secret._id.toString()]: secret
     }), {});
-    
 
     const createSecrets: BatchSecret[] = [];
     const updateSecrets: BatchSecret[] = [];
