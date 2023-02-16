@@ -128,6 +128,46 @@ func CallGetSecretsV2(httpClient *resty.Client, request GetEncryptedSecretsV2Req
 	return secretsResponse, nil
 }
 
+func CallLogin1V2(httpClient *resty.Client, request GetLoginOneV2Request) (GetLoginOneV2Response, error) {
+	var loginOneV2Response GetLoginOneV2Response
+	response, err := httpClient.
+		R().
+		SetResult(&loginOneV2Response).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v2/auth/login1", config.INFISICAL_URL))
+
+	if err != nil {
+		return GetLoginOneV2Response{}, fmt.Errorf("CallLogin1V2: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return GetLoginOneV2Response{}, fmt.Errorf("CallLogin1V2: Unsuccessful response: [response=%s]", response)
+	}
+
+	return loginOneV2Response, nil
+}
+
+func CallLogin2V2(httpClient *resty.Client, request GetLoginTwoV2Request) (GetLoginTwoV2Response, error) {
+	var loginTwoV2Response GetLoginTwoV2Response
+	response, err := httpClient.
+		R().
+		SetResult(&loginTwoV2Response).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v2/auth/login2", config.INFISICAL_URL))
+
+	if err != nil {
+		return GetLoginTwoV2Response{}, fmt.Errorf("CallLogin2V2: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return GetLoginTwoV2Response{}, fmt.Errorf("CallLogin2V2: Unsuccessful response: [response=%s]", response)
+	}
+
+	return loginTwoV2Response, nil
+}
+
 func CallGetAllWorkSpacesUserBelongsTo(httpClient *resty.Client) (GetWorkSpacesResponse, error) {
 	var workSpacesResponse GetWorkSpacesResponse
 	response, err := httpClient.

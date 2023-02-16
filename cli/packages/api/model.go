@@ -263,3 +263,31 @@ type GetAccessibleEnvironmentsResponse struct {
 		IsWriteDenied bool   `json:"isWriteDenied"`
 	} `json:"accessibleEnvironments"`
 }
+
+type GetLoginOneV2Request struct {
+	Email           string `json:"email"`
+	ClientPublicKey string `json:"clientPublicKey"`
+}
+
+type GetLoginOneV2Response struct {
+	ServerPublicKey string `json:"serverPublicKey"`
+	Salt            string `json:"salt"`
+}
+
+type GetLoginTwoV2Request struct {
+	Email       string `json:"email"`
+	ClientProof string `json:"clientProof"`
+}
+
+type GetLoginTwoV2Response struct {
+	MfaEnabled          bool   `json:"mfaEnabled"`
+	EncryptionVersion   int    `json:"encryptionVersion"`
+	Token               string `json:"token"`
+	PublicKey           string `json:"publicKey"`
+	EncryptedPrivateKey string `json:"encryptedPrivateKey"`
+	Iv                  string `json:"iv"`
+	Tag                 string `json:"tag"`
+	ProtectedKey        string `json:"protectedKey"`
+	ProtectedKeyIV      string `json:"protectedKeyIV"`
+	ProtectedKeyTag     string `json:"protectedKeyTag"`
+}
