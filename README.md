@@ -83,22 +83,6 @@ If you care about efficiency and security, then Infisical is right for you.
 
 We are currently working hard to make Infisical more extensive. Need any integrations or want a new feature? Feel free to [create an issue](https://github.com/Infisical/infisical/issues) or [contribute](https://infisical.com/docs/contributing/overview) directly to the repository.
 
-## 🌱 Contributing
-
-Whether it's big or small, we love contributions ❤️ Check out our guide to see how to [get started](https://infisical.com/docs/contributing/overview).
-
-Not sure where to get started? You can:
-
-- [Book a free, non-pressure pairing sessions with one of our teammates](mailto:tony@infisical.com?subject=Pairing%20session&body=I'd%20like%20to%20do%20a%20pairing%20session!)!
-- Join our <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">Slack</a>, and ask us any questions there.
-
-## 💚 Community & Support
-
-- [Slack](https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g) (For live discussion with the community and the Infisical team)
-- [GitHub Discussions](https://github.com/Infisical/infisical/discussions) (For help with building and deeper conversations about features)
-- [GitHub Issues](https://github.com/Infisical/infisical-cli/issues) (For any bugs and errors you encounter using Infisical)
-- [Twitter](https://twitter.com/infisical) (Get news fast)
-
 ## 🔌 Integrations
 
 We're currently setting the foundation and building [integrations](https://infisical.com/docs/integrations/overview) so secrets can be synced everywhere. Any help is welcome! :)
@@ -334,6 +318,13 @@ We're currently setting the foundation and building [integrations](https://infis
 </tr> 
 </table>
 
+## 💚 Community & Support
+
+- [Slack](https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g) (For live discussion with the community and the Infisical team)
+- [GitHub Discussions](https://github.com/Infisical/infisical/discussions) (For help with building and deeper conversations about features)
+- [GitHub Issues](https://github.com/Infisical/infisical-cli/issues) (For any bugs and errors you encounter using Infisical)
+- [Twitter](https://twitter.com/infisical) (Get news fast)
+
 ## 🏘 Open-source vs. paid
 
 This repo is entirely MIT licensed, with the exception of the `ee` directory which will contain premium enterprise features requiring a Infisical license in the future. We're currently focused on developing non-enterprise offerings first that should suit most use-cases.
@@ -347,6 +338,15 @@ Looking to report a security vulnerability? Please don't post about it in GitHub
 Infisical officially launched as v.1.0 on November 21st, 2022. There are a lot of new features coming very frequently. Watch **releases** of this repository to be notified about future updates:
 
 ![infisical-star-github](https://github.com/Infisical/infisical/blob/main/.github/images/star-infisical.gif?raw=true)
+
+## 🌱 Contributing
+
+Whether it's big or small, we love contributions ❤️ Check out our guide to see how to [get started](https://infisical.com/docs/contributing/overview).
+
+Not sure where to get started? You can:
+
+- [Book a free, non-pressure pairing sessions with one of our teammates](mailto:tony@infisical.com?subject=Pairing%20session&body=I'd%20like%20to%20do%20a%20pairing%20session!)!
+- Join our <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">Slack</a>, and ask us any questions there.
 
 ## 🦸 Contributors
 
