@@ -420,9 +420,9 @@ export default function Dashboard() {
               newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].key !==
                 initDataPoint.key ||
               newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].comment !==
-                initDataPoint.comment) ||
+                initDataPoint.comment ||
               newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags !==
-                initDataPoint?.tags
+                initDataPoint?.tags)
         )
         .map((secret) => secret.id)
         .includes(newDataPoint.id)
