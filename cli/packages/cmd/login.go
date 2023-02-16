@@ -33,12 +33,6 @@ type params struct {
 	keyLength   uint32
 }
 
-func generateFromPassword(password string, salt []byte, p *params) (hash []byte, err error) {
-	hash = argon2.IDKey([]byte(password), salt, p.iterations, p.memory, p.parallelism, p.keyLength)
-
-	return hash, nil
-}
-
 // loginCmd represents the login command
 var loginCmd = &cobra.Command{
 	Use:                   "login",
@@ -151,7 +145,6 @@ var loginCmd = &cobra.Command{
 			}
 
 			decryptedPrivateKey, err = crypto.DecryptSymmetric(decryptedProtectedKeyInHex, encryptedPrivateKey, nonProtectedTag, nonProtectedIv)
-
 			if err != nil {
 				util.HandleError(err)
 			}
@@ -291,4 +284,9 @@ func shouldOverrideLoginPrompt(currentLoggedInUserEmail string) (bool, error) {
 		return false, err
 	}
 	return result == "Yes", err
+}
+
+func generateFromPassword(password string, salt []byte, p *params) (hash []byte, err error) {
+	hash = argon2.IDKey([]byte(password), salt, p.iterations, p.memory, p.parallelism, p.keyLength)
+	return hash, nil
 }
