@@ -123,6 +123,9 @@ export const ProjectSettingsPage = () => {
       await deleteWorkspace.mutateAsync({ workspaceID });
       // redirect user to first workspace user is part of
       const ws = workspaces.find(({ _id }) => _id !== workspaceID);
+      if(!ws){
+        router.push("/noprojects");
+      }
       router.push(`/dashboard/${ws?._id}`);
       createNotification({
         text: 'Successfully deleted workspace',

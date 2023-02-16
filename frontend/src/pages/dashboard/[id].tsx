@@ -188,6 +188,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     (async () => {
+      if(router.isReady && workspaceId === "undefined"){
+        router.push('/noprojects');
+      }
       try {
         const tempNumSnapshots = await getProjectSercetSnapshotsCount({
           workspaceId
