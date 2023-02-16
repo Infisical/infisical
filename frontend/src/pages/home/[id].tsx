@@ -198,7 +198,7 @@ export default function Home() {
         </div>
         {learningItem({
           text: 'Integrate Infisical with your infrastructure',
-          subText: 'Only a few integrations are currently available. Many more coming soon!',
+          subText: 'Connect Infisical to various 3rd party services and platforms.',
           complete: false,
           icon: faPlug,
           time: '15 min',
