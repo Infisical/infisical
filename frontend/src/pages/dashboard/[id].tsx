@@ -41,9 +41,10 @@ import performSecretRollback from '@app/ee/api/secrets/PerformSecretRollback';
 import PITRecoverySidebar from '@app/ee/components/PITRecoverySidebar';
 import { useLeaveConfirm } from '@app/hooks';
 
-import addSecrets from '../api/files/AddSecrets';
-import deleteSecrets from '../api/files/DeleteSecrets';
-import updateSecrets from '../api/files/UpdateSecrets';
+// import addSecrets from '../api/files/AddSecrets';
+// import deleteSecrets from '../api/files/DeleteSecrets';
+// import updateSecrets from '../api/files/UpdateSecrets';
+import batchSecrets from '../api/files/batchSecrets';
 import getUser from '../api/user/getUser';
 import checkUserAction from '../api/userActions/checkUserAction';
 import registerUserAction from '../api/userActions/registerUserAction';
@@ -490,8 +491,18 @@ export default function Dashboard() {
       }));
     console.log('override update', overridesToBeUpdated.length);
 
+    const requests: any = []; // TODO: fix any
     if (secretsToBeDeleted.concat(overridesToBeDeleted).length > 0) {
-      await deleteSecrets({ secretIds: secretsToBeDeleted.concat(overridesToBeDeleted) });
+      console.log('DELETE: ', secretsToBeDeleted.concat(overridesToBeDeleted));
+      // await deleteSecrets({ secretIds: secretsToBeDeleted.concat(overridesToBeDeleted) });
+      secretsToBeDeleted.concat(overridesToBeDeleted).forEach((_id: string) => {
+        requests.push({
+          method: 'DELETE',
+          secret: {
+            _id
+          }
+        });
+      });
     }
     if (selectedEnv && secretsToBeAdded.concat(overridesToBeAdded).length > 0) {
       const secrets = await encryptSecrets({
@@ -499,7 +510,28 @@ export default function Dashboard() {
         workspaceId,
         env: selectedEnv.slug
       });
-      if (secrets) await addSecrets({ secrets, env: selectedEnv.slug, workspaceId });
+      if (secrets) {
+        console.log('ADD: ', secrets);
+        // await addSecrets({ secrets, env: selectedEnv.slug, workspaceId });
+        secrets.forEach((secret) => {
+          requests.push({
+            method: 'POST',
+            secret: {
+              type: secret.type,
+              secretKeyCiphertext: secret.secretKeyCiphertext,
+              secretKeyIV: secret.secretKeyIV,
+              secretKeyTag: secret.secretKeyTag,
+              secretValueCiphertext: secret.secretValueCiphertext,
+              secretValueIV: secret.secretValueIV,
+              secretValueTag: secret.secretValueTag,
+              secretCommentCiphertext: secret.secretCommentCiphertext,
+              secretCommentIV: secret.secretCommentIV,
+              secretCommentTag: secret.secretCommentTag,
+              tags: secret.tags
+            }
+          })
+        });
+      }
     }
     if (selectedEnv && !selectedEnv.isReadDenied && secretsToBeUpdated.concat(overridesToBeUpdated).length > 0) {
       const secrets = await encryptSecrets({
@@ -507,7 +539,40 @@ export default function Dashboard() {
         workspaceId,
         env: selectedEnv.slug
       });
-      if (secrets) await updateSecrets({ secrets });
+      if (secrets) {
+        console.log('UPDATE: ', secrets);
+        // await updateSecrets({ secrets });
+        secrets.forEach((secret) => {
+          requests.push({
+            method: 'PATCH',
+            secret: {
+              _id: secret.id,
+              type: secret.type,
+              secretKeyCiphertext: secret.secretKeyCiphertext,
+              secretKeyIV: secret.secretKeyIV,
+              secretKeyTag: secret.secretKeyTag,
+              secretValueCiphertext: secret.secretValueCiphertext,
+              secretValueIV: secret.secretValueIV,
+              secretValueTag: secret.secretValueTag,
+              secretCommentCiphertext: secret.secretCommentCiphertext,
+              secretCommentIV: secret.secretCommentIV,
+              secretCommentTag: secret.secretCommentTag,
+              tags: secret.tags 
+            }
+          });
+        });
+      }
+    }
+    
+    if (selectedEnv && requests.length > 0) {
+      console.log('make batch secret request: ');
+      const result = await batchSecrets({
+        workspaceId,
+        environment: selectedEnv.slug,
+        requests
+      });
+
+      console.log('result of batchSecrets', result);
     }
 
     setInitialData(structuredClone(newData));

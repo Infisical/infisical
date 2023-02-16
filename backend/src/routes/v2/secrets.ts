@@ -15,6 +15,24 @@ import {
     SECRET_SHARED
 } from '../../variables';
 
+// TODO: create batch update endpoint
+
+router.post(
+    '/batch',
+    body('workspaceId').exists().isString().trim(),
+    body('environment').exists().isString().trim(),
+    body('requests').exists(), // perform validation for batch requests
+    validateRequest,
+    requireAuth({
+        acceptedAuthModes: ['jwt', 'apiKey']
+    }),
+    requireWorkspaceAuth({
+        acceptedRoles: [ADMIN, MEMBER],
+        location: 'body'
+    }),
+    secretsController.batchSecrets
+)
+
 router.post(
     '/',
     body('workspaceId').exists().isString().trim(),
