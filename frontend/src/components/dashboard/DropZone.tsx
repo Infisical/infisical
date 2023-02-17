@@ -8,6 +8,7 @@ import { parseDocument, Scalar, YAMLMap } from 'yaml';
 
 import Button from '../basic/buttons/Button';
 import Error from '../basic/Error';
+import { useNotificationContext } from '../context/Notifications/NotificationProvider';
 import { parseDotEnv } from '../utilities/parseDotEnv';
 import guidGenerator from '../utilities/randomId';
 
@@ -32,6 +33,7 @@ const DropZone = ({
   numCurrentRows
 }: DropZoneProps) => {
   const { t } = useTranslation();
+  const { createNotification } = useNotificationContext();
 
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault();
@@ -110,6 +112,15 @@ const DropZone = ({
 
     const file = e.dataTransfer.files[0];
     const reader = new FileReader();
+    if (file === undefined) {
+      createNotification({
+        text: `You can't inject files from VS Code. Click 'Reveal in finder', and drag your file directly from the directory where it's located.`,
+        type: 'error',
+        timeoutMs: 10000
+      });
+      setLoading(false);
+      return;
+    }
     const fileType = file.name.split('.')[1];
 
     reader.onload = (event) => {
