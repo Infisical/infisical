@@ -84,19 +84,19 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ): JSX.Element => {
     return (
       <div className={inputParentContainerVariants({ isRounded, isError, isFullWidth, variant })}>
-        {leftIcon && <span className="absolute left-0 ml-2">{leftIcon}</span>}
+        {leftIcon && <span className="absolute left-0 ml-3">{leftIcon}</span>}
         <input
           {...props}
           required={isRequired}
           ref={ref}
           disabled={isDisabled}
           className={twMerge(
-            leftIcon ? 'pl-9' : 'pl-2.5',
-            rightIcon ? 'pr-9' : 'pr-2.5',
+            leftIcon ? 'pl-10' : 'pl-2.5',
+            rightIcon ? 'pr-10' : 'pr-2.5',
             inputVariants({ className, isError, size, isRounded, variant })
           )}
         />
-        {rightIcon && <span className="absolute right-0 mr-2">{rightIcon}</span>}
+        {rightIcon && <span className="absolute right-0 mr-3">{rightIcon}</span>}
       </div>
     );
   }
