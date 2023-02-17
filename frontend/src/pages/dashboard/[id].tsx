@@ -138,7 +138,7 @@ export default function Dashboard() {
   const [dropZoneData, setDropZoneData] = useState<SecretDataProps[]>();
   const [projectTags, setProjectTags] = useState<Tag[]>([]);
 
-  const { hasUnsavedChanges, setHasUnsavedChanges } = useLeaveConfirm({initialValue: false});
+  const { hasUnsavedChanges, setHasUnsavedChanges } = useLeaveConfirm({ initialValue: false });
   const { t } = useTranslation();
   const { createNotification } = useNotificationContext();
 
@@ -188,7 +188,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     (async () => {
-      if(router.isReady && workspaceId === "undefined"){
+      if (router.isReady && workspaceId === 'undefined') {
         router.push('/noprojects');
       }
       try {
@@ -288,7 +288,7 @@ export default function Dashboard() {
         valueOverride: undefined,
         comment: '',
         tags: []
-      },
+      }
     ]);
   };
 
@@ -476,7 +476,8 @@ export default function Dashboard() {
                   initDataPoint.key ||
                 newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
                   .comment !== initDataPoint.comment ||
-                newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags !== initDataPoint?.tags)
+                newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags !==
+                  initDataPoint?.tags)
           )
           .map((secret) => secret.id)
           .includes(newDataPoint.id)
@@ -504,7 +505,11 @@ export default function Dashboard() {
       });
       if (secrets) await addSecrets({ secrets, env: selectedEnv.slug, workspaceId });
     }
-    if (selectedEnv && !selectedEnv.isReadDenied && secretsToBeUpdated.concat(overridesToBeUpdated).length > 0) {
+    if (
+      selectedEnv &&
+      !selectedEnv.isReadDenied &&
+      secretsToBeUpdated.concat(overridesToBeUpdated).length > 0
+    ) {
       const secrets = await encryptSecrets({
         secretsToEncrypt: secretsToBeUpdated.concat(overridesToBeUpdated),
         workspaceId,
@@ -563,11 +568,13 @@ export default function Dashboard() {
   };
 
   const handleOnEnvironmentChange = (envName: string) => {
-    if(hasUnsavedChanges) {
+    if (hasUnsavedChanges) {
       if (!window.confirm(leaveConfirmDefaultMessage)) return;
     }
 
-    const selectedWorkspaceEnv = workspaceEnvs.find(({ name }: { name: string }) => envName === name) || {
+    const selectedWorkspaceEnv = workspaceEnvs.find(
+      ({ name }: { name: string }) => envName === name
+    ) || {
       name: 'unknown',
       slug: 'unknown',
       isWriteDenied: false,
@@ -656,16 +663,18 @@ export default function Dashboard() {
             </div>
             <div className="flex flex-row">
               <div className="flex justify-start max-w-sm mt-1 mr-2">
-                {!selectedEnv?.isReadDenied && <Button
-                  text={String(`${numSnapshots} ${t('Commits')}`)}
-                  onButtonPressed={() => {
-                    toggleSidebar('None');
-                    togglePITSidebar(true)
-                  }}
-                  color="mineshaft"
-                  size="md"
-                  icon={faClockRotateLeft}
-                />}
+                {!selectedEnv?.isReadDenied && (
+                  <Button
+                    text={String(`${numSnapshots} ${t('Commits')}`)}
+                    onButtonPressed={() => {
+                      toggleSidebar('None');
+                      togglePITSidebar(true);
+                    }}
+                    color="mineshaft"
+                    size="md"
+                    icon={faClockRotateLeft}
+                  />
+                )}
               </div>
               {(data?.length !== 0 || hasUnsavedChanges) && !snapshotData && (
                 <div className="flex justify-start max-w-sm mt-1">
@@ -799,50 +808,61 @@ export default function Dashboard() {
                   className="mt-1 max-h-[calc(100vh-280px)] overflow-hidden overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar border border-mineshaft-600 rounded-md"
                 >
                   <div ref={secretsTop} />
-                  <div
-                    className='group flex flex-col items-center bg-mineshaft-800 border-b-2 border-mineshaft-500 duration-100 sticky top-0 z-[60]'
-                  >
+                  <div className="group flex flex-col items-center bg-mineshaft-800 border-b-2 border-mineshaft-500 duration-100 sticky top-0 z-[60]">
                     <div className="relative flex flex-row justify-between w-full mr-auto max-h-14 items-center">
                       <div className="w-1/5 border-r border-mineshaft-600 flex flex-row items-center">
-                        <div className='text-transparent text-xs flex items-center justify-center w-12 h-10 cursor-default'>0</div>
-                        <span className='px-2 text-bunker-300 font-semibold'>Key</span>
-                        {!snapshotData && <IconButton 
-                          ariaLabel="copy icon"
-                          variant="plain"
-                          className="group relative ml-2"
-                          onClick={() => reorderRows(1)}
-                        >
-                            {sortMethod === 'alphabetical' ? <FontAwesomeIcon icon={faArrowUp} /> : <FontAwesomeIcon icon={faArrowDown} />}
-                        </IconButton>}
+                        <div className="text-transparent text-xs flex items-center justify-center w-12 h-10 cursor-default">
+                          0
+                        </div>
+                        <span className="px-2 text-bunker-300 font-semibold">Key</span>
+                        {!snapshotData && (
+                          <IconButton
+                            ariaLabel="copy icon"
+                            variant="plain"
+                            className="group relative ml-2"
+                            onClick={() => reorderRows(1)}
+                          >
+                            {sortMethod === 'alphabetical' ? (
+                              <FontAwesomeIcon icon={faArrowUp} />
+                            ) : (
+                              <FontAwesomeIcon icon={faArrowDown} />
+                            )}
+                          </IconButton>
+                        )}
                       </div>
                       <div className="w-5/12 border-r border-mineshaft-600">
-                        <div
-                          className='flex items-center rounded-lg mt-4 md:mt-0 max-h-10'
-                        >
-                          <div className='text-bunker-300 px-2 font-semibold h-10 flex items-center w-7/12'>Value</div>
+                        <div className="flex items-center rounded-lg mt-4 md:mt-0 max-h-10">
+                          <div className="text-bunker-300 px-2 font-semibold h-10 flex items-center w-7/12">
+                            Value
+                          </div>
                         </div>
                       </div>
                       <div className="w-[calc(10%)] border-r border-mineshaft-600">
                         <div className="flex items-center max-h-16">
-                          <div className='text-bunker-300 px-2 font-semibold h-10 flex items-center w-3/12'>Comment</div>
+                          <div className="text-bunker-300 px-2 font-semibold h-10 flex items-center w-3/12">
+                            Comment
+                          </div>
                         </div>
                       </div>
                       <div className="w-2/12">
                         <div className="flex items-center max-h-16">
-                          <div className='text-bunker-300 px-2 font-semibold h-10 flex items-center w-3/12'>Tags</div>
+                          <div className="text-bunker-300 px-2 font-semibold h-10 flex items-center w-3/12">
+                            Tags
+                          </div>
                         </div>
                       </div>
-                      <div
-                        className="w-[1.5rem] h-[2.35rem] ml-auto rounded-md flex flex-row justify-center items-center"
-                      />
-                      <div className='w-[1.5rem] h-[2.35rem] mr-2 flex items-center justfy-center'>
+                      <div className="w-[1.5rem] h-[2.35rem] ml-auto rounded-md flex flex-row justify-center items-center" />
+                      <div className="w-[1.5rem] h-[2.35rem] mr-2 flex items-center justfy-center">
                         <div
                           onKeyDown={() => null}
                           role="none"
                           onClick={() => {}}
                           className="invisible group-hover:visible"
                         >
-                          <FontAwesomeIcon className="text-bunker-300 hover:text-red pl-2 pr-6 text-lg mt-0.5 invisible" icon={faXmark} />
+                          <FontAwesomeIcon
+                            className="text-bunker-300 hover:text-red pl-2 pr-6 text-lg mt-0.5 invisible"
+                            icon={faXmark}
+                          />
                         </div>
                       </div>
                     </div>
@@ -850,10 +870,16 @@ export default function Dashboard() {
                   <div className="bg-mineshaft-800 rounded-b-md border-bunker-600">
                     {!snapshotData &&
                       data
-                        ?.filter((row) => 
-                          row.key?.toUpperCase().includes(searchKeys.toUpperCase()) 
-                          || row.tags?.map(tag => tag.name).join(" ")?.toUpperCase().includes(searchKeys.toUpperCase())
-                          || row.comment?.toUpperCase().includes(searchKeys.toUpperCase()))
+                        ?.filter(
+                          (row) =>
+                            row.key?.toUpperCase().includes(searchKeys.toUpperCase()) ||
+                            row.tags
+                              ?.map((tag) => tag.name)
+                              .join(' ')
+                              ?.toUpperCase()
+                              .includes(searchKeys.toUpperCase()) ||
+                            row.comment?.toUpperCase().includes(searchKeys.toUpperCase())
+                        )
                         .filter((row) => !sharedToHide.includes(row.id))
                         .filter((row) => row.value !== undefined)
                         .map((keyPair) => (
@@ -919,15 +945,15 @@ export default function Dashboard() {
                             tags={projectTags}
                           />
                         ))}
-                    <div className='bg-mineshaft-800 text-sm rounded-t-md hover:bg-mineshaft-700 h-10 w-full flex flex-row items-center border-b-2 border-mineshaft-500 sticky top-0 z-[60]'>
-                      <div className='w-10'/>
-                      <button 
+                    <div className="bg-mineshaft-800 text-sm rounded-t-md hover:bg-mineshaft-700 h-10 w-full flex flex-row items-center border-b-2 border-mineshaft-500 sticky top-0 z-[60]">
+                      <div className="w-10" />
+                      <button
                         type="button"
-                        className='text-bunker-300 relative font-normal h-10 flex items-center w-full cursor-pointer'
+                        className="text-bunker-300 relative font-normal h-10 flex items-center w-full cursor-pointer"
                         onClick={addRowToBottom}
                       >
-                        <FontAwesomeIcon icon={faPlus} className='mr-3'/>
-                        <span className='text-sm'>Add Secret</span>
+                        <FontAwesomeIcon icon={faPlus} className="mr-3" />
+                        <span className="text-sm">Add Secret</span>
                       </button>
                     </div>
                   </div>
@@ -974,8 +1000,7 @@ export default function Dashboard() {
           <SideBar
             toggleSidebar={toggleSidebar}
             data={data.filter(
-              (row: SecretDataProps) =>
-                row.id === sidebarSecretId && row.value !== undefined
+              (row: SecretDataProps) => row.id === sidebarSecretId && row.value !== undefined
             )}
             modifyKey={listenChangeKey}
             modifyValue={listenChangeValue}
