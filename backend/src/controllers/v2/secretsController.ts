@@ -43,17 +43,6 @@ export const batchSecrets = async (req: Request, res: Response) => {
         requests: BatchSecretRequest[];
     }= req.body;
     
-    // construct object containing all secrets
-    const listedSecretsObj: {
-        [key: string]: { 
-            version: number;
-            type: string;
-        }
-    } = req.secrets.reduce((obj: any, secret: ISecret) => ({
-        ...obj,
-        [secret._id.toString()]: secret
-    }), {});
-
     const createSecrets: BatchSecret[] = [];
     const updateSecrets: BatchSecret[] = [];
     const deleteSecrets: Types.ObjectId[] = [];
@@ -123,7 +112,20 @@ export const batchSecrets = async (req: Request, res: Response) => {
     
     // handle update secrets
     let updatedSecrets: ISecret[] = [];
-    if (updateSecrets.length > 0) {
+    if (updateSecrets.length > 0 && req.secrets) {
+        // construct object containing all secrets
+        let listedSecretsObj: {
+            [key: string]: { 
+                version: number;
+                type: string;
+            }
+        } = {};
+        
+        listedSecretsObj = req.secrets.reduce((obj: any, secret: ISecret) => ({
+            ...obj,
+            [secret._id.toString()]: secret
+        }), {});
+
         const updateOperations = updateSecrets.map((u) => ({
             updateOne: {
                 filter: { _id: new Types.ObjectId(u._id) },
@@ -167,6 +169,14 @@ export const batchSecrets = async (req: Request, res: Response) => {
                 $in: updateSecrets.map((u) => new Types.ObjectId(u._id))
             }
         });
+
+        const updateAction = await EELogService.createAction({
+            name: ACTION_UPDATE_SECRETS,
+            userId: req.user._id,
+            workspaceId: new Types.ObjectId(workspaceId),
+            secretIds: updatedSecrets.map((u) => u._id)
+        }) as IAction;
+        actions.push(updateAction);
 
         if (postHogClient) {
             postHogClient.capture({
@@ -218,7 +228,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
         }
     }
     
-    if (actions.length > 1) {
+    if (actions.length > 0) {
         // (EE) create (audit) log
         await EELogService.createLog({
             userId: req.user._id.toString(),

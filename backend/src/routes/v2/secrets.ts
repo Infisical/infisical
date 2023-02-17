@@ -15,7 +15,6 @@ import {
     SECRET_PERSONAL,
     SECRET_SHARED
 } from '../../variables';
-
 import {
     BatchSecretRequest
 } from '../../types/secret';
