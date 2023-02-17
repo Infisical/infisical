@@ -32,7 +32,7 @@ export type OrgUser = {
   inviteEmail: string;
   organization: string;
   role: 'owner' | 'admin' | 'member';
-  status: 'invited' | 'accepted';
+  status: 'invited' | 'accepted' | 'verified' | 'completed';
   deniedPermissions: any[];
 };
 
@@ -44,4 +44,20 @@ export type AddUserToWsDTO = {
 export type AddUserToWsRes = {
   invitee: OrgUser['user'];
   latestKey: UserWsKeyPair;
+};
+
+export type UpdateOrgUserRoleDTO = {
+  organizationId: string;
+  membershipId: string;
+  role: string;
+};
+
+export type DeletOrgMembershipDTO = {
+  membershipId: string;
+  orgId: string;
+};
+
+export type AddUserToOrgDTO = {
+  inviteeEmail: string;
+  organizationId: string;
 };

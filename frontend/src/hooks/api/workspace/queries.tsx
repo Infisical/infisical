@@ -13,16 +13,18 @@ import {
   Workspace
 } from './types';
 
-
 const workspaceKeys = {
   getWorkspaceById: (workspaceId: string) => [{ workspaceId }, 'workspace'] as const,
+  getWorkspaceMemberships: (orgId: string) => [{ orgId }, 'workspace-memberships'],
   getAllUserWorkspace: ['workspaces'] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
-  const { data } = await apiRequest.get<{ workspace: Workspace }>(`/api/v1/workspace/${workspaceId}`);
-  return data.workspace; 
-}
+  const { data } = await apiRequest.get<{ workspace: Workspace }>(
+    `/api/v1/workspace/${workspaceId}`
+  );
+  return data.workspace;
+};
 
 const fetchUserWorkspaces = async () => {
   const { data } = await apiRequest.get<{ workspaces: Workspace[] }>('/api/v1/workspace');
@@ -39,6 +41,21 @@ export const useGetWorkspaceById = (workspaceId: string) => {
 
 export const useGetUserWorkspaces = () =>
   useQuery(workspaceKeys.getAllUserWorkspace, fetchUserWorkspaces);
+
+const fetchUserWorkspaceMemberships = async (orgId: string) => {
+  const { data } = await apiRequest.get<Record<string, Workspace[]>>(
+    `/api/v1/organization/${orgId}/workspace-memberships`
+  );
+  return data;
+};
+
+// to get all userids in an org with the workspace they are part of
+export const useGetUserWorkspaceMemberships = (orgId: string) =>
+  useQuery({
+    queryKey: workspaceKeys.getWorkspaceMemberships(orgId),
+    queryFn: () => fetchUserWorkspaceMemberships(orgId),
+    enabled: Boolean(orgId)
+  });
 
 // mutation
 export const useCreateWorkspace = () => {
@@ -70,7 +87,9 @@ export const useToggleAutoCapitalization = () => {
 
   return useMutation<{}, {}, ToggleAutoCapitalizationDTO>({
     mutationFn: ({ workspaceID, state }) =>
-      apiRequest.patch(`/api/v2/workspace/${workspaceID}/auto-capitalization`, { autoCapitalization: state }),
+      apiRequest.patch(`/api/v2/workspace/${workspaceID}/auto-capitalization`, {
+        autoCapitalization: state
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }
