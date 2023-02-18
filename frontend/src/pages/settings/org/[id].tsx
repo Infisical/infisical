@@ -222,7 +222,6 @@ export default function SettingsOrg() {
                 submitModal={submitAddUserModal}
                 email={emailUser}
                 setEmail={setEmailUser}
-                currentPlan={currentPlan}
                 orgName={orgName}
               />
               <UpgradePlanModal
