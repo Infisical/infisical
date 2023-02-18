@@ -148,6 +148,28 @@ func CallLogin1V2(httpClient *resty.Client, request GetLoginOneV2Request) (GetLo
 	return loginOneV2Response, nil
 }
 
+func CallVerifyMfaToken(httpClient *resty.Client, request VerifyMfaTokenRequest) (*VerifyMfaTokenResponse, *VerifyMfaTokenErrorResponse, error) {
+	var verifyMfaTokenResponse VerifyMfaTokenResponse
+	var responseError VerifyMfaTokenErrorResponse
+	response, err := httpClient.
+		R().
+		SetResult(&verifyMfaTokenResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetError(&responseError).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v2/auth/mfa/verify", config.INFISICAL_URL))
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("CallVerifyMfaToken: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return nil, &responseError, nil
+	}
+
+	return &verifyMfaTokenResponse, nil, nil
+}
+
 func CallLogin2V2(httpClient *resty.Client, request GetLoginTwoV2Request) (GetLoginTwoV2Response, error) {
 	var loginTwoV2Response GetLoginTwoV2Response
 	response, err := httpClient.

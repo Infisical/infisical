@@ -291,3 +291,35 @@ type GetLoginTwoV2Response struct {
 	ProtectedKeyIV      string `json:"protectedKeyIV"`
 	ProtectedKeyTag     string `json:"protectedKeyTag"`
 }
+
+type VerifyMfaTokenRequest struct {
+	Email    string `json:"email"`
+	MFAToken string `json:"mfaToken"`
+}
+
+type VerifyMfaTokenResponse struct {
+	EncryptionVersion   int    `json:"encryptionVersion"`
+	Token               string `json:"token"`
+	PublicKey           string `json:"publicKey"`
+	EncryptedPrivateKey string `json:"encryptedPrivateKey"`
+	Iv                  string `json:"iv"`
+	Tag                 string `json:"tag"`
+	ProtectedKey        string `json:"protectedKey"`
+	ProtectedKeyIV      string `json:"protectedKeyIV"`
+	ProtectedKeyTag     string `json:"protectedKeyTag"`
+}
+
+type VerifyMfaTokenErrorResponse struct {
+	Type    string `json:"type"`
+	Message string `json:"message"`
+	Context struct {
+		Code      string `json:"code"`
+		TriesLeft int    `json:"triesLeft"`
+	} `json:"context"`
+	Level       int           `json:"level"`
+	LevelName   string        `json:"level_name"`
+	StatusCode  int           `json:"status_code"`
+	DatetimeIso time.Time     `json:"datetime_iso"`
+	Application string        `json:"application"`
+	Extra       []interface{} `json:"extra"`
+}

@@ -70,6 +70,53 @@ var loginCmd = &cobra.Command{
 			return
 		}
 
+		if loginTwoResponse.MfaEnabled {
+			i := 1
+			for i < 6 {
+				mfaVerifyCode := askForMFACode()
+
+				httpClient := resty.New()
+				httpClient.SetAuthToken(loginTwoResponse.Token)
+				verifyMFAresponse, mfaErrorResponse, requestError := api.CallVerifyMfaToken(httpClient, api.VerifyMfaTokenRequest{
+					Email:    email,
+					MFAToken: mfaVerifyCode,
+				})
+
+				if requestError != nil {
+					util.HandleError(err)
+					break
+				} else if mfaErrorResponse != nil {
+					if mfaErrorResponse.Context.Code == "mfa_invalid" {
+						msg := fmt.Sprintf("Incorrect, MFA code. You have %v attempts left", 5-i)
+						fmt.Println(msg)
+						if i == 5 {
+							util.PrintErrorMessageAndExit("No tries left, please try again in a bit")
+							break
+						}
+					}
+
+					if mfaErrorResponse.Context.Code == "mfa_expired" {
+						util.PrintErrorMessageAndExit("Your MFA code has expired, please try logging in again")
+						break
+					}
+					i++
+				} else {
+					loginTwoResponse.EncryptedPrivateKey = verifyMFAresponse.EncryptedPrivateKey
+					loginTwoResponse.EncryptionVersion = verifyMFAresponse.EncryptionVersion
+					loginTwoResponse.Iv = verifyMFAresponse.Iv
+					loginTwoResponse.ProtectedKey = verifyMFAresponse.ProtectedKey
+					loginTwoResponse.ProtectedKeyIV = verifyMFAresponse.ProtectedKeyIV
+					loginTwoResponse.ProtectedKeyTag = verifyMFAresponse.ProtectedKeyTag
+					loginTwoResponse.PublicKey = verifyMFAresponse.PublicKey
+					loginTwoResponse.Tag = verifyMFAresponse.Tag
+					loginTwoResponse.Token = verifyMFAresponse.Token
+					loginTwoResponse.EncryptionVersion = verifyMFAresponse.EncryptionVersion
+
+					break
+				}
+			}
+		}
+
 		var decryptedPrivateKey []byte
 
 		if loginTwoResponse.EncryptionVersion == 1 {
@@ -289,4 +336,17 @@ func shouldOverrideLoginPrompt(currentLoggedInUserEmail string) (bool, error) {
 func generateFromPassword(password string, salt []byte, p *params) (hash []byte, err error) {
 	hash = argon2.IDKey([]byte(password), salt, p.iterations, p.memory, p.parallelism, p.keyLength)
 	return hash, nil
+}
+
+func askForMFACode() string {
+	mfaCodePromptUI := promptui.Prompt{
+		Label: "MFA verification code",
+	}
+
+	mfaVerifyCode, err := mfaCodePromptUI.Run()
+	if err != nil {
+		util.HandleError(err)
+	}
+
+	return mfaVerifyCode
 }
