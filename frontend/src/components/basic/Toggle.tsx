@@ -3,8 +3,8 @@ import { Switch } from '@headlessui/react';
 interface ToggleProps {
   enabled: boolean;
   setEnabled: (value: boolean) => void;
-  addOverride: (value: string | undefined, pos: number) => void;
-  pos: number;
+  addOverride: (value: string | undefined, id: string) => void;
+  id: string;
 }
 
 /**
@@ -13,18 +13,18 @@ interface ToggleProps {
  * @param {boolean} obj.enabled - whether the toggle is turned on or off
  * @param {function} obj.setEnabled - change the state of the toggle
  * @param {function} obj.addOverride - a function that adds an override to a certain secret
- * @param {number} obj.pos - position of a certain secret
+ * @param {number} obj.id - id of a certain secret
  * @returns
  */
-const Toggle = ({ enabled, setEnabled, addOverride, pos }: ToggleProps): JSX.Element => {
+const Toggle = ({ enabled, setEnabled, addOverride, id }: ToggleProps): JSX.Element => {
   return (
     <Switch
       checked={enabled}
       onChange={() => {
         if (enabled === false) {
-          addOverride('', pos);
+          addOverride('', id);
         } else {
-          addOverride(undefined, pos);
+          addOverride(undefined, id);
         }
         setEnabled(!enabled);
       }}

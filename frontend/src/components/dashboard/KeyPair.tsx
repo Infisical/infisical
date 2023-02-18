@@ -8,11 +8,11 @@ import { DeleteActionButton } from './DeleteActionButton';
 
 interface KeyPairProps {
   keyPair: SecretDataProps;
-  modifyKey: (value: string, position: number) => void;
-  modifyValue: (value: string, position: number) => void;
-  modifyValueOverride: (value: string | undefined, position: number) => void;
-  modifyComment: (value: string, position: number) => void;
-  modifyTags: (value: Tag[], position: number) => void;
+  modifyKey: (value: string, id: string) => void;
+  modifyValue: (value: string, id: string) => void;
+  modifyValueOverride: (value: string | undefined, id: string) => void;
+  modifyComment: (value: string, id: string) => void;
+  modifyTags: (value: Tag[], id: string) => void;
   isBlurred: boolean;
   isDuplicate: boolean;
   toggleSidebar: (id: string) => void;
@@ -108,7 +108,7 @@ const KeyPair = ({
             isCapitalized = {isCapitalized}
             onChangeHandler={modifyKey}
             type="varName"
-            position={keyPair.pos}
+            id={keyPair.id}
             value={keyPair.key}
             isDuplicate={isDuplicate}
             overrideEnabled={keyPair.valueOverride !== undefined}
@@ -124,7 +124,7 @@ const KeyPair = ({
           <DashboardInputField
             onChangeHandler={keyPair.valueOverride !== undefined ? modifyValueOverride : modifyValue}
             type="value"
-            position={keyPair.pos}
+            id={keyPair.id}
             value={keyPair.valueOverride !== undefined ? keyPair.valueOverride : keyPair.value}
             blurred={isBlurred}
             overrideEnabled={keyPair.valueOverride !== undefined}
@@ -137,7 +137,7 @@ const KeyPair = ({
           <DashboardInputField
             onChangeHandler={modifyComment}
             type="comment"
-            position={keyPair.pos}
+            id={keyPair.id}
             value={keyPair.comment}
             isDuplicate={isDuplicate}
             isSideBarOpen={keyPair.id === sidebarSecretId}
@@ -149,11 +149,11 @@ const KeyPair = ({
           {keyPair.tags?.map((tag, index) => (
             index < 2 && <div key={keyPair.pos} className={`ml-2 px-1.5 ${tagData.filter(tagDp => tagDp._id === tag._id)[0]?.color} rounded-sm text-sm ${tagData.filter(tagDp => tagDp._id === tag._id)[0]?.colorText} flex items-center`}>
               <span className='mb-0.5 cursor-default'>{tag.name}</span>
-              <FontAwesomeIcon icon={faXmark} className="ml-1 cursor-pointer p-1" onClick={() => modifyTags(keyPair.tags.filter(ttag => ttag._id !== tag._id), keyPair.pos)}/>
+              <FontAwesomeIcon icon={faXmark} className="ml-1 cursor-pointer p-1" onClick={() => modifyTags(keyPair.tags.filter(ttag => ttag._id !== tag._id), keyPair.id)}/>
             </div>
           ))}
           
-          <AddTagsMenu allTags={tags} currentTags={keyPair.tags} modifyTags={modifyTags} position={keyPair.pos} />
+          <AddTagsMenu allTags={tags} currentTags={keyPair.tags} modifyTags={modifyTags} id={keyPair.id} />
         </div>
       </div>
       <div

@@ -5,13 +5,13 @@ import * as Popover from '@radix-ui/react-popover';
 type Props = {
   children: any; 
   text: string; 
-  onChangeHandler: (value: string, position: number) => void; 
-  position: number;
+  onChangeHandler: (value: string, id: string) => void; 
+  id: string;
 };
 
 export type PopoverProps = Props;
 
-export const PopoverObject = ({children, text, onChangeHandler, position}: Props) => (
+export const PopoverObject = ({children, text, onChangeHandler, id}: Props) => (
   <Popover.Root>
     <Popover.Trigger asChild className='data-[state=open]:outline data-[state=open]:outline-primary data-[state=closed]:hover:outline data-[state=closed]:hover:outline-mineshaft-400'>
       {children}
@@ -26,7 +26,7 @@ export const PopoverObject = ({children, text, onChangeHandler, position}: Props
         <div className="flex flex-col pt-2 dark">
           <p className="text-bunker-200 text-[15px] leading-[0px] font-medium mb-5">Comment</p>
           <textarea
-            onChange={(e) => onChangeHandler(e.target.value, position)}
+            onChange={(e) => onChangeHandler(e.target.value, id)}
             // type={type}
             value={text}
             className='z-10 dark:[color-scheme:dark] peer h-[20rem] ph-no-capture bg-bunker-600 border border-mineshaft-500 rounded-md py-2.5 caret-bunker-200 text-sm px-2 w-full outline-none text-bunker-300 focus:text-bunker-100 placeholder:text-bunker-400 placeholder:focus:text-transparent placeholder duration-200'
