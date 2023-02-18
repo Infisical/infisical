@@ -1,7 +1,5 @@
 import { Fragment } from 'react';
-import { useRouter } from 'next/router';
 import { Dialog, Transition } from '@headlessui/react';
-import { plans } from 'public/data/frequentConstants';
 
 import Button from '../buttons/Button';
 import InputField from '../InputField';
@@ -12,7 +10,6 @@ type Props = {
   submitModal: (email: string) => void;
   email: string;
   setEmail: (email: string) => void;
-  currentPlan: string;
   orgName: string;
 };
 
@@ -22,13 +19,11 @@ const AddUserDialog = ({
   submitModal,
   email,
   setEmail,
-  currentPlan,
   orgName,
 }: Props) => {
   const submit = () => {
     submitModal(email);
   };
-  const router = useRouter();
 
   return (
     <div className='z-50'>
@@ -81,28 +76,6 @@ const AddUserDialog = ({
                       isRequired
                     />
                   </div>
-                  {currentPlan === plans.starter && (
-                    <div className='flex flex-row'>
-                      <button
-                        type='button'
-                        className='inline-flex justify-center rounded-md py-1 text-sm text-gray-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2'
-                        onClick={() =>
-                          router.push(`/settings/billing/${  router.query.id}`)
-                        }
-                      >
-                        You can add up to 5 members on the Starter plan.
-                      </button>
-                      <button
-                        type='button'
-                        className='ml-1 inline-flex justify-center rounded-md py-1 underline underline-offset-2 text-sm text-gray-500 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2'
-                        onClick={() =>
-                          router.push(`/settings/billing/${  router.query.id}`)
-                        }
-                      >
-                        Upgrade now.
-                      </button>
-                    </div>
-                  )}
                   <div className='mt-4 max-w-max'>
                     <Button
                       onButtonPressed={submit}
