@@ -30,6 +30,7 @@ import DropZone from '@app/components/dashboard/DropZone';
 import KeyPair from '@app/components/dashboard/KeyPair';
 import SideBar from '@app/components/dashboard/SideBar';
 import NavHeader from '@app/components/navigation/NavHeader';
+import { decryptAssymmetric, decryptSymmetric } from '@app/components/utilities/cryptography/crypto';
 import guidGenerator from '@app/components/utilities/randomId';
 import encryptSecrets from '@app/components/utilities/secrets/encryptSecrets';
 import getSecretsForProject from '@app/components/utilities/secrets/getSecretsForProject';
@@ -41,12 +42,14 @@ import performSecretRollback from '@app/ee/api/secrets/PerformSecretRollback';
 import PITRecoverySidebar from '@app/ee/components/PITRecoverySidebar';
 import { useLeaveConfirm } from '@app/hooks';
 
-import addSecrets from '../api/files/AddSecrets';
-import deleteSecrets from '../api/files/DeleteSecrets';
-import updateSecrets from '../api/files/UpdateSecrets';
+// import addSecrets from '../api/files/AddSecrets';
+// import deleteSecrets from '../api/files/DeleteSecrets';
+// import updateSecrets from '../api/files/UpdateSecrets';
+import batchSecrets from '../api/files/batchSecrets';
 import getUser from '../api/user/getUser';
 import checkUserAction from '../api/userActions/checkUserAction';
 import registerUserAction from '../api/userActions/registerUserAction';
+import getLatestFileKey from '../api/workspace/getLatestFileKey';
 import getWorkspaceEnvironments from '../api/workspace/getWorkspaceEnvironments';
 import getWorkspaces from '../api/workspace/getWorkspaces';
 import getWorkspaceTags from '../api/workspace/getWorkspaceTags';
@@ -92,6 +95,32 @@ interface SnapshotProps {
     comment: string;
     tags: Tag[];
   }[];
+}
+
+interface EncryptedSecretProps {
+  _id: string;
+  createdAt: string;
+  environment: string;
+  secretCommentCiphertext: string;
+  secretCommentIV: string;
+  secretCommentTag: string;
+  secretKeyCiphertext: string;
+  secretKeyIV: string;
+  secretKeyTag: string;
+  secretValueCiphertext: string;
+  secretValueIV: string;
+  secretValueTag: string;
+  type: 'personal' | 'shared';
+  tags: Tag[];
+}
+
+interface SecretProps {
+  key: string;
+  value: string | undefined;
+  type: 'personal' | 'shared';
+  comment: string;
+  id: string;
+  tags: Tag[];
 }
 
 /**
@@ -302,50 +331,50 @@ export default function Dashboard() {
     );
   };
 
-  const modifyValue = (value: string, pos: number) => {
-    setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, value } : e)));
+  const modifyValue = (value: string, id: string) => {
+    setData((oldData) => oldData?.map((e) => (e.id === id ? { ...e, value } : e)));
     setHasUnsavedChanges(true);
   };
 
-  const modifyValueOverride = (valueOverride: string | undefined, pos: number) => {
-    setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, valueOverride } : e)));
+  const modifyValueOverride = (valueOverride: string | undefined, id: string) => {
+    setData((oldData) => oldData?.map((e) => (e.id === id ? { ...e, valueOverride } : e)));
     setHasUnsavedChanges(true);
   };
 
-  const modifyKey = (key: string, pos: number) => {
-    setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, key } : e)));
+  const modifyKey = (key: string, id: string) => {
+    setData((oldData) => oldData?.map((e) => (e.id === id ? { ...e, key } : e)));
     setHasUnsavedChanges(true);
   };
 
-  const modifyComment = (comment: string, pos: number) => {
-    setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, comment } : e)));
+  const modifyComment = (comment: string, id: string) => {
+    setData((oldData) => oldData?.map((e) => (e.id === id ? { ...e, comment } : e)));
     setHasUnsavedChanges(true);
   };
 
-  const modifyTags = (tags: Tag[], pos: number) => {
-    setData((oldData) => oldData?.map((e) => (e.pos === pos ? { ...e, tags } : e)));
+  const modifyTags = (tags: Tag[], id: string) => {
+    setData((oldData) => oldData?.map((e) => (e.id === id ? { ...e, tags } : e)));
     setHasUnsavedChanges(true);
   };
 
   // For speed purposes and better perforamance, we are using useCallback
-  const listenChangeValue = useCallback((value: string, pos: number) => {
-    modifyValue(value, pos);
+  const listenChangeValue = useCallback((value: string, id: string) => {
+    modifyValue(value, id);
   }, []);
 
-  const listenChangeValueOverride = useCallback((value: string | undefined, pos: number) => {
-    modifyValueOverride(value, pos);
+  const listenChangeValueOverride = useCallback((value: string | undefined, id: string) => {
+    modifyValueOverride(value, id);
   }, []);
 
-  const listenChangeKey = useCallback((value: string, pos: number) => {
-    modifyKey(value, pos);
+  const listenChangeKey = useCallback((value: string, id: string) => {
+    modifyKey(value, id);
   }, []);
 
-  const listenChangeComment = useCallback((value: string, pos: number) => {
-    modifyComment(value, pos);
+  const listenChangeComment = useCallback((value: string, id: string) => {
+    modifyComment(value, id);
   }, []);
 
-  const listenChangeTags = useCallback((value: Tag[], pos: number) => {
-    modifyTags(value, pos);
+  const listenChangeTags = useCallback((value: Tag[], id: string) => {
+    modifyTags(value, id);
   }, []);
 
   /**
@@ -353,174 +382,331 @@ export default function Dashboard() {
    */
   // TODO(akhilmhdh): split and make it small
   const savePush = async (dataToPush?: SecretDataProps[]) => {
-    setSaveLoading(true);
-    let newData: SecretDataProps[] | null | undefined;
-    // dataToPush is mostly used for rollbacks, otherwise we always take the current state data
-    if ((dataToPush ?? [])?.length > 0) {
-      newData = dataToPush;
-    } else {
-      newData = data;
-    }
+      try {
+        setSaveLoading(true);
+        let newData: SecretDataProps[] | null | undefined;
+        // dataToPush is mostly used for rollbacks, otherwise we always take the current state data
+        if ((dataToPush ?? [])?.length > 0) {
+          newData = dataToPush;
+        } else {
+          newData = data;
+        }
 
-    // Checking if any of the secret keys start with a number - if so, don't do anything
-    const nameErrors = !newData!
-      .map((secret) => !Number.isNaN(Number(secret.key.charAt(0))))
-      .every((v) => v === false);
-    const duplicatesExist =
-      findDuplicates(data!.map((item: SecretDataProps) => item.key)).length > 0;
+        // Checking if any of the secret keys start with a number - if so, don't do anything
+        const nameErrors = !newData!
+          .map((secret) => !Number.isNaN(Number(secret.key.charAt(0))))
+          .every((v) => v === false);
+        const duplicatesExist =
+          findDuplicates(data!.map((item: SecretDataProps) => item.key)).length > 0;
 
-    if (nameErrors) {
-      setSaveLoading(false);
-      return createNotification({
-        text: 'Solve all name errors before saving secrets.',
-        type: 'error'
-      });
-    }
+        if (nameErrors) {
+          setSaveLoading(false);
+          return createNotification({
+            text: 'Solve all name errors before saving secrets.',
+            type: 'error'
+          });
+        }
 
-    if (duplicatesExist) {
-      setSaveLoading(false);
-      return createNotification({
-        text: 'Remove duplicated secret names before saving.',
-        type: 'error'
-      });
-    }
+        if (duplicatesExist) {
+          setSaveLoading(false);
+          return createNotification({
+            text: 'Remove duplicated secret names before saving.',
+            type: 'error'
+          });
+        }
 
-    if (selectedEnv?.isWriteDenied) {
-      setSaveLoading(false);
-      return createNotification({
-        text: 'You are not allowed to edit this environment',
-        type: 'error'
-      });
-    }
+        if (selectedEnv?.isWriteDenied) {
+          setSaveLoading(false);
+          return createNotification({
+            text: 'You are not allowed to edit this environment',
+            type: 'error'
+          });
+        }
 
-    // Once "Save changes" is clicked, disable that button
-    setHasUnsavedChanges(false);
+        // Once "Save changes" is clicked, disable that button
+        setHasUnsavedChanges(false);
 
-    const secretsToBeDeleted = initialData!
-      .filter(
-        (initDataPoint) =>
-          !newData!.map((newDataPoint) => newDataPoint.id).includes(initDataPoint.id)
-      )
-      .map((secret) => secret.id);
-    console.log('delete', secretsToBeDeleted.length);
-
-    const secretsToBeAdded = newData!.filter(
-      (newDataPoint) =>
-        !initialData!.map((initDataPoint) => initDataPoint.id).includes(newDataPoint.id)
-    );
-    console.log('add', secretsToBeAdded.length);
-
-    const secretsToBeUpdated = newData!.filter((newDataPoint) =>
-      initialData!
-        .filter(
-          (initDataPoint) =>
-            newData!.map((dataPoint) => dataPoint.id).includes(initDataPoint.id) &&
-            (newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].value !==
-              initDataPoint.value ||
-              newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].key !==
-                initDataPoint.key ||
-              newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].comment !==
-                initDataPoint.comment ||
-              newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags !==
-                initDataPoint?.tags)
-        )
-        .map((secret) => secret.id)
-        .includes(newDataPoint.id)
-    );
-    console.log('update', secretsToBeUpdated.length);
-
-    const newOverrides = newData!.filter(
-      (newDataPoint) => newDataPoint.valueOverride !== undefined
-    );
-    const initOverrides = initialData!.filter(
-      (initDataPoint) => initDataPoint.valueOverride !== undefined
-    );
-
-    const overridesToBeDeleted = initOverrides
-      .filter(
-        (initDataPoint) =>
-          !newOverrides!.map((newDataPoint) => newDataPoint.id).includes(initDataPoint.id)
-      )
-      .map((secret) => String(secret.idOverride));
-    console.log('override delete', overridesToBeDeleted.length);
-
-    const overridesToBeAdded = newOverrides!
-      .filter(
-        (newDataPoint) =>
-          !initOverrides.map((initDataPoint) => initDataPoint.id).includes(newDataPoint.id)
-      )
-      .map((override) => ({
-        pos: override.pos,
-        key: override.key,
-        value: String(override.valueOverride),
-        valueOverride: override.valueOverride,
-        comment: '',
-        id: String(override.idOverride),
-        idOverride: String(override.idOverride),
-        tags: override.tags
-      }));
-    console.log('override add', overridesToBeAdded.length);
-
-    const overridesToBeUpdated = newOverrides!
-      .filter((newDataPoint) =>
-        initOverrides
+        const secretsToBeDeleted = initialData!
           .filter(
             (initDataPoint) =>
-              newOverrides!.map((dataPoint) => dataPoint.id).includes(initDataPoint.id) &&
-              (newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
-                .valueOverride !== initDataPoint.valueOverride ||
-                newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].key !==
-                  initDataPoint.key ||
-                newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
-                  .comment !== initDataPoint.comment ||
-                newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags !== initDataPoint?.tags)
+              !newData!.map((newDataPoint) => newDataPoint.id).includes(initDataPoint.id)
           )
-          .map((secret) => secret.id)
-          .includes(newDataPoint.id)
-      )
-      .map((override) => ({
-        pos: override.pos,
-        key: override.key,
-        value: String(override.valueOverride),
-        valueOverride: override.valueOverride,
-        comment: '',
-        id: String(override.idOverride),
-        idOverride: String(override.idOverride),
-        tags: override.tags
-      }));
-    console.log('override update', overridesToBeUpdated.length);
+          .map((secret) => secret.id);
+        console.log('delete', secretsToBeDeleted.length);
 
-    if (secretsToBeDeleted.concat(overridesToBeDeleted).length > 0) {
-      await deleteSecrets({ secretIds: secretsToBeDeleted.concat(overridesToBeDeleted) });
-    }
-    if (selectedEnv && secretsToBeAdded.concat(overridesToBeAdded).length > 0) {
-      const secrets = await encryptSecrets({
-        secretsToEncrypt: secretsToBeAdded.concat(overridesToBeAdded),
-        workspaceId,
-        env: selectedEnv.slug
-      });
-      if (secrets) await addSecrets({ secrets, env: selectedEnv.slug, workspaceId });
-    }
-    if (selectedEnv && !selectedEnv.isReadDenied && secretsToBeUpdated.concat(overridesToBeUpdated).length > 0) {
-      const secrets = await encryptSecrets({
-        secretsToEncrypt: secretsToBeUpdated.concat(overridesToBeUpdated),
-        workspaceId,
-        env: selectedEnv.slug
-      });
-      if (secrets) await updateSecrets({ secrets });
-    }
+        const secretsToBeAdded = newData!.filter(
+          (newDataPoint) =>
+            !initialData!.map((initDataPoint) => initDataPoint.id).includes(newDataPoint.id)
+        );
+        console.log('add', secretsToBeAdded.length);
 
-    setInitialData(structuredClone(newData));
+        const secretsToBeUpdated = newData!.filter((newDataPoint) =>
+          initialData!
+            .filter(
+              (initDataPoint) =>
+                newData!.map((dataPoint) => dataPoint.id).includes(initDataPoint.id) &&
+                (newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].value !==
+                  initDataPoint.value ||
+                newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].key !==
+                  initDataPoint.key ||
+                newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].comment !==
+                  initDataPoint.comment ||
+                JSON.stringify(newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags) !==
+                  JSON.stringify(initDataPoint?.tags))
+            )
+            .map((secret) => secret.id)
+            .includes(newDataPoint.id)
+        );
+        console.log('update', secretsToBeUpdated.length);
 
-    // If this user has never saved environment variables before, show them a prompt to read docs
-    if (!hasUserEverPushed) {
-      setCheckDocsPopUpVisible(true);
-      await registerUserAction({ action: 'first_time_secrets_pushed' });
-    }
+        const newOverrides = newData!.filter(
+          (newDataPoint) => newDataPoint.valueOverride !== undefined
+        );
+        const initOverrides = initialData!.filter(
+          (initDataPoint) => initDataPoint.valueOverride !== undefined
+        );
 
-    // increasing the number of project commits
-    setNumSnapshots((numSnapshots ?? 0) + 1);
-    setSaveLoading(false);
+        const overridesToBeDeleted = initOverrides
+          .filter(
+            (initDataPoint) =>
+              !newOverrides!.map((newDataPoint) => newDataPoint.id).includes(initDataPoint.id)
+          )
+          .map((secret) => String(secret.idOverride));
+        console.log('override delete', overridesToBeDeleted.length);
+
+        const overridesToBeAdded = newOverrides!
+          .filter(
+            (newDataPoint) =>
+              !initOverrides.map((initDataPoint) => initDataPoint.id).includes(newDataPoint.id)
+          )
+          .map((override) => ({
+            pos: override.pos,
+            key: override.key,
+            value: String(override.valueOverride),
+            valueOverride: override.valueOverride,
+            comment: '',
+            id: String(override.idOverride),
+            idOverride: String(override.idOverride),
+            tags: override.tags
+          }));
+        console.log('override add', overridesToBeAdded.length);
+
+        const overridesToBeUpdated = newOverrides!
+          .filter((newDataPoint) =>
+            initOverrides
+              .filter(
+                (initDataPoint) =>
+                  newOverrides!.map((dataPoint) => dataPoint.id).includes(initDataPoint.id) &&
+                  (newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
+                    .valueOverride !== initDataPoint.valueOverride ||
+                    newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].key !==
+                      initDataPoint.key ||
+                    newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
+                      .comment !== initDataPoint.comment ||
+                    JSON.stringify(newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags) !==
+                      JSON.stringify(initDataPoint?.tags))
+              )
+              .map((secret) => secret.id)
+              .includes(newDataPoint.id)
+          )
+          .map((override) => ({
+            pos: override.pos,
+            key: override.key,
+            value: String(override.valueOverride),
+            valueOverride: override.valueOverride,
+            comment: '',
+            id: String(override.idOverride),
+            idOverride: String(override.idOverride),
+            tags: override.tags
+          }));
+        console.log('override update', overridesToBeUpdated.length);
+
+        const requests: any = []; // TODO: fix any
+        if (secretsToBeDeleted.concat(overridesToBeDeleted).length > 0) {
+          secretsToBeDeleted.concat(overridesToBeDeleted).forEach((_id: string) => {
+            requests.push({
+              method: 'DELETE',
+              secret: {
+                _id
+              }
+            });
+          });
+        }
+        if (selectedEnv && secretsToBeAdded.concat(overridesToBeAdded).length > 0) {
+          const secrets = await encryptSecrets({
+            secretsToEncrypt: secretsToBeAdded.concat(overridesToBeAdded),
+            workspaceId,
+            env: selectedEnv.slug
+          });
+          if (secrets) {
+            secrets.forEach((secret) => {
+              requests.push({
+                method: 'POST',
+                secret: {
+                  type: secret.type,
+                  secretKeyCiphertext: secret.secretKeyCiphertext,
+                  secretKeyIV: secret.secretKeyIV,
+                  secretKeyTag: secret.secretKeyTag,
+                  secretValueCiphertext: secret.secretValueCiphertext,
+                  secretValueIV: secret.secretValueIV,
+                  secretValueTag: secret.secretValueTag,
+                  secretCommentCiphertext: secret.secretCommentCiphertext,
+                  secretCommentIV: secret.secretCommentIV,
+                  secretCommentTag: secret.secretCommentTag,
+                  tags: secret.tags
+                }
+              })
+            });
+          }
+        }
+        if (selectedEnv && !selectedEnv.isReadDenied && secretsToBeUpdated.concat(overridesToBeUpdated).length > 0) {
+          const secrets = await encryptSecrets({
+            secretsToEncrypt: secretsToBeUpdated.concat(overridesToBeUpdated),
+            workspaceId,
+            env: selectedEnv.slug
+          });
+          if (secrets) {
+            secrets.forEach((secret) => {
+              requests.push({
+                method: 'PATCH',
+                secret: {
+                  _id: secret.id,
+                  type: secret.type,
+                  secretKeyCiphertext: secret.secretKeyCiphertext,
+                  secretKeyIV: secret.secretKeyIV,
+                  secretKeyTag: secret.secretKeyTag,
+                  secretValueCiphertext: secret.secretValueCiphertext,
+                  secretValueIV: secret.secretValueIV,
+                  secretValueTag: secret.secretValueTag,
+                  secretCommentCiphertext: secret.secretCommentCiphertext,
+                  secretCommentIV: secret.secretCommentIV,
+                  secretCommentTag: secret.secretCommentTag,
+                  tags: secret.tags 
+                }
+              });
+            });
+          }
+        }
+        
+        let newSecrets;
+        if (selectedEnv && requests.length > 0) {
+          newSecrets = await batchSecrets({
+            workspaceId,
+            environment: selectedEnv.slug,
+            requests
+          });
+        }
+
+        let formattedNewDecryptedKeys;
+        if (newSecrets.createdSecrets) {
+          const latestKey = await getLatestFileKey({ workspaceId });
+
+          const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+
+          const tempDecryptedSecrets: SecretProps[] = [];
+          if (latestKey) {
+            // assymmetrically decrypt symmetric key with local private key
+            const key = decryptAssymmetric({
+              ciphertext: latestKey.latestKey.encryptedKey,
+              nonce: latestKey.latestKey.nonce,
+              publicKey: latestKey.latestKey.sender.publicKey,
+              privateKey: PRIVATE_KEY
+            });
+
+            // decrypt secret keys, values, and comments
+            newSecrets.createdSecrets.forEach((secret: EncryptedSecretProps) => {
+              const plainTextKey = decryptSymmetric({
+                ciphertext: secret.secretKeyCiphertext,
+                iv: secret.secretKeyIV,
+                tag: secret.secretKeyTag,
+                key
+              });
+
+              let plainTextValue;
+              if (secret.secretValueCiphertext !== undefined) {
+                plainTextValue = decryptSymmetric({
+                  ciphertext: secret.secretValueCiphertext,
+                  iv: secret.secretValueIV,
+                  tag: secret.secretValueTag,
+                  key
+                });
+              } else {
+                plainTextValue = undefined;
+              }
+
+              let plainTextComment;
+              if (secret.secretCommentCiphertext) {
+                plainTextComment = decryptSymmetric({
+                  ciphertext: secret.secretCommentCiphertext,
+                  iv: secret.secretCommentIV,
+                  tag: secret.secretCommentTag,
+                  key
+                });
+              } else {
+                plainTextComment = '';
+              }
+
+              tempDecryptedSecrets.push({
+                id: secret._id,
+                key: plainTextKey,
+                value: plainTextValue,
+                type: secret.type,
+                comment: plainTextComment,
+                tags: secret.tags
+              });
+            });
+          }
+
+          const secretKeys = [...new Set(tempDecryptedSecrets.map((secret) => secret.key))];
+
+          formattedNewDecryptedKeys = secretKeys.map((key, index) => ({
+            id: tempDecryptedSecrets.filter((secret) => secret.key === key && secret.type === 'shared')[0]
+              ?.id,
+            idOverride: tempDecryptedSecrets.filter(
+              (secret) => secret.key === key && secret.type === 'personal'
+            )[0]?.id,
+            pos: (newData?.filter(dp => !dp.id.includes('-'))?.length ?? 0) + index,
+            key,
+            value: tempDecryptedSecrets.filter(
+              (secret) => secret.key === key && secret.type === 'shared'
+            )[0]?.value,
+            valueOverride: tempDecryptedSecrets.filter(
+              (secret) => secret.key === key && secret.type === 'personal'
+            )[0]?.value,
+            comment: tempDecryptedSecrets.filter(
+              (secret) => secret.key === key && secret.type === 'shared'
+            )[0]?.comment,
+            tags: tempDecryptedSecrets.filter(
+              (secret) => secret.key === key && secret.type === 'shared'
+            )[0]?.tags
+          }));
+
+          setInitialData(structuredClone(newData?.filter(dp => !dp.id.includes('-')).concat(formattedNewDecryptedKeys.filter(dk => dk.id))));
+          setData(structuredClone(newData?.filter(dp => !dp.id.includes('-')).concat(formattedNewDecryptedKeys.filter(dk => dk.id))))
+        } else {
+          setInitialData(structuredClone(newData));
+        }
+
+        // If this user has never saved environment variables before, show them a prompt to read docs
+        if (!hasUserEverPushed) {
+          setCheckDocsPopUpVisible(true);
+          await registerUserAction({ action: 'first_time_secrets_pushed' });
+        }
+
+        // increasing the number of project commits
+        setNumSnapshots((numSnapshots ?? 0) + 1);
+        setSaveLoading(false);
+        createNotification({
+          text: `Successfully saved secrets.`,
+          type: 'success'
+        });
+      } catch (error) {
+        console.log("Something went wrong while saving secrets: ", error)
+        createNotification({
+          text: `Something went wrong while saving secrets.`,
+          type: 'error'
+        });
+      }
     return undefined;
   };
 
@@ -820,7 +1006,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="w-[calc(10%)] border-r border-mineshaft-600">
-                        <div className="flex items-center max-h-16">
+                        <div className="flex items-center max-h-16 overflow-hidden">
                           <div className='text-bunker-300 px-2 font-semibold h-10 flex items-center w-3/12'>Comment</div>
                         </div>
                       </div>

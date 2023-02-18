@@ -1,7 +1,8 @@
 import to from 'await-to-js';
 import { Types } from 'mongoose';
 import { Request, Response } from 'express';
-import { ISecret, Membership, Secret, Workspace } from '../../models';
+import { ISecret, Secret } from '../../models';
+import { IAction } from '../../ee/models';
 import {
     SECRET_PERSONAL,
     SECRET_SHARED,
@@ -20,6 +21,252 @@ import { ABILITY_READ, ABILITY_WRITE } from '../../variables/organization';
 import { userHasNoAbility, userHasWorkspaceAccess, userHasWriteOnlyAbility } from '../../ee/helpers/checkMembershipPermissions';
 import Tag from '../../models/tag';
 import _ from 'lodash';
+import {
+    BatchSecretRequest, 
+    BatchSecret
+} from '../../types/secret';
+
+/**
+ * Peform a batch of any specified CUD secret operations
+ * @param req 
+ * @param res 
+ */
+export const batchSecrets = async (req: Request, res: Response) => {
+    const channel = getChannelFromUserAgent(req.headers['user-agent']);
+    const {
+        workspaceId,
+        environment,
+        requests
+    }: {
+        workspaceId: string;
+        environment: string;
+        requests: BatchSecretRequest[];
+    }= req.body;
+    
+    const createSecrets: BatchSecret[] = [];
+    const updateSecrets: BatchSecret[] = [];
+    const deleteSecrets: Types.ObjectId[] = [];
+    const actions: IAction[] = [];
+    
+    requests.forEach((request) => {
+        switch (request.method) {
+            case 'POST':
+                createSecrets.push({
+                    ...request.secret,
+                    version: 1,
+                    user: request.secret.type === SECRET_PERSONAL ? req.user : undefined,
+                    environment,
+                    workspace: new Types.ObjectId(workspaceId)
+                });
+                break;
+            case 'PATCH':
+                updateSecrets.push({
+                    ...request.secret,
+                    _id: new Types.ObjectId(request.secret._id)
+                });
+                break;
+            case 'DELETE':
+                deleteSecrets.push(new Types.ObjectId(request.secret._id));
+                break;
+        }
+    });
+    
+    // handle create secrets
+    let createdSecrets: ISecret[] = [];
+    if (createSecrets.length > 0) {
+        createdSecrets = await Secret.insertMany(createSecrets);
+        // (EE) add secret versions for new secrets
+        await EESecretService.addSecretVersions({
+            secretVersions: createdSecrets.map((n: any) => {
+                return ({
+                    ...n._doc,
+                    _id: new Types.ObjectId(),
+                    secret: n._id,
+                    isDeleted: false
+                });
+            })
+        });
+
+        const addAction = await EELogService.createAction({
+            name: ACTION_ADD_SECRETS,
+            userId: req.user._id,
+            workspaceId: new Types.ObjectId(workspaceId),
+            secretIds: createdSecrets.map((n) => n._id)
+        }) as IAction;
+        actions.push(addAction);
+
+        if (postHogClient) {
+            postHogClient.capture({
+                event: 'secrets added',
+                distinctId: req.user.email,
+                properties: {
+                    numberOfSecrets: createdSecrets.length,
+                    environment,
+                    workspaceId,
+                    channel,
+                    userAgent: req.headers?.['user-agent']
+                }
+            });
+        }
+    }
+    
+    // handle update secrets
+    let updatedSecrets: ISecret[] = [];
+    if (updateSecrets.length > 0 && req.secrets) {
+        // construct object containing all secrets
+        let listedSecretsObj: {
+            [key: string]: { 
+                version: number;
+                type: string;
+            }
+        } = {};
+        
+        listedSecretsObj = req.secrets.reduce((obj: any, secret: ISecret) => ({
+            ...obj,
+            [secret._id.toString()]: secret
+        }), {});
+
+        const updateOperations = updateSecrets.map((u) => ({
+            updateOne: {
+                filter: { _id: new Types.ObjectId(u._id) },
+                update: {
+                    $inc: {
+                        version: 1
+                    },
+                    ...u,
+                    _id: new Types.ObjectId(u._id)
+                }
+            }
+        }));
+
+        await Secret.bulkWrite(updateOperations);
+        
+        const secretVersions = updateSecrets.map((u) => ({
+            secret: new Types.ObjectId(u._id),
+            version: listedSecretsObj[u._id.toString()].version,
+            workspace: new Types.ObjectId(workspaceId),
+            type: listedSecretsObj[u._id.toString()].type,
+            environment,
+            isDeleted: false,
+            secretKeyCiphertext: u.secretKeyCiphertext,
+            secretKeyIV: u.secretKeyIV,
+            secretKeyTag: u.secretKeyTag,
+            secretValueCiphertext: u.secretValueCiphertext,
+            secretValueIV: u.secretValueIV,
+            secretValueTag: u.secretValueTag,
+            secretCommentCiphertext: u.secretCommentCiphertext,
+            secretCommentIV: u.secretCommentIV,
+            secretCommentTag: u.secretCommentTag,
+            tags: u.tags
+        }));
+
+        await EESecretService.addSecretVersions({
+            secretVersions
+        });
+
+        updatedSecrets = await Secret.find({
+            _id: {
+                $in: updateSecrets.map((u) => new Types.ObjectId(u._id))
+            }
+        });
+
+        const updateAction = await EELogService.createAction({
+            name: ACTION_UPDATE_SECRETS,
+            userId: req.user._id,
+            workspaceId: new Types.ObjectId(workspaceId),
+            secretIds: updatedSecrets.map((u) => u._id)
+        }) as IAction;
+        actions.push(updateAction);
+
+        if (postHogClient) {
+            postHogClient.capture({
+                event: 'secrets modified',
+                distinctId: req.user.email,
+                properties: {
+                    numberOfSecrets: updateSecrets.length,
+                    environment,
+                    workspaceId,
+                    channel,
+                    userAgent: req.headers?.['user-agent']
+                }
+            });
+        }
+    }
+
+    // handle delete secrets
+    if (deleteSecrets.length > 0) {
+        await Secret.deleteMany({
+            _id: {
+                $in: deleteSecrets
+            }
+        });
+
+        await EESecretService.markDeletedSecretVersions({
+            secretIds: deleteSecrets
+        });
+
+        const deleteAction = await EELogService.createAction({
+            name: ACTION_DELETE_SECRETS,
+            userId: req.user._id,
+            workspaceId: new Types.ObjectId(workspaceId),
+            secretIds: deleteSecrets
+        }) as IAction;
+        actions.push(deleteAction);
+
+        if (postHogClient) {
+            postHogClient.capture({
+                event: 'secrets deleted',
+                distinctId: req.user.email,
+                properties: {
+                    numberOfSecrets: deleteSecrets.length,
+                    environment,
+                    workspaceId,
+                    channel: channel,
+                    userAgent: req.headers?.['user-agent']
+                }
+            });
+        }
+    }
+    
+    if (actions.length > 0) {
+        // (EE) create (audit) log
+        await EELogService.createLog({
+            userId: req.user._id.toString(),
+            workspaceId: new Types.ObjectId(workspaceId),
+            actions,
+            channel,
+            ipAddress: req.ip
+        });
+    }
+
+    // // trigger event - push secrets
+    await EventService.handleEvent({
+        event: eventPushSecrets({
+            workspaceId
+        })
+    });
+
+    // (EE) take a secret snapshot
+    await EESecretService.takeSecretSnapshot({
+        workspaceId
+    });
+    
+    const resObj: { [key: string]: ISecret[] | string[] } = {}
+
+    if (createSecrets.length > 0) {
+        resObj['createdSecrets'] = createdSecrets;
+    }
+
+    if (updateSecrets.length > 0) {
+        resObj['updatedSecrets'] = updatedSecrets;
+    }
+    
+    if (deleteSecrets.length > 0) {
+        resObj['deletedSecrets'] = deleteSecrets.map((d) => d.toString());
+    }
+    
+    return res.status(200).send(resObj);
+}
 
 /**
  * Create secret(s) for workspace with id [workspaceId] and environment [environment]
@@ -166,11 +413,9 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretKeyCiphertext,
             secretKeyIV,
             secretKeyTag,
-            secretKeyHash,
             secretValueCiphertext,
             secretValueIV,
             secretValueTag,
-            secretValueHash,
             secretCommentCiphertext,
             secretCommentIV,
             secretCommentTag,
@@ -187,11 +432,9 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretKeyCiphertext,
             secretKeyIV,
             secretKeyTag,
-            secretKeyHash,
             secretValueCiphertext,
             secretValueIV,
             secretValueTag,
-            secretValueHash,
             secretCommentCiphertext,
             secretCommentIV,
             secretCommentTag,

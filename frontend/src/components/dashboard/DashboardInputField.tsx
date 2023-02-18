@@ -9,15 +9,15 @@ import { PopoverObject } from '../v2/Popover/Popover';
 const REGEX = /([$]{.*?})/g;
 
 interface DashboardInputFieldProps {
-  position: number;
-  onChangeHandler: (value: string, position: number) => void;
+  id: string;
+  onChangeHandler: (value: string, id: string) => void;
   value: string | undefined;
   type: 'varName' | 'value' | 'comment';
   blurred?: boolean;
   isDuplicate?: boolean;
   isCapitalized?: boolean;
   overrideEnabled?: boolean;
-  modifyValueOverride?: (value: string | undefined, position: number) => void;
+  modifyValueOverride?: (value: string | undefined, id: string) => void;
   isSideBarOpen?: boolean;
 }
 
@@ -37,7 +37,7 @@ interface DashboardInputFieldProps {
  */
 
 const DashboardInputField = ({
-  position,
+  id,
   onChangeHandler,
   type,
   value,
@@ -72,7 +72,7 @@ const DashboardInputField = ({
           }`}
         >
           <input
-            onChange={(e) => onChangeHandler(isCapitalized ? e.target.value.toUpperCase() : e.target.value, position)}
+            onChange={(e) => onChangeHandler(isCapitalized ? e.target.value.toUpperCase() : e.target.value, id)}
             type={type}
             value={value}
             className={`z-10 peer font-mono ph-no-capture bg-transparent h-full caret-bunker-200 text-sm px-2 w-full min-w-16 outline-none ${
@@ -105,9 +105,9 @@ const DashboardInputField = ({
           <button type="button" onClick={() => {
             if (modifyValueOverride) {
               if (overrideEnabled === false) {
-                modifyValueOverride('', position);
+                modifyValueOverride('', id);
               } else {
-                modifyValueOverride(undefined, position);
+                modifyValueOverride(undefined, id);
               }
             }
           }}>
@@ -126,7 +126,7 @@ const DashboardInputField = ({
     const error = startsWithNumber || isDuplicate;
 
     return (
-      <PopoverObject text={value || ''} onChangeHandler={onChangeHandler} position={position}>
+      <PopoverObject text={value || ''} onChangeHandler={onChangeHandler} id={id}>
         <div title={value} className={`relative flex-col w-full h-10 overflow-hidden ${
           isSideBarOpen && 'bg-mineshaft-700 duration-200'
         }`}>
@@ -157,7 +157,7 @@ const DashboardInputField = ({
           )}
           <input
             value={value}
-            onChange={(e) => onChangeHandler(e.target.value, position)}
+            onChange={(e) => onChangeHandler(e.target.value, id)}
             onScroll={syncScroll}
             className={`${
               blurred
@@ -175,10 +175,10 @@ const DashboardInputField = ({
             } ${overrideEnabled ? 'text-primary-300' : 'text-gray-400'}
             absolute flex flex-row whitespace-pre font-mono z-0 ${blurred ? 'invisible' : 'visible'} peer-focus:visible mt-0.5 ph-no-capture overflow-x-scroll bg-transparent h-10 text-sm px-2 py-2 w-full min-w-16 outline-none duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
           >
-            {value?.split(REGEX).map((word, id) => {
+            {value?.split(REGEX).map((word) => {
               if (word.match(REGEX) !== null) {
                 return (
-                  <span className="ph-no-capture text-yellow" key={`${word}.${id + 1}`}>
+                  <span className="ph-no-capture text-yellow" key={id}>
                     {word.slice(0, 2)}
                     <span className="ph-no-capture text-yellow-200/80">
                       {word.slice(2, word.length - 1)}
@@ -231,7 +231,7 @@ function inputPropsAreEqual(prev: DashboardInputFieldProps, next: DashboardInput
   return (
     prev.value === next.value &&
     prev.type === next.type &&
-    prev.position === next.position &&
+    prev.id === next.id &&
     prev.blurred === next.blurred &&
     prev.isCapitalized === next.isCapitalized &&
     prev.overrideEnabled === next.overrideEnabled &&
