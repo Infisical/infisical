@@ -1,5 +1,6 @@
 ## Loop through each helm chart directoy and build each into helm package
 for d in */ ; do
+    helm dependency update
     helm package $d
 done
 
