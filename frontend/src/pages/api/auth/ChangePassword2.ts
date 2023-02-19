@@ -1,12 +1,15 @@
 import SecurityClient from '@app/components/utilities/SecurityClient';
 
 interface Props {
+  clientProof: string;
+  protectedKey: string;
+  protectedKeyIV: string;
+  protectedKeyTag: string;
   encryptedPrivateKey: string;
-  iv: string;
-  tag: string;
+  encryptedPrivateKeyIV: string;
+  encryptedPrivateKeyTag: string;
   salt: string;
   verifier: string;
-  clientProof: string;
 }
 
 /**
@@ -14,7 +17,17 @@ interface Props {
  * @param {*} clientPublicKey
  * @returns
  */
-const changePassword2 = ({ encryptedPrivateKey, iv, tag, salt, verifier, clientProof }: Props) =>
+const changePassword2 = ({
+  clientProof,
+  protectedKey,
+  protectedKeyIV,
+  protectedKeyTag,
+  encryptedPrivateKey, 
+  encryptedPrivateKeyIV, 
+  encryptedPrivateKeyTag, 
+  salt, 
+  verifier
+}: Props) =>
   SecurityClient.fetchCall('/api/v1/password/change-password', {
     method: 'POST',
     headers: {
@@ -22,9 +35,12 @@ const changePassword2 = ({ encryptedPrivateKey, iv, tag, salt, verifier, clientP
     },
     body: JSON.stringify({
       clientProof,
+      protectedKey,
+      protectedKeyIV,
+      protectedKeyTag,
       encryptedPrivateKey,
-      iv,
-      tag,
+      encryptedPrivateKeyIV,
+      encryptedPrivateKeyTag,
       salt,
       verifier
     })

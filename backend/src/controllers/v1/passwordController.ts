@@ -1,14 +1,14 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
-import crypto from 'crypto';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const jsrp = require('jsrp');
 import * as bigintConversion from 'bigint-conversion';
-import { User, Token, BackupPrivateKey, LoginSRPDetail } from '../../models';
-import { checkEmailVerification } from '../../helpers/signup';
+import { User, BackupPrivateKey, LoginSRPDetail } from '../../models';
 import { createToken } from '../../helpers/auth';
 import { sendMail } from '../../helpers/nodemailer';
-import { EMAIL_TOKEN_LIFETIME, JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET, SITE_URL } from '../../config';
+import { TokenService } from '../../services';
+import { JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET, SITE_URL } from '../../config';
+import { TOKEN_EMAIL_PASSWORD_RESET } from '../../variables';
 import { BadRequestError } from '../../utils/errors';
 
 /**
@@ -31,20 +31,12 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
 				error: 'Failed to send email verification for password reset'
 			});
 		}
-
-		const token = crypto.randomBytes(16).toString('hex');
-
-		await Token.findOneAndUpdate(
-			{ email },
-			{
-				email,
-				token,
-				createdAt: new Date(),
-				ttl: Math.floor(+new Date() / 1000) + EMAIL_TOKEN_LIFETIME // time in seconds, i.e unix
-			},
-			{ upsert: true, new: true }
-		);
-
+		
+		const token = await TokenService.createToken({
+			type: TOKEN_EMAIL_PASSWORD_RESET,
+			email
+		});
+		
 		await sendMail({
 			template: 'passwordReset.handlebars',
 			subjectLine: 'Infisical password reset',
@@ -55,7 +47,6 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
 				callback_url: SITE_URL + '/password-reset'
 			}
 		});
-
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
@@ -88,10 +79,11 @@ export const emailPasswordResetVerify = async (req: Request, res: Response) => {
 				error: 'Failed email verification for password reset'
 			});
 		}
-
-		await checkEmailVerification({
+		
+		await TokenService.validateToken({
+			type: TOKEN_EMAIL_PASSWORD_RESET,
 			email,
-			code
+			token: code
 		});
 
 		// generate temporary password-reset token
@@ -174,8 +166,18 @@ export const srp1 = async (req: Request, res: Response) => {
  */
 export const changePassword = async (req: Request, res: Response) => {
 	try {
-		const { clientProof, encryptedPrivateKey, iv, tag, salt, verifier } =
-			req.body;
+		const { 
+			clientProof, 
+			protectedKey,
+			protectedKeyIV,
+			protectedKeyTag,
+			encryptedPrivateKey,
+			encryptedPrivateKeyIV,
+			encryptedPrivateKeyTag,
+			salt,
+			verifier
+		} = req.body;
+
 		const user = await User.findOne({
 			email: req.user.email
 		}).select('+salt +verifier');
@@ -205,9 +207,13 @@ export const changePassword = async (req: Request, res: Response) => {
 					await User.findByIdAndUpdate(
 						req.user._id.toString(),
 						{
+							encryptionVersion: 2,
+							protectedKey,
+							protectedKeyIV,
+							protectedKeyTag,
 							encryptedPrivateKey,
-							iv,
-							tag,
+							iv: encryptedPrivateKeyIV,
+							tag: encryptedPrivateKeyTag,
 							salt,
 							verifier
 						},
@@ -341,9 +347,12 @@ export const getBackupPrivateKey = async (req: Request, res: Response) => {
 export const resetPassword = async (req: Request, res: Response) => {
 	try {
 		const {
+			protectedKey,
+			protectedKeyIV,
+			protectedKeyTag,
 			encryptedPrivateKey,
-			iv,
-			tag,
+			encryptedPrivateKeyIV,
+			encryptedPrivateKeyTag,
 			salt,
 			verifier,
 		} = req.body;
@@ -351,9 +360,13 @@ export const resetPassword = async (req: Request, res: Response) => {
 		await User.findByIdAndUpdate(
 			req.user._id.toString(),
 			{
+				encryptionVersion: 2,
+				protectedKey,
+				protectedKeyIV,
+				protectedKeyTag,	
 				encryptedPrivateKey,
-				iv,
-				tag,
+				iv: encryptedPrivateKeyIV,
+				tag: encryptedPrivateKeyTag,
 				salt,
 				verifier
 			},

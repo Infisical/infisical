@@ -1,9 +1,14 @@
 interface Login2Response {
-  encryptedPrivateKey: string;
-  iv: string;
-  publicKey: string;
-  tag: string;
+  mfaEnabled: boolean;
   token: string;
+  encryptionVersion?: number;
+  protectedKey?: string;
+  protectedKeyIV?: string;
+  protectedKeyTag?: string;
+  publicKey?: string;
+  encryptedPrivateKey?: string;
+  iv?: string;
+  tag?: string;
 }
 
 /**
@@ -13,7 +18,7 @@ interface Login2Response {
  * @returns
  */
 const login2 = async (email: string, clientProof: string) => {
-  const response = await fetch('/api/v1/auth/login2', {
+  const response = await fetch('/api/v2/auth/login2', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

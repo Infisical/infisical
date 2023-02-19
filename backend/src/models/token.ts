@@ -5,7 +5,7 @@ export interface IToken {
   email: string;
   token: string;
   createdAt: Date;
-  ttl: Number;
+  ttl: number;
 }
 
 const tokenSchema = new Schema<IToken>({

@@ -13,7 +13,6 @@ import (
 	"regexp"
 
 	"github.com/Infisical/infisical-merge/packages/api"
-	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/srp"
@@ -23,7 +22,16 @@ import (
 	"github.com/manifoldco/promptui"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/argon2"
 )
+
+type params struct {
+	memory      uint32
+	iterations  uint32
+	parallelism uint8
+	saltLength  uint32
+	keyLength   uint32
+}
 
 // loginCmd represents the login command
 var loginCmd = &cobra.Command{
@@ -55,36 +63,146 @@ var loginCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse email and password for authentication")
 		}
 
-		userCredentials, err := getFreshUserCredentials(email, password)
+		loginOneResponse, loginTwoResponse, err := getFreshUserCredentials(email, password)
 		if err != nil {
 			log.Infoln("Unable to authenticate with the provided credentials, please try again")
 			log.Debugln(err)
 			return
 		}
 
-		encryptedPrivateKey, _ := base64.StdEncoding.DecodeString(userCredentials.EncryptedPrivateKey)
-		tag, err := base64.StdEncoding.DecodeString(userCredentials.Tag)
-		if err != nil {
-			util.HandleError(err)
+		if loginTwoResponse.MfaEnabled {
+			i := 1
+			for i < 6 {
+				mfaVerifyCode := askForMFACode()
+
+				httpClient := resty.New()
+				httpClient.SetAuthToken(loginTwoResponse.Token)
+				verifyMFAresponse, mfaErrorResponse, requestError := api.CallVerifyMfaToken(httpClient, api.VerifyMfaTokenRequest{
+					Email:    email,
+					MFAToken: mfaVerifyCode,
+				})
+
+				if requestError != nil {
+					util.HandleError(err)
+					break
+				} else if mfaErrorResponse != nil {
+					if mfaErrorResponse.Context.Code == "mfa_invalid" {
+						msg := fmt.Sprintf("Incorrect, MFA code. You have %v attempts left", 5-i)
+						fmt.Println(msg)
+						if i == 5 {
+							util.PrintErrorMessageAndExit("No tries left, please try again in a bit")
+							break
+						}
+					}
+
+					if mfaErrorResponse.Context.Code == "mfa_expired" {
+						util.PrintErrorMessageAndExit("Your MFA code has expired, please try logging in again")
+						break
+					}
+					i++
+				} else {
+					loginTwoResponse.EncryptedPrivateKey = verifyMFAresponse.EncryptedPrivateKey
+					loginTwoResponse.EncryptionVersion = verifyMFAresponse.EncryptionVersion
+					loginTwoResponse.Iv = verifyMFAresponse.Iv
+					loginTwoResponse.ProtectedKey = verifyMFAresponse.ProtectedKey
+					loginTwoResponse.ProtectedKeyIV = verifyMFAresponse.ProtectedKeyIV
+					loginTwoResponse.ProtectedKeyTag = verifyMFAresponse.ProtectedKeyTag
+					loginTwoResponse.PublicKey = verifyMFAresponse.PublicKey
+					loginTwoResponse.Tag = verifyMFAresponse.Tag
+					loginTwoResponse.Token = verifyMFAresponse.Token
+					loginTwoResponse.EncryptionVersion = verifyMFAresponse.EncryptionVersion
+
+					break
+				}
+			}
 		}
 
-		IV, err := base64.StdEncoding.DecodeString(userCredentials.IV)
-		if err != nil {
-			util.HandleError(err)
-		}
+		var decryptedPrivateKey []byte
 
-		paddedPassword := fmt.Sprintf("%032s", password)
-		key := []byte(paddedPassword)
+		if loginTwoResponse.EncryptionVersion == 1 {
+			encryptedPrivateKey, _ := base64.StdEncoding.DecodeString(loginTwoResponse.EncryptedPrivateKey)
+			tag, err := base64.StdEncoding.DecodeString(loginTwoResponse.Tag)
+			if err != nil {
+				util.HandleError(err)
+			}
 
-		decryptedPrivateKey, err := crypto.DecryptSymmetric(key, encryptedPrivateKey, tag, IV)
-		if err != nil || len(decryptedPrivateKey) == 0 {
-			util.HandleError(err)
+			IV, err := base64.StdEncoding.DecodeString(loginTwoResponse.Iv)
+			if err != nil {
+				util.HandleError(err)
+			}
+
+			paddedPassword := fmt.Sprintf("%032s", password)
+			key := []byte(paddedPassword)
+
+			decryptedPrivateKey, err := crypto.DecryptSymmetric(key, encryptedPrivateKey, tag, IV)
+			if err != nil || len(decryptedPrivateKey) == 0 {
+				util.HandleError(err)
+			}
+		} else if loginTwoResponse.EncryptionVersion == 2 {
+			protectedKey, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKey)
+			if err != nil {
+				util.HandleError(err)
+			}
+
+			protectedKeyTag, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKeyTag)
+			if err != nil {
+				util.HandleError(err)
+			}
+
+			protectedKeyIV, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKeyIV)
+			if err != nil {
+				util.HandleError(err)
+			}
+
+			nonProtectedTag, err := base64.StdEncoding.DecodeString(loginTwoResponse.Tag)
+			if err != nil {
+				util.HandleError(err)
+			}
+
+			nonProtectedIv, err := base64.StdEncoding.DecodeString(loginTwoResponse.Iv)
+			if err != nil {
+				util.HandleError(err)
+			}
+
+			parameters := &params{
+				memory:      64 * 1024,
+				iterations:  3,
+				parallelism: 1,
+				keyLength:   32,
+			}
+
+			derivedKey, err := generateFromPassword(password, []byte(loginOneResponse.Salt), parameters)
+			if err != nil {
+				util.HandleError(fmt.Errorf("unable to generate argon hash from password [err=%s]", err))
+			}
+
+			decryptedProtectedKey, err := crypto.DecryptSymmetric(derivedKey, protectedKey, protectedKeyTag, protectedKeyIV)
+			if err != nil {
+				util.HandleError(fmt.Errorf("unable to get decrypted protected key [err=%s]", err))
+			}
+
+			encryptedPrivateKey, err := base64.StdEncoding.DecodeString(loginTwoResponse.EncryptedPrivateKey)
+			if err != nil {
+				util.HandleError(err)
+			}
+
+			decryptedProtectedKeyInHex, err := hex.DecodeString(string(decryptedProtectedKey))
+			if err != nil {
+				util.HandleError(err)
+			}
+
+			decryptedPrivateKey, err = crypto.DecryptSymmetric(decryptedProtectedKeyInHex, encryptedPrivateKey, nonProtectedTag, nonProtectedIv)
+			if err != nil {
+				util.HandleError(err)
+			}
+		} else {
+			util.PrintErrorMessageAndExit("Insufficient details to decrypt private key")
 		}
 
 		userCredentialsToBeStored := &models.UserCredentials{
 			Email:      email,
 			PrivateKey: string(decryptedPrivateKey),
-			JTWToken:   userCredentials.JTWToken,
+			JTWToken:   loginTwoResponse.Token,
 		}
 
 		err = util.StoreUserCredsInKeyRing(userCredentialsToBeStored)
@@ -155,7 +273,7 @@ func askForLoginCredentials() (email string, password string, err error) {
 	return userEmail, userPassword, nil
 }
 
-func getFreshUserCredentials(email string, password string) (*api.LoginTwoResponse, error) {
+func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2Response, *api.GetLoginTwoV2Response, error) {
 	log.Debugln("getFreshUserCredentials:", "email", email, "password", password)
 	httpClient := resty.New()
 	httpClient.SetRetryCount(5)
@@ -166,36 +284,24 @@ func getFreshUserCredentials(email string, password string) (*api.LoginTwoRespon
 	srpA := hex.EncodeToString(srpClient.ComputeA())
 
 	// ** Login one
-	loginOneRequest := api.LoginOneRequest{
+	loginOneResponseResult, err := api.CallLogin1V2(httpClient, api.GetLoginOneV2Request{
 		Email:           email,
 		ClientPublicKey: srpA,
-	}
-
-	var loginOneResponseResult api.LoginOneResponse
-
-	loginOneResponse, err := httpClient.
-		R().
-		SetBody(loginOneRequest).
-		SetResult(&loginOneResponseResult).
-		Post(fmt.Sprintf("%v/v1/auth/login1", config.INFISICAL_URL))
+	})
 
 	if err != nil {
-		return nil, err
-	}
-
-	if loginOneResponse.StatusCode() > 299 {
-		return nil, fmt.Errorf("ops, unsuccessful response code. [response=%v]", loginOneResponse)
+		util.HandleError(err)
 	}
 
 	// **** Login 2
 	serverPublicKey_bytearray, err := hex.DecodeString(loginOneResponseResult.ServerPublicKey)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	userSalt, err := hex.DecodeString(loginOneResponseResult.ServerSalt)
+	userSalt, err := hex.DecodeString(loginOneResponseResult.Salt)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	srpClient.SetSalt(userSalt, []byte(email), []byte(password))
@@ -203,27 +309,16 @@ func getFreshUserCredentials(email string, password string) (*api.LoginTwoRespon
 
 	srpM1 := srpClient.ComputeM1()
 
-	LoginTwoRequest := api.LoginTwoRequest{
+	loginTwoResponseResult, err := api.CallLogin2V2(httpClient, api.GetLoginTwoV2Request{
 		Email:       email,
 		ClientProof: hex.EncodeToString(srpM1),
-	}
-
-	var loginTwoResponseResult api.LoginTwoResponse
-	loginTwoResponse, err := httpClient.
-		R().
-		SetBody(LoginTwoRequest).
-		SetResult(&loginTwoResponseResult).
-		Post(fmt.Sprintf("%v/v1/auth/login2", config.INFISICAL_URL))
+	})
 
 	if err != nil {
-		return nil, err
+		util.HandleError(err)
 	}
 
-	if loginTwoResponse.StatusCode() > 299 {
-		return nil, fmt.Errorf("ops, unsuccessful response code. [response=%v]", loginTwoResponse)
-	}
-
-	return &loginTwoResponseResult, nil
+	return &loginOneResponseResult, &loginTwoResponseResult, nil
 }
 
 func shouldOverrideLoginPrompt(currentLoggedInUserEmail string) (bool, error) {
@@ -236,4 +331,22 @@ func shouldOverrideLoginPrompt(currentLoggedInUserEmail string) (bool, error) {
 		return false, err
 	}
 	return result == "Yes", err
+}
+
+func generateFromPassword(password string, salt []byte, p *params) (hash []byte, err error) {
+	hash = argon2.IDKey([]byte(password), salt, p.iterations, p.memory, p.parallelism, p.keyLength)
+	return hash, nil
+}
+
+func askForMFACode() string {
+	mfaCodePromptUI := promptui.Prompt{
+		Label: "MFA verification code",
+	}
+
+	mfaVerifyCode, err := mfaCodePromptUI.Run()
+	if err != nil {
+		util.HandleError(err)
+	}
+
+	return mfaVerifyCode
 }

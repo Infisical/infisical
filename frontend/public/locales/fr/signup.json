@@ -11,7 +11,7 @@
   "step1-submit": "C'est parti",
   "step2-message": "Nous avons envoyé un email de vérification à",
   "step2-code-error": "Oops. Votre code est faux. Veuillez réessayer.",
-  "step2-resend-alert": "Vous ne voyez pas l'email?",
+  "step2-resend-alert": "Vous ne voyez pas le code?",
   "step2-resend-submit": "Renvoyer",
   "step2-resend-progress": "Envoie en cours...",
   "step2-spam-alert": "Assurez-vous de vérifier vos spams.",
