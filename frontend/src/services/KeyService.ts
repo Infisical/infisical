@@ -1,9 +1,17 @@
-import { decryptPrivateKeyHelper } from '@app/helpers/key';
+import {
+    decryptAssymmetric,
+    encryptAssymmetric} from '@app/components/utilities/cryptography/crypto';
+import { 
+    decryptPrivateKeyHelper
+} from '@app/helpers/key';
 
 /**
  * Class to handle key actions
+ * TODO: in future, all private key-related encryption operations 
+ * must pass through this class
  */
 class KeyService {
+    private static privateKey: string = '';
 
     /** Return the user's decrypted private key
      * @param {Object} obj
@@ -49,6 +57,49 @@ class KeyService {
             protectedKey,
             protectedKeyIV,
             protectedKeyTag
+        });
+    }
+    
+    /**
+     * Return [plaintext] encrypted by the user's private key
+     * @param {Object} obj
+     * @param {String} obj.plaintext - plaintext to encrypt
+     */
+    static encryptWithPrivateKey({
+        plaintext,
+        publicKey,
+    }: {
+        plaintext: string;
+        publicKey: string;
+    }) {
+        return encryptAssymmetric({
+            plaintext,
+            publicKey,
+            privateKey: KeyService.privateKey
+        });
+    }
+    
+    /**
+     * Return [ciphertext] decrypted by the user's private key
+     * @param {Object} obj
+     * @param {String} obj.ciphertext - ciphertext to decrypt
+     * @param {String} obj.ciphertext - iv of ciphertext
+     * @param {String} obj.ciphertext - tag of ciphertext
+     */
+    static decryptWithPrivateKey({
+        ciphertext,
+        nonce,
+        publicKey
+    }: {
+        ciphertext: string;
+        nonce: string;
+        publicKey: string;
+    }) {
+        return decryptAssymmetric({
+            ciphertext,
+            nonce,
+            publicKey,
+            privateKey: KeyService.privateKey
         });
     }
 }
