@@ -332,27 +332,27 @@ export default function Dashboard() {
   };
 
   const modifyValue = (value: string, id: string) => {
-    setData((oldData) => oldData?.map((e) => (e.id === id ? { ...e, value } : e)));
+    setData((oldData) => oldData?.map((e) => ((e.id ? e.id : e.idOverride) === id ? { ...e, value } : e)));
     setHasUnsavedChanges(true);
   };
 
   const modifyValueOverride = (valueOverride: string | undefined, id: string) => {
-    setData((oldData) => oldData?.map((e) => (e.id === id ? { ...e, valueOverride } : e)));
+    setData((oldData) => oldData?.map((e) => ((e.id ? e.id : e.idOverride) === id ? { ...e, valueOverride } : e)));
     setHasUnsavedChanges(true);
   };
 
   const modifyKey = (key: string, id: string) => {
-    setData((oldData) => oldData?.map((e) => (e.id === id ? { ...e, key } : e)));
+    setData((oldData) => oldData?.map((e) => ((e.id ? e.id : e.idOverride) === id ? { ...e, key } : e)));
     setHasUnsavedChanges(true);
   };
 
   const modifyComment = (comment: string, id: string) => {
-    setData((oldData) => oldData?.map((e) => (e.id === id ? { ...e, comment } : e)));
+    setData((oldData) => oldData?.map((e) => ((e.id ? e.id : e.idOverride) === id ? { ...e, comment } : e)));
     setHasUnsavedChanges(true);
   };
 
   const modifyTags = (tags: Tag[], id: string) => {
-    setData((oldData) => oldData?.map((e) => (e.id === id ? { ...e, tags } : e)));
+    setData((oldData) => oldData?.map((e) => ((e.id ? e.id : e.idOverride) === id ? { ...e, tags } : e)));
     setHasUnsavedChanges(true);
   };
 
@@ -444,7 +444,8 @@ export default function Dashboard() {
           initialData!
             .filter(
               (initDataPoint) =>
-                newData!.map((dataPoint) => dataPoint.id).includes(initDataPoint.id) &&
+                newData!.filter((dataPoint) => dataPoint.id)
+                .map((dataPoint) => dataPoint.id).includes(initDataPoint.id) &&
                 (newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].value !==
                   initDataPoint.value ||
                 newData!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].key !==
@@ -477,7 +478,7 @@ export default function Dashboard() {
         const overridesToBeAdded = newOverrides!
           .filter(
             (newDataPoint) =>
-              !initOverrides.map((initDataPoint) => initDataPoint.id).includes(newDataPoint.id)
+              !initOverrides.map((initDataPoint) => initDataPoint.idOverride).includes(newDataPoint.idOverride)
           )
           .map((override) => ({
             pos: override.pos,
@@ -496,18 +497,21 @@ export default function Dashboard() {
             initOverrides
               .filter(
                 (initDataPoint) =>
-                  newOverrides!.map((dataPoint) => dataPoint.id).includes(initDataPoint.id) &&
-                  (newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
+                  newOverrides!.map((dataPoint) => dataPoint.idOverride)
+                  .includes(initDataPoint.idOverride) &&
+                  (newOverrides!.filter((dataPoint) => dataPoint.idOverride === initDataPoint.idOverride)[0]
                     .valueOverride !== initDataPoint.valueOverride ||
-                    newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0].key !==
-                      initDataPoint.key ||
-                    newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]
-                      .comment !== initDataPoint.comment ||
-                    JSON.stringify(newOverrides!.filter((dataPoint) => dataPoint.id === initDataPoint.id)[0]?.tags) !==
-                      JSON.stringify(initDataPoint?.tags))
+                   newOverrides!.filter((dataPoint) => dataPoint.idOverride === initDataPoint.idOverride)[0].key !==
+                    initDataPoint.key ||
+                   (newOverrides!.filter((dataPoint) => dataPoint.idOverride === initDataPoint.idOverride)[0]
+                    .comment || '') !== (initDataPoint.comment || '') 
+                    ||
+                   (JSON.stringify(newOverrides!.filter((dataPoint) => dataPoint.idOverride === initDataPoint.idOverride)[0]?.tags) || '') !==
+                    (JSON.stringify(initDataPoint?.tags) || '')
+                    )
               )
-              .map((secret) => secret.id)
-              .includes(newDataPoint.id)
+              .map((secret) => secret.idOverride)
+              .includes(newDataPoint.idOverride)
           )
           .map((override) => ({
             pos: override.pos,
@@ -665,7 +669,7 @@ export default function Dashboard() {
             idOverride: tempDecryptedSecrets.filter(
               (secret) => secret.key === key && secret.type === 'personal'
             )[0]?.id,
-            pos: (newData?.filter(dp => !dp.id.includes('-'))?.length ?? 0) + index,
+            pos: (newData?.filter(dp => !dp.id?.includes('-'))?.length ?? 0) + index,
             key,
             value: tempDecryptedSecrets.filter(
               (secret) => secret.key === key && secret.type === 'shared'
@@ -681,8 +685,8 @@ export default function Dashboard() {
             )[0]?.tags
           }));
 
-          setInitialData(structuredClone(newData?.filter(dp => !dp.id.includes('-')).concat(formattedNewDecryptedKeys.filter(dk => dk.id))));
-          setData(structuredClone(newData?.filter(dp => !dp.id.includes('-')).concat(formattedNewDecryptedKeys.filter(dk => dk.id))))
+          setInitialData(structuredClone(newData?.filter(dp => !dp.id?.includes('-')).concat(formattedNewDecryptedKeys.filter(dk => dk.id))));
+          setData(structuredClone(newData?.filter(dp => !dp.id?.includes('-')).concat(formattedNewDecryptedKeys.filter(dk => dk.id))))
         } else {
           setInitialData(structuredClone(newData));
         }
@@ -882,17 +886,24 @@ export default function Dashboard() {
                           comment: '',
                           tags: sv.tags
                         }));
-                      setData(rolledBackSecrets);
 
                       // Perform the rollback globally
-                      performSecretRollback({ workspaceId, version: snapshotData.version });
-
-                      setSnapshotData(undefined);
-                      createNotification({
-                        text: `Rollback has been performed successfully.`,
-                        type: 'success'
-                      });
-                      setHasUnsavedChanges(false);
+                      const result = await performSecretRollback({ workspaceId, version: snapshotData.version });
+                      if (result === undefined) {
+                        createNotification({
+                          text: `Something went wrong during the rollback.`,
+                          type: 'error'
+                        });
+                      } else {
+                        setData(rolledBackSecrets);
+                        createNotification({
+                          text: `Successfully rolled back secrets.`,
+                          type: 'success'
+                        });
+                        setSnapshotData(undefined);
+                        setHasUnsavedChanges(false);
+                        togglePITSidebar(false);
+                      }
                     }}
                     color="primary"
                     size="md"
@@ -975,7 +986,7 @@ export default function Dashboard() {
                   alt="infisical loading indicator"
                 />
               </div>
-            ) : data?.length !== 0 ? (
+            ) : (data?.length !== 0 || snapshotData?.secretVersions) ? (
               <div className="flex flex-col w-full mt-1">
                 <div
                   onScroll={onSecretsAreaScroll}
@@ -1038,7 +1049,7 @@ export default function Dashboard() {
                           || row.tags?.map(tag => tag.name).join(" ")?.toUpperCase().includes(searchKeys.toUpperCase())
                           || row.comment?.toUpperCase().includes(searchKeys.toUpperCase()))
                         .filter((row) => !sharedToHide.includes(row.id))
-                        .filter((row) => row.value !== undefined)
+                        // .filter((row) => row.value !== undefined)
                         .map((keyPair) => (
                           <KeyPair
                             isCapitalized={autoCapitalization}
@@ -1066,22 +1077,6 @@ export default function Dashboard() {
                         ?.sort((a, b) => a.key.localeCompare(b.key))
                         .filter((row) => row.environment === selectedSnapshotEnv?.slug)
                         .filter((row) => row.key.toUpperCase().includes(searchKeys.toUpperCase()))
-                        .filter(
-                          (row) =>
-                            !snapshotData.secretVersions
-                              ?.filter((secretVersion) =>
-                                snapshotData.secretVersions
-                                  ?.map((item) => item.key)
-                                  .filter(
-                                    (item, index) =>
-                                      index !==
-                                      snapshotData.secretVersions?.map((i) => i.key).indexOf(item)
-                                  )
-                                  .includes(secretVersion.key)
-                              )
-                              ?.map((item) => item.id)
-                              .includes(row.id)
-                        )
                         .map((keyPair) => (
                           <KeyPair
                             isCapitalized={autoCapitalization}

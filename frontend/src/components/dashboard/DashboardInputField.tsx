@@ -99,8 +99,8 @@ const DashboardInputField = ({
             />
           </div>
         )}
-        {!error && <div className={`absolute right-0 top-0 text-red z-50 ${
-          overrideEnabled ? 'visible group-hover:bg-mineshaft-700' : 'invisible group-hover:visible bg-mineshaft-700'
+        {!error && <div className={`absolute right-0 top-0 text-red z-50 bg-mineshaft-800 group-hover:bg-mineshaft-700 ${
+          overrideEnabled ? 'visible' : 'invisible group-hover:visible'
         } cursor-pointer duration-0 h-10 flex items-center px-2`}>
           <button type="button" onClick={() => {
             if (modifyValueOverride) {

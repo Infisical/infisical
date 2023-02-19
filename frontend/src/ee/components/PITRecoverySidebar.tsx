@@ -102,7 +102,9 @@ const PITRecoverySidebar = ({ toggleSidebar, setSnapshotData, chosenSnapshot }: 
       });
     }
 
-    const decryptedSecretVersions = secretSnapshotData.secretVersions.map(
+    const decryptedSecretVersions = secretSnapshotData.secretVersions.filter(
+      (sv: EncrypetedSecretVersionListProps) => (sv.type !== undefined && sv.environment !== undefined)
+    ).map(
       (encryptedSecretVersion: EncrypetedSecretVersionListProps, pos: number) => ({
         id: encryptedSecretVersion._id,
         pos,
@@ -125,10 +127,13 @@ const PITRecoverySidebar = ({ toggleSidebar, setSnapshotData, chosenSnapshot }: 
     );
 
     const secretKeys = [
-      ...new Set(decryptedSecretVersions.map((secret: SecretDataProps) => secret.key))
+      ...new Set(decryptedSecretVersions.filter((dsv: any) => dsv.type !== undefined || dsv.environemnt !== undefined)
+      .map((secret: SecretDataProps) => secret.key))
     ];
 
-    const result = secretKeys.map((key, index) => ({
+    const result = secretKeys.map((key, index) => (decryptedSecretVersions.filter(
+        (secret: SecretDataProps) => secret.key === key && secret.type === 'shared'
+      )[0]?.id ? {
       id: decryptedSecretVersions.filter(
         (secret: SecretDataProps) => secret.key === key && secret.type === 'shared'
       )[0].id,
@@ -139,6 +144,24 @@ const PITRecoverySidebar = ({ toggleSidebar, setSnapshotData, chosenSnapshot }: 
       )[0].environment,
       tags: decryptedSecretVersions.filter(
         (secret: SecretDataProps) => secret.key === key && secret.type === 'shared'
+      )[0].tags,
+      value: decryptedSecretVersions.filter(
+        (secret: SecretDataProps) => secret.key === key && secret.type === 'shared'
+      )[0]?.value,
+      valueOverride: decryptedSecretVersions.filter(
+        (secret: SecretDataProps) => secret.key === key && secret.type === 'personal'
+      )[0]?.value
+    } : {
+      id: decryptedSecretVersions.filter(
+        (secret: SecretDataProps) => secret.key === key && secret.type === 'personal'
+      )[0].id,
+      pos: index,
+      key,
+      environment: decryptedSecretVersions.filter(
+        (secret: SecretDataProps) => secret.key === key && secret.type === 'personal'
+      )[0].environment,
+      tags: decryptedSecretVersions.filter(
+        (secret: SecretDataProps) => secret.key === key && secret.type === 'personal'
       )[0].tags,
       value: decryptedSecretVersions.filter(
         (secret: SecretDataProps) => secret.key === key && secret.type === 'shared'
@@ -161,7 +184,7 @@ const PITRecoverySidebar = ({ toggleSidebar, setSnapshotData, chosenSnapshot }: 
     <div
       className={`absolute border-l border-mineshaft-500 w-full min-w-sm max-w-sm ${
         isLoading ? 'bg-bunker-800' : 'bg-bunker'
-      } fixed h-full right-0 z-[70] shadow-xl flex flex-col justify-between sticky top-0`}
+      } fixed h-full right-0 z-[40] shadow-xl flex flex-col justify-between sticky top-0`}
     >
       {isLoading ? (
         <div className="flex items-center justify-center h-full mb-8">

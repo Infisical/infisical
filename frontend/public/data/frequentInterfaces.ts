@@ -13,6 +13,7 @@ export interface SecretDataProps {
   value: string | undefined;
   valueOverride: string | undefined;
   id: string;
+  idOverride?: string;
   comment: string;
   tags: Tag[];
 }
