@@ -2,10 +2,10 @@
 for d in */ ; do
     cd "$d"
     helm dependency update
-    helm package $d 
+    helm package .
     for i in *.tgz; do
         [ -f "$i" ] || break
-        cloudsmith push helm --republish infisical/helm-charts $i
+        cloudsmith push helm --republish infisical/helm-charts "$i"
     done
     cd ..
 done
