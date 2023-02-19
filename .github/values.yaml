@@ -7,7 +7,7 @@ frontend:
   image:
     repository: infisical/frontend
     tag: "latest"
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   kubeSecretRef: managed-secret-frontend
   service:
     annotations: {}
@@ -25,7 +25,7 @@ backend:
   image:
     repository: infisical/backend
     tag: "latest"
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   kubeSecretRef: managed-backend-secret
   service:
     annotations: {}
