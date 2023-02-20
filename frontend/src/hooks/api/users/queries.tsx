@@ -96,7 +96,8 @@ export const useDeleteOrgMembership = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, DeletOrgMembershipDTO>({
-    mutationFn: ({ membershipId }) => apiRequest.delete(`/api/v1/membership-org/${membershipId}`),
+    mutationFn: ({ membershipId, orgId }) =>
+      apiRequest.delete(`/api/v2/organizations/${orgId}/memberships/${membershipId}`),
     onSuccess: (_, { orgId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(orgId));
     }
