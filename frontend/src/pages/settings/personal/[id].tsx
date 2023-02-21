@@ -14,6 +14,7 @@ import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
 import changePassword from '@app/components/utilities/cryptography/changePassword';
 import issueBackupKey from '@app/components/utilities/cryptography/issueBackupKey';
 import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
+import { SecuritySection } from '@app/views/Settings/PersonalSettingsPage/SecuritySection/SecuritySection';
 
 import AddApiKeyDialog from '../../../components/basic/dialog/AddApiKeyDialog';
 import getAPIKeys from '../../api/apiKey/getAPIKeys';
@@ -100,6 +101,7 @@ export default function PersonalSettings() {
                 />
               </div>
             </div>
+            <SecuritySection />
             <div className="bg-white/5 rounded-md px-6 flex flex-col items-start w-full mt-2 mb-8 pt-2">
               <div className="flex flex-row justify-between w-full">
                 <div className="flex flex-col w-full">

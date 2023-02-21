@@ -20,7 +20,7 @@ export default function RequestNewInvite() {
           doesn&apos;t work, please reach out to us at support@infisical.com
         </p>
         <div className="">
-          <Image src="/images/invitation-expired.svg" height={500} width={800} alt="google logo" />
+          <Image src="/images/invitation-expired.svg" height={500} width={800} alt="invitation expired illustration" />
         </div>
       </div>
     </div>

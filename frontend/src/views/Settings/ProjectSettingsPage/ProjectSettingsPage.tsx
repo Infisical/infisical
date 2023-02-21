@@ -58,7 +58,7 @@ export const ProjectSettingsPage = () => {
 
   const renameWorkspace = useRenameWorkspace();
   const toggleAutoCapitalization = useToggleAutoCapitalization();
-  
+
   const deleteWorkspace = useDeleteWorkspace();
   // env crud operation
   const createWsEnv = useCreateWsEnvironment();
@@ -97,7 +97,7 @@ export const ProjectSettingsPage = () => {
     }
   };
 
-  const onAutoCapitalizationToggle = async (state: boolean) => {  
+  const onAutoCapitalizationToggle = async (state: boolean) => {
     try {
       await toggleAutoCapitalization.mutateAsync({
         workspaceID,
@@ -123,6 +123,9 @@ export const ProjectSettingsPage = () => {
       await deleteWorkspace.mutateAsync({ workspaceID });
       // redirect user to first workspace user is part of
       const ws = workspaces.find(({ _id }) => _id !== workspaceID);
+      if (!ws) {
+        router.push('/noprojects');
+      }
       router.push(`/dashboard/${ws?._id}`);
       createNotification({
         text: 'Successfully deleted workspace',
@@ -247,7 +250,7 @@ export const ProjectSettingsPage = () => {
       const res = await createWsTag.mutateAsync({
         workspaceID,
         tagName: name,
-        tagSlug: name.replace(" ", "_")
+        tagSlug: name.replace(' ', '_')
       });
       createNotification({
         text: 'Successfully created a tag',
@@ -314,10 +317,6 @@ export const ProjectSettingsPage = () => {
         workspaceName={currentWorkspace?.name}
         onProjectNameChange={onRenameWorkspace}
       />
-      <AutoCapitalizationSection
-        workspaceAutoCapitalization={currentWorkspace?.autoCapitalization}
-        onAutoCapitalizationChange={onAutoCapitalizationToggle}
-      />
       <CopyProjectIDSection workspaceID={currentWorkspace?._id || ''} />
       <EnvironmentSection
         environments={currentWorkspace?.environments || []}
@@ -338,6 +337,10 @@ export const ProjectSettingsPage = () => {
         onDeleteTag={onDeleteTag}
         workspaceName={currentWorkspace?.name || ''}
         onCreateTag={onCreateWsTag}
+      />
+      <AutoCapitalizationSection
+        workspaceAutoCapitalization={currentWorkspace?.autoCapitalization}
+        onAutoCapitalizationChange={onAutoCapitalizationToggle}
       />
       <div className="mb-6 mt-4 flex w-full flex-col items-start rounded-md border-l border-red bg-white/5 px-6 pl-6 pb-4 pt-4">
         <p className="text-xl font-bold text-red">{t('settings-project:danger-zone')}</p>

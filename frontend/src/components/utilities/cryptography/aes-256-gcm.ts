@@ -9,14 +9,14 @@ const BLOCK_SIZE_BYTES = 16; // 128 bit
 
 interface EncryptProps {
   text: string;
-  secret: string;
+  secret: string | Buffer;
 }
 
 interface DecryptProps {
   ciphertext: string;
   iv: string;
   tag: string;
-  secret: string;
+  secret: string | Buffer;
 }
 
 interface EncryptOutputProps {

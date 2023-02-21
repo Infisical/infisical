@@ -14,18 +14,28 @@ type Props = {
   dropdownContainerClassName?: string;
   isLoading?: boolean;
   position?: 'item-aligned' | 'popper';
+  isDisabled?: boolean;
   icon?: IconProp;
 };
 
-export type SelectProps = SelectPrimitive.SelectProps & Props;
+export type SelectProps = Omit<SelectPrimitive.SelectProps, 'disabled'> & Props;
 
 export const Select = forwardRef<HTMLButtonElement, SelectProps>(
   (
-    { children, placeholder, className, isLoading, dropdownContainerClassName, position, ...props },
+    {
+      children,
+      placeholder,
+      className,
+      isLoading,
+      isDisabled,
+      dropdownContainerClassName,
+      position,
+      ...props
+    },
     ref
   ): JSX.Element => {
     return (
-      <SelectPrimitive.Root {...props}>
+      <SelectPrimitive.Root {...props} disabled={isDisabled}>
         <SelectPrimitive.Trigger
           ref={ref}
           className={twMerge(
@@ -34,10 +44,10 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
             className
           )}
         >
-          <SelectPrimitive.Value placeholder={placeholder}> 
+          <SelectPrimitive.Value placeholder={placeholder}>
             {props.icon ? <FontAwesomeIcon icon={props.icon} /> : placeholder}
           </SelectPrimitive.Value>
-          {!props.disabled && (
+          {!isDisabled && (
             <SelectPrimitive.Icon className="ml-3">
               <FontAwesomeIcon icon={faChevronDown} size="sm" />
             </SelectPrimitive.Icon>
@@ -46,7 +56,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
         <SelectPrimitive.Portal>
           <SelectPrimitive.Content
             className={twMerge(
-              'relative top-1 overflow-hidden rounded-md bg-bunker-800 font-inter text-bunker-100 shadow-md z-[100]',
+              'relative top-1 z-[100] overflow-hidden rounded-md bg-bunker-800 font-inter text-bunker-100 shadow-md',
               dropdownContainerClassName
             )}
             position={position}
@@ -89,11 +99,12 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
       <SelectPrimitive.Item
         {...props}
         className={twMerge(
-          `relative flex cursor-pointer
-          select-none items-center rounded-md py-2 pl-10 pr-4 mb-0.5 text-sm
+          `relative mb-0.5 flex
+          cursor-pointer select-none items-center rounded-md py-2 pl-10 pr-4 text-sm
           outline-none transition-all hover:bg-mineshaft-500`,
           isSelected && 'bg-primary',
-          isDisabled && 'cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-mineshaft-600',
+          isDisabled &&
+            'cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-mineshaft-600',
           className
         )}
         ref={forwardedRef}

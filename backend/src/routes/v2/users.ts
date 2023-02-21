@@ -1,8 +1,10 @@
 import express from 'express';
 const router = express.Router();
 import {
-    requireAuth
+    requireAuth,
+    validateRequest
 } from '../../middleware';
+import { body, param } from 'express-validator';
 import { usersController } from '../../controllers/v2';
 
 router.get(
@@ -11,6 +13,16 @@ router.get(
         acceptedAuthModes: ['jwt', 'apiKey']
     }),
     usersController.getMe
+);
+
+router.patch(
+    '/me/mfa',
+    requireAuth({
+        acceptedAuthModes: ['jwt', 'apiKey']
+    }),
+    body('isMfaEnabled').exists().isBoolean(),
+    validateRequest,
+    usersController.updateMyMfaEnabled
 );
 
 router.get(

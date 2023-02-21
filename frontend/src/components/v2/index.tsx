@@ -12,5 +12,6 @@ export * from './Select';
 export * from './Spinner';
 export * from './Switch';
 export * from './Table';
+export * from './Tag';
 export * from './TextArea';
 export * from './UpgradePlanModal';

@@ -31,7 +31,7 @@ router.patch(
     requireBotAuth({
 		acceptedRoles: [ADMIN, MEMBER]
     }),
-    body('isActive').isBoolean(),
+    body('isActive').exists().isBoolean(),
     body('botKey'),
     validateRequest,
     botController.setBotActiveState

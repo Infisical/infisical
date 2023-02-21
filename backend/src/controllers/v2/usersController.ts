@@ -56,6 +56,35 @@ export const getMe = async (req: Request, res: Response) => {
 }
 
 /**
+ * Update the current user's MFA-enabled status [isMfaEnabled].
+ * Note: Infisical currently only supports email-based 2FA only; this will expand to
+ * include SMS and authenticator app modes of authentication in the future.
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const updateMyMfaEnabled = async (req: Request, res: Response) => {
+    let user;
+    try {
+        const { isMfaEnabled }: { isMfaEnabled: boolean } = req.body;
+        req.user.isMfaEnabled = isMfaEnabled;
+        await req.user.save();
+        
+        user = req.user;
+    } catch (err) {
+        Sentry.setUser({ email: req.user.email });
+		Sentry.captureException(err);
+		return res.status(400).send({
+			message: "Failed to update current user's MFA status"
+		}); 
+    }
+    
+    return res.status(200).send({
+        user
+    });
+}
+
+/**
  * Return organizations that the current user is part of.
  * @param req 
  * @param res 

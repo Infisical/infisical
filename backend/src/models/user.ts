@@ -5,6 +5,10 @@ export interface IUser {
 	email: string;
 	firstName?: string;
 	lastName?: string;
+	encryptionVersion: number;
+	protectedKey: string;
+	protectedKeyIV: string;
+	protectedKeyTag: string;
 	publicKey?: string;
 	encryptedPrivateKey?: string;
 	iv?: string;
@@ -12,6 +16,7 @@ export interface IUser {
 	salt?: string;
 	verifier?: string;
 	refreshVersion?: number;
+	isMfaEnabled: boolean;
 	seenIps: [string];
 }
 
@@ -27,6 +32,23 @@ const userSchema = new Schema<IUser>(
 		lastName: {
 			type: String
 		},
+		encryptionVersion: {
+			type: Number,
+			select: false,
+			default: 1 // to resolve backward-compatibility issues
+		},
+		protectedKey: { // introduced as part of encryption version 2
+			type: String,
+			select: false
+		},
+		protectedKeyIV: { // introduced as part of encryption version 2
+			type: String,
+			select: false
+		},
+		protectedKeyTag: { // introduced as part of encryption version 2
+			type: String,
+			select: false
+		},
 		publicKey: {
 			type: String,
 			select: false
@@ -35,11 +57,11 @@ const userSchema = new Schema<IUser>(
 			type: String,
 			select: false
 		},
-		iv: {
+		iv: { // iv of [encryptedPrivateKey]
 			type: String,
 			select: false
 		},
-		tag: {
+		tag: { // tag of [encryptedPrivateKey]
 			type: String,
 			select: false
 		},
@@ -55,6 +77,10 @@ const userSchema = new Schema<IUser>(
 			type: Number,
 			default: 0,
 			select: false
+		},
+		isMfaEnabled: {
+			type: Boolean,
+			default: false
 		},
 		seenIps: [String]
 	},

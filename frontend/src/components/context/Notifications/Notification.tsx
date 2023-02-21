@@ -36,7 +36,7 @@ const Notification = ({ notification, clearNotification }: NotificationProps) =>
 
   return (
     <div
-      className="relative w-full flex items-center justify-between px-6 py-6 rounded-md border border-bunker-500 pointer-events-auto bg-mineshaft-700 mb-3 right-3"
+      className="relative w-full flex items-center justify-between px-6 py-4 rounded-md border border-bunker-500 pointer-events-auto bg-mineshaft-700 mb-3 right-3"
       role="alert"
     >
       {notification.type === 'error' && (
