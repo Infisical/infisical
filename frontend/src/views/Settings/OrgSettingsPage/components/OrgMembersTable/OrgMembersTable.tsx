@@ -146,7 +146,7 @@ export const OrgMembersTable = ({
                 const userWs = workspaceMemberships?.[user?._id];
 
                 return (
-                  <Tr key={`org-membership-${orgMembershipId}`}>
+                  <Tr key={`org-membership-${orgMembershipId}`} className="w-full">
                     <Td>{name}</Td>
                     <Td>{email}</Td>
                     <Td>
@@ -192,20 +192,21 @@ export const OrgMembersTable = ({
                       )}
                     </Td>
                     <Td>
-                      <IconButton
+                      {userId !== user?._id && <IconButton
                         ariaLabel="delete"
                         colorSchema="danger"
                         isDisabled={userId === user?._id}
                         onClick={() => handlePopUpOpen('removeMember', { id: orgMembershipId })}
                       >
                         <FontAwesomeIcon icon={faTrash} />
-                      </IconButton>
+                      </IconButton>}
                     </Td>
                   </Tr>
                 );
               })}
             </TBody>
           </Table>
+          {filterdUser.length === 0 && <tr className='bg-bunker-800 text-sm py-4 text-center text-bunker-400 w-full mx-auto flex justify-center'><td className='col-span-5'>No project members found</td></tr>}
         </TableContainer>
       </div>
       <Modal

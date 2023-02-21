@@ -114,6 +114,11 @@ export const OrgIncidentContactsTable = ({
                 ))}
             </TBody>
           </Table>
+          {contacts
+          ?.filter(({ email }) => email.toLocaleLowerCase().includes(searchContact))
+          ?.length === 0 && (
+            <div className='py-4 bg-bunker-800 text-sm text-center text-bunker-400 w-full mx-auto flex justify-center'>No incident contacts found</div>
+          )}
         </TableContainer>
       </div>
       <Modal

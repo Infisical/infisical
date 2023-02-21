@@ -12,7 +12,7 @@ type Props = {
 };
 
 const inputVariants = cva(
-  'input w-full py-2 text-gray-400 placeholder-gray-500 placeholder-opacity-50 outline-none focus:ring-2',
+  'input w-full py-[0.375rem] text-gray-400 placeholder:text-sm placeholder-gray-500 placeholder-opacity-50 outline-none focus:ring-2',
   {
     variants: {
       size: {
@@ -84,7 +84,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ): JSX.Element => {
     return (
       <div className={inputParentContainerVariants({ isRounded, isError, isFullWidth, variant })}>
-        {leftIcon && <span className="absolute left-0 ml-3">{leftIcon}</span>}
+        {leftIcon && <span className="absolute left-0 ml-3 text-sm">{leftIcon}</span>}
         <input
           {...props}
           required={isRequired}

@@ -7,14 +7,14 @@ type Props = {
   className?: string;
 } & VariantProps<typeof tagVariants>;
 
-const tagVariants = cva('inline-flex whitespace-nowrap text-sm rounded-md mx-1 text-bunker-200 ', {
+const tagVariants = cva('inline-flex whitespace-nowrap text-sm rounded-sm mr-1.5 text-bunker-200 ', {
   variants: {
     colorSchema: {
       gray: 'bg-mineshaft-500',
       red: 'bg-red/80 text-bunker-100'
     },
     size: {
-      sm: 'px-2 py-1'
+      sm: 'px-1 py-0.5'
     }
   }
 });
