@@ -221,6 +221,7 @@ export default function Dashboard() {
         router.push('/noprojects');
       }
       try {
+        const { push, query } = router
         const tempNumSnapshots = await getProjectSercetSnapshotsCount({
           workspaceId
         });
@@ -228,19 +229,39 @@ export default function Dashboard() {
         const userWorkspaces = await getWorkspaces();
         const workspace = userWorkspaces.find((wp) => wp._id === workspaceId);
         if (!workspace) {
-          router.push(`/dashboard/${userWorkspaces?.[0]?._id}`);
+          push(`/dashboard/${userWorkspaces?.[0]?._id}`);
         }
         setAutoCapitalization(workspace?.autoCapitalization ?? true);
 
         const accessibleEnvironments = await getWorkspaceEnvironments({ workspaceId });
         setWorkspaceEnvs(accessibleEnvironments || []);
+
         // set env
         const env = accessibleEnvironments?.[0] || {
           name: 'unknown',
-          slug: 'unkown'
+          slug: 'unknown'
         };
         setSelectedEnv(env);
         setSelectedSnapshotEnv(env);
+
+        if (query.env) {
+          const index = accessibleEnvironments?.findIndex(({ slug }: { slug: string }) => slug === query.env)
+
+          setSelectedEnv({
+            name: accessibleEnvironments?.[index]?.name as string,
+            slug: query.env as string,
+            isWriteDenied: accessibleEnvironments?.[index]?.isWriteDenied as boolean,
+            isReadDenied: accessibleEnvironments?.[index]?.isReadDenied as boolean
+          })
+          setSelectedSnapshotEnv({
+            name: accessibleEnvironments?.[index]?.name as string,
+            slug: query.env as string,
+            isWriteDenied: accessibleEnvironments?.[index]?.isWriteDenied as boolean,
+            isReadDenied: accessibleEnvironments?.[index]?.isReadDenied as boolean
+          })
+
+        }
+
         const user = await getUser();
         setIsNew((Date.parse(String(new Date())) - Date.parse(user.createdAt)) / 60000 < 3);
 
@@ -772,6 +793,10 @@ export default function Dashboard() {
     }
 
     setHasUnsavedChanges(false);
+    router.push({
+      pathname: router.pathname,
+      query: { ...router.query, env: selectedWorkspaceEnv.slug },
+    })
   };
 
   return data ? (
@@ -1003,24 +1028,16 @@ export default function Dashboard() {
                   <div className="group flex flex-col items-center bg-mineshaft-800 border-b-2 border-mineshaft-500 duration-100 sticky top-0 z-[60]">
                     <div className="relative flex flex-row justify-between w-full mr-auto max-h-14 items-center">
                       <div className="w-1/5 border-r border-mineshaft-600 flex flex-row items-center">
-                        <div className="text-transparent text-xs flex items-center justify-center w-12 h-10 cursor-default">
-                          0
-                        </div>
-                        <span className="px-2 text-bunker-300 font-semibold">Key</span>
-                        {!snapshotData && (
-                          <IconButton
-                            ariaLabel="copy icon"
-                            variant="plain"
-                            className="group relative ml-2"
-                            onClick={() => reorderRows(1)}
-                          >
-                            {sortMethod === 'alphabetical' ? (
-                              <FontAwesomeIcon icon={faArrowUp} />
-                            ) : (
-                              <FontAwesomeIcon icon={faArrowDown} />
-                            )}
-                          </IconButton>
-                        )}
+                        <div className='text-transparent text-xs flex items-center justify-center w-12 h-10 cursor-default'>0</div>
+                        <span className='px-2 text-bunker-300 font-semibold'>Key</span>
+                        {!snapshotData && <IconButton
+                          ariaLabel="copy icon"
+                          variant="plain"
+                          className="group relative ml-2"
+                          onClick={() => reorderRows(1)}
+                        >
+                          {sortMethod === 'alphabetical' ? <FontAwesomeIcon icon={faArrowUp} /> : <FontAwesomeIcon icon={faArrowDown} />}
+                        </IconButton>}
                       </div>
                       <div className="w-5/12 border-r border-mineshaft-600">
                         <div className="flex items-center rounded-lg mt-4 md:mt-0 max-h-10">
@@ -1048,7 +1065,7 @@ export default function Dashboard() {
                         <div
                           onKeyDown={() => null}
                           role="none"
-                          onClick={() => {}}
+                          onClick={() => { }}
                           className="invisible group-hover:visible"
                         >
                           <FontAwesomeIcon
@@ -1062,16 +1079,10 @@ export default function Dashboard() {
                   <div className="bg-mineshaft-800 rounded-b-md border-bunker-600">
                     {!snapshotData &&
                       data
-                        ?.filter(
-                          (row) =>
-                            row.key?.toUpperCase().includes(searchKeys.toUpperCase()) ||
-                            row.tags
-                              ?.map((tag) => tag.name)
-                              .join(' ')
-                              ?.toUpperCase()
-                              .includes(searchKeys.toUpperCase()) ||
-                            row.comment?.toUpperCase().includes(searchKeys.toUpperCase())
-                        )
+                        ?.filter((row) =>
+                          row.key?.toUpperCase().includes(searchKeys.toUpperCase())
+                          || row.tags?.map(tag => tag.name).join(" ")?.toUpperCase().includes(searchKeys.toUpperCase())
+                          || row.comment?.toUpperCase().includes(searchKeys.toUpperCase()))
                         .filter((row) => !sharedToHide.includes(row.id))
                         // .filter((row) => row.value !== undefined)
                         .map((keyPair) => (

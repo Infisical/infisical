@@ -275,7 +275,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     <Link href={`/dashboard/${currentWorkspace?._id}`} passHref>
                       <a>
                         <MenuItem
-                          isSelected={router.asPath === `/dashboard/${currentWorkspace?._id}`}
+                          isSelected={router.asPath.includes(`/dashboard/${currentWorkspace?._id}`)}
                           icon={<FontAwesomeIcon icon={faKey} size="lg" />}
                         >
                           {t('nav:menu.secrets')}
