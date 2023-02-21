@@ -13,8 +13,6 @@ import { deriveArgonKey } from './crypto';
 const clientOldPassword = new jsrp.client();
 const clientNewPassword = new jsrp.client();
 
-// TODO: modify this function
-
 /**
  * This function loggs in the user (whether it's right after signup, or a normal login)
  * @param {*} email
@@ -105,9 +103,8 @@ const changePassword = async (
                 secret: Buffer.from(derivedKey.hash)
               });
 
-              let res;
               try {
-                res = await changePassword2({
+                await changePassword2({
                   clientProof,
                   protectedKey,
                   protectedKeyIV,
@@ -118,23 +115,19 @@ const changePassword = async (
                   salt: result.salt,
                   verifier: result.verifier
                 });
-                
+
                 saveTokenToLocalStorage({
                   protectedKey,
                   protectedKeyIV,
                   protectedKeyTag,
                   encryptedPrivateKey,
                   iv: encryptedPrivateKeyIV,
-                  tag: encryptedPrivateKeyTag,
+                  tag: encryptedPrivateKeyTag
                 });
 
-                if (res && res.status === 400) {
-                  setCurrentPasswordError(true);
-                } else if (res && res.status === 200) {
-                  setPasswordChanged(true);
-                  setCurrentPassword('');
-                  setNewPassword('');
-                }
+                setPasswordChanged(true);
+                setCurrentPassword('');
+                setNewPassword('');
               } catch (error) {
                 setCurrentPasswordError(true);
                 console.log(error);

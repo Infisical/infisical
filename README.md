@@ -55,7 +55,7 @@
 - **[Activity Logs](https://infisical.com/docs/getting-started/dashboard/audit-logs)** to record every action taken in a project
 - **[Point-in-time Secrets Recovery](https://infisical.com/docs/getting-started/dashboard/pit-recovery)** for rolling back to any snapshot of your secrets
 - **Role-based Access Controls** per environment
-- 🔜 **2FA** (next week)
+- **2FA** (more options coming soon)
 - 🔜 **1-Click Deploy** to AWS
 - 🔜 **Automatic Secret Rotation**
 - 🔜 **Smart Security Alerts**

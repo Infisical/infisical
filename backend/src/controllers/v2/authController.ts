@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import * as Sentry from '@sentry/node';
 import * as bigintConversion from 'bigint-conversion';
 const jsrp = require('jsrp');
-import { User } from '../../models';
+import { User, LoginSRPDetail } from '../../models';
 import { issueAuthTokens, createToken } from '../../helpers/auth';
 import { sendMail } from '../../helpers/nodemailer';
 import { TokenService } from '../../services';
@@ -13,6 +13,7 @@ import {
   JWT_MFA_LIFETIME,
   JWT_MFA_SECRET
 } from '../../config';
+import { BadRequestError } from '../../utils/errors';
 import {
   TOKEN_EMAIL_MFA
 } from '../../variables';
@@ -50,13 +51,15 @@ export const login1 = async (req: Request, res: Response) => {
         salt: user.salt,
         verifier: user.verifier
       },
-      () => {
+      async () => {
         // generate server-side public key
         const serverPublicKey = server.getPublicKey();
-        clientPublicKeys[email] = {
-          clientPublicKey,
-          serverBInt: bigintConversion.bigintToBuf(server.bInt)
-        };
+
+        await LoginSRPDetail.findOneAndReplace({ email: email }, {
+          email: email,
+          clientPublicKey: clientPublicKey,
+          serverBInt: bigintConversion.bigintToBuf(server.bInt),
+        }, { upsert: true, returnNewDocument: false });
 
         return res.status(200).send({
           serverPublicKey,
@@ -89,15 +92,21 @@ export const login2 = async (req: Request, res: Response) => {
 
     if (!user) throw new Error('Failed to find user');
 
+    const loginSRPDetail = await LoginSRPDetail.findOneAndDelete({ email: email })
+
+    if (!loginSRPDetail) {
+      return BadRequestError(Error("Failed to find login details for SRP"))
+    }
+
     const server = new jsrp.server();
     server.init(
       {
         salt: user.salt,
         verifier: user.verifier,
-        b: clientPublicKeys[email].serverBInt
+        b: loginSRPDetail.serverBInt
       },
       async () => {
-        server.setClientPublicKey(clientPublicKeys[email].clientPublicKey);
+        server.setClientPublicKey(loginSRPDetail.clientPublicKey);
 
         // compare server and client shared keys
         if (server.checkClientProof(clientProof)) {

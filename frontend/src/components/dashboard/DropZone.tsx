@@ -175,7 +175,7 @@ const DropZone = ({
         id="fileSelect"
         type="file"
         className="opacity-0 absolute w-full h-full"
-        accept=".txt,.env,.yml"
+        accept=""
         onChange={handleFileSelect}
       />
       {errorDragAndDrop ? <div className="my-3 max-w-xl opacity-80" /> : <div className="" />}

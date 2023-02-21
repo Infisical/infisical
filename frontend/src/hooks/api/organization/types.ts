@@ -4,3 +4,8 @@ export type Organization = {
   createAt: string;
   updatedAt: string;
 };
+
+export type RenameOrgDTO = {
+  orgId: string;
+  newOrgName: string;
+};

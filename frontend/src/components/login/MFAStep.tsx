@@ -60,6 +60,7 @@ export default function MFAStep({
 }): JSX.Element {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingResend, setIsLoadingResend] = useState(false);
   const [mfaCode, setMfaCode] = useState('');
   const [triesLeft, setTriesLeft] = useState<number | undefined>(undefined);
 
@@ -103,9 +104,12 @@ export default function MFAStep({
   
   const handleResendMfaCode = async () => {
     try {
+      setIsLoadingResend(true);
       await sendMfaToken.mutateAsync({ email });
+      setIsLoadingResend(false);
     } catch (err) {
       console.error(err);
+      setIsLoadingResend(false);
     }
   }
 
@@ -137,13 +141,13 @@ export default function MFAStep({
           <span className="text-bunker-400">{t('mfa:step2-resend-alert')}</span>
           <u
             className={`font-normal ${
-              isLoading
+              isLoadingResend
                 ? 'text-bunker-400'
                 : 'text-primary-700 hover:text-primary duration-200'
             }`}
           >
             <button disabled={isLoading} onClick={() => handleResendMfaCode()} type="button">
-              {isLoading
+              {isLoadingResend
                 ? t('mfa:step2-resend-progress')
                 : t('mfa:step2-resend-submit')}
             </button>

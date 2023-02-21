@@ -3,9 +3,9 @@ interface Props {
   protectedKeyIV?: string;
   protectedKeyTag?: string;
   publicKey?: string;
-  encryptedPrivateKey: string;
-  iv: string;
-  tag: string;
+  encryptedPrivateKey?: string;
+  iv?: string;
+  tag?: string;
   privateKey?: string;
 }
 
@@ -20,38 +20,46 @@ export const saveTokenToLocalStorage = ({
   privateKey,
 }: Props) => {
   try {
-    localStorage.removeItem("protectedKey");
-    localStorage.removeItem("protectedKeyIV");
-    localStorage.removeItem("protectedKeyTag");
-    localStorage.removeItem("publicKey");
-    localStorage.removeItem("encryptedPrivateKey");
-    localStorage.removeItem("iv");
-    localStorage.removeItem("tag");
-    localStorage.removeItem("PRIVATE_KEY");
     
     if (protectedKey) {
+      localStorage.removeItem("protectedKey");
       localStorage.setItem("protectedKey", protectedKey);
     }
 
     if (protectedKeyIV) {
+      localStorage.removeItem("protectedKeyIV");
       localStorage.setItem("protectedKeyIV", protectedKeyIV);
     }
 
     if (protectedKeyTag) {
+      localStorage.removeItem("protectedKeyTag");
       localStorage.setItem("protectedKeyTag", protectedKeyTag);
     }
 
     if (publicKey) {
+      localStorage.removeItem("publicKey");
       localStorage.setItem("publicKey", publicKey);
     }
 
-    if (privateKey) {
-      localStorage.setItem("PRIVATE_KEY", privateKey);
+    if (encryptedPrivateKey) {
+      localStorage.removeItem("encryptedPrivateKey");
+      localStorage.setItem("encryptedPrivateKey", encryptedPrivateKey);
     }
 
-    localStorage.setItem("encryptedPrivateKey", encryptedPrivateKey);
-    localStorage.setItem("iv", iv);
-    localStorage.setItem("tag", tag);
+    if (iv) {
+      localStorage.removeItem("iv");
+      localStorage.setItem("iv", iv);
+    }
+
+    if (tag) {
+      localStorage.removeItem("tag");
+      localStorage.setItem("tag", tag);
+    }
+
+    if (privateKey) {
+      localStorage.removeItem("PRIVATE_KEY");
+      localStorage.setItem("PRIVATE_KEY", privateKey);
+    }
   } catch (err) {
     if (err instanceof Error) {
       throw new Error(

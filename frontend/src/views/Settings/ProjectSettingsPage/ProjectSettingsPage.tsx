@@ -58,7 +58,7 @@ export const ProjectSettingsPage = () => {
 
   const renameWorkspace = useRenameWorkspace();
   const toggleAutoCapitalization = useToggleAutoCapitalization();
-  
+
   const deleteWorkspace = useDeleteWorkspace();
   // env crud operation
   const createWsEnv = useCreateWsEnvironment();
@@ -97,7 +97,7 @@ export const ProjectSettingsPage = () => {
     }
   };
 
-  const onAutoCapitalizationToggle = async (state: boolean) => {  
+  const onAutoCapitalizationToggle = async (state: boolean) => {
     try {
       await toggleAutoCapitalization.mutateAsync({
         workspaceID,
@@ -123,6 +123,9 @@ export const ProjectSettingsPage = () => {
       await deleteWorkspace.mutateAsync({ workspaceID });
       // redirect user to first workspace user is part of
       const ws = workspaces.find(({ _id }) => _id !== workspaceID);
+      if (!ws) {
+        router.push('/noprojects');
+      }
       router.push(`/dashboard/${ws?._id}`);
       createNotification({
         text: 'Successfully deleted workspace',
@@ -247,7 +250,7 @@ export const ProjectSettingsPage = () => {
       const res = await createWsTag.mutateAsync({
         workspaceID,
         tagName: name,
-        tagSlug: name.replace(" ", "_")
+        tagSlug: name.replace(' ', '_')
       });
       createNotification({
         text: 'Successfully created a tag',

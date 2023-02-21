@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   decryptAssymmetric,
@@ -8,7 +8,15 @@ import { apiRequest } from '@app/config/request';
 import { setAuthToken } from '@app/reactQuery';
 
 import { useUploadWsKey } from '../keys/queries';
-import { AddUserToWsDTO, AddUserToWsRes, OrgUser, User } from './types';
+import {
+  AddUserToOrgDTO,
+  AddUserToWsDTO,
+  AddUserToWsRes,
+  DeletOrgMembershipDTO,
+  OrgUser,
+  UpdateOrgUserRoleDTO,
+  User
+} from './types';
 
 const userKeys = {
   getUser: ['user'] as const,
@@ -32,7 +40,11 @@ export const fetchOrgUsers = async (orgId: string) => {
 };
 
 export const useGetOrgUsers = (orgId: string) =>
-  useQuery(userKeys.getOrgUsers(orgId), () => fetchOrgUsers(orgId));
+  useQuery({
+    queryKey: userKeys.getOrgUsers(orgId),
+    queryFn: () => fetchOrgUsers(orgId),
+    enabled: Boolean(orgId)
+  });
 
 // mutation
 export const useAddUserToWs = () => {
@@ -65,6 +77,47 @@ export const useAddUserToWs = () => {
         userId: data.invitee._id,
         workspaceId
       });
+    }
+  });
+};
+
+export const useAddUserToOrg = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, AddUserToOrgDTO>({
+    mutationFn: (dto) => apiRequest.post(`/api/v1/invite-org/signup`, dto),
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
+    }
+  });
+};
+
+export const useDeleteOrgMembership = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, DeletOrgMembershipDTO>({
+    mutationFn: ({ membershipId, orgId }) =>
+      apiRequest.delete(`/api/v2/organizations/${orgId}/memberships/${membershipId}`),
+    onSuccess: (_, { orgId }) => {
+      queryClient.invalidateQueries(userKeys.getOrgUsers(orgId));
+    }
+  });
+};
+
+export const useUpdateOrgUserRole = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, UpdateOrgUserRoleDTO>({
+    mutationFn: ({ organizationId, membershipId, role }) =>
+      apiRequest.patch(`/api/v2/organizations/${organizationId}/memberships/${membershipId}`, {
+        role
+      }),
+    onSuccess: (_, { organizationId }) => {
+      queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
+    },
+    // to remove old states
+    onError: (_, { organizationId }) => {
+      queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
     }
   });
 };

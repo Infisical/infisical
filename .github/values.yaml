@@ -2,7 +2,8 @@ frontend:
   enabled: true
   name: frontend
   podAnnotations: {}
-  deploymentAnnotations: {}
+  deploymentAnnotations:
+    secrets.infisical.com/auto-reload: "true"
   replicaCount: 2
   image:
     repository: infisical/frontend
@@ -20,7 +21,8 @@ backend:
   enabled: true
   name: backend
   podAnnotations: {}
-  deploymentAnnotations: {}
+  deploymentAnnotations:
+    secrets.infisical.com/auto-reload: "true"
   replicaCount: 2
   image:
     repository: infisical/backend

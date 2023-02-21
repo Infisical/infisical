@@ -227,7 +227,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     <Select
                       defaultValue={currentWorkspace?._id}
                       value={currentWorkspace?._id}
-                      className="w-full py-2.5 bg-mineshaft-600 font-medium"
+                      className="w-full py-2.5 bg-mineshaft-600 font-medium truncate"
                       onValueChange={(value) => {
                         router.push(`/dashboard/${value}`);
                       }}

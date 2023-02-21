@@ -55,7 +55,7 @@ const colorsText = [
 /**
  * This component represent a single row for an environemnt variable on the dashboard
  * @param {object} obj
- * @param {String[]} obj.keyPair - data related to the environment variable (id, pos, key, value, public/private)
+ * @param {SecretDataProps[]} obj.keyPair - data related to the environment variable (id, pos, key, value, public/private)
  * @param {function} obj.modifyKey - modify the key of a certain environment variable
  * @param {function} obj.modifyValue - modify the value of a certain environment variable
  * @param {function} obj.modifyValueOverride - modify the value of a certain environment variable if it is overriden
@@ -108,7 +108,7 @@ const KeyPair = ({
             isCapitalized = {isCapitalized}
             onChangeHandler={modifyKey}
             type="varName"
-            id={keyPair.id}
+            id={keyPair.id ? keyPair.id : (keyPair.idOverride || '')}
             value={keyPair.key}
             isDuplicate={isDuplicate}
             overrideEnabled={keyPair.valueOverride !== undefined}
@@ -124,7 +124,7 @@ const KeyPair = ({
           <DashboardInputField
             onChangeHandler={keyPair.valueOverride !== undefined ? modifyValueOverride : modifyValue}
             type="value"
-            id={keyPair.id}
+            id={keyPair.id ? keyPair.id : (keyPair.idOverride || '')}
             value={keyPair.valueOverride !== undefined ? keyPair.valueOverride : keyPair.value}
             blurred={isBlurred}
             overrideEnabled={keyPair.valueOverride !== undefined}
@@ -137,7 +137,7 @@ const KeyPair = ({
           <DashboardInputField
             onChangeHandler={modifyComment}
             type="comment"
-            id={keyPair.id}
+            id={keyPair.id ? keyPair.id : (keyPair.idOverride || '')}
             value={keyPair.comment}
             isDuplicate={isDuplicate}
             isSideBarOpen={keyPair.id === sidebarSecretId}
@@ -153,7 +153,7 @@ const KeyPair = ({
             </div>
           ))}
           
-          <AddTagsMenu allTags={tags} currentTags={keyPair.tags} modifyTags={modifyTags} id={keyPair.id} />
+          <AddTagsMenu allTags={tags} currentTags={keyPair.tags} modifyTags={modifyTags} id={keyPair.id ? keyPair.id : (keyPair.idOverride || '')} />
         </div>
       </div>
       <div
