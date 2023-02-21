@@ -12,6 +12,10 @@ import {
  */
 class KeyService {
     private static privateKey: string = '';
+    
+    static setPrivateKey(privateKey: string) {
+        KeyService.privateKey = privateKey;
+    }
 
     /** Return the user's decrypted private key
      * @param {Object} obj

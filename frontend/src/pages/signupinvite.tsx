@@ -152,9 +152,6 @@ export default function SignupInvite() {
               SecurityClient.setToken(jwtToken);
 
               saveTokenToLocalStorage({
-                  protectedKey,
-                  protectedKeyIV,
-                  protectedKeyTag,
                   publicKey,
                   encryptedPrivateKey,
                   iv: encryptedPrivateKeyIV,

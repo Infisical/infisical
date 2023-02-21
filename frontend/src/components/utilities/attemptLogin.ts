@@ -97,9 +97,6 @@ const attemptLogin = async (
             });
 
             saveTokenToLocalStorage({
-              protectedKey,
-              protectedKeyIV,
-              protectedKeyTag,
               publicKey,
               encryptedPrivateKey,
               iv,

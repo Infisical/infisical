@@ -117,9 +117,6 @@ const changePassword = async (
                 });
 
                 saveTokenToLocalStorage({
-                  protectedKey,
-                  protectedKeyIV,
-                  protectedKeyTag,
                   encryptedPrivateKey,
                   iv: encryptedPrivateKeyIV,
                   tag: encryptedPrivateKeyTag

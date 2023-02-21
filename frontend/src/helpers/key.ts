@@ -1,6 +1,8 @@
 import Aes256Gcm from '@app/components/utilities/cryptography/aes-256-gcm';
 import { deriveArgonKey } from '@app/components/utilities/cryptography/crypto';
 
+import { KeyService } from '../services';
+
 /**
  * @param {Object} obj
  * @param {Number} obj.encryptionVersion
@@ -79,6 +81,7 @@ let privateKey;
         throw new Error('Failed to decrypt private key');
     }
 
+    KeyService.setPrivateKey(privateKey);
     return privateKey;
 }
 

@@ -166,9 +166,6 @@ export default function UserInfoStep({
               SecurityClient.setToken(response.token);
 
               saveTokenToLocalStorage({
-                protectedKey,
-                protectedKeyIV,
-                protectedKeyTag,
                 publicKey,
                 encryptedPrivateKey,
                 iv: encryptedPrivateKeyIV,
