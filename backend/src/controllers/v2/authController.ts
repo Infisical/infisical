@@ -6,17 +6,21 @@ import * as bigintConversion from 'bigint-conversion';
 const jsrp = require('jsrp');
 import { User, LoginSRPDetail } from '../../models';
 import { issueAuthTokens, createToken } from '../../helpers/auth';
+import { checkUserDevice } from '../../helpers/user';
 import { sendMail } from '../../helpers/nodemailer';
 import { TokenService } from '../../services';
+import { EELogService } from '../../ee/services';
 import {
   NODE_ENV,
   JWT_MFA_LIFETIME,
   JWT_MFA_SECRET
 } from '../../config';
-import { BadRequestError } from '../../utils/errors';
+import { BadRequestError, InternalServerError } from '../../utils/errors';
 import {
-  TOKEN_EMAIL_MFA
+  TOKEN_EMAIL_MFA,
+  ACTION_LOGIN
 } from '../../variables';
+import { getChannelFromUserAgent } from '../../utils/posthog'; // TODO: move this
 
 declare module 'jsonwebtoken' {
   export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -85,6 +89,9 @@ export const login1 = async (req: Request, res: Response) => {
  */
 export const login2 = async (req: Request, res: Response) => {
   try {
+    
+    if (!req.headers['user-agent']) throw InternalServerError({ message: 'User-Agent header is required' });
+
     const { email, clientProof } = req.body;
     const user = await User.findOne({
       email
@@ -143,6 +150,12 @@ export const login2 = async (req: Request, res: Response) => {
               token
             });
           }
+          
+          await checkUserDevice({
+            user,
+            ip: req.ip,
+            userAgent: req.headers['user-agent'] ?? ''
+          });
 
           // issue tokens
           const tokens = await issueAuthTokens({ userId: user._id.toString() });
@@ -155,7 +168,7 @@ export const login2 = async (req: Request, res: Response) => {
             secure: NODE_ENV === 'production' ? true : false
           });
 
-          // case: user does not have MFA enabled
+          // case: user does not have MFA enablgged
           // return (access) token in response
 
           interface ResponseData {
@@ -190,6 +203,18 @@ export const login2 = async (req: Request, res: Response) => {
             response.protectedKeyIV = user.protectedKeyIV
             response.protectedKeyTag = user.protectedKeyTag;
           }
+
+          const loginAction = await EELogService.createAction({
+            name: ACTION_LOGIN,
+            userId: user._id
+          });
+          
+          loginAction && await EELogService.createLog({
+            userId: user._id,
+            actions: [loginAction],
+            channel: getChannelFromUserAgent(req.headers['user-agent']),
+            ipAddress: req.ip
+          });
           
           return res.status(200).send(response);
         }
@@ -231,7 +256,6 @@ export const sendMfaToken = async (req: Request, res: Response) => {
         code
       }
     });
-    
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
@@ -265,6 +289,12 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
     }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag');
 
     if (!user) throw new Error('Failed to find user'); 
+
+     await checkUserDevice({
+      user,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'] ?? ''
+    });
 
     // issue tokens
     const tokens = await issueAuthTokens({ userId: user._id.toString() });
@@ -303,7 +333,19 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
       resObj.protectedKeyIV = user.protectedKeyIV;
       resObj.protectedKeyTag = user.protectedKeyTag;
     }
+
+    const loginAction = await EELogService.createAction({
+      name: ACTION_LOGIN,
+      userId: user._id
+    });
     
+    loginAction && await EELogService.createLog({
+      userId: user._id,
+      actions: [loginAction],
+      channel: getChannelFromUserAgent(req.headers['user-agent']),
+      ipAddress: req.ip
+    });
+
     return res.status(200).send(resObj); 
 }
 

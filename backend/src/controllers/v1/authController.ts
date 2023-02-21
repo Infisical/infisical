@@ -6,6 +6,7 @@ import * as bigintConversion from 'bigint-conversion';
 const jsrp = require('jsrp');
 import { User, LoginSRPDetail } from '../../models';
 import { createToken, issueAuthTokens, clearTokens } from '../../helpers/auth';
+import { checkUserDevice } from '../../helpers/user';
 import {
   ACTION_LOGIN,
   ACTION_LOGOUT
@@ -111,6 +112,13 @@ export const login2 = async (req: Request, res: Response) => {
         // compare server and client shared keys
         if (server.checkClientProof(clientProof)) {
           // issue tokens
+
+          await checkUserDevice({
+            user,
+            ip: req.ip,
+            userAgent: req.headers['user-agent'] ?? ''
+          });
+
           const tokens = await issueAuthTokens({ userId: user._id.toString() });
 
           // store (refresh) token in httpOnly cookie

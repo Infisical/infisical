@@ -4,7 +4,7 @@ import {
     requireAuth,
     validateRequest
 } from '../../middleware';
-import { body, param } from 'express-validator';
+import { body } from 'express-validator';
 import { usersController } from '../../controllers/v2';
 
 router.get(

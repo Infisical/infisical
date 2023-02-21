@@ -1,6 +1,6 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, model, Types, Document } from 'mongoose';
 
-export interface IUser {
+export interface IUser extends Document {
 	_id: Types.ObjectId;
 	email: string;
 	firstName?: string;
@@ -18,7 +18,10 @@ export interface IUser {
 	refreshVersion?: number;
 	isMfaEnabled: boolean;
 	mfaMethods: boolean;
-	seenIps: [string]; // TODO 1: email for unseen IPs, TODO 2: move to a central alerting system
+	devices: {
+		ip: string;
+		userAgent: string;
+	}[];
 }
 
 const userSchema = new Schema<IUser>(
@@ -86,8 +89,11 @@ const userSchema = new Schema<IUser>(
 		mfaMethods: [{
 			type: String
 		}],
-		seenIps: {
-			type: [String],
+		devices: {
+			type: [{
+				ip: String,
+				userAgent: String
+			}],
 			default: []
 		}
 	}, 

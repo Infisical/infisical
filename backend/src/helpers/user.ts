@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/node';
-import { User } from '../models';
+import { IUser, User } from '../models';
+import { sendMail } from './nodemailer';
 
 /**
  * Initialize a user under email [email]
@@ -101,4 +102,48 @@ const completeAccount = async ({
 	return user;
 };
 
-export { setupAccount, completeAccount };
+/**
+ * Check if device with ip [ip] and user-agent [userAgent] has been seen for user [user].
+ * If the device is unseen, then notify the user of the new device
+ * @param {Object} obj
+ * @param {String} obj.ip - login ip address
+ * @param {String} obj.userAgent - login user-agent
+ */
+const checkUserDevice = async ({
+	user,
+	ip,
+	userAgent
+}: {
+	user: IUser;
+	ip: string;
+	userAgent: string;
+}) => {
+	const isDeviceSeen = user.devices.some((device) => device.ip === ip && device.userAgent === userAgent);
+		
+	if (!isDeviceSeen) {
+		// case: unseen login ip detected for user
+		// -> notify user about the sign-in from new ip 
+		
+		user.devices = user.devices.concat([{
+			ip: String(ip),
+			userAgent
+		}]);
+		
+		await user.save();
+
+		// send MFA code [code] to [email]
+		await sendMail({
+			template: 'newDevice.handlebars',
+			subjectLine: `Successful login from new device`,
+			recipients: [user.email],
+			substitutions: {
+				email: user.email,
+				timestamp: new Date().toString(),
+				ip,
+				userAgent
+			}
+		}); 
+	}
+}
+
+export { setupAccount, completeAccount, checkUserDevice };
