@@ -5,7 +5,7 @@ import { useToggle } from '@app/hooks';
 import { Button } from '../Button';
 import { FormControl } from '../FormControl';
 import { Input } from '../Input';
-import { Modal, ModalContent } from '../Modal';
+import { Modal, ModalClose, ModalContent } from '../Modal';
 
 type Props = {
   isOpen?: boolean;
@@ -64,9 +64,11 @@ export const DeleteActionModal = ({
             >
               Delete
             </Button>
-            <Button variant="plain" colorSchema="secondary" onClick={onClose}>
-              Cancel
-            </Button>
+            <ModalClose asChild>
+              <Button variant="plain" colorSchema="secondary" onClick={onClose}>
+                Cancel
+              </Button>
+            </ModalClose>{' '}
           </div>
         }
         onClose={onClose}
