@@ -217,11 +217,15 @@ export default function Dashboard() {
 
           setSelectedEnv({
             name: accessibleEnvironments?.[index]?.name as string,
-            slug: query.env as string
+            slug: query.env as string,
+            isWriteDenied: accessibleEnvironments?.[index]?.isWriteDenied as boolean,
+            isReadDenied: accessibleEnvironments?.[index]?.isReadDenied as boolean
           })
           setSelectedSnapshotEnv({
             name: accessibleEnvironments?.[index]?.name as string,
-            slug: query.env as string
+            slug: query.env as string,
+            isWriteDenied: accessibleEnvironments?.[index]?.isWriteDenied as boolean,
+            isReadDenied: accessibleEnvironments?.[index]?.isReadDenied as boolean
           })
 
         }
