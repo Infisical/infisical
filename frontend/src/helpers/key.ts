@@ -82,4 +82,6 @@ let privateKey;
     return privateKey;
 }
 
-export { decryptPrivateKeyHelper };
+export {
+    decryptPrivateKeyHelper
+};

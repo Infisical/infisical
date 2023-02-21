@@ -70,9 +70,6 @@ const attemptLoginMfa = async ({
                 });
                 
                 saveTokenToLocalStorage({
-                    protectedKey,
-                    protectedKeyIV,
-                    protectedKeyTag,
                     publicKey,
                     encryptedPrivateKey,
                     iv,
