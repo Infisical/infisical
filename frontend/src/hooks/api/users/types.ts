@@ -1,15 +1,23 @@
 import { UserWsKeyPair } from '../keys/types';
 
 export type User = {
-  seenIps: string[];
-  _id: string;
-  email: string;
   createdAt: Date;
   updatedAt: Date;
-  __v: number;
-  firstName: string;
-  lastName: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  encryptionVersion?: number;
+  protectedKey?: string;
+  protectedKeyIV?: string;
+  protectedKeyTag?: string;
   publicKey: string;
+  encryptedPrivateKey?: string;
+  iv?: string;
+  tag?: string;
+  isMfaEnabled: boolean;
+  seenIps: string[];
+  _id: string;
+  __v: number;
 };
 
 export type OrgUser = {
@@ -24,7 +32,7 @@ export type OrgUser = {
   inviteEmail: string;
   organization: string;
   role: 'owner' | 'admin' | 'member';
-  status: 'invited' | 'accepted';
+  status: 'invited' | 'accepted' | 'verified' | 'completed';
   deniedPermissions: any[];
 };
 
@@ -36,4 +44,20 @@ export type AddUserToWsDTO = {
 export type AddUserToWsRes = {
   invitee: OrgUser['user'];
   latestKey: UserWsKeyPair;
+};
+
+export type UpdateOrgUserRoleDTO = {
+  organizationId: string;
+  membershipId: string;
+  role: string;
+};
+
+export type DeletOrgMembershipDTO = {
+  membershipId: string;
+  orgId: string;
+};
+
+export type AddUserToOrgDTO = {
+  inviteeEmail: string;
+  organizationId: string;
 };

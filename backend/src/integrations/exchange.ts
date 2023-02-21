@@ -138,7 +138,7 @@ const exchangeCodeAzure = async ({
   try {
     res = (await axios.post(
       INTEGRATION_AZURE_TOKEN_URL,
-       new URLSearchParams({
+      new URLSearchParams({
         grant_type: 'authorization_code',
         code: code,
         scope: 'https://vault.azure.net/.default openid offline_access',
@@ -147,16 +147,16 @@ const exchangeCodeAzure = async ({
         redirect_uri: `${SITE_URL}/integrations/azure-key-vault/oauth2/callback`
       } as any)
     )).data;
-    
+
     accessExpiresAt.setSeconds(
-        accessExpiresAt.getSeconds() + res.expires_in
+      accessExpiresAt.getSeconds() + res.expires_in
     );
   } catch (err: any) {
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error('Failed OAuth2 code-token exchange with Azure');
   }
-  
+
   return ({
     accessToken: res.access_token,
     refreshToken: res.refresh_token,
@@ -175,36 +175,36 @@ const exchangeCodeAzure = async ({
  * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
  */
 const exchangeCodeHeroku = async ({
-    code
+  code
 }: {
-    code: string;
+  code: string;
 }) => {
-    let res: ExchangeCodeHerokuResponse;
-    const accessExpiresAt = new Date();
-    try {
-        res = (await axios.post(
-            INTEGRATION_HEROKU_TOKEN_URL,
-            new URLSearchParams({
-				grant_type: 'authorization_code',
-				code: code,
-				client_secret: CLIENT_SECRET_HEROKU
-			} as any)
-        )).data;
-        
-        accessExpiresAt.setSeconds(
-            accessExpiresAt.getSeconds() + res.expires_in
-        );
-    } catch (err) {
-        Sentry.setUser(null);
-        Sentry.captureException(err);
-        throw new Error('Failed OAuth2 code-token exchange with Heroku');
-    }
-    
-    return ({
-        accessToken: res.access_token,
-        refreshToken: res.refresh_token,
-        accessExpiresAt
-    });
+  let res: ExchangeCodeHerokuResponse;
+  const accessExpiresAt = new Date();
+  try {
+    res = (await axios.post(
+      INTEGRATION_HEROKU_TOKEN_URL,
+      new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code,
+        client_secret: CLIENT_SECRET_HEROKU
+      } as any)
+    )).data;
+
+    accessExpiresAt.setSeconds(
+      accessExpiresAt.getSeconds() + res.expires_in
+    );
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed OAuth2 code-token exchange with Heroku');
+  }
+
+  return ({
+    accessToken: res.access_token,
+    refreshToken: res.refresh_token,
+    accessExpiresAt
+  });
 }
 
 /**
@@ -234,7 +234,7 @@ const exchangeCodeVercel = async ({ code }: { code: string }) => {
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error('Failed OAuth2 code-token exchange with Vercel');
+    throw new Error(`Failed OAuth2 code-token exchange with Vercel [err=${err}]`);
   }
 
   return {

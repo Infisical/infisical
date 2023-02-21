@@ -1,11 +1,12 @@
 import { ErrorRequestHandler } from "express";
 
 import * as Sentry from '@sentry/node';
-import { InternalServerError } from "../utils/errors";
+import { InternalServerError, UnauthorizedRequestError } from "../utils/errors";
 import { getLogger } from "../utils/logger";
 import RequestError, { LogLevel } from "../utils/requestError";
 import { NODE_ENV } from "../config";
 
+import { TokenExpiredError } from 'jsonwebtoken';
 
 export const requestErrorHandler: ErrorRequestHandler = (error: RequestError | Error, req, res, next) => {
     if (res.headersSent) return next();

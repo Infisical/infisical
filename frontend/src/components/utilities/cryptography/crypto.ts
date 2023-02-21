@@ -1,3 +1,5 @@
+import argon2 from 'argon2-browser';
+
 import aes from './aes-256-gcm';
 
 const nacl = require('tweetnacl');
@@ -8,6 +10,50 @@ type EncryptAsymmetricProps = {
   publicKey: string;
   privateKey: string;
 };
+
+/**
+ * Derive a key from password [password] and salt [salt] using Argon2id
+ * @param {Object} obj
+ * @param {String} obj.password - password to derive key from
+ * @param {String} obj.salt - salt to derive key from
+ * @param {Number} obj.mem - used memory, in KiB
+ * @param {Number} obj.time - number of iterations
+ * @param {Number} obj.parallelism - desired parallelism
+ * @param {Number} obj.hashLen - desired hash length (i.e. byte-length of derived key)
+ * @returns 
+ */
+const deriveArgonKey = async ({
+  password,
+  salt,
+  mem,
+  time,
+  parallelism,
+  hashLen
+}: {
+  password: string;
+  salt: string;
+  mem: number;
+  time: number;
+  parallelism: number;
+  hashLen: number;
+}) => {
+  let derivedKey;
+  try {
+    derivedKey = await argon2.hash({ 
+      pass: password, 
+      salt,
+      type: argon2.ArgonType.Argon2id,
+      mem,
+      time,
+      parallelism,
+      hashLen
+    });
+  } catch (err) {
+    console.error(err);
+  }
+
+  return derivedKey;
+}
 
 /**
  * Return assymmetrically encrypted [plaintext] using [publicKey] where
@@ -138,4 +184,10 @@ const decryptSymmetric = ({ ciphertext, iv, tag, key }: DecryptSymmetricProps): 
   return plaintext;
 };
 
-export { decryptAssymmetric, decryptSymmetric, encryptAssymmetric, encryptSymmetric };
+export { 
+  decryptAssymmetric, 
+  decryptSymmetric, 
+  deriveArgonKey,
+  encryptAssymmetric, 
+  encryptSymmetric 
+};

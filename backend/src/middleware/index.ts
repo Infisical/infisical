@@ -1,4 +1,5 @@
 import requireAuth from './requireAuth';
+import requireMfaAuth from './requireMfaAuth';
 import requireBotAuth from './requireBotAuth';
 import requireSignupAuth from './requireSignupAuth';
 import requireWorkspaceAuth from './requireWorkspaceAuth';
@@ -15,6 +16,7 @@ import validateRequest from './validateRequest';
 
 export {
 	requireAuth,
+	requireMfaAuth,
 	requireBotAuth,
 	requireSignupAuth,
 	requireWorkspaceAuth,
