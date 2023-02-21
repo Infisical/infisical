@@ -17,7 +17,8 @@ export interface IUser {
 	verifier?: string;
 	refreshVersion?: number;
 	isMfaEnabled: boolean;
-	seenIps: [string];
+	mfaMethods: boolean;
+	seenIps: [string]; // TODO 1: email for unseen IPs, TODO 2: move to a central alerting system
 }
 
 const userSchema = new Schema<IUser>(
@@ -82,8 +83,14 @@ const userSchema = new Schema<IUser>(
 			type: Boolean,
 			default: false
 		},
-		seenIps: [String]
-	},
+		mfaMethods: [{
+			type: String
+		}],
+		seenIps: {
+			type: [String],
+			default: []
+		}
+	}, 
 	{
 		timestamps: true
 	}

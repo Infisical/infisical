@@ -68,6 +68,15 @@ export const updateMyMfaEnabled = async (req: Request, res: Response) => {
     try {
         const { isMfaEnabled }: { isMfaEnabled: boolean } = req.body;
         req.user.isMfaEnabled = isMfaEnabled;
+        
+        if (isMfaEnabled) { 
+            // TODO: adapt this route/controller 
+            // to work for different forms of MFA
+            req.user.mfaMethods = ['email'];
+        } else {
+            req.user.mfaMethods = [];
+        }
+
         await req.user.save();
         
         user = req.user;
