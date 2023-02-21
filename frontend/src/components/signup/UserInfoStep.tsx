@@ -1,5 +1,6 @@
+import crypto from 'crypto';
+
 import React, { useState } from 'react';
-import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { faCheck, faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -8,18 +9,21 @@ import nacl from 'tweetnacl';
 import { encodeBase64 } from 'tweetnacl-util';
 
 import completeAccountInformationSignup from '@app/pages/api/auth/CompleteAccountInformationSignup';
+import getOrganizations from '@app/pages/api/organization/getOrgs';
+import ProjectService from '@app/services/ProjectService';
 
 import Button from '../basic/buttons/Button';
 import InputField from '../basic/InputField';
-import attemptLogin from '../utilities/attemptLogin';
 import passwordCheck from '../utilities/checks/PasswordCheck';
 import Aes256Gcm from '../utilities/cryptography/aes-256-gcm';
+import { deriveArgonKey } from '../utilities/cryptography/crypto';
+import { saveTokenToLocalStorage } from '../utilities/saveTokenToLocalStorage';
+import SecurityClient from '../utilities/SecurityClient';
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
 
 interface UserInfoStepProps {
-  verificationToken: string;
   incrementStep: () => void;
   email: string;
   password: string;
@@ -44,7 +48,6 @@ interface UserInfoStepProps {
  * @param {string} obj.setLastName - function managing the state of user's last name
  */
 export default function UserInfoStep({
-  verificationToken,
   incrementStep,
   email,
   password,
@@ -62,7 +65,6 @@ export default function UserInfoStep({
 
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
-  const router = useRouter();
 
   // Verifies if the information that the users entered (name, workspace)
   // is there, and if the password matches the criteria.
@@ -94,17 +96,9 @@ export default function UserInfoStep({
       const pair = nacl.box.keyPair();
       const secretKeyUint8Array = pair.secretKey;
       const publicKeyUint8Array = pair.publicKey;
-      const PRIVATE_KEY = encodeBase64(secretKeyUint8Array);
-      const PUBLIC_KEY = encodeBase64(publicKeyUint8Array);
-
-      const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
-        text: PRIVATE_KEY,
-        secret: password
-          .slice(0, 32)
-          .padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), '0')
-      }) as { ciphertext: string; iv: string; tag: string };
-
-      localStorage.setItem('PRIVATE_KEY', PRIVATE_KEY);
+      const privateKey = encodeBase64(secretKeyUint8Array);
+      const publicKey = encodeBase64(publicKeyUint8Array);
+      localStorage.setItem('PRIVATE_KEY', privateKey);
 
       client.init(
         {
@@ -113,35 +107,90 @@ export default function UserInfoStep({
         },
         async () => {
           client.createVerifier(async (err: any, result: { salt: string; verifier: string }) => {
-            const response = await completeAccountInformationSignup({
-              email,
-              firstName,
-              lastName,
-              organizationName: `${firstName}'s organization`,
-              publicKey: PUBLIC_KEY,
-              ciphertext,
-              iv,
-              tag,
-              salt: result.salt,
-              verifier: result.verifier,
-              token: verificationToken
-            });
+            try {
 
-            // if everything works, go the main dashboard page.
-            if (response.status === 200) {
-              // response = await response.json();
+              // TODO: moduralize into KeyService
+              const derivedKey = await deriveArgonKey({
+                password,
+                salt: result.salt,
+                mem: 65536,
+                time: 3,
+                parallelism: 1,
+                hashLen: 32
+              });
+              
+              if (!derivedKey) throw new Error('Failed to derive key from password');
 
-              localStorage.setItem('publicKey', PUBLIC_KEY);
-              localStorage.setItem('encryptedPrivateKey', ciphertext);
-              localStorage.setItem('iv', iv);
-              localStorage.setItem('tag', tag);
+              const key = crypto.randomBytes(32);
+             
+              // create encrypted private key by encrypting the private
+              // key with the symmetric key [key]
+              const {
+                ciphertext: encryptedPrivateKey,
+                iv: encryptedPrivateKeyIV,
+                tag: encryptedPrivateKeyTag
+              } = Aes256Gcm.encrypt({
+                text: privateKey,
+                secret: key
+              });
+              
+              // create the protected key by encrypting the symmetric key
+              // [key] with the derived key
+              const {
+                ciphertext: protectedKey,
+                iv: protectedKeyIV,
+                tag: protectedKeyTag
+              } = Aes256Gcm.encrypt({
+                text: key.toString('hex'),
+                secret: Buffer.from(derivedKey.hash)
+              });
+              
+              const response = await completeAccountInformationSignup({
+                email,
+                firstName,
+                lastName,
+                protectedKey,
+                protectedKeyIV,
+                protectedKeyTag,
+                publicKey,
+                encryptedPrivateKey,
+                encryptedPrivateKeyIV,
+                encryptedPrivateKeyTag,
+                salt: result.salt,
+                verifier: result.verifier,
+                organizationName: `${firstName}'s organization`
+              });
+              
+              // unset signup JWT token and set JWT token
+              SecurityClient.setSignupToken('');
+              SecurityClient.setToken(response.token);
 
-              try {
-                await attemptLogin(email, password, () => {}, router, true, false);
-                incrementStep();
-              } catch (error) {
-                setIsLoading(false);
-              }
+              saveTokenToLocalStorage({
+                protectedKey,
+                protectedKeyIV,
+                protectedKeyTag,
+                publicKey,
+                encryptedPrivateKey,
+                iv: encryptedPrivateKeyIV,
+                tag: encryptedPrivateKeyTag,
+                privateKey
+              });
+
+              const userOrgs = await getOrganizations();
+              const orgId = userOrgs[0]?._id;
+              const project = await ProjectService.initProject({
+                organizationId: orgId,
+                projectName: 'Example Project'
+              });
+
+              localStorage.setItem('orgData.id', orgId);
+              localStorage.setItem('projectData.id', project._id);
+
+              incrementStep();
+
+            } catch (error) {
+              setIsLoading(false);
+              console.error(error);
             }
           });
         }
@@ -153,7 +202,7 @@ export default function UserInfoStep({
 
   return (
     <div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-36 md:mb-16">
-      <p className="text-4xl font-bold flex justify-center mb-6 text-gray-400 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
+      <p className="text-4xl font-bold flex justify-center mb-6 mx-8 md:mx-16 text-primary">
         {t('signup:step3-message')}
       </p>
       <div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">

@@ -1,7 +1,10 @@
 export {
   fetchOrgUsers,
+  useAddUserToOrg,
   useAddUserToWs,
+  useDeleteOrgMembership,
   useGetOrgUsers,
   useGetUser,
-  useLogoutUser
+  useLogoutUser,
+  useUpdateOrgUserRole
 } from './queries';

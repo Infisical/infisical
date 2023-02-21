@@ -211,7 +211,7 @@ const getAuthAPIKeyPayload = async ({
  * @return {String} obj.token - issued JWT token
  * @return {String} obj.refreshToken - issued refresh token
  */
-const issueTokens = async ({ userId }: { userId: string }) => {
+const issueAuthTokens = async ({ userId }: { userId: string }) => {
 	let token: string;
 	let refreshToken: string;
 	try {
@@ -298,6 +298,6 @@ export {
 	getAuthSTDPayload,
 	getAuthAPIKeyPayload,
 	createToken,
-	issueTokens,
+	issueAuthTokens,
 	clearTokens
 };

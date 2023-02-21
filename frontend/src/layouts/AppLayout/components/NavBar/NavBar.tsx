@@ -75,8 +75,18 @@ export const Navbar = () => {
 
   const closeApp = async () => {
     try {
-      console.log('Logging out...');
+      console.log('Logging out...')
       await logout.mutateAsync();
+      localStorage.removeItem('protectedKey');
+      localStorage.removeItem('protectedKeyIV');
+      localStorage.removeItem('protectedKeyTag');
+      localStorage.removeItem('publicKey');
+      localStorage.removeItem('encryptedPrivateKey');
+      localStorage.removeItem('iv');
+      localStorage.removeItem('tag');
+      localStorage.removeItem('PRIVATE_KEY');
+      localStorage.removeItem('orgData.id');
+      localStorage.removeItem('projectData.id');
       router.push('/login');
     } catch (error) {
       console.error(error);

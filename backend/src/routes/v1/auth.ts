@@ -7,7 +7,7 @@ import { authLimiter } from '../../helpers/rateLimiter';
 
 router.post('/token', validateRequest, authController.getNewToken);
 
-router.post(
+router.post( // deprecated (moved to api/v2/auth/login1)
   '/login1',
   authLimiter,
   body('email').exists().trim().notEmpty(),
@@ -16,7 +16,7 @@ router.post(
   authController.login1
 );
 
-router.post(
+router.post( // deprecated (moved to api/v2/auth/login2)
   '/login2',
   authLimiter,
   body('email').exists().trim().notEmpty(),

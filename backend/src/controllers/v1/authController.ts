@@ -5,7 +5,7 @@ import * as Sentry from '@sentry/node';
 import * as bigintConversion from 'bigint-conversion';
 const jsrp = require('jsrp');
 import { User, LoginSRPDetail } from '../../models';
-import { createToken, issueTokens, clearTokens } from '../../helpers/auth';
+import { createToken, issueAuthTokens, clearTokens } from '../../helpers/auth';
 import {
   ACTION_LOGIN,
   ACTION_LOGOUT
@@ -111,7 +111,7 @@ export const login2 = async (req: Request, res: Response) => {
         // compare server and client shared keys
         if (server.checkClientProof(clientProof)) {
           // issue tokens
-          const tokens = await issueTokens({ userId: user._id.toString() });
+          const tokens = await issueAuthTokens({ userId: user._id.toString() });
 
           // store (refresh) token in httpOnly cookie
           res.cookie('jid', tokens.refreshToken, {

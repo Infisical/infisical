@@ -10,10 +10,10 @@ import { Menu, Transition } from '@headlessui/react';
  */
 const GenerateSecretMenu = ({
   modifyValue,
-  position
+  id
 }: {
-  modifyValue: (value: string, position: number) => void;
-  position: number;
+  modifyValue: (value: string, id: string) => void;
+  id: string;
 }) => {
   const [randomStringLength, setRandomStringLength] = useState(32);
   const { t } = useTranslation();
@@ -51,7 +51,7 @@ const GenerateSecretMenu = ({
                   [...Array(randomStringLength)]
                     .map(() => Math.floor(Math.random() * 16).toString(16))
                     .join(''),
-                  position
+                  id
                 );
               }
             }}

@@ -4,28 +4,23 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import { faWarning } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import Button from '@app/components/basic/buttons/Button';
-import Error from '@app/components/basic/Error';
-import InputField from '@app/components/basic/InputField';
 import ListBox from '@app/components/basic/Listbox';
-import attemptLogin from '@app/components/utilities/attemptLogin';
+import LoginStep from '@app/components/login/LoginStep';
+import MFAStep from '@app/components/login/MFAStep';
 import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
 import { isLoggedIn } from '@app/reactQuery';
 
 import getWorkspaces from './api/workspace/getWorkspaces';
 
 export default function Login() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [errorLogin, setErrorLogin] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isAlreadyLoggedIn, setIsAlreadyLoggedIn] = useState(false);
-  const router = useRouter();
+  const [step, setStep] = useState(1);
   const { t } = useTranslation();
   const lang = router.locale ?? 'en';
+  
 
   const setLanguage = async (to: string) => {
     router.push('/login', '/login', { locale: to });
@@ -45,29 +40,34 @@ export default function Login() {
       }
     };
     if (isLoggedIn()) {
-      setIsAlreadyLoggedIn(true);
       redirectToDashboard();
     }
   }, []);
-
-  /**
-   * This function check if the user entered the correct credentials and should be allowed to log in.
-   */
-  const loginCheck = async () => {
-    if (!email || !password) {
-      return;
+  
+  const renderStep = (loginStep: number) => {
+    // TODO: add MFA step
+    switch (loginStep) {
+      case 1:
+        return (
+          <LoginStep
+            email={email}
+            setEmail={setEmail}
+            password={password}
+            setPassword={setPassword}
+            setStep={setStep}
+          />
+        );
+      case 2:
+        // TODO: add MFA step
+        return (
+          <MFAStep
+            email={email}
+            password={password}
+          />
+        );
+      default:
+        return <div />
     }
-
-    setIsLoading(true);
-    await attemptLogin(email, password, setErrorLogin, router, false, true).then(() => {
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 2000);
-    });
-  };
-
-  if (isAlreadyLoggedIn) {
-    return null
   }
 
   return (
@@ -84,80 +84,7 @@ export default function Login() {
           <Image src="/images/biglogo.png" height={90} width={120} alt="long logo" />
         </div>
       </Link>
-      <form onChange={() => setErrorLogin(false)} onSubmit={(e) => e.preventDefault()}>
-        <div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-4 pt-8 px-6 rounded-xl drop-shadow-xl">
-          <p className="text-3xl w-max mx-auto flex justify-center font-semibold text-bunker-100 mb-6">
-            {t('login:login')}
-          </p>
-          <div className="flex items-center justify-center w-full md:p-2 rounded-lg mt-4 md:mt-0 max-h-24 md:max-h-28">
-            <InputField
-              label={t('common:email')}
-              onChangeHandler={setEmail}
-              type="email"
-              value={email}
-              placeholder=""
-              isRequired
-              autoComplete="username"
-            />
-          </div>
-          <div className="relative flex items-center justify-center w-full md:p-2 rounded-lg md:mt-2 mt-6 max-h-24 md:max-h-28">
-            <InputField
-              label={t('common:password')}
-              onChangeHandler={setPassword}
-              type="password"
-              value={password}
-              placeholder=""
-              isRequired
-              autoComplete="current-password"
-              id="current-password"
-            />
-            <div className="absolute top-2 right-3 text-primary-700 hover:text-primary duration-200 cursor-pointer text-sm">
-              <Link href="/verify-email">
-                <button
-                  type="button"
-                  className="text-primary-700 hover:text-primary duration-200 font-normal text-sm underline-offset-4 ml-1.5"
-                >
-                  {t('login:forgot-password')}
-                </button>
-              </Link>
-            </div>
-          </div>
-          {!isLoading && errorLogin && <Error text={t('login:error-login') ?? ''} />}
-          <div className="flex flex-col items-center justify-center w-full md:p-2 max-h-20 max-w-md mt-4 mx-auto text-sm">
-            <div className="text-l mt-6 m-8 px-8 py-3 text-lg">
-              <Button
-                type="submit"
-                text={t('login:login') ?? ''}
-                onButtonPressed={loginCheck}
-                loading={isLoading}
-                size="lg"
-              />
-            </div>
-          </div>
-          {/* <div className="flex items-center justify-center w-full md:p-2 rounded-lg max-h-24 md:max-h-28">
-          <p className="text-gray-400">I may have <Link href="/login"><u className="text-sky-500 cursor-pointer">forgotten my password.</u></Link></p>
-        </div> */}
-        </div>
-        {false && (
-          <div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-300 rounded-md max-w-md mx-auto mt-4">
-            <FontAwesomeIcon icon={faWarning} className="ml-2 mr-6 text-6xl" />
-            {t('common:maintenance-alert')}
-          </div>
-        )}
-        <div className="flex flex-row items-center justify-center md:pb-4 mt-4">
-          <p className="text-sm flex justify-center text-gray-400 w-max">
-            {t('login:need-account')}
-          </p>
-          <Link href="/signup">
-            <button
-              type="button"
-              className="text-primary-700 hover:text-primary duration-200 font-normal text-sm underline-offset-4 ml-1.5"
-            >
-              {t('login:create-account')}
-            </button>
-          </Link>
-        </div>
-      </form>
+      {renderStep(step)}
       <div className="absolute right-4 top-0 mt-4 flex items-center justify-center">
         <div className="w-48 mx-auto">
           <ListBox
@@ -173,4 +100,4 @@ export default function Login() {
   );
 }
 
-export const getStaticProps = getTranslatedStaticProps(['auth', 'login']);
+export const getStaticProps = getTranslatedStaticProps(['auth', 'login', 'mfa']);

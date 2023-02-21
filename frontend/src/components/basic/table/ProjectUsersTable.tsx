@@ -30,7 +30,7 @@ type Props = {
 type EnvironmentProps = {
   name: string;
   slug: string;
-}
+};
 
 /**
  * This is the component that shows the users of a certin project
@@ -91,26 +91,38 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
     });
   };
 
-  const handlePermissionUpdate = (index: number, val: string, membershipId: string, slug: string ) => {
-    let denials: { ability: string; environmentSlug: string; }[];
-    if (val === "Read Only") {
-      denials = [{
-        ability: "write",
-        environmentSlug: slug
-      }];
-    } else if (val === "No Access") {
-      denials = [{
-        ability: "write",
-        environmentSlug: slug
-      }, {
-        ability: "read",
-        environmentSlug: slug
-      }];
-    } else if (val === "Add Only") {
-      denials = [{
-        ability: "read",
-        environmentSlug: slug
-      }];
+  const handlePermissionUpdate = (
+    index: number,
+    val: string,
+    membershipId: string,
+    slug: string
+  ) => {
+    let denials: { ability: string; environmentSlug: string }[];
+    if (val === 'Read Only') {
+      denials = [
+        {
+          ability: 'write',
+          environmentSlug: slug
+        }
+      ];
+    } else if (val === 'No Access') {
+      denials = [
+        {
+          ability: 'write',
+          environmentSlug: slug
+        },
+        {
+          ability: 'read',
+          environmentSlug: slug
+        }
+      ];
+    } else if (val === 'Add Only') {
+      denials = [
+        {
+          ability: 'read',
+          environmentSlug: slug
+        }
+      ];
     } else {
       denials = [];
     }
@@ -118,8 +130,12 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
     if (currentPlan !== plans.professional && host === 'https://app.infisical.com') {
       setIsUpgradeModalOpen(true);
     } else {
-      const allDenials = userData[index].deniedPermissions.filter((perm: { ability: string; environmentSlug: string; }) => perm.environmentSlug !== slug).concat(denials);
-      updateUserProjectPermission({ membershipId, denials: allDenials});
+      const allDenials = userData[index].deniedPermissions
+        .filter(
+          (perm: { ability: string; environmentSlug: string }) => perm.environmentSlug !== slug
+        )
+        .concat(denials);
+      updateUserProjectPermission({ membershipId, denials: allDenials });
       changeData([
         ...userData.slice(0, index),
         ...[
@@ -156,7 +172,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
         orgId
       });
       if (subscriptions) {
-        setCurrentPlan(subscriptions.data[0].plan.product)
+        setCurrentPlan(subscriptions.data[0].plan.product);
       }
     })();
   }, [userData, myUser]);
@@ -186,25 +202,28 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
 
   const closeUpgradeModal = () => {
     setIsUpgradeModalOpen(false);
-  }
+  };
 
   return (
-    <div className="table-container bg-bunker rounded-md mb-6 border border-mineshaft-700 relative mt-1 min-w-max">
-      <div className="absolute rounded-t-md w-full h-[3.1rem] bg-white/5" />
+    <div className="table-container relative mb-6 mt-1 min-w-max rounded-md border border-mineshaft-700 bg-bunker">
+      <div className="absolute h-[3.1rem] w-full rounded-t-md bg-white/5" />
       <UpgradePlanModal
         isOpen={isUpgradeModalOpen}
         onClose={closeUpgradeModal}
         text="You can change user permissions if you switch to Infisical's Professional plan."
       />
-      <table className="w-full my-0.5">
-        <thead className="text-gray-400 text-xs font-light">
+      <table className="my-0.5 w-full">
+        <thead className="text-xs font-light text-gray-400">
           <tr>
-            <th className="text-left pl-4 py-3.5">NAME</th>
-            <th className="text-left pl-4 py-3.5">EMAIL</th>
-            <th className="text-left pl-6 pr-10 py-3.5">ROLE</th>
-            {workspaceEnvs.map(env => (
-              <th key={guidGenerator()} className="text-left pl-2 py-1 max-w-min break-normal">
-                <span>{env.slug.toUpperCase()}<br/></span> 
+            <th className="py-3.5 pl-4 text-left">NAME</th>
+            <th className="py-3.5 pl-4 text-left">EMAIL</th>
+            <th className="py-3.5 pl-6 pr-10 text-left">ROLE</th>
+            {workspaceEnvs.map((env) => (
+              <th key={guidGenerator()} className="max-w-min break-normal py-1 pl-2 text-left">
+                <span>
+                  {env.slug.toUpperCase()}
+                  <br />
+                </span>
                 {/* <span>PERMISSION</span> */}
               </th>
             ))}
@@ -227,28 +246,28 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
               )
               .map((row, index) => (
                 <tr key={guidGenerator()} className="bg-bunker-600 text-sm hover:bg-bunker-500">
-                  <td className="pl-4 py-2 border-mineshaft-700 border-t text-gray-300">
+                  <td className="border-t border-mineshaft-700 py-2 pl-4 text-gray-300">
                     {row.firstName} {row.lastName}
                   </td>
-                  <td className="pl-4 py-2 border-mineshaft-700 border-t text-gray-300">
+                  <td className="border-t border-mineshaft-700 py-2 pl-4 text-gray-300">
                     {row.email}
                   </td>
-                  <td className="pl-6 pr-10 py-2 border-mineshaft-700 border-t text-gray-300">
-                    <div className="justify-start h-full flex flex-row items-center">
-                      <Select 
+                  <td className="border-t border-mineshaft-700 py-2 pl-6 pr-10 text-gray-300">
+                    <div className="flex h-full flex-row items-center justify-start">
+                      <Select
                         className="w-36 bg-mineshaft-700"
                         dropdownContainerClassName="bg-mineshaft-700"
                         // open={isOpen}
                         onValueChange={(e) => handleRoleUpdate(index, e)}
                         value={row.role}
-                        disabled={myRole !== 'admin' || myUser === row.email}
+                        isDisabled={myRole !== 'admin' || myUser === row.email}
                         // onOpenChange={(open) => setIsOpen(open)}
                       >
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="member">Member</SelectItem>
                       </Select>
                       {row.status === 'completed' && myUser !== row.email && (
-                        <div className="border border-mineshaft-700 rounded-md bg-white/5 hover:bg-primary text-white hover:text-black duration-200">
+                        <div className="rounded-md border border-mineshaft-700 bg-white/5 text-white duration-200 hover:bg-primary hover:text-black">
                           <Button
                             onButtonPressed={() => grantAccess(row.userId, row.publicKey)}
                             color="mineshaft"
@@ -259,43 +278,106 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
                       )}
                     </div>
                   </td>
-                  {workspaceEnvs.map((env) => <td key={guidGenerator()} className="pl-2 py-2 border-mineshaft-700 border-t text-gray-300">
-                    <Select 
-                      className="w-16 bg-mineshaft-700"
-                      dropdownContainerClassName="bg-mineshaft-700"
-                      position="item-aligned"
-                      // open={isOpen}
-                      onValueChange={(val) => handlePermissionUpdate(index, val, row.membershipId, env.slug)}
-                      value={
-                        // eslint-disable-next-line no-nested-ternary
-                        (row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") && row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("read"))
-                        ? "No Access"
-                        // eslint-disable-next-line no-nested-ternary
-                        : (row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") && !row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("read") ? "Read Only" 
-                        : !row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") && row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("read") ? "Add Only" : "Read & Write")
-                      }
-                      icon={
-                        // eslint-disable-next-line no-nested-ternary
-                        (row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") && row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("read"))
-                        ? faEyeSlash
-                        // eslint-disable-next-line no-nested-ternary
-                        : (row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") && !row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("read") ? faEye 
-                        : !row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("write") && row.deniedPermissions.filter((perm: any) => perm.environmentSlug === env.slug).map((perm: {ability: string}) => perm.ability).includes("read") ? faPlus : faPenToSquare)
-                      }
-                      disabled={myRole !== 'admin'}
-                      // onOpenChange={(open) => setIsOpen(open)}
+                  {workspaceEnvs.map((env) => (
+                    <td
+                      key={guidGenerator()}
+                      className="border-t border-mineshaft-700 py-2 pl-2 text-gray-300"
                     >
-                      <SelectItem value="No Access" customIcon={faEyeSlash}>No Access</SelectItem>
-                      <SelectItem value="Read Only" customIcon={faEye}>Read Only</SelectItem>
-                      <SelectItem value="Add Only"  customIcon={faPlus}>Add Only</SelectItem>
-                      <SelectItem value="Read & Write" customIcon={faPenToSquare}>Read & Write</SelectItem>
-                    </Select>
-                  </td>)}
-                  <td className="flex flex-row justify-end pl-8 pr-8 py-2 border-t border-0.5 border-mineshaft-700">
+                      <Select
+                        className="w-16 bg-mineshaft-700"
+                        dropdownContainerClassName="bg-mineshaft-700"
+                        position="item-aligned"
+                        // open={isOpen}
+                        onValueChange={(val) =>
+                          handlePermissionUpdate(index, val, row.membershipId, env.slug)
+                        }
+                        value={
+                          // eslint-disable-next-line no-nested-ternary
+                          row.deniedPermissions
+                            .filter((perm: any) => perm.environmentSlug === env.slug)
+                            .map((perm: { ability: string }) => perm.ability)
+                            .includes('write') &&
+                          row.deniedPermissions
+                            .filter((perm: any) => perm.environmentSlug === env.slug)
+                            .map((perm: { ability: string }) => perm.ability)
+                            .includes('read')
+                            ? 'No Access'
+                            : // eslint-disable-next-line no-nested-ternary
+                            row.deniedPermissions
+                                .filter((perm: any) => perm.environmentSlug === env.slug)
+                                .map((perm: { ability: string }) => perm.ability)
+                                .includes('write') &&
+                              !row.deniedPermissions
+                                .filter((perm: any) => perm.environmentSlug === env.slug)
+                                .map((perm: { ability: string }) => perm.ability)
+                                .includes('read')
+                            ? 'Read Only'
+                            : !row.deniedPermissions
+                                .filter((perm: any) => perm.environmentSlug === env.slug)
+                                .map((perm: { ability: string }) => perm.ability)
+                                .includes('write') &&
+                              row.deniedPermissions
+                                .filter((perm: any) => perm.environmentSlug === env.slug)
+                                .map((perm: { ability: string }) => perm.ability)
+                                .includes('read')
+                            ? 'Add Only'
+                            : 'Read & Write'
+                        }
+                        icon={
+                          // eslint-disable-next-line no-nested-ternary
+                          row.deniedPermissions
+                            .filter((perm: any) => perm.environmentSlug === env.slug)
+                            .map((perm: { ability: string }) => perm.ability)
+                            .includes('write') &&
+                          row.deniedPermissions
+                            .filter((perm: any) => perm.environmentSlug === env.slug)
+                            .map((perm: { ability: string }) => perm.ability)
+                            .includes('read')
+                            ? faEyeSlash
+                            : // eslint-disable-next-line no-nested-ternary
+                            row.deniedPermissions
+                                .filter((perm: any) => perm.environmentSlug === env.slug)
+                                .map((perm: { ability: string }) => perm.ability)
+                                .includes('write') &&
+                              !row.deniedPermissions
+                                .filter((perm: any) => perm.environmentSlug === env.slug)
+                                .map((perm: { ability: string }) => perm.ability)
+                                .includes('read')
+                            ? faEye
+                            : !row.deniedPermissions
+                                .filter((perm: any) => perm.environmentSlug === env.slug)
+                                .map((perm: { ability: string }) => perm.ability)
+                                .includes('write') &&
+                              row.deniedPermissions
+                                .filter((perm: any) => perm.environmentSlug === env.slug)
+                                .map((perm: { ability: string }) => perm.ability)
+                                .includes('read')
+                            ? faPlus
+                            : faPenToSquare
+                        }
+                        isDisabled={myRole !== 'admin'}
+                        // onOpenChange={(open) => setIsOpen(open)}
+                      >
+                        <SelectItem value="No Access" customIcon={faEyeSlash}>
+                          No Access
+                        </SelectItem>
+                        <SelectItem value="Read Only" customIcon={faEye}>
+                          Read Only
+                        </SelectItem>
+                        <SelectItem value="Add Only" customIcon={faPlus}>
+                          Add Only
+                        </SelectItem>
+                        <SelectItem value="Read & Write" customIcon={faPenToSquare}>
+                          Read & Write
+                        </SelectItem>
+                      </Select>
+                    </td>
+                  ))}
+                  <td className="border-0.5 flex flex-row justify-end border-t border-mineshaft-700 py-2 pl-8 pr-8">
                     {myUser !== row.email &&
                     // row.role !== "admin" &&
                     myRole !== 'member' ? (
-                      <div className="opacity-50 hover:opacity-100 flex items-center mt-0.5">
+                      <div className="mt-0.5 flex items-center opacity-50 hover:opacity-100">
                         <Button
                           onButtonPressed={() => handleDelete(row.membershipId, index)}
                           color="red"
@@ -304,7 +386,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
                         />
                       </div>
                     ) : (
-                      <div className="w-9 h-9" />
+                      <div className="h-9 w-9" />
                     )}
                   </td>
                 </tr>

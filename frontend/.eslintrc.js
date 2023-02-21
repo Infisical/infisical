@@ -1,4 +1,9 @@
 module.exports = {
+  overrides: [
+    {
+      files: ["next.config.js"]
+    }
+  ],
   root: true,
   env: {
     browser: true,
@@ -87,6 +92,7 @@ module.exports = {
       }
     ]
   },
+  ignorePatterns: ['next.config.js'],
   settings: {
     'import/resolver': {
       typescript: {

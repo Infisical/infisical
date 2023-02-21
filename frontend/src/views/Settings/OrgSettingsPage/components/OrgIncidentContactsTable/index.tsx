@@ -1,0 +1,1 @@
+export { OrgIncidentContactsTable } from './OrgIncidentContactsTable';

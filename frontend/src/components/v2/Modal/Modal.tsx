@@ -9,7 +9,7 @@ import { IconButton } from '../IconButton';
 
 export type ModalContentProps = DialogPrimitive.DialogContentProps & {
   title?: ReactNode;
-  subTitle?: string;
+  subTitle?: ReactNode;
   footerContent?: ReactNode;
   onClose?: () => void;
 };

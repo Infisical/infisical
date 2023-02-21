@@ -1,13 +1,11 @@
 import * as Sentry from '@sentry/node';
-import crypto from 'crypto';
-import { Token, IToken, IUser } from '../models';
+import { IUser } from '../models';
 import { createOrganization } from './organization';
 import { addMembershipsOrg } from './membershipOrg';
-import { createWorkspace } from './workspace';
-import { addMemberships } from './membership';
-import { OWNER, ADMIN, ACCEPTED } from '../variables';
+import { OWNER, ACCEPTED } from '../variables';
 import { sendMail } from '../helpers/nodemailer';
-import { EMAIL_TOKEN_LIFETIME } from '../config';
+import { TokenService } from '../services';
+import { TOKEN_EMAIL_CONFIRMATION } from '../variables';
 
 /**
  * Send magic link to verify email to [email]
@@ -15,22 +13,13 @@ import { EMAIL_TOKEN_LIFETIME } from '../config';
  * @param {Object} obj
  * @param {String} obj.email - email
  * @returns {Boolean} success - whether or not operation was successful
- *
  */
 const sendEmailVerification = async ({ email }: { email: string }) => {
 	try {
-		const token = String(crypto.randomInt(Math.pow(10, 5), Math.pow(10, 6) - 1));
-
-		await Token.findOneAndUpdate(
-			{ email },
-			{
-				email,
-				token,
-				createdAt: new Date(),
-				ttl: Math.floor(+new Date() / 1000) + EMAIL_TOKEN_LIFETIME // time in seconds, i.e unix
-			},
-			{ upsert: true, new: true }
-		);
+		const token = await TokenService.createToken({
+			type: TOKEN_EMAIL_CONFIRMATION,
+			email
+		});
 
 		// send mail
 		await sendMail({
@@ -64,21 +53,11 @@ const checkEmailVerification = async ({
 	code: string;
 }) => {
 	try {
-		const token = await Token.findOne({
+		await TokenService.validateToken({
+			type: TOKEN_EMAIL_CONFIRMATION,
 			email,
 			token: code
 		});
-
-		if (token && Math.floor(Date.now() / 1000) > token.ttl) {
-			await Token.deleteOne({
-				email,
-				token: code
-			});
-
-			throw new Error('Verification token has expired')
-		}
-
-		if (!token) throw new Error('Failed to find email verification token');
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
@@ -113,18 +92,6 @@ const initializeDefaultOrg = async ({
 			organizationId: organization._id.toString(),
 			roles: [OWNER],
 			statuses: [ACCEPTED]
-		});
-
-		// initialize a default workspace inside the new organization
-		const workspace = await createWorkspace({
-			name: `Example Project`,
-			organizationId: organization._id.toString()
-		});
-
-		await addMemberships({
-			userIds: [user._id.toString()],
-			workspaceId: workspace._id.toString(),
-			roles: [ADMIN]
 		});
 	} catch (err) {
 		throw new Error(`Failed to initialize default organization and workspace [err=${err}]`);

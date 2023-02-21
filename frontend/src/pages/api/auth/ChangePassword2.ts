@@ -1,12 +1,15 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import { apiRequest } from "@app/config/request";
 
 interface Props {
+  clientProof: string;
+  protectedKey: string;
+  protectedKeyIV: string;
+  protectedKeyTag: string;
   encryptedPrivateKey: string;
-  iv: string;
-  tag: string;
+  encryptedPrivateKeyIV: string;
+  encryptedPrivateKeyTag: string;
   salt: string;
   verifier: string;
-  clientProof: string;
 }
 
 /**
@@ -14,26 +17,30 @@ interface Props {
  * @param {*} clientPublicKey
  * @returns
  */
-const changePassword2 = ({ encryptedPrivateKey, iv, tag, salt, verifier, clientProof }: Props) =>
-  SecurityClient.fetchCall('/api/v1/password/change-password', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      clientProof,
-      encryptedPrivateKey,
-      iv,
-      tag,
-      salt,
-      verifier
-    })
-  }).then(async (res) => {
-    if (res && res.status === 200) {
-      return res;
-    }
-    console.log('Failed to change the password');
-    return undefined;
+const changePassword2 = async ({
+  clientProof,
+  protectedKey,
+  protectedKeyIV,
+  protectedKeyTag,
+  encryptedPrivateKey, 
+  encryptedPrivateKeyIV, 
+  encryptedPrivateKeyTag, 
+  salt, 
+  verifier
+}: Props) => {
+  const { data } = await apiRequest.post('/api/v1/password/change-password', {
+    clientProof,
+    protectedKey,
+    protectedKeyIV,
+    protectedKeyTag,
+    encryptedPrivateKey,
+    encryptedPrivateKeyIV,
+    encryptedPrivateKeyTag,
+    salt,
+    verifier
   });
+  
+  return data;
+}
 
 export default changePassword2;

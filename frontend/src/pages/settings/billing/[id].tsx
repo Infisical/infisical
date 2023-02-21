@@ -31,7 +31,7 @@ export default function SettingsBilling() {
     {
       key: 2,
       name: 'Team',
-      price: '$7',
+      price: '$8',
       priceExplanation: t('billing:professional.price-explanation')!,
       text: 'For teams that want to improve their efficiency and security.',
       buttonTextMain: t('billing:upgrade')!,
@@ -41,7 +41,7 @@ export default function SettingsBilling() {
     {
       key: 3,
       name: t('billing:professional.name')!,
-      price: '$14',
+      price: '$18',
       priceExplanation: t('billing:professional.price-explanation')!,
       text: t('billing:enterprise.text')!,
       subtext: t('billing:professional.subtext')!,
