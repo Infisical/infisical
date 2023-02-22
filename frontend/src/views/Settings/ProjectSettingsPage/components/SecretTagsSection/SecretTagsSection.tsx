@@ -1,5 +1,5 @@
 import { Controller, useForm } from 'react-hook-form';
-import { faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faTags, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -7,6 +7,7 @@ import * as yup from 'yup';
 import {
   Button,
   DeleteActionModal,
+  EmptyState,
   FormControl,
   IconButton,
   Input,
@@ -16,23 +17,24 @@ import {
   ModalTrigger,
   Table,
   TableContainer,
+  TableSkeleton,
   TBody,
   Td,
   Th,
   THead,
-  Tr,
-} from '@app/components/v2';
+  Tr} from '@app/components/v2';
 import { usePopUp } from '@app/hooks';
 import { WorkspaceTag } from '@app/hooks/api/types';
 
 const createTagSchema = yup.object({
-  name: yup.string().required().label('Tag Name'),
+  name: yup.string().required().label('Tag Name')
 });
 
 export type CreateWsTag = yup.InferType<typeof createTagSchema>;
 
 type Props = {
   tags: WorkspaceTag[];
+  isLoading?: boolean;
   workspaceName: string;
   onDeleteTag: (tagID: string) => Promise<void>;
   onCreateTag: (data: CreateWsTag) => Promise<string>;
@@ -42,6 +44,7 @@ type DeleteModalData = { name: string; id: string };
 
 export const SecretTagsSection = ({
   tags = [],
+  isLoading,
   onDeleteTag,
   workspaceName,
   onCreateTag
@@ -76,7 +79,10 @@ export const SecretTagsSection = ({
       <div className="flex w-full flex-row justify-between">
         <div className="flex w-full flex-col">
           <p className="mb-3 text-xl font-semibold">Secret Tags</p>
-          <p className="text-sm text-gray-400">Every secret can be assigned to one or more tags. Here you can add and remove tags for the current project.</p>
+          <p className="text-sm text-gray-400">
+            Every secret can be assigned to one or more tags. Here you can add and remove tags for
+            the current project.
+          </p>
         </div>
         <div>
           <Modal
@@ -92,8 +98,8 @@ export const SecretTagsSection = ({
               </Button>
             </ModalTrigger>
             <ModalContent
-              title={`Add a tag for ${  workspaceName}`}
-              subTitle='Specify your tag name, and the slug will be created automatically.'
+              title={`Add a tag for ${workspaceName}`}
+              subTitle="Specify your tag name, and the slug will be created automatically."
             >
               <form onSubmit={handleSubmit(onFormSubmit)}>
                 <Controller
@@ -102,7 +108,7 @@ export const SecretTagsSection = ({
                   defaultValue=""
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
-                      label='Tag Name'
+                      label="Tag Name"
                       isError={Boolean(error)}
                       errorText={error?.message}
                     >
@@ -130,7 +136,7 @@ export const SecretTagsSection = ({
           </Modal>
         </div>
       </div>
-      <TableContainer className='mt-4'>
+      <TableContainer className="mt-4">
         <Table>
           <THead>
             <Tr>
@@ -140,7 +146,8 @@ export const SecretTagsSection = ({
             </Tr>
           </THead>
           <TBody>
-            {tags?.length > 0 ? (
+            {isLoading && <TableSkeleton columns={3} key="secret-tags" />}
+            {!isLoading &&
               tags.map(({ _id, name, slug }) => (
                 <Tr key={name}>
                   <Td>{name}</Td>
@@ -149,7 +156,7 @@ export const SecretTagsSection = ({
                     <IconButton
                       onClick={() =>
                         handlePopUpOpen('deleteTagConfirmation', {
-                          name, 
+                          name,
                           id: _id
                         })
                       }
@@ -160,11 +167,11 @@ export const SecretTagsSection = ({
                     </IconButton>
                   </Td>
                 </Tr>
-              ))
-            ) : (
+              ))}
+            {!isLoading && tags?.length === 0 && (
               <Tr>
-                <Td colSpan={4} className="py-6 text-center text-bunker-400">
-                  No tags found for this project
+                <Td colSpan={3}>
+                  <EmptyState title="No secret tags found" icon={faTags} />
                 </Td>
               </Tr>
             )}

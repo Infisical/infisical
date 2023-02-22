@@ -10,6 +10,6 @@ export const parameters = {
     }
   },
   darkMode: {
-    dark: { ...themes.dark, appContentBg: '#0e1014', appBg: '#0e1014' }
+    dark: { ...themes.dark, appContentBg: 'rgb(14,16,20)', appBg: 'rgb(14,16,20)' }
   }
 };

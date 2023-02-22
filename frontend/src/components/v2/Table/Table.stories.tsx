@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { Table, TableContainer, TBody, Td, Th, THead, Tr } from './Table';
+import { Table, TableContainer, TableSkeleton, TBody, Td, Th, THead, Tr } from './Table';
 
 const meta: Meta<typeof Table> = {
   title: 'Components/Table',
@@ -34,6 +34,25 @@ export const Basic: Story = {
             <Td>Row#2</Td>
             <Td>Row#3</Td>
           </Tr>
+        </TBody>
+      </Table>
+    </TableContainer>
+  )
+};
+
+export const Loading: Story = {
+  render: (args) => (
+    <TableContainer>
+      <Table {...args}>
+        <THead>
+          <Tr>
+            <Th>Head#1</Th>
+            <Th>Head#2</Th>
+            <Th>Head#3</Th>
+          </Tr>
+        </THead>
+        <TBody>
+          <TableSkeleton columns={3} key="story-book-table" />
         </TBody>
       </Table>
     </TableContainer>
