@@ -60,11 +60,11 @@ mongodb:
 mailhog:
     enabled: true
 backendEnvironmentVariables:
-  ENCRYPTION_KEY: 6c1fe4e407b8911c104518103505b218
-  JWT_AUTH_SECRET: 4be6ba5602e0fa0ac6ac05c3cd4d247f
-  JWT_REFRESH_SECRET: 5f2f3c8f0159068dc2bbb3a652a716ff
-  JWT_SERVICE_SECRET: f32f716d70a42c5703f4656015e76200
-  JWT_SIGNUP_SECRET: 3679e04ca949f914c03332aaaeba805a
+  ENCRYPTION_KEY: $(openssl rand -hex 16)
+  JWT_AUTH_SECRET: $(openssl rand -hex 16)
+  JWT_REFRESH_SECRET: $(openssl rand -hex 16)
+  JWT_SERVICE_SECRET: $(openssl rand -hex 16)
+  JWT_SIGNUP_SECRET: $(openssl rand -hex 16)
   SITE_URL: https://$host
   SMTP_FROM_ADDRESS: dev@$host
   SMTP_FROM_NAME: Local Infisical
