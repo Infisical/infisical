@@ -87,7 +87,7 @@ var loginCmd = &cobra.Command{
 					break
 				} else if mfaErrorResponse != nil {
 					if mfaErrorResponse.Context.Code == "mfa_invalid" {
-						msg := fmt.Sprintf("Incorrect, MFA code. You have %v attempts left", 5-i)
+						msg := fmt.Sprintf("Incorrect, verification code. You have %v attempts left", 5-i)
 						fmt.Println(msg)
 						if i == 5 {
 							util.PrintErrorMessageAndExit("No tries left, please try again in a bit")
@@ -96,7 +96,7 @@ var loginCmd = &cobra.Command{
 					}
 
 					if mfaErrorResponse.Context.Code == "mfa_expired" {
-						util.PrintErrorMessageAndExit("Your MFA code has expired, please try logging in again")
+						util.PrintErrorMessageAndExit("Your 2FA verification code has expired, please try logging in again")
 						break
 					}
 					i++
@@ -340,7 +340,7 @@ func generateFromPassword(password string, salt []byte, p *params) (hash []byte,
 
 func askForMFACode() string {
 	mfaCodePromptUI := promptui.Prompt{
-		Label: "MFA verification code",
+		Label: "Enter the 2FA verification code sent to your email",
 	}
 
 	mfaVerifyCode, err := mfaCodePromptUI.Run()
