@@ -1,6 +1,10 @@
 import nodemailer from 'nodemailer';
 import { SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_SECURE } from '../config';
-import { SMTP_HOST_SENDGRID, SMTP_HOST_MAILGUN } from '../variables';
+import {
+  SMTP_HOST_SENDGRID, 
+  SMTP_HOST_MAILGUN,
+  SMTP_HOST_SOCKETLABS
+} from '../variables';
 import SMTPConnection from 'nodemailer/lib/smtp-connection';
 import * as Sentry from '@sentry/node';
 
@@ -22,6 +26,12 @@ if (SMTP_SECURE) {
       mailOpts.requireTLS = true;
       break;
     case SMTP_HOST_MAILGUN:
+      mailOpts.requireTLS = true; 
+      mailOpts.tls = {
+        ciphers: 'TLSv1.2'
+      }
+      break;
+    case SMTP_HOST_SOCKETLABS:
       mailOpts.requireTLS = true; 
       mailOpts.tls = {
         ciphers: 'TLSv1.2'

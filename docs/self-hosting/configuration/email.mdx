@@ -25,7 +25,8 @@ By default, you need to configure the following SMTP [environment variables](htt
 
 Below you will find details on how to configure common email providers (not in any particular order).
 
-## Twilio SendGrid
+<AccordionGroup>
+<Accordion title="Twilio SendGrid">
 
 1. Create an account and configure [SendGrid](https://sendgrid.com) to send emails.
 2. Create a SendGrid API Key under Settings > [API Keys](https://app.sendgrid.com/settings/api_keys)
@@ -47,11 +48,12 @@ SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out em
 SMTP_FROM_NAME=Infisical
 ```
 
-<Info>
-  Remember that you will need to restart Infisical for this to work properly.
-</Info>
+  <Info>
+    Remember that you will need to restart Infisical for this to work properly.
+  </Info>
+</Accordion>
 
-## Mailgun
+<Accordion title="Mailgun">
 
 1. Create an account and configure [Mailgun](https://www.mailgun.com) to send emails.
 2. Obtain your Mailgun credentials in Sending > Overview > SMTP
@@ -70,7 +72,9 @@ SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out em
 SMTP_FROM_NAME=Infisical
 ```
 
-## AWS SES
+</Accordion>
+
+<Accordion title="AWS SES">
 
 1. Create an account and [configure AWS SES](https://aws.amazon.com/premiumsupport/knowledge-center/ses-set-up-connect-smtp/) to send emails in the Amazon SES console.
 2. Create an IAM user for SMTP authentication and obtain SMTP credentials in SMTP settings > Create SMTP credentials
@@ -82,7 +86,6 @@ SMTP_FROM_NAME=Infisical
 3. With your AWS SES SMTP credentials, you can now set up your SMTP environment variables:
 
 ```
-SMTP_HOST=smtp.mailgun.org # obtained from credentials page
 SMTP_HOST=email-smtp.ap-northeast-1.amazonaws.com # SMTP endpoint obtained from SMTP settings
 SMTP_USERNAME=xxx # your SMTP username
 SMTP_PASSWORD=xxx # your SMTP password
@@ -95,3 +98,40 @@ SMTP_FROM_NAME=Infisical
 <Info>
   Remember that you will need to restart Infisical for this to work properly.
 </Info>
+</Accordion>
+
+<Accordion title="SocketLabs">
+
+1. Create an account and configure [SocketLabs](https://www.socketlabs.com/) to send emails.
+2. From the dashboard, navigate to SMTP Credentials > SMTP & APIs > SMTP Credentials to obtain your SocketLabs SMTP credentials.
+
+![opening SocketLabs dashboard](../../images/email-socketlabs-dashboard.png)
+
+![obtaining SocketLabs credentials](../../images/email-socketlabs-credentials.png)
+
+3. With your SocketLabs SMTP credentials, you can now set up your SMTP environment variables:
+
+```
+SMTP_HOST=smtp.socketlabs.com
+SMTP_USERNAME=username # obtained from your credentials
+SMTP_PASSWORD=password # obtained from your credentials
+SMTP_PORT=587
+SMTP_SECURE=true
+SMTP_FROM_ADDRESS=hey@example.com # your email address being used to send out emails
+SMTP_FROM_NAME=Infisical
+```
+
+<Note>
+  The `SMTP_FROM_ADDRESS` environment variable should be an email for an
+  authenticated domain under Configuration > Domain Management in SocketLabs.
+  For example, if you're using SocketLabs in sandbox mode, then you may use an
+  email like `team@sandbox.socketlabs.dev`.
+</Note>
+
+![SocketLabs domain management](../../images/email-socketlabs-domains.png)
+
+<Info>
+  Remember that you will need to restart Infisical for this to work properly.
+</Info>
+</Accordion>
+</AccordionGroup>
