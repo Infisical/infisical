@@ -232,14 +232,11 @@ export const OrgSettingsPage = () => {
       <div className="max-w-8xl ml-6 mr-6 flex flex-col text-mineshaft-50">
         <OrgNameChangeSection orgName={currentOrg?.name} onOrgNameChange={onRenameOrg} />
         <div className="mb-6 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pt-6 pb-6">
-          <p className="mr-4 text-xl font-semibold text-white">
+          <p className="mr-4 mb-4 text-xl font-semibold text-white">
             {t('section-members:org-members')}
           </p>
-          <p className="mr-4 mt-2 mb-2 text-gray-400">
-            {t('section-members:org-members-description')}
-          </p>
           <OrgMembersTable
-            isLoading={isOrgUserLoading && IsWsMembershipLoading}
+            isLoading={isOrgUserLoading || IsWsMembershipLoading}
             isMoreUserNotAllowed={isMoreUsersNotAllowed}
             orgName={currentOrg?.name || ''}
             members={orgUsers}

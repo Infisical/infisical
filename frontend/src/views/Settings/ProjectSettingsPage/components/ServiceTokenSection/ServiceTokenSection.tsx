@@ -256,7 +256,7 @@ export const ServiceTokenSection = ({
         isOpen={popUp.deleteAPITokenConfirmation.isOpen}
         title={`Delete ${
           (popUp?.deleteAPITokenConfirmation?.data as DeleteModalData)?.name || ' '
-        } api key?`}
+        } service token?`}
         onChange={(isOpen) => handlePopUpToggle('deleteAPITokenConfirmation', isOpen)}
         deleteKey={(popUp?.deleteAPITokenConfirmation?.data as DeleteModalData)?.name}
         onClose={() => handlePopUpClose('deleteAPITokenConfirmation')}

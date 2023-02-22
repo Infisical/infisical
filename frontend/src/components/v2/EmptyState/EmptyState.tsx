@@ -11,11 +11,11 @@ type Props = {
 };
 
 export const EmptyState = ({ title, className, children, icon = faCubesStacked }: Props) => (
-  <div className={twMerge('flex w-full flex-col items-center p-8 text-mineshaft-50', className)}>
-    <div className="mb-4">
-      <FontAwesomeIcon icon={icon} size="3x" />
+  <div className={twMerge('flex w-full flex-col items-center px-2 pt-6 text-bunker-300', className)}>
+    <FontAwesomeIcon icon={icon} size="2x" className='mr-4' />
+    <div className='flex flex-row items-center py-4'>
+      <div className="text-bunker-300 text-sm">{title}</div>
+      <div>{children}</div>
     </div>
-    <div className="mb-8 text-gray-300">{title}</div>
-    <div>{children}</div>
   </div>
 );
