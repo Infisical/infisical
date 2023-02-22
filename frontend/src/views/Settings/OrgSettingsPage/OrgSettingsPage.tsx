@@ -36,10 +36,12 @@ export const OrgSettingsPage = () => {
   const { createNotification } = useNotificationContext();
 
   const orgId = currentOrg?._id || '';
-  const { data: orgUsers } = useGetOrgUsers(orgId);
-  const { data: workspaceMemberships } = useGetUserWorkspaceMemberships(orgId);
+  const { data: orgUsers, isLoading: isOrgUserLoading } = useGetOrgUsers(orgId);
+  const { data: workspaceMemberships, isLoading: IsWsMembershipLoading } =
+    useGetUserWorkspaceMemberships(orgId);
   const { data: wsKey } = useGetUserWsKey(currentWorkspace?._id || '');
-  const { data: incidentContact } = useGetOrgIncidentContact(orgId);
+  const { data: incidentContact, isLoading: IsIncidentContactLoading } =
+    useGetOrgIncidentContact(orgId);
 
   const renameOrg = useRenameOrg();
   const removeUserOrgMembership = useDeleteOrgMembership();
@@ -197,9 +199,9 @@ export const OrgSettingsPage = () => {
 
   /**
    * This function deleted a workspace.
-   * It first checks if there is more than one workspace aviable. Otherwise, it doesn't delete
+   * It first checks if there is more than one workspace available. Otherwise, it doesn't delete
    * It then checks if the name of the workspace to be deleted is correct. Otherwise, it doesn't delete.
-   * It then deletes the workspace and forwards the user to another aviable workspace.
+   * It then deletes the workspace and forwards the user to another available workspace.
    */
   // const executeDeletingWorkspace = async () => {
   //   const userWorkspaces = await getWorkspaces();
@@ -237,6 +239,7 @@ export const OrgSettingsPage = () => {
             {t('section-members:org-members-description')}
           </p>
           <OrgMembersTable
+            isLoading={isOrgUserLoading && IsWsMembershipLoading}
             isMoreUserNotAllowed={isMoreUsersNotAllowed}
             orgName={currentOrg?.name || ''}
             members={orgUsers}
@@ -261,6 +264,7 @@ export const OrgSettingsPage = () => {
           </div>
           <div className="w-full">
             <OrgIncidentContactsTable
+              isLoading={IsIncidentContactLoading}
               contacts={incidentContact}
               onRemoveContact={onRemoveIncidentContact}
               onAddContact={onAddIncidentContact}

@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { faMagnifyingGlass, faPlus, faTrash } from '@fortawesome/free-solid-svg-icons';
+import {
+  faContactBook,
+  faMagnifyingGlass,
+  faPlus,
+  faTrash
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -8,6 +13,7 @@ import * as yup from 'yup';
 import {
   Button,
   DeleteActionModal,
+  EmptyState,
   FormControl,
   IconButton,
   Input,
@@ -15,16 +21,17 @@ import {
   ModalContent,
   Table,
   TableContainer,
+  TableSkeleton,
   TBody,
   Td,
   Th,
   THead,
-  Tr
-} from '@app/components/v2';
+  Tr} from '@app/components/v2';
 import { usePopUp } from '@app/hooks';
 import { IncidentContact } from '@app/hooks/api/types';
 
 type Props = {
+  isLoading?: boolean;
   contacts?: IncidentContact[];
   onRemoveContact: (email: string) => Promise<void>;
   onAddContact: (email: string) => Promise<void>;
@@ -39,7 +46,8 @@ type TAddContactForm = yup.InferType<typeof addContactFormSchema>;
 export const OrgIncidentContactsTable = ({
   contacts = [],
   onAddContact,
-  onRemoveContact
+  onRemoveContact,
+  isLoading
 }: Props) => {
   const [searchContact, setSearchContact] = useState('');
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -65,6 +73,10 @@ export const OrgIncidentContactsTable = ({
     await onRemoveContact(incidentContactEmail);
     handlePopUpClose('removeContact');
   };
+
+  const filteredContacts = contacts.filter(({ email }) =>
+    email.toLocaleLowerCase().includes(searchContact)
+  );
 
   return (
     <div className="w-full">
@@ -96,28 +108,25 @@ export const OrgIncidentContactsTable = ({
               </Tr>
             </THead>
             <TBody>
-              {contacts
-                ?.filter(({ email }) => email.toLocaleLowerCase().includes(searchContact))
-                ?.map(({ email }) => (
-                  <Tr key={email}>
-                    <Td className="w-full">{email}</Td>
-                    <Td className="mr-4">
-                      <IconButton
-                        ariaLabel="delete"
-                        colorSchema="danger"
-                        onClick={() => handlePopUpOpen('removeContact', { email })}
-                      >
-                        <FontAwesomeIcon icon={faTrash} />
-                      </IconButton>
-                    </Td>
-                  </Tr>
-                ))}
+              {isLoading && <TableSkeleton columns={2} key="incident-contact" />}
+              {filteredContacts?.map(({ email }) => (
+                <Tr key={email}>
+                  <Td className="w-full">{email}</Td>
+                  <Td className="mr-4">
+                    <IconButton
+                      ariaLabel="delete"
+                      colorSchema="danger"
+                      onClick={() => handlePopUpOpen('removeContact', { email })}
+                    >
+                      <FontAwesomeIcon icon={faTrash} />
+                    </IconButton>
+                  </Td>
+                </Tr>
+              ))}
             </TBody>
           </Table>
-          {contacts
-          ?.filter(({ email }) => email.toLocaleLowerCase().includes(searchContact))
-          ?.length === 0 && (
-            <div className='py-4 bg-bunker-800 text-sm text-center text-bunker-400 w-full mx-auto flex justify-center'>No incident contacts found</div>
+          {filteredContacts?.length === 0 && !isLoading && (
+            <EmptyState title="No incident contacts found" icon={faContactBook} />
           )}
         </TableContainer>
       </div>
