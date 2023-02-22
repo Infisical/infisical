@@ -12,7 +12,8 @@ const integrationSlugNameMapping: Mapping = {
   'github': 'GitHub',
   'render': 'Render',
   'flyio': 'Fly.io',
-  "circleci": 'CircleCI'
+  'circleci': 'CircleCI',
+  'travisci': 'TravisCI'
 }
 
 const envMapping: Mapping = {

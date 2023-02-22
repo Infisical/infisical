@@ -201,6 +201,9 @@ export default function Integrations() {
         case 'circleci':
           link = `${window.location.origin}/integrations/circleci/authorize`
           break;
+        case 'travisci':
+          link = `${window.location.origin}/integrations/travisci/authorize`
+          break;
         default:
           break;
       }
@@ -246,6 +249,9 @@ export default function Integrations() {
           break;
         case 'circleci':
           link = `${window.location.origin}/integrations/circleci/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'travisci':
+          link = `${window.location.origin}/integrations/travisci/create?integrationAuthId=${integrationAuth._id}`;
           break;
         default:
           break;
