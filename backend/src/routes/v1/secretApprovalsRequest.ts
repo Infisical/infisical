@@ -16,13 +16,13 @@ router.post(
     secretApprovalController.createApprovalRequest
 );
 
-// router.post(
-//     '/add-approver',
-//     requireAuth({
-//         acceptedAuthModes: ['jwt']
-//     }),
-//     secretApprovalController.createApprovalRequest
-// );
+router.get(
+    '/',
+    requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
+    secretApprovalController.getAllApprovalRequestsForUser
+);
 
 // router.post(
 //     '/remove_approver',

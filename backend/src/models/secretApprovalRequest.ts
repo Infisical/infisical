@@ -22,7 +22,7 @@ interface ISecretApprovalRequest {
 	requestId: string;
 }
 
-interface IApprover {
+export interface IApprover {
 	userId: mongoose.Types.ObjectId;
 	status: ApprovalStatus;
 }
@@ -40,7 +40,7 @@ export enum ChangeType {
 }
 
 const approverSchema = new mongoose.Schema({
-	user: {
+	userId: {
 		type: mongoose.Schema.Types.ObjectId,
 		ref: 'User',
 		required: false
@@ -65,7 +65,7 @@ const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
 		requestedChanges: [
 			{
 				modifiedSecret: secretSchema,
-				modifiedSecretId: {
+				modifiedSecretId: { // used to fetch the current version of this secret for comparing 
 					type: mongoose.Schema.Types.ObjectId,
 					ref: 'Secret'
 				},
