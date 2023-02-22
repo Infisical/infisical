@@ -1340,162 +1340,164 @@ module.exports = {
           900: '#176437',
           DEFAULT: '#2ecc71'
         }
+      },
+      keyframes: {
+        type: {
+          '0%': { transform: 'translateX(0ch)' },
+          '5%, 10%': { transform: 'translateX(1ch)' },
+          '15%, 20%': { transform: 'translateX(2ch)' },
+          '25%, 30%': { transform: 'translateX(3ch)' },
+          '35%, 40%': { transform: 'translateX(4ch)' },
+          '45%, 50%': { transform: 'translateX(5ch)' },
+          '55%, 60%': { transform: 'translateX(6ch)' },
+          '65%, 70%': { transform: 'translateX(7ch)' },
+          '75%, 80%': { transform: 'translateX(8ch)' },
+          '85%, 90%': { transform: 'translateX(9ch)' },
+          '95%, 100%': { transform: 'translateX(11ch)' }
+        },
+        // REQUIRED BY DESIGN COMPONENT
+        // MODAL
+        fadeIn: {
+          '0%': { opacity: 0 },
+          '100%': { opacity: 1 }
+        },
+        popIn: {
+          from: {
+            opacity: 0,
+            transform: 'translate(-50%, -48%) scale(0.96)'
+          },
+          to: {
+            opacity: 1,
+            transform: 'translate(-50%, -50%) scale(1)'
+          }
+        },
+        // Dropdown
+        slideUpAndFade: {
+          from: {
+            opacity: 0,
+            transform: ' translateY(2px)'
+          },
+          to: {
+            opacity: 1,
+            transform: ' translateY(0)'
+          }
+        },
+        slideRightAndFade: {
+          from: {
+            opacity: 0,
+            transform: ' translateX(-2px)'
+          },
+          to: {
+            opacity: 1,
+            transform: ' translateX(0)'
+          }
+        },
+        slideDownAndFade: {
+          from: {
+            opacity: 0,
+            transform: ' translateY(-2px)'
+          },
+          to: {
+            opacity: 1,
+            transform: ' translateY(0)'
+          }
+        },
+        slideLeftAndFade: {
+          from: {
+            opacity: 0,
+            transform: ' translateX(2px)'
+          },
+          to: {
+            opacity: 1,
+            transform: ' translateX(0)'
+          }
+        },
+        // END
+        spin: {
+          '0%': { transform: 'rotate(0deg)' },
+          '40%': { transform: 'rotate(360deg)' },
+          '100%': { transform: 'rotate(360deg)' }
+        },
+        bounce: {
+          '0%': { transform: 'translateY(-90%)' },
+          '100%': { transform: 'translateY(-100%)' }
+        },
+        wiggle: {
+          '0%, 100%': { transform: 'rotate(-3deg)' },
+          '50%': { transform: 'rotate(3deg)' }
+        },
+        ping: {
+          '75%, 100%': {
+            transform: 'scale(2)',
+            opacity: 0
+          }
+        },
+        popup: {
+          '0%': {
+            transform: 'scale(0.2)',
+            opacity: 0
+            // transform: "translateY(120%)",
+          },
+          '100%': {
+            transform: 'scale(1)',
+            opacity: 1
+            // transform: "translateY(100%)",
+          }
+        },
+        popright: {
+          '0%': {
+            transform: 'translateX(-100%)'
+          },
+          '100%': {
+            transform: 'translateX(0%)'
+          }
+        },
+        popleft: {
+          '0%': {
+            transform: 'translateX(100%)'
+          },
+          '100%': {
+            transform: 'translateX(0%)'
+          }
+        },
+        popdown: {
+          '0%': {
+            transform: 'scale(0.2)',
+            opacity: 0
+            // transform: "translateY(80%)",
+          },
+          '100%': {
+            transform: 'scale(1)',
+            opacity: 1
+            // transform: "translateY(100%)",
+          }
+        }
+      },
+      animation: {
+        // Design Lib
+        // MODAL
+        fadeIn: 'fadeIn 100ms cubic-bezier(0.16, 1, 0.3, 1)',
+        popIn: 'popIn 150ms cubic-bezier(0.16, 1, 0.3, 1);',
+        // Dropdown
+        slideDownAndFade: 'slideDownAndFade 400ms cubic-bezier(0.16, 1, 0.3, 1)',
+        slideLeftAndFade: 'slideLeftAndFade 400ms cubic-bezier(0.16, 1, 0.3, 1)',
+        slideUpAndFade: 'slideUpAndFade 400ms cubic-bezier(0.16, 1, 0.3, 1)',
+        slideRightAndFade: 'slideRightAndFade 400ms cubic-bezier(0.16, 1, 0.3, 1)',
+        // END
+        // TODO:(akhilmhdh) remove all these unused and keep the config file as small as possible
+        // Make the whole color pallelte into simpler
+        bounce: 'bounce 1000ms ease-in-out infinite',
+        spin: 'spin 4000ms ease-in-out infinite',
+        cursor: 'cursor .6s linear infinite alternate',
+        type: 'type 2.7s ease-out .8s infinite alternate both',
+        'type-reverse': 'type 1.8s ease-out 0s infinite alternate-reverse both',
+        wiggle: 'wiggle 200ms ease-in-out',
+        ping: 'ping 1000ms ease-in-out infinite',
+        popup: 'popup 300ms ease-in-out',
+        popdown: 'popdown 300ms ease-in-out',
+        popright: 'popright 100ms ease-in-out',
+        popleft: 'popleft 100ms ease-in-out'
       }
-    },
-    keyframes: {
-      type: {
-        '0%': { transform: 'translateX(0ch)' },
-        '5%, 10%': { transform: 'translateX(1ch)' },
-        '15%, 20%': { transform: 'translateX(2ch)' },
-        '25%, 30%': { transform: 'translateX(3ch)' },
-        '35%, 40%': { transform: 'translateX(4ch)' },
-        '45%, 50%': { transform: 'translateX(5ch)' },
-        '55%, 60%': { transform: 'translateX(6ch)' },
-        '65%, 70%': { transform: 'translateX(7ch)' },
-        '75%, 80%': { transform: 'translateX(8ch)' },
-        '85%, 90%': { transform: 'translateX(9ch)' },
-        '95%, 100%': { transform: 'translateX(11ch)' }
-      },
-      // REQUIRED BY DEISGN COMPONENT
-      // MODAL
-      fadeIn: {
-        '0%': { opacity: 0 },
-        '100%': { opacity: 1 }
-      },
-      popIn: {
-        from: {
-          opacity: 0,
-          transform: 'translate(-50%, -48%) scale(0.96)'
-        },
-        to: {
-          opacity: 1,
-          transform: 'translate(-50%, -50%) scale(1)'
-        }
-      },
-      // Dropdown
-      slideUpAndFade: {
-        from: {
-          opacity: 0,
-          transform: ' translateY(2px)'
-        },
-        to: {
-          opacity: 1,
-          transform: ' translateY(0)'
-        }
-      },
-      slideRightAndFade: {
-        from: {
-          opacity: 0,
-          transform: ' translateX(-2px)'
-        },
-        to: {
-          opacity: 1,
-          transform: ' translateX(0)'
-        }
-      },
-      slideDownAndFade: {
-        from: {
-          opacity: 0,
-          transform: ' translateY(-2px)'
-        },
-        to: {
-          opacity: 1,
-          transform: ' translateY(0)'
-        }
-      },
-      slideLeftAndFade: {
-        from: {
-          opacity: 0,
-          transform: ' translateX(2px)'
-        },
-        to: {
-          opacity: 1,
-          transform: ' translateX(0)'
-        }
-      },
-      // END
-      spin: {
-        '0%': { transform: 'rotate(0deg)' },
-        '40%': { transform: 'rotate(360deg)' },
-        '100%': { transform: 'rotate(360deg)' }
-      },
-      bounce: {
-        '0%': { transform: 'translateY(-90%)' },
-        '100%': { transform: 'translateY(-100%)' }
-      },
-      wiggle: {
-        '0%, 100%': { transform: 'rotate(-3deg)' },
-        '50%': { transform: 'rotate(3deg)' }
-      },
-      ping: {
-        '75%, 100%': {
-          transform: 'scale(2)',
-          opacity: 0
-        }
-      },
-      popup: {
-        '0%': {
-          transform: 'scale(0.2)',
-          opacity: 0
-          // transform: "translateY(120%)",
-        },
-        '100%': {
-          transform: 'scale(1)',
-          opacity: 1
-          // transform: "translateY(100%)",
-        }
-      },
-      popright: {
-        '0%': {
-          transform: 'translateX(-100%)'
-        },
-        '100%': {
-          transform: 'translateX(0%)'
-        }
-      },
-      popleft: {
-        '0%': {
-          transform: 'translateX(100%)'
-        },
-        '100%': {
-          transform: 'translateX(0%)'
-        }
-      },
-      popdown: {
-        '0%': {
-          transform: 'scale(0.2)',
-          opacity: 0
-          // transform: "translateY(80%)",
-        },
-        '100%': {
-          transform: 'scale(1)',
-          opacity: 1
-          // transform: "translateY(100%)",
-        }
-      }
-    },
-    animation: {
-      // Design Lib
-      // MODAL
-      fadeIn: 'fadeIn 100ms cubic-bezier(0.16, 1, 0.3, 1)',
-      popIn: 'popIn 150ms cubic-bezier(0.16, 1, 0.3, 1);',
-      // Dropdown
-      slideDownAndFade: 'slideDownAndFade 400ms cubic-bezier(0.16, 1, 0.3, 1)',
-      slideLeftAndFade: 'slideLeftAndFade 400ms cubic-bezier(0.16, 1, 0.3, 1)',
-      slideUpAndFade: 'slideUpAndFade 400ms cubic-bezier(0.16, 1, 0.3, 1)',
-      slideRightAndFade: 'slideRightAndFade 400ms cubic-bezier(0.16, 1, 0.3, 1)',
-      // END
-      bounce: 'bounce 1000ms ease-in-out infinite',
-      spin: 'spin 4000ms ease-in-out infinite',
-      cursor: 'cursor .6s linear infinite alternate',
-      type: 'type 2.7s ease-out .8s infinite alternate both',
-      'type-reverse': 'type 1.8s ease-out 0s infinite alternate-reverse both',
-      wiggle: 'wiggle 200ms ease-in-out',
-      ping: 'ping 1000ms ease-in-out infinite',
-      popup: 'popup 300ms ease-in-out',
-      popdown: 'popdown 300ms ease-in-out',
-      popright: 'popright 100ms ease-in-out',
-      popleft: 'popleft 100ms ease-in-out'
     },
     fontSize: {
       xxxs: '.23rem',
