@@ -14,6 +14,7 @@ import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
 import changePassword from '@app/components/utilities/cryptography/changePassword';
 import issueBackupKey from '@app/components/utilities/cryptography/issueBackupKey';
 import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
+import { SecuritySection } from '@app/views/Settings/PersonalSettingsPage/SecuritySection/SecuritySection';
 
 import AddApiKeyDialog from '../../../components/basic/dialog/AddApiKeyDialog';
 import getAPIKeys from '../../api/apiKey/getAPIKeys';
@@ -76,7 +77,7 @@ export default function PersonalSettings() {
         setApiKeys={setApiKeys}
       />
       <div className="flex flex-row">
-        <div className="w-full max-h-screen pb-2 overflow-y-auto">
+        <div className="w-full max-h-screen pb-2">
           <NavHeader pageName={t('settings-personal:title')} isProjectRelated={false} />
           <div className="flex flex-row justify-between items-center ml-6 mt-8 mb-6 text-xl max-w-5xl">
             <div className="flex flex-col justify-start items-start text-3xl">
@@ -100,6 +101,7 @@ export default function PersonalSettings() {
                 />
               </div>
             </div>
+            <SecuritySection />
             <div className="bg-white/5 rounded-md px-6 flex flex-col items-start w-full mt-2 mb-8 pt-2">
               <div className="flex flex-row justify-between w-full">
                 <div className="flex flex-col w-full">

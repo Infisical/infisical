@@ -1,14 +1,13 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
-import crypto from 'crypto';
 import { SITE_URL, JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET } from '../../config';
-import { MembershipOrg, Organization, User, Token } from '../../models';
+import { MembershipOrg, Organization, User } from '../../models';
 import { deleteMembershipOrg as deleteMemberFromOrg } from '../../helpers/membershipOrg';
-import { checkEmailVerification } from '../../helpers/signup';
 import { createToken } from '../../helpers/auth';
 import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
 import { sendMail } from '../../helpers/nodemailer';
-import { OWNER, ADMIN, MEMBER, ACCEPTED, INVITED } from '../../variables';
+import { TokenService } from '../../services';
+import { OWNER, ADMIN, MEMBER, ACCEPTED, INVITED, TOKEN_EMAIL_ORG_INVITATION } from '../../variables';
 
 /**
  * Delete organization membership with id [membershipOrgId] from organization
@@ -113,14 +112,14 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 		if (!membershipOrg) {
 			throw new Error('Failed to validate organization membership');
 		}
-		
+
 		invitee = await User.findOne({
 			email: inviteeEmail
 		}).select('+publicKey');
 
 		if (invitee) {
 			// case: invitee is an existing user
-			
+
 			inviteeMembershipOrg = await MembershipOrg.findOne({
 				user: invitee._id,
 				organization: organizationId
@@ -163,17 +162,11 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 		const organization = await Organization.findOne({ _id: organizationId });
 
 		if (organization) {
-			const token = crypto.randomBytes(16).toString('hex');
-
-			await Token.findOneAndUpdate(
-				{ email: inviteeEmail },
-				{
-					email: inviteeEmail,
-					token,
-					createdAt: new Date()
-				},
-				{ upsert: true, new: true }
-			);
+			const token = await TokenService.createToken({
+				type: TOKEN_EMAIL_ORG_INVITATION,
+				email: inviteeEmail,
+				organizationId: organization._id
+			});
 
 			await sendMail({
 				template: 'organizationInvitation.handlebars',
@@ -225,10 +218,12 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 
 		if (!membershipOrg)
 			throw new Error('Failed to find any invitations for email');
-
-		await checkEmailVerification({
+		
+		await TokenService.validateToken({
+			type: TOKEN_EMAIL_ORG_INVITATION,
 			email,
-			code
+			organizationId: membershipOrg.organization,
+			token: code
 		});
 
 		if (user && user?.publicKey) {
@@ -241,7 +236,7 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 				message: 'Successfully verified email',
 				user,
 			});
-        }
+		}
 
 		if (!user) {
 			// initialize user account

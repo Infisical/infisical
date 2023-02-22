@@ -30,7 +30,8 @@ export default function CircleCICreateIntegrationPage() {
             const integrationAuth = await saveIntegrationAccessToken({
                 workspaceId: localStorage.getItem('projectData.id'),
                 integration: 'circleci',
-                accessToken: apiKey
+                accessToken: apiKey,
+                accessId: null,
             });
 
             setIsLoading(false);
@@ -48,12 +49,12 @@ export default function CircleCICreateIntegrationPage() {
       <Card className="max-w-md p-8 rounded-md">
         <CardTitle className='text-center'>CircleCI Integration</CardTitle>
          <FormControl
-          label="CircleCI API Key"
+          label="CircleCI API Token"
           errorText={apiKeyErrorText}
           isError={apiKeyErrorText !== '' ?? false}
         >
           <Input
-            placeholder='rnd_xxx'
+            placeholder=''
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
           />

@@ -8,11 +8,11 @@ import { DeleteActionButton } from './DeleteActionButton';
 
 interface KeyPairProps {
   keyPair: SecretDataProps;
-  modifyKey: (value: string, position: number) => void;
-  modifyValue: (value: string, position: number) => void;
-  modifyValueOverride: (value: string | undefined, position: number) => void;
-  modifyComment: (value: string, position: number) => void;
-  modifyTags: (value: Tag[], position: number) => void;
+  modifyKey: (value: string, id: string) => void;
+  modifyValue: (value: string, id: string) => void;
+  modifyValueOverride: (value: string | undefined, id: string) => void;
+  modifyComment: (value: string, id: string) => void;
+  modifyTags: (value: Tag[], id: string) => void;
   isBlurred: boolean;
   isDuplicate: boolean;
   toggleSidebar: (id: string) => void;
@@ -55,7 +55,7 @@ const colorsText = [
 /**
  * This component represent a single row for an environemnt variable on the dashboard
  * @param {object} obj
- * @param {String[]} obj.keyPair - data related to the environment variable (id, pos, key, value, public/private)
+ * @param {SecretDataProps[]} obj.keyPair - data related to the environment variable (id, pos, key, value, public/private)
  * @param {function} obj.modifyKey - modify the key of a certain environment variable
  * @param {function} obj.modifyValue - modify the value of a certain environment variable
  * @param {function} obj.modifyValueOverride - modify the value of a certain environment variable if it is overriden
@@ -108,7 +108,7 @@ const KeyPair = ({
             isCapitalized = {isCapitalized}
             onChangeHandler={modifyKey}
             type="varName"
-            position={keyPair.pos}
+            id={keyPair.id ? keyPair.id : (keyPair.idOverride || '')}
             value={keyPair.key}
             isDuplicate={isDuplicate}
             overrideEnabled={keyPair.valueOverride !== undefined}
@@ -124,7 +124,7 @@ const KeyPair = ({
           <DashboardInputField
             onChangeHandler={keyPair.valueOverride !== undefined ? modifyValueOverride : modifyValue}
             type="value"
-            position={keyPair.pos}
+            id={keyPair.id ? keyPair.id : (keyPair.idOverride || '')}
             value={keyPair.valueOverride !== undefined ? keyPair.valueOverride : keyPair.value}
             blurred={isBlurred}
             overrideEnabled={keyPair.valueOverride !== undefined}
@@ -132,12 +132,12 @@ const KeyPair = ({
           />
         </div>
       </div>
-      <div className="w-2/12 border-r border-mineshaft-600">
+      <div className="w-[calc(10%)] border-r border-mineshaft-600">
         <div className="flex items-center max-h-16">
           <DashboardInputField
             onChangeHandler={modifyComment}
             type="comment"
-            position={keyPair.pos}
+            id={keyPair.id ? keyPair.id : (keyPair.idOverride || '')}
             value={keyPair.comment}
             isDuplicate={isDuplicate}
             isSideBarOpen={keyPair.id === sidebarSecretId}
@@ -149,11 +149,11 @@ const KeyPair = ({
           {keyPair.tags?.map((tag, index) => (
             index < 2 && <div key={keyPair.pos} className={`ml-2 px-1.5 ${tagData.filter(tagDp => tagDp._id === tag._id)[0]?.color} rounded-sm text-sm ${tagData.filter(tagDp => tagDp._id === tag._id)[0]?.colorText} flex items-center`}>
               <span className='mb-0.5 cursor-default'>{tag.name}</span>
-              <FontAwesomeIcon icon={faXmark} className="ml-1 cursor-pointer p-1" onClick={() => modifyTags(keyPair.tags.filter(ttag => ttag._id !== tag._id), keyPair.pos)}/>
+              <FontAwesomeIcon icon={faXmark} className="ml-1 cursor-pointer p-1" onClick={() => modifyTags(keyPair.tags.filter(ttag => ttag._id !== tag._id), keyPair.id)}/>
             </div>
           ))}
           
-          <AddTagsMenu allTags={tags} currentTags={keyPair.tags} modifyTags={modifyTags} position={keyPair.pos} />
+          <AddTagsMenu allTags={tags} currentTags={keyPair.tags} modifyTags={modifyTags} id={keyPair.id ? keyPair.id : (keyPair.idOverride || '')} />
         </div>
       </div>
       <div
@@ -171,12 +171,26 @@ const KeyPair = ({
         <FontAwesomeIcon className="text-bunker-300 hover:text-primary text-lg" icon={faEllipsis} />
       </div>
       <div className={`group-hover:bg-mineshaft-700 z-50 ${isSnapshot ?? 'invisible'}`}>
-        <DeleteActionButton
+        {keyPair.key || keyPair.value 
+        ? <DeleteActionButton
           onSubmit={() => { if (deleteRow) {
             deleteRow({ ids: [keyPair.id], secretName: keyPair?.key })
           }}}
           isPlain
         />
+      :  <div className='cursor-pointer w-[1.5rem] h-[2.35rem] mr-2 flex items-center justfy-center'>
+        <div
+          onKeyDown={() => null}
+          role="button"
+          tabIndex={0}
+          onClick={() => { if (deleteRow) {
+            deleteRow({ ids: [keyPair.id], secretName: keyPair?.key })
+          }}}
+          className="invisible group-hover:visible"
+        >
+          <FontAwesomeIcon className="text-bunker-300 hover:text-red pl-2 pr-6 text-lg mt-0.5" icon={faXmark} />
+        </div>
+      </div>}
       </div>
     </div>
   </div>

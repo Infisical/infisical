@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { faX } from '@fortawesome/free-solid-svg-icons';
+import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type NotificationType = 'success' | 'error' | 'info';
@@ -36,7 +36,7 @@ const Notification = ({ notification, clearNotification }: NotificationProps) =>
 
   return (
     <div
-      className="relative w-full flex items-center justify-between px-4 py-4 rounded-md border border-bunker-500 pointer-events-auto bg-bunker-500"
+      className="relative w-full flex items-center justify-between px-6 py-4 rounded-md border border-bunker-500 pointer-events-auto bg-mineshaft-700 mb-3 right-3"
       role="alert"
     >
       {notification.type === 'error' && (
@@ -48,13 +48,13 @@ const Notification = ({ notification, clearNotification }: NotificationProps) =>
       {notification.type === 'info' && (
         <div className="absolute w-full h-1 bg-yellow top-0 left-0 rounded-t-md" />
       )}
-      <p className="text-bunker-200 text-sm font-semibold mt-0.5">{notification.text}</p>
+      <p className="text-bunker-200 text-md font-base mt-0.5">{notification.text}</p>
       <button
         type="button"
         className="rounded-lg"
         onClick={() => clearNotification(notification.text)}
       >
-        <FontAwesomeIcon className="text-white pl-2 w-4 h-3 hover:text-red" icon={faX} />
+        <FontAwesomeIcon className="absolute right-2 top-3 text-bunker-300 pl-2 w-4 h-4 hover:text-white" icon={faXmark} />
       </button>
     </div>
   );

@@ -1,4 +1,5 @@
 export * from './auth';
+export * from './incidentContacts';
 export * from './keys';
 export * from './organization';
 export * from './serviceTokens';

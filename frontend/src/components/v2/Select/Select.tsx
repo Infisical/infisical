@@ -1,4 +1,5 @@
 import { forwardRef, ReactNode } from 'react';
+import { IconProp } from '@fortawesome/fontawesome-svg-core';
 import { faCheck, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import * as SelectPrimitive from '@radix-ui/react-select';
@@ -13,17 +14,28 @@ type Props = {
   dropdownContainerClassName?: string;
   isLoading?: boolean;
   position?: 'item-aligned' | 'popper';
+  isDisabled?: boolean;
+  icon?: IconProp;
 };
 
-export type SelectProps = SelectPrimitive.SelectProps & Props;
+export type SelectProps = Omit<SelectPrimitive.SelectProps, 'disabled'> & Props;
 
 export const Select = forwardRef<HTMLButtonElement, SelectProps>(
   (
-    { children, placeholder, className, isLoading, dropdownContainerClassName, position, ...props },
+    {
+      children,
+      placeholder,
+      className,
+      isLoading,
+      isDisabled,
+      dropdownContainerClassName,
+      position,
+      ...props
+    },
     ref
   ): JSX.Element => {
     return (
-      <SelectPrimitive.Root {...props}>
+      <SelectPrimitive.Root {...props} disabled={isDisabled}>
         <SelectPrimitive.Trigger
           ref={ref}
           className={twMerge(
@@ -32,8 +44,10 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
             className
           )}
         >
-          <SelectPrimitive.Value placeholder={placeholder} />
-          {!props.disabled && (
+          <SelectPrimitive.Value placeholder={placeholder}>
+            {props.icon ? <FontAwesomeIcon icon={props.icon} /> : placeholder}
+          </SelectPrimitive.Value>
+          {!isDisabled && (
             <SelectPrimitive.Icon className="ml-3">
               <FontAwesomeIcon icon={faChevronDown} size="sm" />
             </SelectPrimitive.Icon>
@@ -42,7 +56,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
         <SelectPrimitive.Portal>
           <SelectPrimitive.Content
             className={twMerge(
-              'relative left-4 top-1 overflow-hidden rounded-md bg-bunker-800 font-inter text-bunker-100 shadow-md z-[100]',
+              'relative top-1 z-[100] overflow-hidden rounded-md bg-bunker-800 font-inter text-bunker-100 shadow-md',
               dropdownContainerClassName
             )}
             position={position}
@@ -76,6 +90,7 @@ Select.displayName = 'Select';
 export type SelectItemProps = Omit<SelectPrimitive.SelectItemProps, 'disabled'> & {
   isDisabled?: boolean;
   isSelected?: boolean;
+  customIcon?: IconProp;
 };
 
 export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
@@ -84,17 +99,18 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
       <SelectPrimitive.Item
         {...props}
         className={twMerge(
-          `relative flex cursor-pointer
-          select-none items-center rounded-md py-2 pl-10 pr-4 mb-0.5 text-sm
+          `relative mb-0.5 flex
+          cursor-pointer select-none items-center rounded-md py-2 pl-10 pr-4 text-sm
           outline-none transition-all hover:bg-mineshaft-500`,
           isSelected && 'bg-primary',
-          isDisabled && 'cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-gray-600',
+          isDisabled &&
+            'cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-mineshaft-600',
           className
         )}
         ref={forwardedRef}
       >
         <SelectPrimitive.ItemIndicator className="absolute left-3.5 text-primary">
-          <FontAwesomeIcon icon={faCheck} />
+          <FontAwesomeIcon icon={props.customIcon ? props.customIcon : faCheck} />
         </SelectPrimitive.ItemIndicator>
         <SelectPrimitive.ItemText className="">{children}</SelectPrimitive.ItemText>
       </SelectPrimitive.Item>

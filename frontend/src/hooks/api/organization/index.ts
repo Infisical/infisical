@@ -1,1 +1,1 @@
-export { useGetOrganization } from './queries';
+export { useGetOrganization, useRenameOrg } from './queries';

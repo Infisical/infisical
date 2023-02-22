@@ -86,7 +86,7 @@ const getApps = async ({
         });
         break;
       case INTEGRATION_CIRCLECI:
-        apps = await getAppsCircleci({
+        apps = await getAppsCircleCI({
           accessToken,
         });
         break;
@@ -151,7 +151,7 @@ const getAppsVercel = async ({
       await axios.get(`${INTEGRATION_VERCEL_API_URL}/v9/projects`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Accept-Encoding': 'application/json',
+          'Accept-Encoding': 'application/json'
         },
         ...(integrationAuth?.teamId
           ? {
@@ -189,8 +189,8 @@ const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
       await axios.get(`${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Accept-Encoding': 'application/json',
-        },
+          'Accept-Encoding': 'application/json'
+        }
       })
     ).data;
 
@@ -333,24 +333,19 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
   return apps;
 };
 
-const getAppsCircleci = async ({ accessToken }: { accessToken: string }) => {
-  // in place of accessToken we have to send Circle-Token i.e. Personal API token from CircleCi
+/**
+ * Return list of projects for CircleCI integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for CircleCI API
+ * @returns {Object[]} apps -
+ * @returns {String} apps.name - name of CircleCI apps
+ */
+const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
   let apps: any;
-  try {
-    const circleciOrganizationDetail = (
-      await axios.get(`${INTEGRATION_CIRCLECI_API_URL}/v2/me/collaborations`, {
-        headers: {
-          "Circle-Token": accessToken,
-          "Accept-Encoding": "application/json",
-        },
-      })
-    ).data[0];
-
-    const { slug } = circleciOrganizationDetail;
-
+  try {    
     const res = (
       await axios.get(
-        `${INTEGRATION_CIRCLECI_API_URL}/v2/pipeline/?org-slug=${slug}`,
+        `${INTEGRATION_CIRCLECI_API_URL}/v1.1/projects`,
         {
           headers: {
             "Circle-Token": accessToken,
@@ -358,17 +353,19 @@ const getAppsCircleci = async ({ accessToken }: { accessToken: string }) => {
           },
         }
       )
-    ).data?.items;
+    ).data
 
-    apps = res.map((a: any) => ({
-      name: a?.project_slug?.split("/")[2],
-    }));
+    apps = res?.map((a: any) => {
+      return {
+        name: a?.reponame
+      }
+    });
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error("Failed to get Render services");
+    throw new Error("Failed to get CircleCI projects");
   }
-
+  
   return apps;
 };
 

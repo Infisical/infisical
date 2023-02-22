@@ -30,7 +30,6 @@ import {
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
 } from "../variables";
-import { access, appendFile } from "fs";
 
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
@@ -124,7 +123,7 @@ const syncSecrets = async ({
         });
         break;
       case INTEGRATION_CIRCLECI:
-        await syncSecretsCircleci({
+        await syncSecretsCircleCI({
           integration,
           secrets,
           accessToken,
@@ -181,7 +180,8 @@ const syncSecretsAzureKeyVault = async ({
       while (url) {
         const res = await axios.get(url, {
           headers: {
-            Authorization: `Bearer ${accessToken}`
+            Authorization: `Bearer ${accessToken}`,
+            'Accept-Encoding': 'application/json'
           }
         });
         
@@ -202,7 +202,8 @@ const syncSecretsAzureKeyVault = async ({
       
       const azureKeyVaultSecret = await axios.get(`${getAzureKeyVaultSecret.id}?api-version=7.3`, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept-Encoding': 'application/json'
         }
       });
 
@@ -259,7 +260,8 @@ const syncSecretsAzureKeyVault = async ({
           },
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`
+              Authorization: `Bearer ${accessToken}`,
+              'Accept-Encoding': 'application/json'
             }
           }
         );
@@ -270,7 +272,8 @@ const syncSecretsAzureKeyVault = async ({
       deleteSecrets.forEach(async (secret) => {
         await axios.delete(`${integration.app}/secrets/${secret.key}?api-version=7.3`, {
           headers: {
-            'Authorization': `Bearer ${accessToken}`
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept-Encoding': 'application/json'
           }
         });
       });
@@ -488,6 +491,7 @@ const syncSecretsHeroku = async ({
           headers: {
             Accept: "application/vnd.heroku+json; version=3",
             Authorization: `Bearer ${accessToken}`,
+            'Accept-Encoding': 'application/json'
           },
         }
       )
@@ -506,6 +510,7 @@ const syncSecretsHeroku = async ({
         headers: {
           Accept: "application/vnd.heroku+json; version=3",
           Authorization: `Bearer ${accessToken}`,
+          'Accept-Encoding': 'application/json'
         },
       }
     );
@@ -552,7 +557,7 @@ const syncSecretsVercel = async ({
           }
         : {}),
     };
-
+    
     const res = (
       await Promise.all(
         (
@@ -561,7 +566,8 @@ const syncSecretsVercel = async ({
             {
               params,
               headers: {
-                  Authorization: `Bearer ${accessToken}`
+                  Authorization: `Bearer ${accessToken}`,
+                  'Accept-Encoding': 'application/json'
               }
           }
       ))
@@ -573,7 +579,8 @@ const syncSecretsVercel = async ({
               {
                 params,
                 headers: {
-                    Authorization: `Bearer ${accessToken}`
+                    Authorization: `Bearer ${accessToken}`,
+                    'Accept-Encoding': 'application/json'
                 }
               }
           )).data)
@@ -633,6 +640,7 @@ const syncSecretsVercel = async ({
           params,
           headers: {
             Authorization: `Bearer ${accessToken}`,
+            'Accept-Encoding': 'application/json'
           },
         }
       );
@@ -649,6 +657,7 @@ const syncSecretsVercel = async ({
             params,
             headers: {
               Authorization: `Bearer ${accessToken}`,
+              'Accept-Encoding': 'application/json'
             },
           }
         );
@@ -664,6 +673,7 @@ const syncSecretsVercel = async ({
             params,
             headers: {
               Authorization: `Bearer ${accessToken}`,
+              'Accept-Encoding': 'application/json'
             },
           }
         );
@@ -723,6 +733,7 @@ const syncSecretsNetlify = async ({
           params: getParams,
           headers: {
             Authorization: `Bearer ${accessToken}`,
+            'Accept-Encoding': 'application/json'
           },
         }
       )
@@ -837,6 +848,7 @@ const syncSecretsNetlify = async ({
           params: syncParams,
           headers: {
             Authorization: `Bearer ${accessToken}`,
+            'Accept-Encoding': 'application/json'
           },
         }
       );
@@ -854,6 +866,7 @@ const syncSecretsNetlify = async ({
             params: syncParams,
             headers: {
               Authorization: `Bearer ${accessToken}`,
+              'Accept-Encoding': 'application/json'
             },
           }
         );
@@ -868,6 +881,7 @@ const syncSecretsNetlify = async ({
             params: syncParams,
             headers: {
               Authorization: `Bearer ${accessToken}`,
+              'Accept-Encoding': 'application/json'
             },
           }
         );
@@ -882,6 +896,7 @@ const syncSecretsNetlify = async ({
             params: syncParams,
             headers: {
               Authorization: `Bearer ${accessToken}`,
+              'Accept-Encoding': 'application/json'
             },
           }
         );
@@ -1035,6 +1050,7 @@ const syncSecretsRender = async ({
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
+          'Accept-Encoding': 'application/json'
         },
       }
     );
@@ -1088,6 +1104,7 @@ const syncSecretsFlyio = async ({
       method: "post",
       headers: {
         Authorization: "Bearer " + accessToken,
+        'Accept-Encoding': 'application/json'
       },
       data: {
         query: SetSecrets,
@@ -1167,6 +1184,7 @@ const syncSecretsFlyio = async ({
       headers: {
         Authorization: "Bearer " + accessToken,
         "Content-Type": "application/json",
+        'Accept-Encoding': 'application/json'
       },
       data: {
         query: DeleteSecrets,
@@ -1185,7 +1203,14 @@ const syncSecretsFlyio = async ({
   }
 };
 
-const syncSecretsCircleci = async ({
+/**
+ * Sync/push [secrets] to CircleCI project
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for CircleCI integration
+ */
+const syncSecretsCircleCI = async ({
   integration,
   secrets,
   accessToken,
@@ -1206,7 +1231,7 @@ const syncSecretsCircleci = async ({
 
     const { slug } = circleciOrganizationDetail;
 
-    // inject secrets to CircleCI (one by one)
+    // sync secrets to CircleCI
     Object.keys(secrets).forEach(
       async (key) =>
         await axios.post(

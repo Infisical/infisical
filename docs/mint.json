@@ -98,6 +98,7 @@
         "getting-started/dashboard/pit-recovery",
         "getting-started/dashboard/secret-versioning",
         "getting-started/dashboard/audit-logs",
+        "getting-started/dashboard/mfa",
         "getting-started/dashboard/token"
       ]
     },

@@ -246,13 +246,14 @@ export const getAllAccessibleEnvironmentsOfWorkspace = async (
   relatedWorkspace.environments.forEach(environment => {
     const isReadBlocked = _.some(deniedPermission, { environmentSlug: environment.slug, ability: ABILITY_READ })
     const isWriteBlocked = _.some(deniedPermission, { environmentSlug: environment.slug, ability: ABILITY_WRITE })
-    if (isReadBlocked) {
+    if (isReadBlocked && isWriteBlocked) {
       return
     } else {
       accessibleEnvironments.push({
         name: environment.name,
         slug: environment.slug,
-        isWriteDenied: isWriteBlocked
+        isWriteDenied: isWriteBlocked,
+        isReadDenied: isReadBlocked
       })
     }
   })

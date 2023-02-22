@@ -6,14 +6,52 @@ import {
     requireSecretsAuth,
     validateRequest
 } from '../../middleware';
-import { query, check, body } from 'express-validator';
+import { query, body } from 'express-validator';
 import { secretsController } from '../../controllers/v2';
+import { validateSecrets } from '../../helpers/secret';
 import {
     ADMIN,
     MEMBER,
     SECRET_PERSONAL,
     SECRET_SHARED
 } from '../../variables';
+import {
+    BatchSecretRequest
+} from '../../types/secret';
+
+router.post(
+    '/batch',
+    requireAuth({
+        acceptedAuthModes: ['jwt', 'apiKey']
+    }),
+    requireWorkspaceAuth({
+        acceptedRoles: [ADMIN, MEMBER],
+        location: 'body'
+    }),
+    body('workspaceId').exists().isString().trim(),
+    body('environment').exists().isString().trim(),
+    body('requests')
+        .exists()
+        .custom(async (requests: BatchSecretRequest[], { req }) => {
+            if (Array.isArray(requests)) {
+                const secretIds = requests
+                    .map((request) => request.secret._id)
+                    .filter((secretId) => secretId !== undefined)
+                
+                if (secretIds.length > 0) {
+                    const relevantSecrets = await validateSecrets({
+                        userId: req.user._id.toString(),
+                        secretIds
+                    });
+                    
+                    req.secrets = relevantSecrets;
+                }
+            }
+        return true;
+    }),
+    validateRequest,
+    secretsController.batchSecrets
+);
 
 router.post(
     '/',
@@ -74,6 +112,7 @@ router.get(
     '/',
     query('workspaceId').exists().trim(),
     query('environment').exists().trim(),
+    query('tagSlugs'),
     validateRequest,
     requireAuth({
         acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken']

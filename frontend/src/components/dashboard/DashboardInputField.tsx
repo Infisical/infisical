@@ -1,22 +1,23 @@
 import { memo, SyntheticEvent, useRef } from 'react';
-import { faCircle, faExclamationCircle, faEye, faLayerGroup } from '@fortawesome/free-solid-svg-icons';
+import { faCircle, faCodeBranch, faExclamationCircle, faEye } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import guidGenerator from '../utilities/randomId';
 import { HoverObject } from '../v2/HoverCard';
+import { PopoverObject } from '../v2/Popover/Popover';
 
 const REGEX = /([$]{.*?})/g;
 
 interface DashboardInputFieldProps {
-  position: number;
-  onChangeHandler: (value: string, position: number) => void;
+  id: string;
+  onChangeHandler: (value: string, id: string) => void;
   value: string | undefined;
   type: 'varName' | 'value' | 'comment';
   blurred?: boolean;
   isDuplicate?: boolean;
   isCapitalized?: boolean;
   overrideEnabled?: boolean;
-  modifyValueOverride?: (value: string | undefined, position: number) => void;
+  modifyValueOverride?: (value: string | undefined, id: string) => void;
   isSideBarOpen?: boolean;
 }
 
@@ -36,7 +37,7 @@ interface DashboardInputFieldProps {
  */
 
 const DashboardInputField = ({
-  position,
+  id,
   onChangeHandler,
   type,
   value,
@@ -71,7 +72,7 @@ const DashboardInputField = ({
           }`}
         >
           <input
-            onChange={(e) => onChangeHandler(isCapitalized ? e.target.value.toUpperCase() : e.target.value, position)}
+            onChange={(e) => onChangeHandler(isCapitalized ? e.target.value.toUpperCase() : e.target.value, id)}
             type={type}
             value={value}
             className={`z-10 peer font-mono ph-no-capture bg-transparent h-full caret-bunker-200 text-sm px-2 w-full min-w-16 outline-none ${
@@ -98,21 +99,21 @@ const DashboardInputField = ({
             />
           </div>
         )}
-        {!error && <div className={`absolute right-0 top-0 text-red z-50 ${
-          overrideEnabled ? 'visible group-hover:bg-mineshaft-700' : 'invisible group-hover:visible bg-mineshaft-700'
+        {!error && <div className={`absolute right-0 top-0 text-red z-50 bg-mineshaft-800 group-hover:bg-mineshaft-700 ${
+          overrideEnabled ? 'visible' : 'invisible group-hover:visible'
         } cursor-pointer duration-0 h-10 flex items-center px-2`}>
           <button type="button" onClick={() => {
             if (modifyValueOverride) {
               if (overrideEnabled === false) {
-                modifyValueOverride('', position);
+                modifyValueOverride('', id);
               } else {
-                modifyValueOverride(undefined, position);
+                modifyValueOverride(undefined, id);
               }
             }
           }}>
             <HoverObject 
               text={overrideEnabled ? 'This secret is overriden with your personal value' : 'You can override this secret with a personal value'}
-              icon={faLayerGroup}
+              icon={faCodeBranch}
               color={overrideEnabled ? 'primary' : 'bunker-400'}
             />
           </button>
@@ -125,24 +126,24 @@ const DashboardInputField = ({
     const error = startsWithNumber || isDuplicate;
 
     return (
-      <div title={value} className={`relative flex-col w-full h-10 ${
-        isSideBarOpen && 'bg-mineshaft-700 duration-200'
-      }`}>
-        <div
-          className={`group relative flex flex-col justify-center items-center ${
-            error ? 'w-max' : 'w-full'
-          }`}
-        >
-          <input
-            onChange={(e) => onChangeHandler(e.target.value, position)}
-            type={type}
-            value={value}
-            className='z-10 peer ph-no-capture bg-transparent py-2.5 caret-bunker-200 text-sm px-2 w-full min-w-16 outline-none text-bunker-300 focus:text-bunker-100 placeholder:text-bunker-400 placeholder:focus:text-transparent placeholder duration-200'
-            spellCheck="false"
-            placeholder='–'
-          />
+      <PopoverObject text={value || ''} onChangeHandler={onChangeHandler} id={id}>
+        <div title={value} className={`relative flex-col w-full h-10 overflow-hidden ${
+          isSideBarOpen && 'bg-mineshaft-700 duration-200'
+        }`}>
+          <div
+            className={`group relative flex flex-col justify-center items-center h-full ${
+              error ? 'w-max' : 'w-full'
+            }`}
+          >
+            {value?.split("\n")[0] ? <span className='ph-no-capture truncate break-all bg-transparent leading-tight text-xs px-2 w-full min-w-16 outline-none text-bunker-300 focus:text-bunker-100 placeholder:text-bunker-400 placeholder:focus:text-transparent placeholder duration-200'>
+              {value?.split("\n")[0]}
+            </span> : <span className='text-bunker-400'>-</span> }
+            {value?.split("\n")[1] && <span className='ph-no-capture truncate break-all bg-transparent leading-tight text-xs px-2 w-full min-w-16 outline-none text-bunker-300 focus:text-bunker-100 placeholder:text-bunker-400 placeholder:focus:text-transparent placeholder duration-200'>
+              {value?.split("\n")[1]}
+            </span>}
+          </div>
         </div>
-      </div>
+      </PopoverObject>
     );
   }
   if (type === 'value') {
@@ -156,7 +157,7 @@ const DashboardInputField = ({
           )}
           <input
             value={value}
-            onChange={(e) => onChangeHandler(e.target.value, position)}
+            onChange={(e) => onChangeHandler(e.target.value, id)}
             onScroll={syncScroll}
             className={`${
               blurred
@@ -174,10 +175,10 @@ const DashboardInputField = ({
             } ${overrideEnabled ? 'text-primary-300' : 'text-gray-400'}
             absolute flex flex-row whitespace-pre font-mono z-0 ${blurred ? 'invisible' : 'visible'} peer-focus:visible mt-0.5 ph-no-capture overflow-x-scroll bg-transparent h-10 text-sm px-2 py-2 w-full min-w-16 outline-none duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
           >
-            {value?.split(REGEX).map((word, id) => {
+            {value?.split(REGEX).map((word) => {
               if (word.match(REGEX) !== null) {
                 return (
-                  <span className="ph-no-capture text-yellow" key={`${word}.${id + 1}`}>
+                  <span className="ph-no-capture text-yellow" key={id}>
                     {word.slice(0, 2)}
                     <span className="ph-no-capture text-yellow-200/80">
                       {word.slice(2, word.length - 1)}
@@ -215,7 +216,7 @@ const DashboardInputField = ({
                 ))}
                 {value?.split('').length === 0 && <span className='text-bunker-400/80'>EMPTY</span>}
               </div>
-              <div className='invisible group-hover:visible cursor-pointer'><FontAwesomeIcon icon={faEye} /></div>
+              <div className='invisible group-hover:visible cursor-default z-[100]'><FontAwesomeIcon icon={faEye} /></div>
             </div>
           )}
         </div>
@@ -230,7 +231,7 @@ function inputPropsAreEqual(prev: DashboardInputFieldProps, next: DashboardInput
   return (
     prev.value === next.value &&
     prev.type === next.type &&
-    prev.position === next.position &&
+    prev.id === next.id &&
     prev.blurred === next.blurred &&
     prev.isCapitalized === next.isCapitalized &&
     prev.overrideEnabled === next.overrideEnabled &&

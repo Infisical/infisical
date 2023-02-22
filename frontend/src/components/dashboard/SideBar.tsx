@@ -18,7 +18,7 @@ import GenerateSecretMenu from './GenerateSecretMenu';
 
 interface SecretProps {
   key: string;
-  value: string;
+  value: string | undefined;
   valueOverride: string | undefined;
   pos: number;
   id: string;
@@ -33,10 +33,10 @@ export interface DeleteRowFunctionProps {
 interface SideBarProps {
   toggleSidebar: (value: string) => void;
   data: SecretProps[];
-  modifyKey: (value: string, position: number) => void;
-  modifyValue: (value: string, position: number) => void;
-  modifyValueOverride: (value: string | undefined, position: number) => void;
-  modifyComment: (value: string, position: number) => void;
+  modifyKey: (value: string, id: string) => void;
+  modifyValue: (value: string, id: string) => void;
+  modifyValueOverride: (value: string | undefined, id: string) => void;
+  modifyComment: (value: string, id: string) => void;
   buttonReady: boolean;
   savePush: () => void;
   sharedToHide: string[];
@@ -80,9 +80,9 @@ const SideBar = ({
   const { t } = useTranslation();
 
   return (
-    <div className="absolute border-l border-mineshaft-500 bg-bunker h-full w-[28rem] sticky top-0 right-0 z-[70] shadow-xl flex flex-col justify-between">
+    <div className="absolute border-l border-mineshaft-500 bg-bunker h-full w-full min-w-sm max-w-sm sticky top-0 right-0 z-[70] shadow-xl flex flex-col justify-between">
       {isLoading ? (
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center h-full w-full">
           <Image
             src="/images/loading/loading.gif"
             height={60}
@@ -91,7 +91,7 @@ const SideBar = ({
           />
         </div>
       ) : (
-        <div className="h-min overflow-y-auto">
+        <div className="h-min overflow-y-auto w-full">
           <div className="flex flex-row px-4 py-3 border-b border-mineshaft-500 justify-between items-center">
             <p className="font-semibold text-lg text-bunker-200">{t('dashboard:sidebar.secret')}</p>
             <div
@@ -110,7 +110,7 @@ const SideBar = ({
               <DashboardInputField
                 onChangeHandler={modifyKey}
                 type="varName"
-                position={data[0]?.pos}
+                id={data[0]?.id}
                 value={data[0]?.key}
                 isDuplicate={false}
                 blurred={false}
@@ -128,14 +128,14 @@ const SideBar = ({
                 <DashboardInputField
                   onChangeHandler={modifyValue}
                   type="value"
-                  position={data[0].pos}
+                  id={data[0].id}
                   value={data[0]?.value}
                   isDuplicate={false}
                   blurred
                 />
               </div>
               <div className="absolute bg-bunker-800 right-[1.07rem] top-[1.6rem] z-50">
-                <GenerateSecretMenu modifyValue={modifyValue} position={data[0]?.pos} />
+                <GenerateSecretMenu modifyValue={modifyValue} id={data[0]?.id} />
               </div>
             </div>
           ) : (
@@ -154,7 +154,7 @@ const SideBar = ({
                   enabled={overrideEnabled}
                   setEnabled={setOverrideEnabled}
                   addOverride={modifyValueOverride}
-                  pos={data[0]?.pos}
+                  id={data[0]?.id}
                 />
               </div>
             )}
@@ -167,14 +167,14 @@ const SideBar = ({
                 <DashboardInputField
                   onChangeHandler={modifyValueOverride}
                   type="value"
-                  position={data[0]?.pos}
+                  id={data[0]?.id}
                   value={overrideEnabled ? data[0]?.valueOverride : data[0]?.value}
                   isDuplicate={false}
                   blurred
                 />
               </div>
               <div className="absolute right-[0.57rem] top-[0.3rem] z-50">
-                <GenerateSecretMenu modifyValue={modifyValueOverride} position={data[0]?.pos} />
+                <GenerateSecretMenu modifyValue={modifyValueOverride} id={data[0]?.id} />
               </div>
             </div>
           </div>
@@ -182,11 +182,11 @@ const SideBar = ({
           <CommentField
             comment={data[0]?.comment}
             modifyComment={modifyComment}
-            position={data[0]?.pos}
+            id={data[0]?.id}
           />
         </div>
       )}
-      <div className="mt-full mt-4 mb-4 flex max-w-sm flex-col justify-start space-y-2 px-4">
+      <div className="mt-full w-96 mt-4 mb-4 flex max-w-sm flex-col justify-start space-y-2 px-4">
         <div>
           <Button
             text="Compare secret across environments"
@@ -197,7 +197,7 @@ const SideBar = ({
           <CompareSecretsModal
             compareModal={compareModal}
             setCompareModal={setCompareModal}
-            currentSecret={{ key: data[0]?.key, value: data[0]?.value }}
+            currentSecret={{ key: data[0]?.key, value: data[0]?.value ?? '' }}
             workspaceEnvs={workspaceEnvs}
             selectedEnv={selectedEnv}
             workspaceId={workspaceId}

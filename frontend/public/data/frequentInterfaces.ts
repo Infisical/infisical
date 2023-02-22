@@ -10,9 +10,10 @@ export interface Tag {
 export interface SecretDataProps {
   pos: number;
   key: string;
-  value: string;
+  value: string | undefined;
   valueOverride: string | undefined;
   id: string;
+  idOverride?: string;
   comment: string;
   tags: Tag[];
 }

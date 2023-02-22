@@ -13,7 +13,7 @@ import { Tag } from 'public/data/frequentInterfaces';
  * @param {function} obj.modifyTags - modify tags for a certain secret
  * @param {Tag[]} obj.position - currently selected tags for a certain secret
  */
-const AddTagsMenu = ({ allTags, currentTags, modifyTags, position }: { allTags: Tag[]; currentTags: Tag[]; modifyTags: (value: Tag[], position: number) => void; position: number; }) => {
+const AddTagsMenu = ({ allTags, currentTags, modifyTags, id }: { allTags: Tag[]; currentTags: Tag[]; modifyTags: (value: Tag[], id: string) => void; id: string; }) => {
   const router = useRouter();
   return (
     <Menu as="div" className="ml-2 relative inline-block text-left">
@@ -41,7 +41,7 @@ const AddTagsMenu = ({ allTags, currentTags, modifyTags, position }: { allTags: 
               <button
                 type="button"
                 className={`${currentTags?.map(currentTag => currentTag.name).includes(tag.name) ? "opacity-30 cursor-default" : "hover:bg-mineshaft-700"} w-full text-left bg-mineshaft-800 px-2 py-0.5 text-bunker-200 rounded-sm flex items-center`}
-                onClick={() => {if (!currentTags?.map(currentTag => currentTag.name).includes(tag.name)) {modifyTags(currentTags.concat([tag]), position)}}}
+                onClick={() => {if (!currentTags?.map(currentTag => currentTag.name).includes(tag.name)) {modifyTags(currentTags.concat([tag]), id)}}}
               >
                 {currentTags?.map(currentTag => currentTag.name).includes(tag.name) ? <FontAwesomeIcon icon={faCheckSquare} className="text-xs mr-2 text-primary"/> : <FontAwesomeIcon icon={faSquare} className="text-xs mr-2"/>} {tag.name}
               </button>

@@ -14,11 +14,13 @@ import {
 	MembershipOrg,
 	Organization,
 	Workspace,
-	IncidentContactOrg
+	IncidentContactOrg,
+	IMembershipOrg
 } from '../../models';
 import { createOrganization as create } from '../../helpers/organization';
 import { addMembershipsOrg } from '../../helpers/membershipOrg';
 import { OWNER, ACCEPTED } from '../../variables';
+import _ from 'lodash';
 
 export const getOrganizations = async (req: Request, res: Response) => {
 	let organizations;
@@ -381,4 +383,45 @@ export const getOrganizationSubscriptions = async (
 	return res.status(200).send({
 		subscriptions
 	});
+};
+
+
+/**
+ * Given a org id, return the projects each member of the org belongs to
+ * @param req
+ * @param res
+ * @returns
+ */
+export const getOrganizationMembersAndTheirWorkspaces = async (
+	req: Request,
+	res: Response
+) => {
+	const { organizationId } = req.params;
+
+	const workspacesSet = (
+			await Workspace.find(
+				{
+					organization: organizationId
+				},
+				'_id'
+			)
+		).map((w) => w._id.toString());
+
+	const memberships = (
+		await Membership.find({
+			workspace: { $in: workspacesSet }
+		}).populate('workspace')
+	);
+	const userToWorkspaceIds: any = {};
+
+	memberships.forEach(membership => {
+		const user = membership.user.toString();
+		if (userToWorkspaceIds[user]) {
+			userToWorkspaceIds[user].push(membership.workspace);
+		} else {
+			userToWorkspaceIds[user] = [membership.workspace];
+		}
+	});
+
+	return res.json(userToWorkspaceIds);
 };

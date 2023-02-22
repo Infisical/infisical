@@ -38,7 +38,7 @@ export default function CircleCICreateIntegrationPage() {
     useEffect(() => {
         // TODO: handle case where apps can be empty
         if (integrationAuthApps) {
-          setTargetApp(integrationAuthApps[0].name);
+          setTargetApp(integrationAuthApps[0]?.name);
         }
     }, [integrationAuthApps]);
         
@@ -55,7 +55,9 @@ export default function CircleCICreateIntegrationPage() {
                 appId: (integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp))?.appId ?? null,
                 sourceEnvironment: selectedSourceEnvironment,
                 targetEnvironment: null,
-                owner: null
+                owner: null,
+                path: null,
+                region: null,
             }); 
             
             setIsLoading(false);
@@ -89,7 +91,7 @@ export default function CircleCICreateIntegrationPage() {
           </Select>
         </FormControl>
         <FormControl
-          label="CircleCI Service"
+          label="CircleCI Project"
           className='mt-4'
         >
           <Select

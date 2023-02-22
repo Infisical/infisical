@@ -31,10 +31,10 @@ func PrintSuccessMessage(message string) {
 	color.New(color.FgGreen).Println(message)
 }
 
-func PrintMessageAndExit(messages ...string) {
+func PrintErrorMessageAndExit(messages ...string) {
 	if len(messages) > 0 {
 		for _, message := range messages {
-			fmt.Println(message)
+			fmt.Fprintln(os.Stderr, message)
 		}
 	}
 
@@ -42,5 +42,5 @@ func PrintMessageAndExit(messages ...string) {
 }
 
 func printError(e error) {
-	color.Red("Hmm, we ran into an error: %v", e)
+	color.New(color.FgRed).Fprintf(os.Stderr, "Hmm, we ran into an error: %v", e)
 }

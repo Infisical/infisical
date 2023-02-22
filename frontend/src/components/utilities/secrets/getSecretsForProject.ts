@@ -24,7 +24,7 @@ interface EncryptedSecretProps {
 
 interface SecretProps {
   key: string;
-  value: string;
+  value: string | undefined;
   type: 'personal' | 'shared';
   comment: string;
   id: string;
@@ -87,12 +87,17 @@ const getSecretsForProject = async ({
           key
         });
 
-        const plainTextValue = decryptSymmetric({
-          ciphertext: secret.secretValueCiphertext,
-          iv: secret.secretValueIV,
-          tag: secret.secretValueTag,
-          key
-        });
+        let plainTextValue;
+        if (secret.secretValueCiphertext !== undefined) {
+          plainTextValue = decryptSymmetric({
+            ciphertext: secret.secretValueCiphertext,
+            iv: secret.secretValueIV,
+            tag: secret.secretValueTag,
+            key
+          });
+        } else {
+          plainTextValue = undefined;
+        }
 
         let plainTextComment;
         if (secret.secretCommentCiphertext) {

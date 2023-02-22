@@ -56,7 +56,7 @@ var initCmd = &cobra.Command{
 		workspaces := workspaceResponse.Workspaces
 		if len(workspaces) == 0 {
 			message := fmt.Sprintf("You don't have any projects created in Infisical. You must first create a project at %s", util.INFISICAL_TOKEN_NAME)
-			util.PrintMessageAndExit(message)
+			util.PrintErrorMessageAndExit(message)
 		}
 
 		var workspaceNames []string

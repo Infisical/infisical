@@ -15,19 +15,9 @@ import {
 export interface IIntegrationAuth {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration:
-    | 'azure-key-vault'
-    | 'aws-parameter-store'
-    | 'aws-secret-manager'
-    | 'heroku' 
-    | 'vercel' 
-    | 'netlify' 
-    | 'github' 
-    | 'render' 
-    | 'flyio'
-    | 'circleci';
-  teamId: string; // TODO: deprecate (vercel) -> move to accessId
-  accountId: string; // TODO: deprecate (netlify) -> move to accessId
+  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'render' | 'flyio' | 'azure-key-vault' | 'circleci' | 'aws-parameter-store' | 'aws-secret-manager';
+  teamId: string;
+  accountId: string;
   refreshCiphertext?: string;
   refreshIV?: string;
   refreshTag?: string;

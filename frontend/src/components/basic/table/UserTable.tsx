@@ -4,6 +4,7 @@ import { faX } from '@fortawesome/free-solid-svg-icons';
 
 import changeUserRoleInOrganization from '@app/pages/api/organization/changeUserRoleInOrganization';
 import deleteUserFromOrganization from '@app/pages/api/organization/deleteUserFromOrganization';
+import getOrganizationProjectMemberships from '@app/pages/api/organization/GetOrgProjectMemberships';
 import deleteUserFromWorkspace from '@app/pages/api/workspace/deleteUserFromWorkspace';
 import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
 import uploadKeys from '@app/pages/api/workspace/uploadKeys';
@@ -36,6 +37,7 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
   );
   const router = useRouter();
   const [myRole, setMyRole] = useState('member');
+  const [userProjectMemberships, setUserProjectMemberships] = useState<any[]>([]);
 
   const workspaceId = router.query.id as string;
   // Delete the row in the table (e.g. a user)
@@ -79,6 +81,10 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
 
   useEffect(() => {
     setMyRole(userData.filter((user) => user.email === myUser)[0]?.role);
+    (async () => {
+      const result = await getOrganizationProjectMemberships({ orgId: String(localStorage.getItem("orgData.id"))})
+      setUserProjectMemberships(result);
+    })();
   }, [userData, myUser]);
 
   const grantAccess = async (id: string, publicKey: string) => {
@@ -110,7 +116,7 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
   };
 
   return (
-    <div className="table-container bg-bunker rounded-md mb-6 border border-mineshaft-700 relative mt-1 min-w-max">
+    <div className="table-container bg-bunker rounded-md mb-6 border border-mineshaft-700 relative mt-1 min-w-max w-full">
       <div className="absolute rounded-t-md w-full h-[3.25rem] bg-white/5" />
       <table className="w-full my-0.5">
         <thead className="text-gray-400 text-sm font-light">
@@ -118,6 +124,7 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
             <th className="text-left pl-4 py-3.5">NAME</th>
             <th className="text-left pl-4 py-3.5">EMAIL</th>
             <th className="text-left pl-6 pr-10 py-3.5">ROLE</th>
+            <th className="text-left pl-6 pr-10 py-3.5">PROJECTS</th>
             <th aria-label="buttons" />
           </tr>
         </thead>
@@ -187,6 +194,17 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
                           />
                         </div>
                       )}
+                    </div>
+                  </td>
+                  <td className="pl-4 py-2 border-mineshaft-700 border-t text-gray-300">
+                    <div className="flex items-center max-h-16 overflow-x-auto w-full max-w-xl break-all">
+                      {userProjectMemberships[row.userId] 
+                      ? userProjectMemberships[row.userId]?.map((project: any) => (
+                        <div key={project._id} className='mx-1 min-w-max px-1.5 bg-mineshaft-500 rounded-sm text-sm text-bunker-200 flex items-center'>
+                          <span className='mb-0.5 cursor-default'>{project.name}</span>
+                        </div>
+                      ))
+                      : <span className='ml-1 text-bunker-100 rounded-sm px-1 py-0.5 text-sm bg-red/80'>This user isn&apos;t part of any projects yet.</span>}
                     </div>
                   </td>
                   <td className="flex flex-row justify-end pl-8 pr-8 py-2 border-t border-0.5 border-mineshaft-700">
