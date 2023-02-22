@@ -5,6 +5,11 @@
 ## https://kind.sigs.k8s.io/docs/user/ingress/
 ##
 
+##
+## DEVELOPMENT USE ONLY
+## DO NOT USE IN PRODUCTION
+##
+
 # define variables
 cluster_name=infisical
 host=infisical.local
