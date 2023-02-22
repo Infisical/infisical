@@ -1,12 +1,12 @@
 import { ErrorRequestHandler } from "express";
 
 import * as Sentry from '@sentry/node';
-import { InternalServerError, UnauthorizedRequestError } from "../utils/errors";
+import { InternalServerError, UnauthorizedRequestError, UnprocessableEntityError } from "../utils/errors";
 import { getLogger } from "../utils/logger";
 import RequestError, { LogLevel } from "../utils/requestError";
 import { NODE_ENV } from "../config";
 
-import { TokenExpiredError } from 'jsonwebtoken';
+import mongoose from "mongoose";
 
 export const requestErrorHandler: ErrorRequestHandler = (error: RequestError | Error, req, res, next) => {
     if (res.headersSent) return next();
@@ -34,4 +34,17 @@ export const requestErrorHandler: ErrorRequestHandler = (error: RequestError | E
 
     res.status((<RequestError>error).statusCode).json((<RequestError>error).format(req))
     next()
+}
+
+export const handleMongoInvalidDataError = (err: any, req: any, res: any, next: any) => {
+    if (err instanceof mongoose.Error.ValidationError) {
+        const errors: any = {};
+        for (const field in err.errors) {
+            errors[field] = err.errors[field].message;
+        }
+
+        throw UnprocessableEntityError({ message: JSON.stringify(errors) })
+    } else {
+        next(err);
+    }
 }

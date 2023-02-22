@@ -16,6 +16,8 @@ import {
 } from "../../helpers/workspace";
 import { addMemberships } from "../../helpers/membership";
 import { ADMIN } from "../../variables";
+import { BadRequestError, ResourceNotFound, UnauthorizedRequestError } from "../../utils/errors";
+import _ from "lodash";
 
 /**
  * Return public keys of members of workspace with id [workspaceId]
@@ -301,6 +303,93 @@ export const getWorkspaceIntegrationAuthorizations = async (
   return res.status(200).send({
     authorizations,
   });
+};
+
+export const addApproverForWorkspaceAndEnvironment = async (
+  req: Request,
+  res: Response
+) => {
+  const { workspaceId } = req.params;
+  const { approvers } = req.body
+
+  const workspaceFromDB = await Workspace.findById(workspaceId)
+
+  if (!workspaceFromDB) {
+    throw ResourceNotFound()
+  }
+
+  const approverIds = _.map(approvers, "userId")
+  const workspaceEnvironments = _.map(workspaceFromDB.environments, 'slug');
+  const approversEnvironments = _.map(approvers, "environment")
+  const environmentsDifference = _.difference(approversEnvironments, workspaceEnvironments);
+
+  // validate environments 
+  if (environmentsDifference.length != 0) {
+    const err = `Invalid environments set for approver(s) [environmentsDifference=${environmentsDifference}]`
+    throw BadRequestError({ message: err })
+  }
+
+  // validate approvers membership 
+  const membershipValidation = await Membership.find({
+    workspace: workspaceId,
+    user: { $in: approverIds }
+  })
+
+  if (!membershipValidation) {
+    throw ResourceNotFound()
+  }
+
+  if (membershipValidation.length != approverIds.length) {
+    throw UnauthorizedRequestError({ message: "Approvers must be apart of the workspace they are being added to" })
+  }
+
+  const updatedWorkspace = await Workspace.findByIdAndUpdate(workspaceId, { $addToSet: { approvers: { $each: approvers } } }, { new: true })
+
+  return res.json(updatedWorkspace)
+};
+
+
+export const removeApproverForWorkspaceAndEnvironment = async (
+  req: Request,
+  res: Response
+) => {
+  const { workspaceId } = req.params;
+  const { approvers } = req.body
+
+  const workspaceFromDB = await Workspace.findById(workspaceId)
+
+  if (!workspaceFromDB) {
+    throw ResourceNotFound()
+  }
+
+  const approverIds = _.map(approvers, "userId")
+  const workspaceEnvironments = _.map(workspaceFromDB.environments, 'slug');
+  const approversEnvironments = _.map(approvers, "environment")
+  const environmentsDifference = _.difference(approversEnvironments, workspaceEnvironments);
+
+  // validate environments 
+  if (environmentsDifference.length != 0) {
+    const err = `Invalid environments set for approver(s) [environmentsDifference=${environmentsDifference}]`
+    throw BadRequestError({ message: err })
+  }
+
+  // validate approvers membership 
+  const membershipValidation = await Membership.find({
+    workspace: workspaceId,
+    user: { $in: approverIds }
+  })
+
+  if (!membershipValidation) {
+    throw ResourceNotFound()
+  }
+
+  if (membershipValidation.length != approverIds.length) {
+    throw UnauthorizedRequestError({ message: "Approvers must be apart of the workspace they are being added to" })
+  }
+
+  const updatedWorkspace = await Workspace.updateOne({ _id: workspaceId }, { $pullAll: { approvers: approvers } }, { new: true })
+
+  return res.json(updatedWorkspace)
 };
 
 /**

@@ -26,7 +26,7 @@ export interface ISecret {
 	tags?: string[];
 }
 
-const secretSchema = new Schema<ISecret>(
+export const secretSchema = new Schema<ISecret>(
 	{
 		version: {
 			type: Number,

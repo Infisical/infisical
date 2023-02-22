@@ -36,10 +36,10 @@ router.get(
 );
 
 router.get(
-	'/', 
+	'/',
 	requireAuth({
 		acceptedAuthModes: ['jwt']
-	}), 
+	}),
 	workspaceController.getWorkspaces
 );
 
@@ -132,6 +132,34 @@ router.get(
 	param('workspaceId').exists().trim(),
 	validateRequest,
 	workspaceController.getWorkspaceIntegrationAuthorizations
+);
+
+router.post(
+	'/:workspaceId/approvers',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN]
+	}),
+	param('workspaceId').exists().trim(),
+	body("approvers").isArray(),
+	validateRequest,
+	workspaceController.addApproverForWorkspaceAndEnvironment
+);
+
+router.delete(
+	'/:workspaceId/approvers',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN]
+	}),
+	param('workspaceId').exists().trim(),
+	body("approvers").isArray(),
+	validateRequest,
+	workspaceController.removeApproverForWorkspaceAndEnvironment
 );
 
 router.get(

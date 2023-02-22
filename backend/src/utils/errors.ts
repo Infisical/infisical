@@ -19,6 +19,15 @@ export const MethodNotAllowedError = (error?: Partial<RequestErrorContext>) => n
     stack: error?.stack
 });
 
+export const UnprocessableEntityError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.INFO,
+    statusCode: error?.statusCode ?? 422,
+    type: error?.type ?? 'unprocessable_entity',
+    message: error?.message ?? 'The server understands the content of the request, but it was unable to process it because it contains invalid data',
+    context: error?.context,
+    stack: error?.stack
+});
+
 export const UnauthorizedRequestError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.INFO,
     statusCode: error?.statusCode ?? 401,
@@ -27,7 +36,7 @@ export const UnauthorizedRequestError = (error?: Partial<RequestErrorContext>) =
     context: error?.context,
     stack: error?.stack
 });
-  
+
 export const ForbiddenRequestError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.INFO,
     statusCode: error?.statusCode ?? 403,
@@ -42,6 +51,15 @@ export const BadRequestError = (error?: Partial<RequestErrorContext>) => new Req
     statusCode: error?.statusCode ?? 400,
     type: error?.type ?? 'bad_request',
     message: error?.message ?? 'The request is invalid or cannot be served',
+    context: error?.context,
+    stack: error?.stack
+});
+
+export const ResourceNotFound = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.INFO,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? 'resource_not_found',
+    message: error?.message ?? 'The requested resource was not found',
     context: error?.context,
     stack: error?.stack
 });

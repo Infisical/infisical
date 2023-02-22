@@ -39,7 +39,8 @@ import {
   password as v1PasswordRouter,
   stripe as v1StripeRouter,
   integration as v1IntegrationRouter,
-  integrationAuth as v1IntegrationAuthRouter
+  integrationAuth as v1IntegrationAuthRouter,
+  secretApprovalRequest as v1SecretApprovalRequest
 } from './routes/v1';
 import {
   signup as v2SignupRouter,
@@ -59,7 +60,7 @@ import { healthCheck } from './routes/status';
 
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
-import { requestErrorHandler } from './middleware/requestErrorHandler';
+import { handleMongoInvalidDataError, requestErrorHandler } from './middleware/requestErrorHandler';
 
 // patch async route params to handle Promise Rejections
 patchRouterParam();
@@ -110,6 +111,7 @@ app.use('/api/v1/password', v1PasswordRouter);
 app.use('/api/v1/stripe', v1StripeRouter);
 app.use('/api/v1/integration', v1IntegrationRouter);
 app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
+app.use('/api/v1/secrets-approval-request', v1SecretApprovalRequest)
 
 // v2 routes
 app.use('/api/v2/signup', v2SignupRouter);
@@ -135,6 +137,9 @@ app.use((req, res, next) => {
   if (res.headersSent) return next();
   next(RouteNotFoundError({ message: `The requested source '(${req.method})${req.url}' was not found` }))
 })
+
+// handle mongo validation errors
+app.use(handleMongoInvalidDataError);
 
 //* Error Handling Middleware (must be after all routing logic)
 app.use(requestErrorHandler)

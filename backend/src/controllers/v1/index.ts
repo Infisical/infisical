@@ -14,6 +14,7 @@ import * as stripeController from './stripeController';
 import * as userActionController from './userActionController';
 import * as userController from './userController';
 import * as workspaceController from './workspaceController';
+import * as secretApprovalController from './secretApprovalController';
 
 export {
 	authController,
@@ -31,5 +32,6 @@ export {
 	stripeController,
 	userActionController,
 	userController,
-	workspaceController
+	workspaceController,
+	secretApprovalController
 };

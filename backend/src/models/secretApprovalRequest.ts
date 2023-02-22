@@ -1,14 +1,24 @@
 import mongoose, { Schema, model } from 'mongoose';
-import Secret, { ISecret } from './secret';
+import Secret, { ISecret, secretSchema } from './secret';
+
+export interface IRequestedChange {
+	userId: mongoose.Types.ObjectId;
+	status: ApprovalStatus;
+	modifiedSecret: ISecret,
+	modifiedSecretId: mongoose.Types.ObjectId,
+	type: string
+	isApproved: boolean
+}
 
 interface ISecretApprovalRequest {
-	secret: mongoose.Types.ObjectId;
-	requestedChanges: ISecret;
-	requestedBy: mongoose.Types.ObjectId;
+	environment: string;
+	workspace: mongoose.Types.ObjectId;
+	requestedChanges: IRequestedChange;
+	requestedByUserId: mongoose.Types.ObjectId;
 	approvers: IApprover[];
 	status: ApprovalStatus;
 	timestamp: Date;
-	requestType: RequestType;
+	requestType: ChangeType;
 	requestId: string;
 }
 
@@ -23,7 +33,7 @@ export enum ApprovalStatus {
 	REJECTED = 'rejected'
 }
 
-export enum RequestType {
+export enum ChangeType {
 	UPDATE = 'update',
 	DELETE = 'delete',
 	CREATE = 'create'
@@ -33,7 +43,7 @@ const approverSchema = new mongoose.Schema({
 	user: {
 		type: mongoose.Schema.Types.ObjectId,
 		ref: 'User',
-		required: true
+		required: false
 	},
 	status: {
 		type: String,
@@ -44,33 +54,44 @@ const approverSchema = new mongoose.Schema({
 
 const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
 	{
-		secret: {
-			type: mongoose.Schema.Types.ObjectId,
+		environment: {
+			type: String, // The secret changes were requested for 
 			ref: 'Secret'
 		},
-		requestedChanges: Secret,
-		requestedBy: {
+		workspace: {
+			type: mongoose.Schema.Types.ObjectId, // workspace id of the secret
+			ref: 'Workspace'
+		},
+		requestedChanges: [
+			{
+				modifiedSecret: secretSchema,
+				modifiedSecretId: {
+					type: mongoose.Schema.Types.ObjectId,
+					ref: 'Secret'
+				},
+				type: {
+					type: String,
+					enum: ChangeType,
+					required: true
+				},
+				isApproved: {
+					type: Boolean,
+					default: false,
+				}
+			}
+		], // the changes that the requested user wants to make to the existing secret
+		requestedByUserId: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: 'User'
 		},
-		approvers: [approverSchema],
+		approvers: [approverSchema], // the approvers who need to approve in order to merge this change 
 		status: {
 			type: String,
 			enum: ApprovalStatus,
-			default: ApprovalStatus.PENDING
-		},
-		timestamp: {
-			type: Date,
-			default: Date.now
-		},
-		requestType: {
-			type: String,
-			enum: RequestType,
-			required: true
+			default: ApprovalStatus.PENDING // the overall status of the approval 
 		},
 		requestId: {
 			type: String,
-			required: false
 		}
 	},
 	{
@@ -78,6 +99,6 @@ const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
 	}
 );
 
-const SecretApprovalRequest = model<ISecretApprovalRequest>('SecretApprovalRequest', secretApprovalRequestSchema);
+const SecretApprovalRequest = model<ISecretApprovalRequest>('secret_approval_request', secretApprovalRequestSchema);
 
 export default SecretApprovalRequest;

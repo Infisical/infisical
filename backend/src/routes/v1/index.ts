@@ -15,6 +15,7 @@ import password from './password';
 import stripe from './stripe';
 import integration from './integration';
 import integrationAuth from './integrationAuth';
+import secretApprovalRequest from './secretApprovalsRequest'
 
 export {
 	signup,
@@ -33,5 +34,6 @@ export {
 	password,
 	stripe,
 	integration,
-	integrationAuth
+	integrationAuth,
+	secretApprovalRequest
 };

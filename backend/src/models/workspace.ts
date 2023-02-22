@@ -1,9 +1,16 @@
-import { Schema, model, Types } from 'mongoose';
+import mongoose, { Schema, model, Types } from 'mongoose';
+
+
+export interface DesignatedApprovers {
+	environment: string,
+	approvers: [mongoose.Schema.Types.ObjectId]
+}
 
 export interface IWorkspace {
 	_id: Types.ObjectId;
 	name: string;
 	organization: Types.ObjectId;
+	approvers: [DesignatedApprovers];
 	environments: Array<{
 		name: string;
 		slug: string;
@@ -20,6 +27,17 @@ const workspaceSchema = new Schema<IWorkspace>({
 		type: Boolean,
 		default: true,
 	},
+	approvers: [
+		{
+			userId: {
+				type: Schema.Types.ObjectId,
+				ref: 'User',
+			},
+			environment: {
+				type: String
+			}
+		}
+	],
 	organization: {
 		type: Schema.Types.ObjectId,
 		ref: 'Organization',
@@ -52,6 +70,8 @@ const workspaceSchema = new Schema<IWorkspace>({
 		],
 	},
 });
+
+workspaceSchema.index({ 'approvers': 1 }, { unique: true });
 
 const Workspace = model<IWorkspace>('Workspace', workspaceSchema);
 
