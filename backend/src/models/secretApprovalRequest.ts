@@ -2,9 +2,10 @@ import mongoose, { Schema, model } from 'mongoose';
 import Secret, { ISecret, secretSchema } from './secret';
 
 export interface IRequestedChange {
+	_id: string
 	userId: mongoose.Types.ObjectId;
 	status: ApprovalStatus;
-	modifiedSecret: ISecret,
+	modifiedSecretDetails: ISecret,
 	modifiedSecretId: mongoose.Types.ObjectId,
 	type: string
 	isApproved: boolean
@@ -13,7 +14,7 @@ export interface IRequestedChange {
 interface ISecretApprovalRequest {
 	environment: string;
 	workspace: mongoose.Types.ObjectId;
-	requestedChanges: IRequestedChange;
+	requestedChanges: IRequestedChange[];
 	requestedByUserId: mongoose.Types.ObjectId;
 	approvers: IApprover[];
 	status: ApprovalStatus;
@@ -64,7 +65,8 @@ const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
 		},
 		requestedChanges: [
 			{
-				modifiedSecret: secretSchema,
+				_id: { type: mongoose.Schema.Types.ObjectId, auto: true },
+				modifiedSecretDetails: secretSchema,
 				modifiedSecretId: { // used to fetch the current version of this secret for comparing 
 					type: mongoose.Schema.Types.ObjectId,
 					ref: 'Secret'
@@ -77,7 +79,8 @@ const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
 				isApproved: {
 					type: Boolean,
 					default: false,
-				}
+				},
+				approvers: [approverSchema]
 			}
 		], // the changes that the requested user wants to make to the existing secret
 		requestedByUserId: {

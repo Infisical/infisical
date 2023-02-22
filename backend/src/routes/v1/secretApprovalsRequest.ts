@@ -24,12 +24,20 @@ router.get(
     secretApprovalController.getAllApprovalRequestsForUser
 );
 
-// router.post(
-//     '/remove_approver',
-//     requireAuth({
-//         acceptedAuthModes: ['jwt']
-//     }),
-//     secretApprovalController.createApprovalRequest
-// );
+router.post(
+    '/:reviewId/approve',
+    requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
+    secretApprovalController.getAllApprovalRequestsForUser
+);
+
+router.post(
+    '/:reviewId/reject',
+    requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
+    secretApprovalController.getAllApprovalRequestsForUser
+);
 
 export default router;

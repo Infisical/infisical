@@ -4,8 +4,8 @@ import { Builder, IBuilder } from "builder-pattern"
 import { validateSecrets } from '../../helpers/secret';
 import _ from 'lodash';
 import { SECRET_PERSONAL, SECRET_SHARED } from '../../variables';
-import { BadRequestError, ResourceNotFound } from '../../utils/errors';
-import { Secret, Workspace } from '../../models';
+import { BadRequestError, ResourceNotFound, UnauthorizedRequestError } from '../../utils/errors';
+import { Membership, Secret, Workspace } from '../../models';
 import { user } from '../../routes/v1';
 
 export const createApprovalRequest = async (req: Request, res: Response) => {
@@ -49,7 +49,7 @@ export const createApprovalRequest = async (req: Request, res: Response) => {
 
 	const sanitizedRequestedChangesList: IRequestedChange[] = []
 	requestedChanges.forEach((requestedChange: IRequestedChange) => {
-		const modifiedSecret = requestedChange.modifiedSecret
+		const modifiedSecret = requestedChange.modifiedSecretDetails
 		if (!modifiedSecret.type || !(modifiedSecret.type === SECRET_PERSONAL || modifiedSecret.type === SECRET_SHARED) || !modifiedSecret.secretKeyCiphertext || !modifiedSecret.secretKeyIV || !modifiedSecret.secretKeyTag || (typeof modifiedSecret.secretValueCiphertext !== 'string') || !modifiedSecret.secretValueIV || !modifiedSecret.secretValueTag) {
 			throw BadRequestError({ message: "One or more required fields are missing from your modified secret" })
 		}
@@ -60,7 +60,7 @@ export const createApprovalRequest = async (req: Request, res: Response) => {
 
 		sanitizedRequestedChangesList.push(Builder<IRequestedChange>()
 			.modifiedSecretId(requestedChange.modifiedSecretId)
-			.modifiedSecret(requestedChange.modifiedSecret)
+			.modifiedSecretDetails(requestedChange.modifiedSecretDetails)
 			.type(requestedChange.type).build())
 
 	});
@@ -84,9 +84,11 @@ export const createApprovalRequest = async (req: Request, res: Response) => {
 		upsert: true
 	};
 
-	const request = await SecretApprovalRequest.findOneAndUpdate(filter, update, options)
+	const request = await SecretApprovalRequest
+		.findOneAndUpdate(filter, update, options)
+		.populate(["requestedChanges.modifiedSecretId", { path: 'approvers.userId', select: 'firstName lastName _id' }])
 
-	return res.status(200).send(request);
+	return res.status(200).send({ request });
 };
 
 export const getAllApprovalRequestsForUser = async (req: Request, res: Response) => {
@@ -98,26 +100,44 @@ export const getAllApprovalRequestsForUser = async (req: Request, res: Response)
 	res.send(approvalRequests)
 }
 
+export const approveChanges = async (req: Request, res: Response) => {
+	const { requestedChangeIds } = req.body;
+	const { reviewId } = req.query
+
+	const approvalRequestFromDB = await SecretApprovalRequest.findById(reviewId)
+	if (!approvalRequestFromDB) {
+		throw ResourceNotFound()
+	}
+
+	const requestedChangeIdsFromApproval = _.compact(_.map(approvalRequestFromDB.requestedChanges, "_id"))
+	const requestedChangeIdDifferences = _.difference(requestedChangeIds, requestedChangeIdsFromApproval);
+
+	// ensure that all requested change ids belong to this approval request 
+	if (requestedChangeIdDifferences.length != 0) {
+		const err = `Invalid changes requested for approval [requestedChangeIdDifferences=${requestedChangeIdDifferences}]`
+		throw BadRequestError({ message: err })
+	}
+
+	// ensure that the current user is member of workspace 
+	const relatedApprovalRequestWorkspace = await Membership.find({
+		workspace: approvalRequestFromDB.workspace,
+		user: req.user._id.toString()
+	})
+
+	if (!relatedApprovalRequestWorkspace) {
+		throw UnauthorizedRequestError({ message: "Only project members can modify approval requests" })
+	}
+
+
+
+
+
+}
+
+
 export const cancelApprovalRequest = async (req: Request, res: Response) => {
 	return res.status(200).send({
 		user: req.user
 	});
 };
 
-export const updateApprovalRequest = async (req: Request, res: Response) => {
-	return res.status(200).send({
-		user: req.user
-	});
-};
-
-export const addApproverToApprovalRequest = async (req: Request, res: Response) => {
-	return res.status(200).send({
-		user: req.user
-	});
-};
-
-export const removeApproverFromApprovalRequest = async (req: Request, res: Response) => {
-	return res.status(200).send({
-		user: req.user
-	});
-};
