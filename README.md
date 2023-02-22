@@ -41,6 +41,7 @@
 <kbd>[<img title="Spanish" alt="Spanish language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/es.svg" width="22">](i18n/README.es.md)</kbd>
 <kbd>[<img title="Korean" alt="Korean language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/kr.svg" width="22">](i18n/README.ko.md)</kbd>
 <kbd>[<img title="Turkish" alt="Turkish language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/tr.svg" width="22">](i18n/README.tr.md)</kbd>
+<kbd>[<img title="Bahasa Indonesia" alt="Bahasa Indonesia language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/id.svg" width="22">](i18n/README.id.md)</kbd>
 
 **[Infisical](https://infisical.com)** is an open source, end-to-end encrypted secret manager which you can use to centralize your API keys and configs. From Infisical, you can then distribute these secrets across your whole development lifecycle - from development to production . It's designed to be simple and take minutes to get going.
 
@@ -92,7 +93,7 @@ We're currently setting the foundation and building [integrations](https://infis
   <th>Platforms </th>
   <th>Frameworks</th>
 </tr>
-<tr> 
+<tr>
   <td>
 
 <table>
@@ -150,7 +151,7 @@ We're currently setting the foundation and building [integrations](https://infis
       </td>
       <td align="left" valign="middle">
         <a href="https://infisical.com/docs/integrations/cicd/gitlab">
-          ✔️ GitLab CI/CD 
+          ✔️ GitLab CI/CD
         </a>
       </td>
       <td align="left" valign="middle">
@@ -315,7 +316,7 @@ We're currently setting the foundation and building [integrations](https://infis
 </table>
 
 </td>
-</tr> 
+</tr>
 </table>
 
 ## 💚 Community & Support
