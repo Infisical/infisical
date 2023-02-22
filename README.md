@@ -42,7 +42,7 @@
 <kbd>[<img title="Korean" alt="Korean language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/kr.svg" width="22">](i18n/README.ko.md)</kbd>
 <kbd>[<img title="Turkish" alt="Turkish language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/tr.svg" width="22">](i18n/README.tr.md)</kbd>
 
-**[Infisical](https://infisical.com)** is an open source, end-to-end encrypted secret manager which you can use to centralize your API keys and configs. From Infisical, you can then distribute these secrets across your whole developemnt lifecycle - from development to production . It's designed to be simple and take minutes to get going.
+**[Infisical](https://infisical.com)** is an open source, end-to-end encrypted secret manager which you can use to centralize your API keys and configs. From Infisical, you can then distribute these secrets across your whole development lifecycle - from development to production . It's designed to be simple and take minutes to get going.
 
 - **[User-Friendly Dashboard](https://infisical.com/docs/getting-started/dashboard/project)** to manage your team's secrets and configs within projects
 - **[Language-Agnostic CLI](https://infisical.com/docs/cli/overview)** that pulls and injects esecrets and configs into your local workflow
@@ -327,7 +327,7 @@ We're currently setting the foundation and building [integrations](https://infis
 
 ## 🏘 Open-source vs. paid
 
-This repo is entirely MIT licensed, with the exception of the `ee` directory which will contain premium enterprise features requiring a Infisical license in the future. We're currently focused on developing non-enterprise offerings first that should suit most use-cases.
+This repo is entirely MIT licensed, with the exception of the `ee` directory which will contain premium enterprise features requiring a Infisical license in the future. We're currently focused on developing non-enterprise offerings first that should suit most use cases.
 
 ## 🛡 Security
 
