@@ -30,3 +30,20 @@ Select which Infisical environment secrets you want to sync to which Vercel app 
 
 ![integrations vercel](../../images/integrations-vercel-create.png)
 ![integrations vercel](../../images/integrations-vercel.png)
+
+<Info>
+  Infisical syncs every envar to Vercel with type `encrypted` unless an existing
+  envar with the same name in Vercel exists with a different type. Note that
+  Infisical will not be able to update Vercel envars with type `sensitive` since
+  they can only be decrypted and modified by Vercel's deployment systems.
+</Info>
+
+<Warning>
+  The following environment variable names are reserved by Vercel and cannot be
+  synced: `AWS_SECRET_KEY`, `AWS_EXECUTION_ENV`, `AWS_LAMBDA_LOG_GROUP_NAME`,
+  `AWS_LAMBDA_LOG_STREAM_NAME`, `AWS_LAMBDA_FUNCTION_NAME`,
+  `AWS_LAMBDA_FUNCTION_MEMORY_SIZE`, `AWS_LAMBDA_FUNCTION_VERSION`,
+  `NOW_REGION`, `TZ`, `LAMBDA_TASK_ROOT`, `LAMBDA_RUNTIME_DIR`,
+  `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`,
+  `AWS_REGION`, and `AWS_DEFAULT_REGION`.
+</Warning>
