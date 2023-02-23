@@ -577,7 +577,7 @@ const syncSecretsVercel = async ({
       .map(async (secret: VercelSecret) => {
         if (secret.type === 'encrypted') {
           // case: secret is encrypted -> need to decrypt
-          return (await axios.get(
+          const decryptedSecret = (await axios.get(
               `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
               {
                 params,
@@ -587,6 +587,8 @@ const syncSecretsVercel = async ({
                 }
               }
           )).data;
+
+          return decryptedSecret;
         }
 
         return secret;
@@ -595,9 +597,9 @@ const syncSecretsVercel = async ({
           [secret.key]: secret
       }), {});
 
-      const updateSecrets: VercelSecret[] = [];
-      const deleteSecrets: VercelSecret[] = [];
-      const newSecrets: VercelSecret[] = [];
+    const updateSecrets: VercelSecret[] = [];
+    const deleteSecrets: VercelSecret[] = [];
+    const newSecrets: VercelSecret[] = [];
 
     // Identify secrets to create
     Object.keys(secrets).map((key) => {
@@ -653,33 +655,13 @@ const syncSecretsVercel = async ({
         }
       );
     }
-
-    // Sync/push updated secrets
-    if (updateSecrets.length > 0) {
-      updateSecrets.forEach(async (secret: VercelSecret) => {
+  
+    for await (const secret of updateSecrets) {
+      if (secret.type !== 'sensitive') {
         const { id, ...updatedSecret } = secret;
-        
-        if (secret.type !== 'sensitive') {
-          await axios.patch(
-            `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
-            updatedSecret,
-            {
-              params,
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                'Accept-Encoding': 'application/json'
-              },
-            }
-          );
-        }
-      });
-    }
-
-    // Delete secrets
-    if (deleteSecrets.length > 0) {
-      deleteSecrets.forEach(async (secret: VercelSecret) => {
-        await axios.delete(
+        await axios.patch(
           `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
+          updatedSecret,
           {
             params,
             headers: {
@@ -688,8 +670,22 @@ const syncSecretsVercel = async ({
             },
           }
         );
-      });
+      } 
     }
+
+    for await (const secret of deleteSecrets) {
+      await axios.delete(
+        `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
+        {
+          params,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Accept-Encoding': 'application/json'
+          },
+        }
+      ); 
+    }
+
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
