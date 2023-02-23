@@ -558,44 +558,80 @@ const syncSecretsVercel = async ({
         : {}),
     };
     
-    const res = (
-      await Promise.all(
-        (
-          await axios.get(
-            `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env`,
+    // const res = (
+    //   await Promise.all(
+    //     (
+    //       await axios.get(
+    //         `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env`,
+    //         {
+    //           params,
+    //           headers: {
+    //               Authorization: `Bearer ${accessToken}`,
+    //               'Accept-Encoding': 'application/json'
+    //           }
+    //       }
+    //   ))
+    //   .data
+    //   .envs
+    //   .filter((secret: VercelSecret) => secret.target.includes(integration.targetEnvironment))
+    //   .map(async (secret: VercelSecret) => {
+    //     if (secret.type === 'encrypted') {
+    //       // case: secret is encrypted -> need to decrypt
+    //       const decryptedSecret = (await axios.get(
+    //           `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
+    //           {
+    //             params,
+    //             headers: {
+    //                 Authorization: `Bearer ${accessToken}`,
+    //                 'Accept-Encoding': 'application/json'
+    //             }
+    //           }
+    //       )).data;
+
+    //       return decryptedSecret;
+    //     }
+
+    //     return secret;
+    //   }))).reduce((obj: any, secret: any) => ({
+    //       ...obj,
+    //       [secret.key]: secret
+    //   }), {});
+    
+    const vercelSecrets: VercelSecret[] = (await axios.get(
+      `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env`,
+      {
+        params,
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Accept-Encoding': 'application/json'
+        }
+      }
+    ))
+    .data
+    .envs
+    .filter((secret: VercelSecret) => secret.target.includes(integration.targetEnvironment));
+
+    const res: { [key: string]: VercelSecret } = {};
+
+    for await (const vercelSecret of vercelSecrets) {
+      if (vercelSecret.type === 'encrypted') {
+        // case: secret is encrypted -> need to decrypt
+        const decryptedSecret = (await axios.get(
+            `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${vercelSecret.id}`,
             {
               params,
               headers: {
                   Authorization: `Bearer ${accessToken}`,
                   'Accept-Encoding': 'application/json'
               }
-          }
-      ))
-      .data
-      .envs
-      .filter((secret: VercelSecret) => secret.target.includes(integration.targetEnvironment))
-      .map(async (secret: VercelSecret) => {
-        if (secret.type === 'encrypted') {
-          // case: secret is encrypted -> need to decrypt
-          const decryptedSecret = (await axios.get(
-              `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
-              {
-                params,
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    'Accept-Encoding': 'application/json'
-                }
-              }
-          )).data;
+            }
+        )).data;
 
-          return decryptedSecret;
-        }
-
-        return secret;
-      }))).reduce((obj: any, secret: any) => ({
-          ...obj,
-          [secret.key]: secret
-      }), {});
+        res[vercelSecret.key] = decryptedSecret;
+      } else {
+        res[vercelSecret.key] = vercelSecret;
+      }
+    }
 
     const updateSecrets: VercelSecret[] = [];
     const deleteSecrets: VercelSecret[] = [];
