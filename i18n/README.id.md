@@ -16,7 +16,7 @@
 
 <h4 align="center">
   <a href="https://github.com/medusajs/medusa/blob/master/LICENSE">
-    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Medusa is released under the MIT license." />
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Infisical is released under the MIT license." />
   </a>
   <a href="https://github.com/infisical/infisical/blob/main/CONTRIBUTING.md">
     <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen" alt="PRs welcome!" />
@@ -56,7 +56,7 @@
 - **[Log Aktivitas](https://infisical.com/docs/getting-started/dashboard/audit-logs)** untuk merekam setiap tindakan yang diambil dalam sebuah proyek
 - **[Pemulihan Rahasia Point-in-time](https://infisical.com/docs/getting-started/dashboard/pit-recovery)** untuk memutar kembali ke cuplikan rahasia Anda
 - **Kontrol Akses Berbasis Peran** per lingkungan
-- 🔜 **2FA** (next week)
+- **2FA**
 - 🔜 **1-Click Deploy** ke Digital Ocean dan Heroku
 - 🔜 **Rotasi Rahasia Otomatis**
 - 🔜 **Integrasi Slack & MS Teams**
@@ -109,6 +109,7 @@ Tidak yakin harus mulai dari mana? Kamu bisa:
 
 Saat ini kami sedang menyiapkan fondasi dan membangun [integrasi](https://infisical.com/docs/integrations/overview) sehingga rahasia dapat disinkronkan di mana saja. Bantuan apa pun diterima! :)
 
+
 <table>
 <tr>
   <th>Platforms </th>
@@ -155,7 +156,7 @@ Saat ini kami sedang menyiapkan fondasi dan membangun [integrasi](https://infisi
     </tr>
     <tr>
       <td align="left" valign="middle">
-        🔜 AWS PS (https://github.com/Infisical/infisical/issues/286)
+         🔜 Supabase
       </td>
       <td align="left" valign="middle">
         <a href="https://infisical.com/docs/integrations/cicd/githubactions">
@@ -171,7 +172,9 @@ Saat ini kami sedang menyiapkan fondasi dan membangun [integrasi](https://infisi
         🔜 GCP SM (https://github.com/Infisical/infisical/issues/285)
       </td>
       <td align="left" valign="middle">
-        🔜 GitLab CI/CD (https://github.com/Infisical/infisical/issues/134)
+        <a href="https://infisical.com/docs/integrations/cicd/gitlab">
+          ✔️ GitLab CI/CD
+        </a>
       </td>
       <td align="left" valign="middle">
         🔜 CircleCI (https://github.com/Infisical/infisical/issues/91)
@@ -193,8 +196,8 @@ Saat ini kami sedang menyiapkan fondasi dan membangun [integrasi](https://infisi
          🔜 TravisCI
       </td>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/cloud/netlify">
-          ✔️ Netlify
+        <a href="https://infisical.com/docs/integrations/cloud/aws-secret-manager">
+          ✔️ AWS Secrets Manager
         </a>
       </td>
       <td align="left" valign="middle">
@@ -206,7 +209,9 @@ Saat ini kami sedang menyiapkan fondasi dan membangun [integrasi](https://infisi
          🔜 Bitbucket
       </td>
       <td align="left" valign="middle">
-         🔜 Supabase
+          <a href="https://infisical.com/docs/integrations/cloud/aws-parameter-store">
+            ✔️ AWS Parameter Store
+          </a>
       </td>
       <td align="left" valign="middle">
         <a href="https://infisical.com/docs/integrations/cloud/render">
@@ -222,7 +227,9 @@ Saat ini kami sedang menyiapkan fondasi dan membangun [integrasi](https://infisi
          🔜 Serverless
       </td>
       <td align="left" valign="middle">
-         🔜 AWS Lambda
+        <a href="https://infisical.com/docs/integrations/cloud/netlify">
+          ✔️ Netlify
+        </a>
       </td>
     </tr>
   </tbody>

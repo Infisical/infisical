@@ -16,7 +16,7 @@
 
 <h4 align="center">
   <a href="https://github.com/medusajs/medusa/blob/master/LICENSE">
-    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Medusa is released under the MIT license." />
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Infisical is released under the MIT license." />
   </a>
   <a href="https://github.com/infisical/infisical/blob/main/CONTRIBUTING.md">
     <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen" alt="PRs welcome!" />
@@ -47,10 +47,10 @@ Basit olması için tasarlandı, sadece birkaç dakika içerisinde harekete geç
 - **[Sırlar İçin Versiyon Kontrol](https://infisical.com/docs/getting-started/dashboard/versioning)** - herhangi bir sır için değişiklik geçmişini görüntüleyin.
 - **[Aktivite Günlükleri](https://infisical.com/docs/getting-started/dashboard/audit-logs)** - projedeki tüm değişikleri kayıt altına almak için.
 - **[Anında Geri Yükleme](https://infisical.com/docs/getting-started/dashboard/pit-recovery)** - sırlarınızın herhangi bir snapshotına geri yükleme yapmanız için.
+- **2 Faktör Kimlik Doğrulama**
 - 🔜 **Tek tıkla Deploy** edin, Digital Ocean ve Heroku'ya.
 - 🔜 **Kimlik Doğrulama/Yetkilendirme** projeleriniz için okuma/yazma kontrolleri (pek yakında)
 - 🔜 **Otomatik Sır Rotasyonu**
-- 🔜 **2 Faktör Kimlik Doğrulama**
 - 🔜 **Erişim Günlükleri**
 - 🔜 **Slack & MS Teams** entegrasyonları
 
@@ -109,7 +109,7 @@ Nereden başlayacağınızdan emin değil misiniz? O zaman;
   <th>Platforms </th>
   <th>Frameworks</th>
 </tr>
-<tr> 
+<tr>
   <td>
 
 <table>
@@ -150,7 +150,7 @@ Nereden başlayacağınızdan emin değil misiniz? O zaman;
     </tr>
     <tr>
       <td align="left" valign="middle">
-        🔜 AWS PS (https://github.com/Infisical/infisical/issues/286)
+         🔜 Supabase
       </td>
       <td align="left" valign="middle">
         <a href="https://infisical.com/docs/integrations/cicd/githubactions">
@@ -166,7 +166,9 @@ Nereden başlayacağınızdan emin değil misiniz? O zaman;
         🔜 GCP SM (https://github.com/Infisical/infisical/issues/285)
       </td>
       <td align="left" valign="middle">
-        🔜 GitLab CI/CD (https://github.com/Infisical/infisical/issues/134)
+        <a href="https://infisical.com/docs/integrations/cicd/gitlab">
+          ✔️ GitLab CI/CD
+        </a>
       </td>
       <td align="left" valign="middle">
         🔜 CircleCI (https://github.com/Infisical/infisical/issues/91)
@@ -188,8 +190,8 @@ Nereden başlayacağınızdan emin değil misiniz? O zaman;
          🔜 TravisCI
       </td>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/cloud/netlify">
-          ✔️ Netlify
+        <a href="https://infisical.com/docs/integrations/cloud/aws-secret-manager">
+          ✔️ AWS Secrets Manager
         </a>
       </td>
       <td align="left" valign="middle">
@@ -201,7 +203,9 @@ Nereden başlayacağınızdan emin değil misiniz? O zaman;
          🔜 Bitbucket
       </td>
       <td align="left" valign="middle">
-         🔜 Supabase
+          <a href="https://infisical.com/docs/integrations/cloud/aws-parameter-store">
+            ✔️ AWS Parameter Store
+          </a>
       </td>
       <td align="left" valign="middle">
         <a href="https://infisical.com/docs/integrations/cloud/render">
@@ -217,7 +221,9 @@ Nereden başlayacağınızdan emin değil misiniz? O zaman;
          🔜 Serverless
       </td>
       <td align="left" valign="middle">
-         🔜 AWS Lambda
+        <a href="https://infisical.com/docs/integrations/cloud/netlify">
+          ✔️ Netlify
+        </a>
       </td>
     </tr>
   </tbody>
@@ -326,7 +332,7 @@ Nereden başlayacağınızdan emin değil misiniz? O zaman;
 </table>
 
 </td>
-</tr> 
+</tr>
 </table>
 
 ## 🏘 Açık kaynak mı yoksa ücretlimi

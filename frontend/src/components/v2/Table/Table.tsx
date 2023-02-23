@@ -16,7 +16,7 @@ export const TableContainer = ({
 }: TableContainerProps): JSX.Element => (
   <div
     className={twMerge(
-      'relative w-full overflow-x-auto border border-solid border-mineshaft-700 font-inter shadow-md',
+      'relative w-full overflow-x-auto border border-solid border-mineshaft-700 bg-mineshaft-800 font-inter shadow-md',
       isRounded && 'rounded-md',
       className
     )}
