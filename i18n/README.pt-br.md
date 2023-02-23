@@ -37,11 +37,12 @@
 
 <img src="/img/infisical_github_repo.png" width="100%" alt="Dashboard" />
 
-**Read this in other languages**: <kbd>[<img title="English" alt="English language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/us.svg" width="22">](i18n/README.en.md)</kbd>
-<kbd>[<img title="Spanish" alt="Spanish language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/es.svg" width="22">](i18n/README.es.md)</kbd>
-<kbd>[<img title="Korean" alt="Korean language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/kr.svg" width="22">](i18n/README.ko.md)</kbd>
-<kbd>[<img title="Turkish" alt="Turkish language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/tr.svg" width="22">](i18n/README.tr.md)</kbd>
-<kbd>[<img title="Bahasa Indonesia" alt="Bahasa Indonesia language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/id.svg" width="22">](i18n/README.id.md)</kbd>
+**Leia essa documentação em outra linguagem**: <kbd>[<img title="Inglês" alt="Inglês" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/us.svg" width="22">](i18n/README.en.md)</kbd>
+<kbd>[<img title="Espanhol" alt="Espanhol" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/es.svg" width="22">](i18n/README.es.md)</kbd>
+<kbd>[<img title="Coreano" alt="Coreano" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/kr.svg" width="22">](i18n/README.ko.md)</kbd>
+<kbd>[<img title="Turco" alt="Turco" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/tr.svg" width="22">](i18n/README.tr.md)</kbd>
+<kbd>[<img title="Bahasa Indonesia" alt="Bahasa Indonesia" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/id.svg" width="22">](i18n/README.id.md)</kbd>
+<kbd>[<img title="Português - Brasil" alt="Português - Brasil" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/br.svg" width="22">](i18n/README.id.md)</kbd>
 
 **[Infisical](https://infisical.com)** é uma ferramenta de código aberto para gerenciamento de segredos encriptados ponta-a-ponta que você pode usar para centralizar suas chaves de API e configurações. A partir do Infisical, você pode distribuir esses segredos em todo o seu ciclo de vida de desenvolvimento - desde o desenvolvimento até a produção. Ele foi projetado para ser simples e levar minutos para começar.
 
