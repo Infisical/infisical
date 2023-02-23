@@ -44,7 +44,7 @@
 <kbd>[<img title="Bahasa Indonesia" alt="Bahasa Indonesia" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/id.svg" width="22">](i18n/README.id.md)</kbd>
 <kbd>[<img title="Português - Brasil" alt="Português - Brasil" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/br.svg" width="22">](i18n/README.id.md)</kbd>
 
-**[Infisical](https://infisical.com)** é uma ferramenta de código aberto para gerenciamento de segredos encriptados ponta-a-ponta que você pode usar para centralizar suas chaves de API e configurações. A partir do Infisical, você pode distribuir esses segredos em todo o seu ciclo de vida de desenvolvimento - desde o desenvolvimento até a produção. Ele foi projetado para ser simples e levar minutos para começar.
+**[Infisical](https://infisical.com)** é uma ferramenta de código aberto para gerenciamento de segredos encriptados ponta-a-ponta que você pode usar para centralizar suas chaves e configurações. A partir do Infisical, você pode distribuir esses segredos em todo o seu ciclo de vida de desenvolvimento - desde o desenvolvimento até a produção. Ele foi projetado para ser simples e levar minutos para começar.
 
 - **[Dashboard amigável](https://infisical.com/docs/getting-started/dashboard/project)** para gerenciar os segredos e configurações de sua equipe dentro de projetos
 - **[CLI Fléxivel](https://infisical.com/docs/cli/overview)** puxa e injeta segredos e configurações em seu fluxo de trabalho local
