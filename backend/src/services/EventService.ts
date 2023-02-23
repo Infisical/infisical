@@ -1,5 +1,3 @@
-import { Bot, IBot } from '../models';
-import * as Sentry from '@sentry/node';
 import { handleEventHelper } from '../helpers/event';
 
 interface Event {

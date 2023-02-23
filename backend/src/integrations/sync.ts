@@ -545,7 +545,7 @@ const syncSecretsVercel = async ({
     value: string;
     target: string[];
   }
-
+  
   try {
     // Get all (decrypted) secrets back from Vercel in
     // decrypted format
@@ -574,7 +574,10 @@ const syncSecretsVercel = async ({
       .data
       .envs
       .filter((secret: VercelSecret) => secret.target.includes(integration.targetEnvironment))
-      .map(async (secret: VercelSecret) => (await axios.get(
+      .map(async (secret: VercelSecret) => {
+        if (secret.type === 'encrypted') {
+          // case: secret is encrypted -> need to decrypt
+          return (await axios.get(
               `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
               {
                 params,
@@ -583,8 +586,11 @@ const syncSecretsVercel = async ({
                     'Accept-Encoding': 'application/json'
                 }
               }
-          )).data)
-      )).reduce((obj: any, secret: any) => ({
+          )).data;
+        }
+
+        return secret;
+      }))).reduce((obj: any, secret: any) => ({
           ...obj,
           [secret.key]: secret
       }), {});
@@ -615,8 +621,10 @@ const syncSecretsVercel = async ({
             id: res[key].id,
             key: key,
             value: secrets[key],
-            type: "encrypted",
-            target: [integration.targetEnvironment],
+            type: res[key].type,
+            target: res[key].target.includes(integration.targetEnvironment) 
+            ? [...res[key].target] 
+            : [...res[key].target, integration.targetEnvironment]
           });
         }
       } else {
@@ -625,7 +633,7 @@ const syncSecretsVercel = async ({
           id: res[key].id,
           key: key,
           value: res[key].value,
-          type: "encrypted",
+          type: "encrypted", // value doesn't matter
           target: [integration.targetEnvironment],
         });
       }
@@ -650,17 +658,20 @@ const syncSecretsVercel = async ({
     if (updateSecrets.length > 0) {
       updateSecrets.forEach(async (secret: VercelSecret) => {
         const { id, ...updatedSecret } = secret;
-        await axios.patch(
-          `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
-          updatedSecret,
-          {
-            params,
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Accept-Encoding': 'application/json'
-            },
-          }
-        );
+        
+        if (secret.type !== 'sensitive') {
+          await axios.patch(
+            `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
+            updatedSecret,
+            {
+              params,
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Accept-Encoding': 'application/json'
+              },
+            }
+          );
+        }
       });
     }
 
