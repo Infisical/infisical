@@ -86,7 +86,7 @@ export const OrgSettingsPage = () => {
     } catch (error) {
       console.error(error);
       createNotification({
-        text: 'Failed to remove user from org',
+        text: 'Failed to remove user from the organization',
         type: 'error'
       });
     }
@@ -97,7 +97,7 @@ export const OrgSettingsPage = () => {
     try {
       await addUserToOrg.mutateAsync({ organizationId: currentOrg?._id, inviteeEmail: email });
       createNotification({
-        text: 'Successfully invited user to org',
+        text: 'Successfully invited user to the organization.',
         type: 'success'
       });
     } catch (error) {
