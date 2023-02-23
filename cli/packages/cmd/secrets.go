@@ -19,7 +19,6 @@ import (
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/Infisical/infisical-merge/packages/visualize"
 	"github.com/go-resty/resty/v2"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -31,9 +30,12 @@ var secretsCmd = &cobra.Command{
 	PreRun:                toggleDebug,
 	Args:                  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		environmentName, err := cmd.Flags().GetString("env")
-		if err != nil {
-			util.HandleError(err)
+		environmentName, _ := cmd.Flags().GetString("env")
+		if !cmd.Flags().Changed("env") {
+			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			if environmentFromWorkspace != "" {
+				environmentName = environmentFromWorkspace
+			}
 		}
 
 		infisicalToken, err := cmd.Flags().GetString("token")
@@ -94,9 +96,12 @@ var secretsSetCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		util.RequireLocalWorkspaceFile()
 
-		environmentName, err := cmd.Flags().GetString("env")
-		if err != nil {
-			util.HandleError(err, "Unable to parse flag")
+		environmentName, _ := cmd.Flags().GetString("env")
+		if !cmd.Flags().Changed("env") {
+			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			if environmentFromWorkspace != "" {
+				environmentName = environmentFromWorkspace
+			}
 		}
 
 		workspaceFile, err := util.GetWorkSpaceFromFile()
@@ -270,11 +275,12 @@ var secretsDeleteCmd = &cobra.Command{
 	PreRun:                toggleDebug,
 	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		environmentName, err := cmd.Flags().GetString("env")
-		if err != nil {
-			log.Errorln("Unable to parse the environment name flag")
-			log.Debugln(err)
-			return
+		environmentName, _ := cmd.Flags().GetString("env")
+		if !cmd.Flags().Changed("env") {
+			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			if environmentFromWorkspace != "" {
+				environmentName = environmentFromWorkspace
+			}
 		}
 
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
@@ -330,9 +336,12 @@ var secretsDeleteCmd = &cobra.Command{
 }
 
 func getSecretsByNames(cmd *cobra.Command, args []string) {
-	environmentName, err := cmd.Flags().GetString("env")
-	if err != nil {
-		util.HandleError(err, "Unable to parse flag")
+	environmentName, _ := cmd.Flags().GetString("env")
+	if !cmd.Flags().Changed("env") {
+		environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+		if environmentFromWorkspace != "" {
+			environmentName = environmentFromWorkspace
+		}
 	}
 
 	infisicalToken, err := cmd.Flags().GetString("token")
@@ -373,9 +382,12 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 }
 
 func generateExampleEnv(cmd *cobra.Command, args []string) {
-	environmentName, err := cmd.Flags().GetString("env")
-	if err != nil {
-		util.HandleError(err, "Unable to parse flag")
+	environmentName, _ := cmd.Flags().GetString("env")
+	if !cmd.Flags().Changed("env") {
+		environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+		if environmentFromWorkspace != "" {
+			environmentName = environmentFromWorkspace
+		}
 	}
 
 	infisicalToken, err := cmd.Flags().GetString("token")

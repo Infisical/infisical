@@ -1,10 +1,14 @@
 package util
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"os"
+	"os/exec"
+	"path"
+	"strings"
 )
 
 type DecodedSymmetricEncryptionDetails = struct {
@@ -109,4 +113,15 @@ func GetHashFromStringList(list []string) string {
 
 	sum := sha256.Sum256(hash.Sum(nil))
 	return fmt.Sprintf("%x", sum)
+}
+
+func getCurrentBranch() (string, error) {
+	cmd := exec.Command("git", "symbolic-ref", "--short", "HEAD")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	return path.Base(strings.TrimSpace(out.String())), nil
 }

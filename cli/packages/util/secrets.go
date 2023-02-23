@@ -131,10 +131,6 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 			return nil, err
 		}
 
-		if workspaceFile.DefaultEnvironment != "" {
-			params.Environment = workspaceFile.DefaultEnvironment
-		}
-
 		// Verify environment
 		err = ValidateEnvironmentName(params.Environment, workspaceFile.WorkspaceId, loggedInUserDetails.UserCredentials)
 		if err != nil {
@@ -484,4 +480,28 @@ func DeleteBackupSecrets() error {
 	fullPathToSecretsBackupFolder := fmt.Sprintf("%s/%s", fullConfigFileDirPath, secrets_backup_folder_name)
 
 	return os.RemoveAll(fullPathToSecretsBackupFolder)
+}
+
+func GetEnvelopmentBasedOnGitBranch() string {
+	branch, err := getCurrentBranch()
+	if err != nil {
+		log.Debugf("getEnvelopmentBasedOnGitBranch: [err=%s]", err)
+	}
+
+	workspaceFile, err := GetWorkSpaceFromFile()
+	if err != nil {
+		log.Debugf("getEnvelopmentBasedOnGitBranch: [err=%s]", err)
+		return ""
+	}
+
+	envBasedOnGitBranch, ok := workspaceFile.GitBranchToEnvironmentMapping[branch]
+
+	log.Debugf("GetEnvelopmentBasedOnGitBranch: [envBasedOnGitBranch=%s] [ok=%s]", envBasedOnGitBranch, ok)
+
+	if err == nil && ok {
+		return envBasedOnGitBranch
+	} else {
+		log.Debugf("getEnvelopmentBasedOnGitBranch: [err=%s]", err)
+		return ""
+	}
 }
