@@ -79,8 +79,6 @@ para começar rapidamente visite [nosso guia inicial](https://infisical.com/docs
 
 Infisical torna a gestão de segredos muito mais simples e de ponta-a-ponta criptografadas por padrão. Estamos em uma missão para torná-lo o mais acessível a todos os desenvolvedores, <i>não somente a equipes de segurança</i>.
 
-Infisical </i>.
-
 De acordo com esse [relátorio](https://www.ekransystem.com/en/blog/secrets-management), only 10% of organizations use secret management solutions despite all using digital secrets to some extent.
 
 De acordo com esse [relátorio](https://www.ekransystem.com/en/blog/secrets-management), apenas 10% das organizações usam soluções de gerenciamento de segredos, apesar de todas usarem segredos digitais em algum grau.
