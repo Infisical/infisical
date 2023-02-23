@@ -30,6 +30,7 @@ import {
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
 } from "../variables";
+import axiosWithRetry from '../config/request';
 
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
@@ -597,7 +598,7 @@ const syncSecretsVercel = async ({
     //       [secret.key]: secret
     //   }), {});
     
-    const vercelSecrets: VercelSecret[] = (await axios.get(
+    const vercelSecrets: VercelSecret[] = (await axiosWithRetry.get(
       `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env`,
       {
         params,
@@ -616,7 +617,7 @@ const syncSecretsVercel = async ({
     for await (const vercelSecret of vercelSecrets) {
       if (vercelSecret.type === 'encrypted') {
         // case: secret is encrypted -> need to decrypt
-        const decryptedSecret = (await axios.get(
+        const decryptedSecret = (await axiosWithRetry.get(
             `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${vercelSecret.id}`,
             {
               params,
@@ -679,7 +680,7 @@ const syncSecretsVercel = async ({
 
     // Sync/push new secrets
     if (newSecrets.length > 0) {
-      await axios.post(
+      await axiosWithRetry.post(
         `${INTEGRATION_VERCEL_API_URL}/v10/projects/${integration.app}/env`,
         newSecrets,
         {
@@ -695,7 +696,7 @@ const syncSecretsVercel = async ({
     for await (const secret of updateSecrets) {
       if (secret.type !== 'sensitive') {
         const { id, ...updatedSecret } = secret;
-        await axios.patch(
+        await axiosWithRetry.patch(
           `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
           updatedSecret,
           {
@@ -710,7 +711,7 @@ const syncSecretsVercel = async ({
     }
 
     for await (const secret of deleteSecrets) {
-      await axios.delete(
+      await axiosWithRetry.delete(
         `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
         {
           params,
@@ -721,7 +722,6 @@ const syncSecretsVercel = async ({
         }
       ); 
     }
-
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
