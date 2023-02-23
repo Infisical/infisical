@@ -88,7 +88,7 @@ Atualmente estamos trabalhando muito duro para tornar o Infisical mais extensive
 
 ## 🔌 Integrações
 
-Atualmente estamos definindo a base e a construção de [integrations](https://infisical.com/docs/integrations/overview) para que os segredos possam ser sincronizados em todos os lugares. Qualquer ajuda é muito bem-vinda! :)
+Atualmente estamos definindo a base e a construção de [integrações](https://infisical.com/docs/integrations/overview) para que os segredos possam ser sincronizados em todos os lugares. Qualquer ajuda é muito bem-vinda! :)
 
 <table>
 <tr>
