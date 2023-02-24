@@ -7,6 +7,7 @@ import {
   CLIENT_ID_NETLIFY,
   CLIENT_ID_GITHUB,
   CLIENT_SLUG_VERCEL,
+  CLIENT_ID_GCP
 } from "../config";
 
 // integrations
@@ -20,15 +21,17 @@ const INTEGRATION_GITHUB = "github";
 const INTEGRATION_RENDER = "render";
 const INTEGRATION_FLYIO = "flyio";
 const INTEGRATION_CIRCLECI = "circleci";
+const INTEGRATION_GCP = 'gcp';
 const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
-  INTEGRATION_HEROKU,
-  INTEGRATION_VERCEL,
-  INTEGRATION_NETLIFY,
-  INTEGRATION_GITHUB,
-  INTEGRATION_RENDER,
-  INTEGRATION_FLYIO,
+    INTEGRATION_HEROKU,
+    INTEGRATION_VERCEL,
+    INTEGRATION_NETLIFY,
+    INTEGRATION_GITHUB,
+    INTEGRATION_RENDER,
+    INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
+    INTEGRATION_GCP
 ]);
 
 // integration types
@@ -42,6 +45,7 @@ const INTEGRATION_VERCEL_TOKEN_URL =
 const INTEGRATION_NETLIFY_TOKEN_URL = "https://api.netlify.com/oauth/token";
 const INTEGRATION_GITHUB_TOKEN_URL =
   "https://github.com/login/oauth/access_token";
+const INTEGRATION_GCP_TOKEN_URL = "https://accounts.google.com/o/oauth2/token"
 
 // integration apps endpoints
 const INTEGRATION_HEROKU_API_URL = "https://api.heroku.com";
@@ -50,6 +54,7 @@ const INTEGRATION_NETLIFY_API_URL = "https://api.netlify.com";
 const INTEGRATION_RENDER_API_URL = "https://api.render.com";
 const INTEGRATION_FLYIO_API_URL = "https://api.fly.io/graphql";
 const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
+const INTEGRATION_GCP_API_URL = "https://cloudresourcemanager.googleapis.com";
 
 const INTEGRATION_OPTIONS = [
     {
@@ -148,9 +153,9 @@ const INTEGRATION_OPTIONS = [
         name: 'Google Cloud Platform',
         slug: 'gcp',
         image: 'Google Cloud Platform.png',
-        isAvailable: false,
-        type: '',
-        clientId: '',
+        isAvailable: true,
+        type: 'oauth',
+        clientId: CLIENT_ID_GCP,
         docsLink: ''
     },
     {
@@ -172,6 +177,7 @@ export {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_GCP,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
@@ -182,11 +188,17 @@ export {
   INTEGRATION_VERCEL_TOKEN_URL,
   INTEGRATION_NETLIFY_TOKEN_URL,
   INTEGRATION_GITHUB_TOKEN_URL,
+  INTEGRATION_GCP_TOKEN_URL,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
+  INTEGRATION_GCP_API_URL,
   INTEGRATION_OPTIONS,
 };
+
+/**
+ * @todo add gcp-secrets-manager related const configs here
+ */

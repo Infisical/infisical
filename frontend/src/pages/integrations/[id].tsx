@@ -162,7 +162,7 @@ export default function Integrations() {
       console.error(err);
     }
   };
-  
+
   const handleUnauthorizedIntegrationOptionPress = (integrationOption: IntegrationOption) => {
     try {
       // generate CSRF token for OAuth2 code-token exchange integrations
@@ -201,6 +201,9 @@ export default function Integrations() {
         case 'circleci':
           link = `${window.location.origin}/integrations/circleci/authorize`
           break;
+        case 'gcp':
+          link = `https://accounts.google.com/o/oauth2/auth?scope=https://www.googleapis.com/auth/cloud-platform&response_type=code&state=${state}&redirect_uri=${window.location.origin}/integrations/gcp/oauth2/callback&client_id=${integrationOption.clientId}`
+          break;
         default:
           break;
       }
@@ -212,7 +215,7 @@ export default function Integrations() {
       console.error(err);
     }
   }
-  
+
   const handleAuthorizedIntegrationOptionPress = (integrationAuth: IntegrationAuth) => {
     try {
       let link = '';
@@ -247,6 +250,9 @@ export default function Integrations() {
         case 'circleci':
           link = `${window.location.origin}/integrations/circleci/create?integrationAuthId=${integrationAuth._id}`;
           break;
+        case 'gcp':
+          link = `${window.location.origin}/integrations/gcp/create?integrationAuthId=${integrationAuth._id}`;
+          break;
         default:
           break;
       }
@@ -258,7 +264,7 @@ export default function Integrations() {
       console.error(err);
     }
   }
-  
+
   /**
    * Open dialog to activate bot if bot is not active.
    * Otherwise, start integration [integrationOption]
@@ -271,11 +277,11 @@ export default function Integrations() {
   const integrationOptionPress = async (integrationOption: IntegrationOption) => {
     try {
       const integrationAuthX = integrationAuths.find((integrationAuth) => integrationAuth.integration === integrationOption.slug);
-      
+
       if (!bot.isActive) {
         await handleBotActivate();
       }
-      
+
       if (!integrationAuthX) {
         // case: integration has not been authorized
         handleUnauthorizedIntegrationOptionPress(integrationOption);
@@ -287,7 +293,7 @@ export default function Integrations() {
       console.error(err);
     }
   };
-  
+
   /**
    * Handle deleting integration authorization [integrationAuth] and corresponding integrations from state where applicable
    * @param {Object} obj
@@ -298,24 +304,24 @@ export default function Integrations() {
       const newIntegrations = integrations.filter((integration) => integration.integrationAuth !== deletedIntegrationAuth._id);
       setIntegrationAuths(integrationAuths.filter((integrationAuth) => integrationAuth._id !== deletedIntegrationAuth._id));
       setIntegrations(newIntegrations);
-      
+
       // handle updating bot
       if (newIntegrations.length < 1) {
         // case: no integrations left
         setBot(
-            (
-              await setBotActiveStatus({
-                botId: bot._id,
-                isActive: false
-              })
-            ).bot
-          );
+          (
+            await setBotActiveStatus({
+              botId: bot._id,
+              isActive: false
+            })
+          ).bot
+        );
       }
     } catch (err) {
       console.error(err);
     }
   }
-  
+
   /**
    * Handle deleting integration [integration]
    * @param {Object} obj
@@ -326,7 +332,7 @@ export default function Integrations() {
       const deletedIntegration = await deleteIntegration({
         integrationId: integration._id
       });
-      
+
       const newIntegrations = integrations.filter((i) => i._id !== deletedIntegration._id);
       setIntegrations(newIntegrations);
 
@@ -334,13 +340,13 @@ export default function Integrations() {
       if (newIntegrations.length < 1) {
         // case: no integrations left
         setBot(
-            (
-              await setBotActiveStatus({
-                botId: bot._id,
-                isActive: false
-              })
-            ).bot
-          );
+          (
+            await setBotActiveStatus({
+              botId: bot._id,
+              isActive: false
+            })
+          ).bot
+        );
       }
     } catch (err) {
       console.error(err);
@@ -364,12 +370,12 @@ export default function Integrations() {
           selectedIntegrationOption={selectedIntegrationOption}
           integrationOptionPress={integrationOptionPress}
         />
-        <IntegrationSection 
-          integrations={integrations} 
+        <IntegrationSection
+          integrations={integrations}
           setIntegrations={setIntegrations}
           bot={bot}
           setBot={setBot}
-          environments={environments} 
+          environments={environments}
           handleDeleteIntegration={handleDeleteIntegration}
         />
         {cloudIntegrationOptions.length > 0 && bot ? (
@@ -377,11 +383,11 @@ export default function Integrations() {
             cloudIntegrationOptions={cloudIntegrationOptions}
             setSelectedIntegrationOption={setSelectedIntegrationOption as any}
             integrationOptionPress={(integrationOption: IntegrationOption) => {
-             if (!bot.isActive) {
+              if (!bot.isActive) {
                 // case: bot is not active -> open modal to activate bot
                 setIsActivateBotDialogOpen(true);
                 return;
-              } 
+              }
               integrationOptionPress(integrationOption)
             }}
             integrationAuths={integrationAuths}

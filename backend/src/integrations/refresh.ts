@@ -1,15 +1,17 @@
 import axios from 'axios';
 import * as Sentry from '@sentry/node';
-import { INTEGRATION_AZURE_KEY_VAULT, INTEGRATION_HEROKU } from '../variables';
+import { INTEGRATION_AZURE_KEY_VAULT, INTEGRATION_HEROKU, INTEGRATION_GCP } from '../variables';
 import {
   SITE_URL,
   CLIENT_ID_AZURE,
   CLIENT_SECRET_AZURE,
-  CLIENT_SECRET_HEROKU
+  CLIENT_SECRET_HEROKU,
+  CLIENT_SECRET_GCP
 } from '../config';
 import {
   INTEGRATION_AZURE_TOKEN_URL,
-  INTEGRATION_HEROKU_TOKEN_URL
+  INTEGRATION_HEROKU_TOKEN_URL,
+  INTEGRATION_GCP_TOKEN_URL
 } from '../variables';
 
 interface RefreshTokenAzureResponse {
@@ -47,6 +49,11 @@ const exchangeRefresh = async ({
         accessToken = await exchangeRefreshHeroku({
           refreshToken
         });
+        break;
+      case INTEGRATION_GCP:
+        accessToken = await exchangeRefreshGCP({
+          refreshToken
+        })
         break;
     }
   } catch (err) {
@@ -119,6 +126,40 @@ const exchangeRefreshHeroku = async ({
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error('Failed to refresh OAuth2 access token for Heroku');
+  }
+
+  return accessToken;
+};
+
+/**
+ * Return new access token by exchanging refresh token [refreshToken] for the
+ * GCP integration
+ * @param {Object} obj
+ * @param {String} obj.refreshToken - refresh token to use to get new access token for GCP
+ * @returns
+ */
+const exchangeRefreshGCP = async ({
+  refreshToken
+}: {
+  refreshToken: string;
+}) => {
+  
+  let accessToken;
+  try {
+    const res = await axios.post(
+        INTEGRATION_GCP_TOKEN_URL,
+        new URLSearchParams({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            client_secret: CLIENT_SECRET_GCP
+        } as any)
+    );
+
+    accessToken = res.data.access_token;
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed to refresh OAuth2 access token for GCP');
   }
 
   return accessToken;

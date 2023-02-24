@@ -129,6 +129,10 @@ const syncSecrets = async ({
           secrets,
           accessToken,
         });
+        break;
+      /**
+       * @todo add gcp-secret-manager case here and implement @function syncSecretsGCP
+       */
     }
   } catch (err) {
     Sentry.setUser(null);

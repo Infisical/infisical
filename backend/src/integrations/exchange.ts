@@ -6,11 +6,13 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_GCP,
   INTEGRATION_AZURE_TOKEN_URL,
   INTEGRATION_HEROKU_TOKEN_URL,
   INTEGRATION_VERCEL_TOKEN_URL,
   INTEGRATION_NETLIFY_TOKEN_URL,
-  INTEGRATION_GITHUB_TOKEN_URL
+  INTEGRATION_GITHUB_TOKEN_URL,
+  INTEGRATION_GCP_TOKEN_URL
 } from '../variables';
 import {
   SITE_URL,
@@ -18,11 +20,13 @@ import {
   CLIENT_ID_VERCEL,
   CLIENT_ID_NETLIFY,
   CLIENT_ID_GITHUB,
+  CLIENT_ID_GCP,
   CLIENT_SECRET_AZURE,
   CLIENT_SECRET_HEROKU,
   CLIENT_SECRET_VERCEL,
   CLIENT_SECRET_NETLIFY,
-  CLIENT_SECRET_GITHUB
+  CLIENT_SECRET_GITHUB,
+  CLIENT_SECRET_GCP
 } from '../config';
 
 interface ExchangeCodeAzureResponse {
@@ -62,6 +66,14 @@ interface ExchangeCodeNetlifyResponse {
 
 interface ExchangeCodeGithubResponse {
   access_token: string;
+  scope: string;
+  token_type: string;
+}
+
+interface ExchangeCodeGCPResponse {
+  access_token: string;
+  expires_in: number;
+  refresh_token: string;
   scope: string;
   token_type: string;
 }
@@ -111,6 +123,11 @@ const exchangeCode = async ({
         break;
       case INTEGRATION_GITHUB:
         obj = await exchangeCodeGithub({
+          code
+        });
+        break;
+      case INTEGRATION_GCP:
+        obj = await exchangeCodeGCP({
           code
         });
         break;
@@ -241,7 +258,7 @@ const exchangeCodeVercel = async ({ code }: { code: string }) => {
     accessToken: res.access_token,
     refreshToken: null,
     accessExpiresAt: null,
-    teamId: res.team_id
+    teamId: res.team_id // Custom fields, so do we nee
   };
 };
 
@@ -338,6 +355,51 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
     accessToken: res.access_token,
     refreshToken: null,
     accessExpiresAt: null
+  };
+};
+
+/**
+ * Return [accessToken], [accessExpiresAt], and [refreshToken] for GCP secrets-manager
+ * code-token exchange
+ * @param {Object} obj1
+ * @param {Object} obj1.code - code for code-token exchange
+ * @returns {Object} obj2
+ * @returns {String} obj2.accessToken - access token for GCP API
+ * @returns {String} obj2.refreshToken - refresh token for GCP API
+ * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
+ */
+const exchangeCodeGCP = async ({ code }: { code: string }) => {
+  let res: ExchangeCodeGCPResponse;
+
+  try {
+    res = (
+      await axios.post(INTEGRATION_GCP_TOKEN_URL, 
+        {
+          client_id: CLIENT_ID_GCP,
+          client_secret: CLIENT_SECRET_GCP,
+          code: code,
+          redirect_uri: `${SITE_URL}/integrations/gcp/oauth2/callback`,
+          grant_type: "authorization_code"
+        }, 
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Accept-Encoding': 'application/json'
+          }
+        }
+      )
+    ).data;
+
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed OAuth2 code-token exchange with GCP secret manager');
+  }
+
+  return {
+    accessToken: res.access_token,
+    refreshToken: res.refresh_token,
+    accessExpiresAt: res.expires_in
   };
 };
 

@@ -13,12 +13,14 @@ import {
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
+  INTEGRATION_GCP,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
+  INTEGRATION_GCP_API_URL
 } from "../variables";
 
 /**
@@ -42,7 +44,7 @@ const getApps = async ({
     owner?: string;
   }
 
-  let apps: App[];
+  let apps: App[] = [];
   try {
     switch (integrationAuth.integration) {
       case INTEGRATION_AZURE_KEY_VAULT:
@@ -88,6 +90,11 @@ const getApps = async ({
       case INTEGRATION_CIRCLECI:
         apps = await getAppsCircleCI({
           accessToken,
+        });
+        break;
+      case INTEGRATION_GCP:
+        apps = await getAppsGCP({
+          accessToken
         });
         break;
     }
@@ -364,6 +371,55 @@ const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error("Failed to get CircleCI projects");
+  }
+  
+  return apps;
+};
+
+/**
+ * Return list of projects for GCP integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for GCP API
+ * @returns {Object[]} apps -
+ * @returns {String} apps.name - name of GCP apps
+ */
+const getAppsGCP = async ({ accessToken }: { accessToken: string }) => {
+  let apps: any;
+  try {    
+    const res = (
+      await axios.get(
+        `${INTEGRATION_GCP_API_URL}/v1/projects`,
+        {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      )
+    )?.data?.projects
+
+    /**
+     * @todo Ask if we should consider the "lifecycleState"
+     *
+     * @example response: {
+        "projectNumber": "767450018934",
+        "projectId": "steel-climber-352407",
+        "lifecycleState": "ACTIVE",
+        "name": "My First Project",
+        "createTime": "2022-06-05T07:41:46.464Z"
+      }
+     */
+
+    apps = res?.map((a: any) => {
+      return {
+        name: a?.name,
+        appId: a?.projectId
+      }
+    });
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error("Failed to get GCP projects");
   }
   
   return apps;
