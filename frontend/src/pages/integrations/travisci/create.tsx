@@ -73,7 +73,7 @@ export default function TravisCICreateIntegrationPage() {
     return (integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps && targetApp) ? (
     <div className="h-full w-full flex justify-center items-center">
       <Card className="max-w-md p-8 rounded-md">
-        <CardTitle className='text-center'>TravisCI Integration</CardTitle>
+        <CardTitle className='text-center'>Travis CI Integration</CardTitle>
         <FormControl
           label="Project Environment"
           className='mt-4'
@@ -91,7 +91,7 @@ export default function TravisCICreateIntegrationPage() {
           </Select>
         </FormControl>
         <FormControl
-          label="TravisCI Project"
+          label="Travis CI Project"
           className='mt-4'
         >
           <Select

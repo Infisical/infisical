@@ -1344,7 +1344,7 @@ const syncSecretsTravisCI = async ({
   try {
     // get secrets from travis-ci  
     const getSecretsRes = (
-      await axios.get(
+      await request.get(
         `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars?repository_id=${integration.appId}`,
         {
           headers: {
@@ -1366,7 +1366,7 @@ const syncSecretsTravisCI = async ({
       if (!(key in getSecretsRes)) {
         // case: secret does not exist in travis ci
         // -> add secret
-        await axios.post(
+        await request.post(
           `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars?repository_id=${integration.appId}`,
           {
             env_var: {
@@ -1385,7 +1385,7 @@ const syncSecretsTravisCI = async ({
       } else {
         // case: secret exists in travis ci
         // -> update/set secret
-        await axios.patch(
+        await request.patch(
           `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars/${getSecretsRes[key].id}?repository_id=${getSecretsRes[key].repository_id}`,
           {
             env_var: {
@@ -1407,7 +1407,7 @@ const syncSecretsTravisCI = async ({
     for await (const key of Object.keys(getSecretsRes)) {
       if (!(key in secrets)){
         // delete secret
-        await axios.delete(
+        await request.delete(
           `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars/${getSecretsRes[key].id}?repository_id=${getSecretsRes[key].repository_id}`,
           {
             headers: {

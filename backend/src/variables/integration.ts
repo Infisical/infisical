@@ -138,6 +138,15 @@ const INTEGRATION_OPTIONS = [
         docsLink: ''
     },
     {
+        name: 'Travis CI',
+        slug: 'travisci',
+        image: 'Travis CI.png',
+        isAvailable: true,
+        type: 'pat',
+        clientId: '',
+        docsLink: ''
+    },
+    {
         name: 'Azure Key Vault',
         slug: 'azure-key-vault',
         image: 'Microsoft Azure.png',
@@ -153,15 +162,6 @@ const INTEGRATION_OPTIONS = [
         image: 'Google Cloud Platform.png',
         isAvailable: false,
         type: '',
-        clientId: '',
-        docsLink: ''
-    },
-    {
-        name: 'Travis CI',
-        slug: 'travisci',
-        image: 'Travis CI.png',
-        isAvailable: true,
-        type: 'pat',
         clientId: '',
         docsLink: ''
     }
