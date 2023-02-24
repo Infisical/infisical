@@ -233,7 +233,8 @@
       "pages": [
         "integrations/cicd/githubactions",
         "integrations/cicd/gitlab",
-        "integrations/cicd/circleci"
+        "integrations/cicd/circleci",
+        "integrations/cicd/travisci"
       ]
     },
     {

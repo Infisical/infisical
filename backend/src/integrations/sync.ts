@@ -1344,7 +1344,7 @@ const syncSecretsTravisCI = async ({
   try {
     // get secrets from travis-ci  
     const getSecretsRes = (
-      await axios.get(
+      await request.get(
         `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars?repository_id=${integration.appId}`,
         {
           headers: {
@@ -1353,18 +1353,25 @@ const syncSecretsTravisCI = async ({
           },
         }
       )
-    ).data?.env_vars;
-
+    )
+    .data
+    ?.env_vars
+    .reduce((obj: any, secret: any) => ({
+        ...obj,
+        [secret.name]: secret
+    }), {});
+    
     // add secrets
-    for (const key of Object.keys(secrets)) {
-      const existingSecret = getSecretsRes.find((s: any) => s.name == key);
-      if(!existingSecret){
-        await axios.post(
+    for await (const key of Object.keys(secrets)) {
+      if (!(key in getSecretsRes)) {
+        // case: secret does not exist in travis ci
+        // -> add secret
+        await request.post(
           `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars?repository_id=${integration.appId}`,
           {
             env_var: {
               name: key,
-              value: secrets[key],
+              value: secrets[key]
             }
           },
           {
@@ -1374,32 +1381,18 @@ const syncSecretsTravisCI = async ({
               "Accept-Encoding": "application/json",
             },
           }
-        )
-      }else { // update secret
-        await axios.patch(
-          `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars/${existingSecret.id}?repository_id=${existingSecret.repository_id}`,
+        );
+      } else {
+        // case: secret exists in travis ci
+        // -> update/set secret
+        await request.patch(
+          `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars/${getSecretsRes[key].id}?repository_id=${getSecretsRes[key].repository_id}`,
           {
             env_var: {
               name: key,
               value: secrets[key],
             }
           },
-          {
-            headers: {
-              "Authorization": `token ${accessToken}`,
-              "Content-Type": "application/json",
-              "Accept-Encoding": "application/json",
-            },
-          }
-        )
-      }
-    }
-
-    // delete secret 
-    for (const sec of getSecretsRes) {
-      if (!(sec.name in secrets)){
-        await axios.delete(
-          `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars/${sec.id}?repository_id=${sec.repository_id}`,
           {
             headers: {
               "Authorization": `token ${accessToken}`,
@@ -1410,10 +1403,26 @@ const syncSecretsTravisCI = async ({
         );
       }
     }
-  }catch (err) {
+
+    for await (const key of Object.keys(getSecretsRes)) {
+      if (!(key in secrets)){
+        // delete secret
+        await request.delete(
+          `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars/${getSecretsRes[key].id}?repository_id=${getSecretsRes[key].repository_id}`,
+          {
+            headers: {
+              "Authorization": `token ${accessToken}`,
+              "Content-Type": "application/json",
+              "Accept-Encoding": "application/json",
+            },
+          }
+        );
+      }
+    }
+  } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error("Failed to sync secrets to CircleCI");
+    throw new Error("Failed to sync secrets to TravisCI");
   }
 }
 

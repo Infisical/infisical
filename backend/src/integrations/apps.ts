@@ -375,7 +375,7 @@ const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
   let apps: any;
   try {
     const res = (
-      await axios.get(
+      await request.get(
         `${INTEGRATION_TRAVISCI_API_URL}/repos`,
         {
           headers: {

@@ -1,0 +1,36 @@
+---
+title: "Travis CI"
+description: "How to automatically sync secrets from Infisical to your Travis CI repository."
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+
+## Navigate to your project's integrations tab
+
+![integrations](../../images/integrations.png)
+
+## Authorize Infisical for Travis CI
+
+Obtain your API token in User Settings > API authentication > Token
+
+![integrations travis ci token](../../images/integrations-travisci-token.png)
+
+Press on the Travis CI tile and input your Travis CI API token to grant Infisical access to your Travis CI account.
+
+![integrations travis ci authorization](../../images/integrations-travisci-auth.png)
+
+<Info>
+  If this is your project's first cloud integration, then you'll have to grant
+  Infisical access to your project's environment variables. Although this step
+  breaks E2EE, it's necessary for Infisical to sync the environment variables to
+  the cloud platform.
+</Info>
+
+## Start integration
+
+Select which Infisical environment secrets you want to sync to which Travis CI repository and press create integration to start syncing secrets to Travis CI.
+
+![create integration travis ci](../../images/integrations-travisci-create.png)
+![integrations travis ci](../../images/integrations-travisci.png)
