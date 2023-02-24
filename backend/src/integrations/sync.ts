@@ -22,12 +22,14 @@ import {
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
+  INTEGRATION_TRAVISCI,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
+  INTEGRATION_TRAVISCI_API_URL,
 } from "../variables";
 import request from '../config/request';
 
@@ -128,6 +130,14 @@ const syncSecrets = async ({
           secrets,
           accessToken,
         });
+        break;
+      case INTEGRATION_TRAVISCI:
+        await syncSecretsTravisCI({
+          integration,
+          secrets,
+          accessToken,
+        });
+        break;
     }
   } catch (err) {
     Sentry.setUser(null);
@@ -1314,5 +1324,97 @@ const syncSecretsCircleCI = async ({
     throw new Error("Failed to sync secrets to CircleCI");
   }
 };
+
+/**
+ * Sync/push [secrets] to TravisCI project 
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for TravisCI integration
+ */
+const syncSecretsTravisCI = async ({
+  integration,
+  secrets,
+  accessToken,
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  try {
+    // get secrets from travis-ci  
+    const getSecretsRes = (
+      await axios.get(
+        `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars?repository_id=${integration.appId}`,
+        {
+          headers: {
+            "Authorization": `token ${accessToken}`,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      )
+    ).data?.env_vars;
+
+    // add secrets
+    for (const key of Object.keys(secrets)) {
+      const existingSecret = getSecretsRes.find((s: any) => s.name == key);
+      if(!existingSecret){
+        await axios.post(
+          `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars?repository_id=${integration.appId}`,
+          {
+            env_var: {
+              name: key,
+              value: secrets[key],
+            }
+          },
+          {
+            headers: {
+              "Authorization": `token ${accessToken}`,
+              "Content-Type": "application/json",
+              "Accept-Encoding": "application/json",
+            },
+          }
+        )
+      }else { // update secret
+        await axios.patch(
+          `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars/${existingSecret.id}?repository_id=${existingSecret.repository_id}`,
+          {
+            env_var: {
+              name: key,
+              value: secrets[key],
+            }
+          },
+          {
+            headers: {
+              "Authorization": `token ${accessToken}`,
+              "Content-Type": "application/json",
+              "Accept-Encoding": "application/json",
+            },
+          }
+        )
+      }
+    }
+
+    // delete secret 
+    for (const sec of getSecretsRes) {
+      if (!(sec.name in secrets)){
+        await axios.delete(
+          `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars/${sec.id}?repository_id=${sec.repository_id}`,
+          {
+            headers: {
+              "Authorization": `token ${accessToken}`,
+              "Content-Type": "application/json",
+              "Accept-Encoding": "application/json",
+            },
+          }
+        );
+      }
+    }
+  }catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error("Failed to sync secrets to CircleCI");
+  }
+}
 
 export { syncSecrets };
