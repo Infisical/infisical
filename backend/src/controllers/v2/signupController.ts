@@ -8,7 +8,7 @@ import {
 import { issueAuthTokens } from '../../helpers/auth';
 import { INVITED, ACCEPTED } from '../../variables';
 import { NODE_ENV } from '../../config';
-import axios from 'axios';
+import request from '../../config/request';
 
 /**
  * Complete setting up user by adding their personal and auth information as part of the
@@ -109,7 +109,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 
 		// sending a welcome email to new users
 		if (process.env.LOOPS_API_KEY) {
-			await axios.post("https://app.loops.so/api/v1/events/send", {
+			await request.post("https://app.loops.so/api/v1/events/send", {
 				"email": email,
 				"eventName": "Sign Up",
 				"firstName": firstName,
