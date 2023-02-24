@@ -91,7 +91,7 @@ func writeWorkspaceFile(selectedWorkspace models.Workspace) error {
 		WorkspaceId: selectedWorkspace.ID,
 	}
 
-	marshalledWorkspaceFile, err := json.Marshal(workspaceFileToSave)
+	marshalledWorkspaceFile, err := json.MarshalIndent(workspaceFileToSave, "", "    ")
 	if err != nil {
 		return err
 	}
