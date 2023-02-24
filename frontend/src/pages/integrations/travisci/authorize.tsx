@@ -11,7 +11,7 @@ import {
 } from '../../../components/v2';
 import saveIntegrationAccessToken from "../../api/integrations/saveIntegrationAccessToken";
 
-export default function CircleCICreateIntegrationPage() {
+export default function TravisCICreateIntegrationPage() {
     const router = useRouter();
     const [apiKey, setApiKey] = useState('');
     const [apiKeyErrorText, setApiKeyErrorText] = useState('');
@@ -49,7 +49,7 @@ export default function CircleCICreateIntegrationPage() {
       <Card className="max-w-md p-8 rounded-md">
         <CardTitle className='text-center'>TravisCI Integration</CardTitle>
          <FormControl
-          label="CircleCI API Token"
+          label="Travis API Token"
           errorText={apiKeyErrorText}
           isError={apiKeyErrorText !== '' ?? false}
         >
@@ -72,6 +72,6 @@ export default function CircleCICreateIntegrationPage() {
   )
 }
 
-CircleCICreateIntegrationPage.requireAuth = true;
+TravisCICreateIntegrationPage.requireAuth = true;
 
 export const getServerSideProps = getTranslatedServerSideProps(['integrations']);

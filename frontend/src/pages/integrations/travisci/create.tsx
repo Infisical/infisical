@@ -15,7 +15,7 @@ import { useGetIntegrationAuthApps,useGetIntegrationAuthById } from '../../../ho
 import { useGetWorkspaceById } from '../../../hooks/api/workspace';
 import createIntegration from "../../api/integrations/createIntegration";
 
-export default function CircleCICreateIntegrationPage() {
+export default function TravisCICreateIntegrationPage() {
     const router = useRouter();
 
     const { integrationAuthId } = queryString.parse(router.asPath.split('?')[1]);
@@ -119,6 +119,6 @@ export default function CircleCICreateIntegrationPage() {
   ) : <div />
 }
 
-CircleCICreateIntegrationPage.requireAuth = true;
+TravisCICreateIntegrationPage.requireAuth = true;
 
 export const getServerSideProps = getTranslatedServerSideProps(['integrations']);

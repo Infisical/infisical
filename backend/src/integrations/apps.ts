@@ -13,12 +13,14 @@ import {
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
+  INTEGRATION_TRAVISCI,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
+  INTEGRATION_TRAVISCI_API_URL,
 } from "../variables";
 
 /**
@@ -42,7 +44,7 @@ const getApps = async ({
     owner?: string;
   }
 
-  let apps: App[];
+  let apps: App[] = [];
   try {
     switch (integrationAuth.integration) {
       case INTEGRATION_AZURE_KEY_VAULT:
@@ -89,6 +91,11 @@ const getApps = async ({
         apps = await getAppsCircleCI({
           accessToken,
         });
+        break;
+      case INTEGRATION_TRAVISCI:
+        apps = await getAppsTravisCI({
+          accessToken,
+        })
         break;
     }
   } catch (err) {
@@ -368,5 +375,35 @@ const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
   
   return apps;
 };
+
+const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
+  let apps: any;
+  try {
+    const res = (
+      await axios.get(
+        `${INTEGRATION_TRAVISCI_API_URL}/repos`,
+        {
+          headers: {
+            "Authorization": `token ${accessToken}`,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      )
+    ).data;
+
+    apps = res?.map((a: any) => {
+      return {
+        name: a?.slug?.split("/")[1],
+        appId: a?.id,
+      }
+    });
+  }catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error("Failed to get TravisCI projects");
+  }
+  
+  return apps;
+}
 
 export { getApps };
