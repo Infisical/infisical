@@ -115,8 +115,20 @@ func GetHashFromStringList(list []string) string {
 	return fmt.Sprintf("%x", sum)
 }
 
+// execCmd is a struct that holds the command and arguments to be executed.
+// By using this struct, we can easily mock the command and arguments.
+type execCmd struct {
+	cmd  string
+	args []string
+}
+
+var getCurrentBranchCmd = execCmd{
+	cmd:  "git",
+	args: []string{"symbolic-ref", "--short", "HEAD"},
+}
+
 func getCurrentBranch() (string, error) {
-	cmd := exec.Command("git", "symbolic-ref", "--short", "HEAD")
+	cmd := exec.Command(getCurrentBranchCmd.cmd, getCurrentBranchCmd.args...)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
