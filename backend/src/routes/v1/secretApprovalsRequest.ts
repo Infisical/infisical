@@ -29,7 +29,9 @@ router.post(
     requireAuth({
         acceptedAuthModes: ['jwt']
     }),
-    secretApprovalController.getAllApprovalRequestsForUser
+    body('requestedChangeIds').isArray(),
+    validateRequest,
+    secretApprovalController.approveApprovalRequest
 );
 
 router.post(
@@ -37,7 +39,19 @@ router.post(
     requireAuth({
         acceptedAuthModes: ['jwt']
     }),
-    secretApprovalController.getAllApprovalRequestsForUser
+    body('requestedChangeIds').isArray(),
+    validateRequest,
+    secretApprovalController.rejectApprovalRequest
+);
+
+router.post(
+    '/:reviewId/merge',
+    body('requestedChangeIds').isArray(),
+    validateRequest,
+    requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
+    secretApprovalController.mergeApprovalRequestSecrets
 );
 
 export default router;
