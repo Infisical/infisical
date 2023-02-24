@@ -587,7 +587,7 @@ func addHash(input string) string {
 }
 
 func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]models.SingleEnvironmentVariable {
-	secretMapByName := make(map[string]models.SingleEnvironmentVariable)
+	secretMapByName := make(map[string]models.SingleEnvironmentVariable, len(secrets))
 
 	for _, secret := range secrets {
 		secretMapByName[secret.Key] = secret
