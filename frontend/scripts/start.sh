@@ -11,4 +11,4 @@ else
 fi
 
 
-node server.js
+node -r @traceloop/instrument-opentelemetry server.js
