@@ -16,7 +16,7 @@
 
 <h4 align="center">
   <a href="https://github.com/medusajs/medusa/blob/master/LICENSE">
-    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Medusa is released under the MIT license." />
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Infisical is released under the MIT license." />
   </a>
   <a href="https://github.com/infisical/infisical/blob/main/CONTRIBUTING.md">
     <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen" alt="PRs welcome!" />
@@ -105,12 +105,13 @@ Estamos actualmente en Alpha público.
 
 Actualmente estamos sentando bases y construyendo [integraciones](https://infisical.com/docs/integrations/overview) para que los secretos se puedan sincronizar en todas partes. ¡Cualquier ayuda es bienvenida! :)
 
+
 <table>
 <tr>
   <th>Plataformas </th>
   <th>Marcos</th>
 </tr>
-<tr> 
+<tr>
   <td>
 
 <table>
@@ -151,7 +152,7 @@ Actualmente estamos sentando bases y construyendo [integraciones](https://infisi
     </tr>
     <tr>
       <td align="left" valign="middle">
-        🔜 AWS PS (https://github.com/Infisical/infisical/issues/286)
+         🔜 Supabase
       </td>
       <td align="left" valign="middle">
         <a href="https://infisical.com/docs/integrations/cicd/githubactions">
@@ -167,7 +168,9 @@ Actualmente estamos sentando bases y construyendo [integraciones](https://infisi
         🔜 GCP SM (https://github.com/Infisical/infisical/issues/285)
       </td>
       <td align="left" valign="middle">
-        🔜 GitLab CI/CD (https://github.com/Infisical/infisical/issues/134)
+        <a href="https://infisical.com/docs/integrations/cicd/gitlab">
+          ✔️ GitLab CI/CD
+        </a>
       </td>
       <td align="left" valign="middle">
         🔜 CircleCI (https://github.com/Infisical/infisical/issues/91)
@@ -189,8 +192,8 @@ Actualmente estamos sentando bases y construyendo [integraciones](https://infisi
          🔜 TravisCI
       </td>
       <td align="left" valign="middle">
-        <a href="https://infisical.com/docs/integrations/cloud/netlify">
-          ✔️ Netlify
+        <a href="https://infisical.com/docs/integrations/cloud/aws-secret-manager">
+          ✔️ AWS Secrets Manager
         </a>
       </td>
       <td align="left" valign="middle">
@@ -202,7 +205,9 @@ Actualmente estamos sentando bases y construyendo [integraciones](https://infisi
          🔜 Bitbucket
       </td>
       <td align="left" valign="middle">
-         🔜 Supabase
+          <a href="https://infisical.com/docs/integrations/cloud/aws-parameter-store">
+            ✔️ AWS Parameter Store
+          </a>
       </td>
       <td align="left" valign="middle">
         <a href="https://infisical.com/docs/integrations/cloud/render">
@@ -218,7 +223,9 @@ Actualmente estamos sentando bases y construyendo [integraciones](https://infisi
          🔜 Serverless
       </td>
       <td align="left" valign="middle">
-         🔜 AWS Lambda
+        <a href="https://infisical.com/docs/integrations/cloud/netlify">
+          ✔️ Netlify
+        </a>
       </td>
     </tr>
   </tbody>
@@ -327,7 +334,7 @@ Actualmente estamos sentando bases y construyendo [integraciones](https://infisi
 </table>
 
 </td>
-</tr> 
+</tr>
 </table>
 
 ## 🏘 Código abierto vs pagado

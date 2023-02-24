@@ -54,9 +54,12 @@ var runCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		envName, err := cmd.Flags().GetString("env")
-		if err != nil {
-			util.HandleError(err, "Unable to parse flag")
+		environmentName, _ := cmd.Flags().GetString("env")
+		if !cmd.Flags().Changed("env") {
+			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			if environmentFromWorkspace != "" {
+				environmentName = environmentFromWorkspace
+			}
 		}
 
 		infisicalToken, err := cmd.Flags().GetString("token")
@@ -79,7 +82,7 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: envName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
 
 		if err != nil {
 			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")

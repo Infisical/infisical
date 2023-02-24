@@ -87,7 +87,7 @@ var loginCmd = &cobra.Command{
 					break
 				} else if mfaErrorResponse != nil {
 					if mfaErrorResponse.Context.Code == "mfa_invalid" {
-						msg := fmt.Sprintf("Incorrect, MFA code. You have %v attempts left", 5-i)
+						msg := fmt.Sprintf("Incorrect, verification code. You have %v attempts left", 5-i)
 						fmt.Println(msg)
 						if i == 5 {
 							util.PrintErrorMessageAndExit("No tries left, please try again in a bit")
@@ -96,7 +96,7 @@ var loginCmd = &cobra.Command{
 					}
 
 					if mfaErrorResponse.Context.Code == "mfa_expired" {
-						util.PrintErrorMessageAndExit("Your MFA code has expired, please try logging in again")
+						util.PrintErrorMessageAndExit("Your 2FA verification code has expired, please try logging in again")
 						break
 					}
 					i++
@@ -120,6 +120,7 @@ var loginCmd = &cobra.Command{
 		var decryptedPrivateKey []byte
 
 		if loginTwoResponse.EncryptionVersion == 1 {
+			log.Debug("Login version 1")
 			encryptedPrivateKey, _ := base64.StdEncoding.DecodeString(loginTwoResponse.EncryptedPrivateKey)
 			tag, err := base64.StdEncoding.DecodeString(loginTwoResponse.Tag)
 			if err != nil {
@@ -134,11 +135,15 @@ var loginCmd = &cobra.Command{
 			paddedPassword := fmt.Sprintf("%032s", password)
 			key := []byte(paddedPassword)
 
-			decryptedPrivateKey, err := crypto.DecryptSymmetric(key, encryptedPrivateKey, tag, IV)
-			if err != nil || len(decryptedPrivateKey) == 0 {
+			computedDecryptedPrivateKey, err := crypto.DecryptSymmetric(key, encryptedPrivateKey, tag, IV)
+			if err != nil || len(computedDecryptedPrivateKey) == 0 {
 				util.HandleError(err)
 			}
+
+			decryptedPrivateKey = computedDecryptedPrivateKey
+
 		} else if loginTwoResponse.EncryptionVersion == 2 {
+			log.Debug("Login version 2")
 			protectedKey, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKey)
 			if err != nil {
 				util.HandleError(err)
@@ -191,12 +196,19 @@ var loginCmd = &cobra.Command{
 				util.HandleError(err)
 			}
 
-			decryptedPrivateKey, err = crypto.DecryptSymmetric(decryptedProtectedKeyInHex, encryptedPrivateKey, nonProtectedTag, nonProtectedIv)
+			computedDecryptedPrivateKey, err := crypto.DecryptSymmetric(decryptedProtectedKeyInHex, encryptedPrivateKey, nonProtectedTag, nonProtectedIv)
 			if err != nil {
 				util.HandleError(err)
 			}
+
+			decryptedPrivateKey = computedDecryptedPrivateKey
 		} else {
 			util.PrintErrorMessageAndExit("Insufficient details to decrypt private key")
+		}
+
+		if string(decryptedPrivateKey) == "" || email == "" || loginTwoResponse.Token == "" {
+			log.Debugf("[decryptedPrivateKey=%s] [email=%s] [loginTwoResponse.Token=%s]", string(decryptedPrivateKey), email, loginTwoResponse.Token)
+			util.PrintErrorMessageAndExit("We were unable to fetch required details to complete your login. Run with -d to see more info")
 		}
 
 		userCredentialsToBeStored := &models.UserCredentials{
@@ -340,7 +352,7 @@ func generateFromPassword(password string, salt []byte, p *params) (hash []byte,
 
 func askForMFACode() string {
 	mfaCodePromptUI := promptui.Prompt{
-		Label: "MFA verification code",
+		Label: "Enter the 2FA verification code sent to your email",
 	}
 
 	mfaVerifyCode, err := mfaCodePromptUI.Run()

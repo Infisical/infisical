@@ -45,11 +45,9 @@ import {
 
 export const ProjectSettingsPage = () => {
   const { t } = useTranslation();
-  const { currentWorkspace, workspaces } = useWorkspace();
+  const { currentWorkspace, workspaces, isLoading: isWorkspaceLoading } = useWorkspace();
   const router = useRouter();
-  const { data: serviceTokens } = useGetUserWsServiceTokens({
-    workspaceID: currentWorkspace?._id || ''
-  });
+
   const workspaceID = currentWorkspace?._id || '';
   const { createNotification } = useNotificationContext();
   // delete action worksapce
@@ -66,12 +64,15 @@ export const ProjectSettingsPage = () => {
   const deleteWsEnv = useDeleteWsEnvironment();
 
   // service token
+  const { data: serviceTokens, isLoading: isServiceTokenLoading } = useGetUserWsServiceTokens({
+    workspaceID: currentWorkspace?._id || ''
+  });
   const { data: latestFileKey } = useGetUserWsKey(workspaceID);
   const createServiceToken = useCreateServiceToken();
   const deleteServiceToken = useDeleteServiceToken();
 
   // tag
-  const { data: wsTags } = useGetWsTags(workspaceID);
+  const { data: wsTags, isLoading: isTagLoading } = useGetWsTags(workspaceID);
   const createWsTag = useCreateWsTag();
   const deleteWsTag = useDeleteWsTag();
 
@@ -300,7 +301,7 @@ export const ProjectSettingsPage = () => {
   };
 
   return (
-    <div className="container mx-auto flex flex-col px-8 text-mineshaft-50 dark dark:[color-scheme:dark]">
+    <div className="dark container mx-auto flex flex-col px-8 text-mineshaft-50 dark:[color-scheme:dark]">
       {/* TODO(akhilmhdh): Remove this right when layout is refactored  */}
       <div className="relative right-5">
         <NavHeader pageName={t('settings-project:title')} isProjectRelated />
@@ -319,6 +320,7 @@ export const ProjectSettingsPage = () => {
       />
       <CopyProjectIDSection workspaceID={currentWorkspace?._id || ''} />
       <EnvironmentSection
+        isLoading={isWorkspaceLoading}
         environments={currentWorkspace?.environments || []}
         onCreate={onCreateWsEnv}
         onDelete={onDeleteWsEnv}
@@ -326,6 +328,7 @@ export const ProjectSettingsPage = () => {
         isEnvServiceAllowed={isEnvServiceAllowed}
       />
       <ServiceTokenSection
+        isLoading={isServiceTokenLoading}
         tokens={serviceTokens || []}
         environments={currentWorkspace?.environments || []}
         onDeleteToken={onDeleteServiceToken}
@@ -333,6 +336,7 @@ export const ProjectSettingsPage = () => {
         onCreateToken={onCreateServiceToken}
       />
       <SecretTagsSection
+        isLoading={isTagLoading}
         tags={wsTags || []}
         onDeleteTag={onDeleteTag}
         workspaceName={currentWorkspace?.name || ''}

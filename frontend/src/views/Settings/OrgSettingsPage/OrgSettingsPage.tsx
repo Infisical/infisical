@@ -36,10 +36,12 @@ export const OrgSettingsPage = () => {
   const { createNotification } = useNotificationContext();
 
   const orgId = currentOrg?._id || '';
-  const { data: orgUsers } = useGetOrgUsers(orgId);
-  const { data: workspaceMemberships } = useGetUserWorkspaceMemberships(orgId);
+  const { data: orgUsers, isLoading: isOrgUserLoading } = useGetOrgUsers(orgId);
+  const { data: workspaceMemberships, isLoading: IsWsMembershipLoading } =
+    useGetUserWorkspaceMemberships(orgId);
   const { data: wsKey } = useGetUserWsKey(currentWorkspace?._id || '');
-  const { data: incidentContact } = useGetOrgIncidentContact(orgId);
+  const { data: incidentContact, isLoading: IsIncidentContactLoading } =
+    useGetOrgIncidentContact(orgId);
 
   const renameOrg = useRenameOrg();
   const removeUserOrgMembership = useDeleteOrgMembership();
@@ -84,7 +86,7 @@ export const OrgSettingsPage = () => {
     } catch (error) {
       console.error(error);
       createNotification({
-        text: 'Failed to remove user from org',
+        text: 'Failed to remove user from the organization',
         type: 'error'
       });
     }
@@ -95,7 +97,7 @@ export const OrgSettingsPage = () => {
     try {
       await addUserToOrg.mutateAsync({ organizationId: currentOrg?._id, inviteeEmail: email });
       createNotification({
-        text: 'Successfully invited user to org',
+        text: 'Successfully invited user to the organization.',
         type: 'success'
       });
     } catch (error) {
@@ -197,9 +199,9 @@ export const OrgSettingsPage = () => {
 
   /**
    * This function deleted a workspace.
-   * It first checks if there is more than one workspace aviable. Otherwise, it doesn't delete
+   * It first checks if there is more than one workspace available. Otherwise, it doesn't delete
    * It then checks if the name of the workspace to be deleted is correct. Otherwise, it doesn't delete.
-   * It then deletes the workspace and forwards the user to another aviable workspace.
+   * It then deletes the workspace and forwards the user to another available workspace.
    */
   // const executeDeletingWorkspace = async () => {
   //   const userWorkspaces = await getWorkspaces();
@@ -230,13 +232,11 @@ export const OrgSettingsPage = () => {
       <div className="max-w-8xl ml-6 mr-6 flex flex-col text-mineshaft-50">
         <OrgNameChangeSection orgName={currentOrg?.name} onOrgNameChange={onRenameOrg} />
         <div className="mb-6 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pt-6 pb-6">
-          <p className="mr-4 text-xl font-semibold text-white">
+          <p className="mr-4 mb-4 text-xl font-semibold text-white">
             {t('section-members:org-members')}
           </p>
-          <p className="mr-4 mt-2 mb-2 text-gray-400">
-            {t('section-members:org-members-description')}
-          </p>
           <OrgMembersTable
+            isLoading={isOrgUserLoading || IsWsMembershipLoading}
             isMoreUserNotAllowed={isMoreUsersNotAllowed}
             orgName={currentOrg?.name || ''}
             members={orgUsers}
@@ -261,6 +261,7 @@ export const OrgSettingsPage = () => {
           </div>
           <div className="w-full">
             <OrgIncidentContactsTable
+              isLoading={IsIncidentContactLoading}
               contacts={incidentContact}
               onRemoveContact={onRemoveIncidentContact}
               onAddContact={onAddIncidentContact}

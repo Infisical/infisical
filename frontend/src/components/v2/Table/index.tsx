@@ -7,4 +7,4 @@ export type {
   ThProps,
   TrProps
 } from './Table';
-export { Table, TableContainer, TBody, Td, Th, THead, Tr } from './Table';
+export { Table, TableContainer, TableSkeleton,TBody, Td, Th, THead, Tr } from './Table';

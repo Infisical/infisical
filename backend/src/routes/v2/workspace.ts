@@ -118,7 +118,6 @@ router.delete( // TODO - rewire dashboard to this route
 	workspaceController.deleteWorkspaceMembership
 );
 
-
 router.patch(
 	'/:workspaceId/auto-capitalization',
 	requireAuth({

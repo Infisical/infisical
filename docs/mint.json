@@ -119,6 +119,7 @@
             "cli/commands/reset"
           ]
         },
+        "cli/project-config",
         "cli/faq"
       ]
     },
