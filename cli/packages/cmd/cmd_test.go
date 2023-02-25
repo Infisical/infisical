@@ -6,7 +6,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/models"
 )
 
-func TestEnvFilter(t *testing.T) {
+func TestFilterReservedEnvVars(t *testing.T) {
 
 	// some test env vars.
 	// HOME and PATH are reserved key words and should be filtered out
@@ -22,7 +22,7 @@ func TestEnvFilter(t *testing.T) {
 	}
 
 	// check to see if there are any reserved key words in secrets to inject
-	filterEnvVars(env)
+	filterReservedEnvVars(env)
 
 	if len(env) != 2 {
 		t.Errorf("Expected 2 secrets to be returned, got %d", len(env))

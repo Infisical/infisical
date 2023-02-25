@@ -110,7 +110,7 @@ var runCmd = &cobra.Command{
 		}
 
 		// check to see if there are any reserved key words in secrets to inject
-		filterEnvVars(secretsByKey)
+		filterReservedEnvVars(secretsByKey)
 
 		// now add infisical secrets
 		for k, v := range secretsByKey {
@@ -156,7 +156,7 @@ var (
 	}
 )
 
-func filterEnvVars(env map[string]models.SingleEnvironmentVariable) {
+func filterReservedEnvVars(env map[string]models.SingleEnvironmentVariable) {
 	for _, reservedEnvName := range reservedEnvVars {
 		if _, ok := env[reservedEnvName]; ok {
 			delete(env, reservedEnvName)
