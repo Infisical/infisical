@@ -1,0 +1,15 @@
+{
+  "title": "Definições do Projeto",
+  "description": "Estas definições só se aplicam ao Projeto selecionado.",
+  "danger-zone": "Zona de Perigo",
+  "delete-project": "Apagar Projeto",
+  "project-to-delete": "Projeto a Apagar",
+  "danger-zone-note": "Assim que apares este projeto, não poderás desfazer a ação. Isto irá apagar imediatamente todas as chaves. Se ainda quiseres fazer isso, insere o nome do projeto abaixo.",
+  "delete-project-note": "Nota: Só podes eliminar algum projeto caso tenhas mais do que um",
+  "project-id-description": "Para integrar o Infisical no seu código e obter a injeção automática de variáveis de ambiente, deve usar o seguinte ID de Projeto.",
+  "project-id-description2": "Para obter mais orientações, incluindo trechos de código para várias linguagens e frameworks, consulte ",
+  "auto-generated": "Este é o identificador único - criado automaticamente - do teu projeto. Não pode ser alterado.",
+  "docs": "Documentação do Infisical",
+  "auto-capitalization": "Converter em maísculas automaticamente",
+  "auto-capitalization-description": "Por defeito, o Infisical irá converter o texto das tuas chaves em maísculas automaticamente. Se quiser desativar este recurso, pode fazê-lo aqui."
+}
