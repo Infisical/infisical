@@ -89,8 +89,8 @@ func RequireServiceToken() {
 }
 
 func RequireLocalWorkspaceFile() {
-	workspaceFileExists := WorkspaceConfigFileExistsInCurrentPath()
-	if !workspaceFileExists {
+	workspaceFilePath, _ := FindWorkspaceConfigFile()
+	if workspaceFilePath == "" {
 		PrintErrorMessageAndExit("It looks you have not yet connected this project to Infisical", "To do so, run [infisical init] then run your command again")
 	}
 
