@@ -186,11 +186,14 @@ func init() {
 
 // Will execute a single command and pass in the given secrets into the process
 func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string) error {
-	command := args[0]
-	argsForCommand := args[1:]
+	shell := subShellCmd()
 	color.Green("Injecting %v Infisical secrets into your application process", secretsCount)
 
-	cmd := exec.Command(command, argsForCommand...)
+	args = append(args[:1], args[0:]...) // shift args to the right
+	args[0] = shell[1]
+
+	cmd := exec.Command(shell[0], args...)
+
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -200,15 +203,7 @@ func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string)
 }
 
 func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []string) error {
-	shell := [2]string{"sh", "-c"}
-	if runtime.GOOS == "windows" {
-		shell = [2]string{"cmd", "/C"}
-	} else {
-		currentShell := os.Getenv("SHELL")
-		if currentShell != "" {
-			shell[0] = currentShell
-		}
-	}
+	shell := subShellCmd()
 
 	cmd := exec.Command(shell[0], shell[1], fullCommand)
 	cmd.Stdin = os.Stdin
@@ -220,6 +215,23 @@ func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []
 	log.Debugf("executing command: %s %s %s \n", shell[0], shell[1], fullCommand)
 
 	return execCmd(cmd)
+}
+
+func subShellCmd() [2]string {
+	// default to sh -c
+	shell := [...]string{"sh", "-c"}
+
+	currentShell := os.Getenv("SHELL")
+	if currentShell != "" {
+		shell[0] = currentShell
+	} else if runtime.GOOS == "windows" {
+		// if the SHELL env var is not set and we're on Windows, use cmd.exe
+		// The SHELL var should always be checked first, in case the user executes
+		// infisical from something like Git Bash.
+		return [...]string{"cmd", "/C"}
+	}
+
+	return shell
 }
 
 // Credit: inspired by AWS Valut
