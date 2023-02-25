@@ -1,0 +1,11 @@
+{
+  "incident-contacts": "Contactos de Emergência",
+  "incident-contacts-description": "Estes contactos serão notificados no caso improvável de um incidente grave.",
+  "no-incident-contacts": "Nenhum contacto de emergência encontrado.",
+  "add-contact": "Adicionar Contacto",
+  "add-dialog": {
+    "title": "Adicionar um Contacto de Emergência",
+    "description": "Este contacto será notificado no caso improvável de um incidente grave.",
+    "add-incident": "Adicionar Contacto de Emergência"
+  }
+}

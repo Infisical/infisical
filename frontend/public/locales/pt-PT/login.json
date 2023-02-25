@@ -1,0 +1,10 @@
+{
+  "title": "Iniciar sessão",
+  "og-title": "Iniciar sessão na Infisical",
+  "og-description": "Infisical é uma plataforma simples e criptografada que permite às equipas sincronizar e fazer a gestão dos seus ficheiros .env.",
+  "login": "Iniciar sessão",
+  "need-account": "Precisa de uma conta Infisical?",
+  "create-account": "Regista-te",
+  "forgot-password": "Esqueceste da tua palavra-passe?",
+  "error-login": "Credenciais erradas."
+}

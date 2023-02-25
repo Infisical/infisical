@@ -1,0 +1,13 @@
+{
+  "service-tokens": "Tokens de Serviço",
+  "service-tokens-description": "Cada token de serviço é específico para si, um determinado projeto e um determinado ambiente dentro deste projeto.",
+  "add-new": "Adicionar Novo Token",
+  "add-dialog" : {
+    "title": "Adicionar um token de serviço para {{target}}",
+    "description": "Quando um token é criado, só poderá vê-lo uma vez antes dele desaparecer. Certifique-se de o guardar num local seguro.",
+    "name": "Nome do Token de Serviço",
+    "add": "Adicionar Token de Serviço",
+    "copy-service-token": "Copia o seu token de serviço",
+    "copy-service-token-description": "Uma vez que fechar esta janela, nunca mais irás ver o teu token de serviço"
+  }
+}
