@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/Infisical/infisical-merge/packages/models"
 	log "github.com/sirupsen/logrus"
@@ -73,7 +74,12 @@ func WorkspaceConfigFileExistsInCurrentPath() bool {
 }
 
 func GetWorkSpaceFromFile() (models.WorkspaceConfigFile, error) {
-	configFileAsBytes, err := os.ReadFile(INFISICAL_WORKSPACE_CONFIG_FILE_NAME)
+	cfgFile, err := FindWorkspaceConfigFile()
+	if err != nil {
+		return models.WorkspaceConfigFile{}, err
+	}
+
+	configFileAsBytes, err := os.ReadFile(cfgFile)
 	if err != nil {
 		return models.WorkspaceConfigFile{}, err
 	}
@@ -85,6 +91,35 @@ func GetWorkSpaceFromFile() (models.WorkspaceConfigFile, error) {
 	}
 
 	return workspaceConfigFile, nil
+}
+
+// FindWorkspaceConfigFile searches for a .infisical.json file in the current directory and all parent directories.
+func FindWorkspaceConfigFile() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		path := filepath.Join(dir, INFISICAL_WORKSPACE_CONFIG_FILE_NAME)
+		_, err := os.Stat(path)
+		if err == nil {
+			// file found
+			return path, nil
+		}
+
+		// check if we have reached the root directory
+		if dir == filepath.Dir(dir) {
+			break
+		}
+
+		// move up one directory
+		dir = filepath.Dir(dir)
+	}
+
+	// file not found
+	return "", fmt.Errorf("file not found: %s", INFISICAL_WORKSPACE_CONFIG_FILE_NAME)
+
 }
 
 func GetFullConfigFilePath() (fullPathToFile string, fullPathToDirectory string, err error) {
