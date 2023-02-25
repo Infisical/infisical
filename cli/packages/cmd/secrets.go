@@ -361,10 +361,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 
 	requestedSecrets := []models.SingleEnvironmentVariable{}
 
-	secretsMap := make(map[string]models.SingleEnvironmentVariable)
-	for _, secret := range secrets {
-		secretsMap[secret.Key] = secret
-	}
+	secretsMap := getSecretsByKeys(secrets)
 
 	for _, secretKeyFromArg := range args {
 		if value, ok := secretsMap[strings.ToUpper(secretKeyFromArg)]; ok {
@@ -587,7 +584,7 @@ func addHash(input string) string {
 }
 
 func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]models.SingleEnvironmentVariable {
-	secretMapByName := make(map[string]models.SingleEnvironmentVariable)
+	secretMapByName := make(map[string]models.SingleEnvironmentVariable, len(secrets))
 
 	for _, secret := range secrets {
 		secretMapByName[secret.Key] = secret
