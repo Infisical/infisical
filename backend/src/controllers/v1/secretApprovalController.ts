@@ -3,12 +3,17 @@ import SecretApprovalRequest, { ApprovalStatus, ChangeType, IApprover, IRequeste
 import { Builder, IBuilder } from "builder-pattern"
 import { validateSecrets } from '../../helpers/secret';
 import _ from 'lodash';
-import { SECRET_PERSONAL, SECRET_SHARED } from '../../variables';
+import { ACTION_ADD_SECRETS, ACTION_DELETE_SECRETS, ACTION_UPDATE_SECRETS, SECRET_PERSONAL, SECRET_SHARED } from '../../variables';
 import { BadRequestError, ResourceNotFound, UnauthorizedRequestError } from '../../utils/errors';
-import { Membership, Secret, Workspace } from '../../models';
+import { ISecret, Membership, Secret, Workspace } from '../../models';
 import { user } from '../../routes/v1';
-import { BatchSecret } from '../../types/secret';
+import { BatchSecret, BatchSecretRequest } from '../../types/secret';
 import { Types } from 'mongoose';
+import { EELogService, EESecretService } from '../../ee/services';
+import { IAction } from '../../ee/models';
+import { getChannelFromUserAgent } from '../../utils/posthog';
+import { eventPushSecrets } from '../../events';
+import { EventService } from '../../services';
 
 export const createApprovalRequest = async (req: Request, res: Response) => {
 	const { workspaceId, environment, requestedChanges } = req.body;
@@ -206,6 +211,9 @@ export const mergeApprovalRequestSecrets = async (req: Request, res: Response) =
 		throw ResourceNotFound()
 	}
 
+	const workspaceId = approvalRequestFromDB.workspace._id.toString()
+	const environment = approvalRequestFromDB.environment
+
 	const requestedChangesFromDB: IRequestedChange[] = approvalRequestFromDB.requestedChanges
 	const requestedChangeIdsFromApproval = _.compact(_.map(requestedChangesFromDB, (change) => {
 		return change._id.toString();
@@ -226,29 +234,41 @@ export const mergeApprovalRequestSecrets = async (req: Request, res: Response) =
 		throw UnauthorizedRequestError({ message: "Your approval is not required" })
 	}
 
-	const createSecrets: BatchSecret[] = [];
-	const updateSecrets: BatchSecret[] = [];
-	const deleteSecrets: Types.ObjectId[] = [];
-	// const actions: IAction[] = [];
+	const secretsToCreate: ISecret[] = []
+	const secretsToUpdate: any[] = []
+	const secretsIdsToDelete = []
 
-	requestedChangesFromDB.forEach((requestedChange) => {
+	requestedChangesFromDB.forEach((requestedChange: any) => {
 		const overallChangeStatus = requestedChange.status
 		const currentLoggedInUserId = req.user._id.toString()
 		if (overallChangeStatus == ApprovalStatus.APPROVED.toString()) {
-			switch (requestedChange.type) {
-				case ChangeType.CREATE:
+			if (ChangeType.CREATE.toString() == requestedChange.type) {
+				secretsToCreate.push({
+					...requestedChange.modifiedSecretDetails.toObject(),
+					user: req.user._id.toString()
+				})
 
-				case ChangeType.UPDATE:
-				case ChangeType.DELETE:
 			}
-		} else {
-			throw BadRequestError({ message: "One or more changes are not approved. Only approved changes can be merged" })
+
+			if (ChangeType.UPDATE.toString() == requestedChange.type) {
+				secretsToUpdate.push({
+					...requestedChange.modifiedSecretDetails.toObject(),
+					id: requestedChange.modifiedSecretId.toString()
+				})
+			}
+
+			if (ChangeType.DELETE.toString() == requestedChange.type) {
+
+			}
+
+			requestedChange.merged = true
 		}
+
 	})
 
-	const updatedApprovalRequest = await SecretApprovalRequest.findByIdAndUpdate(reviewId, {
-		requestedChanges: requestedChangesFromDB
-	}, { new: true }).populate(["requestedChanges.modifiedSecretId", { path: 'requestedChanges.approvers.userId', select: 'firstName lastName _id' }])
 
-	res.send({ approvalRequest: updatedApprovalRequest })
+	res.json({
+		secretsToUpdate
+	})
+
 };

@@ -9,6 +9,7 @@ export interface IRequestedChange {
 	modifiedSecretId: mongoose.Types.ObjectId,
 	type: string,
 	approvers: IApprover[]
+	merged: boolean
 }
 
 interface ISecretApprovalRequest {
