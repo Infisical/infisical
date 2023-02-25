@@ -9,7 +9,7 @@
   "shared": "Compartilhado",
   "shared-description": "As chaves compartilhadas ficam visíveis para toda a sua equipe",
   "make-shared": "Tornar Compartilhado",
-  "make-personal": "Tornar Pessoal",
+  "make-personal": "Tornar individual",
   "check-docs": {
     "button": "Checkar Documentação",
     "title": "Bom trabalho!!",
@@ -24,11 +24,7 @@
     "version-history": "Histórico da versão",
     "comments": "Comentários e Notas",
     "personal-explanation": "Este segredo é pessoal. Não é compartilhado com nenhum de seus colegas de equipe.",
-    "generate-random-hex": "Gerar HEX Aleatório",
-    "digits": "dígitos",
-    "delete-key-dialog": {
-      "title": "Excluir Chave",
-      "confirm-delete-message": "Você tem certeza que deseja excluir esta chave? Essa ação não pode ser desfeita."
-    }
+    "generate-random-hex": "Gerar Hex Aleatório",
+    "digits": "Digitos"
   }
 }

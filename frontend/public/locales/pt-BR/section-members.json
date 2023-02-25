@@ -1,7 +1,7 @@
 {
   "add-member": "Adicionar membro",
   "org-members": "Membros da Organização",
-  "org-members-description": "Gerencie os membros da sua organização. Esses usuários poderiam posteriormente ser associados a projetos.",
+  "org-members-description": "Gerencie os membros da sua organização. Esses usuários poderiam posteriormente ser formados em projetos.",
   "search-members": "Pesquisar membros...",
   "add-dialog": {
     "add-member-to-project": "Adicionar um membro ao seu projeto",
