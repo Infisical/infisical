@@ -1,0 +1,5 @@
+{
+    "workspaceId": "12345678",
+    "defaultEnvironment": "myDefaultEnv",
+    "gitBranchToEnvironmentMapping": null
+}

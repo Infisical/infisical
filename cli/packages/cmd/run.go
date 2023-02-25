@@ -56,7 +56,7 @@ var runCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}

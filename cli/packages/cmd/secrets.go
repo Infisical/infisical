@@ -32,7 +32,7 @@ var secretsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
@@ -98,7 +98,7 @@ var secretsSetCmd = &cobra.Command{
 
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
@@ -277,7 +277,7 @@ var secretsDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
@@ -338,7 +338,7 @@ var secretsDeleteCmd = &cobra.Command{
 func getSecretsByNames(cmd *cobra.Command, args []string) {
 	environmentName, _ := cmd.Flags().GetString("env")
 	if !cmd.Flags().Changed("env") {
-		environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+		environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 		if environmentFromWorkspace != "" {
 			environmentName = environmentFromWorkspace
 		}
@@ -381,7 +381,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 func generateExampleEnv(cmd *cobra.Command, args []string) {
 	environmentName, _ := cmd.Flags().GetString("env")
 	if !cmd.Flags().Changed("env") {
-		environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+		environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 		if environmentFromWorkspace != "" {
 			environmentName = environmentFromWorkspace
 		}
