@@ -105,6 +105,8 @@ func FindWorkspaceConfigFile() (string, error) {
 		_, err := os.Stat(path)
 		if err == nil {
 			// file found
+			log.Debugf("FindWorkspaceConfigFile: workspace file found at [path=%s]", path)
+
 			return path, nil
 		}
 
