@@ -8,7 +8,7 @@
   "last-name": "Ultimo Nome",
   "logout": "Sair",
   "validate-required": "Por favor insira o seu {{name}}",
-  "maintenance-alert": "Estamos passando por pequenas dificuldades técnicas. Estamos trabalhando para resolvê-lo agora. Por favor, volte em alguns minutos.",
+  "maintenance-alert": "Estamos passando por pequenas dificuldades técnicas. Estamos trabalhando para resolvê-las agora. Por favor, volte dentro de alguns minutos.",
   "click-to-copy": "Clique para copiar",
   "project-id": "ID do Projeto",
   "save-changes": "Salvar Alterações",
@@ -20,7 +20,15 @@
   "display-name": "Nome de exibição",
   "environment": "Ambiente",
   "expired-in": "Expira em",
-  "language": "Linguagem",
+  "language": "Idioma",
   "search": "Procurar...",
-  "note": "Note"
+  "note": "Note",
+  "view-more": "Ver mais",
+  "end-of-history": "Fim do Histórico",
+  "select-event": "Selecione um evento",
+  "event": "Evento",
+  "user": "Usuário",
+  "source": "Fonte",
+  "time": "Data/Hora",
+  "timestamp": "Timestamp"
 }
