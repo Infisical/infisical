@@ -6,7 +6,7 @@ export interface IRequestedChange {
 	userId: mongoose.Types.ObjectId;
 	status: ApprovalStatus;
 	modifiedSecretDetails: ISecret,
-	modifiedSecretId: mongoose.Types.ObjectId,
+	modifiedSecretParentId: mongoose.Types.ObjectId,
 	type: string,
 	approvers: IApprover[]
 	merged: boolean
@@ -52,11 +52,22 @@ const approverSchema = new mongoose.Schema({
 	}
 }, { timestamps: true });
 
+
+// extend the Secret Schema by taking all but removing _id and version fields
+const SecretModificationSchema = new Schema({
+	...secretSchema.obj,
+}, {
+	_id: false,
+});
+
+SecretModificationSchema.remove("version")
+
+
 const requestedChangeSchema = new mongoose.Schema(
 	{
 		_id: { type: mongoose.Schema.Types.ObjectId, auto: true },
-		modifiedSecretDetails: secretSchema,
-		modifiedSecretId: { // used to fetch the current version of this secret for comparing 
+		modifiedSecretDetails: SecretModificationSchema,
+		modifiedSecretParentId: { // used to fetch the current version of this secret for comparing 
 			type: mongoose.Schema.Types.ObjectId,
 			ref: 'Secret'
 		},
