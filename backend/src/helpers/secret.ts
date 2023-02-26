@@ -713,10 +713,27 @@ const reformatPullSecrets = ({ secrets }: { secrets: ISecret[] }) => {
 	return reformatedSecrets;
 };
 
+const secretObjectHasRequiredFields = (secretObject: ISecret) => {
+	if (!secretObject.type ||
+		!(secretObject.type === SECRET_PERSONAL || secretObject.type === SECRET_SHARED) ||
+		!secretObject.secretKeyCiphertext ||
+		!secretObject.secretKeyIV ||
+		!secretObject.secretKeyTag ||
+		(typeof secretObject.secretValueCiphertext !== 'string') ||
+		!secretObject.secretValueIV ||
+		!secretObject.secretValueTag) {
+		return false
+	}
+
+	return true
+}
+
+
 export {
 	validateSecrets,
 	v1PushSecrets,
 	v2PushSecrets,
 	pullSecrets,
-	reformatPullSecrets
+	reformatPullSecrets,
+	secretObjectHasRequiredFields
 };
