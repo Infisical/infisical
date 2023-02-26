@@ -33,10 +33,10 @@ export interface DeleteRowFunctionProps {
 interface SideBarProps {
   toggleSidebar: (value: string) => void;
   data: SecretProps[];
-  modifyKey: (value: string, position: number) => void;
-  modifyValue: (value: string, position: number) => void;
-  modifyValueOverride: (value: string | undefined, position: number) => void;
-  modifyComment: (value: string, position: number) => void;
+  modifyKey: (value: string, id: string) => void;
+  modifyValue: (value: string, id: string) => void;
+  modifyValueOverride: (value: string | undefined, id: string) => void;
+  modifyComment: (value: string, id: string) => void;
   buttonReady: boolean;
   savePush: () => void;
   sharedToHide: string[];
@@ -110,7 +110,7 @@ const SideBar = ({
               <DashboardInputField
                 onChangeHandler={modifyKey}
                 type="varName"
-                position={data[0]?.pos}
+                id={data[0]?.id}
                 value={data[0]?.key}
                 isDuplicate={false}
                 blurred={false}
@@ -128,14 +128,14 @@ const SideBar = ({
                 <DashboardInputField
                   onChangeHandler={modifyValue}
                   type="value"
-                  position={data[0].pos}
+                  id={data[0].id}
                   value={data[0]?.value}
                   isDuplicate={false}
                   blurred
                 />
               </div>
               <div className="absolute bg-bunker-800 right-[1.07rem] top-[1.6rem] z-50">
-                <GenerateSecretMenu modifyValue={modifyValue} position={data[0]?.pos} />
+                <GenerateSecretMenu modifyValue={modifyValue} id={data[0]?.id} />
               </div>
             </div>
           ) : (
@@ -154,7 +154,7 @@ const SideBar = ({
                   enabled={overrideEnabled}
                   setEnabled={setOverrideEnabled}
                   addOverride={modifyValueOverride}
-                  pos={data[0]?.pos}
+                  id={data[0]?.id}
                 />
               </div>
             )}
@@ -167,14 +167,14 @@ const SideBar = ({
                 <DashboardInputField
                   onChangeHandler={modifyValueOverride}
                   type="value"
-                  position={data[0]?.pos}
+                  id={data[0]?.id}
                   value={overrideEnabled ? data[0]?.valueOverride : data[0]?.value}
                   isDuplicate={false}
                   blurred
                 />
               </div>
               <div className="absolute right-[0.57rem] top-[0.3rem] z-50">
-                <GenerateSecretMenu modifyValue={modifyValueOverride} position={data[0]?.pos} />
+                <GenerateSecretMenu modifyValue={modifyValueOverride} id={data[0]?.id} />
               </div>
             </div>
           </div>
@@ -182,7 +182,7 @@ const SideBar = ({
           <CommentField
             comment={data[0]?.comment}
             modifyComment={modifyComment}
-            position={data[0]?.pos}
+            id={data[0]?.id}
           />
         </div>
       )}

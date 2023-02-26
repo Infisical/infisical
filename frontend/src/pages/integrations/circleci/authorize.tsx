@@ -49,7 +49,7 @@ export default function CircleCICreateIntegrationPage() {
       <Card className="max-w-md p-8 rounded-md">
         <CardTitle className='text-center'>CircleCI Integration</CardTitle>
          <FormControl
-          label="CircleCI API Key"
+          label="CircleCI API Token"
           errorText={apiKeyErrorText}
           isError={apiKeyErrorText !== '' ?? false}
         >

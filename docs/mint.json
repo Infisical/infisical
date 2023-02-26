@@ -98,6 +98,7 @@
         "getting-started/dashboard/pit-recovery",
         "getting-started/dashboard/secret-versioning",
         "getting-started/dashboard/audit-logs",
+        "getting-started/dashboard/mfa",
         "getting-started/dashboard/token"
       ]
     },
@@ -118,6 +119,7 @@
             "cli/commands/reset"
           ]
         },
+        "cli/project-config",
         "cli/faq"
       ]
     },
@@ -231,7 +233,8 @@
       "pages": [
         "integrations/cicd/githubactions",
         "integrations/cicd/gitlab",
-        "integrations/cicd/circleci"
+        "integrations/cicd/circleci",
+        "integrations/cicd/travisci"
       ]
     },
     {

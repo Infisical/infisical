@@ -1,15 +1,23 @@
+import { apiRequest } from "@app/config/request";
+
 interface Props {
   email: string;
   firstName: string;
   lastName: string;
+  protectedKey: string;
+  protectedKeyIV: string;
+  protectedKeyTag: string;
   publicKey: string;
-  ciphertext: string;
-  iv: string;
-  tag: string;
+  encryptedPrivateKey: string;
+  encryptedPrivateKeyIV: string;
+  encryptedPrivateKeyTag: string;
   salt: string;
   verifier: string;
-  token: string;
 }
+
+// missing token?
+// TODO: add to SecurityClient
+
 
 /**
  * This function is called in the end of the signup process.
@@ -27,34 +35,36 @@ interface Props {
  * @param {string} obj.token - token that confirms a user's identity
  * @returns
  */
-const completeAccountInformationSignupInvite = ({
+const completeAccountInformationSignupInvite = async ({
   email,
   firstName,
   lastName,
+  protectedKey,
+  protectedKeyIV,
+  protectedKeyTag,
   publicKey,
-  ciphertext,
-  iv,
-  tag,
+  encryptedPrivateKey,
+  encryptedPrivateKeyIV,
+  encryptedPrivateKeyTag,
   salt,
-  verifier,
-  token
-}: Props) => fetch('/api/v1/signup/complete-account/invite', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${  token}`
-    },
-    body: JSON.stringify({
-      email,
-      firstName,
-      lastName,
-      publicKey,
-      encryptedPrivateKey: ciphertext,
-      iv,
-      tag,
-      salt,
-      verifier
-    })
+  verifier
+}: Props) => {
+  const { data } = await apiRequest.post('/api/v2/signup/complete-account/invite', {
+    email,
+    firstName,
+    lastName,
+    protectedKey,
+    protectedKeyIV,
+    protectedKeyTag,
+    publicKey,
+    encryptedPrivateKey,
+    encryptedPrivateKeyIV,
+    encryptedPrivateKeyTag,
+    salt,
+    verifier 
   });
+
+  return data;
+}
 
 export default completeAccountInformationSignupInvite;

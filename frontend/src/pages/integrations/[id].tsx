@@ -204,6 +204,9 @@ export default function Integrations() {
         case 'gcp':
           link = `https://accounts.google.com/o/oauth2/auth?scope=https://www.googleapis.com/auth/cloud-platform&response_type=code&state=${state}&redirect_uri=${window.location.origin}/integrations/gcp/oauth2/callback&client_id=${integrationOption.clientId}`
           break;
+        case 'travisci':
+          link = `${window.location.origin}/integrations/travisci/authorize`
+          break;
         default:
           break;
       }
@@ -252,6 +255,9 @@ export default function Integrations() {
           break;
         case 'gcp':
           link = `${window.location.origin}/integrations/gcp/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'travisci':
+          link = `${window.location.origin}/integrations/travisci/create?integrationAuthId=${integrationAuth._id}`;
           break;
         default:
           break;

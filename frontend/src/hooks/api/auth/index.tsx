@@ -1,1 +1,4 @@
-export { useGetAuthToken } from './queries';
+export {
+    useGetAuthToken,
+    useSendMfaToken, 
+    useVerifyMfaToken} from './queries'

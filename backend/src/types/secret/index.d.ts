@@ -1,5 +1,7 @@
+import { Types } from 'mongoose';
 import { Assign, Omit } from 'utility-types';
 import { ISecret } from '../../models';
+import { mongo } from 'mongoose';
 
 // Everything is required, except the omitted types
 export type CreateSecretRequestBody = Omit<ISecret, "user" | "version" | "environment" | "workspace">;
@@ -12,3 +14,39 @@ export type SanitizedSecretModify = Partial<Omit<ISecret, "user" | "version" | "
 
 // Everything is required, except the omitted types
 export type SanitizedSecretForCreate = Omit<ISecret, "version" | "_id">;
+
+export interface BatchSecretRequest {
+    id: string;
+    method: 'POST' | 'PATCH' | 'DELETE';
+    secret: Secret;
+}
+
+export interface BatchSecret {
+    _id: string;
+    type: 'shared' | 'personal',
+    secretKeyCiphertext: string;
+    secretKeyIV: string;
+    secretKeyTag: string;
+    secretValueCiphertext: string;
+    secretValueIV: string;
+    secretValueTag: string;
+    secretCommentCiphertext: string;
+    secretCommentIV: string;
+    secretCommentTag: string;
+    tags: string[];
+}
+
+export interface BatchSecret {
+    _id: string;
+    type: 'shared' | 'personal',
+    secretKeyCiphertext: string;
+    secretKeyIV: string;
+    secretKeyTag: string;
+    secretValueCiphertext: string;
+    secretValueIV: string;
+    secretValueTag: string;
+    secretCommentCiphertext: string;
+    secretCommentIV: string;
+    secretCommentTag: string;
+    tags: string[];
+}

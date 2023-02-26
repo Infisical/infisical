@@ -3,14 +3,19 @@ import { twMerge } from 'tailwind-merge';
 
 export type CardTitleProps = {
   children: ReactNode;
-  subTitle?: string;
+  subTitle?: ReactNode;
   className?: string;
 };
 
 export const CardTitle = ({ children, className, subTitle }: CardTitleProps) => (
-  <div className={twMerge('px-6 py-4 mb-5 font-sans text-lg font-normal border-b border-mineshaft-600', className)}>
+  <div
+    className={twMerge(
+      'px-6 py-4 mb-5 font-sans text-lg font-normal border-b border-mineshaft-600',
+      className
+    )}
+  >
     {children}
-    {subTitle && <p className="pt-0.5 text-sm font-normal text-gray-400">{subTitle}</p>}
+    {subTitle && <p className="pt-2 text-sm font-normal text-gray-400">{subTitle}</p>}
   </div>
 );
 

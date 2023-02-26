@@ -45,11 +45,9 @@ import {
 
 export const ProjectSettingsPage = () => {
   const { t } = useTranslation();
-  const { currentWorkspace, workspaces } = useWorkspace();
+  const { currentWorkspace, workspaces, isLoading: isWorkspaceLoading } = useWorkspace();
   const router = useRouter();
-  const { data: serviceTokens } = useGetUserWsServiceTokens({
-    workspaceID: currentWorkspace?._id || ''
-  });
+
   const workspaceID = currentWorkspace?._id || '';
   const { createNotification } = useNotificationContext();
   // delete action worksapce
@@ -58,7 +56,7 @@ export const ProjectSettingsPage = () => {
 
   const renameWorkspace = useRenameWorkspace();
   const toggleAutoCapitalization = useToggleAutoCapitalization();
-  
+
   const deleteWorkspace = useDeleteWorkspace();
   // env crud operation
   const createWsEnv = useCreateWsEnvironment();
@@ -66,12 +64,15 @@ export const ProjectSettingsPage = () => {
   const deleteWsEnv = useDeleteWsEnvironment();
 
   // service token
+  const { data: serviceTokens, isLoading: isServiceTokenLoading } = useGetUserWsServiceTokens({
+    workspaceID: currentWorkspace?._id || ''
+  });
   const { data: latestFileKey } = useGetUserWsKey(workspaceID);
   const createServiceToken = useCreateServiceToken();
   const deleteServiceToken = useDeleteServiceToken();
 
   // tag
-  const { data: wsTags } = useGetWsTags(workspaceID);
+  const { data: wsTags, isLoading: isTagLoading } = useGetWsTags(workspaceID);
   const createWsTag = useCreateWsTag();
   const deleteWsTag = useDeleteWsTag();
 
@@ -97,7 +98,7 @@ export const ProjectSettingsPage = () => {
     }
   };
 
-  const onAutoCapitalizationToggle = async (state: boolean) => {  
+  const onAutoCapitalizationToggle = async (state: boolean) => {
     try {
       await toggleAutoCapitalization.mutateAsync({
         workspaceID,
@@ -123,6 +124,9 @@ export const ProjectSettingsPage = () => {
       await deleteWorkspace.mutateAsync({ workspaceID });
       // redirect user to first workspace user is part of
       const ws = workspaces.find(({ _id }) => _id !== workspaceID);
+      if (!ws) {
+        router.push('/noprojects');
+      }
       router.push(`/dashboard/${ws?._id}`);
       createNotification({
         text: 'Successfully deleted workspace',
@@ -247,7 +251,7 @@ export const ProjectSettingsPage = () => {
       const res = await createWsTag.mutateAsync({
         workspaceID,
         tagName: name,
-        tagSlug: name.replace(" ", "_")
+        tagSlug: name.replace(' ', '_')
       });
       createNotification({
         text: 'Successfully created a tag',
@@ -297,7 +301,7 @@ export const ProjectSettingsPage = () => {
   };
 
   return (
-    <div className="container mx-auto flex flex-col px-8 text-mineshaft-50 dark dark:[color-scheme:dark]">
+    <div className="dark container mx-auto flex flex-col px-8 text-mineshaft-50 dark:[color-scheme:dark]">
       {/* TODO(akhilmhdh): Remove this right when layout is refactored  */}
       <div className="relative right-5">
         <NavHeader pageName={t('settings-project:title')} isProjectRelated />
@@ -314,12 +318,9 @@ export const ProjectSettingsPage = () => {
         workspaceName={currentWorkspace?.name}
         onProjectNameChange={onRenameWorkspace}
       />
-      <AutoCapitalizationSection
-        workspaceAutoCapitalization={currentWorkspace?.autoCapitalization}
-        onAutoCapitalizationChange={onAutoCapitalizationToggle}
-      />
       <CopyProjectIDSection workspaceID={currentWorkspace?._id || ''} />
       <EnvironmentSection
+        isLoading={isWorkspaceLoading}
         environments={currentWorkspace?.environments || []}
         onCreate={onCreateWsEnv}
         onDelete={onDeleteWsEnv}
@@ -327,6 +328,7 @@ export const ProjectSettingsPage = () => {
         isEnvServiceAllowed={isEnvServiceAllowed}
       />
       <ServiceTokenSection
+        isLoading={isServiceTokenLoading}
         tokens={serviceTokens || []}
         environments={currentWorkspace?.environments || []}
         onDeleteToken={onDeleteServiceToken}
@@ -334,10 +336,15 @@ export const ProjectSettingsPage = () => {
         onCreateToken={onCreateServiceToken}
       />
       <SecretTagsSection
+        isLoading={isTagLoading}
         tags={wsTags || []}
         onDeleteTag={onDeleteTag}
         workspaceName={currentWorkspace?.name || ''}
         onCreateTag={onCreateWsTag}
+      />
+      <AutoCapitalizationSection
+        workspaceAutoCapitalization={currentWorkspace?.autoCapitalization}
+        onAutoCapitalizationChange={onAutoCapitalizationToggle}
       />
       <div className="mb-6 mt-4 flex w-full flex-col items-start rounded-md border-l border-red bg-white/5 px-6 pl-6 pb-4 pt-4">
         <p className="text-xl font-bold text-red">{t('settings-project:danger-zone')}</p>

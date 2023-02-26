@@ -1,10 +1,14 @@
 /* eslint-disable new-cap */
+import crypto from 'crypto';
+
 import jsrp from 'jsrp';
 
 import changePassword2 from '@app/pages/api/auth/ChangePassword2';
 import SRP1 from '@app/pages/api/auth/SRP1';
 
+import { saveTokenToLocalStorage } from '../saveTokenToLocalStorage';
 import Aes256Gcm from './aes-256-gcm';
+import { deriveArgonKey } from './crypto';
 
 const clientOldPassword = new jsrp.client();
 const clientNewPassword = new jsrp.client();
@@ -63,43 +67,67 @@ const changePassword = async (
           },
           async () => {
             clientNewPassword.createVerifier(async (err, result) => {
-              // The Blob part here is needed to account for symbols that count as 2+ bytes (e.g., é, å, ø)
-              const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
+
+              const derivedKey = await deriveArgonKey({
+                password: newPassword,
+                salt: result.salt,
+                mem: 65536,
+                time: 3,
+                parallelism: 1,
+                hashLen: 32
+              });
+              
+              if (!derivedKey) throw new Error('Failed to derive key from password');
+
+              const key = crypto.randomBytes(32);
+
+              // create encrypted private key by encrypting the private
+              // key with the symmetric key [key]
+              const {
+                ciphertext: encryptedPrivateKey,
+                iv: encryptedPrivateKeyIV,
+                tag: encryptedPrivateKeyTag
+              } = Aes256Gcm.encrypt({
                 text: localStorage.getItem('PRIVATE_KEY') as string,
-                secret: newPassword
-                  .slice(0, 32)
-                  .padStart(
-                    32 + (newPassword.slice(0, 32).length - new Blob([newPassword]).size),
-                    '0'
-                  )
+                secret: key
+              });
+              
+              // create the protected key by encrypting the symmetric key
+              // [key] with the derived key
+              const {
+                ciphertext: protectedKey,
+                iv: protectedKeyIV,
+                tag: protectedKeyTag
+              } = Aes256Gcm.encrypt({
+                text: key.toString('hex'),
+                secret: Buffer.from(derivedKey.hash)
               });
 
-              if (ciphertext) {
-                localStorage.setItem('encryptedPrivateKey', ciphertext);
-                localStorage.setItem('iv', iv);
-                localStorage.setItem('tag', tag);
+              try {
+                await changePassword2({
+                  clientProof,
+                  protectedKey,
+                  protectedKeyIV,
+                  protectedKeyTag,
+                  encryptedPrivateKey,
+                  encryptedPrivateKeyIV,
+                  encryptedPrivateKeyTag,
+                  salt: result.salt,
+                  verifier: result.verifier
+                });
 
-                let res;
-                try {
-                  res = await changePassword2({
-                    encryptedPrivateKey: ciphertext,
-                    iv,
-                    tag,
-                    salt: result.salt,
-                    verifier: result.verifier,
-                    clientProof
-                  });
-                  if (res && res.status === 400) {
-                    setCurrentPasswordError(true);
-                  } else if (res && res.status === 200) {
-                    setPasswordChanged(true);
-                    setCurrentPassword('');
-                    setNewPassword('');
-                  }
-                } catch (error) {
-                  setCurrentPasswordError(true);
-                  console.log(error);
-                }
+                saveTokenToLocalStorage({
+                  encryptedPrivateKey,
+                  iv: encryptedPrivateKeyIV,
+                  tag: encryptedPrivateKeyTag
+                });
+
+                setPasswordChanged(true);
+                setCurrentPassword('');
+                setNewPassword('');
+              } catch (error) {
+                setCurrentPasswordError(true);
+                console.log(error);
               }
             });
           }

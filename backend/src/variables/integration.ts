@@ -22,6 +22,7 @@ const INTEGRATION_RENDER = "render";
 const INTEGRATION_FLYIO = "flyio";
 const INTEGRATION_CIRCLECI = "circleci";
 const INTEGRATION_GCP = 'gcp';
+const INTEGRATION_TRAVISCI = "travisci";
 const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
     INTEGRATION_HEROKU,
@@ -31,7 +32,8 @@ const INTEGRATION_SET = new Set([
     INTEGRATION_RENDER,
     INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
-    INTEGRATION_GCP
+    INTEGRATION_GCP,
+  INTEGRATION_TRAVISCI,
 ]);
 
 // integration types
@@ -55,6 +57,7 @@ const INTEGRATION_RENDER_API_URL = "https://api.render.com";
 const INTEGRATION_FLYIO_API_URL = "https://api.fly.io/graphql";
 const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
 const INTEGRATION_GCP_API_URL = "https://cloudresourcemanager.googleapis.com";
+const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
 
 const INTEGRATION_OPTIONS = [
     {
@@ -140,6 +143,15 @@ const INTEGRATION_OPTIONS = [
         docsLink: ''
     },
     {
+        name: 'Travis CI',
+        slug: 'travisci',
+        image: 'Travis CI.png',
+        isAvailable: true,
+        type: 'pat',
+        clientId: '',
+        docsLink: ''
+    },
+    {
         name: 'Azure Key Vault',
         slug: 'azure-key-vault',
         image: 'Microsoft Azure.png',
@@ -157,15 +169,6 @@ const INTEGRATION_OPTIONS = [
         type: 'oauth',
         clientId: CLIENT_ID_GCP,
         docsLink: ''
-    },
-    {
-        name: 'Travis CI',
-        slug: 'travisci',
-        image: 'Travis CI.png',
-        isAvailable: false,
-        type: '',
-        clientId: '',
-        docsLink: ''
     }
 ]
 
@@ -181,6 +184,7 @@ export {
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
+  INTEGRATION_TRAVISCI,
   INTEGRATION_SET,
   INTEGRATION_OAUTH2,
     INTEGRATION_AZURE_TOKEN_URL,
@@ -196,6 +200,7 @@ export {
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_GCP_API_URL,
+  INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_OPTIONS,
 };
 

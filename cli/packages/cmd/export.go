@@ -36,9 +36,12 @@ var exportCmd = &cobra.Command{
 		// util.RequireLocalWorkspaceFile()
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		envName, err := cmd.Flags().GetString("env")
-		if err != nil {
-			util.HandleError(err)
+		environmentName, _ := cmd.Flags().GetString("env")
+		if !cmd.Flags().Changed("env") {
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
+			if environmentFromWorkspace != "" {
+				environmentName = environmentFromWorkspace
+			}
 		}
 
 		shouldExpandSecrets, err := cmd.Flags().GetBool("expand")
@@ -66,7 +69,7 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: envName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")
 		}

@@ -49,10 +49,10 @@
 - **[시크릿 버전 기록](https://infisical.com/docs/getting-started/dashboard/versioning)** 을 통해 어떤 시크릿이든 버전 기록을 볼 수 있어요
 - **[활동 로그](https://infisical.com/docs/getting-started/dashboard/audit-logs)** 를 통해 프로젝트의 모든 활동을 볼 수 있어요
 - **[지정 시점으로 시크릿 복구](https://infisical.com/docs/getting-started/dashboard/pit-recovery)** 를 사용해 특정한 시점으로 시크릿을 복구할 수 있어요
+- **2단계 인증**
+- **프로젝트 별 인증** (read/write 컨트롤도 곧 찾아옵니다)
 - 🔜  Digital Ocean 및 Heroku로 **원클릭 배포**
-- 🔜 **프로젝트 별 인증** (read/write 컨트롤도 곧 찾아옵니다)
 - 🔜 **자동 시크릿 로테이션**
-- 🔜 **2단계 인증**
 - 🔜 **Slack & MS Teams** 연동
 
 그 외에 더 많은 기능들이 있어요.

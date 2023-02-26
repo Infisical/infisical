@@ -5,22 +5,19 @@ import {
 } from '../../variables';
 
 export interface ISecretVersion {
-	_id: Types.ObjectId;
 	secret: Types.ObjectId;
 	version: number;
 	workspace: Types.ObjectId; // new
 	type: string; // new
-	user: Types.ObjectId; // new
+	user?: Types.ObjectId; // new
 	environment: string; // new
 	isDeleted: boolean;
 	secretKeyCiphertext: string;
 	secretKeyIV: string;
 	secretKeyTag: string;
-	secretKeyHash: string;
 	secretValueCiphertext: string;
 	secretValueIV: string;
 	secretValueTag: string;
-	secretValueHash: string;
 	tags?: string[];
 }
 
@@ -72,9 +69,6 @@ const secretVersionSchema = new Schema<ISecretVersion>(
 			type: String, // symmetric
 			required: true
 		},
-		secretKeyHash: {
-			type: String
-		},
 		secretValueCiphertext: {
 			type: String,
 			required: true
@@ -86,9 +80,6 @@ const secretVersionSchema = new Schema<ISecretVersion>(
 		secretValueTag: {
 			type: String, // symmetric
 			required: true
-		},
-		secretValueHash: {
-			type: String
 		},
 		tags: {
 			ref: 'Tag',

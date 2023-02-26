@@ -54,9 +54,12 @@ var runCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		envName, err := cmd.Flags().GetString("env")
-		if err != nil {
-			util.HandleError(err, "Unable to parse flag")
+		environmentName, _ := cmd.Flags().GetString("env")
+		if !cmd.Flags().Changed("env") {
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
+			if environmentFromWorkspace != "" {
+				environmentName = environmentFromWorkspace
+			}
 		}
 
 		infisicalToken, err := cmd.Flags().GetString("token")
@@ -79,7 +82,7 @@ var runCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: envName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
 
 		if err != nil {
 			util.HandleError(err, "Could not fetch secrets", "If you are using a service token to fetch secrets, please ensure it is valid")
@@ -107,13 +110,7 @@ var runCmd = &cobra.Command{
 		}
 
 		// check to see if there are any reserved key words in secrets to inject
-		reservedEnvironmentVariables := []string{"HOME", "PATH", "PS1", "PS2"}
-		for _, reservedEnvName := range reservedEnvironmentVariables {
-			if _, ok := secretsByKey[reservedEnvName]; ok {
-				delete(secretsByKey, reservedEnvName)
-				util.PrintWarning(fmt.Sprintf("Infisical secret named [%v] has been removed because it is a reserved secret name", reservedEnvName))
-			}
-		}
+		filterReservedEnvVars(secretsByKey)
 
 		// now add infisical secrets
 		for k, v := range secretsByKey {
@@ -146,6 +143,37 @@ var runCmd = &cobra.Command{
 	},
 }
 
+var (
+	reservedEnvVars = []string{
+		"HOME", "PATH", "PS1", "PS2",
+		"PWD", "EDITOR", "XAUTHORITY", "USER",
+		"TERM", "TERMINFO", "SHELL", "MAIL",
+	}
+
+	reservedEnvVarPrefixes = []string{
+		"XDG_",
+		"LC_",
+	}
+)
+
+func filterReservedEnvVars(env map[string]models.SingleEnvironmentVariable) {
+	for _, reservedEnvName := range reservedEnvVars {
+		if _, ok := env[reservedEnvName]; ok {
+			delete(env, reservedEnvName)
+			util.PrintWarning(fmt.Sprintf("Infisical secret named [%v] has been removed because it is a reserved secret name", reservedEnvName))
+		}
+	}
+
+	for _, reservedEnvPrefix := range reservedEnvVarPrefixes {
+		for envName := range env {
+			if strings.HasPrefix(envName, reservedEnvPrefix) {
+				delete(env, envName)
+				util.PrintWarning(fmt.Sprintf("Infisical secret named [%v] has been removed because it contains a reserved prefix", envName))
+			}
+		}
+	}
+}
+
 func init() {
 	rootCmd.AddCommand(runCmd)
 	runCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
@@ -158,11 +186,14 @@ func init() {
 
 // Will execute a single command and pass in the given secrets into the process
 func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string) error {
-	command := args[0]
-	argsForCommand := args[1:]
+	shell := subShellCmd()
 	color.Green("Injecting %v Infisical secrets into your application process", secretsCount)
 
-	cmd := exec.Command(command, argsForCommand...)
+	args = append(args[:1], args[0:]...) // shift args to the right
+	args[0] = shell[1]
+
+	cmd := exec.Command(shell[0], args...)
+
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -172,15 +203,7 @@ func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string)
 }
 
 func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []string) error {
-	shell := [2]string{"sh", "-c"}
-	if runtime.GOOS == "windows" {
-		shell = [2]string{"cmd", "/C"}
-	} else {
-		currentShell := os.Getenv("SHELL")
-		if currentShell != "" {
-			shell[0] = currentShell
-		}
-	}
+	shell := subShellCmd()
 
 	cmd := exec.Command(shell[0], shell[1], fullCommand)
 	cmd.Stdin = os.Stdin
@@ -192,6 +215,23 @@ func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []
 	log.Debugf("executing command: %s %s %s \n", shell[0], shell[1], fullCommand)
 
 	return execCmd(cmd)
+}
+
+func subShellCmd() [2]string {
+	// default to sh -c
+	shell := [...]string{"sh", "-c"}
+
+	currentShell := os.Getenv("SHELL")
+	if currentShell != "" {
+		shell[0] = currentShell
+	} else if runtime.GOOS == "windows" {
+		// if the SHELL env var is not set and we're on Windows, use cmd.exe
+		// The SHELL var should always be checked first, in case the user executes
+		// infisical from something like Git Bash.
+		return [...]string{"cmd", "/C"}
+	}
+
+	return shell
 }
 
 // Credit: inspired by AWS Valut

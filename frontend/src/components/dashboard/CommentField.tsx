@@ -6,11 +6,11 @@ import { useTranslation } from 'next-i18next';
 const CommentField = ({
   comment,
   modifyComment,
-  position
+  id
 }: {
   comment: string;
-  modifyComment: (value: string, posistion: number) => void;
-  position: number;
+  modifyComment: (value: string, id: string) => void;
+  id: string;
 }) => {
   const { t } = useTranslation();
 
@@ -20,7 +20,7 @@ const CommentField = ({
       <textarea
         className="placeholder:text-bunker-400 dark:[color-scheme:dark] h-32 w-full bg-bunker-800 px-2 py-1.5 rounded-md border border-mineshaft-500 text-sm text-bunker-300 outline-none focus:ring-2 ring-primary-800 ring-opacity-70"
         value={comment}
-        onChange={(e) => modifyComment(e.target.value, position)}
+        onChange={(e) => modifyComment(e.target.value, id)}
         placeholder="Leave any comments here..."
       />
     </div>

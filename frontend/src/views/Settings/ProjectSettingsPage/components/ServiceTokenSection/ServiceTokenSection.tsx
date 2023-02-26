@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { faCheck, faCopy, faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faCopy, faKey, faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -9,6 +9,7 @@ import * as yup from 'yup';
 import {
   Button,
   DeleteActionModal,
+  EmptyState,
   FormControl,
   IconButton,
   Input,
@@ -20,6 +21,7 @@ import {
   SelectItem,
   Table,
   TableContainer,
+  TableSkeleton,
   TBody,
   Td,
   Th,
@@ -47,6 +49,7 @@ export type CreateServiceToken = yup.InferType<typeof createServiceTokenSchema>;
 
 type Props = {
   tokens: ServiceToken[];
+  isLoading?: boolean;
   workspaceName: string;
   environments: WorkspaceEnv[];
   onDeleteToken: (serviceTokenID: string) => Promise<void>;
@@ -57,6 +60,7 @@ type DeleteModalData = { name: string; id: string };
 
 export const ServiceTokenSection = ({
   tokens = [],
+  isLoading,
   onDeleteToken,
   workspaceName,
   environments = [],
@@ -252,7 +256,7 @@ export const ServiceTokenSection = ({
         isOpen={popUp.deleteAPITokenConfirmation.isOpen}
         title={`Delete ${
           (popUp?.deleteAPITokenConfirmation?.data as DeleteModalData)?.name || ' '
-        } api key?`}
+        } service token?`}
         onChange={(isOpen) => handlePopUpToggle('deleteAPITokenConfirmation', isOpen)}
         deleteKey={(popUp?.deleteAPITokenConfirmation?.data as DeleteModalData)?.name}
         onClose={() => handlePopUpClose('deleteAPITokenConfirmation')}
@@ -269,7 +273,8 @@ export const ServiceTokenSection = ({
             </Tr>
           </THead>
           <TBody>
-            {tokens?.length > 0 ? (
+            {isLoading && <TableSkeleton columns={4} key="project-service-tokens" />}
+            {!isLoading &&
               tokens.map((row) => (
                 <Tr key={row._id}>
                   <Td>{row.name}</Td>
@@ -290,11 +295,11 @@ export const ServiceTokenSection = ({
                     </IconButton>
                   </Td>
                 </Tr>
-              ))
-            ) : (
+              ))}
+            {!isLoading && tokens?.length === 0 && (
               <Tr>
                 <Td colSpan={4} className="py-6 text-center text-bunker-400">
-                  No service tokens found
+                  <EmptyState title="No service tokens found" icon={faKey} />
                 </Td>
               </Tr>
             )}

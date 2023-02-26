@@ -7,6 +7,7 @@ import * as yup from 'yup';
 import {
   Button,
   DeleteActionModal,
+  EmptyState,
   FormControl,
   IconButton,
   Input,
@@ -14,6 +15,7 @@ import {
   ModalContent,
   Table,
   TableContainer,
+  TableSkeleton,
   TBody,
   Td,
   Th,
@@ -25,6 +27,7 @@ import { usePopUp } from '@app/hooks/usePopUp';
 
 type Props = {
   environments: Array<{ name: string; slug: string }>;
+  isLoading?: boolean;
   isEnvServiceAllowed: boolean;
   onCreate: (data: CreateUpdateEnvFormData) => Promise<void>;
   onUpdate: (oldEnvSlug: string, data: CreateUpdateEnvFormData) => Promise<void>;
@@ -43,6 +46,7 @@ export const EnvironmentSection = ({
   isEnvServiceAllowed,
   onCreate,
   onDelete,
+  isLoading,
   onUpdate
 }: Props): JSX.Element => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -116,7 +120,8 @@ export const EnvironmentSection = ({
             </Tr>
           </THead>
           <TBody>
-            {environments?.length > 0 ? (
+            {isLoading && <TableSkeleton columns={3} key="project-envs" />}
+            {!isLoading &&
               environments.map(({ name, slug }) => (
                 <Tr key={name}>
                   <Td>{name}</Td>
@@ -152,11 +157,11 @@ export const EnvironmentSection = ({
                     </IconButton>
                   </Td>
                 </Tr>
-              ))
-            ) : (
+              ))}
+            {!isLoading && environments?.length === 0 && (
               <Tr>
-                <Td colSpan={4} className="pt-7 pb-5 text-center text-bunker-400">
-                  No environments found
+                <Td colSpan={3}>
+                  <EmptyState title="No environments found" />
                 </Td>
               </Tr>
             )}

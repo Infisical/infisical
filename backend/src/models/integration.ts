@@ -11,6 +11,7 @@ import {
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_GCP,
+  INTEGRATION_TRAVISCI
 } from "../variables";
 
 export interface IIntegration {
@@ -35,7 +36,8 @@ export interface IIntegration {
     | 'render' 
     | 'flyio'
     | 'circleci'
-    | 'gcp';
+    | 'gcp'
+    | 'travisci';
   integrationAuth: Types.ObjectId;
 }
 
@@ -99,7 +101,8 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_RENDER,
         INTEGRATION_FLYIO,
         INTEGRATION_CIRCLECI,
-        INTEGRATION_GCP
+        INTEGRATION_GCP,
+        INTEGRATION_TRAVISCI,
       ],
       required: true,
     },

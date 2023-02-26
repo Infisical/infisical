@@ -91,7 +91,7 @@ export default function CircleCICreateIntegrationPage() {
           </Select>
         </FormControl>
         <FormControl
-          label="CircleCI Service"
+          label="CircleCI Project"
           className='mt-4'
         >
           <Select

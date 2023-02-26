@@ -39,8 +39,9 @@ type Workspace struct {
 }
 
 type WorkspaceConfigFile struct {
-	WorkspaceId        string `json:"workspaceId"`
-	DefaultEnvironment string `json:"defaultEnvironment"`
+	WorkspaceId                   string            `json:"workspaceId"`
+	DefaultEnvironment            string            `json:"defaultEnvironment"`
+	GitBranchToEnvironmentMapping map[string]string `json:"gitBranchToEnvironmentMapping"`
 }
 
 type SymmetricEncryptionResult struct {
@@ -50,7 +51,8 @@ type SymmetricEncryptionResult struct {
 }
 
 type GetAllSecretsParameters struct {
-	Environment    string
-	InfisicalToken string
-	TagSlugs       string
+	Environment              string
+	EnvironmentPassedViaFlag bool
+	InfisicalToken           string
+	TagSlugs                 string
 }

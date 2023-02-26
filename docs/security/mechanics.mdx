@@ -5,7 +5,11 @@ description: "Quick explanation of how Infisical works."
 
 ## Signup
 
-During account signup, a user confirms their email address via OTP, generates a public-private key pair to be stored locally (private keys are symmetrically encrypted by the user's newly-made password), and forwards SRP-related values and user identifier information to the server. This includes `email`, `firstName`, `lastName`, `publicKey`, `encryptedPrivateKey`, `iv`, `tag`, `salt`, `verifier`, and `organizationName`.
+During account signup, a user confirms their email address via OTP, generates a public-private key pair to be stored locally, generates a user salt, generates a 256-bit key, and enters their password.
+
+The 256-bit key is used to encrypt the private key; the 256-bit key itself is then encrypted by a key generated from the user's password and salt with key derivation function `argon2id`. The resulting, 256-bit key the protected key.
+
+The encrypted private key, protected key, user identifier information, and SRP details are forwarded to the server.
 
 Once authenticated via SRP, a user is issued a JWT and refresh token. The JWT token is stored in browser memory under a write-only class `SecurityClient` that appends the token to all future outbound requests requiring authentication. The refresh token is stored in an `HttpOnly` cookie and included in future requests to `/api/token` for JWT token renewal. This design side-steps potential XSS attacks on local storage.
 

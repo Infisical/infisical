@@ -11,7 +11,7 @@
   "step1-submit": "Başla",
   "step2-message": "Şu adrese bir doğrulama maili yolladık",
   "step2-code-error": "Tüh. Kodun hatalı. Lütfen tekrar dene.",
-  "step2-resend-alert": "Mail ulaşamadı mı?",
+  "step2-resend-alert": "Kodu ulaşamadı mı?",
   "step2-resend-submit": "Tekrar Yolla",
   "step2-resend-progress": "Tekrar yollanıyor...",
   "step2-spam-alert": "Spam kutunuzu kontrol ettiğinizden emin olun.",

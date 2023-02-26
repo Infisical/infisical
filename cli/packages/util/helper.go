@@ -1,10 +1,14 @@
 package util
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"os"
+	"os/exec"
+	"path"
+	"strings"
 )
 
 type DecodedSymmetricEncryptionDetails = struct {
@@ -85,8 +89,8 @@ func RequireServiceToken() {
 }
 
 func RequireLocalWorkspaceFile() {
-	workspaceFileExists := WorkspaceConfigFileExistsInCurrentPath()
-	if !workspaceFileExists {
+	workspaceFilePath, _ := FindWorkspaceConfigFile()
+	if workspaceFilePath == "" {
 		PrintErrorMessageAndExit("It looks you have not yet connected this project to Infisical", "To do so, run [infisical init] then run your command again")
 	}
 
@@ -109,4 +113,27 @@ func GetHashFromStringList(list []string) string {
 
 	sum := sha256.Sum256(hash.Sum(nil))
 	return fmt.Sprintf("%x", sum)
+}
+
+// execCmd is a struct that holds the command and arguments to be executed.
+// By using this struct, we can easily mock the command and arguments.
+type execCmd struct {
+	cmd  string
+	args []string
+}
+
+var getCurrentBranchCmd = execCmd{
+	cmd:  "git",
+	args: []string{"symbolic-ref", "--short", "HEAD"},
+}
+
+func getCurrentBranch() (string, error) {
+	cmd := exec.Command(getCurrentBranchCmd.cmd, getCurrentBranchCmd.args...)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	return path.Base(strings.TrimSpace(out.String())), nil
 }
