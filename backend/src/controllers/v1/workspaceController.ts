@@ -18,7 +18,6 @@ import { addMemberships } from "../../helpers/membership";
 import { ADMIN } from "../../variables";
 import { BadRequestError, ResourceNotFound, UnauthorizedRequestError } from "../../utils/errors";
 import _ from "lodash";
-
 /**
  * Return public keys of members of workspace with id [workspaceId]
  * @param req
@@ -309,8 +308,13 @@ export const addApproverForWorkspaceAndEnvironment = async (
   req: Request,
   res: Response
 ) => {
+  interface Approver {
+    environment: string;
+    userId: string;
+  }
+
   const { workspaceId } = req.params;
-  const { approvers } = req.body
+  const { approvers }: { approvers: Approver[] } = req.body;
 
   const workspaceFromDB = await Workspace.findById(workspaceId)
 
@@ -318,32 +322,40 @@ export const addApproverForWorkspaceAndEnvironment = async (
     throw ResourceNotFound()
   }
 
-  const approverIds = _.map(approvers, "userId")
-  const workspaceEnvironments = _.map(workspaceFromDB.environments, 'slug');
-  const approversEnvironments = _.map(approvers, "environment")
-  const environmentsDifference = _.difference(approversEnvironments, workspaceEnvironments);
+  const allAvailableWorkspaceEnvironments = _.map(workspaceFromDB.environments, 'slug');
+  const environmentsFromApprovers = _.map(approvers, "environment")
+  const filteredApprovers = environmentsFromApprovers.map(environment => allAvailableWorkspaceEnvironments.includes(environment))
 
   // validate environments 
-  if (environmentsDifference.length != 0) {
-    const err = `Invalid environments set for approver(s) [environmentsDifference=${environmentsDifference}]`
+  if (filteredApprovers.length != environmentsFromApprovers.length) {
+    const err = `One or more environments set for approver(s) is invalid`
     throw BadRequestError({ message: err })
   }
 
+  const approverIds = _.map(approvers, "userId")
+
   // validate approvers membership 
-  const membershipValidation = await Membership.find({
+  const approversMemberships = await Membership.find({
     workspace: workspaceId,
     user: { $in: approverIds }
   })
 
-  if (!membershipValidation) {
+  if (!approversMemberships) {
     throw ResourceNotFound()
   }
 
-  if (membershipValidation.length != approverIds.length) {
+  if (approversMemberships.length != approverIds.length) {
     throw UnauthorizedRequestError({ message: "Approvers must be apart of the workspace they are being added to" })
   }
 
-  const updatedWorkspace = await Workspace.findByIdAndUpdate(workspaceId, { $addToSet: { approvers: { $each: approvers } } }, { new: true })
+  const updatedWorkspace = await Workspace.findByIdAndUpdate(workspaceId,
+    {
+      $addToSet: {
+        approvers: {
+          $each: approvers,
+        }
+      }
+    }, { new: true })
 
   return res.json(updatedWorkspace)
 };
@@ -353,8 +365,13 @@ export const removeApproverForWorkspaceAndEnvironment = async (
   req: Request,
   res: Response
 ) => {
+  interface Approver {
+    environment: string;
+    userId: string;
+  }
+
   const { workspaceId } = req.params;
-  const { approvers } = req.body
+  const { approvers }: { approvers: Approver[] } = req.body;
 
   const workspaceFromDB = await Workspace.findById(workspaceId)
 
@@ -362,32 +379,33 @@ export const removeApproverForWorkspaceAndEnvironment = async (
     throw ResourceNotFound()
   }
 
-  const approverIds = _.map(approvers, "userId")
-  const workspaceEnvironments = _.map(workspaceFromDB.environments, 'slug');
-  const approversEnvironments = _.map(approvers, "environment")
-  const environmentsDifference = _.difference(approversEnvironments, workspaceEnvironments);
+  const allAvailableWorkspaceEnvironments = _.map(workspaceFromDB.environments, 'slug');
+  const environmentsFromApprovers = _.map(approvers, "environment")
+  const filteredApprovers = environmentsFromApprovers.map(environment => allAvailableWorkspaceEnvironments.includes(environment))
 
   // validate environments 
-  if (environmentsDifference.length != 0) {
-    const err = `Invalid environments set for approver(s) [environmentsDifference=${environmentsDifference}]`
+  if (filteredApprovers.length != environmentsFromApprovers.length) {
+    const err = `One or more environments set for approver(s) is invalid`
     throw BadRequestError({ message: err })
   }
 
+  const approverIds = _.map(approvers, "userId")
+
   // validate approvers membership 
-  const membershipValidation = await Membership.find({
+  const approversMemberships = await Membership.find({
     workspace: workspaceId,
     user: { $in: approverIds }
   })
 
-  if (!membershipValidation) {
+  if (!approversMemberships) {
     throw ResourceNotFound()
   }
 
-  if (membershipValidation.length != approverIds.length) {
+  if (approversMemberships.length != approverIds.length) {
     throw UnauthorizedRequestError({ message: "Approvers must be apart of the workspace they are being added to" })
   }
 
-  const updatedWorkspace = await Workspace.updateOne({ _id: workspaceId }, { $pullAll: { approvers: approvers } }, { new: true })
+  const updatedWorkspace = await Workspace.findByIdAndUpdate(workspaceId, { $pullAll: { approvers: approvers } }, { new: true })
 
   return res.json(updatedWorkspace)
 };

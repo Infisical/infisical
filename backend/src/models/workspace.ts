@@ -18,6 +18,16 @@ export interface IWorkspace {
 	autoCapitalization: boolean;
 }
 
+const approverSchema = new mongoose.Schema({
+	userId: {
+		type: Schema.Types.ObjectId,
+		ref: 'User',
+	},
+	environment: {
+		type: String
+	}
+}, { _id: false });
+
 const workspaceSchema = new Schema<IWorkspace>({
 	name: {
 		type: String,
@@ -27,17 +37,7 @@ const workspaceSchema = new Schema<IWorkspace>({
 		type: Boolean,
 		default: true,
 	},
-	approvers: [
-		{
-			userId: {
-				type: Schema.Types.ObjectId,
-				ref: 'User',
-			},
-			environment: {
-				type: String
-			}
-		}
-	],
+	approvers: [approverSchema],
 	organization: {
 		type: Schema.Types.ObjectId,
 		ref: 'Organization',
@@ -70,8 +70,6 @@ const workspaceSchema = new Schema<IWorkspace>({
 		],
 	},
 });
-
-workspaceSchema.index({ 'approvers': 1 }, { unique: true });
 
 const Workspace = model<IWorkspace>('Workspace', workspaceSchema);
 
