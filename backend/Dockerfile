@@ -1,21 +1,20 @@
-FROM node:16-bullseye-slim AS build
+# Build stage
+FROM node:16-alpine AS build
 
 WORKDIR /app
-COPY package*.json ./
 
-RUN npm ci --only-production --ignore-scripts
+COPY package*.json ./
+RUN npm ci --only-production
 
 COPY . .
-
 RUN npm run build
 
-
-
-FROM node:16-bullseye-slim
+# Production stage
+FROM node:16-alpine
 
 WORKDIR /app
-COPY package*.json ./
 
+COPY package*.json ./
 RUN npm ci --only-production
 
 COPY --from=build /app .
