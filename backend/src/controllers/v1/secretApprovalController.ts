@@ -1,19 +1,12 @@
 import { Request, Response } from 'express';
 import SecretApprovalRequest, { ApprovalStatus, ChangeType, IApprover, IRequestedChange } from '../../models/secretApprovalRequest';
 import { Builder, IBuilder } from "builder-pattern"
-import { validateSecrets } from '../../helpers/secret';
+import { secretObjectHasRequiredFields, validateSecrets } from '../../helpers/secret';
 import _ from 'lodash';
-import { ACTION_ADD_SECRETS, ACTION_DELETE_SECRETS, ACTION_UPDATE_SECRETS, SECRET_PERSONAL, SECRET_SHARED } from '../../variables';
+import { SECRET_PERSONAL, SECRET_SHARED } from '../../variables';
 import { BadRequestError, ResourceNotFound, UnauthorizedRequestError } from '../../utils/errors';
 import { ISecret, Membership, Secret, Workspace } from '../../models';
-import { user } from '../../routes/v1';
-import { BatchSecret, BatchSecretRequest } from '../../types/secret';
-import { Types } from 'mongoose';
-import { EELogService, EESecretService } from '../../ee/services';
-import { IAction } from '../../ee/models';
-import { getChannelFromUserAgent } from '../../utils/posthog';
-import { eventPushSecrets } from '../../events';
-import { EventService } from '../../services';
+import mongoose from 'mongoose';
 
 export const createApprovalRequest = async (req: Request, res: Response) => {
 	const { workspaceId, environment, requestedChanges } = req.body;
@@ -30,9 +23,9 @@ export const createApprovalRequest = async (req: Request, res: Response) => {
 	}
 
 	// check for secret duplicates 
-	const hasSecretIdDuplicates = requestedChanges.length !== _.uniqBy(requestedChanges, 'modifiedSecretId').length;
+	const hasSecretIdDuplicates = requestedChanges.length !== _.uniqBy(requestedChanges, 'modifiedSecretParentId').length;
 	if (hasSecretIdDuplicates) {
-		throw BadRequestError({ message: "Request cannot contain duplicate secrets" })
+		throw BadRequestError({ message: "Request cannot contain changes for duplicate secrets" })
 	}
 
 	// ensure the workspace has approvers set 
@@ -45,8 +38,9 @@ export const createApprovalRequest = async (req: Request, res: Response) => {
 		return { "userId": id, status: ApprovalStatus.PENDING }
 	})
 
-	const listOfSecretIdsToModify = _.compact(_.map(requestedChanges, "modifiedSecretId"))
+	const listOfSecretIdsToModify = _.compact(_.map(requestedChanges, "modifiedSecretParentId"))
 
+	// Ensure that the user requesting changes for the set of secrets can indeed interact with said secrets
 	if (listOfSecretIdsToModify.length > 0) {
 		await validateSecrets({
 			userId: req.user._id.toString(),
@@ -56,17 +50,17 @@ export const createApprovalRequest = async (req: Request, res: Response) => {
 
 	const sanitizedRequestedChangesList: IRequestedChange[] = []
 	requestedChanges.forEach((requestedChange: IRequestedChange) => {
-		const modifiedSecret = requestedChange.modifiedSecretDetails
-		if (!modifiedSecret.type || !(modifiedSecret.type === SECRET_PERSONAL || modifiedSecret.type === SECRET_SHARED) || !modifiedSecret.secretKeyCiphertext || !modifiedSecret.secretKeyIV || !modifiedSecret.secretKeyTag || (typeof modifiedSecret.secretValueCiphertext !== 'string') || !modifiedSecret.secretValueIV || !modifiedSecret.secretValueTag) {
+		const secretDetailsIsValid = secretObjectHasRequiredFields(requestedChange.modifiedSecretDetails)
+		if (!secretDetailsIsValid) {
 			throw BadRequestError({ message: "One or more required fields are missing from your modified secret" })
 		}
 
-		if (!requestedChange.modifiedSecretId && (requestedChange.type != ChangeType.DELETE.toString() && requestedChange.type != ChangeType.CREATE.toString())) {
-			throw BadRequestError({ message: "modifiedSecretId can only be empty when secret change type is DELETE or CREATE" })
+		if (!requestedChange.modifiedSecretParentId && (requestedChange.type != ChangeType.DELETE.toString() && requestedChange.type != ChangeType.CREATE.toString())) {
+			throw BadRequestError({ message: "modifiedSecretParentId can only be empty when secret change type is DELETE or CREATE" })
 		}
 
 		sanitizedRequestedChangesList.push(Builder<IRequestedChange>()
-			.modifiedSecretId(requestedChange.modifiedSecretId)
+			.modifiedSecretParentId(requestedChange.modifiedSecretParentId)
 			.modifiedSecretDetails(requestedChange.modifiedSecretDetails)
 			.approvers(approversFormatted)
 			.type(requestedChange.type).build())
@@ -79,7 +73,7 @@ export const createApprovalRequest = async (req: Request, res: Response) => {
 		requestedChanges: sanitizedRequestedChangesList
 	})
 
-	const populatedNewApprovalRequest = await newApprovalRequest.populate(["requestedChanges.modifiedSecretId", { path: 'requestedChanges.approvers.userId', select: 'firstName lastName _id' }])
+	const populatedNewApprovalRequest = await newApprovalRequest.populate(["requestedChanges.modifiedSecretParentId", { path: 'requestedChanges.approvers.userId', select: 'firstName lastName _id' }])
 
 	return res.send({ approvalRequest: populatedNewApprovalRequest });
 };
@@ -87,7 +81,7 @@ export const createApprovalRequest = async (req: Request, res: Response) => {
 export const getAllApprovalRequestsForUser = async (req: Request, res: Response) => {
 	const approvalRequests = await SecretApprovalRequest.find({
 		requestedByUserId: req.user._id.toString()
-	}).populate(["requestedChanges.modifiedSecretId", { path: 'requestedChanges.approvers.userId', select: 'firstName lastName _id' }])
+	}).populate(["requestedChanges.modifiedSecretParentId", { path: 'requestedChanges.approvers.userId', select: 'firstName lastName _id' }])
 		.sort({ updatedAt: -1 })
 
 	res.send({ approvalRequests: approvalRequests })
@@ -103,26 +97,26 @@ export const approveApprovalRequest = async (req: Request, res: Response) => {
 	}
 
 	const requestedChangesFromDB: IRequestedChange[] = approvalRequestFromDB.requestedChanges
-	const requestedChangeIdsFromApproval = _.compact(_.map(requestedChangesFromDB, (change) => {
-		return change._id.toString();
-	}))
-
-	const commonChangeIds = _.intersection(requestedChangeIdsFromApproval, requestedChangeIds);
-	if (commonChangeIds.length != requestedChangeIds.length) {
+	const filteredChangesByIds = requestedChangesFromDB.filter(change => requestedChangeIds.includes(change._id.toString()))
+	if (filteredChangesByIds.length != requestedChangeIds.length) {
 		throw BadRequestError({ message: "All requestedChangeIds should exist in this approval request" })
 	}
 
-	const changesThatRequireUserApproval = _.filter(requestedChangesFromDB, change => {
+	const changesThatRequireUserApproval = _.filter(filteredChangesByIds, change => {
 		return _.some(change.approvers, approver => {
 			return approver.userId.toString() == req.user._id.toString();
 		});
 	});
 
 	if (!changesThatRequireUserApproval.length) {
-		throw UnauthorizedRequestError({ message: "Your approval is not required" })
+		throw UnauthorizedRequestError({ message: "Your approval is not required for this review" })
 	}
 
-	requestedChangesFromDB.forEach((requestedChange) => {
+	if (changesThatRequireUserApproval.length != filteredChangesByIds.length) {
+		throw BadRequestError({ message: "You may only request to approve changes that require your approval" })
+	}
+
+	changesThatRequireUserApproval.forEach((requestedChange) => {
 		const overallChangeStatus = requestedChange.status
 		const currentLoggedInUserId = req.user._id.toString()
 		if (overallChangeStatus == ApprovalStatus.PENDING.toString()) {
@@ -147,7 +141,7 @@ export const approveApprovalRequest = async (req: Request, res: Response) => {
 
 	const updatedApprovalRequest = await SecretApprovalRequest.findByIdAndUpdate(reviewId, {
 		requestedChanges: requestedChangesFromDB
-	}, { new: true }).populate(["requestedChanges.modifiedSecretId", { path: 'requestedChanges.approvers.userId', select: 'firstName lastName _id' }])
+	}, { new: true }).populate(["requestedChanges.modifiedSecretParentId", { path: 'requestedChanges.approvers.userId', select: 'firstName lastName _id' }])
 
 	res.send({ approvalRequest: updatedApprovalRequest })
 }
@@ -163,26 +157,26 @@ export const rejectApprovalRequest = async (req: Request, res: Response) => {
 	}
 
 	const requestedChangesFromDB: IRequestedChange[] = approvalRequestFromDB.requestedChanges
-	const requestedChangeIdsFromApproval = _.compact(_.map(requestedChangesFromDB, (change) => {
-		return change._id.toString();
-	}))
-
-	const commonChangeIds = _.intersection(requestedChangeIdsFromApproval, requestedChangeIds);
-	if (commonChangeIds.length != requestedChangeIds.length) {
+	const filteredChangesByIds = requestedChangesFromDB.filter(change => requestedChangeIds.includes(change._id.toString()))
+	if (filteredChangesByIds.length != requestedChangeIds.length) {
 		throw BadRequestError({ message: "All requestedChangeIds should exist in this approval request" })
 	}
 
-	const changesThatRequireUserApproval = _.filter(requestedChangesFromDB, change => {
+	const changesThatRequireUserApproval = _.filter(filteredChangesByIds, change => {
 		return _.some(change.approvers, approver => {
 			return approver.userId.toString() == req.user._id.toString();
 		});
 	});
 
 	if (!changesThatRequireUserApproval.length) {
-		throw UnauthorizedRequestError({ message: "Your approval is not required" })
+		throw UnauthorizedRequestError({ message: "Your approval is not required for this review" })
 	}
 
-	requestedChangesFromDB.forEach((requestedChange) => {
+	if (changesThatRequireUserApproval.length != filteredChangesByIds.length) {
+		throw BadRequestError({ message: "You may only request to reject changes that require your approval" })
+	}
+
+	changesThatRequireUserApproval.forEach((requestedChange) => {
 		const overallChangeStatus = requestedChange.status
 		const currentLoggedInUserId = req.user._id.toString()
 		if (overallChangeStatus == ApprovalStatus.PENDING.toString()) {
@@ -197,7 +191,7 @@ export const rejectApprovalRequest = async (req: Request, res: Response) => {
 
 	const updatedApprovalRequest = await SecretApprovalRequest.findByIdAndUpdate(reviewId, {
 		requestedChanges: requestedChangesFromDB
-	}, { new: true }).populate(["requestedChanges.modifiedSecretId", { path: 'requestedChanges.approvers.userId', select: 'firstName lastName _id' }])
+	}, { new: true }).populate(["requestedChanges.modifiedSecretParentId", { path: 'requestedChanges.approvers.userId', select: 'firstName lastName _id' }])
 
 	res.send({ approvalRequest: updatedApprovalRequest })
 };
@@ -206,69 +200,112 @@ export const mergeApprovalRequestSecrets = async (req: Request, res: Response) =
 	const { requestedChangeIds } = req.body;
 	const { reviewId } = req.params
 
-	const approvalRequestFromDB = await SecretApprovalRequest.findById(reviewId)
+	// only the user who requested the set of changes can merge it
+	const approvalRequestFromDB = await SecretApprovalRequest.findOne({ _id: reviewId, requestedByUserId: req.user._id })
 	if (!approvalRequestFromDB) {
 		throw ResourceNotFound()
 	}
 
-	const workspaceId = approvalRequestFromDB.workspace._id.toString()
-	const environment = approvalRequestFromDB.environment
-
-	const requestedChangesFromDB: IRequestedChange[] = approvalRequestFromDB.requestedChanges
-	const requestedChangeIdsFromApproval = _.compact(_.map(requestedChangesFromDB, (change) => {
-		return change._id.toString();
-	}))
-
-	const commonChangeIds = _.intersection(requestedChangeIdsFromApproval, requestedChangeIds);
-	if (commonChangeIds.length != requestedChangeIds.length) {
-		throw BadRequestError({ message: "All requestedChangeIds should exist in this approval request" })
+	// ensure that this user is a member of this workspace
+	const membershipDetails = await Membership.find({ user: req.user._id, workspace: approvalRequestFromDB.workspace })
+	if (!membershipDetails) {
+		throw UnauthorizedRequestError()
 	}
 
-	const changesThatRequireUserApproval = _.filter(requestedChangesFromDB, change => {
-		return _.some(change.approvers, approver => {
-			return approver.userId.toString() == req.user._id.toString();
-		});
-	});
+	// filter not merged, approved, and change ids specified in this request
+	const filteredChangesToMerge: IRequestedChange[] = approvalRequestFromDB.requestedChanges.filter(change => change.merged == false && change.status == ApprovalStatus.APPROVED && requestedChangeIds.includes(change._id.toString()))
 
-	if (!changesThatRequireUserApproval.length) {
-		throw UnauthorizedRequestError({ message: "Your approval is not required" })
+	if (filteredChangesToMerge.length != requestedChangeIds.length) {
+		throw BadRequestError({ message: "One or more changes in this approval is either already merged/not approved or do not exist" })
 	}
 
 	const secretsToCreate: ISecret[] = []
 	const secretsToUpdate: any[] = []
-	const secretsIdsToDelete = []
+	const secretsIdsToDelete: any[] = []
+	const secretIdsToModify: any[] = []
 
-	requestedChangesFromDB.forEach((requestedChange: any) => {
+	filteredChangesToMerge.forEach((requestedChange: any) => {
 		const overallChangeStatus = requestedChange.status
 		const currentLoggedInUserId = req.user._id.toString()
 		if (overallChangeStatus == ApprovalStatus.APPROVED.toString()) {
 			if (ChangeType.CREATE.toString() == requestedChange.type) {
-				secretsToCreate.push({
-					...requestedChange.modifiedSecretDetails.toObject(),
-					user: req.user._id.toString()
-				})
+				const modifiedSecret = requestedChange.modifiedSecretDetails.toObject()
 
+				secretsToCreate.push({
+					...modifiedSecret,
+					user: requestedChange.modifiedSecretDetails.type === SECRET_PERSONAL ? currentLoggedInUserId : undefined,
+				})
 			}
 
 			if (ChangeType.UPDATE.toString() == requestedChange.type) {
+				const modifiedSecret = requestedChange.modifiedSecretDetails.toObject()
+				secretIdsToModify.push(requestedChange.modifiedSecretParentId)
+
 				secretsToUpdate.push({
-					...requestedChange.modifiedSecretDetails.toObject(),
-					id: requestedChange.modifiedSecretId.toString()
+					filter: { _id: requestedChange.modifiedSecretParentId },
+					update: {
+						$set: {
+							...modifiedSecret,
+							user: requestedChange.modifiedSecretDetails.type === SECRET_PERSONAL ? currentLoggedInUserId : undefined,
+						},
+						$inc: {
+							version: 1
+						}
+					}
 				})
+
 			}
 
 			if (ChangeType.DELETE.toString() == requestedChange.type) {
-
+				secretsIdsToDelete.push({
+					_id: requestedChange.modifiedSecretParentId.toString()
+				})
 			}
 
 			requestedChange.merged = true
 		}
-
 	})
 
+	// ensure all secrets that are to be updated exist 
+	const numSecretsFromDBThatRequireUpdate = await Secret.countDocuments({ _id: { $in: secretIdsToModify } });
+	const numSecretsFromDBThatRequireDelete = await Secret.countDocuments({ _id: { $in: secretsIdsToDelete } });
 
-	res.json({
-		secretsToUpdate
-	})
+	if (numSecretsFromDBThatRequireUpdate != secretIdsToModify.length || numSecretsFromDBThatRequireDelete != secretsIdsToDelete.length) {
+		throw BadRequestError({ message: "You cannot merge changes for secrets that no longer exist" })
+	}
+
+	// Add add CRUD operations into a single list of operations
+	const allOperationsForBulkWrite: any[] = [];
+
+	for (const updateStatement of secretsToUpdate) {
+		allOperationsForBulkWrite.push({ updateOne: updateStatement });
+	}
+
+	for (const secretId of secretsIdsToDelete) {
+		allOperationsForBulkWrite.push({ deleteOne: { filter: { _id: secretId } } });
+	}
+
+	for (const createStatement of secretsToCreate) {
+		allOperationsForBulkWrite.push({ insertOne: { document: createStatement } });
+	}
+
+	// start transaction 
+	const session = await mongoose.startSession();
+	session.startTransaction();
+
+	try {
+		await Secret.bulkWrite(allOperationsForBulkWrite);
+		await SecretApprovalRequest.updateOne({ _id: reviewId, 'requestedChanges._id': { $in: requestedChangeIds } },
+			{ $set: { 'requestedChanges.$.merged': true } })
+
+		const updatedApproval = await SecretApprovalRequest.findById(reviewId).populate(["requestedChanges.modifiedSecretParentId", { path: 'requestedChanges.approvers.userId', select: 'firstName lastName _id' }])
+
+		res.send(updatedApproval)
+	} catch (error) {
+		await session.abortTransaction();
+		throw error
+	} finally {
+		session.endSession();
+	}
 
 };
