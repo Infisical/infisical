@@ -96,7 +96,7 @@ export default function PersonalSettings() {
                 <ListBox
                   isSelected={lang}
                   onChange={setLanguage}
-                  data={['en', 'ko', 'fr']}
+                  data={['en', 'ko', 'fr', 'es']}
                   text={`${t('common:language')}: `}
                 />
               </div>
