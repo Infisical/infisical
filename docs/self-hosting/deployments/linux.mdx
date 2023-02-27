@@ -33,8 +33,7 @@ wget -O .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.exa
 wget -O docker-compose.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.yml
 
 # Download nginx config
-mkdir nginx && cd nginx && wget -O default.conf https://raw.githubusercontent.com/Infisical/infisical/main/nginx/default.dev.conf
-cd ..
+mkdir nginx && wget -O ./nginx/default.conf https://raw.githubusercontent.com/Infisical/infisical/main/nginx/default.dev.conf
 ```
 
 3. Tweak the `.env` according to your preferences. Refer to the available [environment variables](../../self-hosting/configuration/envars)
