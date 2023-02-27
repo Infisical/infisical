@@ -234,7 +234,13 @@ var loginCmd = &cobra.Command{
 		// clear backed up secrets from prev account
 		util.DeleteBackupSecrets()
 
-		color.Green("Nice! You are logged in as: %v", email)
+		whilte := color.New(color.FgWhite)
+		boldWhite := whilte.Add(color.Bold)
+		boldWhite.Printf(">>>> Welcome to Infisical!")
+		color.Green(" You are now logged in as %v <<<<", email)
+		boldWhite.Println("\nQuick links")
+		fmt.Println("- Learn to inject secrets into your application at https://infisical.com/docs/cli/usage")
+		fmt.Println("- Stuck? Join our slack for quick support https://tinyurl.com/infisical-slack")
 
 	},
 }
