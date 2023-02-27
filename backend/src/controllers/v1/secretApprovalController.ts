@@ -87,6 +87,15 @@ export const getAllApprovalRequestsForUser = async (req: Request, res: Response)
 	res.send({ approvalRequests: approvalRequests })
 }
 
+export const getAllApprovalRequestsThatRequireUserApproval = async (req: Request, res: Response) => {
+	const approvalRequests = await SecretApprovalRequest.find({
+		'requestedChanges.approvers.userId': req.user._id.toString()
+	}).populate(["requestedChanges.modifiedSecretParentId", { path: 'requestedChanges.approvers.userId', select: 'firstName lastName _id' }])
+		.sort({ updatedAt: -1 })
+
+	res.send({ approvalRequests: approvalRequests })
+}
+
 export const approveApprovalRequest = async (req: Request, res: Response) => {
 	const { requestedChangeIds } = req.body;
 	const { reviewId } = req.params

@@ -17,11 +17,19 @@ router.post(
 );
 
 router.get(
-    '/',
+    '/sent',
     requireAuth({
         acceptedAuthModes: ['jwt']
     }),
     secretApprovalController.getAllApprovalRequestsForUser
+);
+
+router.get(
+    '/approvals-needed',
+    requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
+    secretApprovalController.getAllApprovalRequestsThatRequireUserApproval
 );
 
 router.post(
