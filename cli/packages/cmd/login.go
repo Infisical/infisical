@@ -243,7 +243,7 @@ var loginCmd = &cobra.Command{
 
 		plainBold.Println("\nQuick links")
 		fmt.Println("- Learn to inject secrets into your application at https://infisical.com/docs/cli/usage")
-		fmt.Println("- Stuck? Join our slack for quick support https://tinyurl.com/infisical-slack")
+		fmt.Println("- Stuck? Join our slack for quick support https://infisical.com/slack")
 	},
 }
 
