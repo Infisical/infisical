@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
@@ -125,7 +126,12 @@ export default function Activity() {
 
   return (
     <div className="mx-6 lg:mx-0 w-full h-screen">
-      <NavHeader pageName="Project Activity" isProjectRelated />
+      <Head>
+        <title>Audit Logs</title>
+        <link rel="icon" href="/infisical.ico" />
+        <meta property="og:image" content="/images/message.png" />
+      </Head>
+      <NavHeader pageName="Audit Logs" isProjectRelated />
       {currentSidebarAction && (
         <ActivitySideBar toggleSidebar={toggleSidebar} currentAction={currentSidebarAction} />
       )}

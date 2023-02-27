@@ -54,7 +54,7 @@
 -   **[Integrations](https://infisical.com/docs/integrations/overview)** with CI/CD and production infrastructure
 -   **[Infisical API](https://infisical.com/docs/api-reference/overview/introduction)** - manage secrets via HTTPS requests to the platform
 -   **[Secret Versioning](https://infisical.com/docs/getting-started/dashboard/versioning)** to view the change history for any secret
--   **[Activity Logs](https://infisical.com/docs/getting-started/dashboard/audit-logs)** to record every action taken in a project
+-   **[Audit Logs](https://infisical.com/docs/getting-started/dashboard/audit-logs)** to record every action taken in a project
 -   **[Point-in-time Secrets Recovery](https://infisical.com/docs/getting-started/dashboard/pit-recovery)** for rolling back to any snapshot of your secrets
 -   **Role-based Access Controls** per environment
 -   **2FA** (more options coming soon)
