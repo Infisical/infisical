@@ -267,7 +267,7 @@ const v1PushSecrets = async ({
 
 		if (toAdd.length > 0) {
 			// add secrets
-			const newSecrets = await Secret.insertMany(
+			const newSecrets: ISecret[] = (await Secret.insertMany(
 				toAdd.map((s, idx) => {
 					const obj: any = {
 						version: 1,
@@ -294,7 +294,7 @@ const v1PushSecrets = async ({
 
 					return obj;
 				})
-			);
+			)).map((insertedSecret) => insertedSecret.toObject());
 
 			// (EE) add secret versions for new secrets
 			EESecretService.addSecretVersions({
