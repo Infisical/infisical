@@ -114,6 +114,8 @@ const secretApprovalRequestSchema = new Schema<ISecretApprovalRequest>(
 	}
 );
 
+secretApprovalRequestSchema.index({ 'requestedChanges.approvers.userId': 1 });
+
 const SecretApprovalRequest = model<ISecretApprovalRequest>('secret_approval_request', secretApprovalRequestSchema);
 
 export default SecretApprovalRequest;
