@@ -52,7 +52,7 @@
     "fs": "^0.0.1-security",
     "gray-matter": "^4.0.3",
     "http-proxy": "^1.18.1",
-    "i18next": "^22.4.6",
+    "i18next": "^22.4.9",
     "jspdf": "^2.5.1",
     "jsrp": "^0.2.4",
     "markdown-it": "^13.0.1",
