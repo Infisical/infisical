@@ -417,7 +417,6 @@ const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
  */
 const getAppsGitlab = async ({ accessToken }: {accessToken: string}) => {
   let apps;
-  console.log(accessToken);
   
   try {
     const { id } = (
@@ -456,7 +455,6 @@ const getAppsGitlab = async ({ accessToken }: {accessToken: string}) => {
     throw new Error("Failed to get GitLab repos");
   }
   
-  console.log(apps);
   return apps;
 }
 
