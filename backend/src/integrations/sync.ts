@@ -20,11 +20,13 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
   INTEGRATION_HEROKU_API_URL,
+  INTEGRATION_GITLAB_API_URL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,
@@ -57,6 +59,7 @@ const syncSecrets = async ({
   accessToken: string;
 }) => {
   try {
+    console.log(integration); // aashish 
     switch (integration.integration) {
       case INTEGRATION_AZURE_KEY_VAULT:
         await syncSecretsAzureKeyVault({
@@ -106,6 +109,13 @@ const syncSecrets = async ({
         break;
       case INTEGRATION_GITHUB:
         await syncSecretsGitHub({
+          integration,
+          secrets,
+          accessToken,
+        });
+        break;
+      case INTEGRATION_GITLAB:
+        await syncSecretsGitLab({
           integration,
           secrets,
           accessToken,
@@ -1407,7 +1417,7 @@ const syncSecretsTravisCI = async ({
     }
 
     // delete secret 
-    for (const sec of getSecretsRes) {
+    for (let sec of getSecretsRes) {
       if (!(sec.name in secrets)){
         await axios.delete(
           `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars/${sec.id}?repository_id=${sec.repository_id}`,
@@ -1425,6 +1435,97 @@ const syncSecretsTravisCI = async ({
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error("Failed to sync secrets to CircleCI");
+  }
+}
+
+/**
+ * Sync/push [secrets] to GitLab repo with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for GitLab integration
+ */
+const syncSecretsGitLab = async ({
+  integration,
+  secrets,
+  accessToken,
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  try {
+    // get secrets from gitlab
+    const getSecretsRes = (
+      await axios.get(
+        `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables`,
+        { 
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      )
+    ).data;
+
+    for (const key of Object.keys(secrets)) {
+      const existingSecret = getSecretsRes.find((s: any) => s.key == key);
+      if (!existingSecret) {
+        await axios.post(
+          `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables`,
+          {
+            key: key,
+            value: secrets[key],
+            protected: false,
+            masked: false,
+            raw: false,
+            environment_scope:'*'
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+              "Accept-Encoding": "application/json",
+            },
+          }
+        )
+      }else {
+        // udpate secret 
+        await axios.put(
+          `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${existingSecret.key}`,
+          {
+            ...existingSecret,
+            value: secrets[existingSecret.key]
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+              "Accept-Encoding": "application/json",
+            },
+          }
+        )
+      }
+    }
+
+    // delete secrets 
+    for (let sec of getSecretsRes) {
+      if (!(sec.key in secrets)) {
+        await axios.delete(
+          `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${sec.key}`,
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+            },
+          }
+        );
+      }
+    }
+  }catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error("Failed to sync secrets to GitLab");
   }
 }
 
