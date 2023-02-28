@@ -1,5 +1,6 @@
 import {
     CLIENT_ID_AZURE,
+    CLIENT_ID_GITLAB,
     TENANT_ID_AZURE
 } from '../config';
 import {
@@ -7,6 +8,7 @@ import {
   CLIENT_ID_NETLIFY,
   CLIENT_ID_GITHUB,
   CLIENT_SLUG_VERCEL,
+  CLIENT_SECRET_GITLAB,
 } from "../config";
 
 // integrations
@@ -17,6 +19,7 @@ const INTEGRATION_HEROKU = "heroku";
 const INTEGRATION_VERCEL = "vercel";
 const INTEGRATION_NETLIFY = "netlify";
 const INTEGRATION_GITHUB = "github";
+const INTEGRATION_GITLAB = "gitlab";
 const INTEGRATION_RENDER = "render";
 const INTEGRATION_FLYIO = "flyio";
 const INTEGRATION_CIRCLECI = "circleci";
@@ -27,6 +30,7 @@ const INTEGRATION_SET = new Set([
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
@@ -44,9 +48,12 @@ const INTEGRATION_VERCEL_TOKEN_URL =
 const INTEGRATION_NETLIFY_TOKEN_URL = "https://api.netlify.com/oauth/token";
 const INTEGRATION_GITHUB_TOKEN_URL =
   "https://github.com/login/oauth/access_token";
+const INTEGRATION_GITLAB_TOKEN_URL = "https://gitlab.com/oauth/token";
+
 
 // integration apps endpoints
 const INTEGRATION_HEROKU_API_URL = "https://api.heroku.com";
+const INTEGRATION_GITLAB_API_URL = "https://gitlab.com/api";
 const INTEGRATION_VERCEL_API_URL = "https://api.vercel.com";
 const INTEGRATION_NETLIFY_API_URL = "https://api.netlify.com";
 const INTEGRATION_RENDER_API_URL = "https://api.render.com";
@@ -90,6 +97,15 @@ const INTEGRATION_OPTIONS = [
         isAvailable: true,
         type: 'oauth',
         clientId: CLIENT_ID_GITHUB,
+        docsLink: ''
+    },
+    {
+        name: 'GitLab',
+        slug: 'gitlab',
+        image: 'GitLab.png',
+        isAvailable: true,
+        type: 'oauth',
+        clientId: CLIENT_ID_GITLAB, 
         docsLink: ''
     },
     {
@@ -175,6 +191,7 @@ export {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
@@ -186,7 +203,9 @@ export {
   INTEGRATION_VERCEL_TOKEN_URL,
   INTEGRATION_NETLIFY_TOKEN_URL,
   INTEGRATION_GITHUB_TOKEN_URL,
+  INTEGRATION_GITLAB_API_URL,
   INTEGRATION_HEROKU_API_URL,
+  INTEGRATION_GITLAB_TOKEN_URL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,

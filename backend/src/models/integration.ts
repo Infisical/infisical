@@ -7,6 +7,7 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
@@ -31,7 +32,8 @@ export interface IIntegration {
     | 'heroku' 
     | 'vercel' 
     | 'netlify' 
-    | 'github' 
+    | 'github'
+    | 'gitlab'
     | 'render' 
     | 'flyio'
     | 'circleci'
@@ -96,6 +98,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_VERCEL,
         INTEGRATION_NETLIFY,
         INTEGRATION_GITHUB,
+        INTEGRATION_GITLAB,
         INTEGRATION_RENDER,
         INTEGRATION_FLYIO,
         INTEGRATION_CIRCLECI,
