@@ -58,7 +58,6 @@ const syncSecrets = async ({
   accessToken: string;
 }) => {
   try {
-    console.log(integration); // aashish 
     switch (integration.integration) {
       case INTEGRATION_AZURE_KEY_VAULT:
         await syncSecretsAzureKeyVault({
@@ -1508,7 +1507,7 @@ const syncSecretsGitLab = async ({
     }
 
     // delete secrets 
-    for (let sec of getSecretsRes) {
+    for (const sec of getSecretsRes) {
       if (!(sec.key in secrets)) {
         await request.delete(
           `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${sec.key}`,

@@ -373,7 +373,7 @@ const exchangeCodeGitlab = async ({ code }: { code: string }) => {
   
   try {
     res = (
-      await axios.post(
+      await request.post(
         INTEGRATION_GITLAB_TOKEN_URL,
         new URLSearchParams({
           grant_type: 'authorization_code',
