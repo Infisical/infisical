@@ -32,7 +32,7 @@ var secretsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
@@ -98,7 +98,7 @@ var secretsSetCmd = &cobra.Command{
 
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
@@ -277,7 +277,7 @@ var secretsDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
@@ -338,7 +338,7 @@ var secretsDeleteCmd = &cobra.Command{
 func getSecretsByNames(cmd *cobra.Command, args []string) {
 	environmentName, _ := cmd.Flags().GetString("env")
 	if !cmd.Flags().Changed("env") {
-		environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+		environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 		if environmentFromWorkspace != "" {
 			environmentName = environmentFromWorkspace
 		}
@@ -361,10 +361,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 
 	requestedSecrets := []models.SingleEnvironmentVariable{}
 
-	secretsMap := make(map[string]models.SingleEnvironmentVariable)
-	for _, secret := range secrets {
-		secretsMap[secret.Key] = secret
-	}
+	secretsMap := getSecretsByKeys(secrets)
 
 	for _, secretKeyFromArg := range args {
 		if value, ok := secretsMap[strings.ToUpper(secretKeyFromArg)]; ok {
@@ -384,7 +381,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 func generateExampleEnv(cmd *cobra.Command, args []string) {
 	environmentName, _ := cmd.Flags().GetString("env")
 	if !cmd.Flags().Changed("env") {
-		environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+		environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 		if environmentFromWorkspace != "" {
 			environmentName = environmentFromWorkspace
 		}
@@ -587,7 +584,7 @@ func addHash(input string) string {
 }
 
 func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]models.SingleEnvironmentVariable {
-	secretMapByName := make(map[string]models.SingleEnvironmentVariable)
+	secretMapByName := make(map[string]models.SingleEnvironmentVariable, len(secrets))
 
 	for _, secret := range secrets {
 		secretMapByName[secret.Key] = secret

@@ -482,21 +482,29 @@ func DeleteBackupSecrets() error {
 	return os.RemoveAll(fullPathToSecretsBackupFolder)
 }
 
-func GetEnvelopmentBasedOnGitBranch() string {
+func GetEnvFromWorkspaceFile() string {
+	workspaceFile, err := GetWorkSpaceFromFile()
+	if err != nil {
+		log.Debugf("getEnvFromWorkspaceFile: [err=%s]", err)
+		return ""
+	}
+
+	if env := GetEnvelopmentBasedOnGitBranch(workspaceFile); env != "" {
+		return env
+	}
+
+	return workspaceFile.DefaultEnvironment
+}
+
+func GetEnvelopmentBasedOnGitBranch(workspaceFile models.WorkspaceConfigFile) string {
 	branch, err := getCurrentBranch()
 	if err != nil {
 		log.Debugf("getEnvelopmentBasedOnGitBranch: [err=%s]", err)
 	}
 
-	workspaceFile, err := GetWorkSpaceFromFile()
-	if err != nil {
-		log.Debugf("getEnvelopmentBasedOnGitBranch: [err=%s]", err)
-		return ""
-	}
-
 	envBasedOnGitBranch, ok := workspaceFile.GitBranchToEnvironmentMapping[branch]
 
-	log.Debugf("GetEnvelopmentBasedOnGitBranch: [envBasedOnGitBranch=%s] [ok=%s]", envBasedOnGitBranch, ok)
+	log.Debugf("GetEnvelopmentBasedOnGitBranch: [envBasedOnGitBranch=%s] [ok=%t]", envBasedOnGitBranch, ok)
 
 	if err == nil && ok {
 		return envBasedOnGitBranch

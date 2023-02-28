@@ -162,7 +162,7 @@ const Layout = ({ children }: LayoutProps) => {
       },
       {
         href: `/activity/${workspaceMapping[workspaceSelected as any]}`,
-        title: 'Activity Logs',
+        title: 'Audit Logs',
         emoji: <FontAwesomeIcon icon={faFileLines} />
       },
       {

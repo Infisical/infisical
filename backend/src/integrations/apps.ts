@@ -1,7 +1,7 @@
-import axios from "axios";
 import * as Sentry from "@sentry/node";
 import { Octokit } from "@octokit/rest";
 import { IIntegrationAuth } from "../models";
+import request from '../config/request';
 import {
   INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_AWS_PARAMETER_STORE,
@@ -125,7 +125,7 @@ const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
   let apps;
   try {
     const res = (
-      await axios.get(`${INTEGRATION_HEROKU_API_URL}/apps`, {
+      await request.get(`${INTEGRATION_HEROKU_API_URL}/apps`, {
         headers: {
           Accept: "application/vnd.heroku+json; version=3",
           Authorization: `Bearer ${accessToken}`,
@@ -162,7 +162,7 @@ const getAppsVercel = async ({
   let apps;
   try {
     const res = (
-      await axios.get(`${INTEGRATION_VERCEL_API_URL}/v9/projects`, {
+      await request.get(`${INTEGRATION_VERCEL_API_URL}/v9/projects`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Accept-Encoding': 'application/json'
@@ -200,7 +200,7 @@ const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
   let apps;
   try {
     const res = (
-      await axios.get(`${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`, {
+      await request.get(`${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Accept-Encoding': 'application/json'
@@ -271,7 +271,7 @@ const getAppsRender = async ({ accessToken }: { accessToken: string }) => {
   let apps: any;
   try {
     const res = (
-      await axios.get(`${INTEGRATION_RENDER_API_URL}/v1/services`, {
+      await request.get(`${INTEGRATION_RENDER_API_URL}/v1/services`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           Accept: 'application/json',
@@ -317,23 +317,18 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
       }
     `;
 
-    const res = (
-      await axios({
-        url: INTEGRATION_FLYIO_API_URL,
-        method: "post",
-        headers: {
-          Authorization: "Bearer " + accessToken,
+    const res = (await request.post(INTEGRATION_FLYIO_API_URL, {
+      query,
+      variables: {
+        role: null,
+      },
+    }, {
+      headers: {
+        Authorization: "Bearer " + accessToken,
         'Accept': 'application/json',
         'Accept-Encoding': 'application/json',
-        },
-        data: {
-          query,
-          variables: {
-            role: null,
-          },
-        },
-      })
-    ).data.data.apps.nodes;
+      },
+    })).data.data.apps.nodes;
 
     apps = res.map((a: any) => ({
       name: a.name,
@@ -358,7 +353,7 @@ const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
   let apps: any;
   try {    
     const res = (
-      await axios.get(
+      await request.get(
         `${INTEGRATION_CIRCLECI_API_URL}/v1.1/projects`,
         {
           headers: {
@@ -387,7 +382,7 @@ const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
   let apps: any;
   try {
     const res = (
-      await axios.get(
+      await request.get(
         `${INTEGRATION_TRAVISCI_API_URL}/repos`,
         {
           headers: {
@@ -426,7 +421,7 @@ const getAppsGitlab = async ({ accessToken }: {accessToken: string}) => {
   
   try {
     const { id } = (
-      await axios.get(
+      await request.get(
         `${INTEGRATION_GITLAB_API_URL}/v4/user`,
         {
           headers: {
@@ -438,7 +433,7 @@ const getAppsGitlab = async ({ accessToken }: {accessToken: string}) => {
     ).data;
 
     const res = (
-      await axios.get(
+      await request.get(
         `${INTEGRATION_GITLAB_API_URL}/v4/users/${id}/projects`,
         {
           headers: {

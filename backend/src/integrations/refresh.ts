@@ -1,4 +1,4 @@
-import axios from 'axios';
+import request from '../config/request';
 import * as Sentry from '@sentry/node';
 import { INTEGRATION_AZURE_KEY_VAULT, INTEGRATION_HEROKU } from '../variables';
 import {
@@ -71,7 +71,7 @@ const exchangeRefreshAzure = async ({
   refreshToken: string;
 }) => {
   try {
-    const res: RefreshTokenAzureResponse = (await axios.post(
+    const res: RefreshTokenAzureResponse = (await request.post(
       INTEGRATION_AZURE_TOKEN_URL,
        new URLSearchParams({
         client_id: CLIENT_ID_AZURE,
@@ -105,7 +105,7 @@ const exchangeRefreshHeroku = async ({
   
   let accessToken;
   try {
-    const res = await axios.post(
+    const res = await request.post(
         INTEGRATION_HEROKU_TOKEN_URL,
         new URLSearchParams({
             grant_type: 'refresh_token',

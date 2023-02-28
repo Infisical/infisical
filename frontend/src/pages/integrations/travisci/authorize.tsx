@@ -47,9 +47,9 @@ export default function TravisCICreateIntegrationPage() {
     return (
     <div className="h-full w-full flex justify-center items-center">
       <Card className="max-w-md p-8 rounded-md">
-        <CardTitle className='text-center'>TravisCI Integration</CardTitle>
+        <CardTitle className='text-center'>Travis CI Integration</CardTitle>
          <FormControl
-          label="Travis API Token"
+          label="Travis CI API Token"
           errorText={apiKeyErrorText}
           isError={apiKeyErrorText !== '' ?? false}
         >
@@ -65,7 +65,7 @@ export default function TravisCICreateIntegrationPage() {
             className='mt-4'
             isLoading={isLoading}
         >
-            Connect to TravisCI
+            Connect to Travis CI
         </Button>
       </Card>
     </div>

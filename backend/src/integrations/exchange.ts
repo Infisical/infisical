@@ -1,4 +1,4 @@
-import axios from 'axios';
+import request from '../config/request';
 import * as Sentry from '@sentry/node';
 import {
   INTEGRATION_AZURE_KEY_VAULT,
@@ -153,7 +153,7 @@ const exchangeCodeAzure = async ({
   const accessExpiresAt = new Date();
   let res: ExchangeCodeAzureResponse;
   try {
-    res = (await axios.post(
+    res = (await request.post(
       INTEGRATION_AZURE_TOKEN_URL,
       new URLSearchParams({
         grant_type: 'authorization_code',
@@ -199,7 +199,7 @@ const exchangeCodeHeroku = async ({
   let res: ExchangeCodeHerokuResponse;
   const accessExpiresAt = new Date();
   try {
-    res = (await axios.post(
+    res = (await request.post(
       INTEGRATION_HEROKU_TOKEN_URL,
       new URLSearchParams({
         grant_type: 'authorization_code',
@@ -238,7 +238,7 @@ const exchangeCodeVercel = async ({ code }: { code: string }) => {
   let res: ExchangeCodeVercelResponse;
   try {
     res = (
-      await axios.post(
+      await request.post(
         INTEGRATION_VERCEL_TOKEN_URL,
         new URLSearchParams({
           code: code,
@@ -277,7 +277,7 @@ const exchangeCodeNetlify = async ({ code }: { code: string }) => {
   let accountId;
   try {
     res = (
-      await axios.post(
+      await request.post(
         INTEGRATION_NETLIFY_TOKEN_URL,
         new URLSearchParams({
           grant_type: 'authorization_code',
@@ -289,14 +289,14 @@ const exchangeCodeNetlify = async ({ code }: { code: string }) => {
       )
     ).data;
 
-    const res2 = await axios.get('https://api.netlify.com/api/v1/sites', {
+    const res2 = await request.get('https://api.netlify.com/api/v1/sites', {
       headers: {
         Authorization: `Bearer ${res.access_token}`
       }
     });
 
     const res3 = (
-      await axios.get('https://api.netlify.com/api/v1/accounts', {
+      await request.get('https://api.netlify.com/api/v1/accounts', {
         headers: {
           Authorization: `Bearer ${res.access_token}`
         }
@@ -331,7 +331,7 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
   let res: ExchangeCodeGithubResponse;
   try {
     res = (
-      await axios.get(INTEGRATION_GITHUB_TOKEN_URL, {
+      await request.get(INTEGRATION_GITHUB_TOKEN_URL, {
         params: {
           client_id: CLIENT_ID_GITHUB,
           client_secret: CLIENT_SECRET_GITHUB,

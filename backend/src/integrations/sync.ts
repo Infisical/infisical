@@ -1,4 +1,3 @@
-import axios from "axios";
 import * as Sentry from "@sentry/node";
 import _ from 'lodash';
 import AWS from 'aws-sdk';
@@ -34,7 +33,7 @@ import {
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_TRAVISCI_API_URL,
 } from "../variables";
-import axiosWithRetry from '../config/request';
+import request from '../config/request';
 
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
@@ -199,7 +198,7 @@ const syncSecretsAzureKeyVault = async ({
       let result: GetAzureKeyVaultSecret[] = [];
       
       while (url) {
-        const res = await axios.get(url, {
+        const res = await request.get(url, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             'Accept-Encoding': 'application/json'
@@ -221,7 +220,7 @@ const syncSecretsAzureKeyVault = async ({
         lastSlashIndex = getAzureKeyVaultSecret.id.lastIndexOf('/');
       }
       
-      const azureKeyVaultSecret = await axios.get(`${getAzureKeyVaultSecret.id}?api-version=7.3`, {
+      const azureKeyVaultSecret = await request.get(`${getAzureKeyVaultSecret.id}?api-version=7.3`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Accept-Encoding': 'application/json'
@@ -274,7 +273,7 @@ const syncSecretsAzureKeyVault = async ({
     // Sync/push set secrets
     if (setSecrets.length > 0) {
       setSecrets.forEach(async ({ key, value }) => {
-        await axios.put(
+        await request.put(
           `${integration.app}/secrets/${key}?api-version=7.3`,
           {
             value
@@ -291,7 +290,7 @@ const syncSecretsAzureKeyVault = async ({
     
     if (deleteSecrets.length > 0) {
       deleteSecrets.forEach(async (secret) => {
-        await axios.delete(`${integration.app}/secrets/${secret.key}?api-version=7.3`, {
+        await request.delete(`${integration.app}/secrets/${secret.key}?api-version=7.3`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Accept-Encoding': 'application/json'
@@ -506,7 +505,7 @@ const syncSecretsHeroku = async ({
 }) => {
   try {
     const herokuSecrets = (
-      await axios.get(
+      await request.get(
         `${INTEGRATION_HEROKU_API_URL}/apps/${integration.app}/config-vars`,
         {
           headers: {
@@ -524,7 +523,7 @@ const syncSecretsHeroku = async ({
       }
     });
 
-    await axios.patch(
+    await request.patch(
       `${INTEGRATION_HEROKU_API_URL}/apps/${integration.app}/config-vars`,
       secrets,
       {
@@ -582,7 +581,7 @@ const syncSecretsVercel = async ({
     // const res = (
     //   await Promise.all(
     //     (
-    //       await axios.get(
+    //       await request.get(
     //         `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env`,
     //         {
     //           params,
@@ -598,7 +597,7 @@ const syncSecretsVercel = async ({
     //   .map(async (secret: VercelSecret) => {
     //     if (secret.type === 'encrypted') {
     //       // case: secret is encrypted -> need to decrypt
-    //       const decryptedSecret = (await axios.get(
+    //       const decryptedSecret = (await request.get(
     //           `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
     //           {
     //             params,
@@ -618,7 +617,7 @@ const syncSecretsVercel = async ({
     //       [secret.key]: secret
     //   }), {});
     
-    const vercelSecrets: VercelSecret[] = (await axiosWithRetry.get(
+    const vercelSecrets: VercelSecret[] = (await request.get(
       `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env`,
       {
         params,
@@ -637,7 +636,7 @@ const syncSecretsVercel = async ({
     for await (const vercelSecret of vercelSecrets) {
       if (vercelSecret.type === 'encrypted') {
         // case: secret is encrypted -> need to decrypt
-        const decryptedSecret = (await axiosWithRetry.get(
+        const decryptedSecret = (await request.get(
             `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${vercelSecret.id}`,
             {
               params,
@@ -700,7 +699,7 @@ const syncSecretsVercel = async ({
 
     // Sync/push new secrets
     if (newSecrets.length > 0) {
-      await axiosWithRetry.post(
+      await request.post(
         `${INTEGRATION_VERCEL_API_URL}/v10/projects/${integration.app}/env`,
         newSecrets,
         {
@@ -716,7 +715,7 @@ const syncSecretsVercel = async ({
     for await (const secret of updateSecrets) {
       if (secret.type !== 'sensitive') {
         const { id, ...updatedSecret } = secret;
-        await axiosWithRetry.patch(
+        await request.patch(
           `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
           updatedSecret,
           {
@@ -731,7 +730,7 @@ const syncSecretsVercel = async ({
     }
 
     for await (const secret of deleteSecrets) {
-      await axiosWithRetry.delete(
+      await request.delete(
         `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
         {
           params,
@@ -790,7 +789,7 @@ const syncSecretsNetlify = async ({
     });
 
     const res = (
-      await axios.get(
+      await request.get(
         `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env`,
         {
           params: getParams,
@@ -904,7 +903,7 @@ const syncSecretsNetlify = async ({
     });
 
     if (newSecrets.length > 0) {
-      await axios.post(
+      await request.post(
         `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env`,
         newSecrets,
         {
@@ -919,7 +918,7 @@ const syncSecretsNetlify = async ({
 
     if (updateSecrets.length > 0) {
       updateSecrets.forEach(async (secret: NetlifySecret) => {
-        await axios.patch(
+        await request.patch(
           `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${secret.key}`,
           {
             context: secret.values[0].context,
@@ -938,7 +937,7 @@ const syncSecretsNetlify = async ({
 
     if (deleteSecrets.length > 0) {
       deleteSecrets.forEach(async (key: string) => {
-        await axios.delete(
+        await request.delete(
           `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${key}`,
           {
             params: syncParams,
@@ -953,7 +952,7 @@ const syncSecretsNetlify = async ({
 
     if (deleteSecretValues.length > 0) {
       deleteSecretValues.forEach(async (secret: NetlifySecret) => {
-        await axios.delete(
+        await request.delete(
           `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${secret.key}/value/${secret.values[0].id}`,
           {
             params: syncParams,
@@ -1104,7 +1103,7 @@ const syncSecretsRender = async ({
   accessToken: string;
 }) => {
   try {
-    await axios.put(
+    await request.put(
       `${INTEGRATION_RENDER_API_URL}/v1/services/${integration.appId}/env-vars`,
       Object.keys(secrets).map((key) => ({
         key,
@@ -1162,24 +1161,21 @@ const syncSecretsFlyio = async ({
       }
     `;
 
-    await axios({
-      url: INTEGRATION_FLYIO_API_URL,
-      method: "post",
+    await request.post(INTEGRATION_FLYIO_API_URL, {
+      query: SetSecrets,
+      variables: {
+        input: {
+          appId: integration.app,
+          secrets: Object.entries(secrets).map(([key, value]) => ({
+            key,
+            value,
+          })),
+        },
+      },
+    }, {
       headers: {
         Authorization: "Bearer " + accessToken,
-        'Accept-Encoding': 'application/json'
-      },
-      data: {
-        query: SetSecrets,
-        variables: {
-          input: {
-            appId: integration.app,
-            secrets: Object.entries(secrets).map(([key, value]) => ({
-              key,
-              value,
-            })),
-          },
-        },
+        'Accept-Encoding': 'application/json',
       },
     });
 
@@ -1200,23 +1196,18 @@ const syncSecretsFlyio = async ({
         }
     }`;
 
-    const getSecretsRes = (
-      await axios({
-        method: "post",
-        url: INTEGRATION_FLYIO_API_URL,
-        headers: {
-          'Authorization': 'Bearer ' + accessToken,
-          'Content-Type': 'application/json',
-          'Accept-Encoding': 'application/json'
-        },
-        data: {
-          query: GetSecrets,
-          variables: {
-            appName: integration.app,
-          },
-        },
-      })
-    ).data.data.app.secrets;
+    const getSecretsRes = (await request.post(INTEGRATION_FLYIO_API_URL, {
+      query: GetSecrets,
+      variables: {
+        appName: integration.app,
+      },
+    }, {
+      headers: {
+        Authorization: "Bearer " + accessToken,
+        'Content-Type': 'application/json',
+        'Accept-Encoding': 'application/json',
+      },
+    })).data.data.app.secrets;
 
     const deleteSecretsKeys = getSecretsRes
       .filter((secret: FlyioSecret) => !(secret.name in secrets))
@@ -1241,24 +1232,22 @@ const syncSecretsFlyio = async ({
         }
     }`;
 
-    await axios({
-      method: "post",
-      url: INTEGRATION_FLYIO_API_URL,
+    await request.post(INTEGRATION_FLYIO_API_URL, {
+      query: DeleteSecrets,
+      variables: {
+        input: {
+          appId: integration.app,
+          keys: deleteSecretsKeys,
+        },
+      },
+    }, {
       headers: {
         Authorization: "Bearer " + accessToken,
         "Content-Type": "application/json",
-        'Accept-Encoding': 'application/json'
-      },
-      data: {
-        query: DeleteSecrets,
-        variables: {
-          input: {
-            appId: integration.app,
-            keys: deleteSecretsKeys,
-          },
-        },
+        'Accept-Encoding': 'application/json',
       },
     });
+
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
@@ -1284,7 +1273,7 @@ const syncSecretsCircleCI = async ({
 }) => {  
   try {
     const circleciOrganizationDetail = (
-      await axios.get(`${INTEGRATION_CIRCLECI_API_URL}/v2/me/collaborations`, {
+      await request.get(`${INTEGRATION_CIRCLECI_API_URL}/v2/me/collaborations`, {
         headers: {
           "Circle-Token": accessToken,
           "Accept-Encoding": "application/json",
@@ -1297,7 +1286,7 @@ const syncSecretsCircleCI = async ({
     // sync secrets to CircleCI
     Object.keys(secrets).forEach(
       async (key) =>
-        await axios.post(
+        await request.post(
           `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar`,
           {
             name: key,
@@ -1314,7 +1303,7 @@ const syncSecretsCircleCI = async ({
 
     // get secrets from CircleCI
     const getSecretsRes = (
-      await axios.get(
+      await request.get(
         `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar`,
         {
           headers: {
@@ -1328,7 +1317,7 @@ const syncSecretsCircleCI = async ({
     // delete secrets from CircleCI
     getSecretsRes.forEach(async (sec: any) => {
       if (!(sec.name in secrets)) {
-        await axios.delete(
+        await request.delete(
           `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar/${sec.name}`,
           {
             headers: {
@@ -1365,7 +1354,7 @@ const syncSecretsTravisCI = async ({
   try {
     // get secrets from travis-ci  
     const getSecretsRes = (
-      await axios.get(
+      await request.get(
         `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars?repository_id=${integration.appId}`,
         {
           headers: {
@@ -1374,18 +1363,25 @@ const syncSecretsTravisCI = async ({
           },
         }
       )
-    ).data?.env_vars;
-
+    )
+    .data
+    ?.env_vars
+    .reduce((obj: any, secret: any) => ({
+        ...obj,
+        [secret.name]: secret
+    }), {});
+    
     // add secrets
-    for (const key of Object.keys(secrets)) {
-      const existingSecret = getSecretsRes.find((s: any) => s.name == key);
-      if(!existingSecret){
-        await axios.post(
+    for await (const key of Object.keys(secrets)) {
+      if (!(key in getSecretsRes)) {
+        // case: secret does not exist in travis ci
+        // -> add secret
+        await request.post(
           `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars?repository_id=${integration.appId}`,
           {
             env_var: {
               name: key,
-              value: secrets[key],
+              value: secrets[key]
             }
           },
           {
@@ -1395,32 +1391,18 @@ const syncSecretsTravisCI = async ({
               "Accept-Encoding": "application/json",
             },
           }
-        )
-      }else { // update secret
-        await axios.patch(
-          `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars/${existingSecret.id}?repository_id=${existingSecret.repository_id}`,
+        );
+      } else {
+        // case: secret exists in travis ci
+        // -> update/set secret
+        await request.patch(
+          `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars/${getSecretsRes[key].id}?repository_id=${getSecretsRes[key].repository_id}`,
           {
             env_var: {
               name: key,
               value: secrets[key],
             }
           },
-          {
-            headers: {
-              "Authorization": `token ${accessToken}`,
-              "Content-Type": "application/json",
-              "Accept-Encoding": "application/json",
-            },
-          }
-        )
-      }
-    }
-
-    // delete secret 
-    for (let sec of getSecretsRes) {
-      if (!(sec.name in secrets)){
-        await axios.delete(
-          `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars/${sec.id}?repository_id=${sec.repository_id}`,
           {
             headers: {
               "Authorization": `token ${accessToken}`,
@@ -1431,10 +1413,26 @@ const syncSecretsTravisCI = async ({
         );
       }
     }
-  }catch (err) {
+
+    for await (const key of Object.keys(getSecretsRes)) {
+      if (!(key in secrets)){
+        // delete secret
+        await request.delete(
+          `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars/${getSecretsRes[key].id}?repository_id=${getSecretsRes[key].repository_id}`,
+          {
+            headers: {
+              "Authorization": `token ${accessToken}`,
+              "Content-Type": "application/json",
+              "Accept-Encoding": "application/json",
+            },
+          }
+        );
+      }
+    }
+  } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error("Failed to sync secrets to CircleCI");
+    throw new Error("Failed to sync secrets to GitLab");
   }
 }
 
@@ -1458,7 +1456,7 @@ const syncSecretsGitLab = async ({
   try {
     // get secrets from gitlab
     const getSecretsRes = (
-      await axios.get(
+      await request.get(
         `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables`,
         { 
           headers: {
@@ -1472,7 +1470,7 @@ const syncSecretsGitLab = async ({
     for (const key of Object.keys(secrets)) {
       const existingSecret = getSecretsRes.find((s: any) => s.key == key);
       if (!existingSecret) {
-        await axios.post(
+        await request.post(
           `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables`,
           {
             key: key,
@@ -1492,7 +1490,7 @@ const syncSecretsGitLab = async ({
         )
       }else {
         // udpate secret 
-        await axios.put(
+        await request.put(
           `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${existingSecret.key}`,
           {
             ...existingSecret,
@@ -1512,7 +1510,7 @@ const syncSecretsGitLab = async ({
     // delete secrets 
     for (let sec of getSecretsRes) {
       if (!(sec.key in secrets)) {
-        await axios.delete(
+        await request.delete(
           `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${sec.key}`,
           {
             headers: {

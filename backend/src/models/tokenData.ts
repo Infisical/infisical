@@ -16,9 +16,9 @@ const tokenDataSchema = new Schema<ITokenData>({
   type: {
     type: String,
     enum: [
-      'emailConfirmation', 
-      'emailMfa', 
-      'organizationInvitation', 
+      'emailConfirmation',
+      'emailMfa',
+      'organizationInvitation',
       'passwordReset'
     ],
     required: true
@@ -48,12 +48,6 @@ const tokenDataSchema = new Schema<ITokenData>({
   }
 }, {
   timestamps: true
-});
-
-tokenDataSchema.index({
-  expiresAt: 1
-}, {
-  expireAfterSeconds: 0
 });
 
 const TokenData = model<ITokenData>('TokenData', tokenDataSchema);

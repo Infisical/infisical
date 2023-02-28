@@ -71,6 +71,19 @@ const DropZone = ({
         }));
         break;
       }
+      case 'json': {
+        const keyPairs = JSON.parse(String(file));
+        secrets = Object.keys(keyPairs).map((key, index) => ({
+          id: guidGenerator(),
+          pos: numCurrentRows + index,
+          key,
+          value: keyPairs[key as keyof typeof keyPairs],
+          comment: '',
+          type: 'shared',
+          tags: []
+        }));
+        break;
+      }
       case 'yml': {
         const parsedFile = parseDocument(file.toString());
         const keyPairs = parsedFile.contents!.toJSON();

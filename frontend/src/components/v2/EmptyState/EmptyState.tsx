@@ -11,7 +11,7 @@ type Props = {
 };
 
 export const EmptyState = ({ title, className, children, icon = faCubesStacked }: Props) => (
-  <div className={twMerge('flex w-full flex-col items-center px-2 pt-6 text-bunker-300', className)}>
+  <div className={twMerge('flex w-full bg-bunker-700 flex-col items-center px-2 pt-6 text-bunker-300', className)}>
     <FontAwesomeIcon icon={icon} size="2x" className='mr-4' />
     <div className='flex flex-row items-center py-4'>
       <div className="text-bunker-300 text-sm">{title}</div>
