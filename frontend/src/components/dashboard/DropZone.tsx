@@ -110,6 +110,10 @@ const DropZone = ({
       }
       default:
         secrets = '';
+        createNotification({
+          text: `The file you are dropping should have one of the following extensions: .env, .yml, .json.`,
+          type: 'error'
+        });
         break;
     }
     return secrets;
@@ -139,9 +143,13 @@ const DropZone = ({
     reader.onload = (event) => {
       if (event.target === null || event.target.result === null) return;
       // parse function's argument looks like to be ArrayBuffer
-      const newData = getSecrets(event.target.result as ArrayBuffer, fileType);
-      setData(newData);
-      setButtonReady(true);
+      try {
+        const newData = getSecrets(event.target.result as ArrayBuffer, fileType);
+        setData(newData);
+        setButtonReady(true);
+      } catch (error) {
+        console.log("Error while dropping the file: ", error)
+      }
     };
 
     // If something is wrong show an error
