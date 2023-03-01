@@ -436,7 +436,7 @@ func WriteBackupSecrets(workspace string, environment string, encryptionKey []by
 	}
 
 	listOfSecretsMarshalled, _ := json.Marshal(encryptedSecrets)
-	err = os.WriteFile(fmt.Sprintf("%s/%s", fullPathToSecretsBackupFolder, fileName), listOfSecretsMarshalled, os.ModePerm)
+	err = os.WriteFile(fmt.Sprintf("%s/%s", fullPathToSecretsBackupFolder, fileName), listOfSecretsMarshalled, 0600)
 	if err != nil {
 		return fmt.Errorf("WriteBackupSecrets: Unable to write backup secrets to file [err=%s]", err)
 	}

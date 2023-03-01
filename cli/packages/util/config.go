@@ -42,7 +42,7 @@ func WriteInitalConfig(userCredentials *models.UserCredentials) error {
 	}
 
 	// Create file in directory
-	err = WriteToFile(fullConfigFilePath, configFileMarshalled, os.ModePerm)
+	err = WriteToFile(fullConfigFilePath, configFileMarshalled, 0600)
 	if err != nil {
 		return err
 	}
@@ -197,7 +197,7 @@ func WriteConfigFile(configFile *models.ConfigFile) error {
 	}
 
 	// Create file in directory
-	err = os.WriteFile(fullConfigFilePath, configFileMarshalled, os.ModePerm)
+	err = os.WriteFile(fullConfigFilePath, configFileMarshalled, 0600)
 	if err != nil {
 		return fmt.Errorf("writeConfigFile: Unable to write to file [err=%s]", err)
 	}
