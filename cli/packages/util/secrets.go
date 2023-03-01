@@ -76,10 +76,31 @@ func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, work
 		return nil, fmt.Errorf("unable to get your encrypted workspace key. [err=%v]", err)
 	}
 
-	encryptedWorkspaceKey, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.EncryptedKey)
-	encryptedWorkspaceKeySenderPublicKey, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.Sender.PublicKey)
-	encryptedWorkspaceKeyNonce, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.Nonce)
-	currentUsersPrivateKey, _ := base64.StdEncoding.DecodeString(receiversPrivateKey)
+	encryptedWorkspaceKey, err := base64.StdEncoding.DecodeString(workspaceKeyResponse.EncryptedKey)
+	if err != nil {
+		HandleError(err, "Unable to get bytes represented by the base64 for encryptedWorkspaceKey")
+	}
+
+	encryptedWorkspaceKeySenderPublicKey, err := base64.StdEncoding.DecodeString(workspaceKeyResponse.Sender.PublicKey)
+	if err != nil {
+		HandleError(err, "Unable to get bytes represented by the base64 for encryptedWorkspaceKeySenderPublicKey")
+	}
+
+	encryptedWorkspaceKeyNonce, err := base64.StdEncoding.DecodeString(workspaceKeyResponse.Nonce)
+	if err != nil {
+		HandleError(err, "Unable to get bytes represented by the base64 for encryptedWorkspaceKeyNonce")
+	}
+
+	currentUsersPrivateKey, err := base64.StdEncoding.DecodeString(receiversPrivateKey)
+	if err != nil {
+		HandleError(err, "Unable to get bytes represented by the base64 for currentUsersPrivateKey")
+	}
+
+	if len(currentUsersPrivateKey) == 0 || len(encryptedWorkspaceKeySenderPublicKey) == 0 {
+		log.Debugf("Missing credentials for generating plainTextEncryptionKey: [currentUsersPrivateKey=%s] [encryptedWorkspaceKeySenderPublicKey=%s]", currentUsersPrivateKey, encryptedWorkspaceKeySenderPublicKey)
+		PrintErrorMessageAndExit("Some required user credentials are missing to generate your [plainTextEncryptionKey]. Please run [infisical login] then try again")
+	}
+
 	plainTextWorkspaceKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
 	encryptedSecrets, err := api.CallGetSecretsV2(httpClient, api.GetEncryptedSecretsV2Request{
