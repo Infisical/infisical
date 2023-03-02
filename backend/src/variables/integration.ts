@@ -1,14 +1,12 @@
 import {
     CLIENT_ID_AZURE,
-    CLIENT_ID_GITLAB,
-    TENANT_ID_AZURE
+    CLIENT_ID_GITLAB
 } from '../config';
 import {
   CLIENT_ID_HEROKU,
   CLIENT_ID_NETLIFY,
   CLIENT_ID_GITHUB,
-  CLIENT_SLUG_VERCEL,
-  CLIENT_SECRET_GITLAB,
+  CLIENT_SLUG_VERCEL
 } from "../config";
 
 // integrations
@@ -41,7 +39,7 @@ const INTEGRATION_SET = new Set([
 const INTEGRATION_OAUTH2 = "oauth2";
 
 // integration oauth endpoints
-const INTEGRATION_AZURE_TOKEN_URL = `https://login.microsoftonline.com/${TENANT_ID_AZURE}/oauth2/v2.0/token`;
+const INTEGRATION_AZURE_TOKEN_URL = `https://login.microsoftonline.com/common/oauth2/v2.0/token`;
 const INTEGRATION_HEROKU_TOKEN_URL = 'https://id.heroku.com/oauth/token';
 const INTEGRATION_VERCEL_TOKEN_URL =
   "https://api.vercel.com/v2/oauth/access_token";
@@ -100,15 +98,6 @@ const INTEGRATION_OPTIONS = [
         docsLink: ''
     },
     {
-        name: 'GitLab',
-        slug: 'gitlab',
-        image: 'GitLab.png',
-        isAvailable: true,
-        type: 'oauth',
-        clientId: CLIENT_ID_GITLAB, 
-        docsLink: ''
-    },
-    {
         name: 'Render',
         slug: 'render',
         image: 'Render.png',
@@ -145,6 +134,15 @@ const INTEGRATION_OPTIONS = [
         docsLink: ''
     },
     {
+        name: 'Azure Key Vault',
+        slug: 'azure-key-vault',
+        image: 'Microsoft Azure.png',
+        isAvailable: true,
+        type: 'oauth',
+        clientId: CLIENT_ID_AZURE,
+        docsLink: ''
+    },
+    {
         name: 'Circle CI',
         slug: 'circleci',
         image: 'Circle CI.png',
@@ -154,22 +152,21 @@ const INTEGRATION_OPTIONS = [
         docsLink: ''
     },
     {
+        name: 'GitLab',
+        slug: 'gitlab',
+        image: 'GitLab.png',
+        isAvailable: true,
+        type: 'oauth',
+        clientId: CLIENT_ID_GITLAB, 
+        docsLink: ''
+    },
+    {
         name: 'Travis CI',
         slug: 'travisci',
         image: 'Travis CI.png',
         isAvailable: true,
         type: 'pat',
         clientId: '',
-        docsLink: ''
-    },
-    {
-        name: 'Azure Key Vault',
-        slug: 'azure-key-vault',
-        image: 'Microsoft Azure.png',
-        isAvailable: false,
-        type: 'oauth',
-        clientId: CLIENT_ID_AZURE,
-        tenantId: TENANT_ID_AZURE,
         docsLink: ''
     },
     {

@@ -195,17 +195,22 @@ const syncSecretsAzureKeyVault = async ({
      */
     const paginateAzureKeyVaultSecrets = async (url: string) => {
       let result: GetAzureKeyVaultSecret[] = [];
-      
-      while (url) {
-        const res = await request.get(url, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Accept-Encoding': 'application/json'
-          }
-        });
+      try {
+        while (url) {
+          const res = await request.get(url, {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          });
+          
+          result = result.concat(res.data.value);
+          
+          url = res.data.nextLink;
+        }
         
-        result = result.concat(res.data.value);
-        url = res.data.nextLink;
+      } catch (err) {
+        Sentry.setUser(null);
+        Sentry.captureException(err);
       }
       
       return result;
@@ -221,8 +226,7 @@ const syncSecretsAzureKeyVault = async ({
       
       const azureKeyVaultSecret = await request.get(`${getAzureKeyVaultSecret.id}?api-version=7.3`, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept-Encoding': 'application/json'
+          'Authorization': `Bearer ${accessToken}`
         }
       });
 
@@ -279,8 +283,7 @@ const syncSecretsAzureKeyVault = async ({
           },
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Accept-Encoding': 'application/json'
+              Authorization: `Bearer ${accessToken}`
             }
           }
         );
@@ -291,8 +294,7 @@ const syncSecretsAzureKeyVault = async ({
       deleteSecrets.forEach(async (secret) => {
         await request.delete(`${integration.app}/secrets/${secret.key}?api-version=7.3`, {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Accept-Encoding': 'application/json'
+            'Authorization': `Bearer ${accessToken}`
           }
         });
       });

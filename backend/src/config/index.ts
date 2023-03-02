@@ -17,7 +17,6 @@ const NODE_ENV = process.env.NODE_ENV! || 'production';
 const VERBOSE_ERROR_OUTPUT = process.env.VERBOSE_ERROR_OUTPUT! === 'true' && true;
 const LOKI_HOST = process.env.LOKI_HOST || undefined;
 const CLIENT_ID_AZURE = process.env.CLIENT_ID_AZURE!;
-const TENANT_ID_AZURE = process.env.TENANT_ID_AZURE!;
 const CLIENT_ID_HEROKU = process.env.CLIENT_ID_HEROKU!;
 const CLIENT_ID_VERCEL = process.env.CLIENT_ID_VERCEL!;
 const CLIENT_ID_NETLIFY = process.env.CLIENT_ID_NETLIFY!;
@@ -72,7 +71,6 @@ export {
   VERBOSE_ERROR_OUTPUT,
   LOKI_HOST,
   CLIENT_ID_AZURE,
-  TENANT_ID_AZURE,
   CLIENT_ID_HEROKU,
   CLIENT_ID_VERCEL,
   CLIENT_ID_NETLIFY,

@@ -172,7 +172,7 @@ export default function Integrations() {
       let link = '';
       switch (integrationOption.slug) {
         case 'azure-key-vault':
-          link = `https://login.microsoftonline.com/${integrationOption.tenantId}/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
+          link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
           break;
         case 'aws-parameter-store':
           link = `${window.location.origin}/integrations/aws-parameter-store/authorize`;

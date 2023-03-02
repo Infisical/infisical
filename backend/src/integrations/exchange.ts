@@ -364,8 +364,8 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
  * @param {Object} obj1
  * @param {Object} obj1.code - code for code-token exchange
  * @returns {Object} obj2
- * @returns {String} obj2.accessToken - access token for Github API
- * @returns {String} obj2.refreshToken - refresh token for Github API
+ * @returns {String} obj2.accessToken - access token for Gitlab API
+ * @returns {String} obj2.refreshToken - refresh token for Gitlab API
  * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
  */
 const exchangeCodeGitlab = async ({ code }: { code: string }) => {
