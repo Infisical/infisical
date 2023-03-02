@@ -20,6 +20,9 @@ func PrintErrorAndExit(exitCode int, err error, messages ...string) {
 		}
 	}
 
+	supportMsg := fmt.Sprintf("\n\nIf this issue continues, get support at https://infisical.com/slack")
+	fmt.Fprintln(os.Stderr, supportMsg)
+
 	os.Exit(exitCode)
 }
 
