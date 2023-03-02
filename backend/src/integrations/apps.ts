@@ -197,21 +197,40 @@ const getAppsVercel = async ({
  * @returns {String} apps.name - name of Netlify site
  */
 const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
-  let apps;
+  const apps: any = [];
   try {
-    const res = (
-      await request.get(`${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`, {
+    let page = 1;
+    const perPage = 10;
+    let hasMorePages = true;
+    
+    // paginate through all sites
+    while (hasMorePages) {
+      const params = new URLSearchParams({
+        page: String(page),
+        per_page: String(perPage)
+      });
+
+      const { data } = await request.get(`${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`, {
+        params,
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Accept-Encoding': 'application/json'
         }
-      })
-    ).data;
+      });
+      
+      data.map((a: any) => {
+        apps.push({
+          name: a.name,
+          appId: a.site_id
+        });
+      });
+      
+      if (data.length < perPage) {
+        hasMorePages = false;
+      }
 
-    apps = res.map((a: any) => ({
-      name: a.name,
-      appId: a.site_id,
-    }));
+      page++;
+    }
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);

@@ -75,7 +75,6 @@ let privateKey;
             throw new Error('Insufficient details to decrypt private key');
         }
     } catch (err) {
-        console.error(err);
         throw new Error('Failed to decrypt private key');
     }
 
