@@ -225,7 +225,8 @@
         "integrations/cloud/render",
         "integrations/cloud/flyio",
         "integrations/cloud/aws-parameter-store",
-        "integrations/cloud/aws-secret-manager"
+        "integrations/cloud/aws-secret-manager",
+        "integrations/cloud/azure-key-vault"
       ]
     },
     {
