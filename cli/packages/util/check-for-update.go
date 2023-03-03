@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -55,7 +55,7 @@ func getLatestTag(repoOwner string, repoName string) (string, error) {
 
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
@@ -64,7 +64,9 @@ func getLatestTag(repoOwner string, repoName string) (string, error) {
 		Name string `json:"name"`
 	}
 
-	json.Unmarshal(body, &tags)
+	if err := json.Unmarshal(body, &tags); err != nil {
+		return "", fmt.Errorf("failed to unmarshal github response: %w", err)
+	}
 
 	return tags[0].Name[1:], nil
 }
