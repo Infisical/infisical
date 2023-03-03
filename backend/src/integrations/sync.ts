@@ -272,31 +272,75 @@ const syncSecretsAzureKeyVault = async ({
         deleteSecrets.push(res[key]);
       }
     });
+
+    const setSecretAzureKeyVault = async ({
+      key,
+      value,
+      integration,
+      accessToken
+    }: {
+      key: string;
+      value: string;
+      integration: IIntegration;
+      accessToken: string;
+    }) => {
+      let isSecretSet = false;
+      let maxTries = 6;
+      
+      while (!isSecretSet && maxTries > 0) {
+        // try to set secret
+        try {
+          await request.put(
+            `${integration.app}/secrets/${key}?api-version=7.3`,
+            {
+              value
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`
+              }
+            }
+          );
+
+          isSecretSet = true;
+        
+        } catch (err) {
+          const error: any = err;
+          if (error?.response?.data?.error?.innererror?.code === 'ObjectIsDeletedButRecoverable') {
+            await request.post(
+              `${integration.app}/deletedsecrets/${key}/recover?api-version=7.3`, {},
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`
+                }
+              }
+            );
+            await new Promise(resolve => setTimeout(resolve, 10000));
+          } else {
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            maxTries--;
+          }
+        }
+      }
+    }
     
     // Sync/push set secrets
-    if (setSecrets.length > 0) {
-      setSecrets.forEach(async ({ key, value }) => {
-        await request.put(
-          `${integration.app}/secrets/${key}?api-version=7.3`,
-          {
-            value
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`
-            }
-          }
-        );
+    for await (const setSecret of setSecrets) {
+      const { key, value } = setSecret;
+      setSecretAzureKeyVault({
+        key,
+        value,
+        integration,
+        accessToken
       });
     }
     
-    if (deleteSecrets.length > 0) {
-      deleteSecrets.forEach(async (secret) => {
-        await request.delete(`${integration.app}/secrets/${secret.key}?api-version=7.3`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        });
+    for await (const deleteSecret of deleteSecrets) {
+      const { key } = deleteSecret;
+      await request.delete(`${integration.app}/secrets/${key}?api-version=7.3`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
       });
     }
   } catch (err) {
