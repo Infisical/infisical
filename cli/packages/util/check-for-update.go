@@ -14,6 +14,9 @@ import (
 )
 
 func CheckForUpdate() {
+	if checkEnv := os.Getenv("INFISICAL_DISABLE_UPDATE_CHECK"); checkEnv != "" {
+		return
+	}
 	latestVersion, err := getLatestTag("Infisical", "infisical")
 	if err != nil {
 		// do nothing and continue
