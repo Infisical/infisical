@@ -44,6 +44,7 @@
 <kbd>[<img title="Türkisch" alt="Türkisch" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/tr.svg" width="22">](i18n/README.tr.md)</kbd>
 <kbd>[<img title="Bahasa Indonesisch" alt="Bahasa Indonesisch" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/id.svg" width="22">](i18n/README.id.md)</kbd>
 <kbd>[<img title="Portugiesisch-Brasilianisch" alt="Portugiesisch-Brasilianisch" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/br.svg" width="22">](i18n/README.pt-br.md)</kbd>
+<kbd>[<img title="Japanese" alt="Japanese language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/jp.svg" width="22">](i18n/README.ja.md)</kbd>
 
 **[Infisical](https://infisical.com)** ist ein Open-Source, End-To-End-Verschlüsseltes Verwaltungstool für Private Schlüssel (Secrets), mit welchem sich API-Keys und Konfigurationen zentral verwalten lassen. Von Infisical aus kannst du deine Schlüssel in deinen ganzen Entwicklungsprozess (Lokal, Staging, Live) integrieren. Es ist leicht verständlich und benutzerfreundlich aufgebaut.
 
