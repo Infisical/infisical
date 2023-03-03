@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"os"
@@ -19,6 +20,7 @@ func CheckForUpdate() {
 	}
 	latestVersion, err := getLatestTag("Infisical", "infisical")
 	if err != nil {
+		log.Debug(err)
 		// do nothing and continue
 		return
 	}
