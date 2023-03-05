@@ -219,8 +219,7 @@ export default function Dashboard() {
     (async () => {
       if (router.isReady && workspaceId === 'undefined') {
         router.push('/noprojects');
-      }
-      try {
+      } else try {
         const { push, query } = router
         const tempNumSnapshots = await getProjectSercetSnapshotsCount({
           workspaceId
