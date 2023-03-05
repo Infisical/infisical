@@ -1,6 +1,40 @@
-# Infisical - Helm Chart
+# Infisical Helm Chart
 
-This is the Infisical application Helm chart.
+This is the Infisical application Helm chart. This chart includes the following :
+
+| Service    | Description                         |
+| ---------- | ----------------------------------- |
+| `frontend` | Infisical's Web UI                  |
+| `backend`  | Infisical's API                     |
+| `mongodb`  | Infisical's local database          |
+| `mailhog`  | Infisical's development SMTP server |
+
+## Installation
+
+To install the chart, run the following :
+
+```sh
+# Add the Infisical repository
+helm repo add infisical 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/' && helm repo update
+
+# Install Infisical (with default values)
+helm upgrade --install --atomic \
+  -n infisical-dev --create-namespace \
+  infisical infisical/infisical
+
+# Install Infisical (with custom inline values, replace with your own values)
+helm upgrade --install --atomic \
+  -n infisical-dev --create-namespace \
+  --set mongodb.enabled=false \
+  --set mongodbConnection.externalMongoDBConnectionString="mongodb://<user>:<pass>@<host>:<port>/<database-name>" \
+  infisical infisical/infisical
+
+# Install Infisical (with custom values file, replace with your own values file)
+helm upgrade --install --atomic \
+  -n infisical-dev --create-namespace \
+  -f custom-values.yaml \
+  infisical infisical/infisical
+```
 
 ## Parameters
 
@@ -118,6 +152,7 @@ This is the Infisical application Helm chart.
 | `mailhog.ingress.labels`           | Ingress labels             | `{}`                      |
 | `mailhog.ingress.hosts[0].host`    | Mailhog host               | `mailhog.infisical.local` |
 
+Learn more in our [docs](https://infisical.com/docs/self-hosting/deployments/kubernetes)
 
 ## Persistence
 
@@ -125,13 +160,36 @@ The database persistence is enabled by default, your volumes will remain on your
 
 ## Local development
 
-Use below values if you want to setup a local development environment, and adapt those variables as you need. Below example will deploy the following :
-- https://infisical.local
+Find the resources and configuration about how to setup your local develoment environment on a k8s environment.
+
+### Requirements
+
+To create a local k8s environment, you'll need :
+
+- [`helm`](https://helm.sh/docs/intro/install/) <kbd>required</kbd>
+  - to generate the manifests and deploy the chart 
+- local/remote k8s cluster <kbd>required</kbd>
+  - e.g. [`kind`](https://kubernetes.io/docs/tasks/tools/), [`minikube`](https://kubernetes.io/docs/tasks/tools/) or an online provider
+- [`kubectl`](https://kubernetes.io/docs/tasks/tools/) <kbd>optional</kbd>
+  - to interact with the cluster
+
+### Examples
+
+ℹ️ Find complete setup scripts in [**./examples**](./examples)
+
+Below example will deploy the following :
+
+- [**infisical.local**](https://infisical.local)
   - Your local Infisical instance
   - You may have to add `infisical.local` to your `/etc/hosts` or similar depending your OS
-- https://mailhog.infisical.local
+    - The corresponding IP will depend on the tool or the way you're exposing the services ([learn more](https://minikube.sigs.k8s.io/docs/handbook/host-access/))
+
+- [**mailhog.infisical.local**](https://mailhog.infisical.local)
   - Local SMTP server used to receive the signup verification code
   - You may have to add `mailhog.infisical.local` to your `/etc/hosts` or similar depending your OS
+    - The corresponding IP will depend on the tool or the way you're exposing the services ([learn more](https://minikube.sigs.k8s.io/docs/handbook/host-access/))
+
+Use below values to setup a local development environment, adapt those variables as you need
 
 ```yaml
 # values.dev.yaml
@@ -146,7 +204,7 @@ mongodb:
 mailhog:
     enabled: true
 
-# Configure backend development variables
+# Configure backend development variables (required)
 backendEnvironmentVariables:
   ENCRYPTION_KEY: 6c1fe4e407b8911c104518103505b218
   JWT_AUTH_SECRET: 4be6ba5602e0fa0ac6ac05c3cd4d247f
@@ -162,7 +220,7 @@ backendEnvironmentVariables:
   SMTP_SECURE: false
   SMTP_USERNAME: dev@infisical.local
 
-# Configure frontend development variables
+# Configure frontend development variables (required)
 frontendEnvironmentVariables:
   SITE_URL: https://infisical.local
 ```

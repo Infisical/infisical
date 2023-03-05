@@ -308,7 +308,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           isSelected={router.asPath === `/activity/${currentWorkspace?._id}`}
                           icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
                         >
-                          Activity Logs
+                          Audit Logs
                         </MenuItem>
                       </a>
                     </Link>

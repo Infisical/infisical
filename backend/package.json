@@ -48,7 +48,7 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "scripts": {
-    "start": "npm run build && node build/index.js",
+    "start": "node build/index.js",
     "dev": "nodemon",
     "swagger-autogen": "node ./swagger/index.ts",
     "build": "rimraf ./build && tsc && cp -R ./src/templates ./build",
@@ -87,7 +87,7 @@
     "@types/supertest": "^2.0.12",
     "@types/swagger-jsdoc": "^6.0.1",
     "@types/swagger-ui-express": "^4.1.3",
-    "@typescript-eslint/eslint-plugin": "^5.40.1",
+    "@typescript-eslint/eslint-plugin": "^5.54.0",
     "@typescript-eslint/parser": "^5.40.1",
     "cross-env": "^7.0.3",
     "eslint": "^8.26.0",

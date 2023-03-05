@@ -38,13 +38,18 @@ var exportCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
 		}
 
 		shouldExpandSecrets, err := cmd.Flags().GetBool("expand")
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		projectId, err := cmd.Flags().GetString("projectId")
 		if err != nil {
 			util.HandleError(err)
 		}
@@ -69,7 +74,7 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, WorkspaceId: projectId})
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")
 		}
@@ -106,6 +111,7 @@ func init() {
 	exportCmd.Flags().Bool("secret-overriding", true, "Prioritizes personal secrets, if any, with the same name over shared secrets")
 	exportCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	exportCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs")
+	exportCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets from")
 }
 
 // Format according to the format flag

@@ -55,4 +55,5 @@ type GetAllSecretsParameters struct {
 	EnvironmentPassedViaFlag bool
 	InfisicalToken           string
 	TagSlugs                 string
+	WorkspaceId              string
 }

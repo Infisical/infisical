@@ -56,7 +56,7 @@ var runCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
@@ -110,13 +110,7 @@ var runCmd = &cobra.Command{
 		}
 
 		// check to see if there are any reserved key words in secrets to inject
-		reservedEnvironmentVariables := []string{"HOME", "PATH", "PS1", "PS2"}
-		for _, reservedEnvName := range reservedEnvironmentVariables {
-			if _, ok := secretsByKey[reservedEnvName]; ok {
-				delete(secretsByKey, reservedEnvName)
-				util.PrintWarning(fmt.Sprintf("Infisical secret named [%v] has been removed because it is a reserved secret name", reservedEnvName))
-			}
-		}
+		filterReservedEnvVars(secretsByKey)
 
 		// now add infisical secrets
 		for k, v := range secretsByKey {
@@ -147,6 +141,37 @@ var runCmd = &cobra.Command{
 			}
 		}
 	},
+}
+
+var (
+	reservedEnvVars = []string{
+		"HOME", "PATH", "PS1", "PS2",
+		"PWD", "EDITOR", "XAUTHORITY", "USER",
+		"TERM", "TERMINFO", "SHELL", "MAIL",
+	}
+
+	reservedEnvVarPrefixes = []string{
+		"XDG_",
+		"LC_",
+	}
+)
+
+func filterReservedEnvVars(env map[string]models.SingleEnvironmentVariable) {
+	for _, reservedEnvName := range reservedEnvVars {
+		if _, ok := env[reservedEnvName]; ok {
+			delete(env, reservedEnvName)
+			util.PrintWarning(fmt.Sprintf("Infisical secret named [%v] has been removed because it is a reserved secret name", reservedEnvName))
+		}
+	}
+
+	for _, reservedEnvPrefix := range reservedEnvVarPrefixes {
+		for envName := range env {
+			if strings.HasPrefix(envName, reservedEnvPrefix) {
+				delete(env, envName)
+				util.PrintWarning(fmt.Sprintf("Infisical secret named [%v] has been removed because it contains a reserved prefix", envName))
+			}
+		}
+	}
 }
 
 func init() {

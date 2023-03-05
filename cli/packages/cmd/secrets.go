@@ -19,6 +19,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/Infisical/infisical-merge/packages/visualize"
 	"github.com/go-resty/resty/v2"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +33,7 @@ var secretsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
@@ -98,7 +99,7 @@ var secretsSetCmd = &cobra.Command{
 
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
@@ -131,6 +132,11 @@ var secretsSetCmd = &cobra.Command{
 		encryptedWorkspaceKeySenderPublicKey, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.Sender.PublicKey)
 		encryptedWorkspaceKeyNonce, _ := base64.StdEncoding.DecodeString(workspaceKeyResponse.Nonce)
 		currentUsersPrivateKey, _ := base64.StdEncoding.DecodeString(loggedInUserDetails.UserCredentials.PrivateKey)
+
+		if len(currentUsersPrivateKey) == 0 || len(encryptedWorkspaceKeySenderPublicKey) == 0 {
+			log.Debugf("Missing credentials for generating plainTextEncryptionKey: [currentUsersPrivateKey=%s] [encryptedWorkspaceKeySenderPublicKey=%s]", currentUsersPrivateKey, encryptedWorkspaceKeySenderPublicKey)
+			util.PrintErrorMessageAndExit("Some required user credentials are missing to generate your [plainTextEncryptionKey]. Please run [infisical login] then try again")
+		}
 
 		// decrypt workspace key
 		plainTextEncryptionKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
@@ -277,7 +283,7 @@ var secretsDeleteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
-			environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+			environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 			if environmentFromWorkspace != "" {
 				environmentName = environmentFromWorkspace
 			}
@@ -338,7 +344,7 @@ var secretsDeleteCmd = &cobra.Command{
 func getSecretsByNames(cmd *cobra.Command, args []string) {
 	environmentName, _ := cmd.Flags().GetString("env")
 	if !cmd.Flags().Changed("env") {
-		environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+		environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 		if environmentFromWorkspace != "" {
 			environmentName = environmentFromWorkspace
 		}
@@ -361,10 +367,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 
 	requestedSecrets := []models.SingleEnvironmentVariable{}
 
-	secretsMap := make(map[string]models.SingleEnvironmentVariable)
-	for _, secret := range secrets {
-		secretsMap[secret.Key] = secret
-	}
+	secretsMap := getSecretsByKeys(secrets)
 
 	for _, secretKeyFromArg := range args {
 		if value, ok := secretsMap[strings.ToUpper(secretKeyFromArg)]; ok {
@@ -384,7 +387,7 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 func generateExampleEnv(cmd *cobra.Command, args []string) {
 	environmentName, _ := cmd.Flags().GetString("env")
 	if !cmd.Flags().Changed("env") {
-		environmentFromWorkspace := util.GetEnvelopmentBasedOnGitBranch()
+		environmentFromWorkspace := util.GetEnvFromWorkspaceFile()
 		if environmentFromWorkspace != "" {
 			environmentName = environmentFromWorkspace
 		}
@@ -587,7 +590,7 @@ func addHash(input string) string {
 }
 
 func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]models.SingleEnvironmentVariable {
-	secretMapByName := make(map[string]models.SingleEnvironmentVariable)
+	secretMapByName := make(map[string]models.SingleEnvironmentVariable, len(secrets))
 
 	for _, secret := range secrets {
 		secretMapByName[secret.Key] = secret

@@ -77,13 +77,13 @@ export default function SettingsBilling() {
   }, []);
 
   return (
-    <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
+    <div className="bg-bunker-800 pb-4 flex flex-col justify-between text-white">
       <Head>
         <title>{t('common:head-title', { title: t('billing:title') })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
       <div className="flex flex-row">
-        <div className="w-full max-h-screen pb-2 overflow-y-auto">
+        <div className="w-full pb-2">
           <NavHeader pageName={t('billing:title')} />
           <div className="flex flex-row justify-between items-center ml-6 my-8 text-xl max-w-5xl">
             <div className="flex flex-col justify-start items-start text-3xl">
@@ -93,7 +93,6 @@ export default function SettingsBilling() {
           </div>
           <div className="flex flex-col ml-6 text-mineshaft-50 w-max">
             <p className="text-xl font-semibold">{t('billing:subscription')}</p>
-            <div className="mt-4 text-bunker-200 h-14 flex justify-center items-center rounded-md bg-bunker-600 mr-4"> If you are looking to get an annual plan, please reach out to <a className="ml-1.5 underline text-primary underline-offset-2" href="mailto:team@infisical.com">team@infisical.com</a></div>
             <div className="grid grid-cols-2 grid-rows-2 gap-y-6 gap-x-3 mt-4 overflow-x-auto">
               {plans.map((plan) => (
                 <Plan key={plan.name} plan={plan} />

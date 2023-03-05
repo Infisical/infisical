@@ -14,7 +14,7 @@ const tagVariants = cva('inline-flex whitespace-nowrap text-sm rounded-sm mr-1.5
       red: 'bg-red/80 text-bunker-100'
     },
     size: {
-      sm: 'px-1 py-0.5'
+      sm: 'px-1.5 py-0.5'
     }
   }
 });

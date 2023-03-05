@@ -10,11 +10,13 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
   INTEGRATION_HEROKU_API_URL,
+  INTEGRATION_GITLAB_API_URL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,
@@ -74,6 +76,11 @@ const getApps = async ({
         break;
       case INTEGRATION_GITHUB:
         apps = await getAppsGithub({
+          accessToken,
+        });
+        break;
+      case INTEGRATION_GITLAB:
+        apps = await getAppsGitlab({
           accessToken,
         });
         break;
@@ -190,21 +197,40 @@ const getAppsVercel = async ({
  * @returns {String} apps.name - name of Netlify site
  */
 const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
-  let apps;
+  const apps: any = [];
   try {
-    const res = (
-      await request.get(`${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`, {
+    let page = 1;
+    const perPage = 10;
+    let hasMorePages = true;
+    
+    // paginate through all sites
+    while (hasMorePages) {
+      const params = new URLSearchParams({
+        page: String(page),
+        per_page: String(perPage)
+      });
+
+      const { data } = await request.get(`${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`, {
+        params,
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Accept-Encoding': 'application/json'
         }
-      })
-    ).data;
+      });
+      
+      data.map((a: any) => {
+        apps.push({
+          name: a.name,
+          appId: a.site_id
+        });
+      });
+      
+      if (data.length < perPage) {
+        hasMorePages = false;
+      }
 
-    apps = res.map((a: any) => ({
-      name: a.name,
-      appId: a.site_id,
-    }));
+      page++;
+    }
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
@@ -217,9 +243,9 @@ const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
 /**
  * Return list of repositories for Github integration
  * @param {Object} obj
- * @param {String} obj.accessToken - access token for Netlify API
- * @returns {Object[]} apps - names of Netlify sites
- * @returns {String} apps.name - name of Netlify site
+ * @param {String} obj.accessToken - access token for Github API
+ * @returns {Object[]} apps - names of Github sites
+ * @returns {String} apps.name - name of Github site
  */
 const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
   let apps;
@@ -396,6 +422,56 @@ const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error("Failed to get TravisCI projects");
+  }
+  
+  return apps;
+}
+
+/**
+ * Return list of repositories for GitLab integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for GitLab API
+ * @returns {Object[]} apps - names of GitLab sites
+ * @returns {String} apps.name - name of GitLab site
+ */
+const getAppsGitlab = async ({ accessToken }: {accessToken: string}) => {
+  let apps;
+  
+  try {
+    const { id } = (
+      await request.get(
+        `${INTEGRATION_GITLAB_API_URL}/v4/user`,
+        {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      )
+    ).data;
+
+    const res = (
+      await request.get(
+        `${INTEGRATION_GITLAB_API_URL}/v4/users/${id}/projects`,
+        {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      )
+    ).data;
+
+    apps = res?.map((a: any) => {
+      return {
+        name: a?.name,
+        appId: `${a?.id}`,
+      }
+    });
+  }catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error("Failed to get GitLab repos");
   }
   
   return apps;

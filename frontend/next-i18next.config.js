@@ -8,7 +8,7 @@ module.exports = {
   debug: false,
   i18n: {
     defaultLocale: "en",
-    locales: ["en", "ko", "fr", "pt-BR"],
+    locales: ["en", "ko", "fr", "pt-BR", "pt-PT", "es"],
   },
   fallbackLng: {
     default: ["en"],

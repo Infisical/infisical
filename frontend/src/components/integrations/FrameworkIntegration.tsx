@@ -10,7 +10,8 @@ interface Framework {
 const FrameworkIntegration = ({ framework }: { framework: Framework }) => (
   <a
     href={framework.docsLink}
-    rel="noopener"
+    rel="noopener noreferrer"
+    target="_blank"
     className="relative flex flex-row justify-center bg-bunker-500 hover:bg-gradient-to-tr  duration-200 h-32 rounded-md p-0.5 items-center cursor-pointer"
   >
     <div

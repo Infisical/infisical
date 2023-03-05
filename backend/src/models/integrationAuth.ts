@@ -7,6 +7,7 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
@@ -16,7 +17,7 @@ import {
 export interface IIntegrationAuth {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'render' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'aws-parameter-store' | 'aws-secret-manager';
+  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'gitlab' | 'render' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'aws-parameter-store' | 'aws-secret-manager';
   teamId: string;
   accountId: string;
   refreshCiphertext?: string;
@@ -48,6 +49,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_VERCEL,
         INTEGRATION_NETLIFY,
         INTEGRATION_GITHUB,
+        INTEGRATION_GITLAB,
         INTEGRATION_RENDER,
         INTEGRATION_FLYIO,
         INTEGRATION_CIRCLECI,

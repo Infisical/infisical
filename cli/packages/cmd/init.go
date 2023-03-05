@@ -6,7 +6,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/models"
@@ -91,12 +90,12 @@ func writeWorkspaceFile(selectedWorkspace models.Workspace) error {
 		WorkspaceId: selectedWorkspace.ID,
 	}
 
-	marshalledWorkspaceFile, err := json.Marshal(workspaceFileToSave)
+	marshalledWorkspaceFile, err := json.MarshalIndent(workspaceFileToSave, "", "    ")
 	if err != nil {
 		return err
 	}
 
-	err = util.WriteToFile(util.INFISICAL_WORKSPACE_CONFIG_FILE_NAME, marshalledWorkspaceFile, os.ModePerm)
+	err = util.WriteToFile(util.INFISICAL_WORKSPACE_CONFIG_FILE_NAME, marshalledWorkspaceFile, 0600)
 	if err != nil {
 		return err
 	}

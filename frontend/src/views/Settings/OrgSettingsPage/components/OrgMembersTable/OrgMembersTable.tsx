@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import { useRouter } from 'next/router';
 import { faMagnifyingGlass, faPlus, faTrash, faUsers } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -61,6 +62,7 @@ export const OrgMembersTable = ({
   userId,
   isLoading
 }: Props) => {
+  const router = useRouter();
   const [searchMemberFilter, setSearchMemberFilter] = useState('');
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     'addMember',
@@ -159,7 +161,7 @@ export const OrgMembersTable = ({
                           <Select
                             defaultValue={role}
                             isDisabled={userId === user?._id}
-                            className="w-full bg-mineshaft-600"
+                            className="w-40 bg-mineshaft-600"
                             onValueChange={(selectedRole) =>
                               onRoleChange(orgMembershipId, selectedRole)
                             }
@@ -172,8 +174,8 @@ export const OrgMembersTable = ({
                           </Select>
                         )}
                         {(status === 'invited' || status === 'verified') && (
-                          <Button colorSchema="secondary" onClick={() => onInviteMember(email)}>
-                            Resent Invite
+                          <Button className='w-40' colorSchema="secondary" onClick={() => onInviteMember(email)}>
+                            Resend Invite
                           </Button>
                         )}
                         {status === 'completed' && (
@@ -193,7 +195,17 @@ export const OrgMembersTable = ({
                             </Tag>
                           ))
                         ) : (
-                          <Tag colorSchema="red">This user isn&apos;t part of any projects yet</Tag>
+                          <div className='flex flex-row'>
+                            <Tag colorSchema="red">This user isn&apos;t part of any projects yet</Tag>
+                            <button 
+                              type="button"
+                              onClick={() => router.push(`/users/${router.query.id}`)}
+                              className='text-sm bg-mineshaft w-max px-1.5 py-0.5 hover:bg-primary duration-200 hover:text-black cursor-pointer rounded-sm'
+                            >
+                              <FontAwesomeIcon icon={faPlus} className="mr-1" />
+                              Add to projects
+                            </button>
+                          </div>
                         )}
                       </Td>
                       <Td>

@@ -79,4 +79,17 @@ Inject secrets from Infisical into your application process.
     Default value: `true`
   </Accordion>
 
+  <Accordion title="--tags">
+    When working with tags, you can use this flag to filter and retrieve only secrets that are associated with a specific tag(s).
+
+    ```bash
+    # Example 
+    infisical run --tags=tag1,tag2,tag3 -- npm run dev
+    ```
+
+    Note: you must reference the tag by its slug name not its fully qualified name. Go to project settings to view all tag slugs.
+
+    By default, all secrets are fetched
+  </Accordion>
+
 </Accordion>

@@ -36,6 +36,9 @@ var resetCmd = &cobra.Command{
 
 		keyringInstance.Remove(util.KEYRING_SERVICE_NAME)
 
+		// delete secrets backup
+		util.DeleteBackupSecrets()
+
 		util.PrintSuccessMessage("Reset successful")
 	},
 }
