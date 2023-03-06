@@ -3,13 +3,14 @@ import { Schema, model, Types } from 'mongoose';
 export interface IServiceTokenData {
     name: string;
     workspace: Types.ObjectId;
-    environment: string; // TODO: adapt to upcoming environment id
+    environment: string;
     user: Types.ObjectId;
     expiresAt: Date;
     secretHash: string;
     encryptedKey: string;
     iv: string;
     tag: string;
+    permissions: string[];
 }
 
 const serviceTokenDataSchema = new Schema<IServiceTokenData>(
@@ -51,6 +52,11 @@ const serviceTokenDataSchema = new Schema<IServiceTokenData>(
         tag: {
             type: String,
             select: false
+        },
+        permissions: {
+            type: [String],
+            enum: ['read', 'write'],
+            default: ['read']
         }
     }, 
     {

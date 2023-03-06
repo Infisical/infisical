@@ -953,6 +953,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
         }
     }   
     */
+   
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
     const toDelete = req.secrets.map((s: any) => s._id);
 

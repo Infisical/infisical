@@ -309,78 +309,6 @@ paths:
                   example: any
                 code:
                   example: any
-  /api/v1/signup/complete-account/signup:
-    post:
-      description: ''
-      parameters: []
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: Bad Request
-        '403':
-          description: Forbidden
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  example: any
-                firstName:
-                  example: any
-                lastName:
-                  example: any
-                publicKey:
-                  example: any
-                encryptedPrivateKey:
-                  example: any
-                iv:
-                  example: any
-                tag:
-                  example: any
-                salt:
-                  example: any
-                verifier:
-                  example: any
-                organizationName:
-                  example: any
-  /api/v1/signup/complete-account/invite:
-    post:
-      description: ''
-      parameters: []
-      responses:
-        '200':
-          description: OK
-        '400':
-          description: Bad Request
-        '403':
-          description: Forbidden
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  example: any
-                firstName:
-                  example: any
-                lastName:
-                  example: any
-                publicKey:
-                  example: any
-                encryptedPrivateKey:
-                  example: any
-                iv:
-                  example: any
-                tag:
-                  example: any
-                salt:
-                  example: any
-                verifier:
-                  example: any
   /api/v1/auth/token:
     post:
       description: ''
@@ -412,7 +340,11 @@ paths:
   /api/v1/auth/login2:
     post:
       description: ''
-      parameters: []
+      parameters:
+        - name: user-agent
+          in: header
+          schema:
+            type: string
       responses:
         '200':
           description: OK
@@ -431,7 +363,11 @@ paths:
   /api/v1/auth/logout:
     post:
       description: ''
-      parameters: []
+      parameters:
+        - name: user-agent
+          in: header
+          schema:
+            type: string
       responses:
         '200':
           description: OK
@@ -691,6 +627,18 @@ paths:
           description: OK
         '400':
           description: Bad Request
+  /api/v1/organization/{organizationId}/workspace-memberships:
+    get:
+      description: ''
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
   /api/v1/workspace/{workspaceId}/keys:
     get:
       description: ''
@@ -933,6 +881,26 @@ paths:
               properties:
                 role:
                   example: any
+  /api/v1/membership/{membershipId}/deny-permissions:
+    post:
+      description: ''
+      parameters:
+        - name: membershipId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                permissions:
+                  example: any
   /api/v1/key/{workspaceId}:
     post:
       description: ''
@@ -1147,11 +1115,17 @@ paths:
               properties:
                 clientProof:
                   example: any
+                protectedKey:
+                  example: any
+                protectedKeyIV:
+                  example: any
+                protectedKeyTag:
+                  example: any
                 encryptedPrivateKey:
                   example: any
-                iv:
+                encryptedPrivateKeyIV:
                   example: any
-                tag:
+                encryptedPrivateKeyTag:
                   example: any
                 salt:
                   example: any
@@ -1247,11 +1221,17 @@ paths:
             schema:
               type: object
               properties:
+                protectedKey:
+                  example: any
+                protectedKeyIV:
+                  example: any
+                protectedKeyTag:
+                  example: any
                 encryptedPrivateKey:
                   example: any
-                iv:
+                encryptedPrivateKeyIV:
                   example: any
-                tag:
+                encryptedPrivateKeyTag:
                   example: any
                 salt:
                   example: any
@@ -1270,6 +1250,39 @@ paths:
           description: OK
         '400':
           description: Bad Request
+  /api/v1/integration/:
+    post:
+      description: ''
+      parameters: []
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                integrationAuthId:
+                  example: any
+                app:
+                  example: any
+                appId:
+                  example: any
+                isActive:
+                  example: any
+                sourceEnvironment:
+                  example: any
+                targetEnvironment:
+                  example: any
+                owner:
+                  example: any
+                path:
+                  example: any
+                region:
+                  example: any
   /api/v1/integration/{integrationId}:
     patch:
       description: ''
@@ -1290,17 +1303,17 @@ paths:
             schema:
               type: object
               properties:
-                app:
-                  example: any
                 environment:
                   example: any
                 isActive:
                   example: any
-                target:
+                app:
                   example: any
-                context:
+                appId:
                   example: any
-                siteId:
+                targetEnvironment:
+                  example: any
+                owner:
                   example: any
     delete:
       description: ''
@@ -1322,6 +1335,33 @@ paths:
       responses:
         '200':
           description: OK
+  /api/v1/integration-auth/{integrationAuthId}:
+    get:
+      description: ''
+      parameters:
+        - name: integrationAuthId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+    delete:
+      description: ''
+      parameters:
+        - name: integrationAuthId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
   /api/v1/integration-auth/oauth-token:
     post:
       description: ''
@@ -1343,6 +1383,29 @@ paths:
                   example: any
                 integration:
                   example: any
+  /api/v1/integration-auth/access-token:
+    post:
+      description: ''
+      parameters: []
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workspaceId:
+                  example: any
+                accessId:
+                  example: any
+                accessToken:
+                  example: any
+                integration:
+                  example: any
   /api/v1/integration-auth/{integrationAuthId}/apps:
     get:
       description: ''
@@ -1357,13 +1420,115 @@ paths:
           description: OK
         '400':
           description: Bad Request
-  /api/v1/integration-auth/{integrationAuthId}:
-    delete:
+  /api/v2/signup/complete-account/signup:
+    post:
+      description: ''
+      parameters: []
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '403':
+          description: Forbidden
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  example: any
+                firstName:
+                  example: any
+                lastName:
+                  example: any
+                protectedKey:
+                  example: any
+                protectedKeyIV:
+                  example: any
+                protectedKeyTag:
+                  example: any
+                publicKey:
+                  example: any
+                encryptedPrivateKey:
+                  example: any
+                encryptedPrivateKeyIV:
+                  example: any
+                encryptedPrivateKeyTag:
+                  example: any
+                salt:
+                  example: any
+                verifier:
+                  example: any
+                organizationName:
+                  example: any
+  /api/v2/signup/complete-account/invite:
+    post:
+      description: ''
+      parameters: []
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '403':
+          description: Forbidden
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  example: any
+                firstName:
+                  example: any
+                lastName:
+                  example: any
+                protectedKey:
+                  example: any
+                protectedKeyIV:
+                  example: any
+                protectedKeyTag:
+                  example: any
+                publicKey:
+                  example: any
+                encryptedPrivateKey:
+                  example: any
+                encryptedPrivateKeyIV:
+                  example: any
+                encryptedPrivateKeyTag:
+                  example: any
+                salt:
+                  example: any
+                verifier:
+                  example: any
+  /api/v2/auth/login1:
+    post:
+      description: ''
+      parameters: []
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  example: any
+                clientPublicKey:
+                  example: any
+  /api/v2/auth/login2:
+    post:
       description: ''
       parameters:
-        - name: integrationAuthId
-          in: path
-          required: true
+        - name: user-agent
+          in: header
           schema:
             type: string
       responses:
@@ -1371,6 +1536,54 @@ paths:
           description: OK
         '400':
           description: Bad Request
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  example: any
+                clientProof:
+                  example: any
+  /api/v2/auth/mfa/send:
+    post:
+      description: ''
+      parameters: []
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  example: any
+  /api/v2/auth/mfa/verify:
+    post:
+      description: ''
+      parameters:
+        - name: user-agent
+          in: header
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  example: any
+                mfaToken:
+                  example: any
   /api/v2/users/me:
     get:
       summary: Retrieve the current user on the request
@@ -1392,6 +1605,23 @@ paths:
           description: Bad Request
       security:
         - apiKeyAuth: []
+  /api/v2/users/me/mfa:
+    patch:
+      description: ''
+      parameters: []
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                isMfaEnabled:
+                  example: any
   /api/v2/users/me/organizations:
     get:
       summary: Return organizations that current user is part of
@@ -1615,6 +1845,62 @@ paths:
               properties:
                 environmentSlug:
                   example: any
+    get:
+      description: ''
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /api/v2/workspace/{workspaceId}/tags:
+    get:
+      description: ''
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+    post:
+      description: ''
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  example: any
+                slug:
+                  example: any
+  /api/v2/workspace/tags/{tagId}:
+    delete:
+      description: ''
+      parameters:
+        - name: tagId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
   /api/v2/workspace/{workspaceId}/secrets:
     post:
       description: ''
@@ -1804,6 +2090,28 @@ paths:
           description: Bad Request
       security:
         - apiKeyAuth: []
+  /api/v2/workspace/{workspaceId}/auto-capitalization:
+    patch:
+      description: ''
+      parameters:
+        - name: workspaceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                autoCapitalization:
+                  example: any
   /api/v2/secret/batch-create/workspace/{workspaceId}/environment/{environment}:
     post:
       description: ''
@@ -1968,11 +2276,38 @@ paths:
               properties:
                 secret:
                   example: any
+  /api/v2/secrets/batch:
+    post:
+      description: ''
+      parameters:
+        - name: user-agent
+          in: header
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workspaceId:
+                  example: any
+                environment:
+                  example: any
+                requests:
+                  example: any
   /api/v2/secrets/:
     post:
       summary: Create new secret(s)
       description: Create one or many secrets for a given project and environment.
-      parameters: []
+      parameters:
+        - name: user-agent
+          in: header
+          schema:
+            type: string
       responses:
         '200':
           description: OK
@@ -2020,6 +2355,10 @@ paths:
           description: Environment within project
           required: true
           in: query
+          schema:
+            type: string
+        - name: user-agent
+          in: header
           schema:
             type: string
         - name: content
@@ -2073,7 +2412,11 @@ paths:
     delete:
       summary: Delete secret(s)
       description: Delete one or many secrets by their ID(s)
-      parameters: []
+      parameters:
+        - name: user-agent
+          in: header
+          schema:
+            type: string
       responses:
         '200':
           description: OK
@@ -2101,13 +2444,23 @@ paths:
                   description: ID(s) of secrets - string or array of strings
   /api/v2/service-token/:
     get:
-      description: ''
+      summary: Return Infisical Token data
+      description: Return Infisical Token data
       parameters: []
       responses:
         '200':
           description: OK
-        '400':
-          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  serviceTokenData:
+                    type: object
+                    $ref: '#/components/schemas/ServiceTokenData'
+                    description: Details of service token
+      security:
+        - bearerAuth: []
     post:
       description: ''
       parameters: []
@@ -2135,6 +2488,8 @@ paths:
                 tag:
                   example: any
                 expiresIn:
+                  example: any
+                permissions:
                   example: any
   /api/v2/service-token/{serviceTokenDataId}:
     delete:
@@ -2317,9 +2672,6 @@ components:
     Project:
       type: object
       properties:
-        _id:
-          type: string
-          example: ''
         name:
           type: string
           example: My Project
@@ -2602,6 +2954,51 @@ components:
         secretValueTag:
           type: string
           example: ''
+    ServiceTokenData:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: ''
+        name:
+          type: string
+          example: ''
+        workspace:
+          type: string
+          example: ''
+        environment:
+          type: string
+          example: ''
+        user:
+          type: object
+          properties:
+            _id:
+              type: string
+              example: ''
+            firstName:
+              type: string
+              example: ''
+            lastName:
+              type: string
+              example: ''
+        expiresAt:
+          type: string
+          example: '2023-01-13T14:16:12.210Z'
+        encryptedKey:
+          type: string
+          example: ''
+        iv:
+          type: string
+          example: ''
+        tag:
+          type: string
+          example: ''
+        updatedAt:
+          type: string
+          example: '2023-01-13T14:16:12.210Z'
+        createdAt:
+          type: string
+          example: '2023-01-13T14:16:12.210Z'
   securitySchemes:
     bearerAuth:
       type: http

@@ -21,7 +21,7 @@ const requireWorkspaceAuth = ({
 	return async (req: Request, res: Response, next: NextFunction) => {
 		try {
 			const { workspaceId } = req[location];
-
+			
 			if (req.user) {
 				// case: jwt auth
 				const membership = await validateMembership({
@@ -32,11 +32,11 @@ const requireWorkspaceAuth = ({
 
 				req.membership = membership;
 			}
-			
+
 			if (
 				req.serviceTokenData 
 				&& req.serviceTokenData.workspace !== workspaceId
-				&& req.serviceTokenData.environment !== req.query.environment
+				&& req.serviceTokenData.environment !== req.body.environment
 			) {
 				next(UnauthorizedRequestError({message: 'Unable to authenticate workspace'}))	
 			}

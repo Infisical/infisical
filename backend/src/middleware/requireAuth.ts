@@ -1,12 +1,14 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-import { User, ServiceTokenData } from '../models';
 import {
 	validateAuthMode,
 	getAuthUserPayload,
 	getAuthSTDPayload,
 	getAuthAPIKeyPayload
 } from '../helpers/auth';
+import { 
+	UnauthorizedRequestError
+} from '../utils/errors';
 
 declare module 'jsonwebtoken' {
 	export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -25,9 +27,11 @@ declare module 'jsonwebtoken' {
  * @returns
  */
 const requireAuth = ({
-	acceptedAuthModes = ['jwt']
+	acceptedAuthModes = ['jwt'],
+	requiredServiceTokenPermissions = []
 }: {
 	acceptedAuthModes: string[];
+	requiredServiceTokenPermissions?: string[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
 		// validate auth token against accepted auth modes [acceptedAuthModes]
@@ -38,11 +42,22 @@ const requireAuth = ({
 		});
 
 		// attach auth payloads
+		let serviceTokenData;
 		switch (authTokenType) {
 			case 'serviceToken':
-				req.serviceTokenData = await getAuthSTDPayload({
+				serviceTokenData = await getAuthSTDPayload({
 					authTokenValue
 				});
+				
+				requiredServiceTokenPermissions.forEach((requiredServiceTokenPermission) => {
+					if (!serviceTokenData.permissions.includes(requiredServiceTokenPermission)) {
+						return next(UnauthorizedRequestError({ message: 'Failed to authorize service token for endpoint' }));
+					}
+				});
+			
+				req.serviceTokenData = serviceTokenData;
+				req.user = serviceTokenData?.user;
+				
 				break;
 			case 'apiKey':
 				req.user = await getAuthAPIKeyPayload({

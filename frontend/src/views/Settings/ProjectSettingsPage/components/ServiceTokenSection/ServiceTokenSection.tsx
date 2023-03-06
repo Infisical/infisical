@@ -8,6 +8,7 @@ import * as yup from 'yup';
 
 import {
   Button,
+  Checkbox,
   DeleteActionModal,
   EmptyState,
   FormControl,
@@ -42,7 +43,11 @@ const apiTokenExpiry = [
 const createServiceTokenSchema = yup.object({
   name: yup.string().required().label('Service Token Name'),
   environment: yup.string().required().label('Environment'),
-  expiresIn: yup.string().required().label('Service Token Name')
+  expiresIn: yup.string().required().label('Service Token Name'),
+  permissions: yup.object().shape({
+    read: yup.boolean().required(),
+    write: yup.boolean().required()
+  })
 });
 
 export type CreateServiceToken = yup.InferType<typeof createServiceTokenSchema>;
@@ -87,7 +92,7 @@ export const ServiceTokenSection = ({
     'createAPIToken',
     'deleteAPITokenConfirmation'
   ] as const);
-
+  
   const {
     control,
     reset,
@@ -100,7 +105,13 @@ export const ServiceTokenSection = ({
   const hasServiceToken = Boolean(newToken);
 
   const onFormSubmit = async (data: CreateServiceToken) => {
-    const token = await onCreateToken(data);
+    // transform permissions object into array
+    const dataWithPermissionsArray = data;
+    dataWithPermissionsArray.permissions = Object.entries(data.permissions)
+      .filter(([, value]) => value)
+      .map(([key]) => key);
+
+    const token = await onCreateToken(dataWithPermissionsArray);
     setToken(token);
   };
 
@@ -216,6 +227,89 @@ export const ServiceTokenSection = ({
                       </FormControl>
                     )}
                   />
+                  <Controller
+                    control={control}
+                    name="permissions"
+                    defaultValue={{
+                      read: true,
+                      write: false
+                    }}
+                    render={({ field: { onChange, value }, fieldState: { error }}) => {
+                      const options = [{
+                        label: 'Read (default)',
+                        value: 'read'
+                      }, {
+                        label: 'Write (optional)',
+                        value: 'write'
+                      }];
+                      
+                      return (
+                        <FormControl
+                          label="Permissions"
+                          errorText={error?.message}
+                          isError={Boolean(error)}
+                        >
+                          <>
+                            {options.map(({ label, value: optionValue }) => {
+                                // TODO: refactor
+                                return (
+                                  <Checkbox
+                                    key={optionValue}
+                                    className="data-[state=checked]:bg-primary"
+                                    isChecked={value[optionValue]}
+                                    isDisabled={ optionValue === 'read'}
+                                    onCheckedChange={(state) => {
+                                      onChange({
+                                        ...value,
+                                        [optionValue]: state
+                                      });
+                                    }}
+                                  >
+                                    {label}
+                                  </Checkbox>
+                              );
+                            })}
+                          </>
+                        </FormControl>
+                      );
+                    }}
+                  />
+                  {/* <Controller
+                    name="isReadEnabled"
+                    defaultValue={true}
+                    control={control}
+                    render={({ field: { onChange, ... field }, fieldState }) => {
+                      return (
+                        <Checkbox
+                          className="data-[state=checked]:bg-primary"
+                          isChecked={field.value}
+                          onCheckedChange={(state) => {
+                            onChange(state);
+                          }}
+                        >
+                          Read (default)
+                        </Checkbox>
+                      );
+                    }}
+                  />
+                  <Controller
+                    name="isWriteEnabled"
+                    defaultValue={false}
+                    control={control}
+                    render={({ field: { onChange, ... field }, fieldState }) => {
+                      return (
+                        <Checkbox
+                          className="data-[state=checked]:bg-primary"
+                          isChecked={field.value}
+                          onCheckedChange={(state) => {
+                            onChange(state);
+                          }}
+                        >
+                          Write (optional)
+                        </Checkbox>
+                      );
+                    }}
+                  /> */}
                   <div className="mt-8 flex items-center">
                     <Button
                       className="mr-4"

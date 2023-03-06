@@ -19,6 +19,7 @@ export type CreateServiceTokenDTO = {
   iv: string;
   tag: string;
   randomBytes: string;
+  permissions: ('read' | 'write')[];
 };
 
 export type CreateServiceTokenRes = {
