@@ -42,6 +42,12 @@
         "docsLink": "https://infisical.com/docs/integrations/frameworks/nextjs"
     },
     {
+        "name": "SvelteKit",
+        "slug": "sveltekit",
+        "image": "SvelteKit",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/sveltekit"
+    },
+    {
         "name": "Django",
         "slug": "django",
         "image": "Django",
