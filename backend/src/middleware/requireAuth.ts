@@ -42,7 +42,7 @@ const requireAuth = ({
 		});
 
 		// attach auth payloads
-		let serviceTokenData;
+		let serviceTokenData: any;
 		switch (authTokenType) {
 			case 'serviceToken':
 				serviceTokenData = await getAuthSTDPayload({

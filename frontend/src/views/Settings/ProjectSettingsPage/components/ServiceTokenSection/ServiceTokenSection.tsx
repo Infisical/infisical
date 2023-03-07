@@ -105,13 +105,7 @@ export const ServiceTokenSection = ({
   const hasServiceToken = Boolean(newToken);
 
   const onFormSubmit = async (data: CreateServiceToken) => {
-    // transform permissions object into array
-    const dataWithPermissionsArray = data;
-    dataWithPermissionsArray.permissions = Object.entries(data.permissions)
-      .filter(([, value]) => value)
-      .map(([key]) => key);
-
-    const token = await onCreateToken(dataWithPermissionsArray);
+    const token = await onCreateToken(data);
     setToken(token);
   };
 

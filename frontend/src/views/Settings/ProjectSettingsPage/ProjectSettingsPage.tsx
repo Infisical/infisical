@@ -219,7 +219,7 @@ export const ProjectSettingsPage = () => {
         plaintext: key,
         key: randomBytes
       });
-
+      
       const res = await createServiceToken.mutateAsync({
         encryptedKey: ciphertext,
         iv,
@@ -229,8 +229,11 @@ export const ProjectSettingsPage = () => {
         name,
         workspaceId: workspaceID,
         randomBytes,
-        permissions
+        permissions: Object.entries(permissions)
+        .filter(([, permissionsValue]) => permissionsValue)
+        .map(([permissionsKey]) => permissionsKey)
       });
+      
       createNotification({
         text: 'Successfully created a service token',
         type: 'success'
