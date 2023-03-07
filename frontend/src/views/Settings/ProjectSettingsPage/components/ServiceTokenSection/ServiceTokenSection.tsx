@@ -47,7 +47,7 @@ const createServiceTokenSchema = yup.object({
   permissions: yup.object().shape({
     read: yup.boolean().required(),
     write: yup.boolean().required()
-  })
+  }).defined().required()
 });
 
 export type CreateServiceToken = yup.InferType<typeof createServiceTokenSchema>;
@@ -248,6 +248,7 @@ export const ServiceTokenSection = ({
                                 // TODO: refactor
                                 return (
                                   <Checkbox
+                                    id={value[optionValue]}
                                     key={optionValue}
                                     className="data-[state=checked]:bg-primary"
                                     isChecked={value[optionValue]}
