@@ -33,7 +33,7 @@ export default function Login() {
       let userWorkspace;
       try {
         const userWorkspaces = await getWorkspaces();
-        userWorkspace = userWorkspaces[0]._id;
+        userWorkspace = userWorkspaces[0] && userWorkspaces[0]._id;
         router.push(`/dashboard/${userWorkspace}`);
       } catch (error) {
         console.log('Error - Not logged in yet');
@@ -90,7 +90,7 @@ export default function Login() {
           <ListBox
             isSelected={lang}
             onChange={setLanguage}
-            data={['en', 'ko', 'fr', 'pt-BR', 'pt-PT']}
+            data={['en', 'ko', 'fr', 'pt-BR']}
             isFull
             text={`${t('common:language')}: `}
           />

@@ -35,6 +35,27 @@ Export environment variables from the platform into a file format.
   infisical export --format=yaml > secrets.yaml
   ```
 
+  ### Environment variables
+  <Accordion title="INFISICAL_TOKEN">
+    Used to fetch secrets via a [service token](/getting-started/dashboard/token) apposed to logged in credentials. Simply, export this variable in the terminal before running this command.
+
+    ```bash
+    # Example 
+    export INFISICAL_TOKEN=st.63e03c4a97cb4a747186c71e.ed5b46a34c078a8f94e8228f4ab0ff97.4f7f38034811995997d72badf44b42ec
+    ```
+  </Accordion>
+
+  <Accordion title="INFISICAL_DISABLE_UPDATE_CHECK">
+    Used to disable the check for new CLI versions. This can improve the time it takes to run this command. Recommended for production environments.
+    
+    To use, simply export this variable in the terminal before running this command.
+
+    ```bash
+    # Example 
+    export INFISICAL_DISABLE_UPDATE_CHECK=true
+    ```
+  </Accordion>
+
   ### flags 
   <Accordion title="--env">
     Used to set the environment that secrets are pulled from. 

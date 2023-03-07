@@ -1,0 +1,34 @@
+---
+title: "SvelteKit"
+description: "How to use Infisical to inject environment variables and secrets into a SvelteKit app."
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+- [Install the CLI](/cli/overview)
+
+## Initialize Infisical for your [SvelteKit](https://kit.svelte.dev) app
+
+```bash
+# navigate to the root of your of your project 
+cd /path/to/project
+
+# then initialize infisical
+infisical init
+```
+
+## Start your application as usual but with Infisical
+
+```bash
+infisical run -- <your application start command>
+
+# Example
+infisical run -- npm run dev
+```
+
+<Note>
+  Note that for environment variables to be exposed to the client, you'll have
+  to prefix them with `PUBLIC_`. Read more about that
+  [here](https://kit.svelte.dev/docs/modules#$env-static-public).
+</Note>
