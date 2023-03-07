@@ -158,6 +158,7 @@
         "integrations/frameworks/express",
         "integrations/frameworks/nextjs",
         "integrations/frameworks/nestjs",
+        "integrations/frameworks/sveltekit",
         "integrations/frameworks/nuxt",
         "integrations/frameworks/gatsby",
         "integrations/frameworks/remix",
