@@ -17,7 +17,35 @@ import { ABILITY_READ } from '../../variables/organization';
  * @param res 
  * @returns 
  */
-export const getServiceTokenData = async (req: Request, res: Response) => res.status(200).json(req.serviceTokenData);
+export const getServiceTokenData = async (req: Request, res: Response) => {
+    /* 
+    #swagger.summary = 'Return Infisical Token data'
+    #swagger.description = 'Return Infisical Token data'
+    
+    #swagger.security = [{
+        "bearerAuth": []
+    }]
+
+    #swagger.responses[200] = {
+        content: {
+            "application/json": {
+                "schema": { 
+                    "type": "object",
+					"properties": {
+                        "serviceTokenData": {
+                            "type": "object",
+                            $ref: "#/components/schemas/ServiceTokenData",
+                            "description": "Details of service token"
+                        }
+					}
+                }
+            }           
+        }
+    }   
+    */
+
+    return res.status(200).json(req.serviceTokenData);
+}
 
 /**
  * Create new service token data for workspace with id [workspaceId] and
@@ -28,6 +56,7 @@ export const getServiceTokenData = async (req: Request, res: Response) => res.st
  */
 export const createServiceTokenData = async (req: Request, res: Response) => {
     let serviceToken, serviceTokenData;
+
     try {
         const {
             name,
@@ -36,7 +65,8 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             encryptedKey,
             iv,
             tag,
-            expiresIn
+            expiresIn,
+            permissions
         } = req.body;
 
         const hasAccess = await userHasWorkspaceAccess(req.user, workspaceId, environment, ABILITY_READ)
@@ -59,7 +89,8 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
             secretHash,
             encryptedKey,
             iv,
-            tag
+            tag,
+            permissions
         }).save();
 
         // return service token data without sensitive data

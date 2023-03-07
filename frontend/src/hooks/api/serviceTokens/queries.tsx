@@ -37,7 +37,7 @@ export const useCreateServiceToken = () => {
   return useMutation<CreateServiceTokenRes, {}, CreateServiceTokenDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post('/api/v2/service-token/', body);
-      data.serviceToken += `.${  body.randomBytes}`;
+      data.serviceToken += `.${body.randomBytes}`;
       return data;
     },
     onSuccess: ({ serviceTokenData: { workspace } }) => {
