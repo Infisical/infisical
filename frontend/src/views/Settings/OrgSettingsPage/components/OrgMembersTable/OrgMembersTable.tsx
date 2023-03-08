@@ -197,14 +197,14 @@ export const OrgMembersTable = ({
                         ) : (
                           <div className='flex flex-row'>
                             <Tag colorSchema="red">This user isn&apos;t part of any projects yet</Tag>
-                            <button 
+                            {router.query.id !== 'undefined' && <button 
                               type="button"
                               onClick={() => router.push(`/users/${router.query.id}`)}
                               className='text-sm bg-mineshaft w-max px-1.5 py-0.5 hover:bg-primary duration-200 hover:text-black cursor-pointer rounded-sm'
                             >
                               <FontAwesomeIcon icon={faPlus} className="mr-1" />
                               Add to projects
-                            </button>
+                            </button>}
                           </div>
                         )}
                       </Td>
