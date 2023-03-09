@@ -157,7 +157,9 @@ We're currently setting the foundation and building [integrations](https://infis
         </a>
       </td>
       <td align="left" valign="middle">
-        🔜 CircleCI (https://github.com/Infisical/infisical/issues/91)
+        <a href="https://infisical.com/docs/integrations/cicd/circleci?ref=github.com">
+          ✔️ CircleCI
+        </a>
       </td>
     </tr>
     <tr>
