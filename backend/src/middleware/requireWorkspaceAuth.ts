@@ -35,7 +35,7 @@ const requireWorkspaceAuth = ({
 
 			if (
 				req.serviceTokenData 
-				&& req.serviceTokenData.workspace !== workspaceId
+				&& req.serviceTokenData.workspace.toString() !== workspaceId
 				&& req.serviceTokenData.environment !== req.body.environment
 			) {
 				next(UnauthorizedRequestError({message: 'Unable to authenticate workspace'}))	
