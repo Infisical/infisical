@@ -50,7 +50,7 @@ metadata:
   # Name of of this InfisicalSecret resource
   name: infisicalsecret-sample
 spec:
-  # The host that should be used to pull secrets from. The default value is https://app.infisical.com/api.
+  # The host that should be used to pull secrets from. If left empty, the value specified in Global configuration will be used
   hostAPI: https://app.infisical.com/api
 
   # The Kubernetes secret the stores the Infisical token
@@ -288,8 +288,43 @@ spec:
 ```
 </Accordion>
 
+## Global configuration 
+To configure global settings that will apply to all instances of `InfisicalSecret`, you can define these configurations in a Kubernetes ConfigMap. 
+For example, you can configure all `InfisicalSecret` instances to fetch secrets from a single backend API without specifying the `hostAPI` parameter for each instance.
 
-## Troubleshoot
+### Available global properties
+| Property | Description                           | Default value
+| -------- | ------------------------------------- |------------------------
+| hostAPI  | If `hostAPI` in `InfisicalSecret` instance is left empty, this value will be used                    | https://app.infisical.com/api
+
+
+### Applying global configurations
+All global configurations must reside in a Kubernetes ConfigMap named `infisical-config` in the namespace `infisical-operator-system`. 
+To apply global configuration to the operator, copy the following yaml into `infisical-config.yaml` file.
+
+```yaml infisical-config.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: infisical-operator-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: infisical-config
+  namespace: infisical-operator-system
+data:
+  hostAPI: https://example.com/api # <-- global hostAPI
+```
+
+Then apply this change via kubectl by running the following 
+
+```bash 
+kubectl apply -f infisical-config.yaml 
+```
+
+
+## Troubleshoot operator
 
 If the operator is unable to fetch secrets from the API, it will not affect the managed Kubernetes secret.
 It will continue attempting to reconnect to the API indefinitely.
