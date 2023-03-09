@@ -59,6 +59,7 @@ const INTEGRATION_FLYIO_API_URL = "https://api.fly.io/graphql";
 const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
 const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
 
+// TODO: deprecate types?
 const INTEGRATION_OPTIONS = [
     {
         name: 'Heroku',
@@ -156,7 +157,7 @@ const INTEGRATION_OPTIONS = [
         slug: 'gitlab',
         image: 'GitLab.png',
         isAvailable: true,
-        type: 'oauth',
+        type: 'custom',
         clientId: CLIENT_ID_GITLAB, 
         docsLink: ''
     },

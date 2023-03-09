@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import {
 	requireAuth,
 	requireWorkspaceAuth,
@@ -64,6 +64,9 @@ router.post(
 	integrationAuthController.saveIntegrationAccessToken
 );
 
+// this can optionally accept a teamId?
+// IF teamId is passed in then it probably means that we want to get
+// the apps for that team
 router.get(
 	'/:integrationAuthId/apps',
 	requireAuth({
@@ -73,8 +76,22 @@ router.get(
 		acceptedRoles: [ADMIN, MEMBER]
 	}),
 	param('integrationAuthId'),
+	query('entity'),
 	validateRequest,
 	integrationAuthController.getIntegrationAuthApps
+);
+
+router.get(
+	'/:integrationAuthId/teams',
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
+	requireIntegrationAuthorizationAuth({
+		acceptedRoles: [ADMIN, MEMBER]
+	}),
+	param('integrationAuthId'),
+	validateRequest,
+	integrationAuthController.getIntegrationAuthTeams
 );
 
 router.delete(

@@ -23,9 +23,9 @@ export interface IIntegrationAuth {
   refreshCiphertext?: string;
   refreshIV?: string;
   refreshTag?: string;
-  accessIdCiphertext?: string; // new
-  accessIdIV?: string; // new
-  accessIdTag?: string; // new
+  accessIdCiphertext?: string;
+  accessIdIV?: string;
+  accessIdTag?: string;
   accessCiphertext?: string;
   accessIV?: string;
   accessTag?: string;

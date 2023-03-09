@@ -13,6 +13,7 @@ import {
   INTEGRATION_NETLIFY_TOKEN_URL,
   INTEGRATION_GITHUB_TOKEN_URL,
   INTEGRATION_GITLAB_TOKEN_URL,
+  INTEGRATION_GITLAB_API_URL
 } from '../variables';
 import {
   SITE_URL,
@@ -73,7 +74,7 @@ interface ExchangeCodeGithubResponse {
 interface ExchangeCodeGitlabResponse {
   access_token: string;
   token_type: string;
-  expires_in: string;
+  expires_in: number;
   refresh_token: string;
   scope: string;
   created_at: number;
@@ -370,6 +371,7 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
  */
 const exchangeCodeGitlab = async ({ code }: { code: string }) => {
   let res: ExchangeCodeGitlabResponse; 
+  const accessExpiresAt = new Date();
   
   try {
     res = (
@@ -389,6 +391,46 @@ const exchangeCodeGitlab = async ({ code }: { code: string }) => {
         }
       )
     ).data;
+    
+    // 1. try getting groups
+    // https://gitlab.com/api/v4/groups
+    
+    // const res2 = (await request.get(
+    //   `${INTEGRATION_GITLAB_API_URL}/v4/groups`,
+    //   {
+    //     headers: {
+    //       Authorization: `Bearer ${res.access_token}`,
+    //       "Accept-Encoding": "application/json"
+    //     }
+    //   }
+    // )).data;
+    
+    // 2. try getting projects of that group
+    // const res3 = (await request.get(
+    //   `${INTEGRATION_GITLAB_API_URL}/v4/groups/${res2[0].id}`,
+    //   {
+    //     headers: {
+    //       Authorization: `Bearer ${res.access_token}`,
+    //       "Accept-Encoding": "application/json"
+    //     }
+    //   }
+    // )).data;
+
+    // const res = (
+    //   await request.get(
+    //     `${INTEGRATION_GITLAB_API_URL}/v4/users/${id}/projects`,
+    //     {
+    //       headers: {
+    //         "Authorization": `Bearer ${accessToken}`,
+    //         "Accept-Encoding": "application/json",
+    //       },
+    //     }
+    //   )
+    // ).data;
+    
+    accessExpiresAt.setSeconds(
+      accessExpiresAt.getSeconds() + res.expires_in
+    );
   }catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
@@ -397,8 +439,8 @@ const exchangeCodeGitlab = async ({ code }: { code: string }) => {
 
   return {
     accessToken: res.access_token,
-    refreshToken: null,
-    accessExpiresAt: null
+    refreshToken: res.refresh_token,
+    accessExpiresAt
   };
 }
 

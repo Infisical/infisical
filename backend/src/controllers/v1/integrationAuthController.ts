@@ -8,7 +8,11 @@ import {
 } from '../../models';
 import { INTEGRATION_SET, INTEGRATION_OPTIONS } from '../../variables';
 import { IntegrationService } from '../../services';
-import { getApps, revokeAccess } from '../../integrations';
+import {
+	getApps, 
+	getTeams,
+	revokeAccess 
+} from '../../integrations';
 
 /***
  * Return integration authorization with id [integrationAuthId]
@@ -154,24 +158,53 @@ export const saveIntegrationAccessToken = async (
  * @returns
  */
 export const getIntegrationAuthApps = async (req: Request, res: Response) => {
-  let apps;
-  try {
-    apps = await getApps({
-      integrationAuth: req.integrationAuth,
-      accessToken: req.accessToken,
-    });
-  } catch (err) {
-    Sentry.setUser({ email: req.user.email });
-    Sentry.captureException(err);
-    return res.status(400).send({
-      message: "Failed to get integration authorization applications",
-    });
-  }
+	let apps;
+	try {
+		const teamId = req.query.teamId as string;
 
-  return res.status(200).send({
-    apps,
-  });
+		apps = await getApps({
+			integrationAuth: req.integrationAuth,
+			accessToken: req.accessToken,
+			...teamId && { teamId }
+		});
+	} catch (err) {
+		Sentry.setUser({ email: req.user.email });
+		Sentry.captureException(err);
+		return res.status(400).send({
+			message: "Failed to get integration authorization applications",
+		});
+	}
+
+	return res.status(200).send({
+		apps
+	});
 };
+
+/**
+ * Return list of teams allowed for integration with integration authorization id [integrationAuthId]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const getIntegrationAuthTeams = async (req: Request, res: Response) => {
+	let teams;
+	try {
+		teams = await getTeams({
+			integrationAuth: req.integrationAuth,
+			accessToken: req.accessToken
+		});
+	} catch (err) {
+		Sentry.setUser({ email: req.user.email });
+		Sentry.captureException(err);
+		return res.status(400).send({
+		message: "Failed to get integration authorization teams"
+		});
+	}
+	
+	return res.status(200).send({
+		teams
+	});
+}
 
 /**
  * Delete integration authorization with id [integrationAuthId]

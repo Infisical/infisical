@@ -11,3 +11,8 @@ export type App = {
     appId?: string;
     owner?: string;
 }
+
+export type Team = {
+    name: string;
+    teamId: string;
+}

@@ -24,22 +24,27 @@ import {
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_TRAVISCI_API_URL,
 } from "../variables";
+import { requireIntegrationAuthorizationAuth } from "../middleware";
 
 /**
  * Return list of names of apps for integration named [integration]
  * @param {Object} obj
  * @param {String} obj.integration - name of integration
  * @param {String} obj.accessToken - access token for integration
+ * @param {String} obj.teamId - (optional) id of team for getting integration apps (used for integrations like GitLab)
  * @returns {Object[]} apps - names of integration apps
  * @returns {String} apps.name - name of integration app
  */
 const getApps = async ({
   integrationAuth,
   accessToken,
+  teamId
 }: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
+  teamId?: string;
 }) => {
+
   interface App {
     name: string;
     appId?: string;
