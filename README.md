@@ -25,7 +25,7 @@
     <img src="https://img.shields.io/github/commit-activity/m/infisical/infisical" alt="git commit activity" />
   </a>
   <a href="https://cloudsmith.io/~infisical/repos/">
-    <img src="https://img.shields.io/badge/Downloads-36.7k-orange" alt="Cloudsmith downloads" />
+    <img src="https://img.shields.io/badge/Downloads-45.7k-orange" alt="Cloudsmith downloads" />
   </a>
   <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
@@ -60,10 +60,9 @@
 -   **[Point-in-time Secrets Recovery](https://infisical.com/docs/getting-started/dashboard/pit-recovery)** for rolling back to any snapshot of your secrets
 -   **Role-based Access Controls** per environment
 -   **2FA** (more options coming soon)
+-   **Smart Security Alerts**
 -   🔜 **1-Click Deploy** to AWS
 -   🔜 **Automatic Secret Rotation**
--   🔜 **Smart Security Alerts**
--   🔜 **Secrets Rotation**
 -   🔜 **Slack & MS Teams** integrations
 
 And more.
@@ -169,7 +168,9 @@ We're currently setting the foundation and building [integrations](https://infis
         🔜 Digital Ocean
       </td>
       <td align="left" valign="middle">
-        🔜 Azure
+        <a href="https://infisical.com/docs/integrations/cloud/azure-key-vault?ref=github.com">
+          ✔️ Azure Key Vault
+        </a>
       </td>
     </tr>
     <tr>
