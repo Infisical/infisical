@@ -127,7 +127,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
       denials = [];
     }
 
-    if (currentPlan !== plans.professional && host === 'https://app.infisical.com') {
+    if (currentPlan !== plans.professional && host === 'https://app.infisical.com' && workspaceId !== '63ea8121b6e2b0543ba79616') {
       setIsUpgradeModalOpen(true);
     } else {
       const allDenials = userData[index].deniedPermissions
