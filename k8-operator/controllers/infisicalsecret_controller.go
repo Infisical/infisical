@@ -57,8 +57,20 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}, nil
 	}
 
-	// set the api url based on the CRD
-	api.API_HOST_URL = infisicalSecretCR.Spec.HostAPI
+	// Get modified/default config
+	infisicalConfig, err := r.GetInfisicalConfigMap(ctx)
+	if err != nil {
+		fmt.Printf("unable to fetch infisical-config [err=%s]. Will requeue after [requeueTime=%v]\n", err, requeueTime)
+		return ctrl.Result{
+			RequeueAfter: requeueTime,
+		}, nil
+	}
+
+	if infisicalSecretCR.Spec.HostAPI == "" {
+		api.API_HOST_URL = infisicalConfig["hostAPI"]
+	} else {
+		api.API_HOST_URL = infisicalSecretCR.Spec.HostAPI
+	}
 
 	err = r.ReconcileInfisicalSecret(ctx, infisicalSecretCR)
 	r.SetReadyToSyncSecretsConditions(ctx, &infisicalSecretCR, err)
