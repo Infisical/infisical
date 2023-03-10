@@ -13,7 +13,7 @@ import { EELogService } from '../../ee/services';
 import {
   NODE_ENV,
   JWT_MFA_LIFETIME,
-  JWT_MFA_SECRET
+  JWT_MFA_SECRET,
 } from '../../config';
 import { BadRequestError, InternalServerError } from '../../utils/errors';
 import {
@@ -89,7 +89,7 @@ export const login1 = async (req: Request, res: Response) => {
  */
 export const login2 = async (req: Request, res: Response) => {
   try {
-    
+
     if (!req.headers['user-agent']) throw InternalServerError({ message: 'User-Agent header is required' });
 
     const { email, clientProof } = req.body;
@@ -129,12 +129,12 @@ export const login2 = async (req: Request, res: Response) => {
               expiresIn: JWT_MFA_LIFETIME,
               secret: JWT_MFA_SECRET
             });
-          
+
             const code = await TokenService.createToken({
               type: TOKEN_EMAIL_MFA,
               email
             });
-            
+
             // send MFA code [code] to [email]
             await sendMail({
               template: 'emailMfa.handlebars',
@@ -144,13 +144,13 @@ export const login2 = async (req: Request, res: Response) => {
                 code
               }
             });
-            
+
             return res.status(200).send({
               mfaEnabled: true,
               token
             });
           }
-          
+
           await checkUserDevice({
             user,
             ip: req.ip,
@@ -183,7 +183,7 @@ export const login2 = async (req: Request, res: Response) => {
             iv?: string;
             tag?: string;
           }
-          
+
           const response: ResponseData = {
             mfaEnabled: false,
             encryptionVersion: user.encryptionVersion,
@@ -193,7 +193,7 @@ export const login2 = async (req: Request, res: Response) => {
             iv: user.iv,
             tag: user.tag
           }
-          
+
           if (
             user?.protectedKey &&
             user?.protectedKeyIV &&
@@ -208,14 +208,14 @@ export const login2 = async (req: Request, res: Response) => {
             name: ACTION_LOGIN,
             userId: user._id
           });
-          
+
           loginAction && await EELogService.createLog({
             userId: user._id,
             actions: [loginAction],
             channel: getChannelFromUserAgent(req.headers['user-agent']),
             ipAddress: req.ip
           });
-          
+
           return res.status(200).send(response);
         }
 
@@ -246,7 +246,7 @@ export const sendMfaToken = async (req: Request, res: Response) => {
       type: TOKEN_EMAIL_MFA,
       email
     });
-    
+
     // send MFA code [code] to [email]
     await sendMail({
       template: 'emailMfa.handlebars',
@@ -261,9 +261,9 @@ export const sendMfaToken = async (req: Request, res: Response) => {
     Sentry.captureException(err);
     return res.status(400).send({
       message: 'Failed to send MFA code'
-    }); 
+    });
   }
-  
+
   return res.status(200).send({
     message: 'Successfully sent new MFA code'
   });
@@ -276,76 +276,76 @@ export const sendMfaToken = async (req: Request, res: Response) => {
  * @param res 
  */
 export const verifyMfaToken = async (req: Request, res: Response) => {
-    const { email, mfaToken } = req.body;
+  const { email, mfaToken } = req.body;
 
-    await TokenService.validateToken({
-      type: TOKEN_EMAIL_MFA,
-      email,
-      token: mfaToken
-    });
+  await TokenService.validateToken({
+    type: TOKEN_EMAIL_MFA,
+    email,
+    token: mfaToken
+  });
 
-    const user = await User.findOne({
-      email
-    }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag');
+  const user = await User.findOne({
+    email
+  }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag');
 
-    if (!user) throw new Error('Failed to find user'); 
+  if (!user) throw new Error('Failed to find user');
 
-     await checkUserDevice({
-      user,
-      ip: req.ip,
-      userAgent: req.headers['user-agent'] ?? ''
-    });
+  await checkUserDevice({
+    user,
+    ip: req.ip,
+    userAgent: req.headers['user-agent'] ?? ''
+  });
 
-    // issue tokens
-    const tokens = await issueAuthTokens({ userId: user._id.toString() });
+  // issue tokens
+  const tokens = await issueAuthTokens({ userId: user._id.toString() });
 
-    // store (refresh) token in httpOnly cookie
-    res.cookie('jid', tokens.refreshToken, {
-      httpOnly: true,
-      path: '/',
-      sameSite: 'strict',
-      secure: NODE_ENV === 'production' ? true : false
-    });
-    
-    interface VerifyMfaTokenRes {
-      encryptionVersion: number;
-      protectedKey?: string;
-      protectedKeyIV?: string;
-      protectedKeyTag?: string;
-      token: string;
-      publicKey: string;
-      encryptedPrivateKey: string;
-      iv: string;
-      tag: string;
-    }
+  // store (refresh) token in httpOnly cookie
+  res.cookie('jid', tokens.refreshToken, {
+    httpOnly: true,
+    path: '/',
+    sameSite: 'strict',
+    secure: NODE_ENV === 'production' ? true : false
+  });
 
-    const resObj: VerifyMfaTokenRes = {
-      encryptionVersion: user.encryptionVersion,
-      token: tokens.token,
-      publicKey: user.publicKey as string,
-      encryptedPrivateKey: user.encryptedPrivateKey as string,
-      iv: user.iv as string,
-      tag: user.tag as string
-    }
-    
-    if (user?.protectedKey && user?.protectedKeyIV && user?.protectedKeyTag) {
-      resObj.protectedKey = user.protectedKey;
-      resObj.protectedKeyIV = user.protectedKeyIV;
-      resObj.protectedKeyTag = user.protectedKeyTag;
-    }
+  interface VerifyMfaTokenRes {
+    encryptionVersion: number;
+    protectedKey?: string;
+    protectedKeyIV?: string;
+    protectedKeyTag?: string;
+    token: string;
+    publicKey: string;
+    encryptedPrivateKey: string;
+    iv: string;
+    tag: string;
+  }
 
-    const loginAction = await EELogService.createAction({
-      name: ACTION_LOGIN,
-      userId: user._id
-    });
-    
-    loginAction && await EELogService.createLog({
-      userId: user._id,
-      actions: [loginAction],
-      channel: getChannelFromUserAgent(req.headers['user-agent']),
-      ipAddress: req.ip
-    });
+  const resObj: VerifyMfaTokenRes = {
+    encryptionVersion: user.encryptionVersion,
+    token: tokens.token,
+    publicKey: user.publicKey as string,
+    encryptedPrivateKey: user.encryptedPrivateKey as string,
+    iv: user.iv as string,
+    tag: user.tag as string
+  }
 
-    return res.status(200).send(resObj); 
+  if (user?.protectedKey && user?.protectedKeyIV && user?.protectedKeyTag) {
+    resObj.protectedKey = user.protectedKey;
+    resObj.protectedKeyIV = user.protectedKeyIV;
+    resObj.protectedKeyTag = user.protectedKeyTag;
+  }
+
+  const loginAction = await EELogService.createAction({
+    name: ACTION_LOGIN,
+    userId: user._id
+  });
+
+  loginAction && await EELogService.createLog({
+    userId: user._id,
+    actions: [loginAction],
+    channel: getChannelFromUserAgent(req.headers['user-agent']),
+    ipAddress: req.ip
+  });
+
+  return res.status(200).send(resObj);
 }
 

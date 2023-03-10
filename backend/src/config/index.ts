@@ -50,6 +50,7 @@ const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY!;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET!;
 const TELEMETRY_ENABLED = process.env.TELEMETRY_ENABLED! !== 'false' && true;
 const LICENSE_KEY = process.env.LICENSE_KEY!;
+const SMTP_CONFIGURED = SMTP_HOST == '' || SMTP_HOST == undefined ? false : true
 
 export {
   PORT,
@@ -101,5 +102,6 @@ export {
   STRIPE_SECRET_KEY,
   STRIPE_WEBHOOK_SECRET,
   TELEMETRY_ENABLED,
-  LICENSE_KEY
+  LICENSE_KEY,
+  SMTP_CONFIGURED
 };

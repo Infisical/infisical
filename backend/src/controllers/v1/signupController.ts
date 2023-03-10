@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import { User } from '../../models';
-import { JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET, INVITE_ONLY_SIGNUP } from '../../config';
+import { JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET, INVITE_ONLY_SIGNUP, SMTP_CONFIGURED } from '../../config';
 import {
 	sendEmailVerification,
 	checkEmailVerification,
@@ -20,7 +20,6 @@ export const beginEmailSignup = async (req: Request, res: Response) => {
 	let email: string;
 	try {
 		email = req.body.email;
-
 		if (INVITE_ONLY_SIGNUP) {
 			// Only one user can create an account without being invited. The rest need to be invited in order to make an account
 			const userCount = await User.countDocuments({})
@@ -75,10 +74,12 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
 		}
 
 		// verify email
-		await checkEmailVerification({
-			email,
-			code
-		});
+		if (SMTP_CONFIGURED) {
+			await checkEmailVerification({
+				email,
+				code
+			});
+		}
 
 		if (!user) {
 			user = await new User({
