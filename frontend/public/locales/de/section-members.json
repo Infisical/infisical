@@ -1,0 +1,14 @@
+{
+  "add-member": "Mitglied hinzufügen",
+  "org-members": "Mitglieder der Organisation",
+  "org-members-description": "Verwalten Sie die Mitglieder Ihrer Organisation. Diese Benutzer können anschließend zu Projekten zusammengefasst werden.",
+  "search-members": "Mitglieder suchen...",
+  "add-dialog": {
+    "add-member-to-project": "Fügen Sie ein Mitglied zu Ihrem Projekt hinzu",
+    "already-all-invited": "Alle Benutzer in Ihrer Organisation sind bereits eingeladen.",
+    "add-user-org-first": "Fügen Sie der Organisation zunächst weitere Benutzer hinzu.",
+    "user-will-email": "Der Nutzer erhält eine E-Mail mit den entsprechenden Anweisungen.",
+    "looking-add": "<0>Wenn Sie Benutzer zu Ihrer Organisation hinzufügen möchten,</0><1>klicken Sie hier</1>",
+    "add-user-to-org": "Benutzer zur Organisation hinzufügen"
+  }
+}

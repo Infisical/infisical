@@ -1,0 +1,15 @@
+{
+  "title": "Projekteinstellungen",
+  "description": "Diese Einstellungen gelten nur für das aktuell ausgewählte Projekt.",
+  "danger-zone": "Gefahrenzone",
+  "delete-project": "Projekt löschen",
+  "project-to-delete": "Projekt zum Löschen",
+  "danger-zone-note": "Sobald Sie dieses Projekt löschen, können Sie es nicht mehr rückgängig machen. Dadurch werden alle Schlüssel sofort gelöscht. Wenn Sie dies dennoch tun möchten, geben Sie bitte den Namen des Projekts unten ein.",
+  "delete-project-note": "Hinweis: Sie können ein Projekt nur löschen, wenn Sie mehr als ein Projekt haben.",
+  "project-id-description": "Um Infisical in Ihre Codebasis zu integrieren und eine automatische Injektion von Umgebungsvariablen zu erhalten, sollten Sie die folgende Projekt-ID verwenden",
+  "project-id-description2": "Weitere Anleitungen, einschließlich Codebeispielen für verschiedene Sprachen und Frameworks, finden Sie unter",
+  "auto-generated": "Dies ist der automatisch erzeugte eindeutige Bezeichner Ihres Projekts. Er kann nicht geändert werden.",
+  "docs": "Infisical-Dokumentation",
+  "auto-capitalization": "Automatische Großschreibung",
+  "auto-capitalization-description": "Standardmäßig schreibt Infisical Ihre Schlüssel automatisch groß. Wenn Sie diese Funktion deaktivieren möchten, können Sie dies hier tun."
+}

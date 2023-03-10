@@ -1,0 +1,22 @@
+{
+  "support": {
+    "slack": "Slack-Forum beitreten",
+    "docs": "Dokumentation ansehen",
+    "issue": "Github-Fehler melden",
+    "email": "Schreib uns eine E-Mail"
+  },
+  "user": {
+    "signed-in-as": "ANGEMELDET ALS",
+    "current-organization": "DERZEITIGE ORGANISATION",
+    "usage-billing": "Nutzung und Abrechnung",
+    "invite": "Teammitglieder einladen",
+    "other-organizations": "ANDERE ORGANISATIONEN"
+  },
+  "menu": {
+    "project": "PROJEKT",
+    "secrets": "Geheimnisse",
+    "members": "Mitglieder",
+    "integrations": "Integrationen",
+    "project-settings": "Projekteinstellungen"
+  }
+}

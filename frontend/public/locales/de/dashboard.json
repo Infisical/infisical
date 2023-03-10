@@ -1,0 +1,36 @@
+{
+  "title": "Geheimnisse",
+  "og-title": "Verwalten Sie Ihre .env-Dateien in Sekundenschnelle",
+  "og-description": "Infisical ist eine einfache verschlüsselte End-to-End-Plattform, die es Teams ermöglicht, ihre .env-Dateien zu synchronisieren und zu verwalten.",
+  "search-keys": "Suche nach Schlüsseln",
+  "add-key": "Schlüssel hinzufügen",
+  "personal": "Persönlich",
+  "personal-description": "Persönliche Schlüssel sind nur für Sie sichtbar",
+  "shared": "Geteilt",
+  "shared-description": "Geteilte Schlüssel sind für alle Teammitglieder sichtbar",
+  "make-shared": "Geteilten Schlüssel erstellen",
+  "make-personal": "Persönlichen Schlüssel erstellen",
+  "add-secret": "Geheimnis hinzufügen",
+  "check-docs": {
+    "button": "Dokumentation ansehen",
+    "title": "Gut gemacht!",
+    "line1": "Glückwunsch, Sie haben Ihre erste Geheimnis hinzugefügt.",
+    "line2": "So können Sie Ihre Geheimnisse in Ihrer App verwenden:"
+  },
+  "sidebar": {
+    "secret": "Geheimnis",
+    "key": "Schlüssel",
+    "value": "Wert",
+    "override": "Wert mit persönlichem Wert überschreiben",
+    "version-history": "Versionshistorie",
+    "comments": "Kommentare",
+    "personal-explanation": "Dieses Geheimnis ist persönlich. Es wird mit keinem Ihrer Teamkollegen geteilt.",
+    "generate-random-hex": "Zufällige Hexadezimalzahl generieren",
+    "digits": "Ziffern",
+    "delete-key-dialog": {
+      "title": "Schlüssel löschen",
+      "confirm-delete-message": "Sind Sie sicher, dass Sie dieses Geheimnis löschen wollen? Dies kann nicht rückgängig gemacht werden."
+    }
+  }
+
+}

@@ -1,0 +1,13 @@
+{
+  "service-tokens": "Diensttoken",
+  "service-tokens-description": "Jeder Diensttoken ist spezifisch für Sie, ein bestimmtes Projekt und eine bestimmte Umgebung innerhalb dieses Projekts.",
+  "add-new": "Neuen Diensttoken erstellen",
+  "add-dialog": {
+    "title": "Neuen Diensttoken für {{target}} erstellen",
+    "description": "Wenn ein Diensttoken generiert wird, können Sie ihn nur einmal sehen, bevor er verschwindet. Stellen Sie sicher, dass Sie ihn irgendwo speichern.",
+    "name": "Namen des Diensttokens",
+    "add": "Diensttoken erstellen",
+    "copy-service-token": "Diensttoken kopieren",
+    "copy-service-token-description": "Sobald Sie dieses Popup schließen, werden Sie Ihren Diensttoken nie wieder sehen."
+  }
+}

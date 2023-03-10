@@ -1,0 +1,13 @@
+{
+  "api-keys": "API-Schlüssel",
+  "api-keys-description": "Jeder API-Schlüssel ist spezifisch für Sie, ein bestimmtes Projekt und eine bestimmte Umgebung innerhalb dieses Projekts.",
+  "add-new": "Neuen API-Schlüssel erstellen",
+  "add-dialog": {
+    "title": "Neuen API-Schlüssel erstellen",
+    "description": "Geben Sie den Namen und die Gültigkeitsdauer an. Wenn ein API-Schlüssel generiert wird, können Sie ihn nur einmal sehen, bevor er verschwindet. Stellen Sie sicher, dass Sie ihn irgendwo speichern.",
+    "name": "Name des API-Schlüssels",
+    "add": "Hinzufügen",
+    "copy-service-token": "API-Schlüssel kopieren",
+    "copy-service-token-description": "Sobald Sie dieses Popup schließen, werden Sie Ihren API-Schlüssel nie wieder sehen."
+  }
+}

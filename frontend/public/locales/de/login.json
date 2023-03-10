@@ -1,0 +1,10 @@
+{
+  "title": "Anmeldung",
+  "og-title": "Bei Infisical anmelden",
+  "og-description": "Infisical ist eine einfache verschlüsselte End-to-End-Plattform, die es Teams ermöglicht, ihre .env-Dateien zu synchronisieren und zu verwalten.",
+  "login": "Einloggen",
+  "need-account": "Benötigen Sie ein Infisical-Konto?",
+  "create-account": "Konto erstellen",
+  "forgot-password": "Passwort vergessen?",
+  "error-login": "Fehlerhafte Zugangsdaten"
+}

@@ -1,0 +1,16 @@
+{
+  "title": "Accounteinstellungen",
+  "description": "Hier können Sie Ihre persönlichen Daten einsehen und verwalten.",
+  "emergency": {
+    "name": "Notfallzugang",
+    "text1": "Ihr Notfallzugang enthält die Informationen, die Sie benötigen, um sich bei Ihrem Infisical-Konto anzumelden.",
+    "text2": "Nur der zuletzt ausgestellte Notfallzugang bleibt gültig. Um ein neues Emergency Kit zu erhalten, verifizieren Sie Ihr Passwort.",
+    "download": "Notfallzugang herunterladen"
+  },
+  "change-language": "Sprache ändern",
+  "api-keys": {
+    "title": "API-Schlüssel",
+    "description": "Verwalten Sie Ihre persönlichen API-Schlüssel für den Zugriff auf die Infisical-API.",
+    "add-new": "Neuen API-Schüssel erstellen"
+  }
+}

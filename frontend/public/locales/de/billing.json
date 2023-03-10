@@ -1,0 +1,28 @@
+{
+  "title": "Nutzung & Abrechnung",
+  "description": "Hier können Sie das Abonnement Ihrer Organisation einsehen und verwalten",
+  "subscription": "Abonnement",
+  "starter": {
+    "name": "Starter",
+    "price-explanation": "bis zu 5 Teammitglieder",
+    "text": "Verwalten Sie jedes Projekt mit 5 Mitgliedern kostenlos!",
+    "subtext": "5 Dollar pro Teammitglied/Monat danach."
+  },
+  "professional": {
+    "name": "Professional",
+    "price-explanation": "/Teammitglied/Monat",
+    "subtext": "Beinhaltet eine unbegrenzte Anzahl von Projekten und Mitgliedern.",
+    "text": "Halten Sie mit dem Schlüsselmanagement Schritt, während Sie wachsen."
+  },
+  "enterprise": {
+    "name": "Unternehmen",
+    "text": "Halten Sie mit dem Schlüsselmanagement Schritt, während Sie wachsen."
+  },
+  "current-usage": "Aktuelle Verwendung",
+  "free": "Kostenlos",
+  "downgrade": "Herunterstufen",
+  "upgrade": "Heraufstufen",
+  "learn-more": "Mehr erfahren",
+  "custom-pricing": "Individueller Preis",
+  "schedule-demo": "Demo vereinbaren"
+}

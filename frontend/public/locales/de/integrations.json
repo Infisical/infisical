@@ -1,0 +1,16 @@
+{
+  "title": "Projektintegrationen",
+  "description": "Verwalten Sie Ihre Integrationen von Infisical mit Diensten Dritter.",
+  "no-integrations1": "Sie haben noch keine Integrationen eingerichtet. Sobald Sie diese eingerichtet haben, werden sie hier angezeigt.",
+  "no-integrations2": "Um zu beginnen, klicken Sie auf eine der unten stehenden Optionen. Zum Einrichten sind 5 Klicks erforderlich.",
+  "available": "Plattform- und Cloud-Integrationen",
+  "available-text1": "Klicken Sie auf die Integration, die Sie verbinden möchten. Dadurch fließen Ihre Umgebungsvariablen automatisch in die ausgewählten Drittanbieterdienste ein.",
+  "available-text2": "Hinweis: Bei einer Integration mit Heroku ist es aus Sicherheitsgründen nicht möglich, eine Ende-zu-Ende-Verschlüsselung aufrechtzuerhalten. Theoretisch kann Infisical dadurch Ihre Umgebungsvariablen entschlüsseln. In der Praxis können wir Ihnen versichern, dass dies niemals geschehen wird und es uns ermöglicht, Ihre Geheimnisse vor bösen Online-Akteuren zu schützen. Der Kerndienst von Infisical wird immer Ende-zu-Ende verschlüsselt bleiben. Wenn Sie Fragen haben, wenden Sie sich bitte an support@infisical.com.",
+  "cloud-integrations": "Cloud-Integrationen",
+  "framework-integrations": "Plattform-Integrationen",
+  "click-to-start": "Klicken Sie auf eine Integration, um mit der Synchronisierung von Geheimnissen mit dieser zu beginnen.",
+  "click-to-setup": "Klicken Sie auf eine Integration, um die Einrichtungsanweisungen zu erhalten..",
+  "grant-access-to-secrets": "Gewähren Sie Infisical Zugang zu Ihren Geheimnissen",
+  "why-infisical-needs-access": "Für die meisten Cloud-Integrationen muss Infisical Ihre Geheimnisse entschlüsseln können, damit sie weitergeleitet werden können.",
+  "grant-access-button": "Zugriff gewähren"
+}

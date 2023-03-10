@@ -1,0 +1,11 @@
+{
+  "incident-contacts": "Kontakt bei Vorkommnissen",
+  "incident-contacts-description": "Diese Kontaktpersonen werden im unwahrscheinlichen Fall eines schweren Zwischenfalls benachrichtigt.",
+  "no-incident-contacts": "Es wurden keine Notfallkontaktpersonen gefunden.",
+  "add-contact": "Kontaktperson hinzufügen",
+  "add-dialog": {
+    "title": "Notfallkontaktperson hinzufügen",
+    "description": "Diese Kontaktperson werden im unwahrscheinlichen Fall eines schweren Zwischenfalls benachrichtigt.",
+    "add-incident": "Kontaktperson hinzufügen"
+  }
+}
