@@ -2,10 +2,10 @@
   "title": "Audit-Protokolle",
   "subtitle": "Ereignisverlauf für dieses Infisical-Projekt",
   "event": {
-    "readSecrets": "Gesehene Secrets",
-    "updateSecrets": "Aktualisierte Secrets",
-    "addSecrets": "Hinzugefügte Secrets",
-    "deleteSecrets": "Gelöschte Secrets"
+    "readSecrets": "Gesehene Geheimnisse",
+    "updateSecrets": "Aktualisierte Geheimnisse",
+    "addSecrets": "Hinzugefügte Geheimnisse",
+    "deleteSecrets": "Gelöschte Geheimnisse"
   },
-  "ip-address": "IP Addresse"
+  "ip-address": "IP-Addresse"
 }
