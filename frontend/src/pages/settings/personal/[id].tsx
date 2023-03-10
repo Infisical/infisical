@@ -1,24 +1,23 @@
-import { useEffect, useState } from 'react';
-import Head from 'next/head';
-import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
 import { faCheck, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-
-import Button from '@app/components/basic/buttons/Button';
-import InputField from '@app/components/basic/InputField';
-import ListBox from '@app/components/basic/Listbox';
-import ApiKeyTable from '@app/components/basic/table/ApiKeyTable';
-import NavHeader from '@app/components/navigation/NavHeader';
-import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
-import changePassword from '@app/components/utilities/cryptography/changePassword';
-import issueBackupKey from '@app/components/utilities/cryptography/issueBackupKey';
-import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
-import { SecuritySection } from '@app/views/Settings/PersonalSettingsPage/SecuritySection/SecuritySection';
+import { useEffect, useState } from 'react';
 
 import AddApiKeyDialog from '../../../components/basic/dialog/AddApiKeyDialog';
+import ApiKeyTable from '@app/components/basic/table/ApiKeyTable';
+import Button from '@app/components/basic/buttons/Button';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import Head from 'next/head';
+import InputField from '@app/components/basic/InputField';
+import ListBox from '@app/components/basic/Listbox';
+import NavHeader from '@app/components/navigation/NavHeader';
+import { SecuritySection } from '@app/views/Settings/PersonalSettingsPage/SecuritySection/SecuritySection';
+import changePassword from '@app/components/utilities/cryptography/changePassword';
 import getAPIKeys from '../../api/apiKey/getAPIKeys';
+import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 import getUser from '../../api/user/getUser';
+import issueBackupKey from '@app/components/utilities/cryptography/issueBackupKey';
+import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
+import { useRouter } from 'next/router';
+import { useTranslation } from 'next-i18next';
 
 export default function PersonalSettings() {
   const [personalEmail, setPersonalEmail] = useState('');
@@ -96,7 +95,7 @@ export default function PersonalSettings() {
                 <ListBox
                   isSelected={lang}
                   onChange={setLanguage}
-                  data={['en', 'ko', 'fr', 'es']}
+                  data={['de', 'en', 'ko', 'fr', 'es']}
                   text={`${t('common:language')}: `}
                 />
               </div>
