@@ -12,8 +12,7 @@ import {
   INTEGRATION_VERCEL_TOKEN_URL,
   INTEGRATION_NETLIFY_TOKEN_URL,
   INTEGRATION_GITHUB_TOKEN_URL,
-  INTEGRATION_GITLAB_TOKEN_URL,
-  INTEGRATION_GITLAB_API_URL
+  INTEGRATION_GITLAB_TOKEN_URL
 } from '../variables';
 import {
   SITE_URL,
@@ -169,7 +168,7 @@ const exchangeCodeAzure = async ({
     accessExpiresAt.setSeconds(
       accessExpiresAt.getSeconds() + res.expires_in
     );
-  } catch (err: any) {
+  } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error('Failed OAuth2 code-token exchange with Azure');
@@ -392,46 +391,10 @@ const exchangeCodeGitlab = async ({ code }: { code: string }) => {
       )
     ).data;
     
-    // 1. try getting groups
-    // https://gitlab.com/api/v4/groups
-    
-    // const res2 = (await request.get(
-    //   `${INTEGRATION_GITLAB_API_URL}/v4/groups`,
-    //   {
-    //     headers: {
-    //       Authorization: `Bearer ${res.access_token}`,
-    //       "Accept-Encoding": "application/json"
-    //     }
-    //   }
-    // )).data;
-    
-    // 2. try getting projects of that group
-    // const res3 = (await request.get(
-    //   `${INTEGRATION_GITLAB_API_URL}/v4/groups/${res2[0].id}`,
-    //   {
-    //     headers: {
-    //       Authorization: `Bearer ${res.access_token}`,
-    //       "Accept-Encoding": "application/json"
-    //     }
-    //   }
-    // )).data;
-
-    // const res = (
-    //   await request.get(
-    //     `${INTEGRATION_GITLAB_API_URL}/v4/users/${id}/projects`,
-    //     {
-    //       headers: {
-    //         "Authorization": `Bearer ${accessToken}`,
-    //         "Accept-Encoding": "application/json",
-    //       },
-    //     }
-    //   )
-    // ).data;
-    
     accessExpiresAt.setSeconds(
       accessExpiresAt.getSeconds() + res.expires_in
     );
-  }catch (err) {
+  } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error('Failed OAuth2 code-token exchange with Gitlab');

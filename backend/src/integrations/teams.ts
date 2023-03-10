@@ -8,6 +8,20 @@ import {
 } from '../variables';
 import request from '../config/request';
 
+interface Team {
+    name: string;
+    teamId: string;
+}
+
+/**
+ * Return list of teams for integration authorization [integrationAuth]
+ * @param {Object} obj
+ * @param {String} obj.integrationAuth - integration authorization to get teams for
+ * @param {String} obj.accessToken - access token for integration authorization
+ * @returns {Object[]} teams - teams of integration authorization
+ * @returns {String} teams.name - name of team
+ * @returns {String} teams.teamId - id of team
+*/
 const getTeams = async ({
     integrationAuth,
     accessToken
@@ -15,10 +29,6 @@ const getTeams = async ({
     integrationAuth: IIntegrationAuth;
     accessToken: string;
 }) => {
-    interface Team {
-        name: string;
-        teamId: string;
-    }
     
     let teams: Team[] = [];
     try {
@@ -39,12 +49,20 @@ const getTeams = async ({
     return teams;
 }
 
+/**
+ * Return list of teams for GitLab integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for GitLab API
+ * @returns {Object[]} teams - teams that user is part of in GitLab
+ * @returns {String} teams.name - name of team
+ * @returns {String} teams.teamId - id of team
+*/
 const getTeamsGitLab = async ({
     accessToken
 }: {
     accessToken: string;
 }) => {
-    let teams = [];
+    let teams: Team[] = [];
     try {
         const res = (await request.get(
             `${INTEGRATION_GITLAB_API_URL}/v4/groups`,

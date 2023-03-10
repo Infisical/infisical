@@ -62,13 +62,11 @@ const integrationSchema = new Schema<IIntegration>(
       default: null,
     },
     appId: {
-      // (new)
       // id of app in provider
       type: String,
       default: null,
     },
     targetEnvironment: {
-      // (new)
       // target environment
       type: String,
       default: null,

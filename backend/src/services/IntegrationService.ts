@@ -7,9 +7,6 @@ import {
     setIntegrationAuthAccessHelper,
 } from '../helpers/integration';
 
-// should sync stuff be here too? Probably.
-// TODO: move bot functions to IntegrationService.
-
 /**
  * Class to handle integrations
  */

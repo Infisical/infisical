@@ -64,9 +64,6 @@ router.post(
 	integrationAuthController.saveIntegrationAccessToken
 );
 
-// this can optionally accept a teamId?
-// IF teamId is passed in then it probably means that we want to get
-// the apps for that team
 router.get(
 	'/:integrationAuthId/apps',
 	requireAuth({
@@ -76,7 +73,7 @@ router.get(
 		acceptedRoles: [ADMIN, MEMBER]
 	}),
 	param('integrationAuthId'),
-	query('entity'),
+	query('teamId'),
 	validateRequest,
 	integrationAuthController.getIntegrationAuthApps
 );

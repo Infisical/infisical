@@ -25,7 +25,6 @@ const fetchIntegrationAuthApps = async ({
     integrationAuthId: string;
     teamId?: string;
 }) => {
-    console.log('fetchIntegrationAuthApps: ', integrationAuthId);
     const searchParams = new URLSearchParams(teamId ? { teamId } : undefined);
     const { data } = await apiRequest.get<{ apps: App[] }>(
         `/api/v1/integration-auth/${integrationAuthId}/apps`, 

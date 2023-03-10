@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { Types } from 'mongoose';
 import * as Sentry from '@sentry/node';
 import {
-	Integration, 
 	IntegrationAuth,
 	Bot 
 } from '../../models';
@@ -161,7 +160,7 @@ export const getIntegrationAuthApps = async (req: Request, res: Response) => {
 	let apps;
 	try {
 		const teamId = req.query.teamId as string;
-
+		
 		apps = await getApps({
 			integrationAuth: req.integrationAuth,
 			accessToken: req.accessToken,

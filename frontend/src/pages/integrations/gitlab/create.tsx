@@ -23,8 +23,6 @@ const gitLabEntities = [
   { name: 'Group', value: 'group' }
 ]
 
-// TODO: flesh out the data flow...
-
 export default function GitLabCreateIntegrationPage() {
     const router = useRouter();
 
@@ -33,59 +31,51 @@ export default function GitLabCreateIntegrationPage() {
     const { data: workspace } = useGetWorkspaceById(localStorage.getItem('projectData.id') ?? '');
     const { data: integrationAuth } = useGetIntegrationAuthById(integrationAuthId as string ?? '');
     
-    const [targetEntity, setTargetEntity] = useState(gitLabEntities[0].value);
-    const [targetTeam, setTargetTeam] = useState('aa'); // ?
-    const [targetTeamId] = useState(undefined);
+    const [targetTeamId, setTargetTeamId] = useState<string | null>(null);
+
     const { data: integrationAuthApps } = useGetIntegrationAuthApps({
       integrationAuthId: integrationAuthId as string ?? '',
       ...(targetTeamId ? { teamId: targetTeamId } : {})
     });
     const { data: integrationAuthTeams } = useGetIntegrationAuthTeams(integrationAuthId as string ?? '');
-    console.log('integrationAuthTeams: ', integrationAuthTeams);
     
+    const [targetEntity, setTargetEntity] = useState(gitLabEntities[0].value);
     const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
-    const [targetApp, setTargetApp] = useState('');
+    const [targetAppId, setTargetAppId] = useState('');
     
     const [isLoading, setIsLoading] = useState(false);
     
     useEffect(() => {
-        if (workspace) {
-            setSelectedSourceEnvironment(workspace.environments[0].slug);
-        }
-        
+      if (workspace) {
+          setSelectedSourceEnvironment(workspace.environments[0].slug);
+      }
     }, [workspace]);
     
     useEffect(() => {
       if (integrationAuthApps) {
         if (integrationAuthApps.length > 0) {
-          console.log('AA');
-          setTargetApp(integrationAuthApps[0].name);
+          setTargetAppId(integrationAuthApps[0].appId as string);
         } else {
-          console.log('BB');
-          setTargetApp('none');
+          setTargetAppId('none');
         }
       }
     }, [integrationAuthApps]);
     
     useEffect(() => {
-      // if (targetEntity === 'group' && integrationAuthTeams) {
-      //   if (integrationAuthTeams.length > 0) {
-      //     setTargetTeam(integrationAuthTeams[0].name);
-      //   } else {
-      //     setTargetTeam('none');
-      //   }
-      // }
-    
-      // if (targetEntity === 'group') {
-      //  if (integrationAuthTeams && integrationAuthTeams.length > 0) {
-      //     setTargetTeamId(integrationAuthTeams[0].teamId);
-      //   } else {
-      //     setTargetTeamId('');
-      //   } 
-      // } else {
-        
-      // }
-    }, [integrationAuthTeams, integrationAuthApps, targetEntity]);
+      if (targetEntity === 'group' && integrationAuthTeams && integrationAuthTeams.length > 0) {
+        if (integrationAuthTeams) {
+          if (integrationAuthTeams.length > 0) {
+            // case: user is part of at least 1 group in GitLab
+            setTargetTeamId(integrationAuthTeams[0].teamId);
+          } else {
+            // case: user is not part of any groups in GitLab
+            setTargetTeamId('none');
+          }
+        }
+      } else if (targetEntity === 'individual') {
+        setTargetTeamId(null);
+      }
+    }, [targetEntity, integrationAuthTeams]);
         
     const handleButtonClick = async () => {
         try {
@@ -95,8 +85,8 @@ export default function GitLabCreateIntegrationPage() {
             await createIntegration({
                 integrationAuthId: integrationAuth?._id,
                 isActive: true,
-                app: targetApp,
-                appId: (integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp))?.appId ?? null,
+                app: (integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId))?.name ?? null,
+                appId: targetAppId,
                 sourceEnvironment: selectedSourceEnvironment,
                 targetEnvironment: null,
                 owner: null,
@@ -113,15 +103,7 @@ export default function GitLabCreateIntegrationPage() {
         }
     }
     
-    console.log('A', (integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps && integrationAuthTeams && targetApp && targetTeam));
-    console.log('B', integrationAuth);
-    console.log('C', workspace);
-    console.log('D', selectedSourceEnvironment);
-    console.log('E', integrationAuthApps);
-    console.log('F', integrationAuthTeams);
-    console.log('G', targetApp);
-    console.log('H', targetTeam);
-    return (integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps && integrationAuthTeams && targetApp && targetTeam) ? (
+    return (integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps && integrationAuthTeams && targetAppId) ? (
     <div className="h-full w-full flex justify-center items-center">
       <Card className="max-w-md p-8 rounded-md">
         <CardTitle className='text-center'>GitLab Integration</CardTitle>
@@ -165,13 +147,13 @@ export default function GitLabCreateIntegrationPage() {
             className='mt-4'
           >
             <Select
-              value={targetTeam}
-              onValueChange={(val) => setTargetTeam(val)}
+              value={targetTeamId}
+              onValueChange={(val) => setTargetTeamId(val)}
               className='w-full border border-mineshaft-500'
             >
               {integrationAuthTeams.length > 0 ? (
                 integrationAuthTeams.map((integrationAuthTeam) => (
-                  <SelectItem value={integrationAuthTeam.name} key={`target-team-${integrationAuthTeam.name}`}>
+                  <SelectItem value={integrationAuthTeam.teamId} key={`target-team-${integrationAuthTeam.teamId}`}>
                     {integrationAuthTeam.name}
                   </SelectItem>
                 ))
@@ -188,14 +170,14 @@ export default function GitLabCreateIntegrationPage() {
           className='mt-4'
         >
           <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
+            value={targetAppId}
+            onValueChange={(val) => setTargetAppId(val)}
             className='w-full border border-mineshaft-500'
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
               integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem value={integrationAuthApp.name} key={`target-app-${integrationAuthApp.name}`}>
+                <SelectItem value={integrationAuthApp.appId as string} key={`target-app-${integrationAuthApp.appId}`}>
                   {integrationAuthApp.name}
                 </SelectItem>
               ))
