@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
+
 import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
-
 import ListBox from '@app/components/basic/Listbox';
 import LoginStep from '@app/components/login/LoginStep';
 import MFAStep from '@app/components/login/MFAStep';
 import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
-import { isLoggedIn } from '@app/reactQuery';
-
 import getWorkspaces from './api/workspace/getWorkspaces';
+import { isLoggedIn } from '@app/reactQuery';
+import { useRouter } from 'next/router';
+import { useTranslation } from 'next-i18next';
 
 export default function Login() {
   const router = useRouter();
@@ -90,7 +89,7 @@ export default function Login() {
           <ListBox
             isSelected={lang}
             onChange={setLanguage}
-            data={['en', 'ko', 'fr', 'pt-BR']}
+            data={['de', 'en', 'ko', 'fr', 'pt-BR']}
             isFull
             text={`${t('common:language')}: `}
           />
