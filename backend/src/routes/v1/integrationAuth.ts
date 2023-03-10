@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import {
 	requireAuth,
 	requireWorkspaceAuth,
@@ -73,8 +73,22 @@ router.get(
 		acceptedRoles: [ADMIN, MEMBER]
 	}),
 	param('integrationAuthId'),
+	query('teamId'),
 	validateRequest,
 	integrationAuthController.getIntegrationAuthApps
+);
+
+router.get(
+	'/:integrationAuthId/teams',
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
+	requireIntegrationAuthorizationAuth({
+		acceptedRoles: [ADMIN, MEMBER]
+	}),
+	param('integrationAuthId'),
+	validateRequest,
+	integrationAuthController.getIntegrationAuthTeams
 );
 
 router.delete(

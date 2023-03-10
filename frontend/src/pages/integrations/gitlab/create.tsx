@@ -11,9 +11,17 @@ import {
     Select, 
     SelectItem 
 } from '../../../components/v2';
-import { useGetIntegrationAuthApps,useGetIntegrationAuthById } from '../../../hooks/api/integrationAuth';
+import {
+  useGetIntegrationAuthApps,
+  useGetIntegrationAuthById, 
+  useGetIntegrationAuthTeams} from '../../../hooks/api/integrationAuth';
 import { useGetWorkspaceById } from '../../../hooks/api/workspace';
 import createIntegration from "../../api/integrations/createIntegration";
+
+const gitLabEntities = [
+  { name: 'Individual', value: 'individual' },
+  { name: 'Group', value: 'group' }
+]
 
 export default function GitLabCreateIntegrationPage() {
     const router = useRouter();
@@ -22,28 +30,52 @@ export default function GitLabCreateIntegrationPage() {
 
     const { data: workspace } = useGetWorkspaceById(localStorage.getItem('projectData.id') ?? '');
     const { data: integrationAuth } = useGetIntegrationAuthById(integrationAuthId as string ?? '');
-    const { data: integrationAuthApps } = useGetIntegrationAuthApps(integrationAuthId as string ?? '');
     
+    const [targetTeamId, setTargetTeamId] = useState<string | null>(null);
+
+    const { data: integrationAuthApps } = useGetIntegrationAuthApps({
+      integrationAuthId: integrationAuthId as string ?? '',
+      ...(targetTeamId ? { teamId: targetTeamId } : {})
+    });
+    const { data: integrationAuthTeams } = useGetIntegrationAuthTeams(integrationAuthId as string ?? '');
+    
+    const [targetEntity, setTargetEntity] = useState(gitLabEntities[0].value);
     const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
-    const [owner, setOwner] = useState<string | null>(null);
-    const [targetApp, setTargetApp] = useState('');
+    const [targetAppId, setTargetAppId] = useState('');
     
     const [isLoading, setIsLoading] = useState(false);
     
     useEffect(() => {
-        if (workspace) {
-            setSelectedSourceEnvironment(workspace.environments[0].slug);
-        }
-        
+      if (workspace) {
+          setSelectedSourceEnvironment(workspace.environments[0].slug);
+      }
     }, [workspace]);
     
     useEffect(() => {
-        // TODO: handle case where apps can be empty
-        if (integrationAuthApps) {
-            setTargetApp(integrationAuthApps[0].name);
-            setOwner(integrationAuthApps[0]?.owner ?? null);
+      if (integrationAuthApps) {
+        if (integrationAuthApps.length > 0) {
+          setTargetAppId(integrationAuthApps[0].appId as string);
+        } else {
+          setTargetAppId('none');
         }
+      }
     }, [integrationAuthApps]);
+    
+    useEffect(() => {
+      if (targetEntity === 'group' && integrationAuthTeams && integrationAuthTeams.length > 0) {
+        if (integrationAuthTeams) {
+          if (integrationAuthTeams.length > 0) {
+            // case: user is part of at least 1 group in GitLab
+            setTargetTeamId(integrationAuthTeams[0].teamId);
+          } else {
+            // case: user is not part of any groups in GitLab
+            setTargetTeamId('none');
+          }
+        }
+      } else if (targetEntity === 'individual') {
+        setTargetTeamId(null);
+      }
+    }, [targetEntity, integrationAuthTeams]);
         
     const handleButtonClick = async () => {
         try {
@@ -53,11 +85,11 @@ export default function GitLabCreateIntegrationPage() {
             await createIntegration({
                 integrationAuthId: integrationAuth?._id,
                 isActive: true,
-                app: targetApp,
-                appId: (integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp))?.appId ?? null,
+                app: (integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId))?.name ?? null,
+                appId: targetAppId,
                 sourceEnvironment: selectedSourceEnvironment,
                 targetEnvironment: null,
-                owner,
+                owner: null,
                 path: null,
                 region: null
             }); 
@@ -71,7 +103,7 @@ export default function GitLabCreateIntegrationPage() {
         }
     }
     
-    return (integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps && targetApp) ? (
+    return (integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps && integrationAuthTeams && targetAppId) ? (
     <div className="h-full w-full flex justify-center items-center">
       <Card className="max-w-md p-8 rounded-md">
         <CardTitle className='text-center'>GitLab Integration</CardTitle>
@@ -85,33 +117,83 @@ export default function GitLabCreateIntegrationPage() {
             className='w-full border border-mineshaft-500'
           >
             {workspace?.environments.map((sourceEnvironment) => (
-              <SelectItem value={sourceEnvironment.slug} key={`azure-key-vault-environment-${sourceEnvironment.slug}`}>
+              <SelectItem value={sourceEnvironment.slug} key={`source-environment-${sourceEnvironment.slug}`}>
                 {sourceEnvironment.name}
               </SelectItem>
             ))}
           </Select>
         </FormControl>
         <FormControl
-          label="GitLab Repo"
+          label="GitLab Integration Type"
           className='mt-4'
         >
           <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
+            value={targetEntity}
+            onValueChange={(val) => setTargetEntity(val)}
             className='w-full border border-mineshaft-500'
           >
-            {integrationAuthApps.map((integrationAuthApp) => (
-              <SelectItem value={integrationAuthApp.name} key={`gitlab-environment-${integrationAuthApp.name}`}>
-                {integrationAuthApp.name}
+            {gitLabEntities.map((entity) => {
+              return (
+                <SelectItem value={entity.value} key={`target-entity-${entity.value}`}>
+                  {entity.name}
+                </SelectItem>
+              );
+            })}
+          </Select>
+        </FormControl>
+        {targetEntity === 'group' && targetTeamId && (
+          <FormControl
+            label="GitLab Group"
+            className='mt-4'
+          >
+            <Select
+              value={targetTeamId}
+              onValueChange={(val) => setTargetTeamId(val)}
+              className='w-full border border-mineshaft-500'
+            >
+              {integrationAuthTeams.length > 0 ? (
+                integrationAuthTeams.map((integrationAuthTeam) => (
+                  <SelectItem value={integrationAuthTeam.teamId} key={`target-team-${integrationAuthTeam.teamId}`}>
+                    {integrationAuthTeam.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="none" key="target-team-none">
+                  No groups found
+                </SelectItem>
+              )}
+            </Select>
+          </FormControl>
+        )}
+        <FormControl
+          label="GitLab Project"
+          className='mt-4'
+        >
+          <Select
+            value={targetAppId}
+            onValueChange={(val) => setTargetAppId(val)}
+            className='w-full border border-mineshaft-500'
+            isDisabled={integrationAuthApps.length === 0}
+          >
+            {integrationAuthApps.length > 0 ? (
+              integrationAuthApps.map((integrationAuthApp) => (
+                <SelectItem value={integrationAuthApp.appId as string} key={`target-app-${integrationAuthApp.appId}`}>
+                  {integrationAuthApp.name}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem value="none" key="target-app-none">
+                No projects found
               </SelectItem>
-            ))}
+            )}
           </Select>
         </FormControl>
         <Button 
-            onClick={handleButtonClick}
-            color="mineshaft" 
-            className='mt-4'
-            isLoading={isLoading}
+          onClick={handleButtonClick}
+          color="mineshaft" 
+          className='mt-4'
+          isLoading={isLoading}
+          isDisabled={integrationAuthApps.length === 0}
         >
             Create Integration
         </Button>

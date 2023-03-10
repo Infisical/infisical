@@ -25,26 +25,30 @@ import {
   INTEGRATION_TRAVISCI_API_URL,
 } from "../variables";
 
+interface App {
+  name: string;
+  appId?: string;
+  owner?: string;
+}
+
 /**
  * Return list of names of apps for integration named [integration]
  * @param {Object} obj
  * @param {String} obj.integration - name of integration
  * @param {String} obj.accessToken - access token for integration
+ * @param {String} obj.teamId - (optional) id of team for getting integration apps (used for integrations like GitLab)
  * @returns {Object[]} apps - names of integration apps
  * @returns {String} apps.name - name of integration app
  */
 const getApps = async ({
   integrationAuth,
   accessToken,
+  teamId
 }: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
+  teamId?: string;
 }) => {
-  interface App {
-    name: string;
-    appId?: string;
-    owner?: string;
-  }
 
   let apps: App[] = [];
   try {
@@ -82,6 +86,7 @@ const getApps = async ({
       case INTEGRATION_GITLAB:
         apps = await getAppsGitlab({
           accessToken,
+          teamId
         });
         break;
       case INTEGRATION_RENDER:
@@ -434,44 +439,107 @@ const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
  * @returns {Object[]} apps - names of GitLab sites
  * @returns {String} apps.name - name of GitLab site
  */
-const getAppsGitlab = async ({ accessToken }: {accessToken: string}) => {
-  let apps;
+const getAppsGitlab = async ({ 
+  accessToken,
+  teamId
+}: {
+  accessToken: string;
+  teamId?: string;
+}) => {
+  const apps: App[] = [];
   
+  let page = 1;
+  const perPage = 10;
+  let hasMorePages = true;
   try {
-    const { id } = (
-      await request.get(
-        `${INTEGRATION_GITLAB_API_URL}/v4/user`,
-        {
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json",
-          },
-        }
-      )
-    ).data;
 
-    const res = (
-      await request.get(
-        `${INTEGRATION_GITLAB_API_URL}/v4/users/${id}/projects`,
-        {
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json",
-          },
-        }
-      )
-    ).data;
+    if (teamId) {
+      // case: fetch projects for group with id [teamId] in GitLab
+      
+      while (hasMorePages) {
+        const params = new URLSearchParams({
+          page: String(page),
+          per_page: String(perPage)
+        });
 
-    apps = res?.map((a: any) => {
-      return {
-        name: a?.name,
-        appId: `${a?.id}`,
+        const { data } = (
+          await request.get(
+            `${INTEGRATION_GITLAB_API_URL}/v4/groups/${teamId}/projects`,
+            {
+              params,
+              headers: {
+                "Authorization": `Bearer ${accessToken}`,
+                "Accept-Encoding": "application/json",
+              },
+            }
+          )
+        );
+
+        data.map((a: any) => {
+          apps.push({
+            name: a.name,
+            appId: a.id
+          });
+        });
+        
+        if (data.length < perPage) {
+          hasMorePages = false;
+        }
+        
+        page++;
       }
-    });
-  }catch (err) {
+    } else {
+      // case: fetch projects for individual in GitLab
+      
+      const { id } = (
+        await request.get(
+          `${INTEGRATION_GITLAB_API_URL}/v4/user`,
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Accept-Encoding": "application/json",
+            },
+          }
+        )
+      ).data;
+      
+      while (hasMorePages) {
+        const params = new URLSearchParams({
+          page: String(page),
+          per_page: String(perPage)
+        });
+
+        const { data } = (
+          await request.get(
+            `${INTEGRATION_GITLAB_API_URL}/v4/users/${id}/projects`,
+            {
+              params,
+              headers: {
+                "Authorization": `Bearer ${accessToken}`,
+                "Accept-Encoding": "application/json",
+              },
+            }
+          )
+        );
+
+        data.map((a: any) => {
+          apps.push({
+            name: a.name,
+            appId: a.id
+          });
+        });
+
+        if (data.length < perPage) {
+          hasMorePages = false;
+        }
+        
+        page++;
+      }
+    }
+  } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error("Failed to get GitLab repos");
+    throw new Error("Failed to get GitLab projects");
   }
   
   return apps;

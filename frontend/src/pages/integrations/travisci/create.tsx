@@ -22,7 +22,9 @@ export default function TravisCICreateIntegrationPage() {
 
     const { data: workspace } = useGetWorkspaceById(localStorage.getItem('projectData.id') ?? '');
     const { data: integrationAuth } = useGetIntegrationAuthById(integrationAuthId as string ?? '');
-    const { data: integrationAuthApps } = useGetIntegrationAuthApps(integrationAuthId as string ?? '');
+    const { data: integrationAuthApps } = useGetIntegrationAuthApps({
+      integrationAuthId: integrationAuthId as string ?? ''
+    });
     
     const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
     const [targetApp, setTargetApp] = useState('');
@@ -36,10 +38,13 @@ export default function TravisCICreateIntegrationPage() {
     }, [workspace]);
     
     useEffect(() => {
-        // TODO: handle case where apps can be empty
-        if (integrationAuthApps) {
-          setTargetApp(integrationAuthApps[0]?.name);
+      if (integrationAuthApps) {
+        if (integrationAuthApps.length > 0) {
+          setTargetApp(integrationAuthApps[0].name);
+        } else {
+          setTargetApp('none');
         }
+      }
     }, [integrationAuthApps]);
         
     const handleButtonClick = async () => {
@@ -84,7 +89,7 @@ export default function TravisCICreateIntegrationPage() {
             className='w-full border border-mineshaft-500'
           >
             {workspace?.environments.map((sourceEnvironment) => (
-              <SelectItem value={sourceEnvironment.slug} key={`azure-key-vault-environment-${sourceEnvironment.slug}`}>
+              <SelectItem value={sourceEnvironment.slug} key={`source-environment-${sourceEnvironment.slug}`}>
                 {sourceEnvironment.name}
               </SelectItem>
             ))}
@@ -98,19 +103,27 @@ export default function TravisCICreateIntegrationPage() {
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
             className='w-full border border-mineshaft-500'
+            isDisabled={integrationAuthApps.length === 0}
           >
-            {integrationAuthApps.map((integrationAuthApp) => (
-              <SelectItem value={integrationAuthApp.name} key={`render-environment-${integrationAuthApp.name}`}>
-                {integrationAuthApp.name}
+            {integrationAuthApps.length > 0 ? (
+              integrationAuthApps.map((integrationAuthApp) => (
+                <SelectItem value={integrationAuthApp.name} key={`target-environment-${integrationAuthApp.name}`}>
+                  {integrationAuthApp.name}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem value="none" key="target-app-none">
+                No projects found
               </SelectItem>
-            ))}
+            )}
           </Select>
         </FormControl>
         <Button 
-            onClick={handleButtonClick}
-            color="mineshaft" 
-            className='mt-4'
-            isLoading={isLoading}
+          onClick={handleButtonClick}
+          color="mineshaft" 
+          className='mt-4'
+          isLoading={isLoading}
+          isDisabled={integrationAuthApps.length === 0}
         >
             Create Integration
         </Button>

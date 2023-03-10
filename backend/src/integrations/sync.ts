@@ -172,7 +172,6 @@ const syncSecretsAzureKeyVault = async ({
   accessToken: string;
 }) => {
   try {
-
     interface GetAzureKeyVaultSecret {
       id: string; // secret URI
       attributes: {
@@ -1512,7 +1511,7 @@ const syncSecretsGitLab = async ({
       )
     ).data;
 
-    for (const key of Object.keys(secrets)) {
+    for await (const key of Object.keys(secrets)) {
       const existingSecret = getSecretsRes.find((s: any) => s.key == key);
       if (!existingSecret) {
         await request.post(
@@ -1533,7 +1532,7 @@ const syncSecretsGitLab = async ({
             },
           }
         )
-      }else {
+      } else {
         // udpate secret 
         await request.put(
           `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${existingSecret.key}`,
@@ -1553,7 +1552,7 @@ const syncSecretsGitLab = async ({
     }
 
     // delete secrets 
-    for (const sec of getSecretsRes) {
+    for await (const sec of getSecretsRes) {
       if (!(sec.key in secrets)) {
         await request.delete(
           `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${sec.key}`,

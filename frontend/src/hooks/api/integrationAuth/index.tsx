@@ -1,3 +1,4 @@
 export {
     useGetIntegrationAuthApps,
-    useGetIntegrationAuthById} from './queries';
+    useGetIntegrationAuthById,
+    useGetIntegrationAuthTeams} from './queries';

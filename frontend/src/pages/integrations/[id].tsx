@@ -196,16 +196,16 @@ export default function Integrations() {
           link = `https://gitlab.com/oauth/authorize?client_id=${integrationOption.clientId}&redirect_uri=${window.location.origin}/integrations/gitlab/oauth2/callback&response_type=code&state=${state}`;
           break;
         case 'render':
-          link = `${window.location.origin}/integrations/render/authorize`
+          link = `${window.location.origin}/integrations/render/authorize`;
           break;
         case 'flyio':
-          link = `${window.location.origin}/integrations/flyio/authorize`
+          link = `${window.location.origin}/integrations/flyio/authorize`;
           break;
         case 'circleci':
-          link = `${window.location.origin}/integrations/circleci/authorize`
+          link = `${window.location.origin}/integrations/circleci/authorize`;
           break;
         case 'travisci':
-          link = `${window.location.origin}/integrations/travisci/authorize`
+          link = `${window.location.origin}/integrations/travisci/authorize`;
           break;
         default:
           break;

@@ -12,7 +12,7 @@ import {
   INTEGRATION_VERCEL_TOKEN_URL,
   INTEGRATION_NETLIFY_TOKEN_URL,
   INTEGRATION_GITHUB_TOKEN_URL,
-  INTEGRATION_GITLAB_TOKEN_URL,
+  INTEGRATION_GITLAB_TOKEN_URL
 } from '../variables';
 import {
   SITE_URL,
@@ -73,7 +73,7 @@ interface ExchangeCodeGithubResponse {
 interface ExchangeCodeGitlabResponse {
   access_token: string;
   token_type: string;
-  expires_in: string;
+  expires_in: number;
   refresh_token: string;
   scope: string;
   created_at: number;
@@ -168,7 +168,7 @@ const exchangeCodeAzure = async ({
     accessExpiresAt.setSeconds(
       accessExpiresAt.getSeconds() + res.expires_in
     );
-  } catch (err: any) {
+  } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error('Failed OAuth2 code-token exchange with Azure');
@@ -370,6 +370,7 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
  */
 const exchangeCodeGitlab = async ({ code }: { code: string }) => {
   let res: ExchangeCodeGitlabResponse; 
+  const accessExpiresAt = new Date();
   
   try {
     res = (
@@ -389,7 +390,11 @@ const exchangeCodeGitlab = async ({ code }: { code: string }) => {
         }
       )
     ).data;
-  }catch (err) {
+    
+    accessExpiresAt.setSeconds(
+      accessExpiresAt.getSeconds() + res.expires_in
+    );
+  } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error('Failed OAuth2 code-token exchange with Gitlab');
@@ -397,8 +402,8 @@ const exchangeCodeGitlab = async ({ code }: { code: string }) => {
 
   return {
     accessToken: res.access_token,
-    refreshToken: null,
-    accessExpiresAt: null
+    refreshToken: res.refresh_token,
+    accessExpiresAt
   };
 }
 
