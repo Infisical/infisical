@@ -141,7 +141,7 @@ export default function GitLabCreateIntegrationPage() {
             })}
           </Select>
         </FormControl>
-        {targetEntity === 'group' && (
+        {targetEntity === 'group' && targetTeamId && (
           <FormControl
             label="GitLab Group"
             className='mt-4'
