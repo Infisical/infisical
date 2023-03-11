@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: CloudFormation template to deploy a Docker Compose application on an EC2 instance
+
+Parameters:
+  KeyPairName:
+    Description: The name of the EC2 Key Pair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+  VpcId:
+    Description: The ID of the VPC in which to launch the instance
+    Type: AWS::EC2::VPC::Id
+
+Resources:
+  EC2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: ami-0c94855ba95c71c99 # replace with your desired Amazon Linux 2 AMI
+      InstanceType: t2.micro
+      KeyName: !Ref KeyPairName
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          sudo yum update -y
+          sudo amazon-linux-extras install docker -y
+          sudo service docker start
+          sudo usermod -a -G docker ec2-user
+          sudo chkconfig docker on
+          sudo yum install -y git
+          sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          git clone https://github.com/Infisical/infisical.git
+          cd infisical
+          mv .env.example .env
+          docker-compose up -d
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      Tags:
+        - Key: Name
+          Value: infisical
+
+  InstanceSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Allow SSH and HTTP traffic
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref VpcId
+
+Outputs:
+  InstanceIP:
+    Value: !GetAtt EC2Instance.PublicIp
