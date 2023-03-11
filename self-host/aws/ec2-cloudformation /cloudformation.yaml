@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: CloudFormation template to deploy a Docker Compose application on an EC2 instance
+Description: CloudFormation template to deploy Infisical on a EC2 instance
 
 Parameters:
   KeyPairName:
@@ -13,7 +13,7 @@ Resources:
   EC2Instance:
     Type: "AWS::EC2::Instance"
     Properties:
-      ImageId: ami-0c94855ba95c71c99 # replace with your desired Amazon Linux 2 AMI
+      ImageId: ami-0c94855ba95c71c99
       InstanceType: t2.micro
       KeyName: !Ref KeyPairName
       UserData:
