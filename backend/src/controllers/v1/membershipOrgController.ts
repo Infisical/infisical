@@ -168,11 +168,16 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 				organizationId: organization._id
 			});
 
+			const subject = `Infisical - Organization Invitation (${organization.name})`
+
 			await sendMail({
 				template: 'organizationInvitation.handlebars',
-				subjectLine: 'Infisical organization invitation',
+				subjectLine: subject,
 				recipients: [inviteeEmail],
 				substitutions: {
+					title: subject,
+					description: "Organization Invitation",
+					year: new Date().getFullYear(),
 					inviterFirstName: req.user.firstName,
 					inviterEmail: req.user.email,
 					organizationName: organization.name,

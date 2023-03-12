@@ -36,12 +36,17 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
 			type: TOKEN_EMAIL_PASSWORD_RESET,
 			email
 		});
+
+		const subject = `Infisical - Account Recovery`
 		
 		await sendMail({
 			template: 'passwordReset.handlebars',
-			subjectLine: 'Infisical password reset',
+			subjectLine: subject,
 			recipients: [email],
 			substitutions: {
+				title: subject,
+				description: "Account Recovery",
+				year: new Date().getFullYear(),
 				email,
 				token,
 				callback_url: SITE_URL + '/password-reset'

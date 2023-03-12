@@ -21,12 +21,17 @@ const sendEmailVerification = async ({ email }: { email: string }) => {
 			email
 		});
 
+		const subject = `Infisical - Confirmation Code (${token})`
+
 		// send mail
 		await sendMail({
 			template: 'emailVerification.handlebars',
-			subjectLine: 'Infisical confirmation code',
+			subjectLine: subject,
 			recipients: [email],
 			substitutions: {
+				title: subject,
+				description: "Email - Confirmation Code",
+				year: new Date().getFullYear(),
 				code: token
 			}
 		});
