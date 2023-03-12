@@ -5,11 +5,9 @@ import queryString from 'query-string';
 import { getTranslatedServerSideProps } from '../../../../components/utilities/withTranslateProps';
 import AuthorizeIntegration from "../../../api/integrations/authorizeIntegration";
 
-export default function GCPOAuth2CallbackPage() {
+export default function GCPSecretManagerOAuth2CallbackPage() {
     const router = useRouter();
     const { code, state } = queryString.parse(router.asPath.split('?')[1]);
-
-    console.log({router, code, state});
 
     useEffect(() => {
         (async () => {
@@ -21,13 +19,11 @@ export default function GCPOAuth2CallbackPage() {
                 const integrationAuth = await AuthorizeIntegration({
                     workspaceId: localStorage.getItem('projectData.id') as string,
                     code: code as string,
-                    integration: 'gcp'
+                    integration: 'gcp-secret-manager'
                 });
 
-                console.log({integrationAuth});
-
                 router.push(
-                    `/integrations/gcp/create?integrationAuthId=${integrationAuth._id}`
+                    `/integrations/gcp-secret-manager/create?integrationAuthId=${integrationAuth._id}`
                 );
 
             } catch (err) {
@@ -39,6 +35,6 @@ export default function GCPOAuth2CallbackPage() {
     return <div />
 }
 
-GCPOAuth2CallbackPage.requireAuth = true;
+GCPSecretManagerOAuth2CallbackPage.requireAuth = true;
 
 export const getServerSideProps = getTranslatedServerSideProps(['integrations']);

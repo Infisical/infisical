@@ -10,7 +10,8 @@ import {
   INTEGRATION_HEROKU,
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
-  INTEGRATION_GITHUB
+  INTEGRATION_GITHUB,
+  INTEGRATION_GCP_SECRET_MANAGER
 } from '../variables';
 
 const revokeAccess = async ({
@@ -31,6 +32,8 @@ const revokeAccess = async ({
       case INTEGRATION_NETLIFY:
         break;
       case INTEGRATION_GITHUB:
+        break;
+      case INTEGRATION_GCP_SECRET_MANAGER:
         break;
     }
 

@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/node";
-import _ from 'lodash';
+import _, { toString } from 'lodash';
 import AWS from 'aws-sdk';
 import { 
   SecretsManagerClient, 
@@ -10,6 +10,9 @@ import {
 } from '@aws-sdk/client-secrets-manager';
 import { Octokit } from "@octokit/rest";
 import sodium from "libsodium-wrappers";
+import { RawAxiosRequestHeaders } from "axios";
+import { google } from "@google-cloud/secret-manager/build/protos/protos";
+import GCPSecretManager = google.cloud.secretmanager.v1
 import { IIntegration, IIntegrationAuth } from "../models";
 import {
   INTEGRATION_AZURE_KEY_VAULT,
@@ -30,6 +33,8 @@ import {
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_TRAVISCI_API_URL,
+  INTEGRATION_GCP_SECRET_MANAGER_URL,
+  INTEGRATION_GCP_SECRET_MANAGER,
 } from "../variables";
 import request from '../config/request';
 
@@ -131,15 +136,19 @@ const syncSecrets = async ({
           accessToken,
         });
         break;
-      /**
-       * @todo add gcp-secret-manager case here and implement @function syncSecretsGCP
-       */
       case INTEGRATION_TRAVISCI:
         await syncSecretsTravisCI({
           integration,
           secrets,
           accessToken,
         });
+        break;
+      case INTEGRATION_GCP_SECRET_MANAGER:
+        await syncSecretsGCPSecretManager({
+          integration,
+          secrets,
+          accessToken
+        })
         break;
     }
   } catch (err) {
@@ -1428,5 +1437,303 @@ const syncSecretsTravisCI = async ({
     throw new Error("Failed to sync secrets to TravisCI");
   }
 }
+
+/**
+ * Sync/push [secrets] to gcp-secret-manager project
+ * @param {Object} obj - gcp-secret-manager related param obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for GCP integration
+ */
+const syncSecretsGCPSecretManager = async ({
+	integration,
+	secrets,
+	accessToken,
+}: {
+	integration: IIntegration;
+	secrets: any;
+	accessToken: string;
+}) => {
+	try {
+		// Default headers including accepted encoding and accessToken
+		const DEFAULT_HEADERS: RawAxiosRequestHeaders = {
+			Authorization: `Bearer ${accessToken}`,
+			"Accept-Encoding": "application/json",
+		};
+
+		/**
+		 * Return all secrets from  gcp-secret-manager by paginating using nextPageToken
+		 *
+		 * @param {object} param
+		 * @param {string} param.projectId The gcp project's id for which secrets has to be fetched
+		 * @returns {GCPSecretManager.ISecret[]}
+		 */
+		const getSecretManagerSecrets = async ({
+			projectId,
+		}: {
+			projectId?: string;
+		}): Promise<GCPSecretManager.ISecret[]> => {
+			const secrets: GCPSecretManager.ISecret[] = [];
+			let nextPageToken = "";
+
+			do {
+				const url = new URL(
+					`${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${projectId}/secrets`
+				);
+
+				if (nextPageToken)
+					url.searchParams.append("pageToken", nextPageToken);
+
+				const currPageSecretsRes: GCPSecretManager.IListSecretsResponse =
+					(await request.get(url.href, { headers: DEFAULT_HEADERS }))
+						?.data;
+
+				if (currPageSecretsRes.secrets) {
+					secrets.push(...currPageSecretsRes.secrets);
+					nextPageToken = toString(currPageSecretsRes.nextPageToken);
+				} else {
+					nextPageToken = "";
+				}
+			} while (nextPageToken);
+
+			return secrets;
+		};
+
+		/**
+		 * Fetch latest version of the secret from gcp-secret-manager
+		 *
+		 * @param {object} param
+		 * @param {string} param.projectId
+		 * @param {string} param.secretId
+		 * @returns {GCPSecretManager.IAccessSecretVersionResponse}
+		 */
+		const getLatestSecretVersion = async ({
+			projectId,
+			secretId,
+		}: {
+			projectId: string;
+			secretId: string;
+		}): Promise<GCPSecretManager.IAccessSecretVersionResponse> => {
+			const url = `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${projectId}/secrets/${secretId}/versions/latest:access`;
+
+			const latestSecretVersion: GCPSecretManager.IAccessSecretVersionResponse =
+				(await request.get(url, { headers: DEFAULT_HEADERS }))?.data;
+
+			return latestSecretVersion;
+		};
+
+		/**
+		 * Get secret versions list from gcp-secret-manager
+		 *
+		 * @param {object} param
+		 * @param {string} param.projectId
+		 * @param {string} param.secretId
+		 * @returns {GCPSecretManager.IListSecretVersionsResponse}
+		 */
+		const getSecretVersionsList = async ({
+			projectId,
+			secretId,
+		}: {
+			projectId: string;
+			secretId: string;
+		}): Promise<GCPSecretManager.IListSecretVersionsResponse> => {
+			const url = `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${projectId}/secrets/${secretId}/versions`;
+
+			const secretVersionsList: GCPSecretManager.IListSecretVersionsResponse =
+				(await request.get(url, { headers: DEFAULT_HEADERS }))?.data;
+
+			return secretVersionsList;
+		};
+
+		/**
+		 * Create a secret in gcp-secret-manager
+		 *
+		 * @param {object} param
+		 * @param {string} param.projectId
+		 * @param {string} param.secretId
+		 * @returns {GCPSecretManager.Secret}
+		 */
+		const createSecret = async ({
+			projectId,
+			secretId,
+		}: {
+			projectId: string;
+			secretId: string;
+		}): Promise<GCPSecretManager.Secret> => {
+			const body = new GCPSecretManager.Secret({
+				name: `projects/${projectId}/secrets/${secretId}`,
+				replication: { automatic: {} },
+			});
+
+			const url = new URL(
+				`${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${projectId}/secrets`
+			);
+			url.searchParams.append("secretId", secretId);
+
+			const createdSecret: GCPSecretManager.Secret = (
+				await request.post(url.href, body, { headers: DEFAULT_HEADERS })
+			)?.data;
+
+			return createdSecret;
+		};
+
+		/**
+		 * Add new version for existing secert in gcp-secret-manager
+		 *
+		 * @param {object} param
+		 * @param {string} param.projectId
+		 * @param {string} param.secretId
+		 * @param {string} param.secretValue
+		 * @returns {void}
+		 */
+		const addSecretVersion = async ({
+			projectId,
+			secretId,
+			secretValue,
+		}: {
+			projectId: string;
+			secretId: string;
+			secretValue: string;
+		}): Promise<void> => {
+			const encodedSecretValue = encodeSecretValue({ data: secretValue });
+
+			const body = new GCPSecretManager.AddSecretVersionRequest({
+				parent: `projects/${projectId}/secrets/${secretId}`,
+				payload: { data: encodedSecretValue },
+			});
+
+			const url = `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${projectId}/secrets/${secretId}:addVersion`;
+
+			await request.post(url, body, { headers: DEFAULT_HEADERS });
+		};
+
+		/**
+		 * Encode string value to Buffer for gcp-secret-manager
+		 *
+		 * @param {object} param
+		 * @param {string} param.data
+		 * @returns {string}
+		 */
+		const encodeSecretValue = ({ data }: { data: string }): Buffer => {
+			const encodedSecretValue = Buffer.from(data);
+
+			return encodedSecretValue;
+		};
+
+		/**
+		 * Decode base64, uint8array to normal string for gcp-secret-manager
+		 *
+		 * @param {object} param
+		 * @param {string} param.data
+		 * @returns {string}
+		 */
+		const decodeSecretValue = ({
+			data,
+		}: {
+			data: string | Uint8Array;
+		}): string => {
+			let decodedSecretValue = "";
+
+			if (typeof data !== "string") {
+				decodedSecretValue = Buffer.from(data).toString("utf-8");
+
+				return decodedSecretValue;
+			}
+
+			decodedSecretValue = Buffer.from(data, "base64").toString("utf-8");
+
+			return decodedSecretValue;
+		};
+
+		/**
+		 * Helper function to get the raw secret key name from gcp-secret's path
+		 *
+		 * @param gcpSecretPath
+		 * @returns
+		 */
+		const getGCPSecretMangerKey = (gcpSecretPath: string) =>
+			gcpSecretPath.split("/").pop();
+
+		const gcpSecretManagerSecrets = await getSecretManagerSecrets({
+			projectId: integration.appId,
+		});
+
+		const keyToGCPSecret = gcpSecretManagerSecrets.reduce((prev, curr) => {
+			const gcpSecretMangerKey = getGCPSecretMangerKey(curr.name ?? "");
+
+			if (gcpSecretMangerKey) {
+				return { ...prev, [gcpSecretMangerKey]: curr };
+			}
+
+			return { ...prev };
+		}, {} as Record<string, unknown>);
+
+		for await (const key of Object.keys(secrets)) {
+			if (keyToGCPSecret[key]) {
+				const secretValue = secrets[key];
+
+				// fetch some versions of the secret key
+				const secretVersionsList = await getSecretVersionsList({
+					projectId: integration.appId,
+					secretId: key,
+				});
+
+				// if there are no versions for the key, we add a version
+				if (!secretVersionsList.versions) {
+					await addSecretVersion({
+						projectId: integration.appId,
+						secretId: key,
+						secretValue,
+					});
+					return;
+				}
+
+				// fetching latest version for the existing key
+				const latestVersionSecret = await getLatestSecretVersion({
+					projectId: integration.appId,
+					secretId: key,
+				});
+
+				// decode the latest version secret to a string value
+				const latestVerSecretVal = decodeSecretValue({
+					data: latestVersionSecret?.payload?.data ?? "",
+				});
+
+				/**
+				 * @info if there is change in secret value, we create add a new version in
+				 * gcp-secret-manager
+				 */
+				if (latestVerSecretVal !== secretValue) {
+					await addSecretVersion({
+						projectId: integration.appId,
+						secretId: key,
+						secretValue,
+					});
+				}
+			} else {
+				const secretValue = secrets[key];
+
+				// create a new secret key
+				const createdSecret = await createSecret({
+					projectId: integration.appId,
+					secretId: key,
+				});
+
+				// add a new verion for the secret key
+				if (createdSecret.name) {
+					await addSecretVersion({
+						projectId: integration.appId,
+						secretId: key,
+						secretValue,
+					});
+				}
+			}
+		}
+	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
+		throw new Error("Failed to sync secrets to GCP secret manager");
+	}
+};
 
 export { syncSecrets };

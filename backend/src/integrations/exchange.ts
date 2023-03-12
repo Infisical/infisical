@@ -6,7 +6,7 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
-  INTEGRATION_GCP,
+  INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_AZURE_TOKEN_URL,
   INTEGRATION_HEROKU_TOKEN_URL,
   INTEGRATION_VERCEL_TOKEN_URL,
@@ -20,13 +20,13 @@ import {
   CLIENT_ID_VERCEL,
   CLIENT_ID_NETLIFY,
   CLIENT_ID_GITHUB,
-  CLIENT_ID_GCP,
+  CLIENT_ID_GCP_SECRET_MANAGER,
   CLIENT_SECRET_AZURE,
   CLIENT_SECRET_HEROKU,
   CLIENT_SECRET_VERCEL,
   CLIENT_SECRET_NETLIFY,
   CLIENT_SECRET_GITHUB,
-  CLIENT_SECRET_GCP
+  CLIENT_SECRET_GCP_SECRET_MANAGER
 } from '../config';
 
 interface ExchangeCodeAzureResponse {
@@ -70,7 +70,7 @@ interface ExchangeCodeGithubResponse {
   token_type: string;
 }
 
-interface ExchangeCodeGCPResponse {
+interface ExchangeCodeGCPSecretManagerResponse {
   access_token: string;
   expires_in: number;
   refresh_token: string;
@@ -126,8 +126,8 @@ const exchangeCode = async ({
           code
         });
         break;
-      case INTEGRATION_GCP:
-        obj = await exchangeCodeGCP({
+      case INTEGRATION_GCP_SECRET_MANAGER:
+        obj = await exchangeCodeGCPSecretManager({
           code
         });
         break;
@@ -359,7 +359,7 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
 };
 
 /**
- * Return [accessToken], [accessExpiresAt], and [refreshToken] for GCP secrets-manager
+ * Return [accessToken], [accessExpiresAt], and [refreshToken] for gcp-secret-manager
  * code-token exchange
  * @param {Object} obj1
  * @param {Object} obj1.code - code for code-token exchange
@@ -368,17 +368,17 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
  * @returns {String} obj2.refreshToken - refresh token for GCP API
  * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
  */
-const exchangeCodeGCP = async ({ code }: { code: string }) => {
-  let res: ExchangeCodeGCPResponse;
+const exchangeCodeGCPSecretManager = async ({ code }: { code: string }) => {
+  let res: ExchangeCodeGCPSecretManagerResponse;
 
   try {
     res = (
-      await axios.post(INTEGRATION_GCP_TOKEN_URL, 
+      await request.post(INTEGRATION_GCP_TOKEN_URL,
         {
-          client_id: CLIENT_ID_GCP,
-          client_secret: CLIENT_SECRET_GCP,
+          client_id: CLIENT_ID_GCP_SECRET_MANAGER,
+          client_secret: CLIENT_SECRET_GCP_SECRET_MANAGER,
           code: code,
-          redirect_uri: `${SITE_URL}/integrations/gcp/oauth2/callback`,
+          redirect_uri: `${SITE_URL}/integrations/gcp-secret-manager/oauth2/callback`,
           grant_type: "authorization_code"
         }, 
         {
@@ -390,6 +390,12 @@ const exchangeCodeGCP = async ({ code }: { code: string }) => {
       )
     ).data;
 
+   /**
+    * @note the expires_in in response shows the number of seconds after which the access_token
+    * expires, so we update the infisical accessExpiresAt value to current-date-in-ms + expires_in
+    * in ms
+    */
+   res.expires_in = Date.now() + (res.expires_in * 1000)
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);

@@ -201,8 +201,8 @@ export default function Integrations() {
         case 'circleci':
           link = `${window.location.origin}/integrations/circleci/authorize`
           break;
-        case 'gcp':
-          link = `https://accounts.google.com/o/oauth2/auth?scope=https://www.googleapis.com/auth/cloud-platform&response_type=code&state=${state}&redirect_uri=${window.location.origin}/integrations/gcp/oauth2/callback&client_id=${integrationOption.clientId}`
+        case 'gcp-secret-manager':
+          link = `https://accounts.google.com/o/oauth2/auth?scope=https://www.googleapis.com/auth/cloud-platform&response_type=code&access_type=offline&state=${state}&redirect_uri=${window.location.origin}/integrations/gcp-secret-manager/oauth2/callback&client_id=${integrationOption.clientId}`
           break;
         case 'travisci':
           link = `${window.location.origin}/integrations/travisci/authorize`
@@ -253,8 +253,8 @@ export default function Integrations() {
         case 'circleci':
           link = `${window.location.origin}/integrations/circleci/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'gcp':
-          link = `${window.location.origin}/integrations/gcp/create?integrationAuthId=${integrationAuth._id}`;
+        case 'gcp-secret-manager':
+          link = `${window.location.origin}/integrations/gcp-secret-manager/create?integrationAuthId=${integrationAuth._id}`;
           break;
         case 'travisci':
           link = `${window.location.origin}/integrations/travisci/create?integrationAuthId=${integrationAuth._id}`;

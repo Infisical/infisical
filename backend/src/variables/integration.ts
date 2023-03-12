@@ -7,7 +7,7 @@ import {
   CLIENT_ID_NETLIFY,
   CLIENT_ID_GITHUB,
   CLIENT_SLUG_VERCEL,
-  CLIENT_ID_GCP
+  CLIENT_ID_GCP_SECRET_MANAGER
 } from "../config";
 
 // integrations
@@ -21,7 +21,7 @@ const INTEGRATION_GITHUB = "github";
 const INTEGRATION_RENDER = "render";
 const INTEGRATION_FLYIO = "flyio";
 const INTEGRATION_CIRCLECI = "circleci";
-const INTEGRATION_GCP = 'gcp';
+const INTEGRATION_GCP_SECRET_MANAGER = 'gcp-secret-manager';
 const INTEGRATION_TRAVISCI = "travisci";
 const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
@@ -32,7 +32,7 @@ const INTEGRATION_SET = new Set([
     INTEGRATION_RENDER,
     INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
-    INTEGRATION_GCP,
+  INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_TRAVISCI,
 ]);
 
@@ -57,6 +57,7 @@ const INTEGRATION_RENDER_API_URL = "https://api.render.com";
 const INTEGRATION_FLYIO_API_URL = "https://api.fly.io/graphql";
 const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
 const INTEGRATION_GCP_API_URL = "https://cloudresourcemanager.googleapis.com";
+const INTEGRATION_GCP_SECRET_MANAGER_URL = "https://secretmanager.googleapis.com"
 const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
 
 const INTEGRATION_OPTIONS = [
@@ -162,12 +163,12 @@ const INTEGRATION_OPTIONS = [
         docsLink: ''
     },
     {
-        name: 'Google Cloud Platform',
-        slug: 'gcp',
+        name: 'GCP Secret Manager',
+        slug: 'gcp-secret-manager',
         image: 'Google Cloud Platform.png',
         isAvailable: true,
         type: 'oauth',
-        clientId: CLIENT_ID_GCP,
+        clientId: CLIENT_ID_GCP_SECRET_MANAGER,
         docsLink: ''
     }
 ]
@@ -180,7 +181,7 @@ export {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
-  INTEGRATION_GCP,
+  INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
@@ -200,10 +201,7 @@ export {
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_GCP_API_URL,
+  INTEGRATION_GCP_SECRET_MANAGER_URL,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_OPTIONS,
 };
-
-/**
- * @todo add gcp-secrets-manager related const configs here
- */

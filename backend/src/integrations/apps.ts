@@ -13,7 +13,7 @@ import {
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
-  INTEGRATION_GCP,
+  INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_TRAVISCI,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_VERCEL_API_URL,
@@ -94,8 +94,8 @@ const getApps = async ({
           accessToken,
         });
         break;
-      case INTEGRATION_GCP:
-        apps = await getAppsGCP({
+      case INTEGRATION_GCP_SECRET_MANAGER:
+        apps = await getAppsGCPSecretManager({
           accessToken,
         });
         break;
@@ -409,17 +409,17 @@ const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
 }
 
 /**
- * Return list of projects for GCP integration
+ * Return list of projects for gcp-secret-manager integration
  * @param {Object} obj
  * @param {String} obj.accessToken - access token for GCP API
  * @returns {Object[]} apps -
  * @returns {String} apps.name - name of GCP apps
  */
-const getAppsGCP = async ({ accessToken }: { accessToken: string }) => {
+const getAppsGCPSecretManager = async ({ accessToken }: { accessToken: string }) => {
   let apps: any;
   try {    
     const res = (
-      await axios.get(
+      await request.get(
         `${INTEGRATION_GCP_API_URL}/v1/projects`,
         {
           headers: {
@@ -430,18 +430,6 @@ const getAppsGCP = async ({ accessToken }: { accessToken: string }) => {
       )
     )?.data?.projects
 
-    /**
-     * @todo Ask if we should consider the "lifecycleState"
-     *
-     * @example response: {
-        "projectNumber": "767450018934",
-        "projectId": "steel-climber-352407",
-        "lifecycleState": "ACTIVE",
-        "name": "My First Project",
-        "createTime": "2022-06-05T07:41:46.464Z"
-      }
-     */
-
     apps = res?.map((a: any) => {
       return {
         name: a?.name,
@@ -451,7 +439,7 @@ const getAppsGCP = async ({ accessToken }: { accessToken: string }) => {
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error("Failed to get GCP projects");
+    throw new Error("Failed to get GCP secret manager projects");
   }
   
   return apps;

@@ -1,12 +1,14 @@
 import request from '../config/request';
 import * as Sentry from '@sentry/node';
-import { INTEGRATION_AZURE_KEY_VAULT, INTEGRATION_HEROKU, INTEGRATION_GCP } from '../variables';
+import { RawAxiosRequestHeaders } from 'axios';
+import { INTEGRATION_AZURE_KEY_VAULT, INTEGRATION_HEROKU, INTEGRATION_GCP_SECRET_MANAGER } from '../variables';
 import {
   SITE_URL,
   CLIENT_ID_AZURE,
   CLIENT_SECRET_AZURE,
   CLIENT_SECRET_HEROKU,
-  CLIENT_SECRET_GCP
+  CLIENT_SECRET_GCP_SECRET_MANAGER,
+  CLIENT_ID_GCP_SECRET_MANAGER
 } from '../config';
 import {
   INTEGRATION_AZURE_TOKEN_URL,
@@ -21,6 +23,13 @@ interface RefreshTokenAzureResponse {
   ext_expires_in: 4871;
   access_token: string;
   refresh_token: string;
+}
+
+interface RefreshTokenGCPSecretManagerResponse {
+  access_token: string;
+  expires_in: number;
+  scope: string;
+  token_type: string;
 }
 
 /**
@@ -50,8 +59,8 @@ const exchangeRefresh = async ({
           refreshToken
         });
         break;
-      case INTEGRATION_GCP:
-        accessToken = await exchangeRefreshGCP({
+      case INTEGRATION_GCP_SECRET_MANAGER:
+        accessToken = await exchangeRefreshGCPSecretManager({
           refreshToken
         })
         break;
@@ -138,7 +147,7 @@ const exchangeRefreshHeroku = async ({
  * @param {String} obj.refreshToken - refresh token to use to get new access token for GCP
  * @returns
  */
-const exchangeRefreshGCP = async ({
+const exchangeRefreshGCPSecretManager = async ({
   refreshToken
 }: {
   refreshToken: string;
@@ -146,20 +155,25 @@ const exchangeRefreshGCP = async ({
   
   let accessToken;
   try {
-    const res = await axios.post(
-        INTEGRATION_GCP_TOKEN_URL,
-        new URLSearchParams({
-            grant_type: 'refresh_token',
-            refresh_token: refreshToken,
-            client_secret: CLIENT_SECRET_GCP
-        } as any)
-    );
+    const body = {
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_secret: CLIENT_SECRET_GCP_SECRET_MANAGER,
+      client_id: CLIENT_ID_GCP_SECRET_MANAGER
+    }
 
-    accessToken = res.data.access_token;
+    const headers: RawAxiosRequestHeaders = {
+      "Accept-Encoding": "application/json"
+    }
+
+    const res: RefreshTokenGCPSecretManagerResponse = 
+      (await request.post(INTEGRATION_GCP_TOKEN_URL, body, { headers })).data;
+
+    accessToken = res.access_token;
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error('Failed to refresh OAuth2 access token for GCP');
+    throw new Error('Failed to refresh OAuth2 access token for GCP secret manager');
   }
 
   return accessToken;
