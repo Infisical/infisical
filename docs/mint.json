@@ -50,6 +50,11 @@
       "url": "self-hosting"
     },
     {
+      "name": "SDK",
+      "icon": "puzzle-piece",
+      "url": "sdk"
+    },
+    {
       "name": "API Reference",
       "icon": "cloud",
       "url": "api-reference"
@@ -128,10 +133,8 @@
             "integrations/platforms/docker-compose"
           ]
         },
-
         "integrations/platforms/kubernetes",
         "integrations/frameworks/terraform",
-
         {
           "group": "AWS",
           "pages": [
@@ -139,20 +142,16 @@
             "integrations/cloud/aws-secret-manager"
           ]
         },
-
         "integrations/cloud/heroku",
         "integrations/cloud/vercel",
         "integrations/cloud/netlify",
         "integrations/cloud/render",
         "integrations/cloud/flyio",
-
         "integrations/cloud/azure-key-vault",
-
         "integrations/cicd/githubactions",
         "integrations/cicd/gitlab",
         "integrations/cicd/circleci",
         "integrations/cicd/travisci",
-
         "integrations/frameworks/react",
         "integrations/frameworks/vue",
         "integrations/frameworks/express",
@@ -190,6 +189,12 @@
       "pages": [
         "self-hosting/configuration/envars",
         "self-hosting/configuration/email"
+      ]
+    },
+    {
+      "group": "SDK",
+      "pages": [
+        "sdk/overview/usage"
       ]
     },
     {
