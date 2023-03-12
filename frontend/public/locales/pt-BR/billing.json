@@ -3,10 +3,10 @@
   "description": "Visualize e gerencie a assinatura da sua organização aqui",
   "subscription": "Inscrição",
   "starter": {
-    "name": "Iniciante",
-    "price-explanation": "Até 5 membros da equipe",
+    "name": "Base",
+    "price-explanation": "Até 5 membros de equipe",
     "text": "Gerencie qualquer projeto com 5 membros gratuitamente!",
-    "subtext": "$5 por membro / mês depois."
+    "subtext": "$5 por membro adicional / mês."
   },
   "professional": {
     "name": "Profissional",
@@ -21,7 +21,7 @@
   "current-usage": "Uso atual",
   "free": "Grátis",
   "downgrade": "Reduzir",
-  "upgrade": "Melhoria",
+  "upgrade": "Melhorar",
   "learn-more": "Saber Mais",
   "custom-pricing": "Preço Personalizado",
   "schedule-demo": "Agende uma Demonstração"

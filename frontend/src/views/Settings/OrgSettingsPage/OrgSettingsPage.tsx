@@ -54,7 +54,8 @@ export const OrgSettingsPage = () => {
   const isMoreUsersNotAllowed =
     (orgUsers || []).length >= 5 &&
     subscriptionPlan === plans.starter &&
-    host === 'https://app.infisical.com';
+    host === 'https://app.infisical.com' && 
+    currentWorkspace?._id !== '63ea8121b6e2b0543ba79616';
 
   const onRenameOrg = async (name: string) => {
     if (!currentOrg?._id) return;

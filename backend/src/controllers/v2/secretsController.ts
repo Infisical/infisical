@@ -22,7 +22,7 @@ import { userHasNoAbility, userHasWorkspaceAccess, userHasWriteOnlyAbility } fro
 import Tag from '../../models/tag';
 import _ from 'lodash';
 import {
-    BatchSecretRequest, 
+    BatchSecretRequest,
     BatchSecret
 } from '../../types/secret';
 
@@ -41,13 +41,13 @@ export const batchSecrets = async (req: Request, res: Response) => {
         workspaceId: string;
         environment: string;
         requests: BatchSecretRequest[];
-    }= req.body;
-    
+    } = req.body;
+
     const createSecrets: BatchSecret[] = [];
     const updateSecrets: BatchSecret[] = [];
     const deleteSecrets: Types.ObjectId[] = [];
     const actions: IAction[] = [];
-    
+
     requests.forEach((request) => {
         switch (request.method) {
             case 'POST':
@@ -70,7 +70,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
                 break;
         }
     });
-    
+
     // handle create secrets
     let createdSecrets: ISecret[] = [];
     if (createSecrets.length > 0) {
@@ -109,18 +109,18 @@ export const batchSecrets = async (req: Request, res: Response) => {
             });
         }
     }
-    
+
     // handle update secrets
     let updatedSecrets: ISecret[] = [];
     if (updateSecrets.length > 0 && req.secrets) {
         // construct object containing all secrets
         let listedSecretsObj: {
-            [key: string]: { 
+            [key: string]: {
                 version: number;
                 type: string;
             }
         } = {};
-        
+
         listedSecretsObj = req.secrets.reduce((obj: any, secret: ISecret) => ({
             ...obj,
             [secret._id.toString()]: secret
@@ -140,7 +140,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
         }));
 
         await Secret.bulkWrite(updateOperations);
-        
+
         const secretVersions = updateSecrets.map((u) => ({
             secret: new Types.ObjectId(u._id),
             version: listedSecretsObj[u._id.toString()].version,
@@ -227,7 +227,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
             });
         }
     }
-    
+
     if (actions.length > 0) {
         // (EE) create (audit) log
         await EELogService.createLog({
@@ -250,7 +250,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
     await EESecretService.takeSecretSnapshot({
         workspaceId
     });
-    
+
     const resObj: { [key: string]: ISecret[] | string[] } = {}
 
     if (createSecrets.length > 0) {
@@ -260,11 +260,11 @@ export const batchSecrets = async (req: Request, res: Response) => {
     if (updateSecrets.length > 0) {
         resObj['updatedSecrets'] = updatedSecrets;
     }
-    
+
     if (deleteSecrets.length > 0) {
         resObj['deletedSecrets'] = deleteSecrets.map((d) => d.toString());
     }
-    
+
     return res.status(200).send(resObj);
 }
 
@@ -358,9 +358,25 @@ export const createSecrets = async (req: Request, res: Response) => {
         tags: string[]
     }
 
-    const newlyCreatedSecrets = await Secret.insertMany(
-        listOfSecretsToCreate.map(({
+    const secretsToInsert: ISecret[] = listOfSecretsToCreate.map(({
+        type,
+        secretKeyCiphertext,
+        secretKeyIV,
+        secretKeyTag,
+        secretValueCiphertext,
+        secretValueIV,
+        secretValueTag,
+        secretCommentCiphertext,
+        secretCommentIV,
+        secretCommentTag,
+        tags
+    }: secretsToCreateType) => {
+        return ({
+            version: 1,
+            workspace: new Types.ObjectId(workspaceId),
             type,
+            user: type === SECRET_PERSONAL ? req.user : undefined,
+            environment,
             secretKeyCiphertext,
             secretKeyIV,
             secretKeyTag,
@@ -371,26 +387,10 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretCommentIV,
             secretCommentTag,
             tags
-        }: secretsToCreateType) => {
-            return ({
-                version: 1,
-                workspace: new Types.ObjectId(workspaceId),
-                type,
-                user: type === SECRET_PERSONAL ? req.user : undefined,
-                environment,
-                secretKeyCiphertext,
-                secretKeyIV,
-                secretKeyTag,
-                secretValueCiphertext,
-                secretValueIV,
-                secretValueTag,
-                secretCommentCiphertext,
-                secretCommentIV,
-                secretCommentTag,
-                tags
-            });
-        })
-    );
+        });
+    })
+
+    const newlyCreatedSecrets: ISecret[] = (await Secret.insertMany(secretsToInsert)).map((insertedSecret) => insertedSecret.toObject());
 
     setTimeout(async () => {
         // trigger event - push secrets
@@ -953,6 +953,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
         }
     }   
     */
+   
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
     const toDelete = req.secrets.map((s: any) => s._id);
 

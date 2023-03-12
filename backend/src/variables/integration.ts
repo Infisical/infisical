@@ -1,6 +1,6 @@
 import {
     CLIENT_ID_AZURE,
-    TENANT_ID_AZURE
+    CLIENT_ID_GITLAB
 } from '../config';
 import {
   CLIENT_ID_HEROKU,
@@ -18,6 +18,7 @@ const INTEGRATION_HEROKU = "heroku";
 const INTEGRATION_VERCEL = "vercel";
 const INTEGRATION_NETLIFY = "netlify";
 const INTEGRATION_GITHUB = "github";
+const INTEGRATION_GITLAB = "gitlab";
 const INTEGRATION_RENDER = "render";
 const INTEGRATION_FLYIO = "flyio";
 const INTEGRATION_CIRCLECI = "circleci";
@@ -25,6 +26,13 @@ const INTEGRATION_GCP_SECRET_MANAGER = 'gcp-secret-manager';
 const INTEGRATION_TRAVISCI = "travisci";
 const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_HEROKU,
+  INTEGRATION_VERCEL,
+  INTEGRATION_NETLIFY,
+  INTEGRATION_GITHUB,
+  INTEGRATION_GITLAB,
+  INTEGRATION_RENDER,
+  INTEGRATION_FLYIO,
     INTEGRATION_HEROKU,
     INTEGRATION_VERCEL,
     INTEGRATION_NETLIFY,
@@ -40,17 +48,20 @@ const INTEGRATION_SET = new Set([
 const INTEGRATION_OAUTH2 = "oauth2";
 
 // integration oauth endpoints
-const INTEGRATION_AZURE_TOKEN_URL = `https://login.microsoftonline.com/${TENANT_ID_AZURE}/oauth2/v2.0/token`;
+const INTEGRATION_AZURE_TOKEN_URL = `https://login.microsoftonline.com/common/oauth2/v2.0/token`;
 const INTEGRATION_HEROKU_TOKEN_URL = 'https://id.heroku.com/oauth/token';
 const INTEGRATION_VERCEL_TOKEN_URL =
   "https://api.vercel.com/v2/oauth/access_token";
 const INTEGRATION_NETLIFY_TOKEN_URL = "https://api.netlify.com/oauth/token";
 const INTEGRATION_GITHUB_TOKEN_URL =
   "https://github.com/login/oauth/access_token";
+const INTEGRATION_GITLAB_TOKEN_URL = "https://gitlab.com/oauth/token";
+
 const INTEGRATION_GCP_TOKEN_URL = "https://accounts.google.com/o/oauth2/token"
 
 // integration apps endpoints
 const INTEGRATION_HEROKU_API_URL = "https://api.heroku.com";
+const INTEGRATION_GITLAB_API_URL = "https://gitlab.com/api";
 const INTEGRATION_VERCEL_API_URL = "https://api.vercel.com";
 const INTEGRATION_NETLIFY_API_URL = "https://api.netlify.com";
 const INTEGRATION_RENDER_API_URL = "https://api.render.com";
@@ -60,6 +71,7 @@ const INTEGRATION_GCP_API_URL = "https://cloudresourcemanager.googleapis.com";
 const INTEGRATION_GCP_SECRET_MANAGER_URL = "https://secretmanager.googleapis.com"
 const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
 
+// TODO: deprecate types?
 const INTEGRATION_OPTIONS = [
     {
         name: 'Heroku',
@@ -135,12 +147,30 @@ const INTEGRATION_OPTIONS = [
         docsLink: ''
     },
     {
+        name: 'Azure Key Vault',
+        slug: 'azure-key-vault',
+        image: 'Microsoft Azure.png',
+        isAvailable: true,
+        type: 'oauth',
+        clientId: CLIENT_ID_AZURE,
+        docsLink: ''
+    },
+    {
         name: 'Circle CI',
         slug: 'circleci',
         image: 'Circle CI.png',
         isAvailable: true,
         type: 'pat',
         clientId: '',
+        docsLink: ''
+    },
+    {
+        name: 'GitLab',
+        slug: 'gitlab',
+        image: 'GitLab.png',
+        isAvailable: true,
+        type: 'custom',
+        clientId: CLIENT_ID_GITLAB, 
         docsLink: ''
     },
     {
@@ -159,7 +189,6 @@ const INTEGRATION_OPTIONS = [
         isAvailable: false,
         type: 'oauth',
         clientId: CLIENT_ID_AZURE,
-        tenantId: TENANT_ID_AZURE,
         docsLink: ''
     },
     {
@@ -181,6 +210,7 @@ export {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_GITLAB,
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
@@ -193,8 +223,10 @@ export {
   INTEGRATION_VERCEL_TOKEN_URL,
   INTEGRATION_NETLIFY_TOKEN_URL,
   INTEGRATION_GITHUB_TOKEN_URL,
+  INTEGRATION_GITLAB_API_URL,
   INTEGRATION_GCP_TOKEN_URL,
   INTEGRATION_HEROKU_API_URL,
+  INTEGRATION_GITLAB_TOKEN_URL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,

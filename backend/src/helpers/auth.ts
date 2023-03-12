@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import * as Sentry from '@sentry/node';
 import bcrypt from 'bcrypt';
 import {
+	IUser,
 	User,
 	ServiceTokenData,
 	APIKeyData
@@ -148,7 +149,10 @@ const getAuthSTDPayload = async ({
 
 		serviceTokenData = await ServiceTokenData
 			.findById(TOKEN_IDENTIFIER)
-			.select('+encryptedKey +iv +tag').populate('user');
+			.select('+encryptedKey +iv +tag')
+			.populate<{user: IUser}>('user');
+		
+		if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
 
 	} catch (err) {
 		throw UnauthorizedRequestError({

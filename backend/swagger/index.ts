@@ -197,6 +197,23 @@ const generateOpenAPISpec = async () => {
         secretValueCiphertext: '',
         secretValueIV: '',
         secretValueTag: '', 
+      },
+      ServiceTokenData: {
+        _id: '',
+        name: '',
+        workspace: '',
+        environment: '',
+        user: {
+          _id: '',
+          firstName: '',
+          lastName: ''
+        },
+        expiresAt: '2023-01-13T14:16:12.210Z',
+        encryptedKey: '',
+        iv: '',
+        tag: '',
+        updatedAt: '2023-01-13T14:16:12.210Z',
+        createdAt: '2023-01-13T14:16:12.210Z'
       }
     }
   };

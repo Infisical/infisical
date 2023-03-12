@@ -25,6 +25,7 @@ type InfisicalSecretReconciler struct {
 //+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=secrets.infisical.com,resources=infisicalsecrets/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;delete
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;delete
 //+kubebuilder:rbac:groups=apps,resources=deployments,verbs=list;watch;get;update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -57,8 +58,20 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}, nil
 	}
 
-	// set the api url based on the CRD
-	api.API_HOST_URL = infisicalSecretCR.Spec.HostAPI
+	// Get modified/default config
+	infisicalConfig, err := r.GetInfisicalConfigMap(ctx)
+	if err != nil {
+		fmt.Printf("unable to fetch infisical-config [err=%s]. Will requeue after [requeueTime=%v]\n", err, requeueTime)
+		return ctrl.Result{
+			RequeueAfter: requeueTime,
+		}, nil
+	}
+
+	if infisicalSecretCR.Spec.HostAPI == "" {
+		api.API_HOST_URL = infisicalConfig["hostAPI"]
+	} else {
+		api.API_HOST_URL = infisicalSecretCR.Spec.HostAPI
+	}
 
 	err = r.ReconcileInfisicalSecret(ctx, infisicalSecretCR)
 	r.SetReadyToSyncSecretsConditions(ctx, &infisicalSecretCR, err)

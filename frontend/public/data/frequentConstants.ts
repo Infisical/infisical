@@ -10,6 +10,7 @@ const integrationSlugNameMapping: Mapping = {
   'vercel': 'Vercel',
   'netlify': 'Netlify',
   'github': 'GitHub',
+  'gitlab': 'GitLab',
   'render': 'Render',
   'flyio': 'Fly.io',
   'circleci': 'CircleCI',

@@ -172,7 +172,7 @@ export default function Integrations() {
       let link = '';
       switch (integrationOption.slug) {
         case 'azure-key-vault':
-          link = `https://login.microsoftonline.com/${integrationOption.tenantId}/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
+          link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
           break;
         case 'aws-parameter-store':
           link = `${window.location.origin}/integrations/aws-parameter-store/authorize`;
@@ -192,20 +192,23 @@ export default function Integrations() {
         case 'github':
           link = `https://github.com/login/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=repo&redirect_uri=${window.location.origin}/integrations/github/oauth2/callback&state=${state}`;
           break;
+        case 'gitlab':
+          link = `https://gitlab.com/oauth/authorize?client_id=${integrationOption.clientId}&redirect_uri=${window.location.origin}/integrations/gitlab/oauth2/callback&response_type=code&state=${state}`;
+          break;
         case 'render':
-          link = `${window.location.origin}/integrations/render/authorize`
+          link = `${window.location.origin}/integrations/render/authorize`;
           break;
         case 'flyio':
-          link = `${window.location.origin}/integrations/flyio/authorize`
+          link = `${window.location.origin}/integrations/flyio/authorize`;
           break;
         case 'circleci':
-          link = `${window.location.origin}/integrations/circleci/authorize`
+          link = `${window.location.origin}/integrations/circleci/authorize`;
           break;
         case 'gcp-secret-manager':
           link = `https://accounts.google.com/o/oauth2/auth?scope=https://www.googleapis.com/auth/cloud-platform&response_type=code&access_type=offline&state=${state}&redirect_uri=${window.location.origin}/integrations/gcp-secret-manager/oauth2/callback&client_id=${integrationOption.clientId}`
           break;
         case 'travisci':
-          link = `${window.location.origin}/integrations/travisci/authorize`
+          link = `${window.location.origin}/integrations/travisci/authorize`;
           break;
         default:
           break;
@@ -243,6 +246,9 @@ export default function Integrations() {
           break;
         case 'github':
           link = `${window.location.origin}/integrations/github/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'gitlab':
+          link = `${window.location.origin}/integrations/gitlab/create?integrationAuthId=${integrationAuth._id}`;
           break;
         case 'render':
           link = `${window.location.origin}/integrations/render/create?integrationAuthId=${integrationAuth._id}`;

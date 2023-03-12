@@ -2,10 +2,7 @@ import { Request, Response } from 'express';
 import { Types } from 'mongoose';
 import * as Sentry from '@sentry/node';
 import { 
-	Integration, 
-	Workspace,
-	Bot, 
-	BotKey 
+	Integration
 } from '../../models';
 import { EventService } from '../../services';
 import { eventPushSecrets } from '../../events';
@@ -18,6 +15,7 @@ import { eventPushSecrets } from '../../events';
  */
 export const createIntegration = async (req: Request, res: Response) => {
 	let integration;
+
 	try {
 		const {
 			integrationAuthId,
@@ -34,19 +32,19 @@ export const createIntegration = async (req: Request, res: Response) => {
 		// TODO: validate [sourceEnvironment] and [targetEnvironment]
 
 		// initialize new integration after saving integration access token
-        integration = await new Integration({
-            workspace: req.integrationAuth.workspace._id,
-            environment: sourceEnvironment,
-            isActive,
-            app,
+    integration = await new Integration({
+      workspace: req.integrationAuth.workspace._id,
+      environment: sourceEnvironment,
+      isActive,
+      app,
 			appId,
 			targetEnvironment,
 			owner,
 			path,
 			region,
-            integration: req.integrationAuth.integration,
-            integrationAuth: new Types.ObjectId(integrationAuthId)
-        }).save();
+      integration: req.integrationAuth.integration,
+      integrationAuth: new Types.ObjectId(integrationAuthId)
+      }).save();
 		
 		if (integration) {
 			// trigger event - push secrets

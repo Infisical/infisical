@@ -22,7 +22,8 @@ import {
 router.post(
     '/batch',
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey']
+        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken'],
+        requiredServiceTokenPermissions: ['read', 'write']
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -99,7 +100,8 @@ router.post(
         }),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey']
+        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken'],
+        requiredServiceTokenPermissions: ['write']
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -115,7 +117,8 @@ router.get(
     query('tagSlugs'),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken']
+        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken'],
+        requiredServiceTokenPermissions: ['read']
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -154,7 +157,8 @@ router.patch(
         }),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey']
+        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken'],
+        requiredServiceTokenPermissions: ['write']
     }),
     requireSecretsAuth({
         acceptedRoles: [ADMIN, MEMBER]
@@ -182,7 +186,8 @@ router.delete(
         .isEmpty(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey']
+        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken'],
+        requiredServiceTokenPermissions: ['write']
     }),
     requireSecretsAuth({
         acceptedRoles: [ADMIN, MEMBER]
@@ -191,6 +196,4 @@ router.delete(
 );
 
 export default router;
-
-
 

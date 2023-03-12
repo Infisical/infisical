@@ -16,6 +16,42 @@ import (
 
 const INFISICAL_TOKEN_SECRET_KEY_NAME = "infisicalToken"
 const SECRET_VERSION_ANNOTATION = "secrets.infisical.com/version" // used to set the version of secrets via Etag
+const OPERATOR_SETTINGS_CONFIGMAP_NAME = "infisical-config"
+const OPERATOR_SETTINGS_CONFIGMAP_NAMESPACE = "infisical-operator-system"
+const INFISICAL_DOMAIN = "https://app.infisical.com/api"
+
+func (r *InfisicalSecretReconciler) GetInfisicalConfigMap(ctx context.Context) (configMap map[string]string, errToReturn error) {
+	// default key values
+	defaultConfigMapData := make(map[string]string)
+	defaultConfigMapData["hostAPI"] = INFISICAL_DOMAIN
+
+	kubeConfigMap := &corev1.ConfigMap{}
+	err := r.Client.Get(ctx, types.NamespacedName{
+		Namespace: OPERATOR_SETTINGS_CONFIGMAP_NAMESPACE,
+		Name:      OPERATOR_SETTINGS_CONFIGMAP_NAME,
+	}, kubeConfigMap)
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			kubeConfigMap = nil
+		} else {
+			return nil, fmt.Errorf("GetConfigMapByNamespacedName: unable to fetch config map in [namespacedName=%s] [err=%s]", OPERATOR_SETTINGS_CONFIGMAP_NAMESPACE, err)
+		}
+	}
+
+	if kubeConfigMap == nil {
+		return defaultConfigMapData, nil
+	} else {
+		for key, value := range defaultConfigMapData {
+			_, exists := kubeConfigMap.Data[key]
+			if !exists {
+				kubeConfigMap.Data[key] = value
+			}
+		}
+
+		return kubeConfigMap.Data, nil
+	}
+}
 
 func (r *InfisicalSecretReconciler) GetKubeSecretByNamespacedName(ctx context.Context, namespacedName types.NamespacedName) (*corev1.Secret, error) {
 	kubeSecret := &corev1.Secret{}

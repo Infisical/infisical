@@ -1,0 +1,34 @@
+---
+title: "Terraform"
+description: "How to use Infisical to inject environment variables and secrets into terraform."
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+- [Install the CLI](/cli/overview)
+
+## Initialize Infisical for your [Terraform](https://www.terraform.io/) project
+
+```bash
+# navigate to the root of your of your project 
+cd /path/to/project
+
+# then initialize Infisical
+infisical init
+```
+
+## Run terraform as usual but with Infisical
+
+```bash
+infisical run -- <your application start command>
+
+# Example
+infisical run -- terraform plan
+```
+
+<Note>
+  To inject any arbitrary variable to terraform, you have
+  to prefix them with `TF_VAR`. Read more about that
+  [here](https://developer.hashicorp.com/terraform/cli/config/environment-variables#tf_var_name).
+</Note>

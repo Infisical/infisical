@@ -22,7 +22,9 @@ export default function FlyioCreateIntegrationPage() {
 
     const { data: workspace } = useGetWorkspaceById(localStorage.getItem('projectData.id') ?? '');
     const { data: integrationAuth } = useGetIntegrationAuthById(integrationAuthId as string ?? '');
-    const { data: integrationAuthApps } = useGetIntegrationAuthApps(integrationAuthId as string ?? '');
+    const { data: integrationAuthApps } = useGetIntegrationAuthApps({
+      integrationAuthId: integrationAuthId as string ?? ''
+    });
     
     const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
     const [targetApp, setTargetApp] = useState('');
@@ -31,14 +33,18 @@ export default function FlyioCreateIntegrationPage() {
     
     useEffect(() => {
         if (workspace) {
-            setSelectedSourceEnvironment(workspace.environments[0].slug);
+          setSelectedSourceEnvironment(workspace.environments[0].slug);
         }
     }, [workspace]);
     
     useEffect(() => {
         // TODO: handle case where apps can be empty
         if (integrationAuthApps) {
+          if (integrationAuthApps.length > 0) {
             setTargetApp(integrationAuthApps[0].name);
+          } else {
+            setTargetApp('none');
+          }
         }
     }, [integrationAuthApps]);
         
@@ -84,7 +90,7 @@ export default function FlyioCreateIntegrationPage() {
             className='w-full border border-mineshaft-500'
           >
             {workspace?.environments.map((sourceEnvironment) => (
-              <SelectItem value={sourceEnvironment.slug} key={`flyio-environment-${sourceEnvironment.slug}`}>
+              <SelectItem value={sourceEnvironment.slug} key={`source-environment-${sourceEnvironment.slug}`}>
                 {sourceEnvironment.name}
               </SelectItem>
             ))}
@@ -98,12 +104,19 @@ export default function FlyioCreateIntegrationPage() {
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
             className='w-full border border-mineshaft-500'
+            isDisabled={integrationAuthApps.length === 0}
           >
-            {integrationAuthApps.map((integrationAuthApp) => (
-              <SelectItem value={integrationAuthApp.name} key={`render-environment-${integrationAuthApp.name}`}>
-                {integrationAuthApp.name}
+            {integrationAuthApps.length > 0 ? (
+              integrationAuthApps.map((integrationAuthApp) => (
+                <SelectItem value={integrationAuthApp.name} key={`target-app-${integrationAuthApp.name}`}>
+                  {integrationAuthApp.name}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem value="none" key="target-app-none">
+                No apps found
               </SelectItem>
-            ))}
+            )}
           </Select>
         </FormControl>
         <Button 
@@ -111,6 +124,7 @@ export default function FlyioCreateIntegrationPage() {
             color="mineshaft" 
             className='mt-4'
             isLoading={isLoading}
+            isDisabled={integrationAuthApps.length === 0}
         >
             Create Integration
         </Button>

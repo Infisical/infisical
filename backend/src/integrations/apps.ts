@@ -10,12 +10,14 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_TRAVISCI,
   INTEGRATION_HEROKU_API_URL,
+  INTEGRATION_GITLAB_API_URL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,
@@ -25,26 +27,30 @@ import {
   INTEGRATION_TRAVISCI_API_URL,
 } from "../variables";
 
+interface App {
+  name: string;
+  appId?: string;
+  owner?: string;
+}
+
 /**
  * Return list of names of apps for integration named [integration]
  * @param {Object} obj
  * @param {String} obj.integration - name of integration
  * @param {String} obj.accessToken - access token for integration
+ * @param {String} obj.teamId - (optional) id of team for getting integration apps (used for integrations like GitLab)
  * @returns {Object[]} apps - names of integration apps
  * @returns {String} apps.name - name of integration app
  */
 const getApps = async ({
   integrationAuth,
   accessToken,
+  teamId
 }: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
+  teamId?: string;
 }) => {
-  interface App {
-    name: string;
-    appId?: string;
-    owner?: string;
-  }
 
   let apps: App[] = [];
   try {
@@ -77,6 +83,12 @@ const getApps = async ({
       case INTEGRATION_GITHUB:
         apps = await getAppsGithub({
           accessToken,
+        });
+        break;
+      case INTEGRATION_GITLAB:
+        apps = await getAppsGitlab({
+          accessToken,
+          teamId
         });
         break;
       case INTEGRATION_RENDER:
@@ -197,21 +209,40 @@ const getAppsVercel = async ({
  * @returns {String} apps.name - name of Netlify site
  */
 const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
-  let apps;
+  const apps: any = [];
   try {
-    const res = (
-      await request.get(`${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`, {
+    let page = 1;
+    const perPage = 10;
+    let hasMorePages = true;
+    
+    // paginate through all sites
+    while (hasMorePages) {
+      const params = new URLSearchParams({
+        page: String(page),
+        per_page: String(perPage)
+      });
+
+      const { data } = await request.get(`${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`, {
+        params,
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Accept-Encoding': 'application/json'
         }
-      })
-    ).data;
+      });
+      
+      data.map((a: any) => {
+        apps.push({
+          name: a.name,
+          appId: a.site_id
+        });
+      });
+      
+      if (data.length < perPage) {
+        hasMorePages = false;
+      }
 
-    apps = res.map((a: any) => ({
-      name: a.name,
-      appId: a.site_id,
-    }));
+      page++;
+    }
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
@@ -224,9 +255,9 @@ const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
 /**
  * Return list of repositories for Github integration
  * @param {Object} obj
- * @param {String} obj.accessToken - access token for Netlify API
- * @returns {Object[]} apps - names of Netlify sites
- * @returns {String} apps.name - name of Netlify site
+ * @param {String} obj.accessToken - access token for Github API
+ * @returns {Object[]} apps - names of Github sites
+ * @returns {String} apps.name - name of Github site
  */
 const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
   let apps;
@@ -403,6 +434,119 @@ const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error("Failed to get TravisCI projects");
+  }
+  
+  return apps;
+}
+
+/**
+ * Return list of repositories for GitLab integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for GitLab API
+ * @returns {Object[]} apps - names of GitLab sites
+ * @returns {String} apps.name - name of GitLab site
+ */
+const getAppsGitlab = async ({ 
+  accessToken,
+  teamId
+}: {
+  accessToken: string;
+  teamId?: string;
+}) => {
+  const apps: App[] = [];
+  
+  let page = 1;
+  const perPage = 10;
+  let hasMorePages = true;
+  try {
+
+    if (teamId) {
+      // case: fetch projects for group with id [teamId] in GitLab
+      
+      while (hasMorePages) {
+        const params = new URLSearchParams({
+          page: String(page),
+          per_page: String(perPage)
+        });
+
+        const { data } = (
+          await request.get(
+            `${INTEGRATION_GITLAB_API_URL}/v4/groups/${teamId}/projects`,
+            {
+              params,
+              headers: {
+                "Authorization": `Bearer ${accessToken}`,
+                "Accept-Encoding": "application/json",
+              },
+            }
+          )
+        );
+
+        data.map((a: any) => {
+          apps.push({
+            name: a.name,
+            appId: a.id
+          });
+        });
+        
+        if (data.length < perPage) {
+          hasMorePages = false;
+        }
+        
+        page++;
+      }
+    } else {
+      // case: fetch projects for individual in GitLab
+      
+      const { id } = (
+        await request.get(
+          `${INTEGRATION_GITLAB_API_URL}/v4/user`,
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Accept-Encoding": "application/json",
+            },
+          }
+        )
+      ).data;
+      
+      while (hasMorePages) {
+        const params = new URLSearchParams({
+          page: String(page),
+          per_page: String(perPage)
+        });
+
+        const { data } = (
+          await request.get(
+            `${INTEGRATION_GITLAB_API_URL}/v4/users/${id}/projects`,
+            {
+              params,
+              headers: {
+                "Authorization": `Bearer ${accessToken}`,
+                "Accept-Encoding": "application/json",
+              },
+            }
+          )
+        );
+
+        data.map((a: any) => {
+          apps.push({
+            name: a.name,
+            appId: a.id
+          });
+        });
+
+        if (data.length < perPage) {
+          hasMorePages = false;
+        }
+        
+        page++;
+      }
+    }
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error("Failed to get GitLab projects");
   }
   
   return apps;

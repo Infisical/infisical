@@ -41,13 +41,14 @@ var loginCmd = &cobra.Command{
 	PreRun:                toggleDebug,
 	Run: func(cmd *cobra.Command, args []string) {
 		currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
-		if err != nil && (strings.Contains(err.Error(), "The specified item could not be found in the keyring") || strings.Contains(err.Error(), "unable to get key from Keyring")) { // if the key can't be found allow them to override
+		// if the key can't be found or there is an error getting current credentials from key ring, allow them to override
+		if err != nil && (strings.Contains(err.Error(), "The specified item could not be found in the keyring") || strings.Contains(err.Error(), "unable to get key from Keyring") || strings.Contains(err.Error(), "GetUserCredsFromKeyRing")) {
 			log.Debug(err)
 		} else if err != nil {
 			util.HandleError(err)
 		}
 
-		if currentLoggedInUserDetails.IsUserLoggedIn && !currentLoggedInUserDetails.LoginExpired { // if you are logged in but not expired
+		if currentLoggedInUserDetails.IsUserLoggedIn && !currentLoggedInUserDetails.LoginExpired && len(currentLoggedInUserDetails.UserCredentials.PrivateKey) != 0 {
 			shouldOverride, err := shouldOverrideLoginPrompt(currentLoggedInUserDetails.UserCredentials.Email)
 			if err != nil {
 				util.HandleError(err)
@@ -234,8 +235,16 @@ var loginCmd = &cobra.Command{
 		// clear backed up secrets from prev account
 		util.DeleteBackupSecrets()
 
-		color.Green("Nice! You are logged in as: %v", email)
+		whilte := color.New(color.FgGreen)
+		boldWhite := whilte.Add(color.Bold)
+		boldWhite.Printf(">>>> Welcome to Infisical!")
+		boldWhite.Printf(" You are now logged in as %v <<<< \n", email)
 
+		plainBold := color.New(color.Bold)
+
+		plainBold.Println("\nQuick links")
+		fmt.Println("- Learn to inject secrets into your application at https://infisical.com/docs/cli/usage")
+		fmt.Println("- Stuck? Join our slack for quick support https://infisical.com/slack")
 	},
 }
 

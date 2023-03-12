@@ -6,12 +6,14 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_GITLAB,
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_AZURE_TOKEN_URL,
   INTEGRATION_HEROKU_TOKEN_URL,
   INTEGRATION_VERCEL_TOKEN_URL,
   INTEGRATION_NETLIFY_TOKEN_URL,
   INTEGRATION_GITHUB_TOKEN_URL,
+  INTEGRATION_GITLAB_TOKEN_URL,
   INTEGRATION_GCP_TOKEN_URL
 } from '../variables';
 import {
@@ -20,12 +22,14 @@ import {
   CLIENT_ID_VERCEL,
   CLIENT_ID_NETLIFY,
   CLIENT_ID_GITHUB,
+  CLIENT_ID_GITLAB,
   CLIENT_ID_GCP_SECRET_MANAGER,
   CLIENT_SECRET_AZURE,
   CLIENT_SECRET_HEROKU,
   CLIENT_SECRET_VERCEL,
   CLIENT_SECRET_NETLIFY,
   CLIENT_SECRET_GITHUB,
+  CLIENT_SECRET_GITLAB,
   CLIENT_SECRET_GCP_SECRET_MANAGER
 } from '../config';
 
@@ -68,6 +72,15 @@ interface ExchangeCodeGithubResponse {
   access_token: string;
   scope: string;
   token_type: string;
+}
+
+interface ExchangeCodeGitlabResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_token: string;
+  scope: string;
+  created_at: number;
 }
 
 interface ExchangeCodeGCPSecretManagerResponse {
@@ -126,6 +139,11 @@ const exchangeCode = async ({
           code
         });
         break;
+      case INTEGRATION_GITLAB:
+        obj = await exchangeCodeGitlab({
+          code
+        });
+        break;
       case INTEGRATION_GCP_SECRET_MANAGER:
         obj = await exchangeCodeGCPSecretManager({
           code
@@ -168,7 +186,7 @@ const exchangeCodeAzure = async ({
     accessExpiresAt.setSeconds(
       accessExpiresAt.getSeconds() + res.expires_in
     );
-  } catch (err: any) {
+  } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error('Failed OAuth2 code-token exchange with Azure');
@@ -357,6 +375,56 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
     accessExpiresAt: null
   };
 };
+
+
+/**
+ * Return [accessToken], [accessExpiresAt], and [refreshToken] for Gitlab
+ * code-token exchange
+ * @param {Object} obj1
+ * @param {Object} obj1.code - code for code-token exchange
+ * @returns {Object} obj2
+ * @returns {String} obj2.accessToken - access token for Gitlab API
+ * @returns {String} obj2.refreshToken - refresh token for Gitlab API
+ * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
+ */
+const exchangeCodeGitlab = async ({ code }: { code: string }) => {
+  let res: ExchangeCodeGitlabResponse; 
+  const accessExpiresAt = new Date();
+  
+  try {
+    res = (
+      await request.post(
+        INTEGRATION_GITLAB_TOKEN_URL,
+        new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: code,
+          client_id: CLIENT_ID_GITLAB,
+          client_secret: CLIENT_SECRET_GITLAB,
+          redirect_uri: `${SITE_URL}/integrations/gitlab/oauth2/callback`
+        } as any),
+        {
+          headers: {
+            "Accept-Encoding": "application/json",
+          }
+        }
+      )
+    ).data;
+    
+    accessExpiresAt.setSeconds(
+      accessExpiresAt.getSeconds() + res.expires_in
+    );
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed OAuth2 code-token exchange with Gitlab');
+  }
+
+  return {
+    accessToken: res.access_token,
+    refreshToken: res.refresh_token,
+    accessExpiresAt
+  };
+}
 
 /**
  * Return [accessToken], [accessExpiresAt], and [refreshToken] for gcp-secret-manager

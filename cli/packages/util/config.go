@@ -42,7 +42,7 @@ func WriteInitalConfig(userCredentials *models.UserCredentials) error {
 	}
 
 	// Create file in directory
-	err = WriteToFile(fullConfigFilePath, configFileMarshalled, os.ModePerm)
+	err = WriteToFile(fullConfigFilePath, configFileMarshalled, 0600)
 	if err != nil {
 		return err
 	}
@@ -151,52 +151,6 @@ func GetWorkspaceConfigByPath(path string) (workspaceConfig models.WorkspaceConf
 	return workspaceConfigFile, nil
 }
 
-// Will get the list of .infisical.json files that are located
-// within the root of each sub folder from where the CLI is ran from
-func GetAllWorkSpaceConfigsStartingFromCurrentPath() (workspaces []models.WorkspaceConfigFile, err error) {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("GetAllProjectConfigs: unable to get the current directory because [%s]", err)
-	}
-
-	files, err := os.ReadDir(currentDir)
-	if err != nil {
-		return nil, fmt.Errorf("GetAllProjectConfigs: unable to read the contents of the current directory because [%s]", err)
-	}
-
-	listOfWorkSpaceConfigs := []models.WorkspaceConfigFile{}
-	for _, file := range files {
-		if !file.IsDir() && file.Name() == INFISICAL_WORKSPACE_CONFIG_FILE_NAME {
-			pathToWorkspaceConfigFile := currentDir + "/" + INFISICAL_WORKSPACE_CONFIG_FILE_NAME
-
-			workspaceConfig, err := GetWorkspaceConfigByPath(pathToWorkspaceConfigFile)
-			if err != nil {
-				return nil, fmt.Errorf("GetAllProjectConfigs: Unable to get config file because [%s]", err)
-			}
-
-			listOfWorkSpaceConfigs = append(listOfWorkSpaceConfigs, workspaceConfig)
-
-		} else if file.IsDir() {
-			pathToSubFolder := currentDir + "/" + file.Name()
-			pathToMaybeWorkspaceConfigFile := pathToSubFolder + "/" + INFISICAL_WORKSPACE_CONFIG_FILE_NAME
-
-			_, err := os.Stat(pathToMaybeWorkspaceConfigFile)
-			if err != nil {
-				continue // workspace config file doesn't exist
-			}
-
-			workspaceConfig, err := GetWorkspaceConfigByPath(pathToMaybeWorkspaceConfigFile)
-			if err != nil {
-				return nil, fmt.Errorf("GetAllProjectConfigs: Unable to get config file because [%s]", err)
-			}
-
-			listOfWorkSpaceConfigs = append(listOfWorkSpaceConfigs, workspaceConfig)
-		}
-	}
-
-	return listOfWorkSpaceConfigs, nil
-}
-
 // Get the infisical config file and if it doesn't exist, return empty config model, otherwise raise error
 func GetConfigFile() (models.ConfigFile, error) {
 	fullConfigFilePath, _, err := GetFullConfigFilePath()
@@ -243,7 +197,7 @@ func WriteConfigFile(configFile *models.ConfigFile) error {
 	}
 
 	// Create file in directory
-	err = os.WriteFile(fullConfigFilePath, configFileMarshalled, os.ModePerm)
+	err = os.WriteFile(fullConfigFilePath, configFileMarshalled, 0600)
 	if err != nil {
 		return fmt.Errorf("writeConfigFile: Unable to write to file [err=%s]", err)
 	}

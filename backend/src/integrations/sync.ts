@@ -22,11 +22,13 @@ import {
   INTEGRATION_VERCEL,
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
+  INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
   INTEGRATION_HEROKU_API_URL,
+  INTEGRATION_GITLAB_API_URL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,
@@ -115,6 +117,13 @@ const syncSecrets = async ({
           accessToken,
         });
         break;
+      case INTEGRATION_GITLAB:
+        await syncSecretsGitLab({
+          integration,
+          secrets,
+          accessToken,
+        });
+        break;
       case INTEGRATION_RENDER:
         await syncSecretsRender({
           integration,
@@ -175,7 +184,6 @@ const syncSecretsAzureKeyVault = async ({
   accessToken: string;
 }) => {
   try {
-
     interface GetAzureKeyVaultSecret {
       id: string; // secret URI
       attributes: {
@@ -198,17 +206,22 @@ const syncSecretsAzureKeyVault = async ({
      */
     const paginateAzureKeyVaultSecrets = async (url: string) => {
       let result: GetAzureKeyVaultSecret[] = [];
-      
-      while (url) {
-        const res = await request.get(url, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Accept-Encoding': 'application/json'
-          }
-        });
+      try {
+        while (url) {
+          const res = await request.get(url, {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          });
+          
+          result = result.concat(res.data.value);
+          
+          url = res.data.nextLink;
+        }
         
-        result = result.concat(res.data.value);
-        url = res.data.nextLink;
+      } catch (err) {
+        Sentry.setUser(null);
+        Sentry.captureException(err);
       }
       
       return result;
@@ -224,8 +237,7 @@ const syncSecretsAzureKeyVault = async ({
       
       const azureKeyVaultSecret = await request.get(`${getAzureKeyVaultSecret.id}?api-version=7.3`, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept-Encoding': 'application/json'
+          'Authorization': `Bearer ${accessToken}`
         }
       });
 
@@ -271,33 +283,75 @@ const syncSecretsAzureKeyVault = async ({
         deleteSecrets.push(res[key]);
       }
     });
+
+    const setSecretAzureKeyVault = async ({
+      key,
+      value,
+      integration,
+      accessToken
+    }: {
+      key: string;
+      value: string;
+      integration: IIntegration;
+      accessToken: string;
+    }) => {
+      let isSecretSet = false;
+      let maxTries = 6;
+      
+      while (!isSecretSet && maxTries > 0) {
+        // try to set secret
+        try {
+          await request.put(
+            `${integration.app}/secrets/${key}?api-version=7.3`,
+            {
+              value
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`
+              }
+            }
+          );
+
+          isSecretSet = true;
+        
+        } catch (err) {
+          const error: any = err;
+          if (error?.response?.data?.error?.innererror?.code === 'ObjectIsDeletedButRecoverable') {
+            await request.post(
+              `${integration.app}/deletedsecrets/${key}/recover?api-version=7.3`, {},
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`
+                }
+              }
+            );
+            await new Promise(resolve => setTimeout(resolve, 10000));
+          } else {
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            maxTries--;
+          }
+        }
+      }
+    }
     
     // Sync/push set secrets
-    if (setSecrets.length > 0) {
-      setSecrets.forEach(async ({ key, value }) => {
-        await request.put(
-          `${integration.app}/secrets/${key}?api-version=7.3`,
-          {
-            value
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Accept-Encoding': 'application/json'
-            }
-          }
-        );
+    for await (const setSecret of setSecrets) {
+      const { key, value } = setSecret;
+      setSecretAzureKeyVault({
+        key,
+        value,
+        integration,
+        accessToken
       });
     }
     
-    if (deleteSecrets.length > 0) {
-      deleteSecrets.forEach(async (secret) => {
-        await request.delete(`${integration.app}/secrets/${secret.key}?api-version=7.3`, {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Accept-Encoding': 'application/json'
-          }
-        });
+    for await (const deleteSecret of deleteSecrets) {
+      const { key } = deleteSecret;
+      await request.delete(`${integration.app}/secrets/${key}?api-version=7.3`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
       });
     }
   } catch (err) {
@@ -1434,7 +1488,98 @@ const syncSecretsTravisCI = async ({
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
-    throw new Error("Failed to sync secrets to TravisCI");
+    throw new Error("Failed to sync secrets to GitLab");
+  }
+}
+
+/**
+ * Sync/push [secrets] to GitLab repo with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for GitLab integration
+ */
+const syncSecretsGitLab = async ({
+  integration,
+  secrets,
+  accessToken,
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  try {
+    // get secrets from gitlab
+    const getSecretsRes = (
+      await request.get(
+        `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables`,
+        { 
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      )
+    ).data;
+
+    for await (const key of Object.keys(secrets)) {
+      const existingSecret = getSecretsRes.find((s: any) => s.key == key);
+      if (!existingSecret) {
+        await request.post(
+          `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables`,
+          {
+            key: key,
+            value: secrets[key],
+            protected: false,
+            masked: false,
+            raw: false,
+            environment_scope:'*'
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+              "Accept-Encoding": "application/json",
+            },
+          }
+        )
+      } else {
+        // udpate secret 
+        await request.put(
+          `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${existingSecret.key}`,
+          {
+            ...existingSecret,
+            value: secrets[existingSecret.key]
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+              "Accept-Encoding": "application/json",
+            },
+          }
+        )
+      }
+    }
+
+    // delete secrets 
+    for await (const sec of getSecretsRes) {
+      if (!(sec.key in secrets)) {
+        await request.delete(
+          `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${sec.key}`,
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+            },
+          }
+        );
+      }
+    }
+  }catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error("Failed to sync secrets to GitLab");
   }
 }
 

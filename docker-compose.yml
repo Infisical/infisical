@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 services:
   nginx:
@@ -22,7 +22,6 @@ services:
     depends_on:
       - mongo
     image: infisical/backend
-    command: npm run start
     env_file: .env
     environment:
       - NODE_ENV=production

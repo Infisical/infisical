@@ -23,7 +23,7 @@ const requireSecretsAuth = ({
                 // case: validate 1 secret
                 secrets = await validateSecrets({
                     userId: req.user._id.toString(),
-                    secretIds: req.body.secrets.id
+                    secretIds: [req.body.secrets.id]
                 });
             } else if (Array.isArray(req.body.secretIds)) {
                 secrets = await validateSecrets({

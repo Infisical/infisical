@@ -28,11 +28,13 @@ export default function VercelCreateIntegrationPage() {
 
     const { data: workspace } = useGetWorkspaceById(localStorage.getItem('projectData.id') ?? '');
     const { data: integrationAuth } = useGetIntegrationAuthById(integrationAuthId as string ?? '');
-    const { data: integrationAuthApps } = useGetIntegrationAuthApps(integrationAuthId as string ?? '');
+    const { data: integrationAuthApps } = useGetIntegrationAuthApps({
+      integrationAuthId: integrationAuthId as string ?? ''
+    });
     
     const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
     const [targetApp, setTargetApp] = useState('');
-    const [targetEnvironment, setTargetEnvironemnt] = useState('');
+    const [targetEnvironment, setTargetEnvironment] = useState('');
     
     const [isLoading, setIsLoading] = useState(false);
     
@@ -43,10 +45,14 @@ export default function VercelCreateIntegrationPage() {
     }, [workspace]);
     
     useEffect(() => {
-        // TODO: handle case where apps can be empty
         if (integrationAuthApps) {
+          if (integrationAuthApps.length > 0) {
             setTargetApp(integrationAuthApps[0].name);
-            setTargetEnvironemnt(vercelEnvironments[0].slug);
+            setTargetEnvironment(vercelEnvironments[0].slug);
+          } else {
+            setTargetApp('none');
+            setTargetEnvironment(vercelEnvironments[0].slug);
+          }
         }
     }, [integrationAuthApps]);
         
@@ -103,12 +109,19 @@ export default function VercelCreateIntegrationPage() {
             value={targetApp}
             onValueChange={(val) => setTargetApp(val)}
             className='w-full border border-mineshaft-500'
+            isDisabled={integrationAuthApps.length === 0}
           >
-            {integrationAuthApps.map((integrationAuthApp) => (
-              <SelectItem value={integrationAuthApp.name} key={`heroku-environment-${integrationAuthApp.name}`}>
-                {integrationAuthApp.name}
+            {integrationAuthApps.length > 0 ? (
+              integrationAuthApps.map((integrationAuthApp) => (
+                <SelectItem value={integrationAuthApp.name} key={`target-app-${integrationAuthApp.name}`}>
+                  {integrationAuthApp.name}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem value="none" key="target-app-none">
+                No projects found
               </SelectItem>
-            ))}
+            )}
           </Select>
         </FormControl>
         <FormControl
@@ -116,21 +129,22 @@ export default function VercelCreateIntegrationPage() {
         >
           <Select
             value={targetEnvironment}
-            onValueChange={(val) => setTargetEnvironemnt(val)}
+            onValueChange={(val) => setTargetEnvironment(val)}
             className='w-full border border-mineshaft-500'
           >
             {vercelEnvironments.map((vercelEnvironment) => (
-              <SelectItem value={vercelEnvironment.slug} key={`vercel-environment-${vercelEnvironment.slug}`}>
+              <SelectItem value={vercelEnvironment.slug} key={`target-environment-${vercelEnvironment.slug}`}>
                 {vercelEnvironment.name}
               </SelectItem>
             ))}
           </Select>
         </FormControl>
         <Button 
-            onClick={handleButtonClick}
-            color="mineshaft" 
-            className='mt-4'
-            isLoading={isLoading}
+          onClick={handleButtonClick}
+          color="mineshaft" 
+          className='mt-4'
+          isLoading={isLoading}
+          isDisabled={integrationAuthApps.length === 0}
         >
             Create Integration
         </Button>

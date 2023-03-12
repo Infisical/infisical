@@ -55,11 +55,6 @@
       "url": "api-reference"
     },
     {
-      "name": "Integrations",
-      "icon": "plug",
-      "url": "integrations"
-    },
-    {
       "name": "Contributing",
       "icon": "code",
       "url": "contributing"
@@ -94,7 +89,6 @@
       "pages": [
         "getting-started/dashboard/organization",
         "getting-started/dashboard/project",
-        "getting-started/dashboard/integrations",
         "getting-started/dashboard/pit-recovery",
         "getting-started/dashboard/secret-versioning",
         "getting-started/dashboard/audit-logs",
@@ -103,7 +97,7 @@
       ]
     },
     {
-      "group": "CLI",
+      "group": "Command line",
       "pages": [
         "cli/overview",
         "cli/usage",
@@ -121,6 +115,61 @@
         },
         "cli/project-config",
         "cli/faq"
+      ]
+    },
+    {
+      "group": "Integrations",
+      "pages": [
+        "integrations/overview",
+        {
+          "group": "Docker",
+          "pages": [
+            "integrations/platforms/docker",
+            "integrations/platforms/docker-compose"
+          ]
+        },
+
+        "integrations/platforms/kubernetes",
+        "integrations/frameworks/terraform",
+
+        {
+          "group": "AWS",
+          "pages": [
+            "integrations/cloud/aws-parameter-store",
+            "integrations/cloud/aws-secret-manager"
+          ]
+        },
+
+        "integrations/cloud/heroku",
+        "integrations/cloud/vercel",
+        "integrations/cloud/netlify",
+        "integrations/cloud/render",
+        "integrations/cloud/flyio",
+
+        "integrations/cloud/azure-key-vault",
+
+        "integrations/cicd/githubactions",
+        "integrations/cicd/gitlab",
+        "integrations/cicd/circleci",
+        "integrations/cicd/travisci",
+
+        "integrations/frameworks/react",
+        "integrations/frameworks/vue",
+        "integrations/frameworks/express",
+        "integrations/frameworks/nextjs",
+        "integrations/frameworks/nestjs",
+        "integrations/frameworks/sveltekit",
+        "integrations/frameworks/nuxt",
+        "integrations/frameworks/gatsby",
+        "integrations/frameworks/remix",
+        "integrations/frameworks/vite",
+        "integrations/frameworks/fiber",
+        "integrations/frameworks/django",
+        "integrations/frameworks/flask",
+        "integrations/frameworks/laravel",
+        "integrations/frameworks/rails",
+        "integrations/frameworks/dotnet",
+        "integrations/platforms/pm2"
       ]
     },
     {
@@ -200,61 +249,13 @@
             "api-reference/endpoints/secrets/versions",
             "api-reference/endpoints/secrets/rollback-version"
           ]
+        },
+        {
+          "group": "Service Tokens",
+          "pages": [
+            "api-reference/endpoints/service-tokens/get"
+          ]
         }
-      ]
-    },
-    {
-      "group": "Integrations",
-      "pages": ["integrations/overview"]
-    },
-    {
-      "group": "Platforms",
-      "pages": [
-        "integrations/platforms/docker",
-        "integrations/platforms/docker-compose",
-        "integrations/platforms/kubernetes",
-        "integrations/platforms/pm2"
-      ]
-    },
-    {
-      "group": "Cloud",
-      "pages": [
-        "integrations/cloud/heroku",
-        "integrations/cloud/vercel",
-        "integrations/cloud/netlify",
-        "integrations/cloud/render",
-        "integrations/cloud/flyio",
-        "integrations/cloud/aws-parameter-store",
-        "integrations/cloud/aws-secret-manager"
-      ]
-    },
-    {
-      "group": "CI/CD",
-      "pages": [
-        "integrations/cicd/githubactions",
-        "integrations/cicd/gitlab",
-        "integrations/cicd/circleci",
-        "integrations/cicd/travisci"
-      ]
-    },
-    {
-      "group": "Frameworks",
-      "pages": [
-        "integrations/frameworks/react",
-        "integrations/frameworks/vue",
-        "integrations/frameworks/express",
-        "integrations/frameworks/nextjs",
-        "integrations/frameworks/nestjs",
-        "integrations/frameworks/nuxt",
-        "integrations/frameworks/gatsby",
-        "integrations/frameworks/remix",
-        "integrations/frameworks/vite",
-        "integrations/frameworks/fiber",
-        "integrations/frameworks/django",
-        "integrations/frameworks/flask",
-        "integrations/frameworks/laravel",
-        "integrations/frameworks/rails",
-        "integrations/frameworks/dotnet"
       ]
     },
     {

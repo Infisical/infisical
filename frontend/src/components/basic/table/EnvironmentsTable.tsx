@@ -85,7 +85,7 @@ const EnvironmentTable = ({ data = [], onCreateEnv, onDeleteEnv, onUpdateEnv }: 
           <Button
             text="Add New Environment"
             onButtonPressed={() => {
-              if (plan !== plans.starter || host !== 'https://app.infisical.com') {
+              if (plan !== plans.starter || host !== 'https://app.infisical.com' || localStorage.getItem('projectData.id') === '63ea8121b6e2b0543ba79616') {
                 handlePopUpOpen('createUpdateEnv');
               } else {
                 handlePopUpOpen('upgradePlan');

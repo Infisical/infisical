@@ -134,4 +134,33 @@ SMTP_FROM_NAME=Infisical
   Remember that you will need to restart Infisical for this to work properly.
 </Info>
 </Accordion>
+
+<Accordion title="Zoho Mail">
+
+1. Create an account and configure [Zoho Mail](https://www.zoho.com/mail/) to send emails.
+
+2. With your email credentials, you can now set up your SMTP environment variables:
+
+```
+SMTP_HOST=smtp.zoho.com
+SMTP_USERNAME=username # your email
+SMTP_PASSWORD=password # your password
+SMTP_PORT=587
+SMTP_SECURE=true
+SMTP_FROM_ADDRESS=hey@example.com # your personal Zoho email or domain-based email linked to Zoho Mail
+SMTP_FROM_NAME=Infisical
+```
+
+<Note>
+  You can use either your personal Zoho email address like `you@zohomail.com` or
+  a domain-based email address like `you@yourdomain.com`. If using a
+  domain-based email address, then please make sure that you've configured and
+  verified it with Zoho Mail.
+</Note>
+
+<Info>
+  Remember that you will need to restart Infisical for this to work properly.
+</Info>
+</Accordion>
+
 </AccordionGroup>

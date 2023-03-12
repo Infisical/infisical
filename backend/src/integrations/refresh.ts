@@ -1,20 +1,34 @@
 import request from '../config/request';
 import * as Sentry from '@sentry/node';
+import {
+  IIntegrationAuth
+} from '../models';
+import {
+  INTEGRATION_AZURE_KEY_VAULT, 
+  INTEGRATION_HEROKU,
+  INTEGRATION_GITLAB,
+  INTEGRATION_GCP_SECRET_MANAGER
+} from '../variables';
 import { RawAxiosRequestHeaders } from 'axios';
-import { INTEGRATION_AZURE_KEY_VAULT, INTEGRATION_HEROKU, INTEGRATION_GCP_SECRET_MANAGER } from '../variables';
 import {
   SITE_URL,
   CLIENT_ID_AZURE,
+  CLIENT_ID_GITLAB,
   CLIENT_SECRET_AZURE,
   CLIENT_SECRET_HEROKU,
+  CLIENT_SECRET_GITLAB,
   CLIENT_SECRET_GCP_SECRET_MANAGER,
   CLIENT_ID_GCP_SECRET_MANAGER
 } from '../config';
 import {
   INTEGRATION_AZURE_TOKEN_URL,
   INTEGRATION_HEROKU_TOKEN_URL,
+  INTEGRATION_GITLAB_TOKEN_URL,
   INTEGRATION_GCP_TOKEN_URL
 } from '../variables';
+import {
+  IntegrationService
+} from '../services';
 
 interface RefreshTokenAzureResponse {
   token_type: string;
@@ -23,6 +37,23 @@ interface RefreshTokenAzureResponse {
   ext_expires_in: 4871;
   access_token: string;
   refresh_token: string;
+}
+
+interface RefreshTokenHerokuResponse {
+  access_token: string;
+  expires_in: number;
+  refresh_token: string;
+  token_type: string;
+  user_id: string;
+}
+
+interface RefreshTokenGitLabResponse {
+  token_type: string;
+  scope: string;
+  expires_in: number;
+  access_token: string;
+  refresh_token: string;
+  created_at: number;
 }
 
 interface RefreshTokenGCPSecretManagerResponse {
@@ -40,38 +71,66 @@ interface RefreshTokenGCPSecretManagerResponse {
  * @param {String} obj.refreshToken - refresh token to use to get new access token for Heroku
  */
 const exchangeRefresh = async ({
-  integration,
+  integrationAuth,
   refreshToken
 }: {
-  integration: string;
+  integrationAuth: IIntegrationAuth;
   refreshToken: string;
 }) => {
-  let accessToken;
+  
+  interface TokenDetails {
+    accessToken: string;
+    refreshToken: string;
+    accessExpiresAt: Date;
+  }
+  
+  let tokenDetails: TokenDetails;
   try {
-    switch (integration) {
+    switch (integrationAuth.integration) {
       case INTEGRATION_AZURE_KEY_VAULT:
-        accessToken = await exchangeRefreshAzure({
+        tokenDetails = await exchangeRefreshAzure({
           refreshToken
         });
         break;
       case INTEGRATION_HEROKU:
-        accessToken = await exchangeRefreshHeroku({
+        tokenDetails = await exchangeRefreshHeroku({
+          refreshToken
+        });
+        break;
+      case INTEGRATION_GITLAB:
+        tokenDetails = await exchangeRefreshGitLab({
           refreshToken
         });
         break;
       case INTEGRATION_GCP_SECRET_MANAGER:
-        accessToken = await exchangeRefreshGCPSecretManager({
+        tokenDetails = await exchangeRefreshGCPSecretManager({
           refreshToken
         })
         break;
+      default:
+        throw new Error('Failed to exchange token for incompatible integration');
     }
+
+    if (tokenDetails?.accessToken && tokenDetails?.refreshToken && tokenDetails?.accessExpiresAt) {
+      await IntegrationService.setIntegrationAuthAccess({
+        integrationAuthId: integrationAuth._id.toString(),
+        accessId: null,
+        accessToken: tokenDetails.accessToken,
+        accessExpiresAt: tokenDetails.accessExpiresAt
+      });
+
+      await IntegrationService.setIntegrationAuthRefresh({
+        integrationAuthId: integrationAuth._id.toString(),
+        refreshToken: tokenDetails.refreshToken
+      });
+    }
+
+    return tokenDetails.accessToken;
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error('Failed to get new OAuth2 access token');
   }
-
-  return accessToken;
 };
 
 /**
@@ -87,7 +146,8 @@ const exchangeRefreshAzure = async ({
   refreshToken: string;
 }) => {
   try {
-    const res: RefreshTokenAzureResponse = (await request.post(
+    const accessExpiresAt = new Date();
+    const { data }: { data: RefreshTokenAzureResponse } = await request.post(
       INTEGRATION_AZURE_TOKEN_URL,
        new URLSearchParams({
         client_id: CLIENT_ID_AZURE,
@@ -96,9 +156,17 @@ const exchangeRefreshAzure = async ({
         grant_type: 'refresh_token',
         client_secret: CLIENT_SECRET_AZURE
       } as any)
-    )).data;
+    );
     
-    return res.access_token;
+    accessExpiresAt.setSeconds(
+      accessExpiresAt.getSeconds() + data.expires_in
+    );
+
+    return ({
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      accessExpiresAt
+    });
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
@@ -118,10 +186,13 @@ const exchangeRefreshHeroku = async ({
 }: {
   refreshToken: string;
 }) => {
-  
-  let accessToken;
   try {
-    const res = await request.post(
+    const accessExpiresAt = new Date();
+    const { 
+      data 
+    }: { 
+      data: RefreshTokenHerokuResponse 
+    } = await request.post(
         INTEGRATION_HEROKU_TOKEN_URL,
         new URLSearchParams({
             grant_type: 'refresh_token',
@@ -130,14 +201,69 @@ const exchangeRefreshHeroku = async ({
         } as any)
     );
 
-    accessToken = res.data.access_token;
+    accessExpiresAt.setSeconds(
+      accessExpiresAt.getSeconds() + data.expires_in
+    );
+
+    return ({
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      accessExpiresAt
+    });
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error('Failed to refresh OAuth2 access token for Heroku');
   }
+};
 
-  return accessToken;
+/**
+ * Return new access token by exchanging refresh token [refreshToken] for the
+ * GitLab integration
+ * @param {Object} obj
+ * @param {String} obj.refreshToken - refresh token to use to get new access token for GitLab
+ * @returns
+ */
+const exchangeRefreshGitLab = async ({
+  refreshToken
+}: {
+  refreshToken: string;
+}) => {
+  try {
+    const accessExpiresAt = new Date();
+    const { 
+      data
+    }: { 
+      data: RefreshTokenGitLabResponse 
+    } = await request.post(
+      INTEGRATION_GITLAB_TOKEN_URL,
+      new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: CLIENT_ID_GITLAB,
+        client_secret: CLIENT_SECRET_GITLAB,
+        redirect_uri: `${SITE_URL}/integrations/gitlab/oauth2/callback`
+      } as any),
+      {
+        headers: {
+          "Accept-Encoding": "application/json",
+        }
+      });
+
+    accessExpiresAt.setSeconds(
+      accessExpiresAt.getSeconds() + data.expires_in
+    );
+
+    return ({
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      accessExpiresAt
+    });
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed to refresh OAuth2 access token for GitLab');
+  }
 };
 
 /**
@@ -169,14 +295,23 @@ const exchangeRefreshGCPSecretManager = async ({
     const res: RefreshTokenGCPSecretManagerResponse = 
       (await request.post(INTEGRATION_GCP_TOKEN_URL, body, { headers })).data;
 
-    accessToken = res.access_token;
+    /**
+    * @note the expires_in in response shows the number of seconds after which the access_token
+    * expires, so we update the infisical accessExpiresAt value to current-date-in-ms + expires_in
+    * in ms
+    */
+    res.expires_in = Date.now() + (res.expires_in * 1000)
+
+    return ({
+      accessToken: res.access_token,
+      refreshToken,
+      accessExpiresAt: new Date(res.expires_in),
+    })
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error('Failed to refresh OAuth2 access token for GCP secret manager');
   }
-
-  return accessToken;
 };
 
 export { exchangeRefresh };

@@ -1,34 +1,70 @@
 ---
-title: "Gitlab Pipeline"
+title: "GitLab"
+description: "How to automatically sync secrets from Infisical into GitLab."
 ---
 
-To integrate Infisical secrets into your Gitlab CI/CD setup, three steps are required.
+Prerequisites:
 
-## Generate service token 
-To expose Infisical secrets in Gitlab CI/CD, you must generate a service token for the specific project and environment in Infisical. For instructions on how to generate a service token, refer to [this page](../../getting-started/dashboard/token)
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
 
-## Set Infisical service token in Gitlab 
-To provide Infisical CLI with the service token generated in the previous step, go to **Settings > CI/CD > Variables** in Gitlab and create a new **INFISICAL_TOKEN** variable. Enter the generated service token as its value.
+<Tabs>
+  <Tab title="Standard">
+  ## Navigate to your project's integrations tab
 
-## Configure Infisical in your pipeline 
-Edit your .gitlab-ci.yml to include the installation of the Infisical CLI. This will allow you to use the CLI for fetching and injecting secrets into any script or command within your Gitlab CI/CD process.
+![integrations](../../images/integrations.png)
+
+## Authorize Infisical for GitLab
+
+Press on the GitLab tile and grant Infisical access to your GitLab account.
+
+![integrations gitlab authorization](../../images/integrations-gitlab-auth.png)
+
+<Info>
+  If this is your project's first cloud integration, then you'll have to grant
+  Infisical access to your project's environment variables. Although this step
+  breaks E2EE, it's necessary for Infisical to sync the environment variables to
+  the cloud platform.
+</Info>
+## Start integration
+
+Select which Infisical environment secrets you want to sync to which GitLab repository and press create integration to start syncing secrets to GitLab.
+
+![integrations gitlab](../../images/integrations-gitlab-create.png)
+![integrations gitlab](../../images/integrations-gitlab.png)
+
+  </Tab>
+  <Tab title="Pipeline">
+
+## Generate service token
+
+Generate an [Infisical Token](../../getting-started/dashboard/token) for the specific project and environment in Infisical.
+
+## Set the Infisical Token in Gitlab
+
+Create a new variable called `INFISICAL_TOKEN` with the value set to the token from the previous step in Settings > CI/CD > Variables of your GitLab repository.
+
+## Configure Infisical in your pipeline
+
+Edit your `.gitlab-ci.yml` to include the Infisical CLI installation. This will allow you to use the CLI for fetching and injecting secrets into any script or command within your Gitlab CI/CD process.
 
 #### Example
-```yaml 
+
+```yaml
 image: ubuntu
 
-stages:       
+stages:
   - build
   - test
   - deploy
 
-build-job:     
+build-job:
   stage: build
   script:
     - apt update && apt install -y curl
     - curl -1sLf 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' | bash
     - apt-get update && apt-get install -y infisical
     - infisical run -- npm run build
-
-...
 ```
+
+  </Tab>
+</Tabs>

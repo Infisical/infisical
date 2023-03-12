@@ -229,7 +229,7 @@ const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrati
                 // access token is expired
                 const refreshToken = await getIntegrationAuthRefreshHelper({ integrationAuthId });
                 accessToken = await exchangeRefresh({
-                    integration: integrationAuth.integration,
+                    integrationAuth,
                     refreshToken
                 });
             }

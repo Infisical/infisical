@@ -1,5 +1,5 @@
 {
-  "title": "Activity Logs",
+  "title": "Audit Logs",
   "subtitle": "Event history for this Infisical project.",
   "event": {
     "readSecrets": "Secrets Viewed",

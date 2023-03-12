@@ -4,18 +4,47 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	log "github.com/sirupsen/logrus"
+	"io"
 	"net/http"
+	"os"
+	"os/exec"
+	"runtime"
+
+	"github.com/fatih/color"
 )
 
 func CheckForUpdate() {
+	if checkEnv := os.Getenv("INFISICAL_DISABLE_UPDATE_CHECK"); checkEnv != "" {
+		return
+	}
 	latestVersion, err := getLatestTag("Infisical", "infisical")
 	if err != nil {
+		log.Debug(err)
 		// do nothing and continue
 		return
 	}
 	if latestVersion != CLI_VERSION {
-		PrintWarning(fmt.Sprintf("Please update your CLI. You are running version %s but the latest version is %s", CLI_VERSION, latestVersion))
+		yellow := color.New(color.FgYellow).SprintFunc()
+		blue := color.New(color.FgCyan).SprintFunc()
+		black := color.New(color.FgBlack).SprintFunc()
+
+		msg := fmt.Sprintf("%s %s %s %s",
+			yellow("A new release of infisical is available:"),
+			blue(CLI_VERSION),
+			black("->"),
+			blue(latestVersion),
+		)
+
+		fmt.Fprintln(os.Stderr, msg)
+
+		updateInstructions := GetUpdateInstructions()
+
+		if updateInstructions != "" {
+			msg = fmt.Sprintf("\n%s\n", GetUpdateInstructions())
+			fmt.Fprintln(os.Stderr, msg)
+		}
+
 	}
 }
 
@@ -26,12 +55,12 @@ func getLatestTag(repoOwner string, repoName string) (string, error) {
 		return "", err
 	}
 	if resp.StatusCode != 200 {
-		return "", errors.New(fmt.Sprintf("GitHub API returned status code %d", resp.StatusCode))
+		return "", errors.New(fmt.Sprintf("gitHub API returned status code %d", resp.StatusCode))
 	}
 
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
@@ -40,7 +69,59 @@ func getLatestTag(repoOwner string, repoName string) (string, error) {
 		Name string `json:"name"`
 	}
 
-	json.Unmarshal(body, &tags)
+	if err := json.Unmarshal(body, &tags); err != nil {
+		return "", fmt.Errorf("failed to unmarshal github response: %w", err)
+	}
 
 	return tags[0].Name[1:], nil
+}
+
+func GetUpdateInstructions() string {
+	os := runtime.GOOS
+	switch os {
+	case "darwin":
+		return "To update, run: brew update && brew upgrade infisical"
+	case "windows":
+		return "To update, run: scoop update infisical"
+	case "linux":
+		pkgManager := getLinuxPackageManager()
+		switch pkgManager {
+		case "apt-get":
+			return "To update, run: sudo apt-get update && sudo apt-get install infisical"
+		case "yum":
+			return "To update, run: sudo yum update infisical"
+		case "apk":
+			return "To update, run: sudo apk update && sudo apk upgrade infisical"
+		case "yay":
+			return "To update, run: yay -Syu infisical"
+		default:
+			return ""
+		}
+	default:
+		return ""
+	}
+}
+
+func getLinuxPackageManager() string {
+	cmd := exec.Command("apt-get", "--version")
+	if err := cmd.Run(); err == nil {
+		return "apt-get"
+	}
+
+	cmd = exec.Command("yum", "--version")
+	if err := cmd.Run(); err == nil {
+		return "yum"
+	}
+
+	cmd = exec.Command("yay", "--version")
+	if err := cmd.Run(); err == nil {
+		return "yay"
+	}
+
+	cmd = exec.Command("apk", "--version")
+	if err := cmd.Run(); err == nil {
+		return "apk"
+	}
+
+	return ""
 }

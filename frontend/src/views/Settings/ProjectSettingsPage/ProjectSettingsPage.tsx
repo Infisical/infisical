@@ -203,7 +203,7 @@ export const ProjectSettingsPage = () => {
     }
   };
 
-  const onCreateServiceToken = async ({ environment, expiresIn, name }: CreateServiceToken) => {
+  const onCreateServiceToken = async ({ environment, expiresIn, name, permissions }: CreateServiceToken) => {
     // type guard
     if (!latestFileKey) return '';
     try {
@@ -219,7 +219,7 @@ export const ProjectSettingsPage = () => {
         plaintext: key,
         key: randomBytes
       });
-
+      
       const res = await createServiceToken.mutateAsync({
         encryptedKey: ciphertext,
         iv,
@@ -228,9 +228,12 @@ export const ProjectSettingsPage = () => {
         expiresIn: Number(expiresIn),
         name,
         workspaceId: workspaceID,
-        randomBytes
+        randomBytes,
+        permissions: Object.entries(permissions)
+        .filter(([, permissionsValue]) => permissionsValue)
+        .map(([permissionsKey]) => permissionsKey)
       });
-      console.log(res);
+      
       createNotification({
         text: 'Successfully created a service token',
         type: 'success'

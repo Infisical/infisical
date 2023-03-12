@@ -22,7 +22,6 @@ type InfisicalSecretSpec struct {
 	ManagedSecretReference KubeSecretReference `json:"managedSecretReference,omitempty"`
 
 	// Infisical host to pull secrets from
-	// +kubebuilder:default="https://app.infisical.com/api"
 	HostAPI string `json:"hostAPI,omitempty"`
 }
 

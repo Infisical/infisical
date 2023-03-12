@@ -45,19 +45,19 @@ The Infisical CLI provides a way to inject environment variables from the platfo
 	 <Tab title="Alpine">
 	 Install prerequisite
 		```bash
-		sudo apk add --no-cache bash sudo
+		apk add --no-cache bash sudo
 		```
 
     	Add Infisical repository
     	```bash
     	curl -1sLf \
     		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' \
-    		| sudo -E bash
+    		| bash
     	```
 
     	Then install CLI
     	```bash
-    	sudo apk update && sudo apk add infisical
+    	apk update && sudo apk add infisical
     	```
 
    </Tab>
