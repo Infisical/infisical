@@ -22,7 +22,7 @@ export default function GCPSecretManagerCreateIntegrationPage() {
 
   const { data: workspace } = useGetWorkspaceById(localStorage.getItem('projectData.id') ?? '');
   const { data: integrationAuth } = useGetIntegrationAuthById(integrationAuthId as string ?? '');
-  const { data: integrationAuthApps } = useGetIntegrationAuthApps(integrationAuthId as string ?? '');
+  const { data: integrationAuthApps } = useGetIntegrationAuthApps({ integrationAuthId: integrationAuthId as string ?? '' });
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
   const [owner, setOwner] = useState<string | null>(null);
