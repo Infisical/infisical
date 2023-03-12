@@ -6,7 +6,8 @@ import {
   CLIENT_ID_HEROKU,
   CLIENT_ID_NETLIFY,
   CLIENT_ID_GITHUB,
-  CLIENT_SLUG_VERCEL
+  CLIENT_SLUG_VERCEL,
+  CLIENT_ID_GCP_SECRET_MANAGER
 } from "../config";
 
 // integrations
@@ -21,6 +22,7 @@ const INTEGRATION_GITLAB = "gitlab";
 const INTEGRATION_RENDER = "render";
 const INTEGRATION_FLYIO = "flyio";
 const INTEGRATION_CIRCLECI = "circleci";
+const INTEGRATION_GCP_SECRET_MANAGER = 'gcp-secret-manager';
 const INTEGRATION_TRAVISCI = "travisci";
 const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
@@ -31,7 +33,14 @@ const INTEGRATION_SET = new Set([
   INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
+    INTEGRATION_HEROKU,
+    INTEGRATION_VERCEL,
+    INTEGRATION_NETLIFY,
+    INTEGRATION_GITHUB,
+    INTEGRATION_RENDER,
+    INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
+  INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_TRAVISCI,
 ]);
 
@@ -48,6 +57,7 @@ const INTEGRATION_GITHUB_TOKEN_URL =
   "https://github.com/login/oauth/access_token";
 const INTEGRATION_GITLAB_TOKEN_URL = "https://gitlab.com/oauth/token";
 
+const INTEGRATION_GCP_TOKEN_URL = "https://accounts.google.com/o/oauth2/token"
 
 // integration apps endpoints
 const INTEGRATION_HEROKU_API_URL = "https://api.heroku.com";
@@ -57,6 +67,8 @@ const INTEGRATION_NETLIFY_API_URL = "https://api.netlify.com";
 const INTEGRATION_RENDER_API_URL = "https://api.render.com";
 const INTEGRATION_FLYIO_API_URL = "https://api.fly.io/graphql";
 const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
+const INTEGRATION_GCP_API_URL = "https://cloudresourcemanager.googleapis.com";
+const INTEGRATION_GCP_SECRET_MANAGER_URL = "https://secretmanager.googleapis.com"
 const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
 
 // TODO: deprecate types?
@@ -171,12 +183,21 @@ const INTEGRATION_OPTIONS = [
         docsLink: ''
     },
     {
-        name: 'Google Cloud Platform',
-        slug: 'gcp',
-        image: 'Google Cloud Platform.png',
+        name: 'Azure Key Vault',
+        slug: 'azure-key-vault',
+        image: 'Microsoft Azure.png',
         isAvailable: false,
-        type: '',
-        clientId: '',
+        type: 'oauth',
+        clientId: CLIENT_ID_AZURE,
+        docsLink: ''
+    },
+    {
+        name: 'GCP Secret Manager',
+        slug: 'gcp-secret-manager',
+        image: 'Google Cloud Platform.png',
+        isAvailable: true,
+        type: 'oauth',
+        clientId: CLIENT_ID_GCP_SECRET_MANAGER,
         docsLink: ''
     }
 ]
@@ -190,6 +211,7 @@ export {
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
+  INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
@@ -202,6 +224,7 @@ export {
   INTEGRATION_NETLIFY_TOKEN_URL,
   INTEGRATION_GITHUB_TOKEN_URL,
   INTEGRATION_GITLAB_API_URL,
+  INTEGRATION_GCP_TOKEN_URL,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_GITLAB_TOKEN_URL,
   INTEGRATION_VERCEL_API_URL,
@@ -209,6 +232,8 @@ export {
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
+  INTEGRATION_GCP_API_URL,
+  INTEGRATION_GCP_SECRET_MANAGER_URL,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_OPTIONS,
 };

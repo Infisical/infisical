@@ -7,12 +7,14 @@ import {
   INTEGRATION_NETLIFY,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
+  INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_AZURE_TOKEN_URL,
   INTEGRATION_HEROKU_TOKEN_URL,
   INTEGRATION_VERCEL_TOKEN_URL,
   INTEGRATION_NETLIFY_TOKEN_URL,
   INTEGRATION_GITHUB_TOKEN_URL,
-  INTEGRATION_GITLAB_TOKEN_URL
+  INTEGRATION_GITLAB_TOKEN_URL,
+  INTEGRATION_GCP_TOKEN_URL
 } from '../variables';
 import {
   SITE_URL,
@@ -21,12 +23,14 @@ import {
   CLIENT_ID_NETLIFY,
   CLIENT_ID_GITHUB,
   CLIENT_ID_GITLAB,
+  CLIENT_ID_GCP_SECRET_MANAGER,
   CLIENT_SECRET_AZURE,
   CLIENT_SECRET_HEROKU,
   CLIENT_SECRET_VERCEL,
   CLIENT_SECRET_NETLIFY,
   CLIENT_SECRET_GITHUB,
   CLIENT_SECRET_GITLAB,
+  CLIENT_SECRET_GCP_SECRET_MANAGER
 } from '../config';
 
 interface ExchangeCodeAzureResponse {
@@ -77,6 +81,14 @@ interface ExchangeCodeGitlabResponse {
   refresh_token: string;
   scope: string;
   created_at: number;
+}
+
+interface ExchangeCodeGCPSecretManagerResponse {
+  access_token: string;
+  expires_in: number;
+  refresh_token: string;
+  scope: string;
+  token_type: string;
 }
 
 /**
@@ -131,6 +143,12 @@ const exchangeCode = async ({
         obj = await exchangeCodeGitlab({
           code
         });
+        break;
+      case INTEGRATION_GCP_SECRET_MANAGER:
+        obj = await exchangeCodeGCPSecretManager({
+          code
+        });
+        break;
     }
   } catch (err) {
     Sentry.setUser(null);
@@ -258,7 +276,7 @@ const exchangeCodeVercel = async ({ code }: { code: string }) => {
     accessToken: res.access_token,
     refreshToken: null,
     accessExpiresAt: null,
-    teamId: res.team_id
+    teamId: res.team_id // Custom fields, so do we nee
   };
 };
 
@@ -358,6 +376,7 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
   };
 };
 
+
 /**
  * Return [accessToken], [accessExpiresAt], and [refreshToken] for Gitlab
  * code-token exchange
@@ -406,5 +425,56 @@ const exchangeCodeGitlab = async ({ code }: { code: string }) => {
     accessExpiresAt
   };
 }
+
+/**
+ * Return [accessToken], [accessExpiresAt], and [refreshToken] for gcp-secret-manager
+ * code-token exchange
+ * @param {Object} obj1
+ * @param {Object} obj1.code - code for code-token exchange
+ * @returns {Object} obj2
+ * @returns {String} obj2.accessToken - access token for GCP API
+ * @returns {String} obj2.refreshToken - refresh token for GCP API
+ * @returns {Date} obj2.accessExpiresAt - date of expiration for access token
+ */
+const exchangeCodeGCPSecretManager = async ({ code }: { code: string }) => {
+  let res: ExchangeCodeGCPSecretManagerResponse;
+
+  try {
+    res = (
+      await request.post(INTEGRATION_GCP_TOKEN_URL,
+        {
+          client_id: CLIENT_ID_GCP_SECRET_MANAGER,
+          client_secret: CLIENT_SECRET_GCP_SECRET_MANAGER,
+          code: code,
+          redirect_uri: `${SITE_URL}/integrations/gcp-secret-manager/oauth2/callback`,
+          grant_type: "authorization_code"
+        }, 
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Accept-Encoding': 'application/json'
+          }
+        }
+      )
+    ).data;
+
+   /**
+    * @note the expires_in in response shows the number of seconds after which the access_token
+    * expires, so we update the infisical accessExpiresAt value to current-date-in-ms + expires_in
+    * in ms
+    */
+   res.expires_in = Date.now() + (res.expires_in * 1000)
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed OAuth2 code-token exchange with GCP secret manager');
+  }
+
+  return {
+    accessToken: res.access_token,
+    refreshToken: res.refresh_token,
+    accessExpiresAt: res.expires_in
+  };
+};
 
 export { exchangeCode };

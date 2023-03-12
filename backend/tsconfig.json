@@ -17,7 +17,8 @@
     "skipLibCheck": true,
     "typeRoots": [
       "./src/types",
-      "./node_modules/@types"
+      "./node_modules/@types",
+      "./node_modules/@google-cloud/secret-manager/build/src",
     ]
   },
   "include": [

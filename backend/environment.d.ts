@@ -23,11 +23,13 @@ declare global {
       CLIENT_ID_NETLIFY: string;
       CLIENT_ID_GITHUB: string;
       CLIENT_ID_GITLAB: string;
+      CLIENT_ID_GCP_SECRET_MANAGER: string;
       CLIENT_SECRET_HEROKU: string;
       CLIENT_SECRET_VERCEL: string;
       CLIENT_SECRET_NETLIFY: string;
       CLIENT_SECRET_GITHUB: string;
       CLIENT_SECRET_GITLAB: string;
+      CLIENT_SECRET_GCP_SECRET_MANAGER: string;
       CLIENT_SLUG_VERCEL: string;
 			POSTHOG_HOST: string;
 			POSTHOG_PROJECT_API_KEY: string;

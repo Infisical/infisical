@@ -14,6 +14,7 @@ import {
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
+  INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_TRAVISCI,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_GITLAB_API_URL,
@@ -22,6 +23,7 @@ import {
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
+  INTEGRATION_GCP_API_URL,
   INTEGRATION_TRAVISCI_API_URL,
 } from "../variables";
 
@@ -101,6 +103,11 @@ const getApps = async ({
         break;
       case INTEGRATION_CIRCLECI:
         apps = await getAppsCircleCI({
+          accessToken,
+        });
+        break;
+      case INTEGRATION_GCP_SECRET_MANAGER:
+        apps = await getAppsGCPSecretManager({
           accessToken,
         });
         break;
@@ -544,5 +551,42 @@ const getAppsGitlab = async ({
   
   return apps;
 }
+
+/**
+ * Return list of projects for gcp-secret-manager integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for GCP API
+ * @returns {Object[]} apps -
+ * @returns {String} apps.name - name of GCP apps
+ */
+const getAppsGCPSecretManager = async ({ accessToken }: { accessToken: string }) => {
+  let apps: any;
+  try {    
+    const res = (
+      await request.get(
+        `${INTEGRATION_GCP_API_URL}/v1/projects`,
+        {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      )
+    )?.data?.projects
+
+    apps = res?.map((a: any) => {
+      return {
+        name: a?.name,
+        appId: a?.projectId
+      }
+    });
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error("Failed to get GCP secret manager projects");
+  }
+  
+  return apps;
+};
 
 export { getApps };

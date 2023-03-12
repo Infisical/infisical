@@ -11,13 +11,14 @@ import {
   INTEGRATION_RENDER,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
+  INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_TRAVISCI,
 } from "../variables";
 
 export interface IIntegrationAuth {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'gitlab' | 'render' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'aws-parameter-store' | 'aws-secret-manager';
+  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'gitlab' | 'render' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'aws-parameter-store' | 'aws-secret-manager' | 'gcp-secret-manager';
   teamId: string;
   accountId: string;
   refreshCiphertext?: string;
@@ -53,6 +54,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_RENDER,
         INTEGRATION_FLYIO,
         INTEGRATION_CIRCLECI,
+        INTEGRATION_GCP_SECRET_MANAGER,
         INTEGRATION_TRAVISCI,
       ],
       required: true,

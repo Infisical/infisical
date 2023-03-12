@@ -7,19 +7,24 @@ import {
   INTEGRATION_AZURE_KEY_VAULT, 
   INTEGRATION_HEROKU,
   INTEGRATION_GITLAB,
+  INTEGRATION_GCP_SECRET_MANAGER
 } from '../variables';
+import { RawAxiosRequestHeaders } from 'axios';
 import {
   SITE_URL,
   CLIENT_ID_AZURE,
   CLIENT_ID_GITLAB,
   CLIENT_SECRET_AZURE,
   CLIENT_SECRET_HEROKU,
-  CLIENT_SECRET_GITLAB
+  CLIENT_SECRET_GITLAB,
+  CLIENT_SECRET_GCP_SECRET_MANAGER,
+  CLIENT_ID_GCP_SECRET_MANAGER
 } from '../config';
 import {
   INTEGRATION_AZURE_TOKEN_URL,
   INTEGRATION_HEROKU_TOKEN_URL,
-  INTEGRATION_GITLAB_TOKEN_URL
+  INTEGRATION_GITLAB_TOKEN_URL,
+  INTEGRATION_GCP_TOKEN_URL
 } from '../variables';
 import {
   IntegrationService
@@ -49,6 +54,13 @@ interface RefreshTokenGitLabResponse {
   access_token: string;
   refresh_token: string;
   created_at: number;
+}
+
+interface RefreshTokenGCPSecretManagerResponse {
+  access_token: string;
+  expires_in: number;
+  scope: string;
+  token_type: string;
 }
 
 /**
@@ -89,6 +101,11 @@ const exchangeRefresh = async ({
         tokenDetails = await exchangeRefreshGitLab({
           refreshToken
         });
+        break;
+      case INTEGRATION_GCP_SECRET_MANAGER:
+        tokenDetails = await exchangeRefreshGCPSecretManager({
+          refreshToken
+        })
         break;
       default:
         throw new Error('Failed to exchange token for incompatible integration');
@@ -246,6 +263,54 @@ const exchangeRefreshGitLab = async ({
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error('Failed to refresh OAuth2 access token for GitLab');
+  }
+};
+
+/**
+ * Return new access token by exchanging refresh token [refreshToken] for the
+ * GCP integration
+ * @param {Object} obj
+ * @param {String} obj.refreshToken - refresh token to use to get new access token for GCP
+ * @returns
+ */
+const exchangeRefreshGCPSecretManager = async ({
+  refreshToken
+}: {
+  refreshToken: string;
+}) => {
+  
+  let accessToken;
+  try {
+    const body = {
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_secret: CLIENT_SECRET_GCP_SECRET_MANAGER,
+      client_id: CLIENT_ID_GCP_SECRET_MANAGER
+    }
+
+    const headers: RawAxiosRequestHeaders = {
+      "Accept-Encoding": "application/json"
+    }
+
+    const res: RefreshTokenGCPSecretManagerResponse = 
+      (await request.post(INTEGRATION_GCP_TOKEN_URL, body, { headers })).data;
+
+    /**
+    * @note the expires_in in response shows the number of seconds after which the access_token
+    * expires, so we update the infisical accessExpiresAt value to current-date-in-ms + expires_in
+    * in ms
+    */
+    res.expires_in = Date.now() + (res.expires_in * 1000)
+
+    return ({
+      accessToken: res.access_token,
+      refreshToken,
+      accessExpiresAt: new Date(res.expires_in),
+    })
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed to refresh OAuth2 access token for GCP secret manager');
   }
 };
 
