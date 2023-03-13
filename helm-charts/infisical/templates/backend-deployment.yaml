@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "infisical.backend.fullname" . }}
-  {{- with .Values.backend.deploymentAnnotations }}
+  {{- with $backend.deploymentAnnotations }}
   annotations:
     {{- toYaml . | nindent 8 }}
   {{- end }}
@@ -15,7 +15,7 @@ spec:
     matchLabels:
       {{- include "infisical.backend.matchLabels" . | nindent 6 }}
   template:
-    metadata: 
+    metadata:
       labels:
         {{- include "infisical.backend.matchLabels" . | nindent 8 }}
       {{- with $backend.podAnnotations }}
@@ -38,9 +38,6 @@ spec:
         envFrom:
         - secretRef:
             name: {{ $backend.kubeSecretRef | default (include "infisical.backend.fullname" .) }}
-        env:
-        - name: MONGO_URL
-          value: {{ include "infisical.mongodb.connectionString" . | quote }}
 
 ---
 
@@ -55,15 +52,15 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  type: {{ .Values.backend.service.type }}
+  type: {{ $backend.service.type }}
   selector:
     {{- include "infisical.backend.matchLabels" . | nindent 8 }}
   ports:
     - protocol: TCP
       port: 4000
       targetPort: 4000 # container port 
-      {{- if eq .Values.backend.service.type "NodePort" }}
-      nodePort: {{ .Values.backend.service.nodePort }}
+      {{- if eq $backend.service.type "NodePort" }}
+      nodePort: {{ $backend.service.nodePort }}
       {{- end }}
 
 ---
@@ -72,10 +69,24 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ $backend.kubeSecretRef | default (include "infisical.backend.fullname" .) }}
+  name: {{ include "infisical.backend.fullname" . }}
+  annotations:
+    "helm.sh/resource-policy": "keep"
 type: Opaque
 data:
-  {{- range $key, $value := $backend.secrets }}
-  {{ $key }}: {{ $value | quote | b64enc }}
-  {{- end }}
+  {{- $requiredVars := dict "ENCRYPTION_KEY" (randAlphaNum 32 | lower)
+                           "JWT_SIGNUP_SECRET" (randAlphaNum 32 | lower)
+                           "JWT_REFRESH_SECRET" (randAlphaNum 32 | lower)
+                           "JWT_AUTH_SECRET" (randAlphaNum 32 | lower)
+                           "JWT_SERVICE_SECRET" (randAlphaNum 32 | lower)
+                           "JWT_MFA_SECRET" (randAlphaNum 32 | lower) }}
+  {{- $secretObj := (lookup "v1" "Secret" .Release.Namespace (include "infisical.backend.fullname" .)) | default dict }}
+  {{- $secretData := (get $secretObj "data") | default dict }}
+  {{ range $key, $value := .Values.backendEnvironmentVariables }}
+    {{- $default := get $requiredVars $key -}}
+    {{- $current := get $secretData $key | b64dec -}}
+    {{- $v := $value | default ($current | default $default) -}}
+    {{ $key }}: {{ $v | quote | b64enc }}
+  {{ end -}}
+  MONGO_URL: {{ include "infisical.mongodb.connectionString" . | quote | b64enc }}
 {{- end }}

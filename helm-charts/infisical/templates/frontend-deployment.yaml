@@ -69,10 +69,18 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ $frontend.kubeSecretRef | default (include "infisical.frontend.fullname" .) }}
+  name: {{ include "infisical.frontend.fullname" . }}
+  annotations:
+    "helm.sh/resource-policy": "keep"
 type: Opaque
 data:
-  {{- range $key, $value := $frontend.secrets }}
-  {{ $key }}: {{ $value | quote | b64enc }}
-  {{- end }}
+  {{- $requiredVars := dict }}
+  {{- $secretObj := (lookup "v1" "Secret" .Release.Namespace (include "infisical.frontend.fullname" .)) | default dict }}
+  {{- $secretData := (get $secretObj "data") | default dict }}
+  {{ range $key, $value := .Values.frontendEnvironmentVariables }}
+    {{- $default := get $requiredVars $key -}}
+    {{- $current := get $secretData $key | b64dec -}}
+    {{- $v := $value | default ($current | default $default) -}}
+    {{ $key }}: {{ $v | quote | b64enc }}
+  {{ end -}}
 {{- end }}
