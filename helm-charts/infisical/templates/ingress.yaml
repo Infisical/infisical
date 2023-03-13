@@ -1,5 +1,10 @@
 {{ if .Values.ingress.enabled }}
 {{- $ingress := .Values.ingress }}
+{{- if and $ingress.ingressClassName (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
+  {{- if not (hasKey $ingress.annotations "kubernetes.io/ingress.class") }}
+  {{- $_ := set $ingress.annotations "kubernetes.io/ingress.class" $ingress.ingressClassName}}
+  {{- end }}
+{{- end }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -9,7 +14,9 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  ingressClassName: {{ $ingress.ingressClassName | default "nginx"}}
+  {{- if and $ingress.ingressClassName (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ $ingress.ingressClassName | default "nginx" }}
+  {{- end }}
 {{- if $ingress.tls }}
   tls:
   {{- range $ingress.tls }}
