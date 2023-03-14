@@ -1,0 +1,26 @@
+services:
+  # A Docker web service
+  - type: web
+    name: infisical-frontend
+    env: docker
+    dockerfilePath: ./frontend/Dockerfile
+    rootDir: frontend
+    numInstances: 1
+    healthCheckPath: /
+
+  - type: web
+    name: infisical-backend
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    rootDir: backend
+    envVars:
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: JWT_SIGNUP_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_SERVICE_SECRET
+        sync: false
+      - key: MONGO_URL
+        sync: false
