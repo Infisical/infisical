@@ -7,7 +7,7 @@ services:
     autoDeploy: false
     healthCheckPath: /
 
-  - type: pserv
+  - type: web
     name: infisical
     env: docker
     dockerfilePath: ./self-host/render/Dockerfile.backend
