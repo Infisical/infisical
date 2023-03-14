@@ -73,7 +73,7 @@ metadata:
   annotations:
     "helm.sh/resource-policy": "keep"
 type: Opaque
-data:
+stringData:
   {{- $requiredVars := dict "ENCRYPTION_KEY" (randAlphaNum 32 | lower)
                            "JWT_SIGNUP_SECRET" (randAlphaNum 32 | lower)
                            "JWT_REFRESH_SECRET" (randAlphaNum 32 | lower)
@@ -86,7 +86,7 @@ data:
     {{- $default := get $requiredVars $key -}}
     {{- $current := get $secretData $key | b64dec -}}
     {{- $v := $value | default ($current | default $default) -}}
-    {{ $key }}: {{ $v | quote | b64enc }}
+    {{ $key }}: {{ $v | quote }}
   {{ end -}}
-  MONGO_URL: {{ include "infisical.mongodb.connectionString" . | quote | b64enc }}
+  MONGO_URL: {{ include "infisical.mongodb.connectionString" . | quote }}
 {{- end }}

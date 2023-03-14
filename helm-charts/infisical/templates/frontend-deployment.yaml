@@ -73,7 +73,7 @@ metadata:
   annotations:
     "helm.sh/resource-policy": "keep"
 type: Opaque
-data:
+stringData:
   {{- $requiredVars := dict }}
   {{- $secretObj := (lookup "v1" "Secret" .Release.Namespace (include "infisical.frontend.fullname" .)) | default dict }}
   {{- $secretData := (get $secretObj "data") | default dict }}
@@ -81,6 +81,6 @@ data:
     {{- $default := get $requiredVars $key -}}
     {{- $current := get $secretData $key | b64dec -}}
     {{- $v := $value | default ($current | default $default) -}}
-    {{ $key }}: {{ $v | quote | b64enc }}
+    {{ $key }}: {{ $v | quote }}
   {{ end -}}
 {{- end }}
