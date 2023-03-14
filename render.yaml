@@ -3,14 +3,14 @@ services:
   - type: web
     name: infisical-frontend
     env: docker
-    dockerfilePath: ./frontend/Dockerfile
+    dockerfilePath: ./self-host/render/Dockerfile.frontend
     autoDeploy: false
     # healthCheckPath: /
 
   - type: web
     name: infisical-backend
     env: docker
-    dockerfilePath: ./backend/Dockerfile
+    dockerfilePath: ./self-host/render/Dockerfile.backend
     autoDeploy: false
     # healthCheckPath: /api/status
     envVars:
