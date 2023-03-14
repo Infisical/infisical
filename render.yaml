@@ -4,7 +4,6 @@ services:
     name: infisical-frontend
     env: docker
     dockerfilePath: ./frontend/Dockerfile
-    rootDir: frontend
     autoDeploy: false
     # healthCheckPath: /
 
@@ -12,7 +11,6 @@ services:
     name: infisical-backend
     env: docker
     dockerfilePath: ./backend/Dockerfile
-    rootDir: backend
     autoDeploy: false
     # healthCheckPath: /api/status
     envVars:
