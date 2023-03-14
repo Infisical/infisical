@@ -31,9 +31,11 @@ const (
 
 // Given headers and rows, this function will print out a table
 func Table(headers [3]string, rows [][3]string) {
-	// if we're not in a terminal, don't truncate the secret value
-	shouldTruncate := isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
+	// if we're not in a terminal or cygwin terminal, don't truncate the secret value
+	shouldTruncate := isatty.IsTerminal(os.Stdout.Fd())
 
+	// This will return an error if we're not in a terminal or
+	// if the terminal is a cygwin terminal like Git Bash.
 	width, _, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		if shouldTruncate {
