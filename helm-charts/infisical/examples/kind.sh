@@ -58,18 +58,17 @@ cat <<EOF | helm upgrade --install --atomic \
   infisical-dev .
 frontend:
     enabled: true
+    image:
+      pullPolicy: Always
 backend:
     enabled: true
+    image:
+      pullPolicy: Always
 mongodb:
     enabled: true
 mailhog:
     enabled: true
 backendEnvironmentVariables:
-  ENCRYPTION_KEY: $(openssl rand -hex 16)
-  JWT_AUTH_SECRET: $(openssl rand -hex 16)
-  JWT_REFRESH_SECRET: $(openssl rand -hex 16)
-  JWT_SERVICE_SECRET: $(openssl rand -hex 16)
-  JWT_SIGNUP_SECRET: $(openssl rand -hex 16)
   SITE_URL: https://$host
   SMTP_FROM_ADDRESS: dev@$host
   SMTP_FROM_NAME: Local Infisical
