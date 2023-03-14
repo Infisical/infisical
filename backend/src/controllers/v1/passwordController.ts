@@ -1,3 +1,4 @@
+import infisical from 'infisical-node';
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -7,7 +8,6 @@ import { User, BackupPrivateKey, LoginSRPDetail } from '../../models';
 import { createToken } from '../../helpers/auth';
 import { sendMail } from '../../helpers/nodemailer';
 import { TokenService } from '../../services';
-import { JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET, SITE_URL } from '../../config';
 import { TOKEN_EMAIL_PASSWORD_RESET } from '../../variables';
 import { BadRequestError } from '../../utils/errors';
 
@@ -44,7 +44,7 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
 			substitutions: {
 				email,
 				token,
-				callback_url: SITE_URL + '/password-reset'
+				callback_url: infisical.get('SITE_URL')! + '/password-reset'
 			}
 		});
 	} catch (err) {
@@ -91,8 +91,8 @@ export const emailPasswordResetVerify = async (req: Request, res: Response) => {
 			payload: {
 				userId: user._id.toString()
 			},
-			expiresIn: JWT_SIGNUP_LIFETIME,
-			secret: JWT_SIGNUP_SECRET
+			expiresIn: infisical.get('JWT_SIGNUP_LIFETIME')!,
+			secret: infisical.get('JWT_SIGNUP_SECRET')!
 		});
 	} catch (err) {
 		Sentry.setUser(null);

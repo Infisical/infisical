@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/node';
+import infisical from 'infisical-node';
 import {
     Bot,
     BotKey,
@@ -12,7 +13,6 @@ import {
     decryptSymmetric,
     decryptAsymmetric
 } from '../utils/crypto';
-import { ENCRYPTION_KEY } from '../config';
 import { SECRET_SHARED } from '../variables';
 
 /**
@@ -33,7 +33,7 @@ const createBot = async ({
         const { publicKey, privateKey } = generateKeyPair();
         const { ciphertext, iv, tag } = encryptSymmetric({
             plaintext: privateKey,
-            key: ENCRYPTION_KEY
+            key: infisical.get('ENCRYPTION_KEY')!
         });
 
         bot = await new Bot({
@@ -130,7 +130,7 @@ const getKey = async ({ workspaceId }: { workspaceId: string }) => {
             ciphertext: bot.encryptedPrivateKey,
             iv: bot.iv,
             tag: bot.tag,
-            key: ENCRYPTION_KEY
+            key: infisical.get('ENCRYPTION_KEY')!
         });
         
         key = decryptAsymmetric({

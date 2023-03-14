@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/node';
+import infisical from 'infisical-node';
 import { Types } from 'mongoose';
 import { TokenData } from '../models';
 import crypto from 'crypto';
@@ -9,9 +10,6 @@ import {
     TOKEN_EMAIL_ORG_INVITATION,
     TOKEN_EMAIL_PASSWORD_RESET
 } from '../variables';
-import {
-    SALT_ROUNDS
-} from '../config';
 import { UnauthorizedRequestError } from '../utils/errors';
 
 /**
@@ -86,7 +84,7 @@ const createTokenHelper = async ({
         const query: TokenDataQuery = { type };
         const update: TokenDataUpdate = {
             type,
-            tokenHash: await bcrypt.hash(token, SALT_ROUNDS),
+            tokenHash: await bcrypt.hash(token, parseInt(infisical.get('SALT_ROUNDS')!) || 10),
             expiresAt
         }
 

@@ -9,7 +9,7 @@ import {
 import { pushKeys } from '../../helpers/key';
 import { eventPushSecrets } from '../../events';
 import { EventService } from '../../services';
-import { postHogClient } from '../../services';
+import { getPostHogClient } from '../../services';
 
 interface PushSecret {
 	ciphertextKey: string;
@@ -38,6 +38,7 @@ export const pushSecrets = async (req: Request, res: Response) => {
 	// upload (encrypted) secrets to workspace with id [workspaceId]
 
 	try {
+		const postHogClient = getPostHogClient();
 		let { secrets }: { secrets: PushSecret[] } = req.body;
 		const { keys, environment, channel } = req.body;
 		const { workspaceId } = req.params;
@@ -111,6 +112,7 @@ export const pullSecrets = async (req: Request, res: Response) => {
 	let secrets;
 	let key;
 	try {
+		const postHogClient = getPostHogClient();
 		const environment: string = req.query.environment as string;
 		const channel: string = req.query.channel as string;
 		const { workspaceId } = req.params;
@@ -179,6 +181,7 @@ export const pullSecretsServiceToken = async (req: Request, res: Response) => {
 	let secrets;
 	let key;
 	try {
+		const postHogClient = getPostHogClient();
 		const environment: string = req.query.environment as string;
 		const channel: string = req.query.channel as string;
 		const { workspaceId } = req.params;

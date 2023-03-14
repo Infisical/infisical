@@ -1,12 +1,12 @@
-import { Request, Response } from 'express';
+import infisical from 'infisical-node';
 import * as Sentry from '@sentry/node';
-import { Membership, MembershipOrg, User, Key, IMembership, Workspace } from '../../models';
+import { Request, Response } from 'express';
+import { Membership, MembershipOrg, User, Key } from '../../models';
 import {
 	findMembership,
 	deleteMembership as deleteMember
 } from '../../helpers/membership';
 import { sendMail } from '../../helpers/nodemailer';
-import { SITE_URL } from '../../config';
 import { ADMIN, MEMBER, ACCEPTED } from '../../variables';
 
 /**
@@ -215,7 +215,7 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
 				inviterFirstName: req.user.firstName,
 				inviterEmail: req.user.email,
 				workspaceName: req.membership.workspace.name,
-				callback_url: SITE_URL + '/login'
+				callback_url: infisical.get('SITE_URL')! + '/login'
 			}
 		});
 	} catch (err) {

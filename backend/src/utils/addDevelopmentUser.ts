@@ -4,12 +4,12 @@
 *
 ************************************************************************************************/
 
-import { NODE_ENV } from "../config"
+import infisical from 'infisical-node';
 import { Key, Membership, MembershipOrg, Organization, User, Workspace } from "../models";
 import { Types } from 'mongoose';
 
 export const createTestUserForDevelopment = async () => {
-  if (NODE_ENV === "development") {
+  if (infisical.get('NODE_ENV') === "development") {
     const testUserEmail = "test@localhost.local"
     const testUserPassword = "testInfisical1"
     const testUserId = "63cefa6ec8d3175601cfa980"

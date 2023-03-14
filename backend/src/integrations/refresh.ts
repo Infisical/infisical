@@ -1,5 +1,6 @@
-import request from '../config/request';
+import infisical from 'infisical-node';
 import * as Sentry from '@sentry/node';
+import request from '../config/request';
 import {
   IIntegrationAuth
 } from '../models';
@@ -8,14 +9,13 @@ import {
   INTEGRATION_HEROKU,
   INTEGRATION_GITLAB,
 } from '../variables';
-import {
-  SITE_URL,
-  CLIENT_ID_AZURE,
-  CLIENT_ID_GITLAB,
-  CLIENT_SECRET_AZURE,
-  CLIENT_SECRET_HEROKU,
-  CLIENT_SECRET_GITLAB
-} from '../config';
+// import {
+//   CLIENT_ID_AZURE,
+//   CLIENT_ID_GITLAB,
+//   CLIENT_SECRET_AZURE,
+//   CLIENT_SECRET_HEROKU,
+//   CLIENT_SECRET_GITLAB
+// } from '../config';
 import {
   INTEGRATION_AZURE_TOKEN_URL,
   INTEGRATION_HEROKU_TOKEN_URL,
@@ -133,11 +133,11 @@ const exchangeRefreshAzure = async ({
     const { data }: { data: RefreshTokenAzureResponse } = await request.post(
       INTEGRATION_AZURE_TOKEN_URL,
        new URLSearchParams({
-        client_id: CLIENT_ID_AZURE,
+        client_id: infisical.get('CLIENT_ID_AZURE')!,
         scope: 'openid offline_access',
         refresh_token: refreshToken,
         grant_type: 'refresh_token',
-        client_secret: CLIENT_SECRET_AZURE
+        client_secret: infisical.get('CLIENT_SECRET_AZURE')!
       } as any)
     );
     
@@ -180,7 +180,7 @@ const exchangeRefreshHeroku = async ({
         new URLSearchParams({
             grant_type: 'refresh_token',
             refresh_token: refreshToken,
-            client_secret: CLIENT_SECRET_HEROKU
+            client_secret: infisical.get('CLIENT_SECRET_HEROKU')!
         } as any)
     );
 
@@ -223,9 +223,9 @@ const exchangeRefreshGitLab = async ({
       new URLSearchParams({
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
-        client_id: CLIENT_ID_GITLAB,
-        client_secret: CLIENT_SECRET_GITLAB,
-        redirect_uri: `${SITE_URL}/integrations/gitlab/oauth2/callback`
+        client_id: infisical.get('CLIENT_ID_GITLAB')!,
+        client_secret: infisical.get('CLIENT_SECRET_GITLAB')!,
+        redirect_uri: `${infisical.get('SITE_URL')!}/integrations/gitlab/oauth2/callback`
       } as any),
       {
         headers: {

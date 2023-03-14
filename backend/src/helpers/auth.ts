@@ -1,5 +1,6 @@
-import jwt from 'jsonwebtoken';
 import * as Sentry from '@sentry/node';
+import infisical from 'infisical-node';
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import {
 	IUser,
@@ -7,12 +8,6 @@ import {
 	ServiceTokenData,
 	APIKeyData
 } from '../models';
-import {
-	JWT_AUTH_LIFETIME,
-	JWT_AUTH_SECRET,
-	JWT_REFRESH_LIFETIME,
-	JWT_REFRESH_SECRET
-} from '../config';
 import {
 	AccountNotFoundError,
 	ServiceTokenDataNotFoundError,
@@ -93,7 +88,7 @@ const getAuthUserPayload = async ({
 	let user;
 	try {
 		const decodedToken = <jwt.UserIDJwtPayload>(
-			jwt.verify(authTokenValue, JWT_AUTH_SECRET)
+			jwt.verify(authTokenValue, infisical.get('JWT_AUTH_SECRET')!)
 		);
 
 		user = await User.findOne({
@@ -224,16 +219,16 @@ const issueAuthTokens = async ({ userId }: { userId: string }) => {
 			payload: {
 				userId
 			},
-			expiresIn: JWT_AUTH_LIFETIME,
-			secret: JWT_AUTH_SECRET
+			expiresIn: infisical.get('JWT_AUTH_LIFETIME')!,
+			secret: infisical.get('JWT_AUTH_SECRET')!
 		});
 
 		refreshToken = createToken({
 			payload: {
 				userId
 			},
-			expiresIn: JWT_REFRESH_LIFETIME,
-			secret: JWT_REFRESH_SECRET
+			expiresIn: infisical.get('JWT_REFRESH_LIFETIME')!,
+			secret: infisical.get('JWT_REFRESH_SECRET')!
 		});
 	} catch (err) {
 		Sentry.setUser(null);

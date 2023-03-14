@@ -1,6 +1,6 @@
+import infisical from 'infisical-node';
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
-import { SITE_URL, JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET } from '../../config';
 import { MembershipOrg, Organization, User } from '../../models';
 import { deleteMembershipOrg as deleteMemberFromOrg } from '../../helpers/membershipOrg';
 import { createToken } from '../../helpers/auth';
@@ -178,7 +178,7 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 					organizationName: organization.name,
 					email: inviteeEmail,
 					token,
-					callback_url: SITE_URL + '/signupinvite'
+					callback_url: infisical.get('SITE_URL') + '/signupinvite'
 				}
 			});
 		}
@@ -250,8 +250,8 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 			payload: {
 				userId: user._id.toString()
 			},
-			expiresIn: JWT_SIGNUP_LIFETIME,
-			secret: JWT_SIGNUP_SECRET
+			expiresIn: infisical.get('JWT_SIGNUP_LIFETIME')!,
+			secret: infisical.get('JWT_SIGNUP_SECRET')!
 		});
 	} catch (err) {
 		Sentry.setUser(null);

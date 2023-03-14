@@ -1,7 +1,7 @@
+import infisical from 'infisical-node';
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import { User } from '../../models';
-import { JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET, INVITE_ONLY_SIGNUP } from '../../config';
 import {
 	sendEmailVerification,
 	checkEmailVerification,
@@ -21,7 +21,7 @@ export const beginEmailSignup = async (req: Request, res: Response) => {
 	try {
 		email = req.body.email;
 
-		if (INVITE_ONLY_SIGNUP) {
+		if (infisical.get('INVITE_ONLY_SIGNUP') || false) {
 			// Only one user can create an account without being invited. The rest need to be invited in order to make an account
 			const userCount = await User.countDocuments({})
 			if (userCount != 0) {
@@ -91,8 +91,8 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
 			payload: {
 				userId: user._id.toString()
 			},
-			expiresIn: JWT_SIGNUP_LIFETIME,
-			secret: JWT_SIGNUP_SECRET
+			expiresIn: infisical.get('JWT_SIGNUP_LIFETIME')!,
+			secret: infisical.get('JWT_SIGNUP_SECRET')!
 		});
 	} catch (err) {
 		Sentry.setUser(null);

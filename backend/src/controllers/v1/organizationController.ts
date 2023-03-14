@@ -1,21 +1,13 @@
-import { Request, Response } from 'express';
+import infisical from 'infisical-node';
 import * as Sentry from '@sentry/node';
-import {
-	SITE_URL,
-	STRIPE_SECRET_KEY
-} from '../../config';
+import { Request, Response } from 'express';
 import Stripe from 'stripe';
-
-const stripe = new Stripe(STRIPE_SECRET_KEY, {
-	apiVersion: '2022-08-01'
-});
 import {
 	Membership,
 	MembershipOrg,
 	Organization,
 	Workspace,
-	IncidentContactOrg,
-	IMembershipOrg
+	IncidentContactOrg
 } from '../../models';
 import { createOrganization as create } from '../../helpers/organization';
 import { addMembershipsOrg } from '../../helpers/membershipOrg';
@@ -325,6 +317,10 @@ export const createOrganizationPortalSession = async (
 ) => {
 	let session;
 	try {
+		const stripe = new Stripe(infisical.get('STRIPE_SECRET_KEY')!, {
+			apiVersion: '2022-08-01'
+		});
+
 		// check if there is a payment method on file
 		const paymentMethods = await stripe.paymentMethods.list({
 			customer: req.membershipOrg.organization.customerId,
@@ -337,13 +333,13 @@ export const createOrganizationPortalSession = async (
 				customer: req.membershipOrg.organization.customerId,
 				mode: 'setup',
 				payment_method_types: ['card'],
-				success_url: SITE_URL + '/dashboard',
-				cancel_url: SITE_URL + '/dashboard'
+				success_url: infisical.get('SITE_URL')! + '/dashboard',
+				cancel_url: infisical.get('SITE_URL')! + '/dashboard'
 			});
 		} else {
 			session = await stripe.billingPortal.sessions.create({
 				customer: req.membershipOrg.organization.customerId,
-				return_url: SITE_URL + '/dashboard'
+				return_url: infisical.get('SITE_URL') + '/dashboard'
 			});
 		}
 
@@ -369,6 +365,10 @@ export const getOrganizationSubscriptions = async (
 ) => {
 	let subscriptions;
 	try {
+		const stripe = new Stripe(infisical.get('STRIPE_SECRET_KEY')!, {
+			apiVersion: '2022-08-01'
+		});
+		
 		subscriptions = await stripe.subscriptions.list({
 			customer: req.membershipOrg.organization.customerId
 		});

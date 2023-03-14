@@ -1,7 +1,7 @@
+import infisical from 'infisical-node';
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import { ServiceToken } from '../models';
-import { JWT_SERVICE_SECRET } from '../config';
 import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
 
 // TODO: deprecate
@@ -33,7 +33,7 @@ const requireServiceTokenAuth = async (
 	if(AUTH_TOKEN_VALUE === null) return next(BadRequestError({message: 'Missing Authorization Body in the request header'}))
 
 	const decodedToken = <jwt.UserIDJwtPayload>(
-		jwt.verify(AUTH_TOKEN_VALUE, JWT_SERVICE_SECRET)
+		jwt.verify(AUTH_TOKEN_VALUE, infisical.get('JWT_SERVICE_SECRET')!)
 	);
 
 	const serviceToken = await ServiceToken.findOne({
