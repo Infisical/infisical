@@ -1,18 +1,25 @@
 services:
   # A Docker web service
   - type: web
-    name: infisical-frontend
+    name: infisical
     env: docker
     dockerfilePath: ./self-host/render/Dockerfile.frontend
     autoDeploy: false
     healthCheckPath: /
 
-  - type: web
-    name: infisical-backend
+  - type: pserv
+    name: infisical
     env: docker
     dockerfilePath: ./self-host/render/Dockerfile.backend
     autoDeploy: false
     healthCheckPath: /api/status
+    envVars:
+      - fromGroup: backend-environment-variables
+      - key: MONGO_URL
+        sync: false
+
+envVarGroups:
+  - name: backend-environment-variables
     envVars:
       - key: ENCRYPTION_KEY
         generateValue: true
@@ -22,5 +29,3 @@ services:
         generateValue: true
       - key: JWT_SERVICE_SECRET
         generateValue: true
-      - key: MONGO_URL
-        sync: false
