@@ -5,7 +5,7 @@ services:
     env: docker
     dockerfilePath: ./frontend/Dockerfile
     rootDir: frontend
-    numInstances: 1
+    autoDeploy: false
     # healthCheckPath: /
 
   - type: web
@@ -13,6 +13,7 @@ services:
     env: docker
     dockerfilePath: ./backend/Dockerfile
     rootDir: backend
+    autoDeploy: false
     # healthCheckPath: /api/status
     envVars:
       - key: ENCRYPTION_KEY
