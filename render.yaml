@@ -5,14 +5,14 @@ services:
     env: docker
     dockerfilePath: ./self-host/render/Dockerfile.frontend
     autoDeploy: false
-    # healthCheckPath: /
+    healthCheckPath: /
 
   - type: web
     name: infisical-backend
     env: docker
     dockerfilePath: ./self-host/render/Dockerfile.backend
     autoDeploy: false
-    # healthCheckPath: /api/status
+    healthCheckPath: /api/status
     envVars:
       - key: ENCRYPTION_KEY
         generateValue: true
