@@ -13,6 +13,7 @@ services:
     env: docker
     dockerfilePath: ./backend/Dockerfile
     rootDir: backend
+    healthCheckPath: /api/status
     envVars:
       - key: ENCRYPTION_KEY
         generateValue: true
