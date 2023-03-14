@@ -6,22 +6,22 @@ services:
     dockerfilePath: ./frontend/Dockerfile
     rootDir: frontend
     numInstances: 1
-    healthCheckPath: /
+    # healthCheckPath: /
 
   - type: web
     name: infisical-backend
     env: docker
     dockerfilePath: ./backend/Dockerfile
     rootDir: backend
-    healthCheckPath: /api/status
+    # healthCheckPath: /api/status
     envVars:
       - key: ENCRYPTION_KEY
         generateValue: true
       - key: JWT_SIGNUP_SECRET
-        sync: false
+        generateValue: true
       - key: JWT_REFRESH_SECRET
-        sync: false
+        generateValue: true
       - key: JWT_SERVICE_SECRET
-        sync: false
+        generateValue: true
       - key: MONGO_URL
         sync: false
