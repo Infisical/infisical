@@ -1,4 +1,3 @@
-import infisical from 'infisical-node';
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -10,6 +9,7 @@ import { sendMail } from '../../helpers/nodemailer';
 import { TokenService } from '../../services';
 import { TOKEN_EMAIL_PASSWORD_RESET } from '../../variables';
 import { BadRequestError } from '../../utils/errors';
+import { getSiteURL, getJwtSignupLifetime, getJwtSignupSecret } from '../../config';
 
 /**
  * Password reset step 1: Send email verification link to email [email] 
@@ -44,7 +44,7 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
 			substitutions: {
 				email,
 				token,
-				callback_url: infisical.get('SITE_URL')! + '/password-reset'
+				callback_url: getSiteURL() + '/password-reset'
 			}
 		});
 	} catch (err) {
@@ -91,8 +91,8 @@ export const emailPasswordResetVerify = async (req: Request, res: Response) => {
 			payload: {
 				userId: user._id.toString()
 			},
-			expiresIn: infisical.get('JWT_SIGNUP_LIFETIME')!,
-			secret: infisical.get('JWT_SIGNUP_SECRET')!
+			expiresIn: getJwtSignupLifetime(),
+			secret: getJwtSignupSecret()
 		});
 	} catch (err) {
 		Sentry.setUser(null);

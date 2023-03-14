@@ -59,17 +59,16 @@ infisical.connect({
 
 Options:
 
-| Option               | Description                                                 | Default Value               |
-| -------------------- | ----------------------------------------------------------- | --------------------------- |
-| `token`              | ❗️ An Infisical Token to be used to fetch secrets          | `None`                      |
-| `siteURL`            | Site URL of Infisical to connect to                         | `https://app.infisical.com` |
-| `attachToProcessEnv` | Whether or not to attach fetched secrets to `process.env`   | `False`                     |
-| `defaultValues`      | Default values for secrets if they aren't fetched/passed in | `{}`                        |
+| Option               | Description                                               | Default Value               |
+| -------------------- | --------------------------------------------------------- | --------------------------- |
+| `token`              | ❗️ An Infisical Token to be used to fetch secrets        | `None`                      |
+| `siteURL`            | Site URL of Infisical to connect to                       | `https://app.infisical.com` |
+| `attachToProcessEnv` | Whether or not to attach fetched secrets to `process.env` | `false`                     |
 
 ## Access a Secret Value
 
 ```js
-const dbURL = infisical.getSecretValue("DB_URL");
+const dbURL = infisical.get("DB_URL");
 ```
 
 ## Example with Express
@@ -81,7 +80,7 @@ const infisical = require("infisical-node");
 
 app.get("/", (req, res) => {
   // access value
-  const name = infisical.getSecret("NAME");
+  const name = infisical.get("NAME");
 
   res.send(`Hello! My name is: ${name}`);
 });

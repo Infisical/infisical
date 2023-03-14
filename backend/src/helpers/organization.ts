@@ -1,9 +1,14 @@
-import infisical from 'infisical-node';
 import * as Sentry from '@sentry/node';
 import Stripe from 'stripe';
 import { Types } from 'mongoose';
 import { ACCEPTED } from '../variables';
 import { Organization, MembershipOrg } from '../models';
+import { 
+	getStripeSecretKey,
+	getStripeProductPro,
+	getStripeProductTeam,
+	getStripeProductStarter
+} from '../config';
 
 /**
  * Create an organization with name [name]
@@ -22,11 +27,11 @@ const createOrganization = async ({
 	let organization;
 	try {
 		// register stripe account
-		const stripe = new Stripe(infisical.get('STRIPE_SECRET_KEY')!, {
+		const stripe = new Stripe(getStripeSecretKey(), {
 			apiVersion: '2022-08-01'
 		});
 
-		if (infisical.get('STRIPE_SECRET_KEY')) {
+		if (getStripeSecretKey()) {
 			const customer = await stripe.customers.create({
 				email,
 				description: name
@@ -76,14 +81,14 @@ const initSubscriptionOrg = async ({
 		if (organization) {
 			if (organization.customerId) {
 				// initialize starter subscription with quantity of 0
-				const stripe = new Stripe(infisical.get('STRIPE_SECRET_KEY')!, {
+				const stripe = new Stripe(getStripeSecretKey(), {
 					apiVersion: '2022-08-01'
 				});
 
 				const productToPriceMap = {
-					starter: infisical.get('STRIPE_PRODUCT_STARTER')!,
-					team: infisical.get('STRIPE_PRODUCT_TEAM')!,
-					pro: infisical.get('STRIPE_PRODUCT_PRO')!
+					starter: getStripeProductStarter(),
+					team: getStripeProductTeam(),
+					pro: getStripeProductPro()
 				};
 
 				stripeSubscription = await stripe.subscriptions.create({
@@ -138,7 +143,7 @@ const updateSubscriptionOrgQuantity = async ({
 				status: ACCEPTED
 			});
 
-			const stripe = new Stripe(infisical.get('STRIPE_SECRET_KEY')!, {
+			const stripe = new Stripe(getStripeSecretKey(), {
 				apiVersion: '2022-08-01'
 			});
 

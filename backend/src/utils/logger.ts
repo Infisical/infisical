@@ -1,7 +1,7 @@
-import infisical from 'infisical-node';
 /* eslint-disable no-console */
 import { createLogger, format, transports } from 'winston';
 import LokiTransport from 'winston-loki';
+import { getLokiHost, getNodeEnv } from '../config';
 
 const { combine, colorize, label, printf, splat, timestamp } = format;
 
@@ -25,10 +25,10 @@ const createLoggerWithLabel = (level: string, label: string) => {
     })
   ]
   //* Add LokiTransport if it's enabled
-  if(infisical.get('LOKI_HOST')! !== undefined){
+  if(getLokiHost() !== undefined){
     _transports.push(
       new LokiTransport({
-        host: infisical.get('LOKI_HOST')!,
+        host: getLokiHost(),
         handleExceptions: true,
         handleRejections: true,
         batching: true,
@@ -40,7 +40,7 @@ const createLoggerWithLabel = (level: string, label: string) => {
         labels: {
           app: process.env.npm_package_name, 
           version: process.env.npm_package_version, 
-          environment: infisical.get('NODE_ENV')!
+          environment: getNodeEnv()
         },
         onConnectionError: (err: Error)=> console.error('Connection error while connecting to Loki Server.\n', err)
       })

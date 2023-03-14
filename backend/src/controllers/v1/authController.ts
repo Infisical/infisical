@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/node';
-import infisical from 'infisical-node';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import * as bigintConversion from 'bigint-conversion';
@@ -15,6 +14,12 @@ import {
 import { BadRequestError } from '../../utils/errors';
 import { EELogService } from '../../ee/services';
 import { getChannelFromUserAgent } from '../../utils/posthog'; // TODO: move this
+import {
+  getNodeEnv,
+  getJwtRefreshSecret,
+  getJwtAuthLifetime,
+  getJwtAuthSecret
+} from '../../config';
 
 declare module 'jsonwebtoken' {
   export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -121,7 +126,7 @@ export const login2 = async (req: Request, res: Response) => {
             httpOnly: true,
             path: '/',
             sameSite: 'strict',
-            secure: infisical.get('NODE_ENV')! === 'production' ? true : false
+            secure: getNodeEnv() === 'production' ? true : false
           });
 
           const loginAction = await EELogService.createAction({
@@ -177,7 +182,7 @@ export const logout = async (req: Request, res: Response) => {
       httpOnly: true,
       path: '/',
       sameSite: 'strict',
-      secure: infisical.get('NODE_ENV') === 'production' ? true : false
+      secure: getNodeEnv() === 'production' ? true : false
     });
 
     const logoutAction = await EELogService.createAction({
@@ -232,7 +237,7 @@ export const getNewToken = async (req: Request, res: Response) => {
     }
 
     const decodedToken = <jwt.UserIDJwtPayload>(
-      jwt.verify(refreshToken, infisical.get('JWT_REFRESH_SECRET')!)
+      jwt.verify(refreshToken, getJwtRefreshSecret())
     );
 
     const user = await User.findOne({
@@ -247,8 +252,8 @@ export const getNewToken = async (req: Request, res: Response) => {
       payload: {
         userId: decodedToken.userId
       },
-      expiresIn: infisical.get('JWT_AUTH_LIFETIME')!,
-      secret: infisical.get('JWT_AUTH_SECRET')!
+      expiresIn: getJwtAuthLifetime(),
+      secret: getJwtAuthSecret()
     });
 
     return res.status(200).send({

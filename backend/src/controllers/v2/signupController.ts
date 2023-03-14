@@ -1,4 +1,3 @@
-import infisical from 'infisical-node';
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import { User, MembershipOrg } from '../../models';
@@ -9,6 +8,7 @@ import {
 import { issueAuthTokens } from '../../helpers/auth';
 import { INVITED, ACCEPTED } from '../../variables';
 import request from '../../config/request';
+import { getNodeEnv } from '../../config';
 
 /**
  * Complete setting up user by adding their personal and auth information as part of the
@@ -127,7 +127,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			httpOnly: true,
 			path: '/',
 			sameSite: 'strict',
-			secure: infisical.get('NODE_ENV')! === 'production' ? true : false
+			secure: getNodeEnv() === 'production' ? true : false
 		});
 	} catch (err) {
 		Sentry.setUser(null);
@@ -232,7 +232,7 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 			httpOnly: true,
 			path: '/',
 			sameSite: 'strict',
-			secure: infisical.get('NODE_ENV')! === 'production' ? true : false
+			secure: getNodeEnv() === 'production' ? true : false
 		});
 	} catch (err) {
 		Sentry.setUser(null);

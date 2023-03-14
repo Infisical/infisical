@@ -1,4 +1,3 @@
-import infisical from 'infisical-node';
 import * as Sentry from '@sentry/node';
 import request from '../config/request';
 import {
@@ -15,6 +14,20 @@ import {
   INTEGRATION_GITHUB_TOKEN_URL,
   INTEGRATION_GITLAB_TOKEN_URL
 } from '../variables';
+import {
+  getSiteURL,
+  getClientIdAzure,
+  getClientSecretAzure,
+  getClientSecretHeroku,
+  getClientIdVercel,
+  getClientSecretVercel,
+  getClientIdNetlify,
+  getClientSecretNetlify,
+  getClientIdGitHub,
+  getClientSecretGitHub,
+  getClientIdGitLab,
+  getClientSecretGitLab
+} from '../config';
 
 interface ExchangeCodeAzureResponse {
   token_type: string;
@@ -146,9 +159,9 @@ const exchangeCodeAzure = async ({
         grant_type: 'authorization_code',
         code: code,
         scope: 'https://vault.azure.net/.default openid offline_access',
-        client_id: infisical.get('CLIENT_ID_AZURE')!,
-        client_secret: infisical.get('CLIENT_SECRET_AZURE')!,
-        redirect_uri: `${infisical.get('SITE_URL')!}/integrations/azure-key-vault/oauth2/callback`
+        client_id: getClientIdAzure(),
+        client_secret: getClientSecretAzure(),
+        redirect_uri: `${getSiteURL()}/integrations/azure-key-vault/oauth2/callback`
       } as any)
     )).data;
 
@@ -191,7 +204,7 @@ const exchangeCodeHeroku = async ({
       new URLSearchParams({
         grant_type: 'authorization_code',
         code: code,
-        client_secret: infisical.get('CLIENT_SECRET_HEROKU')!
+        client_secret: getClientSecretHeroku()
       } as any)
     )).data;
 
@@ -229,9 +242,9 @@ const exchangeCodeVercel = async ({ code }: { code: string }) => {
         INTEGRATION_VERCEL_TOKEN_URL,
         new URLSearchParams({
           code: code,
-          client_id: infisical.get('CLIENT_ID_VERCEL')!,
-          client_secret: infisical.get('CLIENT_SECRET_VERCEL')!,
-          redirect_uri: `${infisical.get('SITE_URL')!}/integrations/vercel/oauth2/callback`
+          client_id: getClientIdVercel(),
+          client_secret: getClientSecretVercel(),
+          redirect_uri: `${getSiteURL()}/integrations/vercel/oauth2/callback`
         } as any)
       )
     ).data;
@@ -269,9 +282,9 @@ const exchangeCodeNetlify = async ({ code }: { code: string }) => {
         new URLSearchParams({
           grant_type: 'authorization_code',
           code: code,
-          client_id: infisical.get('CLIENT_ID_NETLIFY')!,
-          client_secret: infisical.get('CLIENT_SECRET_NETLIFY')!,
-          redirect_uri: `${infisical.get('SITE_URL')!}/integrations/netlify/oauth2/callback`
+          client_id: getClientIdNetlify(),
+          client_secret: getClientSecretNetlify(),
+          redirect_uri: `${getSiteURL()}/integrations/netlify/oauth2/callback`
         } as any)
       )
     ).data;
@@ -320,10 +333,10 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
     res = (
       await request.get(INTEGRATION_GITHUB_TOKEN_URL, {
         params: {
-          client_id: infisical.get('CLIENT_ID_GITHUB')!,
-          client_secret: infisical.get('CLIENT_SECRET_GITHUB')!,
+          client_id: getClientIdGitHub(),
+          client_secret: getClientSecretGitHub(),
           code: code,
-          redirect_uri: `${infisical.get('SITE_URL')!}/integrations/github/oauth2/callback`
+          redirect_uri: `${getSiteURL()}/integrations/github/oauth2/callback`
         },
         headers: {
           'Accept': 'application/json',
@@ -366,9 +379,9 @@ const exchangeCodeGitlab = async ({ code }: { code: string }) => {
         new URLSearchParams({
           grant_type: 'authorization_code',
           code: code,
-          client_id: infisical.get('CLIENT_ID_GITLAB')!,
-          client_secret: infisical.get('CLIENT_SECRET_GITLAB')!,
-          redirect_uri: `${infisical.get('SITE_URL')}/integrations/gitlab/oauth2/callback`
+          client_id: getClientIdGitLab(),
+          client_secret: getClientSecretGitLab(),
+          redirect_uri: `${getSiteURL()}/integrations/gitlab/oauth2/callback`
         } as any),
         {
           headers: {

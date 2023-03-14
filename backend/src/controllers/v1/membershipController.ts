@@ -1,4 +1,3 @@
-import infisical from 'infisical-node';
 import * as Sentry from '@sentry/node';
 import { Request, Response } from 'express';
 import { Membership, MembershipOrg, User, Key } from '../../models';
@@ -8,6 +7,7 @@ import {
 } from '../../helpers/membership';
 import { sendMail } from '../../helpers/nodemailer';
 import { ADMIN, MEMBER, ACCEPTED } from '../../variables';
+import { getSiteURL } from '../../config';
 
 /**
  * Check that user is a member of workspace with id [workspaceId]
@@ -215,7 +215,7 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
 				inviterFirstName: req.user.firstName,
 				inviterEmail: req.user.email,
 				workspaceName: req.membership.workspace.name,
-				callback_url: infisical.get('SITE_URL')! + '/login'
+				callback_url: getSiteURL() + '/login'
 			}
 		});
 	} catch (err) {

@@ -63,8 +63,17 @@ import { healthCheck } from './routes/status';
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
 import { requestErrorHandler } from './middleware/requestErrorHandler';
+import {
+    getMongoURL, 
+    getNodeEnv,
+    getPort,
+    getSentryDSN,
+    getSiteURL
+} from './config';
 
 const main = async () => {
+    // TODO 1: handle case of empty string token
+    // TODO 2: handle case of undefined token
     const client = await infisical.connect({
         token: process.env.INFISICAL_TOKEN!,
         debug: true
@@ -73,13 +82,13 @@ const main = async () => {
     logTelemetryMessage();
     setTransporter(initSmtp());
 
-    await DatabaseService.initDatabase(infisical.get('MONGO_URL')!);
-    if (infisical.get('NODE_ENV') !== 'test') {
+    await DatabaseService.initDatabase(getMongoURL());
+    if (getNodeEnv() !== 'test') {
         Sentry.init({
-            dsn: infisical.get('SENTRY_DSN') as string,
+            dsn: getSentryDSN(),
             tracesSampleRate: 1.0,
-            debug: infisical.get('NODE_ENV') === 'production' ? false : true,
-            environment: infisical.get('NODE_ENV') as string
+            debug: getNodeEnv() === 'production' ? false : true,
+            environment: getNodeEnv()
         });
     }
 
@@ -91,13 +100,13 @@ const main = async () => {
     app.use(
         cors({
             credentials: true,
-            origin: infisical.get('SITE_URL') as string
+            origin: getSiteURL()
         })
     );
 
     app.use(requestIp.mw());
 
-    if (infisical.get('NODE_ENV') === 'production') {
+    if (getNodeEnv() === 'production') {
         // enable app-wide rate-limiting + helmet security
         // in production
         app.disable('x-powered-by');
@@ -157,9 +166,9 @@ const main = async () => {
 
     app.use(requestErrorHandler)
 
-    const server = app.listen(Number(infisical.get('PORT')) || 4000, () => {
+    const server = app.listen(getPort(), () => {
         createTestUserForDevelopment();
-        getLogger("backend-main").info(`Server started listening at port ${Number(infisical.get('PORT')) || 4000}`)
+        getLogger("backend-main").info(`Server started listening at port ${getPort()}`)
     });
 
     setUpHealthEndpoint(server);

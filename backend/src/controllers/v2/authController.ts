@@ -1,4 +1,3 @@
-import infisical from 'infisical-node';
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
@@ -17,6 +16,11 @@ import {
   ACTION_LOGIN
 } from '../../variables';
 import { getChannelFromUserAgent } from '../../utils/posthog'; // TODO: move this
+import {
+  getNodeEnv,
+  getJwtMfaLifetime,
+  getJwtMfaSecret
+} from '../../config';
 
 declare module 'jsonwebtoken' {
   export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -120,8 +124,8 @@ export const login2 = async (req: Request, res: Response) => {
               payload: {
                 userId: user._id.toString()
               },
-              expiresIn: infisical.get('JWT_MFA_LIFETIME')!,
-              secret: infisical.get('JWT_MFA_SECRET')!
+              expiresIn: getJwtMfaLifetime(),
+              secret: getJwtMfaSecret()
             });
           
             const code = await TokenService.createToken({
@@ -159,7 +163,7 @@ export const login2 = async (req: Request, res: Response) => {
             httpOnly: true,
             path: '/',
             sameSite: 'strict',
-            secure: infisical.get('NODE_ENV')! === 'production' ? true : false
+            secure: getNodeEnv() === 'production' ? true : false
           });
 
           // case: user does not have MFA enablgged
@@ -298,7 +302,7 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
       httpOnly: true,
       path: '/',
       sameSite: 'strict',
-      secure: infisical.get('NODE_ENV')! === 'production' ? true : false
+      secure: getNodeEnv() === 'production' ? true : false
     });
     
     interface VerifyMfaTokenRes {
@@ -342,4 +346,3 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
 
     return res.status(200).send(resObj); 
 }
-

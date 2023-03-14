@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/node';
-import infisical from 'infisical-node';
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
@@ -8,6 +7,7 @@ import {
 } from '../../models';
 import { userHasWorkspaceAccess } from '../../ee/helpers/checkMembershipPermissions';
 import { ABILITY_READ } from '../../variables/organization';
+import { getSaltRounds } from '../../config';
 
 /**
  * Return service token data associated with service token on request
@@ -73,7 +73,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         }
 
         const secret = crypto.randomBytes(16).toString('hex');
-        const secretHash = await bcrypt.hash(secret, parseInt(infisical.get('SALT_ROUNDS')!) || 10);
+        const secretHash = await bcrypt.hash(secret, getSaltRounds());
 
         const expiresAt = new Date();
         expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);

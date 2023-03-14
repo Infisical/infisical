@@ -1,4 +1,3 @@
-import infisical from 'infisical-node';
 import nodemailer from 'nodemailer';
 import {
   SMTP_HOST_SENDGRID, 
@@ -8,22 +7,29 @@ import {
 } from '../variables';
 import SMTPConnection from 'nodemailer/lib/smtp-connection';
 import * as Sentry from '@sentry/node';
+import {
+  getSmtpHost,
+  getSmtpUsername,
+  getSmtpPassword,
+  getSmtpSecure,
+  getSmtpPort
+} from '../config';
 
 export const initSmtp = () => {
   const mailOpts: SMTPConnection.Options = {
-    host: infisical.get('SMTP_HOST')!,
-    port: parseInt(infisical.get('SMTP_PORT')!)
+    host: getSmtpHost(),
+    port: getSmtpPort()
   };
 
-  if (infisical.get('SMTP_USERNAME')! && infisical.get('SMTP_PASSWORD')!) {
+  if (getSmtpUsername() && getSmtpPassword()) {
     mailOpts.auth = {
-      user: infisical.get('SMTP_USERNAME')!,
-      pass: infisical.get('SMTP_PASSWORD')!
+      user: getSmtpUsername(),
+      pass: getSmtpPassword()
     };
   }
 
-  if (infisical.get('SMTP_SECURE')! ? infisical.get('SMTP_SECURE')! === 'true' : false) {
-    switch (infisical.get('SMTP_HOST')!) {
+  if (getSmtpSecure() ? getSmtpSecure() : false) {
+    switch (getSmtpHost()) {
       case SMTP_HOST_SENDGRID:
         mailOpts.requireTLS = true;
         break;
@@ -46,7 +52,7 @@ export const initSmtp = () => {
         }
         break; 
       default:
-        if (infisical.get('SMTP_HOST')!.includes('amazonaws.com')) {
+        if (getSmtpHost().includes('amazonaws.com')) {
           mailOpts.tls = {
             ciphers: 'TLSv1.2'
           }
@@ -67,7 +73,7 @@ export const initSmtp = () => {
     .catch((err) => {
       Sentry.setUser(null);
       Sentry.captureException(
-        `SMTP - Failed to connect to ${infisical.get('SMTP_HOST')!}:${infisical.get('SMTP_PORT')!} \n\t${err}`
+        `SMTP - Failed to connect to ${getSmtpHost()}:${getSmtpPort()} \n\t${err}`
       );
     });
 

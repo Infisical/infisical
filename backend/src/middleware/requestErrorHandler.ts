@@ -1,13 +1,13 @@
-import infisical from 'infisical-node';
 import * as Sentry from '@sentry/node';
 import { ErrorRequestHandler } from "express";
-import { InternalServerError, UnauthorizedRequestError } from "../utils/errors";
+import { InternalServerError } from "../utils/errors";
 import { getLogger } from "../utils/logger";
 import RequestError, { LogLevel } from "../utils/requestError";
+import { getNodeEnv } from '../config';
 
 export const requestErrorHandler: ErrorRequestHandler = (error: RequestError | Error, req, res, next) => {
     if (res.headersSent) return next();
-    if (infisical.get('NODE_ENV')! !== "production") {
+    if (getNodeEnv() !== "production") {
         /* eslint-disable no-console */
         console.log(error)
         /* eslint-enable no-console */

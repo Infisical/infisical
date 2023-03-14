@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/node';
-import infisical from 'infisical-node';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import {
@@ -15,6 +14,12 @@ import {
 	UnauthorizedRequestError,
 	BadRequestError
 } from '../utils/errors';
+import {
+	getJwtAuthLifetime,
+	getJwtAuthSecret,
+	getJwtRefreshLifetime,
+	getJwtRefreshSecret
+} from '../config';
 
 /**
  * 
@@ -88,7 +93,7 @@ const getAuthUserPayload = async ({
 	let user;
 	try {
 		const decodedToken = <jwt.UserIDJwtPayload>(
-			jwt.verify(authTokenValue, infisical.get('JWT_AUTH_SECRET')!)
+			jwt.verify(authTokenValue, getJwtAuthSecret())
 		);
 
 		user = await User.findOne({
@@ -219,16 +224,16 @@ const issueAuthTokens = async ({ userId }: { userId: string }) => {
 			payload: {
 				userId
 			},
-			expiresIn: infisical.get('JWT_AUTH_LIFETIME')!,
-			secret: infisical.get('JWT_AUTH_SECRET')!
+			expiresIn: getJwtAuthLifetime(),
+			secret: getJwtAuthSecret()
 		});
 
 		refreshToken = createToken({
 			payload: {
 				userId
 			},
-			expiresIn: infisical.get('JWT_REFRESH_LIFETIME')!,
-			secret: infisical.get('JWT_REFRESH_SECRET')!
+			expiresIn: getJwtRefreshLifetime(),
+			secret: getJwtRefreshSecret()
 		});
 	} catch (err) {
 		Sentry.setUser(null);

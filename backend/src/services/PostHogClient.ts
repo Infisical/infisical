@@ -1,13 +1,17 @@
-import infisical from 'infisical-node';
 import { PostHog } from 'posthog-node';
 import { getLogger } from '../utils/logger';
+import {
+  getNodeEnv,
+  getTelemetryEnabled,
+  getPostHogProjectApiKey,
+  getPostHogHost
+} from '../config';
 
 /**
  * Logs telemetry enable/disable notice.
  */
 const logTelemetryMessage = () => {
-  const TELEMETRY_ENABLED = infisical.get('TELEMETRY_ENABLED')! !== 'false' && true;
-  if(!TELEMETRY_ENABLED){
+  if(!getTelemetryEnabled()){
     getLogger("backend-main").info([
       "",
       "To improve, Infisical collects telemetry data about general usage.",
@@ -23,11 +27,10 @@ const logTelemetryMessage = () => {
  */
 const getPostHogClient = () => {
   let postHogClient: any;
-  const TELEMETRY_ENABLED = infisical.get('TELEMETRY_ENABLED')! !== 'false' && true;
-  if (infisical.get('NODE_ENV') === 'production' && TELEMETRY_ENABLED) {
+  if (getNodeEnv() === 'production' && getTelemetryEnabled()) {
     // case: enable opt-out telemetry in production
-    postHogClient = new PostHog(infisical.get('POSTHOG_PROJECT_API_KEY')! || 'phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE', {
-      host: infisical.get('POSTHOG_HOST')!
+    postHogClient = new PostHog(getPostHogProjectApiKey(), {
+      host: getPostHogHost()
     });
   } 
   

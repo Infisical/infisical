@@ -1,4 +1,11 @@
-import infisical from 'infisical-node';
+import {
+    getClientIdHeroku,
+    getClientSlugVercel,
+    getClientIdNetlify,
+    getClientIdAzure,
+    getClientIdGitLab,
+    getClientIdGitHub
+} from '../config';
 
 // integrations
 const INTEGRATION_AZURE_KEY_VAULT = 'azure-key-vault';
@@ -57,7 +64,7 @@ const getIntegrationOptions = () => {
             image: 'Heroku.png',
             isAvailable: true,
             type: 'oauth',
-            clientId: infisical.get('CLIENT_ID_HEROKU')!,
+            clientId: getClientIdHeroku(),
             docsLink: ''
         },
         {
@@ -67,7 +74,7 @@ const getIntegrationOptions = () => {
             isAvailable: true,
             type: 'oauth',
             clientId: '',
-            clientSlug: infisical.get('CLIENT_SLUG_VERCEL')!,
+            clientSlug: getClientSlugVercel(),
             docsLink: ''
         },
         {
@@ -76,7 +83,7 @@ const getIntegrationOptions = () => {
             image: 'Netlify.png',
             isAvailable: true,
             type: 'oauth',
-            clientId: infisical.get('CLIENT_ID_NETLIFY')!,
+            clientId: getClientIdNetlify(),
             docsLink: ''
         },
         {
@@ -85,7 +92,7 @@ const getIntegrationOptions = () => {
             image: 'GitHub.png',
             isAvailable: true,
             type: 'oauth',
-            clientId: infisical.get('CLIENT_ID_GITHUB')!,
+            clientId: getClientIdGitHub(),
             docsLink: ''
         },
         {
@@ -130,7 +137,7 @@ const getIntegrationOptions = () => {
             image: 'Microsoft Azure.png',
             isAvailable: true,
             type: 'oauth',
-            clientId: infisical.get('CLIENT_ID_AZURE')!,
+            clientId: getClientIdAzure(),
             docsLink: ''
         },
         {
@@ -148,7 +155,7 @@ const getIntegrationOptions = () => {
             image: 'GitLab.png',
             isAvailable: true,
             type: 'custom',
-            clientId: infisical.get('CLIENT_ID_GITLAB'), 
+            clientId: getClientIdGitLab(),
             docsLink: ''
         },
         {
