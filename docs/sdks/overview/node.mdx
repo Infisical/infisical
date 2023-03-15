@@ -6,7 +6,7 @@ If you're working with Node.js, the official [infisical-node](https://github.com
 
 ## Installation
 
-Run `npm` to add `infisical` to your project.
+Run `npm` to add `infisical-node` to your project.
 
 ```bash
 npm install infisical-node --save
@@ -14,9 +14,62 @@ npm install infisical-node --save
 
 ## Initialization
 
-Set up `infisical` asynchronously as early as possible in your application by importing and initializing the global instance with `infisical.connect([options])`.
+Set up the Infisical client asynchronously as early as possible in your application by importing and initializing the global instance with `infisical.connect(options)`.
 
 This methods fetches back all the secrets in the project and environment accessible by the token passed in `options`.
+
+### infisical.connect(options)
+
+Updates the global instance of the Infisical client with a connection to an Infisical project and fetches back secrets if supplied with an [Infisical Token](/getting-started/dashboard/token).
+
+<ResponseField name="options" type="object">
+  <Expandable title="properties">
+    <ResponseField name="token" type="string">
+      An [Infisical Token](/getting-started/dashboard/token) scoped to a project
+      and environment
+    </ResponseField>
+    <ResponseField
+      name="siteURL"
+      type="string"
+      default="https://app.infisical.com"
+    >
+      Your self-hosted absolute site URL including the protocol (e.g.
+      `https://app.infisical.com`)
+    </ResponseField>
+    <ResponseField name="debug" type="boolean" default="false">
+      Whether or not debug mode is on
+    </ResponseField>
+    <ResponseField name="attachToProcessEnv" type="boolean" default="false">
+      Whether or not to attach fetched secrets to `process.env`
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### infisical.createConnection(options)
+
+Returns a local instance of the Infisical client with a connection to an Infisical project and fetches back secrets if supplied with an [Infisical Token](/getting-started/dashboard/token).
+
+This method is useful if you wish to connect to two or more Infisical projects within your app.
+
+<ResponseField name="options" type="object">
+  <Expandable title="properties">
+    <ResponseField name="token" type="string">
+      An [Infisical Token](/getting-started/dashboard/token) scoped to a project
+      and environment
+    </ResponseField>
+    <ResponseField
+      name="siteURL"
+      type="string"
+      default="https://app.infisical.com"
+    >
+      Your self-hosted absolute site URL including the protocol (e.g.
+      `https://app.infisical.com`)
+    </ResponseField>
+    <ResponseField name="debug" type="boolean" default="false">
+      Whether or not debug mode is on
+    </ResponseField>
+  </Expandable>
+</ResponseField>
 
 <Tabs>
   <Tab title="ES6">
@@ -53,32 +106,22 @@ This methods fetches back all the secrets in the project and environment accessi
 
 </Tabs>
 
-`infisical.connect([options])`
-
-| Option    | Description                                                                                  | Default Value               |
-| --------- | -------------------------------------------------------------------------------------------- | --------------------------- |
-| `token`   | An [Infisical Token](/getting-started/dashboard/token) scoped to a project and environment   | `None`                      |
-| `siteURL` | Your self-hosted absolute site URL including the protocol (e.g. `https://app.infisical.com`) | `https://app.infisical.com` |
-| `debug`   | Whether or not debug mode is on                                                              | `false`                     |
-
-<Note>
-  If you need to connect to multiple Infisical projects, you can use
-  `infisical.createConnection([options])` to return a local instance of
-  `infisical`.
-</Note>
-
 ## Usage
 
-To get the value of secret, pass the name of its key into `infisical.get()`.
+To get the value of a secret, use `infisical.get(key)`.
+
+### infisical.get(key)
+
+Return the value of the secret with the specified `key`. Note that the Infisical client falls back to `process.env` if `token` is `undefined` during the
+initialization step or if a value for the secret is not found in the fetched secrets.
+
+<ResponseField name="key" type="string" required>
+  The key of the secret
+</ResponseField>
 
 ```js
 const value = infisical.get("SOME_KEY");
 ```
-
-<Info>
-  `infisical` falls back to `process.env` if `token` is `undefined` during
-  initialization or if a value is not found in the secrets fetched.
-</Info>
 
 ## Example with Express
 
