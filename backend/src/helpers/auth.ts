@@ -1,5 +1,5 @@
-import jwt from 'jsonwebtoken';
 import * as Sentry from '@sentry/node';
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import {
 	IUser,
@@ -8,18 +8,18 @@ import {
 	APIKeyData
 } from '../models';
 import {
-	JWT_AUTH_LIFETIME,
-	JWT_AUTH_SECRET,
-	JWT_REFRESH_LIFETIME,
-	JWT_REFRESH_SECRET
-} from '../config';
-import {
 	AccountNotFoundError,
 	ServiceTokenDataNotFoundError,
 	APIKeyDataNotFoundError,
 	UnauthorizedRequestError,
 	BadRequestError
 } from '../utils/errors';
+import {
+	getJwtAuthLifetime,
+	getJwtAuthSecret,
+	getJwtRefreshLifetime,
+	getJwtRefreshSecret
+} from '../config';
 
 /**
  * 
@@ -93,7 +93,7 @@ const getAuthUserPayload = async ({
 	let user;
 	try {
 		const decodedToken = <jwt.UserIDJwtPayload>(
-			jwt.verify(authTokenValue, JWT_AUTH_SECRET)
+			jwt.verify(authTokenValue, getJwtAuthSecret())
 		);
 
 		user = await User.findOne({
@@ -224,16 +224,16 @@ const issueAuthTokens = async ({ userId }: { userId: string }) => {
 			payload: {
 				userId
 			},
-			expiresIn: JWT_AUTH_LIFETIME,
-			secret: JWT_AUTH_SECRET
+			expiresIn: getJwtAuthLifetime(),
+			secret: getJwtAuthSecret()
 		});
 
 		refreshToken = createToken({
 			payload: {
 				userId
 			},
-			expiresIn: JWT_REFRESH_LIFETIME,
-			secret: JWT_REFRESH_SECRET
+			expiresIn: getJwtRefreshLifetime(),
+			secret: getJwtRefreshSecret()
 		});
 	} catch (err) {
 		Sentry.setUser(null);

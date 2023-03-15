@@ -1,5 +1,4 @@
 import { Schema, model } from 'mongoose';
-import { EMAIL_TOKEN_LIFETIME } from '../config';
 
 export interface IToken {
   email: string;

@@ -4,12 +4,12 @@
 *
 ************************************************************************************************/
 
-import { NODE_ENV } from "../config"
 import { Key, Membership, MembershipOrg, Organization, User, Workspace } from "../models";
 import { Types } from 'mongoose';
+import { getNodeEnv } from '../config';
 
 export const createTestUserForDevelopment = async () => {
-  if (NODE_ENV === "development") {
+  if (getNodeEnv() === "development") {
     const testUserEmail = "test@localhost.local"
     const testUserPassword = "testInfisical1"
     const testUserId = "63cefa6ec8d3175601cfa980"

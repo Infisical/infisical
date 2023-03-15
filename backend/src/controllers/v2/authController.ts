@@ -10,25 +10,23 @@ import { checkUserDevice } from '../../helpers/user';
 import { sendMail } from '../../helpers/nodemailer';
 import { TokenService } from '../../services';
 import { EELogService } from '../../ee/services';
-import {
-  NODE_ENV,
-  JWT_MFA_LIFETIME,
-  JWT_MFA_SECRET
-} from '../../config';
 import { BadRequestError, InternalServerError } from '../../utils/errors';
 import {
   TOKEN_EMAIL_MFA,
   ACTION_LOGIN
 } from '../../variables';
 import { getChannelFromUserAgent } from '../../utils/posthog'; // TODO: move this
+import {
+  getNodeEnv,
+  getJwtMfaLifetime,
+  getJwtMfaSecret
+} from '../../config';
 
 declare module 'jsonwebtoken' {
   export interface UserIDJwtPayload extends jwt.JwtPayload {
     userId: string;
   }
 }
-
-const clientPublicKeys: any = {};
 
 /**
  * Log in user step 1: Return [salt] and [serverPublicKey] as part of step 1 of SRP protocol
@@ -126,8 +124,8 @@ export const login2 = async (req: Request, res: Response) => {
               payload: {
                 userId: user._id.toString()
               },
-              expiresIn: JWT_MFA_LIFETIME,
-              secret: JWT_MFA_SECRET
+              expiresIn: getJwtMfaLifetime(),
+              secret: getJwtMfaSecret()
             });
           
             const code = await TokenService.createToken({
@@ -165,7 +163,7 @@ export const login2 = async (req: Request, res: Response) => {
             httpOnly: true,
             path: '/',
             sameSite: 'strict',
-            secure: NODE_ENV === 'production' ? true : false
+            secure: getNodeEnv() === 'production' ? true : false
           });
 
           // case: user does not have MFA enablgged
@@ -304,7 +302,7 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
       httpOnly: true,
       path: '/',
       sameSite: 'strict',
-      secure: NODE_ENV === 'production' ? true : false
+      secure: getNodeEnv() === 'production' ? true : false
     });
     
     interface VerifyMfaTokenRes {
@@ -348,4 +346,3 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
 
     return res.status(200).send(resObj); 
 }
-

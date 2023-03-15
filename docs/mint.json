@@ -50,9 +50,9 @@
       "url": "self-hosting"
     },
     {
-      "name": "SDK",
+      "name": "SDKs",
       "icon": "puzzle-piece",
-      "url": "sdk"
+      "url": "sdks"
     },
     {
       "name": "API Reference",
@@ -192,9 +192,14 @@
       ]
     },
     {
-      "group": "SDK",
+      "group": "SDKs",
       "pages": [
-        "sdk/overview/usage"
+        "sdks/overview/node",
+        "sdks/overview/python",
+        "sdks/overview/java",
+        "sdks/overview/ruby",
+        "sdks/overview/go",
+        "sdks/overview/rust"
       ]
     },
     {

@@ -1,13 +1,11 @@
-import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
+import { Request, Response } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import {
     APIKeyData
 } from '../../models';
-import {
-    SALT_ROUNDS
-} from '../../config';
+import { getSaltRounds } from '../../config';
 
 /**
  * Return API key data for user with id [req.user_id]
@@ -45,7 +43,7 @@ export const createAPIKeyData = async (req: Request, res: Response) => {
         const { name, expiresIn } = req.body;
         
         const secret = crypto.randomBytes(16).toString('hex');
-        const secretHash = await bcrypt.hash(secret, SALT_ROUNDS);
+        const secretHash = await bcrypt.hash(secret, getSaltRounds());
         
 		const expiresAt = new Date();
 		expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);

@@ -1,19 +1,21 @@
-import { server } from '../src/app';
+import { Server } from 'http';
+import main from '../src';
 import { describe, expect, it, beforeAll, afterAll } from '@jest/globals';
-import supertest from 'supertest';
-import { setUpHealthEndpoint } from '../src/services/health';
+import request from 'supertest';
 
-const requestWithSupertest = supertest(server);
+let server: Server;
+
+beforeAll(async () => {
+  server = await main;
+});
+
+afterAll(async () => {
+  server.close();
+});
+
 describe('Healthcheck endpoint', () => {
-  beforeAll(async () => {
-    setUpHealthEndpoint(server);
-  });
-  afterAll(async () => {
-    server.close();
-  });
-
   it('GET /healthcheck should return OK', async () => {
-    const res = await requestWithSupertest.get('/healthcheck');
+    const res = await request(server).get('/healthcheck');
     expect(res.status).toEqual(200);
   });
 });

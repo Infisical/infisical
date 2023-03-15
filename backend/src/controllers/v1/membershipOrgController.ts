@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
-import { SITE_URL, JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET } from '../../config';
 import { MembershipOrg, Organization, User } from '../../models';
 import { deleteMembershipOrg as deleteMemberFromOrg } from '../../helpers/membershipOrg';
 import { createToken } from '../../helpers/auth';
@@ -8,6 +7,7 @@ import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
 import { sendMail } from '../../helpers/nodemailer';
 import { TokenService } from '../../services';
 import { OWNER, ADMIN, MEMBER, ACCEPTED, INVITED, TOKEN_EMAIL_ORG_INVITATION } from '../../variables';
+import { getSiteURL, getJwtSignupLifetime, getJwtSignupSecret } from '../../config';
 
 /**
  * Delete organization membership with id [membershipOrgId] from organization
@@ -178,7 +178,7 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 					organizationName: organization.name,
 					email: inviteeEmail,
 					token,
-					callback_url: SITE_URL + '/signupinvite'
+					callback_url: getSiteURL() + '/signupinvite'
 				}
 			});
 		}
@@ -250,8 +250,8 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 			payload: {
 				userId: user._id.toString()
 			},
-			expiresIn: JWT_SIGNUP_LIFETIME,
-			secret: JWT_SIGNUP_SECRET
+			expiresIn: getJwtSignupLifetime(),
+			secret: getJwtSignupSecret()
 		});
 	} catch (err) {
 		Sentry.setUser(null);
