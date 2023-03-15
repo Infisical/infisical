@@ -1,0 +1,111 @@
+---
+title: "Node"
+---
+
+If you're working with Node.js, the official [infisical-node](https://github.com/Infisical/infisical-node) package is the easiest way to fetch secrets for your application.
+
+## Installation
+
+Run `npm` to add `infisical` to your project.
+
+```bash
+npm install infisical-node --save
+```
+
+## Initialization
+
+Set up `infisical` asynchronously as early as possible in your application by importing and initializing the global instance with `infisical.connect([options])`.
+
+This methods fetches back all the secrets in the project and environment accessible by the token passed in `options`.
+
+<Tabs>
+  <Tab title="ES6">
+    ```js
+    import infisical from "infisical-node";
+
+    const main = async () => {
+      await infisical.connect({
+        token: "your_infisical_token",
+      });
+
+      // your app logic
+    }
+
+    main();
+    ```
+
+  </Tab>
+  <Tab title="ES5">
+    ```js
+    const infisical = require("infisical-node");
+    
+    infisical.connect({
+        token: "your_infisical_token"
+    })
+    .then(() => {
+      // your application logic
+    })
+    .catch(err => {
+        console.error('Error: ', err);
+    })
+    ````
+  </Tab>
+
+</Tabs>
+
+`infisical.connect([options])`
+
+| Option    | Description                                                                                  | Default Value               |
+| --------- | -------------------------------------------------------------------------------------------- | --------------------------- |
+| `token`   | An [Infisical Token](/getting-started/dashboard/token) scoped to a project and environment   | `None`                      |
+| `siteURL` | Your self-hosted absolute site URL including the protocol (e.g. `https://app.infisical.com`) | `https://app.infisical.com` |
+| `debug`   | Whether or not debug mode is on                                                              | `false`                     |
+
+<Note>
+  If you need to connect to multiple Infisical projects, you can use
+  `infisical.createConnection([options])` to return a local instance of
+  `infisical`.
+</Note>
+
+## Usage
+
+To get the value of secret, pass the name of its key into `infisical.get()`.
+
+```js
+const value = infisical.get("SOME_KEY");
+```
+
+<Info>
+  `infisical` falls back to `process.env` if `token` is `undefined` during
+  initialization or if a value is not found in the secrets fetched.
+</Info>
+
+## Example with Express
+
+```js
+const express = require("express");
+const port = 3000;
+const infisical = require("infisical-node");
+
+const main = async () => {
+  await infisical.connect({
+    token: "st.xxx.xxx",
+  });
+
+  // your application logic
+
+  app.get("/", (req, res) => {
+    res.send(`Howdy, ${infisical.get("NAME")}!`);
+  });
+
+  app.listen(port, async () => {
+    console.log(`App listening on port ${port}`);
+  });
+};
+```
+
+<Warning>
+  We do not recommend hardcoding your [Infisical
+  Token](/getting-started/dashboard/token). Setting it as an environment
+  variable would be best.
+</Warning>
