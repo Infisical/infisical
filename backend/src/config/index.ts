@@ -1,6 +1,6 @@
 import infisical from 'infisical-node';
 export const getPort = () => infisical.get('PORT')! || 4000;
-export const getInviteOnlySignup = () => infisical.get('INVITE_ONLY_SIGNUP')! == undefined ? false : process.env.INVITE_ONLY_SIGNUP;
+export const getInviteOnlySignup = () => infisical.get('INVITE_ONLY_SIGNUP')! == undefined ? false : infisical.get('INVITE_ONLY_SIGNUP');
 export const getEncryptionKey = () => infisical.get('ENCRYPTION_KEY')!;
 export const getSaltRounds = () => parseInt(infisical.get('SALT_ROUNDS')!) || 10;
 export const getJwtAuthLifetime = () => infisical.get('JWT_AUTH_LIFETIME')! || '10d';
@@ -47,3 +47,4 @@ export const getStripePublishableKey = () => infisical.get('STRIPE_PUBLISHABLE_K
 export const getStripeSecretKey = () => infisical.get('STRIPE_SECRET_KEY')!;
 export const getStripeWebhookSecret = () => infisical.get('STRIPE_WEBHOOK_SECRET')!;
 export const getTelemetryEnabled = () => infisical.get('TELEMETRY_ENABLED')! !== 'false' && true;
+export const getLoopsApiKey = () => infisical.get('LOOPS_API_KEY')!;

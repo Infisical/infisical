@@ -8,7 +8,7 @@ import {
 import { issueAuthTokens } from '../../helpers/auth';
 import { INVITED, ACCEPTED } from '../../variables';
 import request from '../../config/request';
-import { getNodeEnv } from '../../config';
+import { getNodeEnv, getLoopsApiKey } from '../../config';
 
 /**
  * Complete setting up user by adding their personal and auth information as part of the
@@ -108,7 +108,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 		token = tokens.token;
 
 		// sending a welcome email to new users
-		if (process.env.LOOPS_API_KEY) {
+		if (getLoopsApiKey()) {
 			await request.post("https://app.loops.so/api/v1/events/send", {
 				"email": email,
 				"eventName": "Sign Up",
@@ -117,7 +117,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			}, {
 				headers: {
 					"Accept": "application/json",
-					"Authorization": "Bearer " + process.env.LOOPS_API_KEY
+					"Authorization": "Bearer " + getLoopsApiKey()
 				},
 			});
 		}

@@ -72,11 +72,8 @@ import {
 } from './config';
 
 const main = async () => {
-    // TODO 1: handle case of empty string token
-    // TODO 2: handle case of undefined token
-    const client = await infisical.connect({
-        token: process.env.INFISICAL_TOKEN!,
-        debug: true
+    await infisical.connect({
+        token: process.env.INFISICAL_TOKEN!
     });
     
     logTelemetryMessage();
