@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 dotenv.config();
 import infisical from 'infisical-node';
@@ -158,17 +159,22 @@ const main = async () => {
     //* Handle unrouted requests and respond with proper error message as well as status code
     app.use((req, res, next) => {
     if (res.headersSent) return next();
-    next(RouteNotFoundError({ message: `The requested source '(${req.method})${req.url}' was not found` }))
+        next(RouteNotFoundError({ message: `The requested source '(${req.method})${req.url}' was not found` }))
     })
 
     app.use(requestErrorHandler)
 
     const server = app.listen(getPort(), () => {
-        createTestUserForDevelopment();
         getLogger("backend-main").info(`Server started listening at port ${getPort()}`)
     });
 
+    createTestUserForDevelopment();
     setUpHealthEndpoint(server);
+    
+    server.on('close', async () => {
+        await DatabaseService.closeDatabase();
+    })
+
     return server;
 }
 
