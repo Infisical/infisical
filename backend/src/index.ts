@@ -169,6 +169,7 @@ const main = async () => {
     });
 
     setUpHealthEndpoint(server);
+    return server;
 }
 
-main();
+export default main();

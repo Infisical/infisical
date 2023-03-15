@@ -1,11 +1,16 @@
-import { server } from '../src/app';
+import { Server } from 'http';
+import main from '../src';
 import { describe, expect, it, beforeAll, afterAll } from '@jest/globals';
 import supertest from 'supertest';
 import { setUpHealthEndpoint } from '../src/services/health';
 
-const requestWithSupertest = supertest(server);
+let requestWithSupertest: supertest.SuperTest<supertest.Test>;
+let server: Server;
+
 describe('Healthcheck endpoint', () => {
   beforeAll(async () => {
+    server = await main;
+    requestWithSupertest = supertest(server);
     setUpHealthEndpoint(server);
   });
   afterAll(async () => {
