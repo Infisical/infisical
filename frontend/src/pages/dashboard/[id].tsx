@@ -428,7 +428,7 @@ export default function Dashboard() {
         if (emptyNameError) {
           setSaveLoading(false);
           return createNotification({
-            text: 'You can`t submit empty secret names.',
+            text: 'You can`t have empty secret names.',
             type: 'error'
           });
         }
