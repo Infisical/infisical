@@ -76,8 +76,8 @@
 │     -o jsonpath="{.data['mongodb-passwords']}" | base64 -d 
 │
 │   → Export your backend secrets (requires jq)
-│   $ kubectl get secrets/{{ include infisical.backend.fullname . }} -n {{ .Release.Namespace }} \
-│     -o json | jq '.data | map_values(@base64d)' > {{ include infisical.backend.fullname . }}.bak
+│   $ kubectl get secrets/<your-secret-name> -n {{ .Release.Namespace }} \
+│     -o json | jq '.data | map_values(@base64d)' > <dest-filename>.bak
 │
 ╰―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――┤
 
