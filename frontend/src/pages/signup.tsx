@@ -13,6 +13,7 @@ import TeamInviteStep from '@app/components/signup/TeamInviteStep';
 import UserInfoStep from '@app/components/signup/UserInfoStep';
 import SecurityClient from '@app/components/utilities/SecurityClient';
 import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
+import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
 
 import checkEmailVerificationCode from './api/auth/CheckEmailVerificationCode';
 import getWorkspaces from './api/workspace/getWorkspaces';
@@ -25,10 +26,12 @@ export default function SignUp() {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState('123456');
   const [codeError, setCodeError] = useState(false);
   const [step, setStep] = useState(1);
   const router = useRouter();
+  const {data: serverDetails } = useFetchServerStatus()
+
 
   const { t } = useTranslation();
 
@@ -67,6 +70,13 @@ export default function SignUp() {
       }
     }
   };
+
+  // when email service is not configured, skip step 2
+  useEffect(() => {
+    if (!serverDetails?.emailConfigured && step === 2){
+      incrementStep()
+    }
+  }, [step]);
 
   return (
     <div className="bg-bunker-800 h-screen flex flex-col items-center justify-center">

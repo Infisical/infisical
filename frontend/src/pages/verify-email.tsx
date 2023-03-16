@@ -6,12 +6,19 @@ import Link from 'next/link';
 import Button from '@app/components/basic/buttons/Button';
 import InputField from '@app/components/basic/InputField';
 import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
+import { EmailServiceSetupModal } from '@app/components/v2';
+import { usePopUp } from '@app/hooks';
+import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
 
 import SendEmailOnPasswordReset from './api/auth/SendEmailOnPasswordReset';
 
 export default function VerifyEmail() {
   const [email, setEmail] = useState('');
   const [step, setStep] = useState(1);
+  const {data: serverDetails } = useFetchServerStatus()
+  const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
+    'setUpEmail'
+  ] as const);
 
   /**
    * This function sends the verification email and forwards a user to the next step.
@@ -63,7 +70,13 @@ export default function VerifyEmail() {
           </div>
           <div className="flex flex-col items-center justify-center w-full md:p-2 max-h-20 max-w-md mt-4 mx-auto text-sm">
             <div className="text-l mt-6 m-8 px-8 py-3 text-lg">
-              <Button text="Continue" onButtonPressed={sendVerificationEmail} size="lg" />
+              <Button text="Continue" onButtonPressed={()=>{
+                if (serverDetails?.emailConfigured){
+                  sendVerificationEmail()
+                } else {
+                  handlePopUpOpen('setUpEmail');
+                }
+              }} size="lg" />
             </div>
           </div>
         </div>
@@ -80,6 +93,11 @@ export default function VerifyEmail() {
           </div>
         </div>
       )}
+
+      <EmailServiceSetupModal
+        isOpen={popUp.setUpEmail?.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle('setUpEmail', isOpen)}
+      />
     </div>
   );
 }

@@ -2,10 +2,13 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
+import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
+import { usePopUp } from '@app/hooks/usePopUp';
 import addUserToOrg from '@app/pages/api/organization/addUserToOrg';
 import getWorkspaces from '@app/pages/api/workspace/getWorkspaces';
 
 import Button from '../basic/buttons/Button';
+import { EmailServiceSetupModal } from '../v2';
 
 /**
  * This is the last step of the signup flow. People can optionally invite their teammates here.
@@ -14,6 +17,10 @@ export default function TeamInviteStep(): JSX.Element {
   const [emails, setEmails] = useState('');
   const { t } = useTranslation();
   const router = useRouter();
+  const {data: serverDetails } = useFetchServerStatus()
+  const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
+    'setUpEmail'
+  ] as const);
 
   // Redirect user to the getting started page
   const redirectToHome = async () => {
@@ -62,10 +69,20 @@ export default function TeamInviteStep(): JSX.Element {
         </div>
         <Button
           text={t('signup:step5-send-invites') ?? ''}
-          onButtonPressed={() => inviteUsers({ emails })}
+          onButtonPressed={() => {
+            if(serverDetails?.emailConfigured){
+              inviteUsers({ emails })
+            }else{
+              handlePopUpOpen('setUpEmail');
+            }
+          }}
           size="lg"
         />
       </div>
+      <EmailServiceSetupModal
+        isOpen={popUp.setUpEmail?.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle('setUpEmail', isOpen)}
+      />
     </div>
   );
 }
