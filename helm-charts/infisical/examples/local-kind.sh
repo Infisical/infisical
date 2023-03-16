@@ -56,16 +56,6 @@ cat <<EOF | helm upgrade --install --atomic \
   -n infisical-dev --create-namespace \
   -f - \
   infisical-dev .
-frontend:
-    enabled: true
-    image:
-      pullPolicy: Always
-backend:
-    enabled: true
-    image:
-      pullPolicy: Always
-mongodb:
-    enabled: true
 mailhog:
     enabled: true
 backendEnvironmentVariables:
