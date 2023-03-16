@@ -68,12 +68,16 @@
 │   $ helm uninstall {{ .Release.Namespace }} {{ .Release.Name }}
 │
 │   → Get MongoDB root password
-│   $ kubectl get secret {{ .Release.Namespace }} mongodb 
+│   $ kubectl get secret -n {{ .Release.Namespace }} mongodb
 │     -o jsonpath="{.data['mongodb-root-password']}" | base64 -d
 │
 │   → Get MongoDB users passwords
-│   $ kubectl get secret {{ .Release.Namespace }} mongodb 
+│   $ kubectl get secret -n {{ .Release.Namespace }} mongodb
 │     -o jsonpath="{.data['mongodb-passwords']}" | base64 -d 
+│
+│   → Export your backend secrets (requires jq)
+│   $ kubectl get secrets/{{ include infisical.backend.fullname . }} -n {{ .Release.Namespace }} \
+│     -o json | jq '.data | map_values(@base64d)' > {{ include infisical.backend.fullname . }}.bak
 │
 ╰―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――┤
 
