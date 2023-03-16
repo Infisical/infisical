@@ -192,14 +192,20 @@
       ]
     },
     {
+      "group": "Overview",
+      "pages": [
+        "sdks/overview"
+      ]
+    },
+    {
       "group": "SDKs",
       "pages": [
-        "sdks/overview/node",
-        "sdks/overview/python",
-        "sdks/overview/java",
-        "sdks/overview/ruby",
-        "sdks/overview/go",
-        "sdks/overview/rust"
+        "sdks/languages/node",
+        "sdks/languages/python",
+        "sdks/languages/java",
+        "sdks/languages/ruby",
+        "sdks/languages/go",
+        "sdks/languages/rust"
       ]
     },
     {
