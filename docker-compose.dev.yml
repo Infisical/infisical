@@ -81,9 +81,9 @@ services:
       - mongo
     env_file: .env
     environment:
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_USERNAME}
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_PASSWORD}
-      - ME_CONFIG_MONGODB_URL=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongo:27017/
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=root
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=example
+      - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongo:27017/
     ports:
       - 8081:8081
     networks:
