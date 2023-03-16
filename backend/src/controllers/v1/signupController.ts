@@ -7,7 +7,7 @@ import {
 } from '../../helpers/signup';
 import { createToken } from '../../helpers/auth';
 import { BadRequestError } from '../../utils/errors';
-import { getInviteOnlySignup, getJwtSignupLifetime, getJwtSignupSecret } from '../../config';
+import { getInviteOnlySignup, getJwtSignupLifetime, getJwtSignupSecret, getSmtpConfigured } from '../../config';
 
 /**
  * Signup step 1: Initialize account for user under email [email] and send a verification code
@@ -21,7 +21,7 @@ export const beginEmailSignup = async (req: Request, res: Response) => {
 	try {
 		email = req.body.email;
 
-		if (getInviteOnlySignup() || false) {
+		if (getInviteOnlySignup()) {
 			// Only one user can create an account without being invited. The rest need to be invited in order to make an account
 			const userCount = await User.countDocuments({})
 			if (userCount != 0) {
@@ -75,10 +75,12 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
 		}
 
 		// verify email
-		await checkEmailVerification({
-			email,
-			code
-		});
+		if (getSmtpConfigured()) {
+			await checkEmailVerification({
+				email,
+				code
+			});
+		}
 
 		if (!user) {
 			user = await new User({

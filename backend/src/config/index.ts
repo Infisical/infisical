@@ -34,12 +34,12 @@ export const getPostHogProjectApiKey = () => infisical.get('POSTHOG_PROJECT_API_
 export const getSentryDSN = () => infisical.get('SENTRY_DSN')!;
 export const getSiteURL = () => infisical.get('SITE_URL')!;
 export const getSmtpHost = () => infisical.get('SMTP_HOST')!;
-export const getSmtpSecure = () => infisical.get('SMTP_SECURE')! === 'true' || false; 
+export const getSmtpSecure = () => infisical.get('SMTP_SECURE')! === 'true' || false;
 export const getSmtpPort = () => parseInt(infisical.get('SMTP_PORT')!) || 587;
 export const getSmtpUsername = () => infisical.get('SMTP_USERNAME')!;
 export const getSmtpPassword = () => infisical.get('SMTP_PASSWORD')!;
 export const getSmtpFromAddress = () => infisical.get('SMTP_FROM_ADDRESS')!;
-export const getSmtpFromName = () => infisical.get('SMTP_FROM_NAME')! || 'Infisical'; 
+export const getSmtpFromName = () => infisical.get('SMTP_FROM_NAME')! || 'Infisical';
 export const getStripeProductStarter = () => infisical.get('STRIPE_PRODUCT_STARTER')!;
 export const getStripeProductPro = () => infisical.get('STRIPE_PRODUCT_PRO')!;
 export const getStripeProductTeam = () => infisical.get('STRIPE_PRODUCT_TEAM')!;
@@ -48,3 +48,4 @@ export const getStripeSecretKey = () => infisical.get('STRIPE_SECRET_KEY')!;
 export const getStripeWebhookSecret = () => infisical.get('STRIPE_WEBHOOK_SECRET')!;
 export const getTelemetryEnabled = () => infisical.get('TELEMETRY_ENABLED')! !== 'false' && true;
 export const getLoopsApiKey = () => infisical.get('LOOPS_API_KEY')!;
+export const getSmtpConfigured = () => infisical.get('SMTP_HOST') == '' || infisical.get('SMTP_HOST') == undefined ? false : true

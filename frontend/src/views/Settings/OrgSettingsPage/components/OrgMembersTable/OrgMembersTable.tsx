@@ -9,7 +9,7 @@ import * as yup from 'yup';
 import {
   Button,
   DeleteActionModal,
-  EmptyState,
+  EmailServiceSetupModal,  EmptyState,
   FormControl,
   IconButton,
   Input,
@@ -28,6 +28,7 @@ import {
   Tr,
   UpgradePlanModal} from '@app/components/v2';
 import { usePopUp } from '@app/hooks';
+import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
 import { OrgUser, Workspace } from '@app/hooks/api/types';
 
 type Props = {
@@ -64,10 +65,12 @@ export const OrgMembersTable = ({
 }: Props) => {
   const router = useRouter();
   const [searchMemberFilter, setSearchMemberFilter] = useState('');
+  const {data: serverDetails } = useFetchServerStatus()
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     'addMember',
     'removeMember',
-    'upgradePlan'
+    'upgradePlan',
+    'setUpEmail'
   ] as const);
 
   const {
@@ -79,8 +82,8 @@ export const OrgMembersTable = ({
 
   const onAddMember = async ({ email }: TAddMemberForm) => {
     await onInviteMember(email);
-    handlePopUpClose('addMember');
-    reset();
+      handlePopUpClose('addMember');
+      reset(); 
   };
 
   const onRemoveOrgMemberApproved = async () => {
@@ -121,10 +124,14 @@ export const OrgMembersTable = ({
           <Button
             leftIcon={<FontAwesomeIcon icon={faPlus} />}
             onClick={() => {
-              if (isMoreUserNotAllowed) {
-                handlePopUpOpen('upgradePlan');
+              if (serverDetails?.emailConfigured){
+                if (isMoreUserNotAllowed) {
+                  handlePopUpOpen('upgradePlan');
+                } else {
+                  handlePopUpOpen('addMember');
+                }
               } else {
-                handlePopUpOpen('addMember');
+                handlePopUpOpen('setUpEmail');
               }
             }}
           >
@@ -290,6 +297,10 @@ export const OrgMembersTable = ({
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle('upgradePlan', isOpen)}
         text="You can add custom environments if you switch to Infisical's Team plan."
+      />
+      <EmailServiceSetupModal
+        isOpen={popUp.setUpEmail?.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle('setUpEmail', isOpen)}
       />
     </div>
   );
