@@ -156,6 +156,9 @@ backendEnvironmentVariables:
   ## @param backendEnvironmentVariables.SITE_URL Absolute URL including the protocol (e.g. https://app.infisical.com)
   ##
   SITE_URL: infisical.local
+  ## @param backendEnvironmentVariables.INVITE_ONLY_SIGNUP To disable account creation from the login page
+  ##
+  INVITE_ONLY_SIGNUP: false
 
 ## @section MongoDB(&reg;) parameters
 ## Documentation : https://github.com/bitnami/charts/blob/main/bitnami/mongodb/values.yaml
