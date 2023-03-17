@@ -23,49 +23,49 @@ const swaggerFile = require('../spec.json');
 const requestIp = require('request-ip');
 import { apiLimiter } from './helpers/rateLimiter';
 import {
-  workspace as eeWorkspaceRouter,
-  secret as eeSecretRouter,
-  secretSnapshot as eeSecretSnapshotRouter,
-  action as eeActionRouter
+    workspace as eeWorkspaceRouter,
+    secret as eeSecretRouter,
+    secretSnapshot as eeSecretSnapshotRouter,
+    action as eeActionRouter
 } from './ee/routes/v1';
 import {
-  signup as v1SignupRouter,
-  auth as v1AuthRouter,
-  bot as v1BotRouter,
-  organization as v1OrganizationRouter,
-  workspace as v1WorkspaceRouter,
-  membershipOrg as v1MembershipOrgRouter,
-  membership as v1MembershipRouter,
-  key as v1KeyRouter,
-  inviteOrg as v1InviteOrgRouter,
-  user as v1UserRouter,
-  userAction as v1UserActionRouter,
-  secret as v1SecretRouter,
-  serviceToken as v1ServiceTokenRouter,
-  password as v1PasswordRouter,
-  stripe as v1StripeRouter,
-  integration as v1IntegrationRouter,
-  integrationAuth as v1IntegrationAuthRouter
+    signup as v1SignupRouter,
+    auth as v1AuthRouter,
+    bot as v1BotRouter,
+    organization as v1OrganizationRouter,
+    workspace as v1WorkspaceRouter,
+    membershipOrg as v1MembershipOrgRouter,
+    membership as v1MembershipRouter,
+    key as v1KeyRouter,
+    inviteOrg as v1InviteOrgRouter,
+    user as v1UserRouter,
+    userAction as v1UserActionRouter,
+    secret as v1SecretRouter,
+    serviceToken as v1ServiceTokenRouter,
+    password as v1PasswordRouter,
+    stripe as v1StripeRouter,
+    integration as v1IntegrationRouter,
+    integrationAuth as v1IntegrationAuthRouter
 } from './routes/v1';
 import {
-  signup as v2SignupRouter,
-  auth as v2AuthRouter,
-  users as v2UsersRouter,
-  organizations as v2OrganizationsRouter,
-  workspace as v2WorkspaceRouter,
-  secret as v2SecretRouter, // begin to phase out
-  secrets as v2SecretsRouter,
-  serviceTokenData as v2ServiceTokenDataRouter,
-  apiKeyData as v2APIKeyDataRouter,
-  environment as v2EnvironmentRouter,
-  tags as v2TagsRouter,
+    signup as v2SignupRouter,
+    auth as v2AuthRouter,
+    users as v2UsersRouter,
+    organizations as v2OrganizationsRouter,
+    workspace as v2WorkspaceRouter,
+    secret as v2SecretRouter, // begin to phase out
+    secrets as v2SecretsRouter,
+    serviceTokenData as v2ServiceTokenDataRouter,
+    apiKeyData as v2APIKeyDataRouter,
+    environment as v2EnvironmentRouter,
+    tags as v2TagsRouter,
 } from './routes/v2';
 import { healthCheck } from './routes/status';
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
 import { requestErrorHandler } from './middleware/requestErrorHandler';
 import {
-    getMongoURL, 
+    getMongoURL,
     getNodeEnv,
     getPort,
     getSentryDSN,
@@ -73,10 +73,12 @@ import {
 } from './config';
 
 const main = async () => {
-    await infisical.connect({
-        token: process.env.INFISICAL_TOKEN!
-    });
-    
+    if (process.env.INFISICAL_TOKEN != "" || process.env.INFISICAL_TOKEN != undefined) {
+        await infisical.connect({
+            token: process.env.INFISICAL_TOKEN!
+        });
+    }
+
     logTelemetryMessage();
     setTransporter(initSmtp());
 
@@ -158,7 +160,7 @@ const main = async () => {
 
     //* Handle unrouted requests and respond with proper error message as well as status code
     app.use((req, res, next) => {
-    if (res.headersSent) return next();
+        if (res.headersSent) return next();
         next(RouteNotFoundError({ message: `The requested source '(${req.method})${req.url}' was not found` }))
     })
 
@@ -170,7 +172,7 @@ const main = async () => {
 
     createTestUserForDevelopment();
     setUpHealthEndpoint(server);
-    
+
     server.on('close', async () => {
         await DatabaseService.closeDatabase();
     })
