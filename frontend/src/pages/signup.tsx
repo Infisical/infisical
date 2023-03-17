@@ -71,10 +71,16 @@ export default function SignUp() {
     }
   };
 
-  // when email service is not configured, skip step 2
+  // when email service is not configured, skip step 2 and 5
   useEffect(() => {
     if (!serverDetails?.emailConfigured && step === 2){
       incrementStep()
+    }
+
+    if (!serverDetails?.emailConfigured && step === 5){
+      getWorkspaces().then((userWorkspaces)=>{
+        router.push(`/dashboard/${userWorkspaces[0]._id}`);
+      });
     }
   }, [step]);
 
@@ -121,9 +127,7 @@ export default function SignUp() {
               password={password}
               name={`${firstName} ${lastName}`}
             />
-          ) : (
-            <TeamInviteStep />
-          )}
+          ) : (serverDetails?.emailConfigured ? <TeamInviteStep /> : "")}
         </form>
       </div>
     </div>
