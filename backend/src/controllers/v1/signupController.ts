@@ -66,7 +66,7 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
 		const { email, code } = req.body;
 
 		// initialize user account
-		user = await User.findOne({ email });
+		user = await User.findOne({ email }).select('+publicKey');
 		if (user && user?.publicKey) {
 			// case: user has already completed account
 			return res.status(403).send({
