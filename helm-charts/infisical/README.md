@@ -108,6 +108,7 @@ kubectl get secrets -n <namespace> <secret-name> \
 | `backendEnvironmentVariables.SMTP_USERNAME`      | **Required** Credential to connect to host (e.g. team@infisical.com)                                                                                                                                                          | `""`                |
 | `backendEnvironmentVariables.SMTP_PASSWORD`      | **Required** Credential to connect to host                                                                                                                                                                                    | `""`                |
 | `backendEnvironmentVariables.SITE_URL`           | Absolute URL including the protocol (e.g. https://app.infisical.com)                                                                                                                                                          | `infisical.local`   |
+| `backendEnvironmentVariables.INVITE_ONLY_SIGNUP` | To disable account creation from the login page                                                                                                                                                                               | `false`             |
 
 
 ### MongoDB(&reg;) parameters
