@@ -102,6 +102,8 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 	let invitee, inviteeMembershipOrg, completeInviteLink;
 	try {
 		const { organizationId, inviteeEmail } = req.body;
+		const host = req.headers.host;
+		const siteUrl = `${req.protocol}://${host}`;
 
 		// validate membership
 		const membershipOrg = await MembershipOrg.findOne({
@@ -183,7 +185,7 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 			});
 
 			if (!getSmtpConfigured()) {
-				completeInviteLink = `${getSiteURL() + '/signupinvite'}?token=${token}&to=${inviteeEmail}`
+				completeInviteLink = `${siteUrl + '/signupinvite'}?token=${token}&to=${inviteeEmail}`
 			}
 		}
 
