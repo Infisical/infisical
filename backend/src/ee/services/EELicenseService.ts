@@ -1,5 +1,3 @@
-import { LICENSE_KEY } from '../../config';
-
 /**
  * Class to handle Enterprise Edition license actions
  */
@@ -16,4 +14,4 @@ class EELicenseService {
     }
 }
 
-export default new EELicenseService(LICENSE_KEY);
+export default new EELicenseService('N/A');

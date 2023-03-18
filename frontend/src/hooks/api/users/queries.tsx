@@ -83,8 +83,14 @@ export const useAddUserToWs = () => {
 
 export const useAddUserToOrg = () => {
   const queryClient = useQueryClient();
+  type Response  = {
+    data: {
+      message: string, 
+      completeInviteLink: string | undefined
+    }
+  }
 
-  return useMutation<{}, {}, AddUserToOrgDTO>({
+  return useMutation<Response, {}, AddUserToOrgDTO>({
     mutationFn: (dto) => apiRequest.post(`/api/v1/invite-org/signup`, dto),
     onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));

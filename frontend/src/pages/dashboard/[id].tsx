@@ -419,8 +419,19 @@ export default function Dashboard() {
         const nameErrors = !newData!
           .map((secret) => !Number.isNaN(Number(secret.key.charAt(0))))
           .every((v) => v === false);
+        const emptyNameError = !newData!
+          .map((secret) => secret.key.length === 0)
+          .every((v) => v === false);
         const duplicatesExist =
           findDuplicates(data!.map((item: SecretDataProps) => item.key)).length > 0;
+
+        if (emptyNameError) {
+          setSaveLoading(false);
+          return createNotification({
+            text: 'You can`t have empty secret names.',
+            type: 'error'
+          });
+        }
 
         if (nameErrors) {
           setSaveLoading(false);

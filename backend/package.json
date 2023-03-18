@@ -23,6 +23,7 @@
     "express-validator": "^6.14.2",
     "handlebars": "^4.7.7",
     "helmet": "^5.1.1",
+    "infisical-node": "^1.0.37",
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.0",
     "jsrp": "^0.2.4",
@@ -99,17 +100,6 @@
     "supertest": "^6.3.3",
     "ts-jest": "^29.0.3",
     "ts-node": "^10.9.1"
-  },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "collectCoverageFrom": [
-      "src/*.{js,ts}",
-      "!**/node_modules/**"
-    ],
-    "setupFiles": [
-      "<rootDir>/test-resources/env-vars.js"
-    ]
   },
   "jest-junit": {
     "outputDirectory": "reports",

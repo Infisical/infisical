@@ -9,10 +9,8 @@ import {
     TOKEN_EMAIL_ORG_INVITATION,
     TOKEN_EMAIL_PASSWORD_RESET
 } from '../variables';
-import {
-    SALT_ROUNDS
-} from '../config';
 import { UnauthorizedRequestError } from '../utils/errors';
+import { getSaltRounds } from '../config';
 
 /**
  * Create and store a token in the database for purpose [type]
@@ -86,7 +84,7 @@ const createTokenHelper = async ({
         const query: TokenDataQuery = { type };
         const update: TokenDataUpdate = {
             type,
-            tokenHash: await bcrypt.hash(token, SALT_ROUNDS),
+            tokenHash: await bcrypt.hash(token, getSaltRounds()),
             expiresAt
         }
 

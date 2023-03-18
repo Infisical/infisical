@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
-import { SITE_URL, JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET } from '../../config';
 import { MembershipOrg, Organization, User } from '../../models';
 import { deleteMembershipOrg as deleteMemberFromOrg } from '../../helpers/membershipOrg';
 import { createToken } from '../../helpers/auth';
@@ -8,6 +7,7 @@ import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
 import { sendMail } from '../../helpers/nodemailer';
 import { TokenService } from '../../services';
 import { OWNER, ADMIN, MEMBER, ACCEPTED, INVITED, TOKEN_EMAIL_ORG_INVITATION } from '../../variables';
+import { getSiteURL, getJwtSignupLifetime, getJwtSignupSecret, getSmtpConfigured } from '../../config';
 
 /**
  * Delete organization membership with id [membershipOrgId] from organization
@@ -99,9 +99,11 @@ export const changeMembershipOrgRole = async (req: Request, res: Response) => {
  * @returns
  */
 export const inviteUserToOrganization = async (req: Request, res: Response) => {
-	let invitee, inviteeMembershipOrg;
+	let invitee, inviteeMembershipOrg, completeInviteLink;
 	try {
 		const { organizationId, inviteeEmail } = req.body;
+		const host = req.headers.host;
+		const siteUrl = `${req.protocol}://${host}`;
 
 		// validate membership
 		const membershipOrg = await MembershipOrg.findOne({
@@ -183,9 +185,13 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 					organizationName: organization.name,
 					email: inviteeEmail,
 					token,
-					callback_url: SITE_URL + '/signupinvite'
+					callback_url: getSiteURL() + '/signupinvite'
 				}
 			});
+
+			if (!getSmtpConfigured()) {
+				completeInviteLink = `${siteUrl + '/signupinvite'}?token=${token}&to=${inviteeEmail}`
+			}
 		}
 
 		await updateSubscriptionOrgQuantity({ organizationId });
@@ -198,7 +204,8 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 	}
 
 	return res.status(200).send({
-		message: `Sent an invite link to ${req.body.inviteeEmail}`
+		message: `Sent an invite link to ${req.body.inviteeEmail}`,
+		completeInviteLink
 	});
 };
 
@@ -223,7 +230,7 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 
 		if (!membershipOrg)
 			throw new Error('Failed to find any invitations for email');
-		
+
 		await TokenService.validateToken({
 			type: TOKEN_EMAIL_ORG_INVITATION,
 			email,
@@ -255,8 +262,8 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 			payload: {
 				userId: user._id.toString()
 			},
-			expiresIn: JWT_SIGNUP_LIFETIME,
-			secret: JWT_SIGNUP_SECRET
+			expiresIn: getJwtSignupLifetime(),
+			secret: getJwtSignupSecret()
 		});
 	} catch (err) {
 		Sentry.setUser(null);

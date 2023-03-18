@@ -1,13 +1,14 @@
 import DatabaseService from './DatabaseService';
-import postHogClient from './PostHogClient';
+import { logTelemetryMessage, getPostHogClient } from './PostHogClient';
 import BotService from './BotService';
 import EventService from './EventService';
 import IntegrationService from './IntegrationService';
 import TokenService from './TokenService';
 
 export {
+    logTelemetryMessage,
+    getPostHogClient,
     DatabaseService,
-    postHogClient,
     BotService,
     EventService,
     IntegrationService,
