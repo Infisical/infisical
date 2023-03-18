@@ -101,17 +101,6 @@
     "ts-jest": "^29.0.3",
     "ts-node": "^10.9.1"
   },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "collectCoverageFrom": [
-      "src/*.{js,ts}",
-      "!**/node_modules/**"
-    ],
-    "setupFiles": [
-      "<rootDir>/test-resources/env-vars.js"
-    ]
-  },
   "jest-junit": {
     "outputDirectory": "reports",
     "outputName": "jest-junit.xml",
