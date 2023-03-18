@@ -56,6 +56,7 @@ import {
   secret as v2SecretRouter, // begin to phase out
   secrets as v2SecretsRouter,
   serviceTokenData as v2ServiceTokenDataRouter,
+  serviceAccounts as v2ServiceAccountsRouter,
   apiKeyData as v2APIKeyDataRouter,
   environment as v2EnvironmentRouter,
   tags as v2TagsRouter,
@@ -148,6 +149,7 @@ const main = async () => {
     app.use('/api/v2/secret', v2SecretRouter); // deprecated
     app.use('/api/v2/secrets', v2SecretsRouter);
     app.use('/api/v2/service-token', v2ServiceTokenDataRouter); // TODO: turn into plural route
+    app.use('/api/v2/service-accounts', v2ServiceAccountsRouter); // new
     app.use('/api/v2/api-key', v2APIKeyDataRouter);
 
     // api docs 

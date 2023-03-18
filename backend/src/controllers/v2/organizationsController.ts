@@ -1,9 +1,11 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
 import { 
     MembershipOrg,
     Membership,
-    Workspace
+    Workspace,
+    ServiceAccount
 } from '../../models';
 import { deleteMembershipOrg } from '../../helpers/membershipOrg';
 import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
@@ -260,37 +262,44 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
         }
     }   
     */
-    let workspaces;
-    try {
-        const { organizationId } = req.params;
+    const { organizationId } = req.params;
 
-		const workspacesSet = new Set(
-			(
-				await Workspace.find(
-					{
-						organization: organizationId
-					},
-					'_id'
-				)
-			).map((w) => w._id.toString())
-		);
+    const workspacesSet = new Set(
+        (
+            await Workspace.find(
+                {
+                    organization: organizationId
+                },
+                '_id'
+            )
+        ).map((w) => w._id.toString())
+    );
 
-		workspaces = (
-			await Membership.find({
-				user: req.user._id
-			}).populate('workspace')
-		)
-			.filter((m) => workspacesSet.has(m.workspace._id.toString()))
-			.map((m) => m.workspace);
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get organization workspaces'
-		});	
-    }
+    const workspaces = (
+        await Membership.find({
+            user: req.user._id
+        }).populate('workspace')
+    )
+    .filter((m) => workspacesSet.has(m.workspace._id.toString()))
+    .map((m) => m.workspace);
+
+return res.status(200).send({
+        workspaces
+    });
+}
+
+/**
+ * Return service accounts for organization with id [organizationId]
+ * @param req 
+ * @param res 
+ */
+export const getOrganizationServiceAccounts = async (req: Request, res: Response) => {
+    const { organizationId } = req.params;
+    const serviceAccounts = await ServiceAccount.find({
+        organization: new Types.ObjectId(organizationId)
+    });
     
     return res.status(200).send({
-        workspaces
+        serviceAccounts
     });
 }

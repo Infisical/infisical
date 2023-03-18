@@ -6,7 +6,7 @@ import {
     requireMembershipOrgAuth,
     validateRequest
 } from '../../middleware';
-import { body, param, query } from 'express-validator';
+import { body, param } from 'express-validator';
 import { OWNER, ADMIN, MEMBER, ACCEPTED } from '../../variables';
 import { organizationsController } from '../../controllers/v2';
 
@@ -75,6 +75,20 @@ router.get(
         acceptedStatuses: [ACCEPTED]
     }),
     organizationsController.getOrganizationWorkspaces
+);
+
+router.get(
+    '/:organizationId/service-accounts',
+    param('organizationId').exists().trim(),
+    validateRequest,
+    requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
+    requireOrganizationAuth({
+        acceptedRoles: [OWNER, ADMIN],
+        acceptedStatuses: [ACCEPTED]
+    }),
+    organizationsController.getOrganizationServiceAccounts
 );
 
 export default router;

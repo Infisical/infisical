@@ -19,6 +19,7 @@ declare global {
 			secrets: any;
 			secretSnapshot: any;
 			serviceToken: any;
+			serviceAccount: any;
 			accessToken: any;
 			serviceTokenData: any;
 			apiKeyData: any;

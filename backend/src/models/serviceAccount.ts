@@ -3,9 +3,8 @@ import { Schema, model, Types, Document } from 'mongoose';
 export interface IServiceAccount extends Document {
     _id: Types.ObjectId;
     name: string;
-    isActive: boolean;
     organization: Types.ObjectId;
-    createdBy: Types.ObjectId;
+    user: Types.ObjectId;
     publicKey: string;
     expiresAt: Date;
 }
@@ -16,16 +15,12 @@ const serviceAccountSchema = new Schema<IServiceAccount>(
             type: String,
             required: true
         },
-        isActive: {
-            type: Boolean,
-            required: true
-        },
         organization: {
             type: Schema.Types.ObjectId,
             ref: 'Organization',
             required: true
         },
-        createdBy: {
+        user: { // user who created the service account
             type: Schema.Types.ObjectId,
             ref: 'User',
             required: true

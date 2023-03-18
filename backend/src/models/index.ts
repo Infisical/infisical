@@ -10,6 +10,9 @@ import MembershipOrg, { IMembershipOrg } from './membershipOrg';
 import Organization, { IOrganization } from './organization';
 import Secret, { ISecret } from './secret';
 import ServiceToken, { IServiceToken } from './serviceToken';
+import ServiceAccount, { IServiceAccount } from './serviceAccount'; // new
+import ServiceAccountKey, { IServiceAccountKey } from './serviceAccountKey'; // new 
+import ServiceAccountPermission, { IServiceAccountPermission } from './serviceAccountPermission';
 import TokenData, { ITokenData } from './tokenData';
 import User, { IUser } from './user';
 import UserAction, { IUserAction } from './userAction';
@@ -43,6 +46,12 @@ export {
 	ISecret,
 	ServiceToken,
 	IServiceToken,
+	ServiceAccount,
+	IServiceAccount,
+	ServiceAccountKey,
+	IServiceAccountKey,
+	ServiceAccountPermission,
+	IServiceAccountPermission,
 	TokenData,
 	ITokenData,
 	User,

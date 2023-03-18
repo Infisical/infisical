@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { IOrganization, MembershipOrg } from '../models';
 import { UnauthorizedRequestError, ValidationError } from '../utils/errors';
 
+type req = 'params' | 'body' | 'query';
+
 /**
  * Validate if user on request is a member with proper roles for organization
  * on request params.
@@ -11,18 +13,22 @@ import { UnauthorizedRequestError, ValidationError } from '../utils/errors';
  */
 const requireOrganizationAuth = ({
 	acceptedRoles,
-	acceptedStatuses
+	acceptedStatuses,
+	location = 'params'
 }: {
 	acceptedRoles: string[];
 	acceptedStatuses: string[];
+	location?: req;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
 		// organization authorization middleware
+		
+		const { organizationId } = req[location];
 
 		// validate organization membership
 		const membershipOrg = await MembershipOrg.findOne({
 			user: req.user._id,
-			organization: req.params.organizationId
+			organization: organizationId
 		}).populate<{ organization: IOrganization }>('organization');
 
 

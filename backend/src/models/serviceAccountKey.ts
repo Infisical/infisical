@@ -9,7 +9,7 @@ export interface IServiceAccountKey {
     workspace: Types.ObjectId;
 }
 
-const serviceAccountSchema = new Schema<IServiceAccountKey>(
+const serviceAccountKeySchema = new Schema<IServiceAccountKey>(
     {
         encryptedKey: {
             type: String,
@@ -39,6 +39,6 @@ const serviceAccountSchema = new Schema<IServiceAccountKey>(
     }
 );
 
-const ServiceAccountKey = model<IServiceAccountKey>('ServiceAccountKey', serviceAccountSchema);
+const ServiceAccountKey = model<IServiceAccountKey>('ServiceAccountKey', serviceAccountKeySchema);
 
 export default ServiceAccountKey;
