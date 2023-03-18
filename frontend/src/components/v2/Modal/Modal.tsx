@@ -12,20 +12,24 @@ export type ModalContentProps = DialogPrimitive.DialogContentProps & {
   subTitle?: ReactNode;
   footerContent?: ReactNode;
   onClose?: () => void;
+  overlayClassName?: string;
 };
 
 export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
-  ({ children, title, subTitle, className, footerContent, onClose, ...props }, forwardedRef) => (
+  (
+    { children, title, subTitle, className, overlayClassName, footerContent, onClose, ...props },
+    forwardedRef
+  ) => (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
-        className="fixed inset-0 h-full w-full animate-fadeIn z-[70]"
+        className={twMerge('fixed inset-0 z-[70] h-full w-full animate-fadeIn', overlayClassName)}
         style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
       />
       <DialogPrimitive.Content {...props} ref={forwardedRef}>
         <Card
           isRounded
           className={twMerge(
-            'fixed top-1/2 left-1/2 max-w-lg border border-mineshaft-600 -translate-y-2/4 -translate-x-2/4 animate-popIn drop-shadow-2xl z-[90]',
+            'fixed top-1/2 left-1/2 z-[90] max-w-lg -translate-y-2/4 -translate-x-2/4 animate-popIn border border-mineshaft-600 drop-shadow-2xl',
             className
           )}
         >

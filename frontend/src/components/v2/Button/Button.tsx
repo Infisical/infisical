@@ -36,7 +36,7 @@ const buttonVariants = cva(
         star: 'text-bunker-200 bg-mineshaft-500'
       },
       isDisabled: {
-        true: 'bg-mineshaft opacity-40 cursor-not-allowed',
+        true: 'bg-mineshaft text-white opacity-50 cursor-not-allowed',
         false: ''
       },
       isFullWidth: {
@@ -155,26 +155,26 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             className="absolute rounded-xl"
           />
         )}
-        <span
+        <div
           className={twMerge(
-            'shrink-0 cursor-pointer transition-all',
+            'inline-flex shrink-0 cursor-pointer items-center justify-center transition-all',
             loadingToggleClass,
             leftIcon && 'ml-2',
-            size === 'xs' ? 'mr-1' : 'mr-3'
+            size === 'xs' ? 'mr-1' : 'mr-2'
           )}
         >
           {leftIcon}
-        </span>
-        <span className={twMerge('transition-all', loadingToggleClass)}>{children}</span>
-        <span
+        </div>
+        <span className={twMerge('w-full transition-all', loadingToggleClass)}>{children}</span>
+        <div
           className={twMerge(
-            'shrink-0 cursor-pointer transition-all',
+            'inline-flex shrink-0 cursor-pointer items-center justify-center transition-all',
             loadingToggleClass,
-            size === 'xs' ? 'ml-1' : 'ml-3'
+            size === 'xs' ? 'ml-1' : 'ml-2'
           )}
         >
           {rightIcon}
-        </span>
+        </div>
       </button>
     );
   }

@@ -29,7 +29,8 @@ const iconButtonVariants = cva(
       variant: {
         solid: '',
         outline: ['bg-transparent', 'border-2', 'border-solid'],
-        plain: ''
+        plain: '',
+        star: 'text-bunker-200 bg-mineshaft-500'
       },
       isDisabled: {
         true: 'bg-opacity-70 cursor-not-allowed',
@@ -40,13 +41,23 @@ const iconButtonVariants = cva(
         false: ''
       },
       size: {
-        xs: ['text-xs', 'py-2', 'px-2'],
+        xs: ['text-xs', 'py-1.5', 'px-2'],
         sm: ['text-sm', 'py-3', 'px-3'],
         md: ['text-md', 'py-4', 'px-4'],
         lg: ['text-lg', 'py-6', 'px-6']
       }
     },
     compoundVariants: [
+      {
+        colorSchema: 'primary',
+        variant: 'star',
+        className: 'hover:bg-primary hover:text-black'
+      },
+      {
+        colorSchema: 'danger',
+        variant: 'star',
+        className: 'hover:bg-red hover:text-white'
+      },
       {
         colorSchema: 'primary',
         variant: 'outline',
