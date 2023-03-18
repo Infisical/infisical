@@ -38,74 +38,86 @@ export const createServiceAccount = async (req: Request, res: Response) => {
         expiresAt
     }).save();
 
-    // await Promise.all(
-    //     workspaces.map(async ({ 
-    //         workspaceId, 
-    //         environments, 
-    //         permissions,
-    //         encryptedKey,
-    //         nonce
-    //     }: {
-    //         workspaceId: string;
-    //         environments: string[];
-    //         permissions: string[];
-    //         encryptedKey: string;
-    //         nonce: string;
-    //     }) => {
-    //         const serviceAccountKey = await new ServiceAccountKey({
-    //             encryptedKey,
-    //             nonce,
-    //             sender: req.user._id,
-    //             serviceAccount: serviceAccount._id,
-    //             workspace: new Types.ObjectId(workspaceId)
-    //         });
-            
-    //         console.log('serviceAccountKey: ', serviceAccountKey);
-            
-    //         await Promise.all(
-    //             permissions.map(async (name: string) => {
-    //                 const permission = await new ServiceAccountPermission({
-    //                     serviceAccount: serviceAccount._id,
-    //                     name,
-    //                     workspace: new Types.ObjectId(workspaceId),
-    //                     environments
-    //                 }).save();
-
-    //                 console.log('permission: ', permission);
-    //             })
-    //         );
-    //     })
-    // );
-    
     return res.status(200).send({
         serviceAccount
     });
 }
 
-// /**
-//  * Add a service account key to service account with id [serviceAccountId]
-//  * for workspace with id [workspaceId]
-//  * @param req 
-//  * @param res 
-//  * @returns 
-//  */
-// export const addServiceAccountKey = async (req: Request, res: Response) => {
-//     const {
-//         workspaceId,
-//         encryptedKey,
-//         nonce
-//     } = req.body;
+/**
+ * Add a service account key to service account with id [serviceAccountId]
+ * for workspace with id [workspaceId]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const addServiceAccountKey = async (req: Request, res: Response) => {
+    const {
+        workspaceId,
+        encryptedKey,
+        nonce
+    } = req.body;
     
-//     const serviceAccountKey = await new ServiceAccountKey({
-//         encryptedKey,
-//         nonce,
-//         sender: req.user._id,
-//         serviceAccount: req.serviceAccount._d,
-//         workspace: new Types.ObjectId(workspaceId)
-//     }).save();
+    const serviceAccountKey = await new ServiceAccountKey({
+        encryptedKey,
+        nonce,
+        sender: req.user._id,
+        serviceAccount: req.serviceAccount._d,
+        workspace: new Types.ObjectId(workspaceId)
+    }).save();
 
-//     return serviceAccountKey;
-// }
+    return serviceAccountKey;
+}
+
+/**
+ * Add a permission to service account with id [serviceAccountId]
+ * @param req 
+ * @param res 
+ */
+export const addServiceAccountPermission = async (req: Request, res: Response) => {
+    const {
+        name,
+        workspaceId,
+        environment
+    } = req.body; // TODO: add DTO
+    
+    // TODO: validation?
+    
+    const serviceAccountPermission = await new ServiceAccountPermission({
+        serviceAccount: req.serviceAccount._id,
+        name,
+        workspace: new Types.ObjectId(workspaceId),
+        environment
+    });
+    
+    return res.status(200).send({
+        serviceAccountPermission
+    });
+}
+
+/**
+ * Delete a permission from service account with id [serviceAccountId]
+ * @param req 
+ * @param res 
+ */
+export const deleteServiceAccountPermission = async (req: Request, res: Response) => {
+    const {
+        name,
+        workspaceId,
+        environment
+    } = req.body; // TODO: DTO
+    
+    // TODO: how to delete just 1 permission?
+    const serviceAccountPermission = await ServiceAccountPermission.findOneAndDelete({
+        serviceAccount: req.serviceAccount._id,
+        name,
+        workspace: new Types.ObjectId(workspaceId),
+        environment
+    });
+    
+    return res.status(200).send({
+        serviceAccountPermission
+    });
+}
 
 /**
  * Delete service account with id [serviceAccountId]
@@ -121,35 +133,14 @@ export const deleteServiceAccount = async (req: Request, res: Response) => {
     await ServiceAccountKey.deleteMany({
         serviceAccount: new Types.ObjectId(serviceAccountId)
     });
+
+    await ServiceAccountPermission.deleteMany({
+        serviceAccount: new Types.ObjectId(serviceAccountId)
+    });
     
     return res.status(200).send({
         serviceAccount
     });
-}
-
-export const addServiceAccountWorkspaceAccess = async (req: Request, res: Response) => {
-    const { serviceAccountId, workspaceId } = req.params;
-    const {
-        encryptedKey,
-        nonce,
-        permissions // should contain environments
-    } = req.body;
-
-    const serviceAccountKey = await new ServiceAccountKey({
-        encryptedKey,
-        nonce,
-        sender: req.user._id,
-        serviceAccount: req.serviceAccount._id,
-        workspace: new Types.ObjectId('workspaceId')
-    });
-    
-    const serviceAccountPermissions = await Promise.all(
-        permissions.map
-    );
-}
-
-export const deleteServiceAccountWorkspaceAccess = async (req: Request, res: Response) => {
-    // TODO
 }
 
 // /**
