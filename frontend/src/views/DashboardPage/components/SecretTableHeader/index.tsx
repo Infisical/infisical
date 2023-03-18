@@ -1,0 +1,1 @@
+export { SecretTableHeader } from './SecretTableHeader';

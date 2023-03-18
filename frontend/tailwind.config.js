@@ -1471,6 +1471,22 @@ module.exports = {
             opacity: 1
             // transform: "translateY(100%)",
           }
+        },
+        drawerRightIn: {
+          '0%': {
+            transform: 'translateX(100%)'
+          },
+          '100%': {
+            transform: 'translateX(0)'
+          }
+        },
+        drawerRightOut: {
+          '0%': {
+            transform: 'translateX(0)'
+          },
+          '100%': {
+            transform: 'translateX(100%)'
+          }
         }
       },
       animation: {
@@ -1478,6 +1494,9 @@ module.exports = {
         // MODAL
         fadeIn: 'fadeIn 100ms cubic-bezier(0.16, 1, 0.3, 1)',
         popIn: 'popIn 150ms cubic-bezier(0.16, 1, 0.3, 1);',
+        // drawer
+        drawerRightIn: 'drawerRightIn 150ms ease-in-out',
+        drawerRightOut: 'drawerRightOut 150ms ease-in-out',
         // Dropdown
         slideDownAndFade: 'slideDownAndFade 400ms cubic-bezier(0.16, 1, 0.3, 1)',
         slideLeftAndFade: 'slideLeftAndFade 400ms cubic-bezier(0.16, 1, 0.3, 1)',
