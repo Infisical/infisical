@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { ServiceAccount } from '../models';
 import {
-    AccountNotFoundError,
-    UnauthorizedRequestError
+    ServiceAccountNotFoundError
 } from '../utils/errors';
+import {
+    validateMembershipOrg
+} from '../helpers/membershipOrg';
 
 type req = 'params' | 'body' | 'query';
 
@@ -20,14 +22,19 @@ const requireServiceAccountAuth = ({
         const serviceAccountId = req[location].serviceAccountId;
         const serviceAccount = await ServiceAccount.findById(serviceAccountId); 
         
-        // TODO: acceptedRoles and acceptedStatuses
-        
         if (!serviceAccount) {
-            return next(AccountNotFoundError({ message: 'Failed to locate Service Account' }));
+            return next(ServiceAccountNotFoundError({ message: 'Failed to locate Service Account' }));
         }
         
         if (serviceAccount.user.toString() !== req.user.id.toString()) {
-            return next(UnauthorizedRequestError({ message: 'Failed to authenticate the Service Account' }));
+            // case: creator of the service account is different from
+            // the user on the request -> apply middleware role/status validation
+            await validateMembershipOrg({
+                userId: req.user._id,
+                organizationId: serviceAccount.organization,
+                acceptedRoles,
+                acceptedStatuses
+            });
         }
         
         req.serviceAccount = serviceAccount;

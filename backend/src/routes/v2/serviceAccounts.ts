@@ -2,14 +2,17 @@ import express from 'express';
 const router = express.Router();
 import {
     requireOrganizationAuth,
-    requireServiceAccountAuth
+    requireWorkspaceAuth,
+    requireServiceAccountAuth,
+    validateRequest
 } from '../../middleware';
 import { body } from 'express-validator';
 import {
     OWNER,
     ADMIN,
     MEMBER,
-    ACCEPTED
+    ACCEPTED,
+    PERMISSION_SA_SET
 } from '../../variables';
 import { serviceAccountsController } from '../../controllers/v2';
 
@@ -27,6 +30,19 @@ router.post(
     serviceAccountsController.createServiceAccount
 );
 
+router.post(
+    '/serviceAccountId/:serviceAccountId/permissions',
+    body('name').exists().isString().trim().custom((value) => PERMISSION_SA_SET.has(value)),
+    body('workspaceId').optional().isMongoId(),
+    body('environment').optional(),
+    validateRequest,
+    requireServiceAccountAuth({
+        acceptedRoles: [OWNER, ADMIN],
+        acceptedStatuses: [ACCEPTED]
+    }),
+    serviceAccountsController.addServiceAccountPermission
+);
+
 // router.post(
 //     '/:serviceAccountId/key',
 //     body('workspaceId').exists().isString().trim(),
@@ -42,12 +58,25 @@ router.post(
 router.delete(
     '/:serviceAccountId/key/:serviceAccountKeyId',
     requireServiceAccountAuth({
-        acceptedRoles: [OWNER, ADMIN, MEMBER],
+        acceptedRoles: [OWNER, ADMIN],
         acceptedStatuses: [ACCEPTED]
     }),
     async (req, res) => {
         // TODO: delete service account key id
     }
 );
+
+// TODO: create service account permission
+// router.post(
+    
+// );
+
+// TODO: delete service account permission
+
+router.delete(
+    '/:serviceAccountId/service-account-permission/:serviceAccountPermissionId',
+
+)
+
 
 export default router;

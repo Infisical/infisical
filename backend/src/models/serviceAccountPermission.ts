@@ -22,9 +22,11 @@ const serviceAccountPermissionSchema = new Schema<IServiceAccountPermission>(
         workspace: {
             type: Schema.Types.ObjectId,
             ref: 'Workspace',
+            default: null
         },
         environment: {
-            type: 'String'
+            type: 'String',
+            default: null
         }
     },
     {

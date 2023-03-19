@@ -1,40 +1,48 @@
 import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
 import { MembershipOrg, Workspace, Membership, Key } from '../models';
+import {
+	MembershipOrgNotFoundError,
+	BadRequestError
+} from '../utils/errors';
 
 /**
  * Validate that user with id [userId] is a member of organization with id [organizationId]
  * and has at least one of the roles in [acceptedRoles]
- *
+ * @param {Object} obj
+ * @param {Types.ObjectId} obj.userId
+ * @param {Types.ObjectId} obj.organizationId
+ * @param {String[]} obj.acceptedRoles
  */
-const validateMembership = async ({
+const validateMembershipOrg = async ({
 	userId,
 	organizationId,
-	acceptedRoles
+	acceptedRoles,
+	acceptedStatuses
 }: {
-	userId: string;
-	organizationId: string;
+	userId: Types.ObjectId;
+	organizationId: Types.ObjectId;
 	acceptedRoles: string[];
+	acceptedStatuses: string[];
 }) => {
-	let membership;
-	try {
-		membership = await MembershipOrg.findOne({
-			user: new Types.ObjectId(userId),
-			organization: new Types.ObjectId(organizationId)
-		});
-		
-		if (!membership) throw new Error('Failed to find organization membership');
-		
-		if (!acceptedRoles.includes(membership.role)) {
-			throw new Error('Failed to validate organization membership role');
-		}
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to validate organization membership');
+	const membershipOrg = await MembershipOrg.findOne({
+		user: userId,
+		organization: organizationId
+	});
+	
+	if (!membershipOrg) {
+		throw MembershipOrgNotFoundError({ message: 'Failed to find organization membership' });
 	}
 	
-	return membership;
+	if (!acceptedRoles.includes(membershipOrg.role)) {
+		throw BadRequestError({ message: 'Failed to validate organization membership role' });
+	}
+
+	if (!acceptedStatuses.includes(membershipOrg.status)) {
+		throw BadRequestError({ message: 'Failed to validate organization membership status' });
+	}
+	
+	return membershipOrg;
 }
 
 /**
@@ -156,7 +164,7 @@ const deleteMembershipOrg = async ({
 };
 
 export {
-	validateMembership,
+	validateMembershipOrg,
 	findMembershipOrg,
 	addMembershipsOrg, 
 	deleteMembershipOrg 

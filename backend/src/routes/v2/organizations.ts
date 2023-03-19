@@ -40,7 +40,8 @@ router.patch(
         acceptedStatuses: [ACCEPTED]
     }),
     requireMembershipOrgAuth({
-        acceptedRoles: [OWNER, ADMIN]
+        acceptedRoles: [OWNER, ADMIN],
+        acceptedStatuses: [ACCEPTED]
     }),
     organizationsController.updateOrganizationMembership
 );
@@ -58,7 +59,8 @@ router.delete(
         acceptedStatuses: [ACCEPTED]
     }),
     requireMembershipOrgAuth({
-        acceptedRoles: [OWNER, ADMIN]
+        acceptedRoles: [OWNER, ADMIN],
+        acceptedStatuses: [ACCEPTED]
     }),
     organizationsController.deleteOrganizationMembership
 );

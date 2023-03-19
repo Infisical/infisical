@@ -93,12 +93,32 @@ export const WorkspaceNotFoundError = (error?: Partial<RequestErrorContext>) => 
     stack: error?.stack
 });
 
+//* ----->[WORKSPACE MEMBERSHIP ERRORS]<-----
+export const MembershipNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? 'workspace_membership_not_found_error',
+    message: error?.message ?? 'The requested membership was not found',
+    context: error?.context,
+    stack: error?.stack
+});
+
 //* ----->[ORGANIZATION ERRORS]<-----
 export const OrganizationNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.ERROR,
     statusCode: error?.statusCode ?? 404,
     type: error?.type ?? 'organization_not_found_error',
     message: error?.message ?? 'The requested organization was not found',
+    context: error?.context,
+    stack: error?.stack
+});
+
+//* ----->[MEMBERSHIP ORGANIZATION ERRORS]<-----
+export const MembershipOrgNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? 'organization_membership_not_found_error',
+    message: error?.message ?? 'The requested organization membership was not found',
     context: error?.context,
     stack: error?.stack
 });
@@ -157,8 +177,27 @@ export const ServiceTokenDataNotFoundError = (error?: Partial<RequestErrorContex
 export const APIKeyDataNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.ERROR,
     statusCode: error?.statusCode ?? 404,
-    type: error?.type ?? 'service_token_data_not_found_error',
+    type: error?.type ?? 'api_key_data_not_found_error',
     message: error?.message ?? 'The requested service token data was not found',
+    context: error?.context,
+    stack: error?.stack
+});
+
+//* ----->[SERVICE_ACCOUNT ERRORS]<-----
+export const ServiceAccountNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? 'service_account_not_found_error',
+    message: error?.message ?? 'The requested service account was not found',
+    context: error?.context,
+    stack: error?.stack
+});
+
+export const ServiceAccountKeyNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? 'service_account_key_not_found_error',
+    message: error?.message ?? 'The requested service account key was not found',
     context: error?.context,
     stack: error?.stack
 })
