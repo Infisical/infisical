@@ -220,7 +220,7 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
 				inviterFirstName: req.user.firstName,
 				inviterEmail: req.user.email,
 				workspaceName: req.membership.workspace.name,
-				callback_url: getSiteURL() + '/login'
+				callback_url: `${getSiteURL()}/dashboard/${workspaceId}`
 			}
 		});
 	} catch (err) {
