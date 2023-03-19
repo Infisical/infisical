@@ -13,7 +13,7 @@
 <body>
     <style>
         body {
-            background: #0e1014 url(https://infisical.com/images/squares.svg) no-repeat center;
+            background: #0e1014 url(https://infisical.com/images/squares.svg) no-repeat center 3.5rem;
             color: #fcfdf7;
             font-family: Ubuntu, Arial, Helvetica, sans-serif;
             text-align: center;
@@ -33,10 +33,9 @@
             font-weight: bold;
             line-height: 3rem;
         }
-        footer {
+        .footer {
             font-size: .75rem;
-            margin: 0;
-            padding: 0;
+            margin-bottom: 5rem;
         }
         h3 {
             font-weight: normal;
@@ -187,7 +186,6 @@
             </tr>
         </table>
 
-        <!-- todo: maybe create/use an address like security@infisical.com -->
         <p
             style="
                 margin-top: 1.5rem;
@@ -195,7 +193,7 @@
                 font-size: .7rem;"
         >
             If it wasn't you or if you believe that this login is suspicious,</br>
-            please contact us at <a href="mailto:security@infisical.com" title="Contact us">security@infisical.com</a> or reset your password immediately!
+            please contact us at <a href="mailto:team@infisical.com" title="Contact us">team@infisical.com</a> or/and reset your password immediately!
         </p>
             
     </section>
@@ -208,25 +206,25 @@
         margin-bottom:0"    
     >
         <!-- https://github.com/simple-icons/simple-icons#cdn-usage -->
-        <a style="border: 0;" target="_blank" href="https://github.com/Infisical">
+        <a class="social-link" style="border: 0;" target="_blank" href="https://github.com/Infisical">
             <img class="social" alt="Github" title="Github" src="https://cdn.simpleicons.org/github/fcfdf7" />
         </a>
-        <a style="border: 0;" target="_blank" href="https://www.twitter.com/infisical/">
+        <a class="social-link" style="border: 0;" target="_blank" href="https://www.twitter.com/infisical/">
             <img class="social" alt="Twitter" title="Twitter" src="https://cdn.simpleicons.org/twitter/fcfdf7" />
         </a>
-        <a style="border: 0;" target="_blank" href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">
+        <a class="social-link" style="border: 0;" target="_blank" href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">
             <img class="social" alt="Slack" title="Slack" src="https://cdn.simpleicons.org/slack/fcfdf7" />
         </a>
-        <a style="border: 0;" target="_blank" href="https://www.linkedin.com/company/infisical/">
+        <a class="social-link" style="border: 0;" target="_blank" href="https://www.linkedin.com/company/infisical/">
             <img class="social" alt="LinkedIn" title="LinkedIn" src="https://cdn.simpleicons.org/linkedin/fcfdf7" />
         </a>
     </section>
 
     <!-- FOOTER -->
 
-    <section>
+    <section class="footer">
         <p>Copyright © {{year}} Infisical Inc.</p>
-        <p style="margin-top: .6rem;">
+        <p style="margin-top: 1rem;">
             <a style="line-height: 0;" target="_blank" href="https://infisical.com/" title="Infisical Website">website</a>
             <a style="line-height: 0;" target="_blank" href="https://infisical.com/docs" title="Infisical Documentation">docs</a>
         </p>

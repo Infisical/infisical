@@ -13,7 +13,7 @@
 <body>
     <style>
         body {
-            background: #0e1014 url(https://infisical.com/images/squares.svg) no-repeat center;
+            background: #0e1014 url(https://infisical.com/images/squares.svg) no-repeat center 3.5rem;
             color: #fcfdf7;
             font-family: Ubuntu, Arial, Helvetica, sans-serif;
             text-align: center;
@@ -21,6 +21,8 @@
         pre {
             margin: 0;
             padding: 0;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
         }
         a {
             text-decoration: none;
@@ -33,10 +35,9 @@
             font-weight: bold;
             line-height: 3rem;
         }
-        footer {
+        .footer {
             font-size: .75rem;
-            margin: 0;
-            padding: 0;
+            margin-bottom: 5rem;
         }
         h3 {
             font-weight: normal;
@@ -74,11 +75,10 @@
             border-width: .2rem;
             border-radius: 1rem;
             border-style: dashed;
-            padding: .6rem 2.2rem;
-            padding-right: 0rem;
+            padding-top: 0.8rem;
+            padding-bottom: 0.8rem;
             font-weight: bold;
             font-size: 3rem;
-            letter-spacing: .8em;
         }
         .gradient-text {
             background-image: linear-gradient(to right, rgb(56, 189, 248), rgb(186, 220, 88));
@@ -130,14 +130,15 @@
             class="code"
             style="
                 margin-top: 1rem;
-                margin-bottom: -.5rem;
-                margin-right: -1rem;"
+                margin-bottom: -.5rem;"
         >
             <pre
                 class="gradient-text"
                 style="
                     margin-left: auto;
-                    margin-right: auto;"
+                    margin-right: auto;
+                    letter-spacing: .8em;
+                    padding-left: 2.3rem"
                 alt="123456">{{code}}</pre>
         </div>
         <span class="yellow-badge">Valid 1 day</span>
@@ -163,25 +164,25 @@
         margin-bottom:0"    
     >
         <!-- https://github.com/simple-icons/simple-icons#cdn-usage -->
-        <a style="border: 0;" target="_blank" href="https://github.com/Infisical">
+        <a class="social-link" style="border: 0;" target="_blank" href="https://github.com/Infisical">
             <img class="social" alt="Github" title="Github" src="https://cdn.simpleicons.org/github/fcfdf7" />
         </a>
-        <a style="border: 0;" target="_blank" href="https://www.twitter.com/infisical/">
+        <a class="social-link" style="border: 0;" target="_blank" href="https://www.twitter.com/infisical/">
             <img class="social" alt="Twitter" title="Twitter" src="https://cdn.simpleicons.org/twitter/fcfdf7" />
         </a>
-        <a style="border: 0;" target="_blank" href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">
+        <a class="social-link" style="border: 0;" target="_blank" href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">
             <img class="social" alt="Slack" title="Slack" src="https://cdn.simpleicons.org/slack/fcfdf7" />
         </a>
-        <a style="border: 0;" target="_blank" href="https://www.linkedin.com/company/infisical/">
+        <a class="social-link" style="border: 0;" target="_blank" href="https://www.linkedin.com/company/infisical/">
             <img class="social" alt="LinkedIn" title="LinkedIn" src="https://cdn.simpleicons.org/linkedin/fcfdf7" />
         </a>
     </section>
 
     <!-- FOOTER -->
 
-    <section>
+    <section class="footer">
         <p>Copyright © {{year}} Infisical Inc.</p>
-        <p style="margin-top: .6rem;">
+        <p style="margin-top: 1rem;">
             <a style="line-height: 0;" target="_blank" href="https://infisical.com/" title="Infisical Website">website</a>
             <a style="line-height: 0;" target="_blank" href="https://infisical.com/docs" title="Infisical Documentation">docs</a>
         </p>
