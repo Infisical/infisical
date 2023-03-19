@@ -67,6 +67,15 @@ spec:
     # The namespace the managed secret should be installed in
     secretNamespace: default
 ```
+<Accordion title="hostAPIReference">
+  The `hostAPI` feature allows users to sync secrets across resources within the same Kubernetes cluster by using internal DNS in Infisical's backend. 
+  This feature is useful for those who want to sync secrets easily and securely within the cluster without exposing them externally.
+  
+  To access the Infisical backend directly you can use a hostAPI configuration as below.
+  ``` bash
+  http://<backend-svc-name>.<namespace>.svc.cluster.local:4000/api
+  ```
+</Accordion>
 
 <Accordion title="tokenSecretReference">
   The `tokenSecretReference` field in the InfisicalSecret resource is used to specify the location of the Infisical Token, which is required for authenticating and retrieving secrets from an Infisical project.
