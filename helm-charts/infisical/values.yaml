@@ -156,9 +156,16 @@ backendEnvironmentVariables:
   ## @param backendEnvironmentVariables.SITE_URL Absolute URL including the protocol (e.g. https://app.infisical.com)
   ##
   SITE_URL: infisical.local
-  ## @param backendEnvironmentVariables.INVITE_ONLY_SIGNUP To disable account creation from the login page
+  ## @param backendEnvironmentVariables.INVITE_ONLY_SIGNUP To disable account creation from the login page (invites only)
   ##
   INVITE_ONLY_SIGNUP: false
+  ## @param backendEnvironmentVariables.MONGO_URL MongoDB connection string
+  ## By default the backend will automatically be connected to a Mongo instance within the cluster
+  ## However, it is recommended to add a managed document DB connection string for production-use (DBaaS)
+  ## Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/
+  ## e.g. "mongodb://<user>:<pass>@<host>:<port>/<database-name>"
+  ##
+  MONGO_URL: ""
 
 ## @section MongoDB(&reg;) parameters
 ## Documentation : https://github.com/bitnami/charts/blob/main/bitnami/mongodb/values.yaml
@@ -275,7 +282,7 @@ mongodb:
     ##
     size: 8Gi
 
-## @param mongodbConnection.externalMongoDBConnectionString External MongoDB connection string
+## @param mongodbConnection.externalMongoDBConnectionString Deprecated :warning: External MongoDB connection string</br>Use backendEnvironmentVariables.MONGO_URL instead
 ## By default the backend will be connected to a Mongo instance within the cluster
 ## However, it is recommended to add a managed document DB connection string for production-use (DBaaS)
 ## Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/
