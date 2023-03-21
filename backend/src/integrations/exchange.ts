@@ -28,7 +28,9 @@ import {
   getClientIdGitHub,
   getClientSecretGitHub,
   getClientIdGitLab,
-  getClientSecretGitLab
+  getClientSecretGitLab,
+  getClientIdGCPSecretManager,
+  getClientSecretGCPSecretManager
 } from '../config';
 
 interface ExchangeCodeAzureResponse {
@@ -441,10 +443,10 @@ const exchangeCodeGCPSecretManager = async ({ code }: { code: string }) => {
     res = (
       await request.post(INTEGRATION_GCP_TOKEN_URL,
         {
-          client_id: CLIENT_ID_GCP_SECRET_MANAGER,
-          client_secret: CLIENT_SECRET_GCP_SECRET_MANAGER,
+          client_id: getClientIdGCPSecretManager(),
+          client_secret: getClientSecretGCPSecretManager(),
           code: code,
-          redirect_uri: `${SITE_URL}/integrations/gcp-secret-manager/oauth2/callback`,
+          redirect_uri: `${getSiteURL()}/integrations/gcp-secret-manager/oauth2/callback`,
           grant_type: "authorization_code"
         }, 
         {

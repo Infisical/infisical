@@ -25,7 +25,9 @@ import {
   getClientSecretAzure,
   getClientSecretHeroku,
   getClientIdGitLab,
-  getClientSecretGitLab
+  getClientSecretGitLab,
+  getClientSecretGCPSecretManager,
+  getClientIdGCPSecretManager
 } from '../config';
 
 interface RefreshTokenAzureResponse {
@@ -280,8 +282,8 @@ const exchangeRefreshGCPSecretManager = async ({
     const body = {
       grant_type: 'refresh_token',
       refresh_token: refreshToken,
-      client_secret: CLIENT_SECRET_GCP_SECRET_MANAGER,
-      client_id: CLIENT_ID_GCP_SECRET_MANAGER
+      client_secret: getClientSecretGCPSecretManager(),
+      client_id: getClientIdGCPSecretManager()
     }
 
     const headers: RawAxiosRequestHeaders = {

@@ -4,7 +4,8 @@ import {
     getClientIdNetlify,
     getClientIdAzure,
     getClientIdGitLab,
-    getClientIdGitHub
+    getClientIdGitHub,
+    getClientIdGCPSecretManager
 } from '../config';
 
 // integrations
@@ -184,7 +185,7 @@ const getIntegrationOptions = () => {
             image: 'Google Cloud Platform.png',
             isAvailable: true,
             type: 'oauth',
-            clientId: CLIENT_ID_GCP_SECRET_MANAGER,
+            clientId: getClientIdGCPSecretManager(),
             docsLink: ''
         }
     ]
