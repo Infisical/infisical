@@ -39,10 +39,10 @@ Prerequisites:
 Starting your service with the Infisical CLI pulls your secrets from Infisical and injects them into your service.
 
 ```dockerfile
-CMD ["infisical", "run", "---", "[your service start command]"]
+CMD ["infisical", "run", "--", "[your service start command]"]
 
 # example with single single command
-CMD ["infisical", "run", "---", "npm", "run", "start"]
+CMD ["infisical", "run", "--", "npm", "run", "start"]
 
 # example with multiple commands
 CMD ["infisical", "run", "--command", "npm run start && ..."]
@@ -55,7 +55,7 @@ Head to your project settings in Infisical Cloud to generate an [Infisical Token
 ## Feed Docker your Infisical Token
 
 ```bash
- docker run --env INFISICAL_TOKEN=[token]...
+ docker run --env INFISICAL_TOKEN=[token] [DOCKER-IMAGE]...
 ```
 
 <Info>
