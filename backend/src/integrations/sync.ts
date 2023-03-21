@@ -1723,6 +1723,28 @@ const syncSecretsGCPSecretManager = async ({
 		};
 
 		/**
+		 * Delete a secret in gcp-secret-manager
+		 *
+		 * @param {object} param
+		 * @param {string} param.projectId
+		 * @param {string} param.secretId
+		 * @returns {void}
+		 */
+		const deleteSecret = async ({
+			projectId,
+			secretId,
+		}: {
+			projectId: string;
+			secretId: string;
+		}) => {
+			const url = new URL(
+				`${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${projectId}/secrets/${secretId}`
+			);
+
+			await request.delete(url.href, { headers: DEFAULT_HEADERS });
+		};
+
+		/**
 		 * Add new version for existing secert in gcp-secret-manager
 		 *
 		 * @param {object} param
@@ -1750,6 +1772,114 @@ const syncSecretsGCPSecretManager = async ({
 			const url = `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${projectId}/secrets/${secretId}:addVersion`;
 
 			await request.post(url, body, { headers: DEFAULT_HEADERS });
+		};
+
+		/**
+		 * Helper function to update the list of secrets in gcp-secret-manager
+		 *
+		 * @param {object} param
+		 * @param {object} param.secrets
+		 * @returns
+		 */
+		const updateSecrets = async ({
+			secrets,
+		}: {
+			secrets: Record<string, string>;
+		}) => {
+			for await (const key of Object.keys(secrets)) {
+				const secretValue = secrets[key];
+
+				// fetch some versions of the secret key
+				const secretVersionsList = await getSecretVersionsList({
+					projectId: integration.appId,
+					secretId: key,
+				});
+
+				// if there are no versions for the key, we add a version
+				if (!secretVersionsList.versions) {
+					await addSecretVersion({
+						projectId: integration.appId,
+						secretId: key,
+						secretValue,
+					});
+					return;
+				}
+
+				// fetching latest version for the existing key
+				const latestVersionSecret = await getLatestSecretVersion({
+					projectId: integration.appId,
+					secretId: key,
+				});
+
+				// decode the latest version secret to a string value
+				const latestVerSecretVal = decodeSecretValue({
+					data: latestVersionSecret?.payload?.data ?? "",
+				});
+
+				/**
+				 * @info if there is change in secret value, we create add a new version in
+				 * gcp-secret-manager
+				 */
+				if (latestVerSecretVal !== secretValue) {
+					await addSecretVersion({
+						projectId: integration.appId,
+						secretId: key,
+						secretValue,
+					});
+				}
+			}
+		};
+
+		/**
+		 * Helper function to add the list of secrets in gcp-secret-manager
+		 *
+		 * @param {object} param
+		 * @param {object} param.secrets
+		 * @returns
+		 */
+		const addSecrets = async ({
+			secrets,
+		}: {
+			secrets: Record<string, string>;
+		}) => {
+			for await (const key of Object.keys(secrets)) {
+				const secretValue = secrets[key];
+
+				// create a new secret key
+				const createdSecret = await createSecret({
+					projectId: integration.appId,
+					secretId: key,
+				});
+
+				// add a new verion for the secret key
+				if (createdSecret.name) {
+					await addSecretVersion({
+						projectId: integration.appId,
+						secretId: key,
+						secretValue,
+					});
+				}
+			}
+		};
+
+		/**
+		 * Helper function to delete the list of secrets in gcp-secret-manager
+		 *
+		 * @param {object} param
+		 * @param {object} param.secrets
+		 * @returns
+		 */
+		const deleteSecrets = async ({
+			secrets,
+		}: {
+			secrets: Record<string, GCPSecretManager.ISecret>;
+		}) => {
+			for await (const key of Object.keys(secrets)) {
+				await deleteSecret({
+					projectId: integration.appId,
+					secretId: key,
+				});
+			}
 		};
 
 		/**
@@ -1811,69 +1941,34 @@ const syncSecretsGCPSecretManager = async ({
 			}
 
 			return { ...prev };
-		}, {} as Record<string, unknown>);
+		}, {} as Record<string, GCPSecretManager.ISecret>);
 
-		for await (const key of Object.keys(secrets)) {
+		const SECRETS_TO_ADD: Record<string, string> = {};
+		const SECRETS_TO_DELETE: Record<string, GCPSecretManager.ISecret> = {};
+		const SECRETS_TO_UPDATE: Record<string, string> = {};
+
+		for (const key of Object.keys(secrets)) {
 			if (keyToGCPSecret[key]) {
-				const secretValue = secrets[key];
-
-				// fetch some versions of the secret key
-				const secretVersionsList = await getSecretVersionsList({
-					projectId: integration.appId,
-					secretId: key,
-				});
-
-				// if there are no versions for the key, we add a version
-				if (!secretVersionsList.versions) {
-					await addSecretVersion({
-						projectId: integration.appId,
-						secretId: key,
-						secretValue,
-					});
-					return;
-				}
-
-				// fetching latest version for the existing key
-				const latestVersionSecret = await getLatestSecretVersion({
-					projectId: integration.appId,
-					secretId: key,
-				});
-
-				// decode the latest version secret to a string value
-				const latestVerSecretVal = decodeSecretValue({
-					data: latestVersionSecret?.payload?.data ?? "",
-				});
-
-				/**
-				 * @info if there is change in secret value, we create add a new version in
-				 * gcp-secret-manager
-				 */
-				if (latestVerSecretVal !== secretValue) {
-					await addSecretVersion({
-						projectId: integration.appId,
-						secretId: key,
-						secretValue,
-					});
-				}
+				// adding the key-value to be updated in gcp
+				SECRETS_TO_UPDATE[key] = secrets[key];
 			} else {
-				const secretValue = secrets[key];
-
-				// create a new secret key
-				const createdSecret = await createSecret({
-					projectId: integration.appId,
-					secretId: key,
-				});
-
-				// add a new verion for the secret key
-				if (createdSecret.name) {
-					await addSecretVersion({
-						projectId: integration.appId,
-						secretId: key,
-						secretValue,
-					});
-				}
+				// adding the key-value to be added in gcp
+				SECRETS_TO_ADD[key] = secrets[key];
 			}
 		}
+
+		for (const key of Object.keys(keyToGCPSecret)) {
+			if (!secrets[key]) {
+				// adding the key-value to be deleted in gcp
+				SECRETS_TO_DELETE[key] = keyToGCPSecret[key];
+			}
+		}
+
+		await Promise.allSettled([
+			addSecrets({ secrets: SECRETS_TO_ADD }),
+			updateSecrets({ secrets: SECRETS_TO_UPDATE }),
+			deleteSecrets({ secrets: SECRETS_TO_DELETE }),
+		]);
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);

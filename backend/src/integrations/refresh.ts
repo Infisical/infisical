@@ -278,8 +278,6 @@ const exchangeRefreshGCPSecretManager = async ({
 }: {
   refreshToken: string;
 }) => {
-  
-  let accessToken;
   try {
     const body = {
       grant_type: 'refresh_token',
