@@ -1,5 +1,5 @@
 import { Request } from 'express'
-import { VERBOSE_ERROR_OUTPUT } from '../config'
+import { getVerboseErrorOutput } from '../config';
 
 export enum LogLevel {
     DEBUG = 100,
@@ -87,7 +87,7 @@ export default class RequestError extends Error{
         }, this.context)
 
         //* Omit sensitive information from context that can leak internal workings of this program if user is not developer
-        if(!VERBOSE_ERROR_OUTPUT){
+        if(!getVerboseErrorOutput()){
             _context = this._omit(_context, [
                 'stacktrace',
                 'exception',

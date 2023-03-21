@@ -3,6 +3,7 @@ export * from './Card';
 export * from './Checkbox';
 export * from './DeleteActionModal';
 export * from './Dropdown';
+export * from './EmailServiceSetupModal'
 export * from './EmptyState';
 export * from './FormControl';
 export * from './IconButton';

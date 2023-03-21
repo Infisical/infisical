@@ -1,14 +1,11 @@
 import {
-    CLIENT_ID_AZURE,
-    CLIENT_ID_GITLAB
+    getClientIdHeroku,
+    getClientSlugVercel,
+    getClientIdNetlify,
+    getClientIdAzure,
+    getClientIdGitLab,
+    getClientIdGitHub
 } from '../config';
-import {
-  CLIENT_ID_HEROKU,
-  CLIENT_ID_NETLIFY,
-  CLIENT_ID_GITHUB,
-  CLIENT_SLUG_VERCEL,
-  CLIENT_ID_GCP_SECRET_MANAGER
-} from "../config";
 
 // integrations
 const INTEGRATION_AZURE_KEY_VAULT = 'azure-key-vault';
@@ -56,7 +53,6 @@ const INTEGRATION_NETLIFY_TOKEN_URL = "https://api.netlify.com/oauth/token";
 const INTEGRATION_GITHUB_TOKEN_URL =
   "https://github.com/login/oauth/access_token";
 const INTEGRATION_GITLAB_TOKEN_URL = "https://gitlab.com/oauth/token";
-
 const INTEGRATION_GCP_TOKEN_URL = "https://accounts.google.com/o/oauth2/token"
 
 // integration apps endpoints
@@ -71,169 +67,163 @@ const INTEGRATION_GCP_API_URL = "https://cloudresourcemanager.googleapis.com";
 const INTEGRATION_GCP_SECRET_MANAGER_URL = "https://secretmanager.googleapis.com"
 const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
 
-// TODO: deprecate types?
-const INTEGRATION_OPTIONS = [
-    {
-        name: 'Heroku',
-        slug: 'heroku',
-        image: 'Heroku.png',
-        isAvailable: true,
-        type: 'oauth',
-        clientId: CLIENT_ID_HEROKU,
-        docsLink: ''
-    },
-    {
-        name: 'Vercel',
-        slug: 'vercel',
-        image: 'Vercel.png',
-        isAvailable: true,
-        type: 'oauth',
-        clientId: '',
-        clientSlug: CLIENT_SLUG_VERCEL,
-        docsLink: ''
-    },
-    {
-        name: 'Netlify',
-        slug: 'netlify',
-        image: 'Netlify.png',
-        isAvailable: true,
-        type: 'oauth',
-        clientId: CLIENT_ID_NETLIFY,
-        docsLink: ''
-    },
-    {
-        name: 'GitHub',
-        slug: 'github',
-        image: 'GitHub.png',
-        isAvailable: true,
-        type: 'oauth',
-        clientId: CLIENT_ID_GITHUB,
-        docsLink: ''
-    },
-    {
-        name: 'Render',
-        slug: 'render',
-        image: 'Render.png',
-        isAvailable: true,
-        type: 'pat',
-        clientId: '',
-        docsLink: ''
-    },
-    {
-        name: 'Fly.io',
-        slug: 'flyio',
-        image: 'Flyio.svg',
-        isAvailable: true,
-        type: 'pat',
-        clientId: '',
-        docsLink: ''
-    },
-    {
-        name: 'AWS Parameter Store',
-        slug: 'aws-parameter-store',
-        image: 'Amazon Web Services.png',
-        isAvailable: true,
-        type: 'custom',
-        clientId: '',
-        docsLink: ''
-    },
-    {
-        name: 'AWS Secret Manager',
-        slug: 'aws-secret-manager',
-        image: 'Amazon Web Services.png',
-        isAvailable: true,
-        type: 'custom',
-        clientId: '',
-        docsLink: ''
-    },
-    {
-        name: 'Azure Key Vault',
-        slug: 'azure-key-vault',
-        image: 'Microsoft Azure.png',
-        isAvailable: true,
-        type: 'oauth',
-        clientId: CLIENT_ID_AZURE,
-        docsLink: ''
-    },
-    {
-        name: 'Circle CI',
-        slug: 'circleci',
-        image: 'Circle CI.png',
-        isAvailable: true,
-        type: 'pat',
-        clientId: '',
-        docsLink: ''
-    },
-    {
-        name: 'GitLab',
-        slug: 'gitlab',
-        image: 'GitLab.png',
-        isAvailable: true,
-        type: 'custom',
-        clientId: CLIENT_ID_GITLAB, 
-        docsLink: ''
-    },
-    {
-        name: 'Travis CI',
-        slug: 'travisci',
-        image: 'Travis CI.png',
-        isAvailable: true,
-        type: 'pat',
-        clientId: '',
-        docsLink: ''
-    },
-    {
-        name: 'Azure Key Vault',
-        slug: 'azure-key-vault',
-        image: 'Microsoft Azure.png',
-        isAvailable: false,
-        type: 'oauth',
-        clientId: CLIENT_ID_AZURE,
-        docsLink: ''
-    },
-    {
-        name: 'GCP Secret Manager',
-        slug: 'gcp-secret-manager',
-        image: 'Google Cloud Platform.png',
-        isAvailable: true,
-        type: 'oauth',
-        clientId: CLIENT_ID_GCP_SECRET_MANAGER,
-        docsLink: ''
-    }
-]
+const getIntegrationOptions = () => {
+    const INTEGRATION_OPTIONS = [
+        {
+            name: 'Heroku',
+            slug: 'heroku',
+            image: 'Heroku.png',
+            isAvailable: true,
+            type: 'oauth',
+            clientId: getClientIdHeroku(),
+            docsLink: ''
+        },
+        {
+            name: 'Vercel',
+            slug: 'vercel',
+            image: 'Vercel.png',
+            isAvailable: true,
+            type: 'oauth',
+            clientId: '',
+            clientSlug: getClientSlugVercel(),
+            docsLink: ''
+        },
+        {
+            name: 'Netlify',
+            slug: 'netlify',
+            image: 'Netlify.png',
+            isAvailable: true,
+            type: 'oauth',
+            clientId: getClientIdNetlify(),
+            docsLink: ''
+        },
+        {
+            name: 'GitHub',
+            slug: 'github',
+            image: 'GitHub.png',
+            isAvailable: true,
+            type: 'oauth',
+            clientId: getClientIdGitHub(),
+            docsLink: ''
+        },
+        {
+            name: 'Render',
+            slug: 'render',
+            image: 'Render.png',
+            isAvailable: true,
+            type: 'pat',
+            clientId: '',
+            docsLink: ''
+        },
+        {
+            name: 'Fly.io',
+            slug: 'flyio',
+            image: 'Flyio.svg',
+            isAvailable: true,
+            type: 'pat',
+            clientId: '',
+            docsLink: ''
+        },
+        {
+            name: 'AWS Parameter Store',
+            slug: 'aws-parameter-store',
+            image: 'Amazon Web Services.png',
+            isAvailable: true,
+            type: 'custom',
+            clientId: '',
+            docsLink: ''
+        },
+        {
+            name: 'AWS Secret Manager',
+            slug: 'aws-secret-manager',
+            image: 'Amazon Web Services.png',
+            isAvailable: true,
+            type: 'custom',
+            clientId: '',
+            docsLink: ''
+        },
+        {
+            name: 'Azure Key Vault',
+            slug: 'azure-key-vault',
+            image: 'Microsoft Azure.png',
+            isAvailable: true,
+            type: 'oauth',
+            clientId: getClientIdAzure(),
+            docsLink: ''
+        },
+        {
+            name: 'Circle CI',
+            slug: 'circleci',
+            image: 'Circle CI.png',
+            isAvailable: true,
+            type: 'pat',
+            clientId: '',
+            docsLink: ''
+        },
+        {
+            name: 'GitLab',
+            slug: 'gitlab',
+            image: 'GitLab.png',
+            isAvailable: true,
+            type: 'custom',
+            clientId: getClientIdGitLab(),
+            docsLink: ''
+        },
+        {
+            name: 'Travis CI',
+            slug: 'travisci',
+            image: 'Travis CI.png',
+            isAvailable: true,
+            type: 'pat',
+            clientId: '',
+            docsLink: ''
+        },
+        {
+            name: 'GCP Secret Manager',
+            slug: 'gcp-secret-manager',
+            image: 'Google Cloud Platform.png',
+            isAvailable: true,
+            type: 'oauth',
+            clientId: CLIENT_ID_GCP_SECRET_MANAGER,
+            docsLink: ''
+        }
+    ]
+    
+    return INTEGRATION_OPTIONS;
+}
+
 
 export {
     INTEGRATION_AZURE_KEY_VAULT,
     INTEGRATION_AWS_PARAMETER_STORE,
     INTEGRATION_AWS_SECRET_MANAGER,
-  INTEGRATION_HEROKU,
-  INTEGRATION_VERCEL,
-  INTEGRATION_NETLIFY,
-  INTEGRATION_GITHUB,
-  INTEGRATION_GITLAB,
-  INTEGRATION_GCP_SECRET_MANAGER,
-  INTEGRATION_RENDER,
-  INTEGRATION_FLYIO,
-  INTEGRATION_CIRCLECI,
-  INTEGRATION_TRAVISCI,
-  INTEGRATION_SET,
-  INTEGRATION_OAUTH2,
+    INTEGRATION_HEROKU,
+    INTEGRATION_VERCEL,
+    INTEGRATION_NETLIFY,
+    INTEGRATION_GITHUB,
+    INTEGRATION_GITLAB,
+    INTEGRATION_RENDER,
+    INTEGRATION_FLYIO,
+    INTEGRATION_CIRCLECI,
+    INTEGRATION_TRAVISCI,
+    INTEGRATION_SET,
+    INTEGRATION_OAUTH2,
     INTEGRATION_AZURE_TOKEN_URL,
-  INTEGRATION_HEROKU_TOKEN_URL,
-  INTEGRATION_VERCEL_TOKEN_URL,
-  INTEGRATION_NETLIFY_TOKEN_URL,
-  INTEGRATION_GITHUB_TOKEN_URL,
-  INTEGRATION_GITLAB_API_URL,
-  INTEGRATION_GCP_TOKEN_URL,
-  INTEGRATION_HEROKU_API_URL,
-  INTEGRATION_GITLAB_TOKEN_URL,
-  INTEGRATION_VERCEL_API_URL,
-  INTEGRATION_NETLIFY_API_URL,
-  INTEGRATION_RENDER_API_URL,
-  INTEGRATION_FLYIO_API_URL,
-  INTEGRATION_CIRCLECI_API_URL,
-  INTEGRATION_GCP_API_URL,
-  INTEGRATION_GCP_SECRET_MANAGER_URL,
-  INTEGRATION_TRAVISCI_API_URL,
-  INTEGRATION_OPTIONS,
+    INTEGRATION_HEROKU_TOKEN_URL,
+    INTEGRATION_VERCEL_TOKEN_URL,
+    INTEGRATION_NETLIFY_TOKEN_URL,
+    INTEGRATION_GITHUB_TOKEN_URL,
+    INTEGRATION_GCP_TOKEN_URL,
+    INTEGRATION_GITLAB_API_URL,
+    INTEGRATION_HEROKU_API_URL,
+    INTEGRATION_GITLAB_TOKEN_URL,
+    INTEGRATION_VERCEL_API_URL,
+    INTEGRATION_NETLIFY_API_URL,
+    INTEGRATION_RENDER_API_URL,
+    INTEGRATION_FLYIO_API_URL,
+    INTEGRATION_CIRCLECI_API_URL,
+    INTEGRATION_TRAVISCI_API_URL,
+    INTEGRATION_GCP_API_URL,
+    INTEGRATION_GCP_SECRET_MANAGER_URL,
+    getIntegrationOptions
 };

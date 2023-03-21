@@ -1,5 +1,5 @@
-import request from '../config/request';
 import * as Sentry from '@sentry/node';
+import request from '../config/request';
 import {
   IIntegrationAuth
 } from '../models';
@@ -11,16 +11,6 @@ import {
 } from '../variables';
 import { RawAxiosRequestHeaders } from 'axios';
 import {
-  SITE_URL,
-  CLIENT_ID_AZURE,
-  CLIENT_ID_GITLAB,
-  CLIENT_SECRET_AZURE,
-  CLIENT_SECRET_HEROKU,
-  CLIENT_SECRET_GITLAB,
-  CLIENT_SECRET_GCP_SECRET_MANAGER,
-  CLIENT_ID_GCP_SECRET_MANAGER
-} from '../config';
-import {
   INTEGRATION_AZURE_TOKEN_URL,
   INTEGRATION_HEROKU_TOKEN_URL,
   INTEGRATION_GITLAB_TOKEN_URL,
@@ -29,6 +19,14 @@ import {
 import {
   IntegrationService
 } from '../services';
+import {
+  getSiteURL,
+  getClientIdAzure,
+  getClientSecretAzure,
+  getClientSecretHeroku,
+  getClientIdGitLab,
+  getClientSecretGitLab
+} from '../config';
 
 interface RefreshTokenAzureResponse {
   token_type: string;
@@ -150,11 +148,11 @@ const exchangeRefreshAzure = async ({
     const { data }: { data: RefreshTokenAzureResponse } = await request.post(
       INTEGRATION_AZURE_TOKEN_URL,
        new URLSearchParams({
-        client_id: CLIENT_ID_AZURE,
+        client_id: getClientIdAzure(),
         scope: 'openid offline_access',
         refresh_token: refreshToken,
         grant_type: 'refresh_token',
-        client_secret: CLIENT_SECRET_AZURE
+        client_secret: getClientSecretAzure()
       } as any)
     );
     
@@ -197,7 +195,7 @@ const exchangeRefreshHeroku = async ({
         new URLSearchParams({
             grant_type: 'refresh_token',
             refresh_token: refreshToken,
-            client_secret: CLIENT_SECRET_HEROKU
+            client_secret: getClientSecretHeroku()
         } as any)
     );
 
@@ -240,9 +238,9 @@ const exchangeRefreshGitLab = async ({
       new URLSearchParams({
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
-        client_id: CLIENT_ID_GITLAB,
-        client_secret: CLIENT_SECRET_GITLAB,
-        redirect_uri: `${SITE_URL}/integrations/gitlab/oauth2/callback`
+        client_id: getClientIdGitLab,
+        client_secret: getClientSecretGitLab(),
+        redirect_uri: `${getSiteURL()}/integrations/gitlab/oauth2/callback`
       } as any),
       {
         headers: {

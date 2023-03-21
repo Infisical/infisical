@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { plans } from 'public/data/frequentConstants';
 
@@ -51,6 +52,8 @@ export const OrgSettingsPage = () => {
   const addIncidentContact = useAddIncidentContact();
   const removeIncidentContact = useDeleteIncidentContact();
 
+  const [completeInviteLink, setcompleteInviteLink] = useState<string|undefined>("")
+
   const isMoreUsersNotAllowed =
     (orgUsers || []).length >= 5 &&
     subscriptionPlan === plans.starter &&
@@ -96,11 +99,16 @@ export const OrgSettingsPage = () => {
     if (!currentOrg?._id) return;
 
     try {
-      await addUserToOrg.mutateAsync({ organizationId: currentOrg?._id, inviteeEmail: email });
-      createNotification({
-        text: 'Successfully invited user to the organization.',
-        type: 'success'
-      });
+      const {data} = await addUserToOrg.mutateAsync({ organizationId: currentOrg?._id, inviteeEmail: email });
+      setcompleteInviteLink(data?.completeInviteLink)
+
+      // only show this notification when email is configured. A [completeInviteLink] will not be sent if smtp is configured
+      if (!data.completeInviteLink){
+        createNotification({
+          text: 'Successfully invited user to the organization.',
+          type: 'success'
+        });
+      }
     } catch (error) {
       console.error(error);
       createNotification({
@@ -247,6 +255,8 @@ export const OrgSettingsPage = () => {
             onRemoveMember={onRemoveUserOrgMembership}
             onRoleChange={onUpdateOrgUserRole}
             onGrantAccess={onGrantUserAccess}
+            completeInviteLink={completeInviteLink}
+            setCompleteInviteLink={setcompleteInviteLink}
           />
         </div>
         <div className="mb-6 mt-2 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pt-6 pb-6">

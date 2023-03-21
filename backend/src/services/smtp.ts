@@ -1,11 +1,4 @@
 import nodemailer from 'nodemailer';
-import { 
-  SMTP_HOST, 
-  SMTP_PORT, 
-  SMTP_USERNAME, 
-  SMTP_PASSWORD, 
-  SMTP_SECURE 
-} from '../config';
 import {
   SMTP_HOST_SENDGRID, 
   SMTP_HOST_MAILGUN,
@@ -14,55 +7,62 @@ import {
 } from '../variables';
 import SMTPConnection from 'nodemailer/lib/smtp-connection';
 import * as Sentry from '@sentry/node';
+import {
+  getSmtpHost,
+  getSmtpUsername,
+  getSmtpPassword,
+  getSmtpSecure,
+  getSmtpPort
+} from '../config';
 
-const mailOpts: SMTPConnection.Options = {
-  host: SMTP_HOST,
-  port: SMTP_PORT as number
-};
-
-if (SMTP_USERNAME && SMTP_PASSWORD) {
-  mailOpts.auth = {
-    user: SMTP_USERNAME,
-    pass: SMTP_PASSWORD
+export const initSmtp = () => {
+  const mailOpts: SMTPConnection.Options = {
+    host: getSmtpHost(),
+    port: getSmtpPort()
   };
-}
 
-if (SMTP_SECURE) {
-  switch (SMTP_HOST) {
-    case SMTP_HOST_SENDGRID:
-      mailOpts.requireTLS = true;
-      break;
-    case SMTP_HOST_MAILGUN:
-      mailOpts.requireTLS = true; 
-      mailOpts.tls = {
-        ciphers: 'TLSv1.2'
-      }
-      break;
-    case SMTP_HOST_SOCKETLABS:
-      mailOpts.requireTLS = true; 
-      mailOpts.tls = {
-        ciphers: 'TLSv1.2'
-      }
-      break;
-    case SMTP_HOST_ZOHOMAIL:
-      mailOpts.requireTLS = true; 
-      mailOpts.tls = {
-        ciphers: 'TLSv1.2'
-      }
-      break; 
-    default:
-      if (SMTP_HOST.includes('amazonaws.com')) {
+  if (getSmtpUsername() && getSmtpPassword()) {
+    mailOpts.auth = {
+      user: getSmtpUsername(),
+      pass: getSmtpPassword()
+    };
+  }
+
+  if (getSmtpSecure() ? getSmtpSecure() : false) {
+    switch (getSmtpHost()) {
+      case SMTP_HOST_SENDGRID:
+        mailOpts.requireTLS = true;
+        break;
+      case SMTP_HOST_MAILGUN:
+        mailOpts.requireTLS = true; 
         mailOpts.tls = {
           ciphers: 'TLSv1.2'
         }
-      } else {
-        mailOpts.secure = true;
-      }
-      break;
+        break;
+      case SMTP_HOST_SOCKETLABS:
+        mailOpts.requireTLS = true; 
+        mailOpts.tls = {
+          ciphers: 'TLSv1.2'
+        }
+        break;
+      case SMTP_HOST_ZOHOMAIL:
+        mailOpts.requireTLS = true; 
+        mailOpts.tls = {
+          ciphers: 'TLSv1.2'
+        }
+        break; 
+      default:
+        if (getSmtpHost().includes('amazonaws.com')) {
+          mailOpts.tls = {
+            ciphers: 'TLSv1.2'
+          }
+        } else {
+          mailOpts.secure = true;
+        }
+        break;
+    }
   }
-}
 
-export const initSmtp = () => {
   const transporter = nodemailer.createTransport(mailOpts);
   transporter
     .verify()
@@ -73,7 +73,7 @@ export const initSmtp = () => {
     .catch((err) => {
       Sentry.setUser(null);
       Sentry.captureException(
-        `SMTP - Failed to connect to ${SMTP_HOST}:${SMTP_PORT} \n\t${err}`
+        `SMTP - Failed to connect to ${getSmtpHost()}:${getSmtpPort()} \n\t${err}`
       );
     });
 

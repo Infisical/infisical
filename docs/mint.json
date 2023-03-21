@@ -45,9 +45,9 @@
       "url": "security"
     },
     {
-      "name": "Self-hosting",
-      "icon": "server",
-      "url": "self-hosting"
+      "name": "SDKs",
+      "icon": "puzzle-piece",
+      "url": "sdks"
     },
     {
       "name": "API Reference",
@@ -97,6 +97,14 @@
       ]
     },
     {
+      "group": "Self-hosting",
+      "pages": [
+        "self-hosting/overview",
+        "self-hosting/configuration/envars",
+        "self-hosting/configuration/email"
+      ]
+    },
+    {
       "group": "Command line",
       "pages": [
         "cli/overview",
@@ -128,10 +136,8 @@
             "integrations/platforms/docker-compose"
           ]
         },
-
         "integrations/platforms/kubernetes",
         "integrations/frameworks/terraform",
-
         {
           "group": "AWS",
           "pages": [
@@ -139,20 +145,16 @@
             "integrations/cloud/aws-secret-manager"
           ]
         },
-
         "integrations/cloud/heroku",
         "integrations/cloud/vercel",
         "integrations/cloud/netlify",
         "integrations/cloud/render",
         "integrations/cloud/flyio",
-
         "integrations/cloud/azure-key-vault",
-
         "integrations/cicd/githubactions",
         "integrations/cicd/gitlab",
         "integrations/cicd/circleci",
         "integrations/cicd/travisci",
-
         "integrations/frameworks/react",
         "integrations/frameworks/vue",
         "integrations/frameworks/express",
@@ -173,12 +175,6 @@
       ]
     },
     {
-      "group": "Self-hosting",
-      "pages": [
-        "self-hosting/overview"
-      ]
-    },
-    {
       "group": "Deployment options",
       "pages": [
         "self-hosting/deployments/linux",
@@ -186,10 +182,20 @@
       ]
     },
     {
-      "group": "Configuration",
+      "group": "Overview",
       "pages": [
-        "self-hosting/configuration/envars",
-        "self-hosting/configuration/email"
+        "sdks/overview"
+      ]
+    },
+    {
+      "group": "SDKs",
+      "pages": [
+        "sdks/languages/node",
+        "sdks/languages/python",
+        "sdks/languages/java",
+        "sdks/languages/ruby",
+        "sdks/languages/go",
+        "sdks/languages/rust"
       ]
     },
     {

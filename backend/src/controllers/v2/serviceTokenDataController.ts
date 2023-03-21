@@ -1,15 +1,13 @@
-import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
+import { Request, Response } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import {
     ServiceTokenData
 } from '../../models';
-import {
-    SALT_ROUNDS
-} from '../../config';
 import { userHasWorkspaceAccess } from '../../ee/helpers/checkMembershipPermissions';
 import { ABILITY_READ } from '../../variables/organization';
+import { getSaltRounds } from '../../config';
 
 /**
  * Return service token data associated with service token on request
@@ -75,7 +73,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         }
 
         const secret = crypto.randomBytes(16).toString('hex');
-        const secretHash = await bcrypt.hash(secret, SALT_ROUNDS);
+        const secretHash = await bcrypt.hash(secret, getSaltRounds());
 
         const expiresAt = new Date();
         expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);

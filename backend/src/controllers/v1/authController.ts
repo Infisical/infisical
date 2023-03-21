@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
+import * as Sentry from '@sentry/node';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import * as Sentry from '@sentry/node';
 import * as bigintConversion from 'bigint-conversion';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const jsrp = require('jsrp');
 import { User, LoginSRPDetail } from '../../models';
 import { createToken, issueAuthTokens, clearTokens } from '../../helpers/auth';
@@ -11,15 +11,15 @@ import {
   ACTION_LOGIN,
   ACTION_LOGOUT
 } from '../../variables';
-import {
-  NODE_ENV,
-  JWT_AUTH_LIFETIME,
-  JWT_AUTH_SECRET,
-  JWT_REFRESH_SECRET
-} from '../../config';
 import { BadRequestError } from '../../utils/errors';
 import { EELogService } from '../../ee/services';
 import { getChannelFromUserAgent } from '../../utils/posthog'; // TODO: move this
+import {
+  getNodeEnv,
+  getJwtRefreshSecret,
+  getJwtAuthLifetime,
+  getJwtAuthSecret
+} from '../../config';
 
 declare module 'jsonwebtoken' {
   export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -126,7 +126,7 @@ export const login2 = async (req: Request, res: Response) => {
             httpOnly: true,
             path: '/',
             sameSite: 'strict',
-            secure: NODE_ENV === 'production' ? true : false
+            secure: getNodeEnv() === 'production' ? true : false
           });
 
           const loginAction = await EELogService.createAction({
@@ -182,7 +182,7 @@ export const logout = async (req: Request, res: Response) => {
       httpOnly: true,
       path: '/',
       sameSite: 'strict',
-      secure: NODE_ENV === 'production' ? true : false
+      secure: getNodeEnv() === 'production' ? true : false
     });
 
     const logoutAction = await EELogService.createAction({
@@ -237,7 +237,7 @@ export const getNewToken = async (req: Request, res: Response) => {
     }
 
     const decodedToken = <jwt.UserIDJwtPayload>(
-      jwt.verify(refreshToken, JWT_REFRESH_SECRET)
+      jwt.verify(refreshToken, getJwtRefreshSecret())
     );
 
     const user = await User.findOne({
@@ -252,8 +252,8 @@ export const getNewToken = async (req: Request, res: Response) => {
       payload: {
         userId: decodedToken.userId
       },
-      expiresIn: JWT_AUTH_LIFETIME,
-      secret: JWT_AUTH_SECRET
+      expiresIn: getJwtAuthLifetime(),
+      secret: getJwtAuthSecret()
     });
 
     return res.status(200).send({

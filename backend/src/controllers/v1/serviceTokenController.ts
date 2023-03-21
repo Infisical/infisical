@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { ServiceToken } from '../../models';
 import { createToken } from '../../helpers/auth';
-import { JWT_SERVICE_SECRET } from '../../config';
+import { getJwtServiceSecret } from '../../config';
 
 /**
  * Return service token on request
@@ -61,7 +61,7 @@ export const createServiceToken = async (req: Request, res: Response) => {
 				workspaceId
 			},
 			expiresIn: expiresIn,
-			secret: JWT_SERVICE_SECRET
+			secret: getJwtServiceSecret()
 		});
 	} catch (err) {
 		return res.status(400).send({

@@ -15,7 +15,7 @@ import { UnauthorizedRequestError, ValidationError } from '../../utils/errors';
 import { EventService } from '../../services';
 import { eventPushSecrets } from '../../events';
 import { EESecretService, EELogService } from '../../ee/services';
-import { postHogClient } from '../../services';
+import { getPostHogClient } from '../../services';
 import { getChannelFromUserAgent } from '../../utils/posthog';
 import { ABILITY_READ, ABILITY_WRITE } from '../../variables/organization';
 import { userHasNoAbility, userHasWorkspaceAccess, userHasWriteOnlyAbility } from '../../ee/helpers/checkMembershipPermissions';
@@ -33,6 +33,8 @@ import {
  */
 export const batchSecrets = async (req: Request, res: Response) => {
     const channel = getChannelFromUserAgent(req.headers['user-agent']);
+    const postHogClient = getPostHogClient();
+
     const {
         workspaceId,
         environment,
@@ -326,6 +328,7 @@ export const createSecrets = async (req: Request, res: Response) => {
         }
     }   
     */
+   const postHogClient = getPostHogClient();
 
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
     const { workspaceId, environment }: { workspaceId: string, environment: string } = req.body;
@@ -530,6 +533,7 @@ export const getSecrets = async (req: Request, res: Response) => {
     }   
     */
 
+    const postHogClient = getPostHogClient();
 
     const { workspaceId, environment, tagSlugs } = req.query;
     const tagNamesList = typeof tagSlugs === 'string' && tagSlugs !== '' ? tagSlugs.split(',') : [];
@@ -732,6 +736,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
         }
     }
     */
+    const postHogClient = getPostHogClient();
     const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli';
 
     // TODO: move type
@@ -953,7 +958,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
         }
     }   
     */
-   
+    const postHogClient = getPostHogClient();
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
     const toDelete = req.secrets.map((s: any) => s._id);
 

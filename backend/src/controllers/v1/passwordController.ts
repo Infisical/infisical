@@ -7,9 +7,9 @@ import { User, BackupPrivateKey, LoginSRPDetail } from '../../models';
 import { createToken } from '../../helpers/auth';
 import { sendMail } from '../../helpers/nodemailer';
 import { TokenService } from '../../services';
-import { JWT_SIGNUP_LIFETIME, JWT_SIGNUP_SECRET, SITE_URL } from '../../config';
 import { TOKEN_EMAIL_PASSWORD_RESET } from '../../variables';
 import { BadRequestError } from '../../utils/errors';
+import { getSiteURL, getJwtSignupLifetime, getJwtSignupSecret } from '../../config';
 
 /**
  * Password reset step 1: Send email verification link to email [email] 
@@ -44,7 +44,7 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
 			substitutions: {
 				email,
 				token,
-				callback_url: SITE_URL + '/password-reset'
+				callback_url: getSiteURL() + '/password-reset'
 			}
 		});
 	} catch (err) {
@@ -91,8 +91,8 @@ export const emailPasswordResetVerify = async (req: Request, res: Response) => {
 			payload: {
 				userId: user._id.toString()
 			},
-			expiresIn: JWT_SIGNUP_LIFETIME,
-			secret: JWT_SIGNUP_SECRET
+			expiresIn: getJwtSignupLifetime(),
+			secret: getJwtSignupSecret()
 		});
 	} catch (err) {
 		Sentry.setUser(null);
