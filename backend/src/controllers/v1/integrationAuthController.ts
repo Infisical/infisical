@@ -5,7 +5,7 @@ import {
 	IntegrationAuth,
 	Bot 
 } from '../../models';
-import { INTEGRATION_SET, INTEGRATION_OPTIONS } from '../../variables';
+import { INTEGRATION_SET, getIntegrationOptions as getIntegrationOptionsFunc } from '../../variables';
 import { IntegrationService } from '../../services';
 import {
 	getApps, 
@@ -39,9 +39,11 @@ export const getIntegrationAuth = async (req: Request, res: Response) => {
 }
 
 export const getIntegrationOptions = async (req: Request, res: Response) => {
-  return res.status(200).send({
-    integrationOptions: INTEGRATION_OPTIONS,
-  });
+	const INTEGRATION_OPTIONS = getIntegrationOptionsFunc();
+
+	return res.status(200).send({
+		integrationOptions: INTEGRATION_OPTIONS,
+	});
 };
 
 /**

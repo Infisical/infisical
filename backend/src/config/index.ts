@@ -1,105 +1,51 @@
-const PORT = process.env.PORT || 4000;
-const EMAIL_TOKEN_LIFETIME = parseInt(process.env.EMAIL_TOKEN_LIFETIME! || '86400');
-const INVITE_ONLY_SIGNUP = process.env.INVITE_ONLY_SIGNUP == undefined ? false : process.env.INVITE_ONLY_SIGNUP
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!;
-const SALT_ROUNDS = parseInt(process.env.SALT_ROUNDS!) || 10;
-const JWT_AUTH_LIFETIME = process.env.JWT_AUTH_LIFETIME! || '10d';
-const JWT_AUTH_SECRET = process.env.JWT_AUTH_SECRET!;
-const JWT_MFA_LIFETIME = process.env.JWT_MFA_LIFETIME! || '5m';
-const JWT_MFA_SECRET = process.env.JWT_MFA_SECRET!;
-const JWT_REFRESH_LIFETIME = process.env.JWT_REFRESH_LIFETIME! || '90d';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!;
-const JWT_SERVICE_SECRET = process.env.JWT_SERVICE_SECRET!;
-const JWT_SIGNUP_LIFETIME = process.env.JWT_SIGNUP_LIFETIME! || '15m';
-const JWT_SIGNUP_SECRET = process.env.JWT_SIGNUP_SECRET!;
-const MONGO_URL = process.env.MONGO_URL!;
-const NODE_ENV = process.env.NODE_ENV! || 'production';
-const VERBOSE_ERROR_OUTPUT = process.env.VERBOSE_ERROR_OUTPUT! === 'true' && true;
-const LOKI_HOST = process.env.LOKI_HOST || undefined;
-const CLIENT_ID_AZURE = process.env.CLIENT_ID_AZURE!;
-const CLIENT_ID_HEROKU = process.env.CLIENT_ID_HEROKU!;
-const CLIENT_ID_VERCEL = process.env.CLIENT_ID_VERCEL!;
-const CLIENT_ID_NETLIFY = process.env.CLIENT_ID_NETLIFY!;
-const CLIENT_ID_GITHUB = process.env.CLIENT_ID_GITHUB!;
-const CLIENT_ID_GITLAB = process.env.CLIENT_ID_GITLAB!;
-const CLIENT_SECRET_AZURE = process.env.CLIENT_SECRET_AZURE!;
-const CLIENT_SECRET_HEROKU = process.env.CLIENT_SECRET_HEROKU!;
-const CLIENT_SECRET_VERCEL = process.env.CLIENT_SECRET_VERCEL!;
-const CLIENT_SECRET_NETLIFY = process.env.CLIENT_SECRET_NETLIFY!;
-const CLIENT_SECRET_GITHUB = process.env.CLIENT_SECRET_GITHUB!;
-const CLIENT_SECRET_GITLAB = process.env.CLIENT_SECRET_GITLAB;
-const CLIENT_SLUG_VERCEL = process.env.CLIENT_SLUG_VERCEL!;
-const POSTHOG_HOST = process.env.POSTHOG_HOST! || 'https://app.posthog.com';
-const POSTHOG_PROJECT_API_KEY =
-  process.env.POSTHOG_PROJECT_API_KEY! ||
-  'phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE';
-const SENTRY_DSN = process.env.SENTRY_DSN!;
-const SITE_URL = process.env.SITE_URL!;
-const SMTP_HOST = process.env.SMTP_HOST!;
-const SMTP_SECURE = process.env.SMTP_SECURE! === 'true' || false;
-const SMTP_PORT = parseInt(process.env.SMTP_PORT!) || 587;
-const SMTP_USERNAME = process.env.SMTP_USERNAME!;
-const SMTP_PASSWORD = process.env.SMTP_PASSWORD!;
-const SMTP_FROM_ADDRESS = process.env.SMTP_FROM_ADDRESS!;
-const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME! || 'Infisical';
-const STRIPE_PRODUCT_STARTER = process.env.STRIPE_PRODUCT_STARTER!;
-const STRIPE_PRODUCT_PRO = process.env.STRIPE_PRODUCT_PRO!;
-const STRIPE_PRODUCT_TEAM = process.env.STRIPE_PRODUCT_TEAM!;
-const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY!;
-const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY!;
-const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET!;
-const TELEMETRY_ENABLED = process.env.TELEMETRY_ENABLED! !== 'false' && true;
-const LICENSE_KEY = process.env.LICENSE_KEY!;
-
-export {
-  PORT,
-  EMAIL_TOKEN_LIFETIME,
-  INVITE_ONLY_SIGNUP,
-  ENCRYPTION_KEY,
-  SALT_ROUNDS,
-  JWT_AUTH_LIFETIME,
-  JWT_AUTH_SECRET,
-  JWT_MFA_LIFETIME,
-  JWT_MFA_SECRET,
-  JWT_REFRESH_LIFETIME,
-  JWT_REFRESH_SECRET,
-  JWT_SERVICE_SECRET,
-  JWT_SIGNUP_LIFETIME,
-  JWT_SIGNUP_SECRET,
-  MONGO_URL,
-  NODE_ENV,
-  VERBOSE_ERROR_OUTPUT,
-  LOKI_HOST,
-  CLIENT_ID_AZURE,
-  CLIENT_ID_HEROKU,
-  CLIENT_ID_VERCEL,
-  CLIENT_ID_NETLIFY,
-  CLIENT_ID_GITHUB,
-  CLIENT_ID_GITLAB,
-  CLIENT_SECRET_AZURE,
-  CLIENT_SECRET_HEROKU,
-  CLIENT_SECRET_VERCEL,
-  CLIENT_SECRET_NETLIFY,
-  CLIENT_SECRET_GITHUB,
-  CLIENT_SECRET_GITLAB,
-  CLIENT_SLUG_VERCEL,
-  POSTHOG_HOST,
-  POSTHOG_PROJECT_API_KEY,
-  SENTRY_DSN,
-  SITE_URL,
-  SMTP_HOST,
-  SMTP_PORT,
-  SMTP_SECURE,
-  SMTP_USERNAME,
-  SMTP_PASSWORD,
-  SMTP_FROM_ADDRESS,
-  SMTP_FROM_NAME,
-  STRIPE_PRODUCT_STARTER,
-  STRIPE_PRODUCT_TEAM,
-  STRIPE_PRODUCT_PRO,
-  STRIPE_PUBLISHABLE_KEY,
-  STRIPE_SECRET_KEY,
-  STRIPE_WEBHOOK_SECRET,
-  TELEMETRY_ENABLED,
-  LICENSE_KEY
-};
+import infisical from 'infisical-node';
+export const getPort = () => infisical.get('PORT')! || 4000;
+export const getInviteOnlySignup = () => infisical.get('INVITE_ONLY_SIGNUP')! == undefined ? false : infisical.get('INVITE_ONLY_SIGNUP');
+export const getEncryptionKey = () => infisical.get('ENCRYPTION_KEY')!;
+export const getSaltRounds = () => parseInt(infisical.get('SALT_ROUNDS')!) || 10;
+export const getJwtAuthLifetime = () => infisical.get('JWT_AUTH_LIFETIME')! || '10d';
+export const getJwtAuthSecret = () => infisical.get('JWT_AUTH_SECRET')!;
+export const getJwtMfaLifetime = () => infisical.get('JWT_MFA_LIFETIME')! || '5m';
+export const getJwtMfaSecret = () => infisical.get('JWT_MFA_LIFETIME')! || '5m';
+export const getJwtRefreshLifetime = () => infisical.get('JWT_REFRESH_LIFETIME')! || '90d';
+export const getJwtRefreshSecret = () => infisical.get('JWT_REFRESH_SECRET')!;
+export const getJwtServiceSecret = () => infisical.get('JWT_SERVICE_SECRET')!;
+export const getJwtSignupLifetime = () => infisical.get('JWT_SIGNUP_LIFETIME')! || '15m';
+export const getJwtSignupSecret = () => infisical.get('JWT_SIGNUP_SECRET')!;
+export const getMongoURL = () => infisical.get('MONGO_URL')!;
+export const getNodeEnv = () => infisical.get('NODE_ENV')!;
+export const getVerboseErrorOutput = () => infisical.get('VERBOSE_ERROR_OUTPUT')! === 'true' && true;
+export const getLokiHost = () => infisical.get('LOKI_HOST')!;
+export const getClientIdAzure = () => infisical.get('CLIENT_ID_AZURE')!;
+export const getClientIdHeroku = () => infisical.get('CLIENT_ID_HEROKU')!;
+export const getClientIdVercel = () => infisical.get('CLIENT_ID_VERCEL')!;
+export const getClientIdNetlify = () => infisical.get('CLIENT_ID_NETLIFY')!;
+export const getClientIdGitHub = () => infisical.get('CLIENT_ID_GITHUB')!;
+export const getClientIdGitLab = () => infisical.get('CLIENT_ID_GITLAB')!;
+export const getClientSecretAzure = () => infisical.get('CLIENT_SECRET_AZURE')!;
+export const getClientSecretHeroku = () => infisical.get('CLIENT_SECRET_HEROKU')!;
+export const getClientSecretVercel = () => infisical.get('CLIENT_SECRET_VERCEL')!;
+export const getClientSecretNetlify = () => infisical.get('CLIENT_SECRET_NETLIFY')!;
+export const getClientSecretGitHub = () => infisical.get('CLIENT_SECRET_GITHUB')!;
+export const getClientSecretGitLab = () => infisical.get('CLIENT_SECRET_GITLAB')!;
+export const getClientSlugVercel = () => infisical.get('CLIENT_SLUG_VERCEL')!;
+export const getPostHogHost = () => infisical.get('POSTHOG_HOST')! || 'https://app.posthog.com';
+export const getPostHogProjectApiKey = () => infisical.get('POSTHOG_PROJECT_API_KEY')! || 'phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE';
+export const getSentryDSN = () => infisical.get('SENTRY_DSN')!;
+export const getSiteURL = () => infisical.get('SITE_URL')!;
+export const getSmtpHost = () => infisical.get('SMTP_HOST')!;
+export const getSmtpSecure = () => infisical.get('SMTP_SECURE')! === 'true' || false;
+export const getSmtpPort = () => parseInt(infisical.get('SMTP_PORT')!) || 587;
+export const getSmtpUsername = () => infisical.get('SMTP_USERNAME')!;
+export const getSmtpPassword = () => infisical.get('SMTP_PASSWORD')!;
+export const getSmtpFromAddress = () => infisical.get('SMTP_FROM_ADDRESS')!;
+export const getSmtpFromName = () => infisical.get('SMTP_FROM_NAME')! || 'Infisical';
+export const getStripeProductStarter = () => infisical.get('STRIPE_PRODUCT_STARTER')!;
+export const getStripeProductPro = () => infisical.get('STRIPE_PRODUCT_PRO')!;
+export const getStripeProductTeam = () => infisical.get('STRIPE_PRODUCT_TEAM')!;
+export const getStripePublishableKey = () => infisical.get('STRIPE_PUBLISHABLE_KEY')!;
+export const getStripeSecretKey = () => infisical.get('STRIPE_SECRET_KEY')!;
+export const getStripeWebhookSecret = () => infisical.get('STRIPE_WEBHOOK_SECRET')!;
+export const getTelemetryEnabled = () => infisical.get('TELEMETRY_ENABLED')! !== 'false' && true;
+export const getLoopsApiKey = () => infisical.get('LOOPS_API_KEY')!;
+export const getSmtpConfigured = () => infisical.get('SMTP_HOST') == '' || infisical.get('SMTP_HOST') == undefined ? false : true

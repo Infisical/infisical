@@ -45,14 +45,9 @@
       "url": "security"
     },
     {
-      "name": "Self-hosting",
-      "icon": "server",
-      "url": "self-hosting"
-    },
-    {
-      "name": "SDK",
+      "name": "SDKs",
       "icon": "puzzle-piece",
-      "url": "sdk"
+      "url": "sdks"
     },
     {
       "name": "API Reference",
@@ -99,6 +94,14 @@
         "getting-started/dashboard/audit-logs",
         "getting-started/dashboard/mfa",
         "getting-started/dashboard/token"
+      ]
+    },
+    {
+      "group": "Self-hosting",
+      "pages": [
+        "self-hosting/overview",
+        "self-hosting/configuration/envars",
+        "self-hosting/configuration/email"
       ]
     },
     {
@@ -172,12 +175,6 @@
       ]
     },
     {
-      "group": "Self-hosting",
-      "pages": [
-        "self-hosting/overview"
-      ]
-    },
-    {
       "group": "Deployment options",
       "pages": [
         "self-hosting/deployments/linux",
@@ -185,16 +182,20 @@
       ]
     },
     {
-      "group": "Configuration",
+      "group": "Overview",
       "pages": [
-        "self-hosting/configuration/envars",
-        "self-hosting/configuration/email"
+        "sdks/overview"
       ]
     },
     {
-      "group": "SDK",
+      "group": "SDKs",
       "pages": [
-        "sdk/overview/usage"
+        "sdks/languages/node",
+        "sdks/languages/python",
+        "sdks/languages/java",
+        "sdks/languages/ruby",
+        "sdks/languages/go",
+        "sdks/languages/rust"
       ]
     },
     {

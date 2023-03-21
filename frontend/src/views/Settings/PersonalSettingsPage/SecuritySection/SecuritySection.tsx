@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 
 import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
-import { Checkbox } from '@app/components/v2';
+import { Checkbox, EmailServiceSetupModal } from '@app/components/v2';
+import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
+import { usePopUp } from '@app/hooks/usePopUp';
 
 import { useGetUser } from '../../../../hooks/api';
 import { User } from '../../../../hooks/api/types';
@@ -11,6 +13,11 @@ export const SecuritySection = () => {
   const [isMfaEnabled, setIsMfaEnabled] = useState(false);
   const { data: user } = useGetUser();
   const { createNotification } = useNotificationContext();
+  const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
+    'setUpEmail'
+  ] as const);
+  
+  const {data: serverDetails } = useFetchServerStatus()
   
   useEffect(() => {
     if (user && typeof user.isMfaEnabled !== 'undefined') {
@@ -42,6 +49,7 @@ export const SecuritySection = () => {
   }
   
   return (
+    <>
     <form>
       <div className="mb-6 mt-2 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pb-6 pt-2">
         <p className="mb-4 mt-2 text-xl font-semibold">
@@ -52,12 +60,21 @@ export const SecuritySection = () => {
           id="isTwoFAEnabled"
           isChecked={isMfaEnabled}
           onCheckedChange={(state) => {
-            toggleMfa(state as boolean);
+            if (serverDetails?.emailConfigured){
+              toggleMfa(state as boolean);
+            } else {
+              handlePopUpOpen('setUpEmail');
+            }
           }}
         >
           Enable 2-factor authentication via your personal email.
         </Checkbox>
       </div>
     </form>
+    <EmailServiceSetupModal
+        isOpen={popUp.setUpEmail?.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle('setUpEmail', isOpen)}
+      />
+    </>
   );
 };

@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import { createLogger, format, transports } from 'winston';
 import LokiTransport from 'winston-loki';
-import { LOKI_HOST, NODE_ENV } from '../config';
+import { getLokiHost, getNodeEnv } from '../config';
 
 const { combine, colorize, label, printf, splat, timestamp } = format;
 
@@ -25,10 +25,10 @@ const createLoggerWithLabel = (level: string, label: string) => {
     })
   ]
   //* Add LokiTransport if it's enabled
-  if(LOKI_HOST !== undefined){
+  if(getLokiHost() !== undefined){
     _transports.push(
       new LokiTransport({
-        host: LOKI_HOST,
+        host: getLokiHost(),
         handleExceptions: true,
         handleRejections: true,
         batching: true,
@@ -37,7 +37,11 @@ const createLoggerWithLabel = (level: string, label: string) => {
         format: format.combine(
           format.json()
         ),
-        labels: {app: process.env.npm_package_name, version: process.env.npm_package_version, environment: NODE_ENV},
+        labels: {
+          app: process.env.npm_package_name, 
+          version: process.env.npm_package_version, 
+          environment: getNodeEnv()
+        },
         onConnectionError: (err: Error)=> console.error('Connection error while connecting to Loki Server.\n', err)
       })
     )

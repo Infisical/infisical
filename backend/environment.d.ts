@@ -4,7 +4,6 @@ declare global {
   namespace NodeJS {
     interface ProcessEnv {
       PORT: string;
-      EMAIL_TOKEN_LIFETIME: string;
       ENCRYPTION_KEY: string;
       SALT_ROUNDS: string;
       JWT_AUTH_LIFETIME: string;

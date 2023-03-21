@@ -1,9 +1,9 @@
+import * as Sentry from '@sentry/node';
 import fs from 'fs';
 import path from 'path';
 import handlebars from 'handlebars';
 import nodemailer from 'nodemailer';
-import { SMTP_FROM_NAME, SMTP_FROM_ADDRESS } from '../config';
-import * as Sentry from '@sentry/node';
+import { getSmtpFromName, getSmtpFromAddress, getSmtpConfigured } from '../config';
 
 let smtpTransporter: nodemailer.Transporter;
 
@@ -25,23 +25,25 @@ const sendMail = async ({
   recipients: string[];
   substitutions: any;
 }) => {
-  try {
-    const html = fs.readFileSync(
-      path.resolve(__dirname, '../templates/' + template),
-      'utf8'
-    );
-    const temp = handlebars.compile(html);
-    const htmlToSend = temp(substitutions);
+  if (getSmtpConfigured()) {
+    try {
+      const html = fs.readFileSync(
+        path.resolve(__dirname, '../templates/' + template),
+        'utf8'
+      );
+      const temp = handlebars.compile(html);
+      const htmlToSend = temp(substitutions);
 
-    await smtpTransporter.sendMail({
-      from: `"${SMTP_FROM_NAME}" <${SMTP_FROM_ADDRESS}>`,
-      to: recipients.join(', '),
-      subject: subjectLine,
-      html: htmlToSend
-    });
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
+      await smtpTransporter.sendMail({
+        from: `"${getSmtpFromName()}" <${getSmtpFromAddress()}>`,
+        to: recipients.join(', '),
+        subject: subjectLine,
+        html: htmlToSend
+      });
+    } catch (err) {
+      Sentry.setUser(null);
+      Sentry.captureException(err);
+    }
   }
 };
 

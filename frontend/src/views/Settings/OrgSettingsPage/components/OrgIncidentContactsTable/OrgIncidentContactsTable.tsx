@@ -13,6 +13,7 @@ import * as yup from 'yup';
 import {
   Button,
   DeleteActionModal,
+  EmailServiceSetupModal,
   EmptyState,
   FormControl,
   IconButton,
@@ -28,6 +29,7 @@ import {
   THead,
   Tr} from '@app/components/v2';
 import { usePopUp } from '@app/hooks';
+import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
 import { IncidentContact } from '@app/hooks/api/types';
 
 type Props = {
@@ -50,9 +52,11 @@ export const OrgIncidentContactsTable = ({
   isLoading
 }: Props) => {
   const [searchContact, setSearchContact] = useState('');
+  const {data: serverDetails } = useFetchServerStatus()
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     'addContact',
-    'removeContact'
+    'removeContact',
+    'setUpEmail'
   ] as const);
 
   const {
@@ -92,7 +96,13 @@ export const OrgIncidentContactsTable = ({
         <div>
           <Button
             leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={() => handlePopUpOpen('addContact')}
+            onClick={() => {
+              if (serverDetails?.emailConfigured){
+                handlePopUpOpen('addContact');
+              } else {
+                handlePopUpOpen('setUpEmail');
+              }
+            }}
           >
             Add Contact
           </Button>
@@ -179,6 +189,10 @@ export const OrgIncidentContactsTable = ({
         title="Do you want to remove this email from incident contact?"
         onChange={(isOpen) => handlePopUpToggle('removeContact', isOpen)}
         onDeleteApproved={onRemoveIncidentContact}
+      />
+      <EmailServiceSetupModal
+        isOpen={popUp.setUpEmail?.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle('setUpEmail', isOpen)}
       />
     </div>
   );

@@ -29,6 +29,23 @@ const initDatabaseHelper = async ({
     return mongoose.connection;
 }
 
+/**
+ * Close database conection
+ */
+const closeDatabaseHelper = async () => {
+    return Promise.all([
+        new Promise((resolve) => {
+            if (mongoose.connection && mongoose.connection.readyState == 1) {
+            mongoose.connection.close()
+                .then(() => resolve('Database connection closed'));
+            } else {
+            resolve('Database connection already closed');
+            }
+        })
+    ]);
+}
+
 export {
-    initDatabaseHelper
+    initDatabaseHelper,
+    closeDatabaseHelper
 }
