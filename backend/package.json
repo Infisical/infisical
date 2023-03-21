@@ -37,7 +37,7 @@
     "rimraf": "^3.0.2",
     "stripe": "^10.7.0",
     "swagger-autogen": "^2.22.0",
-    "swagger-ui-express": "^4.6.0",
+    "swagger-ui-express": "^4.6.2",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "typescript": "^4.9.3",
