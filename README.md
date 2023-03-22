@@ -52,30 +52,90 @@
 -   **[User-Friendly Dashboard](https://infisical.com/docs/getting-started/dashboard/project)** to manage your team's secrets and configs within projects
 -   **[Language-Agnostic CLI](https://infisical.com/docs/cli/overview)** that pulls and injects esecrets and configs into your local workflow
 -   **[Complete control over your data](https://infisical.com/docs/self-hosting/overview)** - host it yourself on any infrastructure
--   **Navigate Multiple Environments** per project (e.g. development, staging, production, etc.)
--   **Personal overrides** for secrets and configs
 -   **[Integrations](https://infisical.com/docs/integrations/overview)** with CI/CD and production infrastructure
 -   **[Infisical API](https://infisical.com/docs/api-reference/overview/introduction)** - manage secrets via HTTPS requests to the platform
 -   **[Secret Versioning](https://infisical.com/docs/getting-started/dashboard/versioning)** to view the change history for any secret
 -   **[Audit Logs](https://infisical.com/docs/getting-started/dashboard/audit-logs)** to record every action taken in a project
 -   **[Point-in-time Secrets Recovery](https://infisical.com/docs/getting-started/dashboard/pit-recovery)** for rolling back to any snapshot of your secrets
 -   **Role-based Access Controls** per environment
--   **2FA** (more options coming soon)
--   **Smart Security Alerts**
--   🔜 **1-Click Deploy** to AWS
+-   🔜 **Dynamic Secrets**
 -   🔜 **Automatic Secret Rotation**
--   🔜 **Slack & MS Teams** integrations
 
-And more.
+## 🚀 Quick start: Inject secrets into your application
+There are several methods for integrating Infisical secrets into your application. You can sync secrets to third-party services using integrations like AWS Secrets Manager, GCP, Render, and others. Additionally, Infisical SDKs enable you to retrieve secrets directly within your code. For Kubernetes users, utilize the secrets operator for seamless integration. Furthermore, our CLI allows you to inject secrets directly into your application as environment variables.
 
-## 🚀 Get started
+## Install Infisical CLI
 
-To quickly get started, visit our [get started guide](https://infisical.com/docs/getting-started/introduction).
+### MacOs
+Use [brew](https://brew.sh/) package manager
 
-<p>
+```bash
+brew install infisical/get-cli/infisical
+```
+
+### Windows 
+Use [Scoop](https://scoop.sh/) package manager
+
+```bash
+scoop bucket add org https://github.com/Infisical/scoop-infisical.git
+```
+
+```bash
+scoop install infisical
+```
+
+### Debian/Ubuntu
+```bash
+curl -1sLf \
+'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' \
+| sudo -E bash
+```
+
+```bash
+sudo apt-get update && sudo apt-get install -y infisical
+```
+
+### Authenticate via the CLI 
+After installing the CLI on your system, you'll need to authenticate with your Infisical credentials. If you're developing locally, you can log in directly using infisical login. 
+However, if you're in a non-development environment, you can authenticate using a service token.
+
+
+### Inject secrets into your application process
+To enable your application to access secrets stored in Infisical, you can use the Infisical CLI to start your application. The CLI will inject your secrets as environment variables into your application process, allowing your application to retrieve them from the environment.
+
+```bash
+## Inject secrets into a single command ##
+infisical run -- [your application start command]
+
+# Example 
+infisical run -- npm run start 
+
+## Inject secrets into multiple commands ##
+infisical run [options] --command [string command]
+
+# Example
+infisical run [options] --command "npm run bootstrap && npm run dev start; other-bash-command"
+```
+
+View all available commands for Infisical CLI [here](https://infisical.com/docs/cli/commands/run) 
+
+## Self host Infisical
+To meet various compliance requirements, you may want to self-host Infisical instead of using Infisical Cloud. 
+Self-hosted Infisical allows you to maintain your sensitive information within your own infrastructure and network, ensuring complete control over your data.
+
+### One click EC2 deployment
+
+<img src="https://mintlify.s3-us-west-1.amazonaws.com/infisical/images/deploy-aws-button.png" height=80 />
+
+### Kubernetes Helm deployment  
+
+
+<!-- To quickly get started, visit our [get started guide](https://infisical.com/docs/getting-started/introduction). -->
+
+<!-- <p>
   <a href="https://infisical.com/docs/self-hosting/overview" target="_blank"><img src="https://user-images.githubusercontent.com/78047717/218910609-18a75846-51a9-420a-a9a9-5958ac9c5505.png" height=150 /> </a>
   <a href="https://app.infisical.com/signup" target="_blank"><img src="https://user-images.githubusercontent.com/78047717/218910520-b36a607f-af66-4a06-af10-6a2191ab02de.png" height=150></a>
-</p>
+</p> -->
 
 ## 🔥 What's cool about this?
 
