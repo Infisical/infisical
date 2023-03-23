@@ -62,18 +62,18 @@
 -   🔜 **Automatic Secret Rotation**
 
 ## 🚀 Quick start: Inject secrets into your application
-There are several methods for integrating Infisical secrets into your application. You can sync secrets to third-party services using integrations like AWS Secrets Manager, GCP, Render, and others. Additionally, Infisical SDKs enable you to retrieve secrets directly within your code. For Kubernetes users, utilize the secrets operator for seamless integration. Furthermore, our CLI allows you to inject secrets directly into your application as environment variables.
+There are several methods for integrating Infisical secrets into your application. You can sync secrets to third-party services using integrations like AWS Secrets Manager, GCP, Render, and others. Additionally, you can use Infisical SDKs to retrieve secrets directly via code. For Kubernetes users, utilize the secrets operator for seamless integration. Lastly, our CLI allows you to inject secrets directly into your application as environment variables.
 
 ## Install Infisical CLI
 
-### MacOs
+#### MacOs
 Use [brew](https://brew.sh/) package manager
 
 ```bash
 brew install infisical/get-cli/infisical
 ```
 
-### Windows 
+#### Windows 
 Use [Scoop](https://scoop.sh/) package manager
 
 ```bash
@@ -84,7 +84,7 @@ scoop bucket add org https://github.com/Infisical/scoop-infisical.git
 scoop install infisical
 ```
 
-### Debian/Ubuntu
+#### Debian/Ubuntu
 ```bash
 curl -1sLf \
 'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.deb.sh' \
@@ -95,13 +95,15 @@ curl -1sLf \
 sudo apt-get update && sudo apt-get install -y infisical
 ```
 
-### Authenticate via the CLI 
+Install CLI on [other platforms](https://infisical.com/docs/cli/overview)
+
+### Authenticate
 After installing the CLI on your system, you'll need to authenticate with your Infisical credentials. If you're developing locally, you can log in directly using infisical login. 
-However, if you're in a non-development environment, you can authenticate using a service token.
+However, if you're in a non-development environment, you can authenticate using a [service token](https://infisical.com/docs/getting-started/dashboard/token).
 
 
 ### Inject secrets into your application process
-To enable your application to access secrets stored in Infisical, you can use the Infisical CLI to start your application. The CLI will inject your secrets as environment variables into your application process, allowing your application to retrieve them from the environment.
+To feed secrets from Infisical into your application process, you can start your appliciaon with Infisical CLI. By starting your application with the Infisical CLI, the secrets are injected into your application process as environment variables, enabling your application to access them from the environment.
 
 ```bash
 ## Inject secrets into a single command ##
