@@ -57,7 +57,7 @@
     "lint-and-fix": "eslint . --ext .ts --fix",
     "lint-staged": "lint-staged",
     "pretest": "docker compose -f test-resources/docker-compose.test.yml up -d",
-    "test": "cross-env NODE_ENV=test jest --testTimeout=10000 --detectOpenHandles",
+    "test": "cross-env NODE_ENV=test jest --verbose --testTimeout=10000 --detectOpenHandles",
     "test:ci": "npm test -- --watchAll=false --ci --reporters=default --reporters=jest-junit --reporters=github-actions --coverage --testLocationInResults --json --outputFile=coverage/report.json",
     "posttest": "docker compose -f test-resources/docker-compose.test.yml down"
   },
