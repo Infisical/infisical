@@ -27,22 +27,5 @@ spec:
       secretName: {{ .secretName }}
   {{- end }}
 {{- end }}
-  rules:
-  - host: {{ $ingress.hostName}}
-    http: 
-      paths:
-      - path: {{ $ingress.frontend.path }}
-        pathType: {{ $ingress.frontend.pathType }}
-        backend:
-          service:
-            name: {{ include "infisical.frontend.fullname" . }}
-            port:
-              number: 3000
-      - path: {{ $ingress.backend.path }}
-        pathType: {{ $ingress.backend.pathType }}
-        backend:
-          service:
-            name: {{ include "infisical.backend.fullname" . }}
-            port:
-              number: 4000
+{{- include "infisical.ingress-rules" . | nindent 2 }}
 {{ end }}

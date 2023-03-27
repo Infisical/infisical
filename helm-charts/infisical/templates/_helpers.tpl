@@ -127,3 +127,46 @@ Create the mongodb connection string.
 {{- end -}}
 {{- printf "%s" $connectionString -}}
 {{- end -}}
+
+
+{{- define "infisical.ingress-rules" -}}
+{{- $ingress := .Values.ingress }}
+{{- if $ingress.hostName }}
+rules:
+  - host: {{ $ingress.hostName }}
+    http:
+      paths:
+      - path: {{ $ingress.frontend.path }}
+        pathType: {{ $ingress.frontend.pathType }}
+        backend:
+          service:
+            name: {{ include "infisical.frontend.fullname" . }}
+            port:
+              number: 3000
+      - path: {{ $ingress.backend.path }}
+        pathType: {{ $ingress.backend.pathType }}
+        backend:
+          service:
+            name: {{ include "infisical.backend.fullname" . }}
+            port:
+              number: 4000
+{{- else }}
+rules:
+  - http:
+      paths:
+      - path: {{ $ingress.frontend.path }}
+        pathType: {{ $ingress.frontend.pathType }}
+        backend:
+          service:
+            name: {{ include "infisical.frontend.fullname" . }}
+            port:
+              number: 3000
+      - path: {{ $ingress.backend.path }}
+        pathType: {{ $ingress.backend.pathType }}
+        backend:
+          service:
+            name: {{ include "infisical.backend.fullname" . }}
+            port:
+              number: 4000
+{{- end }}
+{{- end }}

@@ -303,13 +303,14 @@ ingress:
   ingressClassName: nginx
   ## @param ingress.annotations Ingress annotations
   ##
-  annotations: {}
+  annotations:
+    {}
     # kubernetes.io/ingress.class: "nginx"
     # cert-manager.io/issuer: letsencrypt-nginx
   ## @param ingress.hostName Ingress hostname (your custom domain name)
   ## Replace with your own domain
   ##
-  hostName: infisical.local
+  hostName: ""
   ## @skip ingress.frontend
   ##
   frontend:
@@ -396,7 +397,8 @@ mailhog:
     ingressClassName: nginx
     ## @param mailhog.ingress.annotations Ingress annotations
     ##
-    annotations: {}
+    annotations:
+      {}
       # kubernetes.io/ingress.class: nginx
       # kubernetes.io/tls-acme: "true"
     ## @param mailhog.ingress.labels Ingress labels

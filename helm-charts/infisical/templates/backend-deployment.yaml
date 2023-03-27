@@ -89,5 +89,4 @@ stringData:
     {{- $v := $value | default ($current | default $default) -}}
     {{ $key }}: {{ $v | quote }}
   {{ end -}}
-  MONGO_URL: {{ include "infisical.mongodb.connectionString" . | quote }}
 {{- end }}
