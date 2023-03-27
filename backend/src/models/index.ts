@@ -12,7 +12,8 @@ import Secret, { ISecret } from './secret';
 import ServiceToken, { IServiceToken } from './serviceToken';
 import ServiceAccount, { IServiceAccount } from './serviceAccount'; // new
 import ServiceAccountKey, { IServiceAccountKey } from './serviceAccountKey'; // new 
-import ServiceAccountPermission, { IServiceAccountPermission } from './serviceAccountPermission';
+import ServiceAccountOrganizationPermissions, { IServiceAccountOrganizationPermissions } from './serviceAccountOrganizationPermission'; // new
+import ServiceAccountWorkspacePermissions, { IServiceAccountWorkspacePermissions } from './serviceAccountWorkspacePermissions'; // new
 import TokenData, { ITokenData } from './tokenData';
 import User, { IUser } from './user';
 import UserAction, { IUserAction } from './userAction';
@@ -50,8 +51,10 @@ export {
 	IServiceAccount,
 	ServiceAccountKey,
 	IServiceAccountKey,
-	ServiceAccountPermission,
-	IServiceAccountPermission,
+	ServiceAccountOrganizationPermissions,
+	IServiceAccountOrganizationPermissions,
+	ServiceAccountWorkspacePermissions,
+	IServiceAccountWorkspacePermissions,
 	TokenData,
 	ITokenData,
 	User,

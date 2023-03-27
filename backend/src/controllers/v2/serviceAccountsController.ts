@@ -1,34 +1,49 @@
 import { Request, Response } from 'express';
 import { Types } from 'mongoose';
+import crypto from 'crypto';
+import bcrypt from 'bcrypt';
 import { 
     ServiceAccount,
     ServiceAccountKey,
-    ServiceAccountPermission
+    ServiceAccountOrganizationPermissions,
+    ServiceAccountWorkspacePermissions
 } from '../../models';
 import {
-    validateCreateServiceAccountPermission
-} from '../../helpers/serviceAccount';
-import {
-    CreateServiceAccountDto,
-    AddServiceAccountPermissionDto
+    CreateServiceAccountDto
 } from '../../interfaces/serviceAccounts/dto';
-import { 
-    PERMISSION_SA_WORKSPACE_SET,
-    PERMISSION_SA_SET
-} from '../../variables';
-import { ServiceAccountKeyNotFoundError, ValidationError } from '../../utils/errors';
+import { BadRequestError, ServiceAccountNotFoundError } from '../../utils/errors';
+import { getSaltRounds } from '../../config';
+
+/**
+ * Return service account with id [serviceAccountId]
+ * @param req 
+ * @param res 
+ */
+export const getServiceAccount = async (req: Request, res: Response) => {
+    const { serviceAccountId } = req.params;
+    
+    const serviceAccount = await ServiceAccount.findById(serviceAccountId);
+    
+    if (!serviceAccount) {
+        throw ServiceAccountNotFoundError({ message: 'Failed to find service account' });
+    }
+    
+    return res.status(200).send({
+        serviceAccount
+    });
+}
 
 /**
  * Create a new service account under organization with id [organizationId]
  * that has access to workspaces [workspaces]
  * @param req 
  * @param res 
- * @returns 
+ * @returns
  */
 export const createServiceAccount = async (req: Request, res: Response) => {
     const {
-        organizationId,
         name,
+        organizationId,
         publicKey,
         expiresIn,
     }: CreateServiceAccountDto = req.body;
@@ -38,15 +53,59 @@ export const createServiceAccount = async (req: Request, res: Response) => {
         expiresAt = new Date();
         expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
     }
+
+    const secret = crypto.randomBytes(16).toString('base64');
+    const secretHash = await bcrypt.hash(secret, getSaltRounds());
     
+    // create service account
     const serviceAccount = await new ServiceAccount({
         name,
         organization: new Types.ObjectId(organizationId),
         user: req.user,
         publicKey,
-        expiresAt
+        expiresAt,
+        secretHash
     }).save();
+    
+    const serviceAccountObj = serviceAccount.toObject();
+    
+    delete serviceAccountObj.secretHash;
 
+    // provision default org-level permissions for service account
+    const permissions = await new ServiceAccountOrganizationPermissions({
+        serviceAccount: serviceAccount._id
+    }).save();
+    
+    const secretId = Buffer.from(serviceAccount._id.toString(), 'hex').toString('base64');
+
+    return res.status(200).send({
+        serviceAccountAccessKey: `SA.${secretId}.${secret}`,
+        serviceAccount: serviceAccountObj
+    });
+}
+
+/**
+ * Change name of service account with id [serviceAccountId] to [name]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const changeServiceAccountName = async (req: Request, res: Response) => {
+    const { serviceAccountId } = req.params;
+    const { name } = req.body;
+    
+    const serviceAccount = await ServiceAccount.findOneAndUpdate(
+        {
+            _id: new Types.ObjectId(serviceAccountId)
+        },
+        {
+            name
+        },
+        {
+            new: true
+        }
+    );
+    
     return res.status(200).send({
         serviceAccount
     });
@@ -78,66 +137,111 @@ export const addServiceAccountKey = async (req: Request, res: Response) => {
 }
 
 /**
- * Add a permission to service account with id [serviceAccountId]
- * @param req
- * @param res
+ * Return organization-level permissions for service account with id [serviceAccountId]
+ * @param req 
+ * @param res 
  */
-export const addServiceAccountPermission = async (req: Request, res: Response) => {
-    const {
-        name,
-        workspaceId,
-        environment
-    }: AddServiceAccountPermissionDto = req.body;
+export const getServiceAccountOrganizationPermissions = async (req: Request, res: Response) => {
+    const { serviceAccountId } = req.params;
     
-    if (PERMISSION_SA_WORKSPACE_SET.has(name)) {
-        // case: permission named [name] is workspace-related
-        
-        // some such permissions require workspaceId and environment to be present.
-        
-        if (!workspaceId || !environment) {
-            throw ValidationError({
-                message: 'Failed validation that is workspace-related permission must specify a workspace and environment' 
-            });
-        } else {
-            const serviceAccountKey = await ServiceAccountKey.findOne({
-                serviceAccount: req.serviceAccount._id,
-                workspace: new Types.ObjectId(workspaceId)
-            });
-            
-            if (!serviceAccountKey) throw ServiceAccountKeyNotFoundError({ message: 'Failed to find service account key' });
-        }
-    }
-    
-    const serviceAccountPermission = await new ServiceAccountPermission({
-        serviceAccount: req.serviceAccount._id,
-        name,
-        workspace: workspaceId ? new Types.ObjectId(workspaceId) : undefined,
-        environment
+    const permissions = await ServiceAccountOrganizationPermissions.findOne({
+        serviceAccount: new Types.ObjectId(serviceAccountId),
     });
     
     return res.status(200).send({
-        serviceAccountPermission
+        permissions
     });
 }
 
 /**
- * Delete a permission from service account with id [serviceAccountId]
+ * Return workspace-level permissions for service account with id [serviceAccountId]
  * @param req 
  * @param res 
  */
-export const deleteServiceAccountPermission = async (req: Request, res: Response) => {
-    const { serviceAccountPermissionId } = req.params;
-    
-    // user must either be an admin/owner of the organization or they must 
-    // have created the service account in the first place to be able to delete it
-    
-    // TODO: how to delete just 1 permission?
-    
-
-    const serviceAccountPermission = await ServiceAccountPermission.findByIdAndDelete(serviceAccountPermissionId);
+export const getServiceAccountWorkspacePermissions = async (req: Request, res: Response) => {
+    const permissions = await ServiceAccountWorkspacePermissions.find({
+        serviceAccount: req.serviceAccount._id
+    }).populate('workspace');
     
     return res.status(200).send({
-        serviceAccountPermission
+        permissions
+    });
+}
+
+/**
+ * Add organization permissions to service account with id [serviceAccountId]
+ * @param req 
+ * @param res 
+ */
+export const addServiceAccountOrganizationPermission = async (req: Request, res: Response) => {
+    const permissions = ServiceAccountOrganizationPermissions.findOne({
+        serviceAccount: req.serviceAccount._id
+    });
+
+    // TODO
+    
+    return res.status(200).send({
+        permissions
+    });
+}
+
+/**
+ * Add a workspace permissions to service account with id [serviceAccountId]
+ * @param req 
+ * @param res 
+ */
+export const addServiceAccountWorkspacePermission = async (req: Request, res: Response) => {
+    const { serviceAccountId } = req.params;
+    const {
+        environment,
+        workspaceId,
+        canRead = false,
+        canWrite = false,
+        canUpdate = false,
+        canDelete = false
+    } = req.body;
+    
+    if (!req.membership.workspace.environments.some((e: { name: string; slug: string }) => e.slug === environment)) {
+        return res.status(400).send({
+            message: 'Failed to validate workspace environment'
+        });
+    }
+    
+    const existingPermission = await ServiceAccountWorkspacePermissions.findOne({
+        serviceAccount: new Types.ObjectId(serviceAccountId),
+        workspaceId: new Types.ObjectId(workspaceId),
+        environment
+    });
+    
+    if (existingPermission) throw BadRequestError({ message: 'Failed to add workspace permission to service account due to already-existing ' });
+
+    const permissions = await new ServiceAccountWorkspacePermissions({
+        serviceAccount: new Types.ObjectId(serviceAccountId),
+        workspace: new Types.ObjectId(workspaceId),
+        environment,
+        canRead,
+        canWrite,
+        canUpdate,
+        canDelete
+    }).save();
+    
+    return res.status(200).send({
+        permissions
+    });
+}
+
+/**
+ * Delete workspace permissions from service account with id [serviceAccountId]
+ * @param req 
+ * @param res 
+ */
+export const deleteServiceAccountWorkspacePermission = async (req: Request, res: Response) => {
+    const { serviceAccountWorkspacePermissionsId } = req.params;
+    
+    const permissions = await ServiceAccountWorkspacePermissions.findByIdAndDelete(serviceAccountWorkspacePermissionsId);
+    
+    return res.status(200).send({
+        permissions
     });
 }
 
@@ -156,10 +260,14 @@ export const deleteServiceAccount = async (req: Request, res: Response) => {
         // case: service account with id [serviceAccountId] was deleted
 
         await ServiceAccountKey.deleteMany({
-            serviceAccount: serviceAccount?._id
+            serviceAccount: serviceAccount._id
         });
 
-        await ServiceAccountPermission.deleteMany({
+        await ServiceAccountOrganizationPermissions.deleteMany({
+            serviceAccount: new Types.ObjectId(serviceAccountId)
+        });
+
+        await ServiceAccountWorkspacePermissions.deleteMany({
             serviceAccount: new Types.ObjectId(serviceAccountId)
         });
     }

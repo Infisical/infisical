@@ -93,8 +93,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
   // Placing the localstorage as much as possible
   // Wait till tony integrates the azure and its launched
   useEffect(() => {
-
     // Put a user in a workspace if they're not in one yet
+
     const putUserInWorkSpace = async () => {
       if (tempLocalStorage('orgData.id') === '') {
         const userOrgs = await getOrganizations();
@@ -114,9 +114,33 @@ export const AppLayout = ({ children }: LayoutProps) => {
       ) {
         router.push('/noprojects');
       } else if (router.asPath !== '/noprojects') {
-        const intendedWorkspaceId = router.asPath
-          .split('/')
-          [router.asPath.split('/').length - 1].split('?')[0];
+        
+        // const pathSegments = router.asPath.split('/').filter(segment => segment.length > 0);
+
+        // let intendedWorkspaceId;
+        // if (pathSegments.length >= 2 && pathSegments[0] === 'dashboard') {
+        //   intendedWorkspaceId = pathSegments[1];
+        // } else if (pathSegments.length >= 3 && pathSegments[0] === 'settings') {
+        //   intendedWorkspaceId = pathSegments[2];
+        // } else {
+        //   intendedWorkspaceId = router.asPath
+        //     .split('/')
+        //     [router.asPath.split('/').length - 1].split('?')[0];
+        // }
+        
+        const pathSegments = router.asPath.split('/').filter(segment => segment.length > 0);
+
+        let intendedWorkspaceId;
+        if (pathSegments.length >= 2 && pathSegments[0] === 'dashboard') {
+          [, intendedWorkspaceId] = pathSegments;
+        } else if (pathSegments.length >= 3 && pathSegments[0] === 'settings') {
+          [, , intendedWorkspaceId] = pathSegments;
+        } else {
+          const lastPathSegment = router.asPath.split('/').pop().split('?');
+          [intendedWorkspaceId] = lastPathSegment;
+        }
+        
+        if (!intendedWorkspaceId) return;
 
         if (!['callback', 'create', 'authorize'].includes(intendedWorkspaceId)) {
           localStorage.setItem('projectData.id', intendedWorkspaceId);
@@ -192,7 +216,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
       });
 
       if (addMembers) {
-        console.log('adding other users');
         // not using hooks because need at this point only
         const orgUsers = await fetchOrgUsers(currentOrg._id);
         orgUsers.forEach(({ status, user: orgUser }) => {

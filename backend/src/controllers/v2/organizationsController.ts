@@ -295,6 +295,7 @@ return res.status(200).send({
  */
 export const getOrganizationServiceAccounts = async (req: Request, res: Response) => {
     const { organizationId } = req.params;
+    
     const serviceAccounts = await ServiceAccount.find({
         organization: new Types.ObjectId(organizationId)
     });

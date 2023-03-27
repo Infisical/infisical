@@ -7,6 +7,7 @@ export interface IServiceAccount extends Document {
     user: Types.ObjectId;
     publicKey: string;
     expiresAt: Date;
+    secretHash: string;
 }
 
 const serviceAccountSchema = new Schema<IServiceAccount>(
@@ -31,6 +32,11 @@ const serviceAccountSchema = new Schema<IServiceAccount>(
         },
         expiresAt: {
             type: Date
+        },
+        secretHash: {
+            type: String,
+            required: true,
+            select: false
         }
     },
     {

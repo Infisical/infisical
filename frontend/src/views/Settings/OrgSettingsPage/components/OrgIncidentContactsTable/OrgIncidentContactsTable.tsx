@@ -26,7 +26,8 @@ import {
   Td,
   Th,
   THead,
-  Tr} from '@app/components/v2';
+  Tr
+} from '@app/components/v2';
 import { usePopUp } from '@app/hooks';
 import { IncidentContact } from '@app/hooks/api/types';
 

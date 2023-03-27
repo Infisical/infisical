@@ -5,6 +5,21 @@ import aes from './aes-256-gcm';
 const nacl = require('tweetnacl');
 nacl.util = require('tweetnacl-util');
 
+/**
+ * Return new base64, NaCl, public-private key pair.
+ * @returns {Object} obj
+ * @returns {String} obj.publicKey - base64, NaCl, public key
+ * @returns {String} obj.privateKey - base64, NaCl, private key
+ */
+const generateKeyPair = () => {
+  const pair = nacl.box.keyPair();
+  
+  return ({
+		publicKey: nacl.util.encodeBase64(pair.publicKey),
+		privateKey: nacl.util.encodeBase64(pair.secretKey)
+  });
+}
+
 type EncryptAsymmetricProps = {
   plaintext: string;
   publicKey: string;
@@ -189,5 +204,5 @@ export {
   decryptSymmetric, 
   deriveArgonKey,
   encryptAssymmetric, 
-  encryptSymmetric 
-};
+  encryptSymmetric, 
+  generateKeyPair};
