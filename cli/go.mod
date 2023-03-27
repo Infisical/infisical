@@ -4,7 +4,10 @@ go 1.19
 
 require (
 	github.com/99designs/keyring v1.2.2
+	github.com/mattn/go-isatty v0.0.14
+	github.com/muesli/ansi v0.0.0-20221106050444-61f0cd9a192a
 	github.com/muesli/mango-cobra v1.2.0
+	github.com/muesli/reflow v0.3.0
 	github.com/muesli/roff v0.1.0
 	github.com/spf13/cobra v1.6.1
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
@@ -22,7 +25,6 @@ require (
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/mattn/go-colorable v0.1.9 // indirect
-	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
 	github.com/mtibben/percent v0.2.1 // indirect
