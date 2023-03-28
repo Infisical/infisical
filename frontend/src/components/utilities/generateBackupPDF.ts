@@ -1,7 +1,5 @@
 import { jsPDF } from 'jspdf';
 
-import { SITE_URL } from './config';
-
 interface PDFProps {
   personalName: string;
   personalEmail: string;
@@ -19,7 +17,7 @@ const yyyy = today.getFullYear();
 const todayFormatted = `${mm}/${dd}/${yyyy}`;
 
 
-function createPdfHeader(doc: jsPDF, personalName : string) {
+function createPdfHeader(doc: jsPDF, personalName: string) {
   doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, 600, 900, 'F');
   doc.setTextColor(23, 23, 23);
@@ -30,6 +28,10 @@ function createPdfHeader(doc: jsPDF, personalName : string) {
 }
 
 function createPdfContent(doc: jsPDF, personalEmail: string, generatedKey: string) {
+  const { protocol, hostname, port } = window.location;
+  const portSuffix = port && port !== '80' ? `:${port}` : '';
+  const siteURL = `${protocol}//${hostname}${portSuffix}`;
+
   doc.setFontSize(14);
   doc.text(
     'In case you get locked out of you Infisical account, you`ll need these account details',
@@ -73,7 +75,7 @@ function createPdfContent(doc: jsPDF, personalEmail: string, generatedKey: strin
   doc.roundedRect(170, 488, 375, 35, 5, 5, 'F');
   doc.setTextColor(23, 23, 23);
   doc.setFontSize(14);
-  doc.text(`${SITE_URL}/login`, 180, 420);
+  doc.text(`${siteURL}/login`, 180, 420);
   doc.text(personalEmail, 180, 465);
   doc.text(generatedKey, 180, 510);
   doc.text('Need help? Contact us at support@infisical.com', 32, 575);

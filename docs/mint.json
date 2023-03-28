@@ -45,11 +45,6 @@
       "url": "security"
     },
     {
-      "name": "Self-hosting",
-      "icon": "server",
-      "url": "self-hosting"
-    },
-    {
       "name": "SDKs",
       "icon": "puzzle-piece",
       "url": "sdks"
@@ -99,6 +94,14 @@
         "getting-started/dashboard/audit-logs",
         "getting-started/dashboard/mfa",
         "getting-started/dashboard/token"
+      ]
+    },
+    {
+      "group": "Self-hosting",
+      "pages": [
+        "self-hosting/overview",
+        "self-hosting/configuration/envars",
+        "self-hosting/configuration/email"
       ]
     },
     {
@@ -172,23 +175,10 @@
       ]
     },
     {
-      "group": "Self-hosting",
-      "pages": [
-        "self-hosting/overview"
-      ]
-    },
-    {
       "group": "Deployment options",
       "pages": [
         "self-hosting/deployments/linux",
         "self-hosting/deployments/kubernetes"
-      ]
-    },
-    {
-      "group": "Configuration",
-      "pages": [
-        "self-hosting/configuration/envars",
-        "self-hosting/configuration/email"
       ]
     },
     {
