@@ -52,12 +52,12 @@ export const OrgSettingsPage = () => {
   const addIncidentContact = useAddIncidentContact();
   const removeIncidentContact = useDeleteIncidentContact();
 
-  const [completeInviteLink, setcompleteInviteLink] = useState<string | undefined>('');
+  const [completeInviteLink, setcompleteInviteLink] = useState<string|undefined>("")
 
   const isMoreUsersNotAllowed =
     (orgUsers || []).length >= 5 &&
     subscriptionPlan === plans.starter &&
-    host === 'https://app.infisical.com' &&
+    host === 'https://app.infisical.com' && 
     currentWorkspace?._id !== '63ea8121b6e2b0543ba79616';
 
   const onRenameOrg = async (name: string) => {
@@ -84,7 +84,7 @@ export const OrgSettingsPage = () => {
     try {
       await removeUserOrgMembership.mutateAsync({ orgId: currentOrg?._id, membershipId });
       createNotification({
-        text: 'Successfully removed user from org',
+        text: 'Successfully removed used from org',
         type: 'success'
       });
     } catch (error) {
@@ -99,14 +99,11 @@ export const OrgSettingsPage = () => {
     if (!currentOrg?._id) return;
 
     try {
-      const { data } = await addUserToOrg.mutateAsync({
-        organizationId: currentOrg?._id,
-        inviteeEmail: email
-      });
-      setcompleteInviteLink(data?.completeInviteLink);
+      const {data} = await addUserToOrg.mutateAsync({ organizationId: currentOrg?._id, inviteeEmail: email });
+      setcompleteInviteLink(data?.completeInviteLink)
 
       // only show this notification when email is configured. A [completeInviteLink] will not be sent if smtp is configured
-      if (!data.completeInviteLink) {
+      if (!data.completeInviteLink){
         createNotification({
           text: 'Successfully invited user to the organization.',
           type: 'success'
