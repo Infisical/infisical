@@ -263,10 +263,10 @@ var secretsSetCmd = &cobra.Command{
 		}
 
 		// Print secret operations
-		headers := []string{"SECRET NAME", "SECRET VALUE", "STATUS"}
-		rows := [][]string{}
+		headers := [...]string{"SECRET NAME", "SECRET VALUE", "STATUS"}
+		rows := [][3]string{}
 		for _, secretOperation := range secretOperations {
-			rows = append(rows, []string{secretOperation.SecretKey, secretOperation.SecretValue, secretOperation.SecretOperation})
+			rows = append(rows, [...]string{secretOperation.SecretKey, secretOperation.SecretValue, secretOperation.SecretOperation})
 		}
 
 		visualize.Table(headers, rows)
