@@ -11,7 +11,7 @@ import requireIntegrationAuthorizationAuth from './requireIntegrationAuthorizati
 import requireServiceTokenAuth from './requireServiceTokenAuth';
 import requireServiceTokenDataAuth from './requireServiceTokenDataAuth';
 import requireServiceAccountAuth from './requireServiceAccountAuth';
-import requireServiceAccountWorkspacePermissionsAuth from './requireServiceAccountWorkspacePermissionsAuth';
+import requireServiceAccountWorkspacePermissionAuth from './requireServiceAccountWorkspacePermissionAuth';
 import requireSecretAuth from './requireSecretAuth';
 import requireSecretsAuth from './requireSecretsAuth';
 import validateRequest from './validateRequest';
@@ -30,7 +30,7 @@ export {
 	requireServiceTokenAuth,
 	requireServiceTokenDataAuth,
 	requireServiceAccountAuth,
-	requireServiceAccountWorkspacePermissionsAuth,
+	requireServiceAccountWorkspacePermissionAuth,
 	requireSecretAuth,
 	requireSecretsAuth,
 	validateRequest

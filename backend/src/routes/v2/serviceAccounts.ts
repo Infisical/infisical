@@ -5,7 +5,7 @@ import {
     requireOrganizationAuth,
     requireWorkspaceAuth,
     requireServiceAccountAuth,
-    requireServiceAccountWorkspacePermissionsAuth,
+    requireServiceAccountWorkspacePermissionAuth,
     validateRequest
 } from '../../middleware';
 import { param, query, body } from 'express-validator';
@@ -76,21 +76,21 @@ router.delete(
     serviceAccountsController.deleteServiceAccount
 );
 
-router.get(
-    '/:serviceAccountId/permissions/organization',
-    param('serviceAccountId').exists().isString().trim(),
-    query('offset').exists(),
-    query('limit').exists(),
-    validateRequest,
-    requireAuth({
-        acceptedAuthModes: ['jwt']
-    }),
-    requireServiceAccountAuth({
-        acceptedRoles: [OWNER, ADMIN],
-        acceptedStatuses: [ACCEPTED]
-    }),
-    serviceAccountsController.getServiceAccountOrganizationPermissions
-);
+// router.get(
+//     '/:serviceAccountId/permissions/organization',
+//     param('serviceAccountId').exists().isString().trim(),
+//     query('offset').exists(),
+//     query('limit').exists(),
+//     validateRequest,
+//     requireAuth({
+//         acceptedAuthModes: ['jwt']
+//     }),
+//     requireServiceAccountAuth({
+//         acceptedRoles: [OWNER, ADMIN],
+//         acceptedStatuses: [ACCEPTED]
+//     }),
+//     serviceAccountsController.getServiceAccountOrganizationPermission
+// );
 
 router.get(
     '/:serviceAccountId/permissions/workspace',
@@ -106,19 +106,19 @@ router.get(
     serviceAccountsController.getServiceAccountWorkspacePermissions
 );
 
-router.post(
-    '/:serviceAccountId/permissions/organization',
-    param('serviceAccountId').exists().isString().trim(),
-    validateRequest,
-    requireAuth({
-        acceptedAuthModes: ['jwt']
-    }),
-    requireServiceAccountAuth({
-        acceptedRoles: [OWNER, ADMIN],
-        acceptedStatuses: [ACCEPTED]
-    }),
-    serviceAccountsController.addServiceAccountOrganizationPermission
-);
+// router.post(
+//     '/:serviceAccountId/permissions/organization',
+//     param('serviceAccountId').exists().isString().trim(),
+//     validateRequest,
+//     requireAuth({
+//         acceptedAuthModes: ['jwt']
+//     }),
+//     requireServiceAccountAuth({
+//         acceptedRoles: [OWNER, ADMIN],
+//         acceptedStatuses: [ACCEPTED]
+//     }),
+//     serviceAccountsController.addServiceAccountOrganizationPermission
+// );
 
 router.post(
     '/:serviceAccountId/permissions/workspace',
@@ -129,6 +129,8 @@ router.post(
     body('canWrite').isBoolean().optional(),
     body('canUpdate').isBoolean().optional(),
     body('canDelete').isBoolean().optional(),
+    body('encryptedKey').exists().isString().notEmpty(),
+    body('nonce').exists().isString().notEmpty(),
     validateRequest,
     requireAuth({
         acceptedAuthModes: ['jwt']
@@ -145,9 +147,9 @@ router.post(
 );
 
 router.delete(
-    '/:serviceAccountId/permissions/workspace/:serviceAccountWorkspacePermissionsId',
+    '/:serviceAccountId/permissions/workspace/:serviceAccountWorkspacePermissionId',
     param('serviceAccountId').exists().isString().trim(),
-    param('serviceAccountWorkspacePermissionsId').exists().isString().trim(),
+    param('serviceAccountWorkspacePermissionId').exists().isString().trim(),
     validateRequest,
     requireAuth({
         acceptedAuthModes: ['jwt']
@@ -156,7 +158,7 @@ router.delete(
         acceptedRoles: [OWNER, ADMIN],
         acceptedStatuses: [ACCEPTED]
     }), 
-    requireServiceAccountWorkspacePermissionsAuth({
+    requireServiceAccountWorkspacePermissionAuth({
         acceptedRoles: [OWNER, ADMIN],
         acceptedStatuses: [ACCEPTED]
     }),

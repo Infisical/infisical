@@ -62,8 +62,6 @@ export const OrgServiceAccountsTable = () => {
     const { currentOrg } = useOrganization();
     const { currentWorkspace } = useWorkspace();
     
-    console.log('currentWorkspace: ', currentWorkspace);
-    
     const orgId = currentOrg?._id || '';
     const [step, setStep] = useState(0);
     const [isAccessKeyCopied, setIsAccessKeyCopied] = useToggle(false);
@@ -114,8 +112,6 @@ export const OrgServiceAccountsTable = () => {
             expiresIn
         });
         
-        console.log('serviceAccountDetails: ', serviceAccountDetails);
-        
         setAccessKey(serviceAccountDetails.serviceAccountAccessKey);
 
         setStep(1);
@@ -123,11 +119,7 @@ export const OrgServiceAccountsTable = () => {
     }
     
     const onRemoveServiceAccount = async () => {
-        console.log('onRemoveServiceAccount');
-
         const serviceAccountId = (popUp?.removeServiceAccount?.data as { _id: string })?._id;
-        console.log('serviceAccountId: ', serviceAccountId);
-        
         await removeServiceAccount.mutateAsync(serviceAccountId);
         handlePopUpClose('removeServiceAccount');
     }
@@ -247,8 +239,6 @@ export const OrgServiceAccountsTable = () => {
         }
     }
     
-    console.log('serviceAccounts: ', serviceAccounts);
-
     return (
         <div className="w-full">
             <div className="mb-4 flex">

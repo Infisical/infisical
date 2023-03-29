@@ -27,6 +27,31 @@ type EncryptAsymmetricProps = {
 };
 
 /**
+ * Verify that private key [privateKey] is the one that corresponds to
+ * the public key [publicKey]
+ * @param {Object} 
+ * @param {String} - base64-encoded Nacl private key
+ * @param {String} - base64-encoded Nacl public key
+ */
+const verifyPrivateKey = ({
+  privateKey,
+  publicKey
+}: {
+  privateKey: string;
+  publicKey: string;
+}) => {
+  const derivedPublicKey = nacl.util.encodeBase64(
+    nacl.box.keyPair.fromSecretKey(
+      nacl.util.decodeBase64(privateKey)
+    ).publicKey
+  );
+  
+  if (derivedPublicKey !== publicKey) {
+    throw new Error('Failed to verify private key');
+  }
+}
+
+/**
  * Derive a key from password [password] and salt [salt] using Argon2id
  * @param {Object} obj
  * @param {String} obj.password - password to derive key from
@@ -204,5 +229,6 @@ export {
   decryptSymmetric, 
   deriveArgonKey,
   encryptAssymmetric, 
-  encryptSymmetric, 
-  generateKeyPair};
+  encryptSymmetric,
+  generateKeyPair,
+  verifyPrivateKey};

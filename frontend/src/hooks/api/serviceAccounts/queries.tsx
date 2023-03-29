@@ -5,14 +5,12 @@ import { apiRequest } from '@app/config/request';
 import {
     CreateServiceAccountDTO,
     CreateServiceAccountRes,
-    CreateServiceAccountWorkspacePermissionsDTO,
-    DeleteServiceAccountRes,
-    DeleteServiceAccountWorkspacePermissionsDTO,
-    DeleteServiceAccountWorkspacePermissionsRes,
+    CreateServiceAccountWorkspacePermissionDTO,
+    DeleteServiceAccountWorkspacePermissionDTO,
     RenameServiceAccountDTO,
-    RenameServiceAccountRes,
     ServiceAccount,
-    ServiceAccountWorkspacePermissions} from './types';
+    ServiceAccountWorkspacePermission
+} from './types';
 
 const serviceAccountKeys = {
     getServiceAccountById: (serviceAccountId: string) => [{ serviceAccountId }, 'service-account'] as const,
@@ -68,7 +66,7 @@ export const useCreateServiceAccount = () => {
 export const useRenameServiceAccount = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<RenameServiceAccountRes, {}, RenameServiceAccountDTO>({
+    return useMutation<ServiceAccount, {}, RenameServiceAccountDTO>({
         mutationFn: async ({ serviceAccountId, name }) => {
             const { data: { serviceAccount } } = await apiRequest.patch(`/api/v2/service-accounts/${serviceAccountId}/name`, { name });
             return serviceAccount;
@@ -83,7 +81,7 @@ export const useRenameServiceAccount = () => {
 export const useDeleteServiceAccount = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<DeleteServiceAccountRes, {}, string>({
+    return useMutation<ServiceAccount, {}, string>({
         mutationFn: async (serviceAccountId) => {
             const { data: { serviceAccount } } = await apiRequest.delete(`/api/v2/service-accounts/${serviceAccountId}`);
             return serviceAccount;
@@ -95,14 +93,11 @@ export const useDeleteServiceAccount = () => {
 }
 
 const fetchServiceAccountProjectLevelPermissions = async (serviceAccountId: string) => {
-    const { data: { permissions } } = await apiRequest.get<{ permissions: ServiceAccountWorkspacePermissions[] }>(
+    const { data: { serviceAccountWorkspacePermissions } } = await apiRequest.get<{ serviceAccountWorkspacePermissions: ServiceAccountWorkspacePermission[] }>(
         `/api/v2/service-accounts/${serviceAccountId}/permissions/workspace`
     );
     
-    console.log('fetchServiceAccountProjectLevelPermissions');
-    console.log('prrr: ', permissions);
-
-    return permissions;
+    return serviceAccountWorkspacePermissions;
 }
 
 export const useGetServiceAccountProjectLevelPermissions = (serviceAccountId: string) => {
@@ -113,13 +108,13 @@ export const useGetServiceAccountProjectLevelPermissions = (serviceAccountId: st
     });
 }
 
-export const useCreateServiceAccountProjectLevelPermissions = () => {
+export const useCreateServiceAccountProjectLevelPermission = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<CreateServiceAccountRes, {}, CreateServiceAccountWorkspacePermissionsDTO>({
+    return useMutation<ServiceAccountWorkspacePermission, {}, CreateServiceAccountWorkspacePermissionDTO>({
         mutationFn: async (body) => {
-            const { data: { permissions } } = await apiRequest.post(`/api/v2/service-accounts/${body.serviceAccountId}/permissions/workspace`, body);
-            return permissions;
+            const { data: { serviceAccountWorkspacePermission } } = await apiRequest.post(`/api/v2/service-accounts/${body.serviceAccountId}/permissions/workspace`, body);
+            return serviceAccountWorkspacePermission;
         },
         onSuccess: ({ serviceAccount }) => {
             queryClient.invalidateQueries(serviceAccountKeys.getServiceAccountProjectLevelPermissions(serviceAccount));
@@ -127,20 +122,16 @@ export const useCreateServiceAccountProjectLevelPermissions = () => {
     });
 }
 
-export const useDeleteServiceAccountProjectLevelPermissions = () => {
+export const useDeleteServiceAccountProjectLevelPermission = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<DeleteServiceAccountWorkspacePermissionsRes, {}, DeleteServiceAccountWorkspacePermissionsDTO>({
-        mutationFn: async ({ serviceAccountId, serviceAccountWorkspacePermissionsId }) => {
-            const { data: { permissions } } = await apiRequest.delete(`/api/v2/service-accounts/${serviceAccountId}/permissions/workspace/${serviceAccountWorkspacePermissionsId}`);
-            console.log('useDeleteServiceAccountProjectLevelPermissions');
-            console.log('permissions: ', permissions);
-            return permissions;
+    return useMutation<ServiceAccountWorkspacePermission, {}, DeleteServiceAccountWorkspacePermissionDTO>({
+        mutationFn: async ({ serviceAccountId, serviceAccountWorkspacePermissionId }) => {
+            const { data: { serviceAccountWorkspacePermission} } = await apiRequest.delete(`/api/v2/service-accounts/${serviceAccountId}/permissions/workspace/${serviceAccountWorkspacePermissionId}`);
+            return serviceAccountWorkspacePermission;
         },
-        onSuccess: ({ serviceAccount }) => {
-            console.log('onSuccess3: ', serviceAccount);
-            queryClient.invalidateQueries(serviceAccountKeys.getServiceAccountProjectLevelPermissions(serviceAccount));
-            // queryClient.invalidateQueries(serviceAccountKeys.getServiceAccounts(organization));
+        onSuccess: (serviceAccountWorkspacePermission) => {
+            queryClient.invalidateQueries(serviceAccountKeys.getServiceAccountProjectLevelPermissions(serviceAccountWorkspacePermission.serviceAccount));
         }
     });
 }

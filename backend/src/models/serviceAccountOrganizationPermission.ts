@@ -1,21 +1,16 @@
 import { Schema, model, Types, Document } from 'mongoose';
 
-export interface IServiceAccountOrganizationPermissions extends Document {
+export interface IServiceAccountOrganizationPermission extends Document {
     _id: Types.ObjectId;
     serviceAccount: Types.ObjectId;
-    canFoo: boolean;
 }
 
-const serviceAccountOrganizationPermissionsSchema = new Schema<IServiceAccountOrganizationPermissions>(
+const serviceAccountOrganizationPermissionSchema = new Schema<IServiceAccountOrganizationPermission>(
     {
         serviceAccount: {
             type: Schema.Types.ObjectId,
             ref: 'ServiceAccount',
             required: true
-        },
-        canFoo: {
-            type: Boolean,
-            default: false
         }
     },
     {
@@ -23,6 +18,6 @@ const serviceAccountOrganizationPermissionsSchema = new Schema<IServiceAccountOr
     }
 );
 
-const ServiceAccountOrganizationPermissions = model<IServiceAccountOrganizationPermissions>('ServiceAccountOrganizationPermissions', serviceAccountOrganizationPermissionsSchema);
+const ServiceAccountOrganizationPermission = model<IServiceAccountOrganizationPermission>('ServiceAccountOrganizationPermission', serviceAccountOrganizationPermissionSchema);
 
-export default ServiceAccountOrganizationPermissions;
+export default ServiceAccountOrganizationPermission;

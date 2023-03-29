@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { ServiceAccount, ServiceAccountWorkspacePermissions } from '../models';
+import { ServiceAccount, ServiceAccountWorkspacePermission } from '../models';
 import {
     ServiceAccountNotFoundError
 } from '../utils/errors';
@@ -9,7 +9,7 @@ import {
 
 type req = 'params' | 'body' | 'query';
 
-const requireServiceAccountWorkspacePermissionsAuth = ({
+const requireServiceAccountWorkspacePermissionAuth = ({
     acceptedRoles,
     acceptedStatuses,
     location = 'params'
@@ -19,14 +19,14 @@ const requireServiceAccountWorkspacePermissionsAuth = ({
     location?: req;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
-        const serviceAccountWorkspacePermissionsId = req[location].serviceAccountWorkspacePermissionsId;
-        const serviceAccountWorkspacePermissions = await ServiceAccountWorkspacePermissions.findById(serviceAccountWorkspacePermissionsId);
+        const serviceAccountWorkspacePermissionId = req[location].serviceAccountWorkspacePermissionId;
+        const serviceAccountWorkspacePermission = await ServiceAccountWorkspacePermission.findById(serviceAccountWorkspacePermissionId);
 
-        if (!serviceAccountWorkspacePermissions) {
+        if (!serviceAccountWorkspacePermission) {
             return next(ServiceAccountNotFoundError({ message: 'Failed to locate Service Account workspace permission' }));
         }
         
-        const serviceAccount = await ServiceAccount.findById(serviceAccountWorkspacePermissions.serviceAccount);
+        const serviceAccount = await ServiceAccount.findById(serviceAccountWorkspacePermission.serviceAccount);
 
         if (!serviceAccount) {
             return next(ServiceAccountNotFoundError({ message: 'Failed to locate Service Account' }));
@@ -49,4 +49,4 @@ const requireServiceAccountWorkspacePermissionsAuth = ({
     }
 }
 
-export default requireServiceAccountWorkspacePermissionsAuth;
+export default requireServiceAccountWorkspacePermissionAuth;

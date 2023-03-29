@@ -19,20 +19,13 @@ export type CreateServiceAccountRes = {
     serviceAccountAccessKey: string;
 }
 
-export type DeleteServiceAccountRes = {
-    serviceAccount: ServiceAccount;
-}
-
 export type RenameServiceAccountDTO = {
     serviceAccountId: string;
     name: string;
 }
 
-export type RenameServiceAccountRes = {
-    serviceAccount: ServiceAccount;
-}
-
-export type ServiceAccountWorkspacePermissions = {
+export type ServiceAccountWorkspacePermission = {
+    _id: string;
     serviceAccount: string;
     workspace: string;
     environment: string;
@@ -42,7 +35,7 @@ export type ServiceAccountWorkspacePermissions = {
     canDelete: boolean;
 }
 
-export type CreateServiceAccountWorkspacePermissionsDTO = {
+export type CreateServiceAccountWorkspacePermissionDTO = {
     serviceAccountId: string;
     workspaceId: string;
     environment: string;
@@ -50,17 +43,11 @@ export type CreateServiceAccountWorkspacePermissionsDTO = {
     canWrite: boolean;
     canUpdate: boolean;
     canDelete: boolean;
+    encryptedKey: string;
+    nonce: string;
 }
 
-export type CreateServiceAccountWorkspacePermissionsRes = {
-    permissions: ServiceAccountWorkspacePermissions 
-}
-
-export type DeleteServiceAccountWorkspacePermissionsDTO = {
+export type DeleteServiceAccountWorkspacePermissionDTO = {
     serviceAccountId: string;
-    serviceAccountWorkspacePermissionsId: string;
-}
-
-export type DeleteServiceAccountWorkspacePermissionsRes = {
-    permissions: ServiceAccountWorkspacePermissions
+    serviceAccountWorkspacePermissionId: string;
 }

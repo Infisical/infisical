@@ -9,6 +9,10 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 
+import { 
+    decryptAssymmetric,
+    encryptAssymmetric,
+    verifyPrivateKey} from '@app/components/utilities/cryptography/crypto';
 import {
     Button,
     Checkbox,
@@ -32,12 +36,15 @@ import {
     Tr} from '@app/components/v2';
 import { usePopUp } from '@app/hooks';
 import {
-    useCreateServiceAccountProjectLevelPermissions,
-    useDeleteServiceAccountProjectLevelPermissions,
+    useCreateServiceAccountProjectLevelPermission,
+    useDeleteServiceAccountProjectLevelPermission,
+    useGetServiceAccountById,
     useGetServiceAccountProjectLevelPermissions,
     useGetUserWorkspaces} from '@app/hooks/api';
+import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
 
 const createProjectLevelPermissionSchema = yup.object({
+    privateKey: yup.string().required().label('Private Key'),
     workspace: yup.string().required().label('Workspace'),
     environment: yup.string().required().label('Environment'),
     permissions: yup.object().shape({
@@ -57,18 +64,19 @@ type Props = {
 export const SAProjectLevelPermissionsTable = ({
     serviceAccountId
 }: Props) => {
+    const { data: serviceAccount } = useGetServiceAccountById(serviceAccountId);
     const { data: userWorkspaces, isLoading: isUserWorkspacesLoading } = useGetUserWorkspaces();
     const [searchPermissions, setSearchPermissions] = useState('');
     const [defaultValues, setDefaultValues] = useState<CreateProjectLevelPermissionForm | undefined>(undefined);
 
-    const { data: permissions, isLoading: isPermissionsLoading } = useGetServiceAccountProjectLevelPermissions(serviceAccountId);
+    const { data: serviceAccountWorkspacePermissions, isLoading: isPermissionsLoading } = useGetServiceAccountProjectLevelPermissions(serviceAccountId);
     
-    const createServiceAccountProjectLevelPermissions = useCreateServiceAccountProjectLevelPermissions();
-    const deleteServiceAccountProjectLevelPermissions = useDeleteServiceAccountProjectLevelPermissions();
+    const createServiceAccountProjectLevelPermission = useCreateServiceAccountProjectLevelPermission();
+    const deleteServiceAccountProjectLevelPermission = useDeleteServiceAccountProjectLevelPermission();
 
     const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
-        'addProjectLevelPermissions',
-        'removeProjectLevelPermissions',
+        'addProjectLevelPermission',
+        'removeProjectLevelPermission',
     ] as const);
 
     const {
@@ -78,35 +86,68 @@ export const SAProjectLevelPermissionsTable = ({
         formState: { isSubmitting }
     } = useForm<CreateProjectLevelPermissionForm>({ resolver: yupResolver(createProjectLevelPermissionSchema), defaultValues })
 
-    const onAddProjectLevelPermissions = async ({
+    const onAddProjectLevelPermission = async ({
+        privateKey,
         workspace,
         environment,
         permissions: { canRead, canWrite, canUpdate, canDelete }
     }: CreateProjectLevelPermissionForm) => {
-        await createServiceAccountProjectLevelPermissions.mutateAsync({
+        
+        // TODO: clean up / modularize this function
+        
+        if (!serviceAccount) return;
+        
+        const { latestKey } = await getLatestFileKey({
+            workspaceId: workspace
+        });
+
+        verifyPrivateKey({
+            privateKey,
+            publicKey: serviceAccount.publicKey
+        });
+        
+        const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+
+        const key = decryptAssymmetric({
+            ciphertext: latestKey.encryptedKey,
+            nonce: latestKey.nonce,
+            publicKey: latestKey.sender.publicKey,
+            privateKey: PRIVATE_KEY
+        });
+        
+        const { ciphertext, nonce } = encryptAssymmetric({
+            plaintext: key,
+            publicKey: serviceAccount.publicKey,
+            privateKey: PRIVATE_KEY
+        });
+        
+        await createServiceAccountProjectLevelPermission.mutateAsync({
             serviceAccountId,
             workspaceId: workspace,
             environment,
             canRead,
             canWrite,
             canUpdate,
-            canDelete
+            canDelete,
+            encryptedKey: ciphertext,
+            nonce
         });
-        handlePopUpClose('addProjectLevelPermissions');
+        handlePopUpClose('addProjectLevelPermission');
     }
     
-    const onRemoveProjectLevelPermissions = async () => {
-        const serviceAccountWorkspacePermissionsId = (popUp?.removeProjectLevelPermissions?.data as { _id: string })?._id;
-        await deleteServiceAccountProjectLevelPermissions.mutateAsync({
+    const onRemoveProjectLevelPermission = async () => {
+        const serviceAccountWorkspacePermissionId = (popUp?.removeProjectLevelPermission?.data as { _id: string })?._id;
+        await deleteServiceAccountProjectLevelPermission.mutateAsync({
            serviceAccountId,
-           serviceAccountWorkspacePermissionsId
+           serviceAccountWorkspacePermissionId
         });
-        handlePopUpClose('removeProjectLevelPermissions');
+        handlePopUpClose('removeProjectLevelPermission');
     }
 
     useEffect(() => {
         if (userWorkspaces) {
             setDefaultValues({
+                privateKey: '',
                 workspace: String(userWorkspaces?.[0]?._id),
                 environment: String(userWorkspaces?.[0]?.environments?.[0]?.slug),
                 permissions: {
@@ -118,10 +159,10 @@ export const SAProjectLevelPermissionsTable = ({
             });
         }
     }, [userWorkspaces]);
-    
 
     return (
-        <div className="w-full">
+        <div className="w-full bg-white/5 p-6">
+            <p className="mb-4 text-xl font-semibold">Project-Level Permissions</p>
             <div className="mb-4 flex">
                 <div className="mr-4 flex-1">
                     <Input 
@@ -134,7 +175,7 @@ export const SAProjectLevelPermissionsTable = ({
                 <Button
                     leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     onClick={() => {
-                        handlePopUpOpen('addProjectLevelPermissions')
+                        handlePopUpOpen('addProjectLevelPermission')
                         reset();
                     }}
                 >
@@ -156,8 +197,8 @@ export const SAProjectLevelPermissionsTable = ({
                     </THead>
                     <TBody>
                         {isPermissionsLoading && <TableSkeleton columns={6} key="service-account-project-level-permissions" />}
-                        {!isPermissionsLoading && permissions && (
-                            permissions.map(({
+                        {!isPermissionsLoading && serviceAccountWorkspacePermissions && (
+                            serviceAccountWorkspacePermissions.map(({
                                 _id,
                                 workspace,
                                 environment,
@@ -196,13 +237,14 @@ export const SAProjectLevelPermissionsTable = ({
                                             <Checkbox
                                                 id="isDeletePermissionEnabled"
                                                 isChecked={canDelete}
+                                                isDisabled
                                              />
                                         </Td>
                                         <Td>
                                             <IconButton
                                                 ariaLabel="delete"
                                                 colorSchema="danger"
-                                                onClick={() => handlePopUpOpen('removeProjectLevelPermissions', { _id })}
+                                                onClick={() => handlePopUpOpen('removeProjectLevelPermission', { _id })}
                                             >
                                                 <FontAwesomeIcon icon={faTrash} />
                                             </IconButton>
@@ -211,7 +253,7 @@ export const SAProjectLevelPermissionsTable = ({
                                 );
                             })
                         )}
-                        {!isPermissionsLoading && permissions?.length === 0 && (
+                        {!isPermissionsLoading && serviceAccountWorkspacePermissions?.length === 0 && (
                             <Tr>
                                 <Td colSpan={7} className="py-6 text-center text-bunker-400">
                                     <EmptyState title="No permissions found" icon={faKey} />
@@ -222,18 +264,32 @@ export const SAProjectLevelPermissionsTable = ({
                 </Table>
             </TableContainer>
             <Modal
-                isOpen={popUp?.addProjectLevelPermissions?.isOpen}
+                isOpen={popUp?.addProjectLevelPermission?.isOpen}
                 onOpenChange={(isOpen) => {
-                    handlePopUpToggle('addProjectLevelPermissions', isOpen);
+                    handlePopUpToggle('addProjectLevelPermission', isOpen);
                 }}
             >
                 <ModalContent
                     title="Add a Project-Level Permission"
                     subTitle="The service account will be granted scoped access to the specified project and environment"
                 >
-                    <form onSubmit={handleSubmit(onAddProjectLevelPermissions)}>
+                    <form onSubmit={handleSubmit(onAddProjectLevelPermission)}>
                         {!isUserWorkspacesLoading && userWorkspaces && (
                             <>
+                                <Controller
+                                    control={control}
+                                    defaultValue=""
+                                    name="privateKey"
+                                    render={({ field, fieldState: { error } }) => (
+                                        <FormControl
+                                            label="Service Account Private Key"
+                                            isError={Boolean(error)}
+                                            errorText={error?.message}
+                                        >
+                                            <Input {...field} />
+                                        </FormControl>
+                                    )}
+                                />
                                 <Controller
                                     control={control}
                                     name="workspace"
@@ -383,11 +439,11 @@ export const SAProjectLevelPermissionsTable = ({
                 </ModalContent>
             </Modal>
             <DeleteActionModal
-                isOpen={popUp.removeProjectLevelPermissions.isOpen}
+                isOpen={popUp.removeProjectLevelPermission.isOpen}
                 deleteKey="remove"
                 title="Do you want to remove this permission from the service account?"
-                onChange={(isOpen) => handlePopUpToggle('removeProjectLevelPermissions', isOpen)}
-                onDeleteApproved={onRemoveProjectLevelPermissions}
+                onChange={(isOpen) => handlePopUpToggle('removeProjectLevelPermission', isOpen)}
+                onDeleteApproved={onRemoveProjectLevelPermission}
             />
         </div>
     );

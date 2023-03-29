@@ -3,11 +3,13 @@ import { useRouter } from 'next/router';
 import NavHeader from '@app/components/navigation/NavHeader';
 
 import { SAProjectLevelPermissionsTable } from './components/SAProjectLevelPermissionsTable';
-import { ServiceAccountNameChangeSection } from './components';
+import {
+    CopyServiceAccountIDSection,
+    ServiceAccountNameChangeSection} from './components';
 
 export const CreateServiceAccountPage = () => {
     const router = useRouter();
-    const { serviceAccountId }: { serviceAccountId: string } = router.query;
+    const {serviceAccountId} = router.query;
 
     return (
         <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -21,23 +23,23 @@ export const CreateServiceAccountPage = () => {
                     A service account represents a machine identity such as a VM or application client.
                 </p>
             </div>
-            <div className="max-w-8xl mx-6">
-                {typeof serviceAccountId === 'string' && (
+            {typeof serviceAccountId === 'string' && (
+                <div className="max-w-8xl mx-6">
                     <ServiceAccountNameChangeSection 
                         serviceAccountId={serviceAccountId}
                     />
-                )}
-                {/* <div className="rounded-md bg-white/5 p-6 mt-6">
-                    <p className="mb-4 text-xl font-semibold">Organization-Level Permissions</p>
-                    <SAProjectLevelPermissionsTable />
-                </div> */}
-                <div className="rounded-md bg-white/5 p-6 mt-6">
-                    <p className="mb-4 text-xl font-semibold">Project-Level Permissions</p>
-                    <SAProjectLevelPermissionsTable 
-                        serviceAccountId={serviceAccountId}
-                    />
+                    <div className="mt-8">
+                        <CopyServiceAccountIDSection 
+                            serviceAccountId={serviceAccountId}
+                        />
+                    </div>
+                    <div className="mt-8">
+                        <SAProjectLevelPermissionsTable 
+                            serviceAccountId={serviceAccountId}
+                        />
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

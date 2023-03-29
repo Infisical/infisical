@@ -1,6 +1,6 @@
 import { Schema, model, Types, Document } from 'mongoose';
 
-export interface IServiceAccountWorkspacePermissions extends Document {
+export interface IServiceAccountWorkspacePermission extends Document {
     _id: Types.ObjectId;
     serviceAccount: Types.ObjectId;
     workspace: Types.ObjectId;
@@ -11,7 +11,7 @@ export interface IServiceAccountWorkspacePermissions extends Document {
     canDelete: boolean;
 }
 
-const serviceAccountWorkspacePermissions = new Schema<IServiceAccountWorkspacePermissions>(
+const serviceAccountWorkspacePermissionSchema = new Schema<IServiceAccountWorkspacePermission>(
     {
         serviceAccount: {
             type: Schema.Types.ObjectId,
@@ -49,6 +49,6 @@ const serviceAccountWorkspacePermissions = new Schema<IServiceAccountWorkspacePe
     }
 );
 
-const ServiceAccountWorkspacePermissions = model<IServiceAccountWorkspacePermissions>('ServiceAccountWorkspacePermissions', serviceAccountWorkspacePermissions);
+const ServiceAccountWorkspacePermission = model<IServiceAccountWorkspacePermission>('ServiceAccountWorkspacePermission', serviceAccountWorkspacePermissionSchema);
 
-export default ServiceAccountWorkspacePermissions;
+export default ServiceAccountWorkspacePermission;

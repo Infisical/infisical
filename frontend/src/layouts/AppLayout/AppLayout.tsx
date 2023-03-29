@@ -136,8 +136,13 @@ export const AppLayout = ({ children }: LayoutProps) => {
         } else if (pathSegments.length >= 3 && pathSegments[0] === 'settings') {
           [, , intendedWorkspaceId] = pathSegments;
         } else {
-          const lastPathSegment = router.asPath.split('/').pop().split('?');
-          [intendedWorkspaceId] = lastPathSegment;
+          const lastPathSegments = router.asPath.split('/').pop();
+          if (lastPathSegments !== undefined) {
+            [intendedWorkspaceId] = lastPathSegments.split('?');
+          }
+
+          // const lastPathSegment = router.asPath.split('/').pop().split('?');
+          // [intendedWorkspaceId] = lastPathSegment;
         }
         
         if (!intendedWorkspaceId) return;
