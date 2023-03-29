@@ -24,6 +24,8 @@ export interface ISecret {
 	secretCommentTag?: string;
 	secretCommentHash?: string;
 	tags?: string[];
+	path?: string,
+	folder?: Types.ObjectId
 }
 
 const secretSchema = new Schema<ISecret>(
@@ -52,6 +54,17 @@ const secretSchema = new Schema<ISecret>(
 			ref: 'Tag',
 			type: [Schema.Types.ObjectId],
 			default: []
+		},
+		// the full path to the secret in relation to folders
+		path: {
+			type: String,
+			required: false,
+			default: "/"
+		},
+		folder: {
+			type: Schema.Types.ObjectId,
+			ref: 'Folder',
+			required: false,
 		},
 		environment: {
 			type: String,

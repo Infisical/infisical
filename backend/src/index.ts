@@ -45,7 +45,8 @@ import {
     password as v1PasswordRouter,
     stripe as v1StripeRouter,
     integration as v1IntegrationRouter,
-    integrationAuth as v1IntegrationAuthRouter
+    integrationAuth as v1IntegrationAuthRouter,
+    secretsFolder as v1SecretsFolder
 } from './routes/v1';
 import {
     signup as v2SignupRouter,
@@ -138,6 +139,7 @@ const main = async () => {
     app.use('/api/v1/stripe', v1StripeRouter);
     app.use('/api/v1/integration', v1IntegrationRouter);
     app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
+    app.use('/api/v1/folder', v1SecretsFolder)
 
     // v2 routes
     app.use('/api/v2/signup', v2SignupRouter);
