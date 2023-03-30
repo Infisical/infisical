@@ -374,9 +374,9 @@ export const createSecrets = async (req: Request, res: Response) => {
         secretCommentIV,
         secretCommentTag,
         tags,
-        folderId
+        folder
     } of listOfSecretsToCreate) {
-        const fullFolderPath = await getFolderPath(folderId)
+        const fullFolderPath = await getFolderPath(folder)
 
         const secret: any = {
             version: 1,
@@ -394,6 +394,7 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretCommentIV,
             secretCommentTag,
             tags,
+            folder: folder,
             path: fullFolderPath
         };
 
@@ -792,10 +793,10 @@ export const updateSecrets = async (req: Request, res: Response) => {
             secretCommentIV,
             secretCommentTag,
             tags,
-            folderId
+            folder
         } = secret;
 
-        const fullFolderPath = await getFolderPath(folderId)
+        const fullFolderPath = await getFolderPath(folder)
 
         const updateOperation = {
             updateOne: {
@@ -812,6 +813,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
                     secretValueTag,
                     tags,
                     path: fullFolderPath,
+                    folder: folder,
                     ...((
                         secretCommentCiphertext !== undefined &&
                         secretCommentIV &&
