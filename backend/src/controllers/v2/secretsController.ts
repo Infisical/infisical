@@ -11,7 +11,7 @@ import {
     ACTION_UPDATE_SECRETS,
     ACTION_DELETE_SECRETS
 } from '../../variables';
-import { UnauthorizedRequestError, ValidationError } from '../../utils/errors';
+import { BadRequestError, UnauthorizedRequestError, ValidationError } from '../../utils/errors';
 import { EventService } from '../../services';
 import { eventPushSecrets } from '../../events';
 import { EESecretService, EELogService } from '../../ee/services';
@@ -25,6 +25,8 @@ import {
     BatchSecretRequest,
     BatchSecret
 } from '../../types/secret';
+import { getFolderPath } from '../../utils/folder';
+import Folder from '../../models/folder';
 
 /**
  * Peform a batch of any specified CUD secret operations
@@ -50,11 +52,18 @@ export const batchSecrets = async (req: Request, res: Response) => {
     const deleteSecrets: Types.ObjectId[] = [];
     const actions: IAction[] = [];
 
-    requests.forEach((request) => {
+    for (const request of requests) {
+        const folderId = request.secret.folder
+
+        // need to auth folder
+        const fullFolderPath = await getFolderPath(folderId)
+
         switch (request.method) {
             case 'POST':
                 createSecrets.push({
                     ...request.secret,
+                    path: fullFolderPath,
+                    folder: folderId,
                     version: 1,
                     user: request.secret.type === SECRET_PERSONAL ? req.user : undefined,
                     environment,
@@ -64,6 +73,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
             case 'PATCH':
                 updateSecrets.push({
                     ...request.secret,
+                    folder: folderId,
+                    path: fullFolderPath,
                     _id: new Types.ObjectId(request.secret._id)
                 });
                 break;
@@ -71,13 +82,14 @@ export const batchSecrets = async (req: Request, res: Response) => {
                 deleteSecrets.push(new Types.ObjectId(request.secret._id));
                 break;
         }
-    });
+    }
 
     // handle create secrets
     let createdSecrets: ISecret[] = [];
     if (createSecrets.length > 0) {
         createdSecrets = await Secret.insertMany(createSecrets);
         // (EE) add secret versions for new secrets
+
         await EESecretService.addSecretVersions({
             secretVersions: createdSecrets.map((n: any) => {
                 return ({
@@ -328,7 +340,7 @@ export const createSecrets = async (req: Request, res: Response) => {
         }
     }   
     */
-   const postHogClient = getPostHogClient();
+    const postHogClient = getPostHogClient();
 
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
     const { workspaceId, environment }: { workspaceId: string, environment: string } = req.body;
@@ -347,21 +359,10 @@ export const createSecrets = async (req: Request, res: Response) => {
         listOfSecretsToCreate = [req.body.secrets];
     }
 
-    type secretsToCreateType = {
-        type: string;
-        secretKeyCiphertext: string;
-        secretKeyIV: string;
-        secretKeyTag: string;
-        secretValueCiphertext: string;
-        secretValueIV: string;
-        secretValueTag: string;
-        secretCommentCiphertext: string;
-        secretCommentIV: string;
-        secretCommentTag: string;
-        tags: string[]
-    }
 
-    const secretsToInsert: ISecret[] = listOfSecretsToCreate.map(({
+    const secretsToInsert: ISecret[] = [];
+
+    for (const {
         type,
         secretKeyCiphertext,
         secretKeyIV,
@@ -372,9 +373,12 @@ export const createSecrets = async (req: Request, res: Response) => {
         secretCommentCiphertext,
         secretCommentIV,
         secretCommentTag,
-        tags
-    }: secretsToCreateType) => {
-        return ({
+        tags,
+        folderId
+    } of listOfSecretsToCreate) {
+        const fullFolderPath = await getFolderPath(folderId)
+
+        const secret: any = {
             version: 1,
             workspace: new Types.ObjectId(workspaceId),
             type,
@@ -389,9 +393,12 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretCommentCiphertext,
             secretCommentIV,
             secretCommentTag,
-            tags
-        });
-    })
+            tags,
+            path: fullFolderPath
+        };
+
+        secretsToInsert.push(secret);
+    }
 
     const newlyCreatedSecrets: ISecret[] = (await Secret.insertMany(secretsToInsert)).map((insertedSecret) => insertedSecret.toObject());
 
@@ -536,9 +543,11 @@ export const getSecrets = async (req: Request, res: Response) => {
     const postHogClient = getPostHogClient();
 
     const { workspaceId, environment, tagSlugs } = req.query;
+    const { folderId } = req.query
     const tagNamesList = typeof tagSlugs === 'string' && tagSlugs !== '' ? tagSlugs.split(',') : [];
     let userId = "" // used for getting personal secrets for user
     let userEmail = "" // used for posthog 
+
     if (req.user) {
         userId = req.user._id;
         userEmail = req.user.email;
@@ -558,6 +567,7 @@ export const getSecrets = async (req: Request, res: Response) => {
             throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
         }
     }
+
     let secrets: any
     let secretQuery: any
 
@@ -591,6 +601,11 @@ export const getSecrets = async (req: Request, res: Response) => {
         }
     }
 
+    //  query for secrets at root folder
+    if (folderId != undefined) {
+        secretQuery.folder = folderId == "" ? undefined : folderId
+    }
+
     if (hasWriteOnlyAccess) {
         secrets = await Secret.find(secretQuery).select("secretKeyCiphertext secretKeyIV secretKeyTag")
     } else {
@@ -614,6 +629,15 @@ export const getSecrets = async (req: Request, res: Response) => {
         ipAddress: req.ip
     });
 
+    let folders: any[] = []
+    if (folderId != undefined) {
+        folders = await Folder.find({
+            workspace: workspaceId,
+            environment: environment,
+            parent: folderId == "" ? undefined : folderId // undefined means root
+        })
+    }
+
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets pulled',
@@ -629,10 +653,10 @@ export const getSecrets = async (req: Request, res: Response) => {
     }
 
     return res.status(200).send({
-        secrets
+        secrets,
+        folders
     });
 }
-
 
 export const getOnlySecretKeys = async (req: Request, res: Response) => {
     const { workspaceId, environment } = req.query;
@@ -754,7 +778,9 @@ export const updateSecrets = async (req: Request, res: Response) => {
         tags: string[]
     }
 
-    const updateOperationsToPerform = req.body.secrets.map((secret: PatchSecret) => {
+    const updateOperationsToPerform = [];
+
+    for (const secret of req.body.secrets) {
         const {
             secretKeyCiphertext,
             secretKeyIV,
@@ -765,10 +791,13 @@ export const updateSecrets = async (req: Request, res: Response) => {
             secretCommentCiphertext,
             secretCommentIV,
             secretCommentTag,
-            tags
+            tags,
+            folderId
         } = secret;
 
-        return ({
+        const fullFolderPath = await getFolderPath(folderId)
+
+        const updateOperation = {
             updateOne: {
                 filter: { _id: new Types.ObjectId(secret.id) },
                 update: {
@@ -782,6 +811,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
                     secretValueIV,
                     secretValueTag,
                     tags,
+                    path: fullFolderPath,
                     ...((
                         secretCommentCiphertext !== undefined &&
                         secretCommentIV &&
@@ -793,8 +823,10 @@ export const updateSecrets = async (req: Request, res: Response) => {
                     } : {}),
                 }
             }
-        });
-    });
+        };
+
+        updateOperationsToPerform.push(updateOperation);
+    }
 
     await Secret.bulkWrite(updateOperationsToPerform);
 
