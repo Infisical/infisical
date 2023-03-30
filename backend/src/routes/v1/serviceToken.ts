@@ -25,7 +25,7 @@ router.post(
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		location: 'body'
+		locationWorkspaceId: 'body'
 	}),
 	body('name').exists().trim().notEmpty(),
 	body('workspaceId').exists().trim().notEmpty(),

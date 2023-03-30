@@ -38,7 +38,7 @@ router.post(
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		location: 'body'
+		locationWorkspaceId: 'body'
 	}),
 	body('workspaceId').exists().trim().notEmpty(),
 	body('code').exists().trim().notEmpty(),
@@ -49,18 +49,18 @@ router.post(
 
 router.post(
 	'/access-token',
-	requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey']
-    }),
-	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		location: 'body'
-	}),
 	body('workspaceId').exists().trim().notEmpty(),
 	body('accessId').trim(),
 	body('accessToken').exists().trim().notEmpty(),
 	body('integration').exists().trim().notEmpty(),
 	validateRequest,
+	requireAuth({
+        acceptedAuthModes: ['jwt', 'apiKey']
+    }),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'body'
+	}),
 	integrationAuthController.saveIntegrationAccessToken
 );
 

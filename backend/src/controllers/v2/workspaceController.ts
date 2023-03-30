@@ -508,3 +508,8 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
 	});
 };
 
+export const getAak = (req: Request, res: Response) => {
+	return res.status(200).send({
+		message: 'getAak'
+	});
+}

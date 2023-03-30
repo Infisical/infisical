@@ -1,3 +1,5 @@
+import { Workspace } from '../workspace/types';
+
 export type ServiceAccount = {
     _id: string;
     name: string;
@@ -27,7 +29,7 @@ export type RenameServiceAccountDTO = {
 export type ServiceAccountWorkspacePermission = {
     _id: string;
     serviceAccount: string;
-    workspace: string;
+    workspace: Workspace;
     environment: string;
     canRead: boolean;
     canWrite: boolean;

@@ -15,7 +15,8 @@ router.post(
         acceptedAuthModes: ['jwt']
     }),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'params'
 	}),
 	param('workspaceId').exists().trim(),
 	body('key').exists(),
@@ -29,7 +30,8 @@ router.get(
         acceptedAuthModes: ['jwt']
     }),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'params'
 	}),
 	param('workspaceId'),
 	validateRequest,

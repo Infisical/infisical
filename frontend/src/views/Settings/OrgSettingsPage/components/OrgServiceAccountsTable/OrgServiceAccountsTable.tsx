@@ -104,12 +104,12 @@ export const OrgServiceAccountsTable = () => {
 
         const keyPair = generateKeyPair();
         setPrivateKey(keyPair.privateKey);
-
+        
         const serviceAccountDetails = await createServiceAccount.mutateAsync({
             name,
             organizationId: currentOrg?._id,
             publicKey: keyPair.publicKey,
-            expiresIn
+            expiresIn: Number(expiresIn)
         });
         
         setAccessKey(serviceAccountDetails.serviceAccountAccessKey);
@@ -152,26 +152,28 @@ export const OrgServiceAccountsTable = () => {
                             control={control}
                             name="expiresIn"
                             defaultValue={String(serviceAccountExpiration?.[0]?.value)}
-                            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                                <FormControl
-                                    label="Expiration"
-                                    errorText={error?.message}
-                                    isError={Boolean(error)}
-                                >
-                                    <Select
-                                        defaultValue={field.value}
-                                        {...field}
-                                        onValueChange={(e) => onChange(e)}
-                                        className="w-full"
+                            render={({ field: { onChange, ...field }, fieldState: { error } }) => {
+                                return (
+                                    <FormControl
+                                        label="Expiration"
+                                        errorText={error?.message}
+                                        isError={Boolean(error)}
                                     >
-                                    {serviceAccountExpiration.map(({ label, value }) => (
-                                        <SelectItem value={String(value)} key={label}>
-                                            {label}
-                                        </SelectItem>
-                                    ))}
-                                    </Select>
-                                </FormControl>
-                            )}
+                                        <Select
+                                            defaultValue={field.value}
+                                            {...field}
+                                            onValueChange={(e) => onChange(e)}
+                                            className="w-full"
+                                        >
+                                        {serviceAccountExpiration.map(({ label, value }) => (
+                                            <SelectItem value={String(value)} key={label}>
+                                                {label}
+                                            </SelectItem>
+                                        ))}
+                                        </Select>
+                                    </FormControl>
+                                );
+                            }}
                         />
                         <div className="mt-8 flex items-center">
                             <Button

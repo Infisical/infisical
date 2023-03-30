@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
 import {
 	Workspace,
 	Bot,
@@ -7,6 +8,50 @@ import {
 	Secret
 } from '../models';
 import { createBot } from '../helpers/bot';
+import { validateMembership } from '../helpers/membership';
+
+/**
+ * Validate accepted clients by id including [userId], [serviceAccountId],
+ * and [serviceTokenDataId] for workspace with id [workspaceId] based
+ * on any known permissions.
+ * @param {Object} obj
+ * @param {Types.ObjectId} obj.userId - id of user
+ */
+const validateClientForWorkspace = async ({
+	userId,
+	serviceAccountId,
+	serviceTokenDataId,
+	workspaceId,
+	environment
+}: {
+	userId?: Types.ObjectId;
+	serviceAccountId?: Types.ObjectId;
+	serviceTokenDataId?: Types.ObjectId;
+	workspaceId: Types.ObjectId;
+	environment?: string;
+}) => {
+	
+	let membership;
+	if (userId) {
+		membership = await validateMembership({
+			userId,
+			workspaceId
+		});
+		
+	}
+
+	if (serviceAccountId) {
+		// TODO
+	}
+	
+	if (serviceTokenDataId) {
+		// TODO
+	}
+	
+	return ({
+		membership
+	});
+}
 
 /**
  * Create a workspace with name [name] in organization with id [organizationId]
@@ -71,4 +116,8 @@ const deleteWorkspace = async ({ id }: { id: string }) => {
 	}
 };
 
-export { createWorkspace, deleteWorkspace };
+export {
+	validateClientForWorkspace,
+	createWorkspace, 
+	deleteWorkspace 
+};

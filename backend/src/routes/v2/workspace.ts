@@ -16,7 +16,8 @@ router.post(
 		acceptedAuthModes: ['jwt']
 	}),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'params'
 	}),
 	body('secrets').exists(),
 	body('keys').exists(),
@@ -33,7 +34,8 @@ router.get(
 		acceptedAuthModes: ['jwt', 'serviceToken']
 	}),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'params'
 	}),
 	query('environment').exists().trim(),
 	query('channel'),
@@ -48,7 +50,8 @@ router.get(
 		acceptedAuthModes: ['jwt', 'apiKey']
 	}),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'params'
 	}),
 	param('workspaceId').exists().trim(),
 	validateRequest,
@@ -61,7 +64,8 @@ router.get(
 		acceptedAuthModes: ['jwt']
 	}),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'params'
 	}),
 	param('workspaceId').exists().trim(),
 	validateRequest,
@@ -79,6 +83,7 @@ router.get( // new - TODO: rewire dashboard to this route
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'params'
 	}),
 	workspaceController.getWorkspaceMemberships
 );
@@ -94,6 +99,7 @@ router.patch( // TODO - rewire dashboard to this route
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN],
+		locationWorkspaceId: 'params'
 	}),
 	requireMembershipAuth({
 		acceptedRoles: [ADMIN]
@@ -111,6 +117,7 @@ router.delete( // TODO - rewire dashboard to this route
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN],
+		locationWorkspaceId: 'params'
 	}),
 	requireMembershipAuth({
 		acceptedRoles: [ADMIN]
@@ -124,12 +131,27 @@ router.patch(
 		acceptedAuthModes: ['jwt']
 	}),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'params'
 	}),
 	param('workspaceId').exists().trim(),
 	body('autoCapitalization').exists().trim().notEmpty(),
 	validateRequest,
 	workspaceController.toggleAutoCapitalization
+);
+
+router.get(
+	'/:workspaceId/aak',
+	requireAuth({
+		acceptedAuthModes: ['serviceAccount']
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'params'
+	}),
+	param('workspaceId').exists().trim(),
+	validateRequest,
+	workspaceController.getAak
 );
 
 export default router;

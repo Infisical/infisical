@@ -4,7 +4,8 @@ import {
 	validateAuthMode,
 	getAuthUserPayload,
 	getAuthSTDPayload,
-	getAuthAPIKeyPayload
+	getAuthAPIKeyPayload,
+	getAuthSAAKPayload
 } from '../helpers/auth';
 import { 
 	UnauthorizedRequestError
@@ -41,14 +42,22 @@ const requireAuth = ({
 			acceptedAuthModes
 		});
 
+		req.authTokenType = authTokenType;
+
 		// attach auth payloads
 		let serviceTokenData: any;
 		switch (authTokenType) {
+			case 'serviceAccount':
+				req.serviceAccount = await getAuthSAAKPayload({
+					authTokenValue
+				});
+				break;
 			case 'serviceToken':
 				serviceTokenData = await getAuthSTDPayload({
 					authTokenValue
 				});
 				
+				// TODO: bring this into a separate collection
 				requiredServiceTokenPermissions.forEach((requiredServiceTokenPermission) => {
 					if (!serviceTokenData.permissions.includes(requiredServiceTokenPermission)) {
 						return next(UnauthorizedRequestError({ message: 'Failed to authorize service token for endpoint' }));
@@ -60,6 +69,7 @@ const requireAuth = ({
 				
 				break;
 			case 'apiKey':
+				// TODO: deprecate API key
 				req.user = await getAuthAPIKeyPayload({
 					authTokenValue
 				});
@@ -70,7 +80,7 @@ const requireAuth = ({
 				});
 				break;
 		}
-
+		
 		return next();
 	}
 }

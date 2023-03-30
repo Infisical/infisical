@@ -141,7 +141,7 @@ router.post(
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
-        location: 'body'
+        locationWorkspaceId: 'body'
     }),
     serviceAccountsController.addServiceAccountWorkspacePermission 
 );

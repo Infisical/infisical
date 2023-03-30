@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
+import { Types } from 'mongoose';
 import { validateMembership } from '../helpers/membership';
+import { validateClientForWorkspace } from '../helpers/workspace';
 import { UnauthorizedRequestError } from '../utils/errors';
 
 type req = 'params' | 'body' | 'query';
@@ -13,26 +15,33 @@ type req = 'params' | 'body' | 'query';
  */
 const requireWorkspaceAuth = ({
 	acceptedRoles,
-	location = 'params'
+	locationWorkspaceId,
+	locationEnvironment = undefined
 }: {
 	acceptedRoles: string[];
-	location?: req;
+	locationWorkspaceId: req;
+	locationEnvironment?: req | undefined;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
 		try {
-			const { workspaceId } = req[location];
-			
-			if (req.user) {
-				// case: jwt auth
-				const membership = await validateMembership({
-					userId: req.user._id.toString(),
-					workspaceId,
-					acceptedRoles
-				});
+			// TODO: throw errors if workspaceId or environemnt are not present
 
+			const workspaceId = req[locationWorkspaceId]?.workspaceId;
+			const environment = locationEnvironment ? req[locationEnvironment]?.environment : undefined;
+			
+			// validate clients
+			const { membership } = await validateClientForWorkspace({
+				userId: req.user?._id,
+				serviceAccountId: req.serviceAccount?._id,
+				serviceTokenDataId: req.serviceTokenData?._id,
+				workspaceId: new Types.ObjectId(workspaceId),
+				environment
+			});
+			
+			if (membership) {
 				req.membership = membership;
 			}
-
+			
 			if (
 				req.serviceTokenData 
 				&& req.serviceTokenData.workspace.toString() !== workspaceId

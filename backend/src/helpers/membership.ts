@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
 import { Membership, Key } from '../models';
 import {
 	MembershipNotFoundError,
@@ -18,9 +19,9 @@ const validateMembership = async ({
 	workspaceId,
 	acceptedRoles,
 }: {
-	userId: string;
-	workspaceId: string;
-	acceptedRoles: string[];
+	userId: Types.ObjectId;
+	workspaceId: Types.ObjectId;
+	acceptedRoles?: string[];
 }) => {
 	
 	const membership = await Membership.findOne({
@@ -32,8 +33,10 @@ const validateMembership = async ({
 		throw MembershipNotFoundError({ message: 'Failed to find workspace membership' });
 	}
 	
-	if (!acceptedRoles.includes(membership.role)) {
-		throw BadRequestError({ message: 'Failed to validate workspace membership role' });
+	if (acceptedRoles) {
+		if (!acceptedRoles.includes(membership.role)) {
+			throw BadRequestError({ message: 'Failed to validate workspace membership role' });
+		}
 	}
 	
 	return membership;

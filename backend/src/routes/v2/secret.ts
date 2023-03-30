@@ -20,7 +20,8 @@ router.post(
     acceptedAuthModes: ['jwt']
   }),
   requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER]
+    acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: 'params'
   }),
   param('workspaceId').exists().isMongoId().trim(),
   param('environment').exists().trim(),
@@ -36,7 +37,8 @@ router.post(
     acceptedAuthModes: ['jwt']
   }),
   requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER]
+    acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: 'params'
   }),
   param('workspaceId').exists().isMongoId().trim(),
   param('environment').exists().trim(),
@@ -54,7 +56,8 @@ router.get(
     acceptedAuthModes: ['jwt', 'serviceToken']
   }),
   requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER]
+    acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: 'params'
   }),
   query('channel'),
   validateRequest,
@@ -82,7 +85,8 @@ router.delete(
   param('environmentName').exists().trim(),
   body('secretIds').exists().isArray().custom(array => array.length > 0),
   requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER]
+    acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: 'params'
   }),
   validateRequest,
   secretController.deleteSecrets
@@ -110,12 +114,12 @@ router.patch(
   param('workspaceId').exists().isMongoId().trim(),
   param('environmentName').exists().trim(),
   requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER]
+    acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: 'params'
   }),
   validateRequest,
   secretController.updateSecrets
 );
-
 
 router.patch(
   '/workspace/:workspaceId/environment/:environmentName',
@@ -126,7 +130,8 @@ router.patch(
   param('workspaceId').exists().isMongoId().trim(),
   param('environmentName').exists().trim(),
   requireWorkspaceAuth({
-    acceptedRoles: [ADMIN, MEMBER]
+    acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: 'params'
   }),
   validateRequest,
   secretController.updateSecret

@@ -79,7 +79,7 @@ export const createServiceAccount = async (req: Request, res: Response) => {
     const secretId = Buffer.from(serviceAccount._id.toString(), 'hex').toString('base64');
 
     return res.status(200).send({
-        serviceAccountAccessKey: `SA.${secretId}.${secret}`,
+        serviceAccountAccessKey: `sa.${secretId}.${secret}`,
         serviceAccount: serviceAccountObj
     });
 }
@@ -211,7 +211,7 @@ export const addServiceAccountWorkspacePermission = async (req: Request, res: Re
     
     const existingPermission = await ServiceAccountWorkspacePermission.findOne({
         serviceAccount: new Types.ObjectId(serviceAccountId),
-        workspaceId: new Types.ObjectId(workspaceId),
+        workspace: new Types.ObjectId(workspaceId),
         environment
     });
     

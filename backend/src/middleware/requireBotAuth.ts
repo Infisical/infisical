@@ -20,8 +20,8 @@ const requireBotAuth = ({
         }
         
         await validateMembership({
-            userId: req.user._id.toString(),
-            workspaceId: bot.workspace.toString(),
+            userId: req.user._id,
+            workspaceId: bot.workspace,
             acceptedRoles
         });
         

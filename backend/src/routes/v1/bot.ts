@@ -16,7 +16,8 @@ router.get(
         acceptedAuthModes: ['jwt']
     }),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
+        locationWorkspaceId: 'params'
 	}),
     param('workspaceId').exists().trim().notEmpty(),
     validateRequest,

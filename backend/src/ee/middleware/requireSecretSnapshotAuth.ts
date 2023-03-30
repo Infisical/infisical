@@ -30,8 +30,8 @@ const requireSecretSnapshotAuth = ({
             }
             
             await validateMembership({
-                userId: req.user._id.toString(),
-                workspaceId: secretSnapshot.workspace.toString(),
+                userId: req.user._id,
+                workspaceId: secretSnapshot.workspace,
                 acceptedRoles
             });
             

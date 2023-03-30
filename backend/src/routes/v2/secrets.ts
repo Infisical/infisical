@@ -27,7 +27,7 @@ router.post(
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
-        location: 'body'
+        locationWorkspaceId: 'body'
     }),
     body('workspaceId').exists().isString().trim(),
     body('environment').exists().isString().trim(),
@@ -105,7 +105,7 @@ router.post(
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
-        location: 'body'
+        locationWorkspaceId: 'body'
     }),
     secretsController.createSecrets
 );
@@ -122,7 +122,7 @@ router.get(
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
-        location: 'query'
+        locationWorkspaceId: 'query'
     }),
     secretsController.getSecrets
 );

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Controller,useForm } from 'react-hook-form';
 import {
     faKey,
@@ -63,11 +63,10 @@ type Props = {
 
 export const SAProjectLevelPermissionsTable = ({
     serviceAccountId
-}: Props) => {
+}: Props): JSX.Element => {
     const { data: serviceAccount } = useGetServiceAccountById(serviceAccountId);
     const { data: userWorkspaces, isLoading: isUserWorkspacesLoading } = useGetUserWorkspaces();
     const [searchPermissions, setSearchPermissions] = useState('');
-    const [defaultValues, setDefaultValues] = useState<CreateProjectLevelPermissionForm | undefined>(undefined);
 
     const { data: serviceAccountWorkspacePermissions, isLoading: isPermissionsLoading } = useGetServiceAccountProjectLevelPermissions(serviceAccountId);
     
@@ -78,13 +77,15 @@ export const SAProjectLevelPermissionsTable = ({
         'addProjectLevelPermission',
         'removeProjectLevelPermission',
     ] as const);
+    
+    const [, setSelectedWorkspace] = useState<undefined | string>(undefined);
 
     const {
         control,
         handleSubmit,
         reset,
         formState: { isSubmitting }
-    } = useForm<CreateProjectLevelPermissionForm>({ resolver: yupResolver(createProjectLevelPermissionSchema), defaultValues })
+    } = useForm<CreateProjectLevelPermissionForm>({ resolver: yupResolver(createProjectLevelPermissionSchema) })
 
     const onAddProjectLevelPermission = async ({
         privateKey,
@@ -144,22 +145,6 @@ export const SAProjectLevelPermissionsTable = ({
         handlePopUpClose('removeProjectLevelPermission');
     }
 
-    useEffect(() => {
-        if (userWorkspaces) {
-            setDefaultValues({
-                privateKey: '',
-                workspace: String(userWorkspaces?.[0]?._id),
-                environment: String(userWorkspaces?.[0]?.environments?.[0]?.slug),
-                permissions: {
-                    canRead: true,
-                    canWrite: false,
-                    canUpdate: false,
-                    canDelete: false,
-                }
-            });
-        }
-    }, [userWorkspaces]);
-
     return (
         <div className="w-full bg-white/5 p-6">
             <p className="mb-4 text-xl font-semibold">Project-Level Permissions</p>
@@ -217,28 +202,28 @@ export const SAProjectLevelPermissionsTable = ({
                                                 id="isReadPermissionEnabled"
                                                 isChecked={canRead}
                                                 isDisabled
-                                             />
+                                             >{/**/}</Checkbox>
                                         </Td>
                                         <Td>
                                             <Checkbox
                                                 id="isWritePermissionEnabled"
                                                 isChecked={canWrite}
                                                 isDisabled
-                                             />
+                                             >{/**/}</Checkbox>
                                         </Td>
                                         <Td>
                                             <Checkbox
                                                 id="isUpdatePermissionEnabled"
                                                 isChecked={canUpdate}
                                                 isDisabled
-                                             />
+                                             >{/**/}</Checkbox>
                                         </Td>
                                         <Td>
                                             <Checkbox
                                                 id="isDeletePermissionEnabled"
                                                 isChecked={canDelete}
                                                 isDisabled
-                                             />
+                                             >{/**/}</Checkbox>
                                         </Td>
                                         <Td>
                                             <IconButton
@@ -302,7 +287,10 @@ export const SAProjectLevelPermissionsTable = ({
                                             <Select
                                                 defaultValue={field.value}
                                                 {...field}
-                                                onValueChange={(e) => onChange(e)}
+                                                onValueChange={(e) => {
+                                                    onChange(e);
+                                                    setSelectedWorkspace(e);
+                                                }}
                                                 className="w-full border border-mine-shaft-500"
                                             >
                                                 {userWorkspaces && userWorkspaces.length > 0 ? (

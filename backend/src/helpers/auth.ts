@@ -5,11 +5,13 @@ import {
 	IUser,
 	User,
 	ServiceTokenData,
+	ServiceAccount,
 	APIKeyData
 } from '../models';
 import {
 	AccountNotFoundError,
 	ServiceTokenDataNotFoundError,
+	ServiceAccountNotFoundError,
 	APIKeyDataNotFoundError,
 	UnauthorizedRequestError,
 	BadRequestError
@@ -63,9 +65,13 @@ const validateAuthMode = ({
 			case 'st':
 				authTokenType = 'serviceToken';
 				break;
+			case 'sa':
+				authTokenType = 'serviceAccount';
+				break;
 			default:
 				authTokenType = 'jwt';
 		}
+
 		authTokenValue = tokenValue;
 	}
 
@@ -164,6 +170,36 @@ const getAuthSTDPayload = async ({
 }
 
 /**
+ * Return service account access key payload
+ * @param {Object} obj
+ * @param {String} obj.authTokenValue - service account access token value
+ * @returns {ServiceAccount} serviceAccount
+ */
+const getAuthSAAKPayload = async ({
+	authTokenValue
+}: {
+	authTokenValue: string;
+}) => {
+	const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
+	
+	const serviceAccount = await ServiceAccount.findById(
+		Buffer.from(TOKEN_IDENTIFIER, 'base64').toString('hex')
+	).select('+secretHash');
+	
+	if (!serviceAccount) {
+		throw ServiceAccountNotFoundError({ message: 'Failed to find service account' });
+	}
+	
+	const result = await bcrypt.compare(TOKEN_SECRET, serviceAccount.secretHash);
+	if (!result) throw UnauthorizedRequestError({
+		message: 'Failed to authenticate service account access key'
+	});
+	
+	return serviceAccount;
+}
+
+/**
+ * TODO: deprecate API keys
  * Return API key data payload corresponding to API key [authTokenValue]
  * @param {Object} obj
  * @param {String} obj.authTokenValue - API key value
@@ -300,6 +336,7 @@ export {
 	validateAuthMode,
 	getAuthUserPayload,
 	getAuthSTDPayload,
+	getAuthSAAKPayload,
 	getAuthAPIKeyPayload,
 	createToken,
 	issueAuthTokens,
