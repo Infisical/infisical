@@ -1,4 +1,3 @@
-{{- $ctrlManager := .Values.controllerManager }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
