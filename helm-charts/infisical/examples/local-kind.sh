@@ -69,4 +69,6 @@ backendEnvironmentVariables:
   SMTP_USERNAME: dev@$host
 frontendEnvironmentVariables:
   SITE_URL: https://$host
+ingress:
+  hostName: $host
 EOF

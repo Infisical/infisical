@@ -110,7 +110,8 @@ kubectl get secrets -n <namespace> <secret-name> \
 | `backendEnvironmentVariables.SMTP_USERNAME`      | **Required** Credential to connect to host (e.g. team@infisical.com)                                                                                                                                                          | `""`                |
 | `backendEnvironmentVariables.SMTP_PASSWORD`      | **Required** Credential to connect to host                                                                                                                                                                                    | `""`                |
 | `backendEnvironmentVariables.SITE_URL`           | Absolute URL including the protocol (e.g. https://app.infisical.com)                                                                                                                                                          | `infisical.local`   |
-| `backendEnvironmentVariables.INVITE_ONLY_SIGNUP` | To disable account creation from the login page                                                                                                                                                                               | `false`             |
+| `backendEnvironmentVariables.INVITE_ONLY_SIGNUP` | To disable account creation from the login page (invites only)                                                                                                                                                                | `false`             |
+| `backendEnvironmentVariables.MONGO_URL`          | MongoDB connection string (external or internal)</br>Leave it empty for auto-generated connection string                                                                                                                      | `""`                |
 
 
 ### MongoDB(&reg;) parameters
@@ -151,18 +152,18 @@ kubectl get secrets -n <namespace> <secret-name> \
 | `mongodb.persistence.resourcePolicy`                | Keep the persistent volume even on deletion (`keep` or `""`)                                                                                                                              | `keep`               |
 | `mongodb.persistence.accessModes`                   | Persistent volume access modes                                                                                                                                                            | `["ReadWriteOnce"]`  |
 | `mongodb.persistence.size`                          | Persistent storage request size                                                                                                                                                           | `8Gi`                |
-| `mongodbConnection.externalMongoDBConnectionString` | External MongoDB connection string                                                                                                                                                        | `""`                 |
+| `mongodbConnection.externalMongoDBConnectionString` | Deprecated :warning: External MongoDB connection string</br>Use backendEnvironmentVariables.MONGO_URL instead                                                                             | `""`                 |
 
 
 ### Ingress parameters
 
-| Name                       | Description                                 | Value             |
-| -------------------------- | ------------------------------------------- | ----------------- |
-| `ingress.enabled`          | Enable ingress                              | `true`            |
-| `ingress.ingressClassName` | Ingress class name                          | `nginx`           |
-| `ingress.annotations`      | Ingress annotations                         | `{}`              |
-| `ingress.hostName`         | Ingress hostname (your custom domain name)  | `infisical.local` |
-| `ingress.tls`              | Ingress TLS hosts (matching above hostName) | `[]`              |
+| Name                       | Description                                                              | Value   |
+| -------------------------- | ------------------------------------------------------------------------ | ------- |
+| `ingress.enabled`          | Enable ingress                                                           | `true`  |
+| `ingress.ingressClassName` | Ingress class name                                                       | `nginx` |
+| `ingress.annotations`      | Ingress annotations                                                      | `{}`    |
+| `ingress.hostName`         | Ingress hostname (your custom domain name, e.g. `infisical.example.org`) | `""`    |
+| `ingress.tls`              | Ingress TLS hosts (matching above hostName)                              | `[]`    |
 
 
 ### Mailhog parameters

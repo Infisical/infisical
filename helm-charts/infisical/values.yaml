@@ -159,7 +159,7 @@ backendEnvironmentVariables:
   ## @param backendEnvironmentVariables.INVITE_ONLY_SIGNUP To disable account creation from the login page (invites only)
   ##
   INVITE_ONLY_SIGNUP: false
-  ## @param backendEnvironmentVariables.MONGO_URL MongoDB connection string
+  ## @param backendEnvironmentVariables.MONGO_URL MongoDB connection string (external or internal)</br>Leave it empty for auto-generated connection string
   ## By default the backend will automatically be connected to a Mongo instance within the cluster
   ## However, it is recommended to add a managed document DB connection string for production-use (DBaaS)
   ## Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/
@@ -307,7 +307,7 @@ ingress:
     {}
     # kubernetes.io/ingress.class: "nginx"
     # cert-manager.io/issuer: letsencrypt-nginx
-  ## @param ingress.hostName Ingress hostname (your custom domain name)
+  ## @param ingress.hostName Ingress hostname (your custom domain name, e.g. `infisical.example.org`)
   ## Replace with your own domain
   ##
   hostName: ""
