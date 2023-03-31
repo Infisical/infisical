@@ -1,15 +1,12 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
-import {
-    User,
-    MembershipOrg
-} from '../../models';
+import { User, MembershipOrg } from '../../models';
 
 /**
  * Return the current user.
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const getMe = async (req: Request, res: Response) => {
     /* 
@@ -39,38 +36,38 @@ export const getMe = async (req: Request, res: Response) => {
     */
     let user;
     try {
-        user = await User
-            .findById(req.user._id)
-            .select('+salt +publicKey +encryptedPrivateKey +iv +tag +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag');
+        user = await User.findById(req.user._id).select(
+            '+salt +publicKey +encryptedPrivateKey +iv +tag +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag'
+        );
     } catch (err) {
         Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get current user'
-		});
+        Sentry.captureException(err);
+        return res.status(400).send({
+            message: 'Failed to get current user'
+        });
     }
-    
+
     return res.status(200).send({
         user
     });
-}
+};
 
 /**
  * Update the current user's MFA-enabled status [isMfaEnabled].
  * Note: Infisical currently only supports email-based 2FA only; this will expand to
  * include SMS and authenticator app modes of authentication in the future.
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const updateMyMfaEnabled = async (req: Request, res: Response) => {
     let user;
     try {
         const { isMfaEnabled }: { isMfaEnabled: boolean } = req.body;
         req.user.isMfaEnabled = isMfaEnabled;
-        
-        if (isMfaEnabled) { 
-            // TODO: adapt this route/controller 
+
+        if (isMfaEnabled) {
+            // TODO: adapt this route/controller
             // to work for different forms of MFA
             req.user.mfaMethods = ['email'];
         } else {
@@ -78,25 +75,25 @@ export const updateMyMfaEnabled = async (req: Request, res: Response) => {
         }
 
         await req.user.save();
-        
+
         user = req.user;
     } catch (err) {
         Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: "Failed to update current user's MFA status"
-		}); 
+        Sentry.captureException(err);
+        return res.status(400).send({
+            message: "Failed to update current user's MFA status"
+        });
     }
-    
+
     return res.status(200).send({
         user
     });
-}
+};
 
 /**
  * Return organizations that the current user is part of.
- * @param req 
- * @param res 
+ * @param req
+ * @param res
  */
 export const getMyOrganizations = async (req: Request, res: Response) => {
     /* 
@@ -126,22 +123,24 @@ export const getMyOrganizations = async (req: Request, res: Response) => {
         }
     }   
     */
-	let organizations;
-	try {
-		organizations = (
-			await MembershipOrg.find({
-				user: req.user._id
-			}).populate('organization')
-		).map((m) => m.organization);
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: "Failed to get current user's organizations"
-		});
-	}
+    let organizations;
+    try {
+        organizations = (
+            await MembershipOrg.find({
+                user: req.user._id
+            }).populate('organization')
+        ).map((m) => m.organization);
+    } catch (err) {
+        Sentry.setUser({ email: req.user.email });
+        Sentry.captureException(err);
+        return res.status(400).send({
+            message: "Failed to get current user's organizations"
+        });
+    }
 
-	return res.status(200).send({
-		organizations
-	});
-}
+    return res.status(200).send({
+        organizations
+    });
+};
+
+export const deleteMe = async (req: Request, res: Response) => {};

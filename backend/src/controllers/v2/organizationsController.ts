@@ -1,19 +1,22 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
-import { 
-    MembershipOrg,
-    Membership,
-    Workspace
-} from '../../models';
+import { MembershipOrg, Membership, Workspace } from '../../models';
 import { deleteMembershipOrg } from '../../helpers/membershipOrg';
 import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
 
+export const createOrganization = async (req: Request, res: Response) => {};
+
+export const deleteOrganization = async (req: Request, res: Response) => {};
+
 /**
  * Return memberships for organization with id [organizationId]
- * @param req 
- * @param res 
+ * @param req
+ * @param res
  */
-export const getOrganizationMemberships = async (req: Request, res: Response) => {
+export const getOrganizationMemberships = async (
+    req: Request,
+    res: Response
+) => {
     /* 
     #swagger.summary = 'Return organization memberships'
     #swagger.description = 'Return organization memberships'
@@ -51,28 +54,31 @@ export const getOrganizationMemberships = async (req: Request, res: Response) =>
     try {
         const { organizationId } = req.params;
 
-		memberships = await MembershipOrg.find({
-			organization: organizationId
-		}).populate('user', '+publicKey');
+        memberships = await MembershipOrg.find({
+            organization: organizationId
+        }).populate('user', '+publicKey');
     } catch (err) {
         Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get organization memberships'
-		});
+        Sentry.captureException(err);
+        return res.status(400).send({
+            message: 'Failed to get organization memberships'
+        });
     }
-    
+
     return res.status(200).send({
         memberships
     });
-}
+};
 
 /**
  * Update role of membership with id [membershipId] to role [role]
- * @param req 
- * @param res 
+ * @param req
+ * @param res
  */
-export const updateOrganizationMembership = async (req: Request, res: Response) => {
+export const updateOrganizationMembership = async (
+    req: Request,
+    res: Response
+) => {
     /* 
     #swagger.summary = 'Update organization membership'
     #swagger.description = 'Update organization membership'
@@ -130,35 +136,39 @@ export const updateOrganizationMembership = async (req: Request, res: Response) 
     try {
         const { membershipId } = req.params;
         const { role } = req.body;
-        
+
         membership = await MembershipOrg.findByIdAndUpdate(
             membershipId,
             {
                 role
-            }, {
+            },
+            {
                 new: true
             }
         );
     } catch (err) {
         Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to update organization membership'
-		});
+        Sentry.captureException(err);
+        return res.status(400).send({
+            message: 'Failed to update organization membership'
+        });
     }
-    
+
     return res.status(200).send({
         membership
     });
-}
+};
 
 /**
  * Delete organization membership with id [membershipId]
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
-export const deleteOrganizationMembership = async (req: Request, res: Response) => {
+export const deleteOrganizationMembership = async (
+    req: Request,
+    res: Response
+) => {
     /* 
     #swagger.summary = 'Delete organization membership'
     #swagger.description = 'Delete organization membership'
@@ -198,35 +208,38 @@ export const deleteOrganizationMembership = async (req: Request, res: Response) 
     let membership;
     try {
         const { membershipId } = req.params;
-        
+
         // delete organization membership
         membership = await deleteMembershipOrg({
             membershipOrgId: membershipId
         });
 
         await updateSubscriptionOrgQuantity({
-			organizationId: membership.organization.toString()
-		});
+            organizationId: membership.organization.toString()
+        });
     } catch (err) {
         Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to delete organization membership'
-		});	
+        Sentry.captureException(err);
+        return res.status(400).send({
+            message: 'Failed to delete organization membership'
+        });
     }
 
     return res.status(200).send({
         membership
     });
-}
+};
 
 /**
  * Return workspaces for organization with id [organizationId] that user has
  * access to
- * @param req 
- * @param res 
+ * @param req
+ * @param res
  */
-export const getOrganizationWorkspaces = async (req: Request, res: Response) => {
+export const getOrganizationWorkspaces = async (
+    req: Request,
+    res: Response
+) => {
     /* 
     #swagger.summary = 'Return projects in organization that user is part of'
     #swagger.description = 'Return projects in organization that user is part of'
@@ -264,33 +277,33 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
     try {
         const { organizationId } = req.params;
 
-		const workspacesSet = new Set(
-			(
-				await Workspace.find(
-					{
-						organization: organizationId
-					},
-					'_id'
-				)
-			).map((w) => w._id.toString())
-		);
+        const workspacesSet = new Set(
+            (
+                await Workspace.find(
+                    {
+                        organization: organizationId
+                    },
+                    '_id'
+                )
+            ).map((w) => w._id.toString())
+        );
 
-		workspaces = (
-			await Membership.find({
-				user: req.user._id
-			}).populate('workspace')
-		)
-			.filter((m) => workspacesSet.has(m.workspace._id.toString()))
-			.map((m) => m.workspace);
+        workspaces = (
+            await Membership.find({
+                user: req.user._id
+            }).populate('workspace')
+        )
+            .filter((m) => workspacesSet.has(m.workspace._id.toString()))
+            .map((m) => m.workspace);
     } catch (err) {
         Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get organization workspaces'
-		});	
+        Sentry.captureException(err);
+        return res.status(400).send({
+            message: 'Failed to get organization workspaces'
+        });
     }
-    
+
     return res.status(200).send({
         workspaces
     });
-}
+};
