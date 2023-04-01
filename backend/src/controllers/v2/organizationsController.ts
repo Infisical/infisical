@@ -2,11 +2,11 @@ import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import { MembershipOrg, Membership, Workspace } from '../../models';
 import { deleteMembershipOrg } from '../../helpers/membershipOrg';
-import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
+import {
+    updateSubscriptionOrgQuantity,
+    deleteOrganization as deleteOrg
+} from '../../helpers/organization';
 
-export const createOrganization = async (req: Request, res: Response) => {};
-
-export const deleteOrganization = async (req: Request, res: Response) => {};
 /**
  * Return memberships for organization with id [organizationId]
  * @param req
@@ -304,5 +304,33 @@ export const getOrganizationWorkspaces = async (
 
     return res.status(200).send({
         workspaces
+    });
+};
+
+/**
+ * Delete organization with id [organizationId]
+ * @param req
+ * @param res
+ * @returns
+ */
+export const deleteOrganization = async (req: Request, res: Response) => {
+    let organization;
+    try {
+        const { organizationId } = req.body;
+
+        organization = await deleteOrg({
+            email: req.user.email,
+            orgId: organizationId
+        });
+    } catch (err) {
+        Sentry.setUser({ email: req.user.email });
+        Sentry.captureException(err);
+        return res.status(400).send({
+            message: 'Failed to delete organization'
+        });
+    }
+
+    return res.status(200).send({
+        organization
     });
 };
