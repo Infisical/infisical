@@ -77,4 +77,18 @@ router.get(
     organizationsController.getOrganizationWorkspaces
 );
 
+router.delete(
+    '/:organizationId',
+    param('organizationId').exists().trim(),
+    validateRequest,
+    requireAuth({
+        acceptedAuthModes: ['jwt', 'apiKey']
+    }),
+    requireOrganizationAuth({
+        acceptedRoles: [OWNER],
+        acceptedStatuses: [ACCEPTED]
+    }),
+    organizationsController.deleteOrganization
+);
+
 export default router;
