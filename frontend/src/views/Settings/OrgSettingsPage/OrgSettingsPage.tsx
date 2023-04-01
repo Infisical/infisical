@@ -25,6 +25,7 @@ import {
 } from '@app/hooks/api';
 
 import { OrgIncidentContactsTable, OrgMembersTable, OrgNameChangeSection } from './components';
+import InputField from '~/components/basic/InputField';
 
 export const OrgSettingsPage = () => {
   const host = window.location.origin;
@@ -53,6 +54,7 @@ export const OrgSettingsPage = () => {
   const removeIncidentContact = useDeleteIncidentContact();
 
   const [completeInviteLink, setcompleteInviteLink] = useState<string | undefined>('');
+  const [organizationToBeDeletedName, setOrganizationToBeDeletedName] = useState('');
 
   const isMoreUsersNotAllowed =
     (orgUsers || []).length >= 5 &&
@@ -215,21 +217,8 @@ export const OrgSettingsPage = () => {
    * It then checks if the name of the workspace to be deleted is correct. Otherwise, it doesn't delete.
    * It then deletes the workspace and forwards the user to another available workspace.
    */
-  // const executeDeletingWorkspace = async () => {
-  //   const userWorkspaces = await getWorkspaces();
-  //
-  //   if (userWorkspaces.length > 1) {
-  //     if (
-  //       userWorkspaces.filter((workspace) => workspace._id === workspaceId)[0].name ===
-  //       workspaceToBeDeletedName
-  //     ) {
-  //       await deleteWorkspace(workspaceId);
-  //       const ws = await getWorkspaces();
-  //       router.push(`/dashboard/${ws[0]._id}`);
-  //     }
-  //   }
-  // };
-  //
+  const executeDeletingOrganization = async () => {};
+
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       <NavHeader pageName={t('settings-org:title')} />
@@ -282,41 +271,34 @@ export const OrgSettingsPage = () => {
             />
           </div>
         </div>
-        {/* <div className="border-l border-red pb-4 pl-6 flex flex-col items-start flex flex-col items-start w-full mb-6 mt-4 pt-2 max-w-6xl">
-							<p className="text-xl font-bold text-red">
-								Danger Zone
-							</p>
-							<p className="mt-4 text-md text-gray-400">
-								As soon as you delete an organization, you will
-								not be able to undo it. This will immediately
-								remove all organization members and cancel your
-								subscription. If you still want to do that,
-								please enter the name of the organization below.
-							</p>
-							<div className="max-h-28 w-full max-w-xl mr-auto mt-8 max-w-xl">
-								<InputField
-									label="Organization to be Deleted"
-									onChangeHandler={
-										setWorkspaceToBeDeletedName
-									}
-									type="varName"
-									value={workspaceToBeDeletedName}
-									placeholder=""
-									isRequired
-								/>
-							</div>
-							<button
-								type="button"
-								className="mt-6 w-full max-w-xl inline-flex justify-center rounded-md border border-transparent bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-400 hover:bg-red hover:text-white hover:font-bold hover:text-semibold duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-								onClick={executeDeletingWorkspace}
-							>
-								Delete Project
-							</button>
-							<p className="mt-0.5 ml-1 text-xs text-gray-500">
-								Note: You can only delete a project in case you
-								have more than one.
-							</p>
-						</div> */}
+        <div className="mb-6 mt-4 flex w-full max-w-6xl flex-col items-start border-l border-red pb-4 pl-6 pt-2">
+          <p className="text-xl font-bold text-red">Danger Zone</p>
+          <p className="text-md mt-4 text-gray-400">
+            As soon as you delete an organization, you will not be able to undo it. This will
+            immediately remove all organization members and cancel your subscription. If you still
+            want to do that, please enter the name of the organization below.
+          </p>
+          <div className="mr-auto mt-8 max-h-28 w-full max-w-xl">
+            <InputField
+              label="Organization to be Deleted"
+              onChangeHandler={(e: any) => setOrganizationToBeDeletedName(e.target.value)}
+              type="varName"
+              value={organizationToBeDeletedName}
+              placeholder=""
+              isRequired
+            />
+          </div>
+          <button
+            type="button"
+            className="hover:text-semibold mt-6 inline-flex w-full max-w-xl justify-center rounded-md border border-transparent bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-400 duration-200 hover:bg-red hover:font-bold hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            onClick={executeDeletingOrganization}
+          >
+            Delete Organization
+          </button>
+          <p className="mt-0.5 ml-1 text-xs text-gray-500">
+            Note: You can only delete a organization in case you have more than one.
+          </p>
+        </div>
       </div>
     </div>
   );
