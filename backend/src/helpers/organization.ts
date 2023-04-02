@@ -2,13 +2,14 @@ import * as Sentry from '@sentry/node';
 import Stripe from 'stripe';
 import { Types } from 'mongoose';
 import { ACCEPTED } from '../variables';
-import { Organization, MembershipOrg, Workspace } from '../models';
+import { Organization, MembershipOrg, Workspace, Membership } from '../models';
 import {
     getStripeSecretKey,
     getStripeProductPro,
     getStripeProductTeam,
     getStripeProductStarter
 } from '../config';
+import { deleteWorkspace } from './workspace';
 
 /**
  * Create an organization with name [name]
@@ -70,9 +71,17 @@ const deleteOrganization = async ({
         organization = await Organization.findByIdAndDelete(orgId);
 
         // delete all the workspaces
-        await Workspace.deleteMany({
-            organization: organization?.id
-        });
+        // first get all the workspaces ids
+        const workspaceIds = (
+            await Workspace.find({
+                organization: organization?.id
+            })
+        ).map((m) => m.id);
+
+        // delete all the workspaces one by one
+        for (let id in workspaceIds) {
+            await deleteWorkspace({ id });
+        }
 
         // delete all the members
         MembershipOrg.deleteMany({

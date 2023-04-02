@@ -316,7 +316,7 @@ export const getOrganizationWorkspaces = async (
 export const deleteOrganization = async (req: Request, res: Response) => {
     let organization;
     try {
-        const { organizationId } = req.body;
+        const { organizationId } = req.params;
 
         organization = await deleteOrg({
             email: req.user.email,
