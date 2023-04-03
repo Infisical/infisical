@@ -3,10 +3,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "infisical.backend.fullname" . }}
-  {{- with $backend.deploymentAnnotations }}
   annotations:
-    {{- toYaml . | nindent 8 }}
-  {{- end }}
+    updatedAt: {{ now | date "2006-01-01 MST 15:04:05" | quote }}
+    {{- with $backend.deploymentAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   labels:
     {{- include "infisical.backend.labels" . | nindent 4 }}
 spec:
@@ -18,10 +19,11 @@ spec:
     metadata:
       labels:
         {{- include "infisical.backend.matchLabels" . | nindent 8 }}
-      {{- with $backend.podAnnotations }}
       annotations:
+        updatedAt: {{ now | date "2006-01-01 MST 15:04:05" | quote }}
+        {{- with $backend.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
     spec:
       containers:
       - name: {{ template "infisical.name" . }}-{{ $backend.name }}

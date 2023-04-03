@@ -289,6 +289,8 @@ helm upgrade --install --atomic \
   <your-release-name> .
 ```
 
+ℹ️ Since we provide references to the k8s secret resources within the pods, their manifest file doesnt change and though doesnt reload (no changes detected). When upgrading your secrets, you'll have to do it through Helm (a timestamp field will be updated and your pods restarted)
+
 ### 0.1.16
 
 - Auto-generation for the following variables, to ease your future upgrades or setups :
