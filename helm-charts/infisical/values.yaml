@@ -46,6 +46,8 @@ frontend:
   ## @param frontend.kubeSecretRef Backend secret resource reference name (containing required [frontend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))
   ##
   kubeSecretRef: ""
+  ## Frontend service
+  ##
   service:
     ## @param frontend.service.annotations Backend service annotations
     ##
@@ -103,6 +105,8 @@ backend:
   ## @param backend.kubeSecretRef Backend secret resource reference name (containing required [backend configuration variables](https://infisical.com/docs/self-hosting/configuration/envars))
   ##
   kubeSecretRef: ""
+  ## Backend service
+  ##
   service:
     ## @param backend.service.annotations Backend service annotations
     ##
@@ -118,20 +122,22 @@ backend:
 ## Documentation : https://infisical.com/docs/self-hosting/configuration/envars
 ##
 backendEnvironmentVariables:
-  ## @param backendEnvironmentVariables.ENCRYPTION_KEY **Required** Backend encryption key (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))
+  ## @param backendEnvironmentVariables.ENCRYPTION_KEY **Required** Backend encryption key (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)
   ## Command to generate the required value (linux) : 'hexdump -vn16 -e'4/4 "%08X" 1 "\n"' /dev/urandom', 'openssl rand -hex 16'
   ##
-  ENCRYPTION_KEY: MUST_REPLACE
-  ## @param backendEnvironmentVariables.JWT_SIGNUP_SECRET **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))
-  ## @param backendEnvironmentVariables.JWT_REFRESH_SECRET **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))
-  ## @param backendEnvironmentVariables.JWT_AUTH_SECRET **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))
-  ## @param backendEnvironmentVariables.JWT_SERVICE_SECRET **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))
+  ENCRYPTION_KEY: ""
+  ## @param backendEnvironmentVariables.JWT_SIGNUP_SECRET **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)
+  ## @param backendEnvironmentVariables.JWT_REFRESH_SECRET **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)
+  ## @param backendEnvironmentVariables.JWT_AUTH_SECRET **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)
+  ## @param backendEnvironmentVariables.JWT_SERVICE_SECRET **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)
+  ## @param backendEnvironmentVariables.JWT_MFA_SECRET **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)
   ## Command to generate the required value (linux) : 'hexdump -vn16 -e'4/4 "%08X" 1 "\n"' /dev/urandom', 'openssl rand -hex 16'
   ##
-  JWT_SIGNUP_SECRET: MUST_REPLACE
-  JWT_REFRESH_SECRET: MUST_REPLACE
-  JWT_AUTH_SECRET: MUST_REPLACE
-  JWT_SERVICE_SECRET: MUST_REPLACE
+  JWT_SIGNUP_SECRET: ""
+  JWT_REFRESH_SECRET: ""
+  JWT_AUTH_SECRET: ""
+  JWT_SERVICE_SECRET: ""
+  JWT_MFA_SECRET: ""
   ## @param backendEnvironmentVariables.SMTP_HOST **Required** Hostname to connect to for establishing SMTP connections
   ## @param backendEnvironmentVariables.SMTP_PORT Port to connect to for establishing SMTP connections
   ## @param backendEnvironmentVariables.SMTP_SECURE If true, use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported
@@ -140,16 +146,26 @@ backendEnvironmentVariables:
   ## @param backendEnvironmentVariables.SMTP_USERNAME **Required** Credential to connect to host (e.g. team@infisical.com)
   ## @param backendEnvironmentVariables.SMTP_PASSWORD **Required** Credential to connect to host
   ##
-  SMTP_HOST: MUST_REPLACE
+  SMTP_HOST: ""
   SMTP_PORT: 587
   SMTP_SECURE: false
   SMTP_FROM_NAME: Infisical
-  SMTP_FROM_ADDRESS: MUST_REPLACE
-  SMTP_USERNAME: MUST_REPLACE
-  SMTP_PASSWORD: MUST_REPLACE
+  SMTP_FROM_ADDRESS: ""
+  SMTP_USERNAME: ""
+  SMTP_PASSWORD: ""
   ## @param backendEnvironmentVariables.SITE_URL Absolute URL including the protocol (e.g. https://app.infisical.com)
   ##
   SITE_URL: infisical.local
+  ## @param backendEnvironmentVariables.INVITE_ONLY_SIGNUP To disable account creation from the login page (invites only)
+  ##
+  INVITE_ONLY_SIGNUP: false
+  ## @param backendEnvironmentVariables.MONGO_URL MongoDB connection string (external or internal)</br>Leave it empty for auto-generated connection string
+  ## By default the backend will automatically be connected to a Mongo instance within the cluster
+  ## However, it is recommended to add a managed document DB connection string for production-use (DBaaS)
+  ## Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/
+  ## e.g. "mongodb://<user>:<pass>@<host>:<port>/<database-name>"
+  ##
+  MONGO_URL: ""
 
 ## @section MongoDB(&reg;) parameters
 ## Documentation : https://github.com/bitnami/charts/blob/main/bitnami/mongodb/values.yaml
@@ -187,6 +203,38 @@ mongodb:
     repository: bitnami/mongodb
     pullPolicy: IfNotPresent
     tag: "6.0.4-debian-11-r0"
+  ## Bitnami MongoDB(&reg;) pods' liveness probe
+  ## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
+  ## @param mongodb.livenessProbe.enabled Enable livenessProbe
+  ## @param mongodb.livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+  ## @param mongodb.livenessProbe.periodSeconds Period seconds for livenessProbe
+  ## @param mongodb.livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+  ## @param mongodb.livenessProbe.failureThreshold Failure threshold for livenessProbe
+  ## @param mongodb.livenessProbe.successThreshold Success threshold for livenessProbe
+  ##
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 20
+    timeoutSeconds: 10
+    failureThreshold: 6
+    successThreshold: 1
+  ## Bitnami MongoDB(&reg;) pods' readiness probe. Evaluated as a template.
+  ## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
+  ## @param mongodb.readinessProbe.enabled Enable readinessProbe
+  ## @param mongodb.readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+  ## @param mongodb.readinessProbe.periodSeconds Period seconds for readinessProbe
+  ## @param mongodb.readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+  ## @param mongodb.readinessProbe.failureThreshold Failure threshold for readinessProbe
+  ## @param mongodb.readinessProbe.successThreshold Success threshold for readinessProbe
+  ##
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 10
+    failureThreshold: 6
+    successThreshold: 1
   ## @param mongodb.service.annotations Service annotations
   ##
   service:
@@ -209,8 +257,12 @@ mongodb:
     ##
     databases:
       - "infisical"
-    rootPassword: root
+    ## @param mongodb.auth.rootUser Database root user name
+    ##
     rootUser: root
+    ## @param mongodb.auth.rootPassword Database root user password
+    ##
+    rootPassword: root
   ## MongoDB persistence configuration
   ##
   persistence:
@@ -230,7 +282,7 @@ mongodb:
     ##
     size: 8Gi
 
-## @param mongodbConnection.externalMongoDBConnectionString External MongoDB connection string
+## @param mongodbConnection.externalMongoDBConnectionString Deprecated :warning: External MongoDB connection string</br>Use backendEnvironmentVariables.MONGO_URL instead
 ## By default the backend will be connected to a Mongo instance within the cluster
 ## However, it is recommended to add a managed document DB connection string for production-use (DBaaS)
 ## Learn about connection string type here https://www.mongodb.com/docs/manual/reference/connection-string/
@@ -246,15 +298,19 @@ ingress:
   ## @param ingress.enabled Enable ingress
   ##
   enabled: true
+  ## @param ingress.ingressClassName Ingress class name
+  ##
+  ingressClassName: nginx
+  ## @param ingress.annotations Ingress annotations
+  ##
   annotations:
-    ## @skip ingress.annotations.kubernetes.io/ingress.class
-    ##
-    kubernetes.io/ingress.class: "nginx"
+    {}
+    # kubernetes.io/ingress.class: "nginx"
     # cert-manager.io/issuer: letsencrypt-nginx
-  ## @param ingress.hostName Ingress hostname (your custom domain name)
+  ## @param ingress.hostName Ingress hostname (your custom domain name, e.g. `infisical.example.org`)
   ## Replace with your own domain
   ##
-  hostName: infisical.local
+  hostName: ""
   ## @skip ingress.frontend
   ##
   frontend:
