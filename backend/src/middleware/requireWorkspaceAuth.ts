@@ -16,44 +16,32 @@ type req = 'params' | 'body' | 'query';
 const requireWorkspaceAuth = ({
 	acceptedRoles,
 	locationWorkspaceId,
-	locationEnvironment = undefined
+	locationEnvironment = undefined,
+	requiredPermissions = []
 }: {
 	acceptedRoles: string[];
 	locationWorkspaceId: req;
 	locationEnvironment?: req | undefined;
+	requiredPermissions?: string[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
-		try {
-			// TODO: throw errors if workspaceId or environemnt are not present
 
-			const workspaceId = req[locationWorkspaceId]?.workspaceId;
-			const environment = locationEnvironment ? req[locationEnvironment]?.environment : undefined;
-			
-			// validate clients
-			const { membership } = await validateClientForWorkspace({
-				userId: req.user?._id,
-				serviceAccountId: req.serviceAccount?._id,
-				serviceTokenDataId: req.serviceTokenData?._id,
-				workspaceId: new Types.ObjectId(workspaceId),
-				environment
-			});
-			
-			if (membership) {
-				req.membership = membership;
-			}
-			
-			if (
-				req.serviceTokenData 
-				&& req.serviceTokenData.workspace.toString() !== workspaceId
-				&& req.serviceTokenData.environment !== req.body.environment
-			) {
-				next(UnauthorizedRequestError({message: 'Unable to authenticate workspace'}))	
-			}
-
-			return next();
-		} catch (err) {
-			return next(UnauthorizedRequestError({message: 'Unable to authenticate workspace'}))
+		const workspaceId = req[locationWorkspaceId]?.workspaceId;
+		const environment = locationEnvironment ? req[locationEnvironment]?.environment : undefined;
+		
+		// validate clients
+		const { membership } = await validateClientForWorkspace({
+			authData: req.authData,
+			workspaceId: new Types.ObjectId(workspaceId),
+			environment,
+			requiredPermissions
+		});
+		
+		if (membership) {
+			req.membership = membership;
 		}
+
+		return next();
 	};
 };
 

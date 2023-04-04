@@ -11,6 +11,8 @@ import {
 export interface ILog {
     _id: Types.ObjectId;
     user?: Types.ObjectId;
+    serviceAccount?: Types.ObjectId;
+    serviceTokenData?: Types.ObjectId;
     workspace?: Types.ObjectId;
     actionNames: string[];
     actions: Types.ObjectId[];
@@ -23,6 +25,14 @@ const logSchema = new Schema<ILog>(
         user: {
             type: Schema.Types.ObjectId,
             ref: 'User'
+        },
+        serviceAccount: {
+            type: Schema.Types.ObjectId,
+            ref: 'ServiceAccount'
+        },
+        serviceTokenData: {
+            type: Schema.Types.ObjectId,
+            ref: 'ServiceTokenData'
         },
         workspace: {
             type: Schema.Types.ObjectId,

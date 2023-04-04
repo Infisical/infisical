@@ -5,10 +5,8 @@ export interface IServiceAccountWorkspacePermission extends Document {
     serviceAccount: Types.ObjectId;
     workspace: Types.ObjectId;
     environment: string;
-    canRead: boolean;
-    canWrite: boolean;
-    canUpdate: boolean;
-    canDelete: boolean;
+    read: boolean;
+    write: boolean;
 }
 
 const serviceAccountWorkspacePermissionSchema = new Schema<IServiceAccountWorkspacePermission>(
@@ -27,19 +25,11 @@ const serviceAccountWorkspacePermissionSchema = new Schema<IServiceAccountWorksp
             type: String,
             required: true
         },
-        canRead: {
+        read: {
             type: Boolean,
             default: false
         },
-        canWrite: {
-            type: Boolean,
-            default: false
-        },
-        canUpdate: {
-            type: Boolean,
-            default: false
-        },
-        canDelete: {
+        write: {
             type: Boolean,
             default: false
         }

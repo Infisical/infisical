@@ -22,6 +22,12 @@ import {
 	getJwtRefreshLifetime,
 	getJwtRefreshSecret
 } from '../config';
+import {
+	AUTH_MODE_JWT,
+	AUTH_MODE_SERVICE_ACCOUNT,
+	AUTH_MODE_SERVICE_TOKEN,
+	AUTH_MODE_API_KEY
+} from '../variables';
 
 /**
  * 
@@ -39,7 +45,7 @@ const validateAuthMode = ({
 	const apiKey = headers['x-api-key'];
 	const authHeader = headers['authorization'];
 
-	let authTokenType, authTokenValue;
+	let authMode, authTokenValue;
 	if (apiKey === undefined && authHeader === undefined) {
 		// case: no auth or X-API-KEY header present
 		throw BadRequestError({ message: 'Missing Authorization or X-API-KEY in request header.' });
@@ -47,7 +53,7 @@ const validateAuthMode = ({
 
 	if (typeof apiKey === 'string') {
 		// case: treat request authentication type as via X-API-KEY (i.e. API Key)
-		authTokenType = 'apiKey';
+		authMode = AUTH_MODE_API_KEY;
 		authTokenValue = apiKey;
 	}
 
@@ -63,24 +69,24 @@ const validateAuthMode = ({
 
 		switch (tokenValue.split('.', 1)[0]) {
 			case 'st':
-				authTokenType = 'serviceToken';
+				authMode = AUTH_MODE_SERVICE_TOKEN;
 				break;
 			case 'sa':
-				authTokenType = 'serviceAccount';
+				authMode = AUTH_MODE_SERVICE_ACCOUNT;
 				break;
 			default:
-				authTokenType = 'jwt';
+				authMode = AUTH_MODE_JWT;
 		}
 
 		authTokenValue = tokenValue;
 	}
 
-	if (!authTokenType || !authTokenValue) throw BadRequestError({ message: 'Missing valid Authorization or X-API-KEY in request header.' });
+	if (!authMode || !authTokenValue) throw BadRequestError({ message: 'Missing valid Authorization or X-API-KEY in request header.' });
 
-	if (!acceptedAuthModes.includes(authTokenType)) throw BadRequestError({ message: 'The provided authentication type is not supported.' });
+	if (!acceptedAuthModes.includes(authMode)) throw BadRequestError({ message: 'The provided authentication type is not supported.' });
 
 	return ({
-		authTokenType,
+		authMode,
 		authTokenValue
 	});
 }
@@ -155,8 +161,7 @@ const getAuthSTDPayload = async ({
 
 		serviceTokenData = await ServiceTokenData
 			.findById(TOKEN_IDENTIFIER)
-			.select('+encryptedKey +iv +tag')
-			.populate<{user: IUser}>('user');
+			.select('+encryptedKey +iv +tag');
 		
 		if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
 
@@ -216,7 +221,7 @@ const getAuthAPIKeyPayload = async ({
 
 		const apiKeyData = await APIKeyData
 			.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt')
-			.populate('user', '+publicKey');
+			.populate<{user: IUser}>('user', '+publicKey');
 
 		if (!apiKeyData) {
 			throw APIKeyDataNotFoundError({ message: 'Failed to find API key data' });

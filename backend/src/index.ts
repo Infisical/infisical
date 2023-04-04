@@ -9,7 +9,7 @@ import * as Sentry from '@sentry/node';
 import { DatabaseService } from './services';
 import { setUpHealthEndpoint } from './services/health';
 import { initSmtp } from './services/smtp';
-import { logTelemetryMessage } from './services';
+import { TelemetryService } from './services';
 import { setTransporter } from './helpers/nodemailer';
 import { createTestUserForDevelopment } from './utils/addDevelopmentUser';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -80,7 +80,7 @@ const main = async () => {
         });
     }
 
-    logTelemetryMessage();
+    TelemetryService.logTelemetryMessage();
     setTransporter(initSmtp());
 
     await DatabaseService.initDatabase(getMongoURL());

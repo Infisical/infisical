@@ -1,6 +1,7 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, model, Types, Document } from 'mongoose';
 
-export interface IServiceTokenData {
+export interface IServiceTokenData extends Document {
+    _id: Types.ObjectId;
     name: string;
     workspace: Types.ObjectId;
     environment: string;

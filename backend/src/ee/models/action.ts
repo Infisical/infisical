@@ -11,6 +11,8 @@ import {
 export interface IAction {
     name: string;
     user?: Types.ObjectId,
+    serviceAccount?: Types.ObjectId,
+    serviceTokenData?: Types.ObjectId,
     workspace?: Types.ObjectId,
     payload?: {
         secretVersions?: Types.ObjectId[]
@@ -33,8 +35,15 @@ const actionSchema = new Schema<IAction>(
         },
         user: {
             type: Schema.Types.ObjectId,
-            ref: 'User',
-            required: true
+            ref: 'User'
+        },
+        serviceAccount: {
+            type: Schema.Types.ObjectId,
+            ref: 'ServiceAccount'
+        },
+        serviceTokenData: {
+            type: Schema.Types.ObjectId,
+            ref: 'ServiceTokenData'
         },
         workspace: {
             type: Schema.Types.ObjectId,

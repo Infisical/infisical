@@ -195,10 +195,8 @@ export const addServiceAccountWorkspacePermission = async (req: Request, res: Re
     const {
         environment,
         workspaceId,
-        canRead = false,
-        canWrite = false,
-        canUpdate = false,
-        canDelete = false,
+        read = false,
+        write = false,
         encryptedKey,
         nonce
     } = req.body;
@@ -221,10 +219,8 @@ export const addServiceAccountWorkspacePermission = async (req: Request, res: Re
         serviceAccount: new Types.ObjectId(serviceAccountId),
         workspace: new Types.ObjectId(workspaceId),
         environment,
-        canRead,
-        canWrite,
-        canUpdate,
-        canDelete
+        read,
+        write
     }).save();
     
     const existingServiceAccountKey = await ServiceAccountKey.findOne({

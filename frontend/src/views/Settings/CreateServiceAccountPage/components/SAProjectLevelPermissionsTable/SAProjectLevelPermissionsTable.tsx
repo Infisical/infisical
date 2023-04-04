@@ -48,10 +48,8 @@ const createProjectLevelPermissionSchema = yup.object({
     workspace: yup.string().required().label('Workspace'),
     environment: yup.string().required().label('Environment'),
     permissions: yup.object().shape({
-        canRead: yup.boolean().required(),
-        canWrite: yup.boolean().required(),
-        canUpdate: yup.boolean().required(),
-        canDelete: yup.boolean().required(),
+        read: yup.boolean().required(),
+        write: yup.boolean().required()
     }).defined().required()
 });
 
@@ -91,7 +89,7 @@ export const SAProjectLevelPermissionsTable = ({
         privateKey,
         workspace,
         environment,
-        permissions: { canRead, canWrite, canUpdate, canDelete }
+        permissions: { read, write }
     }: CreateProjectLevelPermissionForm) => {
         
         // TODO: clean up / modularize this function
@@ -126,10 +124,8 @@ export const SAProjectLevelPermissionsTable = ({
             serviceAccountId,
             workspaceId: workspace,
             environment,
-            canRead,
-            canWrite,
-            canUpdate,
-            canDelete,
+            read,
+            write,
             encryptedKey: ciphertext,
             nonce
         });
@@ -187,10 +183,8 @@ export const SAProjectLevelPermissionsTable = ({
                                 _id,
                                 workspace,
                                 environment,
-                                canRead,
-                                canWrite,
-                                canUpdate,
-                                canDelete
+                                read,
+                                write
                             }) => {
                                 const environmentName = (workspace.environments.find((env) => env.slug === environment))?.name;
                                 return (
@@ -200,28 +194,14 @@ export const SAProjectLevelPermissionsTable = ({
                                         <Td>
                                             <Checkbox
                                                 id="isReadPermissionEnabled"
-                                                isChecked={canRead}
+                                                isChecked={read}
                                                 isDisabled
                                              >{/**/}</Checkbox>
                                         </Td>
                                         <Td>
                                             <Checkbox
                                                 id="isWritePermissionEnabled"
-                                                isChecked={canWrite}
-                                                isDisabled
-                                             >{/**/}</Checkbox>
-                                        </Td>
-                                        <Td>
-                                            <Checkbox
-                                                id="isUpdatePermissionEnabled"
-                                                isChecked={canUpdate}
-                                                isDisabled
-                                             >{/**/}</Checkbox>
-                                        </Td>
-                                        <Td>
-                                            <Checkbox
-                                                id="isDeletePermissionEnabled"
-                                                isChecked={canDelete}
+                                                isChecked={write}
                                                 isDisabled
                                              >{/**/}</Checkbox>
                                         </Td>
@@ -352,28 +332,18 @@ export const SAProjectLevelPermissionsTable = ({
                             control={control}
                             name="permissions"
                             defaultValue={{
-                                canRead: true,
-                                canWrite: false,
-                                canUpdate: false,
-                                canDelete: false
+                                read: true,
+                                write: false
                             }}
                             render={({ field: { onChange, value }, fieldState: { error }}) => { 
                                 const options = [
                                     {
                                         label: 'Read (default)',
-                                        value: 'canRead'
+                                        value: 'read'
                                     }, 
                                     {
                                         label: 'Write',
-                                        value: 'canWrite'
-                                    },
-                                    {
-                                        label: 'Update',
-                                        value: 'canUpdate'
-                                    },
-                                    {
-                                        label: 'Delete',
-                                        value: 'canDelete'
+                                        value: 'write'
                                     }
                                 ];
                                 

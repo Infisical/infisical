@@ -16,6 +16,7 @@ router.post(
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: 'params'
   }),
   param('workspaceId').exists().trim(),
   body('environmentSlug').exists().trim(),
@@ -31,6 +32,7 @@ router.put(
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
+    locationWorkspaceId: 'params'
   }),
   param('workspaceId').exists().trim(),
   body('environmentSlug').exists().trim(),
@@ -47,6 +49,7 @@ router.delete(
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN],
+    locationWorkspaceId: 'params'
   }),
   param('workspaceId').exists().trim(),
   body('environmentSlug').exists().trim(),
@@ -61,6 +64,7 @@ router.get(
   }),
   requireWorkspaceAuth({
     acceptedRoles: [MEMBER, ADMIN],
+    locationWorkspaceId: 'params'
   }),
   param('workspaceId').exists().trim(),
   validateRequest,

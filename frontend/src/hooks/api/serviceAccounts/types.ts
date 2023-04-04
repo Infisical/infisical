@@ -31,20 +31,16 @@ export type ServiceAccountWorkspacePermission = {
     serviceAccount: string;
     workspace: Workspace;
     environment: string;
-    canRead: boolean;
-    canWrite: boolean;
-    canUpdate: boolean;
-    canDelete: boolean;
+    read: boolean;
+    write: boolean;
 }
 
 export type CreateServiceAccountWorkspacePermissionDTO = {
     serviceAccountId: string;
     workspaceId: string;
     environment: string;
-    canRead: boolean;
-    canWrite: boolean;
-    canUpdate: boolean;
-    canDelete: boolean;
+    read: boolean;
+    write: boolean;
     encryptedKey: string;
     nonce: string;
 }

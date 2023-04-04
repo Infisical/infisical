@@ -5,7 +5,7 @@ import { tagController } from '../../controllers/v2';
 import {
   requireAuth,
   requireWorkspaceAuth,
-  validateRequest,
+  validateRequest
 } from '../../middleware';
 import { ADMIN, MEMBER } from '../../variables';
 
@@ -16,6 +16,7 @@ router.get(
   }),
   requireWorkspaceAuth({
     acceptedRoles: [MEMBER, ADMIN],
+    locationWorkspaceId: 'params'
   }),
   param('workspaceId').exists().trim(),
   validateRequest,
@@ -39,6 +40,7 @@ router.post(
   }),
   requireWorkspaceAuth({
     acceptedRoles: [MEMBER, ADMIN],
+    locationWorkspaceId: 'params'
   }),
   param('workspaceId').exists().trim(),
   body('name').exists().trim(),

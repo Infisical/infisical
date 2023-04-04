@@ -16,12 +16,16 @@ import {
  */
 const createLogHelper = async ({
     userId,
+    serviceAccountId,
+    serviceTokenDataId,
     workspaceId,
     actions,
     channel,
     ipAddress
 }: {
-    userId: Types.ObjectId;
+    userId?: Types.ObjectId;
+    serviceAccountId?: Types.ObjectId;
+    serviceTokenDataId?: Types.ObjectId;
     workspaceId?: Types.ObjectId;
     actions: IAction[];
     channel: string;
@@ -31,6 +35,8 @@ const createLogHelper = async ({
     try {
         log = await new Log({
             user: userId,
+            serviceAccount: serviceAccountId,
+            serviceTokenData: serviceTokenDataId,
             workspace: workspaceId ?? undefined,
             actionNames: actions.map((a) => a.name),
             actions,

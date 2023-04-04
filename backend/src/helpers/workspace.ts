@@ -5,47 +5,98 @@ import {
 	Bot,
 	Membership,
 	Key,
-	Secret
+	Secret,
+	User,
+	IUser,
+	ServiceAccountWorkspacePermission,
+	ServiceAccount,
+	IServiceAccount,
+	ServiceTokenData,
+	IServiceTokenData,
 } from '../models';
 import { createBot } from '../helpers/bot';
+import { validateUserClientForWorkspace } from '../helpers/user';
+import { validateServiceAccountClientForWorkspace } from '../helpers/serviceAccount';
+import { validateServiceTokenDataClientForWorkspace } from '../helpers/serviceTokenData';
 import { validateMembership } from '../helpers/membership';
+import { UnauthorizedRequestError } from '../utils/errors';
+import {
+	AUTH_MODE_JWT,
+	AUTH_MODE_SERVICE_ACCOUNT,
+	AUTH_MODE_SERVICE_TOKEN,
+	AUTH_MODE_API_KEY
+} from '../variables';
 
 /**
- * Validate accepted clients by id including [userId], [serviceAccountId],
- * and [serviceTokenDataId] for workspace with id [workspaceId] based
+ * Validate accepted clients for workspace with id [workspaceId] based
  * on any known permissions.
  * @param {Object} obj
- * @param {Types.ObjectId} obj.userId - id of user
+ * @param {User} obj.user - user client
+ * @param {ServiceAccount} obj.serviceAccount - service account client
+ * @param {ServiceTokenData} obj.serviceTokenData - service token client
+ * @param {Types.ObjectId} obj.workspaceId - id of workspace to validate against
+ * @param {String} obj.environment - (optional) environment in workspace to validate against
+ * @param {String[]} obj.requiredPermissions - required permissions as part of the endpoint
  */
 const validateClientForWorkspace = async ({
-	userId,
-	serviceAccountId,
-	serviceTokenDataId,
+	authData,
 	workspaceId,
-	environment
+	environment,
+	requiredPermissions
 }: {
-	userId?: Types.ObjectId;
-	serviceAccountId?: Types.ObjectId;
-	serviceTokenDataId?: Types.ObjectId;
+	authData: {
+		authMode: string;
+		authPayload: IUser | IServiceAccount | IServiceTokenData;
+	},
 	workspaceId: Types.ObjectId;
 	environment?: string;
+	requiredPermissions?: string[];
 }) => {
-	
+
 	let membership;
-	if (userId) {
-		membership = await validateMembership({
-			userId,
-			workspaceId
+	if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
+		membership = await validateUserClientForWorkspace({
+			user: authData.authPayload,
+			workspaceId,
+			environment,
+			requiredPermissions
 		});
 		
+		// TODO: validate user against [requiredPermissions]
 	}
 
-	if (serviceAccountId) {
-		// TODO
+	if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
+		const permission = await ServiceAccountWorkspacePermission.findOne({
+			serviceAccount: authData.authPayload._id,
+			workspace: new Types.ObjectId(workspaceId),
+			environment
+		});
+		
+		if (!permission) throw UnauthorizedRequestError({
+			message: 'Failed service account authorization for the given workspace environment'
+		});
+		
+		// TODO: validate [requiredPermissions] against [permission]
 	}
 	
-	if (serviceTokenDataId) {
-		// TODO
+	if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
+		await validateServiceTokenDataClientForWorkspace({
+			serviceTokenData: authData.authPayload,
+			workspaceId,
+			environment,
+			requiredPermissions
+		});
+
+		// TODO: validate [requiredPermissions] against [permission]
+	}
+
+	if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
+		membership = await validateUserClientForWorkspace({
+			user: authData.authPayload,
+			workspaceId,
+			environment,
+			requiredPermissions
+		});
 	}
 	
 	return ({

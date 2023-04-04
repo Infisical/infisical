@@ -24,7 +24,7 @@ declare global {
 			serviceTokenData: any;
 			apiKeyData: any;
 			query?: any;
-			authTokenType: string;
+			authData: any;
 		}
 	}
 }

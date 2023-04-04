@@ -1,6 +1,18 @@
 import * as Sentry from '@sentry/node';
-import { IUser, User } from '../models';
+import { Types } from 'mongoose';
+import {
+	IUser, 
+	ISecret,
+	User,
+	Membership
+} from '../models';
 import { sendMail } from './nodemailer';
+import { validateMembership } from './membership';
+import _ from 'lodash';
+import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
+import {
+	ABILITY_WRITE
+} from '../variables/organization';
 
 /**
  * Initialize a user under email [email]
@@ -146,4 +158,90 @@ const checkUserDevice = async ({
 	}
 }
 
-export { setupAccount, completeAccount, checkUserDevice };
+/**
+ * Validate that user (client) can access workspace
+ * with id [workspaceId] and its environment [environment] with required permissions
+ * [requiredPermissions]
+ * @param {Object} obj
+ * @param {User} obj.user - user client
+ * @param {Types.ObjectId} obj.workspaceId - id of workspace to validate against
+ * @param {String} environment - (optional) environment in workspace to validate against
+ * @param {String[]} requiredPermissions - required permissions as part of the endpoint
+ */
+const validateUserClientForWorkspace = async ({
+	user,
+	workspaceId,
+	environment,
+	requiredPermissions
+}: {
+	user: IUser;
+	workspaceId: Types.ObjectId;
+	environment?: string;
+	requiredPermissions?: string[];
+}) => {
+	
+	// org-level and workspace-level permissions? - workspace-level env scoped?
+
+	// validate user membership in workspace
+	const membership = await validateMembership({
+        userId: user._id,
+        workspaceId
+    });
+	
+	// validate user permission
+	
+	
+	// TODO: validate that user can perform action on environment in workspace
+	
+	return membership;
+}
+
+/**
+ * Validate that user (client) can access secrets with ids [secretIds]
+ * with required permissions [requiredPermissions]
+ * @param {Object} obj
+ * @param {User} obj.user - user client
+ * @param {Secret[]} obj.secrets - secrets to validate against
+ * @param {String[]} requiredPermissions - required permissions as part of the endpoint
+ */
+ const validateUserClientForSecrets = async ({
+	user,
+	secrets,
+	requiredPermissions
+}: {
+	user: IUser;
+	secrets: ISecret[];
+	requiredPermissions?: string[];
+}) => {
+	// TODO: consider refactor
+
+	const userMemberships = await Membership.find({ user: user._id })
+	const userMembershipById = _.keyBy(userMemberships, 'workspace');
+	const workspaceIdsSet = new Set(userMemberships.map((m) => m.workspace.toString()));
+
+	// for each secret check if the secret belongs to a workspace the user is a member of
+	secrets.forEach((secret: ISecret) => {
+		if (workspaceIdsSet.has(secret.workspace.toString())) {
+			const deniedMembershipPermissions = userMembershipById[secret.workspace.toString()].deniedPermissions;
+			const isDisallowed = _.some(deniedMembershipPermissions, { environmentSlug: secret.environment, ability: ABILITY_WRITE });
+
+			if (isDisallowed) {
+				throw UnauthorizedRequestError({
+					message: 'You do not have the required permissions to perform this action' 
+				});
+			}
+		} else {
+			throw BadRequestError({ 
+				message: 'You cannot edit secrets of a workspace you are not a member of' 
+			});
+		}
+	});
+}
+
+export { 
+	setupAccount, 
+	completeAccount, 
+	checkUserDevice,
+	validateUserClientForWorkspace,
+	validateUserClientForSecrets
+};
