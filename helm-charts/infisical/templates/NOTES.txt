@@ -53,28 +53,32 @@
 │
 ╰―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――┤
 
-╭―― Here's a list of helpfull commands to get you started 📝  ―――――――――――――――――――――――――――――――――――――――――┤
-│
-│   → Get all the Infisical resources (excluding secrets/pvcs)
-│   $ kubectl get all -n {{ .Release.Namespace }}
-│
-│   → Get your release status
-│   $ helm status {{ .Release.Namespace }} {{ .Release.Name }}
-│
-│   → Get your release resources
-│   $ helm get all {{ .Release.Namespace }} {{ .Release.Name }}
-│
-│   → Uninstall your release
-│   $ helm uninstall {{ .Release.Namespace }} {{ .Release.Name }}
-│
-│   → Get MongoDB root password
-│   $ kubectl get secret {{ .Release.Namespace }} mongodb 
-│     -o jsonpath="{.data['mongodb-root-password']}" | base64 -d
-│
-│   → Get MongoDB users passwords
-│   $ kubectl get secret {{ .Release.Namespace }} mongodb 
-│     -o jsonpath="{.data['mongodb-passwords']}" | base64 -d 
-│
-╰―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――┤
+――― Here's a list of helpful commands to get you started 📝  ―――――――――――――――――――――――――――――――――――――――――┤
+
+→ Get all the Infisical resources (excluding secrets/pvcs)
+$ kubectl get all -n {{ .Release.Namespace }}
+ 
+→ Get your release status
+$ helm status {{ .Release.Namespace }} {{ .Release.Name }}
+
+→ Get your release resources
+$ helm get all {{ .Release.Namespace }} {{ .Release.Name }}
+
+→ Uninstall your release
+$ helm uninstall {{ .Release.Namespace }} {{ .Release.Name }}
+
+→ Get MongoDB root password
+$ kubectl get secret -n {{ .Release.Namespace }} mongodb
+   -o jsonpath="{.data['mongodb-root-password']}" | base64 -d
+
+→ Get MongoDB users passwords
+$ kubectl get secret -n {{ .Release.Namespace }} mongodb
+   -o jsonpath="{.data['mongodb-passwords']}" | base64 -d 
+
+→ Export your backend secrets (requires jq)
+$ kubectl get secrets/<your-secret-name> -n {{ .Release.Namespace }} \
+   -o json | jq '.data | map_values(@base64d)' > <dest-filename>.bak
+ 
+――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――┤
 
 ##
