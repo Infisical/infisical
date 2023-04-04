@@ -48,14 +48,24 @@ var loginCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
-		if currentLoggedInUserDetails.IsUserLoggedIn && !currentLoggedInUserDetails.LoginExpired && len(currentLoggedInUserDetails.UserCredentials.PrivateKey) != 0 {
-			shouldOverride, err := shouldOverrideLoginPrompt(currentLoggedInUserDetails.UserCredentials.Email)
+		addUser := false
+		if currentLoggedInUserDetails.UserCredentials.Email != "" {
+			addUser, err = addNewUserPrompt()
 			if err != nil {
 				util.HandleError(err)
 			}
+		}
 
-			if !shouldOverride {
-				return
+		if !addUser {
+			if currentLoggedInUserDetails.IsUserLoggedIn && !currentLoggedInUserDetails.LoginExpired && len(currentLoggedInUserDetails.UserCredentials.PrivateKey) != 0 {
+				shouldOverride, err := shouldOverrideLoginPrompt(currentLoggedInUserDetails.UserCredentials.Email)
+				if err != nil {
+					util.HandleError(err)
+				}
+
+				if !shouldOverride {
+					return
+				}
 			}
 		}
 
@@ -340,6 +350,19 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 	}
 
 	return &loginOneResponseResult, &loginTwoResponseResult, nil
+}
+
+func addNewUserPrompt() (bool, error) {
+	prompt := promptui.Select{
+		Label: "Infisical detects previous logged in users. Would you like to add a new user? Select[Yes/No]",
+		Items: []string{"No", "Yes"},
+	}
+
+	_, result, err := prompt.Run()
+	if err != nil {
+		return false, err
+	}
+	return result == "Yes", err
 }
 
 func shouldOverrideLoginPrompt(currentLoggedInUserEmail string) (bool, error) {

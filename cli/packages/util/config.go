@@ -31,9 +31,25 @@ func WriteInitalConfig(userCredentials *models.UserCredentials) error {
 		return fmt.Errorf("writeInitalConfig: unable to write config file because [err=%s]", err)
 	}
 
+	//if empty
+	if existingConfigFile.LoggedInUsersEmail == nil {
+		existingConfigFile.LoggedInUsersEmail = []string{}
+	}
+
+	//if profile exists
+	if len(existingConfigFile.LoggedInUsersEmail) > 0 {
+		ok := Contains(existingConfigFile.LoggedInUsersEmail, userCredentials.Email)
+		if !ok {
+			existingConfigFile.LoggedInUsersEmail = append(existingConfigFile.LoggedInUsersEmail, userCredentials.Email)
+		}
+	} else {
+		existingConfigFile.LoggedInUsersEmail = append(existingConfigFile.LoggedInUsersEmail, userCredentials.Email)
+	}
+
 	configFile := models.ConfigFile{
-		LoggedInUserEmail: userCredentials.Email,
-		VaultBackendType:  existingConfigFile.VaultBackendType,
+		LoggedInUserEmail:  userCredentials.Email,
+		VaultBackendType:   existingConfigFile.VaultBackendType,
+		LoggedInUsersEmail: existingConfigFile.LoggedInUsersEmail,
 	}
 
 	configFileMarshalled, err := json.Marshal(configFile)
@@ -176,7 +192,7 @@ func GetConfigFile() (models.ConfigFile, error) {
 	return configFile, nil
 }
 
-// Write a ConfigFile to disk. Raise error if unable to save the model to ask
+// Write a ConfigFile to disk. Raise error if unable to save the model to disk
 func WriteConfigFile(configFile *models.ConfigFile) error {
 	fullConfigFilePath, fullConfigFileDirPath, err := GetFullConfigFilePath()
 	if err != nil {

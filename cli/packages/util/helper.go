@@ -61,6 +61,15 @@ func IsSecretTypeValid(s string) bool {
 	return false
 }
 
+func Contains(iter []string, elem string) bool {
+	for _, value := range iter {
+		if value == elem {
+			return true
+		}
+	}
+	return false
+}
+
 func RequireLogin() {
 	currentUserDetails, err := GetCurrentLoggedInUserDetails()
 
