@@ -18,7 +18,7 @@ import {
 import {
     validateServiceAccountClientForSecrets
 } from '../helpers/serviceAccount';
-import { BadRequestError } from '../utils/errors';
+import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
 import {
     AUTH_MODE_JWT,
     AUTH_MODE_SERVICE_ACCOUNT,
@@ -60,21 +60,23 @@ const validateClientForSecrets = async ({
     }
 
     if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
-        // TODO
         await validateUserClientForSecrets({
             user: authData.authPayload,
             secrets,
             requiredPermissions
         });
+        
+        return secrets;
     }
     
     if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
-        // TODO
         await validateServiceAccountClientForSecrets({
             serviceAccount: authData.authPayload,
             secrets,
             requiredPermissions
         });
+        
+        return secrets;
     }
         
     if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
@@ -83,18 +85,23 @@ const validateClientForSecrets = async ({
             secrets,
             requiredPermissions
         });
+        
+        return secrets;
     }
 
     if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
-        // TODO
         await validateUserClientForSecrets({
             user: authData.authPayload,
             secrets,
             requiredPermissions
         });
+        
+        return secrets;
     }
-    
-    return secrets;
+
+    throw UnauthorizedRequestError({
+        message: 'Failed client authorization for secrets resource'
+    });
 }
 
 export {

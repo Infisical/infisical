@@ -6,6 +6,7 @@ export interface IServiceTokenData extends Document {
     workspace: Types.ObjectId;
     environment: string;
     user: Types.ObjectId;
+    serviceAccount: Types.ObjectId;
     expiresAt: Date;
     secretHash: string;
     encryptedKey: string;
@@ -31,8 +32,11 @@ const serviceTokenDataSchema = new Schema<IServiceTokenData>(
         },
         user: {
             type: Schema.Types.ObjectId,
-            ref: 'User',
-            required: true
+            ref: 'User'
+        },
+        serviceAccount: {
+            type: Schema.Types.ObjectId,
+            ref: 'ServiceAccount'
         },
         expiresAt: {
             type: Date

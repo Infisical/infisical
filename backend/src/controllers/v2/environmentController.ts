@@ -11,7 +11,7 @@ import {
 import { SecretVersion } from '../../ee/models';
 import { BadRequestError } from '../../utils/errors';
 import _ from 'lodash';
-import { ABILITY_READ, ABILITY_WRITE } from '../../variables/organization';
+import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from '../../variables';
 
 /**
  * Create new workspace environment named [environmentName] under workspace with id
@@ -244,8 +244,8 @@ export const getAllAccessibleEnvironmentsOfWorkspace = async (
     throw BadRequestError()
   }
   relatedWorkspace.environments.forEach(environment => {
-    const isReadBlocked = _.some(deniedPermission, { environmentSlug: environment.slug, ability: ABILITY_READ })
-    const isWriteBlocked = _.some(deniedPermission, { environmentSlug: environment.slug, ability: ABILITY_WRITE })
+    const isReadBlocked = _.some(deniedPermission, { environmentSlug: environment.slug, ability: PERMISSION_READ_SECRETS })
+    const isWriteBlocked = _.some(deniedPermission, { environmentSlug: environment.slug, ability: PERMISSION_WRITE_SECRETS })
     if (isReadBlocked && isWriteBlocked) {
       return
     } else {

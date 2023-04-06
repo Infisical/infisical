@@ -15,11 +15,28 @@ import { BadRequestError, ServiceAccountNotFoundError } from '../../utils/errors
 import { getSaltRounds } from '../../config';
 
 /**
+ * Return service account tied to the request (service account) client
+ * @param req
+ * @param res
+ */
+export const getCurrentServiceAccount = async (req: Request, res: Response) => {
+    const serviceAccount = await ServiceAccount.findById(req.serviceAccount._id);
+    
+    if (!serviceAccount) {
+        throw ServiceAccountNotFoundError({ message: 'Failed to find service account' });
+    }
+    
+    return res.status(200).send({
+        serviceAccount
+    });
+}
+
+/**
  * Return service account with id [serviceAccountId]
  * @param req 
  * @param res 
  */
-export const getServiceAccount = async (req: Request, res: Response) => {
+export const getServiceAccountById = async (req: Request, res: Response) => {
     const { serviceAccountId } = req.params;
     
     const serviceAccount = await ServiceAccount.findById(serviceAccountId);
@@ -136,23 +153,6 @@ export const addServiceAccountKey = async (req: Request, res: Response) => {
     return serviceAccountKey;
 }
 
-// /**
-//  * Return organization-level permissions for service account with id [serviceAccountId]
-//  * @param req 
-//  * @param res 
-//  */
-// export const getServiceAccountOrganizationPermissions = async (req: Request, res: Response) => {
-//     const { serviceAccountId } = req.params;
-    
-//     const permissions = await ServiceAccountOrganizationPermissions.findOne({
-//         serviceAccount: new Types.ObjectId(serviceAccountId),
-//     });
-    
-//     return res.status(200).send({
-//         permissions
-//     });
-// }
-
 /**
  * Return workspace-level permission for service account with id [serviceAccountId]
  * @param req 
@@ -167,23 +167,6 @@ export const getServiceAccountWorkspacePermissions = async (req: Request, res: R
         serviceAccountWorkspacePermissions
     });
 }
-
-// /**
-//  * Add organization permissions to service account with id [serviceAccountId]
-//  * @param req 
-//  * @param res 
-//  */
-// export const addServiceAccountOrganizationPermission = async (req: Request, res: Response) => {
-//     const permissions = ServiceAccountOrganizationPermissions.findOne({
-//         serviceAccount: req.serviceAccount._id
-//     });
-
-//     // TODO
-    
-//     return res.status(200).send({
-//         permissions
-//     });
-// }
 
 /**
  * Add a workspace permission to service account with id [serviceAccountId]
@@ -299,5 +282,24 @@ export const deleteServiceAccount = async (req: Request, res: Response) => {
 
     return res.status(200).send({
         serviceAccount
+    });
+}
+
+/**
+ * Return service account keys for service account with id [serviceAccountId]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const getServiceAccountKeys = async (req: Request, res: Response) => {
+    const workspaceId = req.query.workspaceId as string;
+    
+    const serviceAccountKeys = await ServiceAccountKey.find({
+        serviceAccount: req.serviceAccount._id,
+        ...(workspaceId ? { workspace: new Types.ObjectId(workspaceId) } : {})
+    });
+    
+    return res.status(200).send({
+        serviceAccountKeys
     });
 }

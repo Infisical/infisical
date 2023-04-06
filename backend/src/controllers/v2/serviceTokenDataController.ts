@@ -3,10 +3,16 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import {
+    User,
+    ServiceAccount,
     ServiceTokenData
 } from '../../models';
 import { userHasWorkspaceAccess } from '../../ee/helpers/checkMembershipPermissions';
-import { ABILITY_READ } from '../../variables/organization';
+import { 
+    PERMISSION_READ_SECRETS,
+    AUTH_MODE_JWT,
+    AUTH_MODE_SERVICE_ACCOUNT
+} from '../../variables';
 import { getSaltRounds } from '../../config';
 
 /**
@@ -53,58 +59,56 @@ export const getServiceTokenData = async (req: Request, res: Response) => {
  * @returns 
  */
 export const createServiceTokenData = async (req: Request, res: Response) => {
-    let serviceToken, serviceTokenData;
+    let serviceTokenData;
 
-    try {
-        const {
-            name,
-            workspaceId,
-            environment,
-            encryptedKey,
-            iv,
-            tag,
-            expiresIn,
-            permissions
-        } = req.body;
+    const {
+        name,
+        workspaceId,
+        environment,
+        encryptedKey,
+        iv,
+        tag,
+        expiresIn,
+        permissions
+    } = req.body;
 
-        const hasAccess = await userHasWorkspaceAccess(req.user, workspaceId, environment, ABILITY_READ)
-        if (!hasAccess) {
-            throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
-        }
+    const secret = crypto.randomBytes(16).toString('hex');
+    const secretHash = await bcrypt.hash(secret, getSaltRounds());
 
-        const secret = crypto.randomBytes(16).toString('hex');
-        const secretHash = await bcrypt.hash(secret, getSaltRounds());
+    const expiresAt = new Date();
+    expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
 
-        const expiresAt = new Date();
-        expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
-
-        serviceTokenData = await new ServiceTokenData({
-            name,
-            workspace: workspaceId,
-            environment,
-            user: req.user._id,
-            expiresAt,
-            secretHash,
-            encryptedKey,
-            iv,
-            tag,
-            permissions
-        }).save();
-
-        // return service token data without sensitive data
-        serviceTokenData = await ServiceTokenData.findById(serviceTokenData._id);
-
-        if (!serviceTokenData) throw new Error('Failed to find service token data');
-
-        serviceToken = `st.${serviceTokenData._id.toString()}.${secret}`;
-
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-        Sentry.captureException(err);
-        return res.status(400).send({
-            message: 'Failed to create service token data'
-        });
+    let user, serviceAccount;
+    
+    if (req.authData.authMode === AUTH_MODE_JWT && req.authData.authPayload instanceof User) {
+        user = req.authData.authPayload._id;
     }
+
+    if (req.authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && req.authData.authPayload instanceof ServiceAccount) {
+        serviceAccount = req.authData.authPayload._id;
+    }
+        
+    serviceTokenData = await new ServiceTokenData({
+        name,
+        workspace: workspaceId,
+        environment,
+        user,
+        serviceAccount,
+        expiresAt,
+        secretHash,
+        encryptedKey,
+        iv,
+        tag,
+        permissions
+    }).save();
+
+
+    // return service token data without sensitive data
+    serviceTokenData = await ServiceTokenData.findById(serviceTokenData._id);
+
+    if (!serviceTokenData) throw new Error('Failed to find service token data');
+
+    const serviceToken = `st.${serviceTokenData._id.toString()}.${secret}`;
 
     return res.status(200).send({
         serviceToken,

@@ -17,7 +17,7 @@ import { eventPushSecrets } from '../../events';
 import { EESecretService, EELogService } from '../../ee/services';
 import { TelemetryService } from '../../services';
 import { getChannelFromUserAgent } from '../../utils/posthog';
-import { ABILITY_READ, ABILITY_WRITE } from '../../variables/organization';
+import { PERMISSION_WRITE_SECRETS } from '../../variables';
 import { userHasNoAbility, userHasWorkspaceAccess, userHasWriteOnlyAbility } from '../../ee/helpers/checkMembershipPermissions';
 import Tag from '../../models/tag';
 import _, { eq } from 'lodash';
@@ -336,7 +336,7 @@ export const createSecrets = async (req: Request, res: Response) => {
     const { workspaceId, environment }: { workspaceId: string, environment: string } = req.body;
 
     if (req.user) {
-        const hasAccess = await userHasWorkspaceAccess(req.user, new Types.ObjectId(workspaceId), environment, ABILITY_WRITE)
+        const hasAccess = await userHasWorkspaceAccess(req.user, new Types.ObjectId(workspaceId), environment, PERMISSION_WRITE_SECRETS)
         if (!hasAccess) {
             throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
         }

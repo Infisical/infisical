@@ -10,6 +10,7 @@ import { param, body } from 'express-validator';
 import {
     ADMIN,
     MEMBER,
+    PERMISSION_WRITE_SECRETS
 } from '../../variables';
 import { serviceTokenDataController } from '../../controllers/v2';
 
@@ -24,11 +25,13 @@ router.get(
 router.post(
     '/',
 	requireAuth({
-		acceptedAuthModes: ['jwt']
+		acceptedAuthModes: ['jwt', 'serviceAccount']
 	}),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
-        locationWorkspaceId: 'body'
+        locationWorkspaceId: 'body',
+        locationEnvironment: 'body',
+        requiredPermissions: [PERMISSION_WRITE_SECRETS]
     }),
     body('name').exists().isString().trim(),
     body('workspaceId').exists().isString().trim(),

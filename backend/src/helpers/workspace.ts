@@ -53,30 +53,26 @@ const validateClientForWorkspace = async ({
 	requiredPermissions?: string[];
 }) => {
 
-	let membership;
 	if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
-		membership = await validateUserClientForWorkspace({
+		const membership = await validateUserClientForWorkspace({
 			user: authData.authPayload,
 			workspaceId,
 			environment,
 			requiredPermissions
 		});
 		
-		// TODO: validate user against [requiredPermissions]
+		return ({ membership });
 	}
 
 	if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
-		const permission = await ServiceAccountWorkspacePermission.findOne({
-			serviceAccount: authData.authPayload._id,
-			workspace: new Types.ObjectId(workspaceId),
-			environment
+		await validateServiceAccountClientForWorkspace({
+			serviceAccount: authData.authPayload,
+			workspaceId,
+			environment,
+			requiredPermissions
 		});
 		
-		if (!permission) throw UnauthorizedRequestError({
-			message: 'Failed service account authorization for the given workspace environment'
-		});
-		
-		// TODO: validate [requiredPermissions] against [permission]
+		return {};
 	}
 	
 	if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
@@ -87,20 +83,22 @@ const validateClientForWorkspace = async ({
 			requiredPermissions
 		});
 
-		// TODO: validate [requiredPermissions] against [permission]
+		return {};
 	}
 
 	if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
-		membership = await validateUserClientForWorkspace({
+		const membership = await validateUserClientForWorkspace({
 			user: authData.authPayload,
 			workspaceId,
 			environment,
 			requiredPermissions
 		});
+		
+		return ({ membership });
 	}
 	
-	return ({
-		membership
+	throw UnauthorizedRequestError({
+		message: 'Failed client authorization for workspace resource'
 	});
 }
 

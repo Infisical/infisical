@@ -117,7 +117,7 @@ export const SAProjectLevelPermissionsTable = ({
         const { ciphertext, nonce } = encryptAssymmetric({
             plaintext: key,
             publicKey: serviceAccount.publicKey,
-            privateKey: PRIVATE_KEY
+            privateKey
         });
         
         await createServiceAccountProjectLevelPermission.mutateAsync({
@@ -171,8 +171,6 @@ export const SAProjectLevelPermissionsTable = ({
                             <Th>Environment</Th>
                             <Th>Read</Th>
                             <Th>Write</Th>
-                            <Th>Update</Th>
-                            <Th>Delete</Th>
                             <Th aria-label="actions" />
                         </Tr>
                     </THead>

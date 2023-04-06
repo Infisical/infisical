@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { Types } from 'mongoose';
 import { ServiceAccount } from '../models';
 import {
     ServiceAccountNotFoundError
@@ -6,38 +7,31 @@ import {
 import {
     validateMembershipOrg
 } from '../helpers/membershipOrg';
+import {
+    validateClientForServiceAccount
+} from '../helpers/serviceAccount';
 
 type req = 'params' | 'body' | 'query';
 
 const requireServiceAccountAuth = ({
     acceptedRoles,
     acceptedStatuses,
-    location = 'params'
+    locationServiceAccountId = 'params',
+    requiredPermissions = []
 }: {
     acceptedRoles: string[];
     acceptedStatuses: string[];
-    location?: req;
+    locationServiceAccountId?: req;
+    requiredPermissions?: string[];
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
-        const serviceAccountId = req[location].serviceAccountId;
-        const serviceAccount = await ServiceAccount.findById(serviceAccountId); 
+        const serviceAccountId = req[locationServiceAccountId].serviceAccountId;
         
-        if (!serviceAccount) {
-            return next(ServiceAccountNotFoundError({ message: 'Failed to locate Service Account' }));
-        }
-        
-        if (serviceAccount.user.toString() !== req.user.id.toString()) {
-            // case: creator of the service account is different from
-            // the user on the request -> apply middleware role/status validation
-            await validateMembershipOrg({
-                userId: req.user._id,
-                organizationId: serviceAccount.organization,
-                acceptedRoles,
-                acceptedStatuses
-            });
-        }
-        
-        req.serviceAccount = serviceAccount;
+        req.serviceAccount = await validateClientForServiceAccount({
+            authData: req.authData,
+            serviceAccountId: new Types.ObjectId(serviceAccountId),
+            requiredPermissions
+        });
         
         next();
     }

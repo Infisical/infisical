@@ -21,7 +21,6 @@ import {
 	ACTION_READ_SECRETS
 } from '../variables';
 import _ from 'lodash';
-import { ABILITY_WRITE } from '../variables/organization';
 import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
 
 interface V1PushSecret {
