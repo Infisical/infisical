@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import {
@@ -102,25 +103,17 @@ const getAuthUserPayload = async ({
 }: {
 	authTokenValue: string;
 }) => {
-	let user;
-	try {
-		const decodedToken = <jwt.UserIDJwtPayload>(
-			jwt.verify(authTokenValue, getJwtAuthSecret())
-		);
+	const decodedToken = <jwt.UserIDJwtPayload>(
+		jwt.verify(authTokenValue, getJwtAuthSecret())
+	);
 
-		user = await User.findOne({
-			_id: decodedToken.userId
-		}).select('+publicKey');
+	const user = await User.findOne({
+		_id: decodedToken.userId
+	}).select('+publicKey');
 
-		if (!user) throw AccountNotFoundError({ message: 'Failed to find User' });
+	if (!user) throw AccountNotFoundError({ message: 'Failed to find User' });
 
-		if (!user?.publicKey) throw UnauthorizedRequestError({ message: 'Failed to authenticate User with partially set up account' });
-
-	} catch (err) {
-		throw UnauthorizedRequestError({
-			message: 'Failed to authenticate JWT token'
-		});
-	}
+	if (!user?.publicKey) throw UnauthorizedRequestError({ message: 'Failed to authenticate User with partially set up account' });
 
 	return user;
 }
@@ -136,40 +129,37 @@ const getAuthSTDPayload = async ({
 }: {
 	authTokenValue: string;
 }) => {
-	let serviceTokenData;
-	try {
-		const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
+	const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
 
-		// TODO: optimize double query
-		serviceTokenData = await ServiceTokenData
-			.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt');
+	let serviceTokenData = await ServiceTokenData
+		.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt');
 
-		if (!serviceTokenData) {
-			throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
-		} else if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
-			// case: service token expired
-			await ServiceTokenData.findByIdAndDelete(serviceTokenData._id);
-			throw UnauthorizedRequestError({
-				message: 'Failed to authenticate expired service token'
-			});
-		}
-
-		const isMatch = await bcrypt.compare(TOKEN_SECRET, serviceTokenData.secretHash);
-		if (!isMatch) throw UnauthorizedRequestError({
-			message: 'Failed to authenticate service token'
-		});
-
-		serviceTokenData = await ServiceTokenData
-			.findById(TOKEN_IDENTIFIER)
-			.select('+encryptedKey +iv +tag');
-		
-		if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
-
-	} catch (err) {
+	if (!serviceTokenData) {
+		throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
+	} else if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
+		// case: service token expired
+		await ServiceTokenData.findByIdAndDelete(serviceTokenData._id);
 		throw UnauthorizedRequestError({
-			message: 'Failed to authenticate service token'
+			message: 'Failed to authenticate expired service token'
 		});
 	}
+
+	const isMatch = await bcrypt.compare(TOKEN_SECRET, serviceTokenData.secretHash);
+	if (!isMatch) throw UnauthorizedRequestError({
+		message: 'Failed to authenticate service token'
+	});
+	
+	serviceTokenData = await ServiceTokenData
+		.findOneAndUpdate({
+			_id: new Types.ObjectId(TOKEN_IDENTIFIER)
+		}, {
+			lastUsed: new Date()
+		}, {
+			new: true
+		})
+		.select('+encryptedKey +iv +tag');
+	
+	if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
 
 	return serviceTokenData;
 }
@@ -204,7 +194,6 @@ const getAuthSAAKPayload = async ({
 }
 
 /**
- * TODO: deprecate API keys
  * Return API key data payload corresponding to API key [authTokenValue]
  * @param {Object} obj
  * @param {String} obj.authTokenValue - API key value
@@ -215,33 +204,44 @@ const getAuthAPIKeyPayload = async ({
 }: {
 	authTokenValue: string;
 }) => {
-	let user;
-	try {
-		const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
+	const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
 
-		const apiKeyData = await APIKeyData
-			.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt')
-			.populate<{user: IUser}>('user', '+publicKey');
+	let apiKeyData = await APIKeyData
+		.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt')
+		.populate<{user: IUser}>('user', '+publicKey');
 
-		if (!apiKeyData) {
-			throw APIKeyDataNotFoundError({ message: 'Failed to find API key data' });
-		} else if (apiKeyData?.expiresAt && new Date(apiKeyData.expiresAt) < new Date()) {
-			// case: API key expired
-			await APIKeyData.findByIdAndDelete(apiKeyData._id);
-			throw UnauthorizedRequestError({
-				message: 'Failed to authenticate expired API key'
-			});
-		}
-
-		const isMatch = await bcrypt.compare(TOKEN_SECRET, apiKeyData.secretHash);
-		if (!isMatch) throw UnauthorizedRequestError({
-			message: 'Failed to authenticate API key'
-		});
-
-		user = apiKeyData.user;
-	} catch (err) {
+	if (!apiKeyData) {
+		throw APIKeyDataNotFoundError({ message: 'Failed to find API key data' });
+	} else if (apiKeyData?.expiresAt && new Date(apiKeyData.expiresAt) < new Date()) {
+		// case: API key expired
+		await APIKeyData.findByIdAndDelete(apiKeyData._id);
 		throw UnauthorizedRequestError({
-			message: 'Failed to authenticate API key'
+			message: 'Failed to authenticate expired API key'
+		});
+	}
+
+	const isMatch = await bcrypt.compare(TOKEN_SECRET, apiKeyData.secretHash);
+	if (!isMatch) throw UnauthorizedRequestError({
+		message: 'Failed to authenticate API key'
+	});
+
+	apiKeyData = await APIKeyData.findOneAndUpdate({
+		_id: new Types.ObjectId(TOKEN_IDENTIFIER)
+	}, {
+		lastUsed: new Date()
+	}, {
+		new: true
+	});
+	
+	if (!apiKeyData) {
+		throw APIKeyDataNotFoundError({ message: 'Failed to find API key data' });
+	}
+	
+	const user = await User.findById(apiKeyData.user).select('+publicKey');
+	
+	if (!user) {
+		throw AccountNotFoundError({
+			message: 'Failed to find user'
 		});
 	}
 
@@ -257,30 +257,23 @@ const getAuthAPIKeyPayload = async ({
  * @return {String} obj.refreshToken - issued refresh token
  */
 const issueAuthTokens = async ({ userId }: { userId: string }) => {
-	let token: string;
-	let refreshToken: string;
-	try {
-		// issue tokens
-		token = createToken({
-			payload: {
-				userId
-			},
-			expiresIn: getJwtAuthLifetime(),
-			secret: getJwtAuthSecret()
-		});
 
-		refreshToken = createToken({
-			payload: {
-				userId
-			},
-			expiresIn: getJwtRefreshLifetime(),
-			secret: getJwtRefreshSecret()
-		});
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to issue tokens');
-	}
+	// issue tokens
+	const token = createToken({
+		payload: {
+			userId
+		},
+		expiresIn: getJwtAuthLifetime(),
+		secret: getJwtAuthSecret()
+	});
+
+	const refreshToken = createToken({
+		payload: {
+			userId
+		},
+		expiresIn: getJwtRefreshLifetime(),
+		secret: getJwtRefreshSecret()
+	});
 
 	return {
 		token,
@@ -294,19 +287,14 @@ const issueAuthTokens = async ({ userId }: { userId: string }) => {
  * @param {String} obj.userId - id of user whose tokens are cleared.
  */
 const clearTokens = async ({ userId }: { userId: string }): Promise<void> => {
-	try {
-		// increment refreshVersion on user by 1
-		User.findOneAndUpdate({
-			_id: userId
-		}, {
-			$inc: {
-				refreshVersion: 1
-			}
-		});
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-	}
+	// increment refreshVersion on user by 1
+	User.findOneAndUpdate({
+		_id: userId
+	}, {
+		$inc: {
+			refreshVersion: 1
+		}
+	});
 };
 
 /**
@@ -326,15 +314,9 @@ const createToken = ({
 	expiresIn: string | number;
 	secret: string;
 }) => {
-	try {
-		return jwt.sign(payload, secret, {
-			expiresIn
-		});
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to create a token');
-	}
+	return jwt.sign(payload, secret, {
+		expiresIn
+	});
 };
 
 export {

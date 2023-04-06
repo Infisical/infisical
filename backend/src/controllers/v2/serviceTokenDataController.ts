@@ -94,6 +94,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         environment,
         user,
         serviceAccount,
+        lastUsed: new Date(),
         expiresAt,
         secretHash,
         encryptedKey,
@@ -101,7 +102,6 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
         tag,
         permissions
     }).save();
-
 
     // return service token data without sensitive data
     serviceTokenData = await ServiceTokenData.findById(serviceTokenData._id);
@@ -123,25 +123,11 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
  * @returns 
  */
 export const deleteServiceTokenData = async (req: Request, res: Response) => {
-    let serviceTokenData;
-    try {
-        const { serviceTokenDataId } = req.params;
+    const { serviceTokenDataId } = req.params;
 
-        serviceTokenData = await ServiceTokenData.findByIdAndDelete(serviceTokenDataId);
-
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-        Sentry.captureException(err);
-        return res.status(400).send({
-            message: 'Failed to delete service token data'
-        });
-    }
+    const serviceTokenData = await ServiceTokenData.findByIdAndDelete(serviceTokenDataId);
 
     return res.status(200).send({
         serviceTokenData
     });
-}
-
-function UnauthorizedRequestError(arg0: { message: string; }) {
-    throw new Error('Function not implemented.');
 }

@@ -80,6 +80,7 @@ export const createServiceAccount = async (req: Request, res: Response) => {
         organization: new Types.ObjectId(organizationId),
         user: req.user,
         publicKey,
+        lastUsed: new Date(),
         expiresAt,
         secretHash
     }).save();
