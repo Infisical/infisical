@@ -36,7 +36,7 @@ import {
 } from '@app/components/v2';
 import { leaveConfirmDefaultMessage } from '@app/const';
 import { useWorkspace } from '@app/context';
-import { useLeaveConfirm, usePersistentState, usePopUp, useToggle } from '@app/hooks';
+import { useLeaveConfirm, usePopUp, useToggle } from '@app/hooks';
 import {
   useBatchSecretsOp,
   useCreateWsTag,
@@ -100,10 +100,6 @@ export const DashboardPage = () => {
     'compareSecrets'
   ] as const);
   const [isSecretValueHidden, setIsSecretValueHidden] = useToggle();
-  const [isCommentColumnCollapsed, setIsCommentCollapsed] = usePersistentState(
-    false,
-    'infisical-comment-box'
-  );
   const [searchFilter, setSearchFilter] = useState('');
   const [snapshotId, setSnaphotId] = useState<string | null>(null);
   const [selectedEnv, setSelectedEnv] = useState<WorkspaceEnv | null>(null);
@@ -538,9 +534,7 @@ export const DashboardPage = () => {
               <TableContainer>
                 <table className="secret-table">
                   <SecretTableHeader
-                    isCommentColumnCollapsed={isCommentColumnCollapsed}
                     sortDir={sortDir}
-                    onCommentColToggle={() => setIsCommentCollapsed(!isCommentColumnCollapsed)}
                     onSort={onSortSecrets}
                   />
                   <tbody>
@@ -555,7 +549,6 @@ export const DashboardPage = () => {
                         onSecretDelete={onSecretDelete}
                         onRowExpand={() => onDrawerOpen({ id: _id as string, index })}
                         isSecretValueHidden={isSecretValueHidden}
-                        isCommentColumnCollapsed={isCommentColumnCollapsed}
                         wsTags={wsTags}
                         onCreateTagOpen={() => handlePopUpOpen('addTag')}
                       />
