@@ -198,35 +198,51 @@ type GetEncryptedSecretsV2Request struct {
 	Environment string `json:"environment"`
 	WorkspaceId string `json:"workspaceId"`
 	TagSlugs    string `json:"tagSlugs"`
+	SecretPath  string `json:"secretPath"`
+	FolderId    string `json:"folderId"`
+}
+
+type Folders struct {
+	ID          string    `json:"_id"`
+	Name        string    `json:"name"`
+	Workspace   string    `json:"workspace"`
+	Environment string    `json:"environment"`
+	Parent      string    `json:"parent"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+type Secrets struct {
+	ID                      string    `json:"_id"`
+	Version                 int       `json:"version"`
+	Workspace               string    `json:"workspace"`
+	Type                    string    `json:"type"`
+	Environment             string    `json:"environment"`
+	SecretKeyCiphertext     string    `json:"secretKeyCiphertext"`
+	SecretKeyIV             string    `json:"secretKeyIV"`
+	SecretKeyTag            string    `json:"secretKeyTag"`
+	SecretValueCiphertext   string    `json:"secretValueCiphertext"`
+	SecretValueIV           string    `json:"secretValueIV"`
+	SecretValueTag          string    `json:"secretValueTag"`
+	SecretCommentCiphertext string    `json:"secretCommentCiphertext"`
+	SecretCommentIV         string    `json:"secretCommentIV"`
+	SecretCommentTag        string    `json:"secretCommentTag"`
+	V                       int       `json:"__v"`
+	CreatedAt               time.Time `json:"createdAt"`
+	UpdatedAt               time.Time `json:"updatedAt"`
+	User                    string    `json:"user,omitempty"`
+	Tags                    []struct {
+		ID        string `json:"_id"`
+		Name      string `json:"name"`
+		Slug      string `json:"slug"`
+		Workspace string `json:"workspace"`
+	} `json:"tags"`
 }
 
 type GetEncryptedSecretsV2Response struct {
-	Secrets []struct {
-		ID                      string    `json:"_id"`
-		Version                 int       `json:"version"`
-		Workspace               string    `json:"workspace"`
-		Type                    string    `json:"type"`
-		Environment             string    `json:"environment"`
-		SecretKeyCiphertext     string    `json:"secretKeyCiphertext"`
-		SecretKeyIV             string    `json:"secretKeyIV"`
-		SecretKeyTag            string    `json:"secretKeyTag"`
-		SecretValueCiphertext   string    `json:"secretValueCiphertext"`
-		SecretValueIV           string    `json:"secretValueIV"`
-		SecretValueTag          string    `json:"secretValueTag"`
-		SecretCommentCiphertext string    `json:"secretCommentCiphertext"`
-		SecretCommentIV         string    `json:"secretCommentIV"`
-		SecretCommentTag        string    `json:"secretCommentTag"`
-		V                       int       `json:"__v"`
-		CreatedAt               time.Time `json:"createdAt"`
-		UpdatedAt               time.Time `json:"updatedAt"`
-		User                    string    `json:"user,omitempty"`
-		Tags                    []struct {
-			ID        string `json:"_id"`
-			Name      string `json:"name"`
-			Slug      string `json:"slug"`
-			Workspace string `json:"workspace"`
-		} `json:"tags"`
-	} `json:"secrets"`
+	Secrets []Secrets `json:"secrets"`
+
+	Folders []Folders `json:"folders"`
 }
 
 type GetServiceTokenDetailsResponse struct {

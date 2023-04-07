@@ -25,7 +25,7 @@ import {
     BatchSecretRequest,
     BatchSecret
 } from '../../types/secret';
-import { getFolderPath } from '../../utils/folder';
+import { getFolderPath, getFoldersInDirectory, normalizePath } from '../../utils/folder';
 import Folder from '../../models/folder';
 
 /**
@@ -507,7 +507,7 @@ export const getSecrets = async (req: Request, res: Response) => {
     
     #swagger.security = [{
         "apiKeyAuth": []
-    }]
+    }] 
 
     #swagger.parameters['workspaceId'] = {
         "description": "ID of project",
@@ -543,8 +543,9 @@ export const getSecrets = async (req: Request, res: Response) => {
 
     const postHogClient = getPostHogClient();
 
-    const { workspaceId, environment, tagSlugs } = req.query;
-    const { folderId } = req.query
+    const { workspaceId, environment, tagSlugs, secretsPath } = req.query;
+
+    const normalizedPath = normalizePath(secretsPath as string)
     const tagNamesList = typeof tagSlugs === 'string' && tagSlugs !== '' ? tagSlugs.split(',') : [];
     let userId = "" // used for getting personal secrets for user
     let userEmail = "" // used for posthog 
@@ -602,10 +603,8 @@ export const getSecrets = async (req: Request, res: Response) => {
         }
     }
 
-    //  query for secrets at root folder
-    if (folderId != undefined) {
-        secretQuery.folder = folderId == "" ? undefined : folderId
-    }
+    // Add path to secrets query
+    secretQuery.path = normalizedPath
 
     if (hasWriteOnlyAccess) {
         secrets = await Secret.find(secretQuery).select("secretKeyCiphertext secretKeyIV secretKeyTag")
@@ -630,14 +629,7 @@ export const getSecrets = async (req: Request, res: Response) => {
         ipAddress: req.ip
     });
 
-    let folders: any[] = []
-    if (folderId != undefined) {
-        folders = await Folder.find({
-            workspace: workspaceId,
-            environment: environment,
-            parent: folderId == "" ? undefined : folderId // undefined means root
-        })
-    }
+    const folders = await getFoldersInDirectory(workspaceId as string, environment as string, normalizedPath)
 
     if (postHogClient) {
         postHogClient.capture({

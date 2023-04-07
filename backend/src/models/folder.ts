@@ -19,6 +19,14 @@ const folderSchema = new Schema({
     ref: 'Folder',
     required: false, // optional for root folders
   },
+  path: {
+    type: String,
+    required: true
+  },
+  parentPath: {
+    type: String,
+    required: true,
+  },
 }, {
   timestamps: true
 });

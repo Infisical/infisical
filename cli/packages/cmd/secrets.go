@@ -44,6 +44,11 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		secretsPath, err := cmd.Flags().GetString("path")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		shouldExpandSecrets, err := cmd.Flags().GetBool("expand")
 		if err != nil {
 			util.HandleError(err)
@@ -54,13 +59,18 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
+		normalizedPath := util.NormalizePath(secretsPath)
+		secrets, folders, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, Path: normalizedPath})
 		if err != nil {
 			util.HandleError(err)
 		}
 
 		if shouldExpandSecrets {
 			secrets = util.SubstituteSecrets(secrets)
+		}
+
+		if len(folders) > 0 {
+			visualize.PrintSecretFolders(folders)
 		}
 
 		visualize.PrintAllSecretDetails(secrets)
@@ -142,7 +152,7 @@ var secretsSetCmd = &cobra.Command{
 		plainTextEncryptionKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
 		// pull current secrets
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName})
+		secrets, _, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName})
 		if err != nil {
 			util.HandleError(err, "unable to retrieve secrets")
 		}
@@ -263,13 +273,14 @@ var secretsSetCmd = &cobra.Command{
 		}
 
 		// Print secret operations
-		headers := [...]string{"SECRET NAME", "SECRET VALUE", "STATUS"}
-		rows := [][3]string{}
+		secretHeaders := [...]string{"SECRET NAME", "SECRET VALUE", "STATUS"}
+		secretRows := [][3]string{}
 		for _, secretOperation := range secretOperations {
-			rows = append(rows, [...]string{secretOperation.SecretKey, secretOperation.SecretValue, secretOperation.SecretOperation})
+			secretRows = append(secretRows, [...]string{secretOperation.SecretKey, secretOperation.SecretValue, secretOperation.SecretOperation})
 		}
 
-		visualize.Table(headers, rows)
+		// visualize.PrintSecretFolders()
+		visualize.SecretsTable(secretHeaders, secretRows)
 	},
 }
 
@@ -299,10 +310,12 @@ var secretsDeleteCmd = &cobra.Command{
 			util.HandleError(err, "Unable to get local project details")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName})
+		secrets, folders, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName})
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")
 		}
+
+		fmt.Println("folders===>", folders)
 
 		secretByKey := getSecretsByKeys(secrets)
 		validSecretIdsToDelete := []string{}
@@ -360,10 +373,12 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
+	secrets, folders, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
+
+	fmt.Println("folders===>", folders)
 
 	requestedSecrets := []models.SingleEnvironmentVariable{}
 
@@ -403,10 +418,12 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
+	secrets, folders, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
+
+	fmt.Println("folders===>", folders)
 
 	tagsHashToSecretKey := make(map[string]int)
 	slugsToFilerBy := make(map[string]int)
@@ -602,6 +619,7 @@ func getSecretsByKeys(secrets []models.SingleEnvironmentVariable) map[string]mod
 func init() {
 
 	secretsGenerateExampleEnvCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
+	secretsCmd.Flags().String("path", "/", "The path to the folder where secrets are located. Defaults to root folder")
 	secretsCmd.AddCommand(secretsGenerateExampleEnvCmd)
 
 	secretsGetCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")

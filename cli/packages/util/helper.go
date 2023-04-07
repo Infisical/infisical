@@ -137,3 +137,36 @@ func getCurrentBranch() (string, error) {
 	}
 	return path.Base(strings.TrimSpace(out.String())), nil
 }
+
+func GetSplitPathByDash(path string) []string {
+	pathParts := strings.Split(path, "/")
+	var filteredPathParts []string
+	for _, s := range pathParts {
+		if s != "" {
+			filteredPathParts = append(filteredPathParts, s)
+		}
+	}
+
+	return filteredPathParts
+}
+
+// NormalizePath cleans up a path by removing empty parts, duplicate slashes,
+// and ensuring it starts with ROOT_FOLDER_PATH.
+func NormalizePath(path string) string {
+	ROOT_FOLDER_PATH := "/"
+
+	if path == "" || path == ROOT_FOLDER_PATH {
+		return ROOT_FOLDER_PATH
+	}
+
+	pathParts := strings.Split(path, "/")
+	nonEmptyParts := []string{}
+	for _, part := range pathParts {
+		if part != "" {
+			nonEmptyParts = append(nonEmptyParts, part)
+		}
+	}
+
+	cleanPathString := ROOT_FOLDER_PATH + strings.Join(nonEmptyParts, "/")
+	return cleanPathString
+}

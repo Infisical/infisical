@@ -115,6 +115,7 @@ func CallGetSecretsV2(httpClient *resty.Client, request GetEncryptedSecretsV2Req
 		SetQueryParam("environment", request.Environment).
 		SetQueryParam("workspaceId", request.WorkspaceId).
 		SetQueryParam("tagSlugs", request.TagSlugs).
+		SetQueryParam("secretsPath", request.SecretPath).
 		Get(fmt.Sprintf("%v/v2/secrets", config.INFISICAL_URL))
 
 	if err != nil {
