@@ -310,12 +310,10 @@ var secretsDeleteCmd = &cobra.Command{
 			util.HandleError(err, "Unable to get local project details")
 		}
 
-		secrets, folders, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName})
+		secrets, _, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName})
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")
 		}
-
-		fmt.Println("folders===>", folders)
 
 		secretByKey := getSecretsByKeys(secrets)
 		validSecretIdsToDelete := []string{}
@@ -373,12 +371,10 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	secrets, folders, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
+	secrets, _, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
-
-	fmt.Println("folders===>", folders)
 
 	requestedSecrets := []models.SingleEnvironmentVariable{}
 
@@ -418,12 +414,10 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		util.HandleError(err, "Unable to parse flag")
 	}
 
-	secrets, folders, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
+	secrets, _, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
 	if err != nil {
 		util.HandleError(err, "To fetch all secrets")
 	}
-
-	fmt.Println("folders===>", folders)
 
 	tagsHashToSecretKey := make(map[string]int)
 	slugsToFilerBy := make(map[string]int)
