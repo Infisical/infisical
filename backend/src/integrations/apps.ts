@@ -270,10 +270,13 @@ const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
 
     apps = repos
       .filter((a: any) => a.permissions.admin === true)
-      .map((a: any) => ({
-        name: a.name,
-        owner: a.owner.login,
-      }));
+      .map((a: any) => {
+        return ({
+          appId: a.id,
+          name: a.name,
+          owner: a.owner.login,
+        });
+      });
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);

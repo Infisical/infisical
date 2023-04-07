@@ -1060,7 +1060,7 @@ const syncSecretsGitHub = async ({
         "GET /repos/{owner}/{repo}/actions/secrets/public-key",
         {
           owner: integration.owner,
-          repo: integration.app,
+          repo: integration.app
         }
       )
     ).data;
