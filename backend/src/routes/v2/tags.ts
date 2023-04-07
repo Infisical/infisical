@@ -7,12 +7,16 @@ import {
   requireWorkspaceAuth,
   validateRequest
 } from '../../middleware';
-import { ADMIN, MEMBER } from '../../variables';
+import { 
+  ADMIN, 
+  MEMBER,
+  AUTH_MODE_JWT
+} from '../../variables';
 
 router.get(
   '/:workspaceId/tags',
   requireAuth({
-    acceptedAuthModes: ['jwt'],
+    acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [MEMBER, ADMIN],
@@ -26,7 +30,7 @@ router.get(
 router.delete(
   '/tags/:tagId',
   requireAuth({
-    acceptedAuthModes: ['jwt'],
+    acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   param('tagId').exists().trim(),
   validateRequest,
@@ -36,7 +40,7 @@ router.delete(
 router.post(
   '/:workspaceId/tags',
   requireAuth({
-    acceptedAuthModes: ['jwt'],
+    acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [MEMBER, ADMIN],

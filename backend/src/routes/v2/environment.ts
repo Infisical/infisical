@@ -7,12 +7,16 @@ import {
   requireWorkspaceAuth,
   validateRequest,
 } from '../../middleware';
-import { ADMIN, MEMBER } from '../../variables';
+import {
+  ADMIN, 
+  MEMBER,
+  AUTH_MODE_JWT
+} from '../../variables';
 
 router.post(
   '/:workspaceId/environments',
   requireAuth({
-    acceptedAuthModes: ['jwt'],
+    acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -28,7 +32,7 @@ router.post(
 router.put(
   '/:workspaceId/environments',
   requireAuth({
-    acceptedAuthModes: ['jwt'],
+    acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
@@ -45,7 +49,7 @@ router.put(
 router.delete(
   '/:workspaceId/environments',
   requireAuth({
-    acceptedAuthModes: ['jwt'],
+    acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN],
@@ -60,7 +64,7 @@ router.delete(
 router.get(
   '/:workspaceId/environments',
   requireAuth({
-    acceptedAuthModes: ['jwt'],
+    acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [MEMBER, ADMIN],

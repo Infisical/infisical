@@ -1,5 +1,10 @@
 import * as express from 'express';
-import { ISecret } from '../../models';
+import { 
+	IUser,
+	IServiceAccount,
+	IServiceTokenData,
+	ISecret 
+} from '../../models';
 
 // TODO: fix (any) types
 declare global {
@@ -24,7 +29,13 @@ declare global {
 			serviceTokenData: any;
 			apiKeyData: any;
 			query?: any;
-			authData: any;
+			authData: {
+				authMode: string;
+				authPayload: IUser | IServiceAccount | IServiceTokenData;
+			};
+			requestData: {
+				[key: string]: string
+			};
 		}
 	}
 }

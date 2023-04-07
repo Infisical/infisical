@@ -79,6 +79,12 @@ const requireAuth = ({
 				break;
 		}
 		
+		req.requestData = {
+			...req.params,
+			...req.query,
+			...req.body,
+		}
+		
 		req.authData = {
 			authMode,
 			authPayload

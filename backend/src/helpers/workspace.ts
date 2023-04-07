@@ -28,12 +28,10 @@ import {
 } from '../variables';
 
 /**
- * Validate accepted clients for workspace with id [workspaceId] based
+ * Validate authenticated clients for workspace with id [workspaceId] based
  * on any known permissions.
  * @param {Object} obj
- * @param {User} obj.user - user client
- * @param {ServiceAccount} obj.serviceAccount - service account client
- * @param {ServiceTokenData} obj.serviceTokenData - service token client
+ * @param {Object} obj.authData - authenticated client details
  * @param {Types.ObjectId} obj.workspaceId - id of workspace to validate against
  * @param {String} obj.environment - (optional) environment in workspace to validate against
  * @param {String[]} obj.requiredPermissions - required permissions as part of the endpoint

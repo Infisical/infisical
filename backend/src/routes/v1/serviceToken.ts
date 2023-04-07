@@ -7,7 +7,11 @@ import {
 	validateRequest
 } from '../../middleware';
 import { body } from 'express-validator';
-import { ADMIN, MEMBER } from '../../variables';
+import {
+	ADMIN, 
+	MEMBER,
+	AUTH_MODE_JWT
+} from '../../variables';
 import { serviceTokenController } from '../../controllers/v1';
 
 // note: deprecate service-token routes in favor of service-token data routes/structure
@@ -21,7 +25,7 @@ router.get(
 router.post(
 	'/',
 	requireAuth({
-		acceptedAuthModes: ['jwt']
+		acceptedAuthModes: [AUTH_MODE_JWT]
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],

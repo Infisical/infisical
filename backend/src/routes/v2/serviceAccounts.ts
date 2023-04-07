@@ -13,14 +13,16 @@ import {
     OWNER,
     ADMIN,
     MEMBER,
-    ACCEPTED
+    ACCEPTED,
+    AUTH_MODE_JWT,
+    AUTH_MODE_SERVICE_ACCOUNT
 } from '../../variables';
 import { serviceAccountsController } from '../../controllers/v2';
 
 router.get( // TODO: check
     '/me',
     requireAuth({
-        acceptedAuthModes: ['serviceAccount']
+        acceptedAuthModes: [AUTH_MODE_SERVICE_ACCOUNT]
     }),
     serviceAccountsController.getCurrentServiceAccount
 );
@@ -29,7 +31,7 @@ router.get(
     '/:serviceAccountId',
     param('serviceAccountId').exists().isString().trim(),
     requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
     requireServiceAccountAuth({
         acceptedRoles: [OWNER, ADMIN],
@@ -46,7 +48,7 @@ router.post(
     body('expiresIn').isNumeric(), // measured in ms
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -61,7 +63,7 @@ router.patch(
     param('serviceAccountId').exists().isString().trim(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
     requireServiceAccountAuth({
         acceptedRoles: [OWNER, ADMIN],
@@ -75,7 +77,7 @@ router.delete(
     param('serviceAccountId').exists().isString().trim(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
     requireServiceAccountAuth({
         acceptedRoles: [OWNER, ADMIN],
@@ -89,7 +91,7 @@ router.get(
     param('serviceAccountId').exists().isString().trim(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
     requireServiceAccountAuth({
         acceptedRoles: [OWNER, ADMIN],
@@ -109,7 +111,7 @@ router.post(
     body('nonce').exists().isString().notEmpty(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
     requireServiceAccountAuth({
         acceptedRoles: [OWNER, ADMIN],
@@ -128,7 +130,7 @@ router.delete(
     param('serviceAccountWorkspacePermissionId').exists().isString().trim(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
     requireServiceAccountAuth({
         acceptedRoles: [OWNER, ADMIN],
@@ -145,7 +147,7 @@ router.get(
     '/:serviceAccountId/keys',
     query('workspaceId').optional().isString(),
     requireAuth({
-        acceptedAuthModes: ['jwt', 'serviceAccount']
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_SERVICE_ACCOUNT]
     }),
     requireServiceAccountAuth({
         acceptedRoles: [OWNER, ADMIN],

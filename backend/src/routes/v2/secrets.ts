@@ -15,7 +15,11 @@ import {
     SECRET_PERSONAL,
     SECRET_SHARED,
     PERMISSION_READ_SECRETS,
-    PERMISSION_WRITE_SECRETS
+    PERMISSION_WRITE_SECRETS,
+    AUTH_MODE_JWT,
+    AUTH_MODE_SERVICE_ACCOUNT,
+    AUTH_MODE_SERVICE_TOKEN,
+    AUTH_MODE_API_KEY
 } from '../../variables';
 import {
     BatchSecretRequest
@@ -24,7 +28,7 @@ import {
 router.post(
     '/batch',
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken']
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -100,7 +104,7 @@ router.post(
         }),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken', 'serviceAccount']
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN, AUTH_MODE_SERVICE_ACCOUNT]
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -118,7 +122,7 @@ router.get(
     query('tagSlugs'),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken', 'serviceAccount']
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN, AUTH_MODE_SERVICE_ACCOUNT]
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -159,7 +163,7 @@ router.patch(
         }),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken', 'serviceAccount']
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN, AUTH_MODE_SERVICE_ACCOUNT]
     }),
     requireSecretsAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -188,7 +192,7 @@ router.delete(
         .isEmpty(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken', 'serviceAccount']
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN, AUTH_MODE_SERVICE_ACCOUNT]
     }),
     requireSecretsAuth({
         acceptedRoles: [ADMIN, MEMBER],
