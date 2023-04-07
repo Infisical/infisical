@@ -3,6 +3,8 @@ import { Secret } from '../../models';
 import Folder from '../../models/folder';
 import { BadRequestError } from '../../utils/errors';
 import { ROOT_FOLDER_PATH, getFolderPath, getParentPath, normalizePath, validateFolderName } from '../../utils/folder';
+import { ADMIN, MEMBER } from '../../variables';
+import { validateMembership } from '../../helpers/membership';
 
 // TODO
 // verify workspace id/environment
@@ -62,6 +64,13 @@ export const deleteFolder = async (req: Request, res: Response) => {
   if (!folder) {
     throw BadRequestError({ message: "The folder doesn't exist" })
   }
+
+  // check that user is a member of the workspace
+  await validateMembership({
+    userId: req.user._id.toString(),
+    workspaceId: folder.workspace as any,
+    acceptedRoles: [ADMIN, MEMBER]
+  });
 
   while (queue.length > 0) {
     const currentFolderId = queue.shift();
