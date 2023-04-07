@@ -83,7 +83,7 @@ const deleteOrganization = async ({
             await deleteWorkspace({ id });
         }
 
-        // delete all the members
+        // delete all the membersOrg
         MembershipOrg.deleteMany({
             organization: organization?._id
         });
@@ -92,7 +92,6 @@ const deleteOrganization = async ({
         const stripe = new Stripe(getStripeSecretKey(), {
             apiVersion: '2022-08-01'
         });
-        console.log(stripe);
 
         if (getStripeSecretKey()) {
             // delete the stripe customer
@@ -142,24 +141,24 @@ const initSubscriptionOrg = async ({
                     apiVersion: '2022-08-01'
                 });
 
-                const productToPriceMap = {
-                    starter: getStripeProductStarter(),
-                    team: getStripeProductTeam(),
-                    pro: getStripeProductPro()
-                };
+                // const productToPriceMap = {
+                //     starter: getStripeProductStarter(),
+                //     team: getStripeProductTeam(),
+                //     pro: getStripeProductPro()
+                // };
 
-                stripeSubscription = await stripe.subscriptions.create({
-                    customer: organization.customerId,
-                    items: [
-                        {
-                            price: productToPriceMap['starter'],
-                            quantity: 1
-                        }
-                    ],
-                    payment_behavior: 'default_incomplete',
-                    proration_behavior: 'none',
-                    expand: ['latest_invoice.payment_intent']
-                });
+                // stripeSubscription = await stripe.subscriptions.create({
+                //     customer: organization.customerId,
+                //     items: [
+                //         {
+                //             price: productToPriceMap['starter'],
+                //             quantity: 1
+                //         }
+                //     ],
+                //     payment_behavior: 'default_incomplete',
+                //     proration_behavior: 'none',
+                //     expand: ['latest_invoice.payment_intent']
+                // });
             }
         } else {
             throw new Error(
