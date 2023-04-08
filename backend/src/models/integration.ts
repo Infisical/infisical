@@ -9,6 +9,7 @@ import {
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
+  INTEGRATION_RAILWAY,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
@@ -35,6 +36,7 @@ export interface IIntegration {
     | 'github'
     | 'gitlab'
     | 'render' 
+    | 'railway' 
     | 'flyio'
     | 'circleci'
     | 'travisci';
@@ -98,6 +100,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_GITHUB,
         INTEGRATION_GITLAB,
         INTEGRATION_RENDER,
+        INTEGRATION_RAILWAY,
         INTEGRATION_FLYIO,
         INTEGRATION_CIRCLECI,
         INTEGRATION_TRAVISCI,
