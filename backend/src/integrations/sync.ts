@@ -608,6 +608,7 @@ const syncSecretsVercel = async ({
     key: string;
     value: string;
     target: string[];
+    gitBranch?: string;
   }
   
   try {
@@ -621,46 +622,7 @@ const syncSecretsVercel = async ({
           }
         : {}),
     };
-    
-    // const res = (
-    //   await Promise.all(
-    //     (
-    //       await request.get(
-    //         `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env`,
-    //         {
-    //           params,
-    //           headers: {
-    //               Authorization: `Bearer ${accessToken}`,
-    //               'Accept-Encoding': 'application/json'
-    //           }
-    //       }
-    //   ))
-    //   .data
-    //   .envs
-    //   .filter((secret: VercelSecret) => secret.target.includes(integration.targetEnvironment))
-    //   .map(async (secret: VercelSecret) => {
-    //     if (secret.type === 'encrypted') {
-    //       // case: secret is encrypted -> need to decrypt
-    //       const decryptedSecret = (await request.get(
-    //           `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
-    //           {
-    //             params,
-    //             headers: {
-    //                 Authorization: `Bearer ${accessToken}`,
-    //                 'Accept-Encoding': 'application/json'
-    //             }
-    //           }
-    //       )).data;
-
-    //       return decryptedSecret;
-    //     }
-
-    //     return secret;
-    //   }))).reduce((obj: any, secret: any) => ({
-    //       ...obj,
-    //       [secret.key]: secret
-    //   }), {});
-    
+      
     const vercelSecrets: VercelSecret[] = (await request.get(
       `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env`,
       {
@@ -673,7 +635,21 @@ const syncSecretsVercel = async ({
     ))
     .data
     .envs
-    .filter((secret: VercelSecret) => secret.target.includes(integration.targetEnvironment));
+    .filter((secret: VercelSecret) => { 
+      if (!secret.target.includes(integration.targetEnvironment)) {
+        // case: secret does not have the same target environment
+        return false;
+      }
+
+      if (integration.targetEnvironment === 'preview' && integration.path && integration.path !== secret.gitBranch) {
+        // case: secret on preview environment does not have same target git branch
+        return false;
+      }
+
+      return true;
+    });
+
+    // return secret.target.includes(integration.targetEnvironment);
 
     const res: { [key: string]: VercelSecret } = {};
 
@@ -696,7 +672,7 @@ const syncSecretsVercel = async ({
         res[vercelSecret.key] = vercelSecret;
       }
     }
-
+    
     const updateSecrets: VercelSecret[] = [];
     const deleteSecrets: VercelSecret[] = [];
     const newSecrets: VercelSecret[] = [];
@@ -710,6 +686,9 @@ const syncSecretsVercel = async ({
           value: secrets[key],
           type: "encrypted",
           target: [integration.targetEnvironment],
+          ...(integration.path ? {
+            gitBranch: integration.path
+          } : {})
         });
       }
     });
@@ -726,7 +705,10 @@ const syncSecretsVercel = async ({
             type: res[key].type,
             target: res[key].target.includes(integration.targetEnvironment) 
             ? [...res[key].target] 
-            : [...res[key].target, integration.targetEnvironment]
+            : [...res[key].target, integration.targetEnvironment],
+            ...(integration.path ? {
+              gitBranch: integration.path
+            } : {})
           });
         }
       } else {
@@ -737,6 +719,9 @@ const syncSecretsVercel = async ({
           value: res[key].value,
           type: "encrypted", // value doesn't matter
           target: [integration.targetEnvironment],
+          ...(integration.path ? {
+            gitBranch: integration.path
+          } : {})
         });
       }
     });
