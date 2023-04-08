@@ -27,8 +27,7 @@ export default function GitHubCreateIntegrationPage() {
     });
     
     const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
-    const [owner, setOwner] = useState<string | null>(null);
-    const [targetApp, setTargetApp] = useState('');
+    const [targetAppId, setTargetAppId] = useState('');
     
     const [isLoading, setIsLoading] = useState(false);
     
@@ -41,10 +40,9 @@ export default function GitHubCreateIntegrationPage() {
     useEffect(() => {
         if (integrationAuthApps) {
           if (integrationAuthApps.length > 0) {
-            setTargetApp(integrationAuthApps[0].name);
-            setOwner(integrationAuthApps[0]?.owner ?? null);
+            setTargetAppId(integrationAuthApps[0].appId as string);
           } else {
-            setTargetApp('none');
+            setTargetAppId('none');
           }
         }
     }, [integrationAuthApps]);
@@ -55,14 +53,18 @@ export default function GitHubCreateIntegrationPage() {
 
             if (!integrationAuth?._id) return;
             
+            const targetApp = integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId);
+            
+            if (!targetApp || !targetApp.owner) return;
+            
             await createIntegration({
                 integrationAuthId: integrationAuth?._id,
                 isActive: true,
-                app: targetApp,
+                app: targetApp.name,
                 appId: null,
                 sourceEnvironment: selectedSourceEnvironment,
                 targetEnvironment: null,
-                owner,
+                owner: targetApp.owner,
                 path: null,
                 region: null
             }); 
@@ -76,7 +78,7 @@ export default function GitHubCreateIntegrationPage() {
         }
     }
     
-    return (integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps && targetApp) ? (
+    return (integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps && targetAppId) ? (
     <div className="h-full w-full flex justify-center items-center">
       <Card className="max-w-md p-8 rounded-md">
         <CardTitle className='text-center'>GitHub Integration</CardTitle>
@@ -101,14 +103,14 @@ export default function GitHubCreateIntegrationPage() {
           className='mt-4'
         >
           <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
+            value={targetAppId}
+            onValueChange={(val) => setTargetAppId(val)}
             className='w-full border border-mineshaft-500'
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
               integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem value={integrationAuthApp.name} key={`github-environment-${integrationAuthApp.name}`}>
+                <SelectItem value={integrationAuthApp.appId as string} key={`github-repo-${integrationAuthApp.appId}`}>
                   {integrationAuthApp.name}
                 </SelectItem>
               ))

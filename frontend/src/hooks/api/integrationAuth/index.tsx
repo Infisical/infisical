@@ -1,4 +1,6 @@
 export {
     useGetIntegrationAuthApps,
     useGetIntegrationAuthById,
-    useGetIntegrationAuthTeams} from './queries';
+    useGetIntegrationAuthTeams,
+    useGetIntegrationAuthVercelBranches
+} from './queries';
