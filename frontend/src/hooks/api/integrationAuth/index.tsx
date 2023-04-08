@@ -2,5 +2,6 @@ export {
     useGetIntegrationAuthApps,
     useGetIntegrationAuthById,
     useGetIntegrationAuthTeams,
-    useGetIntegrationAuthVercelBranches
+    useGetIntegrationAuthVercelBranches,
+    useGetRailwayEnvironments
 } from './queries';

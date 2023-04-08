@@ -60,6 +60,7 @@ export default function TravisCICreateIntegrationPage() {
                 appId: (integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp))?.appId ?? null,
                 sourceEnvironment: selectedSourceEnvironment,
                 targetEnvironment: null,
+                targetEnvironmentId: null,
                 owner: null,
                 path: null,
                 region: null,

@@ -11,13 +11,19 @@ import {
     Select, 
     SelectItem 
 } from '../../../components/v2';
-import { useGetIntegrationAuthApps, useGetIntegrationAuthById } from '../../../hooks/api/integrationAuth';
+import { 
+    useGetIntegrationAuthApps, 
+    useGetIntegrationAuthById,
+    useGetRailwayEnvironments
+} from '../../../hooks/api/integrationAuth';
 import { useGetWorkspaceById } from '../../../hooks/api/workspace';
+import createIntegration from "../../api/integrations/createIntegration";
 
 export default function RailwayCreateIntegrationPage() {
     const router = useRouter();
     
     const [targetAppId, setTargetAppId] = useState('');
+    const [targetEnvironmentId, setTargetEnvironmentId] = useState('');
     const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     
@@ -27,8 +33,12 @@ export default function RailwayCreateIntegrationPage() {
     const { data: integrationAuthApps } = useGetIntegrationAuthApps({
         integrationAuthId: integrationAuthId as string ?? ''
     });
-
-
+    
+    const { data: targetEnvironments } = useGetRailwayEnvironments({
+        integrationAuthId: integrationAuthId as string ?? '',
+        appId: targetAppId
+    });
+    
     useEffect(() => {
         if (workspace) {
             setSelectedSourceEnvironment(workspace.environments[0].slug);
@@ -45,25 +55,51 @@ export default function RailwayCreateIntegrationPage() {
         }
     }, [integrationAuthApps]);
     
+    useEffect(() => {
+        if (targetEnvironments) {
+            if (targetEnvironments.length > 0) {
+                setTargetEnvironmentId(targetEnvironments[0].environmentId);
+            } else {
+                setTargetEnvironmentId('none');
+            }
+        }
+    }, [targetEnvironments]);
+    
     const handleButtonClick = async () => {
         try {
             setIsLoading(true);
             
             if (!integrationAuth?._id) return;
 
-            // const targetApp = integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId))?.name;
+            const targetApp = integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId);
+            const targetEnvironment = targetEnvironments?.find((environment) => environment.environmentId === targetEnvironmentId);
 
-            console.log('handleButtonClick');
+            if (!targetApp || !targetApp.appId || !targetEnvironment) return;
+
+            await createIntegration({
+                integrationAuthId: integrationAuth?._id,
+                isActive: true,
+                app: targetApp.name,
+                appId: targetApp.appId,
+                sourceEnvironment: selectedSourceEnvironment,
+                targetEnvironment: targetEnvironment.name,
+                targetEnvironmentId: targetEnvironment.environmentId,
+                owner: null,
+                path: null,
+                region: null
+              }); 
             
             setIsLoading(false);
+            
+            router.push(
+                `/integrations/${localStorage.getItem('projectData.id')}`
+            );
         } catch (err) {
             console.error(err);
         }
     }
     
-    console.log('integrationAuthApps', integrationAuthApps);
-
-    return workspace && selectedSourceEnvironment && integrationAuthApps ? (
+    return workspace && selectedSourceEnvironment && integrationAuthApps && targetEnvironments ? (
         <div className="h-full w-full flex justify-center items-center">
             <Card className="max-w-md p-8 rounded-md">
                 <CardTitle className="text-center">Railway Integration</CardTitle>
@@ -84,24 +120,43 @@ export default function RailwayCreateIntegrationPage() {
                 </Select>
                 </FormControl>
                 <FormControl label="Railway Project">
-                <Select
-                    value={targetAppId}
-                    onValueChange={(val) => setTargetAppId(val)}
-                    className='w-full border border-mineshaft-500'
-                    isDisabled={integrationAuthApps.length === 0}
-                >
-                    {integrationAuthApps.length > 0 ? (
-                        integrationAuthApps.map((integrationAuthApp) => (
-                            <SelectItem value={integrationAuthApp.appId as string} key={`target-app-${integrationAuthApp.appId as string}`}>
-                                    {integrationAuthApp.name}
+                    <Select
+                        value={targetAppId}
+                        onValueChange={(val) => setTargetAppId(val)}
+                        className='w-full border border-mineshaft-500'
+                        isDisabled={integrationAuthApps.length === 0}
+                    >
+                        {integrationAuthApps.length > 0 ? (
+                            integrationAuthApps.map((integrationAuthApp) => (
+                                <SelectItem value={integrationAuthApp.appId as string} key={`target-app-${integrationAuthApp.appId as string}`}>
+                                        {integrationAuthApp.name}
+                                </SelectItem>
+                            ))
+                            ) : (
+                            <SelectItem value="none" key="target-app-none">
+                                No projects found
                             </SelectItem>
-                        ))
-                        ) : (
-                        <SelectItem value="none" key="target-app-none">
-                            No projects found
-                        </SelectItem>
-                    )}
-                </Select>
+                        )}
+                    </Select>
+                </FormControl>
+                <FormControl label="Railway Project Environment">
+                    <Select
+                        value={targetEnvironmentId}
+                        onValueChange={(val) => setTargetEnvironmentId(val)}
+                        className='w-full border border-mineshaft-500'
+                    >
+                        {targetEnvironments.length > 0 ? (
+                            targetEnvironments.map((targetEnvironment) => (
+                                <SelectItem value={targetEnvironment.environmentId as string} key={`target-environment-${targetEnvironment.environmentId as string}`}>
+                                        {targetEnvironment.name}
+                                </SelectItem>
+                            ))
+                            ) : (
+                            <SelectItem value="none" key="target-environment-none">
+                                No environments found
+                            </SelectItem>
+                        )}
+                    </Select>
                 </FormControl>
                 <Button 
                     onClick={handleButtonClick}

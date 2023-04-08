@@ -87,6 +87,7 @@ export default function VercelCreateIntegrationPage() {
               appId: targetApp.appId,
               sourceEnvironment: selectedSourceEnvironment,
               targetEnvironment,
+              targetEnvironmentId: null,
               owner: null,
               path,
               region: null

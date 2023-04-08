@@ -23,6 +23,7 @@ export interface IIntegration {
   app: string;
   owner: string;
   targetEnvironment: string;
+  targetEnvironmentId: string;
   appId: string;
   path: string;
   region: string;
@@ -72,6 +73,10 @@ const integrationSchema = new Schema<IIntegration>(
       // target environment
       type: String,
       default: null,
+    },
+    targetEnvironmentId: {
+      type: String,
+      default: null
     },
     owner: {
       // github-specific repo owner-login

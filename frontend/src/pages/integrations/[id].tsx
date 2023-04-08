@@ -208,7 +208,6 @@ export default function Integrations() {
           link = `${window.location.origin}/integrations/travisci/authorize`;
           break;
         case 'railway':
-          console.log('handleUnauthorized Railway: ', integrationOption);
           link = `${window.location.origin}/integrations/railway/authorize`;
           break;
         default:
@@ -264,7 +263,7 @@ export default function Integrations() {
           link = `${window.location.origin}/integrations/travisci/create?integrationAuthId=${integrationAuth._id}`;
           break;
         case 'railway':
-          console.log('handleAuthorized Railway: ', integrationAuth);
+          link = `${window.location.origin}/integrations/railway/create?integrationAuthId=${integrationAuth._id}`;
           break;
         default:
           break;

@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import {
     App,
+    Environment,
     IntegrationAuth,
     Team
 } from './types';
@@ -18,7 +19,14 @@ const integrationAuthKeys = {
     }: {
         integrationAuthId: string;
         appId: string;
-    }) => [{ integrationAuthId, appId }, 'integrationAuthVercelBranches']
+    }) => [{ integrationAuthId, appId }, 'integrationAuthVercelBranches'] as const,
+    getIntegrationAuthRailwayEnvironments: ({
+        integrationAuthId,
+        appId
+    }: {
+        integrationAuthId: string;
+        appId: string;
+    }) => [{ integrationAuthId, appId }, 'integrationAuthRailwayEnvironments'] as const,
 }
 
 const fetchIntegrationAuthById = async (integrationAuthId: string) => {
@@ -61,6 +69,22 @@ const fetchIntegrationAuthVercelBranches = async ({
     
     return branches;
 };
+
+const fetchIntegrationAuthRailwayEnvironments = async ({
+    integrationAuthId,
+    appId
+}: {
+    integrationAuthId: string;
+    appId: string;
+}) => {
+    const { data: { environments } } = await apiRequest.get<{ environments: Environment[] }>(`/api/v1/integration-auth/${integrationAuthId}/railway/environments`, {
+        params: {
+            appId
+        }
+    });
+    
+    return environments;
+}
 
 export const useGetIntegrationAuthById = (integrationAuthId: string) => {
     return useQuery({
@@ -108,6 +132,26 @@ export const useGetIntegrationAuthVercelBranches = ({
             appId,
         }),
         queryFn: () => fetchIntegrationAuthVercelBranches({
+            integrationAuthId,
+            appId,
+        }),
+        enabled: true
+    });
+}
+
+export const useGetRailwayEnvironments = ({
+    integrationAuthId,
+    appId
+}: {
+    integrationAuthId: string;
+    appId: string;
+}) => {
+    return useQuery({
+        queryKey: integrationAuthKeys.getIntegrationAuthRailwayEnvironments({
+            integrationAuthId,
+            appId,
+        }),
+        queryFn: () => fetchIntegrationAuthRailwayEnvironments({
             integrationAuthId,
             appId,
         }),

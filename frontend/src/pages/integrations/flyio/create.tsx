@@ -61,6 +61,7 @@ export default function FlyioCreateIntegrationPage() {
               appId: null,
               sourceEnvironment: selectedSourceEnvironment,
               targetEnvironment: null,
+              targetEnvironmentId: null,
               owner: null,
               path: null,
               region: null

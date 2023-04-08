@@ -16,3 +16,8 @@ export type Team = {
     name: string;
     teamId: string;
 }
+
+export type Environment = {
+    name: string;
+    environmentId: string;
+}

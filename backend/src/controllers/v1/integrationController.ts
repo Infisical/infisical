@@ -24,6 +24,7 @@ export const createIntegration = async (req: Request, res: Response) => {
 			isActive,
 			sourceEnvironment,
 			targetEnvironment,
+			targetEnvironmentId,
 			owner,
 			path,
 			region
@@ -39,6 +40,7 @@ export const createIntegration = async (req: Request, res: Response) => {
       app,
 			appId,
 			targetEnvironment,
+			targetEnvironmentId,
 			owner,
 			path,
 			region,

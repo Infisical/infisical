@@ -111,6 +111,20 @@ router.get(
 	integrationAuthController.getIntegrationAuthVercelBranches
 );
 
+router.get(
+	'/:integrationAuthId/railway/environments',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireIntegrationAuthorizationAuth({
+		acceptedRoles: [ADMIN, MEMBER]
+	}),
+	param('integrationAuthId').exists().isString(),
+	query('appId').exists().isString(),
+	validateRequest,
+	integrationAuthController.getIntegrationAuthRailwayEnvironments
+);
+
 router.delete(
 	'/:integrationAuthId',
 	requireAuth({

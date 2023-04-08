@@ -21,6 +21,7 @@ import {
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
+  INTEGRATION_RAILWAY,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
@@ -29,11 +30,13 @@ import {
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,
+  INTEGRATION_RAILWAY_API_URL,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_TRAVISCI_API_URL,
 } from "../variables";
 import request from '../config/request';
+import axios from "axios";
 
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
@@ -124,6 +127,13 @@ const syncSecrets = async ({
           integration,
           secrets,
           accessToken,
+        });
+        break;
+      case INTEGRATION_RAILWAY:
+        await syncSecretsRailway({
+          integration,
+          secrets,
+          accessToken
         });
         break;
       case INTEGRATION_FLYIO:
@@ -1151,6 +1161,55 @@ const syncSecretsRender = async ({
     throw new Error("Failed to sync secrets to Render");
   }
 };
+
+/**
+ * Sync/push [secrets] to Railway project with id [integration.appId]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Railway integration
+ */
+const syncSecretsRailway = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  try {
+    const query = `
+      mutation UpsertVariables($input: VariableCollectionUpsertInput!) {
+        variableCollectionUpsert(input: $input)
+      }
+    `;
+
+    const input = {
+      projectId: integration.appId,
+      environmentId: integration.targetEnvironmentId,
+      replace: true,
+      variables: secrets
+    };
+
+    await request.post(INTEGRATION_RAILWAY_API_URL, {
+      query,
+      variables: {
+        input,
+      },
+    }, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error("Failed to sync secrets to Railway");
+  }
+}
 
 /**
  * Sync/push [secrets] to Fly.io app
