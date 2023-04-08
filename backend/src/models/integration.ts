@@ -78,6 +78,7 @@ const integrationSchema = new Schema<IIntegration>(
     },
     path: {
       // aws-parameter-store-specific path
+      // (also) vercel preview-branch
       type: String,
       default: null
     },

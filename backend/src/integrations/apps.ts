@@ -184,6 +184,7 @@ const getAppsVercel = async ({
 
     apps = res.projects.map((a: any) => ({
       name: a.name,
+      appId: a.id
     }));
   } catch (err) {
     Sentry.setUser(null);

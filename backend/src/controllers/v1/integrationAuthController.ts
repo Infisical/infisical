@@ -12,6 +12,10 @@ import {
 	getTeams,
 	revokeAccess 
 } from '../../integrations';
+import {
+	INTEGRATION_VERCEL_API_URL
+} from '../../variables';
+import request from '../../config/request';
 
 /***
  * Return integration authorization with id [integrationAuthId]
@@ -188,22 +192,57 @@ export const getIntegrationAuthApps = async (req: Request, res: Response) => {
  * @returns 
  */
 export const getIntegrationAuthTeams = async (req: Request, res: Response) => {
-	let teams;
-	try {
-		teams = await getTeams({
-			integrationAuth: req.integrationAuth,
-			accessToken: req.accessToken
-		});
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-		message: "Failed to get integration authorization teams"
-		});
-	}
+	const teams = await getTeams({
+		integrationAuth: req.integrationAuth,
+		accessToken: req.accessToken
+	});
 	
 	return res.status(200).send({
 		teams
+	});
+}
+
+/**
+ * Return list of available Vercel (preview) branches
+ * @param req 
+ * @param res 
+ */
+export const getIntegrationAuthVercelBranches = async (req: Request, res: Response) => {
+	const { integrationAuthId } = req.params;
+	const appId = req.query.appId as string;
+	
+	interface VercelBranch {
+		ref: string;
+		lastCommit: string;
+		isProtected: boolean;
+	}
+
+	const params = new URLSearchParams({
+		projectId: appId,
+		...(req.integrationAuth.teamId ? {
+			teamId: req.integrationAuth.teamId
+		} : {})
+	});
+
+	let branches: string[] = [];
+	
+	if (appId && appId !== '') {
+		const { data }: { data: VercelBranch[] } = await request.get(
+			`${INTEGRATION_VERCEL_API_URL}/v1/integrations/git-branches`,
+			{
+				params,
+				headers: {
+					Authorization: `Bearer ${req.accessToken}`,
+					'Accept-Encoding': 'application/json'
+				}
+			}
+		);
+		
+		branches = data.map((b) => b.ref);
+	}
+
+	return res.status(200).send({
+		branches
 	});
 }
 

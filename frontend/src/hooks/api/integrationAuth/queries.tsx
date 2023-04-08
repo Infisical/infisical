@@ -5,12 +5,20 @@ import { apiRequest } from "@app/config/request";
 import {
     App,
     IntegrationAuth,
-    Team} from './types';
+    Team
+} from './types';
 
 const integrationAuthKeys = {
     getIntegrationAuthById: (integrationAuthId: string) => [{ integrationAuthId }, 'integrationAuth'] as const,
     getIntegrationAuthApps: (integrationAuthId: string, teamId?: string) => [{ integrationAuthId, teamId }, 'integrationAuthApps'] as const,
-    getIntegrationAuthTeams: (integrationAuthId: string) => [{ integrationAuthId }, 'integrationAuthTeams'] as const
+    getIntegrationAuthTeams: (integrationAuthId: string) => [{ integrationAuthId }, 'integrationAuthTeams'] as const,
+    getIntegrationAuthVercelBranches: ({
+        integrationAuthId,
+        appId,
+    }: {
+        integrationAuthId: string;
+        appId: string;
+    }) => [{ integrationAuthId, appId }, 'integrationAuthVercelBranches']
 }
 
 const fetchIntegrationAuthById = async (integrationAuthId: string) => {
@@ -38,6 +46,22 @@ const fetchIntegrationAuthTeams = async (integrationAuthId: string) => {
     return data.teams;
 }
 
+const fetchIntegrationAuthVercelBranches = async ({
+    integrationAuthId,
+    appId
+}: {
+    integrationAuthId: string;
+    appId: string;
+}) => {
+    const { data: { branches } } = await apiRequest.get<{ branches: string[] }>(`/api/v1/integration-auth/${integrationAuthId}/vercel/branches`, {
+        params: {
+            appId
+        }
+    });
+    
+    return branches;
+};
+
 export const useGetIntegrationAuthById = (integrationAuthId: string) => {
     return useQuery({
         queryKey: integrationAuthKeys.getIntegrationAuthById(integrationAuthId),
@@ -46,7 +70,6 @@ export const useGetIntegrationAuthById = (integrationAuthId: string) => {
     });
 }
 
-// TODO: fix to teamId
 export const useGetIntegrationAuthApps = ({
     integrationAuthId,
     teamId
@@ -68,6 +91,26 @@ export const useGetIntegrationAuthTeams = (integrationAuthId: string) => {
     return useQuery({
         queryKey: integrationAuthKeys.getIntegrationAuthTeams(integrationAuthId),
         queryFn: () =>  fetchIntegrationAuthTeams(integrationAuthId),
+        enabled: true
+    });
+}
+
+export const useGetIntegrationAuthVercelBranches = ({
+    integrationAuthId,
+    appId,
+}: {
+    integrationAuthId: string;
+    appId: string;
+}) => {
+    return useQuery({
+        queryKey: integrationAuthKeys.getIntegrationAuthVercelBranches({
+            integrationAuthId,
+            appId,
+        }),
+        queryFn: () => fetchIntegrationAuthVercelBranches({
+            integrationAuthId,
+            appId,
+        }),
         enabled: true
     });
 }

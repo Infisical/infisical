@@ -91,6 +91,21 @@ router.get(
 	integrationAuthController.getIntegrationAuthTeams
 );
 
+router.get(
+	'/:integrationAuthId/vercel/branches',
+	requireAuth({
+        acceptedAuthModes: ['jwt']
+    }),
+	requireIntegrationAuthorizationAuth({
+		acceptedRoles: [ADMIN, MEMBER]
+	}),
+	param('integrationAuthId').exists().isString(),
+	query('appId').exists().isString(),
+	query('teamId').optional().isString(),
+	validateRequest,
+	integrationAuthController.getIntegrationAuthVercelBranches
+);
+
 router.delete(
 	'/:integrationAuthId',
 	requireAuth({
