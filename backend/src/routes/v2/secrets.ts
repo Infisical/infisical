@@ -104,7 +104,7 @@ router.post(
         }),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN, AUTH_MODE_SERVICE_ACCOUNT]
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -122,7 +122,7 @@ router.get(
     query('tagSlugs'),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN, AUTH_MODE_SERVICE_ACCOUNT]
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -163,7 +163,7 @@ router.patch(
         }),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN, AUTH_MODE_SERVICE_ACCOUNT]
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
     }),
     requireSecretsAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -192,7 +192,7 @@ router.delete(
         .isEmpty(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN, AUTH_MODE_SERVICE_ACCOUNT]
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
     }),
     requireSecretsAuth({
         acceptedRoles: [ADMIN, MEMBER],
