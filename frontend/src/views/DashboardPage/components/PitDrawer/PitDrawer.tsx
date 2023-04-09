@@ -46,9 +46,14 @@ export const PitDrawer = ({
                   key={_id}
                   className="py-3 px-4 text-sm"
                   isFullWidth
+                  colorSchema={
+                    (i === 0 && index === 0 && snapshotId === null) || snapshotId === _id
+                      ? 'primary'
+                      : 'secondary'
+                  }
                   variant={
                     (i === 0 && index === 0 && snapshotId === null) || snapshotId === _id
-                      ? 'solid'
+                      ? 'selected'
                       : 'star'
                   }
                   onClick={() => onSelectSnapshot(_id)}
@@ -65,6 +70,7 @@ export const PitDrawer = ({
         <Button
           className="mt-8 py-3 px-4 text-sm"
           isFullWidth
+          variant="star"
           isLoading={isFetchingNextPage}
           isDisabled={isFetchingNextPage || !hasNextPage}
           onClick={fetchNextPage}

@@ -189,11 +189,9 @@ export const DashboardPage = () => {
     handleSubmit,
     getValues,
     setValue,
-    formState: { isDirty, isSubmitting, dirtyFields },
+    formState: { isSubmitting, dirtyFields },
     reset
   } = method;
-  console.log(122, method)
-  console.log(123, isDirty, Object.keys(dirtyFields))
   const formSecrets = useWatch({ control, name: 'secrets' });
   const { fields, prepend, append, remove, update } = useFieldArray({ control, name: 'secrets' });
 
@@ -201,7 +199,6 @@ export const DashboardPage = () => {
   const isReadOnly = selectedEnv?.isWriteDenied;
   const isAddOnly = selectedEnv?.isReadDenied && !selectedEnv?.isWriteDenied;
   const canDoRollback = !isReadOnly && !isAddOnly;
-  console.log(123, !isRollbackMode, !isAddOnly, !isDirty)
   const isSubmitDisabled =
     isReadOnly ||
     // on add only mode the formstate becomes dirty due to secrets missing some items
@@ -415,7 +412,7 @@ export const DashboardPage = () => {
   );
 
   return (
-    <div className="container mx-auto w-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+    <div className="container mx-auto max-w-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
       <FormProvider {...method}>
         <form autoComplete="off">
           {/* breadcrumb row */}
@@ -529,7 +526,7 @@ export const DashboardPage = () => {
                   </IconButton>
                 </Tooltip>
               </div>
-              <Button
+              {!isReadOnly && !isRollbackMode && <Button
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false })}
                 isDisabled={isReadOnly || isRollbackMode}
@@ -537,7 +534,7 @@ export const DashboardPage = () => {
                 className="h-10"
               >
                 Add Secret
-              </Button>
+              </Button>}
             </div>
           </div>
           <div className={`${isSecretEmpty ? "flex flex-col items-center justify-center" : ""} mt-4 h-[calc(100vh-270px)] overflow-y-scroll overflow-x-hidden no-scrollbar no-scrollbar::-webkit-scrollbar`}>

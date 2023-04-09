@@ -33,6 +33,7 @@ const buttonVariants = cva(
         solid: '',
         outline: ['bg-transparent', 'border-2', 'border-solid'],
         plain: '',
+        selected: '',
         // a constant color not in use on hover or click goes colorSchema color
         star: 'text-bunker-200 bg-mineshaft-500'
       },
@@ -60,6 +61,16 @@ const buttonVariants = cva(
         colorSchema: 'primary',
         variant: 'star',
         className: 'hover:bg-primary hover:text-black'
+      },
+      {
+        colorSchema: 'primary',
+        variant: 'selected',
+        className: 'bg-primary/10 border border-primary/50 text-bunker-200'
+      },
+      {
+        colorSchema: 'secondary',
+        variant: 'star',
+        className: 'bg-mineshaft-700 border border-mineshaft-600 hover:bg-mineshaft hover:text-white'
       },
       {
         colorSchema: 'danger',
