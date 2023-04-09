@@ -84,15 +84,15 @@ export const SecretDropzone = ({ isSmaller, onParsedEnv, onAddNewSecret }: Props
       onDragOver={handleDrag}
       onDrop={handleDrop}
       className={twMerge(
-        'relative mb-4 mt-4 flex w-full cursor-pointer items-center justify-center space-x-2 rounded-md bg-mineshaft-900 py-8 px-2 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100',
+        'relative mb-4 mt-4 max-w-[calc(100vw-292px)] flex w-full cursor-pointer text-mineshaft-200 items-center py-8 justify-center space-x-2 rounded-md bg-mineshaft-900 px-2 mx-0.5 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100',
         isDragActive && 'opacity-100',
-        !isSmaller && 'flex-col space-y-4',
+        !isSmaller && 'flex-col space-y-4 max-w-3xl py-20',
         isLoading && 'bg-bunker-800'
       )}
     >
       {isLoading ? (
         <div className="mb-16 flex items-center justify-center pt-16">
-          <img src="/images/loading/loading.gif" height={70} width={120} alt="google logo" />
+          <img src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
         </div>
       ) : (
         <>
@@ -112,9 +112,9 @@ export const SecretDropzone = ({ isSmaller, onParsedEnv, onAddNewSecret }: Props
           {!isSmaller && (
             <>
               <div className="flex w-full flex-row items-center justify-center py-4">
-                <div className="w-1/5 border-t border-gray-700" />
-                <p className="mx-4 text-xs text-gray-400">OR</p>
-                <div className="w-1/5 border-t border-gray-700" />
+                <div className="w-1/5 border-t border-mineshaft-700" />
+                <p className="mx-4 text-xs text-mineshaft-400">OR</p>
+                <div className="w-1/5 border-t border-mineshaft-700" />
               </div>
               <div>
                 <Button variant="star" onClick={onAddNewSecret}>

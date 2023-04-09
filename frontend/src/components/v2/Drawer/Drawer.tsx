@@ -45,13 +45,13 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
         ref={forwardedRef}
         className={twMerge(drawerContentVariation({ direction, className }))}
       >
-        <Card isRounded={false} className="h-full w-full">
+        <Card isRounded={false} className="h-full w-full dark">
           {title && (
             <CardTitle subTitle={subTitle} className="px-4">
               {title}
             </CardTitle>
           )}
-          <CardBody className="flex-grow overflow-y-auto overflow-x-hidden px-4">
+          <CardBody className="flex-grow overflow-y-auto overflow-x-hidden px-4 dark:[color-scheme:dark]">
             {children}
           </CardBody>
           {footerContent && <CardFooter>{footerContent}</CardFooter>}{' '}

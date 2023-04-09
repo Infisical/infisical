@@ -26,7 +26,8 @@ const buttonVariants = cva(
       colorSchema: {
         primary: ['bg-primary', 'text-black', 'border-primary bg-opacity-80 hover:bg-opacity-100'],
         secondary: ['bg-mineshaft', 'text-gray-300', 'border-mineshaft hover:bg-opacity-80'],
-        danger: ['bg-red', 'text-white', 'border-red hover:bg-opacity-90']
+        danger: ['bg-red', 'text-white', 'border-red hover:bg-opacity-90'],
+        gray: ['bg-bunker-500', 'text-bunker-200']
       },
       variant: {
         solid: '',
@@ -84,6 +85,11 @@ const buttonVariants = cva(
         colorSchema: 'primary',
         variant: 'plain',
         className: 'text-primary'
+      },
+      {
+        colorSchema: 'gray',
+        variant: 'plain',
+        className: 'bg-transparent text-bunker-200'
       },
       {
         colorSchema: 'secondary',
@@ -165,7 +171,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         >
           {leftIcon}
         </div>
-        <span className={twMerge('w-full transition-all', loadingToggleClass)}>{children}</span>
+        <span className={twMerge('transition-all', isFullWidth ? 'w-full' : 'w-min', loadingToggleClass)}>{children}</span>
         <div
           className={twMerge(
             'inline-flex shrink-0 cursor-pointer items-center justify-center transition-all',

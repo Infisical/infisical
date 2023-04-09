@@ -45,6 +45,7 @@ export const PitDrawer = ({
                 <Button
                   key={_id}
                   className="py-3 px-4 text-sm"
+                  isFullWidth
                   variant={
                     (i === 0 && index === 0 && snapshotId === null) || snapshotId === _id
                       ? 'solid'

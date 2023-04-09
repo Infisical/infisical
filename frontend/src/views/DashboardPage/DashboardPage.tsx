@@ -99,7 +99,7 @@ export const DashboardPage = () => {
     'uploadedSecOpts',
     'compareSecrets'
   ] as const);
-  const [isSecretValueHidden, setIsSecretValueHidden] = useToggle();
+  const [isSecretValueHidden, setIsSecretValueHidden] = useToggle(true);
   const [searchFilter, setSearchFilter] = useState('');
   const [snapshotId, setSnaphotId] = useState<string | null>(null);
   const [selectedEnv, setSelectedEnv] = useState<WorkspaceEnv | null>(null);
@@ -178,6 +178,7 @@ export const DashboardPage = () => {
 
   const method = useForm<FormData>({
     // why any: well yup inferred ts expects other keys to defined as undefined
+    defaultValues: secrets as any,
     values: secrets as any,
     mode: 'onBlur',
     resolver: yupResolver(schema)
@@ -191,6 +192,8 @@ export const DashboardPage = () => {
     formState: { isDirty, isSubmitting, dirtyFields },
     reset
   } = method;
+  console.log(122, method)
+  console.log(123, isDirty, Object.keys(dirtyFields))
   const formSecrets = useWatch({ control, name: 'secrets' });
   const { fields, prepend, append, remove, update } = useFieldArray({ control, name: 'secrets' });
 
@@ -198,12 +201,13 @@ export const DashboardPage = () => {
   const isReadOnly = selectedEnv?.isWriteDenied;
   const isAddOnly = selectedEnv?.isReadDenied && !selectedEnv?.isWriteDenied;
   const canDoRollback = !isReadOnly && !isAddOnly;
+  console.log(123, !isRollbackMode, !isAddOnly, !isDirty)
   const isSubmitDisabled =
     isReadOnly ||
     // on add only mode the formstate becomes dirty due to secrets missing some items
     // to avoid this we check dirtyFields in isAddOnly Mode
     (isAddOnly && Object.keys(dirtyFields).length === 0) ||
-    (!isRollbackMode && !isAddOnly && !isDirty) ||
+    (!isRollbackMode && !isAddOnly && Object.keys(dirtyFields).length === 0) ||
     isSubmitting;
 
   useEffect(() => {
@@ -411,7 +415,7 @@ export const DashboardPage = () => {
   );
 
   return (
-    <div className="container mx-auto w-full px-8 text-mineshaft-50 dark:[color-scheme:dark]">
+    <div className="container mx-auto w-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
       <FormProvider {...method}>
         <form autoComplete="off">
           {/* breadcrumb row */}
@@ -439,6 +443,7 @@ export const DashboardPage = () => {
                     setSnaphotId(null);
                     reset({ ...secrets, isSnapshotMode: false });
                   }}
+                  className='h-10'
                 >
                   Go back
                 </Button>
@@ -449,6 +454,7 @@ export const DashboardPage = () => {
                 leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
                 isLoading={isLoadingSnapshotCount}
                 isDisabled={!canDoRollback}
+                className='h-10'
               >
                 {snapshotCount} Commits
               </Button>
@@ -457,6 +463,7 @@ export const DashboardPage = () => {
                 isLoading={isSubmitting}
                 leftIcon={<FontAwesomeIcon icon={isRollbackMode ? faClockRotateLeft : faCheck} />}
                 onClick={handleSubmit(onSaveSecret)}
+                className='h-10'
               >
                 {isRollbackMode ? 'Rollback' : 'Save Changes'}
               </Button>
@@ -470,7 +477,8 @@ export const DashboardPage = () => {
                   value={selectedEnv?.slug}
                   onValueChange={onEnvChange}
                   position="popper"
-                  className="min-w-[180px] bg-mineshaft-600"
+                  className="min-w-[180px] bg-mineshaft-600 h-10 font-medium"
+                  dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 drop-shadow-2xl"
                 >
                   {userAvailableEnvs?.map(({ name, slug }) => (
                     <SelectItem value={slug} key={slug}>
@@ -482,7 +490,7 @@ export const DashboardPage = () => {
             </div>
             <div className="flex-grow">
               <Input
-                className="bg-mineshaft-600 placeholder-mineshaft-50"
+                className="bg-mineshaft-600 h-[2.3rem] placeholder-mineshaft-50"
                 placeholder="Search keys..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
@@ -497,12 +505,12 @@ export const DashboardPage = () => {
                       <FontAwesomeIcon icon={faDownload} />
                     </IconButton>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto">
+                  <PopoverContent className="w-auto bg-mineshaft-800 border border-mineshaft-600 p-1" hideCloseBtn>
                     <div className="flex flex-col space-y-2">
                       <Button
                         onClick={() => downloadSecret(getValues('secrets'), selectedEnv?.slug)}
                         variant="star"
-                        className="bg-bunker-800"
+                        className="bg-bunker-700 h-8"
                       >
                         Download as .env
                       </Button>
@@ -510,34 +518,37 @@ export const DashboardPage = () => {
                   </PopoverContent>
                 </Popover>
               </div>
-              <Tooltip content={isSecretValueHidden ? 'Hide Secrets' : 'Reveal secrets'}>
-                <IconButton
-                  ariaLabel="reveal"
-                  variant="star"
-                  onClick={() => setIsSecretValueHidden.toggle()}
-                >
-                  <FontAwesomeIcon icon={isSecretValueHidden ? faEyeSlash : faEye} />
-                </IconButton>
-              </Tooltip>
+              <div>
+                <Tooltip content={isSecretValueHidden ? 'Reveal Secrets' : 'Hide secrets'}>
+                  <IconButton
+                    ariaLabel="reveal"
+                    variant="star"
+                    onClick={() => setIsSecretValueHidden.toggle()}
+                  >
+                    <FontAwesomeIcon icon={isSecretValueHidden ? faEye : faEyeSlash} />
+                  </IconButton>
+                </Tooltip>
+              </div>
               <Button
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false })}
                 isDisabled={isReadOnly || isRollbackMode}
                 variant="star"
+                className="h-10"
               >
                 Add Secret
               </Button>
             </div>
           </div>
-          <div className="mt-4">
+          <div className={`${isSecretEmpty ? "flex flex-col items-center justify-center" : ""} mt-4 h-[calc(100vh-270px)] overflow-y-scroll overflow-x-hidden no-scrollbar no-scrollbar::-webkit-scrollbar`}>
             {!isSecretEmpty && (
               <TableContainer>
-                <table className="secret-table">
+                <table className="secret-table relative">
                   <SecretTableHeader
                     sortDir={sortDir}
                     onSort={onSortSecrets}
                   />
-                  <tbody>
+                  <tbody className="overflow-y-auto max-h-screen">
                     {fields.map(({ id, _id }, index) => (
                       <SecretInputRow
                         key={id}
@@ -555,15 +566,15 @@ export const DashboardPage = () => {
                     ))}
                     {!isReadOnly && !isRollbackMode && (
                       <tr>
-                        <td colSpan={3}>
-                          <Button
-                            variant="plain"
-                            className="my-1"
+                        <td colSpan={3} className="hover:bg-mineshaft-700">
+                          <button
+                            type="button"
+                            className="w-[calc(100vw-400px)] h-8 ml-12 font-normal text-bunker-300 flex justify-start items-center"
                             onClick={onAppendSecret}
-                            leftIcon={<FontAwesomeIcon icon={faPlus} />}
                           >
-                            Add Secret
-                          </Button>
+                            <FontAwesomeIcon icon={faPlus} />
+                            <span className="w-20 ml-2">Add Secret</span>
+                          </button>
                         </td>
                       </tr>
                     )}
@@ -650,7 +661,7 @@ export const DashboardPage = () => {
         >
           <ModalContent
             title={popUp?.compareSecrets?.data as string}
-            subTitle="Secret value in available environments"
+            subTitle="Below is the comparison of secret values across available environments"
             overlayClassName="z-[90]"
           >
             <CompareSecret

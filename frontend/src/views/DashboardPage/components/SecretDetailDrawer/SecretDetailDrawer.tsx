@@ -74,10 +74,10 @@ export const SecretDetailDrawer = ({
   return (
     <Drawer onOpenChange={onOpenChange} isOpen={isDrawerOpen}>
       <DrawerContent
-        className="border-l border-mineshaft-500 bg-bunker"
+        className="border-l border-mineshaft-500 bg-bunker dark"
         title="Secret"
         footerContent={
-          <div className="flex flex-col space-y-4 pt-4 shadow-md">
+          <div className="flex flex-col space-y-2 pt-4 shadow-md">
             <div>
               <Button
                 variant="star"
@@ -103,7 +103,7 @@ export const SecretDetailDrawer = ({
           </div>
         }
       >
-        <div className="">
+        <div className="dark:[color-scheme:dark]">
           <FormControl label="Key">
             <Input isDisabled {...register(`secrets.${index}.key`)} />
           </FormControl>
@@ -173,11 +173,11 @@ export const SecretDetailDrawer = ({
               </PopoverContent>
             </Popover>
           </FormControl>
-          <div className="mb-4 text-sm text-bunker-300">
+          <div className="mb-4 text-sm text-bunker-300 dark">
             <div className="mb-2">Version History</div>
-            <div className="flex h-52 flex-col space-y-4 overflow-y-auto overflow-x-hidden rounded-md bg-bunker-800 p-2">
+            <div className="flex h-48 flex-col space-y-2 border border-mineshaft-600 overflow-y-auto overflow-x-hidden rounded-md bg-bunker-800 p-2 dark:[color-scheme:dark]">
               {secretVersion?.map(({ createdAt, value, id }, i) => (
-                <div key={id} className="flex flex-col space-y-2">
+                <div key={id} className="flex flex-col space-y-1">
                   <div className="flex items-center space-x-2">
                     <div>
                       <FontAwesomeIcon icon={i === 0 ? faCircleDot : faCircle} size="sm" />
@@ -193,7 +193,7 @@ export const SecretDetailDrawer = ({
                       })}
                     </div>
                   </div>
-                  <div className="ml-1 flex items-center space-x-2 border-l border-bunker-300 pl-4">
+                  <div className="ml-1.5 flex items-center space-x-2 border-l border-bunker-300 pl-4">
                     <div className="rounded-sm bg-primary-500/30 px-1">Value:</div>
                     <div className="font-mono">{value}</div>
                   </div>
@@ -202,7 +202,7 @@ export const SecretDetailDrawer = ({
             </div>
           </div>
           <FormControl label="Comments & Notes">
-            <TextArea isDisabled={isReadOnly} {...register(`secrets.${index}.comment`)} rows={5} />
+            <TextArea className="border border-mineshaft-600 text-sm" isDisabled={isReadOnly} {...register(`secrets.${index}.comment`)} rows={5} />
           </FormControl>
         </div>
       </DrawerContent>

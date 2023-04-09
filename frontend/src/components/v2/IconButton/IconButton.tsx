@@ -24,7 +24,7 @@ const iconButtonVariants = cva(
       colorSchema: {
         primary: ['bg-primary', 'text-black', 'border-primary hover:opacity-80'],
         secondary: ['bg-mineshaft', 'text-gray-300', 'border-mineshaft hover:bg-bunker-400'],
-        danger: ['bg-[#973939] hover:bg-red', 'text-white', 'border-red']
+        danger: ['bg-[#973939]', 'text-white', 'border-red']
       },
       variant: {
         solid: '',
@@ -41,7 +41,7 @@ const iconButtonVariants = cva(
         false: ''
       },
       size: {
-        xs: ['text-xs', 'py-1.5', 'px-2'],
+        xs: ['text-xs', 'rounded-sm', 'py-1.5', 'px-2'],
         sm: ['text-sm', 'py-3', 'px-3'],
         md: ['text-md', 'py-4', 'px-4'],
         lg: ['text-lg', 'py-6', 'px-6']
@@ -76,7 +76,7 @@ const iconButtonVariants = cva(
       {
         colorSchema: 'primary',
         variant: 'plain',
-        className: 'text-primary'
+        className: 'hover:text-primary'
       },
       {
         colorSchema: 'secondary',
@@ -86,7 +86,7 @@ const iconButtonVariants = cva(
       {
         colorSchema: 'danger',
         variant: 'plain',
-        className: 'text-red'
+        className: 'hover:text-red'
       },
       {
         colorSchema: ['danger', 'primary', 'secondary'],
