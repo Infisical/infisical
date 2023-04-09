@@ -1179,6 +1179,7 @@ const syncSecretsRailway = async ({
   accessToken: string;
 }) => {
   try {
+
     const query = `
       mutation UpsertVariables($input: VariableCollectionUpsertInput!) {
         variableCollectionUpsert(input: $input)
@@ -1188,6 +1189,7 @@ const syncSecretsRailway = async ({
     const input = {
       projectId: integration.appId,
       environmentId: integration.targetEnvironmentId,
+      ...(integration.targetServiceId ? { serviceId: integration.targetServiceId } : {}),
       replace: true,
       variables: secrets
     };
@@ -1201,6 +1203,7 @@ const syncSecretsRailway = async ({
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
+        'Accept-Encoding': 'application/json'
       },
     });
     

@@ -21,10 +21,12 @@ export interface IIntegration {
   environment: string;
   isActive: boolean;
   app: string;
+  appId: string;
   owner: string;
   targetEnvironment: string;
   targetEnvironmentId: string;
-  appId: string;
+  targetService: string;
+  targetServiceId: string;
   path: string;
   region: string;
   integration:
@@ -75,6 +77,16 @@ const integrationSchema = new Schema<IIntegration>(
       default: null,
     },
     targetEnvironmentId: {
+      type: String,
+      default: null
+    },
+    targetService: {
+      // railway-specific service
+      type: String,
+      default: null
+    },
+    targetServiceId: {
+      // railway-specific service
       type: String,
       default: null
     },

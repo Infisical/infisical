@@ -8,6 +8,8 @@ interface Props {
   sourceEnvironment: string;
   targetEnvironment: string | null;
   targetEnvironmentId: string | null;
+  targetService: string | null;
+  targetServiceId: string | null;
   owner: string | null;
   path: string | null;
   region: string | null;
@@ -26,6 +28,8 @@ const createIntegration = ({
     sourceEnvironment,
     targetEnvironment,
     targetEnvironmentId,
+    targetService,
+    targetServiceId,
     owner,
     path,
     region
@@ -43,6 +47,8 @@ const createIntegration = ({
         sourceEnvironment,
         targetEnvironment,
         targetEnvironmentId,
+        targetService,
+        targetServiceId,
         owner,
         path,
         region

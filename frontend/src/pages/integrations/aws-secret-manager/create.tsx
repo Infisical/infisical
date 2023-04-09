@@ -98,6 +98,8 @@ export default function AWSSecretManagerCreateIntegrationPage() {
                 sourceEnvironment: selectedSourceEnvironment,
                 targetEnvironment: null,
                 targetEnvironmentId: null,
+                targetService: null,
+                targetServiceId: null,
                 owner: null,
                 path: null,
                 region: selectedAWSRegion

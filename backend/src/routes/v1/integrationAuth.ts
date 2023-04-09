@@ -125,6 +125,20 @@ router.get(
 	integrationAuthController.getIntegrationAuthRailwayEnvironments
 );
 
+router.get(
+	'/:integrationAuthId/railway/services',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireIntegrationAuthorizationAuth({
+		acceptedRoles: [ADMIN, MEMBER]
+	}),
+	param('integrationAuthId').exists().isString(),
+	query('appId').exists().isString(),
+	validateRequest,
+	integrationAuthController.getIntegrationAuthRailwayServices
+);
+
 router.delete(
 	'/:integrationAuthId',
 	requireAuth({

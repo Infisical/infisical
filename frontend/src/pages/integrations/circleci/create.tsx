@@ -61,6 +61,8 @@ export default function CircleCICreateIntegrationPage() {
                 sourceEnvironment: selectedSourceEnvironment,
                 targetEnvironment: null,
                 targetEnvironmentId: null,
+                targetService: null,
+                targetServiceId: null,
                 owner: null,
                 path: null,
                 region: null,

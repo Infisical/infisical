@@ -149,6 +149,7 @@
         "integrations/cloud/vercel",
         "integrations/cloud/netlify",
         "integrations/cloud/render",
+        "integrations/cloud/railway",
         "integrations/cloud/flyio",
         "integrations/cloud/azure-key-vault",
         "integrations/cicd/githubactions",

@@ -31,6 +31,8 @@ router.post( // new: add new integration for integration auth
 	body('sourceEnvironment').trim(),
 	body('targetEnvironment').trim(),
 	body('targetEnvironmentId').trim(),
+	body('targetService').trim(),
+	body('targetServiceId').trim(),
 	body('owner').trim(),
 	body('path').trim(),
 	body('region').trim(),

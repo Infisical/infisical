@@ -6,6 +6,7 @@ import {
     App,
     Environment,
     IntegrationAuth,
+    Service,
     Team
 } from './types';
 
@@ -27,6 +28,13 @@ const integrationAuthKeys = {
         integrationAuthId: string;
         appId: string;
     }) => [{ integrationAuthId, appId }, 'integrationAuthRailwayEnvironments'] as const,
+    getIntegrationAuthRailwayServices: ({
+        integrationAuthId,
+        appId
+    }: {
+        integrationAuthId: string;
+        appId: string;
+    }) => [{ integrationAuthId, appId }, 'integrationAuthRailwayServices'] as const
 }
 
 const fetchIntegrationAuthById = async (integrationAuthId: string) => {
@@ -86,6 +94,22 @@ const fetchIntegrationAuthRailwayEnvironments = async ({
     return environments;
 }
 
+const fetchIntegrationAuthRailwayServices = async ({
+    integrationAuthId,
+    appId
+}: {
+    integrationAuthId: string;
+    appId: string;
+}) => {
+    const { data: { services } } = await apiRequest.get<{ services: Service[] }>(`/api/v1/integration-auth/${integrationAuthId}/railway/services`, {
+        params: {
+            appId
+        }
+    });
+    
+    return services;
+}
+
 export const useGetIntegrationAuthById = (integrationAuthId: string) => {
     return useQuery({
         queryKey: integrationAuthKeys.getIntegrationAuthById(integrationAuthId),
@@ -139,7 +163,7 @@ export const useGetIntegrationAuthVercelBranches = ({
     });
 }
 
-export const useGetRailwayEnvironments = ({
+export const useGetIntegrationAuthRailwayEnvironments = ({
     integrationAuthId,
     appId
 }: {
@@ -152,6 +176,26 @@ export const useGetRailwayEnvironments = ({
             appId,
         }),
         queryFn: () => fetchIntegrationAuthRailwayEnvironments({
+            integrationAuthId,
+            appId,
+        }),
+        enabled: true
+    });
+}
+
+export const useGetIntegrationAuthRailwayServices = ({
+    integrationAuthId,
+    appId
+}: {
+    integrationAuthId: string;
+    appId: string;
+}) => {
+    return useQuery({
+        queryKey: integrationAuthKeys.getIntegrationAuthRailwayServices({
+            integrationAuthId,
+            appId,
+        }),
+        queryFn: () => fetchIntegrationAuthRailwayServices({
             integrationAuthId,
             appId,
         }),

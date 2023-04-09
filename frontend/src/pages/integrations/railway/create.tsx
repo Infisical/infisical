@@ -14,7 +14,8 @@ import {
 import { 
     useGetIntegrationAuthApps, 
     useGetIntegrationAuthById,
-    useGetRailwayEnvironments
+    useGetIntegrationAuthRailwayEnvironments,
+    useGetIntegrationAuthRailwayServices
 } from '../../../hooks/api/integrationAuth';
 import { useGetWorkspaceById } from '../../../hooks/api/workspace';
 import createIntegration from "../../api/integrations/createIntegration";
@@ -24,6 +25,8 @@ export default function RailwayCreateIntegrationPage() {
     
     const [targetAppId, setTargetAppId] = useState('');
     const [targetEnvironmentId, setTargetEnvironmentId] = useState('');
+    const [targetServiceId, setTargetServiceId] = useState('');
+    
     const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     
@@ -33,8 +36,11 @@ export default function RailwayCreateIntegrationPage() {
     const { data: integrationAuthApps } = useGetIntegrationAuthApps({
         integrationAuthId: integrationAuthId as string ?? ''
     });
-    
-    const { data: targetEnvironments } = useGetRailwayEnvironments({
+    const { data: targetEnvironments } = useGetIntegrationAuthRailwayEnvironments({
+        integrationAuthId: integrationAuthId as string ?? '',
+        appId: targetAppId
+    });
+    const { data: targetServices } = useGetIntegrationAuthRailwayServices({
         integrationAuthId: integrationAuthId as string ?? '',
         appId: targetAppId
     });
@@ -64,6 +70,12 @@ export default function RailwayCreateIntegrationPage() {
             }
         }
     }, [targetEnvironments]);
+
+    const filteredServices = targetServices
+        ?.concat({
+            name: '',
+            serviceId: ''
+        });
     
     const handleButtonClick = async () => {
         try {
@@ -75,6 +87,8 @@ export default function RailwayCreateIntegrationPage() {
             const targetEnvironment = targetEnvironments?.find((environment) => environment.environmentId === targetEnvironmentId);
 
             if (!targetApp || !targetApp.appId || !targetEnvironment) return;
+            
+            const targetService = targetServices?.find((service) => service.serviceId === targetServiceId);
 
             await createIntegration({
                 integrationAuthId: integrationAuth?._id,
@@ -84,6 +98,8 @@ export default function RailwayCreateIntegrationPage() {
                 sourceEnvironment: selectedSourceEnvironment,
                 targetEnvironment: targetEnvironment.name,
                 targetEnvironmentId: targetEnvironment.environmentId,
+                targetService: targetService ? targetService.name : null,
+                targetServiceId: targetService ? targetService.serviceId : null,
                 owner: null,
                 path: null,
                 region: null
@@ -99,7 +115,7 @@ export default function RailwayCreateIntegrationPage() {
         }
     }
     
-    return workspace && selectedSourceEnvironment && integrationAuthApps && targetEnvironments ? (
+    return workspace && selectedSourceEnvironment && integrationAuthApps && targetEnvironments && filteredServices ? (
         <div className="h-full w-full flex justify-center items-center">
             <Card className="max-w-md p-8 rounded-md">
                 <CardTitle className="text-center">Railway Integration</CardTitle>
@@ -156,6 +172,19 @@ export default function RailwayCreateIntegrationPage() {
                                 No environments found
                             </SelectItem>
                         )}
+                    </Select>
+                </FormControl>
+                <FormControl label="Railway Service (Optional)">
+                    <Select
+                        value={targetServiceId}
+                        onValueChange={(val) => setTargetServiceId(val)}
+                        className='w-full border border-mineshaft-500'
+                    >
+                        {filteredServices.map((targetService) => (
+                            <SelectItem value={targetService.serviceId as string} key={`target-service-${targetService.serviceId as string}`}>
+                                    {targetService.name}
+                            </SelectItem>
+                        ))}
                     </Select>
                 </FormControl>
                 <Button 

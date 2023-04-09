@@ -63,6 +63,8 @@ export default function AzureKeyVaultCreateIntegrationPage() {
           sourceEnvironment: selectedSourceEnvironment,
           targetEnvironment: null,
           targetEnvironmentId: null,
+          targetService: null,
+          targetServiceId: null,
           owner: null,
           path: null,
           region: null

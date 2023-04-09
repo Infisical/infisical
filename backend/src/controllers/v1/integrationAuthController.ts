@@ -249,7 +249,7 @@ export const getIntegrationAuthVercelBranches = async (req: Request, res: Respon
 }
 
 /**
- * Return list of available Railway environments for Railway project with
+ * Return list of Railway environments for Railway project with
  * id [appId]
  * @param req 
  * @param res 
@@ -312,6 +312,84 @@ export const getIntegrationAuthRailwayEnvironments = async (req: Request, res: R
 	
 	return res.status(200).send({
 		environments
+	});
+}
+
+/**
+ * Return list of Railway services for Railway project with id
+ * [appId]
+ * @param req 
+ * @param res 
+ */
+export const getIntegrationAuthRailwayServices = async (req: Request, res: Response) => {
+	const { integrationAuthId } = req.params;
+	const appId = req.query.appId as string;
+	
+	interface RailwayService {
+		node: {
+			id: string;
+			name: string;
+		}
+	}
+	
+	interface Service {
+		name: string;
+		serviceId: string;
+	}
+	
+	let services: Service[] = [];
+	
+	const query = `
+      query project($id: String!) {
+        project(id: $id) {
+          createdAt
+          deletedAt
+          id
+          description
+          expiredAt
+          isPublic
+          isTempProject
+          isUpdatable
+          name
+          prDeploys
+          teamId
+          updatedAt
+          upstreamUrl
+		  services {
+			edges {
+				node {
+					id
+					name
+				}
+			}
+		  }
+        }
+      }
+    `;
+
+	if (appId && appId !== '') {
+		const variables = {
+			id: appId
+		}
+		
+		const { data: { data: { project: { services: { edges } } } } } = await request.post(INTEGRATION_RAILWAY_API_URL, {
+			query,
+			variables
+		}, {
+			headers: {
+				'Authorization': `Bearer ${req.accessToken}`,
+				'Content-Type': 'application/json',
+			},
+		});
+		
+		services = edges.map((e: RailwayService) => ({
+			name: e.node.name,
+			serviceId: e.node.id
+		}));
+	}
+	
+	return res.status(200).send({
+		services
 	});
 }
 

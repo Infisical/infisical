@@ -12,6 +12,7 @@ const integrationSlugNameMapping: Mapping = {
   'github': 'GitHub',
   'gitlab': 'GitLab',
   'render': 'Render',
+  'railway': 'Railway',
   'flyio': 'Fly.io',
   'circleci': 'CircleCI',
   'travisci': 'TravisCI'

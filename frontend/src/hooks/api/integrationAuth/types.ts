@@ -21,3 +21,8 @@ export type Environment = {
     name: string;
     environmentId: string;
 }
+
+export type Service = {
+    name: string;
+    serviceId: string;
+}

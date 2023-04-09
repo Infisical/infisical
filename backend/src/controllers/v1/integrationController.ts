@@ -25,6 +25,8 @@ export const createIntegration = async (req: Request, res: Response) => {
 			sourceEnvironment,
 			targetEnvironment,
 			targetEnvironmentId,
+      targetService,
+      targetServiceId,
 			owner,
 			path,
 			region
@@ -41,12 +43,14 @@ export const createIntegration = async (req: Request, res: Response) => {
 			appId,
 			targetEnvironment,
 			targetEnvironmentId,
+      targetService,
+      targetServiceId,
 			owner,
 			path,
 			region,
       integration: req.integrationAuth.integration,
       integrationAuth: new Types.ObjectId(integrationAuthId)
-      }).save();
+    }).save();
 		
 		if (integration) {
 			// trigger event - push secrets

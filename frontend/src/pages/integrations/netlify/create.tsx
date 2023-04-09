@@ -70,6 +70,8 @@ export default function NetlifyCreateIntegrationPage() {
               sourceEnvironment: selectedSourceEnvironment,
               targetEnvironment,
               targetEnvironmentId: null,
+              targetService: null,
+              targetServiceId: null,
               owner: null,
               path: null,
               region: null

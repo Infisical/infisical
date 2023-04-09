@@ -65,6 +65,8 @@ export default function GitHubCreateIntegrationPage() {
                 sourceEnvironment: selectedSourceEnvironment,
                 targetEnvironment: null,
                 targetEnvironmentId: null,
+                targetService: null,
+                targetServiceId: null,
                 owner: targetApp.owner,
                 path: null,
                 region: null

@@ -355,10 +355,7 @@ const getAppsRailway = async ({ accessToken }: { accessToken: string }) => {
       }
     `;
 
-    const variables = {
-      // userId: '<USER_ID_GOES_HERE>', // Replace with the desired user ID or remove if not needed
-      // teamId: '<TEAM_ID_GOES_HERE>', // Replace with the desired team ID or remove if not needed
-    };
+    const variables = {};
 
     const { data: { data: { projects: { edges }}} } = await request.post(INTEGRATION_RAILWAY_API_URL, {
       query,
@@ -367,6 +364,7 @@ const getAppsRailway = async ({ accessToken }: { accessToken: string }) => {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
+        'Accept-Encoding': 'application/json'
       },
     });
     
