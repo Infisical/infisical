@@ -8,6 +8,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 
 import NotificationProvider from '@app/components/context/Notifications/NotificationProvider';
 import Telemetry from '@app/components/utilities/telemetry/Telemetry';
+import { TooltipProvider } from '@app/components/v2';
 import { publicPaths } from '@app/const';
 import {
   AuthProvider,
@@ -73,21 +74,23 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <WorkspaceProvider>
-          <OrgProvider>
-            <SubscriptionProvider>
-              <UserProvider>
-                <NotificationProvider>
-                  <AppLayout>
-                    <Component {...pageProps} />
-                  </AppLayout>
-                </NotificationProvider>
-              </UserProvider>
-            </SubscriptionProvider>
-          </OrgProvider>
-        </WorkspaceProvider>
-      </AuthProvider>
+      <TooltipProvider>
+        <AuthProvider>
+          <WorkspaceProvider>
+            <OrgProvider>
+              <SubscriptionProvider>
+                <UserProvider>
+                  <NotificationProvider>
+                    <AppLayout>
+                      <Component {...pageProps} />
+                    </AppLayout>
+                  </NotificationProvider>
+                </UserProvider>
+              </SubscriptionProvider>
+            </OrgProvider>
+          </WorkspaceProvider>
+        </AuthProvider>
+      </TooltipProvider>
     </QueryClientProvider>
   );
 };

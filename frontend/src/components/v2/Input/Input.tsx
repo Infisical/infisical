@@ -9,6 +9,7 @@ type Props = {
   leftIcon?: ReactNode;
   rightIcon?: ReactNode;
   isDisabled?: boolean;
+  isReadOnly?: boolean;
 };
 
 const inputVariants = cva(
@@ -78,6 +79,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       rightIcon,
       variant = 'filled',
       size = 'md',
+      isReadOnly,
       ...props
     },
     ref
@@ -89,6 +91,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           {...props}
           required={isRequired}
           ref={ref}
+          readOnly={isReadOnly}
           disabled={isDisabled}
           className={twMerge(
             leftIcon ? 'pl-10' : 'pl-2.5',

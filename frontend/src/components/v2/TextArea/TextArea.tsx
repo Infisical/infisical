@@ -3,6 +3,7 @@ import { cva, VariantProps } from 'cva';
 import { twMerge } from 'tailwind-merge';
 
 type Props = {
+  isDisabled?: boolean;
   placeholder?: string;
   isFullWidth?: boolean;
   isRequired?: boolean;
@@ -10,7 +11,7 @@ type Props = {
 };
 
 const textAreaVariants = cva(
-  'textarea w-full p-2 border border-solid text-gray-400 font-inter placeholder-gray-500 placeholder-opacity-50',
+  'textarea w-full p-2 focus:ring-2 ring-primary-800 outline-none border border-solid text-gray-400 font-inter placeholder-gray-500 placeholder-opacity-50',
   {
     variants: {
       size: {
@@ -43,7 +44,7 @@ const textAreaVariants = cva(
   }
 );
 
-export type TextAreaProps = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'size'> &
+export type TextAreaProps = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'size' | 'disabled'> &
   VariantProps<typeof textAreaVariants> &
   Props;
 
@@ -52,6 +53,7 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
     {
       className,
       isRounded = true,
+      isDisabled = false,
       isError = false,
       isRequired,
       variant = 'filled',
@@ -66,6 +68,7 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
       style={{ resize: reSize }}
       required={isRequired}
       ref={ref}
+      disabled={isDisabled}
       className={twMerge(textAreaVariants({ className, isError, size, isRounded, variant }))}
     />
   )
