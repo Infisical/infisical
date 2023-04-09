@@ -21,59 +21,7 @@ import {
 	ACTION_READ_SECRETS
 } from '../variables';
 import _ from 'lodash';
-import { ABILITY_WRITE } from '../variables/organization';
 import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
-
-/**
- * Validate that user with id [userId] can modify secrets with ids [secretIds]
- * @param {Object} obj
- * @param {Object} obj.userId - id of user to validate
- * @param {Object} obj.secretIds - secret ids
- * @returns {Secret[]} secrets
- */
-const validateSecrets = async ({
-	userId,
-	secretIds
-}: {
-	userId: string;
-	secretIds: string[];
-}) => {
-	let secrets;
-	try {
-		secrets = await Secret.find({
-			_id: {
-				$in: secretIds.map((secretId: string) => new Types.ObjectId(secretId))
-			}
-		});
-
-		if (secrets.length != secretIds.length) {
-			throw BadRequestError({ message: 'Unable to validate some secrets' })
-		}
-
-		const userMemberships = await Membership.find({ user: userId })
-		const userMembershipById = _.keyBy(userMemberships, 'workspace');
-		const workspaceIdsSet = new Set(userMemberships.map((m) => m.workspace.toString()));
-
-		// for each secret check if the secret belongs to a workspace the user is a member of
-		secrets.forEach((secret: ISecret) => {
-			if (workspaceIdsSet.has(secret.workspace.toString())) {
-				const deniedMembershipPermissions = userMembershipById[secret.workspace.toString()].deniedPermissions;
-				const isDisallowed = _.some(deniedMembershipPermissions, { environmentSlug: secret.environment, ability: ABILITY_WRITE });
-
-				if (isDisallowed) {
-					throw UnauthorizedRequestError({ message: 'You do not have the required permissions to perform this action' });
-				}
-			} else {
-				throw BadRequestError({ message: 'You cannot edit secrets of a workspace you are not a member of' });
-			}
-		});
-
-	} catch (err) {
-		throw BadRequestError({ message: 'Unable to validate secrets' })
-	}
-
-	return secrets;
-}
 
 interface V1PushSecret {
 	ciphertextKey: string;
@@ -714,7 +662,6 @@ const reformatPullSecrets = ({ secrets }: { secrets: ISecret[] }) => {
 };
 
 export {
-	validateSecrets,
 	v1PushSecrets,
 	v2PushSecrets,
 	pullSecrets,

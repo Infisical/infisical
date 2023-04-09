@@ -3,21 +3,26 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { useOrganization, useWorkspace } from '@app/context';
 
+// TODO: make links clickable and clean up
+
 /**
  * This is the component at the top of almost every page.
  * It shows how to navigate to a certain page.
  * It future these links should also be clickable and hoverable
  * @param obj
  * @param obj.pageName - Name of the page
- * @param obj.isProjectRelated - whether this page is related to project or now (determine if it's 2 or 3 navigation steps)
+ * @param obj.isProjectRelated - whether or not this page is related to project (determine if it's 2 or 3 navigation steps)
+ * @param obj.isOrganizationRelated - whether or not this page is related to organization (determine if it's 2 or 3 navigation steps)
  * @returns
  */
 export default function NavHeader({
   pageName,
-  isProjectRelated
+  isProjectRelated,
+  isOrganizationRelated
 }: {
   pageName: string;
   isProjectRelated?: boolean;
+  isOrganizationRelated?: boolean;
 }): JSX.Element {
   const { currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
@@ -32,6 +37,12 @@ export default function NavHeader({
         <>
           <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-sm text-gray-400" />
           <div className="text-sm font-semibold text-primary">{currentWorkspace?.name}</div>
+        </>
+      )}
+      {isOrganizationRelated && (
+        <>
+          <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-sm text-gray-400" />
+          <div className="text-sm font-semibold text-primary">Organization Settings</div>
         </>
       )}
       <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-sm text-gray-400" />

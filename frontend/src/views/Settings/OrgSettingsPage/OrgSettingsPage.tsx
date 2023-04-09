@@ -24,7 +24,12 @@ import {
   useUploadWsKey
 } from '@app/hooks/api';
 
-import { OrgIncidentContactsTable, OrgMembersTable, OrgNameChangeSection } from './components';
+import {
+  OrgIncidentContactsTable,
+  OrgMembersTable,
+  OrgNameChangeSection,
+  OrgServiceAccountsTable
+} from './components';
 import InputField from '~/components/basic/InputField';
 
 export const OrgSettingsPage = () => {
@@ -38,6 +43,7 @@ export const OrgSettingsPage = () => {
   const { createNotification } = useNotificationContext();
 
   const orgId = currentOrg?._id || '';
+
   const { data: orgUsers, isLoading: isOrgUserLoading } = useGetOrgUsers(orgId);
   const { data: workspaceMemberships, isLoading: IsWsMembershipLoading } =
     useGetUserWorkspaceMemberships(orgId);
@@ -222,17 +228,13 @@ export const OrgSettingsPage = () => {
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       <NavHeader pageName={t('settings-org:title')} />
-      <div className="my-8 ml-6 flex max-w-5xl flex-row items-center justify-between text-xl">
-        <div className="flex flex-col items-start justify-start text-3xl">
-          <p className="mr-4 font-semibold text-gray-200">{t('settings-org:title')}</p>
-          <p className="mr-4 text-base font-normal text-gray-400">
-            {t('settings-org:description')}
-          </p>
-        </div>
+      <div className="my-8 ml-8 max-w-5xl">
+        <p className="text-3xl font-semibold text-gray-200">{t('settings-org:title')}</p>
+        <p className="text-base font-normal text-gray-400">{t('settings-org:description')}</p>
       </div>
       <div className="max-w-8xl ml-6 mr-6 flex flex-col text-mineshaft-50">
         <OrgNameChangeSection orgName={currentOrg?.name} onOrgNameChange={onRenameOrg} />
-        <div className="mb-6 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pt-6 pb-6">
+        <div className="mb-6 w-full rounded-md bg-white/5 p-6">
           <p className="mr-4 mb-4 text-xl font-semibold text-white">
             {t('section-members:org-members')}
           </p>
@@ -250,6 +252,10 @@ export const OrgSettingsPage = () => {
             completeInviteLink={completeInviteLink}
             setCompleteInviteLink={setcompleteInviteLink}
           />
+        </div>
+        <div className="mb-6 mt-2 w-full rounded-md bg-white/5 p-6">
+          <p className="mr-4 mb-4 text-xl font-semibold text-white">Service Accounts</p>
+          <OrgServiceAccountsTable />
         </div>
         <div className="mb-6 mt-2 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pt-6 pb-6">
           <div className="flex w-full max-w-5xl flex-row items-center justify-between">

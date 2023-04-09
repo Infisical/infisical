@@ -1,8 +1,22 @@
 import * as Sentry from '@sentry/node';
 import Stripe from 'stripe';
 import { Types } from 'mongoose';
-import { ACCEPTED } from '../variables';
+import {
+    IUser,
+    User,
+    IServiceAccount,
+    ServiceAccount,
+    IServiceTokenData,
+    ServiceTokenData
+} from '../models';
 import { Organization, MembershipOrg, Workspace, Membership } from '../models';
+import {
+    ACCEPTED,
+    AUTH_MODE_JWT,
+    AUTH_MODE_SERVICE_ACCOUNT,
+    AUTH_MODE_SERVICE_TOKEN,
+    AUTH_MODE_API_KEY
+} from '../variables';
 import {
     getStripeSecretKey,
     getStripeProductPro,
@@ -10,6 +24,58 @@ import {
     getStripeProductStarter
 } from '../config';
 import { deleteWorkspace } from './workspace';
+import { UnauthorizedRequestError } from '../utils/errors';
+
+/**
+ * Validate accepted clients for organization with id [organizationId]
+ * @param {Object} obj
+ * @param {Object} obj.authData - authenticated client details
+ * @param {Types.ObjectId} obj.organizationId - id of organization to validate against
+ */
+const validateClientForOrganization = async ({
+    authData,
+    organizationId
+}: {
+    authData: {
+        authMode: string;
+        authPayload: IUser | IServiceAccount | IServiceTokenData;
+    };
+    organizationId: string;
+}) => {
+    // TODO
+
+    if (
+        authData.authMode === AUTH_MODE_JWT &&
+        authData.authPayload instanceof User
+    ) {
+        // TODO
+    }
+
+    if (
+        authData.authMode === AUTH_MODE_SERVICE_ACCOUNT &&
+        authData.authPayload instanceof ServiceAccount
+    ) {
+        // TODO
+    }
+
+    if (
+        authData.authMode === AUTH_MODE_SERVICE_TOKEN &&
+        authData.authPayload instanceof ServiceTokenData
+    ) {
+        // TODO
+    }
+
+    if (
+        authData.authMode === AUTH_MODE_API_KEY &&
+        authData.authPayload instanceof User
+    ) {
+        // TODO
+    }
+
+    throw UnauthorizedRequestError({
+        message: 'Failed client authorization for organization resource'
+    });
+};
 
 /**
  * Create an organization with name [name]

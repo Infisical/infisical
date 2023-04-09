@@ -301,6 +301,10 @@ ingress:
   ## @param ingress.ingressClassName Ingress class name
   ##
   ingressClassName: nginx
+  ## @param ingress.nginx.enabled Ingress controller
+  ##
+  nginx:
+    enabled: false
   ## @param ingress.annotations Ingress annotations
   ##
   annotations:

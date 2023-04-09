@@ -4,13 +4,37 @@ import { apiRequest } from "@app/config/request";
 
 import {
     App,
+    Environment,
     IntegrationAuth,
-    Team} from './types';
+    Service,
+    Team
+} from './types';
 
 const integrationAuthKeys = {
     getIntegrationAuthById: (integrationAuthId: string) => [{ integrationAuthId }, 'integrationAuth'] as const,
     getIntegrationAuthApps: (integrationAuthId: string, teamId?: string) => [{ integrationAuthId, teamId }, 'integrationAuthApps'] as const,
-    getIntegrationAuthTeams: (integrationAuthId: string) => [{ integrationAuthId }, 'integrationAuthTeams'] as const
+    getIntegrationAuthTeams: (integrationAuthId: string) => [{ integrationAuthId }, 'integrationAuthTeams'] as const,
+    getIntegrationAuthVercelBranches: ({
+        integrationAuthId,
+        appId,
+    }: {
+        integrationAuthId: string;
+        appId: string;
+    }) => [{ integrationAuthId, appId }, 'integrationAuthVercelBranches'] as const,
+    getIntegrationAuthRailwayEnvironments: ({
+        integrationAuthId,
+        appId
+    }: {
+        integrationAuthId: string;
+        appId: string;
+    }) => [{ integrationAuthId, appId }, 'integrationAuthRailwayEnvironments'] as const,
+    getIntegrationAuthRailwayServices: ({
+        integrationAuthId,
+        appId
+    }: {
+        integrationAuthId: string;
+        appId: string;
+    }) => [{ integrationAuthId, appId }, 'integrationAuthRailwayServices'] as const
 }
 
 const fetchIntegrationAuthById = async (integrationAuthId: string) => {
@@ -38,6 +62,54 @@ const fetchIntegrationAuthTeams = async (integrationAuthId: string) => {
     return data.teams;
 }
 
+const fetchIntegrationAuthVercelBranches = async ({
+    integrationAuthId,
+    appId
+}: {
+    integrationAuthId: string;
+    appId: string;
+}) => {
+    const { data: { branches } } = await apiRequest.get<{ branches: string[] }>(`/api/v1/integration-auth/${integrationAuthId}/vercel/branches`, {
+        params: {
+            appId
+        }
+    });
+    
+    return branches;
+};
+
+const fetchIntegrationAuthRailwayEnvironments = async ({
+    integrationAuthId,
+    appId
+}: {
+    integrationAuthId: string;
+    appId: string;
+}) => {
+    const { data: { environments } } = await apiRequest.get<{ environments: Environment[] }>(`/api/v1/integration-auth/${integrationAuthId}/railway/environments`, {
+        params: {
+            appId
+        }
+    });
+    
+    return environments;
+}
+
+const fetchIntegrationAuthRailwayServices = async ({
+    integrationAuthId,
+    appId
+}: {
+    integrationAuthId: string;
+    appId: string;
+}) => {
+    const { data: { services } } = await apiRequest.get<{ services: Service[] }>(`/api/v1/integration-auth/${integrationAuthId}/railway/services`, {
+        params: {
+            appId
+        }
+    });
+    
+    return services;
+}
+
 export const useGetIntegrationAuthById = (integrationAuthId: string) => {
     return useQuery({
         queryKey: integrationAuthKeys.getIntegrationAuthById(integrationAuthId),
@@ -46,7 +118,6 @@ export const useGetIntegrationAuthById = (integrationAuthId: string) => {
     });
 }
 
-// TODO: fix to teamId
 export const useGetIntegrationAuthApps = ({
     integrationAuthId,
     teamId
@@ -68,6 +139,66 @@ export const useGetIntegrationAuthTeams = (integrationAuthId: string) => {
     return useQuery({
         queryKey: integrationAuthKeys.getIntegrationAuthTeams(integrationAuthId),
         queryFn: () =>  fetchIntegrationAuthTeams(integrationAuthId),
+        enabled: true
+    });
+}
+
+export const useGetIntegrationAuthVercelBranches = ({
+    integrationAuthId,
+    appId,
+}: {
+    integrationAuthId: string;
+    appId: string;
+}) => {
+    return useQuery({
+        queryKey: integrationAuthKeys.getIntegrationAuthVercelBranches({
+            integrationAuthId,
+            appId,
+        }),
+        queryFn: () => fetchIntegrationAuthVercelBranches({
+            integrationAuthId,
+            appId,
+        }),
+        enabled: true
+    });
+}
+
+export const useGetIntegrationAuthRailwayEnvironments = ({
+    integrationAuthId,
+    appId
+}: {
+    integrationAuthId: string;
+    appId: string;
+}) => {
+    return useQuery({
+        queryKey: integrationAuthKeys.getIntegrationAuthRailwayEnvironments({
+            integrationAuthId,
+            appId,
+        }),
+        queryFn: () => fetchIntegrationAuthRailwayEnvironments({
+            integrationAuthId,
+            appId,
+        }),
+        enabled: true
+    });
+}
+
+export const useGetIntegrationAuthRailwayServices = ({
+    integrationAuthId,
+    appId
+}: {
+    integrationAuthId: string;
+    appId: string;
+}) => {
+    return useQuery({
+        queryKey: integrationAuthKeys.getIntegrationAuthRailwayServices({
+            integrationAuthId,
+            appId,
+        }),
+        queryFn: () => fetchIntegrationAuthRailwayServices({
+            integrationAuthId,
+            appId,
+        }),
         enabled: true
     });
 }

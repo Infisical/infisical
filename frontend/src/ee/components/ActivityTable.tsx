@@ -21,6 +21,12 @@ interface LogData {
   createdAt: string;
   ipAddress: string;
   user: string;
+  serviceAccount: {
+    name: string;
+  };
+  serviceTokenData: {
+    name: string;
+  };
   payload: PayloadProps[];
 }
 
@@ -40,6 +46,14 @@ const ActivityLogsRow = ({
 }) => {
   const [payloadOpened, setPayloadOpened] = useState(false);
   const { t } = useTranslation();
+
+  const renderUser = () => {
+    if (row?.user) return `User: ${row.user}`;
+    if (row?.serviceAccount) return `Service Account: ${row.serviceAccount.name}`;
+    if (row?.serviceTokenData.name) return `Service Token: ${row.serviceTokenData.name}`;
+    
+    return '';
+  }
 
   return (
     <>
@@ -64,7 +78,7 @@ const ActivityLogsRow = ({
             )
             .join(' and ')}
         </td>
-        <td className="pl-6 py-3 border-mineshaft-700 border-t text-gray-300">{row.user}</td>
+        <td className="pl-6 py-3 border-mineshaft-700 border-t text-gray-300">{renderUser()}</td>
         <td className="pl-6 py-3 border-mineshaft-700 border-t text-gray-300">{row.channel}</td>
         <td className="pl-6 py-3 border-mineshaft-700 border-t text-gray-300">
           {timeSince(new Date(row.createdAt))}

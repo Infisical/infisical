@@ -418,7 +418,7 @@ export const getWorkspaceLogs = async (req: Request, res: Response) => {
 		.skip(offset)
 		.limit(limit)
 		.populate('actions')
-		.populate('user');
+		.populate('user serviceAccount serviceTokenData');
 
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });

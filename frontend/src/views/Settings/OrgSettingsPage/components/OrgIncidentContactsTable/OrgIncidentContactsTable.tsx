@@ -27,7 +27,8 @@ import {
   Td,
   Th,
   THead,
-  Tr} from '@app/components/v2';
+  Tr
+} from '@app/components/v2';
 import { usePopUp } from '@app/hooks';
 import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
 import { IncidentContact } from '@app/hooks/api/types';

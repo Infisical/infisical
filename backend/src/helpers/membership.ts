@@ -1,5 +1,10 @@
 import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
 import { Membership, Key } from '../models';
+import {
+	MembershipNotFoundError,
+	BadRequestError
+} from '../utils/errors';
 
 /**
  * Validate that user with id [userId] is a member of workspace with id [workspaceId]
@@ -14,28 +19,24 @@ const validateMembership = async ({
 	workspaceId,
 	acceptedRoles,
 }: {
-	userId: string;
-	workspaceId: string;
-	acceptedRoles: string[];
+	userId: Types.ObjectId;
+	workspaceId: Types.ObjectId;
+	acceptedRoles?: string[];
 }) => {
 	
-	let membership;
-	//TODO: Refactor code to take advantage of using RequestError. It's possible to create new types of errors for more detailed errors
-	try {
-		membership = await Membership.findOne({
-			user: userId,
-			workspace: workspaceId
-		}).populate("workspace");
-		
-		if (!membership) throw new Error('Failed to find membership');
-		
+	const membership = await Membership.findOne({
+		user: userId,
+		workspace: workspaceId
+	}).populate("workspace");
+	
+	if (!membership) {
+		throw MembershipNotFoundError({ message: 'Failed to find workspace membership' });
+	}
+	
+	if (acceptedRoles) {
 		if (!acceptedRoles.includes(membership.role)) {
-			throw new Error('Failed to validate membership role');
+			throw BadRequestError({ message: 'Failed to validate workspace membership role' });
 		}
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to validate membership');
 	}
 	
 	return membership;

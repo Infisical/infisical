@@ -9,6 +9,7 @@ import {
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
+  INTEGRATION_RAILWAY,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
@@ -20,9 +21,12 @@ export interface IIntegration {
   environment: string;
   isActive: boolean;
   app: string;
+  appId: string;
   owner: string;
   targetEnvironment: string;
-  appId: string;
+  targetEnvironmentId: string;
+  targetService: string;
+  targetServiceId: string;
   path: string;
   region: string;
   integration:
@@ -35,6 +39,7 @@ export interface IIntegration {
     | 'github'
     | 'gitlab'
     | 'render' 
+    | 'railway' 
     | 'flyio'
     | 'circleci'
     | 'travisci';
@@ -71,6 +76,20 @@ const integrationSchema = new Schema<IIntegration>(
       type: String,
       default: null,
     },
+    targetEnvironmentId: {
+      type: String,
+      default: null
+    },
+    targetService: {
+      // railway-specific service
+      type: String,
+      default: null
+    },
+    targetServiceId: {
+      // railway-specific service
+      type: String,
+      default: null
+    },
     owner: {
       // github-specific repo owner-login
       type: String,
@@ -78,6 +97,7 @@ const integrationSchema = new Schema<IIntegration>(
     },
     path: {
       // aws-parameter-store-specific path
+      // (also) vercel preview-branch
       type: String,
       default: null
     },
@@ -98,6 +118,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_GITHUB,
         INTEGRATION_GITLAB,
         INTEGRATION_RENDER,
+        INTEGRATION_RAILWAY,
         INTEGRATION_FLYIO,
         INTEGRATION_CIRCLECI,
         INTEGRATION_TRAVISCI,

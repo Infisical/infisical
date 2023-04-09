@@ -24,11 +24,15 @@ import {
 const createActionUpdateSecret = async ({
     name,
     userId,
+    serviceAccountId,
+    serviceTokenDataId,
     workspaceId,
     secretIds
 }: {
     name: string;
-    userId: Types.ObjectId;
+    userId?: Types.ObjectId;
+    serviceAccountId?: Types.ObjectId;
+    serviceTokenDataId?: Types.ObjectId;
     workspaceId: Types.ObjectId;
     secretIds: Types.ObjectId[];
 }) => {
@@ -46,6 +50,8 @@ const createActionUpdateSecret = async ({
         action = await new Action({
             name,
             user: userId,
+            serviceAccount: serviceAccountId,
+            serviceTokenData: serviceTokenDataId,
             workspace: workspaceId,
             payload: {
                 secretVersions: latestSecretVersions
@@ -72,11 +78,15 @@ const createActionUpdateSecret = async ({
 const createActionSecret = async ({
     name,
     userId,
+    serviceAccountId,
+    serviceTokenDataId,
     workspaceId,
     secretIds
 }: {
     name: string;
-    userId: Types.ObjectId;
+    userId?: Types.ObjectId;
+    serviceAccountId?: Types.ObjectId;
+    serviceTokenDataId?: Types.ObjectId;
     workspaceId: Types.ObjectId;
     secretIds: Types.ObjectId[];
 }) => {
@@ -94,6 +104,8 @@ const createActionSecret = async ({
        action = await new Action({
             name,
             user: userId,
+            serviceAccount: serviceAccountId,
+            serviceTokenData: serviceTokenDataId,
             workspace: workspaceId,
             payload: {
                 secretVersions: latestSecretVersions
@@ -110,29 +122,36 @@ const createActionSecret = async ({
 }
 
 /**
- * Create an (audit) action for user with id [userId]
+ * Create an (audit) action for client with id [userId],
+ * [serviceAccountId], or [serviceTokenDataId]
  * @param {Object} obj 
  * @param {String} obj.name - name of action
  * @param {String} obj.userId - id of user associated with action
  * @returns 
  */
-const createActionUser = ({
+const createActionClient = ({
     name,
-    userId
+    userId,
+    serviceAccountId,
+    serviceTokenDataId
 }: {
     name: string;
-    userId: Types.ObjectId;
+    userId?: Types.ObjectId;
+    serviceAccountId?: Types.ObjectId;
+    serviceTokenDataId?: Types.ObjectId;
 }) => {
     let action;
     try {
         action = new Action({
             name,
-            user: userId
+            user: userId,
+            serviceAccount: serviceAccountId,
+            serviceTokenData: serviceTokenDataId
         }).save();
     } catch (err) {
         Sentry.setUser(null);
         Sentry.captureException(err);
-        throw new Error('Failed to create user action');
+        throw new Error('Failed to create client action');
     }
 
     return action; 
@@ -149,11 +168,15 @@ const createActionUser = ({
 const createActionHelper = async ({
     name,
     userId,
+    serviceAccountId,
+    serviceTokenDataId,
     workspaceId,
     secretIds,
 }: {
     name: string;
-    userId: Types.ObjectId;
+    userId?: Types.ObjectId;
+    serviceAccountId?: Types.ObjectId;
+    serviceTokenDataId?: Types.ObjectId;
     workspaceId?: Types.ObjectId;
     secretIds?: Types.ObjectId[];
 }) => {
@@ -162,7 +185,7 @@ const createActionHelper = async ({
         switch (name) {
             case ACTION_LOGIN:
             case ACTION_LOGOUT:
-                action = await createActionUser({
+                action = await createActionClient({
                     name,
                     userId
                 });
