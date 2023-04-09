@@ -60,7 +60,7 @@ const verifyPrivateKey = ({
  * @param {Number} obj.time - number of iterations
  * @param {Number} obj.parallelism - desired parallelism
  * @param {Number} obj.hashLen - desired hash length (i.e. byte-length of derived key)
- * @returns 
+ * @returns
  */
 const deriveArgonKey = async ({
   password,
@@ -79,8 +79,8 @@ const deriveArgonKey = async ({
 }) => {
   let derivedKey;
   try {
-    derivedKey = await argon2.hash({ 
-      pass: password, 
+    derivedKey = await argon2.hash({
+      pass: password,
       salt,
       type: argon2.ArgonType.Argon2id,
       mem,
@@ -93,7 +93,7 @@ const deriveArgonKey = async ({
   }
 
   return derivedKey;
-}
+};
 
 /**
  * Return assymmetrically encrypted [plaintext] using [publicKey] where
@@ -213,6 +213,7 @@ type DecryptSymmetricProps = {
  *
  */
 const decryptSymmetric = ({ ciphertext, iv, tag, key }: DecryptSymmetricProps): string => {
+  if (!ciphertext) return '';
   let plaintext;
   try {
     plaintext = aes.decrypt({ ciphertext, iv, tag, secret: key });
@@ -224,9 +225,9 @@ const decryptSymmetric = ({ ciphertext, iv, tag, key }: DecryptSymmetricProps): 
   return plaintext;
 };
 
-export { 
-  decryptAssymmetric, 
-  decryptSymmetric, 
+export {
+  decryptAssymmetric,
+  decryptSymmetric,
   deriveArgonKey,
   encryptAssymmetric, 
   encryptSymmetric,

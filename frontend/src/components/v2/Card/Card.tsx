@@ -25,7 +25,7 @@ export type CardFooterProps = {
 };
 
 export const CardFooter = ({ children, className }: CardFooterProps) => (
-  <div className={twMerge('p-6 pt-0', className)}>{children}</div>
+  <div className={twMerge('p-4 pt-0', className)}>{children}</div>
 );
 
 export type CardBodyProps = {
