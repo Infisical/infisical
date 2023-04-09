@@ -5,11 +5,51 @@ import aes from './aes-256-gcm';
 const nacl = require('tweetnacl');
 nacl.util = require('tweetnacl-util');
 
+/**
+ * Return new base64, NaCl, public-private key pair.
+ * @returns {Object} obj
+ * @returns {String} obj.publicKey - base64, NaCl, public key
+ * @returns {String} obj.privateKey - base64, NaCl, private key
+ */
+const generateKeyPair = () => {
+  const pair = nacl.box.keyPair();
+  
+  return ({
+		publicKey: nacl.util.encodeBase64(pair.publicKey),
+		privateKey: nacl.util.encodeBase64(pair.secretKey)
+  });
+}
+
 type EncryptAsymmetricProps = {
   plaintext: string;
   publicKey: string;
   privateKey: string;
 };
+
+/**
+ * Verify that private key [privateKey] is the one that corresponds to
+ * the public key [publicKey]
+ * @param {Object} 
+ * @param {String} - base64-encoded Nacl private key
+ * @param {String} - base64-encoded Nacl public key
+ */
+const verifyPrivateKey = ({
+  privateKey,
+  publicKey
+}: {
+  privateKey: string;
+  publicKey: string;
+}) => {
+  const derivedPublicKey = nacl.util.encodeBase64(
+    nacl.box.keyPair.fromSecretKey(
+      nacl.util.decodeBase64(privateKey)
+    ).publicKey
+  );
+  
+  if (derivedPublicKey !== publicKey) {
+    throw new Error('Failed to verify private key');
+  }
+}
 
 /**
  * Derive a key from password [password] and salt [salt] using Argon2id
@@ -189,6 +229,7 @@ export {
   decryptAssymmetric,
   decryptSymmetric,
   deriveArgonKey,
-  encryptAssymmetric,
-  encryptSymmetric
-};
+  encryptAssymmetric, 
+  encryptSymmetric,
+  generateKeyPair,
+  verifyPrivateKey};

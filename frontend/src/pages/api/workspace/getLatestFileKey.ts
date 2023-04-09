@@ -1,22 +1,13 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import { apiRequest } from '@app/config/request';
 
 /**
  * Get the latest key pairs from a certain workspace
  * @param {string} workspaceId
  * @returns
  */
-const getLatestFileKey = ({ workspaceId }: { workspaceId: string }) =>
-  SecurityClient.fetchCall(`/api/v1/key/${workspaceId}/latest`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }).then(async (res) => {
-    if (res?.status === 200) {
-      return res.json();
-    }
-    console.log('Failed to get the latest key pairs for a certain project');
-    return undefined;
-  });
+const getLatestFileKey = async ({ workspaceId }: { workspaceId: string }) => {
+  const { data } = await apiRequest.get(`/api/v1/key/${workspaceId}/latest`);
+  return data;
+}
 
 export default getLatestFileKey;

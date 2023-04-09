@@ -4,6 +4,7 @@ export * from './keys';
 export * from './organization';
 export * from './secrets';
 export * from './secretSnapshots';
+export * from './serviceAccounts';
 export * from './serviceTokens';
 export * from './subscriptions';
 export * from './tags';

@@ -7,13 +7,18 @@ import {
 	requireIntegrationAuthorizationAuth,
 	validateRequest
 } from '../../middleware';
-import { ADMIN, MEMBER } from '../../variables';
+import {
+	ADMIN, 
+	MEMBER,
+	AUTH_MODE_JWT,
+	AUTH_MODE_API_KEY
+} from '../../variables';
 import { integrationAuthController } from '../../controllers/v1';
 
 router.get(
 	'/integration-options',
 	requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
 	integrationAuthController.getIntegrationOptions
 );
@@ -21,7 +26,7 @@ router.get(
 router.get(
 	'/:integrationAuthId',
 	requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER]
@@ -34,11 +39,11 @@ router.get(
 router.post(
 	'/oauth-token',
 	requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		location: 'body'
+		locationWorkspaceId: 'body'
 	}),
 	body('workspaceId').exists().trim().notEmpty(),
 	body('code').exists().trim().notEmpty(),
@@ -49,25 +54,25 @@ router.post(
 
 router.post(
 	'/access-token',
-	requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey']
-    }),
-	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER],
-		location: 'body'
-	}),
 	body('workspaceId').exists().trim().notEmpty(),
 	body('accessId').trim(),
 	body('accessToken').exists().trim().notEmpty(),
 	body('integration').exists().trim().notEmpty(),
 	validateRequest,
+	requireAuth({
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY]
+    }),
+	requireWorkspaceAuth({
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'body'
+	}),
 	integrationAuthController.saveIntegrationAccessToken
 );
 
 router.get(
 	'/:integrationAuthId/apps',
 	requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER]
@@ -81,7 +86,7 @@ router.get(
 router.get(
 	'/:integrationAuthId/teams',
 	requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER]
@@ -106,10 +111,38 @@ router.get(
 	integrationAuthController.getIntegrationAuthVercelBranches
 );
 
+router.get(
+	'/:integrationAuthId/railway/environments',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireIntegrationAuthorizationAuth({
+		acceptedRoles: [ADMIN, MEMBER]
+	}),
+	param('integrationAuthId').exists().isString(),
+	query('appId').exists().isString(),
+	validateRequest,
+	integrationAuthController.getIntegrationAuthRailwayEnvironments
+);
+
+router.get(
+	'/:integrationAuthId/railway/services',
+	requireAuth({
+		acceptedAuthModes: ['jwt']
+	}),
+	requireIntegrationAuthorizationAuth({
+		acceptedRoles: [ADMIN, MEMBER]
+	}),
+	param('integrationAuthId').exists().isString(),
+	query('appId').exists().isString(),
+	validateRequest,
+	integrationAuthController.getIntegrationAuthRailwayServices
+);
+
 router.delete(
 	'/:integrationAuthId',
 	requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],

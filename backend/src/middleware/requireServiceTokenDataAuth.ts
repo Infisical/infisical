@@ -26,8 +26,8 @@ const requireServiceTokenDataAuth = ({
         if (req.user) {
             // case: jwt auth
             await validateMembership({
-                userId: req.user._id.toString(),
-                workspaceId: serviceTokenData.workspace.toString(),
+                userId: req.user._id,
+                workspaceId: serviceTokenData.workspace,
                 acceptedRoles
             });
         }

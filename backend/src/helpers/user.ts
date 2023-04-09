@@ -1,6 +1,23 @@
 import * as Sentry from '@sentry/node';
-import { IUser, User } from '../models';
+import { Types } from 'mongoose';
+import {
+	IUser, 
+	ISecret,
+	IServiceAccount,
+	User,
+	Membership
+} from '../models';
 import { sendMail } from './nodemailer';
+import { validateMembership } from './membership';
+import _ from 'lodash';
+import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
+import {
+	validateMembershipOrg
+} from '../helpers/membershipOrg';
+import {
+	PERMISSION_READ_SECRETS,
+	PERMISSION_WRITE_SECRETS
+} from '../variables';
 
 /**
  * Initialize a user under email [email]
@@ -146,4 +163,136 @@ const checkUserDevice = async ({
 	}
 }
 
-export { setupAccount, completeAccount, checkUserDevice };
+/**
+ * Validate that user (client) can access workspace
+ * with id [workspaceId] and its environment [environment] with required permissions
+ * [requiredPermissions]
+ * @param {Object} obj
+ * @param {User} obj.user - user client
+ * @param {Types.ObjectId} obj.workspaceId - id of workspace to validate against
+ * @param {String} environment - (optional) environment in workspace to validate against
+ * @param {String[]} requiredPermissions - required permissions as part of the endpoint
+ */
+const validateUserClientForWorkspace = async ({
+	user,
+	workspaceId,
+	environment,
+	requiredPermissions
+}: {
+	user: IUser;
+	workspaceId: Types.ObjectId;
+	environment?: string;
+	requiredPermissions?: string[];
+}) => {
+	
+	// validate user membership in workspace
+	const membership = await validateMembership({
+        userId: user._id,
+        workspaceId
+    });
+	
+	// TODO: refactor
+	let runningIsDisallowed = false;
+	requiredPermissions?.forEach((requiredPermission: string) => {
+		switch (requiredPermission) {
+			case PERMISSION_READ_SECRETS:
+				runningIsDisallowed = _.some(membership.deniedPermissions, { environmentSlug: environment, ability: PERMISSION_READ_SECRETS });
+				break;
+			case PERMISSION_WRITE_SECRETS:
+				runningIsDisallowed = _.some(membership.deniedPermissions, { environmentSlug: environment, ability: PERMISSION_WRITE_SECRETS });
+				break;
+			default:
+				break;
+		}
+		
+		if (runningIsDisallowed) {
+			throw UnauthorizedRequestError({
+				message: `Failed permissions authorization for workspace environment action : ${requiredPermission}`
+			});	
+		}
+	});
+	
+	return membership;
+}
+
+/**
+ * Validate that user (client) can access secrets [secrets]
+ * with required permissions [requiredPermissions]
+ * @param {Object} obj
+ * @param {User} obj.user - user client
+ * @param {Secret[]} obj.secrets - secrets to validate against
+ * @param {String[]} requiredPermissions - required permissions as part of the endpoint
+ */
+ const validateUserClientForSecrets = async ({
+	user,
+	secrets,
+	requiredPermissions
+}: {
+	user: IUser;
+	secrets: ISecret[];
+	requiredPermissions?: string[];
+}) => {
+	// TODO: refactor
+
+	const userMemberships = await Membership.find({ user: user._id })
+	const userMembershipById = _.keyBy(userMemberships, 'workspace');
+	const workspaceIdsSet = new Set(userMemberships.map((m) => m.workspace.toString()));
+
+	// for each secret check if the secret belongs to a workspace the user is a member of
+	secrets.forEach((secret: ISecret) => {
+		if (!workspaceIdsSet.has(secret.workspace.toString())) {
+			throw BadRequestError({
+				message: 'Failed authorization for the secret'
+			});
+		}
+
+		if (requiredPermissions?.includes(PERMISSION_WRITE_SECRETS)) {
+			const deniedMembershipPermissions = userMembershipById[secret.workspace.toString()].deniedPermissions;
+			const isDisallowed = _.some(deniedMembershipPermissions, { environmentSlug: secret.environment, ability: PERMISSION_WRITE_SECRETS });
+
+			if (isDisallowed) {
+				throw UnauthorizedRequestError({
+					message: 'You do not have the required permissions to perform this action' 
+				});
+			}
+		}
+	});
+}
+
+/**
+ * Validate that user (client) can access service account [serviceAccount]
+ * with required permissions [requiredPermissions]
+ * @param {Object} obj
+ * @param {User} obj.user - user client
+ * @param {ServiceAccount} obj.serviceAccount - service account to validate against
+ * @param {String[]} requiredPermissions - required permissions as part of the endpoint
+ */
+const validateUserClientForServiceAccount = async ({
+	user,
+	serviceAccount,
+	requiredPermissions
+}: {
+	user: IUser;
+	serviceAccount: IServiceAccount;
+	requiredPermissions?: string[];
+}) => {
+	if (!serviceAccount.user.equals(user._id)) {
+		// case: user who created service account is not the
+		// same user that is on the request
+		await validateMembershipOrg({
+			userId: user._id,
+			organizationId: serviceAccount.organization,
+			acceptedRoles: [],
+			acceptedStatuses: []
+		});
+	}
+}
+
+export { 
+	setupAccount, 
+	completeAccount, 
+	checkUserDevice,
+	validateUserClientForWorkspace,
+	validateUserClientForSecrets,
+	validateUserClientForServiceAccount
+};

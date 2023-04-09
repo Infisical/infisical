@@ -1,10 +1,13 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, model, Types, Document } from 'mongoose';
 
-export interface IServiceTokenData {
+export interface IServiceTokenData extends Document {
+    _id: Types.ObjectId;
     name: string;
     workspace: Types.ObjectId;
     environment: string;
     user: Types.ObjectId;
+    serviceAccount: Types.ObjectId;
+    lastUsed: Date;
     expiresAt: Date;
     secretHash: string;
     encryptedKey: string;
@@ -24,14 +27,20 @@ const serviceTokenDataSchema = new Schema<IServiceTokenData>(
             ref: 'Workspace',
             required: true
         },
-        environment: { // TODO: adapt to upcoming environment id
+        environment: {
             type: String,
             required: true
         },
         user: {
             type: Schema.Types.ObjectId,
-            ref: 'User',
-            required: true
+            ref: 'User'
+        },
+        serviceAccount: {
+            type: Schema.Types.ObjectId,
+            ref: 'ServiceAccount'
+        },
+        lastUsed: {
+            type: Date
         },
         expiresAt: {
             type: Date

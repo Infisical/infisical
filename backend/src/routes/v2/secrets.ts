@@ -8,12 +8,18 @@ import {
 } from '../../middleware';
 import { query, body } from 'express-validator';
 import { secretsController } from '../../controllers/v2';
-import { validateSecrets } from '../../helpers/secret';
+import { validateClientForSecrets } from '../../helpers/secrets';
 import {
     ADMIN,
     MEMBER,
     SECRET_PERSONAL,
-    SECRET_SHARED
+    SECRET_SHARED,
+    PERMISSION_READ_SECRETS,
+    PERMISSION_WRITE_SECRETS,
+    AUTH_MODE_JWT,
+    AUTH_MODE_SERVICE_ACCOUNT,
+    AUTH_MODE_SERVICE_TOKEN,
+    AUTH_MODE_API_KEY
 } from '../../variables';
 import {
     BatchSecretRequest
@@ -22,12 +28,11 @@ import {
 router.post(
     '/batch',
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken'],
-        requiredServiceTokenPermissions: ['read', 'write']
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
-        location: 'body'
+        locationWorkspaceId: 'body'
     }),
     body('workspaceId').exists().isString().trim(),
     body('environment').exists().isString().trim(),
@@ -40,12 +45,11 @@ router.post(
                     .filter((secretId) => secretId !== undefined)
                 
                 if (secretIds.length > 0) {
-                    const relevantSecrets = await validateSecrets({
-                        userId: req.user._id.toString(),
-                        secretIds
+                    req.secrets = await validateClientForSecrets({
+                        authData: req.authData,
+                        secretIds,
+                        requiredPermissions: []
                     });
-                    
-                    req.secrets = relevantSecrets;
                 }
             }
         return true;
@@ -100,12 +104,13 @@ router.post(
         }),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken'],
-        requiredServiceTokenPermissions: ['write']
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
-        location: 'body'
+        locationWorkspaceId: 'body',
+        locationEnvironment: 'body',
+        requiredPermissions: [PERMISSION_WRITE_SECRETS]
     }),
     secretsController.createSecrets
 );
@@ -117,12 +122,13 @@ router.get(
     query('tagSlugs'),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken'],
-        requiredServiceTokenPermissions: ['read']
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
-        location: 'query'
+        locationWorkspaceId: 'query',
+        locationEnvironment: 'query',
+        requiredPermissions: [PERMISSION_READ_SECRETS]
     }),
     secretsController.getSecrets
 );
@@ -157,11 +163,11 @@ router.patch(
         }),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken'],
-        requiredServiceTokenPermissions: ['write']
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
     }),
     requireSecretsAuth({
-        acceptedRoles: [ADMIN, MEMBER]
+        acceptedRoles: [ADMIN, MEMBER],
+        requiredPermissions: [PERMISSION_WRITE_SECRETS]
     }),
     secretsController.updateSecrets
 );
@@ -186,14 +192,13 @@ router.delete(
         .isEmpty(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey', 'serviceToken'],
-        requiredServiceTokenPermissions: ['write']
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
     }),
     requireSecretsAuth({
-        acceptedRoles: [ADMIN, MEMBER]
+        acceptedRoles: [ADMIN, MEMBER],
+        requiredPermissions: [PERMISSION_WRITE_SECRETS]
     }),
     secretsController.deleteSecrets
 );
 
 export default router;
-

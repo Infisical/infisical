@@ -176,6 +176,7 @@ const Layout = ({ children }: LayoutProps) => {
 
   useEffect(() => {
     // Put a user in a workspace if they're not in one yet
+    
     const putUserInWorkSpace = async () => {
       if (tempLocalStorage('orgData.id') === '') {
         const userOrgs = await getOrganizations();

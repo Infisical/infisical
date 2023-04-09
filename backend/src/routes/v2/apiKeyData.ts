@@ -1,16 +1,19 @@
 import express from 'express';
 const router = express.Router();
+import { param, body } from 'express-validator';
 import {
     requireAuth,
     validateRequest
 } from '../../middleware';
-import { param, body } from 'express-validator';
 import { apiKeyDataController } from '../../controllers/v2';
+import {
+    AUTH_MODE_JWT
+} from '../../variables';
 
 router.get(
     '/',
     requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
     apiKeyDataController.getAPIKeyData
 );
@@ -18,7 +21,7 @@ router.get(
 router.post(
     '/',
     requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
     body('name').exists().trim(),
     body('expiresIn'), // measured in ms
@@ -29,7 +32,7 @@ router.post(
 router.delete(
     '/:apiKeyDataId',
     requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
     param('apiKeyDataId').exists().trim(),
     validateRequest,

@@ -26,12 +26,16 @@ class EELogService {
      */
     static async createLog({
         userId,
+        serviceAccountId,
+        serviceTokenDataId,
         workspaceId,
         actions,
         channel,
         ipAddress
     }: {
-        userId: Types.ObjectId;
+        userId?: Types.ObjectId;
+        serviceAccountId?: Types.ObjectId;
+        serviceTokenDataId?: Types.ObjectId;
         workspaceId?: Types.ObjectId;
         actions: IAction[];
         channel: string;
@@ -40,6 +44,8 @@ class EELogService {
         if (!EELicenseService.isLicenseValid) return null;
         return await createLogHelper({
             userId,
+            serviceAccountId,
+            serviceTokenDataId,
             workspaceId,
             actions,
             channel,
@@ -59,17 +65,23 @@ class EELogService {
     static async createAction({
         name,
         userId,
+        serviceAccountId,
+        serviceTokenDataId,
         workspaceId,
         secretIds
     }: {
         name: string;
-        userId: Types.ObjectId;
+        userId?: Types.ObjectId;
+        serviceAccountId?: Types.ObjectId;
+        serviceTokenDataId?: Types.ObjectId;
         workspaceId?: Types.ObjectId;
         secretIds?: Types.ObjectId[];
     }) {
         return await createActionHelper({
             name,
             userId,
+            serviceAccountId,
+            serviceTokenDataId,
             workspaceId,
             secretIds
         });
