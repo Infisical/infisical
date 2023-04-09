@@ -68,25 +68,25 @@ const deleteOrganization = async ({
     let organization;
     try {
         // delete the organization itself
-        organization = await Organization.findByIdAndDelete(orgId);
+        const organization = await Organization.findByIdAndDelete(orgId);
+
+        // delete all the membersOrg
+        await MembershipOrg.deleteMany({
+            organization: orgId
+        });
 
         // delete all the workspaces
         // first get all the workspaces ids
         const workspaceIds = (
             await Workspace.find({
-                organization: organization?.id
+                organization: orgId
             })
         ).map((m) => m.id);
 
         // delete all the workspaces one by one
-        for (let id in workspaceIds) {
+        for (const id of workspaceIds) {
             await deleteWorkspace({ id });
         }
-
-        // delete all the membersOrg
-        MembershipOrg.deleteMany({
-            organization: organization?._id
-        });
 
         // delete the stripe customer
         const stripe = new Stripe(getStripeSecretKey(), {
@@ -94,14 +94,11 @@ const deleteOrganization = async ({
         });
 
         if (getStripeSecretKey()) {
-            // delete the stripe customer
             const customer = await stripe.customers.list({
                 email: email,
                 limit: 1
             });
-            console.log(customer.data[0].id);
             const customerId = customer.data[0].id;
-
             await stripe.customers.del(customerId);
         }
     } catch (err) {
