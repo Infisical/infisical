@@ -4,8 +4,9 @@ import NavHeader from '@app/components/navigation/NavHeader';
 
 import { SAProjectLevelPermissionsTable } from './components/SAProjectLevelPermissionsTable';
 import {
-    CopyServiceAccountIDSection,
-    ServiceAccountNameChangeSection} from './components';
+    CopyServiceAccountPublicKeySection,
+    ServiceAccountNameChangeSection
+} from './components';
 
 export const CreateServiceAccountPage = () => {
     const router = useRouter();
@@ -29,7 +30,7 @@ export const CreateServiceAccountPage = () => {
                         serviceAccountId={serviceAccountId}
                     />
                     <div className="mt-8">
-                        <CopyServiceAccountIDSection 
+                        <CopyServiceAccountPublicKeySection 
                             serviceAccountId={serviceAccountId}
                         />
                     </div>

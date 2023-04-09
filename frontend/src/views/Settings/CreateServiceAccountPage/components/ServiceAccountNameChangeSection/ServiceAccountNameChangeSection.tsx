@@ -58,7 +58,7 @@ export const ServiceAccountNameChangeSection = ({
             onSubmit={handleSubmit(onFormSubmit)}
             className="rounded-md bg-white/5 p-6"
         >
-            <p className="mb-4 text-xl font-semibold">Service Account Name</p>
+            <p className="mb-4 text-xl font-semibold">Name</p>
             <div className="mb-2 w-full max-w-lg">
                 {!isServiceAccountLoading && (
                     <Controller 
