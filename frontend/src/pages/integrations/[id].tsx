@@ -73,7 +73,8 @@ export default function Integrations() {
   // TODO: These will have its type when migratiing towards react-query
   const [bot, setBot] = useState<any>(null);
   const [isActivateBotDialogOpen, setIsActivateBotDialogOpen] = useState(false);
-  const [selectedIntegrationOption, setSelectedIntegrationOption] = useState<IntegrationOption | null>(null);
+  const [selectedIntegrationOption, setSelectedIntegrationOption] =
+    useState<IntegrationOption | null>(null);
 
   const router = useRouter();
   const workspaceId = router.query.id as string;
@@ -162,7 +163,7 @@ export default function Integrations() {
       console.error(err);
     }
   };
-  
+
   const handleUnauthorizedIntegrationOptionPress = (integrationOption: IntegrationOption) => {
     try {
       // generate CSRF token for OAuth2 code-token exchange integrations
@@ -207,6 +208,9 @@ export default function Integrations() {
         case 'travisci':
           link = `${window.location.origin}/integrations/travisci/authorize`;
           break;
+        case 'supabase':
+          link = `${window.location.origin}/integrations/supabase/authorize`;
+          break;
         default:
           break;
       }
@@ -217,8 +221,8 @@ export default function Integrations() {
     } catch (err) {
       console.error(err);
     }
-  }
-  
+  };
+
   const handleAuthorizedIntegrationOptionPress = (integrationAuth: IntegrationAuth) => {
     try {
       let link = '';
@@ -259,6 +263,9 @@ export default function Integrations() {
         case 'travisci':
           link = `${window.location.origin}/integrations/travisci/create?integrationAuthId=${integrationAuth._id}`;
           break;
+        case 'supabase':
+          link = `${window.location.origin}/integrations/supabase/create?integrationAuthId=${integrationAuth._id}`;
+          break;
         default:
           break;
       }
@@ -269,8 +276,8 @@ export default function Integrations() {
     } catch (err) {
       console.error(err);
     }
-  }
-  
+  };
+
   /**
    * Open dialog to activate bot if bot is not active.
    * Otherwise, start integration [integrationOption]
@@ -282,12 +289,14 @@ export default function Integrations() {
    */
   const integrationOptionPress = async (integrationOption: IntegrationOption) => {
     try {
-      const integrationAuthX = integrationAuths.find((integrationAuth) => integrationAuth.integration === integrationOption.slug);
-      
+      const integrationAuthX = integrationAuths.find(
+        (integrationAuth) => integrationAuth.integration === integrationOption.slug
+      );
+
       if (!bot.isActive) {
         await handleBotActivate();
       }
-      
+
       if (!integrationAuthX) {
         // case: integration has not been authorized
         handleUnauthorizedIntegrationOptionPress(integrationOption);
@@ -299,35 +308,45 @@ export default function Integrations() {
       console.error(err);
     }
   };
-  
+
   /**
    * Handle deleting integration authorization [integrationAuth] and corresponding integrations from state where applicable
    * @param {Object} obj
    * @param {IntegrationAuth} obj.integrationAuth - integrationAuth to delete
    */
-  const handleDeleteIntegrationAuth = async ({ integrationAuth: deletedIntegrationAuth }: { integrationAuth: IntegrationAuth }) => {
+  const handleDeleteIntegrationAuth = async ({
+    integrationAuth: deletedIntegrationAuth
+  }: {
+    integrationAuth: IntegrationAuth;
+  }) => {
     try {
-      const newIntegrations = integrations.filter((integration) => integration.integrationAuth !== deletedIntegrationAuth._id);
-      setIntegrationAuths(integrationAuths.filter((integrationAuth) => integrationAuth._id !== deletedIntegrationAuth._id));
+      const newIntegrations = integrations.filter(
+        (integration) => integration.integrationAuth !== deletedIntegrationAuth._id
+      );
+      setIntegrationAuths(
+        integrationAuths.filter(
+          (integrationAuth) => integrationAuth._id !== deletedIntegrationAuth._id
+        )
+      );
       setIntegrations(newIntegrations);
-      
+
       // handle updating bot
       if (newIntegrations.length < 1) {
         // case: no integrations left
         setBot(
-            (
-              await setBotActiveStatus({
-                botId: bot._id,
-                isActive: false
-              })
-            ).bot
-          );
+          (
+            await setBotActiveStatus({
+              botId: bot._id,
+              isActive: false
+            })
+          ).bot
+        );
       }
     } catch (err) {
       console.error(err);
     }
-  }
-  
+  };
+
   /**
    * Handle deleting integration [integration]
    * @param {Object} obj
@@ -338,7 +357,7 @@ export default function Integrations() {
       const deletedIntegration = await deleteIntegration({
         integrationId: integration._id
       });
-      
+
       const newIntegrations = integrations.filter((i) => i._id !== deletedIntegration._id);
       setIntegrations(newIntegrations);
 
@@ -346,21 +365,21 @@ export default function Integrations() {
       if (newIntegrations.length < 1) {
         // case: no integrations left
         setBot(
-            (
-              await setBotActiveStatus({
-                botId: bot._id,
-                isActive: false
-              })
-            ).bot
-          );
+          (
+            await setBotActiveStatus({
+              botId: bot._id,
+              isActive: false
+            })
+          ).bot
+        );
       }
     } catch (err) {
       console.error(err);
     }
-  }
+  };
 
   return (
-    <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
+    <div className="flex max-h-screen flex-col justify-between bg-bunker-800 text-white">
       <Head>
         <title>{t('common:head-title', { title: t('integrations:title') })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -368,7 +387,7 @@ export default function Integrations() {
         <meta property="og:title" content="Manage your .env files in seconds" />
         <meta name="og:description" content={t('integrations:description') as string} />
       </Head>
-      <div className="w-full pb-2 h-screen max-h-[calc(100vh-10px)] overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
+      <div className="no-scrollbar::-webkit-scrollbar h-screen max-h-[calc(100vh-10px)] w-full overflow-y-scroll pb-2 no-scrollbar">
         <NavHeader pageName={t('integrations:title')} isProjectRelated />
         <ActivateBotDialog
           isOpen={isActivateBotDialogOpen}
@@ -376,12 +395,12 @@ export default function Integrations() {
           selectedIntegrationOption={selectedIntegrationOption}
           integrationOptionPress={integrationOptionPress}
         />
-        <IntegrationSection 
-          integrations={integrations} 
+        <IntegrationSection
+          integrations={integrations}
           setIntegrations={setIntegrations}
           bot={bot}
           setBot={setBot}
-          environments={environments} 
+          environments={environments}
           handleDeleteIntegration={handleDeleteIntegration}
         />
         {cloudIntegrationOptions.length > 0 && bot ? (
@@ -389,12 +408,12 @@ export default function Integrations() {
             cloudIntegrationOptions={cloudIntegrationOptions}
             setSelectedIntegrationOption={setSelectedIntegrationOption as any}
             integrationOptionPress={(integrationOption: IntegrationOption) => {
-             if (!bot.isActive) {
+              if (!bot.isActive) {
                 // case: bot is not active -> open modal to activate bot
                 setIsActivateBotDialogOpen(true);
                 return;
-              } 
-              integrationOptionPress(integrationOption)
+              }
+              integrationOptionPress(integrationOption);
             }}
             integrationAuths={integrationAuths}
             handleDeleteIntegrationAuth={handleDeleteIntegrationAuth}
