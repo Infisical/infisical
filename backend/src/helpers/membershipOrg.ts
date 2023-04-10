@@ -22,8 +22,8 @@ const validateMembershipOrg = async ({
 }: {
 	userId: Types.ObjectId;
 	organizationId: Types.ObjectId;
-	acceptedRoles: string[];
-	acceptedStatuses: string[];
+	acceptedRoles: Array<'owner' | 'admin' | 'member'>;
+	acceptedStatuses: Array<'invited' | 'accepted'>;
 }) => {
 	const membershipOrg = await MembershipOrg.findOne({
 		user: userId,

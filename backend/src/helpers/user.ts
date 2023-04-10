@@ -5,7 +5,9 @@ import {
 	ISecret,
 	IServiceAccount,
 	User,
-	Membership
+	Membership,
+	IOrganization,
+	Organization,
 } from '../models';
 import { sendMail } from './nodemailer';
 import { validateMembership } from './membership';
@@ -288,11 +290,39 @@ const validateUserClientForServiceAccount = async ({
 	}
 }
 
+/**
+ * Validate that user (client) can access organization [organization]
+ * @param {Object} obj
+ * @param {User} obj.user - user client
+ * @param {Organization} obj.organization - organization to validate against
+ */
+ const validateUserClientForOrganization = async ({
+	user,
+	organization,
+	acceptedRoles,
+	acceptedStatuses
+}: {
+	user: IUser;
+	organization: IOrganization;
+	acceptedRoles: Array<'owner' | 'admin' | 'member'>;
+	acceptedStatuses: Array<'invited' | 'accepted'>;
+}) => {
+	const membershipOrg = await validateMembershipOrg({
+		userId: user._id,
+		organizationId: organization._id,
+		acceptedRoles,
+		acceptedStatuses
+	});
+	
+	return membershipOrg;
+}
+
 export { 
 	setupAccount, 
 	completeAccount, 
 	checkUserDevice,
 	validateUserClientForWorkspace,
 	validateUserClientForSecrets,
-	validateUserClientForServiceAccount
+	validateUserClientForServiceAccount,
+	validateUserClientForOrganization
 };

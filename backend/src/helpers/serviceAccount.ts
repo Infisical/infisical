@@ -8,6 +8,7 @@ import {
 	ServiceTokenData,
 	IServiceTokenData,
 	ISecret,
+	IOrganization,
 	ServiceAccountWorkspacePermission
 } from '../models';
 import { 
@@ -109,9 +110,6 @@ const validateClientForServiceAccount = async ({
 	environment?: string;
 	requiredPermissions?: string[];
 }) => {
-	// TODO: add service account API support for workspace-level endpoints that are not
-	// tied to any specific environment
-
 	if (environment) {
 		const permission = await ServiceAccountWorkspacePermission.findOne({
 			serviceAccount,
@@ -123,7 +121,6 @@ const validateClientForServiceAccount = async ({
 			message: 'Failed service account authorization for the given workspace environment'
 		});
 		
-		// TODO: refactor
 		let runningIsDisallowed = false;
 		requiredPermissions?.forEach((requiredPermission: string) => {
 			switch (requiredPermission) {
@@ -180,7 +177,6 @@ const validateClientForServiceAccount = async ({
 		});
 		
 		requiredPermissions?.forEach((requiredPermission: string) => {
-			// TODO: refactor
 			let runningIsDisallowed = false;
 			requiredPermissions?.forEach((requiredPermission: string) => {
 				switch (requiredPermission) {
@@ -202,9 +198,6 @@ const validateClientForServiceAccount = async ({
 			});
 		});
 	});
-
-	// TODO
-    return [];
 }
 
 /**
@@ -231,9 +224,30 @@ const validateServiceAccountClientForServiceAccount = ({
 	}
 }
 
+/**
+ * Validate that service account (client) can access organization [organization]
+ * @param {Object} obj
+ * @param {User} obj.user - service account client
+ * @param {Organization} obj.organization - organization to validate against
+ */
+const validateServiceAccountClientForOrganization = async ({
+	serviceAccount,
+	organization
+}: {
+	serviceAccount: IServiceAccount;
+	organization: IOrganization;
+}) => {
+	if (!serviceAccount.organization.equals(organization._id)) {
+		throw UnauthorizedRequestError({
+			message: 'Failed service account authorization for the given organization'
+		});
+	}
+}
+
 export {
 	validateClientForServiceAccount,
     validateServiceAccountClientForWorkspace,
 	validateServiceAccountClientForSecrets,
-	validateServiceAccountClientForServiceAccount
+	validateServiceAccountClientForServiceAccount,
+	validateServiceAccountClientForOrganization
 }
