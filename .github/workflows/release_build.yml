@@ -54,3 +54,9 @@ jobs:
         run: sh cli/upload_to_cloudsmith.sh
         env:
           CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+      - name: Slack Notifier
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_USERNAME: infisical-cli
+          SLACK_ICON: https://github.com/Infisical/infisical/blob/main/frontend/public/images/logotransparent.png
