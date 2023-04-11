@@ -230,19 +230,10 @@ type GetEncryptedSecretsV2Response struct {
 }
 
 type GetServiceTokenDetailsResponse struct {
-	ID          string `json:"_id"`
-	Name        string `json:"name"`
-	Workspace   string `json:"workspace"`
-	Environment string `json:"environment"`
-	User        struct {
-		ID        string    `json:"_id"`
-		Email     string    `json:"email"`
-		CreatedAt time.Time `json:"createdAt"`
-		UpdatedAt time.Time `json:"updatedAt"`
-		V         int       `json:"__v"`
-		FirstName string    `json:"firstName"`
-		LastName  string    `json:"lastName"`
-	} `json:"user"`
+	ID           string    `json:"_id"`
+	Name         string    `json:"name"`
+	Workspace    string    `json:"workspace"`
+	Environment  string    `json:"environment"`
 	ExpiresAt    time.Time `json:"expiresAt"`
 	EncryptedKey string    `json:"encryptedKey"`
 	Iv           string    `json:"iv"`

@@ -32,8 +32,8 @@ const requireSecretAuth = ({
             }
             
             await validateMembership({
-                userId: req.user._id.toString(),
-                workspaceId: secret.workspace.toString(),
+                userId: req.user._id,
+                workspaceId: secret.workspace,
                 acceptedRoles
             });
             

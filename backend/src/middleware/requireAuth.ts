@@ -4,11 +4,23 @@ import {
 	validateAuthMode,
 	getAuthUserPayload,
 	getAuthSTDPayload,
-	getAuthAPIKeyPayload
+	getAuthAPIKeyPayload,
+	getAuthSAAKPayload
 } from '../helpers/auth';
 import { 
 	UnauthorizedRequestError
 } from '../utils/errors';
+import {
+	IUser,
+	IServiceAccount,
+	IServiceTokenData
+} from '../models';
+import {
+	AUTH_MODE_JWT,
+	AUTH_MODE_SERVICE_ACCOUNT,
+	AUTH_MODE_SERVICE_TOKEN,
+	AUTH_MODE_API_KEY
+} from '../variables';
 
 declare module 'jsonwebtoken' {
 	export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -27,50 +39,57 @@ declare module 'jsonwebtoken' {
  * @returns
  */
 const requireAuth = ({
-	acceptedAuthModes = ['jwt'],
-	requiredServiceTokenPermissions = []
+	acceptedAuthModes = [AUTH_MODE_JWT],
 }: {
 	acceptedAuthModes: string[];
-	requiredServiceTokenPermissions?: string[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
 		// validate auth token against accepted auth modes [acceptedAuthModes]
 		// and return token type [authTokenType] and value [authTokenValue]
-		const { authTokenType, authTokenValue } = validateAuthMode({
+		const { authMode, authTokenValue } = validateAuthMode({
 			headers: req.headers,
 			acceptedAuthModes
 		});
 
-		// attach auth payloads
-		let serviceTokenData: any;
-		switch (authTokenType) {
-			case 'serviceToken':
-				serviceTokenData = await getAuthSTDPayload({
+		let authPayload: IUser | IServiceAccount | IServiceTokenData;
+		switch (authMode) {
+			case AUTH_MODE_SERVICE_ACCOUNT:
+				authPayload = await getAuthSAAKPayload({
 					authTokenValue
 				});
-				
-				requiredServiceTokenPermissions.forEach((requiredServiceTokenPermission) => {
-					if (!serviceTokenData.permissions.includes(requiredServiceTokenPermission)) {
-						return next(UnauthorizedRequestError({ message: 'Failed to authorize service token for endpoint' }));
-					}
-				});
-			
-				req.serviceTokenData = serviceTokenData;
-				req.user = serviceTokenData?.user;
-				
+				req.serviceAccount = authPayload;
 				break;
-			case 'apiKey':
-				req.user = await getAuthAPIKeyPayload({
+			case AUTH_MODE_SERVICE_TOKEN:
+				authPayload = await getAuthSTDPayload({
 					authTokenValue
 				});
+				req.serviceTokenData = authPayload;
+				break;
+			case AUTH_MODE_API_KEY:
+				authPayload = await getAuthAPIKeyPayload({
+					authTokenValue
+				});
+				req.user = authPayload;
 				break;
 			default:
-				req.user = await getAuthUserPayload({
+				authPayload = await getAuthUserPayload({
 					authTokenValue
 				});
+				req.user = authPayload;
 				break;
 		}
-
+		
+		req.requestData = {
+			...req.params,
+			...req.query,
+			...req.body,
+		}
+		
+		req.authData = {
+			authMode,
+			authPayload
+		}
+		
 		return next();
 	}
 }

@@ -5,6 +5,8 @@ export {
   useDeleteOrgMembership,
   useGetOrgUsers,
   useGetUser,
+  useGetUserAction,
   useLogoutUser,
+  useRegisterUserAction,
   useUpdateOrgUserRole
 } from './queries';

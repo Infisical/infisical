@@ -4,13 +4,14 @@ import { body, param } from 'express-validator';
 import { requireAuth, validateRequest } from '../../middleware';
 import { membershipController } from '../../controllers/v1';
 import { membershipController as EEMembershipControllers } from '../../ee/controllers/v1';
+import { AUTH_MODE_JWT } from '../../variables';
 
 // note: ALL DEPRECIATED (moved to api/v2/workspace/:workspaceId/memberships/:membershipId)
 
 router.get( // used for old CLI (deprecate)
 	'/:workspaceId/connect',
 	requireAuth({
-		acceptedAuthModes: ['jwt']
+		acceptedAuthModes: [AUTH_MODE_JWT]
 	}),
 	param('workspaceId').exists().trim(),
 	validateRequest,
@@ -20,7 +21,7 @@ router.get( // used for old CLI (deprecate)
 router.delete(
 	'/:membershipId',
 	requireAuth({
-		acceptedAuthModes: ['jwt']
+		acceptedAuthModes: [AUTH_MODE_JWT]
 	}),
 	param('membershipId').exists().trim(),
 	validateRequest,
@@ -30,7 +31,7 @@ router.delete(
 router.post(
 	'/:membershipId/change-role',
 	requireAuth({
-		acceptedAuthModes: ['jwt']
+		acceptedAuthModes: [AUTH_MODE_JWT]
 	}),
 	body('role').exists().trim(),
 	validateRequest,
@@ -40,7 +41,7 @@ router.post(
 router.post(
 	'/:membershipId/deny-permissions',
 	requireAuth({
-		acceptedAuthModes: ['jwt']
+		acceptedAuthModes: [AUTH_MODE_JWT]
 	}),
 	param('membershipId').isMongoId().exists().trim(),
 	body('permissions').isArray().exists(),

@@ -9,6 +9,7 @@ import {
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
+  INTEGRATION_RAILWAY,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_GCP_SECRET_MANAGER,
@@ -18,7 +19,7 @@ import {
 export interface IIntegrationAuth {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'gitlab' | 'render' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'aws-parameter-store' | 'aws-secret-manager' | 'gcp-secret-manager';
+  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'gitlab' | 'render' | 'railway' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'aws-parameter-store' | 'aws-secret-manager';
   teamId: string;
   accountId: string;
   refreshCiphertext?: string;
@@ -52,6 +53,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_GITHUB,
         INTEGRATION_GITLAB,
         INTEGRATION_RENDER,
+        INTEGRATION_RAILWAY,
         INTEGRATION_FLYIO,
         INTEGRATION_CIRCLECI,
         INTEGRATION_GCP_SECRET_MANAGER,

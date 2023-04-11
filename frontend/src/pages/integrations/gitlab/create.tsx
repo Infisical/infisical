@@ -89,6 +89,9 @@ export default function GitLabCreateIntegrationPage() {
                 appId: targetAppId,
                 sourceEnvironment: selectedSourceEnvironment,
                 targetEnvironment: null,
+                targetEnvironmentId: null,
+                targetService: null,
+                targetServiceId: null,
                 owner: null,
                 path: null,
                 region: null
@@ -109,7 +112,6 @@ export default function GitLabCreateIntegrationPage() {
         <CardTitle className='text-center'>GitLab Integration</CardTitle>
         <FormControl
           label="Project Environment"
-          className='mt-4'
         >
           <Select
             value={selectedSourceEnvironment}
@@ -125,7 +127,6 @@ export default function GitLabCreateIntegrationPage() {
         </FormControl>
         <FormControl
           label="GitLab Integration Type"
-          className='mt-4'
         >
           <Select
             value={targetEntity}
@@ -144,7 +145,6 @@ export default function GitLabCreateIntegrationPage() {
         {targetEntity === 'group' && targetTeamId && (
           <FormControl
             label="GitLab Group"
-            className='mt-4'
           >
             <Select
               value={targetTeamId}
@@ -167,7 +167,6 @@ export default function GitLabCreateIntegrationPage() {
         )}
         <FormControl
           label="GitLab Project"
-          className='mt-4'
         >
           <Select
             value={targetAppId}

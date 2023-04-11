@@ -12,6 +12,11 @@ import {
 	getTeams,
 	revokeAccess 
 } from '../../integrations';
+import {
+	INTEGRATION_VERCEL_API_URL,
+	INTEGRATION_RAILWAY_API_URL
+} from '../../variables';
+import request from '../../config/request';
 
 /***
  * Return integration authorization with id [integrationAuthId]
@@ -188,22 +193,203 @@ export const getIntegrationAuthApps = async (req: Request, res: Response) => {
  * @returns 
  */
 export const getIntegrationAuthTeams = async (req: Request, res: Response) => {
-	let teams;
-	try {
-		teams = await getTeams({
-			integrationAuth: req.integrationAuth,
-			accessToken: req.accessToken
+	const teams = await getTeams({
+		integrationAuth: req.integrationAuth,
+		accessToken: req.accessToken
+	});
+	
+	return res.status(200).send({
+		teams
+	});
+}
+
+/**
+ * Return list of available Vercel (preview) branches for Vercel project with
+ * id [appId]
+ * @param req 
+ * @param res 
+ */
+export const getIntegrationAuthVercelBranches = async (req: Request, res: Response) => {
+	const { integrationAuthId } = req.params;
+	const appId = req.query.appId as string;
+	
+	interface VercelBranch {
+		ref: string;
+		lastCommit: string;
+		isProtected: boolean;
+	}
+
+	const params = new URLSearchParams({
+		projectId: appId,
+		...(req.integrationAuth.teamId ? {
+			teamId: req.integrationAuth.teamId
+		} : {})
+	});
+
+	let branches: string[] = [];
+	
+	if (appId && appId !== '') {
+		const { data }: { data: VercelBranch[] } = await request.get(
+			`${INTEGRATION_VERCEL_API_URL}/v1/integrations/git-branches`,
+			{
+				params,
+				headers: {
+					Authorization: `Bearer ${req.accessToken}`,
+					'Accept-Encoding': 'application/json'
+				}
+			}
+		);
+		
+		branches = data.map((b) => b.ref);
+	}
+
+	return res.status(200).send({
+		branches
+	});
+}
+
+/**
+ * Return list of Railway environments for Railway project with
+ * id [appId]
+ * @param req 
+ * @param res 
+ */
+export const getIntegrationAuthRailwayEnvironments = async (req: Request, res: Response) => {
+	const { integrationAuthId } = req.params;
+	const appId = req.query.appId as string;
+	
+	interface RailwayEnvironment {
+		node: {
+			id: string;
+			name: string;
+			isEphemeral: boolean;
+		}
+	}
+	
+	interface Environment {
+		environmentId: string;
+		name: string;
+	}
+	
+	let environments: Environment[] = [];
+
+	if (appId && appId !== '') {
+		const query = `
+			query GetEnvironments($projectId: String!, $after: String, $before: String, $first: Int, $isEphemeral: Boolean, $last: Int) {
+				environments(projectId: $projectId, after: $after, before: $before, first: $first, isEphemeral: $isEphemeral, last: $last) {
+				edges {
+					node {
+					id
+					name
+					isEphemeral
+					}
+				}
+				}
+			}
+			`;
+		
+		const variables = {
+			projectId: appId
+		}
+		
+		const { data: { data: { environments: { edges } } } } = await request.post(INTEGRATION_RAILWAY_API_URL, {
+			query,
+			variables,
+		}, {
+			headers: {
+				'Authorization': `Bearer ${req.accessToken}`,
+				'Content-Type': 'application/json',
+			},
 		});
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-		message: "Failed to get integration authorization teams"
+		
+		environments = edges.map((e: RailwayEnvironment) => {
+			return ({
+				name: e.node.name,
+				environmentId: e.node.id
+			});
 		});
 	}
 	
 	return res.status(200).send({
-		teams
+		environments
+	});
+}
+
+/**
+ * Return list of Railway services for Railway project with id
+ * [appId]
+ * @param req 
+ * @param res 
+ */
+export const getIntegrationAuthRailwayServices = async (req: Request, res: Response) => {
+	const { integrationAuthId } = req.params;
+	const appId = req.query.appId as string;
+	
+	interface RailwayService {
+		node: {
+			id: string;
+			name: string;
+		}
+	}
+	
+	interface Service {
+		name: string;
+		serviceId: string;
+	}
+	
+	let services: Service[] = [];
+	
+	const query = `
+      query project($id: String!) {
+        project(id: $id) {
+          createdAt
+          deletedAt
+          id
+          description
+          expiredAt
+          isPublic
+          isTempProject
+          isUpdatable
+          name
+          prDeploys
+          teamId
+          updatedAt
+          upstreamUrl
+		  services {
+			edges {
+				node {
+					id
+					name
+				}
+			}
+		  }
+        }
+      }
+    `;
+
+	if (appId && appId !== '') {
+		const variables = {
+			id: appId
+		}
+		
+		const { data: { data: { project: { services: { edges } } } } } = await request.post(INTEGRATION_RAILWAY_API_URL, {
+			query,
+			variables
+		}, {
+			headers: {
+				'Authorization': `Bearer ${req.accessToken}`,
+				'Content-Type': 'application/json',
+			},
+		});
+		
+		services = edges.map((e: RailwayService) => ({
+			name: e.node.name,
+			serviceId: e.node.id
+		}));
+	}
+	
+	return res.status(200).send({
+		services
 	});
 }
 
