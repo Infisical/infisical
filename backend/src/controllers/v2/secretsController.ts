@@ -560,9 +560,9 @@ export const getSecrets = async (req: Request, res: Response) => {
             return tag ? tag.id : null;
         });
     }
-    
+
     let secrets: ISecret[] = [];
-    
+
     if (req.user) {
         // case: client authorization is via JWT
 
@@ -578,12 +578,12 @@ export const getSecrets = async (req: Request, res: Response) => {
         let secretQuery: any;
         if (tagNamesList != undefined && tagNamesList.length != 0) {
             const workspaceFromDB = await Tag.find({ workspace: workspaceId })
-    
+
             const tagIds = _.map(tagNamesList, (tagName) => {
                 const tag = _.find(workspaceFromDB, { slug: tagName });
                 return tag ? tag.id : null;
             });
-    
+
             secretQuery = {
                 workspace: workspaceId,
                 environment,
@@ -608,15 +608,15 @@ export const getSecrets = async (req: Request, res: Response) => {
 
         if (hasWriteOnlyAccess) {
             // (i.e. you don't get values to decrypt since you can only write)
-            secrets = await Secret.find(secretQuery).select("secretKeyCiphertext secretKeyIV secretKeyTag")
+            secrets = await Secret.find(secretQuery).select("secretKeyCiphertext secretKeyIV secretKeyTag").populate("tags")
         } else {
             secrets = await Secret.find(secretQuery).populate("tags")
         }
     }
-    
+
     if (req.serviceAccount || req.serviceTokenData) {
         // case: client authorization is either via service account or service token
-        
+
         secrets = await Secret.find({
             workspace: new Types.ObjectId(workspaceId),
             environment,
@@ -625,7 +625,7 @@ export const getSecrets = async (req: Request, res: Response) => {
             },
             ...(tagIds.length > 0 ? { tags: { $in: tagIds } } : {}),
             type: SECRET_SHARED
-        });
+        }).populate("tags");
     }
 
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
@@ -638,7 +638,7 @@ export const getSecrets = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId as string),
         secretIds: secrets.map((n: any) => n._id)
     });
-    
+
     readAction && await EELogService.createLog({
         userId: req.user?._id,
         serviceAccountId: req.serviceAccount?._id,
@@ -952,7 +952,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
         }
     }   
     */
-   
+
     return res.status(200).send({
         message: 'delete secrets!!'
     });
