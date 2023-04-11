@@ -102,8 +102,8 @@ export default function GCPSecretManagerCreateIntegrationPage() {
             onValueChange={(val) => setTargetApp(val)}
             className='w-full border border-mineshaft-500'
           >
-            {integrationAuthApps.map((integrationAuthApp) => (
-              <SelectItem value={integrationAuthApp.name} key={`gcp-secret-manager-environment-${integrationAuthApp.name}`}>
+            {integrationAuthApps.map((integrationAuthApp) => integrationAuthApp.appId && (
+              <SelectItem value={integrationAuthApp.appId} key={`gcp-secret-manager-environment-${integrationAuthApp.appId}`}>
                 {integrationAuthApp.name}
               </SelectItem>
             ))}

@@ -114,9 +114,21 @@ export const AppLayout = ({ children }: LayoutProps) => {
       ) {
         router.push('/noprojects');
       } else if (router.asPath !== '/noprojects') {
-        const intendedWorkspaceId = router.asPath
-          .split('/')
-          [router.asPath.split('/').length - 1].split('?')[0];
+        const pathSegments = router.asPath.split('/').filter(segment => segment.length > 0);
+        let intendedWorkspaceId;
+        
+        if (pathSegments.length >= 2 && pathSegments[0] === 'dashboard') {
+          [, intendedWorkspaceId] = pathSegments;
+        } else if (pathSegments.length >= 3 && pathSegments[0] === 'settings') {
+          [, , intendedWorkspaceId] = pathSegments;
+        } else if (pathSegments.length >= 2 && pathSegments[0] === 'integrations' && pathSegments[2] === 'oauth2') {
+          intendedWorkspaceId = 'callback';
+        } else {
+          const lastPathSegment = router.asPath.split('/').pop()?.split('?');
+          [intendedWorkspaceId] = lastPathSegment;
+        }
+        
+        if (!intendedWorkspaceId) return;
 
         if (!['callback', 'create', 'authorize'].includes(intendedWorkspaceId)) {
           localStorage.setItem('projectData.id', intendedWorkspaceId);
