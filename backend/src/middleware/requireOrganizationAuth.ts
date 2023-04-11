@@ -26,8 +26,6 @@ const requireOrganizationAuth = ({
 	return async (req: Request, res: Response, next: NextFunction) => {
 		const { organizationId } = req[locationOrganizationId];
 		
-		// TODO: incorporate [acceptedRoles] and [acceptedStatuses]
-		
 		const { organization, membershipOrg } = await validateClientForOrganization({
 			authData: req.authData,
 			organizationId: new Types.ObjectId(organizationId),

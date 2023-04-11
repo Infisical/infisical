@@ -17,32 +17,28 @@ import {
 const requireSecretAuth = ({
     acceptedRoles
 }: {
-    acceptedRoles: string[];
+    acceptedRoles: Array<'admin' | 'member'>;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
-        try {
-            const { secretId } = req.params;
-            
-            const secret = await Secret.findById(secretId);
-            
-            if (!secret) {
-                return next(SecretNotFoundError({
-                    message: 'Failed to find secret'
-                }));
-            }
-            
-            await validateMembership({
-                userId: req.user._id,
-                workspaceId: secret.workspace,
-                acceptedRoles
-            });
-            
-            req._secret = secret;
-
-            next();
-        } catch (err) {
-            return next(UnauthorizedRequestError({ message: 'Unable to authenticate secret' }));
+        const { secretId } = req.params;
+        
+        const secret = await Secret.findById(secretId);
+        
+        if (!secret) {
+            return next(SecretNotFoundError({
+                message: 'Failed to find secret'
+            }));
         }
+        
+        await validateMembership({
+            userId: req.user._id,
+            workspaceId: secret.workspace,
+            acceptedRoles
+        });
+        
+        req._secret = secret;
+
+        next();
     }
 }
 

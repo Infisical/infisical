@@ -86,7 +86,7 @@ const validateClientForOrganization = async ({
 
 	if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
 		throw UnauthorizedRequestError({
-			message: 'Failed service token authorization for organization resource'
+			message: 'Failed service token authorization for organization'
 		});
 	}
 
@@ -102,7 +102,7 @@ const validateClientForOrganization = async ({
 	}
 	
 	throw UnauthorizedRequestError({
-		message: 'Failed client authorization for organization resource'
+		message: 'Failed client authorization for organization'
 	});
 }
 

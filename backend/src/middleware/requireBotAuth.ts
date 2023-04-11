@@ -5,11 +5,13 @@ import { AccountNotFoundError } from '../utils/errors';
 
 type req = 'params' | 'body' | 'query';
 
+// TODO: transform
+
 const requireBotAuth = ({
     acceptedRoles,
     location = 'params'
 }: {
-    acceptedRoles: string[];
+    acceptedRoles: Array<'admin' | 'member'>;
     location?: req;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {

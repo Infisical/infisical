@@ -9,7 +9,7 @@ const requireServiceTokenDataAuth = ({
     acceptedRoles,
     location = 'params'
 }: {
-    acceptedRoles: string[];
+    acceptedRoles: Array<'admin' | 'member'>;
     location?: req;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {

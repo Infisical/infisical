@@ -13,7 +13,7 @@ import { IntegrationNotFoundError, UnauthorizedRequestError } from '../utils/err
 const requireIntegrationAuth = ({
 	acceptedRoles
 }: {
-	acceptedRoles: string[];
+	acceptedRoles: Array<'admin' | 'member'>;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
 		// integration authorization middleware

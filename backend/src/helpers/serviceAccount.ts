@@ -9,6 +9,7 @@ import {
 	IServiceTokenData,
 	ISecret,
 	IOrganization,
+	IServiceAccountWorkspacePermission,
 	ServiceAccountWorkspacePermission
 } from '../models';
 import { 
@@ -111,16 +112,19 @@ const validateClientForServiceAccount = async ({
 	requiredPermissions?: string[];
 }) => {
 	if (environment) {
+		// case: environment specified ->
+		// evaluate service account authorization for workspace
+		// in the context of a specific environment [environment]
 		const permission = await ServiceAccountWorkspacePermission.findOne({
 			serviceAccount,
 			workspace: new Types.ObjectId(workspaceId),
 			environment
 		});
-		
+	
 		if (!permission) throw UnauthorizedRequestError({
 			message: 'Failed service account authorization for the given workspace environment'
 		});
-		
+
 		let runningIsDisallowed = false;
 		requiredPermissions?.forEach((requiredPermission: string) => {
 			switch (requiredPermission) {
@@ -139,6 +143,20 @@ const validateClientForServiceAccount = async ({
 					message: `Failed permissions authorization for workspace environment action : ${requiredPermission}`
 				});	
 			}
+		});
+		
+	} else {
+		// case: no environment specified ->
+		// evaluate service account authorization for workspace
+		// without need of environment [environment]
+
+		const permission = await ServiceAccountWorkspacePermission.findOne({
+			serviceAccount,
+			workspace: new Types.ObjectId(workspaceId)
+		});
+		
+		if (!permission) throw UnauthorizedRequestError({
+			message: 'Failed service account authorization for the given workspace'
 		});
 	}
 }

@@ -179,21 +179,23 @@ const validateUserClientForWorkspace = async ({
 	user,
 	workspaceId,
 	environment,
+	acceptedRoles,
 	requiredPermissions
 }: {
 	user: IUser;
 	workspaceId: Types.ObjectId;
 	environment?: string;
+	acceptedRoles: Array<'admin' | 'member'>;
 	requiredPermissions?: string[];
 }) => {
 	
 	// validate user membership in workspace
 	const membership = await validateMembership({
         userId: user._id,
-        workspaceId
+        workspaceId,
+		acceptedRoles
     });
 	
-	// TODO: refactor
 	let runningIsDisallowed = false;
 	requiredPermissions?.forEach((requiredPermission: string) => {
 		switch (requiredPermission) {

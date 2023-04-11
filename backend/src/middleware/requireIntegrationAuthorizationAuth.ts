@@ -19,7 +19,7 @@ const requireIntegrationAuthorizationAuth = ({
 	attachAccessToken = true,
 	location = 'params'
 }: {
-	acceptedRoles: string[];
+	acceptedRoles: Array<'admin' | 'member'>;
 	attachAccessToken?: boolean;
 	location?: req;
 }) => {

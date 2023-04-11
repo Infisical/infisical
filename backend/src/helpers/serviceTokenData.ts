@@ -34,20 +34,24 @@ import { UnauthorizedRequestError } from '../utils/errors';
         });
     }
 
-    if (serviceTokenData.environment !== environment) {
-        // case: invalid environment passed
-        throw UnauthorizedRequestError({
-            message: 'Failed service token authorization for the given workspace environment'
-        });
-    }
-
-    requiredPermissions?.forEach((permission) => {
-        if (!serviceTokenData.permissions.includes(permission)) {
+    if (environment) {
+        // case: environment is specified
+        
+        if (serviceTokenData.environment !== environment) {
+            // case: invalid environment passed
             throw UnauthorizedRequestError({
-                message: `Failed service token authorization for the given workspace environment action: ${permission}`
+                message: 'Failed service token authorization for the given workspace environment'
             });
         }
-    });
+
+        requiredPermissions?.forEach((permission) => {
+            if (!serviceTokenData.permissions.includes(permission)) {
+                throw UnauthorizedRequestError({
+                    message: `Failed service token authorization for the given workspace environment action: ${permission}`
+                });
+            }
+        });
+    }
 }
 
 /**
