@@ -40,8 +40,8 @@ const requireMembershipAuth = ({
             if (!userMembership) throw new Error('Failed to validate own membership')
             
             const targetMembership = await validateMembership({
-                userId: req.user._id.toString(),
-                workspaceId: membership.workspace.toString(),
+                userId: req.user._id,
+                workspaceId: membership.workspace,
                 acceptedRoles
             });
             

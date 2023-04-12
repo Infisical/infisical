@@ -11,7 +11,7 @@ import {
     Select, 
     SelectItem 
 } from '../../../components/v2';
-import { useGetIntegrationAuthApps,useGetIntegrationAuthById } from '../../../hooks/api/integrationAuth';
+import { useGetIntegrationAuthApps, useGetIntegrationAuthById } from '../../../hooks/api/integrationAuth';
 import { useGetWorkspaceById } from '../../../hooks/api/workspace';
 import createIntegration from "../../api/integrations/createIntegration";
 
@@ -38,7 +38,6 @@ export default function RenderCreateIntegrationPage() {
     }, [workspace]);
     
     useEffect(() => {
-        // TODO: handle case where apps can be empty
         if (integrationAuthApps) {
           if (integrationAuthApps.length > 0) {
             setTargetApp(integrationAuthApps[0].name);
@@ -61,6 +60,9 @@ export default function RenderCreateIntegrationPage() {
               appId: (integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.name === targetApp))?.appId ?? null,
               sourceEnvironment: selectedSourceEnvironment,
               targetEnvironment: null,
+              targetEnvironmentId: null,
+              targetService: null,
+              targetServiceId: null,
               owner: null,
               path: null,
               region: null

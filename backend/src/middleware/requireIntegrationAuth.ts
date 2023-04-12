@@ -30,8 +30,8 @@ const requireIntegrationAuth = ({
 		}
 		
 		await validateMembership({
-			userId: req.user._id.toString(),
-			workspaceId: integration.workspace.toString(),
+			userId: req.user._id,
+			workspaceId: integration.workspace,
 			acceptedRoles
 		});
 

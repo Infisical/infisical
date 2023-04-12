@@ -50,6 +50,7 @@
 │   • infisical-backend  : {{ .Values.backend.enabled }}
 │   • mongodb            : {{ .Values.mongodb.enabled }}
 │   • mailhog            : {{ .Values.mailhog.enabled }}
+|   • nginx              : {{ .Values.ingress.nginx.enabled }}
 │
 ╰―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――┤
 

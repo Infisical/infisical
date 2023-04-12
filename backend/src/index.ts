@@ -9,7 +9,7 @@ import * as Sentry from '@sentry/node';
 import { DatabaseService } from './services';
 import { setUpHealthEndpoint } from './services/health';
 import { initSmtp } from './services/smtp';
-import { logTelemetryMessage } from './services';
+import { TelemetryService } from './services';
 import { setTransporter } from './helpers/nodemailer';
 import { createTestUserForDevelopment } from './utils/addDevelopmentUser';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -56,6 +56,7 @@ import {
     secret as v2SecretRouter, // begin to phase out
     secrets as v2SecretsRouter,
     serviceTokenData as v2ServiceTokenDataRouter,
+    serviceAccounts as v2ServiceAccountsRouter,
     apiKeyData as v2APIKeyDataRouter,
     environment as v2EnvironmentRouter,
     tags as v2TagsRouter,
@@ -79,7 +80,7 @@ const main = async () => {
         });
     }
 
-    logTelemetryMessage();
+    TelemetryService.logTelemetryMessage();
     setTransporter(initSmtp());
 
     await DatabaseService.initDatabase(getMongoURL());
@@ -150,6 +151,7 @@ const main = async () => {
     app.use('/api/v2/secret', v2SecretRouter); // deprecated
     app.use('/api/v2/secrets', v2SecretsRouter);
     app.use('/api/v2/service-token', v2ServiceTokenDataRouter); // TODO: turn into plural route
+    app.use('/api/v2/service-accounts', v2ServiceAccountsRouter); // new
     app.use('/api/v2/api-key', v2APIKeyDataRouter);
 
     // api docs 
@@ -170,7 +172,7 @@ const main = async () => {
         getLogger("backend-main").info(`Server started listening at port ${getPort()}`)
     });
 
-    createTestUserForDevelopment();
+    await createTestUserForDevelopment();
     setUpHealthEndpoint(server);
 
     server.on('close', async () => {

@@ -15,7 +15,8 @@ router.get(
 		acceptedAuthModes: ['jwt', 'apiKey']
 	}),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'params'
 	}),
 	param('workspaceId').exists().trim(),
 	query('offset').exists().isInt(),
@@ -30,7 +31,8 @@ router.get(
 		acceptedAuthModes: ['jwt']
 	}),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'params'
 	}),
 	param('workspaceId').exists().trim(),
 	validateRequest,
@@ -43,7 +45,8 @@ router.post(
 		acceptedAuthModes: ['jwt', 'apiKey']
 	}),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'params'
 	}),
 	param('workspaceId').exists().trim(),
 	body('version').exists().isInt(),
@@ -57,7 +60,8 @@ router.get(
 		acceptedAuthModes: ['jwt', 'apiKey']
 	}),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'params'
 	}),
 	param('workspaceId').exists().trim(),
 	query('offset').exists().isInt(),

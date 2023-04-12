@@ -43,7 +43,7 @@ const apiTokenExpiry = [
 const createServiceTokenSchema = yup.object({
   name: yup.string().required().label('Service Token Name'),
   environment: yup.string().required().label('Environment'),
-  expiresIn: yup.string().required().label('Service Token Name'),
+  expiresIn: yup.string().required().label('Service Token Expiration'),
   permissions: yup.object().shape({
     read: yup.boolean().required(),
     write: yup.boolean().required()
@@ -202,7 +202,7 @@ export const ServiceTokenSection = ({
                     defaultValue={String(apiTokenExpiry?.[0]?.value)}
                     render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                       <FormControl
-                        label="Token Expiry"
+                        label="Expiration"
                         errorText={error?.message}
                         isError={Boolean(error)}
                       >
@@ -269,42 +269,6 @@ export const ServiceTokenSection = ({
                       );
                     }}
                   />
-                  {/* <Controller
-                    name="isReadEnabled"
-                    defaultValue={true}
-                    control={control}
-                    render={({ field: { onChange, ... field }, fieldState }) => {
-                      return (
-                        <Checkbox
-                          className="data-[state=checked]:bg-primary"
-                          isChecked={field.value}
-                          onCheckedChange={(state) => {
-                            onChange(state);
-                          }}
-                        >
-                          Read (default)
-                        </Checkbox>
-                      );
-                    }}
-                  />
-                  <Controller
-                    name="isWriteEnabled"
-                    defaultValue={false}
-                    control={control}
-                    render={({ field: { onChange, ... field }, fieldState }) => {
-                      return (
-                        <Checkbox
-                          className="data-[state=checked]:bg-primary"
-                          isChecked={field.value}
-                          onCheckedChange={(state) => {
-                            onChange(state);
-                          }}
-                        >
-                          Write (optional)
-                        </Checkbox>
-                      );
-                    }}
-                  /> */}
                   <div className="mt-8 flex items-center">
                     <Button
                       className="mr-4"

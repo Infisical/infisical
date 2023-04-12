@@ -9,6 +9,7 @@ import {
     INTEGRATION_GITHUB,
     INTEGRATION_GITLAB,
     INTEGRATION_RENDER,
+    INTEGRATION_RAILWAY,
     INTEGRATION_FLYIO,
     INTEGRATION_CIRCLECI,
     INTEGRATION_TRAVISCI,
@@ -25,6 +26,7 @@ export interface IIntegrationAuth {
         | 'github'
         | 'gitlab'
         | 'render'
+        | 'railway'
         | 'flyio'
         | 'azure-key-vault'
         | 'circleci'
@@ -65,6 +67,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
                 INTEGRATION_GITHUB,
                 INTEGRATION_GITLAB,
                 INTEGRATION_RENDER,
+                INTEGRATION_RAILWAY,
                 INTEGRATION_FLYIO,
                 INTEGRATION_CIRCLECI,
                 INTEGRATION_TRAVISCI,

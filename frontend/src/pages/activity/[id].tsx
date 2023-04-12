@@ -20,6 +20,12 @@ interface LogData {
   user: {
     email: string;
   };
+  serviceAccount?: {
+    string: string;
+  },
+  serviceTokenData?: {
+    name: string;
+  }
   actions: {
     _id: string;
     name: string;
@@ -41,6 +47,12 @@ interface LogDataPoint {
   createdAt: string;
   ipAddress: string;
   user: string;
+  serviceAccount: {
+    name: string;
+  };
+  serviceTokenData: {
+    name: string;
+  };
   payload: PayloadProps[];
 }
 
@@ -69,13 +81,16 @@ export default function Activity() {
         userId: '',
         actionNames: eventChosen
       });
+
       setLogsData(
         tempLogsData.map((log: LogData) => ({
           _id: log._id,
           channel: log.channel,
           createdAt: log.createdAt,
           ipAddress: log.ipAddress,
-          user: log.user.email,
+          user: log?.user?.email,
+          serviceAccount: log?.serviceAccount,
+          serviceTokenData: log?.serviceTokenData,
           payload: log.actions.map((action) => ({
             _id: action._id,
             name: action.name,
@@ -106,7 +121,9 @@ export default function Activity() {
             channel: log.channel,
             createdAt: log.createdAt,
             ipAddress: log.ipAddress,
-            user: log.user.email,
+            user: log?.user?.email,
+            serviceAccount: log?.serviceAccount,
+            serviceTokenData: log?.serviceTokenData,
             payload: log.actions.map((action) => ({
               _id: action._id,
               name: action.name,

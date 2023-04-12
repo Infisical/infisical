@@ -45,6 +45,7 @@ type Props = {
   handleDeleteIntegration: (args: { integration: Integration }) => void;
 };
 
+// TODO: refactor
 const IntegrationTile = ({
   integration,
   integrations,
@@ -55,7 +56,6 @@ const IntegrationTile = ({
   handleDeleteIntegration
 }: Props) => {
 
-  // set initial environment. This find will only execute when component is mounting
   const [integrationEnvironment, setIntegrationEnvironment] = useState<Props['environments'][0]>(
     environments.find(({ slug }) => slug === integration?.environment) || {
       name: '',
@@ -172,6 +172,21 @@ const IntegrationTile = ({
                     : null
                 }
                 isSelected={integrationTargetEnvironment}
+                onChange={setIntegrationTargetEnvironment}
+              />
+            </div>
+          );
+        case 'railway':
+          return (
+            <div>
+              <div className="mb-2 text-xs font-semibold text-gray-400">ENVIRONMENT</div>
+              <ListBox
+                data={
+                  !integration.isActive
+                    ? ['Production', 'Deploy previews', 'Branch deploys', 'Local development']
+                    : null
+                }
+                isSelected={integration.targetEnvironment}
                 onChange={setIntegrationTargetEnvironment}
               />
             </div>

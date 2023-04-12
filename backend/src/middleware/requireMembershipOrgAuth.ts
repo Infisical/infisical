@@ -3,7 +3,7 @@ import { UnauthorizedRequestError } from '../utils/errors';
 import {
     MembershipOrg
 } from '../models';
-import { validateMembership } from '../helpers/membershipOrg';
+import { validateMembershipOrg } from '../helpers/membershipOrg';
 
 
 type req = 'params' | 'body' | 'query';
@@ -17,9 +17,11 @@ type req = 'params' | 'body' | 'query';
  */
 const requireMembershipOrgAuth = ({
     acceptedRoles,
+    acceptedStatuses,
     location = 'params'
 }: {
     acceptedRoles: string[];
+    acceptedStatuses: string[];
     location?: req;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
@@ -29,13 +31,12 @@ const requireMembershipOrgAuth = ({
             
             if (!membershipOrg) throw new Error('Failed to find target organization membership');
             
-            const targetMembership = await validateMembership({
-                userId: req.user._id.toString(),
-                organizationId: membershipOrg.organization.toString(),
-                acceptedRoles
+            req.targetMembership = await validateMembershipOrg({
+                userId: req.user._id,
+                organizationId: membershipOrg.organization,
+                acceptedRoles,
+                acceptedStatuses
             });
-            
-            req.targetMembership = targetMembership;
             
             return next();
         } catch (err) {

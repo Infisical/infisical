@@ -3,6 +3,7 @@ import { Schema, model, Types } from 'mongoose';
 export interface IAPIKeyData {
     name: string;
     user: Types.ObjectId;
+    lastUsed: Date;
     expiresAt: Date;
     secretHash: string;
 }
@@ -17,6 +18,9 @@ const apiKeyDataSchema = new Schema<IAPIKeyData>(
             type: Schema.Types.ObjectId,
             ref: 'User',
             required: true
+        },
+        lastUsed: {
+            type: Date
         },
         expiresAt: {
             type: Date

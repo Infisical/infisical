@@ -50,6 +50,7 @@ export const createAPIKeyData = async (req: Request, res: Response) => {
         
         apiKeyData = await new APIKeyData({
             name,
+            lastUsed: new Date(),
             expiresAt,
             user: req.user._id,
             secretHash

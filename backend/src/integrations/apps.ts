@@ -12,6 +12,7 @@ import {
     INTEGRATION_GITHUB,
     INTEGRATION_GITLAB,
     INTEGRATION_RENDER,
+    INTEGRATION_RAILWAY,
     INTEGRATION_FLYIO,
     INTEGRATION_CIRCLECI,
     INTEGRATION_TRAVISCI,
@@ -21,6 +22,7 @@ import {
     INTEGRATION_VERCEL_API_URL,
     INTEGRATION_NETLIFY_API_URL,
     INTEGRATION_RENDER_API_URL,
+    INTEGRATION_RAILWAY_API_URL,
     INTEGRATION_FLYIO_API_URL,
     INTEGRATION_CIRCLECI_API_URL,
     INTEGRATION_TRAVISCI_API_URL,
@@ -92,6 +94,11 @@ const getApps = async ({
                 break;
             case INTEGRATION_RENDER:
                 apps = await getAppsRender({
+                    accessToken
+                });
+                break;
+            case INTEGRATION_RAILWAY:
+                apps = await getAppsRailway({
                     accessToken
                 });
                 break;
@@ -321,6 +328,128 @@ const getAppsRender = async ({ accessToken }: { accessToken: string }) => {
         Sentry.setUser(null);
         Sentry.captureException(err);
         throw new Error('Failed to get Render services');
+    }
+
+    return apps;
+};
+
+/**
+ * Return list of projects for Railway integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Railway API
+ * @returns {Object[]} apps - names and ids of Railway services
+ * @returns {String} apps.name - name of Railway project
+ * @returns {String} apps.appId - id of Railway project
+ *
+ */
+const getAppsRailway = async ({ accessToken }: { accessToken: string }) => {
+    let apps: any[] = [];
+    try {
+        const query = `
+      query GetProjects($userId: String, $teamId: String) {
+        projects(userId: $userId, teamId: $teamId) {
+          edges {
+            node {
+              id
+              name
+            }
+          }
+        }
+      }
+    `;
+
+        const variables = {};
+
+        const {
+            data: {
+                data: {
+                    projects: { edges }
+                }
+            }
+        } = await request.post(
+            INTEGRATION_RAILWAY_API_URL,
+            {
+                query,
+                variables
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                    'Accept-Encoding': 'application/json'
+                }
+            }
+        );
+
+        apps = edges.map((e: any) => ({
+            name: e.node.name,
+            appId: e.node.id
+        }));
+    } catch (err) {
+        Sentry.setUser(null);
+        Sentry.captureException(err);
+        throw new Error('Failed to get Railway services');
+    }
+
+    return apps;
+};
+
+/**
+ * Return list of projects for Railway integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Railway API
+ * @returns {Object[]} apps - names and ids of Railway services
+ * @returns {String} apps.name - name of Railway project
+ * @returns {String} apps.appId - id of Railway project
+ *
+ */
+const getAppsRailway = async ({ accessToken }: { accessToken: string }) => {
+    let apps: any[] = [];
+    try {
+        const query = `
+      query GetProjects($userId: String, $teamId: String) {
+        projects(userId: $userId, teamId: $teamId) {
+          edges {
+            node {
+              id
+              name
+            }
+          }
+        }
+      }
+    `;
+
+        const variables = {};
+
+        const {
+            data: {
+                data: {
+                    projects: { edges }
+                }
+            }
+        } = await request.post(
+            INTEGRATION_RAILWAY_API_URL,
+            {
+                query,
+                variables
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                    'Accept-Encoding': 'application/json'
+                }
+            }
+        );
+
+        apps = edges.map((e: any) => ({
+            name: e.node.name,
+            appId: e.node.id
+        }));
+    } catch (err) {
+        Sentry.setUser(null);
+        Sentry.captureException(err);
+        throw new Error('Failed to get Railway services');
     }
 
     return apps;

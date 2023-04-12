@@ -13,7 +13,7 @@ export const getJwtServiceSecret = () => infisical.get('JWT_SERVICE_SECRET')!;
 export const getJwtSignupLifetime = () => infisical.get('JWT_SIGNUP_LIFETIME')! || '15m';
 export const getJwtSignupSecret = () => infisical.get('JWT_SIGNUP_SECRET')!;
 export const getMongoURL = () => infisical.get('MONGO_URL')!;
-export const getNodeEnv = () => infisical.get('NODE_ENV')!;
+export const getNodeEnv = () => infisical.get('NODE_ENV')! || 'production';
 export const getVerboseErrorOutput = () => infisical.get('VERBOSE_ERROR_OUTPUT')! === 'true' && true;
 export const getLokiHost = () => infisical.get('LOKI_HOST')!;
 export const getClientIdAzure = () => infisical.get('CLIENT_ID_AZURE')!;

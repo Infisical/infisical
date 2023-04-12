@@ -7,13 +7,24 @@ export type Workspace = {
   environments: WorkspaceEnv[];
 };
 
-export type WorkspaceEnv = { name: string; slug: string };
+export type WorkspaceEnv = {
+  name: string;
+  slug: string;
+  isReadDenied: boolean;
+  isWriteDenied: boolean;
+};
+
 export type WorkspaceTag = { _id: string; name: string; slug: string };
 
 // mutation dto
 export type CreateWorkspaceDTO = {
   workspaceName: string;
   organizationId: string;
+};
+
+export type GetWsEnvironmentDTO = {
+  workspaceId: string;
+  onSuccess?: (data: WorkspaceEnv[]) => void;
 };
 
 export type RenameWorkspaceDTO = { workspaceID: string; newWorkspaceName: string };

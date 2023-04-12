@@ -6,6 +6,7 @@ import workspace from './workspace';
 import secret from './secret'; // deprecated
 import secrets from './secrets';
 import serviceTokenData from './serviceTokenData';
+import serviceAccounts from './serviceAccounts';
 import apiKeyData from './apiKeyData';
 import environment from "./environment"
 import tags from "./tags"
@@ -19,6 +20,7 @@ export {
     secret,
     secrets,
     serviceTokenData,
+    serviceAccounts,
     apiKeyData,
     environment,
     tags

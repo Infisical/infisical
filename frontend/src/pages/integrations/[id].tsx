@@ -211,6 +211,9 @@ export default function Integrations() {
         case 'supabase':
           link = `${window.location.origin}/integrations/supabase/authorize`;
           break;
+        case 'railway':
+          link = `${window.location.origin}/integrations/railway/authorize`;
+          break;
         default:
           break;
       }
@@ -265,6 +268,9 @@ export default function Integrations() {
           break;
         case 'supabase':
           link = `${window.location.origin}/integrations/supabase/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'railway':
+          link = `${window.location.origin}/integrations/railway/create?integrationAuthId=${integrationAuth._id}`;
           break;
         default:
           break;
