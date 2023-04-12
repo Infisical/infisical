@@ -550,7 +550,10 @@ export const getSecrets = async (req: Request, res: Response) => {
     const workspaceId = req.query.workspaceId as string;
     const environment = req.query.environment as string;
 
-    // tags logic
+    // secrets to return 
+    let secrets: ISecret[] = [];
+
+    // query tags table to get all tags ids for the tag names for the given workspace
     let tagIds = [];
     const tagNamesList = typeof tagSlugs === 'string' && tagSlugs !== '' ? tagSlugs.split(',') : [];
     if (tagNamesList != undefined && tagNamesList.length != 0) {
@@ -561,71 +564,70 @@ export const getSecrets = async (req: Request, res: Response) => {
         });
     }
 
-    let secrets: ISecret[] = [];
-
     if (req.user) {
         // case: client authorization is via JWT
-
-        let hasWriteOnlyAccess
-        if (!req.serviceTokenData) {
-            hasWriteOnlyAccess = await userHasWriteOnlyAbility(req.user._id, new Types.ObjectId(workspaceId), environment)
-            const hasNoAccess = await userHasNoAbility(req.user._id, new Types.ObjectId(workspaceId), environment)
-            if (hasNoAccess) {
-                throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
-            }
+        const hasWriteOnlyAccess = await userHasWriteOnlyAbility(req.user._id, new Types.ObjectId(workspaceId), environment)
+        const hasNoAccess = await userHasNoAbility(req.user._id, new Types.ObjectId(workspaceId), environment)
+        if (hasNoAccess) {
+            throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
         }
 
-        let secretQuery: any;
-        if (tagNamesList != undefined && tagNamesList.length != 0) {
-            const workspaceFromDB = await Tag.find({ workspace: workspaceId })
+        const secretQuery: any = {
+            workspace: workspaceId,
+            environment,
+            $or: [
+                { user: req.user._id }, // personal secrets for this user
+                { user: { $exists: false } } // shared secrets from workspace
+            ]
+        }
 
-            const tagIds = _.map(tagNamesList, (tagName) => {
-                const tag = _.find(workspaceFromDB, { slug: tagName });
-                return tag ? tag.id : null;
-            });
-
-            secretQuery = {
-                workspace: workspaceId,
-                environment,
-                $or: [
-                    { user: req.user._id },
-                    { user: { $exists: false } }
-                ],
-                tags: { $in: tagIds },
-                type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
-            }
-        } else {
-            secretQuery = {
-                workspace: workspaceId,
-                environment,
-                $or: [
-                    { user: req.user._id },
-                    { user: { $exists: false } }
-                ],
-                type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
-            }
+        if (tagIds.length > 0) {
+            secretQuery.tags = { $in: tagIds };
         }
 
         if (hasWriteOnlyAccess) {
-            // (i.e. you don't get values to decrypt since you can only write)
+            // only return the secret keys and not the values since user does not have right to see values
             secrets = await Secret.find(secretQuery).select("secretKeyCiphertext secretKeyIV secretKeyTag").populate("tags")
         } else {
             secrets = await Secret.find(secretQuery).populate("tags")
         }
     }
 
-    if (req.serviceAccount || req.serviceTokenData) {
-        // case: client authorization is either via service account or service token
+    // case: client authorization is via service token
+    if (req.serviceTokenData) {
+        const userId = req.serviceTokenData.user._id
 
-        secrets = await Secret.find({
-            workspace: new Types.ObjectId(workspaceId),
+        const secretQuery: any = {
+            workspace: workspaceId,
             environment,
-            user: {
-                $exists: false
-            },
-            ...(tagIds.length > 0 ? { tags: { $in: tagIds } } : {}),
-            type: SECRET_SHARED
-        }).populate("tags");
+            $or: [
+                { user: userId }, // personal secrets for this user
+                { user: { $exists: false } } // shared secrets from workspace
+            ]
+        }
+
+        if (tagIds.length > 0) {
+            secretQuery.tags = { $in: tagIds };
+        }
+
+        // TODO check if service token has write only permission 
+
+        secrets = await Secret.find(secretQuery).populate("tags");
+    }
+
+    // case: client authorization is via service account
+    if (req.serviceAccount) {
+        const secretQuery: any = {
+            workspace: workspaceId,
+            environment,
+            user: { $exists: false } // shared secrets only from workspace
+        }
+
+        if (tagIds.length > 0) {
+            secretQuery.tags = { $in: tagIds };
+        }
+
+        secrets = await Secret.find(secretQuery).populate("tags");
     }
 
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
