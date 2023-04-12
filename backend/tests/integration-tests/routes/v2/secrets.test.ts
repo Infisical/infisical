@@ -3,7 +3,9 @@ import main from '../../../../src/index'
 import { testWorkspaceId } from '../../../../src/utils/addDevelopmentUser';
 import { deleteAllSecrets, getJWTFromTestUser, getServiceTokenFromTestUser } from '../../../helper/helper';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const batchSecretRequest = require('../../../data/batch-secrets.json');
+const batchSecretRequestWithNoOverride = require('../../../data/batch-secrets-no-override.json');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const batchSecretRequestWithOverrides = require('../../../data/batch-secrets-with-overrides.json');
 
 let server: any;
 
@@ -16,7 +18,7 @@ afterAll(async () => {
 });
 
 describe("GET /api/v2/secrets", () => {
-  describe("Get secrets via JTW with no personal secrets", () => {
+  describe("Get secrets via JTW", () => {
     test("should create secrets and read secrets via jwt", async () => {
       try {
         // get login details 
@@ -29,7 +31,7 @@ describe("GET /api/v2/secrets", () => {
           .send({
             workspaceId: testWorkspaceId,
             environment: "dev",
-            requests: batchSecretRequest
+            requests: batchSecretRequestWithNoOverride
           })
 
         expect(createSecretsResponse.statusCode).toBe(200)
@@ -105,94 +107,275 @@ describe("GET /api/v2/secrets", () => {
         await deleteAllSecrets()
       }
     })
+
+    test("Get secrets via jwt when personal overrides exist", async () => {
+      try {
+        // get login details 
+        const loginResponse = await getJWTFromTestUser()
+
+        // create creates 
+        const createSecretsResponse = await request(server)
+          .post("/api/v2/secrets/batch")
+          .set('Authorization', `Bearer ${loginResponse.token}`)
+          .send({
+            workspaceId: testWorkspaceId,
+            environment: "dev",
+            requests: batchSecretRequestWithOverrides
+          })
+
+        expect(createSecretsResponse.statusCode).toBe(200)
+
+        const getSecrets = await request(server)
+          .get("/api/v2/secrets")
+          .set('Authorization', `Bearer ${loginResponse.token}`)
+          .query({
+            workspaceId: testWorkspaceId,
+            environment: "dev"
+          })
+
+        expect(getSecrets.statusCode).toBe(200)
+        expect(getSecrets.body).toHaveProperty("secrets")
+        expect(getSecrets.body.secrets).toHaveLength(2)
+        expect(getSecrets.body.secrets).toBeInstanceOf(Array);
+
+        getSecrets.body.secrets.forEach((secret: any) => {
+          expect(secret).toHaveProperty('_id');
+          expect(secret._id).toBeTruthy();
+
+          expect(secret).toHaveProperty('version');
+          expect(secret.version).toBeTruthy();
+
+          expect(secret).toHaveProperty('workspace');
+          expect(secret.workspace).toBeTruthy();
+
+          expect(secret).toHaveProperty('type');
+          expect(secret.type).toBeTruthy();
+
+          expect(secret).toHaveProperty('tags');
+          expect(secret.tags).toHaveLength(0);
+
+          expect(secret).toHaveProperty('environment');
+          expect(secret.environment).toEqual("dev");
+
+          expect(secret).toHaveProperty('secretKeyCiphertext');
+          expect(secret.secretKeyCiphertext).toBeTruthy();
+
+          expect(secret).toHaveProperty('secretKeyIV');
+          expect(secret.secretKeyIV).toBeTruthy();
+
+          expect(secret).toHaveProperty('secretKeyTag');
+          expect(secret.secretKeyTag).toBeTruthy();
+
+          expect(secret).toHaveProperty('secretValueCiphertext');
+          expect(secret.secretValueCiphertext).toBeTruthy();
+
+          expect(secret).toHaveProperty('secretValueIV');
+          expect(secret.secretValueIV).toBeTruthy();
+
+          expect(secret).toHaveProperty('secretValueTag');
+          expect(secret.secretValueTag).toBeTruthy();
+
+          expect(secret).toHaveProperty('secretCommentCiphertext');
+          expect(secret.secretCommentCiphertext).toBeFalsy();
+
+          expect(secret).toHaveProperty('secretCommentIV');
+          expect(secret.secretCommentIV).toBeTruthy();
+
+          expect(secret).toHaveProperty('secretCommentTag');
+          expect(secret.secretCommentTag).toBeTruthy();
+
+          expect(secret).toHaveProperty('createdAt');
+          expect(secret.createdAt).toBeTruthy();
+
+          expect(secret).toHaveProperty('updatedAt');
+          expect(secret.updatedAt).toBeTruthy();
+        });
+      } finally {
+        // clean up
+        await deleteAllSecrets()
+      }
+    })
   })
 
-  describe("fetch secrets via service token with no personal secrets", () => {
-    test("should create secrets and read secrets via service token", async () => {
-      // get login details 
-      const loginResponse = await getJWTFromTestUser()
+  describe("fetch secrets via service token", () => {
+    test("Get secrets via jwt when personal overrides exist", async () => {
+      try {
+        // get login details 
+        const loginResponse = await getJWTFromTestUser()
 
-      // create secrets 
-      const createSecretsResponse = await request(server)
-        .post("/api/v2/secrets/batch")
-        .set('Authorization', `Bearer ${loginResponse.token}`)
-        .send({
-          workspaceId: testWorkspaceId,
-          environment: "dev",
-          requests: batchSecretRequest
-        })
+        // create creates 
+        const createSecretsResponse = await request(server)
+          .post("/api/v2/secrets/batch")
+          .set('Authorization', `Bearer ${loginResponse.token}`)
+          .send({
+            workspaceId: testWorkspaceId,
+            environment: "dev",
+            requests: batchSecretRequestWithOverrides
+          })
 
-      expect(createSecretsResponse.statusCode).toBe(200)
+        expect(createSecretsResponse.statusCode).toBe(200)
 
+        // now use the service token to fetch secrets
+        const serviceToken = await getServiceTokenFromTestUser()
 
-      // now use the service token to fetch secrets
-      const serviceToken = await getServiceTokenFromTestUser()
+        const getSecrets = await request(server)
+          .get("/api/v2/secrets")
+          .set('Authorization', `Bearer ${serviceToken}`)
+          .query({
+            workspaceId: testWorkspaceId,
+            environment: "dev"
+          })
 
-      const getSecrets = await request(server)
-        .get("/api/v2/secrets")
-        .set('Authorization', `Bearer ${serviceToken}`)
-        .query({
-          workspaceId: testWorkspaceId,
-          environment: "dev"
-        })
+        expect(getSecrets.statusCode).toBe(200)
+        expect(getSecrets.body).toHaveProperty("secrets")
+        expect(getSecrets.body.secrets).toHaveLength(2)
+        expect(getSecrets.body.secrets).toBeInstanceOf(Array);
 
-      expect(getSecrets.statusCode).toBe(200)
-      expect(getSecrets.body).toHaveProperty("secrets")
-      expect(getSecrets.body.secrets).toHaveLength(3)
-      expect(getSecrets.body.secrets).toBeInstanceOf(Array);
+        getSecrets.body.secrets.forEach((secret: any) => {
+          expect(secret).toHaveProperty('_id');
+          expect(secret._id).toBeTruthy();
 
-      getSecrets.body.secrets.forEach((secret: any) => {
-        expect(secret).toHaveProperty('_id');
-        expect(secret._id).toBeTruthy();
+          expect(secret).toHaveProperty('version');
+          expect(secret.version).toBeTruthy();
 
-        expect(secret).toHaveProperty('version');
-        expect(secret.version).toBeTruthy();
+          expect(secret).toHaveProperty('workspace');
+          expect(secret.workspace).toBeTruthy();
 
-        expect(secret).toHaveProperty('workspace');
-        expect(secret.workspace).toBeTruthy();
+          expect(secret).toHaveProperty('type');
+          expect(secret.type).toBeTruthy();
 
-        expect(secret).toHaveProperty('type');
-        expect(secret.type).toBeTruthy();
+          expect(secret).toHaveProperty('tags');
+          expect(secret.tags).toHaveLength(0);
 
-        expect(secret).toHaveProperty('tags');
-        expect(secret.tags).toHaveLength(0);
+          expect(secret).toHaveProperty('environment');
+          expect(secret.environment).toEqual("dev");
 
-        expect(secret).toHaveProperty('environment');
-        expect(secret.environment).toEqual("dev");
+          expect(secret).toHaveProperty('secretKeyCiphertext');
+          expect(secret.secretKeyCiphertext).toBeTruthy();
 
-        expect(secret).toHaveProperty('secretKeyCiphertext');
-        expect(secret.secretKeyCiphertext).toBeTruthy();
+          expect(secret).toHaveProperty('secretKeyIV');
+          expect(secret.secretKeyIV).toBeTruthy();
 
-        expect(secret).toHaveProperty('secretKeyIV');
-        expect(secret.secretKeyIV).toBeTruthy();
+          expect(secret).toHaveProperty('secretKeyTag');
+          expect(secret.secretKeyTag).toBeTruthy();
 
-        expect(secret).toHaveProperty('secretKeyTag');
-        expect(secret.secretKeyTag).toBeTruthy();
+          expect(secret).toHaveProperty('secretValueCiphertext');
+          expect(secret.secretValueCiphertext).toBeTruthy();
 
-        expect(secret).toHaveProperty('secretValueCiphertext');
-        expect(secret.secretValueCiphertext).toBeTruthy();
+          expect(secret).toHaveProperty('secretValueIV');
+          expect(secret.secretValueIV).toBeTruthy();
 
-        expect(secret).toHaveProperty('secretValueIV');
-        expect(secret.secretValueIV).toBeTruthy();
+          expect(secret).toHaveProperty('secretValueTag');
+          expect(secret.secretValueTag).toBeTruthy();
 
-        expect(secret).toHaveProperty('secretValueTag');
-        expect(secret.secretValueTag).toBeTruthy();
+          expect(secret).toHaveProperty('secretCommentCiphertext');
+          expect(secret.secretCommentCiphertext).toBeFalsy();
 
-        expect(secret).toHaveProperty('secretCommentCiphertext');
-        expect(secret.secretCommentCiphertext).toBeFalsy();
+          expect(secret).toHaveProperty('secretCommentIV');
+          expect(secret.secretCommentIV).toBeTruthy();
 
-        expect(secret).toHaveProperty('secretCommentIV');
-        expect(secret.secretCommentIV).toBeTruthy();
+          expect(secret).toHaveProperty('secretCommentTag');
+          expect(secret.secretCommentTag).toBeTruthy();
 
-        expect(secret).toHaveProperty('secretCommentTag');
-        expect(secret.secretCommentTag).toBeTruthy();
+          expect(secret).toHaveProperty('createdAt');
+          expect(secret.createdAt).toBeTruthy();
 
-        expect(secret).toHaveProperty('createdAt');
-        expect(secret.createdAt).toBeTruthy();
-
-        expect(secret).toHaveProperty('updatedAt');
-        expect(secret.updatedAt).toBeTruthy();
-      });
+          expect(secret).toHaveProperty('updatedAt');
+          expect(secret.updatedAt).toBeTruthy();
+        });
+      } finally {
+        // clean up
+        await deleteAllSecrets()
+      }
     })
+
+    // test("should create secrets and read secrets via service token when no overrides", async () => {
+    //   // get login details 
+    //   const loginResponse = await getJWTFromTestUser()
+
+    //   // create secrets 
+    //   const createSecretsResponse = await request(server)
+    //     .post("/api/v2/secrets/batch")
+    //     .set('Authorization', `Bearer ${loginResponse.token}`)
+    //     .send({
+    //       workspaceId: testWorkspaceId,
+    //       environment: "dev",
+    //       requests: batchSecretRequestWithNoOverride
+    //     })
+
+    //   expect(createSecretsResponse.statusCode).toBe(200)
+
+
+    //   // now use the service token to fetch secrets
+    //   const serviceToken = await getServiceTokenFromTestUser()
+
+    //   const getSecrets = await request(server)
+    //     .get("/api/v2/secrets")
+    //     .set('Authorization', `Bearer ${serviceToken}`)
+    //     .query({
+    //       workspaceId: testWorkspaceId,
+    //       environment: "dev"
+    //     })
+
+    //   expect(getSecrets.statusCode).toBe(200)
+    //   expect(getSecrets.body).toHaveProperty("secrets")
+    //   expect(getSecrets.body.secrets).toHaveLength(3)
+    //   expect(getSecrets.body.secrets).toBeInstanceOf(Array);
+
+    //   getSecrets.body.secrets.forEach((secret: any) => {
+    //     expect(secret).toHaveProperty('_id');
+    //     expect(secret._id).toBeTruthy();
+
+    //     expect(secret).toHaveProperty('version');
+    //     expect(secret.version).toBeTruthy();
+
+    //     expect(secret).toHaveProperty('workspace');
+    //     expect(secret.workspace).toBeTruthy();
+
+    //     expect(secret).toHaveProperty('type');
+    //     expect(secret.type).toBeTruthy();
+
+    //     expect(secret).toHaveProperty('tags');
+    //     expect(secret.tags).toHaveLength(0);
+
+    //     expect(secret).toHaveProperty('environment');
+    //     expect(secret.environment).toEqual("dev");
+
+    //     expect(secret).toHaveProperty('secretKeyCiphertext');
+    //     expect(secret.secretKeyCiphertext).toBeTruthy();
+
+    //     expect(secret).toHaveProperty('secretKeyIV');
+    //     expect(secret.secretKeyIV).toBeTruthy();
+
+    //     expect(secret).toHaveProperty('secretKeyTag');
+    //     expect(secret.secretKeyTag).toBeTruthy();
+
+    //     expect(secret).toHaveProperty('secretValueCiphertext');
+    //     expect(secret.secretValueCiphertext).toBeTruthy();
+
+    //     expect(secret).toHaveProperty('secretValueIV');
+    //     expect(secret.secretValueIV).toBeTruthy();
+
+    //     expect(secret).toHaveProperty('secretValueTag');
+    //     expect(secret.secretValueTag).toBeTruthy();
+
+    //     expect(secret).toHaveProperty('secretCommentCiphertext');
+    //     expect(secret.secretCommentCiphertext).toBeFalsy();
+
+    //     expect(secret).toHaveProperty('secretCommentIV');
+    //     expect(secret.secretCommentIV).toBeTruthy();
+
+    //     expect(secret).toHaveProperty('secretCommentTag');
+    //     expect(secret.secretCommentTag).toBeTruthy();
+
+    //     expect(secret).toHaveProperty('createdAt');
+    //     expect(secret.createdAt).toBeTruthy();
+
+    //     expect(secret).toHaveProperty('updatedAt');
+    //     expect(secret.updatedAt).toBeTruthy();
+    //   });
+    // })
+
+
   })
 })

@@ -1,5 +1,6 @@
 // Helper functions for integration tests
 
+import axiosInstance from "../../src/config/request";
 import { Secret } from "../../src/models";
 import { testUserEmail, testUserPassword } from "../../src/utils/addDevelopmentUser";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -38,7 +39,7 @@ export const getJWTFromTestUser = (): Promise<TokenData> => {
       }
 
 
-      const loginOneRes = await axios.post('http://localhost:4000/api/v1/auth/login1', reqBody);
+      const loginOneRes = await axiosInstance.post('http://localhost:4000/api/v1/auth/login1', reqBody);
       const serverPublicKey = loginOneRes.data.serverPublicKey;
       const salt = loginOneRes.data.salt;
 
@@ -53,7 +54,7 @@ export const getJWTFromTestUser = (): Promise<TokenData> => {
         clientProof
       }
 
-      const response2 = await axios.post('http://localhost:4000/api/v1/auth/login2', reqBody2);
+      const response2 = await axiosInstance.post('http://localhost:4000/api/v1/auth/login2', reqBody2);
 
       resolve(response2.data)
     })
@@ -68,7 +69,7 @@ export const getServiceTokenFromTestUser = async () => {
     key: randomBytes,
   });
 
-  const newServiceToken = await axios.post('http://localhost:4000/api/v2/service-token/', {
+  const newServiceToken = await axiosInstance.post('http://localhost:4000/api/v2/service-token/', {
     'name': "test service token",
     'workspaceId': testWorkspaceId,
     'environment': "dev",
