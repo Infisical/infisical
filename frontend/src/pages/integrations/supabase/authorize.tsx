@@ -23,7 +23,7 @@ export default function SupabaseCreateIntegrationPage() {
 
       const integrationAuth = await saveIntegrationAccessToken({
         workspaceId: localStorage.getItem('projectData.id'),
-        integration: 'travisci',
+        integration: 'supabase',
         accessToken: apiKey,
         accessId: null
       });
