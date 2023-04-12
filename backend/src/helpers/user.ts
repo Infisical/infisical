@@ -220,6 +220,42 @@ const validateUserClientForWorkspace = async ({
 }
 
 /**
+ * Validate that user (client) can access secret [secret]
+ * with required permissions [requiredPermissions]
+ * @param {Object} obj
+ * @param {User} obj.user - user client
+ * @param {Secret[]} obj.secrets - secrets to validate against
+ * @param {String[]} requiredPermissions - required permissions as part of the endpoint
+ */
+const validateUserClientForSecret = async ({
+	user,
+	secret,
+	acceptedRoles,
+	requiredPermissions
+}: {
+	user: IUser;
+	secret: ISecret;
+	acceptedRoles?: Array<'admin' | 'member'>;
+	requiredPermissions?: string[];
+}) => {
+	const membership = await validateMembership({
+		userId: user._id,
+		workspaceId: secret.workspace,
+		acceptedRoles
+	});
+	
+	if (requiredPermissions?.includes(PERMISSION_WRITE_SECRETS)) {
+		const isDisallowed = _.some(membership.deniedPermissions, { environmentSlug: secret.environment, ability: PERMISSION_WRITE_SECRETS });
+
+		if (isDisallowed) {
+			throw UnauthorizedRequestError({
+				message: 'You do not have the required permissions to perform this action' 
+			});
+		}
+	}
+}
+
+/**
  * Validate that user (client) can access secrets [secrets]
  * with required permissions [requiredPermissions]
  * @param {Object} obj
@@ -236,7 +272,8 @@ const validateUserClientForWorkspace = async ({
 	secrets: ISecret[];
 	requiredPermissions?: string[];
 }) => {
-	// TODO: refactor
+	
+	// TODO: add acceptedRoles?
 
 	const userMemberships = await Membership.find({ user: user._id })
 	const userMembershipById = _.keyBy(userMemberships, 'workspace');
@@ -326,5 +363,6 @@ export {
 	validateUserClientForWorkspace,
 	validateUserClientForSecrets,
 	validateUserClientForServiceAccount,
-	validateUserClientForOrganization
+	validateUserClientForOrganization,
+	validateUserClientForSecret
 };

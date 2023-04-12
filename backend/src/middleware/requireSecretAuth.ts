@@ -1,12 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
+import { Types } from 'mongoose';
 import { UnauthorizedRequestError, SecretNotFoundError } from '../utils/errors';
 import { Secret } from '../models';
 import {
     validateMembership
 } from '../helpers/membership';
+import {
+    validateClientForSecret
+} from '../helpers/secrets';
 
 // note: used for old /v1/secret and /v2/secret routes.
-// newer /v2/secrets routes use [requireSecretsAuth] middleware
+// newer /v2/secrets routes use [requireSecretsAuth] middleware with the exception
+// of some /ee endpoints
 
 /**
  * Validate if user on request has proper membership to modify secret.
@@ -15,25 +20,20 @@ import {
  * @param {String[]} obj.location - location of [workspaceId] on request (e.g. params, body) for parsing
  */
 const requireSecretAuth = ({
-    acceptedRoles
+    acceptedRoles,
+    requiredPermissions
 }: {
     acceptedRoles: Array<'admin' | 'member'>;
+    requiredPermissions: string[];
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
         const { secretId } = req.params;
         
-        const secret = await Secret.findById(secretId);
-        
-        if (!secret) {
-            return next(SecretNotFoundError({
-                message: 'Failed to find secret'
-            }));
-        }
-        
-        await validateMembership({
-            userId: req.user._id,
-            workspaceId: secret.workspace,
-            acceptedRoles
+        const secret = await validateClientForSecret({
+            authData: req.authData,
+            secretId: new Types.ObjectId(secretId),
+            acceptedRoles,
+            requiredPermissions
         });
         
         req._secret = secret;

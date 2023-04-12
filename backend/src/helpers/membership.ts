@@ -131,7 +131,7 @@ const validateMembership = async ({
 	
 	if (acceptedRoles) {
 		if (!acceptedRoles.includes(membership.role)) {
-			throw BadRequestError({ message: 'Failed to validate workspace membership role' });
+			throw BadRequestError({ message: 'Failed authorization for membership role' });
 		}
 	}
 	
