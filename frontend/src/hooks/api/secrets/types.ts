@@ -90,7 +90,7 @@ export type BatchSecretDTO = {
 
 export type GetProjectSecretsDTO = {
   workspaceId: string;
-  env: string;
+  env: string | string[];
   decryptFileKey: UserWsKeyPair;
   isPaused?: boolean;
   onSuccess?: (data: DecryptedSecret[]) => void;

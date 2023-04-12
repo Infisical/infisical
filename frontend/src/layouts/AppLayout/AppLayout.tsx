@@ -271,11 +271,12 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           {name}
                         </SelectItem>
                       ))}
-                      <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" />
+                      {/* <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" /> */}
                       <div className="w-full">
                         <Button
-                          className="w-full py-2 text-bunker-200 bg-mineshaft-500 hover:bg-primary/90 hover:text-black"
-                          color="mineshaft"
+                          className="w-full py-2 text-bunker-200 bg-mineshaft-700"
+                          colorSchema="primary"
+                          variant="outline_bg"
                           size="sm"
                           onClick={() => handlePopUpOpen('addNewWs')}
                           leftIcon={<FontAwesomeIcon icon={faPlus} />}

@@ -19,18 +19,66 @@ import {
 
 export const secretKeys = {
   // this is also used in secretSnapshot part
-  getProjectSecret: (workspaceId: string, env: string) => [{ workspaceId, env }, 'secrets'],
+  getProjectSecret: (workspaceId: string, env: string | string[]) => [{ workspaceId, env }, 'secrets'],
   getSecretVersion: (secretId: string) => [{ secretId }, 'secret-versions']
 };
 
-const fetchProjectEncryptedSecrets = async (workspaceId: string, env: string) => {
-  const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
-    params: {
-      environment: env,
-      workspaceId
+const fetchProjectEncryptedSecrets = async (workspaceId: string, env: string | string[]) => {
+  if (typeof env === 'string') {
+    const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
+      params: {
+        environment: env,
+        workspaceId
+      }
+    });
+    return data.secrets;
+  }  
+  
+  if (typeof env === 'object') {
+    let allEnvData: any = [];
+    // env.map(async (envPoint: string) => {
+    //   const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
+    //     params: {
+    //       environment: envPoint,
+    //       workspaceId
+    //     }
+    //   });
+    //   console.log(111, envPoint, data.secrets)
+    //   allEnvData = allEnvData.concat(data.secrets);
+    //   // await allEnvData.push(...data.secrets)
+    //   console.log(222, allEnvData)
+    // })
+    // eslint-disable-next-line no-restricted-syntax
+    for (const envPoint of env) {
+      // eslint-disable-next-line no-await-in-loop
+      const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
+        params: {
+          environment: envPoint,
+          workspaceId
+        }
+      });
+      allEnvData = allEnvData.concat(data.secrets);
     }
-  });
-  return data.secrets;
+    // const { data: data1 } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
+    //   params: {
+    //     environment: env[0],
+    //     workspaceId
+    //   }
+    // });
+    // const { data: data2 } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
+    //   params: {
+    //     environment: env[1],
+    //     workspaceId
+    //   }
+    // });
+    // allEnvData = data1.secrets.concat(data2.secrets);
+    
+    return allEnvData;
+  // eslint-disable-next-line no-else-return
+  } else {
+    return null;
+  }
+
 };
 
 export const useGetProjectSecrets = ({
@@ -45,6 +93,7 @@ export const useGetProjectSecrets = ({
     queryKey: secretKeys.getProjectSecret(workspaceId, env),
     queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env),
     select: (data) => {
+      console.log(878787878, data)
       const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
       const latestKey = decryptFileKey;
       const key = decryptAssymmetric({
@@ -93,12 +142,12 @@ export const useGetProjectSecrets = ({
         };
 
         if (encSecret.type === 'personal') {
-          personalSecrets[decryptedSecret.key] = { id: encSecret._id, value: secretValue };
+          personalSecrets[`${decryptedSecret.key}-${decryptedSecret.env}`] = { id: encSecret._id, value: secretValue };
         } else {
-          if (!duplicateSecretKey?.[decryptedSecret.key]) {
+          if (!duplicateSecretKey?.[`${decryptedSecret.key}-${decryptedSecret.env}`]) {
             sharedSecrets.push(decryptedSecret);
           }
-          duplicateSecretKey[decryptedSecret.key] = true;
+          duplicateSecretKey[`${decryptedSecret.key}-${decryptedSecret.env}`] = true;
         }
       });
       sharedSecrets.forEach((val) => {
