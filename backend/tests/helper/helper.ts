@@ -90,3 +90,7 @@ export const getServiceTokenFromTestUser = async () => {
 export const deleteAllSecrets = async () => {
   await Secret.deleteMany()
 }
+
+export const getAllSecrets = async () => {
+  return await Secret.find()
+}
