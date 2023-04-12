@@ -395,67 +395,6 @@ const getAppsRailway = async ({ accessToken }: { accessToken: string }) => {
 };
 
 /**
- * Return list of projects for Railway integration
- * @param {Object} obj
- * @param {String} obj.accessToken - access token for Railway API
- * @returns {Object[]} apps - names and ids of Railway services
- * @returns {String} apps.name - name of Railway project
- * @returns {String} apps.appId - id of Railway project
- *
- */
-const getAppsRailway = async ({ accessToken }: { accessToken: string }) => {
-    let apps: any[] = [];
-    try {
-        const query = `
-      query GetProjects($userId: String, $teamId: String) {
-        projects(userId: $userId, teamId: $teamId) {
-          edges {
-            node {
-              id
-              name
-            }
-          }
-        }
-      }
-    `;
-
-        const variables = {};
-
-        const {
-            data: {
-                data: {
-                    projects: { edges }
-                }
-            }
-        } = await request.post(
-            INTEGRATION_RAILWAY_API_URL,
-            {
-                query,
-                variables
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
-                    'Accept-Encoding': 'application/json'
-                }
-            }
-        );
-
-        apps = edges.map((e: any) => ({
-            name: e.node.name,
-            appId: e.node.id
-        }));
-    } catch (err) {
-        Sentry.setUser(null);
-        Sentry.captureException(err);
-        throw new Error('Failed to get Railway services');
-    }
-
-    return apps;
-};
-
-/**
  * Return list of apps for Fly.io integration
  * @param {Object} obj
  * @param {String} obj.accessToken - access token for Fly.io API
@@ -673,6 +612,13 @@ const getAppsGitlab = async ({
     return apps;
 };
 
+/**
+ * Return list of projects for Supabase integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Supabase API
+ * @returns {Object[]} apps - names of Supabase apps
+ * @returns {String} apps.name - name of Supabase app
+ */
 const getAppsSupabase = async ({ accessToken }: { accessToken: string }) => {
     let apps: any;
     try {
