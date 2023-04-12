@@ -17,7 +17,7 @@ afterAll(async () => {
 
 describe("GET /api/v2/secrets", () => {
   describe("Get secrets via JTW with no personal secrets", () => {
-    test("should respond with a 200 status code", async () => {
+    test("should create secrets and read secrets via jwt", async () => {
       try {
         // get login details 
         const loginResponse = await getJWTFromTestUser()
@@ -108,11 +108,11 @@ describe("GET /api/v2/secrets", () => {
   })
 
   describe("fetch secrets via service token with no personal secrets", () => {
-    test("should respond with a 200 status code", async () => {
+    test("should create secrets and read secrets via service token", async () => {
       // get login details 
       const loginResponse = await getJWTFromTestUser()
 
-      // create creates 
+      // create secrets 
       const createSecretsResponse = await request(server)
         .post("/api/v2/secrets/batch")
         .set('Authorization', `Bearer ${loginResponse.token}`)
