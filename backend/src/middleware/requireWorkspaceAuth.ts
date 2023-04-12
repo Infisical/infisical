@@ -25,7 +25,6 @@ const requireWorkspaceAuth = ({
 	requiredPermissions?: string[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
-		
 		const workspaceId = req[locationWorkspaceId]?.workspaceId;
 		const environment = locationEnvironment ? req[locationEnvironment]?.environment : undefined;
 		

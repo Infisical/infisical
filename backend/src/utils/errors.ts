@@ -73,6 +73,16 @@ export const ValidationError = (error?: Partial<RequestErrorContext>) => new Req
     stack: error?.stack
 });
 
+//* ----->[INTEGRATION AUTH ERRORS]<-----
+export const IntegrationAuthNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? 'integration_auth_not_found_error',
+    message: error?.message ?? 'The requested integration authorization was not found',
+    context: error?.context,
+    stack: error?.stack
+});
+
 //* ----->[INTEGRATION ERRORS]<-----
 export const IntegrationNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.ERROR,

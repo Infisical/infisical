@@ -1,33 +1,27 @@
 import { Request, Response, NextFunction } from 'express';
+import { Types } from 'mongoose';
 import { Bot } from '../models';
 import { validateMembership } from '../helpers/membership';
+import { validateClientForBot } from '../helpers/bot';
 import { AccountNotFoundError } from '../utils/errors';
 
 type req = 'params' | 'body' | 'query';
 
-// TODO: transform
-
 const requireBotAuth = ({
     acceptedRoles,
-    location = 'params'
+    locationBotId = 'params'
 }: {
     acceptedRoles: Array<'admin' | 'member'>;
-    location?: req;
+    locationBotId?: req;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
-        const bot = await Bot.findById(req[location].botId);
+        const { botId } = req[locationBotId];
         
-        if (!bot) {
-            return next(AccountNotFoundError({message: 'Failed to locate Bot account'}))
-        }
-        
-        await validateMembership({
-            userId: req.user._id,
-            workspaceId: bot.workspace,
+        req.bot = await validateClientForBot({
+            authData: req.authData,
+            botId: new Types.ObjectId(botId),
             acceptedRoles
         });
-        
-        req.bot = bot;
         
         next();
     }
