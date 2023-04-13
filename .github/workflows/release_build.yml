@@ -59,4 +59,7 @@ jobs:
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SLACK_USERNAME: infisical-cli
-          SLACK_ICON: https://github.com/Infisical/infisical/blob/main/frontend/public/images/logotransparent.png
+          SLACK_ICON: ${{ secrets.SLACK_ICON }}
+          SLACK_TITLE: 'New Infisical CLI Release! :rocket:'
+          SLACK_MESSAGE: Our command line tool has a new version!
+          SLACK_FOOTER: infisical 
