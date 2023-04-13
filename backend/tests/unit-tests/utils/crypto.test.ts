@@ -4,7 +4,7 @@ import {
   decryptSymmetric,
   encryptAsymmetric,
   encryptSymmetric
-} from '../../src/utils/crypto';
+} from '../../../src/utils/crypto';
 
 describe('Crypto', () => {
   describe('encryptAsymmetric', () => {
