@@ -60,5 +60,5 @@ export const getHttpsEnabled = () => {
     return true
   }
 
-  return Boolean(infisical.get('HTTPS_ENABLED'))
+  return infisical.get('HTTPS_ENABLED') === 'true' && true
 }
