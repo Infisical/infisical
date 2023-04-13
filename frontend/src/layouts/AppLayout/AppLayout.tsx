@@ -135,14 +135,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
           [, intendedWorkspaceId] = pathSegments;
         } else if (pathSegments.length >= 3 && pathSegments[0] === 'settings') {
           [, , intendedWorkspaceId] = pathSegments;
+        } else if (pathSegments.length >= 2 && pathSegments[0] === 'integrations' && pathSegments[2] === 'oauth2') {
+          intendedWorkspaceId = 'callback';
         } else {
-          const lastPathSegments = router.asPath.split('/').pop();
-          if (lastPathSegments !== undefined) {
-            [intendedWorkspaceId] = lastPathSegments.split('?');
-          }
-
-          // const lastPathSegment = router.asPath.split('/').pop().split('?');
-          // [intendedWorkspaceId] = lastPathSegment;
+          const lastPathSegment = router.asPath.split('/').pop()?.split('?');
+          if(lastPathSegment) [intendedWorkspaceId] = lastPathSegment;
         }
         
         if (!intendedWorkspaceId) return;

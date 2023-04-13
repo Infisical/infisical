@@ -59,6 +59,9 @@ export default function GCPSecretManagerCreateIntegrationPage() {
         appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: null,
+        targetEnvironmentId: null,
+        targetService: null,
+        targetServiceId: null,
         owner,
         path: null,
         region: null
