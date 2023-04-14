@@ -30,15 +30,15 @@ const requireMembershipAuth = ({
         res: Response, 
         next: NextFunction
     ) => {
-            const { membershipId } = req[locationMembershipId];
-            
-            req.targetMembership = await validateClientForMembership({
-                authData: req.authData,
-                membershipId: new Types.ObjectId(membershipId),
-                acceptedRoles
-            });
-            
-            return next();
+        const { membershipId } = req[locationMembershipId];
+        
+        req.targetMembership = await validateClientForMembership({
+            authData: req.authData,
+            membershipId: new Types.ObjectId(membershipId),
+            acceptedRoles
+        });
+        
+        return next();
     }
 }
 

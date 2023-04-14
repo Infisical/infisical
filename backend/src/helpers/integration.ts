@@ -72,7 +72,7 @@ interface Update {
     if (!integration) throw IntegrationNotFoundError();
 
     const integrationAuth = await IntegrationAuth
-        .findById(integrationId)
+        .findById(integration.integrationAuth)
         .select(
 			'+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt'
         );

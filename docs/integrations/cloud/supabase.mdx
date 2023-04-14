@@ -1,20 +1,44 @@
 ---
 title: "Supabase"
-description: "How to automatically sync secrets from Infisical into your Supabase project."
+description: "How to sync secrets from Infisical to Supabase"
 ---
+
+<Note>
+    The Supabase integration is useful if your Supabase project uses sensitive-information such as [environment variables in edge functions](https://supabase.com/docs/guides/functions/secrets).
+    
+    Synced envars can be accessed in edge functions using Deno's built-in handler: `Deno.env.get(MY_SECRET_NAME)`.
+</Note>
 
 Prerequisites:
 
+- Have an account and project set up at [Supabase](https://supabase.com/)
 - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
-
-Note somewhere that envars will be accessible in edge functions etc.
 
 ## Navigate to your project's integrations tab
 
 ![integrations](../../images/integrations.png)
 
-## Enter your Supabase API
+## Enter your Supabase Access Token
 
+Obtain a Supabase Access Token in your Supabase [Account > Access Tokens](https://app.supabase.com/account/tokens).
+![integrations supabase dashboard](../../images/integrations-supabase-dashboard.png)
+![integrations supabase token](../../images/integrations-supabase-token.png)
 
+Press on the Supabase tile and input your Supabase Access Token to grant Infisical access to your Supabase account.
+
+![integrations supabase authorization](../../images/integrations-supabase-authorization.png)
+
+<Info>
+  If this is your project's first cloud integration, then you'll have to grant
+  Infisical access to your project's environment variables. Although this step
+  breaks E2EE, it's necessary for Infisical to sync the environment variables to
+  the cloud platform.
+</Info>
 
 ## Start integration
+
+Select which Infisical environment secrets you want to sync to which Supabase project. Lastly, press create integration to start syncing secrets to Supabase.
+
+![integrations supabase create](../../images/integrations-supabase-create.png)
+
+![integrations supabase](../../images/integrations-supabase.png)

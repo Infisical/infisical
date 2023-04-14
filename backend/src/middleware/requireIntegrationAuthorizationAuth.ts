@@ -27,11 +27,12 @@ const requireIntegrationAuthorizationAuth = ({
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
 		const { integrationAuthId } = req[location];
-		
+
 		const { integrationAuth, accessToken } = await validateClientForIntegrationAuth({
 			authData: req.authData,
-			integrationId: new Types.ObjectId(integrationAuthId),
-			acceptedRoles
+			integrationAuthId: new Types.ObjectId(integrationAuthId),
+			acceptedRoles,
+			attachAccessToken
 		});
 		
 		if (integrationAuth) {

@@ -34,19 +34,21 @@ import { validateServiceAccountClientForWorkspace } from '../helpers/serviceAcco
  */
  const validateClientForIntegrationAuth = async ({
     authData,
-    integrationId,
-    acceptedRoles
+    integrationAuthId,
+    acceptedRoles,
+    attachAccessToken
 }: {
     authData: {
 		authMode: string;
 		authPayload: IUser | IServiceAccount | IServiceTokenData;
 	};
-    integrationId: Types.ObjectId;
+    integrationAuthId: Types.ObjectId;
     acceptedRoles: Array<'admin' | 'member'>;
+    attachAccessToken?: boolean;
 }) => {
 
     const integrationAuth = await IntegrationAuth
-        .findById(integrationId)
+        .findById(integrationAuthId)
         .populate<{ workspace: IWorkspace }>('workspace')
         .select(
 			'+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt'
@@ -54,9 +56,12 @@ import { validateServiceAccountClientForWorkspace } from '../helpers/serviceAcco
     
     if (!integrationAuth) throw IntegrationAuthNotFoundError();
     
-    const accessToken = (await IntegrationService.getIntegrationAuthAccess({
-        integrationAuthId: integrationAuth._id
-    })).accessToken;
+    let accessToken;
+    if (attachAccessToken) {
+        accessToken = (await IntegrationService.getIntegrationAuthAccess({
+            integrationAuthId: integrationAuth._id
+        })).accessToken;
+    }
     
     if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
         await validateUserClientForWorkspace({

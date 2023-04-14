@@ -18,10 +18,8 @@ const requireIntegrationAuth = ({
 	acceptedRoles: Array<'admin' | 'member'>;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
-		// integration authorization middleware
-
 		const { integrationId } = req.params;
-	
+
 		const { integration, accessToken } = await validateClientForIntegration({
 			authData: req.authData,
 			integrationId: new Types.ObjectId(integrationId),
