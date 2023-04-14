@@ -101,15 +101,22 @@ export default function GCPSecretManagerCreateIntegrationPage() {
           className='mt-4'
         >
           <Select
-            value={targetApp}
+            value={targetAppId}
             onValueChange={(val) => setTargetApp(val)}
             className='w-full border border-mineshaft-500'
+            isDisabled={integrationAuthApps.length === 0}
           >
-            {integrationAuthApps.map((integrationAuthApp) => integrationAuthApp.appId && (
-              <SelectItem value={integrationAuthApp.appId} key={`gcp-secret-manager-environment-${integrationAuthApp.appId}`}>
-                {integrationAuthApp.name}
+            {integrationAuthApps.length > 0 ? (
+              integrationAuthApps.map((integrationAuthApp) => integrationAuthApp.appId && (
+                <SelectItem value={integrationAuthApp.appId} key={`gcp-secret-manager-environment-${integrationAuthApp.appId}`}>
+                  {integrationAuthApp.name}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem value="none" key="target-app-none">
+                No projects found
               </SelectItem>
-            ))}
+            )}
           </Select>
         </FormControl>
         <Button
