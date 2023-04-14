@@ -10,7 +10,9 @@ import {
   ADMIN, 
   MEMBER,
   AUTH_MODE_JWT,
-  AUTH_MODE_SERVICE_TOKEN
+  AUTH_MODE_SERVICE_TOKEN,
+  PERMISSION_READ_SECRETS,
+  PERMISSION_WRITE_SECRETS
 } from '../../variables';
 import { CreateSecretRequestBody, ModifySecretRequestBody } from '../../types/secret';
 import { secretController } from '../../controllers/v2';
@@ -75,7 +77,8 @@ router.get(
     acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_SERVICE_TOKEN]
   }),
   requireSecretAuth({
-    acceptedRoles: [ADMIN, MEMBER]
+    acceptedRoles: [ADMIN, MEMBER],
+    requiredPermissions: [PERMISSION_READ_SECRETS]
   }),
   validateRequest,
   secretController.getSecret
@@ -103,7 +106,8 @@ router.delete(
     acceptedAuthModes: [AUTH_MODE_JWT]
   }),
   requireSecretAuth({
-    acceptedRoles: [ADMIN, MEMBER]
+    acceptedRoles: [ADMIN, MEMBER],
+    requiredPermissions: [PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS]
   }),
   param('secretId').isMongoId(),
   validateRequest,
