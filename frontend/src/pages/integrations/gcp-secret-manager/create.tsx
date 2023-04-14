@@ -40,8 +40,8 @@ export default function GCPSecretManagerCreateIntegrationPage() {
   useEffect(() => {
     // TODO: handle case where apps can be empty
     if (integrationAuthApps) {
-      setTargetApp(integrationAuthApps[0].name);
-      setTargetAppId(integrationAuthApps[0].appId ?? '');
+      setTargetApp(integrationAuthApps[0]?.name || 'none');
+      setTargetAppId(integrationAuthApps[0]?.appId ?? '');
       setOwner(integrationAuthApps[0]?.owner ?? null);
     }
   }, [integrationAuthApps]);
