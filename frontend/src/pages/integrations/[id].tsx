@@ -210,6 +210,9 @@ export default function Integrations() {
         case 'travisci':
           link = `${window.location.origin}/integrations/travisci/authorize`;
           break;
+        case 'supabase':
+          link = `${window.location.origin}/integrations/supabase/authorize`;
+          break;
         case 'railway':
           link = `${window.location.origin}/integrations/railway/authorize`;
           break;
@@ -267,6 +270,9 @@ export default function Integrations() {
           break;
         case 'travisci':
           link = `${window.location.origin}/integrations/travisci/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'supabase':
+          link = `${window.location.origin}/integrations/supabase/create?integrationAuthId=${integrationAuth._id}`;
           break;
         case 'railway':
           link = `${window.location.origin}/integrations/railway/create?integrationAuthId=${integrationAuth._id}`;

@@ -1,5 +1,6 @@
 import express from 'express';
 const router = express.Router();
+import { Types } from 'mongoose';
 import {
     requireAuth,
     requireWorkspaceAuth,
@@ -47,7 +48,7 @@ router.post(
                 if (secretIds.length > 0) {
                     req.secrets = await validateClientForSecrets({
                         authData: req.authData,
-                        secretIds,
+                        secretIds: secretIds.map((secretId: string) => new Types.ObjectId(secretId)),
                         requiredPermissions: []
                     });
                 }

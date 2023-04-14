@@ -16,7 +16,8 @@ const integrationSlugNameMapping: Mapping = {
   'flyio': 'Fly.io',
   'circleci': 'CircleCI',
   'travisci': 'TravisCI',
-  'gcp-secret-manager': 'GCP Secret Manager'
+  'gcp-secret-manager': 'GCP Secret Manager',
+  'supabase': 'Supabase'
 }
 
 const envMapping: Mapping = {

@@ -10,15 +10,24 @@ import {
     ISecret
 } from '../models';
 import {
+    validateMembership
+} from '../helpers/membership';
+import {
+    validateUserClientForSecret,
     validateUserClientForSecrets
 } from '../helpers/user';
 import {
-    validateServiceTokenDataClientForSecrets
+    validateServiceTokenDataClientForSecrets, validateServiceTokenDataClientForWorkspace
 } from '../helpers/serviceTokenData';
 import {
-    validateServiceAccountClientForSecrets
+    validateServiceAccountClientForSecrets,
+    validateServiceAccountClientForWorkspace
 } from '../helpers/serviceAccount';
-import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
+import { 
+    BadRequestError, 
+    UnauthorizedRequestError,
+    SecretNotFoundError
+} from '../utils/errors';
 import {
     AUTH_MODE_JWT,
     AUTH_MODE_SERVICE_ACCOUNT,
@@ -27,12 +36,91 @@ import {
 } from '../variables';
 
 /**
- * Validate accepted clients for secrets with ids [secretIds]
+ * Validate authenticated clients for secrets with id [secretId] based
+ * on any known permissions.
  * @param {Object} obj
- * @param {User} obj.user - user client
- * @param {ServiceAccount} obj.serviceAccount - service account client
- * @param {ServiceTokenData} obj.service - service token client
- * @param {String[]} obj.secretIds - ids of secrets to validate against
+ * @param {Object} obj.authData - authenticated client details
+ * @param {Types.ObjectId} obj.secretId - id of secret to validate against
+ * @param {Array<'admin' | 'member'>} obj.acceptedRoles - accepted workspace roles
+ * @param {String[]} obj.requiredPermissions - required permissions as part of the endpoint
+ */
+const validateClientForSecret = async ({
+    authData,
+    secretId,
+    acceptedRoles,
+    requiredPermissions
+}: {
+    authData: {
+		authMode: string;
+		authPayload: IUser | IServiceAccount | IServiceTokenData;
+	},
+    secretId: Types.ObjectId;
+    acceptedRoles: Array<'admin' | 'member'>;
+    requiredPermissions: string[];
+}) => {
+    const secret = await Secret.findById(secretId);
+
+    if (!secret) throw SecretNotFoundError({
+        message: 'Failed to find secret'
+    });
+
+    if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
+        await validateUserClientForSecret({
+            user: authData.authPayload,
+            secret,
+            acceptedRoles,
+            requiredPermissions
+        });
+
+        return secret;
+    }
+
+    if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
+        await validateServiceAccountClientForWorkspace({
+            serviceAccount: authData.authPayload,
+            workspaceId: secret.workspace,
+            environment: secret.environment,
+            requiredPermissions
+        });
+        
+        return secret;
+    }
+
+    if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
+        await validateServiceTokenDataClientForWorkspace({
+            serviceTokenData: authData.authPayload,
+            workspaceId: secret.workspace,
+            environment: secret.environment
+        });
+    
+        return secret;
+    }
+    
+    if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
+        await validateUserClientForSecret({
+            user: authData.authPayload,
+            secret,
+            acceptedRoles,
+            requiredPermissions
+        });
+
+        return secret;
+    }
+    
+    throw UnauthorizedRequestError({
+        message: 'Failed client authorization for secret'
+    });
+}
+
+/**
+ * Validate authenticated clients for secrets with ids [secretIds] based
+ * on any known permissions.
+ * @param {Object} obj
+ * @param {Object} obj.authData - authenticated client details
+ * @param {Types.ObjectId[]} obj.secretIds - id of workspace to validate against
+ * @param {String} obj.environment - (optional) environment in workspace to validate against
+ * @param {Array<'admin' | 'member'>} obj.acceptedRoles - accepted workspace roles
+ * @param {String[]} obj.requiredPermissions - required permissions as part of the endpoint
  */
 const validateClientForSecrets = async ({
     authData,
@@ -43,7 +131,7 @@ const validateClientForSecrets = async ({
 		authMode: string;
 		authPayload: IUser | IServiceAccount | IServiceTokenData;
 	},
-    secretIds: string[];
+    secretIds: Types.ObjectId[];
     requiredPermissions: string[];
 }) => {
 
@@ -51,7 +139,7 @@ const validateClientForSecrets = async ({
     
     secrets = await Secret.find({
         _id: {
-            $in: secretIds.map((secretId: string) => new Types.ObjectId(secretId))
+            $in: secretIds
         }
     });
 
@@ -105,5 +193,6 @@ const validateClientForSecrets = async ({
 }
 
 export {
+    validateClientForSecret,
     validateClientForSecrets
 }

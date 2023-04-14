@@ -8,7 +8,9 @@ import {
 } from '../config';
 import {
   IUser,
+  User,
   IServiceAccount,
+  ServiceAccount,
   IServiceTokenData
 } from '../models';
 import {
@@ -56,7 +58,7 @@ class Telemetry {
   }: {
     user?: IUser;
     serviceAccount?: IServiceAccount;
-    serviceTokenData?: IServiceTokenData;
+    serviceTokenData?: any; // TODO: fix (it's ServiceTokenData with user populated)
   }) => {
     let distinctId = '';
     
@@ -65,11 +67,13 @@ class Telemetry {
     }
     
     if (serviceAccount) {
-      distinctId = `sa.${serviceAccount._id}`;
+      distinctId = `sa.${serviceAccount._id.toString()}`;
     }
-    
-    if (serviceTokenData) {
-      distinctId = `st.${serviceTokenData._id}`;
+
+    if (serviceTokenData?.user && serviceTokenData?.user instanceof User) {
+      distinctId = serviceTokenData.user.email;
+    } else if (serviceTokenData?.serviceAccount && serviceTokenData?.serviceAccount instanceof ServiceAccount) {
+      distinctId = `sa.${serviceTokenData.serviceAccount._id.toString()}`;
     }
     
     if (distinctId === '') {

@@ -17,6 +17,7 @@ import {
   INTEGRATION_CIRCLECI,
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_TRAVISCI,
+  INTEGRATION_SUPABASE,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_GITLAB_API_URL,
   INTEGRATION_VERCEL_API_URL,
@@ -27,6 +28,7 @@ import {
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_GCP_API_URL,
   INTEGRATION_TRAVISCI_API_URL,
+  INTEGRATION_SUPABASE_API_URL
 } from "../variables";
 
 interface App {
@@ -122,6 +124,11 @@ const getApps = async ({
         apps = await getAppsTravisCI({
           accessToken,
         })
+        break;
+      case INTEGRATION_SUPABASE:
+        apps = await getAppsSupabase({
+            accessToken
+        });
         break;
     }
   } catch (err) {
@@ -647,6 +654,41 @@ const getAppsGCPSecretManager = async ({ accessToken }: { accessToken: string })
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error("Failed to get GCP secret manager projects");
+  }
+  
+  return apps;
+};
+
+/**
+ * Return list of projects for Supabase integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Supabase API
+ * @returns {Object[]} apps - names of Supabase apps
+ * @returns {String} apps.name - name of Supabase app
+ */
+const getAppsSupabase = async ({ accessToken }: { accessToken: string }) => {
+  let apps: any;
+  try {
+      const { data } = await request.get(
+        `${INTEGRATION_SUPABASE_API_URL}/v1/projects`,
+        {
+          headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Accept-Encoding': 'application/json'
+          }
+        }
+      );
+
+      apps = data.map((a: any) => {
+        return {
+            name: a.name,
+            appId: a.id
+        };
+    });
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed to get Supabase projects');
   }
   
   return apps;

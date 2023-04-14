@@ -1,4 +1,4 @@
-import { Schema, model, Types } from "mongoose";
+import { Schema, model, Types, Document } from "mongoose";
 import {
   INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_AWS_PARAMETER_STORE,
@@ -14,12 +14,13 @@ import {
   INTEGRATION_CIRCLECI,
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_TRAVISCI,
+  INTEGRATION_SUPABASE,
 } from "../variables";
 
-export interface IIntegrationAuth {
+export interface IIntegrationAuth extends Document {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'gitlab' | 'render' | 'railway' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'aws-parameter-store' | 'aws-secret-manager' | 'gcp-secret-manager';
+  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'gitlab' | 'render' | 'railway' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'supabase' | 'aws-parameter-store' | 'aws-secret-manager' | 'gcp-secret-manager';
   teamId: string;
   accountId: string;
   refreshCiphertext?: string;
@@ -58,6 +59,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_CIRCLECI,
         INTEGRATION_GCP_SECRET_MANAGER,
         INTEGRATION_TRAVISCI,
+        INTEGRATION_SUPABASE
       ],
       required: true,
     },

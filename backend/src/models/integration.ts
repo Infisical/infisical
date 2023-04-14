@@ -13,7 +13,8 @@ import {
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_GCP_SECRET_MANAGER,
-  INTEGRATION_TRAVISCI
+  INTEGRATION_TRAVISCI,
+  INTEGRATION_SUPABASE
 } from "../variables";
 
 export interface IIntegration {
@@ -44,7 +45,8 @@ export interface IIntegration {
     | 'flyio'
     | 'circleci'
     | 'gcp-secret-manager'
-    | 'travisci';
+    | 'travisci'
+    | 'supabase';
   integrationAuth: Types.ObjectId;
 }
 
@@ -125,6 +127,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_CIRCLECI,
         INTEGRATION_GCP_SECRET_MANAGER,
         INTEGRATION_TRAVISCI,
+        INTEGRATION_SUPABASE
       ],
       required: true,
     },

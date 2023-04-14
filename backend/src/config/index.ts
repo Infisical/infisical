@@ -51,3 +51,16 @@ export const getStripeWebhookSecret = () => infisical.get('STRIPE_WEBHOOK_SECRET
 export const getTelemetryEnabled = () => infisical.get('TELEMETRY_ENABLED')! !== 'false' && true;
 export const getLoopsApiKey = () => infisical.get('LOOPS_API_KEY')!;
 export const getSmtpConfigured = () => infisical.get('SMTP_HOST') == '' || infisical.get('SMTP_HOST') == undefined ? false : true
+export const getHttpsEnabled = () => {
+  if (getNodeEnv() != "production") {
+    // no https for anything other than prod
+    return false
+  }
+
+  if (infisical.get('HTTPS_ENABLED') == undefined || infisical.get('HTTPS_ENABLED') == "") {
+    // default when no value present
+    return true
+  }
+
+  return infisical.get('HTTPS_ENABLED') === 'true' && true
+}
