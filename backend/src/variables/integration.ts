@@ -204,7 +204,7 @@ const getIntegrationOptions = () => {
         },
         {
             name: 'Google Cloud Platform',
-            slug: 'gcp',
+            slug: 'gcp-secret-manager',
             image: 'Google Cloud Platform.png',
             isAvailable: true,
             type: 'oauth',
