@@ -203,7 +203,7 @@ const getIntegrationOptions = () => {
             docsLink: ''
         },
         {
-            name: 'Google Cloud Platform',
+            name: 'GCP Secret Manager',
             slug: 'gcp-secret-manager',
             image: 'Google Cloud Platform.png',
             isAvailable: true,
