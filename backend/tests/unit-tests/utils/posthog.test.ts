@@ -1,5 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import { getChannelFromUserAgent } from '../../src/utils/posthog';
+import { getChannelFromUserAgent } from '../../../src/utils/posthog';
 
 describe('posthog getChannelFromUserAgent', () => {
   test("should return 'web' when userAgent includes 'mozilla'", () => {

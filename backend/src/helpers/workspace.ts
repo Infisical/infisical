@@ -19,7 +19,7 @@ import { validateUserClientForWorkspace } from '../helpers/user';
 import { validateServiceAccountClientForWorkspace } from '../helpers/serviceAccount';
 import { validateServiceTokenDataClientForWorkspace } from '../helpers/serviceTokenData';
 import { validateMembership } from '../helpers/membership';
-import { UnauthorizedRequestError } from '../utils/errors';
+import { UnauthorizedRequestError, WorkspaceNotFoundError } from '../utils/errors';
 import {
 	AUTH_MODE_JWT,
 	AUTH_MODE_SERVICE_ACCOUNT,
@@ -34,28 +34,38 @@ import {
  * @param {Object} obj.authData - authenticated client details
  * @param {Types.ObjectId} obj.workspaceId - id of workspace to validate against
  * @param {String} obj.environment - (optional) environment in workspace to validate against
+ * @param {Array<'admin' | 'member'>} obj.acceptedRoles - accepted workspace roles
  * @param {String[]} obj.requiredPermissions - required permissions as part of the endpoint
  */
 const validateClientForWorkspace = async ({
 	authData,
 	workspaceId,
 	environment,
+	acceptedRoles,
 	requiredPermissions
 }: {
 	authData: {
 		authMode: string;
 		authPayload: IUser | IServiceAccount | IServiceTokenData;
-	},
+	};
 	workspaceId: Types.ObjectId;
 	environment?: string;
+	acceptedRoles: Array<'admin' | 'member'>;
 	requiredPermissions?: string[];
 }) => {
+	
+	const workspace = await Workspace.findById(workspaceId);
+
+	if (!workspace) throw WorkspaceNotFoundError({
+		message: 'Failed to find workspace'
+	});
 
 	if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
 		const membership = await validateUserClientForWorkspace({
 			user: authData.authPayload,
 			workspaceId,
 			environment,
+			acceptedRoles,
 			requiredPermissions
 		});
 		
@@ -89,6 +99,7 @@ const validateClientForWorkspace = async ({
 			user: authData.authPayload,
 			workspaceId,
 			environment,
+			acceptedRoles,
 			requiredPermissions
 		});
 		
@@ -96,7 +107,7 @@ const validateClientForWorkspace = async ({
 	}
 	
 	throw UnauthorizedRequestError({
-		message: 'Failed client authorization for workspace resource'
+		message: 'Failed client authorization for workspace'
 	});
 }
 

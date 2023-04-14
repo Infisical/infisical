@@ -40,7 +40,8 @@ import {
     useDeleteServiceAccountProjectLevelPermission,
     useGetServiceAccountById,
     useGetServiceAccountProjectLevelPermissions,
-    useGetUserWorkspaces} from '@app/hooks/api';
+    useGetUserWorkspaces
+} from '@app/hooks/api';
 import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
 
 const createProjectLevelPermissionSchema = yup.object({

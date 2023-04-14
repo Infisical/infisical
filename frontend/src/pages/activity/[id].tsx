@@ -47,6 +47,12 @@ interface LogDataPoint {
   createdAt: string;
   ipAddress: string;
   user: string;
+  serviceAccount: {
+    name: string;
+  };
+  serviceTokenData: {
+    name: string;
+  };
   payload: PayloadProps[];
 }
 

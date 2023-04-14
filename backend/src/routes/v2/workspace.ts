@@ -106,7 +106,8 @@ router.patch( // TODO - rewire dashboard to this route
 		locationWorkspaceId: 'params'
 	}),
 	requireMembershipAuth({
-		acceptedRoles: [ADMIN]
+		acceptedRoles: [ADMIN],
+		locationMembershipId: 'params'
 	}),
 	workspaceController.updateWorkspaceMembership
 );
@@ -124,7 +125,8 @@ router.delete( // TODO - rewire dashboard to this route
 		locationWorkspaceId: 'params'
 	}),
 	requireMembershipAuth({
-		acceptedRoles: [ADMIN]
+		acceptedRoles: [ADMIN],
+		locationMembershipId: 'params'
 	}),
 	workspaceController.deleteWorkspaceMembership
 );

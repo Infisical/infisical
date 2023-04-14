@@ -25,28 +25,22 @@ In most cases, environment variables belong to specific environments: developmen
 
 ![project environment](../../images/project-environment.png)
 
-### Personal/Shared scoping
+### Personal overrides
 
-Every environment variable is classified as either personal or shared.
+Every environment variable value can be overriden with a custom value.
 
-- A personal environment variable is one created by a user of a project to be available for that user only.
-- A shared environment variable is one created by a user of a project to be available for other users of the project.
+- An overriden value can only be read and accesssed by the user that overrode the original shared value. 
+- A (default) shared value can be read and accesssed by other users in a project.
 
-You can toggle the classification of an environment variable by pressing on its settings:
+You can turn overrides on/off by toggling the override/branch icon:
 
-![project variable toggle open](../../images/project-envar-toggle-open.png)
+![project variable toggle open](../../images/project-envar-override.png)
 
 ### Search
 
 You can search for any environment variable by its key.
 
 ![project search](../../images/project-search.png)
-
-### Sort
-
-You can sort environment variables alphabetically by their keys.
-
-![project sort](../../images/project-sort.png)
 
 ### Hide/Un-hide
 

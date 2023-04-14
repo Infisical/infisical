@@ -15,7 +15,8 @@ import {
 	AUTH_MODE_JWT,
 	AUTH_MODE_SERVICE_ACCOUNT,
 	AUTH_MODE_SERVICE_TOKEN,
-	AUTH_MODE_API_KEY
+	AUTH_MODE_API_KEY,
+	OWNER
 } from '../variables';
 import { 
 	getStripeSecretKey,
@@ -24,8 +25,15 @@ import {
 	getStripeProductStarter
 } from '../config';
 import {
-	UnauthorizedRequestError
+	UnauthorizedRequestError,
+	OrganizationNotFoundError
 } from '../utils/errors';
+import {
+	validateUserClientForOrganization
+} from '../helpers/user';
+import {
+	validateServiceAccountClientForOrganization
+} from '../helpers/serviceAccount';
 
 /**
  * Validate accepted clients for organization with id [organizationId]
@@ -35,34 +43,66 @@ import {
  */
 const validateClientForOrganization = async ({
 	authData,
-	organizationId
+	organizationId,
+	acceptedRoles,
+	acceptedStatuses
 }: {
 	authData: {
 		authMode: string;
 		authPayload: IUser | IServiceAccount | IServiceTokenData;
 	},
-	organizationId: string;
+	organizationId: Types.ObjectId;
+	acceptedRoles: Array<'owner' | 'admin' | 'member'>;
+	acceptedStatuses: Array<'invited' | 'accepted'>;
 }) => {
-	// TODO
+	
+	const organization = await Organization.findById(organizationId);
+	
+	if (!organization) {
+		throw OrganizationNotFoundError({
+			message: 'Failed to find organization'
+		});
+	}
 	
 	if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
-		// TODO
+		const membershipOrg = await validateUserClientForOrganization({
+			user: authData.authPayload,
+			organization,
+			acceptedRoles,
+			acceptedStatuses
+		});
+		
+		return ({ organization, membershipOrg });
 	}
 
 	if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
-		// TODO
+		await validateServiceAccountClientForOrganization({
+			serviceAccount: authData.authPayload,
+			organization
+		});
+		
+		return ({ organization });
 	}
 
 	if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
-		// TODO
+		throw UnauthorizedRequestError({
+			message: 'Failed service token authorization for organization'
+		});
 	}
 
 	if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
-		// TODO
+		const membershipOrg = await validateUserClientForOrganization({
+			user: authData.authPayload,
+			organization,
+			acceptedRoles,
+			acceptedStatuses
+		});
+		
+		return ({ organization, membershipOrg });
 	}
 	
 	throw UnauthorizedRequestError({
-		message: 'Failed client authorization for organization resource'
+		message: 'Failed client authorization for organization'
 	});
 }
 
@@ -228,6 +268,7 @@ const updateSubscriptionOrgQuantity = async ({
 };
 
 export {
+	validateClientForOrganization,
 	createOrganization,
 	initSubscriptionOrg,
 	updateSubscriptionOrgQuantity

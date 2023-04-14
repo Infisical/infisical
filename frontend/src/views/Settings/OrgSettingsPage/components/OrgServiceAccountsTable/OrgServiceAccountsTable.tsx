@@ -65,8 +65,10 @@ export const OrgServiceAccountsTable = () => {
     const orgId = currentOrg?._id || '';
     const [step, setStep] = useState(0);
     const [isAccessKeyCopied, setIsAccessKeyCopied] = useToggle(false);
+    const [isPublicKeyCopied, setIsPublicKeyCopied] = useToggle(false);
     const [isPrivateKeyCopied, setIsPrivateKeyCopied] = useToggle(false);
     const [accessKey, setAccessKey] = useState('');
+    const [publicKey, setPublicKey] = useState('');
     const [privateKey, setPrivateKey] = useState('');
     const [searchServiceAccountFilter, setSearchServiceAccountFilter] = useState('');
     const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
@@ -85,12 +87,16 @@ export const OrgServiceAccountsTable = () => {
             timer = setTimeout(() => setIsAccessKeyCopied.off(), 2000);
         }
 
+        if (isPublicKeyCopied) {
+            timer = setTimeout(() => setIsPublicKeyCopied.off(), 2000);
+        }
+
         if (isPrivateKeyCopied) {
             timer = setTimeout(() => setIsPrivateKeyCopied.off(), 2000);
         }
 
         return () => clearTimeout(timer);
-    }, [isAccessKeyCopied, isPrivateKeyCopied]);
+    }, [isAccessKeyCopied, isPublicKeyCopied, isPrivateKeyCopied]);
 
     const {
         control,
@@ -103,6 +109,7 @@ export const OrgServiceAccountsTable = () => {
         if (!currentOrg?._id) return;
 
         const keyPair = generateKeyPair();
+        setPublicKey(keyPair.publicKey);
         setPrivateKey(keyPair.privateKey);
         
         const serviceAccountDetails = await createServiceAccount.mutateAsync({
@@ -216,6 +223,24 @@ export const OrgServiceAccountsTable = () => {
                                 </span>
                             </IconButton>
                         </div>
+                        <p className="mt-4">Public Key</p>
+                        <div className="flex items-center justify-end rounded-md p-2 text-base text-gray-400 bg-white/[0.07]">
+                            <p className="mr-4 break-all">{publicKey}</p>
+                            <IconButton
+                                ariaLabel="copy icon"
+                                colorSchema="secondary"
+                                className="group relative"
+                                onClick={() => {
+                                    navigator.clipboard.writeText(publicKey);
+                                    setIsPublicKeyCopied.on();
+                                }}
+                            >
+                                <FontAwesomeIcon icon={isPublicKeyCopied ? faCheck : faCopy} />
+                                <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">
+                                    Copy
+                                </span>
+                            </IconButton>
+                        </div>
                         <p className="mt-4">Private Key</p>
                         <div className="flex items-center justify-end rounded-md p-2 text-base text-gray-400 bg-white/[0.07]">
                             <p className="mr-4 break-all">{privateKey}</p>
@@ -234,6 +259,7 @@ export const OrgServiceAccountsTable = () => {
                                 </span>
                             </IconButton>
                         </div>
+                        
                     </>
                 );
             default:

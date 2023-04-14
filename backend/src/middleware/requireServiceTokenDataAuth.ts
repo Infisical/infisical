@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
+import { Types } from 'mongoose';
 import { ServiceToken, ServiceTokenData } from '../models';
+import { validateClientForServiceTokenData } from '../helpers/serviceTokenData';
 import { validateMembership } from '../helpers/membership';
 import { AccountNotFoundError, UnauthorizedRequestError } from '../utils/errors';
 
@@ -9,30 +11,17 @@ const requireServiceTokenDataAuth = ({
     acceptedRoles,
     location = 'params'
 }: {
-    acceptedRoles: string[];
+    acceptedRoles: Array<'admin' | 'member'>;
     location?: req;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
         const { serviceTokenDataId } = req[location];
-
-        const serviceTokenData = await ServiceTokenData
-            .findById(req[location].serviceTokenDataId)
-            .select('+encryptedKey +iv +tag').populate('user');
-
-        if (!serviceTokenData) {
-            return next(AccountNotFoundError({ message: 'Failed to locate service token data' }));
-        }
-
-        if (req.user) {
-            // case: jwt auth
-            await validateMembership({
-                userId: req.user._id,
-                workspaceId: serviceTokenData.workspace,
-                acceptedRoles
-            });
-        }
-
-        req.serviceTokenData = serviceTokenData;
+        
+        req.serviceTokenData = await validateClientForServiceTokenData({
+            authData: req.authData,
+            serviceTokenDataId: new Types.ObjectId(serviceTokenDataId),
+            acceptedRoles
+        });
 
         next();
     }

@@ -19,13 +19,12 @@ const requireWorkspaceAuth = ({
 	locationEnvironment = undefined,
 	requiredPermissions = []
 }: {
-	acceptedRoles: string[];
+	acceptedRoles: Array<'admin' | 'member'>;
 	locationWorkspaceId: req;
 	locationEnvironment?: req | undefined;
 	requiredPermissions?: string[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
-		
 		const workspaceId = req[locationWorkspaceId]?.workspaceId;
 		const environment = locationEnvironment ? req[locationEnvironment]?.environment : undefined;
 		
@@ -34,6 +33,7 @@ const requireWorkspaceAuth = ({
 			authData: req.authData,
 			workspaceId: new Types.ObjectId(workspaceId),
 			environment,
+			acceptedRoles,
 			requiredPermissions
 		});
 		

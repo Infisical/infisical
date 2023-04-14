@@ -48,18 +48,18 @@ import {
     integrationAuth as v1IntegrationAuthRouter
 } from './routes/v1';
 import {
-  signup as v2SignupRouter,
-  auth as v2AuthRouter,
-  users as v2UsersRouter,
-  organizations as v2OrganizationsRouter,
-  workspace as v2WorkspaceRouter,
-  secret as v2SecretRouter, // begin to phase out
-  secrets as v2SecretsRouter,
-  serviceTokenData as v2ServiceTokenDataRouter,
-  serviceAccounts as v2ServiceAccountsRouter,
-  apiKeyData as v2APIKeyDataRouter,
-  environment as v2EnvironmentRouter,
-  tags as v2TagsRouter,
+    signup as v2SignupRouter,
+    auth as v2AuthRouter,
+    users as v2UsersRouter,
+    organizations as v2OrganizationsRouter,
+    workspace as v2WorkspaceRouter,
+    secret as v2SecretRouter, // begin to phase out
+    secrets as v2SecretsRouter,
+    serviceTokenData as v2ServiceTokenDataRouter,
+    serviceAccounts as v2ServiceAccountsRouter,
+    apiKeyData as v2APIKeyDataRouter,
+    environment as v2EnvironmentRouter,
+    tags as v2TagsRouter,
 } from './routes/v2';
 import { healthCheck } from './routes/status';
 import { getLogger } from './utils/logger';
@@ -172,7 +172,7 @@ const main = async () => {
         getLogger("backend-main").info(`Server started listening at port ${getPort()}`)
     });
 
-    createTestUserForDevelopment();
+    await createTestUserForDevelopment();
     setUpHealthEndpoint(server);
 
     server.on('close', async () => {

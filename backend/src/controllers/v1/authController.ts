@@ -15,10 +15,10 @@ import { BadRequestError } from '../../utils/errors';
 import { EELogService } from '../../ee/services';
 import { getChannelFromUserAgent } from '../../utils/posthog'; // TODO: move this
 import {
-  getNodeEnv,
   getJwtRefreshSecret,
   getJwtAuthLifetime,
-  getJwtAuthSecret
+  getJwtAuthSecret,
+  getHttpsEnabled
 } from '../../config';
 
 declare module 'jsonwebtoken' {
@@ -126,21 +126,21 @@ export const login2 = async (req: Request, res: Response) => {
             httpOnly: true,
             path: '/',
             sameSite: 'strict',
-            secure: getNodeEnv() === 'production' ? true : false
+            secure: getHttpsEnabled()
           });
 
           const loginAction = await EELogService.createAction({
             name: ACTION_LOGIN,
             userId: user._id
           });
-          
+
           loginAction && await EELogService.createLog({
             userId: user._id,
             actions: [loginAction],
             channel: getChannelFromUserAgent(req.headers['user-agent']),
             ipAddress: req.ip
           });
-          
+
           // return (access) token in response
           return res.status(200).send({
             token: tokens.token,
@@ -182,14 +182,14 @@ export const logout = async (req: Request, res: Response) => {
       httpOnly: true,
       path: '/',
       sameSite: 'strict',
-      secure: getNodeEnv() === 'production' ? true : false
+      secure: getHttpsEnabled() as boolean
     });
 
     const logoutAction = await EELogService.createAction({
       name: ACTION_LOGOUT,
       userId: req.user._id
     });
-    
+
     logoutAction && await EELogService.createLog({
       userId: req.user._id,
       actions: [logoutAction],
