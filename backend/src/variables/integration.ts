@@ -21,6 +21,7 @@ const INTEGRATION_RAILWAY = "railway";
 const INTEGRATION_FLYIO = "flyio";
 const INTEGRATION_CIRCLECI = "circleci";
 const INTEGRATION_TRAVISCI = "travisci";
+const INTEGRATION_SUPABASE = 'supabase';
 const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
@@ -32,6 +33,7 @@ const INTEGRATION_SET = new Set([
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
+  INTEGRATION_SUPABASE
 ]);
 
 // integration types
@@ -57,6 +59,7 @@ const INTEGRATION_RAILWAY_API_URL = "https://backboard.railway.app/graphql/v2";
 const INTEGRATION_FLYIO_API_URL = "https://api.fly.io/graphql";
 const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
 const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
+const INTEGRATION_SUPABASE_API_URL = 'https://api.supabase.com';
 
 const getIntegrationOptions = () => {
     const INTEGRATION_OPTIONS = [
@@ -179,6 +182,15 @@ const getIntegrationOptions = () => {
             docsLink: ''
         },
         {
+            name: 'Supabase',
+            slug: 'supabase',
+            image: 'Supabase.png',
+            isAvailable: true,
+            type: 'pat',
+            clientId: '',
+            docsLink: ''
+        },
+        {
             name: 'Google Cloud Platform',
             slug: 'gcp',
             image: 'Google Cloud Platform.png',
@@ -207,6 +219,7 @@ export {
     INTEGRATION_FLYIO,
     INTEGRATION_CIRCLECI,
     INTEGRATION_TRAVISCI,
+    INTEGRATION_SUPABASE,
     INTEGRATION_SET,
     INTEGRATION_OAUTH2,
     INTEGRATION_AZURE_TOKEN_URL,
@@ -224,5 +237,6 @@ export {
     INTEGRATION_FLYIO_API_URL,
     INTEGRATION_CIRCLECI_API_URL,
     INTEGRATION_TRAVISCI_API_URL,
+    INTEGRATION_SUPABASE_API_URL,
     getIntegrationOptions
 };

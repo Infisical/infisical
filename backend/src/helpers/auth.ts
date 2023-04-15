@@ -148,7 +148,7 @@ const getAuthSTDPayload = async ({
 	if (!isMatch) throw UnauthorizedRequestError({
 		message: 'Failed to authenticate service token'
 	});
-	
+
 	serviceTokenData = await ServiceTokenData
 		.findOneAndUpdate({
 			_id: new Types.ObjectId(TOKEN_IDENTIFIER)
@@ -157,8 +157,8 @@ const getAuthSTDPayload = async ({
 		}, {
 			new: true
 		})
-		.select('+encryptedKey +iv +tag');
-	
+		.select('+encryptedKey +iv +tag').populate('user serviceAccount');
+
 	if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
 
 	return serviceTokenData;
@@ -176,20 +176,20 @@ const getAuthSAAKPayload = async ({
 	authTokenValue: string;
 }) => {
 	const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
-	
+
 	const serviceAccount = await ServiceAccount.findById(
 		Buffer.from(TOKEN_IDENTIFIER, 'base64').toString('hex')
 	).select('+secretHash');
-	
+
 	if (!serviceAccount) {
 		throw ServiceAccountNotFoundError({ message: 'Failed to find service account' });
 	}
-	
+
 	const result = await bcrypt.compare(TOKEN_SECRET, serviceAccount.secretHash);
 	if (!result) throw UnauthorizedRequestError({
 		message: 'Failed to authenticate service account access key'
 	});
-	
+
 	return serviceAccount;
 }
 
@@ -208,7 +208,7 @@ const getAuthAPIKeyPayload = async ({
 
 	let apiKeyData = await APIKeyData
 		.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt')
-		.populate<{user: IUser}>('user', '+publicKey');
+		.populate<{ user: IUser }>('user', '+publicKey');
 
 	if (!apiKeyData) {
 		throw APIKeyDataNotFoundError({ message: 'Failed to find API key data' });
@@ -232,13 +232,13 @@ const getAuthAPIKeyPayload = async ({
 	}, {
 		new: true
 	});
-	
+
 	if (!apiKeyData) {
 		throw APIKeyDataNotFoundError({ message: 'Failed to find API key data' });
 	}
-	
+
 	const user = await User.findById(apiKeyData.user).select('+publicKey');
-	
+
 	if (!user) {
 		throw AccountNotFoundError({
 			message: 'Failed to find user'

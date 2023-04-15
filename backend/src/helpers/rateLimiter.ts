@@ -15,7 +15,7 @@ const apiLimiter = rateLimit({
 });
 
 // 10 requests per minute
-const authLimiter = rateLimit({
+const authLimit = rateLimit({
   windowMs: 60 * 1000,
   max: 10,
   standardHeaders: true,
@@ -36,8 +36,16 @@ const passwordLimiter = rateLimit({
   }
 });
 
-export { 
-  apiLimiter, 
+const authLimiter = (req: any, res: any, next: any) => {
+  if (process.env.NODE_ENV === 'production') {
+    authLimit(req, res, next);
+  } else {
+    next();
+  }
+};
+
+export {
+  apiLimiter,
   authLimiter,
-  passwordLimiter 
+  passwordLimiter
 };

@@ -8,7 +8,7 @@ import {
 import { issueAuthTokens } from '../../helpers/auth';
 import { INVITED, ACCEPTED } from '../../variables';
 import request from '../../config/request';
-import { getNodeEnv, getLoopsApiKey } from '../../config';
+import { getLoopsApiKey, getHttpsEnabled } from '../../config';
 
 /**
  * Complete setting up user by adding their personal and auth information as part of the
@@ -24,9 +24,9 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			email,
 			firstName,
 			lastName,
-            protectedKey,
-            protectedKeyIV,
-            protectedKeyTag,
+			protectedKey,
+			protectedKeyIV,
+			protectedKeyTag,
 			publicKey,
 			encryptedPrivateKey,
 			encryptedPrivateKeyIV,
@@ -38,9 +38,9 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			email: string;
 			firstName: string;
 			lastName: string;
-            protectedKey: string;
-            protectedKeyIV: string;
-            protectedKeyTag: string;
+			protectedKey: string;
+			protectedKeyIV: string;
+			protectedKeyTag: string;
 			publicKey: string;
 			encryptedPrivateKey: string;
 			encryptedPrivateKeyIV: string;
@@ -48,11 +48,11 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			salt: string;
 			verifier: string;
 			organizationName: string;
-        } = req.body;
+		} = req.body;
 
 		// get user
 		user = await User.findOne({ email });
-		
+
 		if (!user || (user && user?.publicKey)) {
 			// case 1: user doesn't exist.
 			// case 2: user has already completed account
@@ -66,10 +66,10 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			userId: user._id.toString(),
 			firstName,
 			lastName,
-            encryptionVersion: 2,
-            protectedKey,
-            protectedKeyIV,
-            protectedKeyTag,
+			encryptionVersion: 2,
+			protectedKey,
+			protectedKeyIV,
+			protectedKeyTag,
 			publicKey,
 			encryptedPrivateKey,
 			encryptedPrivateKeyIV,
@@ -127,7 +127,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			httpOnly: true,
 			path: '/',
 			sameSite: 'strict',
-			secure: getNodeEnv() === 'production' ? true : false
+			secure: getHttpsEnabled()
 		});
 	} catch (err) {
 		Sentry.setUser(null);
@@ -158,9 +158,9 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 			email,
 			firstName,
 			lastName,
-            protectedKey,
-            protectedKeyIV,
-            protectedKeyTag,
+			protectedKey,
+			protectedKeyIV,
+			protectedKeyTag,
 			publicKey,
 			encryptedPrivateKey,
 			encryptedPrivateKeyIV,
@@ -192,10 +192,10 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 			userId: user._id.toString(),
 			firstName,
 			lastName,
-            encryptionVersion: 2,
-            protectedKey,
-            protectedKeyIV,
-            protectedKeyTag,
+			encryptionVersion: 2,
+			protectedKey,
+			protectedKeyIV,
+			protectedKeyTag,
 			publicKey,
 			encryptedPrivateKey,
 			encryptedPrivateKeyIV,
@@ -232,7 +232,7 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 			httpOnly: true,
 			path: '/',
 			sameSite: 'strict',
-			secure: getNodeEnv() === 'production' ? true : false
+			secure: getHttpsEnabled()
 		});
 	} catch (err) {
 		Sentry.setUser(null);
@@ -241,7 +241,7 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 			message: 'Failed to complete account setup'
 		});
 	}
-	
+
 	return res.status(200).send({
 		message: 'Successfully set up account',
 		user,
