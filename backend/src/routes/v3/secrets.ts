@@ -20,13 +20,13 @@ router.post(
     '/:secretName',
     body('workspaceId').exists().isString().trim(),
     body('environment').exists().isString().trim(),
-    body('value').exists().isString().trim(),
-    body('secretKeyCiphertext').optional().isString().trim(),
-    body('secretKeyIV').optional().isString().trim(),
-    body('secretKeyTag').optional().isString().trim(),
-    body('secretValueCiphertext').optional().isString().trim(),
-    body('secretValueIV').optional().isString().trim(),
-    body('secretValueTag').optional().isString().trim(),
+    body('secretKeyCiphertext').exists().isString().trim(),
+    body('secretKeyIV').exists().isString().trim(),
+    body('secretKeyTag').exists().isString().trim(),
+    body('secretValueCiphertext').exists().isString().trim(),
+    body('secretValueIV').exists().isString().trim(),
+    body('secretValueTag').exists().isString().trim(),
+    validateRequest,
     secretsController.createSecret
 );
 

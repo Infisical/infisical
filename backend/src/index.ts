@@ -61,6 +61,9 @@ import {
     environment as v2EnvironmentRouter,
     tags as v2TagsRouter,
 } from './routes/v2';
+import {
+    secrets as v3SecretsRouter
+} from './routes/v3';
 import { healthCheck } from './routes/status';
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
@@ -121,7 +124,7 @@ const main = async () => {
     app.use('/api/v1/workspace', eeWorkspaceRouter);
     app.use('/api/v1/action', eeActionRouter);
 
-    // v1 routes
+    // v1 routes (default)
     app.use('/api/v1/signup', v1SignupRouter);
     app.use('/api/v1/auth', v1AuthRouter);
     app.use('/api/v1/bot', v1BotRouter);
@@ -140,7 +143,7 @@ const main = async () => {
     app.use('/api/v1/integration', v1IntegrationRouter);
     app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
 
-    // v2 routes
+    // v2 routes (improvements)
     app.use('/api/v2/signup', v2SignupRouter);
     app.use('/api/v2/auth', v2AuthRouter);
     app.use('/api/v2/users', v2UsersRouter);
@@ -153,6 +156,9 @@ const main = async () => {
     app.use('/api/v2/service-token', v2ServiceTokenDataRouter); // TODO: turn into plural route
     app.use('/api/v2/service-accounts', v2ServiceAccountsRouter); // new
     app.use('/api/v2/api-key', v2APIKeyDataRouter);
+    
+    // v3 routes (experimental)
+    app.use('/api/v3/secrets', v3SecretsRouter);
 
     // api docs 
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile))

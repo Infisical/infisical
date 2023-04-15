@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
+import { Types } from 'mongoose';
 import {
     Secret
 } from '../../models';
+import crypto from 'crypto';
 
 // TODO: modularize argon2id
 import * as argon2 from 'argon2';
@@ -47,13 +49,32 @@ export const createSecret = async (req: Request, res: Response) => {
     const { 
         workspaceId,
         environment,
-        value
+        value,
+        type
     } = req.body;
     
-    //
-    // use bot to encrypt value
-    // BotService.encryptSymmetric(value)
+    // use workspace salt
+    const randomBytes = crypto.randomBytes(16);
     
+    // generate blind index
+    // TODO 1: abstract away into create blind index function
+    // TODO 2: create a get blind index function
+    const secretBlindIndex = (await argon2.hash(secretName, {
+        type: argon2.argon2id,
+        salt: randomBytes,
+        saltLength: 16, // default 16 bytes
+        memoryCost: 65536, // default pool of 64 MiB per thread.
+        hashLength: 32,
+        parallelism: 1,
+        raw: true
+    })).toString('base64');
+    
+    // const secret = await new Secret({
+    //     workspace: new Types.ObjectId(workspaceId),
+    //     environment,
+    //     type,
+    //     secretBlindIndex
+    // }).save();
     
     return res.status(200).send({
     

@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, model, Types, Document } from 'mongoose';
 import {
 	SECRET_SHARED,
 	SECRET_PERSONAL,
@@ -11,6 +11,7 @@ export interface ISecret {
 	type: string;
 	user: Types.ObjectId;
 	environment: string;
+	secretBlindIndex?: string;
 	secretKeyCiphertext: string;
 	secretKeyIV: string;
 	secretKeyTag: string;
@@ -56,6 +57,9 @@ const secretSchema = new Schema<ISecret>(
 		environment: {
 			type: String,
 			required: true
+		},
+		secretBlindIndex: {
+			type: String
 		},
 		secretKeyCiphertext: {
 			type: String,
