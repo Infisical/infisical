@@ -31,12 +31,12 @@ func WriteInitalConfig(userCredentials *models.UserCredentials) error {
 		return fmt.Errorf("writeInitalConfig: unable to write config file because [err=%s]", err)
 	}
 
-	//if empty
+	//if empty, initialize
 	if existingConfigFile.LoggedInUsersEmail == nil {
 		existingConfigFile.LoggedInUsersEmail = []string{}
 	}
 
-	//if profile exists
+	//if profiles exists
 	if len(existingConfigFile.LoggedInUsersEmail) > 0 {
 		ok := Contains(existingConfigFile.LoggedInUsersEmail, userCredentials.Email)
 		if !ok {

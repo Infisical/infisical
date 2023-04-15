@@ -33,6 +33,10 @@ type params struct {
 	keyLength   uint32
 }
 
+const ADD_USER = "Add a new account login"
+const REPLACE_USER = "Override current logged in user"
+const EXIT_USER_MENU = "Exit"
+
 // loginCmd represents the login command
 var loginCmd = &cobra.Command{
 	Use:                   "login",
@@ -48,26 +52,26 @@ var loginCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
-		addUser := false
-		if currentLoggedInUserDetails.UserCredentials.Email != "" {
-			addUser, err = addNewUserPrompt()
+		// addUser := false
+		// if currentLoggedInUserDetails.UserCredentials.Email != "" {
+		// 	addUser, err = addNewUserPrompt()
+		// 	if err != nil {
+		// 		util.HandleError(err)
+		// 	}
+		// }
+
+		// if !addUser {
+		if currentLoggedInUserDetails.IsUserLoggedIn && !currentLoggedInUserDetails.LoginExpired && len(currentLoggedInUserDetails.UserCredentials.PrivateKey) != 0 {
+			shouldOverride, err := userLoginMenu(currentLoggedInUserDetails.UserCredentials.Email)
 			if err != nil {
 				util.HandleError(err)
 			}
-		}
 
-		if !addUser {
-			if currentLoggedInUserDetails.IsUserLoggedIn && !currentLoggedInUserDetails.LoginExpired && len(currentLoggedInUserDetails.UserCredentials.PrivateKey) != 0 {
-				shouldOverride, err := shouldOverrideLoginPrompt(currentLoggedInUserDetails.UserCredentials.Email)
-				if err != nil {
-					util.HandleError(err)
-				}
-
-				if !shouldOverride {
-					return
-				}
+			if !shouldOverride {
+				return
 			}
 		}
+		// }
 
 		email, password, err := askForLoginCredentials()
 		if err != nil {
@@ -366,16 +370,16 @@ func addNewUserPrompt() (bool, error) {
 	return result == "Yes", err
 }
 
-func shouldOverrideLoginPrompt(currentLoggedInUserEmail string) (bool, error) {
+func userLoginMenu(currentLoggedInUserEmail string) (bool, error) {
 	prompt := promptui.Select{
-		Label: fmt.Sprintf("There seems to be a user already logged in with the email: %s. Would you like to override that login? Select[Yes/No]", currentLoggedInUserEmail),
-		Items: []string{"No", "Yes"},
+		Label: fmt.Sprintf("Current logged in user email: %s", currentLoggedInUserEmail),
+		Items: []string{ADD_USER, REPLACE_USER, EXIT_USER_MENU},
 	}
 	_, result, err := prompt.Run()
 	if err != nil {
 		return false, err
 	}
-	return result == "Yes", err
+	return result != EXIT_USER_MENU, err
 }
 
 func generateFromPassword(password string, salt []byte, p *params) (hash []byte, err error) {
