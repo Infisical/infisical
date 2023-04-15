@@ -3,6 +3,9 @@ import {
     Secret
 } from '../../models';
 
+// TODO: modularize argon2id
+import * as argon2 from 'argon2';
+
 /**
  * Get secrets for workspace with id [workspaceId] and environment
  * [environment]
@@ -22,6 +25,10 @@ export const getSecrets = async (req: Request, res: Response) => {
  * @param res 
  */
 export const getSecretByName = async (req: Request, res: Response) => {
+    const { secretName } = req.params;
+    const workspaceId = req.query.workspaceId as string;
+    const environment = req.query.workspaceId as string;
+    
     return res.status(200).send({
     
     });
@@ -34,7 +41,19 @@ export const getSecretByName = async (req: Request, res: Response) => {
  * @param res 
  */
 export const createSecret = async (req: Request, res: Response) => {
-    const { workspaceId } = req.params;
+    // TODO: the middleware should've prevalidated that the
+    // workspace with id [workspaceId] has disabled E2EE
+    const { secretName } = req.params;
+    const { 
+        workspaceId,
+        environment,
+        value
+    } = req.body;
+    
+    //
+    // use bot to encrypt value
+    // BotService.encryptSymmetric(value)
+    
     
     return res.status(200).send({
     
@@ -47,6 +66,7 @@ export const createSecret = async (req: Request, res: Response) => {
  * @param res 
  */
 export const updateSecretByName = async (req: Request, res: Response) => {
+    const { secretName } = req.params;
 
     return res.status(200).send({
     

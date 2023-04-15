@@ -8,13 +8,6 @@ import { secretsController } from '../../controllers/v3';
 
 // note: future endpoints pending brainstorm + implementation
 
-router.post(
-    '/',
-    body('workspaceId').exists().isString().trim(),
-    body('environment').exists().isString().trim(),
-    secretsController.createSecret
-);
-
 router.get(
     '/',
     query('workspaceId').exists().isString().trim(),
@@ -23,9 +16,25 @@ router.get(
     secretsController.getSecrets
 );
 
+router.post(
+    '/:secretName',
+    body('workspaceId').exists().isString().trim(),
+    body('environment').exists().isString().trim(),
+    body('value').exists().isString().trim(),
+    body('secretKeyCiphertext').optional().isString().trim(),
+    body('secretKeyIV').optional().isString().trim(),
+    body('secretKeyTag').optional().isString().trim(),
+    body('secretValueCiphertext').optional().isString().trim(),
+    body('secretValueIV').optional().isString().trim(),
+    body('secretValueTag').optional().isString().trim(),
+    secretsController.createSecret
+);
+
 router.get(
     '/:secretName',
     param('secretName').exists().isString().trim(),
+    query('workspaceId').exists().isString().trim(),
+    query('environment').exists().isString().trim(),
     secretsController.getSecretByName
 );
 
@@ -33,6 +42,7 @@ router.patch(
     '/:secretName',
     param('secretName').exists().isString().trim(),
     query('workspaceId').exists().isString().trim(),
+    query('environment').exists().isString().trim(),
     validateRequest,
     secretsController.updateSecretByName
 );
