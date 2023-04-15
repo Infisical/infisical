@@ -8,6 +8,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var userCmd = &cobra.Command{
+	Use:                   "user",
+	Short:                 "Used manage user credentials",
+	DisableFlagsInUseLine: true,
+	Example:               "infisical user",
+	Args:                  cobra.ExactArgs(0),
+	Run:                   func(cmd *cobra.Command, args []string) {},
+}
+
 var switchCmd = &cobra.Command{
 	Use:                   "switch",
 	Short:                 "Used to switch between Infisical profiles",
@@ -50,7 +59,8 @@ var switchCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(switchCmd)
+	userCmd.AddCommand(switchCmd)
+	rootCmd.AddCommand(userCmd)
 }
 
 func getLoggedInUsers() ([]string, error) {

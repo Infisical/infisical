@@ -354,7 +354,7 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 
 func addNewUserPrompt() (bool, error) {
 	prompt := promptui.Select{
-		Label: "Infisical detects previous logged in users. Would you like to add a new user? Select[Yes/No]",
+		Label: "A user is already logged in. Would you like to add a new user? Select[Yes/No]",
 		Items: []string{"No", "Yes"},
 	}
 
@@ -362,6 +362,7 @@ func addNewUserPrompt() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
 	return result == "Yes", err
 }
 
