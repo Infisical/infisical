@@ -37,13 +37,14 @@ const apiTokenExpiry = [
   { label: '7 Days', value: 604800 },
   { label: '1 Month', value: 2592000 },
   { label: '6 months', value: 15552000 },
-  { label: '12 months', value: 31104000 }
+  { label: '12 months', value: 31104000 },
+  { label: 'Never', value: null },
 ];
 
 const createServiceTokenSchema = yup.object({
   name: yup.string().required().label('Service Token Name'),
   environment: yup.string().required().label('Environment'),
-  expiresIn: yup.string().required().label('Service Token Name'),
+  expiresIn: yup.string().optional().label('Service Token Expiration'),
   permissions: yup.object().shape({
     read: yup.boolean().required(),
     write: yup.boolean().required()
@@ -202,7 +203,7 @@ export const ServiceTokenSection = ({
                     defaultValue={String(apiTokenExpiry?.[0]?.value)}
                     render={({ field: { onChange, ...field }, fieldState: { error } }) => (
                       <FormControl
-                        label="Token Expiry"
+                        label="Expiration"
                         errorText={error?.message}
                         isError={Boolean(error)}
                       >
@@ -213,7 +214,7 @@ export const ServiceTokenSection = ({
                           className="w-full"
                         >
                           {apiTokenExpiry.map(({ label, value }) => (
-                            <SelectItem value={String(value)} key={label}>
+                            <SelectItem value={String(value || '')} key={label}>
                               {label}
                             </SelectItem>
                           ))}
@@ -269,42 +270,6 @@ export const ServiceTokenSection = ({
                       );
                     }}
                   />
-                  {/* <Controller
-                    name="isReadEnabled"
-                    defaultValue={true}
-                    control={control}
-                    render={({ field: { onChange, ... field }, fieldState }) => {
-                      return (
-                        <Checkbox
-                          className="data-[state=checked]:bg-primary"
-                          isChecked={field.value}
-                          onCheckedChange={(state) => {
-                            onChange(state);
-                          }}
-                        >
-                          Read (default)
-                        </Checkbox>
-                      );
-                    }}
-                  />
-                  <Controller
-                    name="isWriteEnabled"
-                    defaultValue={false}
-                    control={control}
-                    render={({ field: { onChange, ... field }, fieldState }) => {
-                      return (
-                        <Checkbox
-                          className="data-[state=checked]:bg-primary"
-                          isChecked={field.value}
-                          onCheckedChange={(state) => {
-                            onChange(state);
-                          }}
-                        >
-                          Write (optional)
-                        </Checkbox>
-                      );
-                    }}
-                  /> */}
                   <div className="mt-8 flex items-center">
                     <Button
                       className="mr-4"
@@ -368,7 +333,7 @@ export const ServiceTokenSection = ({
                 <Tr key={row._id}>
                   <Td>{row.name}</Td>
                   <Td>{row.environment}</Td>
-                  <Td>{new Date(row.expiresAt).toUTCString()}</Td>
+                  <Td>{row.expiresAt && new Date(row.expiresAt).toUTCString()}</Td>
                   <Td className="flex items-center justify-end">
                     <IconButton
                       onClick={() =>

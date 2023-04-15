@@ -1,5 +1,106 @@
 import * as Sentry from '@sentry/node';
-import { Membership, Key } from '../models';
+import { Types } from 'mongoose';
+import { 
+	Membership, 
+	Key,
+	IUser,
+	User,
+	IServiceAccount,
+	ServiceAccount,
+	IServiceTokenData,
+	ServiceTokenData
+} from '../models';
+import {
+	MembershipNotFoundError,
+	BadRequestError,
+	UnauthorizedRequestError
+} from '../utils/errors';
+import {
+	AUTH_MODE_JWT,
+	AUTH_MODE_SERVICE_ACCOUNT,
+	AUTH_MODE_SERVICE_TOKEN,
+	AUTH_MODE_API_KEY
+} from '../variables';
+import {
+	validateUserClientForWorkspace
+} from '../helpers/user';
+import {
+	validateServiceAccountClientForWorkspace
+} from '../helpers/serviceAccount';
+import {
+	validateServiceTokenDataClientForWorkspace
+} from '../helpers/serviceTokenData';
+
+/**
+ * Validate authenticated clients for membership with id [membershipId] based
+ * on any known permissions.
+ * @param {Object} obj
+ * @param {Object} obj.authData - authenticated client details
+ * @param {Types.ObjectId} obj.membershipId - id of membership to validate against
+ * @param {Array<'admin' | 'member'>} obj.acceptedRoles - accepted workspaceRoles
+ * @returns {Membership} - validated membership
+ */
+const validateClientForMembership = async ({
+	authData,
+	membershipId,
+	acceptedRoles
+}: {
+	authData: {
+		authMode: string;
+		authPayload: IUser | IServiceAccount | IServiceTokenData;
+	};
+	membershipId: Types.ObjectId;
+    acceptedRoles: Array<'admin' | 'member'>;
+}) => {
+	
+	const membership = await Membership.findById(membershipId);
+	
+	if (!membership) throw MembershipNotFoundError({
+		message: 'Failed to find membership'
+	});
+
+	if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
+		await validateUserClientForWorkspace({
+			user: authData.authPayload,
+			workspaceId: membership.workspace,
+			acceptedRoles
+		});
+		
+		return membership;
+	}
+	
+	if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
+		await validateServiceAccountClientForWorkspace({
+			serviceAccount: authData.authPayload,
+			workspaceId: membership.workspace
+		});
+
+		return membership;
+	}
+	
+	if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
+		await validateServiceTokenDataClientForWorkspace({
+			serviceTokenData: authData.authPayload,
+			workspaceId: new Types.ObjectId(membership.workspace)
+		});
+		
+		return membership;
+	}
+
+	if (authData.authMode == AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
+		await validateUserClientForWorkspace({
+			user: authData.authPayload,
+			workspaceId: membership.workspace,
+			acceptedRoles 
+		});
+		
+		return membership;
+	}
+	
+	throw UnauthorizedRequestError({
+		message: 'Failed client authorization for membership'
+	});
+}
 
 /**
  * Validate that user with id [userId] is a member of workspace with id [workspaceId]
@@ -14,28 +115,24 @@ const validateMembership = async ({
 	workspaceId,
 	acceptedRoles,
 }: {
-	userId: string;
-	workspaceId: string;
-	acceptedRoles: string[];
+	userId: Types.ObjectId;
+	workspaceId: Types.ObjectId;
+	acceptedRoles?: Array<'admin' | 'member'>;
 }) => {
 	
-	let membership;
-	//TODO: Refactor code to take advantage of using RequestError. It's possible to create new types of errors for more detailed errors
-	try {
-		membership = await Membership.findOne({
-			user: userId,
-			workspace: workspaceId
-		}).populate("workspace");
-		
-		if (!membership) throw new Error('Failed to find membership');
-		
+	const membership = await Membership.findOne({
+		user: userId,
+		workspace: workspaceId
+	}).populate("workspace");
+	
+	if (!membership) {
+		throw MembershipNotFoundError({ message: 'Failed to find workspace membership' });
+	}
+	
+	if (acceptedRoles) {
 		if (!acceptedRoles.includes(membership.role)) {
-			throw new Error('Failed to validate membership role');
+			throw BadRequestError({ message: 'Failed authorization for membership role' });
 		}
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to validate membership');
 	}
 	
 	return membership;
@@ -133,6 +230,7 @@ const deleteMembership = async ({ membershipId }: { membershipId: string }) => {
 };
 
 export { 
+	validateClientForMembership,
 	validateMembership,
 	addMemberships, 
 	findMembership, 

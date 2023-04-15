@@ -12,17 +12,21 @@ import {
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
+  INTEGRATION_RAILWAY,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
+  INTEGRATION_SUPABASE,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_GITLAB_API_URL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,
+  INTEGRATION_RAILWAY_API_URL,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_TRAVISCI_API_URL,
+  INTEGRATION_SUPABASE_API_URL
 } from "../variables";
 
 interface App {
@@ -94,6 +98,11 @@ const getApps = async ({
           accessToken,
         });
         break;
+      case INTEGRATION_RAILWAY:
+        apps = await getAppsRailway({
+          accessToken 
+        });
+        break;
       case INTEGRATION_FLYIO:
         apps = await getAppsFlyio({
           accessToken,
@@ -108,6 +117,11 @@ const getApps = async ({
         apps = await getAppsTravisCI({
           accessToken,
         })
+        break;
+      case INTEGRATION_SUPABASE:
+        apps = await getAppsSupabase({
+            accessToken
+        });
         break;
     }
   } catch (err) {
@@ -184,6 +198,7 @@ const getAppsVercel = async ({
 
     apps = res.projects.map((a: any) => ({
       name: a.name,
+      appId: a.id
     }));
   } catch (err) {
     Sentry.setUser(null);
@@ -270,10 +285,13 @@ const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
 
     apps = repos
       .filter((a: any) => a.permissions.admin === true)
-      .map((a: any) => ({
-        name: a.name,
-        owner: a.owner.login,
-      }));
+      .map((a: any) => {
+        return ({
+          appId: a.id,
+          name: a.name,
+          owner: a.owner.login,
+        });
+      });
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
@@ -318,6 +336,58 @@ const getAppsRender = async ({ accessToken }: { accessToken: string }) => {
 
   return apps;
 };
+
+/**
+ * Return list of projects for Railway integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Railway API
+ * @returns {Object[]} apps - names and ids of Railway services
+ * @returns {String} apps.name - name of Railway project
+ * @returns {String} apps.appId - id of Railway project
+ *
+*/
+const getAppsRailway = async ({ accessToken }: { accessToken: string }) => {
+  let apps: any[] = [];
+  try {
+    const query = `
+      query GetProjects($userId: String, $teamId: String) {
+        projects(userId: $userId, teamId: $teamId) {
+          edges {
+            node {
+              id
+              name
+            }
+          }
+        }
+      }
+    `;
+
+    const variables = {};
+
+    const { data: { data: { projects: { edges }}} } = await request.post(INTEGRATION_RAILWAY_API_URL, {
+      query,
+      variables,
+    }, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Accept-Encoding': 'application/json'
+      },
+    });
+    
+    apps = edges.map((e: any) => ({
+      name: e.node.name,
+      appId: e.node.id
+    }));
+
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error("Failed to get Railway services");
+  }
+  
+  return apps;
+}
 
 /**
  * Return list of apps for Fly.io integration
@@ -544,5 +614,41 @@ const getAppsGitlab = async ({
   
   return apps;
 }
+
+
+/**
+ * Return list of projects for Supabase integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Supabase API
+ * @returns {Object[]} apps - names of Supabase apps
+ * @returns {String} apps.name - name of Supabase app
+ */
+const getAppsSupabase = async ({ accessToken }: { accessToken: string }) => {
+  let apps: any;
+  try {
+      const { data } = await request.get(
+        `${INTEGRATION_SUPABASE_API_URL}/v1/projects`,
+        {
+          headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Accept-Encoding': 'application/json'
+          }
+        }
+      );
+
+      apps = data.map((a: any) => {
+        return {
+            name: a.name,
+            appId: a.id
+        };
+    });
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed to get Supabase projects');
+  }
+  
+  return apps;
+};
 
 export { getApps };

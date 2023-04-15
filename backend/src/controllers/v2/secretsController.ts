@@ -15,12 +15,12 @@ import { UnauthorizedRequestError, ValidationError } from '../../utils/errors';
 import { EventService } from '../../services';
 import { eventPushSecrets } from '../../events';
 import { EESecretService, EELogService } from '../../ee/services';
-import { getPostHogClient } from '../../services';
+import { TelemetryService } from '../../services';
 import { getChannelFromUserAgent } from '../../utils/posthog';
-import { ABILITY_READ, ABILITY_WRITE } from '../../variables/organization';
+import { PERMISSION_WRITE_SECRETS } from '../../variables';
 import { userHasNoAbility, userHasWorkspaceAccess, userHasWriteOnlyAbility } from '../../ee/helpers/checkMembershipPermissions';
 import Tag from '../../models/tag';
-import _ from 'lodash';
+import _, { eq } from 'lodash';
 import {
     BatchSecretRequest,
     BatchSecret
@@ -28,12 +28,13 @@ import {
 
 /**
  * Peform a batch of any specified CUD secret operations
+ * (used by dashboard)
  * @param req 
  * @param res 
  */
 export const batchSecrets = async (req: Request, res: Response) => {
     const channel = getChannelFromUserAgent(req.headers['user-agent']);
-    const postHogClient = getPostHogClient();
+    const postHogClient = TelemetryService.getPostHogClient();
 
     const {
         workspaceId,
@@ -91,7 +92,9 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
         const addAction = await EELogService.createAction({
             name: ACTION_ADD_SECRETS,
-            userId: req.user._id,
+            userId: req.user?._id,
+            serviceAccountId: req.serviceAccount?._id,
+            serviceTokenDataId: req.serviceTokenData?._id,
             workspaceId: new Types.ObjectId(workspaceId),
             secretIds: createdSecrets.map((n) => n._id)
         }) as IAction;
@@ -328,14 +331,15 @@ export const createSecrets = async (req: Request, res: Response) => {
         }
     }   
     */
-   const postHogClient = getPostHogClient();
 
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
     const { workspaceId, environment }: { workspaceId: string, environment: string } = req.body;
 
-    const hasAccess = await userHasWorkspaceAccess(req.user, workspaceId, environment, ABILITY_WRITE)
-    if (!hasAccess) {
-        throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
+    if (req.user) {
+        const hasAccess = await userHasWorkspaceAccess(req.user, new Types.ObjectId(workspaceId), environment, PERMISSION_WRITE_SECRETS)
+        if (!hasAccess) {
+            throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
+        }
     }
 
     let listOfSecretsToCreate;
@@ -378,7 +382,7 @@ export const createSecrets = async (req: Request, res: Response) => {
             version: 1,
             workspace: new Types.ObjectId(workspaceId),
             type,
-            user: type === SECRET_PERSONAL ? req.user : undefined,
+            user: (req.user && type === SECRET_PERSONAL) ? req.user : undefined,
             environment,
             secretKeyCiphertext,
             secretKeyIV,
@@ -391,7 +395,7 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretCommentTag,
             tags
         });
-    })
+    });
 
     const newlyCreatedSecrets: ISecret[] = (await Secret.insertMany(secretsToInsert)).map((insertedSecret) => insertedSecret.toObject());
 
@@ -447,14 +451,18 @@ export const createSecrets = async (req: Request, res: Response) => {
 
     const addAction = await EELogService.createAction({
         name: ACTION_ADD_SECRETS,
-        userId: req.user._id,
+        userId: req.user?._id,
+        serviceAccountId: req.serviceAccount?._id,
+        serviceTokenDataId: req.serviceTokenData?._id,
         workspaceId: new Types.ObjectId(workspaceId),
         secretIds: newlyCreatedSecrets.map((n) => n._id)
     });
 
     // (EE) create (audit) log
     addAction && await EELogService.createLog({
-        userId: req.user._id.toString(),
+        userId: req.user?._id,
+        serviceAccountId: req.serviceAccount?._id,
+        serviceTokenDataId: req.serviceTokenData?._id,
         workspaceId: new Types.ObjectId(workspaceId),
         actions: [addAction],
         channel,
@@ -466,10 +474,15 @@ export const createSecrets = async (req: Request, res: Response) => {
         workspaceId
     });
 
+    const postHogClient = TelemetryService.getPostHogClient();
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets added',
-            distinctId: req.user.email,
+            distinctId: TelemetryService.getDistinctId({
+                user: req.user,
+                serviceAccount: req.serviceAccount,
+                serviceTokenData: req.serviceTokenData
+            }),
             properties: {
                 numberOfSecrets: listOfSecretsToCreate.length,
                 environment,
@@ -533,91 +546,120 @@ export const getSecrets = async (req: Request, res: Response) => {
     }   
     */
 
-    const postHogClient = getPostHogClient();
+    const { tagSlugs } = req.query;
+    const workspaceId = req.query.workspaceId as string;
+    const environment = req.query.environment as string;
 
-    const { workspaceId, environment, tagSlugs } = req.query;
+    // secrets to return 
+    let secrets: ISecret[] = [];
+
+    // query tags table to get all tags ids for the tag names for the given workspace
+    let tagIds = [];
     const tagNamesList = typeof tagSlugs === 'string' && tagSlugs !== '' ? tagSlugs.split(',') : [];
-    let userId = "" // used for getting personal secrets for user
-    let userEmail = "" // used for posthog 
-    if (req.user) {
-        userId = req.user._id;
-        userEmail = req.user.email;
-    }
-
-    if (req.serviceTokenData) {
-        userId = req.serviceTokenData.user._id
-        userEmail = req.serviceTokenData.user.email;
-    }
-
-    // none service token case as service tokens are already scoped to env and project
-    let hasWriteOnlyAccess
-    if (!req.serviceTokenData) {
-        hasWriteOnlyAccess = await userHasWriteOnlyAbility(userId, workspaceId, environment)
-        const hasNoAccess = await userHasNoAbility(userId, workspaceId, environment)
-        if (hasNoAccess) {
-            throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
-        }
-    }
-    let secrets: any
-    let secretQuery: any
-
     if (tagNamesList != undefined && tagNamesList.length != 0) {
-        const workspaceFromDB = await Tag.find({ workspace: workspaceId })
-
-        const tagIds = _.map(tagNamesList, (tagName) => {
+        const workspaceFromDB = await Tag.find({ workspace: workspaceId });
+        tagIds = _.map(tagNamesList, (tagName) => {
             const tag = _.find(workspaceFromDB, { slug: tagName });
             return tag ? tag.id : null;
         });
+    }
 
-        secretQuery = {
-            workspace: workspaceId,
-            environment,
-            $or: [
-                { user: userId },
-                { user: { $exists: false } }
-            ],
-            tags: { $in: tagIds },
-            type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
+    if (req.user) {
+        // case: client authorization is via JWT
+        const hasWriteOnlyAccess = await userHasWriteOnlyAbility(req.user._id, new Types.ObjectId(workspaceId), environment)
+        const hasNoAccess = await userHasNoAbility(req.user._id, new Types.ObjectId(workspaceId), environment)
+        if (hasNoAccess) {
+            throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
         }
-    } else {
-        secretQuery = {
+
+        const secretQuery: any = {
             workspace: workspaceId,
             environment,
             $or: [
-                { user: userId },
-                { user: { $exists: false } }
-            ],
-            type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
+                { user: req.user._id }, // personal secrets for this user
+                { user: { $exists: false } } // shared secrets from workspace
+            ]
+        }
+
+        if (tagIds.length > 0) {
+            secretQuery.tags = { $in: tagIds };
+        }
+
+        if (hasWriteOnlyAccess) {
+            // only return the secret keys and not the values since user does not have right to see values
+            secrets = await Secret.find(secretQuery).select("secretKeyCiphertext secretKeyIV secretKeyTag").populate("tags")
+        } else {
+            secrets = await Secret.find(secretQuery).populate("tags")
         }
     }
 
-    if (hasWriteOnlyAccess) {
-        secrets = await Secret.find(secretQuery).select("secretKeyCiphertext secretKeyIV secretKeyTag")
-    } else {
-        secrets = await Secret.find(secretQuery).populate("tags")
+    // case: client authorization is via service token
+    if (req.serviceTokenData) {
+        const userId = req.serviceTokenData.user._id
+
+        const secretQuery: any = {
+            workspace: workspaceId,
+            environment,
+            $or: [
+                { user: userId }, // personal secrets for this user
+                { user: { $exists: false } } // shared secrets from workspace
+            ]
+        }
+
+        if (tagIds.length > 0) {
+            secretQuery.tags = { $in: tagIds };
+        }
+
+        // TODO check if service token has write only permission 
+
+        secrets = await Secret.find(secretQuery).populate("tags");
+    }
+
+    // case: client authorization is via service account
+    if (req.serviceAccount) {
+        const secretQuery: any = {
+            workspace: workspaceId,
+            environment,
+            user: { $exists: false } // shared secrets only from workspace
+        }
+
+        if (tagIds.length > 0) {
+            secretQuery.tags = { $in: tagIds };
+        }
+
+        secrets = await Secret.find(secretQuery).populate("tags");
     }
 
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
 
     const readAction = await EELogService.createAction({
         name: ACTION_READ_SECRETS,
-        userId: new Types.ObjectId(userId),
+        userId: req.user?._id,
+        serviceAccountId: req.serviceAccount?._id,
+        serviceTokenDataId: req.serviceTokenData?._id,
         workspaceId: new Types.ObjectId(workspaceId as string),
         secretIds: secrets.map((n: any) => n._id)
     });
 
     readAction && await EELogService.createLog({
-        userId: new Types.ObjectId(userId),
+        userId: req.user?._id,
+        serviceAccountId: req.serviceAccount?._id,
+        serviceTokenDataId: req.serviceTokenData?._id,
         workspaceId: new Types.ObjectId(workspaceId as string),
         actions: [readAction],
         channel,
         ipAddress: req.ip
     });
 
+    const postHogClient = TelemetryService.getPostHogClient();
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets pulled',
-            distinctId: userEmail,
+            distinctId: TelemetryService.getDistinctId({
+                user: req.user,
+                serviceAccount: req.serviceAccount,
+                serviceTokenData: req.serviceTokenData
+            }),
             properties: {
                 numberOfSecrets: secrets.length,
                 environment,
@@ -630,59 +672,6 @@ export const getSecrets = async (req: Request, res: Response) => {
 
     return res.status(200).send({
         secrets
-    });
-}
-
-
-export const getOnlySecretKeys = async (req: Request, res: Response) => {
-    const { workspaceId, environment } = req.query;
-
-    let userId = "" // used for getting personal secrets for user
-    let userEmail = "" // used for posthog 
-    if (req.user) {
-        userId = req.user._id;
-        userEmail = req.user.email;
-    }
-
-    if (req.serviceTokenData) {
-        userId = req.serviceTokenData.user._id
-        userEmail = req.serviceTokenData.user.email;
-    }
-
-    // none service token case as service tokens are already scoped
-    if (!req.serviceTokenData) {
-        const hasAccess = await userHasWorkspaceAccess(userId, workspaceId, environment, ABILITY_READ)
-        if (!hasAccess) {
-            throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
-        }
-    }
-
-    const [err, secretKeys] = await to(Secret.find(
-        {
-            workspace: workspaceId,
-            environment,
-            $or: [
-                { user: userId },
-                { user: { $exists: false } }
-            ],
-            type: { $in: [SECRET_SHARED, SECRET_PERSONAL] }
-        }
-    )
-        .select("secretKeyIV secretKeyTag secretKeyCiphertext")
-        .then())
-
-    if (err) throw ValidationError({ message: 'Failed to get secrets', stack: err.stack });
-
-    // readAction && await EELogService.createLog({
-    //     userId: new Types.ObjectId(userId),
-    //     workspaceId: new Types.ObjectId(workspaceId as string),
-    //     actions: [readAction],
-    //     channel,
-    //     ipAddress: req.ip
-    // });
-
-    return res.status(200).send({
-        secretKeys
     });
 }
 
@@ -736,10 +725,8 @@ export const updateSecrets = async (req: Request, res: Response) => {
         }
     }
     */
-    const postHogClient = getPostHogClient();
     const channel = req.headers?.['user-agent']?.toLowerCase().includes('mozilla') ? 'web' : 'cli';
 
-    // TODO: move type
     interface PatchSecret {
         id: string;
         secretKeyCiphertext: string;
@@ -865,14 +852,18 @@ export const updateSecrets = async (req: Request, res: Response) => {
 
         const updateAction = await EELogService.createAction({
             name: ACTION_UPDATE_SECRETS,
-            userId: req.user._id,
+            userId: req.user?._id,
+            serviceAccountId: req.serviceAccount?._id,
+            serviceTokenDataId: req.serviceTokenData?._id,
             workspaceId: new Types.ObjectId(key),
             secretIds: workspaceSecretObj[key].map((secret: ISecret) => secret._id)
         });
 
         // (EE) create (audit) log
         updateAction && await EELogService.createLog({
-            userId: req.user._id.toString(),
+            userId: req.user?._id,
+            serviceAccountId: req.serviceAccount?._id,
+            serviceTokenDataId: req.serviceTokenData?._id,
             workspaceId: new Types.ObjectId(key),
             actions: [updateAction],
             channel,
@@ -884,10 +875,15 @@ export const updateSecrets = async (req: Request, res: Response) => {
             workspaceId: key
         })
 
+        const postHogClient = TelemetryService.getPostHogClient();
         if (postHogClient) {
             postHogClient.capture({
                 event: 'secrets modified',
-                distinctId: req.user.email,
+                distinctId: TelemetryService.getDistinctId({
+                    user: req.user,
+                    serviceAccount: req.serviceAccount,
+                    serviceTokenData: req.serviceTokenData
+                }),
                 properties: {
                     numberOfSecrets: workspaceSecretObj[key].length,
                     environment: workspaceSecretObj[key][0].environment,
@@ -909,7 +905,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
 }
 
 /**
- * Delete secret(s) with id [workspaceId] and environment [environment]
+ * Delete secret(s)
  * @param req 
  * @param res 
  */
@@ -958,7 +954,11 @@ export const deleteSecrets = async (req: Request, res: Response) => {
         }
     }   
     */
-    const postHogClient = getPostHogClient();
+
+    return res.status(200).send({
+        message: 'delete secrets!!'
+    });
+
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
     const toDelete = req.secrets.map((s: any) => s._id);
 
@@ -992,14 +992,18 @@ export const deleteSecrets = async (req: Request, res: Response) => {
         });
         const deleteAction = await EELogService.createAction({
             name: ACTION_DELETE_SECRETS,
-            userId: req.user._id,
+            userId: req.user?._id,
+            serviceAccountId: req.serviceAccount?._id,
+            serviceTokenDataId: req.serviceTokenData?._id,
             workspaceId: new Types.ObjectId(key),
             secretIds: workspaceSecretObj[key].map((secret: ISecret) => secret._id)
         });
 
         // (EE) create (audit) log
         deleteAction && await EELogService.createLog({
-            userId: req.user._id.toString(),
+            userId: req.user?._id,
+            serviceAccountId: req.serviceAccount?._id,
+            serviceTokenDataId: req.serviceTokenData?._id,
             workspaceId: new Types.ObjectId(key),
             actions: [deleteAction],
             channel,
@@ -1011,10 +1015,15 @@ export const deleteSecrets = async (req: Request, res: Response) => {
             workspaceId: key
         })
 
+        const postHogClient = TelemetryService.getPostHogClient();
         if (postHogClient) {
             postHogClient.capture({
                 event: 'secrets deleted',
-                distinctId: req.user.email,
+                distinctId: TelemetryService.getDistinctId({
+                    user: req.user,
+                    serviceAccount: req.serviceAccount,
+                    serviceTokenData: req.serviceTokenData
+                }),
                 properties: {
                     numberOfSecrets: workspaceSecretObj[key].length,
                     environment: workspaceSecretObj[key][0].environment,

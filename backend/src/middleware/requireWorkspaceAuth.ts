@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
+import { Types } from 'mongoose';
 import { validateMembership } from '../helpers/membership';
+import { validateClientForWorkspace } from '../helpers/workspace';
 import { UnauthorizedRequestError } from '../utils/errors';
 
 type req = 'params' | 'body' | 'query';
@@ -13,38 +15,33 @@ type req = 'params' | 'body' | 'query';
  */
 const requireWorkspaceAuth = ({
 	acceptedRoles,
-	location = 'params'
+	locationWorkspaceId,
+	locationEnvironment = undefined,
+	requiredPermissions = []
 }: {
-	acceptedRoles: string[];
-	location?: req;
+	acceptedRoles: Array<'admin' | 'member'>;
+	locationWorkspaceId: req;
+	locationEnvironment?: req | undefined;
+	requiredPermissions?: string[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
-		try {
-			const { workspaceId } = req[location];
-			
-			if (req.user) {
-				// case: jwt auth
-				const membership = await validateMembership({
-					userId: req.user._id.toString(),
-					workspaceId,
-					acceptedRoles
-				});
-
-				req.membership = membership;
-			}
-
-			if (
-				req.serviceTokenData 
-				&& req.serviceTokenData.workspace.toString() !== workspaceId
-				&& req.serviceTokenData.environment !== req.body.environment
-			) {
-				next(UnauthorizedRequestError({message: 'Unable to authenticate workspace'}))	
-			}
-
-			return next();
-		} catch (err) {
-			return next(UnauthorizedRequestError({message: 'Unable to authenticate workspace'}))
+		const workspaceId = req[locationWorkspaceId]?.workspaceId;
+		const environment = locationEnvironment ? req[locationEnvironment]?.environment : undefined;
+		
+		// validate clients
+		const { membership } = await validateClientForWorkspace({
+			authData: req.authData,
+			workspaceId: new Types.ObjectId(workspaceId),
+			environment,
+			acceptedRoles,
+			requiredPermissions
+		});
+		
+		if (membership) {
+			req.membership = membership;
 		}
+
+		return next();
 	};
 };
 

@@ -20,6 +20,7 @@ import {
 
 const userKeys = {
   getUser: ['user'] as const,
+  userAction: ['user-action'] as const,
   getOrgUsers: (orgId: string) => [{ orgId }, 'user']
 };
 
@@ -30,6 +31,21 @@ const fetchUserDetails = async () => {
 };
 
 export const useGetUser = () => useQuery(userKeys.getUser, fetchUserDetails);
+
+const fetchUserAction = async (action: string) => {
+  const { data } = await apiRequest.get<{ userAction: string }>('/api/v1/user-action', {
+    params: {
+      action
+    }
+  });
+  return data.userAction;
+};
+
+export const useGetUserAction = (action: string) =>
+  useQuery({
+    queryKey: userKeys.userAction,
+    queryFn: () => fetchUserAction(action)
+  });
 
 export const fetchOrgUsers = async (orgId: string) => {
   const { data } = await apiRequest.get<{ users: OrgUser[] }>(
@@ -124,6 +140,16 @@ export const useUpdateOrgUserRole = () => {
     // to remove old states
     onError: (_, { organizationId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
+    }
+  });
+};
+
+export const useRegisterUserAction = () => {
+  const queryClient = useQueryClient();
+  return useMutation<{}, {}, string>({
+    mutationFn: (action) => apiRequest.post('/api/v1/user-action', { action }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(userKeys.userAction);
     }
   });
 };

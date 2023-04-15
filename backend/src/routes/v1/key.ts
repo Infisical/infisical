@@ -6,16 +6,17 @@ import {
 	validateRequest
 } from '../../middleware';
 import { body, param } from 'express-validator';
-import { ADMIN, MEMBER } from '../../variables';
+import { ADMIN, MEMBER, AUTH_MODE_JWT } from '../../variables';
 import { keyController } from '../../controllers/v1';
 
 router.post(
 	'/:workspaceId',
 	requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'params'
 	}),
 	param('workspaceId').exists().trim(),
 	body('key').exists(),
@@ -26,10 +27,11 @@ router.post(
 router.get(
 	'/:workspaceId/latest',
 	requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
 	requireWorkspaceAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
+		locationWorkspaceId: 'params'
 	}),
 	param('workspaceId'),
 	validateRequest,

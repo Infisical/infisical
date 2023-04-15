@@ -103,7 +103,7 @@ export const OrgMembersTable = ({
     () => members.find(({ user }) => userId === user?._id)?.role === 'owner',
     [userId, members]
   );
-
+  
   const filterdUser = useMemo(
     () =>
       members.filter(
@@ -132,25 +132,18 @@ export const OrgMembersTable = ({
             placeholder="Search members..."
           />
         </div>
-        <div>
-          <Button
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={() => {
-              // if (serverDetails?.emailConfigured){
-                if (isMoreUserNotAllowed) {
-                  handlePopUpOpen('upgradePlan');
-                } else {
-                  reset();
-                  handlePopUpOpen('addMember');
-                }
-              // } else {
-              //   handlePopUpOpen('setUpEmail');
-              // }
-            }}
-          >
-            Add Member
-          </Button>
-        </div>
+        <Button
+          leftIcon={<FontAwesomeIcon icon={faPlus} />}
+          onClick={() => {
+            if (isMoreUserNotAllowed) {
+              handlePopUpOpen('upgradePlan');
+            } else {
+              handlePopUpOpen('addMember');
+            }
+          }}
+        >
+          Add Member
+        </Button>
       </div>
       <div>
         <TableContainer>

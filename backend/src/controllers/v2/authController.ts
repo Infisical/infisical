@@ -17,9 +17,9 @@ import {
 } from '../../variables';
 import { getChannelFromUserAgent } from '../../utils/posthog'; // TODO: move this
 import {
-  getNodeEnv,
   getJwtMfaLifetime,
-  getJwtMfaSecret
+  getJwtMfaSecret,
+  getHttpsEnabled
 } from '../../config';
 
 declare module 'jsonwebtoken' {
@@ -163,7 +163,7 @@ export const login2 = async (req: Request, res: Response) => {
             httpOnly: true,
             path: '/',
             sameSite: 'strict',
-            secure: getNodeEnv() === 'production' ? true : false
+            secure: getHttpsEnabled()
           });
 
           // case: user does not have MFA enablgged
@@ -302,7 +302,7 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
     httpOnly: true,
     path: '/',
     sameSite: 'strict',
-    secure: getNodeEnv() === 'production' ? true : false
+    secure: getHttpsEnabled()
   });
 
   interface VerifyMfaTokenRes {

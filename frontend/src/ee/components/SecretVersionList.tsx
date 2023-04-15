@@ -76,7 +76,7 @@ const SecretVersionList = ({ secretId }: { secretId: string }) => {
   }, [secretId]);
 
   return (
-    <div className="w-full min-w-40 h-[12.4rem] px-4 mt-4 text-sm text-bunker-300 overflow-x-none">
+    <div className="w-full min-w-40 h-[12.4rem] px-4 mt-4 text-sm text-bunker-300 overflow-x-none dark">
       <p className="">{t('dashboard:sidebar.version-history')}</p>
       <div className="pl-1 py-0.5 rounded-md bg-bunker-800 border border-mineshaft-500 overflow-x-none h-full">
         {isLoading ? (
@@ -102,7 +102,7 @@ const SecretVersionList = ({ secretId }: { secretId: string }) => {
                       <div className="w-0 h-full border-l border-bunker-300 mt-1" />
                     </div>
                     <div className="flex flex-col w-full max-w-[calc(100%-2.3rem)]">
-                      <div className="pr-2 pt-1 text-bunker-300/90">
+                      <div className="pr-2 text-bunker-300/90">
                         {new Date(version.createdAt).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: '2-digit',
