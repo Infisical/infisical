@@ -356,20 +356,6 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 	return &loginOneResponseResult, &loginTwoResponseResult, nil
 }
 
-func addNewUserPrompt() (bool, error) {
-	prompt := promptui.Select{
-		Label: "A user is already logged in. Would you like to add a new user? Select[Yes/No]",
-		Items: []string{"No", "Yes"},
-	}
-
-	_, result, err := prompt.Run()
-	if err != nil {
-		return false, err
-	}
-
-	return result == "Yes", err
-}
-
 func userLoginMenu(currentLoggedInUserEmail string) (bool, error) {
 	prompt := promptui.Select{
 		Label: fmt.Sprintf("Current logged in user email: %s", currentLoggedInUserEmail),
