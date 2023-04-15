@@ -6,7 +6,7 @@ import { ENV, POSTHOG_API_KEY, POSTHOG_HOST } from '../utilities/config';
 
 export const initPostHog = () => {
   // @ts-ignore
-  console.log("Init Infisical")
+  console.log("Hi there 👋")
   try {
     if (typeof window !== 'undefined') {
       // @ts-ignore
