@@ -36,18 +36,7 @@ const fetchProjectEncryptedSecrets = async (workspaceId: string, env: string | s
   
   if (typeof env === 'object') {
     let allEnvData: any = [];
-    // env.map(async (envPoint: string) => {
-    //   const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
-    //     params: {
-    //       environment: envPoint,
-    //       workspaceId
-    //     }
-    //   });
-    //   console.log(111, envPoint, data.secrets)
-    //   allEnvData = allEnvData.concat(data.secrets);
-    //   // await allEnvData.push(...data.secrets)
-    //   console.log(222, allEnvData)
-    // })
+    
     // eslint-disable-next-line no-restricted-syntax
     for (const envPoint of env) {
       // eslint-disable-next-line no-await-in-loop
@@ -59,19 +48,6 @@ const fetchProjectEncryptedSecrets = async (workspaceId: string, env: string | s
       });
       allEnvData = allEnvData.concat(data.secrets);
     }
-    // const { data: data1 } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
-    //   params: {
-    //     environment: env[0],
-    //     workspaceId
-    //   }
-    // });
-    // const { data: data2 } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
-    //   params: {
-    //     environment: env[1],
-    //     workspaceId
-    //   }
-    // });
-    // allEnvData = data1.secrets.concat(data2.secrets);
     
     return allEnvData;
   // eslint-disable-next-line no-else-return
@@ -93,7 +69,6 @@ export const useGetProjectSecrets = ({
     queryKey: secretKeys.getProjectSecret(workspaceId, env),
     queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env),
     select: (data) => {
-      console.log(878787878, data)
       const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
       const latestKey = decryptFileKey;
       const key = decryptAssymmetric({
@@ -108,7 +83,7 @@ export const useGetProjectSecrets = ({
       // this used for add-only mode in dashboard
       // type won't be there thus only one key is shown
       const duplicateSecretKey: Record<string, boolean> = {};
-      data.forEach((encSecret) => {
+      data.forEach((encSecret: EncryptedSecret) => {
         const secretKey = decryptSymmetric({
           ciphertext: encSecret.secretKeyCiphertext,
           iv: encSecret.secretKeyIV,
