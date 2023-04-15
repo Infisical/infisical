@@ -2,7 +2,8 @@ import { Request, Response } from "express";
 import { Membership, Workspace } from "../../../models";
 import { IMembershipPermission } from "../../../models/membership";
 import { BadRequestError, UnauthorizedRequestError } from "../../../utils/errors";
-import { ABILITY_READ, ABILITY_WRITE, ADMIN, MEMBER } from "../../../variables/organization";
+import { ADMIN, MEMBER } from "../../../variables/organization";
+import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from '../../../variables';
 import { Builder } from "builder-pattern"
 import _ from "lodash";
 
@@ -10,7 +11,7 @@ export const denyMembershipPermissions = async (req: Request, res: Response) => 
   const { membershipId } = req.params;
   const { permissions } = req.body;
   const sanitizedMembershipPermissions: IMembershipPermission[] = permissions.map((permission: IMembershipPermission) => {
-    if (!permission.ability || !permission.environmentSlug || ![ABILITY_READ, ABILITY_WRITE].includes(permission.ability)) {
+    if (!permission.ability || !permission.environmentSlug || ![PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS].includes(permission.ability)) {
       throw BadRequestError({ message: "One or more required fields are missing from the request or have incorrect type" })
     }
 

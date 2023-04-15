@@ -1,44 +1,45 @@
 import { Request, Response, NextFunction } from 'express';
+import { Types } from 'mongoose';
 import { IOrganization, MembershipOrg } from '../models';
 import { UnauthorizedRequestError, ValidationError } from '../utils/errors';
+import { validateMembershipOrg } from '../helpers/membershipOrg';
+import { validateClientForOrganization } from '../helpers/organization';
+
+type req = 'params' | 'body' | 'query';
 
 /**
  * Validate if user on request is a member with proper roles for organization
  * on request params.
  * @param {Object} obj
  * @param {String[]} obj.acceptedRoles - accepted organization roles
- * @param {String[]} obj.acceptedStatuses - accepted organization statuses
+ * @param {String[]} obj.accepteStatuses - accepted organization statuses
  */
 const requireOrganizationAuth = ({
 	acceptedRoles,
-	acceptedStatuses
+	acceptedStatuses,
+	locationOrganizationId = 'params'
 }: {
-	acceptedRoles: string[];
-	acceptedStatuses: string[];
+	acceptedRoles: Array<'owner' | 'admin' | 'member'>;
+	acceptedStatuses: Array<'invited' | 'accepted'>;
+	locationOrganizationId?: req;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
-		// organization authorization middleware
-
-		// validate organization membership
-		const membershipOrg = await MembershipOrg.findOne({
-			user: req.user._id,
-			organization: req.params.organizationId
-		}).populate<{ organization: IOrganization }>('organization');
-
-
-		if (!membershipOrg) {
-			return next(UnauthorizedRequestError({message: "You're not a member of this Organization."}))
-		}
-		//TODO is this important to validate? I mean is it possible to save wrong role to database or get wrong role from databse? - Zamion101
-		if (!acceptedRoles.includes(membershipOrg.role)) {
-			return next(ValidationError({message: 'Failed to validate Organization Membership Role'}))
+		const { organizationId } = req[locationOrganizationId];
+		
+		const { organization, membershipOrg } = await validateClientForOrganization({
+			authData: req.authData,
+			organizationId: new Types.ObjectId(organizationId),
+			acceptedRoles,
+			acceptedStatuses
+		});
+		
+		if (organization) {
+			req.organization = organization;
 		}
 
-		if (!acceptedStatuses.includes(membershipOrg.status)) {
-			return next(ValidationError({message: 'Failed to validate Organization Membership Status'}))
+		if (membershipOrg) {
+			req.membershipOrg = membershipOrg;
 		}
-
-		req.membershipOrg = membershipOrg;
 
 		return next();
 	};

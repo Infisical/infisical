@@ -66,7 +66,7 @@ export const initSmtp = () => {
   const transporter = nodemailer.createTransport(mailOpts);
   transporter
     .verify()
-    .then(() => {
+    .then((err) => {
       Sentry.setUser(null);
       Sentry.captureMessage('SMTP - Successfully connected');
     })

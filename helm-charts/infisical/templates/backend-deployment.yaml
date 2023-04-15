@@ -1,31 +1,34 @@
+{{- $backend := .Values.backend }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "infisical.backend.fullname" . }}
-  {{- with .Values.backend.deploymentAnnotations }}
   annotations:
-    {{- toYaml . | nindent 8 }}
-  {{- end }}
+    updatedAt: {{ now | date "2006-01-01 MST 15:04:05" | quote }}
+    {{- with $backend.deploymentAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   labels:
     {{- include "infisical.backend.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.backend.replicaCount }}
+  replicas: {{ $backend.replicaCount }}
   selector:
     matchLabels:
       {{- include "infisical.backend.matchLabels" . | nindent 6 }}
   template:
-    metadata: 
+    metadata:
       labels:
         {{- include "infisical.backend.matchLabels" . | nindent 8 }}
-      {{- with .Values.backend.podAnnotations }}
       annotations:
+        updatedAt: {{ now | date "2006-01-01 MST 15:04:05" | quote }}
+        {{- with $backend.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
     spec:
       containers:
-      - name: {{ template "infisical.name" . }}-{{ .Values.backend.name }}
-        image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}"
-        imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+      - name: {{ template "infisical.name" . }}-{{ $backend.name }}
+        image: "{{ $backend.image.repository }}:{{ $backend.image.tag | default "latest" }}"
+        imagePullPolicy: {{ $backend.image.pullPolicy }}
         readinessProbe:
           httpGet:
             path: /api/status
@@ -34,43 +37,58 @@ spec:
           periodSeconds: 10
         ports: 
         - containerPort: 4000
-        {{- if .Values.backend.kubeSecretRef }}
         envFrom:
         - secretRef:
-            name: {{ .Values.backend.kubeSecretRef }}
-        {{- end }}
-        env:
-        - name: MONGO_URL
-          value: {{ include "infisical.mongodb.connectionString" . | quote }}
-        {{- if .Values.backendEnvironmentVariables }}
-        {{- range $key, $value := .Values.backendEnvironmentVariables }}
-        {{- if $value | quote | eq "MUST_REPLACE" }}
-          {{ fail "Environment variables are not set. Please set all environment variables to continue." }}
-        {{ end }}
-        - name: {{ $key }}
-          value: {{ quote $value }}
-        {{- end }}
-        {{- end }}
+            name: {{ $backend.kubeSecretRef | default (include "infisical.backend.fullname" .) }}
 
 ---
+
 apiVersion: v1
 kind: Service 
 metadata:
   name: {{ include "infisical.backend.fullname" . }}
   labels:
     {{- include "infisical.backend.labels" . | nindent 4 }}
-  {{- with .Values.backend.service.annotations }}
+  {{- with $backend.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  type: {{ .Values.backend.service.type }}
+  type: {{ $backend.service.type }}
   selector:
     {{- include "infisical.backend.matchLabels" . | nindent 8 }}
   ports:
     - protocol: TCP
       port: 4000
       targetPort: 4000 # container port 
-      {{- if eq .Values.backend.service.type "NodePort" }}
-      nodePort: {{ .Values.backend.service.nodePort }}
+      {{- if eq $backend.service.type "NodePort" }}
+      nodePort: {{ $backend.service.nodePort }}
       {{- end }}
+
+---
+
+{{ if not $backend.kubeSecretRef }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "infisical.backend.fullname" . }}
+  annotations:
+    "helm.sh/resource-policy": "keep"
+type: Opaque
+stringData:
+  {{- $requiredVars := dict "ENCRYPTION_KEY" (randAlphaNum 32 | lower)
+                            "JWT_SIGNUP_SECRET" (randAlphaNum 32 | lower)
+                            "JWT_REFRESH_SECRET" (randAlphaNum 32 | lower)
+                            "JWT_AUTH_SECRET" (randAlphaNum 32 | lower)
+                            "JWT_SERVICE_SECRET" (randAlphaNum 32 | lower)
+                            "JWT_MFA_SECRET" (randAlphaNum 32 | lower)
+                            "MONGO_URL" (include "infisical.mongodb.connectionString" .) }}
+  {{- $secretObj := (lookup "v1" "Secret" .Release.Namespace (include "infisical.backend.fullname" .)) | default dict }}
+  {{- $secretData := (get $secretObj "data") | default dict }}
+  {{ range $key, $value := .Values.backendEnvironmentVariables }}
+    {{- $default := get $requiredVars $key -}}
+    {{- $current := get $secretData $key | b64dec -}}
+    {{- $v := $value | default ($current | default $default) -}}
+    {{ $key }}: {{ $v | quote }}
+  {{ end -}}
+{{- end }}

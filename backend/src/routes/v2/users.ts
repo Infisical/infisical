@@ -6,11 +6,15 @@ import {
 } from '../../middleware';
 import { body } from 'express-validator';
 import { usersController } from '../../controllers/v2';
+import {
+    AUTH_MODE_JWT,
+    AUTH_MODE_API_KEY
+} from '../../variables';
 
 router.get(
     '/me',
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey']
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY]
     }),
     usersController.getMe
 );
@@ -18,7 +22,7 @@ router.get(
 router.patch(
     '/me/mfa',
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey']
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY]
     }),
     body('isMfaEnabled').exists().isBoolean(),
     validateRequest,
@@ -28,7 +32,7 @@ router.patch(
 router.get(
     '/me/organizations',
     requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey']
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY]
     }),
     usersController.getMyOrganizations
 );

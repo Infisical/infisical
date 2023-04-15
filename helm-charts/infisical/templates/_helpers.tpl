@@ -122,6 +122,7 @@ Create the mongodb connection string.
 {{- $pass := first .Values.mongodb.auth.passwords | default "root" -}}
 {{- $database := first .Values.mongodb.auth.databases | default "test" -}}
 {{- $connectionString := printf "mongodb://%s:%s@%s:%d/%s" $user $pass $host $port $database -}}
+{{/* Backward compatibility (< 0.1.16, deprecated) */}}
 {{- if .Values.mongodbConnection.externalMongoDBConnectionString -}}
 {{- $connectionString = .Values.mongodbConnection.externalMongoDBConnectionString -}}
 {{- end -}}

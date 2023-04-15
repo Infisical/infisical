@@ -17,9 +17,11 @@ const INTEGRATION_NETLIFY = "netlify";
 const INTEGRATION_GITHUB = "github";
 const INTEGRATION_GITLAB = "gitlab";
 const INTEGRATION_RENDER = "render";
+const INTEGRATION_RAILWAY = "railway";
 const INTEGRATION_FLYIO = "flyio";
 const INTEGRATION_CIRCLECI = "circleci";
 const INTEGRATION_TRAVISCI = "travisci";
+const INTEGRATION_SUPABASE = 'supabase';
 const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
@@ -31,6 +33,7 @@ const INTEGRATION_SET = new Set([
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
+  INTEGRATION_SUPABASE
 ]);
 
 // integration types
@@ -52,9 +55,11 @@ const INTEGRATION_GITLAB_API_URL = "https://gitlab.com/api";
 const INTEGRATION_VERCEL_API_URL = "https://api.vercel.com";
 const INTEGRATION_NETLIFY_API_URL = "https://api.netlify.com";
 const INTEGRATION_RENDER_API_URL = "https://api.render.com";
+const INTEGRATION_RAILWAY_API_URL = "https://backboard.railway.app/graphql/v2";
 const INTEGRATION_FLYIO_API_URL = "https://api.fly.io/graphql";
 const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
 const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
+const INTEGRATION_SUPABASE_API_URL = 'https://api.supabase.com';
 
 const getIntegrationOptions = () => {
     const INTEGRATION_OPTIONS = [
@@ -99,6 +104,15 @@ const getIntegrationOptions = () => {
             name: 'Render',
             slug: 'render',
             image: 'Render.png',
+            isAvailable: true,
+            type: 'pat',
+            clientId: '',
+            docsLink: ''
+        },
+        {
+            name: 'Railway',
+            slug: 'railway',
+            image: 'Railway.png',
             isAvailable: true,
             type: 'pat',
             clientId: '',
@@ -168,6 +182,15 @@ const getIntegrationOptions = () => {
             docsLink: ''
         },
         {
+            name: 'Supabase',
+            slug: 'supabase',
+            image: 'Supabase.png',
+            isAvailable: true,
+            type: 'pat',
+            clientId: '',
+            docsLink: ''
+        },
+        {
             name: 'Google Cloud Platform',
             slug: 'gcp',
             image: 'Google Cloud Platform.png',
@@ -192,9 +215,11 @@ export {
     INTEGRATION_GITHUB,
     INTEGRATION_GITLAB,
     INTEGRATION_RENDER,
+    INTEGRATION_RAILWAY,
     INTEGRATION_FLYIO,
     INTEGRATION_CIRCLECI,
     INTEGRATION_TRAVISCI,
+    INTEGRATION_SUPABASE,
     INTEGRATION_SET,
     INTEGRATION_OAUTH2,
     INTEGRATION_AZURE_TOKEN_URL,
@@ -208,8 +233,10 @@ export {
     INTEGRATION_VERCEL_API_URL,
     INTEGRATION_NETLIFY_API_URL,
     INTEGRATION_RENDER_API_URL,
+    INTEGRATION_RAILWAY_API_URL,
     INTEGRATION_FLYIO_API_URL,
     INTEGRATION_CIRCLECI_API_URL,
     INTEGRATION_TRAVISCI_API_URL,
+    INTEGRATION_SUPABASE_API_URL,
     getIntegrationOptions
 };

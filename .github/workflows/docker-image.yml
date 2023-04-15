@@ -9,6 +9,12 @@ jobs:
     steps:
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
+      - name: 📦 Install dependencies to test all dependencies
+        run: npm ci --only-production
+        working-directory: backend
+      - name: 🧪 Run tests
+        run: npm run test:ci
+        working-directory: backend
       - name: Save commit hashes for tag
         id: commit
         uses: pr-mpt/actions-commit-hash@v2
@@ -45,8 +51,8 @@ jobs:
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           push: true
           context: backend
-          tags: infisical/backend:${{ steps.commit.outputs.short }}, 
-                infisical/backend:latest
+          tags: infisical/backend:${{ steps.commit.outputs.short }},
+            infisical/backend:latest
           platforms: linux/amd64,linux/arm64
 
   frontend-image:
@@ -94,8 +100,8 @@ jobs:
           push: true
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           context: frontend
-          tags: infisical/frontend:${{ steps.commit.outputs.short }}, 
-                infisical/frontend:latest
+          tags: infisical/frontend:${{ steps.commit.outputs.short }},
+            infisical/frontend:latest
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
@@ -122,7 +128,7 @@ jobs:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
       - name: Save DigitalOcean kubeconfig with short-lived credentials
         run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 k8s-1-25-4-do-0-nyc1-1670645170179
-      - name: switch to gamma namespace 
+      - name: switch to gamma namespace
         run: kubectl config set-context --current --namespace=gamma
       - name: test kubectl
         run: kubectl get ingress

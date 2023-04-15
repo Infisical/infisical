@@ -13,7 +13,7 @@ export const getJwtServiceSecret = () => infisical.get('JWT_SERVICE_SECRET')!;
 export const getJwtSignupLifetime = () => infisical.get('JWT_SIGNUP_LIFETIME')! || '15m';
 export const getJwtSignupSecret = () => infisical.get('JWT_SIGNUP_SECRET')!;
 export const getMongoURL = () => infisical.get('MONGO_URL')!;
-export const getNodeEnv = () => infisical.get('NODE_ENV')!;
+export const getNodeEnv = () => infisical.get('NODE_ENV')! || 'production';
 export const getVerboseErrorOutput = () => infisical.get('VERBOSE_ERROR_OUTPUT')! === 'true' && true;
 export const getLokiHost = () => infisical.get('LOKI_HOST')!;
 export const getClientIdAzure = () => infisical.get('CLIENT_ID_AZURE')!;
@@ -49,3 +49,16 @@ export const getStripeWebhookSecret = () => infisical.get('STRIPE_WEBHOOK_SECRET
 export const getTelemetryEnabled = () => infisical.get('TELEMETRY_ENABLED')! !== 'false' && true;
 export const getLoopsApiKey = () => infisical.get('LOOPS_API_KEY')!;
 export const getSmtpConfigured = () => infisical.get('SMTP_HOST') == '' || infisical.get('SMTP_HOST') == undefined ? false : true
+export const getHttpsEnabled = () => {
+  if (getNodeEnv() != "production") {
+    // no https for anything other than prod
+    return false
+  }
+
+  if (infisical.get('HTTPS_ENABLED') == undefined || infisical.get('HTTPS_ENABLED') == "") {
+    // default when no value present
+    return true
+  }
+
+  return infisical.get('HTTPS_ENABLED') === 'true' && true
+}

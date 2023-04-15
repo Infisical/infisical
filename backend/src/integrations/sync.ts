@@ -21,19 +21,24 @@ import {
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
+  INTEGRATION_RAILWAY,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
+  INTEGRATION_SUPABASE,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_GITLAB_API_URL,
   INTEGRATION_VERCEL_API_URL,
   INTEGRATION_NETLIFY_API_URL,
   INTEGRATION_RENDER_API_URL,
+  INTEGRATION_RAILWAY_API_URL,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_TRAVISCI_API_URL,
+  INTEGRATION_SUPABASE_API_URL
 } from "../variables";
 import request from '../config/request';
+import axios from "axios";
 
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
@@ -126,6 +131,13 @@ const syncSecrets = async ({
           accessToken,
         });
         break;
+      case INTEGRATION_RAILWAY:
+        await syncSecretsRailway({
+          integration,
+          secrets,
+          accessToken
+        });
+        break;
       case INTEGRATION_FLYIO:
         await syncSecretsFlyio({
           integration,
@@ -145,6 +157,13 @@ const syncSecrets = async ({
           integration,
           secrets,
           accessToken,
+        });
+        break;
+      case INTEGRATION_SUPABASE:
+        await syncSecretsSupabase({
+            integration,
+            secrets,
+            accessToken
         });
         break;
     }
@@ -608,6 +627,7 @@ const syncSecretsVercel = async ({
     key: string;
     value: string;
     target: string[];
+    gitBranch?: string;
   }
   
   try {
@@ -621,46 +641,7 @@ const syncSecretsVercel = async ({
           }
         : {}),
     };
-    
-    // const res = (
-    //   await Promise.all(
-    //     (
-    //       await request.get(
-    //         `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env`,
-    //         {
-    //           params,
-    //           headers: {
-    //               Authorization: `Bearer ${accessToken}`,
-    //               'Accept-Encoding': 'application/json'
-    //           }
-    //       }
-    //   ))
-    //   .data
-    //   .envs
-    //   .filter((secret: VercelSecret) => secret.target.includes(integration.targetEnvironment))
-    //   .map(async (secret: VercelSecret) => {
-    //     if (secret.type === 'encrypted') {
-    //       // case: secret is encrypted -> need to decrypt
-    //       const decryptedSecret = (await request.get(
-    //           `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
-    //           {
-    //             params,
-    //             headers: {
-    //                 Authorization: `Bearer ${accessToken}`,
-    //                 'Accept-Encoding': 'application/json'
-    //             }
-    //           }
-    //       )).data;
-
-    //       return decryptedSecret;
-    //     }
-
-    //     return secret;
-    //   }))).reduce((obj: any, secret: any) => ({
-    //       ...obj,
-    //       [secret.key]: secret
-    //   }), {});
-    
+      
     const vercelSecrets: VercelSecret[] = (await request.get(
       `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env`,
       {
@@ -673,7 +654,21 @@ const syncSecretsVercel = async ({
     ))
     .data
     .envs
-    .filter((secret: VercelSecret) => secret.target.includes(integration.targetEnvironment));
+    .filter((secret: VercelSecret) => { 
+      if (!secret.target.includes(integration.targetEnvironment)) {
+        // case: secret does not have the same target environment
+        return false;
+      }
+
+      if (integration.targetEnvironment === 'preview' && integration.path && integration.path !== secret.gitBranch) {
+        // case: secret on preview environment does not have same target git branch
+        return false;
+      }
+
+      return true;
+    });
+
+    // return secret.target.includes(integration.targetEnvironment);
 
     const res: { [key: string]: VercelSecret } = {};
 
@@ -696,7 +691,7 @@ const syncSecretsVercel = async ({
         res[vercelSecret.key] = vercelSecret;
       }
     }
-
+    
     const updateSecrets: VercelSecret[] = [];
     const deleteSecrets: VercelSecret[] = [];
     const newSecrets: VercelSecret[] = [];
@@ -710,6 +705,9 @@ const syncSecretsVercel = async ({
           value: secrets[key],
           type: "encrypted",
           target: [integration.targetEnvironment],
+          ...(integration.path ? {
+            gitBranch: integration.path
+          } : {})
         });
       }
     });
@@ -726,7 +724,10 @@ const syncSecretsVercel = async ({
             type: res[key].type,
             target: res[key].target.includes(integration.targetEnvironment) 
             ? [...res[key].target] 
-            : [...res[key].target, integration.targetEnvironment]
+            : [...res[key].target, integration.targetEnvironment],
+            ...(integration.path ? {
+              gitBranch: integration.path
+            } : {})
           });
         }
       } else {
@@ -737,6 +738,9 @@ const syncSecretsVercel = async ({
           value: res[key].value,
           type: "encrypted", // value doesn't matter
           target: [integration.targetEnvironment],
+          ...(integration.path ? {
+            gitBranch: integration.path
+          } : {})
         });
       }
     });
@@ -1060,7 +1064,7 @@ const syncSecretsGitHub = async ({
         "GET /repos/{owner}/{repo}/actions/secrets/public-key",
         {
           owner: integration.owner,
-          repo: integration.app,
+          repo: integration.app
         }
       )
     ).data;
@@ -1166,6 +1170,58 @@ const syncSecretsRender = async ({
     throw new Error("Failed to sync secrets to Render");
   }
 };
+
+/**
+ * Sync/push [secrets] to Railway project with id [integration.appId]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Railway integration
+ */
+const syncSecretsRailway = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  try {
+
+    const query = `
+      mutation UpsertVariables($input: VariableCollectionUpsertInput!) {
+        variableCollectionUpsert(input: $input)
+      }
+    `;
+
+    const input = {
+      projectId: integration.appId,
+      environmentId: integration.targetEnvironmentId,
+      ...(integration.targetServiceId ? { serviceId: integration.targetServiceId } : {}),
+      replace: true,
+      variables: secrets
+    };
+
+    await request.post(INTEGRATION_RAILWAY_API_URL, {
+      query,
+      variables: {
+        input,
+      },
+    }, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Accept-Encoding': 'application/json'
+      },
+    });
+    
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error("Failed to sync secrets to Railway");
+  }
+}
 
 /**
  * Sync/push [secrets] to Fly.io app
@@ -1570,5 +1626,80 @@ const syncSecretsGitLab = async ({
     throw new Error("Failed to sync secrets to GitLab");
   }
 }
+
+/**
+ * Sync/push [secrets] to Supabase with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {IIntegrationAuth} obj.integrationAuth - integration auth details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Supabase integration
+ */
+const syncSecretsSupabase = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  try {
+    const { data: getSecretsRes } = await request.get(
+      `${INTEGRATION_SUPABASE_API_URL}/v1/projects/${integration.appId}/secrets`,
+      {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Accept-Encoding': 'application/json'
+        }
+      }
+    );
+
+    // convert the secrets to [{}] format
+    const modifiedFormatForSecretInjection = Object.keys(secrets).map(
+      (key) => {
+        return {
+            name: key,
+            value: secrets[key]
+        };
+      }
+    );
+
+    await request.post(
+      `${INTEGRATION_SUPABASE_API_URL}/v1/projects/${integration.appId}/secrets`,
+      modifiedFormatForSecretInjection,
+      {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Accept-Encoding': 'application/json'
+        }
+      }
+    );
+
+    const secretsToDelete: any = [];
+    getSecretsRes?.forEach((secretObj: any) => {
+      if (!(secretObj.name in secrets)) {
+          secretsToDelete.push(secretObj.name);
+      }
+    });
+
+    await request.delete(
+      `${INTEGRATION_SUPABASE_API_URL}/v1/projects/${integration.appId}/secrets`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'Accept-Encoding': 'application/json'
+        },
+        data: secretsToDelete
+      }
+    );
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed to sync secrets to Supabase');
+  }
+};
+
 
 export { syncSecrets };

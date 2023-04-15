@@ -1,10 +1,16 @@
 import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
 import {
     Bot,
     BotKey,
     Secret,
     ISecret,
-    IUser
+    IUser,
+    User,
+    IServiceAccount,
+    ServiceAccount,
+    IServiceTokenData,
+    ServiceTokenData
 } from '../models';
 import { 
     generateKeyPair, 
@@ -12,8 +18,88 @@ import {
     decryptSymmetric,
     decryptAsymmetric
 } from '../utils/crypto';
-import { SECRET_SHARED } from '../variables';
+import {
+    SECRET_SHARED,
+    AUTH_MODE_JWT,
+    AUTH_MODE_SERVICE_ACCOUNT,
+    AUTH_MODE_SERVICE_TOKEN,
+    AUTH_MODE_API_KEY
+} from '../variables';
 import { getEncryptionKey } from '../config';
+import { BotNotFoundError, UnauthorizedRequestError } from '../utils/errors';
+import {
+    validateMembership
+} from '../helpers/membership';
+import {
+    validateUserClientForWorkspace
+} from '../helpers/user';
+import {
+    validateServiceAccountClientForWorkspace
+} from '../helpers/serviceAccount';
+
+/**
+ * Validate authenticated clients for bot with id [botId] based
+ * on any known permissions.
+ * @param {Object} obj
+ * @param {Object} obj.authData - authenticated client details
+ * @param {Types.ObjectId} obj.botId - id of bot to validate against
+ * @param {Array<'admin' | 'member'>} obj.acceptedRoles - accepted workspace roles
+ */
+const validateClientForBot = async ({
+    authData,
+    botId,
+    acceptedRoles
+}: {
+    authData: {
+		authMode: string;
+		authPayload: IUser | IServiceAccount | IServiceTokenData;
+	};
+    botId: Types.ObjectId;
+    acceptedRoles: Array<'admin' | 'member'>;
+}) => {
+    const bot = await Bot.findById(botId);
+    
+    if (!bot) throw BotNotFoundError();
+    
+    if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
+        await validateUserClientForWorkspace({
+            user: authData.authPayload,
+            workspaceId: bot.workspace,
+            acceptedRoles
+        });
+        
+        return bot;
+    }
+
+    if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
+        await validateServiceAccountClientForWorkspace({
+            serviceAccount: authData.authPayload,
+            workspaceId: bot.workspace
+        });
+
+        return bot;
+    }
+
+    if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
+        throw UnauthorizedRequestError({
+            message: 'Failed service token authorization for bot'
+        });
+    }
+
+    if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
+        await validateUserClientForWorkspace({
+            user: authData.authPayload,
+            workspaceId: bot.workspace,
+            acceptedRoles
+        });
+        
+        return bot;
+    }
+    
+    throw BotNotFoundError({
+        message: 'Failed client authorization for bot'
+    });
+}
 
 /**
  * Create an inactive bot with name [name] for workspace with id [workspaceId]
@@ -222,6 +308,7 @@ const decryptSymmetricHelper = async ({
 }
 
 export {
+    validateClientForBot,
     createBot,
     getSecretsHelper,
     encryptSymmetricHelper,
