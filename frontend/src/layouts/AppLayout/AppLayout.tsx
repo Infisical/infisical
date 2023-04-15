@@ -20,6 +20,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { yupResolver } from '@hookform/resolvers/yup';
+import queryString from 'query-string';
 import * as yup from 'yup';
 
 import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
@@ -158,7 +159,10 @@ export const AppLayout = ({ children }: LayoutProps) => {
             .map((workspace: { _id: string }) => workspace._id)
             .includes(intendedWorkspaceId)
         ) {
-          router.push(`/dashboard/${userWorkspaces[0]._id}`);
+          const { env } = queryString.parse(router.asPath.split('?')[1]);
+          if (!env) {
+            router.push(`/dashboard/${userWorkspaces[0]._id}`);
+          }
         } else {
           setWorkspaceMapping(
             Object.fromEntries(
