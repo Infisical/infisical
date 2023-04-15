@@ -28,8 +28,6 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Select,
-  SelectItem,
   TableContainer,
   Tag,
   Tooltip
@@ -86,7 +84,7 @@ const USER_ACTION_PUSH = 'first_time_secrets_pushed';
  * Instead when user delete we raise a flag so if user decides to go back to toggle personal before saving
  * They will get it back
  */
-export const DashboardPage = () => {
+export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { createNotification } = useNotificationContext();
@@ -126,8 +124,8 @@ export const DashboardPage = () => {
     onSuccess: (data) => {
       // get an env with one of the access available
       const env = data.find(({ isReadDenied, isWriteDenied }) => !isWriteDenied || !isReadDenied);
-      if (env) {
-        setSelectedEnv(env);
+      if (env && data?.map(wsenv => wsenv.slug).includes(envFromTop)) {
+        setSelectedEnv(data?.filter(dp => dp.slug === envFromTop)[0]);
       }
     }
   });
@@ -357,6 +355,7 @@ export const DashboardPage = () => {
     }
     const env = wsEnv?.find((el) => el.slug === slug);
     if (env) setSelectedEnv(env);
+    router.push(`${router.asPath.split("?")[0]}?env=${slug}`)
   };
 
   // record all deleted ids
@@ -417,7 +416,13 @@ export const DashboardPage = () => {
         <form autoComplete="off">
           {/* breadcrumb row */}
           <div className="relative right-5">
-            <NavHeader pageName={t('dashboard:title')} isProjectRelated />
+            <NavHeader 
+              pageName={t('dashboard:title')} 
+              currentEnv={userAvailableEnvs?.filter(envir => envir.slug === envFromTop)[0].name || ''} 
+              isProjectRelated 
+              userAvailableEnvs={userAvailableEnvs}
+              onEnvChange={onEnvChange}
+            />
           </div>
           {/* Secrets, commit and save button section */}
           <div className="mt-6 flex items-center justify-between">
@@ -468,23 +473,6 @@ export const DashboardPage = () => {
           </div>
           {/* Environment, search and other action row */}
           <div className="mt-4 flex items-center space-x-2">
-            <div>
-              <Tooltip content="Select environment">
-                <Select
-                  value={selectedEnv?.slug}
-                  onValueChange={onEnvChange}
-                  position="popper"
-                  className="min-w-[180px] bg-mineshaft-600 h-10 font-medium"
-                  dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 drop-shadow-2xl"
-                >
-                  {userAvailableEnvs?.map(({ name, slug }) => (
-                    <SelectItem value={slug} key={slug}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </Tooltip>
-            </div>
             <div className="flex-grow">
               <Input
                 className="bg-mineshaft-600 h-[2.3rem] placeholder-mineshaft-50"
