@@ -7,7 +7,8 @@ import {
     ServiceTokenData,
     IServiceTokenData,
     Secret,
-    ISecret
+    ISecret,
+    SecretBlindIndexData,
 } from '../models';
 import {
     validateMembership
@@ -34,6 +35,9 @@ import {
     AUTH_MODE_SERVICE_TOKEN,
     AUTH_MODE_API_KEY
 } from '../variables';
+import crypto from 'crypto';
+import * as argon2 from 'argon2';
+
 
 /**
  * Validate authenticated clients for secrets with id [secretId] based
@@ -192,7 +196,74 @@ const validateClientForSecrets = async ({
     });
 }
 
+/**
+ * Create and return blind index for secret with
+ * name [name] part of workspace with id [workspaceId]
+ * @param {Object} obj
+ * @param {Object} obj.secretName - name of secret to generate blind index for
+ * @param {Object} obj.workspaceId - id of workspace that secret belongs to
+ */
+const createSecretBlindIndexHelper = async ({
+    secretName,
+    workspaceId
+}: {
+    secretName: string;
+    workspaceId: Types.ObjectId;
+}) => {
+
+    // check if workspace blind index data exists
+    // const secretBlindIndexData = await SecretBlindIndexData.findOne({
+    //     workspace: workspaceId
+    // });
+    
+    // if (!secretBlindIndexData) {
+    //     // case: workspace blind index data has not been enabled
+    // }
+    
+    // TODO: randomBytes should come from the decrypted secretBlindIndexData
+    const randomBytes = crypto.randomBytes(16);
+
+    const secretBlindIndex = (await argon2.hash(secretName, {
+        type: argon2.argon2id,
+        salt: randomBytes,
+        saltLength: 16, // default 16 bytes
+        memoryCost: 65536, // default pool of 64 MiB per thread.
+        hashLength: 32,
+        parallelism: 1,
+        raw: true
+    })).toString('base64');
+
+    return secretBlindIndex;
+}
+
+/**
+ * Return the blind index for the secret with
+ * name [name] part of workspace with id [workspaceId]
+ * @param {Object} obj
+ * @param {Object} obj.secretName - name of secret to generate blind index for
+ * @param {Object} obj.workspaceId - id of workspace that secret belongs to
+ */
+const getSecretBlindIndexHelper = async ({
+    secretName,
+    workspaceId
+}: {
+    secretName: string;
+    workspaceId: Types.ObjectId;
+}) => {
+
+    // check if workspace blind index data exists
+    const secretBlindIndexData = await SecretBlindIndexData.findOne({
+        workspace: workspaceId
+    });
+    
+    if (!secretBlindIndexData) {
+        // case: workspace blind index data has not been enabled
+    }
+}
+
 export {
     validateClientForSecret,
-    validateClientForSecrets
+    validateClientForSecrets,
+    createSecretBlindIndexHelper,
+    getSecretBlindIndexHelper
 }

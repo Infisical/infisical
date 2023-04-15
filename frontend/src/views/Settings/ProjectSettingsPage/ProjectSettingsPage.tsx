@@ -39,9 +39,9 @@ import {
   CreateUpdateEnvFormData,
   CreateWsTag,
   EnvironmentSection,
+  ProjectEncryptionModeSection,
   ProjectNameChangeSection,
-  ServiceTokenSection
-} from './components';
+  ServiceTokenSection} from './components';
 
 export const ProjectSettingsPage = () => {
   const { t } = useTranslation();
@@ -349,6 +349,7 @@ export const ProjectSettingsPage = () => {
         workspaceAutoCapitalization={currentWorkspace?.autoCapitalization}
         onAutoCapitalizationChange={onAutoCapitalizationToggle}
       />
+      <ProjectEncryptionModeSection />
       <div className="mb-6 mt-4 flex w-full flex-col items-start rounded-md border-l border-red bg-white/5 px-6 pl-6 pb-4 pt-4">
         <p className="text-xl font-bold text-red">{t('settings-project:danger-zone')}</p>
         <p className="text-md mt-2 text-gray-400">{t('settings-project:danger-zone-note')}</p>
