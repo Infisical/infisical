@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
 /* eslint-disable react/jsx-key */
-import { Fragment, useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { TFunction, useTranslation } from 'next-i18next';
@@ -21,6 +21,10 @@ import { Menu, Transition } from '@headlessui/react';
 import guidGenerator from '@app/components/utilities/randomId';
 import { useOrganization, useUser } from '@app/context';
 import { useLogoutUser } from '@app/hooks/api';
+import { Button, FormControl, Input, Modal, ModalContent } from '~/components/v2';
+import { Controller, useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
 
 const supportOptions = (t: TFunction) => [
   [
@@ -55,12 +59,29 @@ export interface IUser {
   email: string;
 }
 
+const formSchema = yup.object({
+  orgName: yup.string().required().label('Organization Name').trim(),
+  defaultProject: yup.string().required().label("Project Name").trim()
+})
+
+type TAddOrganizationFormData = yup.InferType<typeof formSchema>;
+
 /**
  * This is the navigation bar in the main app.
  * It has two main components: support options and user menu (inlcudes billing, logout, org/user settings)
  * @returns NavBar
  */
 export const Navbar = () => {
+  const [isNewOrgModalOpen, setIsNewOrgModalOpen] = useState(false);
+
+  const {
+    control, 
+    formState: { isSubmitting },
+    handleSubmit
+  } = useForm<TAddOrganizationFormData>({
+    resolver: yupResolver(formSchema)
+  });
+
   const router = useRouter();
 
   const { currentOrg, orgs } = useOrganization();
@@ -91,6 +112,10 @@ export const Navbar = () => {
     } catch (error) {
       console.error(error);
     }
+  };
+
+  const onCreateNewOrganization = () => {
+    
   };
 
   return (
@@ -254,12 +279,12 @@ export const Navbar = () => {
                   </div>
                 </button>
               </div>
-              {orgs && orgs?.length > 1 && (
-                <div className="px-1 pt-1">
+              {orgs && orgs?.length > 0 && (
+                <div className="px-1 py-1">
                   <div className="ml-2 mt-2 self-start text-xs font-semibold tracking-wide text-gray-400">
                     {t('nav:user.other-organizations')}
                   </div>
-                  <div className="mt-3 mb-2 flex flex-col items-start px-1">
+                  <div className="flex flex-col items-start px-1">
                     {orgs
                       ?.filter((org: { _id: string }) => org._id !== currentOrg?._id)
                       .map((org: { _id: string; name: string }) => (
@@ -283,6 +308,20 @@ export const Navbar = () => {
                         </div>
                       ))}
                   </div>
+                    <div className='px-1 pt-1'>
+                      <div
+                        onKeyDown={() => null}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setIsNewOrgModalOpen(true)}
+                        className="relative mt-1 flex cursor-pointer select-none justify-start rounded-md py-2 pl-10 pr-4 text-gray-400 duration-200 hover:bg-primary/100 hover:font-semibold hover:text-black"
+                      >
+                        <span className="absolute inset-y-0 left-0 flex items-center rounded-lg pl-3 pr-4">
+                          <FontAwesomeIcon icon={faPlus} className="ml-1" />
+                        </span>
+                        <div className="ml-1 text-sm">{t('nav:user.new-organization')}</div>
+                      </div>
+                    </div>
                 </div>
               )}
               <div className="px-1 py-1">
@@ -309,6 +348,67 @@ export const Navbar = () => {
             </Menu.Items>
           </Transition>
         </Menu>
+
+        <Modal
+          isOpen={isNewOrgModalOpen}
+          onOpenChange={setIsNewOrgModalOpen}
+        >
+            <ModalContent
+              title="Create a new Organization"
+              subTitle="This Organization will contain your Workspaces, secrets and so on."
+            >
+              <form onSubmit={handleSubmit(onCreateNewOrganization)}>
+                <Controller
+                control={control}
+                name="orgName"
+                defaultValue=""
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                  label="Organization Name"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  >
+                    <Input {...field} placeholder="Type your Organization name" />
+                  </FormControl>
+                )} />
+
+                <Controller
+                  control={control}
+                  name="defaultProject"
+                  defaultValue=""
+                  render={({ field, fieldState: { error } }) => (
+                    <FormControl
+                    label="Project Name"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    >
+                      <Input {...field} placeholder="Type your default project/workspace name" />
+                    </FormControl>
+                  )}
+                />
+
+                <div className="mt-7 flex items-center">
+                  <Button
+                    isDisabled={isSubmitting}
+                    isLoading={isSubmitting}
+                    key="layout-create-project-submit"
+                    className="mr-4"
+                    type="submit"
+                  >
+                    Create Organization
+                  </Button>
+                  <Button
+                    key="layout-cancel-create-project"
+                    onClick={() => setIsNewOrgModalOpen(false)}
+                    variant="plain"
+                    colorSchema="secondary"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </ModalContent>
+          </Modal>
       </div>
     </div>
   );

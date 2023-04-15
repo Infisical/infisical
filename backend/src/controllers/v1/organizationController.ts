@@ -64,6 +64,7 @@ export const createOrganization = async (req: Request, res: Response) => {
 			statuses: [ACCEPTED]
 		});
 	} catch (err) {
+		console.log(err);
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
 		return res.status(400).send({
