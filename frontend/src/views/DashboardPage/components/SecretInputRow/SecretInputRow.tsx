@@ -156,7 +156,7 @@ export const SecretInputRow = ({
   }
 
   return (
-    <tr className="group min-w-full flex flex-row items-center">
+    <tr className="group min-w-full flex flex-row items-center" key={index}>
       <td className="w-10 h-10 px-4 flex items-center justify-center"><div className='text-center w-10 text-xs text-bunker-400'>{index + 1}</div></td>
       <Controller
         control={control}
@@ -279,7 +279,7 @@ export const SecretInputRow = ({
             {(isOverridden ? secret.valueOverride : secret.value)?.split(REGEX).map((word) => {
               if (word.match(REGEX) !== null) {
                 return (
-                  <span className="ph-no-capture text-yellow" key={index}>
+                  <span className="ph-no-capture text-yellow" key={guidGenerator()}>
                     {word.slice(0, 2)}
                     <span className="ph-no-capture text-yellow-200/80">
                       {word.slice(2, word.length - 1)}
