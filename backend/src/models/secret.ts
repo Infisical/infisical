@@ -1,4 +1,4 @@
-import { Schema, model, Types, Document } from 'mongoose';
+import { Schema, model, Types } from 'mongoose';
 import {
 	SECRET_SHARED,
 	SECRET_PERSONAL,
@@ -59,7 +59,8 @@ const secretSchema = new Schema<ISecret>(
 			required: true
 		},
 		secretBlindIndex: {
-			type: String
+			type: String,
+			select: false
 		},
 		secretKeyCiphertext: {
 			type: String,

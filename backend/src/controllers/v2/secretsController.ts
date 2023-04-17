@@ -2,7 +2,7 @@ import to from 'await-to-js';
 import { Types } from 'mongoose';
 import { Request, Response } from 'express';
 import { ISecret, Secret } from '../../models';
-import { IAction } from '../../ee/models';
+import { IAction, SecretVersion } from '../../ee/models';
 import {
     SECRET_PERSONAL,
     SECRET_SHARED,
@@ -33,6 +33,7 @@ import {
  * @param res 
  */
 export const batchSecrets = async (req: Request, res: Response) => {
+
     const channel = getChannelFromUserAgent(req.headers['user-agent']);
     const postHogClient = TelemetryService.getPostHogClient();
 
@@ -146,7 +147,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
         await Secret.bulkWrite(updateOperations);
 
-        const secretVersions = updateSecrets.map((u) => ({
+        const secretVersions = updateSecrets.map((u) => new SecretVersion({
             secret: new Types.ObjectId(u._id),
             version: listedSecretsObj[u._id.toString()].version,
             workspace: new Types.ObjectId(workspaceId),
@@ -253,7 +254,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
     // (EE) take a secret snapshot
     await EESecretService.takeSecretSnapshot({
-        workspaceId
+        workspaceId: new Types.ObjectId(workspaceId)
     });
 
     const resObj: { [key: string]: ISecret[] | string[] } = {}
@@ -422,13 +423,8 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretKeyTag,
             secretValueCiphertext,
             secretValueIV,
-            secretValueTag,
-            secretCommentCiphertext,
-            secretCommentIV,
-            secretCommentTag,
-            tags
-        }) => ({
-            _id: new Types.ObjectId(),
+            secretValueTag
+        }) => new SecretVersion({
             secret: _id,
             version,
             workspace,
@@ -441,11 +437,7 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretKeyTag,
             secretValueCiphertext,
             secretValueIV,
-            secretValueTag,
-            secretCommentCiphertext,
-            secretCommentIV,
-            secretCommentTag,
-            tags
+            secretValueTag
         }))
     });
 
@@ -471,7 +463,7 @@ export const createSecrets = async (req: Request, res: Response) => {
 
     // (EE) take a secret snapshot
     await EESecretService.takeSecretSnapshot({
-        workspaceId
+        workspaceId: new Types.ObjectId(workspaceId)
     });
 
     const postHogClient = TelemetryService.getPostHogClient();
@@ -872,7 +864,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
 
         // (EE) take a secret snapshot
         await EESecretService.takeSecretSnapshot({
-            workspaceId: key
+            workspaceId: new Types.ObjectId(key)
         })
 
         const postHogClient = TelemetryService.getPostHogClient();
@@ -955,10 +947,6 @@ export const deleteSecrets = async (req: Request, res: Response) => {
     }   
     */
 
-    return res.status(200).send({
-        message: 'delete secrets!!'
-    });
-
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
     const toDelete = req.secrets.map((s: any) => s._id);
 
@@ -1012,8 +1000,8 @@ export const deleteSecrets = async (req: Request, res: Response) => {
 
         // (EE) take a secret snapshot
         await EESecretService.takeSecretSnapshot({
-            workspaceId: key
-        })
+            workspaceId: new Types.ObjectId(key)
+        });
 
         const postHogClient = TelemetryService.getPostHogClient();
         if (postHogClient) {

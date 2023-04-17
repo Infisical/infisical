@@ -10,7 +10,8 @@ import {
 	EELogService
 } from '../ee/services';
 import {
-	IAction
+	IAction,
+	SecretVersion
 } from '../ee/models';
 import {
 	SECRET_SHARED,
@@ -189,8 +190,7 @@ const v1PushSecrets = async ({
 				secretKeyHash,
 			}) => {
 				const newSecret = newSecretsObj[`${type}-${secretKeyHash}`];
-				return ({
-					_id: new Types.ObjectId(),
+				return new SecretVersion({
 					secret: _id,
 					version: version ? version + 1 : 1,
 					workspace: new Types.ObjectId(workspaceId),
@@ -261,8 +261,7 @@ const v1PushSecrets = async ({
 					secretValueIV,
 					secretValueTag,
 					secretValueHash
-				}) => ({
-					_id: new Types.ObjectId(),
+				}) => new SecretVersion({
 					secret: _id,
 					version,
 					workspace,
@@ -284,7 +283,7 @@ const v1PushSecrets = async ({
 
 		// (EE) take a secret snapshot
 		await EESecretService.takeSecretSnapshot({
-			workspaceId
+			workspaceId: new Types.ObjectId(workspaceId)
 		});
 	} catch (err) {
 		Sentry.setUser(null);
@@ -475,12 +474,12 @@ const v2PushSecrets = async ({
 
 			// (EE) add secret versions for new secrets
 			EESecretService.addSecretVersions({
-				secretVersions: newSecrets.map((secretDocument) => {
-					return {
-						...secretDocument.toObject(),
+				secretVersions: newSecrets.map((secretDocument: ISecret) => {
+					return new SecretVersion({
+						...secretDocument,
 						secret: secretDocument._id,
 						isDeleted: false
-					}
+					})
 				})
 			});
 
@@ -495,7 +494,7 @@ const v2PushSecrets = async ({
 
 		// (EE) take a secret snapshot
 		await EESecretService.takeSecretSnapshot({
-			workspaceId
+			workspaceId: new Types.ObjectId(workspaceId)
 		})
 
 		// (EE) create (audit) log

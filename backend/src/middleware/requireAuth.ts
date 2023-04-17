@@ -21,6 +21,7 @@ import {
 	AUTH_MODE_SERVICE_TOKEN,
 	AUTH_MODE_API_KEY
 } from '../variables';
+import { getChannelFromUserAgent } from '../utils/posthog';
 
 declare module 'jsonwebtoken' {
 	export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -88,7 +89,9 @@ const requireAuth = ({
 		
 		req.authData = {
 			authMode,
-			authPayload // User, ServiceAccount, ServiceTokenData
+			authPayload, // User, ServiceAccount, ServiceTokenData
+			authChannel: getChannelFromUserAgent(req.headers['user-agent']),
+			authIP: req.ip
 		}
 		
 		return next();

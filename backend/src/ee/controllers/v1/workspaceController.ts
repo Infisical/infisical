@@ -304,7 +304,7 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
 		
         // take secret snapshot
 		await EESecretService.takeSecretSnapshot({
-			workspaceId
+			workspaceId: new Types.ObjectId(workspaceId)
 		});
     } catch (err) {
         Sentry.setUser({ email: req.user.email });

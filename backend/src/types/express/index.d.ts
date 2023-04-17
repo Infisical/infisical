@@ -5,6 +5,9 @@ import {
 	IServiceTokenData,
 	ISecret 
 } from '../../models';
+import {
+	AuthData
+} from '../../interfaces/middleware';
 
 // TODO: fix (any) types
 declare global {
@@ -29,10 +32,7 @@ declare global {
 			serviceTokenData: any;
 			apiKeyData: any;
 			query?: any;
-			authData: {
-				authMode: string;
-				authPayload: IUser | IServiceAccount | IServiceTokenData;
-			};
+			authData: AuthData;
 			requestData: {
 				[key: string]: string
 			};

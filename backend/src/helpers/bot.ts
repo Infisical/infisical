@@ -112,7 +112,7 @@ const createBot = async ({
     workspaceId,
 }: {
     name: string;
-    workspaceId: string;
+    workspaceId: Types.ObjectId;
 }) => {
     let bot;
     try {

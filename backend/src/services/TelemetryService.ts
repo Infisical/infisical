@@ -60,6 +60,9 @@ class Telemetry {
     serviceAccount?: IServiceAccount;
     serviceTokenData?: any; // TODO: fix (it's ServiceTokenData with user populated)
   }) => {
+  
+    // TODO: modify to accept authData instead
+    
     let distinctId = '';
     
     if (user) {

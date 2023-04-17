@@ -207,7 +207,7 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
 		
 		// take secret snapshot
 		await EESecretService.takeSecretSnapshot({
-			workspaceId: secret.workspace.toString()
+			workspaceId: secret.workspace
 		});
 		
 	} catch (err) {

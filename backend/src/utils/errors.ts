@@ -153,6 +153,16 @@ export const SecretNotFoundError = (error?: Partial<RequestErrorContext>) => new
     stack: error?.stack
 });
 
+//* ----->[SECRET BLIND INDEX DATA ERRORS]<-----
+export const SecretBlindIndexDataNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
+    logLevel: error?.logLevel ?? LogLevel.ERROR,
+    statusCode: error?.statusCode ?? 404,
+    type: error?.type ?? 'secret_blind_index_data_not_found_error',
+    message: error?.message ?? 'The requested secret was not found',
+    context: error?.context,
+    stack: error?.stack
+});
+
 //* ----->[SECRET SNAPSHOT ERRORS]<-----
 export const SecretSnapshotNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.ERROR,

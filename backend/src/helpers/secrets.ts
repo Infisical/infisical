@@ -1,5 +1,12 @@
 import { Types } from 'mongoose';
 import {
+    CreateSecretParams,
+    GetSecretsParams,
+    GetSecretParams,
+    UpdateSecretParams,
+    DeleteSecretParams
+} from '../interfaces/services/SecretService';
+import {
     User,
     IUser,
     ServiceAccount,
@@ -10,6 +17,10 @@ import {
     ISecret,
     SecretBlindIndexData,
 } from '../models';
+import {
+    IAction,
+    SecretVersion
+} from '../ee/models';
 import {
     validateMembership
 } from '../helpers/membership';
@@ -27,17 +38,32 @@ import {
 import { 
     BadRequestError, 
     UnauthorizedRequestError,
-    SecretNotFoundError
+    SecretNotFoundError,
+    SecretBlindIndexDataNotFoundError
 } from '../utils/errors';
 import {
     AUTH_MODE_JWT,
     AUTH_MODE_SERVICE_ACCOUNT,
     AUTH_MODE_SERVICE_TOKEN,
-    AUTH_MODE_API_KEY
+    AUTH_MODE_API_KEY,
+    SECRET_PERSONAL,
+    SECRET_SHARED,
+    ACTION_ADD_SECRETS,
+    ACTION_READ_SECRETS,
+    ACTION_UPDATE_SECRETS,
+    ACTION_DELETE_SECRETS
 } from '../variables';
 import crypto from 'crypto';
 import * as argon2 from 'argon2';
-
+import { decryptSymmetric } from '../utils/crypto';
+import { getEncryptionKey } from '../config';
+import {
+    EESecretService,
+    EELogService
+} from '../ee/services';
+import {
+    getAuthDataPayloadIdObj
+} from '../utils/auth';
 
 /**
  * Validate authenticated clients for secrets with id [secretId] based
@@ -197,53 +223,13 @@ const validateClientForSecrets = async ({
 }
 
 /**
- * Create and return blind index for secret with
- * name [name] part of workspace with id [workspaceId]
+ * Generate blind index for secret with name [secretName] 
+ * for workspace with id [workspaceId]
  * @param {Object} obj
  * @param {Object} obj.secretName - name of secret to generate blind index for
  * @param {Object} obj.workspaceId - id of workspace that secret belongs to
  */
-const createSecretBlindIndexHelper = async ({
-    secretName,
-    workspaceId
-}: {
-    secretName: string;
-    workspaceId: Types.ObjectId;
-}) => {
-
-    // check if workspace blind index data exists
-    // const secretBlindIndexData = await SecretBlindIndexData.findOne({
-    //     workspace: workspaceId
-    // });
-    
-    // if (!secretBlindIndexData) {
-    //     // case: workspace blind index data has not been enabled
-    // }
-    
-    // TODO: randomBytes should come from the decrypted secretBlindIndexData
-    const randomBytes = crypto.randomBytes(16);
-
-    const secretBlindIndex = (await argon2.hash(secretName, {
-        type: argon2.argon2id,
-        salt: randomBytes,
-        saltLength: 16, // default 16 bytes
-        memoryCost: 65536, // default pool of 64 MiB per thread.
-        hashLength: 32,
-        parallelism: 1,
-        raw: true
-    })).toString('base64');
-
-    return secretBlindIndex;
-}
-
-/**
- * Return the blind index for the secret with
- * name [name] part of workspace with id [workspaceId]
- * @param {Object} obj
- * @param {Object} obj.secretName - name of secret to generate blind index for
- * @param {Object} obj.workspaceId - id of workspace that secret belongs to
- */
-const getSecretBlindIndexHelper = async ({
+const generateSecretBlindIndexHelper = async ({
     secretName,
     workspaceId
 }: {
@@ -256,14 +242,505 @@ const getSecretBlindIndexHelper = async ({
         workspace: workspaceId
     });
     
-    if (!secretBlindIndexData) {
-        // case: workspace blind index data has not been enabled
+    if (!secretBlindIndexData) throw SecretBlindIndexDataNotFoundError();
+    
+    // decrypt workspace salt
+    const salt = decryptSymmetric({
+        ciphertext: secretBlindIndexData.encryptedSaltCiphertext,
+        iv: secretBlindIndexData.saltIV,
+        tag: secretBlindIndexData.saltTag,
+        key: getEncryptionKey()
+    });
+
+    // generate secret blind index
+    const secretBlindIndex = (await argon2.hash(secretName, {
+        type: argon2.argon2id,
+        salt: Buffer.from(salt, 'base64'),
+        saltLength: 16, // default 16 bytes
+        memoryCost: 65536, // default pool of 64 MiB per thread.
+        hashLength: 32,
+        parallelism: 1,
+        raw: true
+    })).toString('base64');
+
+    return secretBlindIndex;
+}
+
+/**
+ * Create secret with name [secretName]
+ * @param {Object} obj
+ * @param {String} obj.secretName - name of secret to create
+ * @param {Types.ObjectId} obj.workspaceId - id of workspace to create secret for
+ * @param {String} obj.environment - environment in workspace to create secret for
+ * @param {'shared' | 'personal'} obj.type - type of secret
+ * @param {AuthData} obj.authData - authentication data on request
+ * @returns 
+ */
+const createSecretHelper = async ({
+    secretName,
+    workspaceId,
+    environment,
+    type,
+    authData,
+    secretKeyCiphertext,
+    secretKeyIV,
+    secretKeyTag,
+    secretValueCiphertext,
+    secretValueIV,
+    secretValueTag
+}: CreateSecretParams) => {
+    // preliminary OK
+    // pending check for other types of clients
+
+    const secretBlindIndex = await generateSecretBlindIndexHelper({
+        secretName,
+        workspaceId: new Types.ObjectId(workspaceId)
+    });
+
+    const exists = await Secret.exists({
+        secretBlindIndex,
+        workspace: new Types.ObjectId(workspaceId),
+        type
+    });
+    
+    if (exists) throw BadRequestError({
+        message: 'Failed to create secret that already exists'
+    });
+    
+    if (type === SECRET_PERSONAL) {
+        // case: secret type is personal -> check if a corresponding shared secret 
+        // with the same blind index [secretBlindIndex] exists
+
+        const exists = await Secret.exists({
+            secretBlindIndex,
+            workspace: new Types.ObjectId(workspaceId),
+            type: SECRET_SHARED
+        });
+        
+        if (!exists) throw BadRequestError({
+            message: 'Failed to create personal secret override for no corresponding shared secret'
+        });
+        
+        // TODO: adapt to other client types
+
+        if (!(authData.authPayload instanceof User)) throw BadRequestError({
+            message: 'Failed to create personal secret override for no specified user'
+        });
     }
+    
+    // create secret
+    const secret = await new Secret({
+        version: 1,
+        workspace: new Types.ObjectId(workspaceId),
+        environment,
+        type,
+        ...(type === SECRET_PERSONAL && (authData.authPayload instanceof User) ? {
+            user: authData.authPayload._id
+        } : {}),
+        secretBlindIndex,
+        secretKeyCiphertext,
+        secretKeyIV,
+        secretKeyTag,
+        secretValueCiphertext,
+        secretValueIV,
+        secretValueTag
+    }).save();
+    
+    const secretVersion = new SecretVersion({
+        secret: secret._id,
+        version: secret.version,
+        workspace: secret.workspace,
+        type,
+        ...(type === SECRET_PERSONAL && authData.authPayload instanceof User ? {
+            user: authData.authPayload._id
+        } : {}),
+        environment: secret.environment,
+        isDeleted: false,
+        secretKeyCiphertext,
+        secretKeyIV,
+        secretKeyTag,
+        secretValueCiphertext,
+        secretValueIV,
+        secretValueTag
+    });
+
+    // // (EE) add version for new secret
+    await EESecretService.addSecretVersions({
+        secretVersions: [secretVersion]
+    });
+
+    // (EE) create (audit) log
+    const action = await EELogService.createAction({
+        name: ACTION_ADD_SECRETS,
+        ...getAuthDataPayloadIdObj(authData),
+        workspaceId,
+        secretIds: [secret._id]
+    });
+    
+    action && await EELogService.createLog({
+        ...getAuthDataPayloadIdObj(authData),
+        workspaceId,
+        actions: [action],
+        channel: authData.authChannel,
+        ipAddress: authData.authIP
+    });
+    
+    // (EE) take a secret snapshot
+    await EESecretService.takeSecretSnapshot({
+        workspaceId
+    });
+    
+    return secret;
+}
+
+/**
+ * Get secrets for workspace with id [workspaceId] and environment [environment]
+ * @param {Object} obj
+ * @param {Types.ObjectId} obj.workspaceId - id of workspace
+ * @param {String} obj.environment - environment in workspace
+ * @param {AuthData} obj.authData - authentication data on request
+ * @returns 
+ */
+const getSecretsHelper = async ({
+    workspaceId,
+    environment,
+    authData
+}: GetSecretsParams) => {
+    // preliminary OK
+    // pending check for other types of clients
+
+    let secrets: ISecret[] = [];
+
+    if (authData.authPayload instanceof User) {
+        // case: get personal secrets first
+        secrets = await Secret.find({
+            workspace: new Types.ObjectId(workspaceId),
+            environment,
+            type: SECRET_PERSONAL,
+            user: authData.authPayload._id
+        });
+    }
+
+    secrets = secrets.concat(await Secret.find({
+        workspace: new Types.ObjectId(workspaceId),
+        environment,
+        type: SECRET_SHARED,
+        secretBlindIndex: {
+            $nin: secrets.map((secret) => secret.secretBlindIndex)
+        }
+    }));
+
+    const action = await EELogService.createAction({
+        name: ACTION_READ_SECRETS,
+        ...getAuthDataPayloadIdObj(authData),
+        workspaceId,
+        secretIds: secrets.map((secret) => secret._id)
+    });
+    
+    action && await EELogService.createLog({
+        ...getAuthDataPayloadIdObj(authData),
+        workspaceId,
+        actions: [action],
+        channel: authData.authChannel,
+        ipAddress: authData.authIP
+    });
+
+    return secrets;
+}
+
+/**
+ * Get secret with name [secretName]
+ * @param {Object} obj
+ * @param {String} obj.secretName - name of secret to get
+ * @param {Types.ObjectId} obj.workspaceId - id of workspace that secret belongs to
+ * @param {String} obj.environment - environment in workspace that secret belongs to
+ * @param {'shared' | 'personal'} obj.type - type of secret
+ * @param {AuthData} obj.authData - authentication data on request
+ * @returns 
+ */
+const getSecretHelper = async ({
+    secretName,
+    workspaceId,
+    environment,
+    type,
+    authData
+}: GetSecretParams) => {
+    // preliminary OK
+    // pending check for other types of clients
+
+    const secretBlindIndex = await generateSecretBlindIndexHelper({
+        secretName,
+        workspaceId: new Types.ObjectId(workspaceId)
+    });
+
+    let secret;
+    
+    if (authData.authPayload instanceof User) {
+        // case: find any personal secret matching criteria
+        secret = await Secret.findOne({
+            secretBlindIndex,
+            workspace: new Types.ObjectId(workspaceId),
+            environment,
+            type: type ?? SECRET_PERSONAL,
+            ...(type === SECRET_PERSONAL ? {
+                user: authData.authPayload._id
+            } : {})
+        });
+
+        if (!secret) {
+            // case: failed to find personal secret matching criteria
+            // -> find shared secret matching criteria
+            secret = await Secret.findOne({
+                secretBlindIndex,
+                workspace: new Types.ObjectId(workspaceId),
+                environment,
+                type: SECRET_SHARED
+            });
+        }
+    }
+    
+    if (!secret) throw SecretNotFoundError();
+    
+    const action = await EELogService.createAction({
+        name: ACTION_READ_SECRETS,
+        ...getAuthDataPayloadIdObj(authData),
+        workspaceId,
+        secretIds: [secret._id]
+    });
+    
+    action && await EELogService.createLog({
+        ...getAuthDataPayloadIdObj(authData),
+        workspaceId,
+        actions: [action],
+        channel: authData.authChannel,
+        ipAddress: authData.authIP
+    });
+
+    return secret;
+}
+
+/**
+ * Update secret with name [secretName]
+ * @param {Object} obj
+ * @param {String} obj.secretName - name of secret to update
+ * @param {Types.ObjectId} obj.workspaceId - id of workspace that secret belongs to
+ * @param {String} obj.environment - environment in workspace that secret belongs to
+ * @param {'shared' | 'personal'} obj.type - type of secret
+ * @param {String} obj.secretValueCiphertext - ciphertext of secret value
+ * @param {String} obj.secretValueIV - IV of secret value
+ * @param {String} obj.secretValueTag - tag of secret value
+ * @param {AuthData} obj.authData - authentication data on request
+ * @returns 
+ */
+const updateSecretHelper = async ({
+    secretName,
+    workspaceId,
+    environment,
+    type,
+    authData,
+    secretValueCiphertext,
+    secretValueIV,
+    secretValueTag
+}: UpdateSecretParams) => {
+    // preliminary OK
+    // pending check for other types of clients
+    const secretBlindIndex = await generateSecretBlindIndexHelper({
+        secretName,
+        workspaceId: new Types.ObjectId(workspaceId)
+    });
+
+    let secret: ISecret | null = null;
+    
+    if (type === SECRET_SHARED) {
+        secret = await Secret.findOneAndUpdate(
+            {
+                secretBlindIndex,
+                workspace: new Types.ObjectId(workspaceId),
+                environment,
+                type
+            },
+            {
+                secretValueCiphertext,
+                secretValueIV,
+                secretValueTag,
+                $inc: { version: 1 }
+            },
+            {
+                new: true
+            }
+        );
+    } else if (type === SECRET_PERSONAL && authData.authPayload instanceof User) {
+        secret = await Secret.findOneAndUpdate(
+            {
+                secretBlindIndex,
+                workspace: new Types.ObjectId(workspaceId),
+                environment,
+                type,
+                user: authData.authPayload._id
+            },
+            {
+                secretValueCiphertext,
+                secretValueIV,
+                secretValueTag,
+                $inc: { version: 1 }
+            },
+            {
+                new: true
+            }
+        );
+    }
+
+    if (!secret) throw SecretNotFoundError();
+
+    const secretVersion = new SecretVersion({
+        secret: secret._id,
+        version: secret.version,
+        workspace: secret.workspace,
+        type,
+        ...(type === SECRET_PERSONAL && authData.authPayload instanceof User ? {
+            user: authData.authPayload._id
+        } : {}),
+        environment: secret.environment,
+        isDeleted: false,
+        secretKeyCiphertext: secret.secretKeyCiphertext,
+        secretKeyIV: secret.secretKeyIV,
+        secretKeyTag: secret.secretKeyTag,
+        secretValueCiphertext,
+        secretValueIV,
+        secretValueTag
+    });
+
+    // // (EE) add version for new secret
+    await EESecretService.addSecretVersions({
+        secretVersions: [secretVersion]
+    });
+
+    // (EE) create (audit) log
+    const action = await EELogService.createAction({
+        name: ACTION_UPDATE_SECRETS,
+        ...getAuthDataPayloadIdObj(authData),
+        workspaceId,
+        secretIds: [secret._id]
+    });
+    
+    action && await EELogService.createLog({
+        ...getAuthDataPayloadIdObj(authData),
+        workspaceId,
+        actions: [action],
+        channel: authData.authChannel,
+        ipAddress: authData.authIP
+    });
+    
+    // (EE) take a secret snapshot
+    await EESecretService.takeSecretSnapshot({
+        workspaceId
+    });
+
+    return secret;
+}
+
+/**
+ * Delete secret with name [secretName]
+ * @param {Object} obj
+ * @param {String} obj.secretName - name of secret to delete
+ * @param {Types.ObjectId} obj.workspaceId - id of workspace that secret belongs to
+ * @param {String} obj.environment - environment in workspace that secret belongs to
+ * @param {'shared' | 'personal'} obj.type - type of secret
+ * @param {AuthData} obj.authData - authentication data on request
+ * @returns 
+ */
+const deleteSecretHelper = async ({
+    secretName,
+    workspaceId,
+    environment,
+    type,
+    authData
+}: DeleteSecretParams) => {
+    // preliminary OK
+    // pending check for other types of clients
+    
+    const secretBlindIndex = await generateSecretBlindIndexHelper({
+        secretName,
+        workspaceId: new Types.ObjectId(workspaceId)
+    });
+
+    let secrets: ISecret[] = [];
+    let secret: ISecret | null = null;
+    
+    if (type === SECRET_SHARED) {
+        secrets = await Secret.find({
+            secretBlindIndex,
+            workspaceId: new Types.ObjectId(workspaceId),
+            environment
+        });
+        
+        secret = await Secret.findOneAndDelete({
+            secretBlindIndex,
+            workspaceId: new Types.ObjectId(workspaceId),
+            environment,
+            type
+        });
+        
+        await Secret.deleteMany({
+            secretBlindIndex,
+            workspaceId: new Types.ObjectId(workspaceId),
+            environment
+        });
+    } else if (type === SECRET_PERSONAL && authData.authPayload instanceof User) {
+        secret = await Secret.findOneAndDelete({
+            secretBlindIndex,
+            workspaceId: new Types.ObjectId(workspaceId),
+            environment,
+            type,
+            user: authData.authPayload._id
+        });
+        
+        if (secret) {
+            secrets = [secret];
+        }
+    }
+    
+    if (!secret) throw SecretNotFoundError();
+    
+    await EESecretService.markDeletedSecretVersions({
+        secretIds: secrets.map((secret) => secret._id)
+    });
+
+    // (EE) create (audit) log
+    const action = await EELogService.createAction({
+        name: ACTION_DELETE_SECRETS,
+        ...getAuthDataPayloadIdObj(authData),
+        workspaceId,
+        secretIds: secrets.map((secret) => secret._id)
+    });
+
+    // (EE) take a secret snapshot
+    action && await EELogService.createLog({
+        ...getAuthDataPayloadIdObj(authData),
+        workspaceId,
+        actions: [action],
+        channel: authData.authChannel,
+        ipAddress: authData.authIP
+    });
+
+    // (EE) take a secret snapshot
+    await EESecretService.takeSecretSnapshot({
+        workspaceId
+    });
+
+    return ({
+        secrets,
+        secret
+    });
 }
 
 export {
     validateClientForSecret,
     validateClientForSecrets,
-    createSecretBlindIndexHelper,
-    getSecretBlindIndexHelper
+    generateSecretBlindIndexHelper,
+    createSecretHelper,
+    getSecretsHelper,
+    getSecretHelper,
+    updateSecretHelper,
+    deleteSecretHelper
 }

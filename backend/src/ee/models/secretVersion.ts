@@ -5,6 +5,7 @@ import {
 } from '../../variables';
 
 export interface ISecretVersion {
+	_id: Types.ObjectId;
 	secret: Types.ObjectId;
 	version: number;
 	workspace: Types.ObjectId; // new
@@ -18,7 +19,6 @@ export interface ISecretVersion {
 	secretValueCiphertext: string;
 	secretValueIV: string;
 	secretValueTag: string;
-	tags?: string[];
 }
 
 const secretVersionSchema = new Schema<ISecretVersion>(
@@ -80,12 +80,7 @@ const secretVersionSchema = new Schema<ISecretVersion>(
 		secretValueTag: {
 			type: String, // symmetric
 			required: true
-		},
-		tags: {
-			ref: 'Tag',
-			type: [Schema.Types.ObjectId],
-			default: []
-		},
+		}
 	},
 	{
 		timestamps: true
