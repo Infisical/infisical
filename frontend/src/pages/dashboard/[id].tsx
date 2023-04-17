@@ -19,8 +19,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Tag } from 'public/data/frequentInterfaces';
-import queryString from 'query-string';
 
+// import queryString from 'query-string';
 import Button from '@app/components/basic/buttons/Button';
 import BottonRightPopup from '@app/components/basic/popups/BottomRightPopup';
 import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
@@ -173,7 +173,7 @@ export default function Dashboard() {
   
   const { createNotification } = useNotificationContext();
   const router = useRouter();
-  const envInURL = queryString.parse(router.asPath.split('?')[1])?.env;
+  // const envInURL = queryString.parse(router.asPath.split('?')[1])?.env;
 
   const workspaceId = router.query.id as string;
   const [workspaceEnvs, setWorkspaceEnvs] = useState<WorkspaceEnv[]>([]);
@@ -240,12 +240,10 @@ export default function Dashboard() {
         setWorkspaceEnvs(accessibleEnvironments || []);
 
         // set env
-        console.log(1, accessibleEnvironments, envInURL)
-        const env = accessibleEnvironments?.find((ae: WorkspaceEnv) => ae.slug === envInURL) || {
+        const env = accessibleEnvironments[0] || {
           name: 'unknown',
           slug: 'unknown'
         };
-        console.log(1, env)
         setSelectedEnv(env);
         setSelectedSnapshotEnv(env);
 
@@ -281,7 +279,7 @@ export default function Dashboard() {
         setData(undefined);
       }
     })();
-  }, [workspaceId, envInURL]);
+  }, [workspaceId]);
 
   useEffect(() => {
     (async () => {
@@ -292,7 +290,7 @@ export default function Dashboard() {
         let dataToSort;
         if (selectedEnv) {
           dataToSort = await getSecretsForProject({
-            env: String(envInURL),
+            env: selectedEnv.slug,
             setIsKeyAvailable,
             setData,
             workspaceId
@@ -818,7 +816,7 @@ export default function Dashboard() {
   };
 
   return <div>
-    {!envInURL 
+    {false 
     ? <DashboardEnvOverview />
     : (data ? (
     <div className="bg-bunker-800 max-h-screen h-full relative flex flex-col justify-between text-white dark">
@@ -848,7 +846,7 @@ export default function Dashboard() {
         <div className="w-full max-h-96 pb-2 dark:[color-scheme:dark]">
           <NavHeader 
             pageName={t('dashboard:title')} 
-            currentEnv={workspaceEnvs?.filter(envir => envir.slug === envInURL)[0].name || ''} 
+            currentEnv={selectedEnv?.name || ''} 
             isProjectRelated 
             userAvailableEnvs={workspaceEnvs}
             onEnvChange={handleOnEnvironmentChange}
