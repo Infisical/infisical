@@ -1,0 +1,15 @@
+name: Slack Broadcast
+description: Broadcast notifications to channels your bot is registered in
+author: Quinton Smith
+
+inputs:
+  BOT_TOKEN:
+    description: Slack bot token
+    required: true
+  MESSAGE:
+    description: Text or block message you want broadcasted
+    required: true
+
+runs:
+  using: node16
+  main: dist/index.js

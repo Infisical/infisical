@@ -1,0 +1,17 @@
+{
+  "name": "slack-broadcast",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "ncc build src/action.js -o dist",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Quinton Smith",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.10.0",
+    "@slack/web-api": "^6.8.1",
+    "@vercel/ncc": "^0.36.1"
+  }
+}
