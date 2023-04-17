@@ -62,7 +62,8 @@ import {
     tags as v2TagsRouter,
 } from './routes/v2';
 import {
-    secrets as v3SecretsRouter
+    secrets as v3SecretsRouter,
+    workspaces as v3WorkspacesRouter
 } from './routes/v3';
 import { healthCheck } from './routes/status';
 import { getLogger } from './utils/logger';
@@ -159,6 +160,7 @@ const main = async () => {
     
     // v3 routes (experimental)
     app.use('/api/v3/secrets', v3SecretsRouter);
+    app.use('/api/v3/workspaces', v3WorkspacesRouter);
 
     // api docs 
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile))

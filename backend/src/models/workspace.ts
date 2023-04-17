@@ -9,7 +9,6 @@ export interface IWorkspace {
 		slug: string;
 	}>;
 	autoCapitalization: boolean;
-	isBlindedIndicesEnabled: boolean;
 }
 
 const workspaceSchema = new Schema<IWorkspace>({
@@ -20,10 +19,6 @@ const workspaceSchema = new Schema<IWorkspace>({
 	autoCapitalization: {
 		type: Boolean,
 		default: true,
-	},
-	isBlindedIndicesEnabled: {
-		type: Boolean,
-		required: true
 	},
 	organization: {
 		type: Schema.Types.ObjectId,

@@ -12,6 +12,8 @@ import {
 } from '../interfaces/services/SecretService';
 import { 
     createSecretBlindIndexDataHelper,
+    getSecretBlindIndexSaltHelper,
+    generateSecretBlindIndexWithSaltHelper,
     generateSecretBlindIndexHelper,
     createSecretHelper,
     getSecretsHelper,
@@ -25,15 +27,52 @@ class SecretService {
      * Create secret blind index data containing encrypted blind index salt 
      * for workspace with id [workspaceId]
      * @param {Object} obj
+     * @param {Buffer} obj.salt - 16-byte random salt
      * @param {Types.ObjectId} obj.workspaceId
      */
     static async createSecretBlindIndexData({
-        workspaceId
+        workspaceId,
     }: {
         workspaceId: Types.ObjectId;
     }) {
         return await createSecretBlindIndexDataHelper({
             workspaceId
+        });
+    }
+
+    /**
+     * Get secret blind index salt for workspace with id [workspaceId]
+     * @param {Object} obj
+     * @param {Types.ObjectId} obj.workspaceId - id of workspace to get salt for
+     * @returns 
+     */
+    static async getSecretBlindIndexSalt({
+        workspaceId
+    }: {
+        workspaceId: Types.ObjectId;
+    }) {
+        return await getSecretBlindIndexSaltHelper({
+            workspaceId
+        });
+    }
+
+    /**
+     * Generate blind index for secret with name [secretName]
+     * and salt [salt]
+     * @param {Object} obj
+     * @param {Object} obj.secretName - name of secret to generate blind index for
+     * @param {String} obj.salt - base64-salt
+     */
+     static async generateSecretBlindIndexWithSalt({
+        secretName,
+        salt
+    }: {
+        secretName: string;
+        salt: string;
+    }) {
+        return await generateSecretBlindIndexWithSaltHelper({
+            secretName,
+            salt
         });
     }
 

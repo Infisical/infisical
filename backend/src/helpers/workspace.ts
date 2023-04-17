@@ -67,12 +67,16 @@ const validateClientForWorkspace = async ({
 		message: 'Failed to find workspace'
 	});
 
-	if (requireBlindIndicesEnabled && !workspace.isBlindedIndicesEnabled) {
+	if (requireBlindIndicesEnabled) {
 		// case: blind indices are not enabled for secrets in this workspace
 		// (i.e. workspace was created before blind indices were introduced
 		// and no admin has enabled it)
 		
-		throw UnauthorizedRequestError({
+		const secretBlindIndexData = await SecretBlindIndexData.exists({
+			workspace: new Types.ObjectId(workspaceId)
+		});
+		
+		if (!secretBlindIndexData) throw UnauthorizedRequestError({
 			message: 'Failed workspace authorization due to blind indices not being enabled'
 		});
 	}
@@ -148,8 +152,7 @@ const createWorkspace = async ({
 		workspace = await new Workspace({
 			name,
 			organization: organizationId,
-			autoCapitalization: true,
-			isBlindedIndicesEnabled: true
+			autoCapitalization: true
 		}).save();
 		
 		// initialize bot for workspace

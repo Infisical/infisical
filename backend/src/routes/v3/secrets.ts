@@ -23,6 +23,7 @@ router.get(
     query('workspaceId').exists().isString().trim(),
     query('environment').exists().isString().trim(),
     query('tagSlugs'),
+    validateRequest,
     requireAuth({
         acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY]
     }),

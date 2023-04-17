@@ -218,7 +218,7 @@ const validateClientForSecrets = async ({
 }
 
 /**
- * Create secret blind index data containing encrypted blind index salt 
+ * Create secret blind index data containing encrypted blind index [salt]
  * for workspace with id [workspaceId]
  * @param {Object} obj
  * @param {Types.ObjectId} obj.workspaceId
@@ -251,6 +251,64 @@ const createSecretBlindIndexDataHelper = async ({
 }
 
 /**
+ * Get secret blind index salt for workspace with id [workspaceId]
+ * @param {Object} obj
+ * @param {Types.ObjectId} obj.workspaceId - id of workspace to get salt for
+ * @returns 
+ */
+const getSecretBlindIndexSaltHelper = async ({
+    workspaceId
+}: {
+    workspaceId: Types.ObjectId;
+}) => {
+    // check if workspace blind index data exists
+    const secretBlindIndexData = await SecretBlindIndexData.findOne({
+        workspace: workspaceId
+    });
+    
+    if (!secretBlindIndexData) throw SecretBlindIndexDataNotFoundError();
+    
+    // decrypt workspace salt
+    const salt = decryptSymmetric({
+        ciphertext: secretBlindIndexData.encryptedSaltCiphertext,
+        iv: secretBlindIndexData.saltIV,
+        tag: secretBlindIndexData.saltTag,
+        key: getEncryptionKey()
+    });
+    
+    return salt;
+}
+
+/**
+ * Generate blind index for secret with name [secretName]
+ * and salt [salt]
+ * @param {Object} obj
+ * @param {Object} obj.secretName - name of secret to generate blind index for
+ * @param {String} obj.salt - base64-salt
+ */
+ const generateSecretBlindIndexWithSaltHelper = async ({
+    secretName,
+    salt
+}: {
+    secretName: string;
+    salt: string;
+}) => {
+
+    // generate secret blind index
+    const secretBlindIndex = (await argon2.hash(secretName, {
+        type: argon2.argon2id,
+        salt: Buffer.from(salt, 'base64'),
+        saltLength: 16, // default 16 bytes
+        memoryCost: 65536, // default pool of 64 MiB per thread.
+        hashLength: 32,
+        parallelism: 1,
+        raw: true
+    })).toString('base64');
+
+    return secretBlindIndex;
+}
+
+/**
  * Generate blind index for secret with name [secretName] 
  * for workspace with id [workspaceId]
  * @param {Object} obj
@@ -280,16 +338,10 @@ const generateSecretBlindIndexHelper = async ({
         key: getEncryptionKey()
     });
 
-    // generate secret blind index
-    const secretBlindIndex = (await argon2.hash(secretName, {
-        type: argon2.argon2id,
-        salt: Buffer.from(salt, 'base64'),
-        saltLength: 16, // default 16 bytes
-        memoryCost: 65536, // default pool of 64 MiB per thread.
-        hashLength: 32,
-        parallelism: 1,
-        raw: true
-    })).toString('base64');
+    const secretBlindIndex = await generateSecretBlindIndexWithSaltHelper({
+        secretName,
+        salt
+    });
 
     return secretBlindIndex;
 }
@@ -858,6 +910,8 @@ export {
     validateClientForSecret,
     validateClientForSecrets,
     createSecretBlindIndexDataHelper,
+    getSecretBlindIndexSaltHelper,
+    generateSecretBlindIndexWithSaltHelper,
     generateSecretBlindIndexHelper,
     createSecretHelper,
     getSecretsHelper,

@@ -1,6 +1,6 @@
 import { Schema, model, Types, Document } from 'mongoose';
 
-export interface ISecretBlindIndexData {
+export interface ISecretBlindIndexData extends Document {
     _id: Types.ObjectId;
     workspace: Types.ObjectId;
     encryptedSaltCiphertext: string;
