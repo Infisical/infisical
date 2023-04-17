@@ -4,9 +4,6 @@ metadata:
   name: infisicalsecret-sample
 spec:
   hostAPI: http://localhost:7070/api
-  tokenSecretReference:
-    secretName: service-token
-    secretNamespace: default
   authentication:
     serviceAccount:
       serviceAccountSecretReference:
@@ -14,6 +11,14 @@ spec:
         secretNamespace: default
       projectId: "6439ec224cfbf7ea2a95b651"
       environmentName: "dev"
+    serviceToken:
+      serviceTokenSecretReference:
+        secretName: service-token
+        secretNamespace: default
   managedSecretReference:
     secretName: managed-secret
+    secretNamespace: default
+  # To be depreciated soon
+  tokenSecretReference:
+    secretName: service-token
     secretNamespace: default

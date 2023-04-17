@@ -5,7 +5,14 @@ import (
 )
 
 type Authentication struct {
+	// +kubebuilder:validation:Optional
 	ServiceAccount ServiceAccountDetails `json:"serviceAccount"`
+	// +kubebuilder:validation:Optional
+	ServiceToken ServiceTokenDetails `json:"serviceToken"`
+}
+
+type ServiceTokenDetails struct {
+	ServiceTokenSecretReference KubeSecretReference `json:"serviceTokenSecretReference"`
 }
 
 type ServiceAccountDetails struct {
@@ -27,10 +34,10 @@ type KubeSecretReference struct {
 // InfisicalSecretSpec defines the desired state of InfisicalSecret
 type InfisicalSecretSpec struct {
 	// +kubebuilder:validation:Optional
-	TokenSecretReference KubeSecretReference `json:"tokenSecretReference,omitempty"`
+	TokenSecretReference KubeSecretReference `json:"tokenSecretReference"`
 
 	// +kubebuilder:validation:Optional
-	Authentication Authentication `json:"authentication,omitempty"`
+	Authentication Authentication `json:"authentication"`
 
 	// +kubebuilder:validation:Required
 	ManagedSecretReference KubeSecretReference `json:"managedSecretReference"`

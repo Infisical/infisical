@@ -69,9 +69,22 @@ func (r *InfisicalSecretReconciler) GetKubeSecretByNamespacedName(ctx context.Co
 }
 
 func (r *InfisicalSecretReconciler) GetInfisicalTokenFromKubeSecret(ctx context.Context, infisicalSecret v1alpha1.InfisicalSecret) (string, error) {
+	// default to new secret ref structure
+	secretName := infisicalSecret.Spec.Authentication.ServiceToken.ServiceTokenSecretReference.SecretName
+	secretNamespace := infisicalSecret.Spec.Authentication.ServiceToken.ServiceTokenSecretReference.SecretNamespace
+
+	// fall back to previous secret ref
+	if secretName == "" {
+		secretName = infisicalSecret.Spec.TokenSecretReference.SecretName
+	}
+
+	if secretNamespace == "" {
+		secretNamespace = infisicalSecret.Spec.TokenSecretReference.SecretNamespace
+	}
+
 	tokenSecret, err := r.GetKubeSecretByNamespacedName(ctx, types.NamespacedName{
-		Namespace: infisicalSecret.Spec.TokenSecretReference.SecretNamespace,
-		Name:      infisicalSecret.Spec.TokenSecretReference.SecretName,
+		Namespace: secretNamespace,
+		Name:      secretName,
 	})
 
 	if errors.IsNotFound(err) {
