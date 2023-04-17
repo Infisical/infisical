@@ -71,7 +71,7 @@ const IntegrationTile = ({
     const loadIntegration = async () => {
       const tempApps: [IntegrationApp] = await getIntegrationApps({
         integrationAuthId: integration?.integrationAuth
-      });
+      }) || [];
 
       setApps(tempApps);
       

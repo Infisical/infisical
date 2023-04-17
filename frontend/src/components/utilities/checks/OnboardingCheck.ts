@@ -57,7 +57,7 @@ const onboardingCheck = async ({
   const orgId = localStorage.getItem('orgData.id');
   const orgUsers = await getOrganizationUsers({
     orgId: orgId || ''
-  });
+  }) || [];
   if (orgUsers.length > 1) {
     countActions += 1;
   }

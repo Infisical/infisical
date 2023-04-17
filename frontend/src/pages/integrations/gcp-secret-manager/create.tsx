@@ -25,8 +25,6 @@ export default function GCPSecretManagerCreateIntegrationPage() {
   const { data: integrationAuthApps } = useGetIntegrationAuthApps({ integrationAuthId: integrationAuthId as string ?? '' });
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
-  const [owner, setOwner] = useState<string | null>(null);
-  const [targetApp, setTargetApp] = useState('');
   const [targetAppId, setTargetAppId] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -40,9 +38,7 @@ export default function GCPSecretManagerCreateIntegrationPage() {
   useEffect(() => {
     // TODO: handle case where apps can be empty
     if (integrationAuthApps) {
-      setTargetApp(integrationAuthApps[0]?.name || 'none');
-      setTargetAppId(integrationAuthApps[0]?.appId ?? '');
-      setOwner(integrationAuthApps[0]?.owner ?? null);
+      setTargetAppId(integrationAuthApps[0]?.appId || '');
     }
   }, [integrationAuthApps]);
 
@@ -50,19 +46,23 @@ export default function GCPSecretManagerCreateIntegrationPage() {
     try {
       setIsLoading(true);
 
+      const targetApp = integrationAuthApps?.find((integrationAuthApp) => integrationAuthApp.appId === targetAppId);
+
+      if (!targetApp || !targetApp.appId) return;
+
       if (!integrationAuth?._id) return;
 
       await createIntegration({
         integrationAuthId: integrationAuth?._id,
         isActive: true,
-        app: targetApp,
-        appId: targetAppId,
+        app: targetApp.name,
+        appId: targetApp.appId,
         sourceEnvironment: selectedSourceEnvironment,
         targetEnvironment: null,
         targetEnvironmentId: null,
         targetService: null,
         targetServiceId: null,
-        owner,
+        owner: targetApp.owner || null,
         path: null,
         region: null
       });
@@ -76,7 +76,7 @@ export default function GCPSecretManagerCreateIntegrationPage() {
     }
   }
 
-  return (integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps && targetApp) ? (
+  return (integrationAuth && workspace && selectedSourceEnvironment && integrationAuthApps && targetAppId) ? (
     <div className="h-full w-full flex justify-center items-center">
       <Card className="max-w-md p-8 rounded-md">
         <CardTitle className='text-center'>GCP Secret Manager Integration</CardTitle>
@@ -90,7 +90,7 @@ export default function GCPSecretManagerCreateIntegrationPage() {
             className='w-full border border-mineshaft-500'
           >
             {workspace?.environments.map((sourceEnvironment) => (
-              <SelectItem value={sourceEnvironment.slug} key={`gcp-secret-manager-environment-${sourceEnvironment.slug}`}>
+              <SelectItem value={sourceEnvironment.slug} key={`source-environment-${sourceEnvironment.slug}`}>
                 {sourceEnvironment.name}
               </SelectItem>
             ))}
@@ -102,13 +102,13 @@ export default function GCPSecretManagerCreateIntegrationPage() {
         >
           <Select
             value={targetAppId}
-            onValueChange={(val) => setTargetApp(val)}
+            onValueChange={(val) => setTargetAppId(val)}
             className='w-full border border-mineshaft-500'
             isDisabled={integrationAuthApps.length === 0}
           >
             {integrationAuthApps.length > 0 ? (
               integrationAuthApps.map((integrationAuthApp) => integrationAuthApp.appId && (
-                <SelectItem value={integrationAuthApp.appId} key={`gcp-secret-manager-environment-${integrationAuthApp.appId}`}>
+                <SelectItem value={integrationAuthApp.appId} key={`target-app-${integrationAuthApp.appId}`}>
                   {integrationAuthApp.name}
                 </SelectItem>
               ))

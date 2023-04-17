@@ -104,7 +104,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       const orgUserProjects = await getOrganizationUserProjects({
         orgId: tempLocalStorage('orgData.id')
       });
-      const userWorkspaces = orgUserProjects;
+      const userWorkspaces = orgUserProjects || [];
       if (
         (userWorkspaces.length === 0 &&
           router.asPath !== '/noprojects' &&
