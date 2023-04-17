@@ -240,10 +240,12 @@ export default function Dashboard() {
         setWorkspaceEnvs(accessibleEnvironments || []);
 
         // set env
-        const env = accessibleEnvironments?.[0] || {
+        console.log(1, accessibleEnvironments, envInURL)
+        const env = accessibleEnvironments?.find((ae: WorkspaceEnv) => ae.slug === envInURL) || {
           name: 'unknown',
           slug: 'unknown'
         };
+        console.log(1, env)
         setSelectedEnv(env);
         setSelectedSnapshotEnv(env);
 
@@ -279,7 +281,7 @@ export default function Dashboard() {
         setData(undefined);
       }
     })();
-  }, [workspaceId]);
+  }, [workspaceId, envInURL]);
 
   useEffect(() => {
     (async () => {
@@ -290,7 +292,7 @@ export default function Dashboard() {
         let dataToSort;
         if (selectedEnv) {
           dataToSort = await getSecretsForProject({
-            env: selectedEnv.slug,
+            env: String(envInURL),
             setIsKeyAvailable,
             setData,
             workspaceId
@@ -1018,7 +1020,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-center h-full my-48">
                 <Image
                   src="/images/loading/loading.gif"
-                  height={600}
+                  height={60}
                   width={100}
                   alt="infisical loading indicator"
                 />
