@@ -56,3 +56,6 @@ yarn-error.log*
 
 # Infisical init
 .infisical.json
+
+# IDE
+.idea/*

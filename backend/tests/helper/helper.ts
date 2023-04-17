@@ -12,7 +12,7 @@ const axios = require('axios');
 import { plainTextWorkspaceKey, testWorkspaceId } from "../../src/utils/addDevelopmentUser";
 import { encryptSymmetric } from "../../src/utils/crypto";
 
-interface TokenData {
+export interface TokenData {
   token: string;
   publicKey: string;
   encryptedPrivateKey: string;
@@ -32,7 +32,7 @@ export const getJWTFromTestUser = (): Promise<TokenData> => {
     }, async () => {
       const clientPublicKey = client.getPublicKey();
 
-      // POST: /login1 
+      // POST: /login1
       const reqBody = {
         email: EMAIL,
         clientPublicKey
