@@ -137,7 +137,9 @@ We're currently setting the foundation and building [integrations](https://infis
     </tr>
     <tr>
       <td align="left" valign="middle">
-         🔜 Supabase
+         <a href="https://infisical.com/docs/integrations/cloud/supabase?ref=github.com">
+          ✔️ Supabase
+        </a>
       </td>
       <td align="left" valign="middle">
         <a href="https://infisical.com/docs/integrations/cicd/githubactions?ref=github.com">
@@ -145,7 +147,9 @@ We're currently setting the foundation and building [integrations](https://infis
         </a>
       </td>
       <td align="left" valign="middle">
-         🔜 Railway (https://github.com/Infisical/infisical/issues/271)
+        <a href="https://infisical.com/docs/integrations/cloud/railway?ref=github.com">
+          ✔️ Railway
+        </a>
       </td>
     </tr>
     <tr>
