@@ -30,6 +30,7 @@ import {
 } from '../variables';
 import { getEncryptionKey } from '../config';
 import { encryptSymmetric } from '../utils/crypto';
+import { SecretService } from '../services';
 
 /**
  * Validate authenticated clients for workspace with id [workspaceId] based
@@ -158,23 +159,9 @@ const createWorkspace = async ({
 		});
 		
 		// initialize blind index salt for workspace
-		const salt = crypto.randomBytes(16).toString('base64');
-		
-		const { 
-			ciphertext: encryptedSaltCiphertext,
-			iv: saltIV,
-			tag: saltTag
-		} = encryptSymmetric({
-			plaintext: salt,
-			key: getEncryptionKey()
+		await SecretService.createSecretBlindIndexData({
+			workspaceId: workspace._id
 		});
-		
-		await new SecretBlindIndexData({
-			workspace: workspace._id,
-			encryptedSaltCiphertext,
-			saltIV,
-			saltTag
-		}).save();
 
 	} catch (err) {
 		Sentry.setUser(null);

@@ -248,7 +248,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
     // // trigger event - push secrets
     await EventService.handleEvent({
         event: eventPushSecrets({
-            workspaceId
+            workspaceId: new Types.ObjectId(workspaceId)
         })
     });
 
@@ -404,7 +404,7 @@ export const createSecrets = async (req: Request, res: Response) => {
         // trigger event - push secrets
         await EventService.handleEvent({
             event: eventPushSecrets({
-                workspaceId
+                workspaceId: new Types.ObjectId(workspaceId)
             })
         });
     }, 5000);
@@ -471,9 +471,7 @@ export const createSecrets = async (req: Request, res: Response) => {
         postHogClient.capture({
             event: 'secrets added',
             distinctId: TelemetryService.getDistinctId({
-                user: req.user,
-                serviceAccount: req.serviceAccount,
-                serviceTokenData: req.serviceTokenData
+                authData: req.authData
             }),
             properties: {
                 numberOfSecrets: listOfSecretsToCreate.length,
@@ -648,9 +646,7 @@ export const getSecrets = async (req: Request, res: Response) => {
         postHogClient.capture({
             event: 'secrets pulled',
             distinctId: TelemetryService.getDistinctId({
-                user: req.user,
-                serviceAccount: req.serviceAccount,
-                serviceTokenData: req.serviceTokenData
+                authData: req.authData
             }),
             properties: {
                 numberOfSecrets: secrets.length,
@@ -837,7 +833,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
         setTimeout(async () => {
             await EventService.handleEvent({
                 event: eventPushSecrets({
-                    workspaceId: key
+                    workspaceId: new Types.ObjectId(key)
                 })
             });
         }, 10000);
@@ -872,9 +868,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
             postHogClient.capture({
                 event: 'secrets modified',
                 distinctId: TelemetryService.getDistinctId({
-                    user: req.user,
-                    serviceAccount: req.serviceAccount,
-                    serviceTokenData: req.serviceTokenData
+                    authData: req.authData
                 }),
                 properties: {
                     numberOfSecrets: workspaceSecretObj[key].length,
@@ -975,7 +969,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
         // trigger event - push secrets
         await EventService.handleEvent({
             event: eventPushSecrets({
-                workspaceId: key
+                workspaceId: new Types.ObjectId(key)
             })
         });
         const deleteAction = await EELogService.createAction({
@@ -1008,9 +1002,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
             postHogClient.capture({
                 event: 'secrets deleted',
                 distinctId: TelemetryService.getDistinctId({
-                    user: req.user,
-                    serviceAccount: req.serviceAccount,
-                    serviceTokenData: req.serviceTokenData
+                    authData: req.authData
                 }),
                 properties: {
                     numberOfSecrets: workspaceSecretObj[key].length,

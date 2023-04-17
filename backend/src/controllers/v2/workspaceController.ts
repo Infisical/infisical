@@ -95,7 +95,8 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
 		// trigger event - push secrets
 		EventService.handleEvent({
 			event: eventPushSecrets({
-				workspaceId
+				workspaceId: new Types.ObjectId(workspaceId),
+				environment
 			})
 		});
 

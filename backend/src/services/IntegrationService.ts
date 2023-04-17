@@ -52,9 +52,11 @@ class IntegrationService {
      * @param {Object} obj.workspaceId - id of workspace
      */
     static async syncIntegrations({
-        workspaceId
+        workspaceId,
+        environment
     }: {
-        workspaceId: string;
+        workspaceId: Types.ObjectId;
+        environment?: string;
     }) {
         return await syncIntegrationsHelper({
             workspaceId

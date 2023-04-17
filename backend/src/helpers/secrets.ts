@@ -7,20 +7,17 @@ import {
     DeleteSecretParams
 } from '../interfaces/services/SecretService';
 import {
+    AuthData
+} from '../interfaces/middleware';
+import {
     User,
-    IUser,
     ServiceAccount,
-    IServiceAccount,
     ServiceTokenData,
-    IServiceTokenData,
     Secret,
     ISecret,
     SecretBlindIndexData,
 } from '../models';
-import {
-    IAction,
-    SecretVersion
-} from '../ee/models';
+import { SecretVersion } from '../ee/models';
 import {
     validateMembership
 } from '../helpers/membership';
@@ -55,8 +52,12 @@ import {
 } from '../variables';
 import crypto from 'crypto';
 import * as argon2 from 'argon2';
-import { decryptSymmetric } from '../utils/crypto';
+import { 
+    encryptSymmetric,
+    decryptSymmetric
+} from '../utils/crypto';
 import { getEncryptionKey } from '../config';
+import { TelemetryService } from '../services';
 import {
     EESecretService,
     EELogService
@@ -80,10 +81,7 @@ const validateClientForSecret = async ({
     acceptedRoles,
     requiredPermissions
 }: {
-    authData: {
-		authMode: string;
-		authPayload: IUser | IServiceAccount | IServiceTokenData;
-	},
+    authData: AuthData;
     secretId: Types.ObjectId;
     acceptedRoles: Array<'admin' | 'member'>;
     requiredPermissions: string[];
@@ -157,10 +155,7 @@ const validateClientForSecrets = async ({
     secretIds,
     requiredPermissions
 }: {
-    authData: {
-		authMode: string;
-		authPayload: IUser | IServiceAccount | IServiceTokenData;
-	},
+    authData: AuthData;
     secretIds: Types.ObjectId[];
     requiredPermissions: string[];
 }) => {
@@ -220,6 +215,39 @@ const validateClientForSecrets = async ({
     throw UnauthorizedRequestError({
         message: 'Failed client authorization for secrets resource'
     });
+}
+
+/**
+ * Create secret blind index data containing encrypted blind index salt 
+ * for workspace with id [workspaceId]
+ * @param {Object} obj
+ * @param {Types.ObjectId} obj.workspaceId
+ */
+const createSecretBlindIndexDataHelper = async ({
+    workspaceId
+}: {
+    workspaceId: Types.ObjectId;
+}) => {
+    // initialize random blind index salt for workspace
+    const salt = crypto.randomBytes(16).toString('base64');
+    
+    const { 
+        ciphertext: encryptedSaltCiphertext,
+        iv: saltIV,
+        tag: saltTag
+    } = encryptSymmetric({
+        plaintext: salt,
+        key: getEncryptionKey()
+    });
+    
+    const secretBlindIndexData = await new SecretBlindIndexData({
+        workspace: workspaceId,
+        encryptedSaltCiphertext,
+        saltIV,
+        saltTag
+    }).save();
+    
+    return secretBlindIndexData;
 }
 
 /**
@@ -389,6 +417,24 @@ const createSecretHelper = async ({
     await EESecretService.takeSecretSnapshot({
         workspaceId
     });
+
+    const postHogClient = TelemetryService.getPostHogClient();
+
+    if (postHogClient) {
+        postHogClient.capture({
+            event: 'secrets added',
+            distinctId: TelemetryService.getDistinctId({
+                authData
+            }),
+            properties: {
+                numberOfSecrets: 1,
+                environment,
+                workspaceId,
+                channel: authData.authChannel,
+                userAgent: authData.authUserAgent
+            }
+        });
+    }
     
     return secret;
 }
@@ -430,6 +476,7 @@ const getSecretsHelper = async ({
         }
     }));
 
+    // (EE) create (audit) log
     const action = await EELogService.createAction({
         name: ACTION_READ_SECRETS,
         ...getAuthDataPayloadIdObj(authData),
@@ -444,6 +491,24 @@ const getSecretsHelper = async ({
         channel: authData.authChannel,
         ipAddress: authData.authIP
     });
+
+    const postHogClient = TelemetryService.getPostHogClient();
+
+    if (postHogClient) {
+        postHogClient.capture({
+            event: 'secrets pulled',
+            distinctId: TelemetryService.getDistinctId({
+                authData
+            }),
+            properties: {
+                numberOfSecrets: secrets.length,
+                environment,
+                workspaceId,
+                channel: authData.authChannel,
+                userAgent: authData.authUserAgent
+            }
+        });
+    }
 
     return secrets;
 }
@@ -501,6 +566,7 @@ const getSecretHelper = async ({
     
     if (!secret) throw SecretNotFoundError();
     
+    // (EE) create (audit) log
     const action = await EELogService.createAction({
         name: ACTION_READ_SECRETS,
         ...getAuthDataPayloadIdObj(authData),
@@ -515,6 +581,24 @@ const getSecretHelper = async ({
         channel: authData.authChannel,
         ipAddress: authData.authIP
     });
+
+    const postHogClient = TelemetryService.getPostHogClient();
+
+    if (postHogClient) {
+        postHogClient.capture({
+            event: 'secrets pull',
+            distinctId: TelemetryService.getDistinctId({
+                authData
+            }),
+            properties: {
+                numberOfSecrets: 1,
+                environment,
+                workspaceId,
+                channel: authData.authChannel,
+                userAgent: authData.authUserAgent
+            }
+        });
+    }
 
     return secret;
 }
@@ -610,7 +694,7 @@ const updateSecretHelper = async ({
         secretValueTag
     });
 
-    // // (EE) add version for new secret
+    // (EE) add version for new secret
     await EESecretService.addSecretVersions({
         secretVersions: [secretVersion]
     });
@@ -635,6 +719,24 @@ const updateSecretHelper = async ({
     await EESecretService.takeSecretSnapshot({
         workspaceId
     });
+
+    const postHogClient = TelemetryService.getPostHogClient();
+
+    if (postHogClient) {
+        postHogClient.capture({
+            event: 'secrets modified',
+            distinctId: TelemetryService.getDistinctId({
+                authData
+            }),
+            properties: {
+                numberOfSecrets: 1,
+                environment,
+                workspaceId,
+                channel: authData.authChannel,
+                userAgent: authData.authUserAgent
+            }
+        });
+    }
 
     return secret;
 }
@@ -728,6 +830,24 @@ const deleteSecretHelper = async ({
         workspaceId
     });
 
+    const postHogClient = TelemetryService.getPostHogClient();
+
+    if (postHogClient) {
+        postHogClient.capture({
+            event: 'secrets deleted',
+            distinctId: TelemetryService.getDistinctId({
+                authData
+            }),
+            properties: {
+                numberOfSecrets: secrets.length,
+                environment,
+                workspaceId,
+                channel: authData.authChannel,
+                userAgent: authData.authUserAgent
+            }
+        });
+    }
+    
     return ({
         secrets,
         secret
@@ -737,6 +857,7 @@ const deleteSecretHelper = async ({
 export {
     validateClientForSecret,
     validateClientForSecrets,
+    createSecretBlindIndexDataHelper,
     generateSecretBlindIndexHelper,
     createSecretHelper,
     getSecretsHelper,

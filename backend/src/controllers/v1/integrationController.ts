@@ -56,7 +56,8 @@ export const createIntegration = async (req: Request, res: Response) => {
 			// trigger event - push secrets
 			EventService.handleEvent({
 				event: eventPushSecrets({
-					workspaceId: integration.workspace.toString()
+					workspaceId: integration.workspace,
+          environment: sourceEnvironment
 				})
 			});
 		}
@@ -117,7 +118,8 @@ export const updateIntegration = async (req: Request, res: Response) => {
       // trigger event - push secrets
       EventService.handleEvent({
         event: eventPushSecrets({
-          workspaceId: integration.workspace.toString(),
+          workspaceId: integration.workspace,
+          environment
         }),
       });
     }

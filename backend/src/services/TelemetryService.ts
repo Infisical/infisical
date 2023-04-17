@@ -1,5 +1,6 @@
 import { PostHog } from 'posthog-node';
 import { getLogger } from '../utils/logger';
+import { AuthData } from '../interfaces/middleware';
 import {
   getNodeEnv,
   getTelemetryEnabled,
@@ -11,7 +12,8 @@ import {
   User,
   IServiceAccount,
   ServiceAccount,
-  IServiceTokenData
+  IServiceTokenData,
+  ServiceTokenData
 } from '../models';
 import {
   BadRequestError
@@ -48,42 +50,27 @@ class Telemetry {
     return postHogClient;
   }
 
-  /**
-   * Return a distinct id for client to be used for logging telemetry
-   */
-  static getDistinctId = ({
-    user,
-    serviceAccount,
-    serviceTokenData
+  static getDistinctId ({
+    authData
   }: {
-    user?: IUser;
-    serviceAccount?: IServiceAccount;
-    serviceTokenData?: any; // TODO: fix (it's ServiceTokenData with user populated)
-  }) => {
-  
-    // TODO: modify to accept authData instead
-    
-    let distinctId = '';
-    
-    if (user) {
-      distinctId = user.email;
+    authData: AuthData;
+  }) {
+    let distinctId: any = '';
+    if (authData.authPayload instanceof User) {
+      distinctId = authData.authPayload.email;
+    } else if (authData.authPayload instanceof ServiceAccount) {
+      distinctId = `sa.${authData.authPayload._id.toString()}`;
+    } else if (authData.authPayload instanceof ServiceTokenData) {
+      if (authData.authPayload.user instanceof User) {
+        distinctId = authData.authPayload?.user.email;
+      } else if (authData.authPayload?.serviceAccount) {
+        distinctId = distinctId = `sa.${authData.authPayload.serviceAccount.toString()}`;
+      }
     }
     
-    if (serviceAccount) {
-      distinctId = `sa.${serviceAccount._id.toString()}`;
-    }
-
-    if (serviceTokenData?.user && serviceTokenData?.user instanceof User) {
-      distinctId = serviceTokenData.user.email;
-    } else if (serviceTokenData?.serviceAccount && serviceTokenData?.serviceAccount instanceof ServiceAccount) {
-      distinctId = `sa.${serviceTokenData.serviceAccount._id.toString()}`;
-    }
-    
-    if (distinctId === '') {
-      throw BadRequestError({
-        message: 'Failed to obtain distinct id for logging telemetry'
-      });
-    }
+    if (distinctId === '') throw BadRequestError({
+      message: 'Failed to obtain distinct id for logging telemetry'
+    });
     
     return distinctId;
   }

@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import {
     getSecretsHelper,
     encryptSymmetricHelper,
@@ -21,7 +22,7 @@ class BotService {
         workspaceId,
         environment
     }: {
-        workspaceId: string;
+        workspaceId: Types.ObjectId;
         environment: string;
     }) {
         return await getSecretsHelper({
@@ -41,7 +42,7 @@ class BotService {
         workspaceId,
         plaintext
     }: {
-        workspaceId: string;
+        workspaceId: Types.ObjectId;
         plaintext: string;
     }) {
         return await encryptSymmetricHelper({
@@ -65,7 +66,7 @@ class BotService {
         iv,
         tag
     }: {
-        workspaceId: string;
+        workspaceId: Types.ObjectId;
         ciphertext: string;
         iv: string;
         tag: string;

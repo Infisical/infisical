@@ -1,6 +1,11 @@
 import { Request, Response } from 'express';
 import { Types } from 'mongoose';
-import { SecretService, TelemetryService } from '../../services';
+import { 
+    SecretService, 
+    TelemetryService,
+    EventService
+} from '../../services';
+import { eventPushSecrets } from '../../events';
 import { getAuthDataPayloadIdObj } from '../../utils/auth';
 import { BadRequestError } from '../../utils/errors';
 
@@ -19,25 +24,6 @@ export const getSecrets = async (req: Request, res: Response) => {
         environment,
         authData: req.authData
     });
-
-    const postHogClient = TelemetryService.getPostHogClient();
-    if (postHogClient) {
-        postHogClient.capture({
-            event: 'secrets pulled',
-            distinctId: TelemetryService.getDistinctId({
-                user: req.user,
-                serviceAccount: req.serviceAccount,
-                serviceTokenData: req.serviceTokenData
-            }),
-            properties: {
-                numberOfSecrets: secrets.length,
-                environment,
-                workspaceId,
-                channel: req.authData.authChannel,
-                userAgent: req.headers?.['user-agent']
-            }
-        });
-    }
 
     return res.status(200).send({
         secrets
@@ -62,25 +48,6 @@ export const getSecretByName = async (req: Request, res: Response) => {
         type,
         authData: req.authData
     });
-
-    const postHogClient = TelemetryService.getPostHogClient();
-    if (postHogClient) {
-        postHogClient.capture({
-            event: 'secrets pull',
-            distinctId: TelemetryService.getDistinctId({
-                user: req.user,
-                serviceAccount: req.serviceAccount,
-                serviceTokenData: req.serviceTokenData
-            }),
-            properties: {
-                numberOfSecrets: 1,
-                environment,
-                workspaceId,
-                channel: req.authData.authChannel,
-                userAgent: req.headers?.['user-agent']
-            }
-        });
-    }
     
     return res.status(200).send({
         secret
@@ -120,24 +87,12 @@ export const createSecret = async (req: Request, res: Response) => {
         secretValueTag
     });
 
-    const postHogClient = TelemetryService.getPostHogClient();
-    if (postHogClient) {
-        postHogClient.capture({
-            event: 'secrets added',
-            distinctId: TelemetryService.getDistinctId({
-                user: req.user,
-                serviceAccount: req.serviceAccount,
-                serviceTokenData: req.serviceTokenData
-            }),
-            properties: {
-                numberOfSecrets: 1,
-                environment,
-                workspaceId,
-                channel: req.authData.authChannel,
-                userAgent: req.headers?.['user-agent']
-            }
-        });
-    }
+    await EventService.handleEvent({
+        event: eventPushSecrets({
+            workspaceId: new Types.ObjectId(workspaceId),
+            environment
+        })
+    });
 
     const secretWithoutBlindIndex = secret.toObject();
     delete secretWithoutBlindIndex.secretBlindIndex;
@@ -173,26 +128,13 @@ export const updateSecretByName = async (req: Request, res: Response) => {
         secretValueIV,
         secretValueTag
     });
-
-
-    const postHogClient = TelemetryService.getPostHogClient();
-    if (postHogClient) {
-        postHogClient.capture({
-            event: 'secrets modified',
-            distinctId: TelemetryService.getDistinctId({
-                user: req.user,
-                serviceAccount: req.serviceAccount,
-                serviceTokenData: req.serviceTokenData
-            }),
-            properties: {
-                numberOfSecrets: 1,
-                environment,
-                workspaceId,
-                channel: req.authData.authChannel,
-                userAgent: req.headers?.['user-agent']
-            }
-        });
-    }
+    
+    await EventService.handleEvent({
+        event: eventPushSecrets({
+            workspaceId: new Types.ObjectId(workspaceId),
+            environment
+        })
+    });
 
     return res.status(200).send({
         secret
@@ -220,24 +162,12 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
         authData: req.authData
     });
 
-    const postHogClient = TelemetryService.getPostHogClient();
-    if (postHogClient) {
-        postHogClient.capture({
-            event: 'secrets deleted',
-            distinctId: TelemetryService.getDistinctId({
-                user: req.user,
-                serviceAccount: req.serviceAccount,
-                serviceTokenData: req.serviceTokenData
-            }),
-            properties: {
-                numberOfSecrets: secrets.length,
-                environment,
-                workspaceId,
-                channel: req.authData.authChannel,
-                userAgent: req.headers?.['user-agent']
-            }
-        });
-    }
+    await EventService.handleEvent({
+        event: eventPushSecrets({
+            workspaceId: new Types.ObjectId(workspaceId),
+            environment
+        })
+    });
 
     return res.status(200).send({
         secret

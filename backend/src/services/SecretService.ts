@@ -11,6 +11,7 @@ import {
     DeleteSecretParams
 } from '../interfaces/services/SecretService';
 import { 
+    createSecretBlindIndexDataHelper,
     generateSecretBlindIndexHelper,
     createSecretHelper,
     getSecretsHelper,
@@ -21,11 +22,27 @@ import {
 
 class SecretService {
     /**
+     * Create secret blind index data containing encrypted blind index salt 
+     * for workspace with id [workspaceId]
+     * @param {Object} obj
+     * @param {Types.ObjectId} obj.workspaceId
+     */
+    static async createSecretBlindIndexData({
+        workspaceId
+    }: {
+        workspaceId: Types.ObjectId;
+    }) {
+        return await createSecretBlindIndexDataHelper({
+            workspaceId
+        });
+    }
+
+    /**
      * Create and return blind index for secret with
      * name [secretName] part of workspace with id [workspaceId]
      * @param {Object} obj
-     * @param {Object} obj.secretName - name of secret to generate blind index for
-     * @param {Object} obj.workspaceId - id of workspace that secret belongs to
+     * @param {String} obj.secretName - name of secret to generate blind index for
+     * @param {Types.ObjectId} obj.workspaceId - id of workspace that secret belongs to
      */
     static async generateSecretBlindIndex({
         secretName,
@@ -50,32 +67,8 @@ class SecretService {
      * @param {AuthData} obj.authData - authentication data on request
      * @returns 
      */
-    static async createSecret({
-        secretName,
-        workspaceId,
-        environment,
-        type,
-        authData,
-        secretKeyCiphertext,
-        secretKeyIV,
-        secretKeyTag,
-        secretValueCiphertext,
-        secretValueIV,
-        secretValueTag
-    }: CreateSecretParams) {
-        return await createSecretHelper({
-            secretName,
-            workspaceId,
-            environment,
-            type,
-            authData,
-            secretKeyCiphertext,
-            secretKeyIV,
-            secretKeyTag,
-            secretValueCiphertext,
-            secretValueIV,
-            secretValueTag
-        });
+    static async createSecret(createSecretParams: CreateSecretParams) {
+        return await createSecretHelper(createSecretParams);
     }
 
     /**
@@ -86,16 +79,8 @@ class SecretService {
      * @param {AuthData} obj.authData - authentication data on request
      * @returns 
      */
-    static async getSecrets({
-        workspaceId,
-        environment,
-        authData 
-    }: GetSecretsParams) {
-        return await getSecretsHelper({
-            workspaceId,
-            environment,
-            authData
-        });
+    static async getSecrets(getSecretsParams: GetSecretsParams) {
+        return await getSecretsHelper(getSecretsParams);
     }
     
     /**
@@ -108,20 +93,8 @@ class SecretService {
      * @param {AuthData} obj.authData - authentication data on request
      * @returns 
      */
-    static async getSecret({
-        secretName,
-        workspaceId,
-        environment,
-        type,
-        authData
-    }: GetSecretParams) {
-        return await getSecretHelper({
-            secretName,
-            workspaceId,
-            environment,
-            type,
-            authData
-        });
+    static async getSecret(getSecretParams: GetSecretParams) {
+        return await getSecretHelper(getSecretParams);
     }
     
     /**
@@ -137,26 +110,8 @@ class SecretService {
      * @param {AuthData} obj.authData - authentication data on request
      * @returns 
      */
-    static async updateSecret({
-        secretName,
-        workspaceId,
-        environment,
-        type,
-        secretValueCiphertext,
-        secretValueIV,
-        secretValueTag,
-        authData
-    }: UpdateSecretParams) {
-        return await updateSecretHelper({
-            secretName,
-            workspaceId,
-            environment,
-            type,
-            authData,
-            secretValueCiphertext,
-            secretValueIV,
-            secretValueTag
-        });
+    static async updateSecret(updateSecretParams: UpdateSecretParams) {
+        return await updateSecretHelper(updateSecretParams);
     }
 
     /**
@@ -169,20 +124,8 @@ class SecretService {
      * @param {AuthData} obj.authData - authentication data on request
      * @returns 
      */
-    static async deleteSecret({
-        secretName,
-        workspaceId,
-        environment,
-        type,
-        authData
-    }: DeleteSecretParams) {
-        return await deleteSecretHelper({
-            secretName,
-            workspaceId,
-            environment,
-            type,
-            authData
-        });
+    static async deleteSecret(deleteSecretParams: DeleteSecretParams) {
+        return await deleteSecretHelper(deleteSecretParams);
     }
 }
 

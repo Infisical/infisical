@@ -9,4 +9,5 @@ export interface AuthData {
     authPayload: IUser | IServiceAccount | IServiceTokenData;
     authChannel: string;
     authIP: string;
+    authUserAgent: string;
 }
