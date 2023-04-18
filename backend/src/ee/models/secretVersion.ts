@@ -13,6 +13,7 @@ export interface ISecretVersion {
 	user?: Types.ObjectId; // new
 	environment: string; // new
 	isDeleted: boolean;
+	secretBlindIndex?: string;
 	secretKeyCiphertext: string;
 	secretKeyIV: string;
 	secretKeyTag: string;
@@ -56,6 +57,10 @@ const secretVersionSchema = new Schema<ISecretVersion>(
 			type: Boolean,
 			default: false,
 			required: true
+		},
+		secretBlindIndex: {
+			type: String,
+			select: false
 		},
 		secretKeyCiphertext: {
 			type: String,

@@ -15,7 +15,7 @@ import { UnauthorizedRequestError, ValidationError } from '../../utils/errors';
 import { EventService } from '../../services';
 import { eventPushSecrets } from '../../events';
 import { EESecretService, EELogService } from '../../ee/services';
-import { TelemetryService } from '../../services';
+import { TelemetryService, SecretService } from '../../services';
 import { getChannelFromUserAgent } from '../../utils/posthog';
 import { PERMISSION_WRITE_SECRETS } from '../../variables';
 import { userHasNoAbility, userHasWorkspaceAccess, userHasWriteOnlyAbility } from '../../ee/helpers/checkMembershipPermissions';
@@ -51,29 +51,47 @@ export const batchSecrets = async (req: Request, res: Response) => {
     const updateSecrets: BatchSecret[] = [];
     const deleteSecrets: Types.ObjectId[] = [];
     const actions: IAction[] = [];
+    
+    // get secret blind index salt
+    const salt = await SecretService.getSecretBlindIndexSalt({
+        workspaceId: new Types.ObjectId(workspaceId)
+    });
 
-    requests.forEach((request) => {
+    for await (const request of requests) {
+        let secretBlindIndex = '';
         switch (request.method) {
             case 'POST':
+                secretBlindIndex = await SecretService.generateSecretBlindIndexWithSalt({
+                    secretName: request.secret.secretName,
+                    salt
+                });
+
                 createSecrets.push({
                     ...request.secret,
                     version: 1,
                     user: request.secret.type === SECRET_PERSONAL ? req.user : undefined,
                     environment,
-                    workspace: new Types.ObjectId(workspaceId)
+                    workspace: new Types.ObjectId(workspaceId),
+                    secretBlindIndex
                 });
                 break;
             case 'PATCH':
+                secretBlindIndex = await SecretService.generateSecretBlindIndexWithSalt({
+                    secretName: request.secret.secretName,
+                    salt
+                });
+
                 updateSecrets.push({
                     ...request.secret,
-                    _id: new Types.ObjectId(request.secret._id)
+                    _id: new Types.ObjectId(request.secret._id),
+                    secretBlindIndex
                 });
                 break;
             case 'DELETE':
                 deleteSecrets.push(new Types.ObjectId(request.secret._id));
                 break;
         }
-    });
+    }
 
     // handle create secrets
     let createdSecrets: ISecret[] = [];
@@ -134,7 +152,10 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
         const updateOperations = updateSecrets.map((u) => ({
             updateOne: {
-                filter: { _id: new Types.ObjectId(u._id) },
+                filter: {
+                    _id: new Types.ObjectId(u._id),
+                    workspace: new Types.ObjectId(workspaceId)
+                },
                 update: {
                     $inc: {
                         version: 1
@@ -154,6 +175,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
             type: listedSecretsObj[u._id.toString()].type,
             environment,
             isDeleted: false,
+            secretBlindIndex: u.secretBlindIndex,
             secretKeyCiphertext: u.secretKeyCiphertext,
             secretKeyIV: u.secretKeyIV,
             secretKeyTag: u.secretKeyTag,

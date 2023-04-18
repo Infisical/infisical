@@ -1,11 +1,7 @@
 import { Request, Response } from 'express';
 import { Types } from 'mongoose';
-import { Secret, Workspace, SecretBlindIndexData } from '../../models';
+import { Secret } from '../../models';
 import { SecretService } from'../../services';
-import { BadRequestError } from '../../utils/errors';
-import { decryptSymmetric } from '../../utils/crypto';
-import { getEncryptionKey } from '../../config';
-import * as argon2 from 'argon2';
 
 /**
  * Return whether or not all secrets in workspace with id [workspaceId]
@@ -18,12 +14,13 @@ export const getWorkspaceBlindIndexStatus = async (req: Request, res: Response) 
     const { workspaceId } = req.params;
 
     const secretsWithoutBlindIndex = await Secret.countDocuments({
-        workspace: new Types.ObjectId(workspaceId)
+        workspace: new Types.ObjectId(workspaceId),
+        secretBlindIndex: {
+            $exists: false
+        }
     });
 
-    const isBlindIndexed = secretsWithoutBlindIndex === 0;
-
-    return res.status(200).send(isBlindIndexed);
+    return res.status(200).send(secretsWithoutBlindIndex === 0);
 }
 
 /**
@@ -47,7 +44,6 @@ export const getWorkspaceSecrets = async (req: Request, res: Response) => {
  * @param res 
  */
 export const nameWorkspaceSecrets = async (req: Request, res: Response) => {
-
     interface SecretToUpdate {
         secretName: string;
         _id: string;
@@ -89,6 +85,6 @@ export const nameWorkspaceSecrets = async (req: Request, res: Response) => {
     await Secret.bulkWrite(operations);
 
     return res.status(200).send({
-        operations
+        message: 'Successfully named workspace secrets'
     });
 }

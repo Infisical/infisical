@@ -19,13 +19,13 @@ router.get(
     '/:workspaceId/secrets/blind-index-status',
     param('workspaceId').exists().isString().trim(),
     validateRequest,
-    // requireAuth({
-    //     acceptedAuthModes: [AUTH_MODE_JWT]
-    // }),
-    // requireWorkspaceAuth({
-    //     acceptedRoles: [ADMIN],
-    //     locationWorkspaceId: 'params',
-    // }),
+    requireAuth({
+        acceptedAuthModes: [AUTH_MODE_JWT]
+    }),
+    requireWorkspaceAuth({
+        acceptedRoles: [ADMIN],
+        locationWorkspaceId: 'params',
+    }),
     workspacesController.getWorkspaceBlindIndexStatus
 );
 
@@ -52,7 +52,7 @@ router.post( // allow admins to name all workspace secrets (part of blind indice
         .withMessage('secretsToUpdate must be an array')
         .customSanitizer((value) => {
             return value.map((secret: any) => ({
-                secretName: secret.name,
+                secretName: secret.secretName,
                 _id: secret._id
             }));
         }),

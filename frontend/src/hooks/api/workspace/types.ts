@@ -16,6 +16,14 @@ export type WorkspaceEnv = {
 
 export type WorkspaceTag = { _id: string; name: string; slug: string };
 
+export type NameWorkspaceSecretsDTO = {
+  workspaceId: string;
+  secretsToUpdate: {
+    secretName: string;
+    _id: string;
+  }[];
+}
+
 // mutation dto
 export type CreateWorkspaceDTO = {
   workspaceName: string;

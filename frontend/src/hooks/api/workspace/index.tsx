@@ -7,7 +7,9 @@ export {
   useGetUserWorkspaces,
   useGetUserWsEnvironments,
   useGetWorkspaceById,
+  useGetWorkspaceIndexStatus,
+  useGetWorkspaceSecrets,
+  useNameWorkspaceSecrets,
   useRenameWorkspace,
   useToggleAutoCapitalization,
-  useUpdateWsEnvironment
-} from './queries';
+  useUpdateWsEnvironment} from './queries';

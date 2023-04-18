@@ -24,6 +24,7 @@ export interface BatchSecretRequest {
 export interface BatchSecret {
     _id: string;
     type: 'shared' | 'personal',
+    secretBlindIndex: string;
     secretKeyCiphertext: string;
     secretKeyIV: string;
     secretKeyTag: string;

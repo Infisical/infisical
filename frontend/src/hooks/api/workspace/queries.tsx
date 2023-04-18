@@ -3,11 +3,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@app/config/request';
 
 import {
+  EncryptedSecret
+} from '../secrets/types';
+import {
   CreateEnvironmentDTO,
   CreateWorkspaceDTO,
   DeleteEnvironmentDTO,
   DeleteWorkspaceDTO,
   GetWsEnvironmentDTO,
+  NameWorkspaceSecretsDTO,
   RenameWorkspaceDTO,
   ToggleAutoCapitalizationDTO,
   UpdateEnvironmentDTO,
@@ -17,6 +21,8 @@ import {
 
 const workspaceKeys = {
   getWorkspaceById: (workspaceId: string) => [{ workspaceId }, 'workspace'] as const,
+  getWorkspaceSecrets: (workspaceId: string) => [{ workspaceId }, 'workspace-secrets'] as const,
+  getWorkspaceIndexStatus: (workspaceId: string) => [{ workspaceId}, 'workspace-index-status'] as const,
   getWorkspaceMemberships: (orgId: string) => [{ orgId }, 'workspace-memberships'],
   getAllUserWorkspace: ['workspaces'] as const,
   getUserWsEnvironments: (workspaceId: string) => ['workspace-env', { workspaceId }] as const
@@ -26,13 +32,46 @@ const fetchWorkspaceById = async (workspaceId: string) => {
   const { data } = await apiRequest.get<{ workspace: Workspace }>(
     `/api/v1/workspace/${workspaceId}`
   );
+
   return data.workspace;
 };
+
+const fetchWorkspaceIndexStatus = async (workspaceId: string) => {
+  const { data } = await apiRequest.get<boolean>(
+    `/api/v3/workspaces/${workspaceId}/secrets/blind-index-status`
+  );
+
+  return data;
+}
+
+const fetchWorkspaceSecrets = async (workspaceId: string) => {
+  const { data: { secrets } } = await apiRequest.get<{ secrets: EncryptedSecret[] }>(
+    `/api/v3/workspaces/${workspaceId}/secrets`
+  );
+  
+  return secrets;
+}
 
 const fetchUserWorkspaces = async () => {
   const { data } = await apiRequest.get<{ workspaces: Workspace[] }>('/api/v1/workspace');
   return data.workspaces;
 };
+
+export const useGetWorkspaceIndexStatus = (workspaceId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceIndexStatus(workspaceId),
+    queryFn: () => fetchWorkspaceIndexStatus(workspaceId),
+    enabled: true
+  });
+}
+
+export const useGetWorkspaceSecrets = (workspaceId: string) => {
+  return useQuery({
+    queryKey: workspaceKeys.getWorkspaceSecrets(workspaceId),
+    queryFn: () => fetchWorkspaceSecrets(workspaceId),
+    enabled: true
+  })
+}
 
 export const useGetWorkspaceById = (workspaceId: string) => {
   return useQuery({
@@ -74,6 +113,20 @@ export const useGetUserWorkspaceMemberships = (orgId: string) =>
     queryFn: () => fetchUserWorkspaceMemberships(orgId),
     enabled: Boolean(orgId)
   });
+
+export const useNameWorkspaceSecrets = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, NameWorkspaceSecretsDTO>({
+    mutationFn: async ({ workspaceId, secretsToUpdate }) =>
+      apiRequest.post(`/api/v3/workspaces/${workspaceId}/secrets/names`, {
+        secretsToUpdate
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries(workspaceKeys.getWorkspaceIndexStatus(variables.workspaceId));
+    }
+  });
+}
 
 // mutation
 export const useCreateWorkspace = () => {
