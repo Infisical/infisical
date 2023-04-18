@@ -1,10 +1,10 @@
 {
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.294.0",
+    "@aws-sdk/client-secrets-manager": "^3.299.0",
     "@godaddy/terminus": "^4.11.2",
     "@octokit/rest": "^19.0.5",
-    "@sentry/tracing": "^7.41.0",
     "@sentry/node": "^7.45.0",
+    "@sentry/tracing": "^7.45.0",
     "@sentry/node": "^7.41.0",
     "@types/crypto-js": "^4.1.1",
     "@types/libsodium-wrappers": "^0.7.10",
@@ -30,7 +30,7 @@
     "jsrp": "^0.2.4",
     "libsodium-wrappers": "^0.7.10",
     "lodash": "^4.17.21",
-    "mongoose": "^6.10.3",
+    "mongoose": "^6.10.4",
     "nodemailer": "^6.8.0",
     "posthog-node": "^2.6.0",
     "query-string": "^7.1.3",
