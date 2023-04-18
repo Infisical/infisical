@@ -4,13 +4,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type Authentication struct {
-	// +kubebuilder:validation:Optional
-	ServiceAccount ServiceAccountDetails `json:"serviceAccount"`
-	// +kubebuilder:validation:Optional
-	ServiceToken ServiceTokenDetails `json:"serviceToken"`
-}
-
 type ServiceTokenDetails struct {
 	ServiceTokenSecretReference KubeSecretReference `json:"serviceTokenSecretReference"`
 }
@@ -19,6 +12,13 @@ type ServiceAccountDetails struct {
 	ServiceAccountSecretReference KubeSecretReference `json:"serviceAccountSecretReference"`
 	ProjectId                     string              `json:"projectId"`
 	EnvironmentName               string              `json:"environmentName"`
+}
+
+type Authentication struct {
+	// +kubebuilder:validation:Optional
+	ServiceAccount ServiceAccountDetails `json:"serviceAccount"`
+	// +kubebuilder:validation:Optional
+	ServiceToken ServiceTokenDetails `json:"serviceToken"`
 }
 
 type KubeSecretReference struct {
@@ -43,7 +43,8 @@ type InfisicalSecretSpec struct {
 	ManagedSecretReference KubeSecretReference `json:"managedSecretReference"`
 
 	// Infisical host to pull secrets from
-	HostAPI string `json:"hostAPI,omitempty"`
+	// +kubebuilder:validation:Optional
+	HostAPI string `json:"hostAPI"`
 }
 
 // InfisicalSecretStatus defines the observed state of InfisicalSecret
