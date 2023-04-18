@@ -207,15 +207,20 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
 			role: MEMBER
 		}).save();
 
+		const subject = `Infisical - Workspace Invitation (${req.membership.workspace.name})`
+
 		await sendMail({
 			template: 'workspaceInvitation.handlebars',
-			subjectLine: 'Infisical workspace invitation',
+			subjectLine: subject,
 			recipients: [invitee.email],
 			substitutions: {
+				title: subject,
+				description: "Workspace Invitation",
+				year: new Date().getFullYear(),
 				inviterFirstName: req.user.firstName,
 				inviterEmail: req.user.email,
 				workspaceName: req.membership.workspace.name,
-				callback_url: getSiteURL() + '/login'
+				callback_url: `${getSiteURL()}/dashboard/${workspaceId}`
 			}
 		});
 	} catch (err) {

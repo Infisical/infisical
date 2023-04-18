@@ -33,8 +33,8 @@ services:
     command: npm run dev
     env_file: .env
     environment:
-      - NODE_ENV=development
-      - MONGO_URL=mongodb://root:example@mongo:27017/?authSource=admin
+      NODE_ENV: development
+      MONGO_URL: mongodb://root:example@mongo:27017/?authSource=admin
     networks:
       - infisical-dev
 
@@ -52,11 +52,11 @@ services:
       - ./frontend/next-i18next.config.js:/app/next-i18next.config.js
     env_file: .env
     environment:
-      - NEXT_PUBLIC_ENV=development
-      - INFISICAL_TELEMETRY_ENABLED=${TELEMETRY_ENABLED}
-      - NEXT_PUBLIC_STRIPE_PRODUCT_PRO=${STRIPE_PRODUCT_PRO}
-      - NEXT_PUBLIC_STRIPE_PRODUCT_TEAM=${STRIPE_PRODUCT_TEAM}
-      - NEXT_PUBLIC_STRIPE_PRODUCT_STARTER=${STRIPE_PRODUCT_STARTER}
+      NEXT_PUBLIC_ENV: development
+      INFISICAL_TELEMETRY_ENABLED: ${TELEMETRY_ENABLED}
+      NEXT_PUBLIC_STRIPE_PRODUCT_PRO: ${STRIPE_PRODUCT_PRO}
+      NEXT_PUBLIC_STRIPE_PRODUCT_TEAM: ${STRIPE_PRODUCT_TEAM}
+      NEXT_PUBLIC_STRIPE_PRODUCT_STARTER: ${STRIPE_PRODUCT_STARTER}
     networks:
       - infisical-dev
 
@@ -66,8 +66,8 @@ services:
     restart: always
     env_file: .env
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=example
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
     volumes:
       - mongo-data:/data/db
     networks:
@@ -81,9 +81,9 @@ services:
       - mongo
     env_file: .env
     environment:
-      - ME_CONFIG_MONGODB_ADMINUSERNAME=root
-      - ME_CONFIG_MONGODB_ADMINPASSWORD=example
-      - ME_CONFIG_MONGODB_URL=mongodb://root:example@mongo:27017/
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+      ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
     ports:
       - 8081:8081
     networks:

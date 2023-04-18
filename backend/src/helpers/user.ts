@@ -150,12 +150,17 @@ const checkUserDevice = async ({
 		
 		await user.save();
 
+		const subject = `Infisical - Successful login from new device`
+
 		// send MFA code [code] to [email]
 		await sendMail({
 			template: 'newDevice.handlebars',
-			subjectLine: `Successful login from new device`,
+			subjectLine: subject,
 			recipients: [user.email],
 			substitutions: {
+				title: subject,
+				description: "Successful login",
+				year: new Date().getFullYear(),
 				email: user.email,
 				timestamp: new Date().toString(),
 				ip,

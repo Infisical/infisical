@@ -169,7 +169,7 @@ export default function PasswordReset() {
       </p>
       <div className="flex flex-row items-center justify-center md:pb-4 mt-4 md:mx-2">
         <p className="text-sm flex justify-center text-gray-400 w-max max-w-md">
-          You can find it in your emrgency kit. You had to download the enrgency kit during signup.
+          You can find it in your emergency kit. You had to download the emergency kit during signup.
         </p>
       </div>
       <div className="flex items-center justify-center w-full md:p-2 rounded-lg mt-4 md:mt-0 max-h-24 md:max-h-28">

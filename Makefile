@@ -15,3 +15,6 @@ up-prod:
 
 down:
 	docker-compose down
+
+down-dev:
+	docker-compose -f docker-compose.dev.yaml down

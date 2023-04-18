@@ -132,13 +132,18 @@ export const login2 = async (req: Request, res: Response) => {
               type: TOKEN_EMAIL_MFA,
               email
             });
+            
+        		const subject = `Infisical - Multi-Factor Authentication (${code})`
 
             // send MFA code [code] to [email]
             await sendMail({
               template: 'emailMfa.handlebars',
-              subjectLine: 'Infisical MFA code',
+              subjectLine: subject,
               recipients: [email],
               substitutions: {
+                title: subject,
+                description: "Account Recovery",
+                year: new Date().getFullYear(),
                 code
               }
             });
@@ -245,12 +250,17 @@ export const sendMfaToken = async (req: Request, res: Response) => {
       email
     });
 
+		const subject = `Infisical - Multi-Factor Authentication (${code})`
+    
     // send MFA code [code] to [email]
     await sendMail({
       template: 'emailMfa.handlebars',
-      subjectLine: 'Infisical MFA code',
+      subjectLine: subject,
       recipients: [email],
       substitutions: {
+        title: subject,
+				description: "Account Recovery",
+				year: new Date().getFullYear(),
         code
       }
     });
