@@ -38,8 +38,8 @@ The operator can be install via [Helm](helm.sh) or [kubectl](https://github.com/
 </Tabs>
 
 ## Sync Infisical Secrets to your cluster
-To retrieve secrets from an Infisical project and save them as a native Kubernetes secret within a specific namespace, utilize the `InfisicalSecret` custom resource. 
-This resource can be created after installing the Infisical operator. 
+To retrieve secrets from an Infisical project and save them as native Kubernetes secrets within a specific namespace, utilize the `InfisicalSecret` custom resource definition (CRD). 
+This resource can be created after installing the Infisical operator. For each new managed secret, you will need to create a new InfisicalSecret CRD.
 
 ```yaml
 apiVersion: secrets.infisical.com/v1alpha1
@@ -62,8 +62,8 @@ spec:
       projectId: "6439ec224cfbf7ea2a95b651"
       environmentName: "dev"
   managedSecretReference:
-    secretName: managed-secret
-    secretNamespace: default
+    secretName: managed-secret # <-- the name of kubernetes secret that will be created
+    secretNamespace: default # <-- where the kubernetes secret that will be created
 ```
 ### InfisicalSecret CRD properties
 
@@ -96,7 +96,7 @@ spec:
 
       #### 3. Add reference for the Kubernetes secret containing service token 
 
-      Once the secret is created, add the name and namespace of the secret that was just created under `authentication.serviceToken` field in the InfisicalSecret resource.
+      Once the secret is created, add the name and namespace of the secret that was just created under `authentication.serviceToken.serviceTokenSecretReference` field in the InfisicalSecret resource.
 
       ## Example
       ```yaml
@@ -115,24 +115,34 @@ spec:
 
     </Tab>
     <Tab title="Service Account">
-      Authenticating with service tokens is a great option when you have a small number of services you'd like to fetch secrets for and are looking for the least amount of setup. 
+      We recommend authenticating with service account credentials when you have a large number of services. With this method, instead of creating a service token for each Infisical project you'd like to 
+      fetch secrets from, you can fetch secrets from a number of Infisical projects with just one set of credentials.
       
-      #### 1. Generate service token 
+      #### 1. Generate service account
 
-      You can generate a service token for an Infisical project by heading over to the Infisical dashboard then to Project Settings.
+      You can generate a service account by heading over to the organization settings. Once you create the service account, keep the credentials at hand for the next steps.
 
-      #### 2. Create Kubernetes secret containing service token 
+      #### 2. Grant service account access to Infisical projects
 
-      Once you have generated the service token, you will need to create a Kubernetes secret containing the service token you generated. 
-      To quickly create a Kubernetes secret containing the generated service token, you can run the command below.
+      Click on the pencil icon on the service account you just created and add the projects you'd like to be accessible via that service account.
 
-      ``` bash
-      kubectl create secret generic service-token --from-literal=infisicalToken=<your-service-token-here> 
+      #### 3. Store service account credentials in K8 secret  
+      Next, we'll need to store the service account credentials in a kubernetes secret so that we can reference it in our InfisicalSecret CRD. 
+
+      We recommend you create this kubernetes secret in a new namespace since you may need to reference it many times for each InfisicalSecret CRD you create.
+
+      To quickly create a Kubernetes secret containing the service account details, you can execute the command below after replacing it with your own service account credentials.
+
+      ```
+      kubectl create secret generic service-token --from-literal=serviceAccountAccessKey=[REPLACE] --from-literal=serviceAccountPrivateKey=[REPLACE]  --from-literal=serviceAccountPublicKey=[REPLACE] 
       ```
 
-      #### 3. Add reference for the Kubernetes secret containing service token 
+      Regardless of how you create the kubernetes secret containing the service account credentials, you will need to define values for the following keys in the secret: `serviceAccountAccessKey`, `serviceAccountPrivateKey`, and `serviceAccountPublicKey` 
 
-      Once the secret is created, add the name and namespace of the secret that was just created under `authentication.serviceToken` field in the InfisicalSecret resource.
+      Once the secret is created, add the name and namespace of the secret that was just created under `authentication.serviceAccount.serviceAccountSecretReference` field in the InfisicalSecret CRD.
+
+      #### 4. Add projectId and environment from which to fetch secrets from
+      Add the Infisical project id and environment from which to fetch secrets for by providing values under `authentication.serviceAccount.projectId` and `authentication.serviceAccount.environmentName`.
 
       ## Example
       ```yaml
@@ -141,17 +151,13 @@ spec:
       metadata:
         name: infisicalsecret-sample-crd
       spec:
-        authentication:
-          serviceToken: 
-            serviceTokenSecretReference:
-              secretName: service-token # <-- name of the Kubernetes secret that stores our service token
-              secretNamespace: option # <-- namespace of the Kubernetes secret that stores our service token
-        ...
+        serviceAccount:
+        serviceAccountSecretReference:
+          secretName: service-account
+          secretNamespace: default
+        projectId: "6439ec224cfbf7ea2a95b651"
+        environmentName: "dev"
       ```
-      ```
-        kubectl create secret generic service-token --from-literal=serviceAccountAccessKey=secret123 --from-literal=serviceAccountPublicKey=123456 --from-literal=serviceAccountPrivateKey=123456
-      ```
-
     </Tab>
   </Tabs>
 </Accordion>
@@ -160,7 +166,7 @@ spec:
 The `managedSecretReference` field in the InfisicalSecret resource is used to specify the location where secrets retrieved from an Infisical project should be stored. 
 You should specify the name and namespace of the Kubernetes secret that will hold these secrets. The operator will create the secret for you, you just need to provide its name and namespace.
 
-It is recommended that the managed secret be created in the same namespace as the deployment that will use it.
+The managed secret be should be created in the same namespace as the deployment that will use it.
 
 </Accordion>
 
