@@ -10,9 +10,11 @@ import (
 
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 
 	"github.com/Infisical/infisical-merge/packages/api"
+	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/srp"
@@ -72,6 +74,12 @@ var loginCmd = &cobra.Command{
 			}
 		}
 		// }
+
+		//prompt user to select domain between Infisical cloud and self hosting
+		err = askForDomain()
+		if err != nil {
+			util.HandleError(err, "Unable to parse domain url")
+		}
 
 		email, password, err := askForLoginCredentials()
 		if err != nil {
@@ -264,6 +272,51 @@ var loginCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(loginCmd)
+}
+
+func askForDomain() error {
+	//query user to choose between Infisical cloud or self hosting
+	options := []string{"Infisical Cloud", "Self Hosting"}
+	optionsPrompt := promptui.Select{
+		Label: "Select your hosting option",
+		Items: options,
+		Size:  2,
+	}
+
+	idx, _, err := optionsPrompt.Run()
+	if err != nil {
+		return err
+	}
+
+	if idx == 0 {
+		//cloud option
+		config.INFISICAL_URL = util.INFISICAL_DEFAULT_API_URL
+		return nil
+	}
+
+	urlValidation := func(input string) error {
+		_, err := url.ParseRequestURI(input)
+		if err != nil {
+			return errors.New("this is an invalid url")
+		}
+		return nil
+	}
+
+	//else run prompt to enter domain
+	domainPrompt := promptui.Prompt{
+		Label:    "Domain",
+		Validate: urlValidation,
+	}
+
+	domain, err := domainPrompt.Run()
+	if err != nil {
+		return err
+	}
+
+	//set api url
+	config.INFISICAL_URL = domain
+	//return nil
+	return nil
 }
 
 func askForLoginCredentials() (email string, password string, err error) {

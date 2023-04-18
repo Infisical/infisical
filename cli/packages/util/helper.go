@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+
+	"github.com/Infisical/infisical-merge/packages/models"
 )
 
 type DecodedSymmetricEncryptionDetails = struct {
@@ -61,9 +63,9 @@ func IsSecretTypeValid(s string) bool {
 	return false
 }
 
-func Contains(iter []string, elem string) bool {
+func ConfigContainsEmail(iter []models.LoggedInUser, elem string) bool {
 	for _, value := range iter {
-		if value == elem {
+		if value.Email == elem {
 			return true
 		}
 	}

@@ -13,8 +13,14 @@ type UserCredentials struct {
 // The file struct for Infisical config file
 type ConfigFile struct {
 	LoggedInUserEmail  string              `json:"loggedInUserEmail"`
+	LoggedInUserDomain string              `json:"LoggedInUserDomain,omitempty"`
 	VaultBackendType   keyring.BackendType `json:"vaultBackendType"`
-	LoggedInUsersEmail []string            `json:"loggedInUsersEmail,omitempty"`
+	LoggedInUsers      []LoggedInUser      `json:"loggedInUsers,omitempty"`
+}
+
+type LoggedInUser struct {
+	Email  string `json:"email"`
+	Domain string `json:"domain"`
 }
 
 type SingleEnvironmentVariable struct {

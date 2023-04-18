@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
 	log "github.com/sirupsen/logrus"
 )
@@ -31,25 +32,25 @@ func WriteInitalConfig(userCredentials *models.UserCredentials) error {
 		return fmt.Errorf("writeInitalConfig: unable to write config file because [err=%s]", err)
 	}
 
-	//if empty, initialize
-	if existingConfigFile.LoggedInUsersEmail == nil {
-		existingConfigFile.LoggedInUsersEmail = []string{}
-	}
-
 	//if profiles exists
-	if len(existingConfigFile.LoggedInUsersEmail) > 0 {
-		ok := Contains(existingConfigFile.LoggedInUsersEmail, userCredentials.Email)
+	loggedInUser := models.LoggedInUser{
+		Email:  userCredentials.Email,
+		Domain: config.INFISICAL_URL,
+	}
+	if len(existingConfigFile.LoggedInUsers) > 0 {
+		ok := ConfigContainsEmail(existingConfigFile.LoggedInUsers, userCredentials.Email)
 		if !ok {
-			existingConfigFile.LoggedInUsersEmail = append(existingConfigFile.LoggedInUsersEmail, userCredentials.Email)
+			existingConfigFile.LoggedInUsers = append(existingConfigFile.LoggedInUsers, loggedInUser)
 		}
 	} else {
-		existingConfigFile.LoggedInUsersEmail = append(existingConfigFile.LoggedInUsersEmail, userCredentials.Email)
+		existingConfigFile.LoggedInUsers = append(existingConfigFile.LoggedInUsers, loggedInUser)
 	}
 
 	configFile := models.ConfigFile{
 		LoggedInUserEmail:  userCredentials.Email,
+		LoggedInUserDomain: config.INFISICAL_URL,
 		VaultBackendType:   existingConfigFile.VaultBackendType,
-		LoggedInUsersEmail: existingConfigFile.LoggedInUsersEmail,
+		LoggedInUsers:      existingConfigFile.LoggedInUsers,
 	}
 
 	configFileMarshalled, err := json.Marshal(configFile)
