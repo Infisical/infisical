@@ -132,7 +132,7 @@ export const pullSecrets = async (req: Request, res: Response) => {
 		if (req.user) {
 			userId = req.user._id.toString();
 		} else if (req.serviceTokenData) {
-			userId = req.serviceTokenData.user._id
+			userId = req.serviceTokenData.user.toString();
 		}
 		// validate environment
 		const workspaceEnvs = req.membership.workspace.environments;

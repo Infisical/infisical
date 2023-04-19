@@ -374,8 +374,14 @@ export const createSecrets = async (req: Request, res: Response) => {
         listOfSecretsToCreate = [req.body.secrets];
     }
 
+    // get secret blind index salt
+    const salt = await SecretService.getSecretBlindIndexSalt({
+        workspaceId: new Types.ObjectId(workspaceId)
+    });
+
     type secretsToCreateType = {
         type: string;
+        secretName?: string;
         secretKeyCiphertext: string;
         secretKeyIV: string;
         secretKeyTag: string;
@@ -388,25 +394,10 @@ export const createSecrets = async (req: Request, res: Response) => {
         tags: string[]
     }
 
-    const secretsToInsert: ISecret[] = listOfSecretsToCreate.map(({
-        type,
-        secretKeyCiphertext,
-        secretKeyIV,
-        secretKeyTag,
-        secretValueCiphertext,
-        secretValueIV,
-        secretValueTag,
-        secretCommentCiphertext,
-        secretCommentIV,
-        secretCommentTag,
-        tags
-    }: secretsToCreateType) => {
-        return ({
-            version: 1,
-            workspace: new Types.ObjectId(workspaceId),
+    const secretsToInsert: ISecret[] = await Promise.all(
+        listOfSecretsToCreate.map(async ({
             type,
-            user: (req.user && type === SECRET_PERSONAL) ? req.user : undefined,
-            environment,
+            secretName,
             secretKeyCiphertext,
             secretKeyIV,
             secretKeyTag,
@@ -417,11 +408,38 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretCommentIV,
             secretCommentTag,
             tags
-        });
-    });
+        }: secretsToCreateType) => {
+            let secretBlindIndex;
+            if (secretName) {
+                secretBlindIndex = await SecretService.generateSecretBlindIndexWithSalt({
+                    secretName,
+                    salt
+                });
+            }
 
+            return ({
+                version: 1,
+                workspace: new Types.ObjectId(workspaceId),
+                type,
+                ...(secretBlindIndex ? { secretBlindIndex } : {}),
+                user: (req.user && type === SECRET_PERSONAL) ? req.user : undefined,
+                environment,
+                secretKeyCiphertext,
+                secretKeyIV,
+                secretKeyTag,
+                secretValueCiphertext,
+                secretValueIV,
+                secretValueTag,
+                secretCommentCiphertext,
+                secretCommentIV,
+                secretCommentTag,
+                tags
+            });
+        })
+    );
+    
     const newlyCreatedSecrets: ISecret[] = (await Secret.insertMany(secretsToInsert)).map((insertedSecret) => insertedSecret.toObject());
-
+    
     setTimeout(async () => {
         // trigger event - push secrets
         await EventService.handleEvent({
@@ -440,6 +458,7 @@ export const createSecrets = async (req: Request, res: Response) => {
             type,
             user,
             environment,
+            secretBlindIndex,
             secretKeyCiphertext,
             secretKeyIV,
             secretKeyTag,
@@ -453,6 +472,7 @@ export const createSecrets = async (req: Request, res: Response) => {
             type,
             user,
             environment,
+            secretBlindIndex,
             isDeleted: false,
             secretKeyCiphertext,
             secretKeyIV,
@@ -492,7 +512,7 @@ export const createSecrets = async (req: Request, res: Response) => {
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets added',
-            distinctId: TelemetryService.getDistinctId({
+            distinctId: await TelemetryService.getDistinctId({
                 authData: req.authData
             }),
             properties: {
@@ -607,7 +627,7 @@ export const getSecrets = async (req: Request, res: Response) => {
 
     // case: client authorization is via service token
     if (req.serviceTokenData) {
-        const userId = req.serviceTokenData.user._id
+        const userId = req.serviceTokenData.user;
 
         const secretQuery: any = {
             workspace: workspaceId,
@@ -667,7 +687,7 @@ export const getSecrets = async (req: Request, res: Response) => {
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets pulled',
-            distinctId: TelemetryService.getDistinctId({
+            distinctId: await TelemetryService.getDistinctId({
                 authData: req.authData
             }),
             properties: {
@@ -889,7 +909,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
         if (postHogClient) {
             postHogClient.capture({
                 event: 'secrets modified',
-                distinctId: TelemetryService.getDistinctId({
+                distinctId: await TelemetryService.getDistinctId({
                     authData: req.authData
                 }),
                 properties: {
@@ -1023,7 +1043,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
         if (postHogClient) {
             postHogClient.capture({
                 event: 'secrets deleted',
-                distinctId: TelemetryService.getDistinctId({
+                distinctId: await TelemetryService.getDistinctId({
                     authData: req.authData
                 }),
                 properties: {

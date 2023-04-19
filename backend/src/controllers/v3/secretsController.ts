@@ -70,7 +70,10 @@ export const createSecret = async (req: Request, res: Response) => {
         secretKeyTag,
         secretValueCiphertext,
         secretValueIV,
-        secretValueTag
+        secretValueTag,
+        secretCommentCiphertext,
+        secretCommentIV,
+        secretCommentTag
     } = req.body;
     
     const secret = await SecretService.createSecret({
@@ -84,7 +87,12 @@ export const createSecret = async (req: Request, res: Response) => {
         secretKeyTag,
         secretValueCiphertext,
         secretValueIV,
-        secretValueTag
+        secretValueTag,
+        ...((secretCommentCiphertext && secretCommentIV && secretCommentTag) ? {
+            secretCommentCiphertext,
+            secretCommentIV,
+            secretCommentTag
+        } : {})
     });
 
     await EventService.handleEvent({

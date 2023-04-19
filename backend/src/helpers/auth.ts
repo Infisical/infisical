@@ -157,7 +157,7 @@ const getAuthSTDPayload = async ({
 		}, {
 			new: true
 		})
-		.select('+encryptedKey +iv +tag').populate('user serviceAccount');
+		.select('+encryptedKey +iv +tag');
 
 	if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
 

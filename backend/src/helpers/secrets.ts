@@ -11,6 +11,7 @@ import {
 } from '../interfaces/middleware';
 import {
     User,
+    Workspace,
     ServiceAccount,
     ServiceTokenData,
     Secret,
@@ -26,7 +27,8 @@ import {
     validateUserClientForSecrets
 } from '../helpers/user';
 import {
-    validateServiceTokenDataClientForSecrets, validateServiceTokenDataClientForWorkspace
+    validateServiceTokenDataClientForSecrets, 
+    validateServiceTokenDataClientForWorkspace
 } from '../helpers/serviceTokenData';
 import {
     validateServiceAccountClientForSecrets,
@@ -63,7 +65,8 @@ import {
     EELogService
 } from '../ee/services';
 import {
-    getAuthDataPayloadIdObj
+    getAuthDataPayloadIdObj,
+    getAuthDataPayloadUserObj
 } from '../utils/auth';
 
 /**
@@ -218,6 +221,46 @@ const validateClientForSecrets = async ({
 }
 
 /**
+ * Initialize secret blind index data by setting previously
+ * un-initialized projects to have secret blind index data
+ * (Ensures that all projects have associated blind index data)
+ */
+const initSecretBlindIndexDataHelper = async () => {
+    const workspaceIdsBlindIndexed = await SecretBlindIndexData.distinct('workspace');
+    const workspaceIdsToBlindIndex = await Workspace.distinct('_id', {
+        _id: {
+            $nin: workspaceIdsBlindIndexed
+        }
+    });
+    
+    const secretBlindIndexDataToInsert = workspaceIdsToBlindIndex.map((workspaceToBlindIndex) => {
+        const salt = crypto.randomBytes(16).toString('base64');
+
+        const { 
+            ciphertext: encryptedSaltCiphertext,
+            iv: saltIV,
+            tag: saltTag
+        } = encryptSymmetric({
+            plaintext: salt,
+            key: getEncryptionKey()
+        });
+
+        const secretBlindIndexData = new SecretBlindIndexData({
+            workspace: workspaceToBlindIndex,
+            encryptedSaltCiphertext,
+            saltIV,
+            saltTag
+        })
+        
+        return secretBlindIndexData;
+    });
+    
+    if (secretBlindIndexDataToInsert.length > 0) {
+        await SecretBlindIndexData.insertMany(secretBlindIndexDataToInsert);
+    }
+}
+
+/**
  * Create secret blind index data containing encrypted blind index [salt]
  * for workspace with id [workspaceId]
  * @param {Object} obj
@@ -283,7 +326,7 @@ const getSecretBlindIndexSaltHelper = async ({
  * Generate blind index for secret with name [secretName]
  * and salt [salt]
  * @param {Object} obj
- * @param {Object} obj.secretName - name of secret to generate blind index for
+ * @param {String} obj.secretName - name of secret to generate blind index for
  * @param {String} obj.salt - base64-salt
  */
  const generateSecretBlindIndexWithSaltHelper = async ({
@@ -312,8 +355,8 @@ const getSecretBlindIndexSaltHelper = async ({
  * Generate blind index for secret with name [secretName] 
  * for workspace with id [workspaceId]
  * @param {Object} obj
- * @param {Object} obj.secretName - name of secret to generate blind index for
- * @param {Object} obj.workspaceId - id of workspace that secret belongs to
+ * @param {Stringj} obj.secretName - name of secret to generate blind index for
+ * @param {Types.ObjectId} obj.workspaceId - id of workspace that secret belongs to
  */
 const generateSecretBlindIndexHelper = async ({
     secretName,
@@ -367,11 +410,11 @@ const createSecretHelper = async ({
     secretKeyTag,
     secretValueCiphertext,
     secretValueIV,
-    secretValueTag
+    secretValueTag,
+    secretCommentCiphertext,
+    secretCommentIV,
+    secretCommentTag
 }: CreateSecretParams) => {
-    // preliminary OK
-    // pending check for other types of clients
-
     const secretBlindIndex = await generateSecretBlindIndexHelper({
         secretName,
         workspaceId: new Types.ObjectId(workspaceId)
@@ -380,7 +423,8 @@ const createSecretHelper = async ({
     const exists = await Secret.exists({
         secretBlindIndex,
         workspace: new Types.ObjectId(workspaceId),
-        type
+        type,
+        ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {})
     });
     
     if (exists) throw BadRequestError({
@@ -400,12 +444,6 @@ const createSecretHelper = async ({
         if (!exists) throw BadRequestError({
             message: 'Failed to create personal secret override for no corresponding shared secret'
         });
-        
-        // TODO: adapt to other client types
-
-        if (!(authData.authPayload instanceof User)) throw BadRequestError({
-            message: 'Failed to create personal secret override for no specified user'
-        });
     }
     
     // create secret
@@ -414,16 +452,17 @@ const createSecretHelper = async ({
         workspace: new Types.ObjectId(workspaceId),
         environment,
         type,
-        ...(type === SECRET_PERSONAL && (authData.authPayload instanceof User) ? {
-            user: authData.authPayload._id
-        } : {}),
+        ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {}),
         secretBlindIndex,
         secretKeyCiphertext,
         secretKeyIV,
         secretKeyTag,
         secretValueCiphertext,
         secretValueIV,
-        secretValueTag
+        secretValueTag,
+        secretCommentCiphertext,
+        secretCommentIV,
+        secretCommentTag
     }).save();
     
     const secretVersion = new SecretVersion({
@@ -431,11 +470,10 @@ const createSecretHelper = async ({
         version: secret.version,
         workspace: secret.workspace,
         type,
-        ...(type === SECRET_PERSONAL && authData.authPayload instanceof User ? {
-            user: authData.authPayload._id
-        } : {}),
+        ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {}),
         environment: secret.environment,
         isDeleted: false,
+        secretBlindIndex,
         secretKeyCiphertext,
         secretKeyIV,
         secretKeyTag,
@@ -475,7 +513,7 @@ const createSecretHelper = async ({
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets added',
-            distinctId: TelemetryService.getDistinctId({
+            distinctId: await TelemetryService.getDistinctId({
                 authData
             }),
             properties: {
@@ -504,21 +542,17 @@ const getSecretsHelper = async ({
     environment,
     authData
 }: GetSecretsParams) => {
-    // preliminary OK
-    // pending check for other types of clients
-
     let secrets: ISecret[] = [];
 
-    if (authData.authPayload instanceof User) {
-        // case: get personal secrets first
-        secrets = await Secret.find({
-            workspace: new Types.ObjectId(workspaceId),
-            environment,
-            type: SECRET_PERSONAL,
-            user: authData.authPayload._id
-        });
-    }
+    // get personal secrets first
+    secrets = await Secret.find({
+        workspace: new Types.ObjectId(workspaceId),
+        environment,
+        type: SECRET_PERSONAL,
+        ...getAuthDataPayloadUserObj(authData)
+    });
 
+    // concat with shared secrets
     secrets = secrets.concat(await Secret.find({
         workspace: new Types.ObjectId(workspaceId),
         environment,
@@ -549,7 +583,7 @@ const getSecretsHelper = async ({
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets pulled',
-            distinctId: TelemetryService.getDistinctId({
+            distinctId: await TelemetryService.getDistinctId({
                 authData
             }),
             properties: {
@@ -582,38 +616,31 @@ const getSecretHelper = async ({
     type,
     authData
 }: GetSecretParams) => {
-    // preliminary OK
-    // pending check for other types of clients
-
     const secretBlindIndex = await generateSecretBlindIndexHelper({
         secretName,
         workspaceId: new Types.ObjectId(workspaceId)
     });
 
-    let secret;
+    let secret: ISecret | null = null;
     
-    if (authData.authPayload instanceof User) {
-        // case: find any personal secret matching criteria
+    // try getting personal secret first (if exists)
+    secret = await Secret.findOne({
+        secretBlindIndex,
+        workspace: new Types.ObjectId(workspaceId),
+        environment,
+        type: type ?? SECRET_PERSONAL,
+        ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {})
+    });
+
+    if (!secret) {
+        // case: failed to find personal secret matching criteria
+        // -> find shared secret matching criteria
         secret = await Secret.findOne({
             secretBlindIndex,
             workspace: new Types.ObjectId(workspaceId),
             environment,
-            type: type ?? SECRET_PERSONAL,
-            ...(type === SECRET_PERSONAL ? {
-                user: authData.authPayload._id
-            } : {})
+            type: SECRET_SHARED
         });
-
-        if (!secret) {
-            // case: failed to find personal secret matching criteria
-            // -> find shared secret matching criteria
-            secret = await Secret.findOne({
-                secretBlindIndex,
-                workspace: new Types.ObjectId(workspaceId),
-                environment,
-                type: SECRET_SHARED
-            });
-        }
     }
     
     if (!secret) throw SecretNotFoundError();
@@ -639,7 +666,7 @@ const getSecretHelper = async ({
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets pull',
-            distinctId: TelemetryService.getDistinctId({
+            distinctId: await TelemetryService.getDistinctId({
                 authData
             }),
             properties: {
@@ -678,8 +705,6 @@ const updateSecretHelper = async ({
     secretValueIV,
     secretValueTag
 }: UpdateSecretParams) => {
-    // preliminary OK
-    // pending check for other types of clients
     const secretBlindIndex = await generateSecretBlindIndexHelper({
         secretName,
         workspaceId: new Types.ObjectId(workspaceId)
@@ -688,6 +713,7 @@ const updateSecretHelper = async ({
     let secret: ISecret | null = null;
     
     if (type === SECRET_SHARED) {
+        // case: update shared secret
         secret = await Secret.findOneAndUpdate(
             {
                 secretBlindIndex,
@@ -705,14 +731,15 @@ const updateSecretHelper = async ({
                 new: true
             }
         );
-    } else if (type === SECRET_PERSONAL && authData.authPayload instanceof User) {
+    } else {
+        // case: update personal secret
         secret = await Secret.findOneAndUpdate(
             {
                 secretBlindIndex,
                 workspace: new Types.ObjectId(workspaceId),
                 environment,
                 type,
-                user: authData.authPayload._id
+                ...getAuthDataPayloadUserObj(authData)
             },
             {
                 secretValueCiphertext,
@@ -733,11 +760,10 @@ const updateSecretHelper = async ({
         version: secret.version,
         workspace: secret.workspace,
         type,
-        ...(type === SECRET_PERSONAL && authData.authPayload instanceof User ? {
-            user: authData.authPayload._id
-        } : {}),
+        ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {}),
         environment: secret.environment,
         isDeleted: false,
+        secretBlindIndex,
         secretKeyCiphertext: secret.secretKeyCiphertext,
         secretKeyIV: secret.secretKeyIV,
         secretKeyTag: secret.secretKeyTag,
@@ -777,7 +803,7 @@ const updateSecretHelper = async ({
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets modified',
-            distinctId: TelemetryService.getDistinctId({
+            distinctId: await TelemetryService.getDistinctId({
                 authData
             }),
             properties: {
@@ -810,9 +836,6 @@ const deleteSecretHelper = async ({
     type,
     authData
 }: DeleteSecretParams) => {
-    // preliminary OK
-    // pending check for other types of clients
-    
     const secretBlindIndex = await generateSecretBlindIndexHelper({
         secretName,
         workspaceId: new Types.ObjectId(workspaceId)
@@ -840,13 +863,13 @@ const deleteSecretHelper = async ({
             workspaceId: new Types.ObjectId(workspaceId),
             environment
         });
-    } else if (type === SECRET_PERSONAL && authData.authPayload instanceof User) {
+    } else {
         secret = await Secret.findOneAndDelete({
             secretBlindIndex,
             workspaceId: new Types.ObjectId(workspaceId),
             environment,
             type,
-            user: authData.authPayload._id
+            ...getAuthDataPayloadUserObj(authData)
         });
         
         if (secret) {
@@ -887,7 +910,7 @@ const deleteSecretHelper = async ({
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets deleted',
-            distinctId: TelemetryService.getDistinctId({
+            distinctId: await TelemetryService.getDistinctId({
                 authData
             }),
             properties: {
@@ -909,6 +932,7 @@ const deleteSecretHelper = async ({
 export {
     validateClientForSecret,
     validateClientForSecrets,
+    initSecretBlindIndexDataHelper,
     createSecretBlindIndexDataHelper,
     getSecretBlindIndexSaltHelper,
     generateSecretBlindIndexWithSaltHelper,

@@ -11,6 +11,7 @@ import {
     DeleteSecretParams
 } from '../interfaces/services/SecretService';
 import { 
+    initSecretBlindIndexDataHelper,
     createSecretBlindIndexDataHelper,
     getSecretBlindIndexSaltHelper,
     generateSecretBlindIndexWithSaltHelper,
@@ -23,6 +24,17 @@ import {
 } from '../helpers/secrets';
 
 class SecretService {
+    
+    /**
+     * 
+     * @param param0 h
+     * @returns 
+     */
+    
+    static async initSecretBlindIndexDataHelper() {
+        return await initSecretBlindIndexDataHelper();
+    }
+
     /**
      * Create secret blind index data containing encrypted blind index salt 
      * for workspace with id [workspaceId]

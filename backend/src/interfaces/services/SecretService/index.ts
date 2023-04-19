@@ -13,6 +13,9 @@ export interface CreateSecretParams {
     secretValueCiphertext: string;
     secretValueIV: string;
     secretValueTag: string;
+    secretCommentCiphertext?: string;
+    secretCommentIV?: string;
+    secretCommentTag?: string;
 }
 
 export interface GetSecretsParams {

@@ -10,6 +10,8 @@ import { secretsController } from '../../controllers/v3';
 import {
     AUTH_MODE_JWT,
     AUTH_MODE_API_KEY,
+    AUTH_MODE_SERVICE_TOKEN,
+    AUTH_MODE_SERVICE_ACCOUNT,
     ADMIN,
     MEMBER,
     PERMISSION_WRITE_SECRETS,
@@ -25,7 +27,12 @@ router.get(
     query('tagSlugs'),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY]
+        acceptedAuthModes: [
+            AUTH_MODE_JWT, 
+            AUTH_MODE_API_KEY, 
+            AUTH_MODE_SERVICE_TOKEN,
+            AUTH_MODE_SERVICE_ACCOUNT
+        ]
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -48,9 +55,17 @@ router.post(
     body('secretValueCiphertext').exists().isString().trim(),
     body('secretValueIV').exists().isString().trim(),
     body('secretValueTag').exists().isString().trim(),
+    body('secretCommentCiphertext').optional().isString().trim(),
+    body('secretCommentIV').optional().isString().trim(),
+    body('secretCommentTag').optional().isString().trim(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY]
+        acceptedAuthModes: [
+            AUTH_MODE_JWT, 
+            AUTH_MODE_API_KEY,
+            AUTH_MODE_SERVICE_TOKEN,
+            AUTH_MODE_SERVICE_ACCOUNT
+        ]
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -70,7 +85,12 @@ router.get(
     query('type').optional().isIn([SECRET_SHARED, SECRET_PERSONAL]),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY]
+        acceptedAuthModes: [
+            AUTH_MODE_JWT, 
+            AUTH_MODE_API_KEY,
+            AUTH_MODE_SERVICE_TOKEN,
+            AUTH_MODE_SERVICE_ACCOUNT
+        ]
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -93,7 +113,12 @@ router.patch(
     body('secretValueTag').exists().isString().trim(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY]
+        acceptedAuthModes: [
+            AUTH_MODE_JWT, 
+            AUTH_MODE_API_KEY,
+            AUTH_MODE_SERVICE_TOKEN,
+            AUTH_MODE_SERVICE_ACCOUNT
+        ]
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
@@ -113,7 +138,12 @@ router.delete(
     body('type').exists().isIn([SECRET_SHARED, SECRET_PERSONAL]),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY]
+        acceptedAuthModes: [
+            AUTH_MODE_JWT, 
+            AUTH_MODE_API_KEY,
+            AUTH_MODE_SERVICE_TOKEN,
+            AUTH_MODE_SERVICE_ACCOUNT
+        ]
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],
