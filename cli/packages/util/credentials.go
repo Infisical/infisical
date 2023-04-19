@@ -91,6 +91,7 @@ func GetCurrentLoggedInUserDetails() (LoggedInUserDetails, error) {
 		//configFile.LoggedInUserDomain
 		//if not empty set as infisical url
 		if configFile.LoggedInUserDomain != "" {
+			config.INFISICAL_URL_MANUAL_OVERRIDE = config.INFISICAL_URL
 			config.INFISICAL_URL = configFile.LoggedInUserDomain
 		}
 

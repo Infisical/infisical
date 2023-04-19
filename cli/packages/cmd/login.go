@@ -65,10 +65,29 @@ var loginCmd = &cobra.Command{
 			}
 		}
 
+		//override domain
+		domainQuery := true
+		if config.INFISICAL_URL_MANUAL_OVERRIDE != util.INFISICAL_DEFAULT_API_URL {
+			overrideDomain, err := DomainOverridePrompt()
+			if err != nil {
+				util.HandleError(err)
+			}
+
+			//if not override set INFISICAL_URL to exported var
+			//set domainQuery to false
+			if !overrideDomain {
+				domainQuery = false
+				config.INFISICAL_URL = config.INFISICAL_URL_MANUAL_OVERRIDE
+			}
+
+		}
+
 		//prompt user to select domain between Infisical cloud and self hosting
-		err = askForDomain()
-		if err != nil {
-			util.HandleError(err, "Unable to parse domain url")
+		if domainQuery {
+			err = askForDomain()
+			if err != nil {
+				util.HandleError(err, "Unable to parse domain url")
+			}
 		}
 
 		email, password, err := askForLoginCredentials()
@@ -264,6 +283,27 @@ func init() {
 	rootCmd.AddCommand(loginCmd)
 }
 
+func DomainOverridePrompt() (bool, error) {
+	var (
+		PRESET   = "Use Domain"
+		OVERRIDE = "Change Domain"
+	)
+
+	options := []string{PRESET, OVERRIDE}
+	optionsPrompt := promptui.Select{
+		Label: fmt.Sprintf("Current INFISICAL_API_URL Domain Override: %s", config.INFISICAL_URL_MANUAL_OVERRIDE),
+		Items: options,
+		Size:  2,
+	}
+
+	_, selectedOption, err := optionsPrompt.Run()
+	if err != nil {
+		return false, err
+	}
+
+	return selectedOption == OVERRIDE, err
+}
+
 func askForDomain() error {
 	//query user to choose between Infisical cloud or self hosting
 	var (
@@ -405,10 +445,7 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 }
 
 func userLoginMenu(currentLoggedInUserEmail string) (bool, error) {
-	label := fmt.Sprintf("Current logged in user email: %s", currentLoggedInUserEmail)
-	if config.INFISICAL_URL != "" {
-		label = fmt.Sprintf("%s on domain: %s", label, config.INFISICAL_URL)
-	}
+	label := fmt.Sprintf("Current logged in user email: %s on domain: %s", currentLoggedInUserEmail, config.INFISICAL_URL)
 
 	prompt := promptui.Select{
 		Label: label,

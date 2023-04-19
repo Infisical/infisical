@@ -111,10 +111,28 @@ var domainCmd = &cobra.Command{
 			util.HandleError(err, "[infisical user update domain]: Prompt error")
 		}
 
-		//prompt to update domain
-		domain, err := NewDomainPrompt()
-		if err != nil {
-			util.HandleError(err, "[infisical user update domain]: Prompt error")
+		domain := ""
+		domainQuery := true
+		if config.INFISICAL_URL_MANUAL_OVERRIDE != util.INFISICAL_DEFAULT_API_URL {
+
+			override, err := DomainOverridePrompt()
+			if err != nil {
+				util.HandleError(err, "[infisical user update domain]: Domain override prompt error")
+			}
+
+			if !override {
+				domainQuery = false
+				domain = config.INFISICAL_URL_MANUAL_OVERRIDE
+			}
+
+		}
+
+		if domainQuery {
+			//prompt to update domain
+			domain, err = NewDomainPrompt()
+			if err != nil {
+				util.HandleError(err, "[infisical user update domain]: Prompt error")
+			}
 		}
 
 		//write to config file
