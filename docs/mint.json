@@ -205,13 +205,15 @@
       "pages": [
         "api-reference/overview/introduction",
         "api-reference/overview/authentication",
+        "api-reference/overview/blind-indices",
         {
           "group": "Examples",
           "pages": [
-            "api-reference/overview/examples/create-secrets",
             "api-reference/overview/examples/retrieve-secrets",
-            "api-reference/overview/examples/update-secrets",
-            "api-reference/overview/examples/delete-secrets"
+            "api-reference/overview/examples/create-secret",
+            "api-reference/overview/examples/retrieve-secret",
+            "api-reference/overview/examples/update-secret",
+            "api-reference/overview/examples/delete-secret"
           ]
         }
       ]
@@ -250,8 +252,9 @@
         {
           "group": "Secrets",
           "pages": [
-            "api-reference/endpoints/secrets/create",
             "api-reference/endpoints/secrets/read",
+            "api-reference/endpoints/secrets/create",
+            "api-reference/endpoints/secrets/read-one",
             "api-reference/endpoints/secrets/update",
             "api-reference/endpoints/secrets/delete",
             "api-reference/endpoints/secrets/versions",
