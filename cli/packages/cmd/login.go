@@ -340,7 +340,7 @@ func askForDomain() error {
 	domainPrompt := promptui.Prompt{
 		Label:    "Domain",
 		Validate: urlValidation,
-		Default:  "Example - https://my-domain-example.com",
+		Default:  "Example - https://my-self-hosted-instance.com/api",
 	}
 
 	domain, err := domainPrompt.Run()
@@ -349,7 +349,7 @@ func askForDomain() error {
 	}
 
 	//set api url
-	config.INFISICAL_URL = fmt.Sprintf("%s/api", domain)
+	config.INFISICAL_URL = domain
 	//return nil
 	return nil
 }

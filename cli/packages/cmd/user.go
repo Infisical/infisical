@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
 	"net/url"
 
 	"github.com/Infisical/infisical-merge/packages/config"
@@ -223,15 +222,13 @@ func NewDomainPrompt() (string, error) {
 	domainPrompt := promptui.Prompt{
 		Label:    "New Domain",
 		Validate: urlValidation,
-		Default:  "Example - https://my-domain-example.com",
+		Default:  "Example - https://my-self-hosted-instance.com/api",
 	}
 
 	domain, err := domainPrompt.Run()
 	if err != nil {
 		return "", err
 	}
-
-	domain = fmt.Sprintf("%s/api", domain)
 
 	return domain, nil
 }
