@@ -74,7 +74,8 @@ import {
     getNodeEnv,
     getPort,
     getSentryDSN,
-    getSiteURL
+    getSiteURL,
+    getSmtpHost
 } from './config';
 
 const main = async () => {
