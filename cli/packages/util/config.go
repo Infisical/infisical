@@ -37,13 +37,17 @@ func WriteInitalConfig(userCredentials *models.UserCredentials) error {
 		Email:  userCredentials.Email,
 		Domain: config.INFISICAL_URL,
 	}
-	if len(existingConfigFile.LoggedInUsers) > 0 {
-		ok := ConfigContainsEmail(existingConfigFile.LoggedInUsers, userCredentials.Email)
-		if !ok {
-			existingConfigFile.LoggedInUsers = append(existingConfigFile.LoggedInUsers, loggedInUser)
-		}
-	} else {
+	//if empty or if email not in loggedinUsers
+	if len(existingConfigFile.LoggedInUsers) == 0 || !ConfigContainsEmail(existingConfigFile.LoggedInUsers, userCredentials.Email) {
+
 		existingConfigFile.LoggedInUsers = append(existingConfigFile.LoggedInUsers, loggedInUser)
+	} else {
+		//if exists update domain of loggedin users
+		for idx, user := range existingConfigFile.LoggedInUsers {
+			if user.Email == userCredentials.Email {
+				existingConfigFile.LoggedInUsers[idx] = loggedInUser
+			}
+		}
 	}
 
 	configFile := models.ConfigFile{

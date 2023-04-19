@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 
 	"github.com/Infisical/infisical-merge/packages/config"
@@ -79,11 +80,20 @@ var switchCmd = &cobra.Command{
 	},
 }
 
+var updateCmd = &cobra.Command{
+	Use:                   "update",
+	Short:                 "Used to update properties of an Infisical profile",
+	DisableFlagsInUseLine: true,
+	Example:               "infisical user update",
+	Args:                  cobra.ExactArgs(0),
+	Run:                   func(cmd *cobra.Command, args []string) {},
+}
+
 var domainCmd = &cobra.Command{
 	Use:                   "domain",
 	Short:                 "Used to update the domain of an Infisical profile",
 	DisableFlagsInUseLine: true,
-	Example:               "infisical user domain",
+	Example:               "infisical user update domain",
 	Args:                  cobra.ExactArgs(0),
 	PreRun: func(cmd *cobra.Command, args []string) {
 		util.RequireLogin()
@@ -92,25 +102,25 @@ var domainCmd = &cobra.Command{
 		//prompt for profiles selection
 		loggedInProfiles, err := getLoggedInUsers()
 		if err != nil {
-			util.HandleError(err, "[infisical user domain]: Unable to get logged Profiles")
+			util.HandleError(err, "[infisical user update domain]: Unable to get logged Profiles")
 		}
 
 		//prompt user
 		profile, err := LoggedInUsersPrompt(loggedInProfiles)
 		if err != nil {
-			util.HandleError(err, "[infisical user domain]: Prompt error")
+			util.HandleError(err, "[infisical user update domain]: Prompt error")
 		}
 
 		//prompt to update domain
 		domain, err := NewDomainPrompt()
 		if err != nil {
-			util.HandleError(err, "[infisical user domain]: Prompt error")
+			util.HandleError(err, "[infisical user update domain]: Prompt error")
 		}
 
 		//write to config file
 		configFile, err := util.GetConfigFile()
 		if err != nil {
-			util.HandleError(err, "[infisical user]: Unable to get config file")
+			util.HandleError(err, "[infisical user update domain]: Unable to get config file")
 		}
 
 		//check if profile in logged in profiles
@@ -125,9 +135,9 @@ var domainCmd = &cobra.Command{
 			})
 		} else {
 			//exists, set logged in user domain
-			for _, v := range configFile.LoggedInUsers {
+			for idx, v := range configFile.LoggedInUsers {
 				if profile == v.Email {
-					v.Domain = domain
+					configFile.LoggedInUsers[idx].Domain = domain //inplace
 					break
 				}
 			}
@@ -139,15 +149,23 @@ var domainCmd = &cobra.Command{
 			configFile.LoggedInUserDomain = domain
 		}
 
+		err = util.WriteConfigFile(&configFile)
+		if err != nil {
+			util.HandleError(err, "")
+		}
+
 	},
 }
 
 func init() {
-	userCmd.AddCommand(domainCmd)
+	updateCmd.AddCommand(domainCmd)
+	userCmd.AddCommand(updateCmd)
 	userCmd.AddCommand(switchCmd)
 	rootCmd.AddCommand(userCmd)
 }
 
+// This returns all logged in user emails from the config file.
+// If none, it returns the current logged in user in a slice
 func getLoggedInUsers() ([]string, error) {
 	loggedInProfiles := []string{}
 
@@ -187,12 +205,15 @@ func NewDomainPrompt() (string, error) {
 	domainPrompt := promptui.Prompt{
 		Label:    "New Domain",
 		Validate: urlValidation,
+		Default:  "Example - https://my-domain-example.com",
 	}
 
 	domain, err := domainPrompt.Run()
 	if err != nil {
 		return "", err
 	}
+
+	domain = fmt.Sprintf("%s/api", domain)
 
 	return domain, nil
 }

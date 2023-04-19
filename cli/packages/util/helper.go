@@ -63,9 +63,10 @@ func IsSecretTypeValid(s string) bool {
 	return false
 }
 
-func ConfigContainsEmail(iter []models.LoggedInUser, elem string) bool {
-	for _, value := range iter {
-		if value.Email == elem {
+// Checks if the passed in email already exists in the users slice
+func ConfigContainsEmail(users []models.LoggedInUser, email string) bool {
+	for _, value := range users {
+		if value.Email == email {
 			return true
 		}
 	}

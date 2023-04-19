@@ -54,15 +54,6 @@ var loginCmd = &cobra.Command{
 			util.HandleError(err)
 		}
 
-		// addUser := false
-		// if currentLoggedInUserDetails.UserCredentials.Email != "" {
-		// 	addUser, err = addNewUserPrompt()
-		// 	if err != nil {
-		// 		util.HandleError(err)
-		// 	}
-		// }
-
-		// if !addUser {
 		if currentLoggedInUserDetails.IsUserLoggedIn && !currentLoggedInUserDetails.LoginExpired && len(currentLoggedInUserDetails.UserCredentials.PrivateKey) != 0 {
 			shouldOverride, err := userLoginMenu(currentLoggedInUserDetails.UserCredentials.Email)
 			if err != nil {
@@ -73,7 +64,6 @@ var loginCmd = &cobra.Command{
 				return
 			}
 		}
-		// }
 
 		//prompt user to select domain between Infisical cloud and self hosting
 		err = askForDomain()
@@ -276,19 +266,24 @@ func init() {
 
 func askForDomain() error {
 	//query user to choose between Infisical cloud or self hosting
-	options := []string{"Infisical Cloud", "Self Hosting"}
+	var (
+		INFISICAL_CLOUD = "Infisical Cloud"
+		SELF_HOSTING    = "Self Hosting"
+	)
+
+	options := []string{INFISICAL_CLOUD, SELF_HOSTING}
 	optionsPrompt := promptui.Select{
 		Label: "Select your hosting option",
 		Items: options,
 		Size:  2,
 	}
 
-	idx, _, err := optionsPrompt.Run()
+	_, selectedHostingOption, err := optionsPrompt.Run()
 	if err != nil {
 		return err
 	}
 
-	if idx == 0 {
+	if selectedHostingOption == INFISICAL_CLOUD {
 		//cloud option
 		config.INFISICAL_URL = util.INFISICAL_DEFAULT_API_URL
 		return nil
@@ -302,10 +297,10 @@ func askForDomain() error {
 		return nil
 	}
 
-	//else run prompt to enter domain
 	domainPrompt := promptui.Prompt{
 		Label:    "Domain",
 		Validate: urlValidation,
+		Default:  "Example - https://my-domain-example.com",
 	}
 
 	domain, err := domainPrompt.Run()
@@ -314,7 +309,7 @@ func askForDomain() error {
 	}
 
 	//set api url
-	config.INFISICAL_URL = domain
+	config.INFISICAL_URL = fmt.Sprintf("%s/api", domain)
 	//return nil
 	return nil
 }
@@ -410,8 +405,13 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 }
 
 func userLoginMenu(currentLoggedInUserEmail string) (bool, error) {
+	label := fmt.Sprintf("Current logged in user email: %s", currentLoggedInUserEmail)
+	if config.INFISICAL_URL != "" {
+		label = fmt.Sprintf("%s on domain: %s", label, config.INFISICAL_URL)
+	}
+
 	prompt := promptui.Select{
-		Label: fmt.Sprintf("Current logged in user email: %s", currentLoggedInUserEmail),
+		Label: label,
 		Items: []string{ADD_USER, REPLACE_USER, EXIT_USER_MENU},
 	}
 	_, result, err := prompt.Run()
