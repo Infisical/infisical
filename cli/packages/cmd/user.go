@@ -13,7 +13,7 @@ import (
 
 var userCmd = &cobra.Command{
 	Use:                   "user",
-	Short:                 "Used manage user credentials",
+	Short:                 "Used to manage user credentials",
 	DisableFlagsInUseLine: true,
 	Example:               "infisical user",
 	Args:                  cobra.ExactArgs(0),
@@ -143,7 +143,7 @@ var domainCmd = &cobra.Command{
 		//check if profile in logged in profiles
 
 		//if not add new profile loggedInUsers
-		//else update profile from loggedinUsers list
+		//else update profile from loggedinUsers slice
 		ok := util.ConfigContainsEmail(configFile.LoggedInUsers, profile)
 		if !ok {
 			configFile.LoggedInUsers = append(configFile.LoggedInUsers, models.LoggedInUser{

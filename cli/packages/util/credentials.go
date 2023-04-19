@@ -88,10 +88,10 @@ func GetCurrentLoggedInUserDetails() (LoggedInUserDetails, error) {
 			SetAuthToken(userCreds.JTWToken).
 			SetHeader("Accept", "application/json")
 
+		config.INFISICAL_URL_MANUAL_OVERRIDE = config.INFISICAL_URL
 		//configFile.LoggedInUserDomain
 		//if not empty set as infisical url
 		if configFile.LoggedInUserDomain != "" {
-			config.INFISICAL_URL_MANUAL_OVERRIDE = config.INFISICAL_URL
 			config.INFISICAL_URL = configFile.LoggedInUserDomain
 		}
 
