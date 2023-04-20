@@ -6,6 +6,7 @@ import (
 
 	"github.com/99designs/keyring"
 	"github.com/Infisical/infisical-merge/packages/api"
+	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/go-resty/resty/v2"
 )
@@ -86,6 +87,13 @@ func GetCurrentLoggedInUserDetails() (LoggedInUserDetails, error) {
 		httpClient := resty.New().
 			SetAuthToken(userCreds.JTWToken).
 			SetHeader("Accept", "application/json")
+
+		config.INFISICAL_URL_MANUAL_OVERRIDE = config.INFISICAL_URL
+		//configFile.LoggedInUserDomain
+		//if not empty set as infisical url
+		if configFile.LoggedInUserDomain != "" {
+			config.INFISICAL_URL = configFile.LoggedInUserDomain
+		}
 
 		isAuthenticated := api.CallIsAuthenticated(httpClient)
 		if !isAuthenticated {

@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+
+	"github.com/Infisical/infisical-merge/packages/models"
 )
 
 type DecodedSymmetricEncryptionDetails = struct {
@@ -57,6 +59,16 @@ func IsSecretEnvironmentValid(env string) bool {
 func IsSecretTypeValid(s string) bool {
 	if s == "personal" || s == "shared" {
 		return true
+	}
+	return false
+}
+
+// Checks if the passed in email already exists in the users slice
+func ConfigContainsEmail(users []models.LoggedInUser, email string) bool {
+	for _, value := range users {
+		if value.Email == email {
+			return true
+		}
 	}
 	return false
 }

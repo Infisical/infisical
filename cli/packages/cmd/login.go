@@ -10,9 +10,11 @@ import (
 
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 
 	"github.com/Infisical/infisical-merge/packages/api"
+	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/srp"
@@ -33,6 +35,10 @@ type params struct {
 	keyLength   uint32
 }
 
+const ADD_USER = "Add a new account login"
+const REPLACE_USER = "Override current logged in user"
+const EXIT_USER_MENU = "Exit"
+
 // loginCmd represents the login command
 var loginCmd = &cobra.Command{
 	Use:                   "login",
@@ -49,13 +55,38 @@ var loginCmd = &cobra.Command{
 		}
 
 		if currentLoggedInUserDetails.IsUserLoggedIn && !currentLoggedInUserDetails.LoginExpired && len(currentLoggedInUserDetails.UserCredentials.PrivateKey) != 0 {
-			shouldOverride, err := shouldOverrideLoginPrompt(currentLoggedInUserDetails.UserCredentials.Email)
+			shouldOverride, err := userLoginMenu(currentLoggedInUserDetails.UserCredentials.Email)
 			if err != nil {
 				util.HandleError(err)
 			}
 
 			if !shouldOverride {
 				return
+			}
+		}
+
+		//override domain
+		domainQuery := true
+		if config.INFISICAL_URL_MANUAL_OVERRIDE != util.INFISICAL_DEFAULT_API_URL {
+			overrideDomain, err := DomainOverridePrompt()
+			if err != nil {
+				util.HandleError(err)
+			}
+
+			//if not override set INFISICAL_URL to exported var
+			//set domainQuery to false
+			if !overrideDomain {
+				domainQuery = false
+				config.INFISICAL_URL = config.INFISICAL_URL_MANUAL_OVERRIDE
+			}
+
+		}
+
+		//prompt user to select domain between Infisical cloud and self hosting
+		if domainQuery {
+			err = askForDomain()
+			if err != nil {
+				util.HandleError(err, "Unable to parse domain url")
 			}
 		}
 
@@ -252,6 +283,77 @@ func init() {
 	rootCmd.AddCommand(loginCmd)
 }
 
+func DomainOverridePrompt() (bool, error) {
+	var (
+		PRESET   = "Use Domain"
+		OVERRIDE = "Change Domain"
+	)
+
+	options := []string{PRESET, OVERRIDE}
+	optionsPrompt := promptui.Select{
+		Label: fmt.Sprintf("Current INFISICAL_API_URL Domain Override: %s", config.INFISICAL_URL_MANUAL_OVERRIDE),
+		Items: options,
+		Size:  2,
+	}
+
+	_, selectedOption, err := optionsPrompt.Run()
+	if err != nil {
+		return false, err
+	}
+
+	return selectedOption == OVERRIDE, err
+}
+
+func askForDomain() error {
+	//query user to choose between Infisical cloud or self hosting
+	var (
+		INFISICAL_CLOUD = "Infisical Cloud"
+		SELF_HOSTING    = "Self Hosting"
+	)
+
+	options := []string{INFISICAL_CLOUD, SELF_HOSTING}
+	optionsPrompt := promptui.Select{
+		Label: "Select your hosting option",
+		Items: options,
+		Size:  2,
+	}
+
+	_, selectedHostingOption, err := optionsPrompt.Run()
+	if err != nil {
+		return err
+	}
+
+	if selectedHostingOption == INFISICAL_CLOUD {
+		//cloud option
+		config.INFISICAL_URL = util.INFISICAL_DEFAULT_API_URL
+		return nil
+	}
+
+	urlValidation := func(input string) error {
+		_, err := url.ParseRequestURI(input)
+		if err != nil {
+			return errors.New("this is an invalid url")
+		}
+		return nil
+	}
+
+	domainPrompt := promptui.Prompt{
+		Label:    "Domain",
+		Validate: urlValidation,
+		Default:  "Example - https://my-self-hosted-instance.com/api",
+	}
+
+	domain, err := domainPrompt.Run()
+	if err != nil {
+		return err
+	}
+
+	//set api url
+	config.INFISICAL_URL = domain
+	//return nil
+	return nil
+}
+
 func askForLoginCredentials() (email string, password string, err error) {
 	validateEmail := func(input string) error {
 		matched, err := regexp.MatchString("^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$", input)
@@ -342,16 +444,18 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 	return &loginOneResponseResult, &loginTwoResponseResult, nil
 }
 
-func shouldOverrideLoginPrompt(currentLoggedInUserEmail string) (bool, error) {
+func userLoginMenu(currentLoggedInUserEmail string) (bool, error) {
+	label := fmt.Sprintf("Current logged in user email: %s on domain: %s", currentLoggedInUserEmail, config.INFISICAL_URL)
+
 	prompt := promptui.Select{
-		Label: fmt.Sprintf("There seems to be a user already logged in with the email: %s. Would you like to override that login? Select[Yes/No]", currentLoggedInUserEmail),
-		Items: []string{"No", "Yes"},
+		Label: label,
+		Items: []string{ADD_USER, REPLACE_USER, EXIT_USER_MENU},
 	}
 	_, result, err := prompt.Run()
 	if err != nil {
 		return false, err
 	}
-	return result == "Yes", err
+	return result != EXIT_USER_MENU, err
 }
 
 func generateFromPassword(password string, salt []byte, p *params) (hash []byte, err error) {
