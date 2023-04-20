@@ -17,7 +17,9 @@ var userCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Example:               "infisical user",
 	Args:                  cobra.ExactArgs(0),
-	Run:                   func(cmd *cobra.Command, args []string) {},
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
 }
 
 var switchCmd = &cobra.Command{
@@ -85,7 +87,9 @@ var updateCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Example:               "infisical user update",
 	Args:                  cobra.ExactArgs(0),
-	Run:                   func(cmd *cobra.Command, args []string) {},
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
 }
 
 var domainCmd = &cobra.Command{
