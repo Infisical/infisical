@@ -39,7 +39,6 @@ func WriteInitalConfig(userCredentials *models.UserCredentials) error {
 	}
 	//if empty or if email not in loggedinUsers
 	if len(existingConfigFile.LoggedInUsers) == 0 || !ConfigContainsEmail(existingConfigFile.LoggedInUsers, userCredentials.Email) {
-
 		existingConfigFile.LoggedInUsers = append(existingConfigFile.LoggedInUsers, loggedInUser)
 	} else {
 		//if exists update domain of loggedin users

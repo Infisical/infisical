@@ -284,7 +284,7 @@ func init() {
 }
 
 func DomainOverridePrompt() (bool, error) {
-	var (
+	const (
 		PRESET   = "Use Domain"
 		OVERRIDE = "Change Domain"
 	)
@@ -306,7 +306,7 @@ func DomainOverridePrompt() (bool, error) {
 
 func askForDomain() error {
 	//query user to choose between Infisical cloud or self hosting
-	var (
+	const (
 		INFISICAL_CLOUD = "Infisical Cloud"
 		SELF_HOSTING    = "Self Hosting"
 	)
