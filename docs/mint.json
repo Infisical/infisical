@@ -101,7 +101,8 @@
       "pages": [
         "self-hosting/overview",
         "self-hosting/configuration/envars",
-        "self-hosting/configuration/email"
+        "self-hosting/configuration/email",
+        "self-hosting/faq"
       ]
     },
     {
@@ -118,6 +119,7 @@
             "cli/commands/secrets",
             "cli/commands/export",
             "cli/commands/vault",
+            "cli/commands/user",
             "cli/commands/reset"
           ]
         },
