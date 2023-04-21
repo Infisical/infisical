@@ -101,7 +101,8 @@
       "pages": [
         "self-hosting/overview",
         "self-hosting/configuration/envars",
-        "self-hosting/configuration/email"
+        "self-hosting/configuration/email",
+        "self-hosting/faq"
       ]
     },
     {
