@@ -53,9 +53,9 @@ const Button = ({
     'group m-auto md:m-0 inline-block rounded-md duration-200',
 
     // Setting background colors and hover modes
-    color === 'mineshaft' && activityStatus && 'bg-mineshaft-700 hover:bg-primary',
+    color === 'mineshaft' && activityStatus && 'bg-mineshaft-800 border border-mineshaft-600 hover:bg-primary/[0.15] hover:border-primary/60',
     color === 'mineshaft' && !activityStatus && 'bg-mineshaft',
-    (color === 'primary' || !color) && activityStatus && 'bg-primary hover:opacity-80',
+    (color === 'primary' || !color) && activityStatus && 'bg-primary border border-primary-400 opacity-80 hover:opacity-100',
     (color === 'primary' || !color) && !activityStatus && 'bg-primary',
     color === 'red' && 'bg-red',
 
@@ -74,11 +74,11 @@ const Button = ({
     'relative font-medium flex items-center',
 
     // Setting the text color for the text and icon
-    color === 'mineshaft' && 'text-gray-400',
+    color === 'mineshaft' && 'text-bunker-200',
     color !== 'mineshaft' && color !== 'red' && color !== 'none' && 'text-black',
     color === 'red' && 'text-gray-200',
     color === 'none' && 'text-gray-200 text-xl',
-    activityStatus && color !== 'red' && color !== 'none' ? 'group-hover:text-black' : '',
+    activityStatus && color !== 'red' && color !== 'mineshaft' && color !== 'none' ? 'group-hover:text-black' : '',
 
     size === 'icon' && 'flex items-center justify-center'
   );

@@ -101,7 +101,7 @@ const KeyPair = ({
     }`}
   >
     <div className="relative flex flex-row justify-between w-full mr-auto max-h-14 items-center">
-      <div className="w-1/5 border-r border-mineshaft-600 flex flex-row items-center">
+      <div className="w-[23%] border-r border-mineshaft-600 flex flex-row items-center">
         <div className='text-bunker-400 text-xs flex items-center justify-center w-14 h-10 cursor-default'>{keyPair.pos + 1}</div>
         <div className="flex items-center max-h-16 w-full">
           <DashboardInputField

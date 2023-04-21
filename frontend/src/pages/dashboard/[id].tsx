@@ -19,8 +19,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Tag } from 'public/data/frequentInterfaces';
+import queryString from 'query-string';
 
-// import queryString from 'query-string';
 import Button from '@app/components/basic/buttons/Button';
 import BottonRightPopup from '@app/components/basic/popups/BottomRightPopup';
 import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
@@ -29,7 +29,7 @@ import DownloadSecretMenu from '@app/components/dashboard/DownloadSecretsMenu';
 import DropZone from '@app/components/dashboard/DropZone';
 import KeyPair from '@app/components/dashboard/KeyPair';
 import SideBar from '@app/components/dashboard/SideBar';
-import NavHeader from '@app/components/navigation/NavHeader';
+import NavHeaderSecrets from '@app/components/navigation/NavHeaderSecrets';
 import { decryptAssymmetric, decryptSymmetric } from '@app/components/utilities/cryptography/crypto';
 import guidGenerator from '@app/components/utilities/randomId';
 import encryptSecrets from '@app/components/utilities/secrets/encryptSecrets';
@@ -173,7 +173,7 @@ export default function Dashboard() {
   
   const { createNotification } = useNotificationContext();
   const router = useRouter();
-  // const envInURL = queryString.parse(router.asPath.split('?')[1])?.env;
+  const envInURL = queryString.parse(router.asPath.split('?')[1])?.env;
 
   const workspaceId = router.query.id as string;
   const [workspaceEnvs, setWorkspaceEnvs] = useState<WorkspaceEnv[]>([]);
@@ -816,8 +816,8 @@ export default function Dashboard() {
   };
 
   return <div>
-    {false 
-    ? <DashboardEnvOverview />
+    {!envInURL 
+    ? <DashboardEnvOverview onEnvChange={handleOnEnvironmentChange} />
     : (data ? (
     <div className="bg-bunker-800 max-h-screen h-full relative flex flex-col justify-between text-white dark">
       <Head>
@@ -843,11 +843,12 @@ export default function Dashboard() {
               .map((duplicate) => duplicate.key) ?? []
           }
         />
-        <div className="w-full max-h-96 pb-2 dark:[color-scheme:dark]">
-          <NavHeader 
+        <div className="w-full max-h-96 dark:[color-scheme:dark]">
+          <NavHeaderSecrets
             pageName={t('dashboard:title')} 
             currentEnv={selectedEnv?.name || ''} 
             isProjectRelated 
+            isSnapshot={snapshotData !== undefined}
             userAvailableEnvs={workspaceEnvs}
             onEnvChange={handleOnEnvironmentChange}
           />
@@ -876,7 +877,7 @@ export default function Dashboard() {
             )}
             <div className="flex flex-row justify-start items-center text-3xl">
               <div className="font-semibold mr-4 mt-1 flex flex-row items-center">
-                <p>{snapshotData ? 'Secret Snapshot' : t('dashboard:title')}</p>
+                <p>{snapshotData ? 'Secret Snapshot' : ''}</p>
                 {snapshotData && (
                   <span className="bg-primary-800 text-xs ml-4 mt-1 px-1.5 rounded-md w-min">
                     {new Date(snapshotData.createdAt).toLocaleString()}
@@ -968,7 +969,7 @@ export default function Dashboard() {
               <div className="w-full flex flex-row items-start">
                 {(snapshotData || data?.length !== 0) && selectedEnv && (
                   <>
-                    <div className="h-10 w-full bg-mineshaft-700 hover:bg-white/10 rounded-md flex flex-row items-center">
+                    <div className="h-10 w-full bg-mineshaft-800 border border-mineshaft-600 hover:bg-mineshaft-700 duration-200 rounded-md flex flex-row items-center">
                       <FontAwesomeIcon
                         className="bg-transparent rounded-l-md py-[0.7rem] pl-4 pr-2 text-bunker-300 text-sm"
                         icon={faMagnifyingGlass}
@@ -1032,7 +1033,7 @@ export default function Dashboard() {
                   <div ref={secretsTop} />
                   <div className="group flex flex-col items-center bg-mineshaft-800 border-b-2 border-mineshaft-500 duration-100 sticky top-0 z-[60]">
                     <div className="relative flex flex-row justify-between w-full mr-auto max-h-14 items-center">
-                      <div className="w-1/5 border-r border-mineshaft-600 flex flex-row items-center">
+                      <div className="w-[23%] border-r border-mineshaft-600 flex flex-row items-center">
                         <div className='text-transparent text-xs flex items-center justify-center w-12 h-10 cursor-default'>0</div>
                         <span className='px-2 text-bunker-300 font-semibold'>Key</span>
                         {!snapshotData && <IconButton
