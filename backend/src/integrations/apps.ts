@@ -1,5 +1,9 @@
 import * as Sentry from "@sentry/node";
 import { Octokit } from "@octokit/rest";
+import { google } from "@google-cloud/service-usage/build/protos/protos";
+import { google as google1 } from "@google-cloud/resource-manager/build/protos/protos";
+import GCPServiceUsage = google.api.serviceusage.v1
+import GCPResourceManager = google1.cloud.resourcemanager.v3
 import { IIntegrationAuth } from "../models";
 import request from '../config/request';
 import {
@@ -28,7 +32,9 @@ import {
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_GCP_API_URL,
   INTEGRATION_TRAVISCI_API_URL,
-  INTEGRATION_SUPABASE_API_URL
+  INTEGRATION_SUPABASE_API_URL,
+  INTEGRATION_GCP_SERVICE_USAGE_API_URL,
+  INTEGRATION_GCP_SM_SERVICE_NAME
 } from "../variables";
 
 interface App {
@@ -630,33 +636,75 @@ const getAppsGitlab = async ({
  * @returns {String} apps.name - name of GCP apps
  */
 const getAppsGCPSecretManager = async ({ accessToken }: { accessToken: string }) => {
-  let apps: any;
-  try {    
-    const res = (
-      await request.get(
-        `${INTEGRATION_GCP_API_URL}/v1/projects`,
-        {
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json",
-          },
-        }
-      )
-    )?.data?.projects
+	let apps: any;
+  const DEFAULT_HEADERS = {
+    Authorization: `Bearer ${accessToken}`,
+    "Accept-Encoding": "application/json",
+  };
 
-    apps = res?.map((a: any) => {
-      return {
-        name: a?.name,
-        appId: a?.projectId
-      }
-    });
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error("Failed to get GCP secret manager projects");
-  }
-  
-  return apps;
+	/**
+	 * Helper function to fetch the list of GCP projects with secret-manager service
+	 * enabled
+	 */
+	const getGCPSecretManagerEnabledApps = async ({
+		projects,
+	}: {
+		projects: GCPResourceManager.Project[];
+	}): Promise<GCPResourceManager.Project[]> => {
+		const GCP_PROJECT_ID_TO_SM_MAP: Record<
+			string,
+			GCPServiceUsage.Service["state"]
+		> = {};
+
+		for await (const project of projects) {
+			// Fetching details of project.projectId for secret-manager-service
+			const service = (
+				await request.get(
+					`${INTEGRATION_GCP_SERVICE_USAGE_API_URL}/v1/projects/${project.projectId}/services/${INTEGRATION_GCP_SM_SERVICE_NAME}`, 
+          { headers: DEFAULT_HEADERS }
+				)
+			).data as GCPServiceUsage.Service;
+
+			// Mapping secret-manager-service state with respective projectId
+			GCP_PROJECT_ID_TO_SM_MAP[project.projectId] = service.state;
+		}
+
+		// Filtering the projects with secret-manager-service enabled
+		const gcpSecretManagerEnabledApps = projects.filter(
+			(project) =>
+				GCP_PROJECT_ID_TO_SM_MAP[project.projectId] === "ENABLED" ||
+        GCP_PROJECT_ID_TO_SM_MAP[project.projectId] === GCPServiceUsage.State.ENABLED
+		);
+
+		return gcpSecretManagerEnabledApps;
+	};
+
+	try {
+		const projects = (
+			await request.get(`${INTEGRATION_GCP_API_URL}/v1/projects`, {
+				headers: DEFAULT_HEADERS,
+			})
+		)?.data?.projects as GCPResourceManager.Project[];
+
+    // Fetching list of gcp projects with secret-manager-service enabled
+		const secretManagerEnabledProjects =
+			await getGCPSecretManagerEnabledApps({
+				projects,
+			});
+
+		apps = secretManagerEnabledProjects?.map((project) => {
+			return {
+				name: project?.name,
+				appId: project?.projectId,
+			};
+		});
+	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
+		throw new Error("Failed to get GCP secret manager projects");
+	}
+
+	return apps;
 };
 
 /**

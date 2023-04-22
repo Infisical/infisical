@@ -19,6 +19,8 @@
       "./src/types",
       "./node_modules/@types",
       "./node_modules/@google-cloud/secret-manager/build/src",
+      "./node_modules/@google-cloud/service-usage/build/src",
+      "./node_modules/@google-cloud/resource-manager/build/src"
     ]
   },
   "include": [

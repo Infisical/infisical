@@ -37,8 +37,10 @@ export default function GCPSecretManagerCreateIntegrationPage() {
 
   useEffect(() => {
     // TODO: handle case where apps can be empty
-    if (integrationAuthApps) {
+    if (integrationAuthApps && integrationAuthApps.length > 0) {
       setTargetAppId(integrationAuthApps[0]?.appId || '');
+    } else {
+      setTargetAppId("none");
     }
   }, [integrationAuthApps]);
 
@@ -124,6 +126,7 @@ export default function GCPSecretManagerCreateIntegrationPage() {
           color="mineshaft"
           className='mt-4'
           isLoading={isLoading}
+          isDisabled={!integrationAuthApps.length}
         >
           Create Integration
         </Button>

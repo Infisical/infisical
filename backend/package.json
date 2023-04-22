@@ -2,7 +2,9 @@
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.287.0",
     "@godaddy/terminus": "^4.11.2",
+    "@google-cloud/resource-manager": "^4.2.2",
     "@google-cloud/secret-manager": "^4.2.1",
+    "@google-cloud/service-usage": "^2.2.2",
     "@octokit/rest": "^19.0.5",
     "@sentry/node": "^7.40.0",
     "@sentry/tracing": "^7.39.0",

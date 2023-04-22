@@ -69,7 +69,9 @@ const INTEGRATION_RAILWAY_API_URL = "https://backboard.railway.app/graphql/v2";
 const INTEGRATION_FLYIO_API_URL = "https://api.fly.io/graphql";
 const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
 const INTEGRATION_GCP_API_URL = "https://cloudresourcemanager.googleapis.com";
+const INTEGRATION_GCP_SERVICE_USAGE_API_URL = "https://serviceusage.googleapis.com";
 const INTEGRATION_GCP_SECRET_MANAGER_URL = "https://secretmanager.googleapis.com"
+const INTEGRATION_GCP_SM_SERVICE_NAME = "secretmanager.googleapis.com"
 const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
 const INTEGRATION_SUPABASE_API_URL = 'https://api.supabase.com';
 
@@ -253,6 +255,8 @@ export {
     INTEGRATION_GCP_API_URL,
     INTEGRATION_GCP_SECRET_MANAGER,
     INTEGRATION_GCP_SECRET_MANAGER_URL,
+    INTEGRATION_GCP_SERVICE_USAGE_API_URL,
+    INTEGRATION_GCP_SM_SERVICE_NAME,
     INTEGRATION_SUPABASE_API_URL,
     getIntegrationOptions
 };
