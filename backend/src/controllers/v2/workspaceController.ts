@@ -48,7 +48,7 @@ interface V2PushSecret {
 export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
 	// upload (encrypted) secrets to workspace with id [workspaceId]
 	try {
-		const postHogClient = TelemetryService.getPostHogClient();
+		const postHogClient = await TelemetryService.getPostHogClient();
 		let { secrets }: { secrets: V2PushSecret[] } = req.body;
 		const { keys, environment, channel } = req.body;
 		const { workspaceId } = req.params;
@@ -123,7 +123,7 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
 export const pullSecrets = async (req: Request, res: Response) => {
 	let secrets;
 	try {
-		const postHogClient = TelemetryService.getPostHogClient();
+		const postHogClient = await TelemetryService.getPostHogClient();
 		const environment: string = req.query.environment as string;
 		const channel: string = req.query.channel as string;
 		const { workspaceId } = req.params;

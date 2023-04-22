@@ -13,7 +13,7 @@ export const handleWebhook = async (req: Request, res: Response) => {
 	let event;
 	try {
 		// check request for valid stripe signature
-		const stripe = new Stripe(getStripeSecretKey(), {
+		const stripe = new Stripe(await getStripeSecretKey(), {
 			apiVersion: '2022-08-01'
 		});
 
@@ -21,7 +21,7 @@ export const handleWebhook = async (req: Request, res: Response) => {
 		event = stripe.webhooks.constructEvent(
 			req.body,
 			sig,
-			getStripeWebhookSecret()
+			await getStripeWebhookSecret()
 		);
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });

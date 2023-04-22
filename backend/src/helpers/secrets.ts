@@ -242,7 +242,7 @@ const initSecretBlindIndexDataHelper = async () => {
             tag: saltTag
         } = encryptSymmetric({
             plaintext: salt,
-            key: getEncryptionKey()
+            key: await getEncryptionKey()
         });
 
         const secretBlindIndexData = new SecretBlindIndexData({
@@ -280,7 +280,7 @@ const createSecretBlindIndexDataHelper = async ({
         tag: saltTag
     } = encryptSymmetric({
         plaintext: salt,
-        key: getEncryptionKey()
+        key: await getEncryptionKey()
     });
     
     const secretBlindIndexData = await new SecretBlindIndexData({
@@ -316,7 +316,7 @@ const getSecretBlindIndexSaltHelper = async ({
         ciphertext: secretBlindIndexData.encryptedSaltCiphertext,
         iv: secretBlindIndexData.saltIV,
         tag: secretBlindIndexData.saltTag,
-        key: getEncryptionKey()
+        key: await getEncryptionKey()
     });
     
     return salt;
@@ -378,7 +378,7 @@ const generateSecretBlindIndexHelper = async ({
         ciphertext: secretBlindIndexData.encryptedSaltCiphertext,
         iv: secretBlindIndexData.saltIV,
         tag: secretBlindIndexData.saltTag,
-        key: getEncryptionKey()
+        key: await getEncryptionKey()
     });
 
     const secretBlindIndex = await generateSecretBlindIndexWithSaltHelper({
@@ -508,7 +508,7 @@ const createSecretHelper = async ({
         workspaceId
     });
 
-    const postHogClient = TelemetryService.getPostHogClient();
+    const postHogClient = await TelemetryService.getPostHogClient();
 
     if (postHogClient) {
         postHogClient.capture({
@@ -578,7 +578,7 @@ const getSecretsHelper = async ({
         ipAddress: authData.authIP
     });
 
-    const postHogClient = TelemetryService.getPostHogClient();
+    const postHogClient = await TelemetryService.getPostHogClient();
 
     if (postHogClient) {
         postHogClient.capture({
@@ -660,7 +660,7 @@ const getSecretHelper = async ({
         ipAddress: authData.authIP
     });
 
-    const postHogClient = TelemetryService.getPostHogClient();
+    const postHogClient = await TelemetryService.getPostHogClient();
 
     if (postHogClient) {
         postHogClient.capture({
@@ -798,7 +798,7 @@ const updateSecretHelper = async ({
         workspaceId
     });
 
-    const postHogClient = TelemetryService.getPostHogClient();
+    const postHogClient = await TelemetryService.getPostHogClient();
 
     if (postHogClient) {
         postHogClient.capture({
@@ -905,7 +905,7 @@ const deleteSecretHelper = async ({
         workspaceId
     });
 
-    const postHogClient = TelemetryService.getPostHogClient();
+    const postHogClient = await TelemetryService.getPostHogClient();
 
     if (postHogClient) {
         postHogClient.capture({

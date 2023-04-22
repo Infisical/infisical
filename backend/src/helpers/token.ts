@@ -84,7 +84,7 @@ const createTokenHelper = async ({
         const query: TokenDataQuery = { type };
         const update: TokenDataUpdate = {
             type,
-            tokenHash: await bcrypt.hash(token, getSaltRounds()),
+            tokenHash: await bcrypt.hash(token, await getSaltRounds()),
             expiresAt
         }
 

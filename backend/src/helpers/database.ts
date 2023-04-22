@@ -20,12 +20,12 @@ const initDatabaseHelper = async ({
         // allow empty strings to pass the required validator
         mongoose.Schema.Types.String.checkRequired(v => typeof v === 'string');
 
-        getLogger("database").info("Database connection established");
+        (await getLogger("database")).info("Database connection established");
         
         await EESecretService.initSecretVersioning();
         await SecretService.initSecretBlindIndexDataHelper();
     } catch (err) {
-        getLogger("database").error(`Unable to establish Database connection due to the error.\n${err}`);
+        (await getLogger("database")).error(`Unable to establish Database connection due to the error.\n${err}`);
     }
 
     return mongoose.connection;
