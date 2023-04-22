@@ -31,7 +31,7 @@ import {
 } from './DashboardPage.utils';
 
 
-export const DashboardEnvOverview = () => {
+export const DashboardEnvOverview = ({onEnvChange}: {onEnvChange: any;}) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { createNotification } = useNotificationContext();
@@ -243,7 +243,8 @@ export const DashboardEnvOverview = () => {
               {userAvailableEnvs?.map(env => {
                 return <div key={`button-${env.slug}`} className="flex flex-row w-full justify-center h-10 items-center border-none mb-1 mx-2 min-w-[10rem]">
                     <Button
-                      onClick={() => router.push(`${router.asPath  }?env=${env.slug}`)}
+                      onClick={() => onEnvChange(env.slug)}
+                      // router.push(`${router.asPath  }?env=${env.slug}`)
                       variant="outline_bg"
                       colorSchema="primary"
                       isFullWidth

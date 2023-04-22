@@ -118,7 +118,7 @@ export const EnvComparisonRow = ({
     <tr className="group min-w-full flex flex-row items-center hover:bg-bunker-700">
       <td className="w-10 h-10 px-4 flex items-center justify-center border-none"><div className='text-center w-10 text-xs text-bunker-400'>{index + 1}</div></td>
       <td className="flex flex-row justify-between items-center h-full min-w-[200px] lg:min-w-[220px] xl:min-w-[250px]">
-        <div className="flex flex-row items-center h-8 cursor-default">{secret?.key || ''}</div>
+        <div className="flex flex-row items-center h-8 cursor-default">{secrets![0].key || ''}</div>
         <button type="button" className='mr-2 text-bunker-400 hover:text-bunker-300 invisible group-hover:visible' onClick={() => setAreValuesHiddenThisRow(!areValuesHiddenThisRow)}>
           <FontAwesomeIcon icon={areValuesHiddenThisRow ? faEye : faEyeSlash} />
         </button>
