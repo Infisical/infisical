@@ -40,7 +40,7 @@ export const getSecretByName = async (req: Request, res: Response) => {
     const workspaceId = req.query.workspaceId as string;
     const environment = req.query.environment as string;
     const type = req.query.type as 'shared' | 'personal' | undefined;
-    
+
     const secret = await SecretService.getSecret({
         secretName,
         workspaceId: new Types.ObjectId(workspaceId),

@@ -24,7 +24,6 @@ router.get(
     '/',
     query('workspaceId').exists().isString().trim(),
     query('environment').exists().isString().trim(),
-    query('tagSlugs'),
     validateRequest,
     requireAuth({
         acceptedAuthModes: [

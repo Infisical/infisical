@@ -56,6 +56,7 @@ export const getServiceTokenData = async (req: Request, res: Response) => {
 
     const serviceTokenData = await ServiceTokenData
         .findById(req.authData.authPayload._id)
+        .select('+encryptedKey +iv +tag')
         .populate('user');
 
     return res.status(200).json(serviceTokenData);

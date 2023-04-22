@@ -620,7 +620,6 @@ const getSecretHelper = async ({
         secretName,
         workspaceId: new Types.ObjectId(workspaceId)
     });
-
     let secret: ISecret | null = null;
     
     // try getting personal secret first (if exists)
@@ -733,6 +732,7 @@ const updateSecretHelper = async ({
         );
     } else {
         // case: update personal secret
+        
         secret = await Secret.findOneAndUpdate(
             {
                 secretBlindIndex,
