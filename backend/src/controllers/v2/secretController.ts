@@ -8,6 +8,8 @@ import { BadRequestError, InternalServerError, UnauthorizedRequestError, Validat
 import { AnyBulkWriteOperation } from 'mongodb';
 import { SECRET_PERSONAL, SECRET_SHARED } from "../../variables";
 import { TelemetryService } from '../../services';
+import { User } from "../../models";
+import { AccountNotFoundError } from '../../utils/errors';
 
 /**
  * Create secret for workspace with id [workspaceId] and environment [environment]
@@ -340,15 +342,18 @@ export const getSecrets = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
 
   let userId: Types.ObjectId | undefined = undefined // used for getting personal secrets for user
-  let userEmail: Types.ObjectId | undefined = undefined // used for posthog 
+  let userEmail: string | undefined = undefined // used for posthog 
   if (req.user) {
     userId = req.user._id;
     userEmail = req.user.email;
   }
 
   if (req.serviceTokenData) {
-    userId = req.serviceTokenData.user._id
-    userEmail = req.serviceTokenData.user.email;
+    userId = req.serviceTokenData.user;
+    
+    const user = await User.findById(req.serviceTokenData.user, 'email');
+    if (!user) throw AccountNotFoundError();
+    userEmail = user.email;
   }
 
   const [err, secrets] = await to(Secret.find(

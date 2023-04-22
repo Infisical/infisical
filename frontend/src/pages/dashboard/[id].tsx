@@ -586,6 +586,7 @@ export default function Dashboard() {
                 method: 'POST',
                 secret: {
                   type: secret.type,
+                  secretName: secret.secretName,
                   secretKeyCiphertext: secret.secretKeyCiphertext,
                   secretKeyIV: secret.secretKeyIV,
                   secretKeyTag: secret.secretKeyTag,
@@ -614,6 +615,7 @@ export default function Dashboard() {
                 secret: {
                   _id: secret.id,
                   type: secret.type,
+                  secretName: secret.secretName,
                   secretKeyCiphertext: secret.secretKeyCiphertext,
                   secretKeyIV: secret.secretKeyIV,
                   secretKeyTag: secret.secretKeyTag,

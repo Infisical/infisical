@@ -4,6 +4,7 @@ import {
     Log,
     IAction
 } from '../models';
+
 /**
  * Create an (audit) log
  * @param {Object} obj

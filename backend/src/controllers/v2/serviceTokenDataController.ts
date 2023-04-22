@@ -11,9 +11,11 @@ import { userHasWorkspaceAccess } from '../../ee/helpers/checkMembershipPermissi
 import { 
     PERMISSION_READ_SECRETS,
     AUTH_MODE_JWT,
-    AUTH_MODE_SERVICE_ACCOUNT
+    AUTH_MODE_SERVICE_ACCOUNT,
+    AUTH_MODE_SERVICE_TOKEN
 } from '../../variables';
 import { getSaltRounds } from '../../config';
+import { BadRequestError } from '../../utils/errors';
 
 /**
  * Return service token data associated with service token on request
@@ -48,7 +50,16 @@ export const getServiceTokenData = async (req: Request, res: Response) => {
     }   
     */
 
-    return res.status(200).json(req.serviceTokenData);
+    if (!(req.authData.authPayload instanceof ServiceTokenData)) throw BadRequestError({
+        message: 'Failed accepted client validation for service token data'
+    });
+
+    const serviceTokenData = await ServiceTokenData
+        .findById(req.authData.authPayload._id)
+        .select('+encryptedKey +iv +tag')
+        .populate('user');
+
+    return res.status(200).json(serviceTokenData);
 }
 
 /**
@@ -76,7 +87,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
     const secretHash = await bcrypt.hash(secret, getSaltRounds());
 
     let expiresAt; 
-    if (!!expiresIn) {
+    if (expiresIn) {
         expiresAt = new Date()
         expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
     }

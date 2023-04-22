@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/node';
+import crypto from 'crypto';
 import { Types } from 'mongoose';
 import {
 	Workspace,
@@ -13,6 +14,7 @@ import {
 	IServiceAccount,
 	ServiceTokenData,
 	IServiceTokenData,
+	SecretBlindIndexData
 } from '../models';
 import { createBot } from '../helpers/bot';
 import { validateUserClientForWorkspace } from '../helpers/user';
@@ -26,6 +28,9 @@ import {
 	AUTH_MODE_SERVICE_TOKEN,
 	AUTH_MODE_API_KEY
 } from '../variables';
+import { getEncryptionKey } from '../config';
+import { encryptSymmetric } from '../utils/crypto';
+import { SecretService } from '../services';
 
 /**
  * Validate authenticated clients for workspace with id [workspaceId] based
@@ -42,7 +47,8 @@ const validateClientForWorkspace = async ({
 	workspaceId,
 	environment,
 	acceptedRoles,
-	requiredPermissions
+	requiredPermissions,
+	requireBlindIndicesEnabled
 }: {
 	authData: {
 		authMode: string;
@@ -52,6 +58,7 @@ const validateClientForWorkspace = async ({
 	environment?: string;
 	acceptedRoles: Array<'admin' | 'member'>;
 	requiredPermissions?: string[];
+	requireBlindIndicesEnabled: boolean;
 }) => {
 	
 	const workspace = await Workspace.findById(workspaceId);
@@ -59,6 +66,20 @@ const validateClientForWorkspace = async ({
 	if (!workspace) throw WorkspaceNotFoundError({
 		message: 'Failed to find workspace'
 	});
+
+	if (requireBlindIndicesEnabled) {
+		// case: blind indices are not enabled for secrets in this workspace
+		// (i.e. workspace was created before blind indices were introduced
+		// and no admin has enabled it)
+		
+		const secretBlindIndexData = await SecretBlindIndexData.exists({
+			workspace: new Types.ObjectId(workspaceId)
+		});
+		
+		if (!secretBlindIndexData) throw UnauthorizedRequestError({
+			message: 'Failed workspace authorization due to blind indices not being enabled'
+		});
+	}
 
 	if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
 		const membership = await validateUserClientForWorkspace({
@@ -130,13 +151,21 @@ const createWorkspace = async ({
 		// create workspace
 		workspace = await new Workspace({
 			name,
-			organization: organizationId
+			organization: organizationId,
+			autoCapitalization: true
 		}).save();
 		
-		const bot = await createBot({
+		// initialize bot for workspace
+		await createBot({
 			name: 'Infisical Bot',
-			workspaceId: workspace._id.toString()
+			workspaceId: workspace._id
 		});
+		
+		// initialize blind index salt for workspace
+		await SecretService.createSecretBlindIndexData({
+			workspaceId: workspace._id
+		});
+
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);

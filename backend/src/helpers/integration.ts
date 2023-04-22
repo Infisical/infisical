@@ -217,14 +217,19 @@ const handleOAuthExchangeHelper = async ({
  * @param {Object} obj.workspaceId - id of workspace
  */
 const syncIntegrationsHelper = async ({
-    workspaceId
+    workspaceId,
+    environment
 }: {
-    workspaceId: string;
+    workspaceId: Types.ObjectId;
+    environment?: string;
 }) => {
     let integrations;
     try {
         integrations = await Integration.find({
             workspace: workspaceId,
+            ...(environment ? {
+                environment
+            } : {}),
             isActive: true,
             app: { $ne: null }
         });
@@ -234,7 +239,7 @@ const syncIntegrationsHelper = async ({
         for await (const integration of integrations) {
             // get workspace, environment (shared) secrets
             const secrets = await BotService.getSecrets({ // issue here?
-                workspaceId: integration.workspace.toString(),
+                workspaceId: integration.workspace,
                 environment: integration.environment
             });
 
@@ -281,7 +286,7 @@ const syncIntegrationsHelper = async ({
         if (!integrationAuth) throw UnauthorizedRequestError({message: 'Failed to locate Integration Authentication credentials'});
 
         refreshToken = await BotService.decryptSymmetric({
-            workspaceId: integrationAuth.workspace.toString(),
+            workspaceId: integrationAuth.workspace,
             ciphertext: integrationAuth.refreshCiphertext as string,
             iv: integrationAuth.refreshIV as string,
             tag: integrationAuth.refreshTag as string
@@ -318,7 +323,7 @@ const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrati
         if (!integrationAuth) throw UnauthorizedRequestError({message: 'Failed to locate Integration Authentication credentials'});
 
         accessToken = await BotService.decryptSymmetric({
-            workspaceId: integrationAuth.workspace.toString(),
+            workspaceId: integrationAuth.workspace,
             ciphertext: integrationAuth.accessCiphertext as string,
             iv: integrationAuth.accessIV as string,
             tag: integrationAuth.accessTag as string
@@ -340,7 +345,7 @@ const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrati
         
         if (integrationAuth?.accessIdCiphertext && integrationAuth?.accessIdIV && integrationAuth?.accessIdTag) {
             accessId = await BotService.decryptSymmetric({
-                workspaceId: integrationAuth.workspace.toString(),
+                workspaceId: integrationAuth.workspace,
                 ciphertext: integrationAuth.accessIdCiphertext as string,
                 iv: integrationAuth.accessIdIV as string,
                 tag: integrationAuth.accessIdTag as string
@@ -386,7 +391,7 @@ const setIntegrationAuthRefreshHelper = async ({
         if (!integrationAuth) throw new Error('Failed to find integration auth');
         
         const obj = await BotService.encryptSymmetric({
-            workspaceId: integrationAuth.workspace.toString(),
+            workspaceId: integrationAuth.workspace,
             plaintext: refreshToken
         });
         
@@ -435,14 +440,14 @@ const setIntegrationAuthAccessHelper = async ({
         if (!integrationAuth) throw new Error('Failed to find integration auth');
         
         const encryptedAccessTokenObj = await BotService.encryptSymmetric({
-            workspaceId: integrationAuth.workspace.toString(),
+            workspaceId: integrationAuth.workspace,
             plaintext: accessToken
         });
         
         let encryptedAccessIdObj;
         if (accessId) {
             encryptedAccessIdObj = await BotService.encryptSymmetric({
-                workspaceId: integrationAuth.workspace.toString(),
+                workspaceId: integrationAuth.workspace,
                 plaintext: accessId
             }); 
         }

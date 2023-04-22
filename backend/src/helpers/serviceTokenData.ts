@@ -111,7 +111,6 @@ const validateClientForServiceTokenData = async ({
 	environment?: string;
 	requiredPermissions?: string[];
 }) => {
-
     if (!serviceTokenData.workspace.equals(workspaceId)) {
         // case: invalid workspaceId passed
         throw UnauthorizedRequestError({

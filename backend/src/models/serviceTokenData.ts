@@ -33,7 +33,8 @@ const serviceTokenDataSchema = new Schema<IServiceTokenData>(
         },
         user: {
             type: Schema.Types.ObjectId,
-            ref: 'User'
+            ref: 'User',
+            required: true
         },
         serviceAccount: {
             type: Schema.Types.ObjectId,

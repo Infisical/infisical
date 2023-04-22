@@ -2,7 +2,7 @@ import { Types } from 'mongoose';
 import * as Sentry from '@sentry/node';
 import {
 	Secret,
-	ISecret
+	ISecret,
 } from '../../models';
 import {
 	SecretSnapshot,
@@ -21,7 +21,7 @@ import {
 const takeSecretSnapshotHelper = async ({
 	workspaceId
 }: {
-	workspaceId: string;
+	workspaceId: Types.ObjectId;
 }) => {
 
 	let secretSnapshot;
@@ -143,7 +143,7 @@ const initSecretVersioningHelper = async () => {
 
 		if (unversionedSecrets.length > 0) {
 			await addSecretVersionsHelper({
-				secretVersions: unversionedSecrets.map((s, idx) => ({
+				secretVersions: unversionedSecrets.map((s, idx) => new SecretVersion({
 					...s,
 					secret: s._id,
 					version: s.version ? s.version : 1,

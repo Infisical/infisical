@@ -21,21 +21,30 @@ Infisical makes a usability-security tradeoff that is to give users convenient a
 
 ## Secrets
 
-The `Secret` model includes the fields `workspace`, `type`, `user`, `environment`, `secretKeyCiphertext`, `secretKeyIV`, `secretKeyTag`, `secretValueCiphertext`, `secretValueIV`, and `secretValueTag`.
+The `Secret` model includes the fields `workspace`, `type`, `user`, `environment`, `secretBlindIndex`, `secretKeyCiphertext`, `secretKeyIV`, `secretKeyTag`, `secretValueCiphertext`, `secretValueIV`, and `secretValueTag`.
 
-Each secret is symmetrically encrypted by the key of the project that it belongs to; that key's encrypted copies are stored in a separate `Key` collection.
+Each secret consists of a key name and value pair and is symmetrically encrypted by the key of the project that it belongs to; that key's encrypted copies are stored in a separate `Key` collection. 
+
+The `secretBlindIndex` enables users to query secrets by their names; it is a blind index computed by applying `argon2id` with a 128-bit random salt (unique to each project) and the name of the secret. The salt itself is symmetrically encrypted under the server key and stored in the `SecretBlindIndexData` collection.
+
+## Blind Index Data
+
+The `SecretBlindIndexData` model includes the fields `workspace`, `encryptedSaltCiphertext`, `saltIV`, and `saltTag`.
+
+Infisical stores salts (unique to each project) symmetrically encrypted under the server key. The salts are used to compute blind indices for secrets that enable
+users to query secrets by name.
 
 ## Project Keys
 
 The `Key` model includes the fields `encryptedKey`, `nonce`, `sender`, `receiver`, and `workspace`.
 
-Infisical stores copies of project keys, one for each member of a project, encrypted under each member's public key.
+Infisical stores copies of project keys, one for each member of a project, asymmetrically encrypted under each member's public key.
 
 ## Bots
 
 The `Bot` model contains the fields `name`, `workspace`, `isActive`, `publicKey`, `encryptedPrivateKey`, `iv`, and `tag`.
 
-Each project comes with a bot that has its own public-private key pair; its private key is encrypted by the server's symmetric key. If needed, a user can opt-in to share their project key with the bot (i.e. Infisical) to give the platform access to the project's secrets.
+Each project comes with a bot that has its own public-private key pair; its private key is symmetrically encrypted by the server's key. If needed, a user can opt-in to share their project key with the bot (i.e. Infisical) to give the platform access to the project's secrets.
 
 <Note>
   Sharing secrets with Infisical so they can be synced to integrations like

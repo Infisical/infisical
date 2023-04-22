@@ -5,14 +5,14 @@ import BotService from './BotService';
 import EventService from './EventService';
 import IntegrationService from './IntegrationService';
 import TokenService from './TokenService';
+import SecretService from './SecretService';
 
 export {
     TelemetryService,
-    // logTelemetryMessage,
-    // getPostHogClient,
     DatabaseService,
     BotService,
     EventService,
     IntegrationService,
-    TokenService
+    TokenService,
+    SecretService
 }

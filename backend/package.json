@@ -8,6 +8,7 @@
     "@sentry/node": "^7.41.0",
     "@types/crypto-js": "^4.1.1",
     "@types/libsodium-wrappers": "^0.7.10",
+    "argon2": "^0.30.3",
     "await-to-js": "^3.0.0",
     "aws-sdk": "^2.1338.0",
     "axios": "^1.1.3",

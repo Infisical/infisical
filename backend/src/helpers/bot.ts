@@ -112,7 +112,7 @@ const createBot = async ({
     workspaceId,
 }: {
     name: string;
-    workspaceId: string;
+    workspaceId: Types.ObjectId;
 }) => {
     let bot;
     try {
@@ -151,7 +151,7 @@ const getSecretsHelper = async ({
     workspaceId,
     environment
 }: {
-    workspaceId: string;
+    workspaceId: Types.ObjectId;
     environment: string;
 }) => {
     const content = {} as any;
@@ -196,7 +196,7 @@ const getSecretsHelper = async ({
  * @param {String} obj.workspaceId - id of workspace
  * @returns {String} key - decrypted workspace key
  */
-const getKey = async ({ workspaceId }: { workspaceId: string }) => {
+const getKey = async ({ workspaceId }: { workspaceId: Types.ObjectId }) => {
     let key;
     try {
         const botKey = await BotKey.findOne({
@@ -245,7 +245,7 @@ const encryptSymmetricHelper = async ({
     workspaceId,
     plaintext
 }: {
-    workspaceId: string;
+    workspaceId: Types.ObjectId;
     plaintext: string;
 }) => {
     
@@ -282,7 +282,7 @@ const decryptSymmetricHelper = async ({
     iv,
     tag
 }: {
-    workspaceId: string;
+    workspaceId: Types.ObjectId;
     ciphertext: string;
     iv: string;
     tag: string;
