@@ -35,7 +35,7 @@ export const Tooltip = ({
       sideOffset={5}
       {...props}
       className={twMerge(
-        `z-20 select-none rounded-md bg-mineshaft-500 py-2 px-4 text-sm text-bunker-200 shadow-md 
+        `z-20 select-none max-w-[15rem] rounded-md bg-mineshaft-800 border border-mineshaft-600 py-2 px-4 font-light text-sm text-bunker-200 shadow-md 
 data-[state=delayed-open]:data-[side=top]:animate-slideDownAndFade
 data-[state=delayed-open]:data-[side=right]:animate-slideLeftAndFade
 data-[state=delayed-open]:data-[side=left]:animate-slideRightAndFade
@@ -45,7 +45,7 @@ data-[state=delayed-open]:data-[side=bottom]:animate-slideUpAndFade
       )}
     >
       {content}
-      <TooltipPrimitive.Arrow width={11} height={5} className="fill-mineshaft-500" />
+      <TooltipPrimitive.Arrow width={11} height={5} className="fill-mineshaft-600" />
     </TooltipPrimitive.Content>
   </TooltipPrimitive.Root>
 );

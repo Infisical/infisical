@@ -2,15 +2,25 @@
 title: "Introduction"
 ---
 
-Infisical's REST API provides users an alternative way to programmatically access and manage
+Infisical's Public (REST) API provides users an alternative way to programmatically access and manage
 secrets via HTTPS requests. This can be useful for automating tasks, such as
 rotating credentials, or for integrating secret management into a larger system.
 
-With the REST API, users can create, read, update, and delete secrets, as well as manage access control, query audit logs, and more.
+With the Public API, users can create, read, update, and delete secrets, as well as manage access control, query audit logs, and more.
+
+<Warning>
+  We highly recommend using one of the available SDKs when working with the Infisical API.
+  
+  If you decide to make your own requests using the API reference instead, be prepared for a steeper learning curve and more manual work.
+</Warning>
+
+<Warning>
+  In April 2023, we added the capability for users to query for secrets by name to improve the user experience of Infisical. If your project was created prior to April 2023, please read and follow the section on [blind indices](./blind-indices) and how to enable them for better usage of Infisical.
+</Warning>
 
 ## Concepts
 
-Using Infisical's API to manage secrets requires a basic understanding of the system and its underlying cryptography detailed [here](/security/overview).
+Using Infisical's API to manage secrets requires a basic understanding of the system and its underlying cryptography detailed [here](/security/overview). A few key points:
 
 - Each user has a public/private key pair that is stored with the platform; private keys are encrypted locally by protected keys that are encrypted by keys derived from Argon2id applied to the user's password before being sent off to the server during the account signup process.
 - Each (encrypted) secret belongs to a project and environment.

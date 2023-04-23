@@ -13,6 +13,7 @@ import {
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
+  INTEGRATION_SUPABASE
 } from "../variables";
 
 export interface IIntegration {
@@ -42,7 +43,8 @@ export interface IIntegration {
     | 'railway' 
     | 'flyio'
     | 'circleci'
-    | 'travisci';
+    | 'travisci'
+    | 'supabase';
   integrationAuth: Types.ObjectId;
 }
 
@@ -122,6 +124,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_FLYIO,
         INTEGRATION_CIRCLECI,
         INTEGRATION_TRAVISCI,
+        INTEGRATION_SUPABASE
       ],
       required: true,
     },

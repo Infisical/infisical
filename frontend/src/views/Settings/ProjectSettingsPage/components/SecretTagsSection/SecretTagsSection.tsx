@@ -64,7 +64,6 @@ export const SecretTagsSection = ({
   });
 
   const onFormSubmit = async (data: CreateWsTag) => {
-    console.log(19191, data);
     await onCreateTag(data);
     handlePopUpClose('CreateSecretTag');
   };

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { Types } from 'mongoose';
 import * as Sentry from '@sentry/node';
 import { Bot, BotKey } from '../../models';
 import { createBot } from '../../helpers/bot';
@@ -29,7 +30,7 @@ export const getBotByWorkspaceId = async (req: Request, res: Response) => {
             // -> create a new bot and return it
             bot = await createBot({
                 name: 'Infisical Bot',
-                workspaceId
+                workspaceId: new Types.ObjectId(workspaceId)
             });
         }
 	} catch (err) {

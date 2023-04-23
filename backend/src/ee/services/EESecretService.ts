@@ -25,7 +25,7 @@ class EESecretService {
     static async takeSecretSnapshot({
         workspaceId
     }: {
-        workspaceId: string;
+        workspaceId: Types.ObjectId;
     }) {
         if (!EELicenseService.isLicenseValid) return;
         return await takeSecretSnapshotHelper({ workspaceId });

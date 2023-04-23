@@ -173,6 +173,7 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
         }
     }   
     */
+	
 	let secrets;
     try {	
         const { workspaceId } = req.params;
@@ -182,7 +183,10 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
 		const secretSnapshot = await SecretSnapshot.findOne({
 			workspace: workspaceId,
 			version
-		}).populate<{ secretVersions: ISecretVersion[]}>('secretVersions');
+		}).populate<{ secretVersions: ISecretVersion[]}>({
+			path: 'secretVersions',
+			select: '+secretBlindIndex'
+		});
         
         if (!secretSnapshot) throw new Error('Failed to find secret snapshot');
 
@@ -222,6 +226,7 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
 					type,
 					user,
 					environment,
+					secretBlindIndex,
 					secretKeyCiphertext,
 					secretKeyIV,
 					secretKeyTag,
@@ -240,6 +245,7 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
 					type,
 					user,
 					environment,
+					secretBlindIndex: secretBlindIndex ?? undefined,
 					secretKeyCiphertext,
 					secretKeyIV,
 					secretKeyTag,
@@ -257,7 +263,7 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
 		);
 		
 		// add secret versions
-		await SecretVersion.insertMany(
+		const secretV = await SecretVersion.insertMany(
 			secrets.map(({
 				_id,
 				version,
@@ -265,6 +271,7 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
 				type,
 				user,
 				environment,
+				secretBlindIndex,
 				secretKeyCiphertext,
 				secretKeyIV,
 				secretKeyTag,
@@ -282,6 +289,7 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
 				user,
 				environment,
 				isDeleted: false,
+				secretBlindIndex: secretBlindIndex ?? undefined,
 				secretKeyCiphertext,
 				secretKeyIV,
 				secretKeyTag,
@@ -304,7 +312,7 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
 		
         // take secret snapshot
 		await EESecretService.takeSecretSnapshot({
-			workspaceId
+			workspaceId: new Types.ObjectId(workspaceId)
 		});
     } catch (err) {
         Sentry.setUser({ email: req.user.email });

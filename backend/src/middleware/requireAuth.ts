@@ -21,6 +21,7 @@ import {
 	AUTH_MODE_SERVICE_TOKEN,
 	AUTH_MODE_API_KEY
 } from '../variables';
+import { getChannelFromUserAgent } from '../utils/posthog';
 
 declare module 'jsonwebtoken' {
 	export interface UserIDJwtPayload extends jwt.JwtPayload {
@@ -44,6 +45,7 @@ const requireAuth = ({
 	acceptedAuthModes: string[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
+		
 		// validate auth token against accepted auth modes [acceptedAuthModes]
 		// and return token type [authTokenType] and value [authTokenValue]
 		const { authMode, authTokenValue } = validateAuthMode({
@@ -87,7 +89,10 @@ const requireAuth = ({
 		
 		req.authData = {
 			authMode,
-			authPayload
+			authPayload, // User, ServiceAccount, ServiceTokenData
+			authChannel: getChannelFromUserAgent(req.headers['user-agent']),
+			authIP: req.ip,
+			authUserAgent: req.headers['user-agent'] ?? 'other'
 		}
 		
 		return next();

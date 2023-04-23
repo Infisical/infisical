@@ -11,6 +11,7 @@ export interface ISecret {
 	type: string;
 	user: Types.ObjectId;
 	environment: string;
+	secretBlindIndex?: string;
 	secretKeyCiphertext: string;
 	secretKeyIV: string;
 	secretKeyTag: string;
@@ -56,6 +57,10 @@ const secretSchema = new Schema<ISecret>(
 		environment: {
 			type: String,
 			required: true
+		},
+		secretBlindIndex: {
+			type: String,
+			select: false
 		},
 		secretKeyCiphertext: {
 			type: String,

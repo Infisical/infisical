@@ -19,18 +19,42 @@ import {
 
 export const secretKeys = {
   // this is also used in secretSnapshot part
-  getProjectSecret: (workspaceId: string, env: string) => [{ workspaceId, env }, 'secrets'],
+  getProjectSecret: (workspaceId: string, env: string | string[]) => [{ workspaceId, env }, 'secrets'],
   getSecretVersion: (secretId: string) => [{ secretId }, 'secret-versions']
 };
 
-const fetchProjectEncryptedSecrets = async (workspaceId: string, env: string) => {
-  const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
-    params: {
-      environment: env,
-      workspaceId
+const fetchProjectEncryptedSecrets = async (workspaceId: string, env: string | string[]) => {
+  if (typeof env === 'string') {
+    const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
+      params: {
+        environment: env,
+        workspaceId
+      }
+    });
+    return data.secrets;
+  }  
+  
+  if (typeof env === 'object') {
+    let allEnvData: any = [];
+    
+    // eslint-disable-next-line no-restricted-syntax
+    for (const envPoint of env) {
+      // eslint-disable-next-line no-await-in-loop
+      const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
+        params: {
+          environment: envPoint,
+          workspaceId
+        }
+      });
+      allEnvData = allEnvData.concat(data.secrets);
     }
-  });
-  return data.secrets;
+    
+    return allEnvData;
+  // eslint-disable-next-line no-else-return
+  } else {
+    return null;
+  }
+
 };
 
 export const useGetProjectSecrets = ({
@@ -59,7 +83,7 @@ export const useGetProjectSecrets = ({
       // this used for add-only mode in dashboard
       // type won't be there thus only one key is shown
       const duplicateSecretKey: Record<string, boolean> = {};
-      data.forEach((encSecret) => {
+      data.forEach((encSecret: EncryptedSecret) => {
         const secretKey = decryptSymmetric({
           ciphertext: encSecret.secretKeyCiphertext,
           iv: encSecret.secretKeyIV,
@@ -93,12 +117,12 @@ export const useGetProjectSecrets = ({
         };
 
         if (encSecret.type === 'personal') {
-          personalSecrets[decryptedSecret.key] = { id: encSecret._id, value: secretValue };
+          personalSecrets[`${decryptedSecret.key}-${decryptedSecret.env}`] = { id: encSecret._id, value: secretValue };
         } else {
-          if (!duplicateSecretKey?.[decryptedSecret.key]) {
+          if (!duplicateSecretKey?.[`${decryptedSecret.key}-${decryptedSecret.env}`]) {
             sharedSecrets.push(decryptedSecret);
           }
-          duplicateSecretKey[decryptedSecret.key] = true;
+          duplicateSecretKey[`${decryptedSecret.key}-${decryptedSecret.env}`] = true;
         }
       });
       sharedSecrets.forEach((val) => {

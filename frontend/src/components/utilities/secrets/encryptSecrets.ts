@@ -10,6 +10,7 @@ interface EncryptedSecretProps {
   id: string;
   createdAt: string;
   environment: string;
+  secretName: string;
   secretCommentCiphertext: string;
   secretCommentIV: string;
   secretCommentTag: string;
@@ -94,6 +95,7 @@ const encryptSecrets = async ({
         id: secret.id,
         createdAt: '',
         environment: env,
+        secretName: secret.key,
         secretKeyCiphertext,
         secretKeyIV,
         secretKeyTag,

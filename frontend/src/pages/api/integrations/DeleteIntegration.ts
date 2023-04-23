@@ -19,7 +19,6 @@ const deleteIntegration = ({ integrationId }: Props) =>
     if (res && res.status === 200) {
       return (await res.json()).integration;
     }
-    console.log('Failed to delete an integration');
     return undefined;
   });
 

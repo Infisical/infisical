@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import { 
     handleOAuthExchangeHelper,
     syncIntegrationsHelper,
@@ -51,9 +52,11 @@ class IntegrationService {
      * @param {Object} obj.workspaceId - id of workspace
      */
     static async syncIntegrations({
-        workspaceId
+        workspaceId,
+        environment
     }: {
-        workspaceId: string;
+        workspaceId: Types.ObjectId;
+        environment?: string;
     }) {
         return await syncIntegrationsHelper({
             workspaceId
@@ -67,7 +70,7 @@ class IntegrationService {
      * @param {String} obj.integrationAuthId - id of integration auth
      * @param {String} refreshToken - decrypted refresh token
      */
-    static async getIntegrationAuthRefresh({ integrationAuthId }: { integrationAuthId: string}) {
+    static async getIntegrationAuthRefresh({ integrationAuthId }: { integrationAuthId: Types.ObjectId}) {
         return await getIntegrationAuthRefreshHelper({
             integrationAuthId
         });
@@ -80,7 +83,7 @@ class IntegrationService {
      * @param {String} obj.integrationAuthId - id of integration auth
      * @param {String} accessToken - decrypted access token
      */
-    static async getIntegrationAuthAccess({ integrationAuthId }: { integrationAuthId: string}) {
+    static async getIntegrationAuthAccess({ integrationAuthId }: { integrationAuthId: Types.ObjectId }) {
         return await getIntegrationAuthAccessHelper({
             integrationAuthId
         });

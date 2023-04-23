@@ -1,5 +1,6 @@
 import express from 'express';
 const router = express.Router();
+import { Types } from 'mongoose';
 import {
     requireAuth,
     requireWorkspaceAuth,
@@ -43,17 +44,17 @@ router.post(
                 const secretIds = requests
                     .map((request) => request.secret._id)
                     .filter((secretId) => secretId !== undefined)
-                
+
                 if (secretIds.length > 0) {
                     req.secrets = await validateClientForSecrets({
                         authData: req.authData,
-                        secretIds,
+                        secretIds: secretIds.map((secretId: string) => new Types.ObjectId(secretId)),
                         requiredPermissions: []
                     });
                 }
             }
-        return true;
-    }),
+            return true;
+        }),
     validateRequest,
     secretsController.batchSecrets
 );
@@ -122,7 +123,7 @@ router.get(
     query('tagSlugs'),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN, AUTH_MODE_SERVICE_ACCOUNT]
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],

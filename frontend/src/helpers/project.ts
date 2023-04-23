@@ -93,6 +93,7 @@ const initProjectHelper = async ({
 }) => {
     let project;
     try {
+
         // create new project
         project = await createWorkspace({
             workspaceName: projectName,
