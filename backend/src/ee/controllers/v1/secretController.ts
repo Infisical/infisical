@@ -146,7 +146,7 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
 		const oldSecretVersion = await SecretVersion.findOne({
 			secret: secretId,
 			version
-		});
+		}).select('+secretBlindIndex')
 		
 		if (!oldSecretVersion) throw new Error('Failed to find secret version');
 		
@@ -155,6 +155,7 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
 			type,
 			user,
 			environment,
+			secretBlindIndex,
 			secretKeyCiphertext,
 			secretKeyIV,
 			secretKeyTag,
@@ -174,6 +175,7 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
 				type,
 				user,
 				environment,
+				...(secretBlindIndex ? { secretBlindIndex } : {}),
 				secretKeyCiphertext,
 				secretKeyIV,
 				secretKeyTag,
@@ -197,6 +199,7 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
 			user,
 			environment,
 			isDeleted: false,
+			...(secretBlindIndex ? { secretBlindIndex } : {}),
 			secretKeyCiphertext,
 			secretKeyIV,
 			secretKeyTag,
@@ -207,7 +210,7 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
 		
 		// take secret snapshot
 		await EESecretService.takeSecretSnapshot({
-			workspaceId: secret.workspace.toString()
+			workspaceId: secret.workspace
 		});
 		
 	} catch (err) {

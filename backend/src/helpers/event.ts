@@ -1,11 +1,13 @@
-import { Bot, IBot } from '../models';
+import { Types } from 'mongoose';
 import * as Sentry from '@sentry/node';
+import { Bot, IBot } from '../models';
 import { EVENT_PUSH_SECRETS } from '../variables';
 import { IntegrationService } from '../services';
 
 interface Event {
     name: string;
-    workspaceId: string;
+    workspaceId: Types.ObjectId;
+    environment?: string;
     payload: any;
 }
 
@@ -22,7 +24,10 @@ const handleEventHelper = async ({
 }: {
     event: Event;
 }) => {
-    const { workspaceId } = event;
+    const { 
+        workspaceId,
+        environment
+    } = event;
     
     // TODO: moduralize bot check into separate function
     const bot = await Bot.findOne({
@@ -36,7 +41,8 @@ const handleEventHelper = async ({
         switch (event.name) {
             case EVENT_PUSH_SECRETS:
                 IntegrationService.syncIntegrations({
-                    workspaceId
+                    workspaceId,
+                    environment
                 });
                 break;
         }

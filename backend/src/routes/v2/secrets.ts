@@ -44,7 +44,7 @@ router.post(
                 const secretIds = requests
                     .map((request) => request.secret._id)
                     .filter((secretId) => secretId !== undefined)
-                
+
                 if (secretIds.length > 0) {
                     req.secrets = await validateClientForSecrets({
                         authData: req.authData,
@@ -53,8 +53,8 @@ router.post(
                     });
                 }
             }
-        return true;
-    }),
+            return true;
+        }),
     validateRequest,
     secretsController.batchSecrets
 );
@@ -123,7 +123,7 @@ router.get(
     query('tagSlugs'),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN]
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY, AUTH_MODE_SERVICE_TOKEN, AUTH_MODE_SERVICE_ACCOUNT]
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN, MEMBER],

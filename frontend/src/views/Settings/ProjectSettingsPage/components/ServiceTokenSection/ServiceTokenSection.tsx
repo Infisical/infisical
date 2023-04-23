@@ -37,13 +37,14 @@ const apiTokenExpiry = [
   { label: '7 Days', value: 604800 },
   { label: '1 Month', value: 2592000 },
   { label: '6 months', value: 15552000 },
-  { label: '12 months', value: 31104000 }
+  { label: '12 months', value: 31104000 },
+  { label: 'Never', value: null },
 ];
 
 const createServiceTokenSchema = yup.object({
   name: yup.string().required().label('Service Token Name'),
   environment: yup.string().required().label('Environment'),
-  expiresIn: yup.string().required().label('Service Token Expiration'),
+  expiresIn: yup.string().optional().label('Service Token Expiration'),
   permissions: yup.object().shape({
     read: yup.boolean().required(),
     write: yup.boolean().required()
@@ -213,7 +214,7 @@ export const ServiceTokenSection = ({
                           className="w-full"
                         >
                           {apiTokenExpiry.map(({ label, value }) => (
-                            <SelectItem value={String(value)} key={label}>
+                            <SelectItem value={String(value || '')} key={label}>
                               {label}
                             </SelectItem>
                           ))}
@@ -332,7 +333,7 @@ export const ServiceTokenSection = ({
                 <Tr key={row._id}>
                   <Td>{row.name}</Td>
                   <Td>{row.environment}</Td>
-                  <Td>{new Date(row.expiresAt).toUTCString()}</Td>
+                  <Td>{row.expiresAt && new Date(row.expiresAt).toUTCString()}</Td>
                   <Td className="flex items-center justify-end">
                     <IconButton
                       onClick={() =>

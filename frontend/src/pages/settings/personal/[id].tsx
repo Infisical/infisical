@@ -102,7 +102,7 @@ export default function PersonalSettings() {
               </div>
             </div>
             <SecuritySection />
-            <div className="bg-white/5 rounded-md px-6 flex flex-col items-start w-full mt-2 mb-8 pt-2">
+            <div className="bg-white/5 rounded-md px-6 flex flex-col items-start w-full mt-2 mb-8 pt-4">
               <div className="flex flex-row justify-between w-full">
                 <div className="flex flex-col w-full">
                   <p className="text-xl font-semibold mb-3">
@@ -112,7 +112,7 @@ export default function PersonalSettings() {
                     {t('settings-personal:api-keys.description')}
                   </p>
                 </div>
-                <div className="w-48 mt-2">
+                <div className="w-40 mt-2">
                   <Button
                     text={String(t('settings-personal:api-keys.add-new'))}
                     onButtonPressed={() => {

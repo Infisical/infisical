@@ -15,16 +15,10 @@ export const getSecretSnapshot = async (req: Request, res: Response) => {
 
         secretSnapshot = await SecretSnapshot
             .findById(secretSnapshotId)
-            .populate({
-                path: 'secretVersions',
-                populate: {
-                    path: 'tags',
-                    model: 'Tag',
-                }
-            });
+            .populate('secretVersions');
         
         if (!secretSnapshot) throw new Error('Failed to find secret snapshot');
-        
+
     } catch (err) {
         Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);

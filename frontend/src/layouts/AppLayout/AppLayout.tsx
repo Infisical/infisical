@@ -20,6 +20,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { yupResolver } from '@hookform/resolvers/yup';
+import queryString from 'query-string';
 import * as yup from 'yup';
 
 import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
@@ -155,7 +156,10 @@ export const AppLayout = ({ children }: LayoutProps) => {
             .map((workspace: { _id: string }) => workspace._id)
             .includes(intendedWorkspaceId)
         ) {
-          router.push(`/dashboard/${userWorkspaces[0]._id}`);
+          const { env } = queryString.parse(router.asPath.split('?')[1]);
+          if (!env) {
+            router.push(`/dashboard/${userWorkspaces[0]._id}`);
+          }
         } else {
           setWorkspaceMapping(
             Object.fromEntries(
@@ -268,11 +272,12 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           {name}
                         </SelectItem>
                       ))}
-                      <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" />
+                      {/* <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" /> */}
                       <div className="w-full">
                         <Button
-                          className="w-full py-2 text-bunker-200 bg-mineshaft-500 hover:bg-primary/90 hover:text-black"
-                          color="mineshaft"
+                          className="w-full py-2 text-bunker-200 bg-mineshaft-700"
+                          colorSchema="primary"
+                          variant="outline_bg"
                           size="sm"
                           onClick={() => handlePopUpOpen('addNewWs')}
                           leftIcon={<FontAwesomeIcon icon={faPlus} />}

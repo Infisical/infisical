@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
 import { Key, Secret } from '../../models';
 import {
 	v1PushSecrets as push,
@@ -84,7 +85,8 @@ export const pushSecrets = async (req: Request, res: Response) => {
 		// trigger event - push secrets
 		EventService.handleEvent({
 			event: eventPushSecrets({
-				workspaceId
+				workspaceId: new Types.ObjectId(workspaceId),
+				environment
 			})
 		});
 

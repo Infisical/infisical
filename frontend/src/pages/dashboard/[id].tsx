@@ -19,9 +19,9 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Tag } from 'public/data/frequentInterfaces';
+import queryString from 'query-string';
 
 import Button from '@app/components/basic/buttons/Button';
-import ListBox from '@app/components/basic/Listbox';
 import BottonRightPopup from '@app/components/basic/popups/BottomRightPopup';
 import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
 import ConfirmEnvOverwriteModal from '@app/components/dashboard/ConfirmEnvOverwriteModal';
@@ -29,7 +29,7 @@ import DownloadSecretMenu from '@app/components/dashboard/DownloadSecretsMenu';
 import DropZone from '@app/components/dashboard/DropZone';
 import KeyPair from '@app/components/dashboard/KeyPair';
 import SideBar from '@app/components/dashboard/SideBar';
-import NavHeader from '@app/components/navigation/NavHeader';
+import NavHeaderSecrets from '@app/components/navigation/NavHeaderSecrets';
 import { decryptAssymmetric, decryptSymmetric } from '@app/components/utilities/cryptography/crypto';
 import guidGenerator from '@app/components/utilities/randomId';
 import encryptSecrets from '@app/components/utilities/secrets/encryptSecrets';
@@ -41,6 +41,8 @@ import getProjectSercetSnapshotsCount from '@app/ee/api/secrets/GetProjectSercet
 import performSecretRollback from '@app/ee/api/secrets/PerformSecretRollback';
 import PITRecoverySidebar from '@app/ee/components/PITRecoverySidebar';
 import { useLeaveConfirm } from '@app/hooks';
+// import { DashboardPage } from  '@app/views/DashboardPage';
+import { DashboardEnvOverview } from '@app/views/DashboardPage/DashboardEnvOverview';
 
 // import addSecrets from '../api/files/AddSecrets';
 // import deleteSecrets from '../api/files/DeleteSecrets';
@@ -147,7 +149,6 @@ function findDuplicates(arr: any[]) {
 export default function Dashboard() {
   const [data, setData] = useState<SecretDataProps[] | null>();
   const [initialData, setInitialData] = useState<SecretDataProps[] | null | undefined>([]);
-  const router = useRouter();
   const [blurred, setBlurred] = useState(true);
   const [isKeyAvailable, setIsKeyAvailable] = useState(true);
   const [isNew, setIsNew] = useState(false);
@@ -169,7 +170,10 @@ export default function Dashboard() {
 
   const { hasUnsavedChanges, setHasUnsavedChanges } = useLeaveConfirm({ initialValue: false });
   const { t } = useTranslation();
+  
   const { createNotification } = useNotificationContext();
+  const router = useRouter();
+  const envInURL = queryString.parse(router.asPath.split('?')[1])?.env;
 
   const workspaceId = router.query.id as string;
   const [workspaceEnvs, setWorkspaceEnvs] = useState<WorkspaceEnv[]>([]);
@@ -236,7 +240,7 @@ export default function Dashboard() {
         setWorkspaceEnvs(accessibleEnvironments || []);
 
         // set env
-        const env = accessibleEnvironments?.[0] || {
+        const env = accessibleEnvironments[0] || {
           name: 'unknown',
           slug: 'unknown'
         };
@@ -582,6 +586,7 @@ export default function Dashboard() {
                 method: 'POST',
                 secret: {
                   type: secret.type,
+                  secretName: secret.secretName,
                   secretKeyCiphertext: secret.secretKeyCiphertext,
                   secretKeyIV: secret.secretKeyIV,
                   secretKeyTag: secret.secretKeyTag,
@@ -610,6 +615,7 @@ export default function Dashboard() {
                 secret: {
                   _id: secret.id,
                   type: secret.type,
+                  secretName: secret.secretName,
                   secretKeyCiphertext: secret.secretKeyCiphertext,
                   secretKeyIV: secret.secretKeyIV,
                   secretKeyTag: secret.secretKeyTag,
@@ -783,19 +789,21 @@ export default function Dashboard() {
     deleteRow({ ids, secretName });
   };
 
-  const handleOnEnvironmentChange = (envName: string) => {
+  const handleOnEnvironmentChange = (envSlug: string) => {
     if (hasUnsavedChanges) {
       if (!window.confirm(leaveConfirmDefaultMessage)) return;
     }
 
     const selectedWorkspaceEnv = workspaceEnvs.find(
-      ({ name }: { name: string }) => envName === name
+      ({ slug }: { slug: string }) => envSlug === slug
     ) || {
       name: 'unknown',
       slug: 'unknown',
       isWriteDenied: false,
       isReadDenied: false
     };
+
+    console.log(124, envSlug, selectedWorkspaceEnv)
 
     if (selectedWorkspaceEnv) {
       if (snapshotData) setSelectedSnapshotEnv(selectedWorkspaceEnv);
@@ -809,7 +817,10 @@ export default function Dashboard() {
     })
   };
 
-  return data ? (
+  return <div>
+    {!envInURL 
+    ? <DashboardEnvOverview onEnvChange={handleOnEnvironmentChange} />
+    : (data ? (
     <div className="bg-bunker-800 max-h-screen h-full relative flex flex-col justify-between text-white dark">
       <Head>
         <title>{t('common:head-title', { title: t('dashboard:title') })}</title>
@@ -834,8 +845,15 @@ export default function Dashboard() {
               .map((duplicate) => duplicate.key) ?? []
           }
         />
-        <div className="w-full max-h-96 pb-2 dark:[color-scheme:dark]">
-          <NavHeader pageName={t('dashboard:title')} isProjectRelated />
+        <div className="w-full max-h-96 dark:[color-scheme:dark]">
+          <NavHeaderSecrets
+            pageName={t('dashboard:title')} 
+            currentEnv={selectedEnv?.name || ''} 
+            isProjectRelated 
+            isSnapshot={snapshotData !== undefined}
+            userAvailableEnvs={workspaceEnvs}
+            onEnvChange={handleOnEnvironmentChange}
+          />
           {checkDocsPopUpVisible && (
             <BottonRightPopup
               buttonText={t('dashboard:check-docs.button')}
@@ -851,7 +869,7 @@ export default function Dashboard() {
             {snapshotData && (
               <div className="flex justify-start max-w-sm mt-1 mr-2">
                 <Button
-                  text={String(t('Go back to current'))}
+                  text={String(t('To Current'))}
                   onButtonPressed={() => setSnapshotData(undefined)}
                   color="mineshaft"
                   size="md"
@@ -861,9 +879,9 @@ export default function Dashboard() {
             )}
             <div className="flex flex-row justify-start items-center text-3xl">
               <div className="font-semibold mr-4 mt-1 flex flex-row items-center">
-                <p>{snapshotData ? 'Secret Snapshot' : t('dashboard:title')}</p>
+                <p>{snapshotData ? 'Secret Snapshot' : ''}</p>
                 {snapshotData && (
-                  <span className="bg-primary-800 text-sm ml-4 mt-1 px-1.5 rounded-md">
+                  <span className="bg-primary-800 text-xs ml-4 mt-1 px-1.5 rounded-md w-min">
                     {new Date(snapshotData.createdAt).toLocaleString()}
                   </span>
                 )}
@@ -873,13 +891,6 @@ export default function Dashboard() {
                   </span>
                 )}
               </div>
-              {!snapshotData && data?.length === 0 && selectedEnv && (
-                <ListBox
-                  isSelected={selectedEnv.name}
-                  data={workspaceEnvs.map(({ name }) => name)}
-                  onChange={handleOnEnvironmentChange}
-                />
-              )}
             </div>
             <div className="flex flex-row">
               <div className="flex justify-start max-w-sm mt-1 mr-2">
@@ -960,20 +971,7 @@ export default function Dashboard() {
               <div className="w-full flex flex-row items-start">
                 {(snapshotData || data?.length !== 0) && selectedEnv && (
                   <>
-                    {!snapshotData ? (
-                      <ListBox
-                        isSelected={selectedEnv.name}
-                        data={workspaceEnvs.map(({ name }) => name)}
-                        onChange={handleOnEnvironmentChange}
-                      />
-                    ) : (
-                      <ListBox
-                        isSelected={selectedSnapshotEnv?.name || ''}
-                        data={workspaceEnvs.map(({ name }) => name)}
-                        onChange={handleOnEnvironmentChange}
-                      />
-                    )}
-                    <div className="h-10 w-full bg-mineshaft-700 hover:bg-white/10 ml-2 rounded-md flex flex-row items-center">
+                    <div className="h-10 w-full bg-mineshaft-800 border border-mineshaft-600 hover:bg-mineshaft-700 duration-200 rounded-md flex flex-row items-center">
                       <FontAwesomeIcon
                         className="bg-transparent rounded-l-md py-[0.7rem] pl-4 pr-2 text-bunker-300 text-sm"
                         icon={faMagnifyingGlass}
@@ -1037,7 +1035,7 @@ export default function Dashboard() {
                   <div ref={secretsTop} />
                   <div className="group flex flex-col items-center bg-mineshaft-800 border-b-2 border-mineshaft-500 duration-100 sticky top-0 z-[60]">
                     <div className="relative flex flex-row justify-between w-full mr-auto max-h-14 items-center">
-                      <div className="w-1/5 border-r border-mineshaft-600 flex flex-row items-center">
+                      <div className="w-[23%] border-r border-mineshaft-600 flex flex-row items-center">
                         <div className='text-transparent text-xs flex items-center justify-center w-12 h-10 cursor-default'>0</div>
                         <span className='px-2 text-bunker-300 font-semibold'>Key</span>
                         {!snapshotData && <IconButton
@@ -1223,10 +1221,10 @@ export default function Dashboard() {
       </div>
     </div>
   ) : (
-    <div className="relative z-10 w-10/12 mr-auto h-full ml-2 bg-bunker-800 flex flex-col items-center justify-center">
+    <div className="relative z-10 w-10/12 mr-auto h-screen ml-2 bg-bunker-800 flex flex-col items-center justify-center">
       <Image src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
     </div>
-  );
+  ))}</div>
 }
 
 Dashboard.requireAuth = true;

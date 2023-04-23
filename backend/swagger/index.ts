@@ -220,7 +220,7 @@ const generateOpenAPISpec = async () => {
 
   const outputJSONFile = '../spec.json';
   const outputYAMLFile = '../docs/spec.yaml';
-  const endpointsFiles = ['../src/app.ts'];
+  const endpointsFiles = ['../src/index.ts'];
 
   const spec = await swaggerAutogen(outputJSONFile, endpointsFiles, doc);
   await fs.writeFile(outputYAMLFile, yaml.dump(spec.data));

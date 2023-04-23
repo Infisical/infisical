@@ -95,7 +95,8 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
 		// trigger event - push secrets
 		EventService.handleEvent({
 			event: eventPushSecrets({
-				workspaceId
+				workspaceId: new Types.ObjectId(workspaceId),
+				environment
 			})
 		});
 
@@ -131,7 +132,7 @@ export const pullSecrets = async (req: Request, res: Response) => {
 		if (req.user) {
 			userId = req.user._id.toString();
 		} else if (req.serviceTokenData) {
-			userId = req.serviceTokenData.user._id
+			userId = req.serviceTokenData.user.toString();
 		}
 		// validate environment
 		const workspaceEnvs = req.membership.workspace.environments;

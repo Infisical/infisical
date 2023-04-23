@@ -2,7 +2,7 @@ import to from 'await-to-js';
 import { Types } from 'mongoose';
 import { Request, Response } from 'express';
 import { ISecret, Secret } from '../../models';
-import { IAction } from '../../ee/models';
+import { IAction, SecretVersion } from '../../ee/models';
 import {
     SECRET_PERSONAL,
     SECRET_SHARED,
@@ -15,7 +15,7 @@ import { UnauthorizedRequestError, ValidationError } from '../../utils/errors';
 import { EventService } from '../../services';
 import { eventPushSecrets } from '../../events';
 import { EESecretService, EELogService } from '../../ee/services';
-import { TelemetryService } from '../../services';
+import { TelemetryService, SecretService } from '../../services';
 import { getChannelFromUserAgent } from '../../utils/posthog';
 import { PERMISSION_WRITE_SECRETS } from '../../variables';
 import { userHasNoAbility, userHasWorkspaceAccess, userHasWriteOnlyAbility } from '../../ee/helpers/checkMembershipPermissions';
@@ -33,6 +33,7 @@ import {
  * @param res 
  */
 export const batchSecrets = async (req: Request, res: Response) => {
+
     const channel = getChannelFromUserAgent(req.headers['user-agent']);
     const postHogClient = TelemetryService.getPostHogClient();
 
@@ -50,29 +51,47 @@ export const batchSecrets = async (req: Request, res: Response) => {
     const updateSecrets: BatchSecret[] = [];
     const deleteSecrets: Types.ObjectId[] = [];
     const actions: IAction[] = [];
+    
+    // get secret blind index salt
+    const salt = await SecretService.getSecretBlindIndexSalt({
+        workspaceId: new Types.ObjectId(workspaceId)
+    });
 
-    requests.forEach((request) => {
+    for await (const request of requests) {
+        let secretBlindIndex = '';
         switch (request.method) {
             case 'POST':
+                secretBlindIndex = await SecretService.generateSecretBlindIndexWithSalt({
+                    secretName: request.secret.secretName,
+                    salt
+                });
+
                 createSecrets.push({
                     ...request.secret,
                     version: 1,
                     user: request.secret.type === SECRET_PERSONAL ? req.user : undefined,
                     environment,
-                    workspace: new Types.ObjectId(workspaceId)
+                    workspace: new Types.ObjectId(workspaceId),
+                    secretBlindIndex
                 });
                 break;
             case 'PATCH':
+                secretBlindIndex = await SecretService.generateSecretBlindIndexWithSalt({
+                    secretName: request.secret.secretName,
+                    salt
+                });
+
                 updateSecrets.push({
                     ...request.secret,
-                    _id: new Types.ObjectId(request.secret._id)
+                    _id: new Types.ObjectId(request.secret._id),
+                    secretBlindIndex
                 });
                 break;
             case 'DELETE':
                 deleteSecrets.push(new Types.ObjectId(request.secret._id));
                 break;
         }
-    });
+    }
 
     // handle create secrets
     let createdSecrets: ISecret[] = [];
@@ -133,7 +152,10 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
         const updateOperations = updateSecrets.map((u) => ({
             updateOne: {
-                filter: { _id: new Types.ObjectId(u._id) },
+                filter: {
+                    _id: new Types.ObjectId(u._id),
+                    workspace: new Types.ObjectId(workspaceId)
+                },
                 update: {
                     $inc: {
                         version: 1
@@ -146,13 +168,14 @@ export const batchSecrets = async (req: Request, res: Response) => {
 
         await Secret.bulkWrite(updateOperations);
 
-        const secretVersions = updateSecrets.map((u) => ({
+        const secretVersions = updateSecrets.map((u) => new SecretVersion({
             secret: new Types.ObjectId(u._id),
             version: listedSecretsObj[u._id.toString()].version,
             workspace: new Types.ObjectId(workspaceId),
             type: listedSecretsObj[u._id.toString()].type,
             environment,
             isDeleted: false,
+            secretBlindIndex: u.secretBlindIndex,
             secretKeyCiphertext: u.secretKeyCiphertext,
             secretKeyIV: u.secretKeyIV,
             secretKeyTag: u.secretKeyTag,
@@ -247,13 +270,13 @@ export const batchSecrets = async (req: Request, res: Response) => {
     // // trigger event - push secrets
     await EventService.handleEvent({
         event: eventPushSecrets({
-            workspaceId
+            workspaceId: new Types.ObjectId(workspaceId)
         })
     });
 
     // (EE) take a secret snapshot
     await EESecretService.takeSecretSnapshot({
-        workspaceId
+        workspaceId: new Types.ObjectId(workspaceId)
     });
 
     const resObj: { [key: string]: ISecret[] | string[] } = {}
@@ -351,8 +374,14 @@ export const createSecrets = async (req: Request, res: Response) => {
         listOfSecretsToCreate = [req.body.secrets];
     }
 
+    // get secret blind index salt
+    const salt = await SecretService.getSecretBlindIndexSalt({
+        workspaceId: new Types.ObjectId(workspaceId)
+    });
+
     type secretsToCreateType = {
         type: string;
+        secretName?: string;
         secretKeyCiphertext: string;
         secretKeyIV: string;
         secretKeyTag: string;
@@ -365,25 +394,10 @@ export const createSecrets = async (req: Request, res: Response) => {
         tags: string[]
     }
 
-    const secretsToInsert: ISecret[] = listOfSecretsToCreate.map(({
-        type,
-        secretKeyCiphertext,
-        secretKeyIV,
-        secretKeyTag,
-        secretValueCiphertext,
-        secretValueIV,
-        secretValueTag,
-        secretCommentCiphertext,
-        secretCommentIV,
-        secretCommentTag,
-        tags
-    }: secretsToCreateType) => {
-        return ({
-            version: 1,
-            workspace: new Types.ObjectId(workspaceId),
+    const secretsToInsert: ISecret[] = await Promise.all(
+        listOfSecretsToCreate.map(async ({
             type,
-            user: (req.user && type === SECRET_PERSONAL) ? req.user : undefined,
-            environment,
+            secretName,
             secretKeyCiphertext,
             secretKeyIV,
             secretKeyTag,
@@ -394,16 +408,43 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretCommentIV,
             secretCommentTag,
             tags
-        });
-    });
+        }: secretsToCreateType) => {
+            let secretBlindIndex;
+            if (secretName) {
+                secretBlindIndex = await SecretService.generateSecretBlindIndexWithSalt({
+                    secretName,
+                    salt
+                });
+            }
 
+            return ({
+                version: 1,
+                workspace: new Types.ObjectId(workspaceId),
+                type,
+                ...(secretBlindIndex ? { secretBlindIndex } : {}),
+                user: (req.user && type === SECRET_PERSONAL) ? req.user : undefined,
+                environment,
+                secretKeyCiphertext,
+                secretKeyIV,
+                secretKeyTag,
+                secretValueCiphertext,
+                secretValueIV,
+                secretValueTag,
+                secretCommentCiphertext,
+                secretCommentIV,
+                secretCommentTag,
+                tags
+            });
+        })
+    );
+    
     const newlyCreatedSecrets: ISecret[] = (await Secret.insertMany(secretsToInsert)).map((insertedSecret) => insertedSecret.toObject());
-
+    
     setTimeout(async () => {
         // trigger event - push secrets
         await EventService.handleEvent({
             event: eventPushSecrets({
-                workspaceId
+                workspaceId: new Types.ObjectId(workspaceId)
             })
         });
     }, 5000);
@@ -417,35 +458,28 @@ export const createSecrets = async (req: Request, res: Response) => {
             type,
             user,
             environment,
+            secretBlindIndex,
             secretKeyCiphertext,
             secretKeyIV,
             secretKeyTag,
             secretValueCiphertext,
             secretValueIV,
-            secretValueTag,
-            secretCommentCiphertext,
-            secretCommentIV,
-            secretCommentTag,
-            tags
-        }) => ({
-            _id: new Types.ObjectId(),
+            secretValueTag
+        }) => new SecretVersion({
             secret: _id,
             version,
             workspace,
             type,
             user,
             environment,
+            secretBlindIndex,
             isDeleted: false,
             secretKeyCiphertext,
             secretKeyIV,
             secretKeyTag,
             secretValueCiphertext,
             secretValueIV,
-            secretValueTag,
-            secretCommentCiphertext,
-            secretCommentIV,
-            secretCommentTag,
-            tags
+            secretValueTag
         }))
     });
 
@@ -471,17 +505,15 @@ export const createSecrets = async (req: Request, res: Response) => {
 
     // (EE) take a secret snapshot
     await EESecretService.takeSecretSnapshot({
-        workspaceId
+        workspaceId: new Types.ObjectId(workspaceId)
     });
 
     const postHogClient = TelemetryService.getPostHogClient();
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets added',
-            distinctId: TelemetryService.getDistinctId({
-                user: req.user,
-                serviceAccount: req.serviceAccount,
-                serviceTokenData: req.serviceTokenData
+            distinctId: await TelemetryService.getDistinctId({
+                authData: req.authData
             }),
             properties: {
                 numberOfSecrets: listOfSecretsToCreate.length,
@@ -595,7 +627,7 @@ export const getSecrets = async (req: Request, res: Response) => {
 
     // case: client authorization is via service token
     if (req.serviceTokenData) {
-        const userId = req.serviceTokenData.user._id
+        const userId = req.serviceTokenData.user;
 
         const secretQuery: any = {
             workspace: workspaceId,
@@ -655,10 +687,8 @@ export const getSecrets = async (req: Request, res: Response) => {
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets pulled',
-            distinctId: TelemetryService.getDistinctId({
-                user: req.user,
-                serviceAccount: req.serviceAccount,
-                serviceTokenData: req.serviceTokenData
+            distinctId: await TelemetryService.getDistinctId({
+                authData: req.authData
             }),
             properties: {
                 numberOfSecrets: secrets.length,
@@ -845,7 +875,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
         setTimeout(async () => {
             await EventService.handleEvent({
                 event: eventPushSecrets({
-                    workspaceId: key
+                    workspaceId: new Types.ObjectId(key)
                 })
             });
         }, 10000);
@@ -872,17 +902,15 @@ export const updateSecrets = async (req: Request, res: Response) => {
 
         // (EE) take a secret snapshot
         await EESecretService.takeSecretSnapshot({
-            workspaceId: key
+            workspaceId: new Types.ObjectId(key)
         })
 
         const postHogClient = TelemetryService.getPostHogClient();
         if (postHogClient) {
             postHogClient.capture({
                 event: 'secrets modified',
-                distinctId: TelemetryService.getDistinctId({
-                    user: req.user,
-                    serviceAccount: req.serviceAccount,
-                    serviceTokenData: req.serviceTokenData
+                distinctId: await TelemetryService.getDistinctId({
+                    authData: req.authData
                 }),
                 properties: {
                     numberOfSecrets: workspaceSecretObj[key].length,
@@ -955,10 +983,6 @@ export const deleteSecrets = async (req: Request, res: Response) => {
     }   
     */
 
-    return res.status(200).send({
-        message: 'delete secrets!!'
-    });
-
     const channel = getChannelFromUserAgent(req.headers['user-agent'])
     const toDelete = req.secrets.map((s: any) => s._id);
 
@@ -987,7 +1011,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
         // trigger event - push secrets
         await EventService.handleEvent({
             event: eventPushSecrets({
-                workspaceId: key
+                workspaceId: new Types.ObjectId(key)
             })
         });
         const deleteAction = await EELogService.createAction({
@@ -1012,17 +1036,15 @@ export const deleteSecrets = async (req: Request, res: Response) => {
 
         // (EE) take a secret snapshot
         await EESecretService.takeSecretSnapshot({
-            workspaceId: key
-        })
+            workspaceId: new Types.ObjectId(key)
+        });
 
         const postHogClient = TelemetryService.getPostHogClient();
         if (postHogClient) {
             postHogClient.capture({
                 event: 'secrets deleted',
-                distinctId: TelemetryService.getDistinctId({
-                    user: req.user,
-                    serviceAccount: req.serviceAccount,
-                    serviceTokenData: req.serviceTokenData
+                distinctId: await TelemetryService.getDistinctId({
+                    authData: req.authData
                 }),
                 properties: {
                     numberOfSecrets: workspaceSecretObj[key].length,

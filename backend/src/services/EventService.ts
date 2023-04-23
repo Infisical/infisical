@@ -1,8 +1,10 @@
+import { Types } from 'mongoose';
 import { handleEventHelper } from '../helpers/event';
 
 interface Event {
     name: string;
-    workspaceId: string;
+    workspaceId: Types.ObjectId;
+    environment?: string;
     payload: any;
 }
 
