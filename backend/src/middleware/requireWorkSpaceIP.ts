@@ -3,7 +3,7 @@ import { UnauthorizedRequestError } from "../utils/errors";
 import IPAddress from "../models/IPAddress";
 import { Types } from "mongoose";
 
-export const requireWorkSpaceIp = async (
+export const requireWorkSpaceIP = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -18,11 +18,11 @@ export const requireWorkSpaceIp = async (
   }
 
   const { workspaceId } = req.params;
-  const foundIpAddress = await IPAddress.findOne({
+  const ipAddressCount = await IPAddress.count({
     ip: ip,
     workspace: new Types.ObjectId(workspaceId),
   });
-  if (!foundIpAddress) {
+  if (!ipAddressCount) {
     return next(
       UnauthorizedRequestError({
         message: "Unable to authorize user IP",
