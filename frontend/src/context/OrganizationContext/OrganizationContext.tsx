@@ -27,7 +27,7 @@ export const OrgProvider = ({ children }: Props): JSX.Element => {
   const value = useMemo<TOrgContext>(
     () => ({
       orgs: userOrgs,
-      currentOrg: (userOrgs || []).find(({ _id }) => _id === currentWsOrgID) || (userOrgs || [])[0],
+      currentOrg: (userOrgs || []).find(({ _id }) => _id === localStorage.getItem('orgData.id')) || (userOrgs || [])[0],
       isLoading
     }),
     [currentWsOrgID, userOrgs, isLoading]

@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
 /* eslint-disable react/jsx-key */
 import { Fragment, useMemo, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { TFunction, useTranslation } from 'next-i18next';
@@ -17,14 +18,15 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Menu, Transition } from '@headlessui/react';
-
-import guidGenerator from '@app/components/utilities/randomId';
-import { useOrganization, useUser } from '@app/context';
-import { useLogoutUser } from '@app/hooks/api';
-import { Button, FormControl, Input, Modal, ModalContent } from '~/components/v2';
-import { Controller, useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+
+import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
+import guidGenerator from '@app/components/utilities/randomId';
+import { Button, FormControl, Input, Modal, ModalContent } from '@app/components/v2';
+import { useOrganization, useUser } from '@app/context';
+import { useLogoutUser } from '@app/hooks/api';
+import { useCreateOrganization } from '@app/hooks/api/organization/queries';
 
 const supportOptions = (t: TFunction) => [
   [
@@ -61,7 +63,7 @@ export interface IUser {
 
 const formSchema = yup.object({
   orgName: yup.string().required().label('Organization Name').trim(),
-  defaultProject: yup.string().required().label("Project Name").trim()
+  // defaultProject: yup.string().required().label("Project Name").trim()
 })
 
 type TAddOrganizationFormData = yup.InferType<typeof formSchema>;
@@ -73,6 +75,9 @@ type TAddOrganizationFormData = yup.InferType<typeof formSchema>;
  */
 export const Navbar = () => {
   const [isNewOrgModalOpen, setIsNewOrgModalOpen] = useState(false);
+  const { createNotification } = useNotificationContext();
+
+  const createOrg = useCreateOrganization();
 
   const {
     control, 
@@ -114,8 +119,22 @@ export const Navbar = () => {
     }
   };
 
-  const onCreateNewOrganization = () => {
+  const onCreateNewOrganization = async ({ orgName }: TAddOrganizationFormData) => {
+    console.log("create organization form submitted!");
     
+    try{
+      const { data: {organization} } = await createOrg.mutateAsync({
+        newOrgName: orgName
+      })
+      localStorage.setItem('orgData.id', organization?._id);
+      setIsNewOrgModalOpen(false);
+      // router.reload();
+      router.push('/dashboard');
+      createNotification({ text: 'Organization created', type: 'success' });
+    }catch(err){
+      console.error(err);
+      createNotification({ text: 'Failed to create organization', type: 'error' });
+    }
   };
 
   return (
@@ -372,7 +391,7 @@ export const Navbar = () => {
                   </FormControl>
                 )} />
 
-                <Controller
+                {/* <Controller
                   control={control}
                   name="defaultProject"
                   defaultValue=""
@@ -385,7 +404,7 @@ export const Navbar = () => {
                       <Input {...field} placeholder="Type your default project/workspace name" />
                     </FormControl>
                   )}
-                />
+                /> */}
 
                 <div className="mt-7 flex items-center">
                   <Button

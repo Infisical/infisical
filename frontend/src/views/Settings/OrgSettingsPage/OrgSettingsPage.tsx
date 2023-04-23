@@ -1,14 +1,17 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState } from 'react';
+import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { plans } from 'public/data/frequentConstants';
 
+import InputField from '@app/components/basic/InputField';
 import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
 import NavHeader from '@app/components/navigation/NavHeader';
 import {
   decryptAssymmetric,
   encryptAssymmetric
 } from '@app/components/utilities/cryptography/crypto';
+import { Input } from '@app/components/v2';
 import { useOrganization, useSubscription, useUser, useWorkspace } from '@app/context';
 import {
   useAddIncidentContact,
@@ -23,6 +26,7 @@ import {
   useUpdateOrgUserRole,
   useUploadWsKey
 } from '@app/hooks/api';
+import { useDeleteOrganization } from '@app/hooks/api/organization/queries';
 
 import {
   OrgIncidentContactsTable,
@@ -30,10 +34,10 @@ import {
   OrgNameChangeSection,
   OrgServiceAccountsTable
 } from './components';
-import InputField from '~/components/basic/InputField';
 
 export const OrgSettingsPage = () => {
   const host = window.location.origin;
+  const router = useRouter();
 
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
@@ -58,6 +62,7 @@ export const OrgSettingsPage = () => {
   const uploadWsKey = useUploadWsKey();
   const addIncidentContact = useAddIncidentContact();
   const removeIncidentContact = useDeleteIncidentContact();
+  const deleteOrganization = useDeleteOrganization();
 
   const [completeInviteLink, setcompleteInviteLink] = useState<string | undefined>('');
   const [organizationToBeDeletedName, setOrganizationToBeDeletedName] = useState('');
@@ -223,7 +228,23 @@ export const OrgSettingsPage = () => {
    * It then checks if the name of the workspace to be deleted is correct. Otherwise, it doesn't delete.
    * It then deletes the workspace and forwards the user to another available workspace.
    */
-  const executeDeletingOrganization = async () => {};
+  const executeDeletingOrganization = async () => {
+    try{
+    await deleteOrganization.mutateAsync({ organizationId: currentOrg?._id! })
+    localStorage.removeItem('orgData.id')
+    router.push('/dashboard')
+    createNotification({
+      text: 'Successfully deleted organization',
+      type: 'success'
+    })
+    }catch (error) {
+      console.error(error);
+      createNotification({
+        text: 'Failed to delete organization',
+        type: 'error'
+      })
+    }
+  };
 
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
@@ -285,12 +306,12 @@ export const OrgSettingsPage = () => {
             want to do that, please enter the name of the organization below.
           </p>
           <div className="mr-auto mt-8 max-h-28 w-full max-w-xl">
-            <InputField
-              label="Organization to be Deleted"
-              onChangeHandler={(e: any) => setOrganizationToBeDeletedName(e.target.value)}
+            <p className='text-md my-2 text-gray-400'>Organization to be deleted</p>
+            <Input
+              placeholder="Organization name"
+              onChange={(e) => setOrganizationToBeDeletedName(e.target.value)}
               type="varName"
               value={organizationToBeDeletedName}
-              placeholder=""
               isRequired
             />
           </div>

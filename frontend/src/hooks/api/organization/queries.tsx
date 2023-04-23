@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiRequest } from '@app/config/request';
 
-import { Organization, RenameOrgDTO } from './types';
+import { CreateNewOrganization, DeleteOrganization, NewOrganizationResponse, Organization, RenameOrgDTO } from './types';
+// import { queryClient } from '@app/reactQuery';
 
 const organizationKeys = {
   getUserOrganization: ['organization'] as const
@@ -29,3 +30,26 @@ export const useRenameOrg = () => {
     }
   });
 };
+
+export const useCreateOrganization = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<NewOrganizationResponse, {}, CreateNewOrganization>({
+    mutationFn: ({ newOrgName }: { newOrgName: string }) => 
+      apiRequest.post('/api/v1/organization', { organizationName: newOrgName }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(organizationKeys.getUserOrganization)
+    }
+  })
+}
+
+export const useDeleteOrganization = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{}, {}, DeleteOrganization>({
+    mutationFn: ({ organizationId }) => apiRequest.delete(`api/v2/organizations/${organizationId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries(organizationKeys.getUserOrganization)
+    }
+  })  
+}
