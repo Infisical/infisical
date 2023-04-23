@@ -2,7 +2,7 @@
 title: "Node"
 ---
 
-If you're working with Node.js, the official [infisical-node](https://github.com/Infisical/infisical-node) package is the easiest way to fetch secrets for your application.
+If you're working with Node.js, the official [infisical-node](https://github.com/Infisical/infisical-node) package is the easiest way to fetch and work with ecrets for your application.
 
 ## Installation
 
@@ -12,13 +12,41 @@ Run `npm` to add `infisical-node` to your project.
 npm install infisical-node --save
 ```
 
-## Initialization
+## Configuration
 
-Call `connect()` with your Infisical token as early as possible in the main entry module of your application. This initializes the global instance of the SDK, which can be accessed anywhere in your application.
+Import the SDK and call `connect()` with your Infisical token as early as possible in the main entry module of your application. This initializes the global instance of the SDK, which can be accessed anywhere in your application.
 
 For multiple Infisical projects or creating multiple SDK instances, use `createConnection()` instead. This returns a local SDK instance, independent of the global instance.
 
 ### infisical.connect(options)
+
+
+<Tabs>
+  <Tab title="ES6">
+    ```js
+    import infisical from "infisical-node";
+
+    infisical.connect({
+      token: "your_infisical_token",
+    });
+
+    // your app logic
+    ```
+
+  </Tab>
+  <Tab title="ES5">
+    ```js
+    const infisical = require("infisical-node");
+    
+    infisical.connect({
+      token: "your_infisical_token"
+    });
+
+    // your app logic
+    ````
+  </Tab>
+
+</Tabs>
 
 Updates the global instance of the Infisical client with a connection to an Infisical project with the [Infisical Token](/getting-started/dashboard/token).
 
@@ -37,7 +65,7 @@ Updates the global instance of the Infisical client with a connection to an Infi
       `https://app.infisical.com`)
     </ResponseField>
     <ResponseField name="cacheTTL" type="number" default="300">
-      Time-to-live (in seconds) for cached secrets. If set to 0, data is cached indefinitely.
+      Time-to-live (in seconds) for refreshing cached secrets. Default: `300`.
     </ResponseField>
     <ResponseField name="debug" type="boolean" default="false">
       Whether or not debug mode is on
@@ -74,40 +102,20 @@ This method is useful if you wish to connect to two or more Infisical projects w
   </Expandable>
 </ResponseField>
 
-<Tabs>
-  <Tab title="ES6">
-    ```js
-    import infisical from "infisical-node";
-
-    infisical.connect({
-      token: "your_infisical_token",
-    });
-
-    // your app logic
-    ```
-
-  </Tab>
-  <Tab title="ES5">
-    ```js
-    const infisical = require("infisical-node");
-    
-    infisical.connect({
-      token: "your_infisical_token"
-    });
-
-    // your app logic
-    ````
-  </Tab>
-
-</Tabs>
 
 ## Usage
 
 ### infisical.getSecret(secretName, options)
 
+```js
+const secret = await infisical.getSecret("API_KEY");
+const value = secret.secretValue; // get its value
+```
+
 Retrieve a secret from Infisical.
 
 By default, `getSecret()` returns a personal secret. If not found, it returns a shared secret, or tries to retrieve the value from `process.env`.
+
 
 <ResponseField name="secretName" type="string" required>
   The key of the secret to retrieve
@@ -120,12 +128,11 @@ By default, `getSecret()` returns a personal secret. If not found, it returns a 
   </Expandable>
 </ResponseField>
 
-```js
-const secret = await infisical.getSecret("API_KEY");
-const value = secret.secretValue; // get its value
-```
-
 ### infisical.createSecret(secretName, secretValue, options)
+
+```js
+const newApiKey = await infisical.createSecret("API_KEY", "FOO");
+```
 
 Create a new secret in Infisical.
 
@@ -143,11 +150,11 @@ Create a new secret in Infisical.
   </Expandable>
 </ResponseField>
 
-```js
-const newApiKey = await infisical.createSecret("API_KEY", "FOO");
-```
-
 ### infisical.updateSecret(secretName, secretValue, options)
+
+```js
+const updatedApiKey = await infisical.updateSecret("API_KEY", "BAR");
+```
 
 Update an existing secret in Infisical.
 
@@ -165,11 +172,11 @@ Update an existing secret in Infisical.
   </Expandable>
 </ResponseField>
 
-```js
-const updatedApiKey = await infisical.updateSecret("API_KEY", "BAR");
-```
-
 ### infisical.deleteSecret(secretName, options)
+
+```js
+const deletedSecret = await infisical.deleteSecret("API_KEY");
+```
 
 Delete a secret in Infisical.
 
@@ -183,10 +190,6 @@ Delete a secret in Infisical.
     </ResponseField>
   </Expandable>
 </ResponseField>
-
-```js
-const deletedSecret = await infisical.deleteSecret("API_KEY");
-```
 
 ## Example with Express
 
