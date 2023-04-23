@@ -14,20 +14,15 @@ npm install infisical-node --save
 
 ## Configuration
 
-Import the SDK and call `connect()` with your Infisical token as early as possible in the main entry module of your application. This initializes the global instance of the SDK, which can be accessed anywhere in your application.
-
-For multiple Infisical projects or creating multiple SDK instances, use `createConnection()` instead. This returns a local SDK instance, independent of the global instance.
-
-### infisical.connect(options)
-
+Import the SDK and create a client instance with your Infisical token.
 
 <Tabs>
   <Tab title="ES6">
     ```js
-    import infisical from "infisical-node";
-
-    infisical.connect({
-      token: "your_infisical_token",
+    import InfisicalClient from "infisical-node";
+    
+    const client = new InfisicalClient({
+      token: "your_infisical_token"
     });
 
     // your app logic
@@ -36,9 +31,9 @@ For multiple Infisical projects or creating multiple SDK instances, use `createC
   </Tab>
   <Tab title="ES5">
     ```js
-    const infisical = require("infisical-node");
+    const InfisicalClient = require("infisical-node");
     
-    infisical.connect({
+    const client = new InfisicalClient({
       token: "your_infisical_token"
     });
 
@@ -47,8 +42,6 @@ For multiple Infisical projects or creating multiple SDK instances, use `createC
   </Tab>
 
 </Tabs>
-
-Updates the global instance of the Infisical client with a connection to an Infisical project with the [Infisical Token](/getting-started/dashboard/token).
 
 <ResponseField name="options" type="object">
   <Expandable title="properties">
@@ -72,36 +65,6 @@ Updates the global instance of the Infisical client with a connection to an Infi
     </ResponseField>
   </Expandable>
 </ResponseField>
-
-### infisical.createConnection(options)
-
-Returns a local instance of the Infisical client with a connection to an Infisical project with an [Infisical Token](/getting-started/dashboard/token).
-
-This method is useful if you wish to connect to two or more Infisical projects within your app.
-
-<ResponseField name="options" type="object">
-  <Expandable title="properties">
-    <ResponseField name="token" type="string">
-      An [Infisical Token](/getting-started/dashboard/token) scoped to a project
-      and environment
-    </ResponseField>
-    <ResponseField
-      name="siteURL"
-      type="string"
-      default="https://app.infisical.com"
-    >
-      Your self-hosted absolute site URL including the protocol (e.g.
-      `https://app.infisical.com`)
-    </ResponseField>
-    <ResponseField name="cacheTTL" type="number" default="300">
-      Time-to-live (in seconds) for cached secrets. If set to 0, data is cached indefinitely.
-    </ResponseField>
-    <ResponseField name="debug" type="boolean" default="false">
-      Whether or not debug mode is on
-    </ResponseField>
-  </Expandable>
-</ResponseField>
-
 
 ## Usage
 
@@ -194,18 +157,18 @@ Delete a secret in Infisical.
 ## Example with Express
 
 ```js
-import infisical from "infisical-node";
+import InfisicalClient from "infisical-node";
 import express from "express";
 const app = express();
 const PORT = 3000;
 
-infisical.connect({
+const client = new InfisicalClient({
   token: "YOUR_INFISICAL_TOKEN"
 });
 
 app.get("/", async (req, res) => {
   // access value
-  const name = await infisical.getSecret("NAME");
+  const name = await client.getSecret("NAME");
   res.send(`Hello! My name is: ${name.secretValue}`);
 });
 
