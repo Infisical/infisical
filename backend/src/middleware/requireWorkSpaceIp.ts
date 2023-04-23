@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { UnauthorizedRequestError } from "../utils/errors";
-import IpAddress from "../models/ipAddress";
+import IPAddress from "../models/IPAddress";
 import { Types } from "mongoose";
 
 export const requireWorkSpaceIp = async (
@@ -18,7 +18,7 @@ export const requireWorkSpaceIp = async (
   }
 
   const { workspaceId } = req.params;
-  const foundIpAddress = await IpAddress.findOne({
+  const foundIpAddress = await IPAddress.findOne({
     ip: ip,
     workspace: new Types.ObjectId(workspaceId),
   });

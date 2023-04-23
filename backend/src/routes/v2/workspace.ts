@@ -8,13 +8,14 @@ import {
 	validateRequest
 } from '../../middleware';
 import {
-	ADMIN, 
+	ADMIN,
 	MEMBER,
 	AUTH_MODE_JWT,
 	AUTH_MODE_SERVICE_TOKEN,
 	AUTH_MODE_API_KEY
 } from '../../variables';
 import { workspaceController } from '../../controllers/v2';
+import * as ipAddressController from "../../controllers/v2/ipAdressController";
 
 router.post(
 	'/:workspaceId/secrets',
@@ -144,6 +145,52 @@ router.patch(
 	body('autoCapitalization').exists().trim().notEmpty(),
 	validateRequest,
 	workspaceController.toggleAutoCapitalization
+);
+
+
+
+router.get(
+	"/:workspaceId/ips",
+	requireAuth({
+		acceptedAuthModes: [AUTH_MODE_JWT],
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [MEMBER, ADMIN],
+		locationWorkspaceId: "params",
+	}),
+	param("workspaceId").exists().trim(),
+	validateRequest,
+	ipAddressController.getWorkspaceIPAddress
+);
+
+
+router.delete(
+	"/:workspaceId/ips/:ipId",
+	requireAuth({
+		acceptedAuthModes: [AUTH_MODE_JWT],
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [MEMBER, ADMIN],
+		locationWorkspaceId: "params",
+	}),
+	param("workspaceId").exists().trim(),
+	validateRequest,
+	ipAddressController.deleteWorkSpaceIPAddress
+);
+
+router.post(
+	"/:workspaceId/ips",
+	requireAuth({
+		acceptedAuthModes: [AUTH_MODE_JWT],
+	}),
+	requireWorkspaceAuth({
+		acceptedRoles: [MEMBER, ADMIN],
+		locationWorkspaceId: "params",
+	}),
+	param("workspaceId").exists().trim(),
+	body('ip').exists().trim(),
+	validateRequest,
+	ipAddressController.createWorkspaceIPAddress
 );
 
 export default router;

@@ -10,7 +10,6 @@ import serviceAccounts from './serviceAccounts';
 import apiKeyData from './apiKeyData';
 import environment from "./environment"
 import tags from "./tags"
-import ipAddress from "./ipAddress"
 
 export {
     auth,
@@ -24,6 +23,5 @@ export {
     serviceAccounts,
     apiKeyData,
     environment,
-    tags,
-    ipAddress
+    tags
 }

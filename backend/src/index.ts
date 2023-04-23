@@ -60,7 +60,6 @@ import {
     apiKeyData as v2APIKeyDataRouter,
     environment as v2EnvironmentRouter,
     tags as v2TagsRouter,
-    ipAddress as v2IpAddressRouter,
 } from './routes/v2';
 import { healthCheck } from './routes/status';
 import { getLogger } from './utils/logger';
@@ -149,7 +148,6 @@ const main = async () => {
     app.use('/api/v2/workspace', v2EnvironmentRouter);
     app.use('/api/v2/workspace', v2TagsRouter);
     app.use('/api/v2/workspace', v2WorkspaceRouter);
-    app.use('/api/v2/workspace', v2IpAddressRouter);
     app.use('/api/v2/secret', v2SecretRouter); // deprecated
     app.use('/api/v2/secrets', v2SecretsRouter);
     app.use('/api/v2/service-token', v2ServiceTokenDataRouter); // TODO: turn into plural route

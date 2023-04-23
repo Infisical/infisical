@@ -4,18 +4,18 @@ import { Types } from "mongoose";
 import to from "await-to-js";
 import { MongoError } from "mongodb";
 import { BadRequestError } from "../../utils/errors";
-import IpAddress, { IIpAddress } from "../../models/ipAddress";
+import IPAddress, { IIPAddress } from "../../models/IPAddress";
 
-export const createWorkspaceIpAddress = async (req: Request, res: Response) => {
+export const createWorkspaceIPAddress = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
   const { ip } = req.body;
-  const ipAddressToCreate = Builder<IIpAddress>()
+  const ipAddressToCreate = Builder<IIPAddress>()
     .ip(ip)
     .workspace(new Types.ObjectId(workspaceId))
     .user(new Types.ObjectId(req.user._id))
     .build();
 
-  const [err, createIPAddress] = await to(IpAddress.create(ipAddressToCreate));
+  const [err, createIPAddress] = await to(IPAddress.create(ipAddressToCreate));
   if (err) {
     if ((err as MongoError).code === 11000) {
       throw BadRequestError({ message: "Ip must be unique in a workspace" });
@@ -25,9 +25,9 @@ export const createWorkspaceIpAddress = async (req: Request, res: Response) => {
   return res.status(201).json(createIPAddress);
 };
 
-export const deleteWorkSpaceIpAddress = async (req: Request, res: Response) => {
+export const deleteWorkSpaceIPAddress = async (req: Request, res: Response) => {
   const { ipId, workspaceId } = req.params;
-  const ipAddressFromDB = await IpAddress.findOne({
+  const ipAddressFromDB = await IPAddress.findOne({
     id: new Types.ObjectId(ipId),
     workspace: new Types.ObjectId(workspaceId),
   })
@@ -38,8 +38,8 @@ export const deleteWorkSpaceIpAddress = async (req: Request, res: Response) => {
   return res.json();
 };
 
-export const getWorkspaceIpAddress = async (req: Request, res: Response) => {
+export const getWorkspaceIPAddress = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
-  const ips = await IpAddress.find({ workspace: new Types.ObjectId(workspaceId) }, ["ip"]);
+  const ips = await IPAddress.find({ workspace: new Types.ObjectId(workspaceId) }, ["ip"]);
   return res.json(ips);
 };

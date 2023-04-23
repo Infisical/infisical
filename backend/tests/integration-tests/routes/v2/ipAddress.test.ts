@@ -1,5 +1,5 @@
 import main from "../../../../src";
-import IpAddress, { IIpAddress } from "../../../../src/models/ipAddress";
+import IPAddress, { IIPAddress } from "../../../../src/models/IPAddress";
 import {
   testUserId,
   testWorkspaceId,
@@ -20,7 +20,7 @@ describe("#IpAddress", () => {
   });
 
   beforeEach(async () => {
-    await IpAddress.deleteMany({});
+    await IPAddress.deleteMany({});
   })
 
   afterAll(async () => {
@@ -38,20 +38,20 @@ describe("#IpAddress", () => {
     });
 
     test("should return a list workspace ips when they exists", async () => {
-      const ipAddressBuilder = Builder<IIpAddress>()
+      const ipAddressBuilder = Builder<IIPAddress>()
         .workspace(new Types.ObjectId(testWorkspaceId))
         .user(new Types.ObjectId(testUserId))
         .build();
 
       const ip1 = { ...ipAddressBuilder, ip: "127.0.0.3" };
       const ip2 = { ...ipAddressBuilder, ip: "127.0.0.4" };
-      const ip3 = Builder<IIpAddress>()
+      const ip3 = Builder<IIPAddress>()
         .workspace(new Types.ObjectId("60b3231ab0d26c001aa55e94"))
         .user(new Types.ObjectId("60b3231ab0d26c001aa55e94"))
         .ip("127.0.0.1")
         .build();
 
-      await IpAddress.create([ip1, ip2, ip3]);
+      await IPAddress.create([ip1, ip2, ip3]);
 
       const response = await request(server)
         .get(`/api/v2/workspace/${testWorkspaceId}/ips`)
@@ -75,7 +75,7 @@ describe("#IpAddress", () => {
       expect(response.statusCode).toEqual(201);
       expect(response.body.id).not.toBeNull();
 
-      const numberOfWorkSpaceIps = await IpAddress.count({
+      const numberOfWorkSpaceIps = await IPAddress.count({
         ip,
         workspace: new Types.ObjectId(testWorkspaceId),
       });
@@ -85,7 +85,7 @@ describe("#IpAddress", () => {
 
   test("should return a 400 status code when the IP address already exists", async () => {
     const ip = "134.2.0.6";
-    await IpAddress.create({
+    await IPAddress.create({
       ip,
       workspace: new Types.ObjectId(testWorkspaceId),
       user: new Types.ObjectId(testUserId),
@@ -113,7 +113,7 @@ describe("#IpAddress", () => {
     test("should delete an IP by its ID", async () => {
       const ip = "125.94.474.2";
       const [err, createdIp] = await to(
-        IpAddress.create({
+        IPAddress.create({
           ip: ip,
           workspace: new Types.ObjectId(testWorkspaceId),
           user: new Types.ObjectId(testUserId),
@@ -126,7 +126,7 @@ describe("#IpAddress", () => {
 
       expect(response.statusCode).toEqual(200);
 
-      const ipAddressCount = await IpAddress.count({ ip });
+      const ipAddressCount = await IPAddress.count({ ip });
       expect(ipAddressCount).toEqual(0)
     });
   });
