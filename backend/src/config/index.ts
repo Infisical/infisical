@@ -1,4 +1,8 @@
-import infisical from 'infisical-node';
+import InfisicalClient from 'infisical-node';
+
+const infisical = new InfisicalClient({
+  token: process.env.INFISICAL_TOKEN!
+});
 
 export const getPort = async () => await infisical.get('PORT')! || 4000;
 export const getInviteOnlySignup = async () => await infisical.get('INVITE_ONLY_SIGNUP')! == undefined ? false : await infisical.get('INVITE_ONLY_SIGNUP');

@@ -79,10 +79,6 @@ import {
 } from './config';
 
 const main = async () => {
-    infisical.connect({
-        token: process.env.INFISICAL_TOKEN!
-    });
-
     TelemetryService.logTelemetryMessage();
     setTransporter(await initSmtp());
 
