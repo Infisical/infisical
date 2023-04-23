@@ -64,9 +64,9 @@ These examples demonstrate how to store and fetch environment variables from [In
     ### Initialize the Infisical client
 
     ```js
-    import infisical from "infisical-node";
+    import InfisicalClient from "infisical-node";
     
-    infisical.connect({
+    const client = new InfisicalClient({
       token: "your_infisical_token",
     });
     ```
@@ -74,25 +74,25 @@ These examples demonstrate how to store and fetch environment variables from [In
     ### Get a value
 
     ```js
-    const value = await infisical.getSecret("SOME_KEY");
+    const value = await client.getSecret("SOME_KEY");
     ```
 
     ### Example with Express
 
     ```js
-    import infisical from "infisical-node";
+    import InfisicalClient from "infisical-node";
     import express from "express";
     const app = express();
     const PORT = 3000;
 
-    await infisical.connect({
+    const client = InfisicalClient({
       token: "st.xxx.xxx",
     });
 
     // your application logic
 
     app.get("/", async (req, res) => {
-      const name = await infisical.getSecret("NAME");
+      const name = await client.getSecret("NAME");
       res.send(`Hello! My name is: ${name.secretValue}`);
     });
 
