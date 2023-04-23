@@ -106,15 +106,15 @@ export type TBodyLoader = {
   columns: number;
   className?: string;
   // unique key for mapping
-  key: string;
+  id: string;
 };
 
-export const TableSkeleton = ({ rows = 3, columns, key, className }: TBodyLoader): JSX.Element => (
+export const TableSkeleton = ({ rows = 3, columns, id, className }: TBodyLoader): JSX.Element => (
   <>
     {Array.apply(0, Array(rows)).map((_x, i) => (
-      <Tr key={`${key}-skeleton-rows-${i + 1}`}>
+      <Tr key={`${id}-skeleton-rows-${i + 1}`}>
         {Array.apply(0, Array(columns)).map((_y, j) => (
-          <Td key={`${key}-skeleton-rows-${i + 1}-column-${j + 1}`}>
+          <Td key={`${id}-skeleton-rows-${i + 1}-column-${j + 1}`}>
             <Skeleton className={className} />
           </Td>
         ))}

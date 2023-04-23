@@ -120,7 +120,7 @@ export const EnvironmentSection = ({
             </Tr>
           </THead>
           <TBody>
-            {isLoading && <TableSkeleton columns={3} key="project-envs" />}
+            {isLoading && <TableSkeleton columns={3} id="project-envs" />}
             {!isLoading &&
               environments.map(({ name, slug }) => (
                 <Tr key={name}>

@@ -145,7 +145,7 @@ export const SecretTagsSection = ({
             </Tr>
           </THead>
           <TBody>
-            {isLoading && <TableSkeleton columns={3} key="secret-tags" />}
+            {isLoading && <TableSkeleton columns={3} id="secret-tags" />}
             {!isLoading &&
               tags.map(({ _id, name, slug }) => (
                 <Tr key={name}>

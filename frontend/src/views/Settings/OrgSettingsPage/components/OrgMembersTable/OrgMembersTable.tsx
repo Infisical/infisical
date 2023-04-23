@@ -158,7 +158,7 @@ export const OrgMembersTable = ({
               </Tr>
             </THead>
             <TBody>
-              {isLoading && <TableSkeleton columns={5} key="org-members" />}
+              {isLoading && <TableSkeleton columns={5} id="org-members" />}
               {!isLoading &&
                 filterdUser.map(({ user, inviteEmail, role, _id: orgMembershipId, status }) => {
                   const name = user ? `${user.firstName} ${user.lastName}` : '-';

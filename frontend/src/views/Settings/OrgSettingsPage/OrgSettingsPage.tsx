@@ -71,7 +71,7 @@ export const OrgSettingsPage = () => {
     (orgUsers || []).length >= 5 &&
     subscriptionPlan === plans.starter &&
     host === 'https://app.infisical.com' &&
-    currentWorkspace?._id !== '63ea8121b6e2b0543ba79616' &&
+    currentWorkspace?._id !== '63ea8121b6e2b0543ba79616' && 
     currentWorkspace?._id !== '634870246fd2e26f28e76996' &&
     currentWorkspace?._id !== '63d823cef9e728a0a961255a' &&
     currentWorkspace?._id !== '6412ec319db25595ac00b8c6';

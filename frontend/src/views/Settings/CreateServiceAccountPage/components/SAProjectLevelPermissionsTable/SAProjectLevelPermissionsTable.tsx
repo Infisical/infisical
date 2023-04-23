@@ -176,7 +176,7 @@ export const SAProjectLevelPermissionsTable = ({
                         </Tr>
                     </THead>
                     <TBody>
-                        {isPermissionsLoading && <TableSkeleton columns={6} key="service-account-project-level-permissions" />}
+                        {isPermissionsLoading && <TableSkeleton columns={6} id="service-account-project-level-permissions" />}
                         {!isPermissionsLoading && serviceAccountWorkspacePermissions && (
                             serviceAccountWorkspacePermissions.map(({
                                 _id,

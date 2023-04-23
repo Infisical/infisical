@@ -292,12 +292,14 @@ export const OrgServiceAccountsTable = () => {
             <TableContainer>
                 <Table>
                     <THead>
-                        <Th>Name</Th>
-                        <Th className="w-full">Valid Until</Th>
-                        <Th aria-label="actions" />
+                        <Tr>
+                            <Th>Name</Th>
+                            <Th className="w-full">Valid Until</Th>
+                            <Th aria-label="actions" />
+                        </Tr>
                     </THead>
                     <TBody>
-                        {isServiceAccountsLoading && <TableSkeleton columns={5} key="org-service-accounts" />}
+                        {isServiceAccountsLoading && <TableSkeleton columns={5} id="org-service-accounts" />}
                         {!isServiceAccountsLoading && (
                             filteredServiceAccounts.map(({
                                 name, 

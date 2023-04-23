@@ -327,7 +327,7 @@ export const ServiceTokenSection = ({
             </Tr>
           </THead>
           <TBody>
-            {isLoading && <TableSkeleton columns={4} key="project-service-tokens" />}
+            {isLoading && <TableSkeleton columns={4} id="project-service-tokens" />}
             {!isLoading &&
               tokens.map((row) => (
                 <Tr key={row._id}>

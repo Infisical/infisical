@@ -119,7 +119,7 @@ export const OrgIncidentContactsTable = ({
               </Tr>
             </THead>
             <TBody>
-              {isLoading && <TableSkeleton columns={2} key="incident-contact" />}
+              {isLoading && <TableSkeleton columns={2} id="incident-contact" />}
               {filteredContacts?.map(({ email }) => (
                 <Tr key={email}>
                   <Td className="w-full">{email}</Td>
