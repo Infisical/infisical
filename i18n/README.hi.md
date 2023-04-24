@@ -46,7 +46,7 @@
 <kbd>[<img title="Portuguese - Brazil" alt="Portuguese - Brazil" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/br.svg" width="22">](i18n/README.pt-br.md)</kbd>
 <kbd>[<img title="Japanese" alt="Japanese language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/jp.svg" width="22">](i18n/README.ja.md)</kbd>
 <kbd>[<img title="Italian" alt="Italian language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/it.svg" width="22">](i18n/README.it.md)</kbd>
-<kbd>[<img title="Indian" alt="Hindi language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/in.svg" width="22">](i18n/README.it.md)</kbd>
+<kbd>[<img title="Indian" alt="Hindi language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/in.svg" width="22">](i18n/README.hi.md)</kbd>
 
 **[Infisical](https://infisical.com)** एक ओपन सोर्स, एंड-टू-एंड एन्क्रिप्टेड गुप्त प्रबंधक है जिसका उपयोग आप अपनी एपीआई कुंजी और कॉन्फ़िगरेशन को केंद्रीकृत करने के लिए कर सकते हैं। Infisical से, फिर आप इन रहस्यों को अपने संपूर्ण विकास जीवनचक्र में वितरित कर सकते हैं - विकास से लेकर उत्पादन तक। इसे सरल होने और चलने में कुछ मिनट लगने के लिए डिज़ाइन किया गया है.
 
