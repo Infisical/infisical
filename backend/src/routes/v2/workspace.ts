@@ -15,7 +15,6 @@ import {
 	AUTH_MODE_API_KEY
 } from '../../variables';
 import { workspaceController } from '../../controllers/v2';
-import * as ipAddressController from "../../controllers/v2/ipAdressController";
 
 router.post(
 	'/:workspaceId/secrets',
@@ -160,7 +159,7 @@ router.get(
 	}),
 	param("workspaceId").exists().trim(),
 	validateRequest,
-	ipAddressController.getWorkspaceIPAddress
+	workspaceController.getWorkspaceIPAddress
 );
 
 
@@ -175,7 +174,7 @@ router.delete(
 	}),
 	param("workspaceId").exists().trim(),
 	validateRequest,
-	ipAddressController.deleteWorkSpaceIPAddress
+	workspaceController.deleteWorkSpaceIPAddress
 );
 
 router.post(
@@ -190,7 +189,7 @@ router.post(
 	param("workspaceId").exists().trim(),
 	body('ip').exists().trim(),
 	validateRequest,
-	ipAddressController.createWorkspaceIPAddress
+	workspaceController.createWorkspaceIPAddress
 );
 
 export default router;
