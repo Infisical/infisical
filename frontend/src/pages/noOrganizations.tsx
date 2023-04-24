@@ -7,15 +7,16 @@ import { getTranslatedServerSideProps } from '@app/components/utilities/withTran
 
 import getOrganizationUserProjects from './api/organization/GetOrgUserProjects';
 
-export default function NoProjects() {
+export default function NoOrganizations() {
   const router = useRouter();
-
 
   const redirectUser = async () => {
     let workspaces = await getOrganizationUserProjects({ orgId: String(localStorage.getItem("orgData.id")) });
-    if (!workspaces) {
+
+    if (!workspaces){
       workspaces = [];
-    }
+    } 
+    
     if (workspaces.length > 0) {
       router.push(`/dashboard/${workspaces[0]._id}`);
     }
@@ -26,7 +27,6 @@ export default function NoProjects() {
     (async () => {
       await redirectUser();
     })();
-    
   }, []);
 
   return (
@@ -36,12 +36,11 @@ export default function NoProjects() {
       </div>
       <div className="px-4 rounded-md bg-bunker-500 mb-8 text-bunker-300 shadow-xl py-6">
         <div className="max-w-md">
-          You are not part of any projects in this organization yet. When you are, they will appear
+          You are not part of any organization yet. When you are, they will appear
           here.
         </div>
         <div className="max-w-md mt-4">
-          Create a new project, or ask other organization members to give you neccessary
-          permissions.
+          Create a new Organization, or ask other organization members to invite you.
         </div>
         <div className="mt-6 mx-2">
           <Button text="Check again" onButtonPressed={redirectUser} size="md" color="mineshaft" />
@@ -51,6 +50,6 @@ export default function NoProjects() {
   );
 }
 
-NoProjects.requireAuth = true;
+NoOrganizations.requireAuth = true;
 
 export const getServerSideProps = getTranslatedServerSideProps(['noprojects']);

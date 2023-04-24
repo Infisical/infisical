@@ -90,6 +90,7 @@ export const Navbar = () => {
   const router = useRouter();
 
   const { currentOrg, orgs } = useOrganization();
+
   const { user } = useUser();
 
   const logout = useLogoutUser();
@@ -242,27 +243,32 @@ export const Navbar = () => {
                 </div>
               </div>
               <div className="px-2 pt-2">
-                <div className="ml-2 mt-2 self-start text-xs font-semibold tracking-wide text-gray-400">
-                  {t('nav:user.current-organization')}
-                </div>
-                <div
-                  onKeyDown={() => null}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => router.push(`/settings/org/${router.query.id}`)}
-                  className="mt-2 flex cursor-pointer flex-row items-center rounded-md px-2 py-1 hover:bg-white/5"
-                >
-                  <div className="flex h-7 w-8 items-center justify-center rounded-md bg-white/10 text-gray-300">
-                    {currentOrg?.name?.charAt(0)}
-                  </div>
-                  <div className="flex w-full items-center justify-between">
-                    <p className="px-2 text-sm text-gray-300">{currentOrg?.name}</p>
-                    <FontAwesomeIcon
-                      icon={faGear}
-                      className="cursor-pointer rounded-md p-2 text-lg text-gray-400 hover:bg-white/10"
-                    />
-                  </div>
-                </div>
+                {
+                  currentOrg &&
+                  <>
+                    <div className="ml-2 mt-2 self-start text-xs font-semibold tracking-wide text-gray-400">
+                      {t('nav:user.current-organization')}
+                    </div>
+                    <div
+                      onKeyDown={() => null}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => router.push(`/settings/org/${router.query.id}`)}
+                      className="mt-2 flex cursor-pointer flex-row items-center rounded-md px-2 py-1 hover:bg-white/5"
+                    >
+                      <div className="flex h-7 w-8 items-center justify-center rounded-md bg-white/10 text-gray-300">
+                        {currentOrg?.name?.charAt(0)}
+                      </div>
+                      <div className="flex w-full items-center justify-between">
+                        <p className="px-2 text-sm text-gray-300">{currentOrg?.name}</p>
+                        <FontAwesomeIcon
+                          icon={faGear}
+                          className="cursor-pointer rounded-md p-2 text-lg text-gray-400 hover:bg-white/10"
+                        />
+                      </div>
+                    </div>
+                  </>
+                }
                 <button
                   // onClick={buttonAction}
                   type="button"
@@ -298,12 +304,12 @@ export const Navbar = () => {
                   </div>
                 </button>
               </div>
-              {orgs && orgs?.length > 0 && (
                 <div className="px-1 py-1">
                   <div className="ml-2 mt-2 self-start text-xs font-semibold tracking-wide text-gray-400">
                     {t('nav:user.other-organizations')}
                   </div>
-                  <div className="flex flex-col items-start px-1">
+                  {orgs && orgs?.length > 0 && (
+                    <div className="flex flex-col items-start px-1">
                     {orgs
                       ?.filter((org: { _id: string }) => org._id !== currentOrg?._id)
                       .map((org: { _id: string; name: string }) => (
@@ -326,7 +332,8 @@ export const Navbar = () => {
                           </div>
                         </div>
                       ))}
-                  </div>
+                  </div>  
+                  )}
                     <div className='px-1 pt-1'>
                       <div
                         onKeyDown={() => null}
@@ -342,7 +349,6 @@ export const Navbar = () => {
                       </div>
                     </div>
                 </div>
-              )}
               <div className="px-1 py-1">
                 <Menu.Item>
                   {({ active }) => (
