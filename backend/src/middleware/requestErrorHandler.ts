@@ -21,7 +21,7 @@ export const requestErrorHandler: ErrorRequestHandler = (error: RequestError | E
 
     //* Set Sentry user identification if req.user is populated
     if (req.user !== undefined && req.user !== null) {
-        Sentry.setUser({ email: req.user.email })
+        Sentry.setUser({ email: (req.user as any).email })
     }
     //* Only sent error to Sentry if LogLevel is one of the following level 'ERROR', 'EMERGENCY' or 'CRITICAL'
     //* with this we will eliminate false-positive errors like 'BadRequestError', 'UnauthorizedRequestError' and so on

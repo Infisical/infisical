@@ -5,6 +5,7 @@ import infisical from 'infisical-node';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import session from 'express-session';
 import * as Sentry from '@sentry/node';
 import { DatabaseService } from './services';
 import { setUpHealthEndpoint } from './services/health';
@@ -75,7 +76,7 @@ import {
     getPort,
     getSentryDSN,
     getSiteURL,
-    getSmtpHost
+    getSessionSecret,
 } from './config';
 
 const main = async () => {
@@ -111,6 +112,11 @@ const main = async () => {
     );
 
     app.use(requestIp.mw());
+    app.use(session({
+        secret: getSessionSecret(),
+        resave: false, // don't save session if unmodified
+        saveUninitialized: false, // don't create session until something stored
+    }));
 
     if (getNodeEnv() === 'production') {
         // enable app-wide rate-limiting + helmet security

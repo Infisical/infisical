@@ -30,9 +30,7 @@ export default function SignUp() {
   const [codeError, setCodeError] = useState(false);
   const [step, setStep] = useState(1);
   const router = useRouter();
-  const {data: serverDetails } = useFetchServerStatus()
-
-
+  const { data: serverDetails } = useFetchServerStatus();
   const { t } = useTranslation();
 
   useEffect(() => {

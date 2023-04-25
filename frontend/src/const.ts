@@ -16,7 +16,8 @@ export const publicPaths = [
   `/terms`,
   `/subprocessors`,
   `/verify-email`,
-  `/password-reset`
+  `/password-reset`,
+  `/login/provider/success`
 ];
 
 export const languageMap = {
