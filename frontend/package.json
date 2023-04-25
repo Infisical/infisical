@@ -82,7 +82,7 @@
     "tweetnacl-util": "^0.15.1",
     "uuid": "^8.3.2",
     "uuidv4": "^6.2.13",
-    "yaml": "^2.2.0",
+    "yaml": "^2.2.2",
     "yup": "^0.32.11"
   },
   "devDependencies": {
