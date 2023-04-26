@@ -98,7 +98,11 @@ Import the SDK and create a client instance with your Infisical token.
   </Expandable>
 </ResponseField>
 
-## Usage
+## Caching
+
+The SDK caches every secret and updates it periodically based on the provided `cacheTTL`. For example, if `cacheTTL` of `300` is provided, then a secret will be refetched 5 minutes after the first fetch; if the fetch fails, the cached secret is returned.
+
+## Working with Secrets
 
 ### infisical.getSecret(secretName, options)
 
@@ -109,7 +113,7 @@ const value = secret.secretValue; // get its value
 
 Retrieve a secret from Infisical.
 
-By default, `getSecret()` returns a personal secret. If not found, it returns a shared secret, or tries to retrieve the value from `process.env`.
+By default, `getSecret()` fetches and returns a personal secret. If not found, it returns a shared secret, or tries to retrieve the value from `process.env`. If a secret is fetched, `getSecret()` caches it to reduce excessive calls and re-fetches periodically based on the `cacheTTL` option (default is `300` seconds) when initializing the client — for more information, see the caching section.
 
 
 <ResponseField name="secretName" type="string" required>
