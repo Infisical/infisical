@@ -233,27 +233,29 @@ const initSecretBlindIndexDataHelper = async () => {
         }
     });
     
-    const secretBlindIndexDataToInsert = workspaceIdsToBlindIndex.map((workspaceToBlindIndex) => {
-        const salt = crypto.randomBytes(16).toString('base64');
+    const secretBlindIndexDataToInsert = await Promise.all(
+        workspaceIdsToBlindIndex.map(async (workspaceToBlindIndex) => {
+            const salt = crypto.randomBytes(16).toString('base64');
 
-        const { 
-            ciphertext: encryptedSaltCiphertext,
-            iv: saltIV,
-            tag: saltTag
-        } = encryptSymmetric({
-            plaintext: salt,
-            key: await getEncryptionKey()
-        });
+            const { 
+                ciphertext: encryptedSaltCiphertext,
+                iv: saltIV,
+                tag: saltTag
+            } = encryptSymmetric({
+                plaintext: salt,
+                key: await getEncryptionKey()
+            });
 
-        const secretBlindIndexData = new SecretBlindIndexData({
-            workspace: workspaceToBlindIndex,
-            encryptedSaltCiphertext,
-            saltIV,
-            saltTag
+            const secretBlindIndexData = new SecretBlindIndexData({
+                workspace: workspaceToBlindIndex,
+                encryptedSaltCiphertext,
+                saltIV,
+                saltTag
+            })
+            
+            return secretBlindIndexData;
         })
-        
-        return secretBlindIndexData;
-    });
+    );
     
     if (secretBlindIndexDataToInsert.length > 0) {
         await SecretBlindIndexData.insertMany(secretBlindIndexDataToInsert);

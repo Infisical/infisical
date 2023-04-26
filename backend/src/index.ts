@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 dotenv.config();
-import infisical from 'infisical-node';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
