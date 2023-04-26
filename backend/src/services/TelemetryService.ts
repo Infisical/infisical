@@ -24,9 +24,9 @@ class Telemetry {
   /**
    * Logs telemetry enable/disable notice.
    */
-  static logTelemetryMessage = () => {
-    if(!getTelemetryEnabled()){
-      getLogger("backend-main").info([
+  static logTelemetryMessage = async () => {
+    if(!(await getTelemetryEnabled())){
+      (await getLogger("backend-main")).info([
         "",
         "To improve, Infisical collects telemetry data about general usage.",
         "This helps us understand how the product is doing and guide our product development to create the best possible platform; it also helps us demonstrate growth as we support Infisical as open-source software.",
@@ -39,12 +39,12 @@ class Telemetry {
    * Return an instance of the PostHog client initialized.
    * @returns 
    */
-  static getPostHogClient = () => {
+  static getPostHogClient = async () => {
     let postHogClient: any;
-    if (getNodeEnv() === 'production' && getTelemetryEnabled()) {
+    if ((await getNodeEnv()) === 'production' && (await getTelemetryEnabled())) {
       // case: enable opt-out telemetry in production
-      postHogClient = new PostHog(getPostHogProjectApiKey(), {
-        host: getPostHogHost()
+      postHogClient = new PostHog(await getPostHogProjectApiKey(), {
+        host: await getPostHogHost()
       });
     } 
     

@@ -125,18 +125,18 @@ const createOrganization = async ({
     name: string;
     email: string;
 }) => {
-    let organization;
-    try {
-        // register stripe account
-        const stripe = new Stripe(getStripeSecretKey(), {
-            apiVersion: '2022-08-01'
-        });
+	let organization;
+	try {
+		// register stripe account
+		const stripe = new Stripe(await getStripeSecretKey(), {
+			apiVersion: '2022-08-01'
+		});
 
-        if (getStripeSecretKey()) {
-            const customer = await stripe.customers.create({
-                email,
-                description: name
-            });
+		if (await getStripeSecretKey()) {
+			const customer = await stripe.customers.create({
+				email,
+				description: name
+			});
 
             organization = await new Organization({
                 name,
@@ -231,18 +231,18 @@ const initSubscriptionOrg = async ({
             _id: organizationId
         });
 
-        if (organization) {
-            if (organization.customerId) {
-                // initialize starter subscription with quantity of 0
-                const stripe = new Stripe(getStripeSecretKey(), {
-                    apiVersion: '2022-08-01'
-                });
+		if (organization) {
+			if (organization.customerId) {
+				// initialize starter subscription with quantity of 0
+				const stripe = new Stripe(await getStripeSecretKey(), {
+					apiVersion: '2022-08-01'
+				});
 
-                const productToPriceMap = {
-                    starter: getStripeProductStarter(),
-                    team: getStripeProductTeam(),
-                    pro: getStripeProductPro()
-                };
+				const productToPriceMap = {
+					starter: await getStripeProductStarter(),
+					team: await getStripeProductTeam(),
+					pro: await getStripeProductPro()
+				};
 
                 stripeSubscription = await stripe.subscriptions.create({
                     customer: organization.customerId,
@@ -298,9 +298,9 @@ const updateSubscriptionOrgQuantity = async ({
                 status: ACCEPTED
             });
 
-            const stripe = new Stripe(getStripeSecretKey(), {
-                apiVersion: '2022-08-01'
-            });
+			const stripe = new Stripe(await getStripeSecretKey(), {
+				apiVersion: '2022-08-01'
+			});
 
             const subscription = (
                 await stripe.subscriptions.list({

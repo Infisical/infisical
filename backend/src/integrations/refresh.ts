@@ -133,11 +133,11 @@ const exchangeRefreshAzure = async ({
     const { data }: { data: RefreshTokenAzureResponse } = await request.post(
       INTEGRATION_AZURE_TOKEN_URL,
        new URLSearchParams({
-        client_id: getClientIdAzure(),
+        client_id: await getClientIdAzure(),
         scope: 'openid offline_access',
         refresh_token: refreshToken,
         grant_type: 'refresh_token',
-        client_secret: getClientSecretAzure()
+        client_secret: await getClientSecretAzure()
       } as any)
     );
     
@@ -180,7 +180,7 @@ const exchangeRefreshHeroku = async ({
         new URLSearchParams({
             grant_type: 'refresh_token',
             refresh_token: refreshToken,
-            client_secret: getClientSecretHeroku()
+            client_secret: await getClientSecretHeroku()
         } as any)
     );
 
@@ -223,9 +223,9 @@ const exchangeRefreshGitLab = async ({
       new URLSearchParams({
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
-        client_id: getClientIdGitLab,
-        client_secret: getClientSecretGitLab(),
-        redirect_uri: `${getSiteURL()}/integrations/gitlab/oauth2/callback`
+        client_id: await getClientIdGitLab,
+        client_secret: await getClientSecretGitLab(),
+        redirect_uri: `${await getSiteURL()}/integrations/gitlab/oauth2/callback`
       } as any),
       {
         headers: {

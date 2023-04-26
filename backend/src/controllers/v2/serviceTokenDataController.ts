@@ -84,7 +84,7 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
     } = req.body;
 
     const secret = crypto.randomBytes(16).toString('hex');
-    const secretHash = await bcrypt.hash(secret, getSaltRounds());
+    const secretHash = await bcrypt.hash(secret, await getSaltRounds());
 
     let expiresAt; 
     if (expiresIn) {

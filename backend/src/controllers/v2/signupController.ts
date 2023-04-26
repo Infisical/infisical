@@ -108,7 +108,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 		token = tokens.token;
 
 		// sending a welcome email to new users
-		if (getLoopsApiKey()) {
+		if (await getLoopsApiKey()) {
 			await request.post("https://app.loops.so/api/v1/events/send", {
 				"email": email,
 				"eventName": "Sign Up",
@@ -117,7 +117,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			}, {
 				headers: {
 					"Accept": "application/json",
-					"Authorization": "Bearer " + getLoopsApiKey()
+					"Authorization": "Bearer " + (await getLoopsApiKey())
 				},
 			});
 		}
@@ -127,7 +127,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			httpOnly: true,
 			path: '/',
 			sameSite: 'strict',
-			secure: getHttpsEnabled()
+			secure: await getHttpsEnabled()
 		});
 	} catch (err) {
 		Sentry.setUser(null);
@@ -232,7 +232,7 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 			httpOnly: true,
 			path: '/',
 			sameSite: 'strict',
-			secure: getHttpsEnabled()
+			secure: await getHttpsEnabled()
 		});
 	} catch (err) {
 		Sentry.setUser(null);

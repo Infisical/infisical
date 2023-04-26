@@ -21,7 +21,7 @@ export const beginEmailSignup = async (req: Request, res: Response) => {
 	try {
 		email = req.body.email;
 
-		if (getInviteOnlySignup()) {
+		if (await getInviteOnlySignup()) {
 			// Only one user can create an account without being invited. The rest need to be invited in order to make an account
 			const userCount = await User.countDocuments({})
 			if (userCount != 0) {
@@ -75,7 +75,7 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
 		}
 
 		// verify email
-		if (getSmtpConfigured()) {
+		if (await getSmtpConfigured()) {
 			await checkEmailVerification({
 				email,
 				code
@@ -93,8 +93,8 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
 			payload: {
 				userId: user._id.toString()
 			},
-			expiresIn: getJwtSignupLifetime(),
-			secret: getJwtSignupSecret()
+			expiresIn: await getJwtSignupLifetime(),
+			secret: await getJwtSignupSecret()
 		});
 	} catch (err) {
 		Sentry.setUser(null);

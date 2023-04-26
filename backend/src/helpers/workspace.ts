@@ -28,7 +28,6 @@ import {
 	AUTH_MODE_SERVICE_TOKEN,
 	AUTH_MODE_API_KEY
 } from '../variables';
-import { getEncryptionKey } from '../config';
 import { encryptSymmetric } from '../utils/crypto';
 import { SecretService } from '../services';
 

@@ -35,7 +35,7 @@ import {
 export const batchSecrets = async (req: Request, res: Response) => {
 
     const channel = getChannelFromUserAgent(req.headers['user-agent']);
-    const postHogClient = TelemetryService.getPostHogClient();
+    const postHogClient = await TelemetryService.getPostHogClient();
 
     const {
         workspaceId,
@@ -508,7 +508,7 @@ export const createSecrets = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId)
     });
 
-    const postHogClient = TelemetryService.getPostHogClient();
+    const postHogClient = await TelemetryService.getPostHogClient();
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets added',
@@ -683,7 +683,7 @@ export const getSecrets = async (req: Request, res: Response) => {
         ipAddress: req.ip
     });
 
-    const postHogClient = TelemetryService.getPostHogClient();
+    const postHogClient = await TelemetryService.getPostHogClient();
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets pulled',
@@ -905,7 +905,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
             workspaceId: new Types.ObjectId(key)
         })
 
-        const postHogClient = TelemetryService.getPostHogClient();
+        const postHogClient = await TelemetryService.getPostHogClient();
         if (postHogClient) {
             postHogClient.capture({
                 event: 'secrets modified',
@@ -1039,7 +1039,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
             workspaceId: new Types.ObjectId(key)
         });
 
-        const postHogClient = TelemetryService.getPostHogClient();
+        const postHogClient = await TelemetryService.getPostHogClient();
         if (postHogClient) {
             postHogClient.capture({
                 event: 'secrets deleted',

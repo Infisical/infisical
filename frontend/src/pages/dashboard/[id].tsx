@@ -803,8 +803,6 @@ export default function Dashboard() {
       isReadDenied: false
     };
 
-    console.log(124, envSlug, selectedWorkspaceEnv)
-
     if (selectedWorkspaceEnv) {
       if (snapshotData) setSelectedSnapshotEnv(selectedWorkspaceEnv);
       else setSelectedEnv(selectedWorkspaceEnv);

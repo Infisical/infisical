@@ -318,7 +318,7 @@ export const createOrganizationPortalSession = async (
 ) => {
 	let session;
 	try {
-		const stripe = new Stripe(getStripeSecretKey(), {
+		const stripe = new Stripe(await getStripeSecretKey(), {
 			apiVersion: '2022-08-01'
 		});
 
@@ -334,13 +334,13 @@ export const createOrganizationPortalSession = async (
 				customer: req.membershipOrg.organization.customerId,
 				mode: 'setup',
 				payment_method_types: ['card'],
-				success_url: getSiteURL() + '/dashboard',
-				cancel_url: getSiteURL() + '/dashboard'
+				success_url: (await getSiteURL()) + '/dashboard',
+				cancel_url: (await getSiteURL()) + '/dashboard'
 			});
 		} else {
 			session = await stripe.billingPortal.sessions.create({
 				customer: req.membershipOrg.organization.customerId,
-				return_url: getSiteURL() + '/dashboard'
+				return_url: (await getSiteURL()) + '/dashboard'
 			});
 		}
 
@@ -366,7 +366,7 @@ export const getOrganizationSubscriptions = async (
 ) => {
 	let subscriptions;
 	try {
-		const stripe = new Stripe(getStripeSecretKey(), {
+		const stripe = new Stripe(await getStripeSecretKey(), {
 			apiVersion: '2022-08-01'
 		});
 		
