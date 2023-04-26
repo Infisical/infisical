@@ -119,7 +119,7 @@ const createBot = async ({
         const { publicKey, privateKey } = generateKeyPair();
         const { ciphertext, iv, tag } = encryptSymmetric({
             plaintext: privateKey,
-            key: getEncryptionKey()
+            key: await getEncryptionKey()
         });
 
         bot = await new Bot({
@@ -216,7 +216,7 @@ const getKey = async ({ workspaceId }: { workspaceId: Types.ObjectId }) => {
             ciphertext: bot.encryptedPrivateKey,
             iv: bot.iv,
             tag: bot.tag,
-            key: getEncryptionKey()
+            key: await getEncryptionKey()
         });
         
         key = decryptAsymmetric({

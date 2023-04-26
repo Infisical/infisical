@@ -126,7 +126,7 @@ export const login2 = async (req: Request, res: Response) => {
             httpOnly: true,
             path: '/',
             sameSite: 'strict',
-            secure: getHttpsEnabled()
+            secure: await getHttpsEnabled()
           });
 
           const loginAction = await EELogService.createAction({
@@ -182,7 +182,7 @@ export const logout = async (req: Request, res: Response) => {
       httpOnly: true,
       path: '/',
       sameSite: 'strict',
-      secure: getHttpsEnabled() as boolean
+      secure: (await getHttpsEnabled()) as boolean
     });
 
     const logoutAction = await EELogService.createAction({
@@ -237,7 +237,7 @@ export const getNewToken = async (req: Request, res: Response) => {
     }
 
     const decodedToken = <jwt.UserIDJwtPayload>(
-      jwt.verify(refreshToken, getJwtRefreshSecret())
+      jwt.verify(refreshToken, await getJwtRefreshSecret())
     );
 
     const user = await User.findOne({
@@ -252,8 +252,8 @@ export const getNewToken = async (req: Request, res: Response) => {
       payload: {
         userId: decodedToken.userId
       },
-      expiresIn: getJwtAuthLifetime(),
-      secret: getJwtAuthSecret()
+      expiresIn: await getJwtAuthLifetime(),
+      secret: await getJwtAuthSecret()
     });
 
     return res.status(200).send({

@@ -61,7 +61,7 @@ const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
 const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
 const INTEGRATION_SUPABASE_API_URL = 'https://api.supabase.com';
 
-const getIntegrationOptions = () => {
+const getIntegrationOptions = async () => {
     const INTEGRATION_OPTIONS = [
         {
             name: 'Heroku',
@@ -69,7 +69,7 @@ const getIntegrationOptions = () => {
             image: 'Heroku.png',
             isAvailable: true,
             type: 'oauth',
-            clientId: getClientIdHeroku(),
+            clientId: await getClientIdHeroku(),
             docsLink: ''
         },
         {
@@ -79,7 +79,7 @@ const getIntegrationOptions = () => {
             isAvailable: true,
             type: 'oauth',
             clientId: '',
-            clientSlug: getClientSlugVercel(),
+            clientSlug: await getClientSlugVercel(),
             docsLink: ''
         },
         {
@@ -88,7 +88,7 @@ const getIntegrationOptions = () => {
             image: 'Netlify.png',
             isAvailable: true,
             type: 'oauth',
-            clientId: getClientIdNetlify(),
+            clientId: await getClientIdNetlify(),
             docsLink: ''
         },
         {
@@ -97,7 +97,7 @@ const getIntegrationOptions = () => {
             image: 'GitHub.png',
             isAvailable: true,
             type: 'oauth',
-            clientId: getClientIdGitHub(),
+            clientId: await getClientIdGitHub(),
             docsLink: ''
         },
         {
@@ -151,7 +151,7 @@ const getIntegrationOptions = () => {
             image: 'Microsoft Azure.png',
             isAvailable: true,
             type: 'oauth',
-            clientId: getClientIdAzure(),
+            clientId: await getClientIdAzure(),
             docsLink: ''
         },
         {
@@ -169,7 +169,7 @@ const getIntegrationOptions = () => {
             image: 'GitLab.png',
             isAvailable: true,
             type: 'custom',
-            clientId: getClientIdGitLab(),
+            clientId: await getClientIdGitLab(),
             docsLink: ''
         },
         {

@@ -25,6 +25,8 @@ import {
     BatchSecretRequest,
     BatchSecret
 } from '../../types/secret';
+import { getFolderPath, getFoldersInDirectory, normalizePath } from '../../utils/folder';
+import { ROOT_FOLDER_PATH } from '../../utils/folder';
 
 /**
  * Peform a batch of any specified CUD secret operations
@@ -35,7 +37,7 @@ import {
 export const batchSecrets = async (req: Request, res: Response) => {
 
     const channel = getChannelFromUserAgent(req.headers['user-agent']);
-    const postHogClient = TelemetryService.getPostHogClient();
+    const postHogClient = await TelemetryService.getPostHogClient();
 
     const {
         workspaceId,
@@ -51,13 +53,18 @@ export const batchSecrets = async (req: Request, res: Response) => {
     const updateSecrets: BatchSecret[] = [];
     const deleteSecrets: Types.ObjectId[] = [];
     const actions: IAction[] = [];
-    
+
     // get secret blind index salt
     const salt = await SecretService.getSecretBlindIndexSalt({
         workspaceId: new Types.ObjectId(workspaceId)
     });
 
     for await (const request of requests) {
+        const folderId = request.secret.folderId
+
+        // TODO: need to auth folder
+        const fullFolderPath = await getFolderPath(folderId)
+
         let secretBlindIndex = '';
         switch (request.method) {
             case 'POST':
@@ -72,19 +79,23 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     user: request.secret.type === SECRET_PERSONAL ? req.user : undefined,
                     environment,
                     workspace: new Types.ObjectId(workspaceId),
+                    path: fullFolderPath,
+                    folder: folderId,
                     secretBlindIndex
                 });
                 break;
             case 'PATCH':
                 secretBlindIndex = await SecretService.generateSecretBlindIndexWithSalt({
                     secretName: request.secret.secretName,
-                    salt
+                    salt,
                 });
 
                 updateSecrets.push({
                     ...request.secret,
                     _id: new Types.ObjectId(request.secret._id),
-                    secretBlindIndex
+                    secretBlindIndex,
+                    folder: folderId,
+                    path: fullFolderPath,
                 });
                 break;
             case 'DELETE':
@@ -437,9 +448,9 @@ export const createSecrets = async (req: Request, res: Response) => {
             });
         })
     );
-    
+
     const newlyCreatedSecrets: ISecret[] = (await Secret.insertMany(secretsToInsert)).map((insertedSecret) => insertedSecret.toObject());
-    
+
     setTimeout(async () => {
         // trigger event - push secrets
         await EventService.handleEvent({
@@ -508,7 +519,7 @@ export const createSecrets = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId)
     });
 
-    const postHogClient = TelemetryService.getPostHogClient();
+    const postHogClient = await TelemetryService.getPostHogClient();
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets added',
@@ -578,9 +589,11 @@ export const getSecrets = async (req: Request, res: Response) => {
     }   
     */
 
-    const { tagSlugs } = req.query;
+    const { tagSlugs, secretsPath } = req.query;
     const workspaceId = req.query.workspaceId as string;
     const environment = req.query.environment as string;
+    const normalizedPath = normalizePath(secretsPath as string)
+    const folders = await getFoldersInDirectory(workspaceId as string, environment as string, normalizedPath)
 
     // secrets to return 
     let secrets: ISecret[] = [];
@@ -613,6 +626,12 @@ export const getSecrets = async (req: Request, res: Response) => {
             ]
         }
 
+        if (normalizedPath == ROOT_FOLDER_PATH) {
+            secretQuery.path = { $in: [ROOT_FOLDER_PATH, null, undefined] }
+        } else if (normalizedPath) {
+            secretQuery.path = normalizedPath
+        }
+
         if (tagIds.length > 0) {
             secretQuery.tags = { $in: tagIds };
         }
@@ -638,6 +657,13 @@ export const getSecrets = async (req: Request, res: Response) => {
             ]
         }
 
+        // TODO: check if user can query for given path
+        if (normalizedPath == ROOT_FOLDER_PATH) {
+            secretQuery.path = { $in: [ROOT_FOLDER_PATH, null, undefined] }
+        } else if (normalizedPath) {
+            secretQuery.path = normalizedPath
+        }
+
         if (tagIds.length > 0) {
             secretQuery.tags = { $in: tagIds };
         }
@@ -653,6 +679,12 @@ export const getSecrets = async (req: Request, res: Response) => {
             workspace: workspaceId,
             environment,
             user: { $exists: false } // shared secrets only from workspace
+        }
+
+        if (normalizedPath == ROOT_FOLDER_PATH) {
+            secretQuery.path = { $in: [ROOT_FOLDER_PATH, null, undefined] }
+        } else if (normalizedPath) {
+            secretQuery.path = normalizedPath
         }
 
         if (tagIds.length > 0) {
@@ -683,7 +715,7 @@ export const getSecrets = async (req: Request, res: Response) => {
         ipAddress: req.ip
     });
 
-    const postHogClient = TelemetryService.getPostHogClient();
+    const postHogClient = await TelemetryService.getPostHogClient();
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets pulled',
@@ -701,7 +733,8 @@ export const getSecrets = async (req: Request, res: Response) => {
     }
 
     return res.status(200).send({
-        secrets
+        secrets,
+        folders
     });
 }
 
@@ -905,7 +938,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
             workspaceId: new Types.ObjectId(key)
         })
 
-        const postHogClient = TelemetryService.getPostHogClient();
+        const postHogClient = await TelemetryService.getPostHogClient();
         if (postHogClient) {
             postHogClient.capture({
                 event: 'secrets modified',
@@ -1039,7 +1072,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
             workspaceId: new Types.ObjectId(key)
         });
 
-        const postHogClient = TelemetryService.getPostHogClient();
+        const postHogClient = await TelemetryService.getPostHogClient();
         if (postHogClient) {
             postHogClient.capture({
                 event: 'secrets deleted',

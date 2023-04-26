@@ -28,7 +28,7 @@ const DashboardInput = ({ isOverridden, isSecretValueHidden, isReadOnly, secret,
     ref.current.scrollLeft = e.currentTarget.scrollLeft;
   };
 
-  return <td key={`row-${secret?.key || ''}--`} className={`flex cursor-default flex-row w-full min-w-[11rem] justify-center h-10 items-center ${!(secret?.value || secret?.value === '') ? "bg-red-400/10" : "bg-mineshaft-900/30"}`}>
+  return <td key={`row-${secret?.key || ''}--`} className={`flex cursor-default flex-row w-full justify-center h-10 items-center ${!(secret?.value || secret?.value === '') ? "bg-red-400/10" : "bg-mineshaft-900/30"}`}>
     <div className="group relative whitespace-pre	flex flex-col justify-center w-full cursor-default">
       <input
         // {...register(`secrets.${index}.valueOverride`)}

@@ -180,11 +180,11 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 					organizationName: organization.name,
 					email: inviteeEmail,
 					token,
-					callback_url: getSiteURL() + '/signupinvite'
+					callback_url: (await getSiteURL()) + '/signupinvite'
 				}
 			});
 
-			if (!getSmtpConfigured()) {
+			if (!(await getSmtpConfigured())) {
 				completeInviteLink = `${siteUrl + '/signupinvite'}?token=${token}&to=${inviteeEmail}`
 			}
 		}
@@ -257,8 +257,8 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 			payload: {
 				userId: user._id.toString()
 			},
-			expiresIn: getJwtSignupLifetime(),
-			secret: getJwtSignupSecret()
+			expiresIn: await getJwtSignupLifetime(),
+			secret: await getJwtSignupSecret()
 		});
 	} catch (err) {
 		Sentry.setUser(null);
