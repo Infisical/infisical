@@ -107,7 +107,7 @@ const main = async () => {
 
     app.use(requestIp.mw());
     app.use(session({
-        secret: getSessionSecret(),
+        secret: await getSessionSecret(),
         resave: false, // don't save session if unmodified
         saveUninitialized: false, // don't create session until something stored
     }));

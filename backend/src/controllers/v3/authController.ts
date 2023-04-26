@@ -50,8 +50,9 @@ export const login1 = async (req: Request, res: Response) => {
         let userId = '';
         if (providerAuthToken) {
             const decodedToken = <jwt.ProviderAuthJwtPayload>(
-                jwt.verify(providerAuthToken, getJwtProviderAuthSecret())
+                jwt.verify(providerAuthToken, await getJwtProviderAuthSecret())
             );
+
             userId = decodedToken.userId;
         }
 
@@ -118,7 +119,7 @@ export const login2 = async (req: Request, res: Response) => {
         let userId = '';
         if (providerAuthToken) {
             const decodedToken = <jwt.ProviderAuthJwtPayload>(
-                jwt.verify(providerAuthToken, getJwtProviderAuthSecret())
+                jwt.verify(providerAuthToken, await getJwtProviderAuthSecret())
             );
             userId = decodedToken.userId;
         }
@@ -166,8 +167,8 @@ export const login2 = async (req: Request, res: Response) => {
                             payload: {
                                 userId: user._id.toString()
                             },
-                            expiresIn: getJwtMfaLifetime(),
-                            secret: getJwtMfaSecret()
+                            expiresIn: await getJwtMfaLifetime(),
+                            secret: await getJwtMfaSecret()
                         });
 
                         const code = await TokenService.createToken({
@@ -205,7 +206,7 @@ export const login2 = async (req: Request, res: Response) => {
                         httpOnly: true,
                         path: '/',
                         sameSite: 'strict',
-                        secure: getHttpsEnabled()
+                        secure: await getHttpsEnabled()
                     });
 
                     // case: user does not have MFA enablgged

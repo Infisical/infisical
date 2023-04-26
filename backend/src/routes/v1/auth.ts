@@ -38,8 +38,8 @@ passport.use(new GoogleStrategy({
       userId: user._id.toString(),
       email: user.email,
     },
-    expiresIn: getJwtProviderAuthLifetime(),
-    secret: getJwtProviderAuthSecret(),
+    expiresIn: await getJwtProviderAuthLifetime(),
+    secret: await getJwtProviderAuthSecret(),
   });
 
   req.providerAuthToken = providerAuthToken;
