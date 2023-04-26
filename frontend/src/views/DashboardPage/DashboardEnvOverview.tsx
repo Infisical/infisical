@@ -125,7 +125,7 @@ export const DashboardEnvOverview = ({onEnvChange}: {onEnvChange: any;}) => {
 
   if (isSecretsLoading || isEnvListLoading) {
     return (
-      <div className="container mx-auto flex h-full w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
+      <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
         <img src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
       </div>
     );
