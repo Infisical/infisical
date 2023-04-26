@@ -131,7 +131,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 
 	isConnected := CheckIsConnectedToInternet()
 	var secretsToReturn []models.SingleEnvironmentVariable
-	var serviceTokenDetails api.GetServiceTokenDetailsResponse
+	// var serviceTokenDetails api.GetServiceTokenDetailsResponse
 	var errorToReturn error
 
 	if infisicalToken == "" {
@@ -183,11 +183,11 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 
 	} else {
 		log.Debug("Trying to fetch secrets using service token")
-		secretsToReturn, serviceTokenDetails, errorToReturn = GetPlainTextSecretsViaServiceToken(infisicalToken)
+		secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(infisicalToken)
 
-		if serviceTokenDetails.Environment != params.Environment {
-			PrintErrorMessageAndExit(fmt.Sprintf("Fetch secrets failed: token allows [%s] environment access, not [%s]. Service tokens are environment-specific; no need for --env flag.", params.Environment, serviceTokenDetails.Environment))
-		}
+		// if serviceTokenDetails.Environment != params.Environment {
+		// 	PrintErrorMessageAndExit(fmt.Sprintf("Fetch secrets failed: token allows [%s] environment access, not [%s]. Service tokens are environment-specific; no need for --env flag.", params.Environment, serviceTokenDetails.Environment))
+		// }
 	}
 
 	return secretsToReturn, errorToReturn
