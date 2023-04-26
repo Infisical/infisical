@@ -234,14 +234,14 @@ export const DashboardEnvOverview = ({onEnvChange}: {onEnvChange: any;}) => {
                   </Button>
                 </div> */}
             </div>
-            <div className="group min-w-full flex flex-row items-center mt-4">
+            <div className="group flex flex-row items-center mt-4 min-w-[60.3rem]">
               <div className="w-10 h-10 px-4 flex items-center justify-center border-none"><div className='text-center w-10 text-xs text-transparent'>0</div></div>
               <div className="flex flex-row justify-between items-center min-w-[200px] lg:min-w-[220px] xl:min-w-[250px]">
                 <span className="text-transparent">0</span>
                 <button type="button" className='mr-2 text-transparent'>1</button>
               </div>
               {userAvailableEnvs?.map(env => {
-                return <div key={`button-${env.slug}`} className="flex flex-row w-full justify-center h-10 items-center border-none mb-1 mx-2 min-w-[10rem]">
+                return <div key={`button-${env.slug}`} className="flex flex-row w-full justify-center h-10 items-center border-none mb-1 mx-2 min-w-[11rem]">
                     <Button
                       onClick={() => onEnvChange(env.slug)}
                       // router.push(`${router.asPath  }?env=${env.slug}`)
