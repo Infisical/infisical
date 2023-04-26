@@ -123,11 +123,11 @@ const createOrganization = async ({
 	let organization;
 	try {
 		// register stripe account
-		const stripe = new Stripe(getStripeSecretKey(), {
+		const stripe = new Stripe(await getStripeSecretKey(), {
 			apiVersion: '2022-08-01'
 		});
 
-		if (getStripeSecretKey()) {
+		if (await getStripeSecretKey()) {
 			const customer = await stripe.customers.create({
 				email,
 				description: name
@@ -177,14 +177,14 @@ const initSubscriptionOrg = async ({
 		if (organization) {
 			if (organization.customerId) {
 				// initialize starter subscription with quantity of 0
-				const stripe = new Stripe(getStripeSecretKey(), {
+				const stripe = new Stripe(await getStripeSecretKey(), {
 					apiVersion: '2022-08-01'
 				});
 
 				const productToPriceMap = {
-					starter: getStripeProductStarter(),
-					team: getStripeProductTeam(),
-					pro: getStripeProductPro()
+					starter: await getStripeProductStarter(),
+					team: await getStripeProductTeam(),
+					pro: await getStripeProductPro()
 				};
 
 				stripeSubscription = await stripe.subscriptions.create({
@@ -239,7 +239,7 @@ const updateSubscriptionOrgQuantity = async ({
 				status: ACCEPTED
 			});
 
-			const stripe = new Stripe(getStripeSecretKey(), {
+			const stripe = new Stripe(await getStripeSecretKey(), {
 				apiVersion: '2022-08-01'
 			});
 

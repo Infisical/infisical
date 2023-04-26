@@ -17,7 +17,7 @@ import { AccountNotFoundError } from '../../utils/errors';
  * @param res 
  */
 export const createSecret = async (req: Request, res: Response) => {
-  const postHogClient = TelemetryService.getPostHogClient();
+  const postHogClient = await TelemetryService.getPostHogClient();
   const secretToCreate: CreateSecretRequestBody = req.body.secret;
   const { workspaceId, environment } = req.params
   const sanitizedSecret: SanitizedSecretForCreate = {
@@ -70,7 +70,7 @@ export const createSecret = async (req: Request, res: Response) => {
  * @param res 
  */
 export const createSecrets = async (req: Request, res: Response) => {
-  const postHogClient = TelemetryService.getPostHogClient();
+  const postHogClient = await TelemetryService.getPostHogClient();
   const secretsToCreate: CreateSecretRequestBody[] = req.body.secrets;
   const { workspaceId, environment } = req.params
   const sanitizedSecretesToCreate: SanitizedSecretForCreate[] = []
@@ -132,7 +132,7 @@ export const createSecrets = async (req: Request, res: Response) => {
  * @param res 
  */
 export const deleteSecrets = async (req: Request, res: Response) => {
-  const postHogClient = TelemetryService.getPostHogClient();
+  const postHogClient = await TelemetryService.getPostHogClient();
   const { workspaceId, environmentName } = req.params
   const secretIdsToDelete: string[] = req.body.secretIds
 
@@ -186,7 +186,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
  * @param res
  */
 export const deleteSecret = async (req: Request, res: Response) => {
-  const postHogClient = TelemetryService.getPostHogClient();
+  const postHogClient = await TelemetryService.getPostHogClient();
   await Secret.findByIdAndDelete(req._secret._id)
 
   if (postHogClient) {
@@ -215,7 +215,7 @@ export const deleteSecret = async (req: Request, res: Response) => {
  * @returns 
  */
 export const updateSecrets = async (req: Request, res: Response) => {
-  const postHogClient = TelemetryService.getPostHogClient();
+  const postHogClient = await TelemetryService.getPostHogClient();
   const { workspaceId, environmentName } = req.params
   const secretsModificationsRequested: ModifySecretRequestBody[] = req.body.secrets;
   const [secretIdsUserCanModifyError, secretIdsUserCanModify] = await to(Secret.find({ workspace: workspaceId, environment: environmentName }, { _id: 1 }).then())
@@ -283,7 +283,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
  * @returns 
  */
 export const updateSecret = async (req: Request, res: Response) => {
-  const postHogClient = TelemetryService.getPostHogClient();
+  const postHogClient = await TelemetryService.getPostHogClient();
   const { workspaceId, environmentName } = req.params
   const secretModificationsRequested: ModifySecretRequestBody = req.body.secret;
 
@@ -337,7 +337,7 @@ export const updateSecret = async (req: Request, res: Response) => {
  * @returns 
  */
 export const getSecrets = async (req: Request, res: Response) => {
-  const postHogClient = TelemetryService.getPostHogClient();
+  const postHogClient = await TelemetryService.getPostHogClient();
   const { environment } = req.query;
   const { workspaceId } = req.params;
 

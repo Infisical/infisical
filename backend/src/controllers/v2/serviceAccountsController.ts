@@ -72,7 +72,7 @@ export const createServiceAccount = async (req: Request, res: Response) => {
     }
 
     const secret = crypto.randomBytes(16).toString('base64');
-    const secretHash = await bcrypt.hash(secret, getSaltRounds());
+    const secretHash = await bcrypt.hash(secret, await getSaltRounds());
     
     // create service account
     const serviceAccount = await new ServiceAccount({

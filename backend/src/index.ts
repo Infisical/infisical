@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 dotenv.config();
-import infisical from 'infisical-node';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -79,22 +78,16 @@ import {
 } from './config';
 
 const main = async () => {
-    if (process.env.INFISICAL_TOKEN != "" || process.env.INFISICAL_TOKEN != undefined) {
-        await infisical.connect({
-            token: process.env.INFISICAL_TOKEN!
-        });
-    }
-
     TelemetryService.logTelemetryMessage();
-    setTransporter(initSmtp());
+    setTransporter(await initSmtp());
 
-    await DatabaseService.initDatabase(getMongoURL());
-    if (getNodeEnv() !== 'test') {
+    await DatabaseService.initDatabase(await getMongoURL());
+    if ((await getNodeEnv()) !== 'test') {
         Sentry.init({
-            dsn: getSentryDSN(),
+            dsn: await getSentryDSN(),
             tracesSampleRate: 1.0,
-            debug: getNodeEnv() === 'production' ? false : true,
-            environment: getNodeEnv()
+            debug: await getNodeEnv() === 'production' ? false : true,
+            environment: await getNodeEnv()
         });
     }
 
@@ -106,13 +99,13 @@ const main = async () => {
     app.use(
         cors({
             credentials: true,
-            origin: getSiteURL()
+            origin: await getSiteURL()
         })
     );
 
     app.use(requestIp.mw());
 
-    if (getNodeEnv() === 'production') {
+    if ((await getNodeEnv()) === 'production') {
         // enable app-wide rate-limiting + helmet security
         // in production
         app.disable('x-powered-by');
@@ -177,8 +170,8 @@ const main = async () => {
 
     app.use(requestErrorHandler)
 
-    const server = app.listen(getPort(), () => {
-        getLogger("backend-main").info(`Server started listening at port ${getPort()}`)
+    const server = app.listen(await getPort(), async () => {
+        (await getLogger("backend-main")).info(`Server started listening at port ${await getPort()}`)
     });
 
     await createTestUserForDevelopment();

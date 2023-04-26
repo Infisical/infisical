@@ -43,7 +43,7 @@ export const createAPIKeyData = async (req: Request, res: Response) => {
         const { name, expiresIn } = req.body;
         
         const secret = crypto.randomBytes(16).toString('hex');
-        const secretHash = await bcrypt.hash(secret, getSaltRounds());
+        const secretHash = await bcrypt.hash(secret, await getSaltRounds());
         
 		const expiresAt = new Date();
 		expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);

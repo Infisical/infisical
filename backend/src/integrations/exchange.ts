@@ -159,9 +159,9 @@ const exchangeCodeAzure = async ({
         grant_type: 'authorization_code',
         code: code,
         scope: 'https://vault.azure.net/.default openid offline_access',
-        client_id: getClientIdAzure(),
-        client_secret: getClientSecretAzure(),
-        redirect_uri: `${getSiteURL()}/integrations/azure-key-vault/oauth2/callback`
+        client_id: await getClientIdAzure(),
+        client_secret: await getClientSecretAzure(),
+        redirect_uri: `${await getSiteURL()}/integrations/azure-key-vault/oauth2/callback`
       } as any)
     )).data;
 
@@ -204,7 +204,7 @@ const exchangeCodeHeroku = async ({
       new URLSearchParams({
         grant_type: 'authorization_code',
         code: code,
-        client_secret: getClientSecretHeroku()
+        client_secret: await getClientSecretHeroku()
       } as any)
     )).data;
 
@@ -242,9 +242,9 @@ const exchangeCodeVercel = async ({ code }: { code: string }) => {
         INTEGRATION_VERCEL_TOKEN_URL,
         new URLSearchParams({
           code: code,
-          client_id: getClientIdVercel(),
-          client_secret: getClientSecretVercel(),
-          redirect_uri: `${getSiteURL()}/integrations/vercel/oauth2/callback`
+          client_id: await getClientIdVercel(),
+          client_secret: await getClientSecretVercel(),
+          redirect_uri: `${await getSiteURL()}/integrations/vercel/oauth2/callback`
         } as any)
       )
     ).data;
@@ -282,9 +282,9 @@ const exchangeCodeNetlify = async ({ code }: { code: string }) => {
         new URLSearchParams({
           grant_type: 'authorization_code',
           code: code,
-          client_id: getClientIdNetlify(),
-          client_secret: getClientSecretNetlify(),
-          redirect_uri: `${getSiteURL()}/integrations/netlify/oauth2/callback`
+          client_id: await getClientIdNetlify(),
+          client_secret: await getClientSecretNetlify(),
+          redirect_uri: `${await getSiteURL()}/integrations/netlify/oauth2/callback`
         } as any)
       )
     ).data;
@@ -333,10 +333,10 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
     res = (
       await request.get(INTEGRATION_GITHUB_TOKEN_URL, {
         params: {
-          client_id: getClientIdGitHub(),
-          client_secret: getClientSecretGitHub(),
+          client_id: await getClientIdGitHub(),
+          client_secret: await getClientSecretGitHub(),
           code: code,
-          redirect_uri: `${getSiteURL()}/integrations/github/oauth2/callback`
+          redirect_uri: `${await getSiteURL()}/integrations/github/oauth2/callback`
         },
         headers: {
           'Accept': 'application/json',
@@ -379,9 +379,9 @@ const exchangeCodeGitlab = async ({ code }: { code: string }) => {
         new URLSearchParams({
           grant_type: 'authorization_code',
           code: code,
-          client_id: getClientIdGitLab(),
-          client_secret: getClientSecretGitLab(),
-          redirect_uri: `${getSiteURL()}/integrations/gitlab/oauth2/callback`
+          client_id: await getClientIdGitLab(),
+          client_secret: await getClientSecretGitLab(),
+          redirect_uri: `${await getSiteURL()}/integrations/gitlab/oauth2/callback`
         } as any),
         {
           headers: {

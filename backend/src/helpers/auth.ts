@@ -104,7 +104,7 @@ const getAuthUserPayload = async ({
 	authTokenValue: string;
 }) => {
 	const decodedToken = <jwt.UserIDJwtPayload>(
-		jwt.verify(authTokenValue, getJwtAuthSecret())
+		jwt.verify(authTokenValue, await getJwtAuthSecret())
 	);
 
 	const user = await User.findOne({
@@ -263,16 +263,16 @@ const issueAuthTokens = async ({ userId }: { userId: string }) => {
 		payload: {
 			userId
 		},
-		expiresIn: getJwtAuthLifetime(),
-		secret: getJwtAuthSecret()
+		expiresIn: await getJwtAuthLifetime(),
+		secret: await getJwtAuthSecret()
 	});
 
 	const refreshToken = createToken({
 		payload: {
 			userId
 		},
-		expiresIn: getJwtRefreshLifetime(),
-		secret: getJwtRefreshSecret()
+		expiresIn: await getJwtRefreshLifetime(),
+		secret: await getJwtRefreshSecret()
 	});
 
 	return {

@@ -44,7 +44,7 @@ export const getIntegrationAuth = async (req: Request, res: Response) => {
 }
 
 export const getIntegrationOptions = async (req: Request, res: Response) => {
-	const INTEGRATION_OPTIONS = getIntegrationOptionsFunc();
+	const INTEGRATION_OPTIONS = await getIntegrationOptionsFunc();
 
 	return res.status(200).send({
 		integrationOptions: INTEGRATION_OPTIONS,
