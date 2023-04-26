@@ -189,11 +189,11 @@ const deleteOrganization = async ({
         }
 
         // delete the stripe customer
-        const stripe = new Stripe(getStripeSecretKey(), {
+        const stripe = new Stripe(await getStripeSecretKey(), {
             apiVersion: '2022-08-01'
         });
 
-        if (getStripeSecretKey()) {
+        if (await getStripeSecretKey()) {
             const customer = await stripe.customers.list({
                 email: email,
                 limit: 1
