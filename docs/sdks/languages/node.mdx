@@ -4,6 +4,38 @@ title: "Node"
 
 If you're working with Node.js, the official [infisical-node](https://github.com/Infisical/infisical-node) package is the easiest way to fetch and work with secrets for your application.
 
+## Basic Usage
+
+```js
+import InfisicalClient from "infisical-node";
+import express from "express";
+const app = express();
+const PORT = 3000;
+
+const client = new InfisicalClient({
+  token: "YOUR_INFISICAL_TOKEN"
+});
+
+app.get("/", async (req, res) => {
+  // access value
+  const name = await client.getSecret("NAME");
+  res.send(`Hello! My name is: ${name.secretValue}`);
+});
+
+app.listen(PORT, async () => {
+  // initialize client
+  console.log(`App listening on port ${port}`);
+});
+```
+
+This example demonstrates how to use the Infisical SDK with an Express application. The application retrieves a secret named "NAME" and responds to requests with a greeting that includes the secret value.
+
+<Warning>
+  We do not recommend hardcoding your [Infisical
+  Token](/getting-started/dashboard/token). Setting it as an environment
+  variable would be best.
+</Warning>
+
 ## Installation
 
 Run `npm` to add `infisical-node` to your project.
@@ -154,34 +186,4 @@ Delete a secret in Infisical.
   </Expandable>
 </ResponseField>
 
-## Example with Express
 
-```js
-import InfisicalClient from "infisical-node";
-import express from "express";
-const app = express();
-const PORT = 3000;
-
-const client = new InfisicalClient({
-  token: "YOUR_INFISICAL_TOKEN"
-});
-
-app.get("/", async (req, res) => {
-  // access value
-  const name = await client.getSecret("NAME");
-  res.send(`Hello! My name is: ${name.secretValue}`);
-});
-
-app.listen(PORT, async () => {
-  // initialize client
-  console.log(`App listening on port ${port}`);
-});
-```
-
-This example demonstrates how to use the Infisical SDK with an Express application. The application retrieves a secret named "NAME" and responds to requests with a greeting that includes the secret value.
-
-<Warning>
-  We do not recommend hardcoding your [Infisical
-  Token](/getting-started/dashboard/token). Setting it as an environment
-  variable would be best.
-</Warning>
