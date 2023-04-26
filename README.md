@@ -63,7 +63,7 @@
 -   **Role-based Access Controls** per environment
 -   **2FA** (more options coming soon)
 -   **Smart Security Alerts**
--   🔜 **1-Click Deploy** to AWS
+-   [**1-Click Deploy** to AWS and Digital Ocean](https://infisical.com/docs/self-hosting/overview)
 -   🔜 **Automatic Secret Rotation**
 -   🔜 **Slack & MS Teams** integrations
 
