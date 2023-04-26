@@ -5,6 +5,7 @@ export interface ILoginSRPDetail {
 	clientPublicKey: string;
 	email: string;
 	serverBInt: mongoose.Schema.Types.Buffer;
+	userId: string;
 	expireAt: Date;
 }
 
@@ -16,10 +17,13 @@ const loginSRPDetailSchema = new Schema<ILoginSRPDetail>(
 		},
 		email: {
 			type: String,
-			required: true,
 			unique: true
 		},
 		serverBInt: { type: mongoose.Schema.Types.Buffer },
+		userId: {
+			type: String,
+			unique: true,
+		},
 		expireAt: { type: Date }
 	}
 );

@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 dotenv.config();
 import infisical from 'infisical-node';
@@ -63,6 +62,7 @@ import {
     tags as v2TagsRouter,
 } from './routes/v2';
 import {
+    auth as v3AuthRouter,
     secrets as v3SecretsRouter,
     workspaces as v3WorkspacesRouter
 } from './routes/v3';
@@ -164,8 +164,9 @@ const main = async () => {
     app.use('/api/v2/service-token', v2ServiceTokenDataRouter); // TODO: turn into plural route
     app.use('/api/v2/service-accounts', v2ServiceAccountsRouter); // new
     app.use('/api/v2/api-key', v2APIKeyDataRouter);
-    
+
     // v3 routes (experimental)
+    app.use('/api/v3/auth', v3AuthRouter);
     app.use('/api/v3/secrets', v3SecretsRouter);
     app.use('/api/v3/workspaces', v3WorkspacesRouter);
 
