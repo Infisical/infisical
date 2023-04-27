@@ -26,20 +26,33 @@ interface IsLoginSuccessful {
  * @param {string} password - password of user to log in
  */
 const attemptLogin = async (
-  email: string,
-  password: string
+  {
+    email,
+    password,
+    userId,
+  }: {
+    email: string;
+    userId?: string;
+    password: string;
+  }
 ): Promise<IsLoginSuccessful> => {
+
+  const username = userId ?? email;
   const telemetry = new Telemetry().getInstance();
   return new Promise((resolve, reject) => {
     client.init(
       {
-        username: email,
+        username,
         password
       },
       async () => {
         try {
           const clientPublicKey = client.getPublicKey();
-          const { serverPublicKey, salt } = await login1(email, clientPublicKey);
+          const { serverPublicKey, salt } = await login1({
+            email,
+            clientPublicKey,
+            userId,
+          });
 
           client.setSalt(salt);
           client.setServerPublicKey(serverPublicKey);
@@ -57,8 +70,11 @@ const attemptLogin = async (
             iv, 
             tag 
           } = await login2(
-            email,
-            clientProof
+            {
+              email,
+              userId,
+              clientProof,
+            }
           );
           
           if (mfaEnabled) {

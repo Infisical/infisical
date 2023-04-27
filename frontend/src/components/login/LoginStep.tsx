@@ -47,7 +47,10 @@ export default function LoginStep ({
             }
                         
             setIsLoading(true); 
-            const isLoginSuccessful = await attemptLogin(email, password);
+            const isLoginSuccessful = await attemptLogin({
+                email,
+                password,
+            });
             if (isLoginSuccessful && isLoginSuccessful.success) {
                 // case: login was successful
 

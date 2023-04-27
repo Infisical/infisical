@@ -84,7 +84,7 @@ router.post(
 );
 
 router.get(
-  '/login/federated/google',
+  '/login/google',
   authLimiter,
   passport.authenticate('google', {
     scope: ['profile', 'email'],

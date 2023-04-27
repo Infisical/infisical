@@ -17,16 +17,17 @@ interface Login2Response {
  * @param {*} clientPublicKey
  * @returns
  */
-const login2 = async (email: string, clientProof: string) => {
+const login2 = async (loginDetails: {
+  email: string;
+  clientProof: string;
+  userId?: string;
+}) => {
   const response = await fetch('/api/v2/auth/login2', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      email,
-      clientProof
-    }),
+    body: JSON.stringify(loginDetails),
     credentials: 'include'
   });
   // need precise error handling about the status code

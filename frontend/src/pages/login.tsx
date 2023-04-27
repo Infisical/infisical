@@ -8,7 +8,9 @@ import { useTranslation } from 'next-i18next';
 import ListBox from '@app/components/basic/Listbox';
 import LoginStep from '@app/components/login/LoginStep';
 import MFAStep from '@app/components/login/MFAStep';
+import PasswordInputStep from '@app/components/login/PasswordInputStep';
 import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
+import { useProviderAuth } from '@app/hooks/useProviderAuth';
 import { isLoggedIn } from '@app/reactQuery';
 
 import getWorkspaces from './api/workspace/getWorkspaces';
@@ -20,8 +22,14 @@ export default function Login() {
   const [step, setStep] = useState(1);
   const { t } = useTranslation();
   const lang = router.locale ?? 'en';
+  const [isLoginWithEmail, setIsLoginWithEmail] = useState(false);
+  const {
+      providerAuthToken,
+      userId,
+      email: providerEmail,
+      setProviderAuthToken
+  } = useProviderAuth();
   
-
   const setLanguage = async (to: string) => {
     router.push('/login', '/login', { locale: to });
     localStorage.setItem('lang', to);
@@ -44,30 +52,58 @@ export default function Login() {
     }
   }, []);
   
-  const renderStep = (loginStep: number) => {
-    // TODO: add MFA step
-    switch (loginStep) {
-      case 1:
-        return (
-          <LoginStep
-            email={email}
-            setEmail={setEmail}
-            password={password}
-            setPassword={setPassword}
-            setStep={setStep}
-          />
-        );
-      case 2:
-        // TODO: add MFA step
-        return (
-          <MFAStep
-            email={email}
-            password={password}
-          />
-        );
-      default:
-        return <div />
+  const renderView = (loginStep: number) => {
+
+    if (providerAuthToken && step === 1) {
+      return (
+        <PasswordInputStep
+          userId={userId}
+          email={providerEmail}
+          password={password}
+          setPassword={setPassword}
+          setProviderAuthToken={setProviderAuthToken}
+          setStep={setStep}
+        />
+      )
     }
+
+    if (isLoginWithEmail && loginStep === 1) {
+      return (
+        <LoginStep
+          email={email}
+          setEmail={setEmail}
+          password={password}
+          setPassword={setPassword}
+          setStep={setStep}
+        />
+      )
+    }
+
+    if (!isLoginWithEmail && loginStep === 1) {
+      return (
+        <>
+          <button type='button' className='text-white' onClick={() => {
+            window.open('/api/v1/auth/login/google')
+          }}>
+            Continue with Google
+          </button>
+          <button type='button' className='text-white' onClick={() => {
+              setIsLoginWithEmail(true);
+          }}>
+            Continue with Email
+          </button>
+        </>
+      )
+    }
+
+    if (step === 2) {
+      <MFAStep
+        email={email || providerEmail}
+        password={password}
+      />
+    }
+
+    return <div />
   }
 
   return (
@@ -84,7 +120,7 @@ export default function Login() {
           <Image src="/images/biglogo.png" height={90} width={120} alt="long logo" />
         </div>
       </Link>
-      {renderStep(step)}
+      {renderView(step)}
       <div className="absolute right-4 top-0 mt-4 flex items-center justify-center">
         <div className="w-48 mx-auto">
           <ListBox

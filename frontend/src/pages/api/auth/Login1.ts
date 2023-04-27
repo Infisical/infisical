@@ -9,16 +9,17 @@ interface Login1 {
  * @param {*} clientPublicKey
  * @returns
  */
-const login1 = async (email: string, clientPublicKey: string) => {
+const login1 = async (loginDetails: {
+  email: string;
+  clientPublicKey: string;
+  userId?: string;
+}) => {
   const response = await fetch("/api/v2/auth/login1", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      email,
-      clientPublicKey,
-    }),
+    body: JSON.stringify(loginDetails),
   });
   // need precise error handling about the status code
   if (response?.status === 200) {
