@@ -211,8 +211,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
     } catch (err) {
       console.log(err);
     }
-
-    console.log(currentWorkspace); // aashish testing
     
   }, [workspaceSelected]);
 
