@@ -71,6 +71,11 @@ spec:
   If you are fetching secrets from a self hosted instance of Infisical set the value of `hostAPI` to 
   ` https://your-self-hosted-instace.com/api`
 
+    If you are self-hosting and want to access Infisical backend's service directly you can use a hostAPI configuration as below.
+  ``` bash
+  http://<backend-svc-name>.<namespace>.svc.cluster.local:4000/api
+  ```
+
   When `hostAPI` is not defined the operator fetches secrets from Infisical Cloud. 
 </Accordion>
 
