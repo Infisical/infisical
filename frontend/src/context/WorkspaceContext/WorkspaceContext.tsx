@@ -23,7 +23,8 @@ export const WorkspaceProvider = ({ children }: Props): JSX.Element => {
 
   // memorize the workspace details for the context
   const value = useMemo<TWorkspaceContext>(() => {
-    const wsId = workspaceId || localStorage.getItem('projectData.id');
+    // const wsId = workspaceId || localStorage.getItem('projectData.id');
+    const wsId = workspaceId || "";
     return {
       workspaces: ws || [],
       currentWorkspace: (ws || []).find(({ _id: id }) => id === wsId),

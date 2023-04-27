@@ -87,12 +87,26 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const [workspaceMapping, setWorkspaceMapping] = useState<Map<string, string>[]>([]);
   const [workspaceSelected, setWorkspaceSelected] = useState('∞');
   const [totalOnboardingActionsDone, setTotalOnboardingActionsDone] = useState(0);
+  const [hasOrganizations, setHasOrganization] = useState(true);
 
   const { t } = useTranslation();
 
   // TODO(akhilmhdh): This entire logic will be rechecked and will try to avoid
   // Placing the localstorage as much as possible
   // Wait till tony integrates the azure and its launched
+
+
+  // small check. if no organization then the add-project from the sidebar should disappear from noOrganization page.
+  useEffect(() => {
+    async function DoesUserHasOrganizations() {
+      const userOrgs = await getOrganizations();
+      if (!userOrgs || userOrgs?.length === 0){
+        setHasOrganization(false);
+      }
+    }
+    DoesUserHasOrganizations();
+  }, [])
+
   useEffect(() => {
     // Put a user in a workspace if they're not in one yet
 
@@ -197,6 +211,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
     } catch (err) {
       console.log(err);
     }
+
+    console.log(currentWorkspace); // aashish testing
+    
   }, [workspaceSelected]);
 
   const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
@@ -294,17 +311,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     </Select>
                   </div>
                 ) : (
-                  <div className="w-full p-4 mt-3 mb-4">
-                    <Button
-                      className="w-full py-2 text-bunker-200 bg-mineshaft-500 hover:bg-primary/90 hover:text-black"
-                      color="mineshaft"
-                      size="sm"
-                      onClick={() => handlePopUpOpen('addNewWs')}
-                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                    >
-                      Add Project
-                    </Button>
-                  </div>
+                  hasOrganizations && 
+                    <div className="w-full p-4 mt-3 mb-4">
+                      <Button
+                        className="w-full py-2 text-bunker-200 bg-mineshaft-500 hover:bg-primary/90 hover:text-black"
+                        color="mineshaft"
+                        size="sm"
+                        onClick={() => handlePopUpOpen('addNewWs')}
+                        leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                      >
+                        Add Project
+                      </Button>
+                    </div>
                 )}
                 <div className={`${currentWorkspace ? 'block' : 'hidden'}`}>
                   <Menu>
