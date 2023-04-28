@@ -10,7 +10,7 @@ export type RenameOrgDTO = {
   newOrgName: string;
 };
 
-export type CreateNewOrganization = {
+export type CreateNewOrganizationDTO = {
   newOrgName: string;
 }
 
@@ -22,6 +22,6 @@ export type NewOrganizationResponse = {
   }
 }
 
-export type DeleteOrganization = {
+export type DeleteOrganizationDTO = {
   organizationId: string;
 }

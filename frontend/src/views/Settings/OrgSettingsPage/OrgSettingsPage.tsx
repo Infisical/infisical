@@ -325,9 +325,6 @@ export const OrgSettingsPage = () => {
           >
             Delete Organization
           </button>
-          <p className="mt-0.5 ml-1 text-xs text-gray-500">
-            Note: You can only delete a organization in case you have more than one.
-          </p>
         </div>
       </div>
     </div>
