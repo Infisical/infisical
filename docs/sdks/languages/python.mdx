@@ -1,8 +1,169 @@
 ---
 title: "Python"
+icon: "python"
 ---
 
-Coming soon.
+If you're working with Python, the official [infisical-python](https://github.com/Infisical/infisical-python) package is the easiest way to fetch and work with secrets for your application.
+
+## Basic Usage
+
+```py
+from flask import Flask
+from infisical import InfisicalClient
+
+app = Flask(__name__)
+
+client = InfisicalClient(token="your_infisical_token")
+
+@app.route("/")
+def hello_world():
+    # access value
+    name = client.get_secret("NAME")
+    return f"Hello! My name is: {name.secret_value}"
+```
+
+This example demonstrates how to use the Infisical Python SDK with a Flask application. The application retrieves a secret named "NAME" and responds to requests with a greeting that includes the secret value.
+
+<Warning>
+  We do not recommend hardcoding your [Infisical
+  Token](/getting-started/dashboard/token). Setting it as an environment
+  variable would be best.
+</Warning>
+
+## Installation
+
+Run `pip` to add `infisical-python` to your project
+
+```console
+$ pip install infisical
+```
+
+Note: You need Python 3.7+.
+
+## Configuration
+
+Import the SDK and create a client instance with your Infisical token.
+
+```py
+from infisical import InfisicalClient
+
+client = InfisicalClient(token="your_infisical_token")
+```
+
+### Parameters
+
+    <ParamField query="token" type="string" optional>
+      An [Infisical Token](/getting-started/dashboard/token) scoped to a project
+      and environment
+    </ParamField>
+    <ParamField
+      query="site_url"
+      type="string"
+      default="https://app.infisical.com"
+      optional
+    >
+      Your self-hosted absolute site URL including the protocol (e.g.
+      `https://app.infisical.com`)
+    </ParamField>
+    <ParamField query="cache_ttl" type="number" default="300" optional>
+      Time-to-live (in seconds) for refreshing cached secrets. Default: `300`.
+    </ParamField>
+    <ParamField query="debug" type="boolean" default="false" optional>
+      Whether or not debug mode is on
+    </ParamField>
+
+## Caching
+
+The SDK caches every secret and updates it periodically based on the provided `cache_ttl`. For example, if `cache_ttl` of `300` is provided, then a secret will be refetched 5 minutes after the first fetch; if the fetch fails, the cached secret is returned.
+
+<Tip>
+  For optimal performance, we recommend creating a single instance of the Infisical client and exporting it to be used across your entire app to take advantage of caching benefits.
+</Tip>
+
+## Working with Secrets
+
+### client.get_all_secrets()
+
+```py
+secrets = client.get_all_secrets()
+```
+
+Retrieve all secrets within the Infisical project and environment that client is connected to
+
+### client.get_secret(secret_name, options)
+
+```py
+secret = client.get_secret("API_KEY")
+value = secret.secret_value # get its value
+```
+
+By default, `get_secret()` fetches and returns a personal secret. If not found, it returns a shared secret, or tries to retrieve the value from `os.environ`. If a secret is fetched, `get_secret()` caches it to reduce excessive calls and re-fetches periodically based on the `cacheTTL` option (default is 300 seconds) when initializing the client — for more information, see the caching section.
+
+### Parameters
+
+<ParamField query="secret_name" type="string" required>
+  The key of the secret to retrieve
+</ParamField>
+<ParamField query="type" type="string" default="personal" optional>
+  The type of the secret. Valid options are "shared" or "personal"
+</ParamField>
+
+### client.create_secret(secret_name, secret_value, options)
+
+```py
+new_api_key = client.create_secret("API_KEY", "FOO");
+```
+
+Create a new secret in Infisical.
+
+### Parameters
+
+<ParamField query="secret_name" type="string" required>
+  The key of the secret to create
+</ParamField>
+<ParamField query="secret_value" type="string" required>
+  The value of the secret to create
+</ParamField>
+<ParamField query="type" type="string" default="shared" optional>
+  The type of the secret. Valid options are "shared" or "personal". A personal secret can only be created if a shared secret with the same name exists.
+</ParamField>
+
+### client.update_secret(secret_name, secret_value, options)
+
+```py
+updated_api_key = client.update_secret("API_KEY", "BAR");
+```
+
+Update an existing secret in Infisical.
+
+### Parameters
+
+<ParamField query="secret_name" type="string" required>
+  The key of the secret to update
+</ParamField>
+<ParamField query="secret_value" type="string" required>
+  The new value of the secret
+</ParamField>
+<ParamField query="type" type="string" default="shared" optional>
+  The type of the secret. Valid options are "shared" or "personal"
+</ParamField>
+
+### client.delete_secret(secret_name, options)
+
+```py
+deleted_secret = client.delete_secret("API_KEY");
+```
+
+Delete a secret in Infisical.
+
+### Parameters
+
+<ParamField query="secret_name" type="string" required>
+  The key of the secret to delete
+</ParamField>
+<ParamField query="type" type="string" default="shared" optional>
+  The type of the secret. Valid options are "shared" or "personal"
+</ParamField>
 
 Follow this GitHub
 [issue](https://github.com/Infisical/infisical/issues/433) to stay updated.

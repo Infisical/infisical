@@ -72,6 +72,17 @@ spec:
   ` https://your-self-hosted-instace.com/api`
 
   When `hostAPI` is not defined the operator fetches secrets from Infisical Cloud. 
+
+  <Accordion title="Advanced use case">
+    If you have installed your Infisical instance within the same cluster as the Infisical operator, you can optionally access the Infisical backend's service directly without having to route through the public internet. 
+    To achieve this, use the following address for the hostAPI field:
+    
+    ``` bash
+    http://<backend-svc-name>.<namespace>.svc.cluster.local:4000/api
+    ```
+
+    Make sure to replace `<backend-svc-name>` and `<namespace>` with the appropriate values for your backend service and namespace.
+  </Accordion>
 </Accordion>
 
 <Accordion title="authentication">
