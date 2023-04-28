@@ -51,9 +51,21 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
   const { createNotification } = useNotificationContext();
 
   const workspaceId = router.query.id as string;
+
+  // Check if user can be deleted from the workspace
+  const canDelete = (email: string) => {
+    // non-admin members can only delete themselves
+    if (myRole === 'member') {
+      return myUser === email;
+    }
+
+    // admins can delete anyone except the last admin in the workspace
+    return userData.some((u) => u.email !== email && u.role === 'admin');
+  }
+
   // Delete the row in the table (e.g. a user)
   // #TODO: Add a pop-up that warns you that the user is going to be deleted.
-  const handleDelete = (membershipId: string, index: number) => {
+  const handleDelete = (membershipId: string, email: string, index: number) => {
     // setUserIdToBeDeleted(userId);
     // onClick();
     deleteUserFromWorkspace(membershipId);
@@ -62,6 +74,11 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
       ...roleSelected.slice(0, index),
       ...roleSelected.slice(index + 1, userData?.length)
     ]);
+
+    // when deleting themselves, redirect to the home page and let default logic handle the rest
+    if (email === myUser) {
+      router.push('/');
+    }
   };
 
   // Update the rold of a certain user
@@ -374,18 +391,17 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
                     </td>
                   ))}
                   <td className="border-0.5 flex flex-row justify-end border-t border-mineshaft-700 py-2 pl-8 pr-8">
-                    {myUser !== row.email &&
-                    // row.role !== "admin" &&
-                    myRole !== 'member' ? (
+                    {canDelete(row.email) ? (
                       <div className="mt-0.5 flex items-center opacity-50 hover:opacity-100">
                         <Button
-                          onButtonPressed={() => handleDelete(row.membershipId, index)}
+                          onButtonPressed={() => handleDelete(row.membershipId, row.email, index)}
                           color="red"
                           size="icon-sm"
                           icon={faX}
                         />
                       </div>
                     ) : (
+                      // TODO: Show disabled button with a tooltip explaining why user cannot be deleted
                       <div className="h-9 w-9" />
                     )}
                   </td>

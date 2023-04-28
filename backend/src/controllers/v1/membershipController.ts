@@ -74,9 +74,24 @@ export const deleteMembership = async (req: Request, res: Response) => {
 			throw new Error('Failed to validate workspace membership');
 		}
 
-		if (membership.role !== ADMIN) {
-			// user is not an admin member of the workspace
-			throw new Error('Insufficient role for deleting workspace membership');
+		if (
+			membership.role !== ADMIN &&
+			!membership.user.equals(membershipToDelete.user._id)
+		) {
+			// user is not an admin member of the workspace or not deleting their own membership
+			throw new Error("Insufficient role for deleting workspace membership");
+		}
+
+		// do not allow deletion of last admin in the workspace
+		if (membership.role === ADMIN) {
+			const anotherAdmin = await Membership.findOne({
+				user: { $ne: membershipToDelete.user._id },
+				workspace: membershipToDelete.workspace,
+				role: ADMIN,
+			});
+			if (!anotherAdmin) {
+				throw new Error("Cannot delete the last admin in the workspace");
+			}
 		}
 
 		// delete workspace membership
