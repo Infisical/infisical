@@ -158,6 +158,14 @@ const createOrganization = async ({
     return organization;
 };
 
+
+/**
+ * Delete an organization
+ * @param {Object} obj
+ * @param {String} obj.orgId - Id of organization to delete.
+ * @param {String} obj.email - for Sentry
+ * @return {Object} organization - organization that gets deleted
+ */
 const deleteOrganization = async ({
     email,
     orgId
@@ -168,7 +176,7 @@ const deleteOrganization = async ({
     let organization;
     try {
         // delete the organization itself
-        const organization = await Organization.findByIdAndDelete(orgId);
+        organization = await Organization.findByIdAndDelete(orgId);
 
         // delete all the membersOrg
         await MembershipOrg.deleteMany({
@@ -194,11 +202,7 @@ const deleteOrganization = async ({
         });
 
         if (await getStripeSecretKey()) {
-            const customer = await stripe.customers.list({
-                email: email,
-                limit: 1
-            });
-            const customerId = customer.data[0].id;
+            const customerId = organization?.customerId || "";
             await stripe.customers.del(customerId);
         }
     } catch (err) {
