@@ -10,13 +10,8 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import {
   faBookOpen,
-  faFileLines,
-  faGear,
-  faKey,
   faMobile,
-  faPlug,
   faPlus,
-  faUser
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -255,7 +250,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       <div className="hidden h-screen w-full flex-col overflow-x-hidden md:flex dark">
         <Navbar />
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
-          <aside className="w-full border-r border-mineshaft-500 bg-mineshaft-900 md:w-60">
+          <aside className="w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between">
               <div>
                 {currentWorkspace ? (
@@ -317,7 +312,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <a>
                         <MenuItem
                           isSelected={router.asPath.includes(`/dashboard/${currentWorkspace?._id}`)}
-                          icon={<FontAwesomeIcon icon={faKey} size="lg" />}
+                          icon="system-outline-90-lock-closed"
                         >
                           {t('nav:menu.secrets')}
                         </MenuItem>
@@ -327,7 +322,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <a>
                         <MenuItem
                           isSelected={router.asPath === `/users/${currentWorkspace?._id}`}
-                          icon={<FontAwesomeIcon icon={faUser} size="lg" />}
+                          icon="system-outline-96-groups"
                         >
                           {t('nav:menu.members')}
                         </MenuItem>
@@ -337,21 +332,20 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       <a>
                         <MenuItem
                           isSelected={router.asPath === `/integrations/${currentWorkspace?._id}`}
-                          icon={<FontAwesomeIcon icon={faPlug} size="lg" />}
+                          icon="system-outline-82-extension"
                         >
                           {t('nav:menu.integrations')}
                         </MenuItem>
                       </a>
                     </Link>
                     <Link href={`/activity/${currentWorkspace?._id}`} passHref>
-                      <a>
                         <MenuItem
                           isSelected={router.asPath === `/activity/${currentWorkspace?._id}`}
-                          icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
+                          // icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
+                          icon="system-outline-168-view-headline"
                         >
                           Audit Logs
                         </MenuItem>
-                      </a>
                     </Link>
                     <Link href={`/settings/project/${currentWorkspace?._id}`} passHref>
                       <a>
@@ -359,7 +353,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           isSelected={
                             router.asPath === `/settings/project/${currentWorkspace?._id}`
                           }
-                          icon={<FontAwesomeIcon icon={faGear} size="lg" />}
+                          icon="system-outline-109-slider-toggle-settings"
                         >
                           {t('nav:menu.project-settings')}
                         </MenuItem>

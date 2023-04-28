@@ -15,6 +15,9 @@ jobs:
       - name: 🧪 Run tests
         run: npm run test:ci
         working-directory: backend
+      - name: Check if Jest tests failed
+        if: ${{ always() }} && ${{ steps.backend-test.outcome }} != 'success'
+        run: exit 1
       - name: Save commit hashes for tag
         id: commit
         uses: pr-mpt/actions-commit-hash@v2
