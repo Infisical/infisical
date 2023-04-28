@@ -243,7 +243,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       <div className="hidden h-screen w-full flex-col overflow-x-hidden md:flex dark">
         <Navbar />
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
-          <aside className="w-full border-r border-mineshaft-500 bg-mineshaft-900 md:w-60">
+          <aside className="w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between">
               <div>
                 {currentWorkspace ? (
