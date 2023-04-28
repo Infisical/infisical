@@ -192,7 +192,7 @@ const deleteOrganization = async ({
         ).map((m) => m.id);
 
         // delete all the workspaces one by one
-        for (const id of workspaceIds) {
+        for await (const id of workspaceIds) {
             await deleteWorkspace({ id });
         }
 
