@@ -52,7 +52,7 @@
     "cookies": "^0.8.0",
     "cva": "npm:class-variance-authority@^0.4.0",
     "framer-motion": "^6.2.3",
-    "fs": "^0.0.1-security",
+    "fs": "^0.0.2",
     "gray-matter": "^4.0.3",
     "http-proxy": "^1.18.1",
     "i18next": "^22.4.9",
