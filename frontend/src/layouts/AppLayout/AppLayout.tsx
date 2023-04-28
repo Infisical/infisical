@@ -42,6 +42,7 @@ import {
 import { useOrganization, useUser, useWorkspace } from '@app/context';
 import { usePopUp } from '@app/hooks';
 import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useUploadWsKey } from '@app/hooks/api';
+import useUserHasOrganization from '@app/hooks/api/organization/useUserHasOrganization';
 import getOrganizations from '@app/pages/api/organization/getOrgs';
 import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserProjects';
 
@@ -87,25 +88,13 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const [workspaceMapping, setWorkspaceMapping] = useState<Map<string, string>[]>([]);
   const [workspaceSelected, setWorkspaceSelected] = useState('∞');
   const [totalOnboardingActionsDone, setTotalOnboardingActionsDone] = useState(0);
-  const [hasOrganizations, setHasOrganization] = useState(true);
+  const hasOrganizations = useUserHasOrganization();
 
   const { t } = useTranslation();
 
   // TODO(akhilmhdh): This entire logic will be rechecked and will try to avoid
   // Placing the localstorage as much as possible
   // Wait till tony integrates the azure and its launched
-
-
-  // small check. if no organization then the add-project from the sidebar should disappear from noOrganization page.
-  useEffect(() => {
-    async function DoesUserHasOrganizations() {
-      const userOrgs = await getOrganizations();
-      if (!userOrgs || userOrgs?.length === 0){
-        setHasOrganization(false);
-      }
-    }
-    DoesUserHasOrganizations();
-  }, [])
 
   useEffect(() => {
     // Put a user in a workspace if they're not in one yet
