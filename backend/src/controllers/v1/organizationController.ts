@@ -85,7 +85,7 @@ export const createOrganization = async (req: Request, res: Response) => {
 export const getOrganization = async (req: Request, res: Response) => {
 	let organization;
 	try {
-		organization = req.membershipOrg.organization;
+		organization = req.organization
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
@@ -323,14 +323,14 @@ export const createOrganizationPortalSession = async (
 
 		// check if there is a payment method on file
 		const paymentMethods = await stripe.paymentMethods.list({
-			customer: req.membershipOrg.organization.customerId,
+			customer: req.organization.customerId,
 			type: 'card'
 		});
-
+		
 		if (paymentMethods.data.length < 1) {
 			// case: no payment method on file
 			session = await stripe.checkout.sessions.create({
-				customer: req.membershipOrg.organization.customerId,
+				customer: req.organization.customerId,
 				mode: 'setup',
 				payment_method_types: ['card'],
 				success_url: (await getSiteURL()) + '/dashboard',
@@ -338,7 +338,7 @@ export const createOrganizationPortalSession = async (
 			});
 		} else {
 			session = await stripe.billingPortal.sessions.create({
-				customer: req.membershipOrg.organization.customerId,
+				customer: req.organization.customerId,
 				return_url: (await getSiteURL()) + '/dashboard'
 			});
 		}
@@ -370,7 +370,7 @@ export const getOrganizationSubscriptions = async (
 		});
 		
 		subscriptions = await stripe.subscriptions.list({
-			customer: req.membershipOrg.organization.customerId
+			customer: req.organization.customerId
 		});
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
