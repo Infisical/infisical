@@ -80,7 +80,17 @@
       "group": "Overview",
       "pages": [
         "getting-started/introduction",
-        "getting-started/quickstart",
+        {
+          "group": "Quickstarts",
+          "pages": [
+            "getting-started/quickstarts/overview",
+            "getting-started/quickstarts/platform",
+            "getting-started/quickstarts/sdks",
+            "getting-started/quickstarts/cli",
+            "getting-started/quickstarts/docker",
+            "getting-started/quickstarts/k8s"
+          ]
+        },
         "getting-started/features"
       ]
     },
@@ -199,7 +209,8 @@
         "sdks/languages/java",
         "sdks/languages/ruby",
         "sdks/languages/go",
-        "sdks/languages/rust"
+        "sdks/languages/rust",
+        "sdks/languages/php"
       ]
     },
     {

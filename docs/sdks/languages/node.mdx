@@ -24,12 +24,11 @@ app.get("/", async (req, res) => {
 });
 
 app.listen(PORT, async () => {
-  // initialize client
-  console.log(`App listening on port ${port}`);
+  console.log(`App listening on port ${PORT}`);
 });
 ```
 
-This example demonstrates how to use the Infisical SDK with an Express application. The application retrieves a secret named "NAME" and responds to requests with a greeting that includes the secret value.
+This example demonstrates how to use the Infisical Node SDK with an Express application. The application retrieves a secret named "NAME" and responds to requests with a greeting that includes the secret value.
 
 <Warning>
   We do not recommend hardcoding your [Infisical
@@ -47,7 +46,7 @@ $ npm install infisical-node --save
 
 ## Configuration
 
-Import the SDK and create a client instance with your Infisical token.
+Import the SDK and create a client instance with your [Infisical Token](/getting-started/dashboard/token).
 
 <Tabs>
   <Tab title="ES6">
@@ -57,8 +56,6 @@ Import the SDK and create a client instance with your Infisical token.
     const client = new InfisicalClient({
       token: "your_infisical_token"
     });
-
-    // your app logic
     ```
 
   </Tab>
@@ -69,8 +66,6 @@ Import the SDK and create a client instance with your Infisical token.
     const client = new InfisicalClient({
       token: "your_infisical_token"
     });
-
-    // your app logic
     ````
   </Tab>
 
