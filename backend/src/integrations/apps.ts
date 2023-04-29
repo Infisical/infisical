@@ -270,28 +270,59 @@ const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
 const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
   let apps;
   try {
+    interface GitHubApp {
+      id: string;
+      name: string;
+      permissions: {
+        admin: boolean;
+      };
+      owner: {
+        login: string;
+      }
+    }
+
     const octokit = new Octokit({
       auth: accessToken,
     });
 
-    const repos = (
-      await octokit.request(
-        "GET /user/repos{?visibility,affiliation,type,sort,direction,per_page,page,since,before}",
-        {
-          per_page: 100,
+    const getAllRepos = async () => {
+      let repos: GitHubApp[] = [];
+      let page = 1;
+      const per_page = 100;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await octokit.request(
+          "GET /user/repos{?visibility,affiliation,type,sort,direction,per_page,page,since,before}",
+          {
+            per_page,
+            page,
+          }
+        );
+        
+        if (response.data.length > 0) {
+          repos = repos.concat(response.data);
+          page++;
+        } else {
+          hasMore = false;
         }
-      )
-    ).data;
+      }
+
+      return repos;
+    };
+
+    const repos = await getAllRepos();
 
     apps = repos
-      .filter((a: any) => a.permissions.admin === true)
-      .map((a: any) => {
-        return ({
+      .filter((a: GitHubApp) => a.permissions.admin === true)
+      .map((a: GitHubApp) => {
+        return {
           appId: a.id,
           name: a.name,
           owner: a.owner.login,
-        });
+        };
       });
+    
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);

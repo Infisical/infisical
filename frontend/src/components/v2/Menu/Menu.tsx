@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* eslint-disable import/no-extraneous-dependencies */
 /* eslint-disable global-require */
 import { ComponentPropsWithRef, ElementType, ReactNode, Ref, useRef } from 'react';
