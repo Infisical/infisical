@@ -48,20 +48,25 @@
 <kbd>[<img title="Italian" alt="Italian language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/it.svg" width="22">](i18n/README.it.md)</kbd>
 <kbd>[<img title="Indian" alt="Hindi language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/in.svg" width="22">](i18n/README.hi.md)</kbd>
 
-## Table of Contents
-
-1. [Introduction](#introduction)
-2. [Getting started](#getting-started)
-3. [Features](#features)
-4. [Open-source vs paid](#open-source-vs-paid)
-5. [Security](#security)
-6. [Contributing](#contributing)
-7. [Resources](#resources)
-8. [Acknowledgements](#acknowledgements)
-
 ## Introduction
 
 **[Infisical](https://infisical.com)** is an open source, end-to-end encrypted secret manager which you can use to centralize your API keys and configs. From Infisical, you can then distribute these secrets across your whole development lifecycle - from development to production . It's designed to be simple and take minutes to get going.
+
+## Features
+
+-   **[User-friendly dashboard](https://infisical.com/docs/getting-started/dashboard/project)** to manage secrets across projects and environments (e.g. development, production, etc.)
+- **[Client SDKs](https://infisical.com/docs/sdks/overview)** to fetch secrets for your apps and infrastructure on demand
+-   **[Infisical CLI](https://infisical.com/docs/cli/overview)** to fetch and inject secrets into any framework in local development
+-   **[Native integrations](https://infisical.com/docs/integrations/overview)** with platforms like GitHub, Vercel, Netlify, and more
+- [**Automatic Kubernetes deployment secret reloads**]()
+-   **[Complete control over your data](https://infisical.com/docs/self-hosting/overview)** - host it yourself on any infrastructure
+-   **[Secret versioning](https://infisical.com/docs/getting-started/dashboard/versioning)** and **[Point-in-Time Recovery]()** to version every secret and project state
+-   **[Audit logs](https://infisical.com/docs/getting-started/dashboard/audit-logs)** to record every action taken in a project
+-   **Role-based Access Controls** per environment
+-   [**Simple on-premise deployments** to AWS and Digital Ocean](https://infisical.com/docs/self-hosting/overview)
+- [**2FA**](https://infisical.com/docs/getting-started/dashboard/mfa) with more options coming soon
+
+And much more.
 
 ## Getting started
 
@@ -71,35 +76,26 @@
 
 The fastest and most reliable way to get started with Infisical is signing up for free to [Infisical Cloud](https://app.infisical.com/login).
 
-### Deploy Infisical to production
+### Deploy Infisical on premise
 
 Deployment options: [AWS EC2](https://infisical.com/docs/self-hosting/overview), [Kubernetes](https://infisical.com/docs/self-hosting/overview), and [more](https://infisical.com/docs/self-hosting/overview).
 
 ### Run Infisical locally
 
-To set up and run Infisical locally using Docker Compose, please execute the command provided below:
+To set up and run Infisical locally, make sure you have Git and Docker installed on your system. Then run the command for your system:
+
+Linux/macOS:
 
 ```console
 git clone https://github.com/Infisical/infisical && cd "$(basename $_ .git)" && cp .env.example .env && docker-compose -f docker-compose.dev.yml up --build
 ```
 
-To quickly get started, visit our [get started guide](https://infisical.com/docs/getting-started/introduction).
+Windows Command Prompt:
 
-## Features
+```console
+git clone https://github.com/Infisical/infisical && cd infisical && copy .env.example .env && docker-compose -f docker-compose.dev.yml up --build
+```
 
--   **[User-Friendly Dashboard](https://infisical.com/docs/getting-started/dashboard/project)** to manage secrets across projects and environments (e.g. development, production, etc.)
-- **[Client SDKs](https://infisical.com/docs/sdks/overview)** to fetch secrets for your apps and infrastructure on demand.
--   **[Infisical CLI](https://infisical.com/docs/cli/overview)** to fetch and inject secrets into any framework in local development.
--   **[Native Integrations](https://infisical.com/docs/integrations/overview)** with platforms like GitHub, Vercel, Netlify, and more.
--   **[Complete control over your data](https://infisical.com/docs/self-hosting/overview)** - host it yourself on any infrastructure
--   **Personal overrides** for secrets and configs
--   **[Secret Versioning](https://infisical.com/docs/getting-started/dashboard/versioning)** and **[Point-in-Time Recovery]()** to version every secret and project state.
--   **[Audit Logs](https://infisical.com/docs/getting-started/dashboard/audit-logs)** to record every action taken in a project
--   **Role-based Access Controls** per environment
--   [**1-Click Deploy** to AWS and Digital Ocean](https://infisical.com/docs/self-hosting/overview)
-- [**2FA**](https://infisical.com/docs/getting-started/dashboard/mfa) with more options coming soon.
-
-And much more.
 
 ## Open-source vs. paid
 
