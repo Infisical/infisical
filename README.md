@@ -60,7 +60,7 @@ We're on a mission to make secret management more accessible to everyone, not ju
 - **[Client SDKs](https://infisical.com/docs/sdks/overview)** to fetch secrets for your apps and infrastructure on demand
 -   **[Infisical CLI](https://infisical.com/docs/cli/overview)** to fetch and inject secrets into any framework in local development
 -   **[Native integrations](https://infisical.com/docs/integrations/overview)** with platforms like GitHub, Vercel, Netlify, and more
-- [**Automatic Kubernetes deployment secret reloads**]()
+- [**Automatic Kubernetes deployment secret reloads**](https://infisical.com/docs/getting-started/quickstarts/kubernetes)
 -   **[Complete control over your data](https://infisical.com/docs/self-hosting/overview)** - host it yourself on any infrastructure
 -   **[Secret versioning](https://infisical.com/docs/getting-started/dashboard/versioning)** and **[Point-in-Time Recovery]()** to version every secret and project state
 -   **[Audit logs](https://infisical.com/docs/getting-started/dashboard/audit-logs)** to record every action taken in a project
