@@ -2,7 +2,9 @@
 title: "CLI"
 ---
 
-The Infisical CLI can be used to inject secrets for local development, CI/CD needs and Docker image as environment variables.
+The Infisical CLI can be used to inject secrets into any framework like Next.js, Express, Django and more in local development.
+
+It can also be used to expose secrets from Infisical as environment variables in CI/CD pipelines and [Docker containers](/getting-started/quickstarts/docker)
 
 Prerequisites: 
 
@@ -108,28 +110,19 @@ $ infisical init
 ## Start your app with environment variables injected
 
 ```console
-$ infisical run -- [your application start command]
+$ infisical run -- <your_application_start_command>
 ```
 
-Your app should now be running with the secrets from Infisical injected as environment variables. To see view all possible commands for the CLI, visit the commands tab on the sidebar.
+## Example Start Commands
 
-CLI framework resources:
+```console
+$ infisical run -- npm run dev
+$ infisical run -- flask run
+$ infisical run -- ./your_bash_script.sh
+```
 
-- [Express/Koa/Fastify](/integrations/frameworks/express)
-- [NestJS](/integrations/frameworks/nestjs)
-- [Fiber](/integrations/frameworks/fiber)
-- [Django](/integrations/frameworks/django)
-- [Flask](/integrations/frameworks/flask)
-- [Laravel](/integrations/frameworks/laravel)
-- [Ruby on Rails](/integrations/frameworks/rails)
-- [React](/integrations/frameworks/react)
-- [Vue](/integrations/frameworks/vue)
-- [Next.js](/integrations/frameworks/nextjs)
-- [SvelteKit](/integrations/frameworks/sveltekit)
-- [Nuxt](/integrations/frameworks/nuxt)
-- [Gatsby](/integrations/frameworks/gatsby)
-- [Remix](/integrations/frameworks/remix)
-- [Vite](/integrations/frameworks/vite)
-- [Fiber](/integrations/frameworks/fiber)
+Your app should now be running with the secrets from Infisical injected as environment variables.
 
-Not seeing a framework? Throw in a [request](https://github.com/Infisical/infisical/issues).
+Resources:
+
+- [Documentation for the CLI](/cli/overview)
