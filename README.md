@@ -3,7 +3,7 @@
   <img width="300" src="/img/logoname-white.svg#gh-dark-mode-only" alt="infisical">
 </h1>
 <p align="center">
-  <p align="center">Open-source, end-to-end encrypted tool to manage secrets and configs across your team, devices, and infrastructure.</p>
+  <p align="center">Open-source, end-to-end encrypted platform to manage secrets and configs across your team and infrastructure.</p>
 </p>
 
 <h4 align="center">
@@ -70,7 +70,7 @@ And much more.
 
 ## Getting started
 
-| Check out the [Quickstarts](https://goteleport.com/docs/installation/) Guide
+| Check out the [Quickstarts](https://infisical.com/docs/getting-started/introduction) Guide
 
 ### Use Infisical Cloud
 
@@ -103,7 +103,7 @@ This repo available under the [MIT expat license](https://github.com/Infisical/i
 
 ## Security
 
-⚠️ Please do not file GitHub issues or post on our public forum for security vulnerabilities, as they are public! ⚠️
+⚠️ Please do not file GitHub issues or post on our public forum for security vulnerabilities, as they are public!
 
 Infisical takes security issues very seriously. If you have any concerns about Infisical or believe you have uncovered a vulnerability, please get in touch via the e-mail address security@infisical.com. In the message, try to provide a description of the issue and ideally a way of reproducing it. The security team will get back to you as soon as possible.
 
@@ -120,20 +120,14 @@ Not sure where to get started? You can:
 -   [Book a free, non-pressure pairing sessions with one of our teammates](mailto:tony@infisical.com?subject=Pairing%20session&body=I'd%20like%20to%20do%20a%20pairing%20session!)!
 -   Join our <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">Slack</a>, and ask us any questions there.
 
-## Translations
-
-Infisical is currently available in English, Korean, French, and Portuguese (Brazil). Help us translate Infisical to your language!
-
-You can find all the info in [this issue](https://github.com/Infisical/infisical/issues/181).
-
 ## Resources
 
-- [Slack](https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g)
+- [Docs](https://infisical.com/docs/getting-started/introduction) for comprehensive documentation and guides
+- [Slack](https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g) for discussion with the community and Infisical team.
 - [GitHub](https://github.com/Infisical/infisical) for code, issues, and pull requests
 - [Twitter](https://twitter.com/infisical) for fast news
 - [YouTube](https://www.youtube.com/@infisical5306) for videos on secret management
 - [Blog](https://infisical.com/blog) for secret management insights, articles, tutorials, and updates
-- Docs for Infisical features
 - [Roadmap](https://www.notion.so/infisical/be2d2585a6694e40889b03aef96ea36b?v=5b19a8127d1a4060b54769567a8785fa) for planned features
 
 ## Acknowledgements
