@@ -56,7 +56,7 @@ Prerequisites:
     docker run --env INFISICAL_TOKEN=<your_infisical_token> <DOCKER-IMAGE>
     ```
     
-    Your container should now be running with the secrets from Infisical available inside as environment variables.
+    Your containerized application should now be up and running with secrets from Infisical exposed as environment variables within your application's process.
     
     ## Example Dockerfile
     
@@ -79,10 +79,9 @@ Prerequisites:
     WORKDIR /app
 
     # Modify the start command of your Dockerfile
-    CMD ["infisical", "run", "--", "[your service start command]"]
+    CMD ["infisical", "run", "--", "npm run start"]
     ```
     
-
     </Tab>
     <Tab title="Docker Compose">
     
