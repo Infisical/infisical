@@ -7,7 +7,8 @@ import {
     IServiceAccount,
     ServiceAccount,
     IServiceTokenData,
-    ServiceTokenData
+    ServiceTokenData,
+    IncidentContactOrg
 } from '../models';
 import { Organization, MembershipOrg, Workspace, Membership } from '../models';
 import {
@@ -182,6 +183,10 @@ const deleteOrganization = async ({
         await MembershipOrg.deleteMany({
             organization: orgId
         });
+
+        await IncidentContactOrg.deleteMany({
+            organization: orgId
+        })
 
         // delete all the workspaces
         // first get all the workspaces ids
