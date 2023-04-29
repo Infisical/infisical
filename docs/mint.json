@@ -80,6 +80,7 @@
       "group": "Overview",
       "pages": [
         "getting-started/introduction",
+        "getting-started/introduction2",
         {
           "group": "Quickstarts",
           "pages": [
@@ -88,7 +89,7 @@
             "getting-started/quickstarts/sdks",
             "getting-started/quickstarts/cli",
             "getting-started/quickstarts/docker",
-            "getting-started/quickstarts/k8s"
+            "getting-started/quickstarts/kubernetes"
           ]
         },
         "getting-started/features"

@@ -1,0 +1,70 @@
+---
+title: "Kubernetes"
+---
+
+The Infisical Secrets Operator is a Kubernetes controller that retrieves secrets from Infisical and stores them in a designated cluster. 
+It uses an `InfisicalSecret` resource to specify authentication and storage methods.
+The operator continuously updates secrets and can also reload dependent deployments automatically.
+
+Prerequisites:
+
+- Have a project with secrets ready in [Infisical Cloud](https://app.infisical.com).
+
+## Installation
+
+Follow the instructions for either [Helm](https://helm.sh/) or [kubectl](https://github.com/kubernetes/kubectl) to install the Infisical Secrets Operator.
+
+<Tabs>
+    <Tab title="Helm">
+        Install the Infisical Helm repository
+        
+        ```console
+        helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/' 
+  
+        helm repo update
+        ```
+        
+        Install the Helm chart
+        ```console
+        helm install --generate-name infisical-helm-charts/secrets-operator
+        ```
+        
+    </Tab>
+    <Tab title="Kubectl">
+    The operator will be installed in `infisical-operator-system` namespace
+    ```
+    kubectl apply -f https://raw.githubusercontent.com/Infisical/infisical/main/k8-operator/kubectl-install/install-secrets-operator.yaml
+    ```
+    </Tab>
+</Tabs>
+
+## Sync Infisical Secrets to your cluster
+To retrieve secrets from an Infisical project and save them as native Kubernetes secrets within a specific namespace, utilize the `InfisicalSecret` custom resource definition (CRD). 
+This resource can be created after installing the Infisical operator. For each new managed secret, you will need to create a new InfisicalSecret CRD.
+
+```yaml
+apiVersion: secrets.infisical.com/v1alpha1
+kind: InfisicalSecret
+metadata:
+  # Name of of this InfisicalSecret resource
+  name: infisicalsecret-sample
+spec:
+  # The host that should be used to pull secrets from. If left empty, the value specified in Global configuration will be used
+  hostAPI: https://app.infisical.com/api
+  authentication:
+    serviceToken: # <-- option 1
+      serviceTokenSecretReference:
+        secretName: service-token
+        secretNamespace: option
+    serviceAccount: # <-- method 2
+      serviceAccountSecretReference:
+        secretName: service-account
+        secretNamespace: default
+      projectId: "6439ec224cfbf7ea2a95b651"
+      environmentName: "dev"
+  managedSecretReference:
+    secretName: managed-secret # <-- the name of kubernetes secret that will be created
+    secretNamespace: default # <-- where the kubernetes secret that will be created
+```
+
+
