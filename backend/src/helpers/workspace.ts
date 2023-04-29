@@ -14,7 +14,12 @@ import {
 	IServiceAccount,
 	ServiceTokenData,
 	IServiceTokenData,
-	SecretBlindIndexData
+	SecretBlindIndexData,
+	BotKey,
+	Integration,
+	IntegrationAuth,
+	ServiceAccountKey,
+	ServiceToken
 } from '../models';
 import { createBot } from '../helpers/bot';
 import { validateUserClientForWorkspace } from '../helpers/user';
@@ -30,6 +35,8 @@ import {
 } from '../variables';
 import { encryptSymmetric } from '../utils/crypto';
 import { SecretService } from '../services';
+import Folder from '../models/folder';
+import Tag from '../models/tag';
 
 /**
  * Validate authenticated clients for workspace with id [workspaceId] based
@@ -186,6 +193,9 @@ const deleteWorkspace = async ({ id }: { id: string }) => {
 		await Bot.deleteOne({
 			workspace: id
 		});
+		await BotKey.deleteMany({
+			workspace: id
+		})
 		await Membership.deleteMany({
 			workspace: id
 		});
@@ -195,6 +205,33 @@ const deleteWorkspace = async ({ id }: { id: string }) => {
 		await Key.deleteMany({
 			workspace: id
 		});
+		await Folder.deleteMany({
+			workspace: id
+		})
+		await Integration.deleteMany({
+			workspace: id
+		})
+		await IntegrationAuth.deleteMany({
+			workspace: id
+		})
+		await SecretBlindIndexData.deleteMany({
+			workspace: id
+		})
+		await ServiceAccountKey.deleteMany({
+			workspace: id
+		})
+		await ServiceAccountWorkspacePermission.deleteMany({
+			workspace: id
+		})
+		await ServiceToken.deleteMany({
+			workspace: id
+		})
+		await ServiceTokenData.deleteMany({
+			workspace: id
+		})
+		await Tag.deleteMany({
+			workspace: id
+		})
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
