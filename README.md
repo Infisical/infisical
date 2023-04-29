@@ -50,7 +50,9 @@
 
 ## Introduction
 
-**[Infisical](https://infisical.com)** is an open source, end-to-end encrypted secret manager which you can use to centralize your API keys and configs. From Infisical, you can then distribute these secrets across your whole development lifecycle - from development to production . It's designed to be simple and take minutes to get going.
+**[Infisical](https://infisical.com)** is an open source, end-to-end encrypted secret management platform that teams use to centralize their secrets like API keys, database credentials, and configurations.
+
+We're on a mission to make secret management more accessible to everyone, not just security teams, and that means redesigning the entire developer experience from ground up.
 
 ## Features
 
@@ -103,7 +105,7 @@ This repo available under the [MIT expat license](https://github.com/Infisical/i
 
 ## Security
 
-⚠️ Please do not file GitHub issues or post on our public forum for security vulnerabilities, as they are public!
+Please do not file GitHub issues or post on our public forum for security vulnerabilities, as they are public!
 
 Infisical takes security issues very seriously. If you have any concerns about Infisical or believe you have uncovered a vulnerability, please get in touch via the e-mail address security@infisical.com. In the message, try to provide a description of the issue and ideally a way of reproducing it. The security team will get back to you as soon as possible.
 
@@ -113,7 +115,7 @@ Looking to report a security vulnerability? Please don't post about it in GitHub
 
 ## Contributing
 
-Whether it's big or small, we love contributions ❤️ Check out our guide to see how to [get started](https://infisical.com/docs/contributing/overview).
+Whether it's big or small, we love contributions. Check out our guide to see how to [get started](https://infisical.com/docs/contributing/overview).
 
 Not sure where to get started? You can:
 
