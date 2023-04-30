@@ -10,7 +10,7 @@
   <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">Slack</a> |
   <a href="https://infisical.com/">Infisical Cloud</a> |
   <a href="https://infisical.com/docs/self-hosting/overview">Self-Hosting</a> |
-  <a href="https://infisical.com/docs/getting-started/introduction">Docs</a> |
+  <a href="https://infisical.com/docs/documentation/getting-started/introduction">Docs</a> |
   <a href="https://www.infisical.com">Website</a>
 </h4>
 
@@ -37,17 +37,6 @@
 
 <img src="/img/infisical_github_repo.png" width="100%" alt="Dashboard" />
 
-**Read this in other languages**: <kbd>[<img title="English" alt="English language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/us.svg" width="22">](i18n/README.en.md)</kbd>
-<kbd>[<img title="Spanish" alt="Spanish language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/es.svg" width="22">](i18n/README.es.md)</kbd>
-<kbd>[<img title="German" alt="German language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/de.svg" width="22">](i18n/README.de.md)</kbd>
-<kbd>[<img title="Korean" alt="Korean language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/kr.svg" width="22">](i18n/README.ko.md)</kbd>
-<kbd>[<img title="Turkish" alt="Turkish language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/tr.svg" width="22">](i18n/README.tr.md)</kbd>
-<kbd>[<img title="Bahasa Indonesia" alt="Bahasa Indonesia language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/id.svg" width="22">](i18n/README.id.md)</kbd>
-<kbd>[<img title="Portuguese - Brazil" alt="Portuguese - Brazil" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/br.svg" width="22">](i18n/README.pt-br.md)</kbd>
-<kbd>[<img title="Japanese" alt="Japanese language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/jp.svg" width="22">](i18n/README.ja.md)</kbd>
-<kbd>[<img title="Italian" alt="Italian language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/it.svg" width="22">](i18n/README.it.md)</kbd>
-<kbd>[<img title="Indian" alt="Hindi language" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/in.svg" width="22">](i18n/README.hi.md)</kbd>
-
 ## Introduction
 
 **[Infisical](https://infisical.com)** is an open source, end-to-end encrypted secret management platform that teams use to centralize their secrets like API keys, database credentials, and configurations.
@@ -56,17 +45,17 @@ We're on a mission to make secret management more accessible to everyone, not ju
 
 ## Features
 
--   **[User-friendly dashboard](https://infisical.com/docs/getting-started/dashboard/project)** to manage secrets across projects and environments (e.g. development, production, etc.)
+-   **[User-friendly dashboard](https://infisical.com/docs/documentation/platform/project)** to manage secrets across projects and environments (e.g. development, production, etc.)
 - **[Client SDKs](https://infisical.com/docs/sdks/overview)** to fetch secrets for your apps and infrastructure on demand
 -   **[Infisical CLI](https://infisical.com/docs/cli/overview)** to fetch and inject secrets into any framework in local development
 -   **[Native integrations](https://infisical.com/docs/integrations/overview)** with platforms like GitHub, Vercel, Netlify, and more
-- [**Automatic Kubernetes deployment secret reloads**](https://infisical.com/docs/getting-started/quickstarts/kubernetes)
+- [**Automatic Kubernetes deployment secret reloads**](https://infisical.com/docs/documentation/getting-started/kubernetes)
 -   **[Complete control over your data](https://infisical.com/docs/self-hosting/overview)** - host it yourself on any infrastructure
--   **[Secret versioning](https://infisical.com/docs/getting-started/dashboard/versioning)** and **[Point-in-Time Recovery]()** to version every secret and project state
--   **[Audit logs](https://infisical.com/docs/getting-started/dashboard/audit-logs)** to record every action taken in a project
+-   **[Secret versioning](https://infisical.com/docs/documentation/platform/secret-versioning)** and **[Point-in-Time Recovery]()** to version every secret and project state
+-   **[Audit logs](https://infisical.com/docs/documentation/platform/audit-logs)** to record every action taken in a project
 -   **Role-based Access Controls** per environment
 -   [**Simple on-premise deployments** to AWS and Digital Ocean](https://infisical.com/docs/self-hosting/overview)
-- [**2FA**](https://infisical.com/docs/getting-started/dashboard/mfa) with more options coming soon
+- [**2FA**](https://infisical.com/docs/documentation/platform/mfa) with more options coming soon
 
 And much more.
 
@@ -122,7 +111,7 @@ Not sure where to get started? You can:
 
 ## Resources
 
-- [Docs](https://infisical.com/docs/getting-started/introduction) for comprehensive documentation and guides
+- [Docs](https://infisical.com/docs/documentation/getting-started/introduction) for comprehensive documentation and guides
 - [Slack](https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g) for discussion with the community and Infisical team.
 - [GitHub](https://github.com/Infisical/infisical) for code, issues, and pull requests
 - [Twitter](https://twitter.com/infisical) for fast news

@@ -34,7 +34,7 @@ const supportOptions = (t: TFunction) => [
   [
     <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faBook} />,
     t('nav:support.docs'),
-    'https://infisical.com/docs/getting-started/introduction'
+    'https://infisical.com/docs/documentation/getting-started/introduction'
   ],
   [
     <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faGithub} />,
@@ -105,7 +105,7 @@ export default function Navbar() {
       </div>
       <div className="relative flex justify-start items-center mx-2 z-40">
         <a
-          href="https://infisical.com/docs/getting-started/introduction"
+          href="https://infisical.com/docs/documentation/getting-started/introduction"
           target="_blank"
           rel="noopener noreferrer"
           className="text-gray-200 hover:bg-white/10 px-3 rounded-md duration-200 text-sm mr-4 py-2 flex items-center"

@@ -9,7 +9,7 @@ Prerequisites:
 
 - Connected to your cluster via kubectl
 - Have a project with secrets ready in [Infisical Cloud](https://app.infisical.com).
-- Create an [Infisical Token](/getting-started/dashboard/token) scoped to an environment in your project in Infisical.
+- Create an [Infisical Token](/documentation/platform/token) scoped to an environment in your project in Infisical.
 
 ## Installation
 
@@ -77,5 +77,7 @@ kubectl apply -f infisical-secrets-config.yaml
 
 You should now see a new kubernetes secret automatically created in the namespace you defined in the `managedSecretReference` property above. 
 
-For a comprehensive guide on managing secrets in Kubernetes with Infisical, including all available options of the operator, please refer to this [link](../../integrations/platforms/kubernetes).
+See also:
+
+- [Documentation for the Infisical Kubernetes Operator](../../integrations/platforms/kubernetes)
 
