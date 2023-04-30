@@ -1,9 +1,12 @@
 ---
-title: "Overview"
-description: "How to use Infisical SDKs to fetch back secrets for your app"
+title: "Introduction"
 ---
 
-Whether it be for local development or production, Infisical SDKs provide the easiest way for your app to fetch back secrets from Infisical on demand.
+From local development to production, Infisical SDKs provide the easiest way for your app to fetch back secrets from Infisical on demand. 
+
+- Install and initialize a language-specific client SDK into your application
+- Provision the client scoped-access to a project and environment in Infisical
+- Fetch secrets on demand
 
 <CardGroup cols={2}>
   <Card
@@ -63,3 +66,40 @@ Whether it be for local development or production, Infisical SDKs provide the ea
     Manage secrets for your PHP application on demand
   </Card>
 </CardGroup>
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="Are my secrets exposed in transit every time the SDK fetches them?">
+        No. Infisical uses end-to-end encryption which ensures that secrets are always encrypted in transit
+        and decrypted on the client side. In fact, not even the server can decrypt your secrets (unless 
+        that permission is explicitly granted from within the platform).
+
+        Check out the [security guide](/security/overview).
+    </Accordion>
+    <Accordion title="Isn't it inefficient if my app makes a request every time it needs a secret?">
+        The client SDK caches every secret and implements a 5-minute waiting period before
+        re-requesting it. The waiting period can be controlled by setting the `cacheTTL` parameter at
+        the time of initializing the client.
+    </Accordion>
+    <Accordion title="What if a request for a secret fails?">
+        The SDK caches every secret and falls back to the cached value if a request fails. If no cached
+        value ever-existed, the SDK falls back to whatever value is on `process.env`.
+    </Accordion>
+    <Accordion title="Can I still use process.env with the SDK?">
+        Yes. If no `token` parameter is passed in at the time of initializing the client or nothing is found when requesting for a secret,
+        then the SDK falls back to whatever value is on `process.env`.
+    </Accordion>
+    <Accordion title="What's the point if I still have to manage a token for the SDK?">
+        The token enables the SDK to authenticate with Infisical to fetch back your secrets.
+        Although the SDK requires you to pass in a token, it enables greater efficiency and security
+        than if you managed dozens of secrets yourself without it. Here're some benefits:
+
+        - You always pull in the right secrets because they're fetched on demand from a centralize source that is Infisical.
+        - You can use the Infisical which comes with tons of benefits like secret versioning, access controls, audit logs, etc.
+        - You now risk leaking one token that can be revoked instead of dozens of raw secrets.
+        
+        And much more.
+    </Accordion>
+    
+</AccordionGroup>

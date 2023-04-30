@@ -37,7 +37,7 @@ export const CopyProjectIDSection = ({ workspaceID }: Props): JSX.Element => {
         {t('settings-project:project-id-description2')}
         {/* eslint-disable-next-line react/jsx-no-target-blank */}
         <a
-          href="https://infisical.com/docs/getting-started/introduction"
+          href="https://infisical.com/docs/documentation/getting-started/introduction"
           target="_blank"
           rel="noopener"
           className="text-primary duration-200 hover:opacity-80"

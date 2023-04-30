@@ -26,7 +26,7 @@ This example demonstrates how to use the Infisical Python SDK with a Flask appli
 
 <Warning>
   We do not recommend hardcoding your [Infisical
-  Token](/getting-started/dashboard/token). Setting it as an environment
+  Token](/documentation/platform/token). Setting it as an environment
   variable would be best.
 </Warning>
 
@@ -42,7 +42,7 @@ Note: You need Python 3.7+.
 
 ## Configuration
 
-Import the SDK and create a client instance with your [Infisical Token](/getting-started/dashboard/token).
+Import the SDK and create a client instance with your [Infisical Token](/documentation/platform/token).
 
 ```py
 from infisical import InfisicalClient
@@ -53,7 +53,7 @@ client = InfisicalClient(token="your_infisical_token")
 ### Parameters
 
     <ParamField query="token" type="string" optional>
-      An [Infisical Token](/getting-started/dashboard/token) scoped to a project
+      An [Infisical Token](/documentation/platform/token) scoped to a project
       and environment
     </ParamField>
     <ParamField
