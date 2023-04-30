@@ -79,9 +79,17 @@
     {
       "group": "Overview",
       "pages": [
-        "getting-started/introduction",
-        "getting-started/quickstart",
-        "getting-started/features"
+        {
+          "group": "Getting Started",
+          "pages": [
+            "getting-started/introduction",
+            "getting-started/quickstarts/platform",
+            "getting-started/quickstarts/sdks",
+            "getting-started/quickstarts/cli",
+            "getting-started/quickstarts/docker",
+            "getting-started/quickstarts/kubernetes"
+          ]
+        }
       ]
     },
     {
@@ -179,13 +187,6 @@
       ]
     },
     {
-      "group": "Deployment options",
-      "pages": [
-        "self-hosting/deployments/linux",
-        "self-hosting/deployments/kubernetes"
-      ]
-    },
-    {
       "group": "Overview",
       "pages": [
         "sdks/overview"
@@ -199,7 +200,8 @@
         "sdks/languages/java",
         "sdks/languages/ruby",
         "sdks/languages/go",
-        "sdks/languages/rust"
+        "sdks/languages/rust",
+        "sdks/languages/php"
       ]
     },
     {
@@ -288,7 +290,6 @@
       ]
     }
   ],
-  "backgroundImage": "/images/background.png",
   "integrations": {
     "intercom": "hsg644ru"
   }
