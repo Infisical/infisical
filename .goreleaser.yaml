@@ -11,6 +11,10 @@ before:
     - ./cli/scripts/completions.sh
     - ./cli/scripts/manpages.sh
 
+monorepo:
+  tag_prefix: infisical-cli/
+  dir: cli
+
 builds:
   - id: darwin-build
     binary: infisical
@@ -74,14 +78,7 @@ checksum:
   name_template: "checksums.txt"
 
 snapshot:
-  name_template: "{{ incpatch .Version }}-devel"
-
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
+  name_template: "{{ .Version }}-devel"
 
 # publishers:
 #   - name: fury.io
