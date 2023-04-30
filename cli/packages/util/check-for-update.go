@@ -76,7 +76,7 @@ func getLatestTag(repoOwner string, repoName string) (string, error) {
 	}
 
 	// Filter tags with prefix "infisical-cli/"
-	prefix := "infisical-cli/"
+	prefix := "infisical-cli/v"
 	var validTags []string
 	for _, tag := range tags {
 		if strings.HasPrefix(tag.Name, prefix) {
