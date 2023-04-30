@@ -30,7 +30,7 @@ builds:
     ignore:
       - goos: darwin
         goarch: "386"
-    # dir: ./cli
+    dir: ./cli
 
   - id: all-other-builds
     env:
@@ -98,12 +98,12 @@ brews:
     folder: Formula
     homepage: "https://infisical.com"
     description: "The official Infisical CLI"
-    install: |-
-      bin.install "infisical"
-      bash_completion.install "completions/infisical.bash" => "infisical"
-      zsh_completion.install "completions/infisical.zsh" => "_infisical"
-      fish_completion.install "completions/infisical.fish"
-      man1.install "manpages/infisical.1.gz"
+    # install: |-
+    #   bin.install "infisical"
+    #   bash_completion.install "completions/infisical.bash" => "infisical"
+    #   zsh_completion.install "completions/infisical.zsh" => "_infisical"
+    #   fish_completion.install "completions/infisical.fish"
+    #   man1.install "manpages/infisical.1.gz"
 
 nfpms:
   - id: infisical
