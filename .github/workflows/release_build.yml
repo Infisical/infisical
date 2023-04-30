@@ -41,7 +41,7 @@ jobs:
           git clone https://github.com/plentico/osxcross-target.git ../../osxcross/target
       - uses: goreleaser/goreleaser-action@v4
         with:
-          distribution: pro
+          distribution: goreleaser-pro
           version: latest
           args: release --clean
         env:
