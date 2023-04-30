@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/fatih/color"
 )
@@ -73,7 +75,23 @@ func getLatestTag(repoOwner string, repoName string) (string, error) {
 		return "", fmt.Errorf("failed to unmarshal github response: %w", err)
 	}
 
-	return tags[0].Name[1:], nil
+	// Filter tags with prefix "infisical-cli/"
+	prefix := "infisical-cli/"
+	var validTags []string
+	for _, tag := range tags {
+		if strings.HasPrefix(tag.Name, prefix) {
+			validTags = append(validTags, tag.Name)
+		}
+	}
+
+	if len(validTags) == 0 {
+		return "", errors.New("no tags for the CLI is found")
+	}
+
+	// Extract the version from the first valid tag
+	version := strings.TrimPrefix(validTags[0], prefix)
+
+	return version, nil
 }
 
 func GetUpdateInstructions() string {
