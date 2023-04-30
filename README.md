@@ -72,7 +72,7 @@ And much more.
 
 ## Getting started
 
-| Check out the [Quickstarts](https://infisical.com/docs/getting-started/introduction) Guide
+Check out the [Quickstart](https://infisical.com/docs/getting-started/introduction) Guides
 
 ### Use Infisical Cloud
 
