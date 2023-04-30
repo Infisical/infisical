@@ -49,11 +49,20 @@ jobs:
         with:
           project: 64mmf0n610
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
-          push: true
+          push: false
           context: backend
           tags: infisical/backend:${{ steps.commit.outputs.short }},
             infisical/backend:latest
           platforms: linux/amd64,linux/arm64
+      - name: Upload image
+        uses: ishworkh/docker-image-artifact-upload@v1
+        with:
+          image: "infisical/backend:latest"
+          retention_days: "1"
+      # - name: Download image
+      #   uses: ishworkh/docker-image-artifact-download@v1
+      #   with:
+      #     image: "infisical/backend:latest"
 
   frontend-image:
     name: Build frontend image
@@ -97,7 +106,7 @@ jobs:
         uses: depot/build-push-action@v1
         with:
           project: 64mmf0n610
-          push: true
+          push: false
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           context: frontend
           tags: infisical/frontend:${{ steps.commit.outputs.short }},
@@ -105,10 +114,30 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
+      - name: Upload image
+        uses: ishworkh/docker-image-artifact-upload@v1
+        with:
+          image: "infisical/frontend:latest"
+          retention_days: "1"
+
+  publish-to-dockerhub:
+    name: Publish to Dockerhub
+    runs-on: ubuntu-latest
+    needs: [frontend-image, backend-image]
+    steps:
+      - name: Download frontend image
+        uses: ishworkh/docker-image-artifact-download@v1
+        with:
+          image: "infisical/frontend:latest"
+      - name: Download backend image
+        uses: ishworkh/docker-image-artifact-download@v1
+        with:
+          image: "infisical/backend:latest"
+
   gamma-deployment:
     name: Deploy to gamma
     runs-on: ubuntu-latest
-    needs: [frontend-image, backend-image]
+    needs: [publish-to-dockerhub]
     steps:
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
