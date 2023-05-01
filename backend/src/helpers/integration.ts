@@ -256,7 +256,7 @@ const syncIntegrationsHelper = async ({
                 integration,
                 integrationAuth,
                 secrets,
-                accessId: access.accessId,
+                accessId: access.accessId === undefined ? null : access.accessId,
                 accessToken: access.accessToken
             });
         }

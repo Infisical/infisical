@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
 import {
 	IUser, 
@@ -28,16 +27,9 @@ import {
  * @returns {Object} user - the initialized user
  */
 const setupAccount = async ({ email }: { email: string }) => {
-	let user;
-	try {
-		user = await new User({
-			email
-		}).save();
-	} catch (err) {
-		Sentry.setUser({ email });
-		Sentry.captureException(err);
-		throw new Error('Failed to set up account');
-	}
+  const user = await new User({
+    email
+  }).save();
 
 	return user;
 };
@@ -89,34 +81,27 @@ const completeAccount = async ({
 	salt: string;
 	verifier: string;
 }) => {
-	let user;
-	try {
-		const options = {
-			new: true
-		};
-		user = await User.findByIdAndUpdate(
-			userId,
-			{
-				firstName,
-				lastName,
-				encryptionVersion,
-				protectedKey,
-				protectedKeyIV,
-				protectedKeyTag,
-				publicKey,
-				encryptedPrivateKey,
-				iv: encryptedPrivateKeyIV,
-				tag: encryptedPrivateKeyTag,
-				salt,
-				verifier
-			},
-			options
-		);
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to complete account set up');
-	}
+  const options = {
+    new: true
+  };
+  const user = await User.findByIdAndUpdate(
+    userId,
+    {
+      firstName,
+      lastName,
+      encryptionVersion,
+      protectedKey,
+      protectedKeyIV,
+      protectedKeyTag,
+      publicKey,
+      encryptedPrivateKey,
+      iv: encryptedPrivateKeyIV,
+      tag: encryptedPrivateKeyTag,
+      salt,
+      verifier
+    },
+    options
+  );
 
 	return user;
 };
