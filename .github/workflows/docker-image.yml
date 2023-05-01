@@ -5,7 +5,6 @@ jobs:
   backend-image:
     name: Build backend image
     runs-on: ubuntu-latest
-
     steps:
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
@@ -53,7 +52,6 @@ jobs:
           context: backend
           tags: infisical/backend:${{ steps.commit.outputs.short }},
             infisical/backend:latest
-          platforms: linux/amd64,linux/arm64
           outputs: type=docker,dest=/tmp/infisical-backend-img.tar
       - name: Upload docker image
         uses: actions/upload-artifact@v3
@@ -108,7 +106,6 @@ jobs:
           context: frontend
           tags: infisical/frontend:${{ steps.commit.outputs.short }},
             infisical/frontend:latest
-          platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
           outputs: type=docker,dest=/tmp/infisical-frontend-img.tar
@@ -145,6 +142,7 @@ jobs:
         with:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/infisical-frontend:gamma
+          platforms: linux/amd64,linux/arm64
       - name: Download backend image
         uses: actions/download-artifact@v3
         with:
@@ -158,6 +156,7 @@ jobs:
         with:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/infisical-backend:gamma
+          platforms: linux/amd64,linux/arm64
 
   gamma-deployment:
     name: Deploy to gamma
