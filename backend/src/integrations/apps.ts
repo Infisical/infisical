@@ -1,7 +1,6 @@
-import * as Sentry from "@sentry/node";
 import { Octokit } from "@octokit/rest";
 import { IIntegrationAuth } from "../models";
-import request from '../config/request';
+import request from "../config/request";
 import {
   INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_AWS_PARAMETER_STORE,
@@ -26,7 +25,7 @@ import {
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_TRAVISCI_API_URL,
-  INTEGRATION_SUPABASE_API_URL
+  INTEGRATION_SUPABASE_API_URL,
 } from "../variables";
 
 interface App {
@@ -47,87 +46,80 @@ interface App {
 const getApps = async ({
   integrationAuth,
   accessToken,
-  teamId
+  teamId,
 }: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
   teamId?: string;
 }) => {
-
   let apps: App[] = [];
-  try {
-    switch (integrationAuth.integration) {
-      case INTEGRATION_AZURE_KEY_VAULT:
-        apps = [];
-        break;
-      case INTEGRATION_AWS_PARAMETER_STORE:
-        apps = [];
-        break;
-      case INTEGRATION_AWS_SECRET_MANAGER:
-        apps = [];
-        break;
-      case INTEGRATION_HEROKU:
-        apps = await getAppsHeroku({
-          accessToken,
-        });
-        break;
-      case INTEGRATION_VERCEL:
-        apps = await getAppsVercel({
-          integrationAuth,
-          accessToken,
-        });
-        break;
-      case INTEGRATION_NETLIFY:
-        apps = await getAppsNetlify({
-          accessToken,
-        });
-        break;
-      case INTEGRATION_GITHUB:
-        apps = await getAppsGithub({
-          accessToken,
-        });
-        break;
-      case INTEGRATION_GITLAB:
-        apps = await getAppsGitlab({
-          accessToken,
-          teamId
-        });
-        break;
-      case INTEGRATION_RENDER:
-        apps = await getAppsRender({
-          accessToken,
-        });
-        break;
-      case INTEGRATION_RAILWAY:
-        apps = await getAppsRailway({
-          accessToken 
-        });
-        break;
-      case INTEGRATION_FLYIO:
-        apps = await getAppsFlyio({
-          accessToken,
-        });
-        break;
-      case INTEGRATION_CIRCLECI:
-        apps = await getAppsCircleCI({
-          accessToken,
-        });
-        break;
-      case INTEGRATION_TRAVISCI:
-        apps = await getAppsTravisCI({
-          accessToken,
-        })
-        break;
-      case INTEGRATION_SUPABASE:
-        apps = await getAppsSupabase({
-            accessToken
-        });
-        break;
-    }
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error("Failed to get integration apps");
+  switch (integrationAuth.integration) {
+    case INTEGRATION_AZURE_KEY_VAULT:
+      apps = [];
+      break;
+    case INTEGRATION_AWS_PARAMETER_STORE:
+      apps = [];
+      break;
+    case INTEGRATION_AWS_SECRET_MANAGER:
+      apps = [];
+      break;
+    case INTEGRATION_HEROKU:
+      apps = await getAppsHeroku({
+        accessToken,
+      });
+      break;
+    case INTEGRATION_VERCEL:
+      apps = await getAppsVercel({
+        integrationAuth,
+        accessToken,
+      });
+      break;
+    case INTEGRATION_NETLIFY:
+      apps = await getAppsNetlify({
+        accessToken,
+      });
+      break;
+    case INTEGRATION_GITHUB:
+      apps = await getAppsGithub({
+        accessToken,
+      });
+      break;
+    case INTEGRATION_GITLAB:
+      apps = await getAppsGitlab({
+        accessToken,
+        teamId,
+      });
+      break;
+    case INTEGRATION_RENDER:
+      apps = await getAppsRender({
+        accessToken,
+      });
+      break;
+    case INTEGRATION_RAILWAY:
+      apps = await getAppsRailway({
+        accessToken,
+      });
+      break;
+    case INTEGRATION_FLYIO:
+      apps = await getAppsFlyio({
+        accessToken,
+      });
+      break;
+    case INTEGRATION_CIRCLECI:
+      apps = await getAppsCircleCI({
+        accessToken,
+      });
+      break;
+    case INTEGRATION_TRAVISCI:
+      apps = await getAppsTravisCI({
+        accessToken,
+      });
+      break;
+    case INTEGRATION_SUPABASE:
+      apps = await getAppsSupabase({
+        accessToken,
+      });
+      break;
   }
 
   return apps;
@@ -141,25 +133,18 @@ const getApps = async ({
  * @returns {String} apps.name - name of Heroku app
  */
 const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
-  let apps;
-  try {
-    const res = (
-      await request.get(`${INTEGRATION_HEROKU_API_URL}/apps`, {
-        headers: {
-          Accept: "application/vnd.heroku+json; version=3",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
-    ).data;
+  const res = (
+    await request.get(`${INTEGRATION_HEROKU_API_URL}/apps`, {
+      headers: {
+        Accept: "application/vnd.heroku+json; version=3",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  ).data;
 
-    apps = res.map((a: any) => ({
-      name: a.name,
-    }));
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error("Failed to get Heroku integration apps");
-  }
+  const apps = res.map((a: any) => ({
+    name: a.name,
+  }));
 
   return apps;
 };
@@ -178,33 +163,26 @@ const getAppsVercel = async ({
   integrationAuth: IIntegrationAuth;
   accessToken: string;
 }) => {
-  let apps;
-  try {
-    const res = (
-      await request.get(`${INTEGRATION_VERCEL_API_URL}/v9/projects`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Accept-Encoding': 'application/json'
-        },
-        ...(integrationAuth?.teamId
-          ? {
-              params: {
-                teamId: integrationAuth.teamId,
-              },
-            }
-          : {}),
-      })
-    ).data;
+  const res = (
+    await request.get(`${INTEGRATION_VERCEL_API_URL}/v9/projects`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json",
+      },
+      ...(integrationAuth?.teamId
+        ? {
+            params: {
+              teamId: integrationAuth.teamId,
+            },
+          }
+        : {}),
+    })
+  ).data;
 
-    apps = res.projects.map((a: any) => ({
-      name: a.name,
-      appId: a.id
-    }));
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error("Failed to get Vercel integration apps");
-  }
+  const apps = res.projects.map((a: any) => ({
+    name: a.name,
+    appId: a.id,
+  }));
 
   return apps;
 };
@@ -218,43 +196,40 @@ const getAppsVercel = async ({
  */
 const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
   const apps: any = [];
-  try {
-    let page = 1;
-    const perPage = 10;
-    let hasMorePages = true;
-    
-    // paginate through all sites
-    while (hasMorePages) {
-      const params = new URLSearchParams({
-        page: String(page),
-        per_page: String(perPage)
-      });
+  let page = 1;
+  const perPage = 10;
+  let hasMorePages = true;
 
-      const { data } = await request.get(`${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`, {
+  // paginate through all sites
+  while (hasMorePages) {
+    const params = new URLSearchParams({
+      page: String(page),
+      per_page: String(perPage),
+    });
+
+    const { data } = await request.get(
+      `${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`,
+      {
         params,
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Accept-Encoding': 'application/json'
-        }
-      });
-      
-      data.map((a: any) => {
-        apps.push({
-          name: a.name,
-          appId: a.site_id
-        });
-      });
-      
-      if (data.length < perPage) {
-        hasMorePages = false;
+          "Accept-Encoding": "application/json",
+        },
       }
+    );
 
-      page++;
+    data.map((a: any) => {
+      apps.push({
+        name: a.name,
+        appId: a.site_id,
+      });
+    });
+
+    if (data.length < perPage) {
+      hasMorePages = false;
     }
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error("Failed to get Netlify integration apps");
+
+    page++;
   }
 
   return apps;
@@ -268,66 +243,58 @@ const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
  * @returns {String} apps.name - name of Github site
  */
 const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
-  let apps;
-  try {
-    interface GitHubApp {
-      id: string;
-      name: string;
-      permissions: {
-        admin: boolean;
-      };
-      owner: {
-        login: string;
+  interface GitHubApp {
+    id: string;
+    name: string;
+    permissions: {
+      admin: boolean;
+    };
+    owner: {
+      login: string;
+    };
+  }
+
+  const octokit = new Octokit({
+    auth: accessToken,
+  });
+
+  const getAllRepos = async () => {
+    let repos: GitHubApp[] = [];
+    let page = 1;
+    const per_page = 100;
+    let hasMore = true;
+
+    while (hasMore) {
+      const response = await octokit.request(
+        "GET /user/repos{?visibility,affiliation,type,sort,direction,per_page,page,since,before}",
+        {
+          per_page,
+          page,
+        }
+      );
+
+      if (response.data.length > 0) {
+        repos = repos.concat(response.data);
+        page++;
+      } else {
+        hasMore = false;
       }
     }
 
-    const octokit = new Octokit({
-      auth: accessToken,
+    return repos;
+  };
+
+  const repos = await getAllRepos();
+
+  const apps = repos
+    .filter((a: GitHubApp) => a.permissions.admin === true)
+    .map((a: GitHubApp) => {
+      return {
+        appId: a.id,
+        name: a.name,
+        owner: a.owner.login,
+      };
     });
-
-    const getAllRepos = async () => {
-      let repos: GitHubApp[] = [];
-      let page = 1;
-      const per_page = 100;
-      let hasMore = true;
-
-      while (hasMore) {
-        const response = await octokit.request(
-          "GET /user/repos{?visibility,affiliation,type,sort,direction,per_page,page,since,before}",
-          {
-            per_page,
-            page,
-          }
-        );
-        
-        if (response.data.length > 0) {
-          repos = repos.concat(response.data);
-          page++;
-        } else {
-          hasMore = false;
-        }
-      }
-
-      return repos;
-    };
-
-    const repos = await getAllRepos();
-
-    apps = repos
-      .filter((a: GitHubApp) => a.permissions.admin === true)
-      .map((a: GitHubApp) => {
-        return {
-          appId: a.id,
-          name: a.name,
-          owner: a.owner.login,
-        };
-      });
-    
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error("Failed to get Github repos");
-  }
 
   return apps;
 };
@@ -341,29 +308,20 @@ const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
  * @returns {String} apps.appId - id of Render service
  */
 const getAppsRender = async ({ accessToken }: { accessToken: string }) => {
-  let apps: any;
-  try {
-    const res = (
-      await request.get(`${INTEGRATION_RENDER_API_URL}/v1/services`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: 'application/json',
-          'Accept-Encoding': 'application/json',
-        },
-      })
-    ).data;
-    
-    apps = res
-      .map((a: any) => ({
-        name: a.service.name,
-        appId: a.service.id
-      })); 
-    
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error("Failed to get Render services");
-  }
+  const res = (
+    await request.get(`${INTEGRATION_RENDER_API_URL}/v1/services`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+        "Accept-Encoding": "application/json",
+      },
+    })
+  ).data;
+
+  const apps = res.map((a: any) => ({
+    name: a.service.name,
+    appId: a.service.id,
+  }));
 
   return apps;
 };
@@ -376,49 +334,51 @@ const getAppsRender = async ({ accessToken }: { accessToken: string }) => {
  * @returns {String} apps.name - name of Railway project
  * @returns {String} apps.appId - id of Railway project
  *
-*/
+ */
 const getAppsRailway = async ({ accessToken }: { accessToken: string }) => {
-  let apps: any[] = [];
-  try {
-    const query = `
-      query GetProjects($userId: String, $teamId: String) {
-        projects(userId: $userId, teamId: $teamId) {
-          edges {
-            node {
-              id
-              name
-            }
+  const query = `
+    query GetProjects($userId: String, $teamId: String) {
+      projects(userId: $userId, teamId: $teamId) {
+        edges {
+          node {
+            id
+            name
           }
         }
       }
-    `;
+    }
+  `;
 
-    const variables = {};
+  const variables = {};
 
-    const { data: { data: { projects: { edges }}} } = await request.post(INTEGRATION_RAILWAY_API_URL, {
+  const {
+    data: {
+      data: {
+        projects: { edges },
+      },
+    },
+  } = await request.post(
+    INTEGRATION_RAILWAY_API_URL,
+    {
       query,
       variables,
-    }, {
+    },
+    {
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        'Accept-Encoding': 'application/json'
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "Accept-Encoding": "application/json",
       },
-    });
-    
-    apps = edges.map((e: any) => ({
-      name: e.node.name,
-      appId: e.node.id
-    }));
+    }
+  );
 
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error("Failed to get Railway services");
-  }
-  
+  const apps = edges.map((e: any) => ({
+    name: e.node.name,
+    appId: e.node.id,
+  }));
+
   return apps;
-}
+};
 
 /**
  * Return list of apps for Fly.io integration
@@ -428,41 +388,40 @@ const getAppsRailway = async ({ accessToken }: { accessToken: string }) => {
  * @returns {String} apps.name - name of Fly.io apps
  */
 const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
-  let apps;
-  try {
-    const query = `
-      query($role: String) {
-        apps(type: "container", first: 400, role: $role) {
-          nodes {
-            id
-            name
-            hostname
-          }
+  const query = `
+    query($role: String) {
+      apps(type: "container", first: 400, role: $role) {
+        nodes {
+          id
+          name
+          hostname
         }
       }
-    `;
+    }
+  `;
 
-    const res = (await request.post(INTEGRATION_FLYIO_API_URL, {
-      query,
-      variables: {
-        role: null,
+  const res = (
+    await request.post(
+      INTEGRATION_FLYIO_API_URL,
+      {
+        query,
+        variables: {
+          role: null,
+        },
       },
-    }, {
-      headers: {
-        Authorization: "Bearer " + accessToken,
-        'Accept': 'application/json',
-        'Accept-Encoding': 'application/json',
-      },
-    })).data.data.apps.nodes;
+      {
+        headers: {
+          Authorization: "Bearer " + accessToken,
+          Accept: "application/json",
+          "Accept-Encoding": "application/json",
+        },
+      }
+    )
+  ).data.data.apps.nodes;
 
-    apps = res.map((a: any) => ({
-      name: a.name,
-    }));
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error("Failed to get Fly.io apps");
-  }
+  const apps = res.map((a: any) => ({
+    name: a.name,
+  }));
 
   return apps;
 };
@@ -475,63 +434,43 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
  * @returns {String} apps.name - name of CircleCI apps
  */
 const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
-  let apps: any;
-  try {    
-    const res = (
-      await request.get(
-        `${INTEGRATION_CIRCLECI_API_URL}/v1.1/projects`,
-        {
-          headers: {
-            "Circle-Token": accessToken,
-            "Accept-Encoding": "application/json",
-          },
-        }
-      )
-    ).data
+  const res = (
+    await request.get(`${INTEGRATION_CIRCLECI_API_URL}/v1.1/projects`, {
+      headers: {
+        "Circle-Token": accessToken,
+        "Accept-Encoding": "application/json",
+      },
+    })
+  ).data;
 
-    apps = res?.map((a: any) => {
-      return {
-        name: a?.reponame
-      }
-    });
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error("Failed to get CircleCI projects");
-  }
-  
+  const apps = res?.map((a: any) => {
+    return {
+      name: a?.reponame,
+    };
+  });
+
   return apps;
 };
 
 const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
-  let apps: any;
-  try {
-    const res = (
-      await request.get(
-        `${INTEGRATION_TRAVISCI_API_URL}/repos`,
-        {
-          headers: {
-            "Authorization": `token ${accessToken}`,
-            "Accept-Encoding": "application/json",
-          },
-        }
-      )
-    ).data;
+  const res = (
+    await request.get(`${INTEGRATION_TRAVISCI_API_URL}/repos`, {
+      headers: {
+        Authorization: `token ${accessToken}`,
+        "Accept-Encoding": "application/json",
+      },
+    })
+  ).data;
 
-    apps = res?.map((a: any) => {
-      return {
-        name: a?.slug?.split("/")[1],
-        appId: a?.id,
-      }
-    });
-  }catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error("Failed to get TravisCI projects");
-  }
-  
+  const apps = res?.map((a: any) => {
+    return {
+      name: a?.slug?.split("/")[1],
+      appId: a?.id,
+    };
+  });
+
   return apps;
-}
+};
 
 /**
  * Return list of repositories for GitLab integration
@@ -540,112 +479,98 @@ const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
  * @returns {Object[]} apps - names of GitLab sites
  * @returns {String} apps.name - name of GitLab site
  */
-const getAppsGitlab = async ({ 
+const getAppsGitlab = async ({
   accessToken,
-  teamId
+  teamId,
 }: {
   accessToken: string;
   teamId?: string;
 }) => {
   const apps: App[] = [];
-  
+
   let page = 1;
   const perPage = 10;
   let hasMorePages = true;
-  try {
 
-    if (teamId) {
-      // case: fetch projects for group with id [teamId] in GitLab
-      
-      while (hasMorePages) {
-        const params = new URLSearchParams({
-          page: String(page),
-          per_page: String(perPage)
-        });
+  if (teamId) {
+    // case: fetch projects for group with id [teamId] in GitLab
 
-        const { data } = (
-          await request.get(
-            `${INTEGRATION_GITLAB_API_URL}/v4/groups/${teamId}/projects`,
-            {
-              params,
-              headers: {
-                "Authorization": `Bearer ${accessToken}`,
-                "Accept-Encoding": "application/json",
-              },
-            }
-          )
-        );
+    while (hasMorePages) {
+      const params = new URLSearchParams({
+        page: String(page),
+        per_page: String(perPage),
+      });
 
-        data.map((a: any) => {
-          apps.push({
-            name: a.name,
-            appId: a.id
-          });
-        });
-        
-        if (data.length < perPage) {
-          hasMorePages = false;
+      const { data } = await request.get(
+        `${INTEGRATION_GITLAB_API_URL}/v4/groups/${teamId}/projects`,
+        {
+          params,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+          },
         }
-        
-        page++;
-      }
-    } else {
-      // case: fetch projects for individual in GitLab
-      
-      const { id } = (
-        await request.get(
-          `${INTEGRATION_GITLAB_API_URL}/v4/user`,
-          {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Accept-Encoding": "application/json",
-            },
-          }
-        )
-      ).data;
-      
-      while (hasMorePages) {
-        const params = new URLSearchParams({
-          page: String(page),
-          per_page: String(perPage)
+      );
+
+      data.map((a: any) => {
+        apps.push({
+          name: a.name,
+          appId: a.id,
         });
+      });
 
-        const { data } = (
-          await request.get(
-            `${INTEGRATION_GITLAB_API_URL}/v4/users/${id}/projects`,
-            {
-              params,
-              headers: {
-                "Authorization": `Bearer ${accessToken}`,
-                "Accept-Encoding": "application/json",
-              },
-            }
-          )
-        );
-
-        data.map((a: any) => {
-          apps.push({
-            name: a.name,
-            appId: a.id
-          });
-        });
-
-        if (data.length < perPage) {
-          hasMorePages = false;
-        }
-        
-        page++;
+      if (data.length < perPage) {
+        hasMorePages = false;
       }
+
+      page++;
     }
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error("Failed to get GitLab projects");
-  }
-  
-  return apps;
-}
+  } else {
+    // case: fetch projects for individual in GitLab
 
+    const { id } = (
+      await request.get(`${INTEGRATION_GITLAB_API_URL}/v4/user`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json",
+        },
+      })
+    ).data;
+
+    while (hasMorePages) {
+      const params = new URLSearchParams({
+        page: String(page),
+        per_page: String(perPage),
+      });
+
+      const { data } = await request.get(
+        `${INTEGRATION_GITLAB_API_URL}/v4/users/${id}/projects`,
+        {
+          params,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+          },
+        }
+      );
+
+      data.map((a: any) => {
+        apps.push({
+          name: a.name,
+          appId: a.id,
+        });
+      });
+
+      if (data.length < perPage) {
+        hasMorePages = false;
+      }
+
+      page++;
+    }
+  }
+
+  return apps;
+};
 
 /**
  * Return list of projects for Supabase integration
@@ -655,30 +580,23 @@ const getAppsGitlab = async ({
  * @returns {String} apps.name - name of Supabase app
  */
 const getAppsSupabase = async ({ accessToken }: { accessToken: string }) => {
-  let apps: any;
-  try {
-      const { data } = await request.get(
-        `${INTEGRATION_SUPABASE_API_URL}/v1/projects`,
-        {
-          headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Accept-Encoding': 'application/json'
-          }
-        }
-      );
+  const { data } = await request.get(
+    `${INTEGRATION_SUPABASE_API_URL}/v1/projects`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json",
+      },
+    }
+  );
 
-      apps = data.map((a: any) => {
-        return {
-            name: a.name,
-            appId: a.id
-        };
-    });
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error('Failed to get Supabase projects');
-  }
-  
+  const apps = data.map((a: any) => {
+    return {
+      name: a.name,
+      appId: a.id,
+    };
+  });
+
   return apps;
 };
 

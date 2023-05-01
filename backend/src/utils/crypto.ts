@@ -1,7 +1,6 @@
 import nacl from 'tweetnacl';
 import util from 'tweetnacl-util';
 import AesGCM from './aes-gcm';
-import * as Sentry from '@sentry/node';
 
 /**
  * Return new base64, NaCl, public-private key pair.
@@ -38,20 +37,13 @@ const encryptAsymmetric = ({
 	publicKey: string;
 	privateKey: string;
 }) => {
-	let nonce, ciphertext;
-	try {
-		nonce = nacl.randomBytes(24);
-		ciphertext = nacl.box(
-			util.decodeUTF8(plaintext),
-			nonce,
-			util.decodeBase64(publicKey),
-			util.decodeBase64(privateKey)
-		);
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to perform asymmetric encryption');
-	}
+  const nonce = nacl.randomBytes(24);
+  const ciphertext = nacl.box(
+    util.decodeUTF8(plaintext),
+    nonce,
+    util.decodeBase64(publicKey),
+    util.decodeBase64(privateKey)
+  );
 
 	return {
 		ciphertext: util.encodeBase64(ciphertext),
@@ -80,19 +72,12 @@ const decryptAsymmetric = ({
 	publicKey: string;
 	privateKey: string;
 }): string => {
-	let plaintext: any;
-	try {
-		plaintext = nacl.box.open(
-			util.decodeBase64(ciphertext),
-			util.decodeBase64(nonce),
-			util.decodeBase64(publicKey),
-			util.decodeBase64(privateKey)
-		);
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to perform asymmetric decryption');
-	}
+  const plaintext: any = nacl.box.open(
+    util.decodeBase64(ciphertext),
+    util.decodeBase64(nonce),
+    util.decodeBase64(publicKey),
+    util.decodeBase64(privateKey)
+  );
 
 	return util.encodeUTF8(plaintext);
 };
@@ -110,17 +95,8 @@ const encryptSymmetric = ({
 	plaintext: string;
 	key: string;
 }) => {
-	let ciphertext, iv, tag;
-	try {
-		const obj = AesGCM.encrypt(plaintext, key);
-		ciphertext = obj.ciphertext;
-		iv = obj.iv;
-		tag = obj.tag;
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to perform symmetric encryption');
-	}
+  const obj = AesGCM.encrypt(plaintext, key);
+  const { ciphertext, iv, tag } = obj;
 
 	return {
 		ciphertext,
@@ -150,15 +126,7 @@ const decryptSymmetric = ({
 	tag: string;
 	key: string;
 }): string => {
-	let plaintext;
-	try {
-		plaintext = AesGCM.decrypt(ciphertext, iv, tag, key);
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to perform symmetric decryption');
-	}
-
+  const plaintext = AesGCM.decrypt(ciphertext, iv, tag, key);
 	return plaintext;
 };
 

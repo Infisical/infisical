@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
 import { Request, Response, NextFunction } from 'express';
 import { IntegrationAuth, IWorkspace } from '../models';
