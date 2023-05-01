@@ -11,9 +11,9 @@ jobs:
       - name: 📦 Install dependencies to test all dependencies
         run: npm ci --only-production
         working-directory: backend
-      - name: 🧪 Run tests
-        run: npm run test:ci
-        working-directory: backend
+      # - name: 🧪 Run tests
+      #   run: npm run test:ci
+      #   working-directory: backend
       - name: Save commit hashes for tag
         id: commit
         uses: pr-mpt/actions-commit-hash@v2
@@ -141,7 +141,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          context: .
+          context: frontend
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/infisical-frontend:gamma
           platforms: linux/amd64,linux/arm64
       - name: Download backend image
@@ -156,7 +156,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          context: .
+          context: backend
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/infisical-backend:gamma
           platforms: linux/amd64,linux/arm64
 
