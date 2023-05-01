@@ -198,7 +198,7 @@ const exchangeRefreshGitLab = async ({
     new URLSearchParams({
       grant_type: "refresh_token",
       refresh_token: refreshToken,
-      client_id: await getClientIdGitLab,
+      client_id: await getClientIdGitLab(),
       client_secret: await getClientSecretGitLab(),
       redirect_uri: `${await getSiteURL()}/integrations/gitlab/oauth2/callback`,
     } as any),
