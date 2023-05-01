@@ -114,7 +114,7 @@
       ]
     },
     {
-      "group": "Self-hosting",
+      "group": "Deploy Infisical",
       "pages": [
         "self-hosting/overview",
         "self-hosting/configuration/envars",
