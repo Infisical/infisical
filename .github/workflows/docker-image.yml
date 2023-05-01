@@ -141,7 +141,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          context: frontend
+          load: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/infisical-frontend:gamma
           platforms: linux/amd64,linux/arm64
       - name: Download backend image
@@ -156,7 +156,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          context: backend
+          load: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/infisical-backend:gamma
           platforms: linux/amd64,linux/arm64
 
