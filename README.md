@@ -87,6 +87,7 @@ Windows Command Prompt:
 git clone https://github.com/Infisical/infisical && cd infisical && copy .env.example .env && docker-compose -f docker-compose.dev.yml up --build
 ```
 
+Login to the web app at `http://localhost:8080` by entering the test user email `test@localhost.local` and password `testInfisical1`.
 
 ## Open-source vs. paid
 

@@ -7,6 +7,44 @@ To meet various compliance requirements, you may want to self-host Infisical ins
 Self-hosted Infisical allows you to maintain your sensitive information within your own infrastructure and network, ensuring complete control over your data.
 
 <Tabs>
+  <Tab title="Local machine">
+    ## Setup and launch Infisical
+    
+    Make sure you have Git and Docker installed and follow the instructions for your system.
+    
+    <Tabs>
+      <Tab title="Linux/macOS">
+        Run the following command to clone, prepare, and start up Infisical:
+        
+        ```console
+        git clone https://github.com/Infisical/infisical && cd "$(basename $_ .git)" && cp .env.example .env && docker-compose -f docker-compose.dev.yml up --build
+        ```
+      </Tab>
+      <Tab title="Windows Command Prompt">
+        Run the following command to clone, prepare, and start up Infisical:
+
+        ```console
+        git clone https://github.com/Infisical/infisical && cd infisical && copy .env.example .env && docker-compose -f docker-compose.dev.yml up --build
+        ```
+      </Tab>
+      <Tab title="Other">
+        Clone the repository back to your machine.
+        
+        ```console
+        git clone https://github.com/Infisical/infisical
+        ```
+      
+        Navigate into the root of the repository create a new `.env` file containing the contents of the [.env.example file](https://github.com/Infisical/infisical/blob/main/.env.example).
+        
+        Finally run `docker-compose up` to start up Infisical.
+
+        ```console
+        docker-compose -f docker-compose.dev.yml up --build
+        ```
+      </Tab>
+    </Tabs>
+    Login to the web app at `http://localhost:8080` by entering the test user email `test@localhost.local` and password `testInfisical1`.
+  </Tab>
   <Tab title="Quick deploy AWS">
     <iframe width="560" height="315" src="https://www.youtube.com/embed/jR-gM7vIY2c" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
     This deployment option will use AWS Cloudformation to auto deploy an instance of Infisical on a single EC2 via Docker Compose.
