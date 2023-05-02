@@ -9,9 +9,10 @@ jobs:
     name: Build backend image
     runs-on: ubuntu-latest
     steps:
-      - name: Extract version from tag
-        id: extract-version
-        run: echo "::set-output name=version::${{ github.ref#refs/tags/infisical/ }}"
+      - name: Extract and display version
+        run: |
+          VERSION=${GITHUB_REF#*v}
+          echo "::set-output name=version::$VERSION"
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
       - name: 📦 Install dependencies to test all dependencies
@@ -57,16 +58,17 @@ jobs:
           push: true
           context: backend
           tags: infisical/backend:${{ steps.commit.outputs.short }},
-            infisical/backend:latest, infisical/backend:${{ steps.extract-version.outputs.version }}
+            infisical/backend:latest, infisical/backend:${{ steps.extract_version.outputs.version }}
           platforms: linux/amd64,linux/arm64
 
   frontend-image:
     name: Build frontend image
     runs-on: ubuntu-latest
     steps:
-      - name: Extract version from tag
-        id: extract-version
-        run: echo "::set-output name=version::${{ github.ref#refs/tags/infisical/ }}"
+      - name: Extract and display version
+        run: |
+          VERSION=${GITHUB_REF#*v}
+          echo "::set-output name=version::$VERSION"
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
       - name: Save commit hashes for tag
@@ -108,7 +110,7 @@ jobs:
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           context: frontend
           tags: infisical/frontend:${{ steps.commit.outputs.short }},
-            infisical/frontend:latest, infisical/frontend:${{ steps.extract-version.outputs.version }}
+            infisical/frontend:latest, infisical/backend:${{ steps.extract_version.outputs.version }}
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
