@@ -64,6 +64,9 @@ jobs:
     name: Build frontend image
     runs-on: ubuntu-latest
     steps:
+      - name: Extract version from tag
+        id: extract_version
+        run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical/}"
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
       - name: Save commit hashes for tag
@@ -105,7 +108,7 @@ jobs:
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           context: frontend
           tags: infisical/frontend:${{ steps.commit.outputs.short }},
-            infisical/frontend:latest
+            infisical/frontend:latest, infisical/backend:${{ steps.extract_version.outputs.version }}
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
