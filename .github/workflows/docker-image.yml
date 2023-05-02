@@ -56,8 +56,10 @@ jobs:
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           push: true
           context: backend
-          tags: infisical/backend:${{ steps.commit.outputs.short }},
-            infisical/backend:latest, infisical/backend:${{ steps.extract_version.outputs.version }}
+          tags: |
+            infisical/backend:${{ steps.commit.outputs.short }}
+            infisical/backend:latest
+            infisical/backend:${{ steps.extract_version.outputs.version }}
           platforms: linux/amd64,linux/arm64
 
   frontend-image:
@@ -107,8 +109,10 @@ jobs:
           push: true
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           context: frontend
-          tags: infisical/frontend:${{ steps.commit.outputs.short }},
-            infisical/frontend:latest, infisical/backend:${{ steps.extract_version.outputs.version }}
+          tags: |
+            infisical/frontend:${{ steps.commit.outputs.short }}
+            infisical/frontend:latest
+            infisical/frontend:${{ steps.extract_version.outputs.version }}
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
