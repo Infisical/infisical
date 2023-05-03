@@ -35,7 +35,7 @@ export default function SignUp() {
   const { data: serverDetails } = useFetchServerStatus();
   const [isSignupWithEmail, setIsSignupWithEmail] = useState(false);
   const { t } = useTranslation();
-  const { providerAuthToken } = useProviderAuth();
+  const { email: providerEmail, providerAuthToken } = useProviderAuth();
 
   if (providerAuthToken && step < 3) {
     setStep(3);
@@ -99,7 +99,7 @@ export default function SignUp() {
       return (
         <>
           <button type='button' className='text-white' onClick={() => {
-            window.open('/api/v1/auth/login/google')
+            window.open('/api/v1/oauth/redirect/google')
           }}>
             Continue with Google
           </button>
@@ -127,13 +127,14 @@ export default function SignUp() {
       return (
         <UserInfoStep
           incrementStep={incrementStep}
-          email={email}
+          email={email || providerEmail}
           password={password}
           setPassword={setPassword}
           firstName={firstName}
           setFirstName={setFirstName}
           lastName={lastName}
           setLastName={setLastName}
+          providerAuthToken={providerAuthToken}
         />
       )
     }
@@ -142,7 +143,7 @@ export default function SignUp() {
       return (
         <DownloadBackupPDF
           incrementStep={incrementStep}
-          email={email}
+          email={email || providerEmail}
           password={password}
           name={`${firstName} ${lastName}`}
         />

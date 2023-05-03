@@ -12,7 +12,6 @@ import { getTranslatedStaticProps } from '@app/components/utilities/withTranslat
 import SecurityClient from '../utilities/SecurityClient';
 
 export default function PasswordInputStep({
-  userId,
   email,
   password,
   setPassword,
@@ -20,7 +19,6 @@ export default function PasswordInputStep({
   setStep
 }: {
   email: string;
-  userId: string;
   password: string;
   setPassword: (password: string) => void;
   setProviderAuthToken: (value: string) => void;
@@ -34,13 +32,8 @@ export default function PasswordInputStep({
 
   const handleLogin = async () => {
     try {
-      if (!userId || !password) {
-        return;
-      }
-
       setIsLoading(true);
       const isLoginSuccessful = await attemptLogin({
-        userId,
         email,
         password
       });

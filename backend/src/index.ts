@@ -65,7 +65,8 @@ import {
 import {
     auth as v3AuthRouter,
     secrets as v3SecretsRouter,
-    workspaces as v3WorkspacesRouter
+    signup as v3SignupRouter,
+    workspaces as v3WorkspacesRouter,
 } from './routes/v3';
 import { healthCheck } from './routes/status';
 import { getLogger } from './utils/logger';
@@ -170,6 +171,7 @@ const main = async () => {
     app.use('/api/v3/auth', v3AuthRouter);
     app.use('/api/v3/secrets', v3SecretsRouter);
     app.use('/api/v3/workspaces', v3WorkspacesRouter);
+    app.use('/api/v3/signup', v3SignupRouter);
 
     // api docs 
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile))

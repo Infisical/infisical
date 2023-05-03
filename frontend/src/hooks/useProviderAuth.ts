@@ -31,10 +31,16 @@ export const useProviderAuth = () => {
 
         window.addEventListener('storage', handleStorageChange);
 
+        if (providerAuthToken) {
+            const { userId: resultUserId, email: resultEmail } = jwt_decode(providerAuthToken) as any;
+            setEmail(resultEmail);
+            setUserId(resultUserId);
+        }
+
         return () => {
             window.removeEventListener('storage', handleStorageChange);
         };
-    });
+    }, []);
 
     return {
         email,

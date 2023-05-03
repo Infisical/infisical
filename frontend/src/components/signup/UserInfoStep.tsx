@@ -32,6 +32,7 @@ interface UserInfoStepProps {
   setFirstName: (value: string) => void;
   lastName: string;
   setLastName: (value: string) => void;
+  providerAuthToken?: string;
 }
 
 /**
@@ -55,7 +56,8 @@ export default function UserInfoStep({
   firstName,
   setFirstName,
   lastName,
-  setLastName
+  setLastName,
+  providerAuthToken,
 }: UserInfoStepProps): JSX.Element {
   const [firstNameError, setFirstNameError] = useState(false);
   const [lastNameError, setLastNameError] = useState(false);
@@ -118,11 +120,11 @@ export default function UserInfoStep({
                 parallelism: 1,
                 hashLen: 32
               });
-              
+
               if (!derivedKey) throw new Error('Failed to derive key from password');
 
               const key = crypto.randomBytes(32);
-             
+
               // create encrypted private key by encrypting the private
               // key with the symmetric key [key]
               const {
@@ -133,7 +135,7 @@ export default function UserInfoStep({
                 text: privateKey,
                 secret: key
               });
-              
+
               // create the protected key by encrypting the symmetric key
               // [key] with the derived key
               const {
@@ -144,7 +146,7 @@ export default function UserInfoStep({
                 text: key.toString('hex'),
                 secret: Buffer.from(derivedKey.hash)
               });
-              
+
               const response = await completeAccountInformationSignup({
                 email,
                 firstName,
@@ -156,11 +158,12 @@ export default function UserInfoStep({
                 encryptedPrivateKey,
                 encryptedPrivateKeyIV,
                 encryptedPrivateKeyTag,
+                providerAuthToken,
                 salt: result.salt,
                 verifier: result.verifier,
-                organizationName: `${firstName}'s organization`
+                organizationName: `${firstName}'s organization`,
               });
-              
+
               // unset signup JWT token and set JWT token
               SecurityClient.setSignupToken('');
               SecurityClient.setToken(response.token);

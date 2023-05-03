@@ -29,20 +29,17 @@ const attemptLogin = async (
   {
     email,
     password,
-    userId,
   }: {
     email: string;
-    userId?: string;
     password: string;
   }
 ): Promise<IsLoginSuccessful> => {
 
-  const username = userId ?? email;
   const telemetry = new Telemetry().getInstance();
   return new Promise((resolve, reject) => {
     client.init(
       {
-        username,
+        username: email,
         password
       },
       async () => {
@@ -51,7 +48,6 @@ const attemptLogin = async (
           const { serverPublicKey, salt } = await login1({
             email,
             clientPublicKey,
-            userId,
           });
 
           client.setSalt(salt);
@@ -72,7 +68,6 @@ const attemptLogin = async (
           } = await login2(
             {
               email,
-              userId,
               clientProof,
             }
           );

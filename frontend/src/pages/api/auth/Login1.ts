@@ -12,7 +12,6 @@ interface Login1 {
 const login1 = async (loginDetails: {
   email: string;
   clientPublicKey: string;
-  userId?: string;
 }) => {
   const response = await fetch("/api/v2/auth/login1", {
     method: "POST",

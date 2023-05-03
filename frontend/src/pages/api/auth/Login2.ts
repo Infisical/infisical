@@ -20,7 +20,6 @@ interface Login2Response {
 const login2 = async (loginDetails: {
   email: string;
   clientProof: string;
-  userId?: string;
 }) => {
   const response = await fetch('/api/v2/auth/login2', {
     method: 'POST',

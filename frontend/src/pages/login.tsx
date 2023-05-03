@@ -25,7 +25,6 @@ export default function Login() {
   const [isLoginWithEmail, setIsLoginWithEmail] = useState(false);
   const {
     providerAuthToken,
-    userId,
     email: providerEmail,
     setProviderAuthToken
   } = useProviderAuth();
@@ -57,7 +56,6 @@ export default function Login() {
     if (providerAuthToken && step === 1) {
       return (
         <PasswordInputStep
-          userId={userId}
           email={providerEmail}
           password={password}
           setPassword={setPassword}
