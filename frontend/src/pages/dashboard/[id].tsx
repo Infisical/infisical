@@ -816,17 +816,17 @@ export default function Dashboard() {
   };
 
   return <div>
+    <Head>
+      <title>{t('common:head-title', { title: t('dashboard:title') })}</title>
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
+      <meta property="og:title" content={String(t('dashboard:og-title'))} />
+      <meta name="og:description" content={String(t('dashboard:og-description'))} />
+    </Head>
     {!envInURL 
     ? <DashboardEnvOverview onEnvChange={handleOnEnvironmentChange} />
     : (data ? (
     <div className="bg-bunker-800 max-h-screen h-full relative flex flex-col justify-between text-white dark">
-      <Head>
-        <title>{t('common:head-title', { title: t('dashboard:title') })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={String(t('dashboard:og-title'))} />
-        <meta name="og:description" content={String(t('dashboard:og-description'))} />
-      </Head>
       <div className="flex flex-row h-full">
         <ConfirmEnvOverwriteModal
           isOpen={!!dropZoneData}
