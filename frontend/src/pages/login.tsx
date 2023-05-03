@@ -24,12 +24,12 @@ export default function Login() {
   const lang = router.locale ?? 'en';
   const [isLoginWithEmail, setIsLoginWithEmail] = useState(false);
   const {
-      providerAuthToken,
-      userId,
-      email: providerEmail,
-      setProviderAuthToken
+    providerAuthToken,
+    userId,
+    email: providerEmail,
+    setProviderAuthToken
   } = useProviderAuth();
-  
+
   const setLanguage = async (to: string) => {
     router.push('/login', '/login', { locale: to });
     localStorage.setItem('lang', to);
@@ -51,7 +51,7 @@ export default function Login() {
       redirectToDashboard();
     }
   }, []);
-  
+
   const renderView = (loginStep: number) => {
 
     if (providerAuthToken && step === 1) {
@@ -83,12 +83,12 @@ export default function Login() {
       return (
         <>
           <button type='button' className='text-white' onClick={() => {
-            window.open('/api/v1/auth/login/google')
+            window.open('/api/v1/oauth/redirect/google')
           }}>
             Continue with Google
           </button>
           <button type='button' className='text-white' onClick={() => {
-              setIsLoginWithEmail(true);
+            setIsLoginWithEmail(true);
           }}>
             Continue with Email
           </button>

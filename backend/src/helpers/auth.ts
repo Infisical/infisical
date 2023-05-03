@@ -20,6 +20,7 @@ import {
 import {
 	getJwtAuthLifetime,
 	getJwtAuthSecret,
+	getJwtProviderAuthSecret,
 	getJwtRefreshLifetime,
 	getJwtRefreshSecret
 } from '../config';
@@ -319,8 +320,34 @@ const createToken = ({
 	});
 };
 
+const validateProviderAuthToken = async ({
+	email,
+	user,
+	providerAuthToken,
+}: {
+	email: string;
+	user: IUser,
+	providerAuthToken?: string;
+}) => {
+	if (!providerAuthToken) {
+		throw new Error('Invalid authentication request.');
+	}
+
+	const decodedToken = <jwt.ProviderAuthJwtPayload>(
+		jwt.verify(providerAuthToken, await getJwtProviderAuthSecret())
+	);
+	
+	if (
+		decodedToken.authProvider !== user.authProvider ||
+		decodedToken.email !== email
+	) {
+		throw new Error('Invalid authentication credentials.')
+	}
+}
+
 export {
 	validateAuthMode,
+	validateProviderAuthToken,
 	getAuthUserPayload,
 	getAuthSTDPayload,
 	getAuthSAAKPayload,

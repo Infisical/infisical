@@ -5,7 +5,7 @@ import * as Sentry from '@sentry/node';
 import * as bigintConversion from 'bigint-conversion';
 const jsrp = require('jsrp');
 import { User, LoginSRPDetail } from '../../models';
-import { issueAuthTokens, createToken } from '../../helpers/auth';
+import { issueAuthTokens, createToken, validateProviderAuthToken } from '../../helpers/auth';
 import { checkUserDevice } from '../../helpers/user';
 import { sendMail } from '../../helpers/nodemailer';
 import { TokenService } from '../../services';
@@ -20,12 +20,14 @@ import {
     getJwtMfaLifetime,
     getJwtMfaSecret,
     getHttpsEnabled,
-    getJwtProviderAuthSecret
 } from '../../config';
+import { AuthProvider } from '../../models/user';
 
 declare module 'jsonwebtoken' {
     export interface ProviderAuthJwtPayload extends jwt.JwtPayload {
         userId: string;
+        email: string;
+        authProvider: AuthProvider;
     }
 }
 
@@ -42,29 +44,24 @@ export const login1 = async (req: Request, res: Response) => {
             providerAuthToken,
             clientPublicKey
         }: {
-            email?: string;
+            email: string;
             clientPublicKey: string,
             providerAuthToken?: string;
         } = req.body;
 
-        let userId = '';
-        if (providerAuthToken) {
-            const decodedToken = <jwt.ProviderAuthJwtPayload>(
-                jwt.verify(providerAuthToken, await getJwtProviderAuthSecret())
-            );
-
-            userId = decodedToken.userId;
-        }
-
-        const filter = userId ? {
-            _id: userId,
-        } : {
+        const user = await User.findOne({
             email,
-        }
-
-        const user = await User.findOne(filter).select('+salt +verifier');
+        }).select('+salt +verifier');
 
         if (!user) throw new Error('Failed to find user');
+
+        if (user.authProvider) {
+            await validateProviderAuthToken({
+                email,
+                user,
+                providerAuthToken,
+            })
+        }
 
         const server = new jsrp.server();
         server.init(
@@ -75,14 +72,10 @@ export const login1 = async (req: Request, res: Response) => {
             async () => {
                 // generate server-side public key
                 const serverPublicKey = server.getPublicKey();
-                const identifier = userId ? {
-                    userId,
-                } : {
-                    email,
-                }
-
-                await LoginSRPDetail.findOneAndReplace(filter, {
-                    ...identifier,
+                await LoginSRPDetail.findOneAndReplace({
+                    userId: user.id,
+                }, {
+                    userId: user.id,
                     clientPublicKey: clientPublicKey,
                     serverBInt: bigintConversion.bigintToBuf(server.bInt),
                 }, { upsert: true, returnNewDocument: false });
@@ -115,32 +108,22 @@ export const login2 = async (req: Request, res: Response) => {
         if (!req.headers['user-agent']) throw InternalServerError({ message: 'User-Agent header is required' });
 
         const { email, clientProof, providerAuthToken } = req.body;
-        
-        let userId = '';
-        if (providerAuthToken) {
-            const decodedToken = <jwt.ProviderAuthJwtPayload>(
-                jwt.verify(providerAuthToken, await getJwtProviderAuthSecret())
-            );
-            userId = decodedToken.userId;
-        }
 
-        const filter = userId ? {
-            _id: userId,
-        } : {
+        const user = await User.findOne({
             email,
-        }
-
-        const user = await User.findOne(filter).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag');
+        }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag');
 
         if (!user) throw new Error('Failed to find user');
-
-        const identifier = userId ? {
-            userId,
-        } : {
-            email,
+        
+        if (user.authProvider) {
+            await validateProviderAuthToken({
+                email,
+                user,
+                providerAuthToken,
+            })
         }
 
-        const loginSRPDetail = await LoginSRPDetail.findOneAndDelete({ ...identifier });
+        const loginSRPDetail = await LoginSRPDetail.findOneAndDelete({ userId: user.id });
 
         if (!loginSRPDetail) {
             return BadRequestError(Error("Failed to find login details for SRP"))

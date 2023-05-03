@@ -15,7 +15,8 @@ import password from './password';
 import stripe from './stripe';
 import integration from './integration';
 import integrationAuth from './integrationAuth';
-import secretsFolder from './secretsFolder'
+import secretsFolder from './secretsFolder';
+import oauth from './oauth';
 
 export {
 	signup,
@@ -29,6 +30,7 @@ export {
 	membership,
 	key,
 	inviteOrg,
+	oauth,
 	secret,
 	serviceToken,
 	password,

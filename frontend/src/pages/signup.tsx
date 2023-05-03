@@ -14,9 +14,11 @@ import UserInfoStep from '@app/components/signup/UserInfoStep';
 import SecurityClient from '@app/components/utilities/SecurityClient';
 import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
 import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
+import { useProviderAuth } from '@app/hooks/useProviderAuth';
 
 import checkEmailVerificationCode from './api/auth/CheckEmailVerificationCode';
 import getWorkspaces from './api/workspace/getWorkspaces';
+
 
 /**
  * @returns the signup page
@@ -31,7 +33,13 @@ export default function SignUp() {
   const [step, setStep] = useState(1);
   const router = useRouter();
   const { data: serverDetails } = useFetchServerStatus();
+  const [isSignupWithEmail, setIsSignupWithEmail] = useState(false);
   const { t } = useTranslation();
+  const { providerAuthToken } = useProviderAuth();
+
+  if (providerAuthToken && step < 3) {
+    setStep(3);
+  }
 
   useEffect(() => {
     const tryAuth = async () => {
@@ -60,7 +68,7 @@ export default function SignUp() {
       // Checking if the code matches the email.
       const response = await checkEmailVerificationCode({ email, code });
       if (response.status === 200) {
-        const {token} = await response.json();
+        const { token } = await response.json();
         SecurityClient.setSignupToken(token);
         setStep(3);
       } else {
@@ -71,16 +79,82 @@ export default function SignUp() {
 
   // when email service is not configured, skip step 2 and 5
   useEffect(() => {
-    if (!serverDetails?.emailConfigured && step === 2){
+    if (!serverDetails?.emailConfigured && step === 2) {
       incrementStep()
     }
 
-    if (!serverDetails?.emailConfigured && step === 5){
-      getWorkspaces().then((userWorkspaces)=>{
+    if (!serverDetails?.emailConfigured && step === 5) {
+      getWorkspaces().then((userWorkspaces) => {
         router.push(`/dashboard/${userWorkspaces[0]._id}`);
       });
     }
   }, [step]);
+
+  const renderView = (registerStep: number) => {
+    if (isSignupWithEmail && registerStep === 1) {
+      return <EnterEmailStep email={email} setEmail={setEmail} incrementStep={incrementStep} />
+    }
+
+    if (!isSignupWithEmail && registerStep === 1) {
+      return (
+        <>
+          <button type='button' className='text-white' onClick={() => {
+            window.open('/api/v1/auth/login/google')
+          }}>
+            Continue with Google
+          </button>
+          <button type='button' className='text-white' onClick={() => {
+            setIsSignupWithEmail(true);
+          }}>
+            Continue with Email
+          </button>
+        </>
+      )
+    }
+
+    if (registerStep === 2) {
+      return (
+        <CodeInputStep
+          email={email}
+          incrementStep={incrementStep}
+          setCode={setCode}
+          codeError={codeError}
+        />
+      )
+    }
+
+    if (registerStep === 3) {
+      return (
+        <UserInfoStep
+          incrementStep={incrementStep}
+          email={email}
+          password={password}
+          setPassword={setPassword}
+          firstName={firstName}
+          setFirstName={setFirstName}
+          lastName={lastName}
+          setLastName={setLastName}
+        />
+      )
+    }
+
+    if (registerStep === 4) {
+      return (
+        <DownloadBackupPDF
+          incrementStep={incrementStep}
+          email={email}
+          password={password}
+          name={`${firstName} ${lastName}`}
+        />
+      )
+    }
+
+    if (serverDetails?.emailConfigured) {
+      return <TeamInviteStep />
+    }
+
+    return ""
+  }
 
   return (
     <div className="bg-bunker-800 h-screen flex flex-col items-center justify-center">
@@ -98,34 +172,7 @@ export default function SignUp() {
           </div>
         </Link>
         <form onSubmit={(e) => e.preventDefault()}>
-          {step === 1 ? (
-            <EnterEmailStep email={email} setEmail={setEmail} incrementStep={incrementStep} />
-          ) : step === 2 ? (
-            <CodeInputStep
-              email={email}
-              incrementStep={incrementStep}
-              setCode={setCode}
-              codeError={codeError}
-            />
-          ) : step === 3 ? (
-            <UserInfoStep
-              incrementStep={incrementStep}
-              email={email}
-              password={password}
-              setPassword={setPassword}
-              firstName={firstName}
-              setFirstName={setFirstName}
-              lastName={lastName}
-              setLastName={setLastName}
-            />
-          ) : step === 4 ? (
-            <DownloadBackupPDF
-              incrementStep={incrementStep}
-              email={email}
-              password={password}
-              name={`${firstName} ${lastName}`}
-            />
-          ) : (serverDetails?.emailConfigured ? <TeamInviteStep /> : "")}
+          {renderView(step)}
         </form>
       </div>
     </div>

@@ -267,7 +267,3 @@ export const getNewToken = async (req: Request, res: Response) => {
     });
   }
 };
-
-export const handleGoogleCallback = (req: Request, res: Response) => {
-  res.redirect(`/login/provider/success?token=${encodeURIComponent(req.providerAuthToken)}`);
-}

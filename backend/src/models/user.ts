@@ -1,9 +1,13 @@
 import { Schema, model, Types, Document } from 'mongoose';
 
+export enum AuthProvider {
+	GOOGLE = 'google',
+}
+
 export interface IUser extends Document {
 	_id: Types.ObjectId;
 	authId?: string;
-	authProvider?: string;
+	authProvider?: AuthProvider;
 	email: string;
 	firstName?: string;
 	lastName?: string;
@@ -33,6 +37,7 @@ const userSchema = new Schema<IUser>(
 		},
 		authProvider: {
 			type: String,
+			enum: AuthProvider,
 		},
 		email: {
 			type: String,
