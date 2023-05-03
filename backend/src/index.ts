@@ -4,15 +4,9 @@ dotenv.config();
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
-import * as Sentry from '@sentry/node';
 import { DatabaseService } from './services';
 import { setUpHealthEndpoint } from './services/health';
-import { initSmtp } from './services/smtp';
 import { TelemetryService } from './services';
-import { setTransporter } from './helpers/nodemailer';
-import { createTestUserForDevelopment } from './utils/addDevelopmentUser';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { patchRouterParam } = require('./utils/patchAsyncRoutes');
 
 import cookieParser from 'cookie-parser';
 import swaggerUi = require('swagger-ui-express');
@@ -77,22 +71,13 @@ import {
     getSiteURL,
     getSmtpHost
 } from './config';
+import { setup } from './utils/setup';
 
 const main = async () => {
     TelemetryService.logTelemetryMessage();
-    setTransporter(await initSmtp());
 
-    await DatabaseService.initDatabase(await getMongoURL());
-    if ((await getNodeEnv()) !== 'test') {
-        Sentry.init({
-            dsn: await getSentryDSN(),
-            tracesSampleRate: 1.0,
-            debug: await getNodeEnv() === 'production' ? false : true,
-            environment: await getNodeEnv()
-        });
-    }
+    await setup();
 
-    patchRouterParam();
     const app = express();
     app.enable('trust proxy');
     app.use(express.json());
@@ -176,7 +161,7 @@ const main = async () => {
         (await getLogger("backend-main")).info(`Server started listening at port ${await getPort()}`)
     });
 
-    await createTestUserForDevelopment();
+    // await createTestUserForDevelopment();
     setUpHealthEndpoint(server);
 
     server.on('close', async () => {

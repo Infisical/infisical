@@ -54,9 +54,9 @@ import {
 } from '../variables';
 import crypto from 'crypto';
 import * as argon2 from 'argon2';
-import { 
-    encryptSymmetric,
-    decryptSymmetric
+import {
+    encryptSymmetric128BitHexKeyUTF8,
+    decryptSymmetric128BitHexKeyUTF8
 } from '../utils/crypto';
 import { getEncryptionKey } from '../config';
 import { TelemetryService } from '../services';
@@ -221,48 +221,6 @@ const validateClientForSecrets = async ({
 }
 
 /**
- * Initialize secret blind index data by setting previously
- * un-initialized projects to have secret blind index data
- * (Ensures that all projects have associated blind index data)
- */
-const initSecretBlindIndexDataHelper = async () => {
-    const workspaceIdsBlindIndexed = await SecretBlindIndexData.distinct('workspace');
-    const workspaceIdsToBlindIndex = await Workspace.distinct('_id', {
-        _id: {
-            $nin: workspaceIdsBlindIndexed
-        }
-    });
-    
-    const secretBlindIndexDataToInsert = await Promise.all(
-        workspaceIdsToBlindIndex.map(async (workspaceToBlindIndex) => {
-            const salt = crypto.randomBytes(16).toString('base64');
-
-            const { 
-                ciphertext: encryptedSaltCiphertext,
-                iv: saltIV,
-                tag: saltTag
-            } = encryptSymmetric({
-                plaintext: salt,
-                key: await getEncryptionKey()
-            });
-
-            const secretBlindIndexData = new SecretBlindIndexData({
-                workspace: workspaceToBlindIndex,
-                encryptedSaltCiphertext,
-                saltIV,
-                saltTag
-            })
-            
-            return secretBlindIndexData;
-        })
-    );
-    
-    if (secretBlindIndexDataToInsert.length > 0) {
-        await SecretBlindIndexData.insertMany(secretBlindIndexDataToInsert);
-    }
-}
-
-/**
  * Create secret blind index data containing encrypted blind index [salt]
  * for workspace with id [workspaceId]
  * @param {Object} obj
@@ -280,7 +238,7 @@ const createSecretBlindIndexDataHelper = async ({
         ciphertext: encryptedSaltCiphertext,
         iv: saltIV,
         tag: saltTag
-    } = encryptSymmetric({
+    } = encryptSymmetric128BitHexKeyUTF8({
         plaintext: salt,
         key: await getEncryptionKey()
     });
@@ -314,7 +272,7 @@ const getSecretBlindIndexSaltHelper = async ({
     if (!secretBlindIndexData) throw SecretBlindIndexDataNotFoundError();
     
     // decrypt workspace salt
-    const salt = decryptSymmetric({
+    const salt = decryptSymmetric128BitHexKeyUTF8({
         ciphertext: secretBlindIndexData.encryptedSaltCiphertext,
         iv: secretBlindIndexData.saltIV,
         tag: secretBlindIndexData.saltTag,
@@ -376,7 +334,7 @@ const generateSecretBlindIndexHelper = async ({
     if (!secretBlindIndexData) throw SecretBlindIndexDataNotFoundError();
     
     // decrypt workspace salt
-    const salt = decryptSymmetric({
+    const salt = decryptSymmetric128BitHexKeyUTF8({
         ciphertext: secretBlindIndexData.encryptedSaltCiphertext,
         iv: secretBlindIndexData.saltIV,
         tag: secretBlindIndexData.saltTag,
@@ -934,7 +892,6 @@ const deleteSecretHelper = async ({
 export {
     validateClientForSecret,
     validateClientForSecrets,
-    initSecretBlindIndexDataHelper,
     createSecretBlindIndexDataHelper,
     getSecretBlindIndexSaltHelper,
     generateSecretBlindIndexWithSaltHelper,

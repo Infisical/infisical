@@ -13,10 +13,10 @@ import {
 } from "../models";
 import {
   generateKeyPair,
-  encryptSymmetric,
-  decryptSymmetric,
-  decryptAsymmetric,
-} from "../utils/crypto";
+  encryptSymmetric128BitHexKeyUTF8,
+  decryptSymmetric128BitHexKeyUTF8,
+  decryptAsymmetric
+} from '../utils/crypto';
 import {
   SECRET_SHARED,
   AUTH_MODE_JWT,
@@ -26,7 +26,6 @@ import {
 } from "../variables";
 import { getEncryptionKey } from "../config";
 import { BotNotFoundError, UnauthorizedRequestError } from "../utils/errors";
-import { validateMembership } from "../helpers/membership";
 import { validateUserClientForWorkspace } from "../helpers/user";
 import { validateServiceAccountClientForWorkspace } from "../helpers/serviceAccount";
 
@@ -120,7 +119,7 @@ const createBot = async ({
   workspaceId: Types.ObjectId;
 }) => {
   const { publicKey, privateKey } = generateKeyPair();
-  const { ciphertext, iv, tag } = encryptSymmetric({
+  const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
     plaintext: privateKey,
     key: await getEncryptionKey(),
   });
@@ -161,14 +160,14 @@ const getSecretsHelper = async ({
   });
 
   secrets.forEach((secret: ISecret) => {
-    const secretKey = decryptSymmetric({
+    const secretKey = decryptSymmetric128BitHexKeyUTF8({
       ciphertext: secret.secretKeyCiphertext,
       iv: secret.secretKeyIV,
       tag: secret.secretKeyTag,
       key,
     });
 
-    const secretValue = decryptSymmetric({
+    const secretValue = decryptSymmetric128BitHexKeyUTF8({
       ciphertext: secret.secretValueCiphertext,
       iv: secret.secretValueIV,
       tag: secret.secretValueTag,
@@ -202,7 +201,7 @@ const getKey = async ({ workspaceId }: { workspaceId: string }) => {
   if (!bot) throw new Error("Failed to find bot");
   if (!bot.isActive) throw new Error("Bot is not active");
 
-  const privateKeyBot = decryptSymmetric({
+  const privateKeyBot = decryptSymmetric128BitHexKeyUTF8({
     ciphertext: bot.encryptedPrivateKey,
     iv: bot.iv,
     tag: bot.tag,
@@ -234,7 +233,7 @@ const encryptSymmetricHelper = async ({
   plaintext: string;
 }) => {
   const key = await getKey({ workspaceId: workspaceId.toString() });
-  const { ciphertext, iv, tag } = encryptSymmetric({
+  const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
     plaintext,
     key,
   });
@@ -266,7 +265,7 @@ const decryptSymmetricHelper = async ({
   tag: string;
 }) => {
   const key = await getKey({ workspaceId: workspaceId.toString() });
-  const plaintext = decryptSymmetric({
+  const plaintext = decryptSymmetric128BitHexKeyUTF8({
     ciphertext,
     iv,
     tag,
@@ -281,5 +280,5 @@ export {
   createBot,
   getSecretsHelper,
   encryptSymmetricHelper,
-  decryptSymmetricHelper,
+  decryptSymmetricHelper
 };
