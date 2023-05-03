@@ -40,8 +40,6 @@ jobs:
           push: true
           context: .
           tags: |
-            infisical/standalone-infisical:${{ steps.commit.outputs.short }}
             infisical/standalone-infisical:latest
-            infisical/standalone-infisical:${{ steps.extract_version.outputs.version }}
           platforms: linux/amd64,linux/arm64
           file: Dockerfile.standalone-infisical
