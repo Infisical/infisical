@@ -114,7 +114,6 @@ export const backfillEncryptionMetadata = async () => {
         {
             $set: {
                 algorithm: ALGORITHM_AES_256_GCM,
-                keySize: 256,
                 keyEncoding: ENCODING_SCHEME_UTF8
             }
         }
@@ -136,7 +135,6 @@ export const backfillEncryptionMetadata = async () => {
         {
             $set: {
                 algorithm: ALGORITHM_AES_256_GCM,
-                keySize: 256,
                 keyEncoding: ENCODING_SCHEME_UTF8
             }
         }
@@ -158,7 +156,6 @@ export const backfillEncryptionMetadata = async () => {
         {
             $set: {
                 algorithm: ALGORITHM_AES_256_GCM,
-                keySize: 256,
                 keyEncoding: ENCODING_SCHEME_UTF8
             }
         }
@@ -167,12 +164,20 @@ export const backfillEncryptionMetadata = async () => {
     // backfill integration auth encryption metadata
     await IntegrationAuth.updateMany(
         {
-            
+            algorithm: {
+                $exists: false
+            },
+            keySize: {
+                $exists: false
+            },
+            keyEncoding: {
+                $exists: false
+            }
         },
         {
             $set: {
                 algorithm: ALGORITHM_AES_256_GCM,
-
+                keyEncoding: ENCODING_SCHEME_UTF8
             }
         }
     );

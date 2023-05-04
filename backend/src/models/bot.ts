@@ -16,7 +16,6 @@ export interface IBot {
     iv: string;
     tag: string;
     algorithm: 'aes-256-gcm';
-    keySize: 256;
     keyEncoding: 'base64' | 'utf8';
 }
 
@@ -58,11 +57,6 @@ const botSchema = new Schema<IBot>(
         algorithm: { // the encryption algorithm used
             type: String,
             enum: [ALGORITHM_AES_256_GCM],
-            required: true
-        },
-        keySize: { // the size of the key used in the algorithm
-            type: Number,
-            enum: [256],
             required: true
         },
         keyEncoding: {

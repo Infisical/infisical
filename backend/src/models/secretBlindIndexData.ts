@@ -12,7 +12,6 @@ export interface ISecretBlindIndexData extends Document {
     saltIV: string;
     saltTag: string;
     algorithm: 'aes-256-gcm';
-    keySize: 256;
     keyEncoding: 'base64' | 'utf8'
 }
 
@@ -38,11 +37,6 @@ const secretBlindIndexDataSchema = new Schema<ISecretBlindIndexData>(
         algorithm: {
             type: String,
             enum: [ALGORITHM_AES_256_GCM],
-            required: true
-        },
-        keySize: {
-            type: Number,
-            enum: [256],
             required: true
         },
         keyEncoding: {

@@ -16,7 +16,7 @@ import {
 } from '../errors';
 import { 
     ALGORITHM_AES_256_GCM, 
-    BLOCK_SIZE_BYTES_32,
+    NONCE_BYTES_SIZE,
     BLOCK_SIZE_BYTES_16
 } from '../../variables';
 import { validateEncryptionKey } from '../../validation';
@@ -112,7 +112,7 @@ const encryptSymmetric = ({
 }: IEncryptSymmetricInput): IEncryptSymmetricOutput => {
     validateEncryptionKey(key);
     
-    const iv = crypto.randomBytes(BLOCK_SIZE_BYTES_32);
+    const iv = crypto.randomBytes(NONCE_BYTES_SIZE);
     const secretKey = crypto.createSecretKey(key, 'base64');
     const cipher = crypto.createCipheriv(ALGORITHM_AES_256_GCM, secretKey, iv);
 
@@ -169,7 +169,7 @@ const decryptSymmetric = ({
  * 
  * @param {Object} obj
  * @param {String} obj.plaintext - (utf8) plaintext to encrypt
- * @param {String} obj.key - (base64) 256-bit key
+ * @param {String} obj.key - (hex) 128-bit key
  * @returns {Object} obj
  * @returns {String} obj.ciphertext (base64) ciphertext
  * @returns {String} obj.iv (base64) iv

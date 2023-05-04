@@ -13,7 +13,6 @@ export interface IBackupPrivateKey {
 	tag: string;
 	salt: string;
 	algorithm: string;
-	keySize: number;
 	keyEncoding: 'base64' | 'utf8';
 	verifier: string;
 }
@@ -43,11 +42,6 @@ const backupPrivateKeySchema = new Schema<IBackupPrivateKey>(
         algorithm: { // the encryption algorithm used
             type: String,
             enum: [ALGORITHM_AES_256_GCM],
-            required: true
-        },
-        keySize: { // the size of the key used in the algorithm
-            type: Number,
-            enum: [256],
             required: true
         },
         keyEncoding: {

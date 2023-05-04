@@ -35,8 +35,7 @@ export interface IIntegrationAuth extends Document {
   accessIV?: string;
   accessTag?: string;
   algorithm?: 'aes-256-gcm';
-  keySize?: 256;
-  keyEncoding: 'utf8' | 'base64';
+  keyEncoding?: 'utf8' | 'base64';
   accessExpiresAt?: Date;
 }
 
@@ -119,11 +118,6 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
       type: String,
       enum: [ALGORITHM_AES_256_GCM],
       required: true
-    },
-    keySize: { // the size of the key used in the algorithm
-        type: Number,
-        enum: [256],
-        required: true
     },
     keyEncoding: {
         type: String,
