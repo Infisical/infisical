@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form';
+import { useEffect, useRef, useState } from 'react';
+import { FormProvider, useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
 import {
@@ -90,6 +90,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   const { createNotification } = useNotificationContext();
   const queryClient = useQueryClient();
 
+  const secretContainer = useRef<HTMLDivElement | null>(null);
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     'secretDetails',
     'addTag',
@@ -102,7 +103,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   const [snapshotId, setSnaphotId] = useState<string | null>(null);
   const [selectedEnv, setSelectedEnv] = useState<WorkspaceEnv | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [deletedSecretIds, setDeletedSecretIds] = useState<string[]>([]);
+  const deletedSecretIds = useRef<string[]>([]);
   const { hasUnsavedChanges, setHasUnsavedChanges } = useLeaveConfirm({ initialValue: false });
 
   const { currentWorkspace, isLoading } = useWorkspace();
@@ -124,8 +125,8 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     onSuccess: (data) => {
       // get an env with one of the access available
       const env = data.find(({ isReadDenied, isWriteDenied }) => !isWriteDenied || !isReadDenied);
-      if (env && data?.map(wsenv => wsenv.slug).includes(envFromTop)) {
-        setSelectedEnv(data?.filter(dp => dp.slug === envFromTop)[0]);
+      if (env && data?.map((wsenv) => wsenv.slug).includes(envFromTop)) {
+        setSelectedEnv(data?.filter((dp) => dp.slug === envFromTop)[0]);
       }
     }
   });
@@ -187,23 +188,15 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     handleSubmit,
     getValues,
     setValue,
-    formState: { isSubmitting, dirtyFields },
+    formState: { isSubmitting, isDirty },
     reset
   } = method;
-  const formSecrets = useWatch({ control, name: 'secrets' });
-  const { fields, prepend, append, remove, update } = useFieldArray({ control, name: 'secrets' });
-
+  const { fields, prepend, append, remove } = useFieldArray({ control, name: 'secrets' });
   const isRollbackMode = Boolean(snapshotId);
   const isReadOnly = selectedEnv?.isWriteDenied;
   const isAddOnly = selectedEnv?.isReadDenied && !selectedEnv?.isWriteDenied;
   const canDoRollback = !isReadOnly && !isAddOnly;
-  const isSubmitDisabled =
-    isReadOnly ||
-    // on add only mode the formstate becomes dirty due to secrets missing some items
-    // to avoid this we check dirtyFields in isAddOnly Mode
-    (isAddOnly && Object.keys(dirtyFields).length === 0) ||
-    (!isRollbackMode && !isAddOnly && Object.keys(dirtyFields).length === 0) ||
-    isSubmitting;
+  const isSubmitDisabled = isReadOnly || (!isRollbackMode && !isDirty) || isAddOnly || isSubmitting;
 
   useEffect(() => {
     if (!isSnapshotChanging && Boolean(snapshotId)) {
@@ -240,15 +233,16 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     // append non conflicting ones
     Object.keys(uploadedSec).forEach((key) => {
       if (!conflictingSecIds?.[key]) {
-        append({
+        delete conflictingUploadedSec[key];
+        sec.push({
           ...DEFAULT_SECRET_VALUE,
           key,
           value: uploadedSec[key].value,
           comment: uploadedSec[key].comments.join(',')
         });
-        delete conflictingUploadedSec[key];
       }
     });
+    setValue('secrets', sec, { shouldDirty: true });
     if (conflictingSec.length > 0) {
       handlePopUpOpen('uploadedSecOpts', { secrets: conflictingUploadedSec });
     }
@@ -264,14 +258,15 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     data.forEach(({ key, index }) => {
       const { value, comments } = uploadedSec[key];
       const comment = comments.join(', ');
-      update(index, {
+      sec[index] = {
         ...DEFAULT_SECRET_VALUE,
         key,
         value,
         comment,
         tags: sec[index].tags
-      });
+      };
     });
+    setValue('secrets', sec, { shouldDirty: true });
     handlePopUpClose('uploadedSecOpts');
   };
 
@@ -319,7 +314,12 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     const sec = isAddOnly ? userSec.filter(({ _id }) => !_id) : userSec;
     // encrypt and format the secrets to batch api format
     // requests = [ {method:"", secret:""} ]
-    const batchedSecret = transformSecretsToBatchSecretReq(deletedSecretIds, latestFileKey, sec);
+    const batchedSecret = transformSecretsToBatchSecretReq(
+      deletedSecretIds.current,
+      latestFileKey,
+      sec,
+      secrets?.secrets
+    );
     // type check
     if (!selectedEnv?.slug) return;
     try {
@@ -332,6 +332,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
         text: 'Successfully saved changes',
         type: 'success'
       });
+      deletedSecretIds.current = [];
       if (!hasUserPushed) {
         await registerUserAction(USER_ACTION_PUSH);
       }
@@ -355,16 +356,17 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     }
     const env = wsEnv?.find((el) => el.slug === slug);
     if (env) setSelectedEnv(env);
-    router.push(`${router.asPath.split("?")[0]}?env=${slug}`)
+    router.push({
+      pathname: router.pathname,
+      query: { ...router.query, env: slug }
+    });
   };
 
   // record all deleted ids
   // This will make final deletion easier
   const onSecretDelete = (index: number, id?: string, overrideId?: string) => {
-    const ids: string[] = [];
-    if (id) ids.push(id);
-    if (overrideId) ids.push(overrideId);
-    setDeletedSecretIds((state) => [...state, ...ids]);
+    if (id) deletedSecretIds.current.push(id);
+    if (overrideId) deletedSecretIds.current.push(overrideId);
     remove(index);
     // just the case if this is called from drawer
     handlePopUpClose('secretDetails');
@@ -400,7 +402,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   }
 
   // when secrets is not loading and secrets list is empty
-  const isDashboardSecretEmpty = !isSecretsLoading && !formSecrets?.length;
+  const isDashboardSecretEmpty = !isSecretsLoading && false;
   // when using snapshot mode and snapshot is loading and snapshot list is empty
   const isSnapshotSecretEmtpy =
     isRollbackMode && !isSnapshotSecretsLoading && !snapshotSecret?.secrets?.length;
@@ -411,15 +413,17 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   );
 
   return (
-    <div className="container mx-auto max-w-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+    <div className="container mx-auto px-6 text-mineshaft-50 dark:[color-scheme:dark]">
       <FormProvider {...method}>
         <form autoComplete="off">
           {/* breadcrumb row */}
           <div className="relative right-5">
-            <NavHeader 
-              pageName={t('dashboard:title')} 
-              currentEnv={userAvailableEnvs?.filter(envir => envir.slug === envFromTop)[0].name || ''} 
-              isProjectRelated 
+            <NavHeader
+              pageName={t('dashboard:title')}
+              currentEnv={
+                userAvailableEnvs?.filter((envir) => envir.slug === envFromTop)[0].name || ''
+              }
+              isProjectRelated
               userAvailableEnvs={userAvailableEnvs}
               onEnvChange={onEnvChange}
             />
@@ -445,7 +449,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                     setSnaphotId(null);
                     reset({ ...secrets, isSnapshotMode: false });
                   }}
-                  className='h-10'
+                  className="h-10"
                 >
                   Go back
                 </Button>
@@ -456,7 +460,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                 leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
                 isLoading={isLoadingSnapshotCount}
                 isDisabled={!canDoRollback}
-                className='h-10'
+                className="h-10"
               >
                 {snapshotCount} Commits
               </Button>
@@ -465,7 +469,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                 isLoading={isSubmitting}
                 leftIcon={<FontAwesomeIcon icon={isRollbackMode ? faClockRotateLeft : faCheck} />}
                 onClick={handleSubmit(onSaveSecret)}
-                className='h-10'
+                className="h-10"
               >
                 {isRollbackMode ? 'Rollback' : 'Save Changes'}
               </Button>
@@ -475,7 +479,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
           <div className="mt-4 flex items-center space-x-2">
             <div className="flex-grow">
               <Input
-                className="bg-mineshaft-600 h-[2.3rem] placeholder-mineshaft-50"
+                className="h-[2.3rem] bg-mineshaft-600 placeholder-mineshaft-50"
                 placeholder="Search keys..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
@@ -490,12 +494,15 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                       <FontAwesomeIcon icon={faDownload} />
                     </IconButton>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto bg-mineshaft-800 border border-mineshaft-600 p-1" hideCloseBtn>
+                  <PopoverContent
+                    className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-1"
+                    hideCloseBtn
+                  >
                     <div className="flex flex-col space-y-2">
                       <Button
                         onClick={() => downloadSecret(getValues('secrets'), selectedEnv?.slug)}
                         variant="star"
-                        className="bg-bunker-700 h-8"
+                        className="h-8 bg-bunker-700"
                       >
                         Download as .env
                       </Button>
@@ -514,26 +521,38 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                   </IconButton>
                 </Tooltip>
               </div>
-              {!isReadOnly && !isRollbackMode && <Button
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false })}
-                isDisabled={isReadOnly || isRollbackMode}
-                variant="star"
-                className="h-10"
-              >
-                Add Secret
-              </Button>}
+              {!isReadOnly && !isRollbackMode && (
+                <Button
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() => {
+                    if (secretContainer.current) {
+                      secretContainer.current.scroll({
+                        top: 0,
+                        behavior: 'smooth'
+                      });
+                    }
+                    prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
+                  }}
+                  isDisabled={isReadOnly || isRollbackMode}
+                  variant="star"
+                  className="h-10"
+                >
+                  Add Secret
+                </Button>
+              )}
             </div>
           </div>
-          <div className={`${isSecretEmpty ? "flex flex-col items-center justify-center" : ""} mt-4 h-[calc(100vh-270px)] overflow-y-scroll overflow-x-hidden no-scrollbar no-scrollbar::-webkit-scrollbar`}>
+          <div
+            className={`${
+              isSecretEmpty ? 'flex flex-col items-center justify-center' : ''
+            } no-scrollbar::-webkit-scrollbar mt-4 h-[calc(100vh-270px)] overflow-x-hidden overflow-y-scroll no-scrollbar`}
+            ref={secretContainer}
+          >
             {!isSecretEmpty && (
               <TableContainer>
                 <table className="secret-table relative">
-                  <SecretTableHeader
-                    sortDir={sortDir}
-                    onSort={onSortSecrets}
-                  />
-                  <tbody className="overflow-y-auto max-h-screen">
+                  <SecretTableHeader sortDir={sortDir} onSort={onSortSecrets} />
+                  <tbody className="max-h-screen overflow-y-auto">
                     {fields.map(({ id, _id }, index) => (
                       <SecretInputRow
                         key={id}
@@ -554,11 +573,11 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                         <td colSpan={3} className="hover:bg-mineshaft-700">
                           <button
                             type="button"
-                            className="w-[calc(100vw-400px)] h-8 ml-12 font-normal text-bunker-300 flex justify-start items-center"
+                            className="ml-12 flex h-8 items-center justify-start font-normal text-bunker-300"
                             onClick={onAppendSecret}
                           >
                             <FontAwesomeIcon icon={faPlus} />
-                            <span className="w-20 ml-2">Add Secret</span>
+                            <span className="ml-2 w-20">Add Secret</span>
                           </button>
                         </td>
                       </tr>

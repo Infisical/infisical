@@ -1,12 +1,8 @@
 /* eslint-disable react/jsx-no-useless-fragment */
-import { SyntheticEvent, useRef, useState } from 'react';
-import { useFormContext, useWatch } from 'react-hook-form';
+import { useCallback, useState } from 'react';
 import { faCircle, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-
-import guidGenerator from '@app/components/utilities/randomId';
-
-import { FormData } from '../../DashboardPage.utils';
+import { twMerge } from 'tailwind-merge';
 
 type Props = {
   index: number;
@@ -19,84 +15,97 @@ type Props = {
 
 const REGEX = /([$]{.*?})/g;
 
-const DashboardInput = ({ isOverridden, isSecretValueHidden, isReadOnly, secret, index }: { isOverridden: boolean, isSecretValueHidden: boolean, isReadOnly?: boolean, secret: any, index: number } ): JSX.Element => {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const syncScroll = (e: SyntheticEvent<HTMLDivElement>) => {
-    if (ref.current === null) return;
-
-    ref.current.scrollTop = e.currentTarget.scrollTop;
-    ref.current.scrollLeft = e.currentTarget.scrollLeft;
-  };
-
-  return <td key={`row-${secret?.key || ''}--`} className={`flex cursor-default flex-row w-full justify-center h-10 items-center ${!(secret?.value || secret?.value === '') ? "bg-red-400/10" : "bg-mineshaft-900/30"}`}>
-    <div className="group relative whitespace-pre	flex flex-col justify-center w-full cursor-default">
-      <input
-        // {...register(`secrets.${index}.valueOverride`)}
-        defaultValue={(isOverridden ? secret.valueOverride : secret?.value || '')}
-        onScroll={syncScroll}
-        readOnly={isReadOnly}
-        className={`${
-          isSecretValueHidden
-            ? 'text-transparent focus:text-transparent active:text-transparent'
-            : ''
-        } z-10 peer cursor-default font-mono ph-no-capture bg-transparent caret-transparent text-transparent text-sm px-2 py-2 w-full outline-none duration-200 no-scrollbar no-scrollbar::-webkit-scrollbar`}
-        spellCheck="false"
-      />
-      <div
-        ref={ref}
-        className={`${
-          isSecretValueHidden && !isOverridden && secret?.value
-            ? 'text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-100 peer-active:text-gray-400 duration-200'
-            : ''
-        } ${!secret?.value && "text-bunker-400 justify-center"}
-        absolute cursor-default flex flex-row whitespace-pre font-mono z-0 ${isSecretValueHidden && secret?.value ? 'invisible' : 'visible'} peer-focus:visible mt-0.5 ph-no-capture overflow-x-scroll bg-transparent h-10 text-sm px-2 py-2 w-full min-w-16 outline-none duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
-      >
-        {(secret?.value || secret?.value === '') && (isOverridden ? secret.valueOverride : secret?.value)?.split('').length === 0 && <span className='text-bunker-400/80 font-sans w-full'>EMPTY</span>}
-        {(secret?.value || secret?.value === '') && (isOverridden ? secret.valueOverride : secret?.value)?.split(REGEX).map((word: string) => {
-          if (word.match(REGEX) !== null) {
-            return (
-              <span className="ph-no-capture text-yellow" key={word}>
-                {word.slice(0, 2)}
-                <span className="ph-no-capture text-yellow-200/80">
-                  {word.slice(2, word.length - 1)}
-                </span>
-                {word.slice(word.length - 1, word.length) === '}' ? (
-                  <span className="ph-no-capture text-yellow">
-                    {word.slice(word.length - 1, word.length)}
-                  </span>
-                ) : (
-                  <span className="ph-no-capture text-yellow-400">
-                    {word.slice(word.length - 1, word.length)}
-                  </span>
-                )}
-              </span>
-            );
-          }
-          return (
-            <span key={`${word}_${index + 1}`} className="ph-no-capture">
-              {word}
+const DashboardInput = ({
+  isOverridden,
+  isSecretValueHidden,
+  secret,
+  isReadOnly = true
+}: {
+  isOverridden: boolean;
+  isSecretValueHidden: boolean;
+  isReadOnly?: boolean;
+  secret?: any;
+}): JSX.Element => {
+  const syntaxHighlight = useCallback((val: string) => {
+    if (!val)
+      return (
+        <span className="cursor-default font-sans text-xs italic text-red-500/80">missing</span>
+      );
+    if (val?.length === 0)
+      return <span className="w-full font-sans text-bunker-400/80">EMPTY</span>;
+    return val?.split(REGEX).map((word, index) =>
+      word.match(REGEX) !== null ? (
+        <span className="ph-no-capture text-yellow" key={`${val}-${index + 1}`}>
+          {word.slice(0, 2)}
+          <span className="ph-no-capture text-yellow-200/80">{word.slice(2, word.length - 1)}</span>
+          {word.slice(word.length - 1, word.length) === '}' ? (
+            <span className="ph-no-capture text-yellow">
+              {word.slice(word.length - 1, word.length)}
             </span>
-          );
-        })}
-        {!(secret?.value || secret?.value === '') && <span className='text-red-500/80 cursor-default font-sans text-xs italic'>missing</span>}
-      </div>
-      {(isSecretValueHidden && secret?.value) && (
-        <div className='absolute flex flex-row justify-between items-center z-0 peer pr-2 peer-active:hidden peer-focus:hidden group-hover:bg-white/[0.00] duration-100 h-10 w-full text-bunker-400 text-clip'>
-          <div className="px-2 flex flex-row items-center overflow-x-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
-            {(isOverridden ? secret.valueOverride : secret?.value || '')?.split('').map(() => (
-              <FontAwesomeIcon
-                key={guidGenerator()}
-                className="text-xxs mr-0.5"
-                icon={faCircle}
-              />
-            ))}
-            {(isOverridden ? secret.valueOverride : secret?.value || '')?.split('').length === 0 && <span className='text-bunker-400/80 text-sm'>EMPTY</span>}
-          </div>
+          ) : (
+            <span className="ph-no-capture text-yellow-400">
+              {word.slice(word.length - 1, word.length)}
+            </span>
+          )}
+        </span>
+      ) : (
+        <span key={word} className="ph-no-capture">
+          {word}
+        </span>
+      )
+    );
+  }, []);
+
+  return (
+    <td
+      key={`row-${secret?.key || ''}--`}
+      className={`flex h-10 w-full cursor-default flex-row items-center justify-center ${
+        !(secret?.value || secret?.value === '') ? 'bg-red-400/10' : 'bg-mineshaft-900/30'
+      }`}
+    >
+      <div className="group relative flex	w-full cursor-default flex-col justify-center whitespace-pre">
+        <input
+          value={isOverridden ? secret.valueOverride : secret?.value || ''}
+          readOnly={isReadOnly}
+          className={twMerge(
+            'ph-no-capture no-scrollbar::-webkit-scrollbar duration-50 peer z-10 w-full cursor-default bg-transparent px-2 py-2 font-mono text-sm text-transparent caret-transparent outline-none no-scrollbar',
+            isSecretValueHidden && 'text-transparent focus:text-transparent active:text-transparent'
+          )}
+          spellCheck="false"
+        />
+        <div
+          className={twMerge(
+            'ph-no-capture min-w-16 no-scrollbar::-webkit-scrollbar duration-50 absolute z-0 mt-0.5 flex h-10 w-full cursor-default flex-row overflow-x-scroll whitespace-pre bg-transparent px-2 py-2 font-mono text-sm outline-none no-scrollbar peer-focus:visible',
+            isSecretValueHidden && secret?.value ? 'invisible' : 'visible',
+            isSecretValueHidden &&
+              secret?.value &&
+              'duration-50 text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-100 peer-active:text-gray-400',
+            !secret?.value && 'justify-center text-bunker-400'
+          )}
+        >
+          {syntaxHighlight(secret?.value)}
         </div>
-      )}
-    </div>
-  </td>
-}
+        {isSecretValueHidden && secret?.value && (
+          <div className="duration-50 peer absolute z-0 flex h-10 w-full flex-row items-center justify-between text-clip pr-2 text-bunker-400 group-hover:bg-white/[0.00] peer-focus:hidden peer-active:hidden">
+            <div className="no-scrollbar::-webkit-scrollbar flex flex-row items-center overflow-x-scroll px-2 no-scrollbar">
+              {(isOverridden ? secret.valueOverride : secret?.value || '')
+                ?.split('')
+                .map((_a: string, index: number) => (
+                  <FontAwesomeIcon
+                    key={`${secret?.value}_${index + 1}`}
+                    className="mr-0.5 text-xxs"
+                    icon={faCircle}
+                  />
+                ))}
+              {(isOverridden ? secret.valueOverride : secret?.value || '')?.split('').length ===
+                0 && <span className="text-sm text-bunker-400/80">EMPTY</span>}
+            </div>
+          </div>
+        )}
+      </div>
+    </td>
+  );
+};
 
 export const EnvComparisonRow = ({
   index,
@@ -105,27 +114,39 @@ export const EnvComparisonRow = ({
   isReadOnly,
   userAvailableEnvs
 }: Props): JSX.Element => {
-  const { 
-    // register, setValue, 
-    control } = useFormContext<FormData>();
-
-  // to get details on a secret
-  const secret = useWatch({ name: `secrets.${index}`, control });
-
   const [areValuesHiddenThisRow, setAreValuesHiddenThisRow] = useState(true);
 
+  const getSecretByEnv = useCallback(
+    (secEnv: string, secs?: any[]) => secs?.find(({ env }) => env === secEnv),
+    []
+  );
+
   return (
-    <tr className="group min-w-full flex flex-row items-center hover:bg-bunker-700">
-      <td className="w-10 h-10 px-4 flex items-center justify-center border-none"><div className='text-center w-10 text-xs text-bunker-400'>{index + 1}</div></td>
-      <td className="flex flex-row justify-between items-center h-full min-w-[200px] lg:min-w-[220px] xl:min-w-[250px]">
-        <div className="flex truncate flex-row items-center h-8 cursor-default">{secrets![0].key || ''}</div>
-        <button type="button" className='mr-1 ml-2 text-bunker-400 hover:text-bunker-300 invisible group-hover:visible' onClick={() => setAreValuesHiddenThisRow(!areValuesHiddenThisRow)}>
+    <tr className="group flex min-w-full flex-row items-center hover:bg-bunker-700">
+      <td className="flex h-10 w-10 items-center justify-center border-none px-4">
+        <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div>
+      </td>
+      <td className="flex h-full min-w-[200px] flex-row items-center justify-between lg:min-w-[220px] xl:min-w-[250px]">
+        <div className="flex h-8 cursor-default flex-row items-center truncate">
+          {secrets![0].key || ''}
+        </div>
+        <button
+          type="button"
+          className="invisible mr-1 ml-2 text-bunker-400 hover:text-bunker-300 group-hover:visible"
+          onClick={() => setAreValuesHiddenThisRow(!areValuesHiddenThisRow)}
+        >
           <FontAwesomeIcon icon={areValuesHiddenThisRow ? faEye : faEyeSlash} />
         </button>
       </td>
-      {userAvailableEnvs?.map(env => {
-        return <DashboardInput key={`row-${secret?.key || ''}-${env.slug}`} isOverridden={false} isSecretValueHidden={areValuesHiddenThisRow && isSecretValueHidden} isReadOnly={isReadOnly} secret={secrets?.filter(sec => sec.env === env.slug)[0]} index={index} />
-      })}
+      {userAvailableEnvs?.map(({ slug }) => (
+        <DashboardInput
+          isReadOnly={isReadOnly}
+          key={`row-${secrets![0].key || ''}-${slug}`}
+          isOverridden={false}
+          secret={getSecretByEnv(slug, secrets)}
+          isSecretValueHidden={areValuesHiddenThisRow && isSecretValueHidden}
+        />
+      ))}
     </tr>
   );
 };

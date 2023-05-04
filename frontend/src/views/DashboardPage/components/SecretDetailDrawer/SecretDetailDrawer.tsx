@@ -1,4 +1,4 @@
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useWatch } from 'react-hook-form';
 import { faCircle, faCircleDot, faShuffle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -44,14 +44,14 @@ export const SecretDetailDrawer = ({
   const [canRevealSecVal, setCanRevealSecVal] = useToggle();
   const [canRevealSecOverride, setCanRevealSecOverride] = useToggle();
 
-  const { register, setValue, watch } = useFormContext<FormData>();
-  const secret = watch(`secrets.${index}`);
+  const { register, setValue, control, getValues } = useFormContext<FormData>();
 
+  const overrideAction = useWatch({ control, name: `secrets.${index}.overrideAction` });
   const isOverridden =
-    secret?.overrideAction === SecretActionType.Created ||
-    secret?.overrideAction === SecretActionType.Modified;
+    overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
 
   const onSecretOverride = () => {
+    const secret = getValues(`secrets.${index}`);
     if (isOverridden) {
       // when user created a new override but then removes
       if (SecretActionType.Created) {
@@ -67,21 +67,17 @@ export const SecretDetailDrawer = ({
     }
   };
 
-  if (!secret) {
-    return <div />;
-  }
-
   return (
     <Drawer onOpenChange={onOpenChange} isOpen={isDrawerOpen}>
       <DrawerContent
-        className="border-l border-mineshaft-500 bg-bunker dark"
+        className="dark border-l border-mineshaft-500 bg-bunker"
         title="Secret"
         footerContent={
           <div className="flex flex-col space-y-2 pt-4 shadow-md">
             <div>
               <Button
                 variant="star"
-                onClick={() => onEnvCompare(secret?.key)}
+                onClick={() => onEnvCompare(getValues(`secrets.${index}.key`))}
                 isFullWidth
                 isDisabled={isReadOnly}
               >
@@ -95,7 +91,10 @@ export const SecretDetailDrawer = ({
               <Button
                 colorSchema="danger"
                 isDisabled={isReadOnly}
-                onClick={() => onSecretDelete(index, secret._id, secret.idOverride)}
+                onClick={() => {
+                  const secret = getValues(`secrets.${index}`);
+                  onSecretDelete(index, secret._id, secret.idOverride);
+                }}
               >
                 Delete
               </Button>
@@ -173,9 +172,9 @@ export const SecretDetailDrawer = ({
               </PopoverContent>
             </Popover>
           </FormControl>
-          <div className="mb-4 text-sm text-bunker-300 dark">
+          <div className="dark mb-4 text-sm text-bunker-300">
             <div className="mb-2">Version History</div>
-            <div className="flex h-48 flex-col space-y-2 border border-mineshaft-600 overflow-y-auto overflow-x-hidden rounded-md bg-bunker-800 p-2 dark:[color-scheme:dark]">
+            <div className="flex h-48 flex-col space-y-2 overflow-y-auto overflow-x-hidden rounded-md border border-mineshaft-600 bg-bunker-800 p-2 dark:[color-scheme:dark]">
               {secretVersion?.map(({ createdAt, value, id }, i) => (
                 <div key={id} className="flex flex-col space-y-1">
                   <div className="flex items-center space-x-2">
@@ -202,7 +201,12 @@ export const SecretDetailDrawer = ({
             </div>
           </div>
           <FormControl label="Comments & Notes">
-            <TextArea className="border border-mineshaft-600 text-sm" isDisabled={isReadOnly} {...register(`secrets.${index}.comment`)} rows={5} />
+            <TextArea
+              className="border border-mineshaft-600 text-sm"
+              isDisabled={isReadOnly}
+              {...register(`secrets.${index}.comment`)}
+              rows={5}
+            />
           </FormControl>
         </div>
       </DrawerContent>
