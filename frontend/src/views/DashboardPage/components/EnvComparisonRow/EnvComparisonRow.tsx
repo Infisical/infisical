@@ -27,7 +27,7 @@ const DashboardInput = ({
   secret?: any;
 }): JSX.Element => {
   const syntaxHighlight = useCallback((val: string) => {
-    if (!val)
+    if (val === undefined)
       return (
         <span className="cursor-default font-sans text-xs italic text-red-500/80">missing</span>
       );
@@ -60,7 +60,7 @@ const DashboardInput = ({
     <td
       key={`row-${secret?.key || ''}--`}
       className={`flex h-10 w-full cursor-default flex-row items-center justify-center ${
-        !(secret?.value || secret?.value === '') ? 'bg-red-400/10' : 'bg-mineshaft-900/30'
+        !(secret?.value || secret?.value === '') ? 'bg-red-800/10' : 'bg-mineshaft-900/30'
       }`}
     >
       <div className="group relative flex	w-full cursor-default flex-col justify-center whitespace-pre">
@@ -122,7 +122,7 @@ export const EnvComparisonRow = ({
   );
 
   return (
-    <tr className="group flex min-w-full flex-row items-center hover:bg-bunker-700">
+    <tr className="group flex min-w-full flex-row items-center hover:bg-mineshaft-800">
       <td className="flex h-10 w-10 items-center justify-center border-none px-4">
         <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div>
       </td>

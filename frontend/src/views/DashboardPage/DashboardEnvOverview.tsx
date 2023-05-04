@@ -161,11 +161,11 @@ export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
             <div
               className={`${
                 isDashboardSecretEmpty ? '' : ''
-              } no-scrollbar::-webkit-scrollbar mt-3 flex h-full max-h-[calc(100vh-370px)] w-full min-w-[60.3rem] flex-grow flex-row items-start justify-center overflow-x-hidden no-scrollbar`}
+              } no-scrollbar::-webkit-scrollbar mt-3 border rounded-md border-mineshaft-600 flex h-full max-h-[calc(100vh-370px)] w-full min-w-[60.3rem] flex-grow flex-row items-start justify-center overflow-x-hidden no-scrollbar`}
             >
               {!isDashboardSecretEmpty && (
                 <TableContainer className="border-none">
-                  <table className="secret-table relative w-full bg-bunker-800">
+                  <table className="secret-table relative w-full bg-mineshaft-900">
                     <tbody className="max-h-screen overflow-y-auto">
                       {Object.keys(secrets?.secrets || {}).map((key, index) => (
                         <EnvComparisonRow
