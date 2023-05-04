@@ -6,5 +6,7 @@
   "need-account": "Need an Infisical account?",
   "create-account": "Create an account",
   "forgot-password": "Forgot your password?",
-  "error-login": "Wrong credentials."
+  "error-login": "Wrong credentials.",
+  "continue-with-google": "Continue with Google",
+  "continue-with-email": "Continue with Email"
 }

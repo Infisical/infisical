@@ -121,7 +121,7 @@ export default function PasswordInputStep({
           type="button"
           className="ml-1.5 text-sm font-normal text-primary-700 underline-offset-4 duration-200 hover:text-primary"
         >
-          Log in with other options.
+          Login with other option
         </button>
       </div>
     </form>

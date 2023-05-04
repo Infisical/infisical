@@ -1,4 +1,8 @@
 {
+  "initial-title": "Create your Infisical account",
+  "continue-with-google": "Continue with Google",
+  "continue-with-email": "Continue with Email",
+  "create-policy": "By signing up, you agree to our Terms of Service and Privacy Policy.",
   "title": "Sign Up",
   "og-title": "Replace .env files with 1 line of code. Sign Up for Infisical in 3 minutes.",
   "og-description": "Infisical a simple end-to-end encrypted platform that enables teams to sync and manage API-keys and environemntal variables. Works with Node.js, Next.js, Gatsby, Nest.js...",

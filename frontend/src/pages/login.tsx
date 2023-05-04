@@ -6,6 +6,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
 import ListBox from '@app/components/basic/Listbox';
+import InitialLoginStep from '@app/components/login/InitialLoginStep';
 import LoginStep from '@app/components/login/LoginStep';
 import MFAStep from '@app/components/login/MFAStep';
 import PasswordInputStep from '@app/components/login/PasswordInputStep';
@@ -78,20 +79,7 @@ export default function Login() {
     }
 
     if (!isLoginWithEmail && loginStep === 1) {
-      return (
-        <>
-          <button type='button' className='text-white' onClick={() => {
-            window.open('/api/v1/oauth/redirect/google')
-          }}>
-            Continue with Google
-          </button>
-          <button type='button' className='text-white' onClick={() => {
-            setIsLoginWithEmail(true);
-          }}>
-            Continue with Email
-          </button>
-        </>
-      )
+      return <InitialLoginStep setIsLoginWithEmail={setIsLoginWithEmail} />
     }
 
     if (step === 2) {
@@ -105,7 +93,7 @@ export default function Login() {
   }
 
   return (
-    <div className="bg-bunker-800 h-screen flex flex-col justify-start px-6">
+    <div className="bg-bunker-800 h-screen flex flex-col justify-start px-6 ">
       <Head>
         <title>{t('common:head-title', { title: t('login:title') })}</title>
         <link rel="icon" href="/infisical.ico" />

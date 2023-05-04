@@ -9,6 +9,7 @@ import { useTranslation } from 'next-i18next';
 import CodeInputStep from '@app/components/signup/CodeInputStep';
 import DownloadBackupPDF from '@app/components/signup/DonwloadBackupPDFStep';
 import EnterEmailStep from '@app/components/signup/EnterEmailStep';
+import InitialSignupStep from '@app/components/signup/InitialSignupStep';
 import TeamInviteStep from '@app/components/signup/TeamInviteStep';
 import UserInfoStep from '@app/components/signup/UserInfoStep';
 import SecurityClient from '@app/components/utilities/SecurityClient';
@@ -18,7 +19,6 @@ import { useProviderAuth } from '@app/hooks/useProviderAuth';
 
 import checkEmailVerificationCode from './api/auth/CheckEmailVerificationCode';
 import getWorkspaces from './api/workspace/getWorkspaces';
-
 
 /**
  * @returns the signup page
@@ -96,20 +96,7 @@ export default function SignUp() {
     }
 
     if (!isSignupWithEmail && registerStep === 1) {
-      return (
-        <>
-          <button type='button' className='text-white' onClick={() => {
-            window.open('/api/v1/oauth/redirect/google')
-          }}>
-            Continue with Google
-          </button>
-          <button type='button' className='text-white' onClick={() => {
-            setIsSignupWithEmail(true);
-          }}>
-            Continue with Email
-          </button>
-        </>
-      )
+      return <InitialSignupStep setIsSignupWithEmail={setIsSignupWithEmail} />
     }
 
     if (registerStep === 2) {
@@ -158,7 +145,7 @@ export default function SignUp() {
   }
 
   return (
-    <div className="bg-bunker-800 h-screen flex flex-col items-center justify-center">
+    <div className="bg-bunker-800 h-screen flex flex-col justify-start px-6 ">
       <Head>
         <title>{t('common:head-title', { title: t('signup:title') })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -166,16 +153,14 @@ export default function SignUp() {
         <meta property="og:title" content={t('signup:og-title') as string} />
         <meta name="og:description" content={t('signup:og-description') as string} />
       </Head>
-      <div className="flex flex-col justify-center items-center">
-        <Link href="/">
-          <div className="flex justify-center mb-2 md:mb-8 cursor-pointer">
-            <Image src="/images/biglogo.png" height={90} width={120} alt="Infisical Wide Logo" />
-          </div>
-        </Link>
-        <form onSubmit={(e) => e.preventDefault()}>
-          {renderView(step)}
-        </form>
-      </div>
+      <Link href="/">
+        <div className="flex justify-center mb-8 mt-20 cursor-pointer">
+          <Image src="/images/biglogo.png" height={90} width={120} alt="long logo" />
+        </div>
+      </Link>
+      <form onSubmit={(e) => e.preventDefault()}>
+        {renderView(step)}
+      </form>
     </div>
   );
 }
