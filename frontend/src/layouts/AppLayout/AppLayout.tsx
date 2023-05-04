@@ -8,11 +8,7 @@ import { Controller, useForm } from 'react-hook-form';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import {
-  faBookOpen,
-  faMobile,
-  faPlus,
-} from '@fortawesome/free-solid-svg-icons';
+import { faBookOpen, faMobile, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { yupResolver } from '@hookform/resolvers/yup';
 import queryString from 'query-string';
@@ -110,7 +106,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
       ) {
         router.push('/noprojects');
       } else if (router.asPath !== '/noprojects') {
-        
         // const pathSegments = router.asPath.split('/').filter(segment => segment.length > 0);
 
         // let intendedWorkspaceId;
@@ -123,8 +118,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
         //     .split('/')
         //     [router.asPath.split('/').length - 1].split('?')[0];
         // }
-        
-        const pathSegments = router.asPath.split('/').filter(segment => segment.length > 0);
+
+        const pathSegments = router.asPath.split('/').filter((segment) => segment.length > 0);
 
         let intendedWorkspaceId;
         if (pathSegments.length >= 2 && pathSegments[0] === 'dashboard') {
@@ -140,7 +135,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
           // const lastPathSegment = router.asPath.split('/').pop().split('?');
           // [intendedWorkspaceId] = lastPathSegment;
         }
-        
+
         if (!intendedWorkspaceId) return;
 
         if (!['callback', 'create', 'authorize'].includes(intendedWorkspaceId)) {
@@ -149,7 +144,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
         // If a user is not a member of a workspace they are trying to access, just push them to one of theirs
         if (
-          !['callback', 'create', 'authorize'].includes(intendedWorkspaceId) && userWorkspaces[0]?._id !== undefined &&
+          !['callback', 'create', 'authorize'].includes(intendedWorkspaceId) &&
+          userWorkspaces[0]?._id !== undefined &&
           !userWorkspaces
             .map((workspace: { _id: string }) => workspace._id)
             .includes(intendedWorkspaceId)
@@ -240,21 +236,21 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   return (
     <>
-      <div className="hidden h-screen w-full flex-col overflow-x-hidden md:flex dark">
+      <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
         <Navbar />
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <aside className="w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between">
               <div>
                 {currentWorkspace ? (
-                  <div className="w-full p-4 mt-3 mb-4">
-                    <p className="text-xs font-semibold ml-1.5 mb-1 uppercase text-gray-400">
+                  <div className="mt-3 mb-4 w-full p-4">
+                    <p className="ml-1.5 mb-1 text-xs font-semibold uppercase text-gray-400">
                       Project
                     </p>
                     <Select
                       defaultValue={currentWorkspace?._id}
                       value={currentWorkspace?._id}
-                      className="w-full py-2.5 bg-mineshaft-600 font-medium truncate"
+                      className="w-full truncate bg-mineshaft-600 py-2.5 font-medium"
                       onValueChange={(value) => {
                         router.push(`/dashboard/${value}`);
                       }}
@@ -273,7 +269,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       {/* <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" /> */}
                       <div className="w-full">
                         <Button
-                          className="w-full py-2 text-bunker-200 bg-mineshaft-700"
+                          className="w-full bg-mineshaft-700 py-2 text-bunker-200"
                           colorSchema="primary"
                           variant="outline_bg"
                           size="sm"
@@ -286,9 +282,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     </Select>
                   </div>
                 ) : (
-                  <div className="w-full p-4 mt-3 mb-4">
+                  <div className="mt-3 mb-4 w-full p-4">
                     <Button
-                      className="w-full py-2 text-bunker-200 bg-mineshaft-500 hover:bg-primary/90 hover:text-black"
+                      className="w-full bg-mineshaft-500 py-2 text-bunker-200 hover:bg-primary/90 hover:text-black"
                       color="mineshaft"
                       size="sm"
                       onClick={() => handlePopUpOpen('addNewWs')}
@@ -331,13 +327,13 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </a>
                     </Link>
                     <Link href={`/activity/${currentWorkspace?._id}`} passHref>
-                        <MenuItem
-                          isSelected={router.asPath === `/activity/${currentWorkspace?._id}`}
-                          // icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
-                          icon="system-outline-168-view-headline"
-                        >
-                          Audit Logs
-                        </MenuItem>
+                      <MenuItem
+                        isSelected={router.asPath === `/activity/${currentWorkspace?._id}`}
+                        // icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
+                        icon="system-outline-168-view-headline"
+                      >
+                        Audit Logs
+                      </MenuItem>
                     </Link>
                     <Link href={`/settings/project/${currentWorkspace?._id}`} passHref>
                       <a>
@@ -428,7 +424,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     </FormControl>
                   )}
                 />
-                <div className="pl-1 mt-4">
+                <div className="mt-4 pl-1">
                   <Controller
                     control={control}
                     name="addMembers"
