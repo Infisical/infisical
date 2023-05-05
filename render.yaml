@@ -4,7 +4,7 @@ services:
     env: docker
     dockerfilePath: ./Dockerfile.standalone-infisical
     autoDeploy: false
-    healthCheckPath: /api/status
+    # healthCheckPath: /api/status
     repo: https://github.com/Infisical/infisical.git
     envVars:
       - key: ENCRYPTION_KEY
