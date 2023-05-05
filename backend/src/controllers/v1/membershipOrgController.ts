@@ -188,7 +188,7 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 			});
 
 			if (!(await getSmtpConfigured())) {
-				completeInviteLink = `${siteUrl + '/signupinvite'}?token=${token}&to=${inviteeEmail}`
+				completeInviteLink = `${siteUrl + '/signupinvite'}?token=${token}&to=${inviteeEmail}&organization_id=${organization._id}`
 			}
 		}
 
@@ -217,10 +217,10 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 export const verifyUserToOrganization = async (req: Request, res: Response) => {
 	let user, token;
 	try {
-		const { 
-			email, 
+		const {
+			email,
 			organizationId,
-			code 
+			code
 		} = req.body;
 
 		user = await User.findOne({ email }).select('+publicKey');
