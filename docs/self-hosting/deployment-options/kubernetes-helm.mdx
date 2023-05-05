@@ -1,0 +1,35 @@
+---
+title: "Kubernetes via Helm Chart"
+description: "Use our Helm chart to Install Infisical on your Kubernetes cluster"
+---
+<iframe width="100%" height="375" src="https://www.youtube.com/embed/ugJZSCcZaV8" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+  
+**Prerequisites**
+- You have understanding of [Kubernetes](https://kubernetes.io/)
+- Installed [Helm package manager](https://helm.sh/) version v3.11.3 or greater
+- You have [kubectl](https://kubernetes.io/docs/reference/kubectl/kubectl/) installed and connected to your kubernetes cluster
+
+
+#### 1. Install Infisical Helm repository 
+
+```bash
+helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/' 
+  
+helm repo update
+```
+
+#### 2. Install the Helm chart 
+
+By default, the helm chart will be installed on your default namespace. If you wish to install the Chart on a different namespace, you may specify
+that by adding the `--namespace <namespace-to-install-to>` to your `helm install` command.
+
+```bash
+## Installs to default namespace
+helm install infisical-helm-charts/infisical --generate-name 
+```
+
+#### 3. Access Infisical
+Allow 3-5 minutes for the deployment to complete. Once done, you should now be able to access Infisical on the IP address exposed via Ingress on your load balancer. If you are not sure what the IP address is run `kubectl get ingress` to view the external IP address exposing Infisical.
+  
+#### Custom configuration
+To configure environment variables, database and deployments, you'll need to set the parameters in a `values.yaml` file. To view all available parameters [visit here](https://github.com/Infisical/infisical/tree/main/helm-charts/infisical#parameters)
