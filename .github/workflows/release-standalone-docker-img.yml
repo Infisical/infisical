@@ -1,17 +1,11 @@
 name: Release standalone docker image
-on:
-  push:
-    tags:
-      - "infisical-standalone/v*.*.*"
+on: [workflow_dispatch]
 
 jobs:
   infisical-standalone:
     name: Build infisical standalone image
     runs-on: ubuntu-latest
     steps:
-      - name: Extract version from tag
-        id: extract_version
-        run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical/}"
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
       - name: 📦 Install dependencies to test all dependencies
@@ -40,6 +34,7 @@ jobs:
           push: true
           context: .
           tags: |
-            infisical/standalone-infisical:latest
+            infisical/infisical:latest
+            infisical/infisical:${{ steps.commit.outputs.short }}
           platforms: linux/amd64,linux/arm64
           file: Dockerfile.standalone-infisical
