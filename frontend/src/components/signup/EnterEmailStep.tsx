@@ -56,7 +56,7 @@ export default function EnterEmailStep({
 
   return (
     <div>
-      <div className="bg-bunker w-full max-w-md h-7/12 py-8 md:px-6 mx-1 rounded-xl drop-shadow-xl">
+      <div className="bg-bunker w-full max-w-md h-7/12 py-8 md:px-6 mx-auto rounded-xl drop-shadow-xl">
         <p className="text-4xl font-semibold flex justify-center text-primary">
           {t('signup:step1-start')}
         </p>

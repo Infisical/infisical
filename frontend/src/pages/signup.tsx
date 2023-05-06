@@ -145,7 +145,7 @@ export default function SignUp() {
   }
 
   return (
-    <div className="bg-bunker-800 h-screen flex flex-col justify-start px-6 ">
+    <div className="bg-bunker-800 min-h-screen  flex flex-col justify-start px-6 ">
       <Head>
         <title>{t('common:head-title', { title: t('signup:title') })}</title>
         <link rel="icon" href="/infisical.ico" />

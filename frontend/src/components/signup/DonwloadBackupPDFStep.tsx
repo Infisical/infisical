@@ -30,7 +30,7 @@ export default function DonwloadBackupPDFStep({
   const { t } = useTranslation();
 
   return (
-    <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
+    <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg h-7/12 py-8 px-4 md:px-6 mx-auto mb-36 md:mb-16 rounded-xl drop-shadow-xl">
       <p className="text-4xl text-center font-semibold flex justify-center text-primary">
         {t('signup:step4-message')}
       </p>
@@ -50,8 +50,8 @@ export default function DonwloadBackupPDFStep({
               email,
               password,
               personalName: name,
-              setBackupKeyError: () => {},
-              setBackupKeyIssued: () => {}
+              setBackupKeyError: () => { },
+              setBackupKeyIssued: () => { }
             });
             incrementStep();
           }}
