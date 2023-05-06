@@ -8,5 +8,6 @@
   "forgot-password": "Forgot your password?",
   "error-login": "Wrong credentials.",
   "continue-with-google": "Continue with Google",
-  "continue-with-email": "Continue with Email"
+  "continue-with-email": "Continue with Email",
+  "other-option": "Log in with other option"
 }

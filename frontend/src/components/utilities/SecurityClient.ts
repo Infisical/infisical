@@ -11,7 +11,7 @@ export const PROVIDER_AUTH_TOKEN_KEY = 'infisical__provider-auth-token';
 export default class SecurityClient {
 
   static setProviderAuthToken(tokenStr: string) {
-    localStorage.setItem(PROVIDER_AUTH_TOKEN_KEY, tokenStr)
+    localStorage.setItem(PROVIDER_AUTH_TOKEN_KEY, tokenStr || '')
   }
 
   static getProviderAuthToken() {
