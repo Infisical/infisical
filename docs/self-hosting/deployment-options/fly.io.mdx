@@ -1,0 +1,60 @@
+---
+title: "Fly.io"
+description: "Learn to install Infisical on Fly.io"
+---
+
+**Prerequisites**
+- Familiar with Fly.io deployment 
+- Logged in via fly CLI
+
+#### 1. Make a copy of the deployment config
+To begin, you'll to make a copy of the following file on your local machine
+
+```toml fly.toml 
+# fly.toml app configuration file generated for infisical on 2023-05-05T08:57:03-04:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = "infisical"
+primary_region = "iad"
+
+[build]
+  image = "infisical/infisical:latest"
+
+[env]
+  ENCRYPTION_KEY = <>
+  JWT_AUTH_SECRET = <>
+  JWT_REFRESH_SECRET = <>
+  JWT_SERVICE_SECRET = <>
+  JWT_SIGNUP_SECRET = <>
+  MONGO_URL = <>
+
+[http_service]
+  internal_port = 80
+
+```
+
+#### 2. Add environment variables
+
+Before we can deploy Infisical, we'll need to provide values for the keys under `[env]` config block. For each of the following keys
+
+- `ENCRYPTION_KEY`
+- `JWT_AUTH_SECRET`
+- `JWT_REFRESH_SECRET`
+- `JWT_SERVICE_SECRET`
+- `JWT_SIGNUP_SECRET`
+
+you will need to generate a random 16 byte hex string. This can can be generated with `openssl rand -hex 16`. 
+
+
+Lastly, the `MONGO_URL` environment variable requires a document database connection URL. 
+You can obtain this URL by creating a document database using services such as [MongoDB](https://www.mongodb.com/), [AWS DocumentDB](https://aws.amazon.com/documentdb/), and others.
+
+#### 3. Deploy
+
+Run `fly launch` in the directory where you have the local version of config from step 1 and follow the instructions. 
+Once done, your very own instance of Infisical should be up and running on Fly.io.
+
+Please note that this version of Infisical requires at least 250MB of memory to operate smoothly.
+
