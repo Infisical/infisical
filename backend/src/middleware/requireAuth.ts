@@ -7,9 +7,6 @@ import {
 	getAuthAPIKeyPayload,
 	getAuthSAAKPayload
 } from '../helpers/auth';
-import { 
-	UnauthorizedRequestError
-} from '../utils/errors';
 import {
 	IUser,
 	IServiceAccount,
@@ -48,6 +45,7 @@ const requireAuth = ({
 		
 		// validate auth token against accepted auth modes [acceptedAuthModes]
 		// and return token type [authTokenType] and value [authTokenValue]
+		
 		const { authMode, authTokenValue } = validateAuthMode({
 			headers: req.headers,
 			acceptedAuthModes

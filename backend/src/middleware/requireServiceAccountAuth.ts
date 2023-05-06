@@ -1,15 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
-import { ServiceAccount } from '../models';
-import {
-    ServiceAccountNotFoundError
-} from '../utils/errors';
-import {
-    validateMembershipOrg
-} from '../helpers/membershipOrg';
-import {
-    validateClientForServiceAccount
-} from '../helpers/serviceAccount';
+import { validateClientForServiceAccount } from '../validation';
 
 type req = 'params' | 'body' | 'query';
 

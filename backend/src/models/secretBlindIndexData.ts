@@ -22,7 +22,7 @@ const secretBlindIndexDataSchema = new Schema<ISecretBlindIndexData>(
             ref: 'Workspace',
             required: true
         },
-        encryptedSaltCiphertext: {
+        encryptedSaltCiphertext: { // TODO: make these select: false
             type: String,
             required: true
         },
@@ -37,7 +37,8 @@ const secretBlindIndexDataSchema = new Schema<ISecretBlindIndexData>(
         algorithm: {
             type: String,
             enum: [ALGORITHM_AES_256_GCM],
-            required: true
+            required: true,
+            select: false
         },
         keyEncoding: {
             type: String,
@@ -45,7 +46,8 @@ const secretBlindIndexDataSchema = new Schema<ISecretBlindIndexData>(
                 ENCODING_SCHEME_UTF8,
                 ENCODING_SCHEME_BASE64
             ],
-            required: true
+            required: true,
+            select: false
         }
 
     }

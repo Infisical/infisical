@@ -57,7 +57,8 @@ const botSchema = new Schema<IBot>(
         algorithm: { // the encryption algorithm used
             type: String,
             enum: [ALGORITHM_AES_256_GCM],
-            required: true
+            required: true,
+            select: false
         },
         keyEncoding: {
             type: String,
@@ -65,7 +66,8 @@ const botSchema = new Schema<IBot>(
                 ENCODING_SCHEME_UTF8,
                 ENCODING_SCHEME_BASE64
             ],
-            required: true
+            required: true,
+            select: false
         }
 	},
 	{

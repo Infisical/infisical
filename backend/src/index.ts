@@ -6,8 +6,6 @@ import helmet from 'helmet';
 import cors from 'cors';
 import { DatabaseService } from './services';
 import { setUpHealthEndpoint } from './services/health';
-import { TelemetryService } from './services';
-
 import cookieParser from 'cookie-parser';
 import swaggerUi = require('swagger-ui-express');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -72,10 +70,9 @@ import {
     getSmtpHost
 } from './config';
 import { setup } from './utils/setup';
+import { patchRouterParam } from './utils/patchAsyncRoutes';
 
 const main = async () => {
-    TelemetryService.logTelemetryMessage();
-
     await setup();
 
     const app = express();
@@ -117,8 +114,8 @@ const main = async () => {
     app.use('/api/v1/membership', v1MembershipRouter);
     app.use('/api/v1/key', v1KeyRouter);
     app.use('/api/v1/invite-org', v1InviteOrgRouter);
-    app.use('/api/v1/secret', v1SecretRouter);
-    app.use('/api/v1/service-token', v1ServiceTokenRouter); // deprecated
+    app.use('/api/v1/secret', v1SecretRouter); // deprecate
+    app.use('/api/v1/service-token', v1ServiceTokenRouter); // deprecate
     app.use('/api/v1/password', v1PasswordRouter);
     app.use('/api/v1/stripe', v1StripeRouter);
     app.use('/api/v1/integration', v1IntegrationRouter);
@@ -133,9 +130,9 @@ const main = async () => {
     app.use('/api/v2/workspace', v2EnvironmentRouter);
     app.use('/api/v2/workspace', v2TagsRouter);
     app.use('/api/v2/workspace', v2WorkspaceRouter);
-    app.use('/api/v2/secret', v2SecretRouter); // deprecated
-    app.use('/api/v2/secrets', v2SecretsRouter);
-    app.use('/api/v2/service-token', v2ServiceTokenDataRouter); // TODO: turn into plural route
+    app.use('/api/v2/secret', v2SecretRouter); // deprecate
+    app.use('/api/v2/secrets', v2SecretsRouter); // note: in the process of moving to v3/secrets
+    app.use('/api/v2/service-token', v2ServiceTokenDataRouter);
     app.use('/api/v2/service-accounts', v2ServiceAccountsRouter); // new
     app.use('/api/v2/api-key', v2APIKeyDataRouter);
 
@@ -146,7 +143,7 @@ const main = async () => {
     // api docs 
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile))
 
-    // Server status
+    // server status
     app.use('/api', healthCheck)
 
     //* Handle unrouted requests and respond with proper error message as well as status code

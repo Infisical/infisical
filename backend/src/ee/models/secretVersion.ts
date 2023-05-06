@@ -2,6 +2,9 @@ import { Schema, model, Types } from 'mongoose';
 import {
 	SECRET_SHARED,
 	SECRET_PERSONAL,
+	ALGORITHM_AES_256_GCM,
+	ENCODING_SCHEME_UTF8,
+	ENCODING_SCHEME_BASE64
 } from '../../variables';
 
 export interface ISecretVersion {
@@ -20,6 +23,8 @@ export interface ISecretVersion {
 	secretValueCiphertext: string;
 	secretValueIV: string;
 	secretValueTag: string;
+	algorithm: 'aes-256-gcm';
+	keyEncoding: 'utf8' | 'base64';
 }
 
 const secretVersionSchema = new Schema<ISecretVersion>(
@@ -85,7 +90,20 @@ const secretVersionSchema = new Schema<ISecretVersion>(
 		secretValueTag: {
 			type: String, // symmetric
 			required: true
-		}
+		},
+		algorithm: { // the encryption algorithm used
+			type: String,
+			enum: [ALGORITHM_AES_256_GCM],
+			required: true
+		},
+		keyEncoding: {
+			type: String,
+			enum: [
+				ENCODING_SCHEME_UTF8,
+				ENCODING_SCHEME_BASE64
+			],
+			required: true
+		},
 	},
 	{
 		timestamps: true

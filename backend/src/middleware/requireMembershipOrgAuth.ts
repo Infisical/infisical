@@ -1,16 +1,6 @@
 import { Types } from 'mongoose';
 import { Request, Response, NextFunction } from 'express';
-import { UnauthorizedRequestError } from '../utils/errors';
-import {
-    MembershipOrg
-} from '../models';
-import { 
-    validateClientForMembershipOrg,
-    validateMembershipOrg
-} from '../helpers/membershipOrg';
-
-
-// TODO: transform
+import { validateClientForMembershipOrg } from '../validation';
 
 type req = 'params' | 'body' | 'query';
 

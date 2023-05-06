@@ -1,13 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
-import { UnauthorizedRequestError, SecretNotFoundError } from '../utils/errors';
-import { Secret } from '../models';
-import {
-    validateMembership
-} from '../helpers/membership';
-import {
-    validateClientForSecret
-} from '../helpers/secrets';
+import { validateClientForSecret } from '../validation';
 
 // note: used for old /v1/secret and /v2/secret routes.
 // newer /v2/secrets routes use [requireSecretsAuth] middleware with the exception

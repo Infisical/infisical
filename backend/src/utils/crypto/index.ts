@@ -7,19 +7,14 @@ import {
     IEncryptAsymmetricOutput,
     IDecryptAsymmetricInput,
     IEncryptSymmetricInput,
-    IEncryptSymmetricOutput,
     IDecryptSymmetricInput
 } from '../../interfaces/utils';
-import { 
-    BadRequestError,
-    InternalServerError
-} from '../errors';
+import { BadRequestError } from '../errors';
 import { 
     ALGORITHM_AES_256_GCM, 
     NONCE_BYTES_SIZE,
     BLOCK_SIZE_BYTES_16
 } from '../../variables';
-import { validateEncryptionKey } from '../../validation';
 
 /**
  * Return new base64, NaCl, public-private key pair.
@@ -98,70 +93,6 @@ const decryptAsymmetric = ({
 
 /**
  * Return symmetrically encrypted [plaintext] using [key].
- * @param {Object} obj
- * @param {String} obj.plaintext - (utf8) plaintext to encrypt
- * @param {String} obj.key - (base64) 256-bit key
- * @returns {Object} obj
- * @returns {String} obj.ciphertext (base64) ciphertext
- * @returns {String} obj.iv (base64) iv
- * @returns {String} obj.tag (base64) tag
- */
-const encryptSymmetric = ({
-	plaintext,
-	key
-}: IEncryptSymmetricInput): IEncryptSymmetricOutput => {
-    validateEncryptionKey(key);
-    
-    const iv = crypto.randomBytes(NONCE_BYTES_SIZE);
-    const secretKey = crypto.createSecretKey(key, 'base64');
-    const cipher = crypto.createCipheriv(ALGORITHM_AES_256_GCM, secretKey, iv);
-
-    let ciphertext = cipher.update(plaintext, 'utf8', 'base64');
-    ciphertext += cipher.final('base64');
-
-	return {
-		ciphertext,
-		iv: iv.toString('base64'),
-		tag: cipher.getAuthTag().toString('base64')
-	};
-};
-
-/**
- * Return symmetrically decrypted [ciphertext] using [iv], [tag],
- * and [key].
- * @param {Object} obj
- * @param {String} obj.ciphertext - ciphertext to decrypt
- * @param {String} obj.iv - (base64) 256-bit iv
- * @param {String} obj.tag - (base64) tag
- * @param {String} obj.key - (base64) 256-bit key
- * @returns {String} cleartext - the deciphered ciphertext
- */
-const decryptSymmetric = ({
-	ciphertext,
-	iv,
-	tag,
-	key
-}: IDecryptSymmetricInput): string => {
-    validateEncryptionKey(key);
-
-    const secretKey = crypto.createSecretKey(key, 'base64');
-
-    const decipher = crypto.createDecipheriv(
-        ALGORITHM_AES_256_GCM,
-        secretKey,
-        Buffer.from(iv, 'base64')
-    );
-
-    decipher.setAuthTag(Buffer.from(tag, 'base64'));
-
-    let cleartext = decipher.update(ciphertext, 'base64', 'utf8');
-    cleartext += decipher.final('utf8');
-
-    return cleartext;
-};
-
-/**
- * Return symmetrically encrypted [plaintext] using [key].
  * 
  * NOTE: THIS FUNCTION SHOULD NOT BE USED FOR ALL FUTURE
  * ENCRYPTION OPERATIONS UNLESS IT TOUCHES OLD FUNCTIONALITY
@@ -230,8 +161,6 @@ export {
 	generateKeyPair,
 	encryptAsymmetric,
 	decryptAsymmetric,
-	encryptSymmetric,
-	decryptSymmetric,
     encryptSymmetric128BitHexKeyUTF8,
     decryptSymmetric128BitHexKeyUTF8
 };

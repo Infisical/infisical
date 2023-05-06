@@ -162,6 +162,8 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
 			secretValueCiphertext,
 			secretValueIV,
 			secretValueTag,
+			algorithm,
+			keyEncoding
 		} = oldSecretVersion;
 		
 		// update secret
@@ -182,6 +184,8 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
 				secretValueCiphertext,
 				secretValueIV,
 				secretValueTag,
+				algorithm,
+				keyEncoding
 			},
 			{
 				new: true
@@ -205,7 +209,9 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
 			secretKeyTag,
 			secretValueCiphertext,
 			secretValueIV,
-			secretValueTag
+			secretValueTag,
+			algorithm,
+			keyEncoding
 		}).save();
 		
 		// take secret snapshot

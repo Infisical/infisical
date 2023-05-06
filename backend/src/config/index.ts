@@ -1,24 +1,22 @@
 import InfisicalClient from 'infisical-node';
-import { validateEncryptionKey } from '../validation';
 
-const client = new InfisicalClient({
+export const client = new InfisicalClient({
   token: process.env.INFISICAL_TOKEN!
 });
 
 export const getPort = async () => (await client.getSecret('PORT')).secretValue || 4000;
 export const getInviteOnlySignup = async () => (await client.getSecret('INVITE_ONLY_SIGNUP')).secretValue == undefined ? false : (await client.getSecret('INVITE_ONLY_SIGNUP')).secretValue;
-export const getEncryptionKey = async () => (await client.getSecret('ENCRYPTION_KEY')).secretValue; // TODO: deprecate in favor of INFISICAL_ENCRYPTION_KEY
-export const getRootEncryptionKey = async (): Promise<string | undefined> => {
-  const encryptionKey = (await client.getSecret('ROOT_ENCRYPTION_KEY')).secretValue;
 
-  if (encryptionKey) {
-    // validate [encryptionKey] to make sure it is in base64 format and 256-bit
-    validateEncryptionKey(encryptionKey);
-    return encryptionKey;
-  }
-  
-  return encryptionKey;
+export const getEncryptionKey = async () => {
+  const secretValue = (await client.getSecret('ENCRYPTION_KEY')).secretValue;
+  return secretValue === '' ? undefined : secretValue;
 }
+
+export const getRootEncryptionKey = async () => {
+  const secretValue = (await client.getSecret('ROOT_ENCRYPTION_KEY')).secretValue; 
+  return secretValue === '' ? undefined : secretValue;
+}
+
 export const getSaltRounds = async () => parseInt((await client.getSecret('SALT_ROUNDS')).secretValue) || 10;
 export const getJwtAuthLifetime = async () => (await client.getSecret('JWT_AUTH_LIFETIME')).secretValue || '10d';
 export const getJwtAuthSecret = async () => (await client.getSecret('JWT_AUTH_SECRET')).secretValue;

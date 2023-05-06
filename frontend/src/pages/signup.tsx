@@ -32,7 +32,6 @@ export default function SignUp() {
   const router = useRouter();
   const {data: serverDetails } = useFetchServerStatus()
 
-
   const { t } = useTranslation();
 
   useEffect(() => {

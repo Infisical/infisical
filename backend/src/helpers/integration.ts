@@ -3,124 +3,26 @@ import { Types } from 'mongoose';
 import {
     Bot,
     Integration,
-    IntegrationAuth,
-    IUser,
-    User,
-    IServiceAccount,
-    ServiceAccount,
-    IServiceTokenData,
-    ServiceTokenData
+    IntegrationAuth
 } from '../models';
 import { exchangeCode, exchangeRefresh, syncSecrets } from '../integrations';
 import { BotService } from '../services';
 import {
-    AUTH_MODE_JWT,
-	AUTH_MODE_SERVICE_ACCOUNT,
-	AUTH_MODE_SERVICE_TOKEN,
-	AUTH_MODE_API_KEY,
     INTEGRATION_VERCEL,
-    INTEGRATION_NETLIFY
+    INTEGRATION_NETLIFY,
+    ALGORITHM_AES_256_GCM,
+    ENCODING_SCHEME_UTF8
 } from '../variables';
 import { 
     UnauthorizedRequestError,
-    IntegrationAuthNotFoundError,
-    IntegrationNotFoundError
 } from '../utils/errors';
 import RequestError from '../utils/requestError';
-import {
-    validateClientForIntegrationAuth 
-} from '../helpers/integrationAuth';
-import {
-    validateUserClientForWorkspace
-} from '../helpers/user';
-import {
-    validateServiceAccountClientForWorkspace
-} from '../helpers/serviceAccount';
-import { IntegrationService } from '../services';
 
 interface Update {
     workspace: string;
     integration: string;
     teamId?: string;
     accountId?: string;
-}
-
-/**
- * Validate authenticated clients for integration with id [integrationId] based
- * on any known permissions.
- * @param {Object} obj
- * @param {Object} obj.authData - authenticated client details
- * @param {Types.ObjectId} obj.integrationId - id of integration to validate against
- * @param {String} obj.environment - (optional) environment in workspace to validate against
- * @param {Array<'admin' | 'member'>} obj.acceptedRoles - accepted workspace roles
- * @param {String[]} obj.requiredPermissions - required permissions as part of the endpoint
- */
- const validateClientForIntegration = async ({
-    authData,
-    integrationId,
-    acceptedRoles
-}: {
-    authData: {
-		authMode: string;
-		authPayload: IUser | IServiceAccount | IServiceTokenData;
-	};
-    integrationId: Types.ObjectId;
-    acceptedRoles: Array<'admin' | 'member'>;
-}) => {
-    
-    const integration = await Integration.findById(integrationId);
-    if (!integration) throw IntegrationNotFoundError();
-
-    const integrationAuth = await IntegrationAuth
-        .findById(integration.integrationAuth)
-        .select(
-			'+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt'
-        );
-    
-    if (!integrationAuth) throw IntegrationAuthNotFoundError();
-
-    const accessToken = (await IntegrationService.getIntegrationAuthAccess({
-        integrationAuthId: integrationAuth._id
-    })).accessToken;
-
-    if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
-        await validateUserClientForWorkspace({
-            user: authData.authPayload,
-            workspaceId: integration.workspace,
-            acceptedRoles
-        });
-        
-        return ({ integration, accessToken });
-    }
-    
-    if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
-        await validateServiceAccountClientForWorkspace({
-            serviceAccount: authData.authPayload,
-            workspaceId: integration.workspace
-        });
-        
-        return ({ integration, accessToken });
-    }
-
-    if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
-        throw UnauthorizedRequestError({
-            message: 'Failed service token authorization for integration'
-        });
-    }
-
-    if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
-        await validateUserClientForWorkspace({
-            user: authData.authPayload,
-            workspaceId: integration.workspace,
-            acceptedRoles
-        });
-        
-        return ({ integration, accessToken });
-    }
-    
-    throw UnauthorizedRequestError({
-        message: 'Failed client authorization for integration'
-    });
 }
 
 /**
@@ -400,7 +302,9 @@ const setIntegrationAuthRefreshHelper = async ({
         }, {
             refreshCiphertext: obj.ciphertext,
             refreshIV: obj.iv,
-            refreshTag: obj.tag
+            refreshTag: obj.tag,
+            algorithm: ALGORITHM_AES_256_GCM,
+            keyEncoding: ENCODING_SCHEME_UTF8
         }, {
             new: true
         });
@@ -461,7 +365,9 @@ const setIntegrationAuthAccessHelper = async ({
             accessCiphertext: encryptedAccessTokenObj.ciphertext,
             accessIV: encryptedAccessTokenObj.iv,
             accessTag: encryptedAccessTokenObj.tag,
-            accessExpiresAt
+            accessExpiresAt,
+            algorithm: ALGORITHM_AES_256_GCM,
+            keyEncoding: ENCODING_SCHEME_UTF8
         }, {
             new: true
         });
@@ -475,7 +381,6 @@ const setIntegrationAuthAccessHelper = async ({
 }
 
 export {
-    validateClientForIntegration,
     handleOAuthExchangeHelper,
     syncIntegrationsHelper,
     getIntegrationAuthRefreshHelper,
