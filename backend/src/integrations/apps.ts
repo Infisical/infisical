@@ -205,6 +205,7 @@ const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
     const params = new URLSearchParams({
       page: String(page),
       per_page: String(perPage),
+      filter: 'all'
     });
 
     const { data } = await request.get(
