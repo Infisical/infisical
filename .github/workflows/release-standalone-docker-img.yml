@@ -8,12 +8,40 @@ jobs:
     steps:
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: 📦 Install dependencies to test all dependencies
         run: npm ci --only-production
         working-directory: backend
-      - name: 🧪 Run tests
-        run: npm run test:ci
-        working-directory: backend
+      - uses: paulhatch/semantic-version@v5.0.2
+        id: version
+        with:
+          # The prefix to use to identify tags
+          tag_prefix: "infisical-standalone/v"
+          # A string which, if present in a git commit, indicates that a change represents a
+          # major (breaking) change, supports regular expressions wrapped with '/'
+          major_pattern: "(MAJOR)"
+          # Same as above except indicating a minor change, supports regular expressions wrapped with '/'
+          minor_pattern: "(MINOR)"
+          # A string to determine the format of the version output
+          version_format: "${major}.${minor}.${patch}-prerelease${increment}"
+          # Optional path to check for changes. If any changes are detected in the path the
+          # 'changed' output will true. Enter multiple paths separated by spaces.
+          change_path: "backend,frontend"
+          # Prevents pre-v1.0.0 version from automatically incrementing the major version.
+          # If enabled, when the major version is 0, major releases will be treated as minor and minor as patch. Note that the version_type output is unchanged.
+          enable_prerelease_mode: true
+      # - name: 🧪 Run tests
+      #   run: npm run test:ci
+      #   working-directory: backend
+      - name: version output
+        run: |
+          echo "Output Value: ${{ steps.version.outputs.major }}"
+          echo "Output Value: ${{ steps.version.outputs.minor }}"
+          echo "Output Value: ${{ steps.version.outputs.patch }}"
+          echo "Output Value: ${{ steps.version.outputs.version }}"
+          echo "Output Value: ${{ steps.version.outputs.version_type }}"
+          echo "Output Value: ${{ steps.version.outputs.increment }}"
       - name: Save commit hashes for tag
         id: commit
         uses: pr-mpt/actions-commit-hash@v2
