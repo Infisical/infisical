@@ -65,10 +65,10 @@ archives:
       - goos: windows
         format: zip
     files:
-      - README*
-      - LICENSE*
-      - manpages/*
-      - completions/*
+      - ./README*
+      - ../LICENSE*
+      - ../manpages/*
+      - ../completions/*
 
 release:
   replace_existing_draft: true
@@ -98,12 +98,12 @@ brews:
     folder: Formula
     homepage: "https://infisical.com"
     description: "The official Infisical CLI"
-    # install: |-
-    #   bin.install "infisical"
-    #   bash_completion.install "completions/infisical.bash" => "infisical"
-    #   zsh_completion.install "completions/infisical.zsh" => "_infisical"
-    #   fish_completion.install "completions/infisical.fish"
-    #   man1.install "manpages/infisical.1.gz"
+    install: |-
+      bin.install "infisical"
+      bash_completion.install "completions/infisical.bash" => "infisical"
+      zsh_completion.install "completions/infisical.zsh" => "_infisical"
+      fish_completion.install "completions/infisical.fish"
+      man1.install "manpages/infisical.1.gz"
 
 nfpms:
   - id: infisical
@@ -121,15 +121,15 @@ nfpms:
       - apk
       - archlinux
     bindir: /usr/bin
-    # contents:
-    #   - src: ./completions/infisical.bash
-    #     dst: /etc/bash_completion.d/infisical
-    #   - src: ./completions/infisical.fish
-    #     dst: /usr/share/fish/vendor_completions.d/infisical.fish
-    #   - src: ./completions/infisical.zsh
-    #     dst: /usr/share/zsh/site-functions/_infisical
-    #   - src: ./manpages/infisical.1.gz
-    #     dst: /usr/share/man/man1/infisical.1.gz
+    contents:
+      - src: ./completions/infisical.bash
+        dst: /etc/bash_completion.d/infisical
+      - src: ./completions/infisical.fish
+        dst: /usr/share/fish/vendor_completions.d/infisical.fish
+      - src: ./completions/infisical.zsh
+        dst: /usr/share/zsh/site-functions/_infisical
+      - src: ./manpages/infisical.1.gz
+        dst: /usr/share/man/man1/infisical.1.gz
 
 scoop:
   bucket:
