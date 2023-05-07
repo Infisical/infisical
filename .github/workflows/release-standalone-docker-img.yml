@@ -27,7 +27,7 @@ jobs:
           version_format: "${major}.${minor}.${patch}-prerelease${increment}"
           # Optional path to check for changes. If any changes are detected in the path the
           # 'changed' output will true. Enter multiple paths separated by spaces.
-          change_path: "backend/*,frontend/*"
+          change_path: "backend/ frontend/"
           # Prevents pre-v1.0.0 version from automatically incrementing the major version.
           # If enabled, when the major version is 0, major releases will be treated as minor and minor as patch. Note that the version_type output is unchanged.
           enable_prerelease_mode: true
@@ -42,6 +42,7 @@ jobs:
           echo "Output Value: ${{ steps.version.outputs.version }}"
           echo "Output Value: ${{ steps.version.outputs.version_type }}"
           echo "Output Value: ${{ steps.version.outputs.increment }}"
+          echo "Output Value: ${{ steps.version.outputs.changed }}"
       - name: Save commit hashes for tag
         id: commit
         uses: pr-mpt/actions-commit-hash@v2
