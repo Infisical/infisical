@@ -167,6 +167,7 @@ export default function UserInfoStep({
               // unset signup JWT token and set JWT token
               SecurityClient.setSignupToken('');
               SecurityClient.setToken(response.token);
+              SecurityClient.setProviderAuthToken('');
 
               saveTokenToLocalStorage({
                 publicKey,

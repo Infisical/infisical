@@ -35,7 +35,15 @@ export default function SignUp() {
   const { data: serverDetails } = useFetchServerStatus();
   const [isSignupWithEmail, setIsSignupWithEmail] = useState(false);
   const { t } = useTranslation();
-  const { email: providerEmail, providerAuthToken } = useProviderAuth();
+  const {
+    email: providerEmail,
+    providerAuthToken,
+    isProviderUserCompleted,
+  } = useProviderAuth();
+
+  if (providerAuthToken && isProviderUserCompleted) {
+    router.push('/login');
+  }
 
   if (providerAuthToken && step < 3) {
     setStep(3);

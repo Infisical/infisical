@@ -27,8 +27,13 @@ export default function Login() {
   const {
     providerAuthToken,
     email: providerEmail,
-    setProviderAuthToken
+    setProviderAuthToken,
+    isProviderUserCompleted,
   } = useProviderAuth();
+
+  if (providerAuthToken && isProviderUserCompleted === false) {
+    router.push('/signup');
+  }
 
   const setLanguage = async (to: string) => {
     router.push('/login', '/login', { locale: to });

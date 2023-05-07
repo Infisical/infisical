@@ -28,6 +28,7 @@ declare module 'jsonwebtoken' {
         userId: string;
         email: string;
         authProvider: AuthProvider;
+        isUserCompleted: boolean,
     }
 }
 

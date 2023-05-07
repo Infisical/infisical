@@ -74,7 +74,7 @@ const initializePassport = async () => {
         let user = await User.findOne({
           authProvider: AuthProvider.GOOGLE,
           authId: profile.id,
-        })
+        }).select('+publicKey')
       
         if (!user) {
           user = await new User({
@@ -89,6 +89,7 @@ const initializePassport = async () => {
             userId: user._id.toString(),
             email: user.email,
             authProvider: user.authProvider,
+            isUserCompleted: !!user.publicKey
           },
           expiresIn: await getJwtProviderAuthLifetime(),
           secret: await getJwtProviderAuthSecret(),

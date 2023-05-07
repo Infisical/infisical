@@ -91,7 +91,9 @@ const attemptLogin = async (
             token
           ) {
             // case: MFA is not enabled
-            
+
+            // unset provider auth token in case it was used
+            SecurityClient.setProviderAuthToken('');            
             // set JWT token
             SecurityClient.setToken(token);
             

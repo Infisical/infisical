@@ -33,15 +33,15 @@ export default function PasswordInputStep({
   const handleLogin = async () => {
     try {
       setIsLoading(true);
-      const isLoginSuccessful = await attemptLogin({
+      const loginAttempt = await attemptLogin({
         email,
         password
       });
 
-      if (isLoginSuccessful && isLoginSuccessful.success) {
+      if (loginAttempt && loginAttempt.success) {
         // case: login was successful
 
-        if (isLoginSuccessful.mfaEnabled) {
+        if (loginAttempt.mfaEnabled) {
           // case: login requires MFA step
           setStep(2);
           setIsLoading(false);
