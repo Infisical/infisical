@@ -29,11 +29,13 @@ const Dashboard = () => {
         <meta property="og:title" content={String(t('dashboard:og-title'))} />
         <meta name="og:description" content={String(t('dashboard:og-description'))} />
       </Head>
-      {isOverviewMode ? (
-        <DashboardEnvOverview onEnvChange={onExploreEnv} />
-      ) : (
-        <DashboardPage envFromTop={queryEnv} />
-      )}
+      <div className="h-full">
+        {isOverviewMode ? (
+          <DashboardEnvOverview onEnvChange={onExploreEnv} />
+        ) : (
+          <DashboardPage envFromTop={queryEnv} />
+        )}
+      </div>
     </>
   );
 };

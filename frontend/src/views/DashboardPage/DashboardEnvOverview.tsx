@@ -95,10 +95,10 @@ export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
       <FormProvider {...method}>
         <form autoComplete="off">
           {/* breadcrumb row */}
-          <div className="relative right-5">
+          <div className="relative right-6">
             <NavHeader pageName={t('dashboard:title')} isProjectRelated />
           </div>
-          <div className="mt-6 ml-1">
+          <div className="mt-6">
             <p className="text-3xl font-semibold text-bunker-100">Secrets Overview</p>
             <p className="text-md text-bunker-300">
               Inject your secrets using
@@ -182,16 +182,8 @@ export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
                 </TableContainer>
               )}
               {isDashboardSecretEmpty && (
-                <div className="mt-1 flex h-40 w-full flex-row rounded-md">
-                  <div className="sticky top-0 flex w-10 items-center justify-center border-none px-4">
-                    <div className="w-10 text-center text-xs text-transparent">{0}</div>
-                  </div>
-                  <div className="sticky top-0 border-none">
-                    <div className="relative flex h-full w-full min-w-[200px] items-center justify-start lg:min-w-[220px] xl:min-w-[250px]">
-                      <div className="text-sm font-medium text-transparent">Secret</div>
-                    </div>
-                  </div>
-                  <div className="mx-2 flex w-full min-w-[11rem] flex-col items-center justify-center rounded-md border-none bg-mineshaft-800 text-bunker-300">
+                <div className="flex h-40 w-full flex-row rounded-md">
+                  <div className="flex w-full min-w-[11rem] flex-col items-center justify-center rounded-md border-none bg-mineshaft-800 text-bunker-300">
                     <span className="mb-1">No secrets are available in this project yet.</span>
                     <span>You can go into any environment to add secrets there.</span>
                   </div>

@@ -6,6 +6,7 @@ import {
   faComment,
   faEllipsis,
   faInfoCircle,
+  faKey,
   faPlus,
   faTags,
   faXmark
@@ -158,8 +159,9 @@ export const SecretInputRow = memo(
 
     return (
       <tr className="group flex flex-row items-center" key={index}>
-        <td className="flex h-10 w-10 items-center justify-center px-4">
-          <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div>
+        <td className="flex h-10 w-10 items-center justify-center px-4 border-none">
+          {/* <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div> */}
+          <div className="w-10 text-center text-xs text-bunker-400"><FontAwesomeIcon icon={faKey} className="w-4 h-4 text-bunker-400/60 pl-2.5 pt-0.5" /></div>
         </td>
         <Controller
           control={control}
@@ -184,65 +186,6 @@ export const SecretInputRow = memo(
                         field.onBlur();
                       }}
                     />
-                    <div className="flex w-max flex-row items-center justify-end">
-                      <Tooltip content="Comment">
-                        <div
-                          className={`${
-                            hasComment ? 'w-5' : 'w-0'
-                          } mt-0.5 overflow-hidden group-hover:w-5`}
-                        >
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <IconButton
-                                className={twMerge(
-                                  'w-0 overflow-hidden p-0 group-hover:w-5',
-                                  hasComment && 'w-5 text-primary'
-                                )}
-                                variant="plain"
-                                size="md"
-                                ariaLabel="add-tag"
-                              >
-                                <FontAwesomeIcon icon={faComment} />
-                              </IconButton>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-2 drop-shadow-2xl">
-                              <FormControl label="Comment" className="mb-0">
-                                <TextArea
-                                  isDisabled={
-                                    isReadOnly || isRollbackMode || shouldBeBlockedInAddOnly
-                                  }
-                                  className="border border-mineshaft-600 text-sm"
-                                  {...register(`secrets.${index}.comment`)}
-                                  rows={8}
-                                  cols={30}
-                                />
-                              </FormControl>
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                      </Tooltip>
-                      {!isAddOnly && (
-                        <div>
-                          <Tooltip content="Override with a personal value">
-                            <IconButton
-                              variant="plain"
-                              className={twMerge(
-                                'mt-0.5 w-0 overflow-hidden p-0 group-hover:ml-1 group-hover:w-6',
-                                isOverridden && 'ml-1 w-6 text-primary'
-                              )}
-                              onClick={onSecretOverride}
-                              size="md"
-                              isDisabled={isRollbackMode || isReadOnly}
-                              ariaLabel="info"
-                            >
-                              <div className="flex items-center space-x-1">
-                                <FontAwesomeIcon icon={faCodeBranch} className="text-base" />
-                              </div>
-                            </IconButton>
-                          </Tooltip>
-                        </div>
-                      )}
-                    </div>
                   </div>
                 </td>
               </HoverCardTrigger>
@@ -257,7 +200,7 @@ export const SecretInputRow = memo(
             </HoverCard>
           )}
         />
-        <td className="flex h-8 w-full flex-grow flex-row items-center justify-center">
+        <td className="flex h-10 border-none w-full flex-grow flex-row items-center justify-center border-r border-red">
           <MaskedInput
             isReadOnly={
               isReadOnly || isRollbackMode || (isOverridden ? isAddOnly : shouldBeBlockedInAddOnly)
@@ -283,14 +226,14 @@ export const SecretInputRow = memo(
               </Tag>
             ))}
             {!(isReadOnly || isAddOnly || isRollbackMode) && (
-              <div className="w-0 overflow-hidden group-hover:w-8">
+              <div className="overflow-hidden duration-0 ml-1">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <div>
+                    <div className="w-0 data-[state=open]:w-6 group-hover:w-6">
                       <Tooltip content="Add tags">
                         <IconButton
-                          variant="star"
-                          size="xs"
+                          variant="plain"
+                          size="md"
                           ariaLabel="add-tag"
                           className="py-[0.42rem]"
                         >
@@ -348,9 +291,67 @@ export const SecretInputRow = memo(
               </div>
             )}
           </div>
-          <div className="duration-0 invisible flex w-0 items-center justify-end space-x-2 overflow-hidden transition-all group-hover:visible group-hover:w-14">
+          <div className="flex flex-row items-center h-full pr-2">
             {!isAddOnly && (
               <div>
+                <Tooltip content="Override with a personal value">
+                  <IconButton
+                    variant="plain"
+                    className={twMerge(
+                      'mt-0.5 w-0 overflow-hidden p-0 group-hover:ml-1 group-hover:w-7',
+                      isOverridden && 'ml-1 w-7 text-primary'
+                    )}
+                    onClick={onSecretOverride}
+                    size="md"
+                    isDisabled={isRollbackMode || isReadOnly}
+                    ariaLabel="info"
+                  >
+                    <div className="flex items-center space-x-1">
+                      <FontAwesomeIcon icon={faCodeBranch} className="text-base" />
+                    </div>
+                  </IconButton>
+                </Tooltip>
+              </div>
+            )}
+            <Tooltip content="Comment">
+              <div
+                className={`mt-0.5 overflow-hidden `}
+              >
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <IconButton
+                      className={twMerge(
+                        'overflow-hidden p-0 w-7',
+                        'data-[state=open]:w-7 group-hover:w-7 w-0',
+                        hasComment ? 'text-primary w-7' : 'group-hover:w-7'
+                      )}
+                      variant="plain"
+                      size="md"
+                      ariaLabel="add-tag"
+                    >
+                      <FontAwesomeIcon icon={faComment} />
+                    </IconButton>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-2 drop-shadow-2xl" sticky="always">
+                    <FormControl label="Comment" className="mb-0">
+                      <TextArea
+                        isDisabled={
+                          isReadOnly || isRollbackMode || shouldBeBlockedInAddOnly
+                        }
+                        className="border border-mineshaft-600 text-sm"
+                        {...register(`secrets.${index}.comment`)}
+                        rows={8}
+                        cols={30}
+                      />
+                    </FormControl>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </Tooltip>
+          </div>
+          <div className="duration-0 w-0 flex items-center justify-end space-x-2.5 overflow-hidden transition-all w-16 border-l border-mineshaft-600 h-10">
+            {!isAddOnly && (
+              <div className="opacity-0 group-hover:opacity-100">
                 <Tooltip content="Settings">
                   <IconButton
                     size="lg"
@@ -364,7 +365,7 @@ export const SecretInputRow = memo(
                 </Tooltip>
               </div>
             )}
-            <div>
+            <div className="opacity-0 group-hover:opacity-100">
               <Tooltip content="Delete">
                 <IconButton
                   size="md"

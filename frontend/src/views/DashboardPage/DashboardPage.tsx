@@ -413,11 +413,11 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   );
 
   return (
-    <div className="container mx-auto px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+    <div className="mr-auto container px-6 text-mineshaft-50 dark:[color-scheme:dark] h-full">
       <FormProvider {...method}>
         <form autoComplete="off">
           {/* breadcrumb row */}
-          <div className="relative right-5">
+          <div className="relative right-6 mb-6 -top-2">
             <NavHeader
               pageName={t('dashboard:title')}
               currentEnv={
@@ -428,20 +428,18 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
               onEnvChange={onEnvChange}
             />
           </div>
-          {/* Secrets, commit and save button section */}
-          <div className="mt-6 flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-3xl font-semibold">
-                {isRollbackMode ? 'Secret Snapshot' : 'Secrets'}
-              </h1>
-              {isRollbackMode && Boolean(snapshotSecret) && (
-                <Tag colorSchema="green">
-                  {new Date(snapshotSecret?.createdAt || '').toLocaleString()}
-                </Tag>
-              )}
-            </div>
-            <div className="flex items-center space-x-2">
-              {isRollbackMode && (
+          {/* This is only for rollbacks */}
+          {isRollbackMode && 
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <h1 className="text-3xl font-semibold">Secret Snapshot</h1>
+                {isRollbackMode && Boolean(snapshotSecret) && (
+                  <Tag colorSchema="green">
+                    {new Date(snapshotSecret?.createdAt || '').toLocaleString()}
+                  </Tag>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
                 <Button
                   variant="star"
                   leftIcon={<FontAwesomeIcon icon={faArrowLeft} />}
@@ -453,33 +451,13 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                 >
                   Go back
                 </Button>
-              )}
-              <Button
-                variant="star"
-                onClick={() => handlePopUpOpen('secretSnapshots')}
-                leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
-                isLoading={isLoadingSnapshotCount}
-                isDisabled={!canDoRollback}
-                className="h-10"
-              >
-                {snapshotCount} Commits
-              </Button>
-              <Button
-                isDisabled={isSubmitDisabled}
-                isLoading={isSubmitting}
-                leftIcon={<FontAwesomeIcon icon={isRollbackMode ? faClockRotateLeft : faCheck} />}
-                onClick={handleSubmit(onSaveSecret)}
-                className="h-10"
-              >
-                {isRollbackMode ? 'Rollback' : 'Save Changes'}
-              </Button>
-            </div>
-          </div>
+              </div>
+            </div>}
           {/* Environment, search and other action row */}
-          <div className="mt-4 flex items-center space-x-2">
-            <div className="flex-grow">
+          <div className="mt-2 flex items-center space-x-2 justify-between">
+            <div className="flex-grow max-w-sm">
               <Input
-                className="h-[2.3rem] bg-mineshaft-600 placeholder-mineshaft-50"
+                className="h-[2.3rem] bg-mineshaft-800 focus:bg-mineshaft-700/80 duration-200 placeholder-mineshaft-50"
                 placeholder="Search keys..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
@@ -490,7 +468,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
               <div>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <IconButton ariaLabel="download" variant="star">
+                    <IconButton ariaLabel="download" variant="outline_bg">
                       <FontAwesomeIcon icon={faDownload} />
                     </IconButton>
                   </PopoverTrigger>
@@ -501,7 +479,8 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                     <div className="flex flex-col space-y-2">
                       <Button
                         onClick={() => downloadSecret(getValues('secrets'), selectedEnv?.slug)}
-                        variant="star"
+                        colorSchema="primary"
+                        variant="outline_bg"
                         className="h-8 bg-bunker-700"
                       >
                         Download as .env
@@ -514,45 +493,92 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                 <Tooltip content={isSecretValueHidden ? 'Reveal Secrets' : 'Hide secrets'}>
                   <IconButton
                     ariaLabel="reveal"
-                    variant="star"
+                    variant="outline_bg"
                     onClick={() => setIsSecretValueHidden.toggle()}
                   >
                     <FontAwesomeIcon icon={isSecretValueHidden ? faEye : faEyeSlash} />
                   </IconButton>
                 </Tooltip>
               </div>
-              {!isReadOnly && !isRollbackMode && (
+              <div className='block xl:hidden'>
+                <Tooltip content='Point-in-time Recovery'>
+                  <IconButton
+                    ariaLabel="recovery"
+                    variant="outline_bg"
+                    onClick={() => setIsSecretValueHidden.toggle()}
+                  >
+                    <FontAwesomeIcon icon={faCodeCommit} />
+                  </IconButton>
+                </Tooltip>
+              </div>
+              <div className='hidden xl:block'>
                 <Button
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => {
-                    if (secretContainer.current) {
-                      secretContainer.current.scroll({
-                        top: 0,
-                        behavior: 'smooth'
-                      });
-                    }
-                    prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
-                  }}
-                  isDisabled={isReadOnly || isRollbackMode}
-                  variant="star"
+                  variant="outline_bg"
+                  onClick={() => handlePopUpOpen('secretSnapshots')}
+                  leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
+                  isLoading={isLoadingSnapshotCount}
+                  isDisabled={!canDoRollback}
                   className="h-10"
                 >
-                  Add Secret
+                  {snapshotCount} Commits
                 </Button>
+              </div>
+              {!isReadOnly && !isRollbackMode && (
+                <>
+                  <div className='block lg:hidden'>
+                    <Tooltip content='Point-in-time Recovery'>
+                      <IconButton
+                        ariaLabel="recovery"
+                        variant="outline_bg"
+                        onClick={() => setIsSecretValueHidden.toggle()}
+                      >
+                        <FontAwesomeIcon icon={faPlus} />
+                      </IconButton>
+                    </Tooltip>
+                  </div>
+                  <div className='hidden lg:block'>
+                    <Button
+                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                      onClick={() => {
+                        if (secretContainer.current) {
+                          secretContainer.current.scroll({
+                            top: 0,
+                            behavior: 'smooth'
+                          });
+                        }
+                        prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
+                      }}
+                      isDisabled={isReadOnly || isRollbackMode}
+                      variant="outline_bg"
+                      className="h-10"
+                    >
+                      Add Secret
+                    </Button>
+                  </div>
+                </>
               )}
+              <Button
+                isDisabled={isSubmitDisabled}
+                isLoading={isSubmitting}
+                leftIcon={<FontAwesomeIcon icon={isRollbackMode ? faClockRotateLeft : faCheck} />}
+                onClick={handleSubmit(onSaveSecret)}
+                className="h-10"
+              >
+                {isRollbackMode ? 'Rollback' : 'Save Changes'}
+              </Button>
             </div>
           </div>
           <div
             className={`${
               isSecretEmpty ? 'flex flex-col items-center justify-center' : ''
-            } no-scrollbar::-webkit-scrollbar mt-4 h-[calc(100vh-270px)] overflow-x-hidden overflow-y-scroll no-scrollbar`}
+            } no-scrollbar::-webkit-scrollbar mt-3 h-[calc(100vh-220px)] overflow-x-hidden overflow-y-scroll no-scrollbar`}
             ref={secretContainer}
           >
             {!isSecretEmpty && (
-              <TableContainer>
+              <TableContainer className="max-h-[calc(100%-40px)] no-scrollbar no-scrollbar::-webkit-scrollbar">
                 <table className="secret-table relative">
                   <SecretTableHeader sortDir={sortDir} onSort={onSortSecrets} />
-                  <tbody className="max-h-screen overflow-y-auto">
+                  <tbody className="max-h-96 overflow-y-auto">
                     {fields.map(({ id, _id }, index) => (
                       <SecretInputRow
                         key={id}
@@ -573,7 +599,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                         <td colSpan={3} className="hover:bg-mineshaft-700">
                           <button
                             type="button"
-                            className="ml-12 flex h-8 items-center justify-start font-normal text-bunker-300"
+                            className="pl-12 cursor-default w-full flex h-8 items-center justify-start font-normal text-bunker-300"
                             onClick={onAppendSecret}
                           >
                             <FontAwesomeIcon icon={faPlus} />

@@ -9,9 +9,9 @@ type Props = {
 };
 
 export const SecretTableHeader = ({ sortDir, onSort }: Props): JSX.Element => (
-  <thead>
-    <tr className="sticky top-0 flex flex-row">
-      <td className="flex w-10 items-center justify-center px-4">
+  <thead className="sticky top-0 z-50 bg-mineshaft-800">
+    <tr className="top-0 flex flex-row">
+      <td className="flex w-10 items-center justify-center px-4 border-none">
         <div className="w-10 text-center text-xs text-transparent">{0}</div>
       </td>
       <td className="flex items-center">
