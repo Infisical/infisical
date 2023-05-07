@@ -23,8 +23,8 @@ builds:
       - -trimpath
     env:
       - CGO_ENABLED=1
-      - CC=/home/runner/work/osxcross/target/bin/o64-clang
-      - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
+      # - CC=/home/runner/work/osxcross/target/bin/o64-clang
+      # - CXX=/home/runner/work/osxcross/target/bin/o64-clang++
     goos:
       - darwin
     ignore:
@@ -156,6 +156,15 @@ aurs:
       install -Dm755 "./infisical" "${pkgdir}/usr/bin/infisical"
       # license
       install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/infisical/LICENSE"
+      # completions
+      mkdir -p "${pkgdir}/usr/share/bash-completion/completions/"
+      mkdir -p "${pkgdir}/usr/share/zsh/site-functions/"
+      mkdir -p "${pkgdir}/usr/share/fish/vendor_completions.d/"
+      install -Dm644 "./completions/infisical.bash" "${pkgdir}/usr/share/bash-completion/completions/infisical"
+      install -Dm644 "./completions/infisical.zsh" "${pkgdir}/usr/share/zsh/site-functions/infisical"
+      install -Dm644 "./completions/infisical.fish" "${pkgdir}/usr/share/fish/vendor_completions.d/infisical.fish"
+      # man pages
+      install -Dm644 "./manpages/infisical.1.gz" "${pkgdir}/usr/share/man/man1/infisical.1.gz"
 
 # dockers:
 #   - dockerfile: cli/docker/Dockerfile
