@@ -65,7 +65,7 @@ archives:
       - goos: windows
         format: zip
     files:
-      - ./README*
+      - ../README*
       - ../LICENSE*
       - ../manpages/*
       - ../completions/*
