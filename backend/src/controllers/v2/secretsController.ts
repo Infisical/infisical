@@ -28,7 +28,7 @@ import {
 import { getFolderPath, getFoldersInDirectory, normalizePath } from '../../utils/folder';
 import { ROOT_FOLDER_PATH } from '../../utils/folder';
 
-// test comm
+// test commm
 
 /**
  * Peform a batch of any specified CUD secret operations
