@@ -28,6 +28,8 @@ import {
 import { getFolderPath, getFoldersInDirectory, normalizePath } from '../../utils/folder';
 import { ROOT_FOLDER_PATH } from '../../utils/folder';
 
+// test commit
+
 /**
  * Peform a batch of any specified CUD secret operations
  * (used by dashboard)
