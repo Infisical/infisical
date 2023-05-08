@@ -67,7 +67,7 @@ var loginCmd = &cobra.Command{
 
 		//override domain
 		domainQuery := true
-		if config.INFISICAL_URL_MANUAL_OVERRIDE != util.INFISICAL_DEFAULT_API_URL {
+		if config.INFISICAL_URL_MANUAL_OVERRIDE != "" && config.INFISICAL_URL_MANUAL_OVERRIDE != util.INFISICAL_DEFAULT_API_URL {
 			overrideDomain, err := DomainOverridePrompt()
 			if err != nil {
 				util.HandleError(err)
