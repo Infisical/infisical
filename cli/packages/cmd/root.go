@@ -34,7 +34,9 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&debugLogging, "debug", "d", false, "Enable verbose logging")
 	rootCmd.PersistentFlags().StringVar(&config.INFISICAL_URL, "domain", util.INFISICAL_DEFAULT_API_URL, "Point the CLI to your own backend [can also set via environment variable name: INFISICAL_API_URL]")
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-		util.CheckForUpdate()
+		if !util.IsRunningInDocker() {
+			util.CheckForUpdate()
+		}
 	}
 
 	// if config.INFISICAL_URL is set to the default value, check if INFISICAL_URL is set in the environment
