@@ -199,7 +199,7 @@ ingress:
   ```
 </Accordion>
 
-### Install the Helm chart 
+## Install the Helm chart 
 
 By default, the helm chart will be installed on your default namespace. If you wish to install the Chart on a different namespace, you may specify
 that by adding the `--namespace <namespace-to-install-to>` to your `helm install` command.
@@ -209,6 +209,6 @@ that by adding the `--namespace <namespace-to-install-to>` to your `helm install
 helm install infisical-helm-charts/infisical --generate-name --values /path/to/values.yaml
 ```
 
-#### 4. Access Infisical
+## Access Infisical
 Allow 3-5 minutes for the deployment to complete. Once done, you should now be able to access Infisical on the IP address exposed via Ingress on your load balancer. If you are not sure what the IP address is run `kubectl get ingress` to view the external IP address exposing Infisical.
   
