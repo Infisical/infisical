@@ -5,7 +5,6 @@ import Link from 'next/link';
 
 import Button from '@app/components/basic/buttons/Button';
 import InputField from '@app/components/basic/InputField';
-import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
 import { EmailServiceSetupModal } from '@app/components/v2';
 import { usePopUp } from '@app/hooks';
 import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
@@ -15,10 +14,8 @@ import SendEmailOnPasswordReset from './api/auth/SendEmailOnPasswordReset';
 export default function VerifyEmail() {
   const [email, setEmail] = useState('');
   const [step, setStep] = useState(1);
-  const {data: serverDetails } = useFetchServerStatus()
-  const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
-    'setUpEmail'
-  ] as const);
+  const { data: serverDetails } = useFetchServerStatus();
+  const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(['setUpEmail'] as const);
 
   /**
    * This function sends the verification email and forwards a user to the next step.
@@ -31,7 +28,7 @@ export default function VerifyEmail() {
   };
 
   return (
-    <div className="bg-bunker-800 h-screen flex flex-col justify-start px-6">
+    <div className="flex h-screen flex-col justify-start bg-bunker-800 px-6">
       <Head>
         <title>Login</title>
         <link rel="icon" href="/infisical.ico" />
@@ -43,21 +40,21 @@ export default function VerifyEmail() {
         />
       </Head>
       <Link href="/">
-        <div className="flex justify-center mb-8 mt-20 cursor-pointer">
+        <div className="mb-8 mt-20 flex cursor-pointer justify-center">
           <Image src="/images/biglogo.png" height={90} width={120} alt="long logo" />
         </div>
       </Link>
       {step === 1 && (
-        <div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-4 pt-8 px-6 rounded-xl drop-shadow-xl">
-          <p className="text-2xl md:text-3xl w-max mx-auto flex justify-center font-semibold text-bunker-100 mb-6">
+        <div className="h-7/12 mx-auto w-full max-w-md rounded-xl bg-bunker py-4 px-6 pt-8 drop-shadow-xl">
+          <p className="mx-auto mb-6 flex w-max justify-center text-2xl font-semibold text-bunker-100 md:text-3xl">
             Forgot your password?
           </p>
-          <div className="flex flex-row items-center justify-center md:pb-4 mt-4 md:mx-2">
-            <p className="text-sm flex justify-center text-gray-400 w-max">
+          <div className="mt-4 flex flex-row items-center justify-center md:mx-2 md:pb-4">
+            <p className="flex w-max justify-center text-sm text-gray-400">
               You will need your emergency kit. Enter your email to start account recovery.
             </p>
           </div>
-          <div className="flex items-center justify-center w-full md:p-2 rounded-lg mt-4 md:mt-0 max-h-24 md:max-h-28">
+          <div className="mt-4 flex max-h-24 w-full items-center justify-center rounded-lg md:mt-0 md:max-h-28 md:p-2">
             <InputField
               label="Email"
               onChangeHandler={setEmail}
@@ -68,26 +65,30 @@ export default function VerifyEmail() {
               autoComplete="username"
             />
           </div>
-          <div className="flex flex-col items-center justify-center w-full md:p-2 max-h-20 max-w-md mt-4 mx-auto text-sm">
-            <div className="text-l mt-6 m-8 px-8 py-3 text-lg">
-              <Button text="Continue" onButtonPressed={()=>{
-                if (serverDetails?.emailConfigured){
-                  sendVerificationEmail()
-                } else {
-                  handlePopUpOpen('setUpEmail');
-                }
-              }} size="lg" />
+          <div className="mx-auto mt-4 flex max-h-20 w-full max-w-md flex-col items-center justify-center text-sm md:p-2">
+            <div className="text-l m-8 mt-6 px-8 py-3 text-lg">
+              <Button
+                text="Continue"
+                onButtonPressed={() => {
+                  if (serverDetails?.emailConfigured) {
+                    sendVerificationEmail();
+                  } else {
+                    handlePopUpOpen('setUpEmail');
+                  }
+                }}
+                size="lg"
+              />
             </div>
           </div>
         </div>
       )}
       {step === 2 && (
-        <div className="bg-bunker w-full max-w-md mx-auto h-7/12 py-4 pt-8 px-6 rounded-xl drop-shadow-xl">
-          <p className="text-xl md:text-2xl w-max mx-auto flex justify-center font-semibold text-bunker-100 mb-6">
+        <div className="h-7/12 mx-auto w-full max-w-md rounded-xl bg-bunker py-4 px-6 pt-8 drop-shadow-xl">
+          <p className="mx-auto mb-6 flex w-max justify-center text-xl font-semibold text-bunker-100 md:text-2xl">
             Look for an email in your inbox.
           </p>
-          <div className="flex flex-row items-center justify-center md:pb-4 mt-4 md:mx-2">
-            <p className="text-sm flex justify-center text-gray-400 w-max text-center">
+          <div className="mt-4 flex flex-row items-center justify-center md:mx-2 md:pb-4">
+            <p className="flex w-max justify-center text-center text-sm text-gray-400">
               An email with instructions has been sent to {email}.
             </p>
           </div>
@@ -101,5 +102,3 @@ export default function VerifyEmail() {
     </div>
   );
 }
-
-export const getServerSideProps = getTranslatedStaticProps([]);

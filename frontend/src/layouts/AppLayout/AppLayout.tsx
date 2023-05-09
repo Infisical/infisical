@@ -5,9 +5,9 @@ import crypto from 'crypto';
 
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
 import { faBookOpen, faMobile, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -54,9 +54,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { createNotification } = useNotificationContext();
 
   // eslint-disable-next-line prefer-const
-  let { workspaces, currentWorkspace } = useWorkspace();
+  const { workspaces, currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
-  workspaces = workspaces.filter((ws) => ws.organization === currentOrg?._id);
   const { user } = useUser();
 
   const createWs = useCreateWorkspace();
@@ -257,15 +256,17 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       position="popper"
                       dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50"
                     >
-                      {workspaces.map(({ _id, name }) => (
-                        <SelectItem
-                          key={`ws-layout-list-${_id}`}
-                          value={_id}
-                          className={`${currentWorkspace?._id === _id && 'bg-mineshaft-600'}`}
-                        >
-                          {name}
-                        </SelectItem>
-                      ))}
+                      {workspaces
+                        .filter((ws) => ws.organization === currentOrg?._id)
+                        .map(({ _id, name }) => (
+                          <SelectItem
+                            key={`ws-layout-list-${_id}`}
+                            value={_id}
+                            className={`${currentWorkspace?._id === _id && 'bg-mineshaft-600'}`}
+                          >
+                            {name}
+                          </SelectItem>
+                        ))}
                       {/* <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" /> */}
                       <div className="w-full">
                         <Button
@@ -302,7 +303,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           isSelected={router.asPath.includes(`/dashboard/${currentWorkspace?._id}`)}
                           icon="system-outline-90-lock-closed"
                         >
-                          {t('nav:menu.secrets')}
+                          {t('nav.menu.secrets')}
                         </MenuItem>
                       </a>
                     </Link>
@@ -312,7 +313,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           isSelected={router.asPath === `/users/${currentWorkspace?._id}`}
                           icon="system-outline-96-groups"
                         >
-                          {t('nav:menu.members')}
+                          {t('nav.menu.members')}
                         </MenuItem>
                       </a>
                     </Link>
@@ -322,7 +323,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           isSelected={router.asPath === `/integrations/${currentWorkspace?._id}`}
                           icon="system-outline-82-extension"
                         >
-                          {t('nav:menu.integrations')}
+                          {t('nav.menu.integrations')}
                         </MenuItem>
                       </a>
                     </Link>
@@ -343,7 +344,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           }
                           icon="system-outline-109-slider-toggle-settings"
                         >
-                          {t('nav:menu.project-settings')}
+                          {t('nav.menu.project-settings')}
                         </MenuItem>
                       </a>
                     </Link>
@@ -471,7 +472,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       <div className="z-[200] flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
         <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
         <p className="max-w-sm px-6 text-center text-lg text-gray-200">
-          {` ${t('common:no-mobile')} `}
+          {` ${t('common.no-mobile')} `}
         </p>
       </div>
     </>
