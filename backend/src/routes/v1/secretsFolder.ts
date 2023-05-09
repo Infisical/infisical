@@ -6,7 +6,7 @@ import {
   validateRequest
 } from '../../middleware';
 import { body, param } from 'express-validator';
-import { createFolder, deleteFolder } from '../../controllers/v1/secretsFolderController';
+import { createFolder, deleteFolder, getFolderById } from '../../controllers/v1/secretsFolderController';
 import { ADMIN, MEMBER } from '../../variables';
 
 router.post(
@@ -34,6 +34,16 @@ router.delete(
   param('folderId').exists(),
   validateRequest,
   deleteFolder
+);
+
+router.get(
+  '/:folderId',
+  requireAuth({
+    acceptedAuthModes: ['jwt']
+  }),
+  param('folderId').exists(),
+  validateRequest,
+  getFolderById
 );
 
 

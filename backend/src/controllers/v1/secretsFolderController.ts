@@ -87,3 +87,11 @@ export const deleteFolder = async (req: Request, res: Response) => {
 
   res.send()
 }
+
+export const getFolderById = async (req: Request, res: Response) => {
+  const { folderId } = req.params
+
+  const folder = await Folder.findById(folderId)
+
+  res.send({ folder })
+}
