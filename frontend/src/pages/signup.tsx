@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
@@ -153,7 +152,7 @@ export default function SignUp() {
   }
 
   return (
-    <div className="bg-bunker-800 min-h-screen  flex flex-col justify-start px-6 ">
+    <div className="bg-gradient-to-tr from-bunker-600 to-bunker-800 min-h-screen flex flex-col justify-center pb-28 px-6 ">
       <Head>
         <title>{t('common:head-title', { title: t('signup:title') })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -161,11 +160,9 @@ export default function SignUp() {
         <meta property="og:title" content={t('signup:og-title') as string} />
         <meta name="og:description" content={t('signup:og-description') as string} />
       </Head>
-      <Link href="/">
-        <div className="flex justify-center mb-8 mt-20 cursor-pointer">
-          <Image src="/images/biglogo.png" height={90} width={120} alt="long logo" />
-        </div>
-      </Link>
+      <div className="flex justify-center mb-8 mt-20">
+        <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />
+      </div>
       <form onSubmit={(e) => e.preventDefault()}>
         {renderView(step)}
       </form>

@@ -65,13 +65,18 @@ const buttonVariants = cva(
       },
       {
         colorSchema: 'primary',
+        variant: 'solid',
+        className: 'bg-primary-500 bg-opacity-90 hover:bg-primary-500 hover:text-black'
+      },
+      {
+        colorSchema: 'primary',
         variant: 'selected',
         className: 'bg-primary/10 border border-primary/50 text-bunker-200'
       },
       {
         colorSchema: 'primary',
         variant: 'outline_bg',
-        className: 'bg-mineshaft-800 border border-mineshaft-600 hover:bg-primary/[0.15] hover:border-primary/60 text-bunker-200'
+        className: 'bg-mineshaft-800 border border-mineshaft-600 hover:bg-primary/[0.1] hover:border-primary/40 text-bunker-200'
       },
       {
         colorSchema: 'secondary',

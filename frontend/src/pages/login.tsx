@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
@@ -98,7 +97,7 @@ export default function Login() {
   }
 
   return (
-    <div className="bg-bunker-800 h-screen flex flex-col justify-start px-6 ">
+    <div className="bg-gradient-to-tr from-bunker-600 to-bunker-800 h-screen flex flex-col justify-center pb-28 px-6 ">
       <Head>
         <title>{t('common:head-title', { title: t('login:title') })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -106,11 +105,9 @@ export default function Login() {
         <meta property="og:title" content={t('login:og-title') ?? ''} />
         <meta name="og:description" content={t('login:og-description') ?? ''} />
       </Head>
-      <Link href="/">
-        <div className="flex justify-center mb-8 mt-20 cursor-pointer">
-          <Image src="/images/biglogo.png" height={90} width={120} alt="long logo" />
-        </div>
-      </Link>
+      <div className="flex justify-center mb-4 mt-20">
+        <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
+      </div>
       {renderView(step)}
       <div className="absolute right-4 top-0 mt-4 flex items-center justify-center">
         <div className="w-48 mx-auto">

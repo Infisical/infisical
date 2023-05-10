@@ -1,7 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
+import { faGoogle } from '@fortawesome/free-brands-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
+
+import { Button } from '../v2';
 
 export default function InitialSignupStep({
     setIsSignupWithEmail,
@@ -11,27 +15,41 @@ export default function InitialSignupStep({
     const { t } = useTranslation();
 
     return <div className='flex flex-col mx-auto w-full justify-center items-center '>
-        <h1 className=' text-white text-center mb-5' >{t('signup:initial-title')}</h1>
-        <div className='lg:w-1/5 w-1/3 bg-primary text-center p-3 rounded-md'>
-            <button type='button' className='text-black' onClick={() => {
-                window.open('/api/v1/oauth/redirect/google')
-            }}>
+        <h1 className='text-xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 text-center mb-8' >{t('signup:initial-title')}</h1>
+        <div className='lg:w-1/6 w-1/4 min-w-[20rem] rounded-md'>
+            <Button
+                colorSchema="primary" 
+                variant="solid"
+                onClick={() => {
+                    window.open('/api/v1/oauth/redirect/google')
+                }} 
+                leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-1" />}
+                className="h-14 w-full mx-0"
+            > 
                 {t('signup:continue-with-google')}
-            </button>
+            </Button>
         </div>
-        <div className='lg:w-1/5 w-1/3 bg-chicago-900 text-center p-3 rounded-md mt-4'>
-            <button type='button' className='text-white' onClick={() => {
-                setIsSignupWithEmail(true);
-            }}>
+        <div className='lg:w-1/6 w-1/4 min-w-[20rem] text-center rounded-md mt-4'>
+            <Button
+                colorSchema="primary" 
+                variant="outline_bg"
+                onClick={() => {
+                    setIsSignupWithEmail(true);
+                }} 
+                isFullWidth
+                className="h-14 w-full mx-0"
+            > 
                 {t('signup:continue-with-email')}
-            </button>
+            </Button>
         </div>
-        <span className='text-white lg:w-1/6 w-1/3 text-xs mt-4 text-center'>{t('signup:create-policy')}</span>
-        <Link href="/login">
-            <button type="button" className='text-white mt-8 underline'>
-                {t('signup:already-have-account')}
-            </button>
-        </Link>
+        <div className='lg:w-1/6 w-1/4 min-w-[20rem] px-8 text-center mt-6 text-xs text-bunker-400'>
+            {t('signup:create-policy')}
+        </div>
+        <div className="mt-2 text-bunker-400 text-xs flex flex-row">
+            <Link href="/login">
+                <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>{t('signup:already-have-account')}</span>
+            </Link>
+        </div>
     </div>
 }
 
