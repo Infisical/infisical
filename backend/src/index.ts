@@ -77,7 +77,6 @@ import {
     getPort,
     getSentryDSN,
     getSiteURL,
-    getSessionSecret,
 } from './config';
 import { initializePassport } from './utils/auth';
 

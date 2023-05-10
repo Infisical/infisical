@@ -41,7 +41,6 @@ export const getClientSlugVercel = async () => (await client.getSecret('CLIENT_S
 export const getPostHogHost = async () => (await client.getSecret('POSTHOG_HOST')).secretValue || 'https://app.posthog.com';
 export const getPostHogProjectApiKey = async () => (await client.getSecret('POSTHOG_PROJECT_API_KEY')).secretValue || 'phc_nSin8j5q2zdhpFDI1ETmFNUIuTG4DwKVyIigrY10XiE';
 export const getSentryDSN = async () => (await client.getSecret('SENTRY_DSN')).secretValue;
-export const getSessionSecret = async () => (await client.getSecret('SESSION_SECRET')).secretValue;
 export const getSiteURL = async () => (await client.getSecret('SITE_URL')).secretValue;
 export const getSmtpHost = async () => (await client.getSecret('SMTP_HOST')).secretValue;
 export const getSmtpSecure = async () => (await client.getSecret('SMTP_SECURE')).secretValue === 'true' || false;
