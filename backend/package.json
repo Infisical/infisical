@@ -15,6 +15,7 @@
     "bcrypt": "^5.1.0",
     "bigint-conversion": "^2.4.0",
     "builder-pattern": "^2.2.0",
+    "connect-mongo": "^4.6.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "crypto-js": "^4.1.1",

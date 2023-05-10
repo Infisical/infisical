@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import session from 'express-session';
 import * as Sentry from '@sentry/node';
+import MongoStore from 'connect-mongo';
 import { DatabaseService } from './services';
 import { setUpHealthEndpoint } from './services/health';
 import { initSmtp } from './services/smtp';
@@ -86,7 +87,8 @@ const main = async () => {
     TelemetryService.logTelemetryMessage();
     setTransporter(await initSmtp());
 
-    await DatabaseService.initDatabase(await getMongoURL());
+    const mongoURL = await getMongoURL();
+    await DatabaseService.initDatabase(mongoURL);
     if ((await getNodeEnv()) !== 'test') {
         Sentry.init({
             dsn: await getSentryDSN(),
@@ -116,6 +118,10 @@ const main = async () => {
         secret: await getSessionSecret(),
         resave: false, // don't save session if unmodified
         saveUninitialized: false, // don't create session until something stored
+        store: MongoStore.create({
+            mongoUrl: mongoURL,
+            dbName: 'sessions',
+        })
     }));
 
     if ((await getNodeEnv()) === 'production') {
