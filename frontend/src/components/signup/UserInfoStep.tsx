@@ -12,14 +12,13 @@ import completeAccountInformationSignup from '@app/pages/api/auth/CompleteAccoun
 import getOrganizations from '@app/pages/api/organization/getOrgs';
 import ProjectService from '@app/services/ProjectService';
 
-import Button from '../basic/buttons/Button';
 import InputField from '../basic/InputField';
 import passwordCheck from '../utilities/checks/PasswordCheck';
 import Aes256Gcm from '../utilities/cryptography/aes-256-gcm';
 import { deriveArgonKey } from '../utilities/cryptography/crypto';
 import { saveTokenToLocalStorage } from '../utilities/saveTokenToLocalStorage';
 import SecurityClient from '../utilities/SecurityClient';
-import { Input } from '../v2';
+import { Button, Input } from '../v2';
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -205,110 +204,117 @@ export default function UserInfoStep({
   };
 
   return (
-    <div className="h-7/12 mx-auto mb-36 w-max rounded-xl bg-bunker py-10 px-8 drop-shadow-xl md:mb-16">
-      <p className="mx-8 mb-6 flex justify-center text-4xl font-bold text-primary md:mx-16">
+    <div className="h-full mx-auto mb-36 w-max rounded-xl px-8 md:mb-16">
+      <p className="mx-8 mb-6 flex justify-center text-xl font-bold text-medium md:mx-16 text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
         {t('signup.step3-message')}
       </p>
-      <div className="relative z-0 flex flex-col items-center justify-end w-full md:p-2 rounded-lg max-h-24">
-        <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Your Name</p>
-        <Input
-          placeholder="Jane Doe"
-          onChange={(e) => setName(e.target.value)}
-          value={name}
-          isRequired
-          autoComplete="given-name"
-          className="h-12"
-        />
-        {nameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your name</p>}
-      </div>
-      <div className="relative z-0 flex flex-col items-center justify-end w-full md:p-2 rounded-lg max-h-24">
-        <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Organization Name</p>
-        <Input
-          placeholder="Infisical"
-          onChange={(e) => setOrganizationName(e.target.value)}
-          value={organizationName}
-          isRequired
-          className="h-12"
-        />
-        {organizationNameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your organization name</p>}
-      </div>
-      <div className="relative z-0 flex flex-col items-center justify-end w-full md:p-2 rounded-lg max-h-24">
-        <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Where did you hear about us? <span className="font-light">(optional)</span></p>
-        <Input
-          placeholder=""
-          onChange={(e) => setAttributionSource(e.target.value)}
-          value={attributionSource}
-          isRequired
-          className="h-12"
-        />
-      </div>
-      <div className="mt-2 flex max-h-60 w-full flex-col items-center justify-center rounded-lg md:p-2">
-        <InputField
-          label={t('section.password.password')}
-          onChangeHandler={(pass: string) => {
-            setPassword(pass);
-            passwordCheck({
-              password: pass,
-              setPasswordErrorLength,
-              setPasswordErrorNumber,
-              setPasswordErrorLowerCase,
-              errorCheck: false
-            });
-          }}
-          type="password"
-          value={password}
-          isRequired
-          error={passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase}
-          autoComplete="new-password"
-          id="new-password"
-        />
-        {passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber ? (
-          <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
-            <div className="mb-1 text-sm text-gray-400">{t('section.password.validate-base')}</div>
-            <div className="ml-1 flex flex-row items-center justify-start">
-              {passwordErrorLength ? (
-                <FontAwesomeIcon icon={faXmark} className="text-md text-red ml-0.5 mr-2.5" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-              )}
-              <div className={`${passwordErrorLength ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                {t('section.password.validate-length')}
+      <div className="h-full mx-auto mb-36 w-max rounded-xl py-6 px-8 md:mb-16 border border-mineshaft-600 bg-mineshaft-800">
+        <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
+          <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Your Name</p>
+          <Input
+            placeholder="Jane Doe"
+            onChange={(e) => setName(e.target.value)}
+            value={name}
+            isRequired
+            autoComplete="given-name"
+            className="h-12"
+          />
+          {nameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your name</p>}
+        </div>
+        <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
+          <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Organization Name</p>
+          <Input
+            placeholder="Infisical"
+            onChange={(e) => setOrganizationName(e.target.value)}
+            value={organizationName}
+            isRequired
+            className="h-12"
+          />
+          {organizationNameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your organization name</p>}
+        </div>
+        <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
+          <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Where did you hear about us? <span className="font-light">(optional)</span></p>
+          <Input
+            placeholder=""
+            onChange={(e) => setAttributionSource(e.target.value)}
+            value={attributionSource}
+            isRequired
+            className="h-12"
+          />
+        </div>
+        <div className="mt-2 flex lg:w-1/6 w-1/4 min-w-[20rem] max-h-60 w-full flex-col items-center justify-center rounded-lg py-2">
+          <InputField
+            label={t('section.password.password')}
+            onChangeHandler={(pass: string) => {
+              setPassword(pass);
+              passwordCheck({
+                password: pass,
+                setPasswordErrorLength,
+                setPasswordErrorNumber,
+                setPasswordErrorLowerCase,
+                errorCheck: false
+              });
+            }}
+            type="password"
+            value={password}
+            isRequired
+            error={passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase}
+            autoComplete="new-password"
+            id="new-password"
+          />
+          {passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber ? (
+            <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
+              <div className="mb-1 text-sm text-gray-400">{t('section.password.validate-base')}</div>
+              <div className="ml-1 flex flex-row items-center justify-start">
+                {passwordErrorLength ? (
+                  <FontAwesomeIcon icon={faXmark} className="text-md text-red ml-0.5 mr-2.5" />
+                ) : (
+                  <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+                )}
+                <div className={`${passwordErrorLength ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                  {t('section.password.validate-length')}
+                </div>
+              </div>
+              <div className="ml-1 flex flex-row items-center justify-start">
+                {passwordErrorLowerCase ? (
+                  <FontAwesomeIcon icon={faXmark} className="text-md text-red ml-0.5 mr-2.5" />
+                ) : (
+                  <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+                )}
+                <div
+                  className={`${passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'} text-sm`}
+                >
+                  {t('section.password.validate-case')}
+                </div>
+              </div>
+              <div className="ml-1 flex flex-row items-center justify-start">
+                {passwordErrorNumber ? (
+                  <FontAwesomeIcon icon={faXmark} className="text-md text-red ml-0.5 mr-2.5" />
+                ) : (
+                  <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+                )}
+                <div className={`${passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                  {t('section.password.validate-number')}
+                </div>
               </div>
             </div>
-            <div className="ml-1 flex flex-row items-center justify-start">
-              {passwordErrorLowerCase ? (
-                <FontAwesomeIcon icon={faXmark} className="text-md text-red ml-0.5 mr-2.5" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-              )}
-              <div
-                className={`${passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'} text-sm`}
-              >
-                {t('section.password.validate-case')}
-              </div>
-            </div>
-            <div className="ml-1 flex flex-row items-center justify-start">
-              {passwordErrorNumber ? (
-                <FontAwesomeIcon icon={faXmark} className="text-md text-red ml-0.5 mr-2.5" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-              )}
-              <div className={`${passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                {t('section.password.validate-number')}
-              </div>
-            </div>
+          ) : (
+            <div className="py-2" />
+          )}
+        </div>
+        <div className="flex flex-col items-center justify-center lg:w-[19%] w-1/4 min-w-[20rem] mt-2 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">
+          <div className="text-l py-1 text-lg w-full">
+            <Button
+              onClick={signupErrorCheck}
+              size="sm"
+              isFullWidth
+              className='h-14'
+              colorSchema="primary"
+              variant="outline_bg"
+              isLoading={isLoading}
+            > {String(t('signup.signup'))} </Button>
           </div>
-        ) : (
-          <div className="py-2" />
-        )}
-      </div>
-      <div className="mx-auto flex max-h-48 max-w-max flex-col items-center justify-center px-2 py-3 text-lg md:p-2">
-        <Button
-          text={t('signup.signup') ?? ''}
-          loading={isLoading}
-          onButtonPressed={signupErrorCheck}
-          size="lg"
-        />
+        </div>
       </div>
     </div>
   );
