@@ -1,0 +1,47 @@
+---
+title: "Docker Compose"
+description: "Learn to install Infisical using our Docker Compose template"
+---
+
+## Install Docker on your VM
+
+```bash
+# Example in ubuntu
+apt-get update
+apt-get upgrade
+apt install docker-compose
+```
+
+## Download the required files
+
+```bash
+# Download env file template
+wget -O .env https://raw.githubusercontent.com/Infisical/infisical/main/.env.example
+
+# Download docker compose template
+wget -O docker-compose.yml https://raw.githubusercontent.com/Infisical/infisical/main/docker-compose.yml
+
+# Download nginx config
+mkdir nginx && wget -O ./nginx/default.conf https://raw.githubusercontent.com/Infisical/infisical/main/nginx/default.dev.conf
+```
+
+## Update .env file 
+Tweak the `.env` according to your preferences. Refer to the available [environment variables](/self-hosting/configuration/envars)
+
+```bash
+# update environment variables like mongo login
+nano .env
+```
+
+<Info>
+  Infisical assumes that you have configured HTTPS. If you didn't configure HTTPS, set `HTTPS_ENABLED` to `false` in the .env file to avoid frequent logouts.
+</Info>
+
+## Get the service up and running.
+
+```bash
+# Start up services in detached mode
+docker-compose -f docker-compose.yml up -d
+```
+
+Your Infisical installation is complete and should be running on [http://localhost:80](http://localhost:80). Please note that the containers are not exposed to the internet and only bind to the localhost. It's up to you to configure a firewall, SSL certificates, and implement any additional security measures.

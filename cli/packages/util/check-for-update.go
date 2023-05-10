@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/fatih/color"
 )
@@ -49,7 +52,7 @@ func CheckForUpdate() {
 }
 
 func getLatestTag(repoOwner string, repoName string) (string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/tags", repoOwner, repoName)
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", repoOwner, repoName)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err
@@ -65,15 +68,20 @@ func getLatestTag(repoOwner string, repoName string) (string, error) {
 		return "", err
 	}
 
-	var tags []struct {
-		Name string `json:"name"`
+	var releaseTag struct {
+		TagName string `json:"tag_name"`
 	}
 
-	if err := json.Unmarshal(body, &tags); err != nil {
+	if err := json.Unmarshal(body, &releaseTag); err != nil {
 		return "", fmt.Errorf("failed to unmarshal github response: %w", err)
 	}
 
-	return tags[0].Name[1:], nil
+	tag_prefix := "infisical-cli/v"
+
+	// Extract the version from the first valid tag
+	version := strings.TrimPrefix(releaseTag.TagName, tag_prefix)
+
+	return version, nil
 }
 
 func GetUpdateInstructions() string {
@@ -124,4 +132,17 @@ func getLinuxPackageManager() string {
 	}
 
 	return ""
+}
+
+func IsRunningInDocker() bool {
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+
+	cgroup, err := ioutil.ReadFile("/proc/self/cgroup")
+	if err != nil {
+		return false
+	}
+
+	return strings.Contains(string(cgroup), "docker")
 }

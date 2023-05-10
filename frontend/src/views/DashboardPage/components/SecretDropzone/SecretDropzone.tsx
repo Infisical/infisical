@@ -1,5 +1,5 @@
 import { ChangeEvent, DragEvent } from 'react';
-import { useTranslation } from 'next-i18next';
+import { useTranslation } from 'react-i18next';
 import { faUpload } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { twMerge } from 'tailwind-merge';
@@ -84,9 +84,9 @@ export const SecretDropzone = ({ isSmaller, onParsedEnv, onAddNewSecret }: Props
       onDragOver={handleDrag}
       onDrop={handleDrop}
       className={twMerge(
-        'relative mb-4 mt-4 max-w-[calc(100vw-292px)] flex w-full cursor-pointer text-mineshaft-200 items-center py-8 justify-center space-x-2 rounded-md bg-mineshaft-900 px-2 mx-0.5 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100',
+        'relative mx-0.5 mb-4 mt-4 flex w-full max-w-[calc(100vw-292px)] cursor-pointer items-center justify-center space-x-2 rounded-md bg-mineshaft-900 py-8 px-2 text-mineshaft-200 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100',
         isDragActive && 'opacity-100',
-        !isSmaller && 'flex-col space-y-4 max-w-3xl py-20',
+        !isSmaller && 'max-w-3xl flex-col space-y-4 py-20',
         isLoading && 'bg-bunker-800'
       )}
     >
@@ -100,7 +100,7 @@ export const SecretDropzone = ({ isSmaller, onParsedEnv, onAddNewSecret }: Props
             <FontAwesomeIcon icon={faUpload} size={isSmaller ? '2x' : '5x'} />
           </div>
           <div>
-            <p className="">{t(isSmaller ? 'common:drop-zone-keys' : 'common:drop-zone')}</p>
+            <p className="">{t(isSmaller ? 'common.drop-zone-keys' : 'common.drop-zone')}</p>
           </div>
           <input
             id="fileSelect"

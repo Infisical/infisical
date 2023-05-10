@@ -28,14 +28,14 @@ describe('Crypto', () => {
       test('should throw error if publicKey is undefined', () => {
         expect(() => {
           encryptAsymmetric({ plaintext, publicKey, privateKey });
-        }).toThrowError('Failed to perform asymmetric encryption');
+        }).toThrowError('invalid encoding');
       });
 
       test('should throw error if publicKey is empty string', () => {
         publicKey = '';
         expect(() => {
           encryptAsymmetric({ plaintext, publicKey, privateKey });
-        }).toThrowError('Failed to perform asymmetric encryption');
+        }).toThrowError('bad public key size');
       });
     });
 
@@ -47,14 +47,14 @@ describe('Crypto', () => {
       test('should throw error if privateKey is undefined', () => {
         expect(() => {
           encryptAsymmetric({ plaintext, publicKey, privateKey });
-        }).toThrowError('Failed to perform asymmetric encryption');
+        }).toThrowError('invalid encoding');
       });
 
       test('should throw error if privateKey is empty string', () => {
         privateKey = '';
         expect(() => {
           encryptAsymmetric({ plaintext, publicKey, privateKey });
-        }).toThrowError('Failed to perform asymmetric encryption');
+        }).toThrowError('bad secret key size');
       });
     });
 
@@ -66,7 +66,7 @@ describe('Crypto', () => {
       test('should throw error if plaintext is undefined', () => {
         expect(() => {
           encryptAsymmetric({ plaintext, publicKey, privateKey });
-        }).toThrowError('Failed to perform asymmetric encryption');
+        }).toThrowError('expected string');
       });
 
       test('should encrypt plaintext containing special characters', () => {
@@ -130,7 +130,7 @@ describe('Crypto', () => {
             publicKey,
             privateKey
           });
-        }).toThrowError('Failed to perform asymmetric decryption');
+        }).toThrowError('invalid encoding');
       });
 
       test('should throw error if nonce is modified', () => {
@@ -149,7 +149,7 @@ describe('Crypto', () => {
             publicKey,
             privateKey
           });
-        }).toThrowError('Failed to perform asymmetric decryption');
+        }).toThrowError('invalid encoding');
       });
     });
   });
@@ -170,7 +170,7 @@ describe('Crypto', () => {
       const invalidKey = 'invalid-key';
       expect(() => {
         encryptSymmetric({ plaintext, key: invalidKey });
-      }).toThrowError('Failed to perform symmetric encryption');
+      }).toThrowError('Invalid key length');
     });
 
     test('should throw an error when invalid key is provided', () => {
@@ -179,7 +179,7 @@ describe('Crypto', () => {
 
       expect(() => {
         encryptSymmetric({ plaintext, key: invalidKey });
-      }).toThrowError('Failed to perform symmetric encryption');
+      }).toThrowError('Invalid key length');
     });
   });
 
@@ -209,7 +209,7 @@ describe('Crypto', () => {
           tag,
           key
         });
-      }).toThrowError('Failed to perform symmetric decryption');
+      }).toThrowError('Unsupported state or unable to authenticate data');
     });
 
     test('should fail if iv is modified', () => {
@@ -221,7 +221,7 @@ describe('Crypto', () => {
           tag,
           key
         });
-      }).toThrowError('Failed to perform symmetric decryption');
+      }).toThrowError('Unsupported state or unable to authenticate data');
     });
 
     test('should fail if tag is modified', () => {
@@ -233,7 +233,7 @@ describe('Crypto', () => {
           tag: modifiedTag,
           key
         });
-      }).toThrowError('Failed to perform symmetric decryption');
+      }).toThrowError(/Invalid authentication tag length: \d+/);
     });
 
     test('should throw an error when decryption fails', () => {
@@ -245,7 +245,7 @@ describe('Crypto', () => {
           tag,
           key: invalidKey
         });
-      }).toThrowError('Failed to perform symmetric decryption');
+      }).toThrowError('Invalid key length');
     });
   });
 });

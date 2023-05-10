@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
 
 import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
 import { usePopUp } from '@app/hooks/usePopUp';
@@ -17,10 +17,8 @@ export default function TeamInviteStep(): JSX.Element {
   const [emails, setEmails] = useState('');
   const { t } = useTranslation();
   const router = useRouter();
-  const {data: serverDetails } = useFetchServerStatus()
-  const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
-    'setUpEmail'
-  ] as const);
+  const { data: serverDetails } = useFetchServerStatus();
+  const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(['setUpEmail'] as const);
 
   // Redirect user to the getting started page
   const redirectToHome = async () => {
@@ -41,10 +39,10 @@ export default function TeamInviteStep(): JSX.Element {
   return (
     <div className="w-max mx-auto min-w-lg h-full pb-4 px-8 mb-64 md:mb-32">
       <p className="text-2xl font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
-        {t('signup:step5-invite-team')}
+        {t('signup.step5-invite-team')}
       </p>
       <p className="text-center flex justify-center text-bunker-400 md:mx-8 mb-6 mt-4">
-        {t('signup:step5-subtitle')}
+        {t('signup.step5-subtitle')}
       </p>
       <div className="bg-mineshaft-800 border border-mineshaft-600 w-max mx-auto pt-6 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-32">
         <div>
@@ -66,14 +64,14 @@ export default function TeamInviteStep(): JSX.Element {
             className="text-md md:text-sm mx-3 text-bunker-300 bg-mineshaft-700 py-3 md:py-3.5 px-5 rounded-md cursor-pointer hover:bg-mineshaft-500 duration-200"
             onClick={redirectToHome}
           >
-            {t('signup:step5-skip')}
+            {t('signup.step5-skip')}
           </div>
           <Button
-            text={t('signup:step5-send-invites') ?? ''}
+            text={t('signup.step5-send-invites') ?? ''}
             onButtonPressed={() => {
-              if(serverDetails?.emailConfigured){
+              if (serverDetails?.emailConfigured) {
                 inviteUsers({ emails })
-              }else{
+              } else {
                 handlePopUpOpen('setUpEmail');
               }
             }}

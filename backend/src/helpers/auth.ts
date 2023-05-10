@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState } from 'react';
-import { useTranslation } from 'next-i18next';
+import { useTranslation } from 'react-i18next';
 import { plans } from 'public/data/frequentConstants';
 
 import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
@@ -21,12 +21,12 @@ import {
   useGetUserWsKey,
   useRenameOrg,
   useUpdateOrgUserRole,
-  useUploadWsKey,
+  useUploadWsKey
 } from '@app/hooks/api';
 
-import { 
-  OrgIncidentContactsTable, 
-  OrgMembersTable, 
+import {
+  OrgIncidentContactsTable,
+  OrgMembersTable,
   OrgNameChangeSection,
   OrgServiceAccountsTable
 } from './components';
@@ -44,9 +44,11 @@ export const OrgSettingsPage = () => {
   const orgId = currentOrg?._id || '';
 
   const { data: orgUsers, isLoading: isOrgUserLoading } = useGetOrgUsers(orgId);
-  const { data: workspaceMemberships, isLoading: IsWsMembershipLoading } = useGetUserWorkspaceMemberships(orgId);
+  const { data: workspaceMemberships, isLoading: IsWsMembershipLoading } =
+    useGetUserWorkspaceMemberships(orgId);
   const { data: wsKey } = useGetUserWsKey(currentWorkspace?._id || '');
-  const { data: incidentContact, isLoading: IsIncidentContactLoading } = useGetOrgIncidentContact(orgId);
+  const { data: incidentContact, isLoading: IsIncidentContactLoading } =
+    useGetOrgIncidentContact(orgId);
 
   const renameOrg = useRenameOrg();
   const removeUserOrgMembership = useDeleteOrgMembership();
@@ -239,18 +241,16 @@ export const OrgSettingsPage = () => {
   //
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
-      <NavHeader pageName={t('settings-org:title')} />
-      <div className="my-8 max-w-5xl ml-8">
-        <p className="text-3xl font-semibold text-gray-200">{t('settings-org:title')}</p>
-        <p className="text-base font-normal text-gray-400">
-          {t('settings-org:description')}
-        </p>
+      <NavHeader pageName={t('settings.org.title')} />
+      <div className="my-8 ml-8 max-w-5xl">
+        <p className="text-3xl font-semibold text-gray-200">{t('settings.org.title')}</p>
+        <p className="text-base font-normal text-gray-400">{t('settings.org.description')}</p>
       </div>
       <div className="max-w-8xl ml-6 mr-6 flex flex-col text-mineshaft-50">
         <OrgNameChangeSection orgName={currentOrg?.name} onOrgNameChange={onRenameOrg} />
-        <div className="w-full rounded-md bg-white/5 p-6 mb-6">
+        <div className="mb-6 w-full rounded-md bg-white/5 p-6">
           <p className="mr-4 mb-4 text-xl font-semibold text-white">
-            {t('section-members:org-members')}
+            {t('section.members.org-members')}
           </p>
           <OrgMembersTable
             isLoading={isOrgUserLoading || IsWsMembershipLoading}
@@ -268,19 +268,17 @@ export const OrgSettingsPage = () => {
           />
         </div>
         <div className="mb-6 mt-2 w-full rounded-md bg-white/5 p-6">
-          <p className="mr-4 mb-4 text-xl font-semibold text-white">
-            Service Accounts
-          </p>
+          <p className="mr-4 mb-4 text-xl font-semibold text-white">Service Accounts</p>
           <OrgServiceAccountsTable />
         </div>
         <div className="mb-6 mt-2 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pt-6 pb-6">
           <div className="flex w-full max-w-5xl flex-row items-center justify-between">
             <div className="flex w-full max-w-3xl flex-col justify-between">
               <p className="mb-3 min-w-max text-xl font-semibold">
-                {t('section-incident:incident-contacts')}
+                {t('section.incident.incident-contacts')}
               </p>
               <p className="mb-2 min-w-max text-xs text-gray-500">
-                {t('section-incident:incident-contacts-description')}
+                {t('section.incident.incident-contacts-description')}
               </p>
             </div>
           </div>

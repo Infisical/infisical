@@ -1,12 +1,12 @@
 /* eslint-disable react/jsx-no-useless-fragment */
-import { SyntheticEvent, useRef } from 'react';
+import { memo, useRef } from 'react';
 import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import {
-  faCircle,
   faCodeBranch,
   faComment,
   faEllipsis,
   faInfoCircle,
+  faKey,
   faPlus,
   faTags,
   faXmark
@@ -15,7 +15,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { cx } from 'cva';
 import { twMerge } from 'tailwind-merge';
 
-import guidGenerator from '@app/components/utilities/randomId';
 import {
   Button,
   Checkbox,
@@ -32,10 +31,10 @@ import {
   TextArea,
   Tooltip
 } from '@app/components/v2';
-import { useToggle } from '@app/hooks';
 import { WsTag } from '@app/hooks/api/types';
 
 import { FormData, SecretActionType } from '../../DashboardPage.utils';
+import { MaskedInput } from './MaskedInput';
 
 type Props = {
   index: number;
@@ -64,361 +63,327 @@ const tagColors = [
   { bg: 'bg-[#C40B13]/40', text: 'text-[#FFDEDE]/70' },
   { bg: 'bg-[#332FD0]/40', text: 'text-[#DFF6FF]/70' }
 ];
-const REGEX = /([$]{.*?})/g;
 
-export const SecretInputRow = ({
-  index,
-  isSecretValueHidden,
-  onRowExpand,
-  isReadOnly,
-  isRollbackMode,
-  isAddOnly,
-  wsTags,
-  onCreateTagOpen,
-  onSecretDelete,
-  searchTerm
-}: Props): JSX.Element => {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const syncScroll = (e: SyntheticEvent<HTMLDivElement>) => {
-    if (ref.current === null) return;
+export const SecretInputRow = memo(
+  ({
+    index,
+    isSecretValueHidden,
+    onRowExpand,
+    isReadOnly,
+    isRollbackMode,
+    isAddOnly,
+    wsTags,
+    onCreateTagOpen,
+    onSecretDelete,
+    searchTerm
+  }: Props): JSX.Element => {
+    const isKeySubDisabled = useRef<boolean>(false);
+    const { register, setValue, control } = useFormContext<FormData>();
+    // comment management in a row
+    const {
+      fields: secretTags,
+      remove,
+      append
+    } = useFieldArray({ control, name: `secrets.${index}.tags` });
 
-    ref.current.scrollTop = e.currentTarget.scrollTop;
-    ref.current.scrollLeft = e.currentTarget.scrollLeft;
-  };
-  const { register, setValue, control } = useFormContext<FormData>();
-  const [canRevealSecret] = useToggle();
-  // comment management in a row
-  const {
-    fields: secretTags,
-    remove,
-    append
-  } = useFieldArray({ control, name: `secrets.${index}.tags` });
+    // to get details on a secret
+    const overrideAction = useWatch({ control, name: `secrets.${index}.overrideAction` });
+    const idOverride = useWatch({ control, name: `secrets.${index}.idOverride` });
+    const secComment = useWatch({ control, name: `secrets.${index}.comment` });
+    const hasComment = Boolean(secComment);
+    const secKey = useWatch({
+      control,
+      name: `secrets.${index}.key`,
+      disabled: isKeySubDisabled.current
+    });
+    const secId = useWatch({ control, name: `secrets.${index}._id` });
 
-  // to get details on a secret
-  const secret = useWatch({ name: `secrets.${index}`, control });
-  const hasComment = Boolean(secret.comment);
-  const tags = secret.tags || [];
-  const selectedTagIds = tags.reduce<Record<string, boolean>>(
-    (prev, curr) => ({ ...prev, [curr.slug]: true }),
-    {}
-  );
+    const tags = useWatch({ control, name: `secrets.${index}.tags`, defaultValue: [] }) || [];
+    const selectedTagIds = tags.reduce<Record<string, boolean>>(
+      (prev, curr) => ({ ...prev, [curr.slug]: true }),
+      {}
+    );
 
-  // when secret is override by personal values
-  const isOverridden =
-    secret.overrideAction === SecretActionType.Created ||
-    secret.overrideAction === SecretActionType.Modified;
+    // when secret is override by personal values
+    const isOverridden =
+      overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
 
-  const onSecretOverride = () => {
-    if (isOverridden) {
-      // when user created a new override but then removes
-      if (secret?.overrideAction === SecretActionType.Created)
+    const onSecretOverride = () => {
+      if (isOverridden) {
+        // when user created a new override but then removes
+        if (overrideAction === SecretActionType.Created)
+          setValue(`secrets.${index}.valueOverride`, '');
+        setValue(`secrets.${index}.overrideAction`, SecretActionType.Deleted, {
+          shouldDirty: true
+        });
+      } else {
         setValue(`secrets.${index}.valueOverride`, '');
-      setValue(`secrets.${index}.overrideAction`, SecretActionType.Deleted, { shouldDirty: true });
-    } else {
-      setValue(`secrets.${index}.valueOverride`, '');
-      setValue(
-        `secrets.${index}.overrideAction`,
-        secret?.idOverride ? SecretActionType.Modified : SecretActionType.Created,
-        { shouldDirty: true }
-      );
+        setValue(
+          `secrets.${index}.overrideAction`,
+          idOverride ? SecretActionType.Modified : SecretActionType.Created,
+          { shouldDirty: true }
+        );
+      }
+    };
+
+    const onSelectTag = (selectedTag: WsTag) => {
+      const shouldAppend = !selectedTagIds[selectedTag.slug];
+      if (shouldAppend) {
+        append(selectedTag);
+      } else {
+        const pos = tags.findIndex(({ slug }) => selectedTag.slug === slug);
+        remove(pos);
+      }
+    };
+
+    const isCreatedSecret = !secId;
+    const shouldBeBlockedInAddOnly = !isCreatedSecret && isAddOnly;
+
+    // Why this instead of filter in parent
+    // Because rhf field.map has default values so basically
+    // keys are not updated there and index needs to kept so that we can monitor
+    // values individually here
+    if (
+      !(
+        secKey?.toUpperCase().includes(searchTerm?.toUpperCase()) ||
+        tags
+          ?.map((tag) => tag.name)
+          .join(' ')
+          ?.toUpperCase()
+          .includes(searchTerm?.toUpperCase()) ||
+        secComment?.toUpperCase().includes(searchTerm?.toUpperCase())
+      )
+    ) {
+      return <></>;
     }
-  };
 
-  const onSelectTag = (selectedTag: WsTag) => {
-    const shouldAppend = !selectedTagIds[selectedTag.slug];
-    if (shouldAppend) {
-      append(selectedTag);
-    } else {
-      const pos = tags.findIndex(({ slug }) => selectedTag.slug === slug);
-      remove(pos);
-    }
-  };
-
-  const isCreatedSecret = !secret?._id;
-  const shouldBeBlockedInAddOnly = !isCreatedSecret && isAddOnly;
-
-  // Why this instead of filter in parent
-  // Because rhf field.map has default values so basically
-  // keys are not updated there and index needs to kept so that we can monitor
-  // values individually here
-  if (
-    !(
-      secret.key?.toUpperCase().includes(searchTerm?.toUpperCase()) ||
-      tags
-        ?.map((tag) => tag.name)
-        .join(' ')
-        ?.toUpperCase()
-        .includes(searchTerm?.toUpperCase()) ||
-      secret.comment?.toUpperCase().includes(searchTerm?.toUpperCase())
-    )
-  ) {
-    return <></>;
-  }
-
-  return (
-    <tr className="group min-w-full flex flex-row items-center" key={index}>
-      <td className="w-10 h-10 px-4 flex items-center justify-center"><div className='text-center w-10 text-xs text-bunker-400'>{index + 1}</div></td>
-      <Controller
-        control={control}
-        defaultValue=""
-        name={`secrets.${index}.key`}
-        render={({ fieldState: { error }, field }) => (
-          <HoverCard openDelay={0} open={error?.message ? undefined : false}>
-            <HoverCardTrigger asChild>
-              <td className={cx(error?.message ? 'rounded ring ring-red/50' : null)}>
-                <div className="min-w-[220px] lg:min-w-[240px] xl:min-w-[280px] relative flex items-center justify-end w-full">
-                  <Input
-                    autoComplete="off"
-                    variant="plain"
-                    isDisabled={isReadOnly || shouldBeBlockedInAddOnly || isRollbackMode}
-                    className="w-full focus:text-bunker-100 focus:ring-transparent"
-                    {...field}
-                  />
-                  <div className="w-max flex flex-row items-center justify-end">
-                    <Tooltip content="Comment">
-                      <div className={`${hasComment ? "w-5" : "w-0"} overflow-hidden group-hover:w-5 mt-0.5`}>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <IconButton 
-                              className={twMerge(
-                                'w-0 overflow-hidden p-0 group-hover:w-5',
-                                hasComment && 'w-5 text-primary'
-                              )}
-                              variant="plain" 
-                              size="md" 
-                              ariaLabel="add-tag"
-                            >
-                              <FontAwesomeIcon icon={faComment} />
-                            </IconButton>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto bg-mineshaft-800 border border-mineshaft-600 drop-shadow-2xl p-2">
-                            <FormControl label="Comment" className="mb-0">
-                              <TextArea
-                                isDisabled={isReadOnly || isRollbackMode || shouldBeBlockedInAddOnly}
-                                className="border border-mineshaft-600 text-sm"
-                                {...register(`secrets.${index}.comment`)}
-                                rows={8}
-                                cols={30}
-                              />
-                            </FormControl>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </Tooltip>
-                    {!isAddOnly && (
-                      <div>
-                        <Tooltip content="Override with a personal value">
-                          <IconButton
-                            variant="plain"
-                            className={twMerge(
-                              'w-0 overflow-hidden p-0 group-hover:w-6 group-hover:ml-1 mt-0.5',
-                              isOverridden && 'w-6 text-primary ml-1'
-                            )}
-                            onClick={onSecretOverride}
-                            size="md" 
-                            isDisabled={isRollbackMode || isReadOnly}
-                            ariaLabel="info"
-                          >
-                            <div className="flex items-center space-x-1">
-                              <FontAwesomeIcon icon={faCodeBranch} className="text-base" />
-                            </div>
-                          </IconButton>
-                        </Tooltip>
-                      </div>
-                    )}
+    return (
+      <tr className="group flex flex-row items-center" key={index}>
+        <td className="flex h-10 w-10 items-center justify-center px-4 border-none">
+          {/* <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div> */}
+          <div className="w-10 text-center text-xs text-bunker-400"><FontAwesomeIcon icon={faKey} className="w-4 h-4 text-bunker-400/60 pl-2.5 pt-0.5" /></div>
+        </td>
+        <Controller
+          control={control}
+          defaultValue=""
+          name={`secrets.${index}.key`}
+          render={({ fieldState: { error }, field }) => (
+            <HoverCard openDelay={0} open={error?.message ? undefined : false}>
+              <HoverCardTrigger asChild>
+                <td className={cx(error?.message ? 'rounded ring ring-red/50' : null)}>
+                  <div className="relative flex w-full min-w-[220px] items-center justify-end lg:min-w-[240px] xl:min-w-[280px]">
+                    <Input
+                      autoComplete="off"
+                      onFocus={() => {
+                        isKeySubDisabled.current = true;
+                      }}
+                      variant="plain"
+                      isDisabled={isReadOnly || shouldBeBlockedInAddOnly || isRollbackMode}
+                      className="w-full focus:text-bunker-100 focus:ring-transparent"
+                      {...field}
+                      onBlur={() => {
+                        isKeySubDisabled.current = false;
+                        field.onBlur();
+                      }}
+                    />
                   </div>
-                </div>
-              </td>
-            </HoverCardTrigger>
-            <HoverCardContent className="w-auto py-2 pt-2">
-              <div className="flex items-center space-x-2">
-                <div>
-                  <FontAwesomeIcon icon={faInfoCircle} className="text-red" />
-                </div>
-                <div className="text-sm">{error?.message}</div>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
-        )}
-      />
-      <td className="flex flex-row w-full justify-center h-8 items-center">
-        <div className="group relative whitespace-pre	flex flex-col justify-center w-full px-1.5">
-          {isOverridden 
-          ? <input
-            {...register(`secrets.${index}.valueOverride`)}
-            onScroll={syncScroll}
-            readOnly={isReadOnly || isRollbackMode || (isOverridden ? isAddOnly : shouldBeBlockedInAddOnly)}
-            className={`${
-              (!canRevealSecret && isSecretValueHidden)
-                ? 'text-transparent focus:text-transparent active:text-transparent'
-                : ''
-            } z-10 peer font-mono ph-no-capture bg-transparent caret-white text-transparent text-sm px-2 py-2 w-full min-w-16 outline-none duration-200 no-scrollbar no-scrollbar::-webkit-scrollbar`}
-            spellCheck="false"
-          />
-          : <input
-            {...register(`secrets.${index}.value`)}
-            onScroll={syncScroll}
-            readOnly={isReadOnly || isRollbackMode || (isOverridden ? isAddOnly : shouldBeBlockedInAddOnly)}
-            className={`${
-              (!canRevealSecret && isSecretValueHidden)
-                ? 'text-transparent focus:text-transparent active:text-transparent'
-                : ''
-            } z-10 peer font-mono ph-no-capture bg-transparent caret-white text-transparent text-sm px-2 py-2 w-full min-w-16 outline-none duration-200 no-scrollbar no-scrollbar::-webkit-scrollbar`}
-            spellCheck="false"
-          />}
-          <div
-            ref={ref}
-            className={`${
-              (!canRevealSecret && isSecretValueHidden) && !isOverridden
-                ? 'text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-100 peer-active:text-gray-400 duration-200'
-                : ''
-            } ${isOverridden ? 'text-primary-300' : 'text-gray-400'}
-            absolute flex flex-row whitespace-pre font-mono z-0 ${(!canRevealSecret && isSecretValueHidden) ? 'invisible' : 'visible'} peer-focus:visible mt-0.5 ph-no-capture overflow-x-scroll bg-transparent h-10 text-sm px-2 py-2 w-full min-w-16 outline-none duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
-          >
-            {(isOverridden ? secret.valueOverride : secret.value)?.split('').length === 0 && <span className='text-bunker-400/80 font-sans'>EMPTY</span>}
-            {(isOverridden ? secret.valueOverride : secret.value)?.split(REGEX).map((word) => {
-              if (word.match(REGEX) !== null) {
-                return (
-                  <span className="ph-no-capture text-yellow" key={guidGenerator()}>
-                    {word.slice(0, 2)}
-                    <span className="ph-no-capture text-yellow-200/80">
-                      {word.slice(2, word.length - 1)}
-                    </span>
-                    {word.slice(word.length - 1, word.length) === '}' ? (
-                      <span className="ph-no-capture text-yellow">
-                        {word.slice(word.length - 1, word.length)}
-                      </span>
-                    ) : (
-                      <span className="ph-no-capture text-yellow-400">
-                        {word.slice(word.length - 1, word.length)}
-                      </span>
-                    )}
-                  </span>
-                );
-              }
-              return (
-                <span key={`${word}_${index + 1}`} className="ph-no-capture">
-                  {word}
-                </span>
-              );
-            })}
-          </div>
-          {(!canRevealSecret && isSecretValueHidden) && (
-            <div className='absolute flex flex-row justify-between items-center z-0 peer pr-2 peer-active:hidden peer-focus:hidden group-hover:bg-white/[0.00] duration-100 h-10 w-full text-bunker-400 text-clip'>
-              <div className="px-2 flex flex-row items-center overflow-x-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
-                {(isOverridden ? secret.valueOverride : secret.value)?.split('').map(() => (
-                  <FontAwesomeIcon
-                    key={guidGenerator()}
-                    className="text-xxs mr-0.5"
-                    icon={faCircle}
-                  />
-                ))}
-                {(isOverridden ? secret.valueOverride : secret.value)?.split('').length === 0 && <span className='text-bunker-400/80 text-sm'>EMPTY</span>}
-              </div>
-            </div>
-          )}
-        </div>
-      </td>
-      <td className="flex items-center min-w-sm h-10">
-        <div className="flex items-center pl-2">
-          {secretTags.map(({ id, slug }, i) => (
-            <Tag
-              className={cx(
-                tagColors[i % tagColors.length].bg,
-                tagColors[i % tagColors.length].text
-              )}
-              isDisabled={isReadOnly || isAddOnly || isRollbackMode}
-              onClose={() => remove(i)}
-              key={id}
-            >
-              {slug}
-            </Tag>
-          ))}
-          {!(isReadOnly || isAddOnly || isRollbackMode) && (
-            <div className="w-0 overflow-hidden group-hover:w-8">
-              <Popover>
-                <PopoverTrigger asChild>
+                </td>
+              </HoverCardTrigger>
+              <HoverCardContent className="w-auto py-2 pt-2">
+                <div className="flex items-center space-x-2">
                   <div>
-                    <Tooltip content="Add tags">
-                      <IconButton variant="star" size="xs" ariaLabel="add-tag" className="py-[0.42rem]">
-                        <FontAwesomeIcon icon={faTags} />
-                      </IconButton>
-                    </Tooltip>
+                    <FontAwesomeIcon icon={faInfoCircle} className="text-red" />
                   </div>
-                </PopoverTrigger>
-                <PopoverContent
-                  side="left"
-                  className="max-h-96 w-auto min-w-[200px] overflow-y-auto overflow-x-hidden p-2 text-bunker-200 bg-mineshaft-800 border border-mineshaft-600"
-                  hideCloseBtn
-                >
-                  <div className="mb-2 text-sm font-medium text-center text-bunker-200 px-2">Add tags to {secret.key || "this secret"}</div>
-                  <div className="flex flex-col space-y-1">
-                    {wsTags?.map((wsTag) => (
-                      <Button
-                        variant="plain"
-                        size="sm"
-                        className={twMerge(
-                          'justify-start bg-mineshaft-600 text-bunker-100 hover:bg-mineshaft-500',
-                          selectedTagIds?.[wsTag.slug] && 'text-primary'
-                        )}
-                        onClick={() => onSelectTag(wsTag)}
-                        leftIcon={
-                          <Checkbox
-                            className="data-[state=checked]:bg-primary mr-0"
-                            id="autoCapitalization"
-                            isChecked={selectedTagIds?.[wsTag.slug]}
-                            onCheckedChange={() => {}}
-                          >
-                            {}
-                          </Checkbox>
-                        }
-                        key={wsTag._id}
-                      >
-                        {wsTag.slug}
-                      </Button>
-                    ))}
-                    <Button
-                      variant="star"
-                      color="primary"
-                      size="sm"
-                      className="mt-4 justify-start bg-mineshaft-600 h-7 px-1"
-                      onClick={onCreateTagOpen}
-                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                    >
-                      Add new tag
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+                  <div className="text-sm">{error?.message}</div>
+                </div>
+              </HoverCardContent>
+            </HoverCard>
           )}
-        </div>
-        <div className="flex w-0 group-hover:w-14 invisible group-hover:visible duration-0 items-center justify-end space-x-2 overflow-hidden transition-all">
-          {!isAddOnly && (
-            <div>
-              <Tooltip content="Settings">
-                <IconButton size="lg" colorSchema="primary" variant="plain" onClick={onRowExpand} ariaLabel="expand">
-                  <FontAwesomeIcon icon={faEllipsis} />
+        />
+        <td className="flex h-10 border-none w-full flex-grow flex-row items-center justify-center border-r border-red">
+          <MaskedInput
+            isReadOnly={
+              isReadOnly || isRollbackMode || (isOverridden ? isAddOnly : shouldBeBlockedInAddOnly)
+            }
+            isOverridden={isOverridden}
+            isSecretValueHidden={isSecretValueHidden}
+            index={index}
+          />
+        </td>
+        <td className="min-w-sm flex h-10 items-center">
+          <div className="flex items-center pl-2">
+            {secretTags.map(({ id, slug }, i) => (
+              <Tag
+                className={cx(
+                  tagColors[i % tagColors.length].bg,
+                  tagColors[i % tagColors.length].text
+                )}
+                isDisabled={isReadOnly || isAddOnly || isRollbackMode}
+                onClose={() => remove(i)}
+                key={id}
+              >
+                {slug}
+              </Tag>
+            ))}
+            {!(isReadOnly || isAddOnly || isRollbackMode) && (
+              <div className="overflow-hidden duration-0 ml-1">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <div className="w-0 data-[state=open]:w-6 group-hover:w-6">
+                      <Tooltip content="Add tags">
+                        <IconButton
+                          variant="plain"
+                          size="md"
+                          ariaLabel="add-tag"
+                          className="py-[0.42rem]"
+                        >
+                          <FontAwesomeIcon icon={faTags} />
+                        </IconButton>
+                      </Tooltip>
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    side="left"
+                    className="max-h-96 w-auto min-w-[200px] overflow-y-auto overflow-x-hidden border border-mineshaft-600 bg-mineshaft-800 p-2 text-bunker-200"
+                    hideCloseBtn
+                  >
+                    <div className="mb-2 px-2 text-center text-sm font-medium text-bunker-200">
+                      Add tags to {secKey || 'this secret'}
+                    </div>
+                    <div className="flex flex-col space-y-1">
+                      {wsTags?.map((wsTag) => (
+                        <Button
+                          variant="plain"
+                          size="sm"
+                          className={twMerge(
+                            'justify-start bg-mineshaft-600 text-bunker-100 hover:bg-mineshaft-500',
+                            selectedTagIds?.[wsTag.slug] && 'text-primary'
+                          )}
+                          onClick={() => onSelectTag(wsTag)}
+                          leftIcon={
+                            <Checkbox
+                              className="mr-0 data-[state=checked]:bg-primary"
+                              id="autoCapitalization"
+                              isChecked={selectedTagIds?.[wsTag.slug]}
+                              onCheckedChange={() => {}}
+                            >
+                              {}
+                            </Checkbox>
+                          }
+                          key={wsTag._id}
+                        >
+                          {wsTag.slug}
+                        </Button>
+                      ))}
+                      <Button
+                        variant="star"
+                        color="primary"
+                        size="sm"
+                        className="mt-4 h-7 justify-start bg-mineshaft-600 px-1"
+                        onClick={onCreateTagOpen}
+                        leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                      >
+                        Add new tag
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+          </div>
+          <div className="flex flex-row items-center h-full pr-2">
+            {!isAddOnly && (
+              <div>
+                <Tooltip content="Override with a personal value">
+                  <IconButton
+                    variant="plain"
+                    className={twMerge(
+                      'mt-0.5 w-0 overflow-hidden p-0 group-hover:ml-1 group-hover:w-7',
+                      isOverridden && 'ml-1 w-7 text-primary'
+                    )}
+                    onClick={onSecretOverride}
+                    size="md"
+                    isDisabled={isRollbackMode || isReadOnly}
+                    ariaLabel="info"
+                  >
+                    <div className="flex items-center space-x-1">
+                      <FontAwesomeIcon icon={faCodeBranch} className="text-base" />
+                    </div>
+                  </IconButton>
+                </Tooltip>
+              </div>
+            )}
+            <Tooltip content="Comment">
+              <div
+                className={`mt-0.5 overflow-hidden `}
+              >
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <IconButton
+                      className={twMerge(
+                        'overflow-hidden p-0 w-7',
+                        'data-[state=open]:w-7 group-hover:w-7 w-0',
+                        hasComment ? 'text-primary w-7' : 'group-hover:w-7'
+                      )}
+                      variant="plain"
+                      size="md"
+                      ariaLabel="add-tag"
+                    >
+                      <FontAwesomeIcon icon={faComment} />
+                    </IconButton>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-2 drop-shadow-2xl" sticky="always">
+                    <FormControl label="Comment" className="mb-0">
+                      <TextArea
+                        isDisabled={
+                          isReadOnly || isRollbackMode || shouldBeBlockedInAddOnly
+                        }
+                        className="border border-mineshaft-600 text-sm"
+                        {...register(`secrets.${index}.comment`)}
+                        rows={8}
+                        cols={30}
+                      />
+                    </FormControl>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </Tooltip>
+          </div>
+          <div className="duration-0 w-0 flex items-center justify-end space-x-2.5 overflow-hidden transition-all w-16 border-l border-mineshaft-600 h-10">
+            {!isAddOnly && (
+              <div className="opacity-0 group-hover:opacity-100">
+                <Tooltip content="Settings">
+                  <IconButton
+                    size="lg"
+                    colorSchema="primary"
+                    variant="plain"
+                    onClick={onRowExpand}
+                    ariaLabel="expand"
+                  >
+                    <FontAwesomeIcon icon={faEllipsis} />
+                  </IconButton>
+                </Tooltip>
+              </div>
+            )}
+            <div className="opacity-0 group-hover:opacity-100">
+              <Tooltip content="Delete">
+                <IconButton
+                  size="md"
+                  variant="plain"
+                  colorSchema="danger"
+                  ariaLabel="delete"
+                  isDisabled={isReadOnly || isRollbackMode}
+                  onClick={() => onSecretDelete(index, secId, idOverride)}
+                >
+                  <FontAwesomeIcon icon={faXmark} />
                 </IconButton>
               </Tooltip>
             </div>
-          )}
-          <div>
-            <Tooltip content="Delete">
-              <IconButton
-                size="md"
-                variant="plain"
-                colorSchema="danger"
-                ariaLabel="delete"
-                isDisabled={isReadOnly || isRollbackMode}
-                onClick={() => onSecretDelete(index, secret._id, secret?.idOverride)}
-              >
-                <FontAwesomeIcon icon={faXmark} />
-              </IconButton>
-            </Tooltip>
           </div>
-        </div>
-      </td>
-    </tr>
-  );
-};
+        </td>
+      </tr>
+    );
+  }
+);
+
+SecretInputRow.displayName = 'SecretInputRow';

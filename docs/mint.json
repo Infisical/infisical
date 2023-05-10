@@ -79,27 +79,56 @@
     {
       "group": "Overview",
       "pages": [
-        "getting-started/introduction",
-        "getting-started/quickstart",
-        "getting-started/features"
+        {
+          "group": "Getting Started",
+          "pages": [
+            "documentation/getting-started/introduction",
+            "documentation/getting-started/platform",
+            "documentation/getting-started/sdks",
+            "documentation/getting-started/cli",
+            "documentation/getting-started/docker",
+            "documentation/getting-started/kubernetes"
+          ]
+        },
+        {
+          "group": "Guides",
+          "pages": [
+            "documentation/guides/introduction",
+            "documentation/guides/node",
+            "documentation/guides/python",
+            "documentation/guides/nextjs-vercel"
+          ]
+        }
       ]
     },
     {
       "group": "Platform",
       "pages": [
-        "getting-started/dashboard/organization",
-        "getting-started/dashboard/project",
-        "getting-started/dashboard/pit-recovery",
-        "getting-started/dashboard/secret-versioning",
-        "getting-started/dashboard/audit-logs",
-        "getting-started/dashboard/mfa",
-        "getting-started/dashboard/token"
+        "documentation/platform/organization",
+        "documentation/platform/project",
+        "documentation/platform/pit-recovery",
+        "documentation/platform/secret-versioning",
+        "documentation/platform/audit-logs",
+        "documentation/platform/mfa",
+        "documentation/platform/token"
       ]
     },
     {
-      "group": "Self-hosting",
+      "group": "Self-host Infisical",
       "pages": [
-        "self-hosting/overview",
+        {
+          "group": "Deployment options",
+          "pages": [
+            "self-hosting/overview",
+            "self-hosting/deployment-options/kubernetes-helm",
+            "self-hosting/deployment-options/aws-ec2",
+            "self-hosting/deployment-options/docker-compose",
+            "self-hosting/deployment-options/standalone-infisical",
+            "self-hosting/deployment-options/fly.io",
+            "self-hosting/deployment-options/render",
+            "self-hosting/deployment-options/digital-ocean-marketplace"
+          ]
+        },
         "self-hosting/configuration/envars",
         "self-hosting/configuration/email",
         "self-hosting/faq"
@@ -179,13 +208,6 @@
       ]
     },
     {
-      "group": "Deployment options",
-      "pages": [
-        "self-hosting/deployments/linux",
-        "self-hosting/deployments/kubernetes"
-      ]
-    },
-    {
       "group": "Overview",
       "pages": [
         "sdks/overview"
@@ -199,7 +221,8 @@
         "sdks/languages/java",
         "sdks/languages/ruby",
         "sdks/languages/go",
-        "sdks/languages/rust"
+        "sdks/languages/rust",
+        "sdks/languages/php"
       ]
     },
     {
@@ -288,7 +311,6 @@
       ]
     }
   ],
-  "backgroundImage": "/images/background.png",
   "integrations": {
     "intercom": "hsg644ru"
   }

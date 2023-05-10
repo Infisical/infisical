@@ -1,9 +1,9 @@
 /* eslint-disable no-nested-ternary */
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
 
 import CodeInputStep from '@app/components/signup/CodeInputStep';
 import DownloadBackupPDF from '@app/components/signup/DonwloadBackupPDFStep';
@@ -12,7 +12,6 @@ import InitialSignupStep from '@app/components/signup/InitialSignupStep';
 import TeamInviteStep from '@app/components/signup/TeamInviteStep';
 import UserInfoStep from '@app/components/signup/UserInfoStep';
 import SecurityClient from '@app/components/utilities/SecurityClient';
-import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
 import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
 import { useProviderAuth } from '@app/hooks/useProviderAuth';
 
@@ -88,7 +87,7 @@ export default function SignUp() {
   // when email service is not configured, skip step 2 and 5
   useEffect(() => {
     if (!serverDetails?.emailConfigured && step === 2) {
-      incrementStep()
+      incrementStep();
     }
 
     if (!serverDetails?.emailConfigured && step === 5) {
@@ -148,7 +147,7 @@ export default function SignUp() {
     }
 
     // if (serverDetails?.emailConfigured) {
-      return <TeamInviteStep />
+    return <TeamInviteStep />
     // }
 
     return ""
@@ -172,5 +171,3 @@ export default function SignUp() {
     </div>
   );
 }
-
-export const getStaticProps = getTranslatedStaticProps(['auth', 'signup', 'section-password']);

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useTranslation } from 'next-i18next';
+import { useTranslation } from 'react-i18next';
+import Link from 'next/link';
 
 import sendVerificationEmail from '@app/pages/api/auth/SendVerificationEmail';
 
@@ -53,7 +54,7 @@ export default function EnterEmailStep({
     <div>
       <div className="w-full md:px-6 mx-auto">
         <p className="text-xl font-medium flex justify-center text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
-          {t('signup:initial-title')}
+          {t('signup.step1-start')}
         </p>
         <div className="flex flex-col items-center justify-center lg:w-1/6 w-1/4 min-w-[20rem] m-auto rounded-lg mt-8">
           <Input
@@ -73,11 +74,20 @@ export default function EnterEmailStep({
               size="sm"
               isFullWidth
               className='h-14'
-              colorSchema="primary" 
+              colorSchema="primary"
               variant="outline_bg"
-            > {String(t('signup:step1-submit'))} </Button>
+            > {String(t('signup.step1-submit'))} </Button>
           </div>
         </div>
+      </div>
+      <div className="mx-auto mb-48 mt-2 flex w-full max-w-md flex-col items-center justify-center pt-2 md:mb-16 md:pb-2">
+        <Link href="/login">
+          <button type="button" className="w-max pb-3 duration-200 hover:opacity-90">
+            <u className="text-sm font-normal text-primary-500">
+              {t('signup.already-have-account')}
+            </u>
+          </button>
+        </Link>
       </div>
     </div>
   );

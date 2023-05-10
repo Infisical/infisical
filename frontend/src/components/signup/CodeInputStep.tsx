@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useState } from 'react';
 import ReactCodeInput from 'react-code-input';
-import { useTranslation } from 'next-i18next';
+import { useTranslation } from 'react-i18next';
 
 import sendVerificationEmail from '@app/pages/api/auth/SendVerificationEmail';
 
@@ -84,7 +84,7 @@ export default function CodeInputStep({
 
   return (
     <div className="mx-auto h-full w-full pb-4 px-8">
-      <p className="text-md flex justify-center text-bunker-200">{t('signup:step2-message')}</p>
+      <p className="text-md flex justify-center text-bunker-200">{t('signup.step2-message')}</p>
       <p className="text-md flex justify-center font-semibold my-1 text-bunker-200">{email} </p>
       <div className="hidden md:block w-max min-w-[20rem] mx-auto">
         <ReactCodeInput
@@ -108,7 +108,7 @@ export default function CodeInputStep({
           className="mt-2 mb-2"
         />
       </div>
-      {codeError && <Error text={t('signup:step2-code-error')} />}
+      {codeError && <Error text={t('signup.step2-code-error')} />}
       <div className="flex flex-col items-center justify-center lg:w-[19%] w-1/4 min-w-[20rem] mt-2 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">
         <div className="text-l py-1 text-lg w-full">
           <Button
@@ -116,25 +116,25 @@ export default function CodeInputStep({
             size="sm"
             isFullWidth
             className='h-14'
-            colorSchema="primary" 
+            colorSchema="primary"
             variant="outline_bg"
-          > {String(t('signup:verify'))} </Button>
+          > {String(t('signup.verify'))} </Button>
         </div>
       </div>
       <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
         <div className="flex flex-row items-baseline gap-1 text-sm">
-          <span className="text-bunker-400">{t('signup:step2-resend-alert')}</span>
+          <span className="text-bunker-400">{t('signup.step2-resend-alert')}</span>
           <div className="mt-2 text-bunker-400 text-md flex flex-row">
             <button disabled={isLoading} onClick={resendVerificationEmail} type="button">
               <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>
                 {isResendingVerificationEmail
-                ? t('signup:step2-resend-progress')
-                : t('signup:step2-resend-submit')}
+                  ? t('signup.step2-resend-progress')
+                  : t('signup.step2-resend-submit')}
               </span>
             </button>
           </div>
         </div>
-        <p className="text-sm text-bunker-400 pb-2">{t('signup:step2-spam-alert')}</p>
+        <p className="text-sm text-bunker-400 pb-2">{t('signup.step2-spam-alert')}</p>
       </div>
     </div>
   );

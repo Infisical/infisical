@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Head from 'next/head';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
 
 import ListBox from '@app/components/basic/Listbox';
 import InitialLoginStep from '@app/components/login/InitialLoginStep';
 import LoginStep from '@app/components/login/LoginStep';
 import MFAStep from '@app/components/login/MFAStep';
 import PasswordInputStep from '@app/components/login/PasswordInputStep';
-import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
 import { useProviderAuth } from '@app/hooks/useProviderAuth';
 import { isLoggedIn } from '@app/reactQuery';
 
@@ -99,29 +99,29 @@ export default function Login() {
   return (
     <div className="bg-gradient-to-tr from-bunker-600 to-bunker-800 h-screen flex flex-col justify-center pb-28 px-6 ">
       <Head>
-        <title>{t('common:head-title', { title: t('login:title') })}</title>
+        <title>{t('common.head-title', { title: t('login.title') })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t('login:og-title') ?? ''} />
-        <meta name="og:description" content={t('login:og-description') ?? ''} />
+        <meta property="og:title" content={t('login.og-title') ?? ''} />
+        <meta name="og:description" content={t('login.og-description') ?? ''} />
       </Head>
-      <div className="flex justify-center mb-4 mt-20">
-        <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
-      </div>
-      {renderView(step)}
+      <Link href="/">
+        <div className="flex justify-center mb-4 mt-20">
+          <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
+        </div>
+        {renderView(step)}
+      </Link>
       <div className="absolute right-4 top-0 mt-4 flex items-center justify-center">
-        <div className="w-48 mx-auto">
+        <div className="mx-auto w-48">
           <ListBox
             isSelected={lang}
             onChange={setLanguage}
             data={['en', 'ko', 'fr', 'pt-BR']}
             isFull
-            text={`${t('common:language')}: `}
+            text={`${t('common.language')}: `}
           />
         </div>
       </div>
     </div>
   );
 }
-
-export const getStaticProps = getTranslatedStaticProps(['auth', 'login', 'mfa']);
