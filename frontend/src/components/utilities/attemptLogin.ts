@@ -29,9 +29,11 @@ const attemptLogin = async (
   {
     email,
     password,
+    providerAuthToken,
   }: {
     email: string;
     password: string;
+    providerAuthToken?: string;
   }
 ): Promise<IsLoginSuccessful> => {
 
@@ -48,6 +50,7 @@ const attemptLogin = async (
           const { serverPublicKey, salt } = await login1({
             email,
             clientPublicKey,
+            providerAuthToken,
           });
 
           client.setSalt(salt);
@@ -69,6 +72,7 @@ const attemptLogin = async (
             {
               email,
               clientProof,
+              providerAuthToken,
             }
           );
           

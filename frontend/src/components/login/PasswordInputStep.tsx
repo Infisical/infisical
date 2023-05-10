@@ -13,12 +13,14 @@ import SecurityClient from '../utilities/SecurityClient';
 export default function PasswordInputStep({
   email,
   password,
+  providerAuthToken,
   setPassword,
   setProviderAuthToken,
   setStep
 }: {
   email: string;
   password: string;
+  providerAuthToken: string;
   setPassword: (password: string) => void;
   setProviderAuthToken: (value: string) => void;
   setStep: (step: number) => void;
@@ -34,7 +36,8 @@ export default function PasswordInputStep({
       setIsLoading(true);
       const loginAttempt = await attemptLogin({
         email,
-        password
+        password,
+        providerAuthToken,
       });
 
       if (loginAttempt && loginAttempt.success) {

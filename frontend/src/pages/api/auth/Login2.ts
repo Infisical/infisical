@@ -20,8 +20,9 @@ interface Login2Response {
 const login2 = async (loginDetails: {
   email: string;
   clientProof: string;
+  providerAuthToken?: string;
 }) => {
-  const response = await fetch('/api/v2/auth/login2', {
+  const response = await fetch('/api/v3/auth/login2', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

@@ -3,9 +3,7 @@ dotenv.config();
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
-import session from 'express-session';
 import * as Sentry from '@sentry/node';
-import MongoStore from 'connect-mongo';
 import { DatabaseService } from './services';
 import { setUpHealthEndpoint } from './services/health';
 import { initSmtp } from './services/smtp';
@@ -114,15 +112,6 @@ const main = async () => {
     );
 
     app.use(requestIp.mw());
-    app.use(session({
-        secret: await getSessionSecret(),
-        resave: false, // don't save session if unmodified
-        saveUninitialized: false, // don't create session until something stored
-        store: MongoStore.create({
-            mongoUrl: mongoURL,
-            dbName: 'sessions',
-        })
-    }));
 
     if ((await getNodeEnv()) === 'production') {
         // enable app-wide rate-limiting + helmet security

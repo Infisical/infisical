@@ -63,6 +63,7 @@ export default function Login() {
         <PasswordInputStep
           email={providerEmail}
           password={password}
+          providerAuthToken={providerAuthToken}
           setPassword={setPassword}
           setProviderAuthToken={setProviderAuthToken}
           setStep={setStep}

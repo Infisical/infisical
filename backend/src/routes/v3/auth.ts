@@ -10,7 +10,7 @@ router.post(
     '/login1',
     authLimiter,
     body('email').isString().trim(),
-    body('providerAuthToken').isString().trim(),
+    body('providerAuthToken').isString().trim().optional({nullable: true}),
     body('clientPublicKey').isString().trim().notEmpty(),
     validateRequest,
     authController.login1
@@ -20,7 +20,7 @@ router.post(
     '/login2',
     authLimiter,
     body('email').isString().trim(),
-    body('providerAuthToken').isString().trim(),
+    body('providerAuthToken').isString().trim().optional({nullable: true}),
     body('clientProof').isString().trim().notEmpty(),
     validateRequest,
     authController.login2

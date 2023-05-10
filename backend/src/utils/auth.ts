@@ -16,7 +16,7 @@ import {
 } from '../config';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const GoogleStrategy = require('passport-google-oidc');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 // TODO: find a more optimal folder structure to store these types of functions
 
@@ -69,7 +69,14 @@ const initializePassport = async () => {
         clientID: googleClientId,
         clientSecret: googleClientSecret,
         callbackURL: '/api/v1/oauth/callback/google',
-      }, async (req: express.Request, issuer: any, profile: any, cb: any) => {
+        scope: ['profile', ' email'],
+      }, async (
+          req: express.Request,
+          accessToken: string,
+          refreshToken: string,
+          profile: any,
+          cb: any
+        ) => {
         const email = profile.emails[0].value;
         let user = await User.findOne({
           authProvider: AuthProvider.GOOGLE,

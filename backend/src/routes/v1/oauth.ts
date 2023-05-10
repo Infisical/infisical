@@ -9,6 +9,7 @@ router.get(
     authLimiter,
     passport.authenticate('google', {
       scope: ['profile', 'email'],
+      session: false,
     }),
   )
   
