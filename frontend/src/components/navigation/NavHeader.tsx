@@ -29,7 +29,8 @@ export default function NavHeader({
   isOrganizationRelated,
   currentEnv,
   userAvailableEnvs,
-  onEnvChange
+  onEnvChange,
+  secretsPath
 }: {
   pageName: string;
   isProjectRelated?: boolean;
@@ -37,6 +38,7 @@ export default function NavHeader({
   currentEnv?: string;
   userAvailableEnvs?: any[];
   onEnvChange?: (slug: string) => void;
+  secretsPath?: string;
 }): JSX.Element {
   const { currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
@@ -75,7 +77,7 @@ export default function NavHeader({
       {currentEnv && (
         <>
           <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
-          <div className="rounded-md pl-3 hover:bg-bunker-100/10">
+          {(!secretsPath || secretsPath === "/") ? <div className="rounded-md pl-3 hover:bg-bunker-100/10">
             <Tooltip content="Select environment">
               <Select
                 value={userAvailableEnvs?.filter((uae) => uae.name === currentEnv)[0]?.slug}
@@ -92,8 +94,22 @@ export default function NavHeader({
                 ))}
               </Select>
             </Tooltip>
-          </div>
+          </div> : <Link
+            passHref
+            legacyBehavior
+            href={{ pathname: router.pathname, query: { id: router.query.id, env: router.query.env } }}
+          >
+            <a className="pl-1.5 text-sm font-semibold text-primary/80 hover:text-primary">{currentEnv}</a>
+          </Link>}
         </>
+      )}
+      {secretsPath && secretsPath.split("/").map(folder => 
+        (folder) && (
+          <>
+            <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-xs text-gray-400" />
+            <div className="text-sm font-semibold text-bunker-300">{folder}</div>
+          </>
+        )
       )}
     </div>
   );

@@ -66,9 +66,15 @@ const secretSchema = yup.object({
   valueOverride: yup.string().trim().notRequired()
 });
 
+const folderSchema = yup.object({
+  _id: yup.string(),
+  name: yup.string().trim(),
+});
+
 export const schema = yup.object({
   isSnapshotMode: yup.bool().notRequired(),
-  secrets: yup.array(secretSchema)
+  secrets: yup.array(secretSchema), 
+  folders: yup.array(folderSchema)
 });
 
 export type FormData = yup.InferType<typeof schema>;
@@ -159,7 +165,8 @@ export const transformSecretsToBatchSecretReq = (
   deletedSecretIds: string[],
   latestFileKey: any,
   secrets: FormData['secrets'],
-  intialValues: DecryptedSecret[] = []
+  folderId: string,
+  intialValues: DecryptedSecret[] = [],
 ) => {
   // deleted secrets
   const secretsToBeDeleted: BatchSecretDTO['requests'] = deletedSecretIds.map((id) => ({
@@ -198,6 +205,7 @@ export const transformSecretsToBatchSecretReq = (
           type: 'personal',
           tags,
           secretName: key,
+          folderId,
           ...encryptASecret(randomBytes, key, valueOverride, comment)
         }
       });
@@ -210,6 +218,7 @@ export const transformSecretsToBatchSecretReq = (
           type: 'shared',
           tags,
           secretName: key,
+          folderId,
           ...encryptASecret(randomBytes, key, value, comment)
         }
       });
@@ -227,6 +236,7 @@ export const transformSecretsToBatchSecretReq = (
             type: 'shared',
             tags,
             secretName: key,
+            folderId,
             ...encryptASecret(randomBytes, key, value, comment)
           }
         });
@@ -247,6 +257,7 @@ export const transformSecretsToBatchSecretReq = (
               type: 'personal',
               tags,
               secretName: key,
+              folderId,
               ...encryptASecret(randomBytes, key, valueOverride, comment)
             }
           });

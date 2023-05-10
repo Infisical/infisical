@@ -161,7 +161,7 @@ export const SecretInputRow = memo(
       <tr className="group flex flex-row items-center" key={index}>
         <td className="flex h-10 w-10 items-center justify-center px-4 border-none">
           {/* <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div> */}
-          <div className="w-10 text-center text-xs text-bunker-400"><FontAwesomeIcon icon={faKey} className="w-4 h-4 text-bunker-400/60 pl-2.5 pt-0.5" /></div>
+          <div className="w-10 text-center text-xs text-bunker-400"><FontAwesomeIcon icon={faKey} className="w-4 h-4 text-blue-400/50 pl-2.5 pt-0.5" /></div>
         </td>
         <Controller
           control={control}

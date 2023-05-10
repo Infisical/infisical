@@ -216,7 +216,6 @@ export const EnvironmentSection = ({
               >
                 {isEnvUpdate ? 'Update' : 'Create'}
               </Button>
-
               <Button colorSchema="secondary" variant="plain">
                 Cancel
               </Button>

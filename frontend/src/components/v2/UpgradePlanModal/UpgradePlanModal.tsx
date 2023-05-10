@@ -7,9 +7,10 @@ type Props = {
   isOpen?: boolean;
   onOpenChange?: (isOpen: boolean) => void;
   text: string;
+  subText?: string;
 };
 
-export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Element => (
+export const UpgradePlanModal = ({ text, subText, isOpen, onOpenChange }: Props): JSX.Element => (
   <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
     <ModalContent
       title="Unleash Infisical's Full Power"
@@ -28,9 +29,10 @@ export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Ele
       ]}
     >
       <p className="mb-4 text-bunker-300">{text}</p>
-      <p className="font-medium text-bunker-300">
+      {/* <p className="text-bunker-300">
         Upgrade and get access to this, as well as to other powerful enhancements.
-      </p>
+      </p> */}
+        <p key={1} className="mt-6 text-xs text-bunker-300">{subText}</p>
     </ModalContent>
   </Modal>
 );

@@ -297,34 +297,28 @@ export const AppLayout = ({ children }: LayoutProps) => {
                 <div className={`${currentWorkspace ? 'block' : 'hidden'}`}>
                   <Menu>
                     <Link href={`/dashboard/${currentWorkspace?._id}`} passHref>
-                      <a>
                         <MenuItem
                           isSelected={router.asPath.includes(`/dashboard/${currentWorkspace?._id}`)}
                           icon="system-outline-90-lock-closed"
                         >
                           {t('nav:menu.secrets')}
                         </MenuItem>
-                      </a>
                     </Link>
                     <Link href={`/users/${currentWorkspace?._id}`} passHref>
-                      <a>
                         <MenuItem
                           isSelected={router.asPath === `/users/${currentWorkspace?._id}`}
                           icon="system-outline-96-groups"
                         >
                           {t('nav:menu.members')}
                         </MenuItem>
-                      </a>
                     </Link>
                     <Link href={`/integrations/${currentWorkspace?._id}`} passHref>
-                      <a>
                         <MenuItem
                           isSelected={router.asPath === `/integrations/${currentWorkspace?._id}`}
                           icon="system-outline-82-extension"
                         >
                           {t('nav:menu.integrations')}
                         </MenuItem>
-                      </a>
                     </Link>
                     <Link href={`/activity/${currentWorkspace?._id}`} passHref>
                       <MenuItem
@@ -336,7 +330,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </MenuItem>
                     </Link>
                     <Link href={`/settings/project/${currentWorkspace?._id}`} passHref>
-                      <a>
                         <MenuItem
                           isSelected={
                             router.asPath === `/settings/project/${currentWorkspace?._id}`
@@ -345,7 +338,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         >
                           {t('nav:menu.project-settings')}
                         </MenuItem>
-                      </a>
                     </Link>
                   </Menu>
                 </div>

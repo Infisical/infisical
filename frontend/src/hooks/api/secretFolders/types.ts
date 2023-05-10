@@ -73,7 +73,6 @@ export type UpdateSecretArg = {
   secretCommentIV: string;
   secretCommentTag: string;
   tags: SecretTagArg[];
-  folderId: string;
 };
 
 export type CreateSecretArg = Omit<UpdateSecretArg, '_id'>;
@@ -83,13 +82,19 @@ export type DeleteSecretArg = { _id: string };
 export type BatchSecretDTO = {
   workspaceId: string;
   environment: string;
-  secretsPath: string;
   requests: Array<
     | { method: 'POST'; secret: CreateSecretArg }
     | { method: 'PATCH'; secret: UpdateSecretArg }
     | { method: 'DELETE'; secret: DeleteSecretArg }
   >;
 };
+
+export type FolderDTO = {
+  workspaceId: string;
+  environment: string;
+  folderName: string;
+  parentId?: string;
+}
 
 export type GetProjectSecretsDTO = {
   workspaceId: string;
@@ -99,6 +104,13 @@ export type GetProjectSecretsDTO = {
   isPaused?: boolean;
   onSuccess?: (data: DecryptedSecret[]) => void;
 };
+
+export type GetProjectFolderDTO = {
+  folderId: string;
+  workspaceId: string;
+  env: string | string[];
+  isPaused?: boolean;
+}
 
 export type GetSecretVersionsDTO = {
   secretId: string;

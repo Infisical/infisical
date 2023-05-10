@@ -19,19 +19,20 @@ import {
 
 export const secretKeys = {
   // this is also used in secretSnapshot part
-  getProjectSecret: (workspaceId: string, env: string | string[]) => [
-    { workspaceId, env },
+  getProjectSecret: (workspaceId: string, env: string | string[], secretsPath: string) => [
+    { workspaceId, env, secretsPath },
     'secrets'
   ],
   getSecretVersion: (secretId: string) => [{ secretId }, 'secret-versions']
 };
 
-const fetchProjectEncryptedSecrets = async (workspaceId: string, env: string | string[]) => {
+const fetchProjectEncryptedSecrets = async (workspaceId: string, env: string | string[], secretsPath: string) => {
   if (typeof env === 'string') {
     const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
       params: {
         environment: env,
-        workspaceId
+        workspaceId, 
+        secretsPath: secretsPath || '/'
       }
     });
     return data.secrets;
@@ -46,7 +47,8 @@ const fetchProjectEncryptedSecrets = async (workspaceId: string, env: string | s
       const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
         params: {
           environment: envPoint,
-          workspaceId
+          workspaceId, 
+          secretsPath: secretsPath || '/'
         }
       });
       allEnvData = allEnvData.concat(data.secrets);
@@ -62,14 +64,15 @@ const fetchProjectEncryptedSecrets = async (workspaceId: string, env: string | s
 export const useGetProjectSecrets = ({
   workspaceId,
   env,
+  secretsPath,
   decryptFileKey,
   isPaused
 }: GetProjectSecretsDTO) =>
   useQuery({
     // wait for all values to be available
     enabled: Boolean(decryptFileKey && workspaceId && env) && !isPaused,
-    queryKey: secretKeys.getProjectSecret(workspaceId, env),
-    queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env),
+    queryKey: secretKeys.getProjectSecret(workspaceId, env, secretsPath),
+    queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, secretsPath),
     select: (data) => {
       const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
       const latestKey = decryptFileKey;
@@ -145,14 +148,15 @@ export const useGetProjectSecrets = ({
 export const useGetProjectSecretsByKey = ({
   workspaceId,
   env,
-  decryptFileKey,
+  decryptFileKey, 
+  secretsPath,
   isPaused
 }: GetProjectSecretsDTO) =>
   useQuery({
     // wait for all values to be available
     enabled: Boolean(decryptFileKey && workspaceId && env) && !isPaused,
-    queryKey: secretKeys.getProjectSecret(workspaceId, env),
-    queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env),
+    queryKey: secretKeys.getProjectSecret(workspaceId, env, secretsPath),
+    queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, secretsPath),
     select: (data) => {
       const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
       const latestKey = decryptFileKey;
@@ -283,7 +287,7 @@ export const useBatchSecretsOp = () => {
       return data;
     },
     onSuccess: (_, dto) => {
-      queryClient.invalidateQueries(secretKeys.getProjectSecret(dto.workspaceId, dto.environment));
+      queryClient.invalidateQueries(secretKeys.getProjectSecret(dto.workspaceId, dto.environment, dto.secretsPath));
       queryClient.invalidateQueries(secretSnapshotKeys.list(dto.workspaceId));
       queryClient.invalidateQueries(secretSnapshotKeys.count(dto.workspaceId));
     }

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { FormProvider, useFieldArray, useForm } from 'react-hook-form';
+import { 
+  // Controller, 
+  FormProvider, useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
 import {
@@ -10,6 +12,7 @@ import {
   faDownload,
   faEye,
   faEyeSlash,
+  faFolder,
   faMagnifyingGlass,
   faPlus
 } from '@fortawesome/free-solid-svg-icons';
@@ -21,6 +24,7 @@ import { useNotificationContext } from '@app/components/context/Notifications/No
 import NavHeader from '@app/components/navigation/NavHeader';
 import {
   Button,
+  // FormControl,
   IconButton,
   Input,
   Modal,
@@ -50,6 +54,7 @@ import {
   usePerformSecretRollback,
   useRegisterUserAction
 } from '@app/hooks/api';
+import { useFolderOp, useGetProjectFolderById, useGetProjectFolders } from '@app/hooks/api/secretFolders/queries';
 import { secretKeys } from '@app/hooks/api/secrets/queries';
 import { WorkspaceEnv } from '@app/hooks/api/types';
 
@@ -58,6 +63,7 @@ import { CreateTagModal } from './components/CreateTagModal';
 import { PitDrawer } from './components/PitDrawer';
 import { SecretDetailDrawer } from './components/SecretDetailDrawer';
 import { SecretDropzone } from './components/SecretDropzone';
+import { SecretFolderRow } from './components/SecretFolderRow';
 import { SecretInputRow } from './components/SecretInputRow';
 import { SecretTableHeader } from './components/SecretTableHeader';
 import {
@@ -96,7 +102,9 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     'addTag',
     'secretSnapshots',
     'uploadedSecOpts',
-    'compareSecrets'
+    'compareSecrets',
+    'createUpdateFolder',
+    'deleteFolder'
   ] as const);
   const [isSecretValueHidden, setIsSecretValueHidden] = useToggle(true);
   const [searchFilter, setSearchFilter] = useState('');
@@ -138,12 +146,40 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     decryptFileKey: latestFileKey!
   });
 
+  let folderInfo: any;
+  let isFolderInfoLoading;
+  if (router.query.folder) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const { data: folderInfoTemp, isLoading: isFolderInfoLoadingTemp } = useGetProjectFolderById({
+      workspaceId,
+      env: selectedEnv?.slug || '',
+      folderId: String(router.query.folder),
+      isPaused: Boolean(snapshotId)
+    });
+    folderInfo = folderInfoTemp;
+    isFolderInfoLoading = isFolderInfoLoadingTemp;
+  
+    console.log(98765, folderInfo, isFolderInfoLoading)
+  }
+
+  console.log('getting secrets in', folderInfo?.path || "/")
   const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
     workspaceId,
     env: selectedEnv?.slug || '',
+    secretsPath: folderInfo?.path || "/",
     decryptFileKey: latestFileKey!,
     isPaused: Boolean(snapshotId)
   });
+
+  const { data: folders, isLoading: isFoldersLoading } = useGetProjectFolders({
+    workspaceId,
+    env: selectedEnv?.slug || '',
+    secretsPath: folderInfo?.path || "/",
+    decryptFileKey: latestFileKey!,
+    isPaused: Boolean(snapshotId)
+  });
+
+  console.log(444, folders, isFoldersLoading)
 
   const {
     data: secretSnaphots,
@@ -168,17 +204,27 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   const { data: snapshotCount, isLoading: isLoadingSnapshotCount } =
     useGetWsSnapshotCount(workspaceId);
 
+  console.log(45678, workspaceId)
   const { data: wsTags } = useGetWsTags(workspaceId);
   // mutation calls
   const { mutateAsync: batchSecretOp } = useBatchSecretsOp();
   const { mutateAsync: performSecretRollback } = usePerformSecretRollback();
   const { mutateAsync: registerUserAction } = useRegisterUserAction();
   const { mutateAsync: createWsTag } = useCreateWsTag();
+  const { mutateAsync: addFolder } = useFolderOp();
 
   const method = useForm<FormData>({
     // why any: well yup inferred ts expects other keys to defined as undefined
     defaultValues: secrets as any,
     values: secrets as any,
+    mode: 'onBlur',
+    resolver: yupResolver(schema)
+  });
+
+  const methodFolders = useForm<FormData>({
+    // why any: well yup inferred ts expects other keys to defined as undefined
+    defaultValues: folders as any,
+    values: folders as any,
     mode: 'onBlur',
     resolver: yupResolver(schema)
   });
@@ -191,7 +237,24 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     formState: { isSubmitting, isDirty },
     reset
   } = method;
+
+  const {
+    control: controlFolders,
+    // handleSubmit: handleSubmitFolders,
+    // getValues: getValuesFolders,
+    // setValue: setValueFolders,
+    // formState: { isFoldersSubmitting, isFoldersDirty },
+    // reset: resetFolders
+  } = methodFolders;
   const { fields, prepend, append, remove } = useFieldArray({ control, name: 'secrets' });
+  const { 
+    fields: fieldsFolders, 
+    prepend: prependFolders, 
+    // append: appendFolders, 
+    // remove: removeFolders,
+    update: updateFolders
+  } = useFieldArray({ control: controlFolders, name: 'folders' });
+  console.log(777, fields, fieldsFolders)
   const isRollbackMode = Boolean(snapshotId);
   const isReadOnly = selectedEnv?.isWriteDenied;
   const isAddOnly = selectedEnv?.isReadDenied && !selectedEnv?.isWriteDenied;
@@ -286,7 +349,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
       setValue('isSnapshotMode', false);
       setSnaphotId(null);
       queryClient.invalidateQueries(
-        secretKeys.getProjectSecret(workspaceId, selectedEnv?.slug || '')
+        secretKeys.getProjectSecret(workspaceId, selectedEnv?.slug || '', folderInfo?.path)
       );
       createNotification({
         text: 'Successfully rollback secrets',
@@ -314,17 +377,32 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     const sec = isAddOnly ? userSec.filter(({ _id }) => !_id) : userSec;
     // encrypt and format the secrets to batch api format
     // requests = [ {method:"", secret:""} ]
+    fieldsFolders.filter(folder => !folder._id).map(async (folder) => { 
+      await addFolder({
+        workspaceId,
+        environment: String(selectedEnv?.slug),
+        folderName: String(folder.name)
+      })
+    })
     const batchedSecret = transformSecretsToBatchSecretReq(
       deletedSecretIds.current,
       latestFileKey,
       sec,
-      secrets?.secrets
+      String(router.query.folder),
+      secrets?.secrets,
     );
     // type check
     if (!selectedEnv?.slug) return;
     try {
+      console.log(5, {
+        requests: batchedSecret,
+        secretsPath: folderInfo?.path || "/",
+        workspaceId,
+        environment: selectedEnv?.slug
+      })
       await batchSecretOp({
         requests: batchedSecret,
+        secretsPath: folderInfo?.path || "/",
         workspaceId,
         environment: selectedEnv?.slug
       });
@@ -401,6 +479,40 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     );
   }
 
+  const isFolderUpdate = Boolean(popUp?.createUpdateFolder?.data);
+  // const oldFolderName = (popUp?.createUpdateFolder?.data as { slug: string })?.slug;
+  const onFolderModalSubmit = async (data: any) => {
+    console.log('checkcheckcheckcheck', isFolderUpdate)
+    if (isFolderUpdate) {
+      console.log('updating', data.id)
+      // removeFolders(data.id)
+      updateFolders(fieldsFolders.map(folder => folder.id).indexOf(data.id), {
+        // id: data.id,
+        _id: data._id,
+        name: data.name,
+      });
+    } else {
+      // await onCreate(data);
+      if (secretContainer.current) {
+        secretContainer.current.scroll({
+          top: 0,
+          behavior: 'smooth'
+        });
+      }
+      console.log(555666)
+      prependFolders({
+        _id: undefined,
+        name: data.name,
+      }, { shouldFocus: false });
+    }
+    handlePopUpClose('createUpdateFolder');
+  };
+
+  // const onFolderDeleteSubmit = async (envSlug: string) => {
+  //   await onDelete(envSlug);
+  //   handlePopUpClose('deleteFolder');
+  // };
+
   // when secrets is not loading and secrets list is empty
   const isDashboardSecretEmpty = !isSecretsLoading && false;
   // when using snapshot mode and snapshot is loading and snapshot list is empty
@@ -426,6 +538,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
               isProjectRelated
               userAvailableEnvs={userAvailableEnvs}
               onEnvChange={onEnvChange}
+              secretsPath={folderInfo?.path || "/"}
             />
           </div>
           {/* This is only for rollbacks */}
@@ -526,11 +639,19 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
               {!isReadOnly && !isRollbackMode && (
                 <>
                   <div className='block lg:hidden'>
-                    <Tooltip content='Point-in-time Recovery'>
+                    <Tooltip content='Add Secret'>
                       <IconButton
                         ariaLabel="recovery"
                         variant="outline_bg"
-                        onClick={() => setIsSecretValueHidden.toggle()}
+                        onClick={() => {
+                          if (secretContainer.current) {
+                            secretContainer.current.scroll({
+                              top: 0,
+                              behavior: 'smooth'
+                            });
+                          }
+                          prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
+                        }}
                       >
                         <FontAwesomeIcon icon={faPlus} />
                       </IconButton>
@@ -554,6 +675,20 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                     >
                       Add Secret
                     </Button>
+                  </div>
+                  <div className=''>
+                    <Tooltip content='Add Folder'>
+                      <IconButton
+                        ariaLabel="recovery"
+                        variant="outline_bg"
+                        onClick={() => {
+                          handlePopUpOpen('createUpdateFolder', undefined)
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faPlus} />
+                        <FontAwesomeIcon icon={faFolder} className="pl-2"/>
+                      </IconButton>
+                    </Tooltip>
                   </div>
                 </>
               )}
@@ -579,6 +714,21 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                 <table className="secret-table relative">
                   <SecretTableHeader sortDir={sortDir} onSort={onSortSecrets} />
                   <tbody className="max-h-96 overflow-y-auto">
+                    {/* ["Folder 1", "Folder 2", "Folder 3"] */}
+                    {fieldsFolders.map(({ _id, name }, index) => (
+                      <SecretFolderRow
+                        key={_id}
+                        index={index}
+                        _id={String(_id)}
+                        handlePopUpOpen={handlePopUpOpen}
+                        // index={index}
+                        searchTerm={searchFilter}
+                        name={String(name)}
+                        reset={reset}
+                        onFolderDelete={() => {}}
+                        // onRowExpand={() => onDrawerOpen({ id: _id as string, index })}
+                      />
+                    ))}
                     {fields.map(({ id, _id }, index) => (
                       <SecretInputRow
                         key={id}
@@ -612,6 +762,46 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                 </table>
               </TableContainer>
             )}
+            <Modal
+              isOpen={popUp?.createUpdateFolder?.isOpen}
+              onOpenChange={(isOpen) => {
+                handlePopUpToggle('createUpdateFolder', isOpen);
+                reset();
+              }}
+            >
+              <ModalContent title={isFolderUpdate ? 'Update folder name' : 'Create a new folder'}>
+                <form onSubmit={handleSubmit(onFolderModalSubmit)}>
+                  {/* <Controller
+                    control={control}
+                    // defaultValue=""
+                    name="folders"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Folder Name"
+                        isError={Boolean(error)}
+                        errorText={error?.message}
+                      >
+                        <Input {...field} />
+                      </FormControl>
+                    )}
+                  /> */}
+                  <div className="mt-8 flex items-center">
+                    <Button
+                      className="mr-4"
+                      size="sm"
+                      type="submit"
+                      isLoading={isSubmitting}
+                      isDisabled={isSubmitting}
+                    >
+                      {isFolderUpdate ? 'Update' : 'Create'}
+                    </Button>
+                    <Button colorSchema="secondary" variant="outline" className="border-none">
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </ModalContent>
+            </Modal>
             <PitDrawer
               isDrawerOpen={popUp?.secretSnapshots?.isOpen}
               onOpenChange={(isOpen) => handlePopUpToggle('secretSnapshots', isOpen)}

@@ -14,7 +14,7 @@ import {
 } from '@app/hooks/api';
 import { WorkspaceEnv } from '@app/hooks/api/types';
 
-import { EnvComparisonRow } from './components/EnvComparisonRow';
+import { EnvComparisonFolder, EnvComparisonRow } from './components/EnvComparisonRow';
 import { FormData, schema } from './DashboardPage.utils';
 
 export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
@@ -49,6 +49,7 @@ export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
   const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecretsByKey({
     workspaceId,
     env: userAvailableEnvs?.map((env) => env.slug) ?? [],
+    secretsPath: "/",
     decryptFileKey: latestFileKey!,
     isPaused: false
   });
@@ -167,12 +168,14 @@ export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
                 <TableContainer className="border-none">
                   <table className="secret-table relative w-full bg-mineshaft-900">
                     <tbody className="max-h-screen overflow-y-auto">
+                      <EnvComparisonFolder
+                        folderName="FOLDER_A"
+                      />
                       {Object.keys(secrets?.secrets || {}).map((key, index) => (
                         <EnvComparisonRow
-                          key={`row-${key}`}
+                          key={`row-${key}-${String(index)}`}
                           secrets={secrets?.secrets?.[key]}
                           isReadOnly={isReadOnly}
-                          index={index}
                           isSecretValueHidden
                           userAvailableEnvs={userAvailableEnvs}
                         />
@@ -204,7 +207,7 @@ export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
                 </div> */}
             </div>
             <div className="group mt-4 flex min-w-[60.3rem] flex-row items-center">
-              <div className="flex h-10 w-10 items-center justify-center border-none px-4">
+              <div className="flex h-10 w-14 items-center justify-center border-none px-1">
                 <div className="w-10 text-center text-xs text-transparent">0</div>
               </div>
               <div className="flex min-w-[200px] flex-row items-center justify-between lg:min-w-[220px] xl:min-w-[250px]">
@@ -217,7 +220,7 @@ export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
                 return (
                   <div
                     key={`button-${env.slug}`}
-                    className="mx-2 mb-1 flex h-10 w-full min-w-[11rem] flex-row items-center justify-center border-none"
+                    className="mx-2 mb-1 flex h-10 w-full min-w-[10rem] flex-row items-center justify-center border-none"
                   >
                     <Button
                       onClick={() => onEnvChange(env.slug)}
