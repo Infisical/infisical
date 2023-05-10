@@ -7,8 +7,8 @@ import { useRouter } from 'next/router';
 import attemptLoginMfa from '@app/components/utilities/attemptLoginMfa';
 import { useSendMfaToken } from '@app/hooks/api/auth';
 
-import Button from '../basic/buttons/Button';
 import Error from '../basic/Error';
+import { Button } from '../v2';
 
 // The style for the verification code input
 const props = {
@@ -115,10 +115,10 @@ export default function MFAStep({
   };
 
   return (
-    <form className="h-7/12 mx-auto mb-64 w-max rounded-xl bg-bunker px-8 pt-10 pb-4 drop-shadow-xl md:mb-16">
+    <form className="mx-auto w-max px-8 pb-4 pt-4 md:mb-16">
       <p className="text-l flex justify-center text-bunker-300">{t('mfa.step2-message')}</p>
-      <p className="text-l my-2 flex justify-center font-semibold text-bunker-300">{email} </p>
-      <div className="hidden md:block">
+      <p className="text-l my-1 flex justify-center font-semibold text-bunker-300">{email} </p>
+      <div className="hidden md:block w-max min-w-[20rem] mx-auto">
         <ReactCodeInput
           name=""
           inputMode="tel"
@@ -129,27 +129,46 @@ export default function MFAStep({
           className="mt-6 mb-2"
         />
       </div>
+      <div className="block md:hidden w-max mt-4 mx-auto">
+        <ReactCodeInput
+          name=""
+          inputMode="tel"
+          type="text"
+          fields={6}
+          onChange={setMfaCode}
+          {...props}
+          className="mt-2 mb-2"
+        />
+      </div>
       {typeof triesLeft === 'number' && (
         <Error text={`${t('mfa.step2-code-error')} ${triesLeft}`} />
       )}
-      <div className="min-w-28 mx-auto mt-4 mb-2 flex max-h-24 max-w-max flex-col items-center justify-center px-4 text-lg md:p-2">
-        <Button text={t('mfa.verify') ?? ''} onButtonPressed={() => handleLoginMfa()} size="lg" />
-      </div>
-      <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
-        <div className="flex flex-row items-baseline gap-1 text-sm">
-          <span className="text-bunker-400">{t('mfa.step2-resend-alert')}</span>
-          <u
-            className={`font-normal ${isLoadingResend
-              ? 'text-bunker-400'
-              : 'text-primary-700 duration-200 hover:text-primary'
-              }`}
-          >
-            <button disabled={isLoading} onClick={() => handleResendMfaCode()} type="button">
-              {isLoadingResend ? t('mfa.step2-resend-progress') : t('mfa.step2-resend-submit')}
-            </button>
-          </u>
+      <div className="flex flex-col mt-6 items-center justify-center lg:w-[19%] w-1/4 min-w-[20rem] mt-2 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">
+        <div className="text-l py-1 text-lg w-full">
+          <Button
+            onClick={() => handleLoginMfa()}
+            size="sm"
+            isFullWidth
+            className='h-14'
+            colorSchema="primary"
+            variant="outline_bg"
+          > {String(t('mfa.verify'))} </Button>
         </div>
-        <p className="pb-2 text-sm text-bunker-400">{t('mfa.step2-spam-alert')}</p>
+      </div>
+      <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
+        <div className="flex flex-row items-baseline gap-1 text-sm">
+          <span className="text-bunker-400">{t('signup.step2-resend-alert')}</span>
+          <div className="mt-2 text-bunker-400 text-md flex flex-row">
+            <button disabled={isLoading} onClick={handleResendMfaCode} type="button">
+              <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>
+                {isLoadingResend
+                  ? t('signup.step2-resend-progress')
+                  : t('signup.step2-resend-submit')}
+              </span>
+            </button>
+          </div>
+        </div>
+        <p className="text-sm text-bunker-400 pb-2">{t('signup.step2-spam-alert')}</p>
       </div>
     </form>
   );

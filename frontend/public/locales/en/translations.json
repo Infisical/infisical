@@ -134,7 +134,7 @@
     "error-login": "Wrong credentials.",
     "continue-with-google": "Continue with Google",
     "continue-with-email": "Continue with Email",
-    "other-option": "Log in with other option"
+    "other-option": "Log in with another option"
   },
   "mfa": {
     "title": "Sign Up",

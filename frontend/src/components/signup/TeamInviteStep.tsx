@@ -7,8 +7,7 @@ import { usePopUp } from '@app/hooks/usePopUp';
 import addUserToOrg from '@app/pages/api/organization/addUserToOrg';
 import getWorkspaces from '@app/pages/api/workspace/getWorkspaces';
 
-import Button from '../basic/buttons/Button';
-import { EmailServiceSetupModal } from '../v2';
+import { Button, EmailServiceSetupModal } from '../v2';
 
 /**
  * This is the last step of the signup flow. People can optionally invite their teammates here.
@@ -44,7 +43,7 @@ export default function TeamInviteStep(): JSX.Element {
       <p className="text-center flex justify-center text-bunker-400 md:mx-8 mb-6 mt-4">
         {t('signup.step5-subtitle')}
       </p>
-      <div className="bg-mineshaft-800 border border-mineshaft-600 w-max mx-auto pt-6 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-32">
+      <div className="bg-mineshaft-800 border border-mineshaft-600 w-max mx-auto pt-6 pb-4 px-8 rounded-xl drop-shadow-xl mb-6">
         <div>
           <div className="text-bunker-300 font-medium pl-1 pb-1 text-sm">
             <span>Emails</span>
@@ -56,32 +55,36 @@ export default function TeamInviteStep(): JSX.Element {
             placeholder="email@example.com, email2@example.com..."
           />
         </div>
-        <div className="flex flex-row max-w-max min-w-28 items-center justify-center md:p-2 max-h-24 mx-auto text-lg px-4 mt-4 mb-2">
-          <div
-            onKeyDown={() => null}
-            role="button"
-            tabIndex={0}
-            className="text-md md:text-sm mx-3 text-bunker-300 bg-mineshaft-700 py-3 md:py-3.5 px-5 rounded-md cursor-pointer hover:bg-mineshaft-500 duration-200"
-            onClick={redirectToHome}
-          >
-            {t('signup.step5-skip')}
-          </div>
+        <div className="flex flex-row items-end justify-end mt-0 md:mt-4 md:mb-2 w-full md:min-w-[30rem] mt-2 md:max-w-md mx-auto text-sm">
           <Button
-            text={t('signup.step5-send-invites') ?? ''}
-            onButtonPressed={() => {
+            onClick={() => {
               if (serverDetails?.emailConfigured) {
                 inviteUsers({ emails })
               } else {
                 handlePopUpOpen('setUpEmail');
               }
             }}
-            size="lg"
-          />
+            size="sm"
+            // isFullWidth
+            className='h-10'
+            colorSchema="primary"
+            variant="solid"
+          > {t('signup.step5-send-invites') ?? ''} </Button>
         </div>
         <EmailServiceSetupModal
           isOpen={popUp.setUpEmail?.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle('setUpEmail', isOpen)}
         />
+      </div>
+      <div className="flex flex-row max-w-max min-w-28 items-center justify-center md:p-2 min-w-[20rem] max-h-24 mx-auto text-lg px-4 mt-4 mb-2">
+        <Button
+          onClick={redirectToHome}
+          size="sm"
+          isFullWidth
+          className='h-12'
+          colorSchema="secondary"
+          variant="outline"
+        > {t('signup.step5-skip') ?? 'Skip'} </Button>
       </div>
     </div>
   );

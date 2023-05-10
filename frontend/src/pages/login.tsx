@@ -31,7 +31,7 @@ export default function Login() {
   } = useProviderAuth();
 
   if (providerAuthToken && isProviderUserCompleted === false) {
-    router.push('/signup');
+    // router.push('/signup');
   }
 
   const setLanguage = async (to: string) => {
@@ -99,7 +99,7 @@ export default function Login() {
   }
 
   return (
-    <div className="bg-gradient-to-tr from-bunker-600 to-bunker-800 h-screen flex flex-col justify-center pb-28 px-6 ">
+    <div className="bg-gradient-to-tr from-bunker-500 to-bunker-800 h-screen flex flex-col justify-center pb-28 px-6 ">
       <Head>
         <title>{t('common.head-title', { title: t('login.title') })}</title>
         <link rel="icon" href="/infisical.ico" />
