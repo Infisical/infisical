@@ -91,6 +91,7 @@ export default function Login() {
       <MFAStep
         email={email || providerEmail}
         password={password}
+        providerAuthToken={providerAuthToken}
       />
     }
 

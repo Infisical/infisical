@@ -52,10 +52,12 @@ interface VerifyMfaTokenError {
  */
 export default function MFAStep({
   email,
-  password
+  password,
+  providerAuthToken,
 }: {
   email: string;
   password: string;
+  providerAuthToken?: string;
 }): JSX.Element {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -77,6 +79,7 @@ export default function MFAStep({
       const isLoginSuccessful = await attemptLoginMfa({
         email,
         password,
+        providerAuthToken,
         mfaToken: mfaCode
       });
 
@@ -136,11 +139,10 @@ export default function MFAStep({
         <div className="flex flex-row items-baseline gap-1 text-sm">
           <span className="text-bunker-400">{t('mfa.step2-resend-alert')}</span>
           <u
-            className={`font-normal ${
-              isLoadingResend
-                ? 'text-bunker-400'
-                : 'text-primary-700 duration-200 hover:text-primary'
-            }`}
+            className={`font-normal ${isLoadingResend
+              ? 'text-bunker-400'
+              : 'text-primary-700 duration-200 hover:text-primary'
+              }`}
           >
             <button disabled={isLoading} onClick={() => handleResendMfaCode()} type="button">
               {isLoadingResend ? t('mfa.step2-resend-progress') : t('mfa.step2-resend-submit')}

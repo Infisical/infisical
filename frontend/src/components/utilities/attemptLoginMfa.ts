@@ -23,10 +23,12 @@ const client = new jsrp.client();
 const attemptLoginMfa = async ({
     email,
     password,
+    providerAuthToken,
     mfaToken
 }: {
     email: string;
     password: string;
+    providerAuthToken?: string,
     mfaToken: string;
 }): Promise<Boolean> => {
     return new Promise((resolve, reject) => {
@@ -39,6 +41,7 @@ const attemptLoginMfa = async ({
                 const { salt } = await login1({
                     email,
                     clientPublicKey,
+                    providerAuthToken,
                 });
                 
                 const {
