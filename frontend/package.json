@@ -19,7 +19,7 @@
     "@fortawesome/free-brands-svg-icons": "^6.1.2",
     "@fortawesome/free-regular-svg-icons": "^6.1.1",
     "@fortawesome/free-solid-svg-icons": "^6.1.2",
-    "@fortawesome/react-fontawesome": "^0.1.19",
+    "@fortawesome/react-fontawesome": "^0.2.0",
     "@headlessui/react": "^1.7.7",
     "@hookform/resolvers": "^2.9.10",
     "@octokit/rest": "^19.0.7",
