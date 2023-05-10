@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
 
 import Button from '@app/components/basic/buttons/Button';
 import Error from '@app/components/basic/Error';
 import InputField from '@app/components/basic/InputField';
 import attemptLogin from '@app/components/utilities/attemptLogin';
-import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
 
 import SecurityClient from '../utilities/SecurityClient';
 
@@ -62,11 +61,11 @@ export default function PasswordInputStep({
     <form onSubmit={(e) => e.preventDefault()}>
       <div className="h-7/12 mx-auto w-full max-w-md rounded-xl bg-bunker py-4 px-6 pt-8 drop-shadow-xl">
         <p className="mx-auto mb-6 flex w-max justify-center text-3xl font-semibold text-bunker-100">
-          {t('login:login')}
+          {t('login.login')}
         </p>
         <div className="relative mt-6 flex max-h-24 w-full items-center justify-center rounded-lg md:mt-2 md:max-h-28 md:p-2">
           <InputField
-            label={t('common:password')}
+            label={t('common.password')}
             onChangeHandler={setPassword}
             type="password"
             value={password}
@@ -81,17 +80,17 @@ export default function PasswordInputStep({
                 type="button"
                 className="ml-1.5 text-sm font-normal text-primary-700 underline-offset-4 duration-200 hover:text-primary"
               >
-                {t('login:forgot-password')}
+                {t('login.forgot-password')}
               </button>
             </Link>
           </div>
         </div>
-        {!isLoading && loginError && <Error text={t('login:error-login') ?? ''} />}
+        {!isLoading && loginError && <Error text={t('login.error-login') ?? ''} />}
         <div className="mx-auto mt-4 flex max-h-20 w-full max-w-md flex-col items-center justify-center text-sm md:p-2">
           <div className="text-l m-8 mt-6 px-8 py-3 text-lg">
             <Button
               type="submit"
-              text={t('login:login') ?? ''}
+              text={t('login.login') ?? ''}
               onButtonPressed={async () => handleLogin()}
               loading={isLoading}
               size="lg"
@@ -100,13 +99,13 @@ export default function PasswordInputStep({
         </div>
       </div>
       <div className="mt-4 flex flex-row items-center justify-center md:pb-4">
-        <p className="flex w-max justify-center text-sm text-gray-400">{t('login:need-account')}</p>
+        <p className="flex w-max justify-center text-sm text-gray-400">{t('login.need-account')}</p>
         <Link href="/signup">
           <button
             type="button"
             className="ml-1.5 text-sm font-normal text-primary-700 underline-offset-4 duration-200 hover:text-primary"
           >
-            {t('login:create-account')}
+            {t('login.create-account')}
           </button>
         </Link>
       </div>
@@ -121,11 +120,9 @@ export default function PasswordInputStep({
           type="button"
           className="ml-1.5 text-sm font-normal text-primary-700 underline-offset-4 duration-200 hover:text-primary"
         >
-          {t('login:other-option')}
+          {t('login.other-option')}
         </button>
       </div>
     </form>
   );
 }
-
-export const getStaticProps = getTranslatedStaticProps(['auth', 'login']);

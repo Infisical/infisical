@@ -29,7 +29,7 @@ export default function SignUp() {
   const [attributionSource, setAttributionSource] = useState('');
   const [code, setCode] = useState('123456');
   const [codeError, setCodeError] = useState(false);
-  const [step, setStep] = useState(5);
+  const [step, setStep] = useState(1);
   const router = useRouter();
   const { data: serverDetails } = useFetchServerStatus();
   const [isSignupWithEmail, setIsSignupWithEmail] = useState(false);
@@ -146,9 +146,9 @@ export default function SignUp() {
       )
     }
 
-    // if (serverDetails?.emailConfigured) {
-    return <TeamInviteStep />
-    // }
+    if (serverDetails?.emailConfigured) {
+      return <TeamInviteStep />
+    }
 
     return ""
   }
@@ -156,11 +156,11 @@ export default function SignUp() {
   return (
     <div className="bg-gradient-to-tr from-bunker-600 to-bunker-800 min-h-screen flex flex-col justify-center pb-28 px-6 ">
       <Head>
-        <title>{t('common:head-title', { title: t('signup:title') })}</title>
+        <title>{t('common.head-title', { title: t('signup.title') })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t('signup:og-title') as string} />
-        <meta name="og:description" content={t('signup:og-description') as string} />
+        <meta property="og:title" content={t('signup.og-title') as string} />
+        <meta name="og:description" content={t('signup.og-description') as string} />
       </Head>
       <div className="flex justify-center mb-8 mt-20">
         <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />

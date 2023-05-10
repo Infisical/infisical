@@ -119,13 +119,13 @@ export default function LoginStep({
       </div>
       <div className="text-bunker-400 text-sm flex flex-row w-max mx-auto">
         <Link href="/verify-email">
-          <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>{t('login:forgot-password')}</span>
+          <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>{t('login.forgot-password')}</span>
         </Link>
       </div>
       {false && (
         <div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-300 rounded-md max-w-md mx-auto mt-4">
           <FontAwesomeIcon icon={faWarning} className="ml-2 mr-6 text-6xl" />
-          {t('common:maintenance-alert')}
+          {t('common.maintenance-alert')}
         </div>
       )}
     </form>

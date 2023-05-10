@@ -131,7 +131,10 @@
     "need-account": "Need an Infisical account?",
     "create-account": "Create an account",
     "forgot-password": "Forgot your password?",
-    "error-login": "Wrong credentials."
+    "error-login": "Wrong credentials.",
+    "continue-with-google": "Continue with Google",
+    "continue-with-email": "Continue with Email",
+    "other-option": "Log in with other option"
   },
   "mfa": {
     "title": "Sign Up",
@@ -295,6 +298,10 @@
     "signup": "Sign Up",
     "already-have-account": "Have an account? Log in",
     "forgot-password": "Forgot your password?",
+    "initial-title": "Create your Infisical account",
+    "continue-with-google": "Continue with Google",
+    "continue-with-email": "Continue with Email",
+    "create-policy": "By signing up, you agree to our Terms of Service and Privacy Policy.",
     "verify": "Verify",
     "step1-start": "Let's get started",
     "step1-privacy": "By creating an account, you agree to our Terms and have read and acknowledged the Privacy Policy.",

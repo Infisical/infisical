@@ -109,8 +109,8 @@ export default function Login() {
         <div className="flex justify-center mb-4 mt-20">
           <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
         </div>
-        {renderView(step)}
       </Link>
+      {renderView(step)}
       <div className="absolute right-4 top-0 mt-4 flex items-center justify-center">
         <div className="mx-auto w-48">
           <ListBox
