@@ -25,11 +25,12 @@ import getWorkspaces from './api/workspace/getWorkspaces';
 export default function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [name, setName] = useState('');
+  const [organizationName, setOrganizationName] = useState('');
+  const [attributionSource, setAttributionSource] = useState('');
   const [code, setCode] = useState('123456');
   const [codeError, setCodeError] = useState(false);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(5);
   const router = useRouter();
   const { data: serverDetails } = useFetchServerStatus();
   const [isSignupWithEmail, setIsSignupWithEmail] = useState(false);
@@ -124,10 +125,12 @@ export default function SignUp() {
           email={email || providerEmail}
           password={password}
           setPassword={setPassword}
-          firstName={firstName}
-          setFirstName={setFirstName}
-          lastName={lastName}
-          setLastName={setLastName}
+          name={name}
+          setName={setName}
+          organizationName={organizationName}
+          setOrganizationName={setOrganizationName}
+          attributionSource={attributionSource}
+          setAttributionSource={setAttributionSource}
           providerAuthToken={providerAuthToken}
         />
       )
@@ -139,14 +142,14 @@ export default function SignUp() {
           incrementStep={incrementStep}
           email={email || providerEmail}
           password={password}
-          name={`${firstName} ${lastName}`}
+          name={name}
         />
       )
     }
 
-    if (serverDetails?.emailConfigured) {
+    // if (serverDetails?.emailConfigured) {
       return <TeamInviteStep />
-    }
+    // }
 
     return ""
   }

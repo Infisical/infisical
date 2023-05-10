@@ -2,8 +2,8 @@ import { useTranslation } from 'next-i18next';
 import { faWarning } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import Button from '../basic/buttons/Button';
 import issueBackupKey from '../utilities/cryptography/issueBackupKey';
+import { Button } from '../v2';
 
 interface DownloadBackupPDFStepProps {
   incrementStep: () => void;
@@ -30,33 +30,37 @@ export default function DonwloadBackupPDFStep({
   const { t } = useTranslation();
 
   return (
-    <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg h-7/12 py-8 px-4 md:px-6 mx-auto mb-36 md:mb-16 rounded-xl drop-shadow-xl">
-      <p className="text-4xl text-center font-semibold flex justify-center text-primary">
+    <div className="flex flex-col items-center w-full h-full px-4 md:px-6 mx-auto mb-36 md:mb-16">
+      <p className="text-xl text-center font-medium flex justify-center text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
         {t('signup:step4-message')}
       </p>
-      <div className="flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2">
-        <div>{t('signup:step4-description1')}</div>
-        <div className="mt-3">{t('signup:step4-description2')}</div>
-      </div>
-      <div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-400 rounded-md max-w-xs md:max-w-md mx-auto mt-4">
-        <FontAwesomeIcon icon={faWarning} className="ml-2 mr-4 text-4xl" />
-        {t('signup:step4-description3')}
-      </div>
-      <div className="flex flex-col items-center justify-center md:px-4 md:py-5 mt-4 px-2 py-3 max-h-24 max-w-max mx-auto text-lg">
-        <Button
-          text="Download PDF"
-          onButtonPressed={async () => {
-            await issueBackupKey({
-              email,
-              password,
-              personalName: name,
-              setBackupKeyError: () => { },
-              setBackupKeyIssued: () => { }
-            });
-            incrementStep();
-          }}
-          size="lg"
-        />
+      <div className="flex flex-col pb-2 bg-mineshaft-900 border border-mineshaft-700 items-center justify-center text-center lg:w-1/6 w-1/4 min-w-[27rem] mt-4 md:mt-8 max-w-md text-bunker-300 text-md rounded-md">
+        <div className="w-full px-3 pt-1 mt-8 flex flex-row text-center items-center m-2 text-bunker-300 rounded-md lg:w-1/6 w-1/4 min-w-[26rem] mx-auto">
+          <FontAwesomeIcon icon={faWarning} className="ml-2 mr-4 text-5xl my-2" />
+          <span className='mb-2'>{t('signup:step4-description1')} {t('signup:step4-description3')}</span>
+          {/* {t('signup:step4-description2')} */}
+        </div>
+        <div className="flex flex-col items-center justify-center mt-4 mb-4 lg:w-1/6 w-1/4 min-w-[20rem] mt-2 md:max-w-md mx-auto text-sm text-center md:text-left">
+          <div className="text-l py-1 text-lg w-full">
+            <Button
+              onClick={async () => {
+                await issueBackupKey({
+                  email,
+                  password,
+                  personalName: name,
+                  setBackupKeyError: () => { },
+                  setBackupKeyIssued: () => { }
+                });
+                incrementStep();
+              }}
+              size="sm"
+              isFullWidth
+              className='h-12'
+              colorSchema="primary" 
+              variant="outline_bg"
+            > Download PDF </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

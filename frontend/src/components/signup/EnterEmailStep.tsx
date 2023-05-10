@@ -61,8 +61,6 @@ export default function EnterEmailStep({
             onChange={(e) => setEmail(e.target.value)}
             value={email}
             isRequired
-            // error={emailError}
-            // errorText={emailErrorMessage}
             autoComplete="username"
             className="h-12"
           />

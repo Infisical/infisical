@@ -2,7 +2,7 @@ import crypto from 'crypto';
 
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { faCheck, faX } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import jsrp from 'jsrp';
 import nacl from 'tweetnacl';
@@ -19,6 +19,7 @@ import Aes256Gcm from '../utilities/cryptography/aes-256-gcm';
 import { deriveArgonKey } from '../utilities/cryptography/crypto';
 import { saveTokenToLocalStorage } from '../utilities/saveTokenToLocalStorage';
 import SecurityClient from '../utilities/SecurityClient';
+import { Input } from '../v2';
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -28,10 +29,12 @@ interface UserInfoStepProps {
   email: string;
   password: string;
   setPassword: (value: string) => void;
-  firstName: string;
-  setFirstName: (value: string) => void;
-  lastName: string;
-  setLastName: (value: string) => void;
+  name: string;
+  setName: (value: string) => void;
+  organizationName: string;
+  setOrganizationName: (value: string) => void;
+  attributionSource: string;
+  setAttributionSource: (value: string) => void;
   providerAuthToken?: string;
 }
 
@@ -53,14 +56,16 @@ export default function UserInfoStep({
   email,
   password,
   setPassword,
-  firstName,
-  setFirstName,
-  lastName,
-  setLastName,
+  name,
+  setName,
+  organizationName,
+  setOrganizationName,
+  attributionSource, 
+  setAttributionSource,
   providerAuthToken,
 }: UserInfoStepProps): JSX.Element {
-  const [firstNameError, setFirstNameError] = useState(false);
-  const [lastNameError, setLastNameError] = useState(false);
+  const [nameError, setNameError] = useState(false);
+  const [organizationNameError, setOrganizationNameError] = useState(false);
   const [passwordErrorLength, setPasswordErrorLength] = useState(false);
   const [passwordErrorNumber, setPasswordErrorNumber] = useState(false);
   const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
@@ -73,17 +78,17 @@ export default function UserInfoStep({
   const signupErrorCheck = async () => {
     setIsLoading(true);
     let errorCheck = false;
-    if (!firstName) {
-      setFirstNameError(true);
+    if (!name) {
+      setNameError(true);
       errorCheck = true;
     } else {
-      setFirstNameError(false);
+      setNameError(false);
     }
-    if (!lastName) {
-      setLastNameError(true);
+    if (!organizationName) {
+      setOrganizationNameError(true);
       errorCheck = true;
     } else {
-      setLastNameError(false);
+      setOrganizationNameError(false);
     }
     errorCheck = passwordCheck({
       password,
@@ -149,8 +154,8 @@ export default function UserInfoStep({
 
               const response = await completeAccountInformationSignup({
                 email,
-                firstName,
-                lastName,
+                firstName: name.split(" ")[0],
+                lastName: name.split(" ")[1],
                 protectedKey,
                 protectedKeyIV,
                 protectedKeyTag,
@@ -161,7 +166,7 @@ export default function UserInfoStep({
                 providerAuthToken,
                 salt: result.salt,
                 verifier: result.verifier,
-                organizationName: `${firstName}'s organization`,
+                organizationName,
               });
 
               // unset signup JWT token and set JWT token
@@ -202,43 +207,44 @@ export default function UserInfoStep({
   };
 
   return (
-    <div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-36 md:mb-16">
-      <p className="text-4xl font-bold flex justify-center mb-6 mx-8 md:mx-16 text-primary">
-        {t('signup:step3-message')}
+    <div className="w-max mx-auto h-full px-8 mb-36 md:mb-16">
+      <p className="text-xl font-medium flex justify-center mb-6 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
+        Tell us a bit about yourself
       </p>
-      <div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">
-        <InputField
-          label={t('common:first-name')}
-          onChangeHandler={setFirstName}
-          type="name"
-          value={firstName}
+      <div className="relative z-0 flex flex-col items-center justify-end w-full md:p-2 rounded-lg max-h-24">
+        <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Your Name</p>
+        <Input
+          placeholder="Jane Doe"
+          onChange={(e) => setName(e.target.value)}
+          value={name}
           isRequired
-          errorText={
-            t('common:validate-required', {
-              name: t('common:first-name')
-            }) as string
-          }
-          error={firstNameError}
           autoComplete="given-name"
+          className="h-12"
         />
+        {nameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your name</p>}
       </div>
-      <div className="mt-2 flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
-        <InputField
-          label={t('common:last-name')}
-          onChangeHandler={setLastName}
-          type="name"
-          value={lastName}
+      <div className="relative z-0 flex flex-col items-center justify-end w-full md:p-2 rounded-lg max-h-24">
+        <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Organization Name</p>
+        <Input
+          placeholder="Infisical"
+          onChange={(e) => setOrganizationName(e.target.value)}
+          value={organizationName}
           isRequired
-          errorText={
-            t('common:validate-required', {
-              name: t('common:last-name')
-            }) as string
-          }
-          error={lastNameError}
-          autoComplete="family-name"
+          className="h-12"
+        />
+        {organizationNameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your organization name</p>}
+      </div>
+      <div className="relative z-0 flex flex-col items-center justify-end w-full md:p-2 rounded-lg max-h-24">
+        <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Where did you hear about us? <span className="font-light">(optional)</span></p>
+        <Input
+          placeholder=""
+          onChange={(e) => setAttributionSource(e.target.value)}
+          value={attributionSource}
+          isRequired
+          className="h-12"
         />
       </div>
-      <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
+      <div className="flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
         <InputField
           label={t('section-password:password')}
           onChangeHandler={(pass: string) => {
@@ -263,7 +269,7 @@ export default function UserInfoStep({
             <div className="text-gray-400 text-sm mb-1">{t('section-password:validate-base')}</div>
             <div className="flex flex-row justify-start items-center ml-1">
               {passwordErrorLength ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
+                <FontAwesomeIcon icon={faXmark} className="text-md text-red ml-0.5 mr-2.5" />
               ) : (
                 <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
               )}
@@ -273,7 +279,7 @@ export default function UserInfoStep({
             </div>
             <div className="flex flex-row justify-start items-center ml-1">
               {passwordErrorLowerCase ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
+                <FontAwesomeIcon icon={faXmark} className="text-md text-red ml-0.5 mr-2.5" />
               ) : (
                 <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
               )}
@@ -285,7 +291,7 @@ export default function UserInfoStep({
             </div>
             <div className="flex flex-row justify-start items-center ml-1">
               {passwordErrorNumber ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
+                <FontAwesomeIcon icon={faXmark} className="text-md text-red ml-0.5 mr-2.5" />
               ) : (
                 <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
               )}
