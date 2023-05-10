@@ -419,7 +419,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
           {/* breadcrumb row */}
           <div className="relative right-6 mb-6 -top-2">
             <NavHeader
-              pageName={t('dashboard:title')}
+              pageName={t('dashboard.title')}
               currentEnv={
                 userAvailableEnvs?.filter((envir) => envir.slug === envFromTop)[0].name || ''
               }

@@ -95,8 +95,8 @@ export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
       <FormProvider {...method}>
         <form autoComplete="off">
           {/* breadcrumb row */}
-          <div className="relative right-6">
-            <NavHeader pageName={t('dashboard:title')} isProjectRelated />
+          <div className="relative right-5">
+            <NavHeader pageName={t('dashboard.title')} isProjectRelated />
           </div>
           <div className="mt-6">
             <p className="text-3xl font-semibold text-bunker-100">Secrets Overview</p>
@@ -161,7 +161,7 @@ export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
             <div
               className={`${
                 isDashboardSecretEmpty ? '' : ''
-              } no-scrollbar::-webkit-scrollbar mt-3 border rounded-md border-mineshaft-600 flex h-full max-h-[calc(100vh-370px)] w-full min-w-[60.3rem] flex-grow flex-row items-start justify-center overflow-x-hidden no-scrollbar`}
+              } no-scrollbar::-webkit-scrollbar mt-3 flex h-full max-h-[calc(100vh-370px)] w-full min-w-[60.3rem] flex-grow flex-row items-start justify-center overflow-x-hidden rounded-md border border-mineshaft-600 no-scrollbar`}
             >
               {!isDashboardSecretEmpty && (
                 <TableContainer className="border-none">
@@ -190,7 +190,7 @@ export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
                 </div>
               )}
               {/* In future, we should add an option to add environments here
-                <div className="ml-10 h-full flex items-start justify-center">
+                <div className="flex items-start justify-center h-full ml-10">
                   <Button
                     leftIcon={<FontAwesomeIcon icon={faPlus}/>}
                     onClick={() => prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false })}

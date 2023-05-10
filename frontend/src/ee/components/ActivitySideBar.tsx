@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
 import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -129,10 +129,10 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
     <div
       className={`absolute border-l border-mineshaft-500 ${
         isLoading ? 'bg-bunker-800' : 'bg-bunker'
-      } fixed h-[calc(100vh-56px)] w-96 top-14 right-0 z-40 shadow-xl flex flex-col justify-between`}
+      } fixed top-14 right-0 z-40 flex h-[calc(100vh-56px)] w-96 flex-col justify-between shadow-xl`}
     >
       {isLoading ? (
-        <div className="flex items-center justify-center h-full mb-8">
+        <div className="mb-8 flex h-full items-center justify-center">
           <Image
             src="/images/loading/loading.gif"
             height={60}
@@ -142,9 +142,9 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
         </div>
       ) : (
         <div className="h-min">
-          <div className="flex flex-row px-4 py-3 border-b border-mineshaft-500 justify-between items-center">
-            <p className="font-semibold text-lg text-bunker-200">
-              {t(`activity:event.${actionMetaData?.name}`)}
+          <div className="flex flex-row items-center justify-between border-b border-mineshaft-500 px-4 py-3">
+            <p className="text-lg font-semibold text-bunker-200">
+              {t(`activity.event.${actionMetaData?.name}`)}
             </p>
             <div
               className="p-1"
@@ -153,31 +153,35 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
               tabIndex={0}
               onClick={() => toggleSidebar('')}
             >
-              <FontAwesomeIcon icon={faXmark} className="w-4 h-4 text-bunker-300 cursor-pointer" />
+              <FontAwesomeIcon icon={faXmark} className="h-4 w-4 cursor-pointer text-bunker-300" />
             </div>
           </div>
-          <div className="flex flex-col px-4 overflow-y-auto h-[calc(100vh-120px)] overflow-y-autp">
+          <div className="overflow-y-autp flex h-[calc(100vh-120px)] flex-col overflow-y-auto px-4">
             {(actionMetaData?.name === 'readSecrets' ||
               actionMetaData?.name === 'addSecrets' ||
               actionMetaData?.name === 'deleteSecrets') &&
               actionData?.map((item, id) => (
                 <div key={`secret.${id + 1}`}>
-                  <div className="text-xs text-bunker-200 mt-4 pl-1 ph-no-capture">
+                  <div className="ph-no-capture mt-4 pl-1 text-xs text-bunker-200">
                     {item.newSecretVersion.key}
                   </div>
-                  <div className='w-full font-mono text-sm break-all bg-mineshaft-600 px-2 py-0.5 rounded-md border border-mineshaft-500 text-bunker-200'>
-                    {item.newSecretVersion.value ? <span> {item.newSecretVersion.value} </span> : <span className='text-bunker-400'> EMPTY </span>}
+                  <div className="w-full break-all rounded-md border border-mineshaft-500 bg-mineshaft-600 px-2 py-0.5 font-mono text-sm text-bunker-200">
+                    {item.newSecretVersion.value ? (
+                      <span> {item.newSecretVersion.value} </span>
+                    ) : (
+                      <span className="text-bunker-400"> EMPTY </span>
+                    )}
                   </div>
                 </div>
               ))}
             {actionMetaData?.name === 'updateSecrets' &&
               actionData?.map((item, id) => (
                 <>
-                  <div className="text-xs text-bunker-200 mt-4 pl-1">
+                  <div className="mt-4 pl-1 text-xs text-bunker-200">
                     {item.newSecretVersion.key}
                   </div>
-                  <div className="break-all text-bunker-200 font-mono rounded-md overflow-hidden border border-mineshaft-500">
-                    <div className="bg-red/40 px-2 ph-no-capture">
+                  <div className="overflow-hidden break-all rounded-md border border-mineshaft-500 font-mono text-bunker-200">
+                    <div className="ph-no-capture bg-red/40 px-2">
                       -{' '}
                       {patienceDiff(
                         item.oldSecretVersion.value.split(''),
@@ -188,14 +192,16 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
                           character.bIndex !== -1 && (
                             <span
                               key={`actionData.${id + 1}.line.${lineId + 1}`}
-                              className={`${character.aIndex === -1 && 'text-bunker-100 bg-red-700/80'}`}
+                              className={`${
+                                character.aIndex === -1 && 'bg-red-700/80 text-bunker-100'
+                              }`}
                             >
                               {character.line}
                             </span>
                           )
                       )}
                     </div>
-                    <div className="break-all bg-green-500/40 px-2 ph-no-capture">
+                    <div className="ph-no-capture break-all bg-green-500/40 px-2">
                       +{' '}
                       {patienceDiff(
                         item.oldSecretVersion.value.split(''),
@@ -206,7 +212,9 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
                           character.aIndex !== -1 && (
                             <span
                               key={`actionData.${id + 1}.linev2.${lineId + 1}`}
-                              className={`${character.bIndex === -1 && 'text-bunker-100 bg-green-700/80'}`}
+                              className={`${
+                                character.bIndex === -1 && 'bg-green-700/80 text-bunker-100'
+                              }`}
                             >
                               {character.line}
                             </span>

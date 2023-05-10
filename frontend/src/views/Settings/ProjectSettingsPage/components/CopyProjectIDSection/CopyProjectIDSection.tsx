@@ -29,12 +29,12 @@ export const CopyProjectIDSection = ({ workspaceID }: Props): JSX.Element => {
 
   return (
     <div className="mb-6 mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pt-4 pb-2">
-      <p className="self-start text-xl font-semibold">{t('common:project-id')}</p>
+      <p className="self-start text-xl font-semibold">{t('common.project-id')}</p>
       <p className="mt-4 self-start text-base font-normal text-gray-400">
-        {t('settings-project:project-id-description')}
+        {t('settings.project.project-id-description')}
       </p>
       <p className="mt-2 self-start text-base font-normal text-gray-400">
-        {t('settings-project:project-id-description2')}
+        {t('settings.project.project-id-description2')}
         {/* eslint-disable-next-line react/jsx-no-target-blank */}
         <a
           href="https://infisical.com/docs/documentation/getting-started/introduction"
@@ -42,12 +42,12 @@ export const CopyProjectIDSection = ({ workspaceID }: Props): JSX.Element => {
           rel="noopener"
           className="text-primary duration-200 hover:opacity-80"
         >
-          {t('settings-project:docs')}
+          {t('settings.project.docs')}
         </a>
       </p>
-      <p className="mt-4 text-xs text-bunker-300">{t('settings-project:auto-generated')}</p>
+      <p className="mt-4 text-xs text-bunker-300">{t('settings.project.auto-generated')}</p>
       <div className="mt-2 mb-3 mr-2 flex items-center justify-end rounded-md bg-white/[0.07] text-base text-gray-400">
-        <p className="mr-2 pl-4 font-bold">{`${t('common:project-id')}:`}</p>
+        <p className="mr-2 pl-4 font-bold">{`${t('common.project-id')}:`}</p>
         <p className="mr-4">{workspaceID}</p>
         <IconButton
           ariaLabel="copy icon"
@@ -57,7 +57,7 @@ export const CopyProjectIDSection = ({ workspaceID }: Props): JSX.Element => {
         >
           <FontAwesomeIcon icon={isProjectIdCopied ? faCheck : faCopy} />
           <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">
-            {t('common:click-to-copy')}
+            {t('common.click-to-copy')}
           </span>
         </IconButton>
       </div>
