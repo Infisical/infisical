@@ -83,7 +83,6 @@
     "@types/cookie-parser": "^1.4.3",
     "@types/cors": "^2.8.12",
     "@types/express": "^4.17.14",
-    "@types/express-session": "^1.17.7",
     "@types/jest": "^29.5.0",
     "@types/jsonwebtoken": "^8.5.9",
     "@types/lodash": "^4.14.191",
