@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.312.0",
+    "@aws-sdk/client-secrets-manager": "^3.317.0",
     "@godaddy/terminus": "^4.12.0",
     "@octokit/rest": "^19.0.5",
     "@sentry/node": "^7.41.0",
