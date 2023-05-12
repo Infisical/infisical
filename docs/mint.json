@@ -188,6 +188,7 @@
         "integrations/cicd/gitlab",
         "integrations/cicd/circleci",
         "integrations/cicd/travisci",
+        "integrations/frameworks/spring-boot-maven",
         "integrations/frameworks/react",
         "integrations/frameworks/vue",
         "integrations/frameworks/express",
