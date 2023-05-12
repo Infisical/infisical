@@ -3,7 +3,8 @@ import {
   SMTP_HOST_SENDGRID, 
   SMTP_HOST_MAILGUN,
   SMTP_HOST_SOCKETLABS,
-  SMTP_HOST_ZOHOMAIL
+  SMTP_HOST_ZOHOMAIL,
+  SMTP_HOST_GMAIL
 } from '../variables';
 import SMTPConnection from 'nodemailer/lib/smtp-connection';
 import * as Sentry from '@sentry/node';
@@ -46,6 +47,12 @@ export const initSmtp = async () => {
         }
         break;
       case SMTP_HOST_ZOHOMAIL:
+        mailOpts.requireTLS = true; 
+        mailOpts.tls = {
+          ciphers: 'TLSv1.2'
+        }
+        break;
+      case SMTP_HOST_GMAIL:
         mailOpts.requireTLS = true; 
         mailOpts.tls = {
           ciphers: 'TLSv1.2'

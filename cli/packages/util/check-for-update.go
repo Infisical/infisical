@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -51,7 +52,7 @@ func CheckForUpdate() {
 }
 
 func getLatestTag(repoOwner string, repoName string) (string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/tags", repoOwner, repoName)
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", repoOwner, repoName)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err
@@ -67,29 +68,18 @@ func getLatestTag(repoOwner string, repoName string) (string, error) {
 		return "", err
 	}
 
-	var tags []struct {
-		Name string `json:"name"`
+	var releaseTag struct {
+		TagName string `json:"tag_name"`
 	}
 
-	if err := json.Unmarshal(body, &tags); err != nil {
+	if err := json.Unmarshal(body, &releaseTag); err != nil {
 		return "", fmt.Errorf("failed to unmarshal github response: %w", err)
 	}
 
-	// Filter tags with prefix "infisical-cli/"
-	prefix := "infisical-cli/v"
-	var validTags []string
-	for _, tag := range tags {
-		if strings.HasPrefix(tag.Name, prefix) {
-			validTags = append(validTags, tag.Name)
-		}
-	}
-
-	if len(validTags) == 0 {
-		return "", errors.New("no tags for the CLI is found")
-	}
+	tag_prefix := "infisical-cli/v"
 
 	// Extract the version from the first valid tag
-	version := strings.TrimPrefix(validTags[0], prefix)
+	version := strings.TrimPrefix(releaseTag.TagName, tag_prefix)
 
 	return version, nil
 }
@@ -142,4 +132,17 @@ func getLinuxPackageManager() string {
 	}
 
 	return ""
+}
+
+func IsRunningInDocker() bool {
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+
+	cgroup, err := ioutil.ReadFile("/proc/self/cgroup")
+	if err != nil {
+		return false
+	}
+
+	return strings.Contains(string(cgroup), "docker")
 }

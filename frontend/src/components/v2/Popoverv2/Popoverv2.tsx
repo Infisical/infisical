@@ -13,7 +13,7 @@ export const Popover = PopoverPrimitive.Root;
 export type PopoverContentProps = {
   children?: ReactNode;
   hideCloseBtn?: boolean;
-} & PopoverPrimitive.PopperContentProps;
+} & PopoverPrimitive.PopoverContentProps;
 
 export const PopoverContent = ({
   children,

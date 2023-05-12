@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 
-import { getTranslatedServerSideProps } from '../../../components/utilities/withTranslateProps';
 import { Button, Card, CardTitle, FormControl, Input } from '../../../components/v2';
 import saveIntegrationAccessToken from '../../api/integrations/saveIntegrationAccessToken';
 
@@ -61,5 +60,3 @@ export default function SupabaseCreateIntegrationPage() {
 }
 
 SupabaseCreateIntegrationPage.requireAuth = true;
-
-export const getServerSideProps = getTranslatedServerSideProps(['integrations']);

@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
 import { Action } from '../models';
 import { 
@@ -36,33 +35,25 @@ const createActionUpdateSecret = async ({
     workspaceId: Types.ObjectId;
     secretIds: Types.ObjectId[];
 }) => {
-    let action;
-    try {
-        const latestSecretVersions = (await getLatestNSecretSecretVersionIds({
-                secretIds,
-                n: 2
-            }))
-            .map((s) => ({
-                oldSecretVersion: s.versions[0]._id,
-                newSecretVersion: s.versions[1]._id
-            }));
-        
-        action = await new Action({
-            name,
-            user: userId,
-            serviceAccount: serviceAccountId,
-            serviceTokenData: serviceTokenDataId,
-            workspace: workspaceId,
-            payload: {
-                secretVersions: latestSecretVersions
-            }
-        }).save();
-
-    } catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-        throw new Error('Failed to create update secret action');
-    }
+    const latestSecretVersions = (await getLatestNSecretSecretVersionIds({
+            secretIds,
+            n: 2
+        }))
+        .map((s) => ({
+            oldSecretVersion: s.versions[0]._id,
+            newSecretVersion: s.versions[1]._id
+        }));
+    
+    const action = await new Action({
+        name,
+        user: userId,
+        serviceAccount: serviceAccountId,
+        serviceTokenData: serviceTokenDataId,
+        workspace: workspaceId,
+        payload: {
+            secretVersions: latestSecretVersions
+        }
+    }).save();
     
     return action;
 }
@@ -90,33 +81,25 @@ const createActionSecret = async ({
     workspaceId: Types.ObjectId;
     secretIds: Types.ObjectId[];
 }) => {
-    let action;
-    try {
-        // case: action is adding, deleting, or reading secrets
-        // -> add new secret versions
-        const latestSecretVersions = (await getLatestSecretVersionIds({
-            secretIds
-        }))
-        .map((s) => ({
-            newSecretVersion: s.versionId
-        }));
-        
-       action = await new Action({
-            name,
-            user: userId,
-            serviceAccount: serviceAccountId,
-            serviceTokenData: serviceTokenDataId,
-            workspace: workspaceId,
-            payload: {
-                secretVersions: latestSecretVersions
-            }
-        }).save(); 
-
-    } catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-        throw new Error('Failed to create action create/read/delete secret action');
-    }
+    // case: action is adding, deleting, or reading secrets
+    // -> add new secret versions
+    const latestSecretVersions = (await getLatestSecretVersionIds({
+        secretIds
+    }))
+    .map((s) => ({
+        newSecretVersion: s.versionId
+    }));
+    
+   const action = await new Action({
+        name,
+        user: userId,
+        serviceAccount: serviceAccountId,
+        serviceTokenData: serviceTokenDataId,
+        workspace: workspaceId,
+        payload: {
+            secretVersions: latestSecretVersions
+        }
+    }).save(); 
     
     return action;
 }
@@ -140,19 +123,12 @@ const createActionClient = ({
     serviceAccountId?: Types.ObjectId;
     serviceTokenDataId?: Types.ObjectId;
 }) => {
-    let action;
-    try {
-        action = new Action({
-            name,
-            user: userId,
-            serviceAccount: serviceAccountId,
-            serviceTokenData: serviceTokenDataId
-        }).save();
-    } catch (err) {
-        Sentry.setUser(null);
-        Sentry.captureException(err);
-        throw new Error('Failed to create client action');
-    }
+    const action = new Action({
+        name,
+        user: userId,
+        serviceAccount: serviceAccountId,
+        serviceTokenData: serviceTokenDataId
+    }).save();
 
     return action; 
 }
@@ -181,40 +157,34 @@ const createActionHelper = async ({
     secretIds?: Types.ObjectId[];
 }) => {
     let action;
-    try {
-        switch (name) {
-            case ACTION_LOGIN:
-            case ACTION_LOGOUT:
-                action = await createActionClient({
-                    name,
-                    userId
-                });
-                break;
-            case ACTION_ADD_SECRETS:
-            case ACTION_READ_SECRETS:
-            case ACTION_DELETE_SECRETS:
-                if (!workspaceId || !secretIds) throw new Error('Missing required params workspace id or secret ids to create action secret');
-                action = await createActionSecret({
-                    name,
-                    userId,
-                    workspaceId,
-                    secretIds
-                });
-                break;
-            case ACTION_UPDATE_SECRETS:
-                if (!workspaceId || !secretIds) throw new Error('Missing required params workspace id or secret ids to create action secret');
-                action = await createActionUpdateSecret({
-                    name,
-                    userId,
-                    workspaceId,
-                    secretIds
-                });
-                break;
-        }
-    } catch (err) {
-        Sentry.setUser(null);
-		Sentry.captureException(err);
-        throw new Error('Failed to create action');
+    switch (name) {
+        case ACTION_LOGIN:
+        case ACTION_LOGOUT:
+            action = await createActionClient({
+                name,
+                userId
+            });
+            break;
+        case ACTION_ADD_SECRETS:
+        case ACTION_READ_SECRETS:
+        case ACTION_DELETE_SECRETS:
+            if (!workspaceId || !secretIds) throw new Error('Missing required params workspace id or secret ids to create action secret');
+            action = await createActionSecret({
+                name,
+                userId,
+                workspaceId,
+                secretIds
+            });
+            break;
+        case ACTION_UPDATE_SECRETS:
+            if (!workspaceId || !secretIds) throw new Error('Missing required params workspace id or secret ids to create action secret');
+            action = await createActionUpdateSecret({
+                name,
+                userId,
+                workspaceId,
+                secretIds
+            });
+            break;
     }
     
     return action;

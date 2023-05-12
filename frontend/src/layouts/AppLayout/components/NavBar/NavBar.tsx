@@ -2,9 +2,9 @@
 /* eslint-disable react/jsx-key */
 import { Fragment, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { TFunction, useTranslation } from 'next-i18next';
 import { faGithub, faSlack } from '@fortawesome/free-brands-svg-icons';
 import { faCircleQuestion } from '@fortawesome/free-regular-svg-icons';
 import {
@@ -20,6 +20,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Menu, Transition } from '@headlessui/react';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import {TFunction} from 'i18next';
 
 import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
 import guidGenerator from '@app/components/utilities/randomId';
@@ -31,22 +32,22 @@ import { useCreateOrganization } from '@app/hooks/api/organization/queries';
 const supportOptions = (t: TFunction) => [
   [
     <FontAwesomeIcon className="pl-1.5 pr-3 text-lg" icon={faSlack} />,
-    t('nav:support.slack'),
+    t('nav.support.slack'),
     'https://infisical.com/slack'
   ],
   [
     <FontAwesomeIcon className="pl-1.5 pr-3 text-lg" icon={faBook} />,
-    t('nav:support.docs'),
+    t('nav.support.docs'),
     'https://infisical.com/docs/documentation/getting-started/introduction'
   ],
   [
     <FontAwesomeIcon className="pl-1.5 pr-3 text-lg" icon={faGithub} />,
-    t('nav:support.issue'),
+    t('nav.support.issue'),
     'https://github.com/Infisical/infisical-cli/issues'
   ],
   [
     <FontAwesomeIcon className="pl-1.5 pr-3 text-lg" icon={faEnvelope} />,
-    t('nav:support.email'),
+    t('nav.support.email'),
     'mailto:support@infisical.com'
   ]
 ];
@@ -215,7 +216,7 @@ export const Navbar = () => {
             <Menu.Items className="absolute right-0 z-[125] mt-0.5 w-68 origin-top-right divide-y divide-mineshaft-700 drop-shadow-2xl rounded-md border border-mineshaft-700 bg-mineshaft-900 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
               <div className="px-1 py-1">
                 <div className="ml-2 mt-2 self-start text-xs font-semibold tracking-wide text-gray-400">
-                  {t('nav:user.signed-in-as')}
+                  {t('nav.user.signed-in-as')}
                 </div>
                 <div
                   onKeyDown={() => null}
@@ -247,7 +248,7 @@ export const Navbar = () => {
                   currentOrg &&
                   <>
                     <div className="ml-2 mt-2 self-start text-xs font-semibold tracking-wide text-gray-400">
-                      {t('nav:user.current-organization')}
+                      {t('nav.user.current-organization')}
                     </div>
                     <div
                       onKeyDown={() => null}
@@ -282,7 +283,7 @@ export const Navbar = () => {
                     className="relative mt-1 flex cursor-pointer select-none justify-start rounded-md py-2 px-2 text-gray-400 duration-200 hover:bg-white/5 hover:text-gray-200"
                   >
                     <FontAwesomeIcon className="pl-1.5 pr-3 text-lg" icon={faCoins} />
-                    <div className="text-sm">{t('nav:user.usage-billing')}</div>
+                    <div className="text-sm">{t('nav.user.usage-billing')}</div>
                   </div>
                 </button>
                 <button
@@ -300,13 +301,13 @@ export const Navbar = () => {
                     <span className="absolute inset-y-0 left-0 flex items-center rounded-lg pl-3 pr-4">
                       <FontAwesomeIcon icon={faPlus} className="ml-1" />
                     </span>
-                    <div className="ml-1 text-sm">{t('nav:user.invite')}</div>
+                    <div className="ml-1 text-sm">{t('nav.user.invite')}</div>
                   </div>
                 </button>
               </div>
                 <div className="px-1 py-1">
                   <div className="ml-2 mt-2 self-start text-xs font-semibold tracking-wide text-gray-400">
-                    {t('nav:user.other-organizations')}
+                    {t('nav.user.other-organizations')}
                   </div>
                   {orgs && orgs?.length > 0 && (
                     <div className="flex flex-col items-start px-1">
@@ -364,7 +365,7 @@ export const Navbar = () => {
                           className="ml-1.5 mr-3 text-lg"
                           icon={faRightFromBracket}
                         />
-                        {t('common:logout')}
+                        {t('common.logout')}
                       </div>
                     </button>
                   )}

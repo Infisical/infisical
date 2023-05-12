@@ -36,11 +36,11 @@ const buttonVariants = cva(
         selected: '',
         outline_bg: '',
         // a constant color not in use on hover or click goes colorSchema color
-        star: 'text-bunker-200 bg-mineshaft-500'
+        star: 'text-bunker-200 bg-mineshaft-700 border-mineshaft-600'
       },
       isDisabled: {
-        true: 'bg-mineshaft text-white opacity-50 cursor-not-allowed',
-        false: ''
+        true: 'bg-mineshaft-700 border border-mineshaft-600 text-white opacity-50 cursor-not-allowed',
+        false: 'border border-primary-400'
       },
       isFullWidth: {
         true: 'w-full',
@@ -61,7 +61,7 @@ const buttonVariants = cva(
       {
         colorSchema: 'primary',
         variant: 'star',
-        className: 'hover:bg-primary hover:text-black'
+        className: 'bg-mineshaft-700 border border-mineshaft-600 hover:bg-primary hover:text-black hover:border-primary-400 duration-100'
       },
       {
         colorSchema: 'primary',
@@ -71,7 +71,7 @@ const buttonVariants = cva(
       {
         colorSchema: 'primary',
         variant: 'outline_bg',
-        className: 'bg-mineshaft-800 border border-mineshaft-600 hover:bg-primary/[0.15] hover:border-primary/60 text-bunker-200'
+        className: 'bg-mineshaft-700 border border-mineshaft-600 hover:bg-primary/[0.15] hover:border-primary/60 text-bunker-200 duration-100'
       },
       {
         colorSchema: 'secondary',

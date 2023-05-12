@@ -16,7 +16,6 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import onboardingCheck from '@app/components/utilities/checks/OnboardingCheck';
-import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 import { TabsObject } from '@app/components/v2/Tabs';
 
 import registerUserAction from '../api/userActions/registerUserAction';
@@ -45,7 +44,7 @@ const learningItem = ({
       <a
         target={`${link.includes('https') ? '_blank' : '_self'}`}
         rel="noopener noreferrer"
-        className={`w-full ${complete && 'opacity-30 hover:opacity-100 duration-200'}`}
+        className={`w-full ${complete && 'opacity-30 duration-200 hover:opacity-100'}`}
         href={link}
       >
         <div
@@ -59,22 +58,22 @@ const learningItem = ({
               });
             }
           }}
-          className="relative group bg-bunker-500 hover:bg-mineshaft-700 shadow-xl duration-200 rounded-md border border-mineshaft-600 pl-2 pr-6 py-2 h-[5.5rem] w-full flex items-center justify-between overflow-hidden mb-3 cursor-pointer"
+          className="group relative mb-3 flex h-[5.5rem] w-full cursor-pointer items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-bunker-500 py-2 pl-2 pr-6 shadow-xl duration-200 hover:bg-mineshaft-700"
         >
-          <div className="flex flex-row items-center mr-4">
-            <FontAwesomeIcon icon={icon} className="text-4xl mx-2 w-16" />
+          <div className="mr-4 flex flex-row items-center">
+            <FontAwesomeIcon icon={icon} className="mx-2 w-16 text-4xl" />
             {complete && (
-              <div className="bg-bunker-500 group-hover:bg-mineshaft-700 w-7 h-7 rounded-full absolute left-12 top-10 p-2 flex items-center justify-center">
-                <FontAwesomeIcon icon={faCheckCircle} className="text-4xl w-5 h-5 text-primary" />
+              <div className="absolute left-12 top-10 flex h-7 w-7 items-center justify-center rounded-full bg-bunker-500 p-2 group-hover:bg-mineshaft-700">
+                <FontAwesomeIcon icon={faCheckCircle} className="h-5 w-5 text-4xl text-primary" />
               </div>
             )}
             <div className="flex flex-col items-start">
-              <div className="text-xl font-semibold mt-0.5">{text}</div>
+              <div className="mt-0.5 text-xl font-semibold">{text}</div>
               <div className="text-sm font-normal">{subText}</div>
             </div>
           </div>
           <div
-            className={`pr-4 font-semibold text-sm w-28 text-right ${complete && 'text-primary'}`}
+            className={`w-28 pr-4 text-right text-sm font-semibold ${complete && 'text-primary'}`}
           >
             {complete ? 'Complete!' : `About ${time}`}
           </div>
@@ -95,24 +94,24 @@ const learningItem = ({
           });
         }
       }}
-      className="relative bg-bunker-700 hover:bg-bunker-500 shadow-xl duration-200 rounded-md border border-dashed border-bunker-400 pl-2 pr-6 py-2 h-[5.5rem] w-full flex items-center justify-between overflow-hidden my-1.5 cursor-pointer"
+      className="relative my-1.5 flex h-[5.5rem] w-full cursor-pointer items-center justify-between overflow-hidden rounded-md border border-dashed border-bunker-400 bg-bunker-700 py-2 pl-2 pr-6 shadow-xl duration-200 hover:bg-bunker-500"
     >
-      <div className="flex flex-row items-center mr-4">
-        <FontAwesomeIcon icon={icon} className="text-4xl mx-2 w-16" />
+      <div className="mr-4 flex flex-row items-center">
+        <FontAwesomeIcon icon={icon} className="mx-2 w-16 text-4xl" />
         {complete && (
-          <div className="bg-bunker-700 w-7 h-7 rounded-full absolute left-11 top-10">
+          <div className="absolute left-11 top-10 h-7 w-7 rounded-full bg-bunker-700">
             <FontAwesomeIcon
               icon={faCheckCircle}
-              className="absolute text-4xl left-12 top-16 w-5 h-5 text-primary"
+              className="absolute left-12 top-16 h-5 w-5 text-4xl text-primary"
             />
           </div>
         )}
         <div className="flex flex-col items-start">
-          <div className="text-xl font-semibold mt-0.5">{text}</div>
-          <div className="text-sm font-normal mt-0.5">{subText}</div>
+          <div className="mt-0.5 text-xl font-semibold">{text}</div>
+          <div className="mt-0.5 text-sm font-normal">{subText}</div>
         </div>
       </div>
-      <div className={`pr-4 font-semibold text-sm w-28 text-right ${complete && 'text-primary'}`}>
+      <div className={`w-28 pr-4 text-right text-sm font-semibold ${complete && 'text-primary'}`}>
         {complete ? 'Complete!' : `About ${time}`}
       </div>
       {complete && <div className="absolute bottom-0 left-0 h-1 w-full bg-primary" />}
@@ -144,17 +143,24 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="mx-6 lg:mx-0 w-full pt-4">
+    <div className="mx-6 w-full pt-4 lg:mx-0">
       <Head>
         <title>Infisical Guide</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      <div className="flex relative flex-col items-center text-gray-300 text-lg mx-auto px-6 max-w-3xl lg:max-w-4xl xl:max-w-5xl py-6">
-        <div className="text-5xl font-bold text-left w-full mt-12">Your quick start guide</div>
-        <div className="text-lg text-left w-full pt-2 pb-4 mb-14 text-bunker-300">
+      <div className="relative mx-auto flex max-w-3xl flex-col items-center px-6 py-6 text-lg text-gray-300 lg:max-w-4xl xl:max-w-5xl">
+        <div className="mt-12 w-full text-left text-5xl font-bold">Your quick start guide</div>
+        <div className="mb-14 w-full pt-2 pb-4 text-left text-lg text-bunker-300">
           Click on the items below and follow the instructions.
         </div>
-        <div className='absolute h-min top-0 right-0 hidden lg:block'><Image src="/images/dragon-book.svg" height={250} width={400} alt="start guise dragon illustration" /></div>
+        <div className="absolute top-0 right-0 hidden h-min lg:block">
+          <Image
+            src="/images/dragon-book.svg"
+            height={250}
+            width={400}
+            alt="start guise dragon illustration"
+          />
+        </div>
         {learningItem({
           text: 'Get to know Infisical',
           subText: '',
@@ -173,27 +179,27 @@ export default function Home() {
           userAction: 'first_time_secrets_pushed',
           link: `/dashboard/${router.query.id}`
         })}
-        <div className="relative group bg-bunker-500 shadow-xl duration-200 rounded-md border border-mineshaft-600 pl-2 pr-2 pt-4 pb-2 h-full w-full flex flex-col items-center justify-between overflow-hidden mb-3 cursor-default">
-          <div className='w-full flex flex-row items-center mb-4 pr-4'>
-            <div className="flex flex-row items-center mr-4 w-full">
-              <FontAwesomeIcon icon={faNetworkWired} className="text-4xl mx-2 w-16" />
+        <div className="group relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-bunker-500 pl-2 pr-2 pt-4 pb-2 shadow-xl duration-200">
+          <div className="mb-4 flex w-full flex-row items-center pr-4">
+            <div className="mr-4 flex w-full flex-row items-center">
+              <FontAwesomeIcon icon={faNetworkWired} className="mx-2 w-16 text-4xl" />
               {false && (
-                <div className="bg-bunker-500 group-hover:bg-mineshaft-700 w-7 h-7 rounded-full absolute left-12 top-10 p-2 flex items-center justify-center">
-                  <FontAwesomeIcon icon={faCheckCircle} className="text-4xl w-5 h-5 text-green" />
+                <div className="absolute left-12 top-10 flex h-7 w-7 items-center justify-center rounded-full bg-bunker-500 p-2 group-hover:bg-mineshaft-700">
+                  <FontAwesomeIcon icon={faCheckCircle} className="h-5 w-5 text-4xl text-green" />
                 </div>
               )}
-              <div className="flex pl-0.5 flex-col items-start">
-                <div className="text-xl font-semibold mt-0.5">Inject secrets locally</div>
-                <div className="text-sm font-normal">Replace .env files with a more secure and efficient alternative.</div>
+              <div className="flex flex-col items-start pl-0.5">
+                <div className="mt-0.5 text-xl font-semibold">Inject secrets locally</div>
+                <div className="text-sm font-normal">
+                  Replace .env files with a more secure and efficient alternative.
+                </div>
               </div>
             </div>
-            <div
-              className={`pr-4 font-semibold text-sm w-28 text-right ${false && 'text-green'}`}
-            >
+            <div className={`w-28 pr-4 text-right text-sm font-semibold ${false && 'text-green'}`}>
               About 2 min
             </div>
           </div>
-          <TabsObject/>
+          <TabsObject />
           {false && <div className="absolute bottom-0 left-0 h-1 w-full bg-green" />}
         </div>
         {learningItem({
@@ -236,5 +242,3 @@ export default function Home() {
 }
 
 Home.requireAuth = true;
-
-export const getServerSideProps = getTranslatedServerSideProps(['home']);

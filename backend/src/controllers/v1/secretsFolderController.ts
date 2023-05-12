@@ -87,3 +87,21 @@ export const deleteFolder = async (req: Request, res: Response) => {
 
   res.send()
 }
+
+// TODO: validate workspace
+export const getFolderById = async (req: Request, res: Response) => {
+  const { folderId } = req.params
+
+  const folder = await Folder.findById(folderId);
+  if (!folder) {
+    throw BadRequestError({ message: "The folder doesn't exist" })
+  }
+  // check that user is a member of the workspace
+  await validateMembership({
+    userId: req.user._id.toString(),
+    workspaceId: folder.workspace as any,
+    acceptedRoles: [ADMIN, MEMBER]
+  });
+
+  res.send({ folder })
+}

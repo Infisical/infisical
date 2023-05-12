@@ -5,14 +5,10 @@ import crypto from 'crypto';
 
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
-import {
-  faBookOpen,
-  faMobile,
-  faPlus,
-} from '@fortawesome/free-solid-svg-icons';
+import { faBookOpen, faMobile, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { yupResolver } from '@hookform/resolvers/yup';
 import queryString from 'query-string';
@@ -59,9 +55,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { createNotification } = useNotificationContext();
 
   // eslint-disable-next-line prefer-const
-  let { workspaces, currentWorkspace } = useWorkspace();
+  const { workspaces, currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
-  workspaces = workspaces.filter((ws) => ws.organization === currentOrg?._id);
   const { user } = useUser();
 
   const createWs = useCreateWorkspace();
@@ -116,7 +111,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
       ) {
         router.push('/noprojects');
       } else if (router.asPath !== '/noprojects') {
-        
         // const pathSegments = router.asPath.split('/').filter(segment => segment.length > 0);
 
         // let intendedWorkspaceId;
@@ -129,8 +123,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
         //     .split('/')
         //     [router.asPath.split('/').length - 1].split('?')[0];
         // }
-        
-        const pathSegments = router.asPath.split('/').filter(segment => segment.length > 0);
+
+        const pathSegments = router.asPath.split('/').filter((segment) => segment.length > 0);
 
         let intendedWorkspaceId;
         if (pathSegments.length >= 2 && pathSegments[0] === 'dashboard') {
@@ -146,7 +140,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
           // const lastPathSegment = router.asPath.split('/').pop().split('?');
           // [intendedWorkspaceId] = lastPathSegment;
         }
-        
+
         if (!intendedWorkspaceId) return;
 
         if (!['callback', 'create', 'authorize'].includes(intendedWorkspaceId)) {
@@ -155,7 +149,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
         // If a user is not a member of a workspace they are trying to access, just push them to one of theirs
         if (
-          !['callback', 'create', 'authorize'].includes(intendedWorkspaceId) && userWorkspaces[0]?._id !== undefined &&
+          !['callback', 'create', 'authorize'].includes(intendedWorkspaceId) &&
+          userWorkspaces[0]?._id !== undefined &&
           !userWorkspaces
             .map((workspace: { _id: string }) => workspace._id)
             .includes(intendedWorkspaceId)
@@ -247,40 +242,42 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   return (
     <>
-      <div className="hidden h-screen w-full flex-col overflow-x-hidden md:flex dark">
+      <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
         <Navbar />
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <aside className="w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between">
               <div>
                 {currentWorkspace ? (
-                  <div className="w-full p-4 mt-3 mb-4">
-                    <p className="text-xs font-semibold ml-1.5 mb-1 uppercase text-gray-400">
+                  <div className="mt-3 mb-4 w-full p-4">
+                    <p className="ml-1.5 mb-1 text-xs font-semibold uppercase text-gray-400">
                       Project
                     </p>
                     <Select
                       defaultValue={currentWorkspace?._id}
                       value={currentWorkspace?._id}
-                      className="w-full py-2.5 bg-mineshaft-600 font-medium truncate"
+                      className="w-full truncate bg-mineshaft-600 py-2.5 font-medium"
                       onValueChange={(value) => {
                         router.push(`/dashboard/${value}`);
                       }}
                       position="popper"
                       dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50"
                     >
-                      {workspaces.map(({ _id, name }) => (
-                        <SelectItem
-                          key={`ws-layout-list-${_id}`}
-                          value={_id}
-                          className={`${currentWorkspace?._id === _id && 'bg-mineshaft-600'}`}
-                        >
-                          {name}
-                        </SelectItem>
-                      ))}
+                      {workspaces
+                        .filter((ws) => ws.organization === currentOrg?._id)
+                        .map(({ _id, name }) => (
+                          <SelectItem
+                            key={`ws-layout-list-${_id}`}
+                            value={_id}
+                            className={`${currentWorkspace?._id === _id && 'bg-mineshaft-600'}`}
+                          >
+                            {name}
+                          </SelectItem>
+                        ))}
                       {/* <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" /> */}
                       <div className="w-full">
                         <Button
-                          className="w-full py-2 text-bunker-200 bg-mineshaft-700"
+                          className="w-full bg-mineshaft-700 py-2 text-bunker-200"
                           colorSchema="primary"
                           variant="outline_bg"
                           size="sm"
@@ -294,9 +291,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   </div>
                 ) : (
                   hasOrganizations && 
-                    <div className="w-full p-4 mt-3 mb-4">
+                    <div className="mt-3 mb-4 w-full p-4">
                       <Button
-                        className="w-full py-2 text-bunker-200 bg-mineshaft-500 hover:bg-primary/90 hover:text-black"
+                        className="w-full bg-mineshaft-500 py-2 text-bunker-200 hover:bg-primary/90 hover:text-black"
                         color="mineshaft"
                         size="sm"
                         onClick={() => handlePopUpOpen('addNewWs')}
@@ -314,7 +311,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           isSelected={router.asPath.includes(`/dashboard/${currentWorkspace?._id}`)}
                           icon="system-outline-90-lock-closed"
                         >
-                          {t('nav:menu.secrets')}
+                          {t('nav.menu.secrets')}
                         </MenuItem>
                       </a>
                     </Link>
@@ -324,7 +321,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           isSelected={router.asPath === `/users/${currentWorkspace?._id}`}
                           icon="system-outline-96-groups"
                         >
-                          {t('nav:menu.members')}
+                          {t('nav.menu.members')}
                         </MenuItem>
                       </a>
                     </Link>
@@ -334,18 +331,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           isSelected={router.asPath === `/integrations/${currentWorkspace?._id}`}
                           icon="system-outline-82-extension"
                         >
-                          {t('nav:menu.integrations')}
+                          {t('nav.menu.integrations')}
                         </MenuItem>
                       </a>
                     </Link>
                     <Link href={`/activity/${currentWorkspace?._id}`} passHref>
-                        <MenuItem
-                          isSelected={router.asPath === `/activity/${currentWorkspace?._id}`}
-                          // icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
-                          icon="system-outline-168-view-headline"
-                        >
-                          Audit Logs
-                        </MenuItem>
+                      <MenuItem
+                        isSelected={router.asPath === `/activity/${currentWorkspace?._id}`}
+                        // icon={<FontAwesomeIcon icon={faFileLines} size="lg" />}
+                        icon="system-outline-168-view-headline"
+                      >
+                        Audit Logs
+                      </MenuItem>
                     </Link>
                     <Link href={`/settings/project/${currentWorkspace?._id}`} passHref>
                       <a>
@@ -355,7 +352,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           }
                           icon="system-outline-109-slider-toggle-settings"
                         >
-                          {t('nav:menu.project-settings')}
+                          {t('nav.menu.project-settings')}
                         </MenuItem>
                       </a>
                     </Link>
@@ -436,7 +433,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     </FormControl>
                   )}
                 />
-                <div className="pl-1 mt-4">
+                <div className="mt-4 pl-1">
                   <Controller
                     control={control}
                     name="addMembers"
@@ -483,7 +480,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       <div className="z-[200] flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
         <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
         <p className="max-w-sm px-6 text-center text-lg text-gray-200">
-          {` ${t('common:no-mobile')} `}
+          {` ${t('common.no-mobile')} `}
         </p>
       </div>
     </>

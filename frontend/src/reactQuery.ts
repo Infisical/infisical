@@ -14,18 +14,32 @@ export const queryClient = new QueryClient({
   }
 });
 
+// memory token storage will be moved to apiRequest module until securityclient is completely depreciated
+// then all the getters will be also hidden scoped to apiRequest only
+const MemoryTokenStorage = () => {
+  let authToken: string;
+
+  return {
+    setToken: (token: string) => {
+      authToken = token;
+    },
+    getToken: () => authToken
+  };
+};
+
+const signUpTempTokenStorage = MemoryTokenStorage();
+const mfaAuthTokenStorage = MemoryTokenStorage();
+const authTokenStorage = MemoryTokenStorage();
+
 // set token in memory cache
-export const setSignupTempToken = (token: string) =>
-  queryClient.setQueryData(SIGNUP_TEMP_TOKEN_CACHE_KEY, token);
+export const setSignupTempToken = signUpTempTokenStorage.setToken;
 
-export const setMfaTempToken = (token: string) =>
-  queryClient.setQueryData(MFA_TEMP_TOKEN_CACHE_KEY, token);
+export const setMfaTempToken = mfaAuthTokenStorage.setToken;
 
-export const setAuthToken = (token: string) =>
-  queryClient.setQueryData(AUTH_TOKEN_CACHE_KEY, token);
+export const setAuthToken = authTokenStorage.setToken;
 
-export const getSignupTempToken = () => queryClient.getQueryData(SIGNUP_TEMP_TOKEN_CACHE_KEY) as string;
-export const getMfaTempToken = () => queryClient.getQueryData(MFA_TEMP_TOKEN_CACHE_KEY) as string;
-export const getAuthToken = () => queryClient.getQueryData(AUTH_TOKEN_CACHE_KEY) as string;
+export const getSignupTempToken = signUpTempTokenStorage.getToken;
+export const getMfaTempToken = mfaAuthTokenStorage.getToken;
+export const getAuthToken = authTokenStorage.getToken;
 
 export const isLoggedIn = () => Boolean(getAuthToken());

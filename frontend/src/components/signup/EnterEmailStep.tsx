@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
-import { useTranslation } from 'next-i18next';
 
 import sendVerificationEmail from '@app/pages/api/auth/SendVerificationEmail';
 
@@ -56,13 +56,13 @@ export default function EnterEmailStep({
 
   return (
     <div>
-      <div className="bg-bunker w-full max-w-md h-7/12 py-8 md:px-6 mx-1 rounded-xl drop-shadow-xl">
-        <p className="text-4xl font-semibold flex justify-center text-primary">
-          {t('signup:step1-start')}
+      <div className="h-7/12 mx-1 w-full max-w-md rounded-xl bg-bunker py-8 drop-shadow-xl md:px-6">
+        <p className="flex justify-center text-4xl font-semibold text-primary">
+          {t('signup.step1-start')}
         </p>
-        <div className="flex items-center justify-center w-5/6 md:w-full m-auto md:p-2 rounded-lg max-h-24 mt-4">
+        <div className="m-auto mt-4 flex max-h-24 w-5/6 items-center justify-center rounded-lg md:w-full md:p-2">
           <InputField
-            label={t('common:email') ?? ''}
+            label={t('common.email') ?? ''}
             onChangeHandler={setEmail}
             type="email"
             value={email}
@@ -73,11 +73,11 @@ export default function EnterEmailStep({
             autoComplete="username"
           />
         </div>
-        <div className="flex flex-col items-center justify-center w-5/6 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto mt-4 md:mt-4 text-sm text-center md:text-left">
-          <p className="text-gray-400 mt-2 md:mx-0.5">{t('signup:step1-privacy')}</p>
-          <div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
+        <div className="mx-auto mt-4 flex max-h-28 w-5/6 max-w-xs flex-col items-center justify-center text-center text-sm md:mt-4 md:w-full md:max-w-md md:p-2 md:text-left">
+          <p className="mt-2 text-gray-400 md:mx-0.5">{t('signup.step1-privacy')}</p>
+          <div className="text-l m-2 mt-6 px-8 py-1 text-lg md:m-8">
             <Button
-              text={t('signup:step1-submit') ?? ''}
+              text={t('signup.step1-submit') ?? ''}
               type="submit"
               onButtonPressed={emailCheck}
               size="lg"
@@ -85,11 +85,11 @@ export default function EnterEmailStep({
           </div>
         </div>
       </div>
-      <div className="flex flex-col items-center justify-center w-full md:pb-2 max-w-md mx-auto pt-2 mb-48 md:mb-16 mt-2">
+      <div className="mx-auto mb-48 mt-2 flex w-full max-w-md flex-col items-center justify-center pt-2 md:mb-16 md:pb-2">
         <Link href="/login">
-          <button type="button" className="w-max pb-3 hover:opacity-90 duration-200">
-            <u className="font-normal text-sm text-primary-500">
-              {t('signup:already-have-account')}
+          <button type="button" className="w-max pb-3 duration-200 hover:opacity-90">
+            <u className="text-sm font-normal text-primary-500">
+              {t('signup.already-have-account')}
             </u>
           </button>
         </Link>
