@@ -505,7 +505,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                   <IconButton
                     ariaLabel="recovery"
                     variant="outline_bg"
-                    onClick={() => setIsSecretValueHidden.toggle()}
+                    onClick={() => handlePopUpOpen('secretSnapshots')}
                   >
                     <FontAwesomeIcon icon={faCodeCommit} />
                   </IconButton>
@@ -530,7 +530,15 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                       <IconButton
                         ariaLabel="recovery"
                         variant="outline_bg"
-                        onClick={() => setIsSecretValueHidden.toggle()}
+                        onClick={() => {
+                          if (secretContainer.current) {
+                            secretContainer.current.scroll({
+                              top: 0,
+                              behavior: 'smooth'
+                            });
+                          }
+                          prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
+                        }}
                       >
                         <FontAwesomeIcon icon={faPlus} />
                       </IconButton>
