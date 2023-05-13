@@ -34,10 +34,12 @@ infisical init
 
 ## Inject environment variables
 
-```bash
-# inject environment variables into app
-infisical run -- [your application start command]
-```
+<Accordion title="Injecting environment variables directly" defaultOpen="true">
+  ```bash
+  # inject environment variables into app
+  infisical run -- [your application start command]
+  ```
+</Accordion>
 
 <Accordion title="Injecting environment variables in custom aliases">
   Custom aliases can utilize secrets from Infisical. Suppose there is a custom alias `yd` in `custom.sh` that runs `yarn dev` and needs the secrets provided by Infisical.
@@ -54,10 +56,9 @@ infisical run -- [your application start command]
   ```bash
   infisical run --command="source custom.sh && yd"
   ```
-
-  View all available options for `run` command [here](./commands/run)
 </Accordion>
 
+View all available options for `run` command [here](./commands/run)
 
 ## Examples:
 
