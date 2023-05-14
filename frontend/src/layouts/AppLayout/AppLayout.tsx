@@ -38,7 +38,6 @@ import getOrganizations from '@app/pages/api/organization/getOrgs';
 import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserProjects';
 
 import { Navbar } from './components/NavBar';
-import useInitializeOrganizatinoAndWorkspacesAfterLogin from '~/hooks/useInitializeOrganizatinoAndWorkspacesAfterLogin';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -80,7 +79,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const [workspaceSelected, setWorkspaceSelected] = useState('∞');
   const [totalOnboardingActionsDone, setTotalOnboardingActionsDone] = useState(0);
   const hasOrganizations = useUserHasOrganization();
-  useInitializeOrganizatinoAndWorkspacesAfterLogin();
 
   const { t } = useTranslation();
 
@@ -90,7 +88,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
   useEffect(() => {
     // Put a user in a workspace if they're not in one yet
-
     const putUserInWorkSpace = async () => {
       if (tempLocalStorage('orgData.id') === '') {
         const userOrgs = await getOrganizations();
@@ -104,6 +101,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       if (!orgUserProjects){
         userWorkspaces = [];
       }
+
       if (
         (userWorkspaces?.length === 0 &&
           router.asPath !== '/noprojects' &&
@@ -111,7 +109,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
           !router.asPath.includes('settings')) ||
         router.asPath === '/dashboard/undefined'
       ) {
-        router.push('/noprojects');
+          router.push('/noprojects');
       } else if (router.asPath !== '/noprojects') {
         // const pathSegments = router.asPath.split('/').filter(segment => segment.length > 0);
 

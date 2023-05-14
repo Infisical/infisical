@@ -5,6 +5,7 @@ import { useGetOrganization } from '@app/hooks/api';
 import { Organization } from '@app/hooks/api/types';
 
 import { useWorkspace } from '../WorkspaceContext';
+import useInitializeOrganizatinoAndWorkspacesAfterLogin from '~/hooks/useInitializeOrganizatinoAndWorkspacesAfterLogin';
 
 type TOrgContext = {
   orgs?: Organization[];
@@ -22,10 +23,11 @@ export const OrgProvider = ({ children }: Props): JSX.Element => {
   const router = useRouter();
   const { currentWorkspace } = useWorkspace();
   const { data: userOrgs, isLoading } = useGetOrganization();
+  useInitializeOrganizatinoAndWorkspacesAfterLogin();
 
-  if (userOrgs?.length === 0){
-    router.push('/noOrganizations');
-  }
+  // if (userOrgs?.length === 0){
+  //   router.push('/noOrganizations');
+  // }
 
   const currentWsOrgID = currentWorkspace?.organization;
 
