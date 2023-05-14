@@ -31,7 +31,7 @@ export default function Login() {
   } = useProviderAuth();
 
   if (providerAuthToken && isProviderUserCompleted === false) {
-    // router.push('/signup');
+    router.push('/signup');
   }
 
   const setLanguage = async (to: string) => {
