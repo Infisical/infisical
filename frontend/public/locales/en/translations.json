@@ -173,7 +173,8 @@
       "current-organization": "CURRENT ORGANIZATION",
       "usage-billing": "Usage & Billing",
       "invite": "Invite Members",
-      "other-organizations": "OTHER ORGANIZATION"
+      "other-organizations": "OTHER ORGANIZATION",
+      "new-organization": "New organization"
     },
     "menu": {
       "project": "PROJECT",

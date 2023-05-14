@@ -346,7 +346,7 @@ export const Navbar = () => {
                         <span className="absolute inset-y-0 left-0 flex items-center rounded-lg pl-3 pr-4">
                           <FontAwesomeIcon icon={faPlus} className="ml-1" />
                         </span>
-                        <div className="ml-1 text-sm">{t('nav:user.new-organization')}</div>
+                        <div className="ml-1 text-sm">{t('nav.user.new-organization')}</div>
                       </div>
                     </div>
                 </div>

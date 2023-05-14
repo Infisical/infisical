@@ -107,17 +107,17 @@ const attemptLogin = async (
             // TODO: in the future - move this logic elsewhere
             // because this function is about logging the user in
             // and not initializing the login details
-            const userOrgs = await getOrganizations(); 
-            const orgId = userOrgs[0]._id;
-            localStorage.setItem('orgData.id', orgId);
+            // const userOrgs = await getOrganizations(); 
+            // const orgId = userOrgs[0]._id;
+            // localStorage.setItem('orgData.id', orgId);
             
-            const orgUserProjects = await getOrganizationUserProjects({
-              orgId
-            });
+            // const orgUserProjects = await getOrganizationUserProjects({
+            //   orgId
+            // });
             
-            if (orgUserProjects.length > 0) {
-              localStorage.setItem('projectData.id', orgUserProjects[0]._id);
-            }
+            // if (orgUserProjects.length > 0) {
+            //   localStorage.setItem('projectData.id', orgUserProjects[0]._id);
+            // }
 
             if (email) {
               telemetry.identify(email);

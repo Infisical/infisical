@@ -80,14 +80,14 @@ const attemptLoginMfa = async ({
                 // TODO: in the future - move this logic elsewhere
                 // because this function is about logging the user in
                 // and not initializing the login details
-                const userOrgs = await getOrganizations(); 
-                const orgId = userOrgs[0]._id;
-                localStorage.setItem('orgData.id', orgId);
+                // const userOrgs = await getOrganizations(); 
+                // const orgId = userOrgs[0]._id;
+                // localStorage.setItem('orgData.id', orgId);
 
-                const orgUserProjects = await getOrganizationUserProjects({
-                orgId
-                });
-                localStorage.setItem('projectData.id', orgUserProjects[0]._id);
+                // const orgUserProjects = await getOrganizationUserProjects({
+                // orgId
+                // });
+                // localStorage.setItem('projectData.id', orgUserProjects[0]._id);
 
                 resolve(true);
             } catch (err) {

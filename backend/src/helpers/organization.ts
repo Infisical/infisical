@@ -173,47 +173,42 @@ const deleteOrganization = async ({
     orgId: string;
 }) => {
     let organization;
-    try {
-        // delete the organization itself
-        organization = await Organization.findByIdAndDelete(orgId);
 
-        // delete all the membersOrg
-        await MembershipOrg.deleteMany({
-            organization: orgId
-        });
+    // delete the organization itself
+    organization = await Organization.findByIdAndDelete(orgId);
 
-        await IncidentContactOrg.deleteMany({
+    // delete all the membersOrg
+    await MembershipOrg.deleteMany({
+        organization: orgId
+    });
+
+    await IncidentContactOrg.deleteMany({
+        organization: orgId
+    })
+
+    // delete all the workspaces
+    // first get all the workspaces ids
+    const workspaceIds = (
+        await Workspace.find({
             organization: orgId
         })
+    ).map((m) => m.id);
 
-        // delete all the workspaces
-        // first get all the workspaces ids
-        const workspaceIds = (
-            await Workspace.find({
-                organization: orgId
-            })
-        ).map((m) => m.id);
-
-        // delete all the workspaces one by one
-        for await (const id of workspaceIds) {
-            await deleteWorkspace({ id });
-        }
-
-        // delete the stripe customer
-        const stripe = new Stripe(await getStripeSecretKey(), {
-            apiVersion: '2022-08-01'
-        });
-
-        if (await getStripeSecretKey()) {
-            const customerId = organization?.customerId || "";
-            await stripe.customers.del(customerId);
-        }
-    } catch (err) {
-        Sentry.setUser({ email });
-        Sentry.captureException(err);
-        throw new Error(`Failed to delete organization [err=${err}]`);
+    // delete all the workspaces one by one
+    for await (const id of workspaceIds) {
+        await deleteWorkspace({ id });
     }
 
+    // delete the stripe customer
+    const stripe = new Stripe(await getStripeSecretKey(), {
+        apiVersion: '2022-08-01'
+    });
+
+    if (await getStripeSecretKey()) {
+        const customerId = organization?.customerId || "";
+        await stripe.customers.del(customerId);
+    }
+  
     return organization;
 };
 

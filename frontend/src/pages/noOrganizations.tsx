@@ -3,7 +3,6 @@ import Image from 'next/image';
 import { useRouter } from 'next/router';
 
 import Button from '@app/components/basic/buttons/Button';
-import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 
 import getOrganizationUserProjects from './api/organization/GetOrgUserProjects';
 
@@ -52,4 +51,3 @@ export default function NoOrganizations() {
 
 NoOrganizations.requireAuth = true;
 
-export const getServerSideProps = getTranslatedServerSideProps(['noprojects']);

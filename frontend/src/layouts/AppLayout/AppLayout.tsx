@@ -38,6 +38,7 @@ import getOrganizations from '@app/pages/api/organization/getOrgs';
 import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserProjects';
 
 import { Navbar } from './components/NavBar';
+import useInitializeOrganizatinoAndWorkspacesAfterLogin from '~/hooks/useInitializeOrganizatinoAndWorkspacesAfterLogin';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -79,6 +80,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const [workspaceSelected, setWorkspaceSelected] = useState('∞');
   const [totalOnboardingActionsDone, setTotalOnboardingActionsDone] = useState(0);
   const hasOrganizations = useUserHasOrganization();
+  useInitializeOrganizatinoAndWorkspacesAfterLogin();
 
   const { t } = useTranslation();
 
