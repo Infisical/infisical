@@ -3,7 +3,7 @@ import React, { useEffect } from 'react'
 import getOrganizationUserProjects from '~/pages/api/organization/GetOrgUserProjects';
 import getOrganizations from '~/pages/api/organization/getOrgs';
 
-const useInitializeOrganizatinoAndWorkspacesAfterLogin = () => {
+const useInitializeOrganizationAndWorkspacesAfterLogin = () => {
     const router = useRouter();
 
     useEffect(() => {
@@ -46,4 +46,4 @@ const useInitializeOrganizatinoAndWorkspacesAfterLogin = () => {
       }, [])
 }
 
-export default useInitializeOrganizatinoAndWorkspacesAfterLogin
+export default useInitializeOrganizationAndWorkspacesAfterLogin
