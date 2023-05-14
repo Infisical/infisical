@@ -16,7 +16,7 @@ import {
     AUTH_MODE_SERVICE_ACCOUNT,
     AUTH_MODE_SERVICE_TOKEN,
     AUTH_MODE_API_KEY,
-	OWNER
+	  OWNER
 } from '../variables';
 import {
     getStripeSecretKey,
