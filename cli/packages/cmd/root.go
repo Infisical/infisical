@@ -5,7 +5,10 @@ package cmd
 
 import (
 	"os"
+	"strings"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"github.com/Infisical/infisical-merge/packages/config"
@@ -30,8 +33,8 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	rootCmd.PersistentFlags().BoolVarP(&debugLogging, "debug", "d", false, "Enable verbose logging")
+	cobra.OnInitialize(initLog)
+	rootCmd.PersistentFlags().StringP("log-level", "l", "info", "log level (trace, debug, info, warn, error, fatal)")
 	rootCmd.PersistentFlags().StringVar(&config.INFISICAL_URL, "domain", util.INFISICAL_DEFAULT_API_URL, "Point the CLI to your own backend [can also set via environment variable name: INFISICAL_API_URL]")
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		if !util.IsRunningInDocker() {
@@ -46,5 +49,30 @@ func init() {
 			config.INFISICAL_URL = envInfisicalBackendUrl
 		}
 	}
+}
 
+func initLog() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	ll, err := rootCmd.Flags().GetString("log-level")
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	switch strings.ToLower(ll) {
+	case "trace":
+		zerolog.SetGlobalLevel(zerolog.TraceLevel)
+	case "debug":
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	case "info":
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	case "warn":
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	case "err", "error":
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	case "fatal":
+		zerolog.SetGlobalLevel(zerolog.FatalLevel)
+	default:
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
 }

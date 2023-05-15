@@ -16,9 +16,6 @@ var resetCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Example:               "infisical reset",
 	Args:                  cobra.NoArgs,
-	PreRun: func(cmd *cobra.Command, args []string) {
-		toggleDebug(cmd, args)
-	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// delete config
 		_, pathToDir, err := util.GetFullConfigFilePath()

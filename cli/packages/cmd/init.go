@@ -12,7 +12,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -30,8 +30,8 @@ var initCmd = &cobra.Command{
 		if util.WorkspaceConfigFileExistsInCurrentPath() {
 			shouldOverride, err := shouldOverrideWorkspacePrompt()
 			if err != nil {
-				log.Errorln("Unable to parse your answer")
-				log.Debug(err)
+				log.Error().Msg("Unable to parse your answer")
+				log.Debug().Err(err)
 				return
 			}
 
