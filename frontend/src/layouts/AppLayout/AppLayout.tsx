@@ -102,7 +102,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
       const orgUserProjects = await getOrganizationUserProjects({
         orgId: tempLocalStorage('orgData.id')
       });
-      console.log(555, tempLocalStorage('orgData.id'), orgUserProjects)
       const userWorkspaces = orgUserProjects;
       if (
         (userWorkspaces.length === 0 &&
