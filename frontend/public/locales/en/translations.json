@@ -17,8 +17,8 @@
     "starter": {
       "name": "Starter",
       "price-explanation": "up to 5 team members",
-      "text": "Manage any project with 5 members for free!",
-      "subtext": "$5 per member/month afterwards."
+      "text": "Manage up to 3 project with up to 5 team members for free!",
+      "subtext": ""
     },
     "professional": {
       "name": "Professional",

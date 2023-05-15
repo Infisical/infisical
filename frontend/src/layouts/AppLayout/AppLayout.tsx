@@ -28,9 +28,11 @@ import {
   Modal,
   ModalContent,
   Select,
-  SelectItem
+  SelectItem,
+  UpgradePlanModal
 } from '@app/components/v2';
-import { useOrganization, useUser, useWorkspace } from '@app/context';
+import { plans } from '@app/const';
+import { useOrganization, useSubscription, useUser, useWorkspace } from '@app/context';
 import { usePopUp } from '@app/hooks';
 import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useUploadWsKey } from '@app/hooks/api';
 import useUserHasOrganization from '@app/hooks/api/organization/useUserHasOrganization';
@@ -58,13 +60,18 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { workspaces, currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
   const { user } = useUser();
+  const { subscriptionPlan } = useSubscription();
+  const host = window.location.origin;
+  const isAddingProjectsAllowed =
+    subscriptionPlan !== plans.starter || (subscriptionPlan === plans.starter && workspaces.length < 3) || host !== 'https://app.infisical.com';
 
   const createWs = useCreateWorkspace();
   const uploadWsKey = useUploadWsKey();
   const addWsUser = useAddUserToWs();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    'addNewWs'
+    'addNewWs',
+    'upgradePlan'
   ] as const);
   const {
     control,
@@ -281,7 +288,13 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           colorSchema="primary"
                           variant="outline_bg"
                           size="sm"
-                          onClick={() => handlePopUpOpen('addNewWs')}
+                          onClick={() => {
+                            if (isAddingProjectsAllowed) {
+                              handlePopUpOpen('addNewWs')
+                            } else {
+                              handlePopUpOpen('upgradePlan');
+                            }
+                          }}
                           leftIcon={<FontAwesomeIcon icon={faPlus} />}
                         >
                           Add Project
@@ -296,7 +309,13 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         className="w-full bg-mineshaft-500 py-2 text-bunker-200 hover:bg-primary/90 hover:text-black"
                         color="mineshaft"
                         size="sm"
-                        onClick={() => handlePopUpOpen('addNewWs')}
+                        onClick={() => {
+                        if (isAddingProjectsAllowed) {
+                          handlePopUpOpen('addNewWs')
+                        } else {
+                          handlePopUpOpen('upgradePlan');
+                        }
+                      }}
                         leftIcon={<FontAwesomeIcon icon={faPlus} />}
                       >
                         Add Project
@@ -472,6 +491,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
               </form>
             </ModalContent>
           </Modal>
+          <UpgradePlanModal
+            isOpen={popUp.upgradePlan.isOpen}
+            onOpenChange={(isOpen) => handlePopUpToggle('upgradePlan', isOpen)}
+            text="You have exceeded the number of projects allowed on the free plan."
+          />
           <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">
             {children}
           </main>
