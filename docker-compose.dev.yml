@@ -49,7 +49,6 @@ services:
     volumes:
       - ./frontend/src:/app/src/ # mounted whole src to avoid missing reload on new files
       - ./frontend/public:/app/public
-      - ./frontend/next-i18next.config.js:/app/next-i18next.config.js
     env_file: .env
     environment:
       - NEXT_PUBLIC_ENV=development
