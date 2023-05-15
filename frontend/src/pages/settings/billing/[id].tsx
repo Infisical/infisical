@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Head from 'next/head';
-import { plans as plansConstant } from 'public/data/frequentConstants';
 
 import Plan from '@app/components/billing/Plan';
 import NavHeader from '@app/components/navigation/NavHeader';
+import { plans as plansConstant } from '@app/const';
 
 import getOrganizationSubscriptions from '../../api/organization/GetOrgSubscription';
 import getOrganizationUsers from '../../api/organization/GetOrgUsers';
@@ -32,7 +32,7 @@ export default function SettingsBilling() {
       name: 'Team',
       price: '$8',
       priceExplanation: t('billing.professional.price-explanation')!,
-      text: 'For teams that want to improve their efficiency and security.',
+      text: 'Unlimited members, up to 10 projects. Additional developer experience features.',
       buttonTextMain: t('billing.upgrade')!,
       buttonTextSecondary: t('billing.learn-more')!,
       current: currentPlan === plansConstant.team
