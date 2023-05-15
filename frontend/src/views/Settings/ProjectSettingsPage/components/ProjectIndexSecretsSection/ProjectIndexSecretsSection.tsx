@@ -11,7 +11,7 @@ export const ProjectIndexSecretsSection = ({
     onEnableBlindIndices
 }: Props) => {
     return (
-        <div className="rounded-md bg-white/5 p-6">
+        <div className="rounded-md bg-white/5 p-6 my-2">
             <p className="mb-4 text-xl font-semibold">Blind Indices</p>
             <p className="mb-4 text-sm text-gray-400">
                 Your project, created before the introduction of blind indexing, contains unindexed secrets. To access individual secrets by name through the SDK and public API, please enable blind indexing.
