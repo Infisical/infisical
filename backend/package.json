@@ -9,7 +9,7 @@
     "@types/libsodium-wrappers": "^0.7.10",
     "argon2": "^0.30.3",
     "await-to-js": "^3.0.0",
-    "aws-sdk": "^2.1360.0",
+    "aws-sdk": "^2.1362.0",
     "axios": "^1.3.5",
     "axios-retry": "^3.4.0",
     "bcrypt": "^5.1.0",
