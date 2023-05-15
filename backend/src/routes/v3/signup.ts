@@ -10,7 +10,7 @@ router.post(
     authLimiter,
     body('email').exists().isString().trim().notEmpty().isEmail(),
 	body('firstName').exists().isString().trim().notEmpty(),
-	body('lastName').exists().isString().trim().notEmpty(),
+	body('lastName').exists().isString().trim().optional({nullable: true}),
 	body('protectedKey').exists().isString().trim().notEmpty(),
 	body('protectedKeyIV').exists().isString().trim().notEmpty(),
 	body('protectedKeyTag').exists().isString().trim().notEmpty(),
@@ -21,6 +21,7 @@ router.post(
 	body('salt').exists().isString().trim().notEmpty(),
 	body('verifier').exists().isString().trim().notEmpty(),
 	body('organizationName').exists().isString().trim().notEmpty(),
+	body('providerAuthToken').isString().trim().optional({nullable: true}),
     validateRequest,
     signupController.completeAccountSignup,
 );
