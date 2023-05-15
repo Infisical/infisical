@@ -1,7 +1,8 @@
+import { useEffect } from 'react'
 import { useRouter } from 'next/router';
-import React, { useEffect } from 'react'
-import getOrganizationUserProjects from '~/pages/api/organization/GetOrgUserProjects';
-import getOrganizations from '~/pages/api/organization/getOrgs';
+
+import getOrganizations from '@app/pages/api/organization/getOrgs';
+import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserProjects';
 
 const useInitializeOrganizationAndWorkspacesAfterLogin = () => {
     const router = useRouter();

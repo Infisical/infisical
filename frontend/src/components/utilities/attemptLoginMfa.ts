@@ -3,8 +3,6 @@ import jsrp from 'jsrp';
 
 import login1 from '@app/pages/api/auth/Login1';
 import verifyMfaToken from '@app/pages/api/auth/verifyMfaToken';
-import getOrganizations from '@app/pages/api/organization/getOrgs';
-import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserProjects';
 import KeyService from '@app/services/KeyService';
 
 import { saveTokenToLocalStorage } from './saveTokenToLocalStorage';

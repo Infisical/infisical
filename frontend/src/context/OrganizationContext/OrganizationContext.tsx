@@ -1,11 +1,10 @@
 import { createContext, ReactNode, useContext, useMemo } from 'react';
-import { useRouter } from 'next/router';
 
 import { useGetOrganization } from '@app/hooks/api';
 import { Organization } from '@app/hooks/api/types';
+import useInitializeOrganizationAndWorkspacesAfterLogin from '@app/hooks/useInitializeOrganizatinoAndWorkspacesAfterLogin';
 
 import { useWorkspace } from '../WorkspaceContext';
-import useInitializeOrganizationAndWorkspacesAfterLogin from '~/hooks/useInitializeOrganizatinoAndWorkspacesAfterLogin';
 
 type TOrgContext = {
   orgs?: Organization[];
@@ -20,14 +19,9 @@ type Props = {
 };
 
 export const OrgProvider = ({ children }: Props): JSX.Element => {
-  const router = useRouter();
   const { currentWorkspace } = useWorkspace();
   const { data: userOrgs, isLoading } = useGetOrganization();
   useInitializeOrganizationAndWorkspacesAfterLogin();
-
-  // if (userOrgs?.length === 0){
-  //   router.push('/noOrganizations');
-  // }
 
   const currentWsOrgID = currentWorkspace?.organization;
 
