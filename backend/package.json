@@ -10,7 +10,7 @@
     "argon2": "^0.30.3",
     "await-to-js": "^3.0.0",
     "aws-sdk": "^2.1362.0",
-    "axios": "^1.3.5",
+    "axios": "^1.3.6",
     "axios-retry": "^3.4.0",
     "bcrypt": "^5.1.0",
     "bigint-conversion": "^2.4.0",
