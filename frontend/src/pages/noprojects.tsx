@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 
@@ -32,10 +33,15 @@ export default function NoProjects() {
 
   return (
     <div className="mr-auto flex h-full w-11/12 flex-col items-center justify-center text-center text-lg text-gray-300">
+      <Head>
+        <title>No Projects | Infisical</title>
+        <link rel="icon" href="/infisical.ico" />
+        <meta property="og:image" content="/images/message.png" />
+      </Head>
       <div className="mb-6 mt-16 mr-16">
         <Image src="/images/dragon-cant-find.svg" height={270} width={436} alt="google logo" />
       </div>
-      <div className="mb-8 rounded-md bg-bunker-500 px-4 py-6 text-bunker-300 shadow-xl">
+      <div className="mb-8 rounded-md bg-mineshaft-900 border border-mineshaft-700 px-4 py-6 text-bunker-300 shadow-xl">
         <div className="max-w-md">
           You are not part of any projects in this organization yet. When you are, they will appear
           here.

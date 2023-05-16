@@ -19,7 +19,8 @@ export const getOrganizations = async (req: Request, res: Response) => {
 	try {
 		organizations = (
 			await MembershipOrg.find({
-				user: req.user._id
+				user: req.user._id,
+				status: ACCEPTED
 			}).populate('organization')
 		).map((m) => m.organization);
 	} catch (err) {

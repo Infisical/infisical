@@ -184,6 +184,7 @@ export const OrgMembersTable = ({
                             defaultValue={role}
                             isDisabled={userId === user?._id}
                             className="w-40 bg-mineshaft-600"
+                            dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
                             onValueChange={(selectedRole) =>
                               onRoleChange(orgMembershipId, selectedRole)
                             }
@@ -196,7 +197,7 @@ export const OrgMembersTable = ({
                           </Select>
                         )}
                         {((status === 'invited' || status === 'verified') && serverDetails?.emailConfigured) && (
-                          <Button className='w-40' colorSchema="secondary" onClick={() => onInviteMember(email)}>
+                          <Button className='w-40' colorSchema="primary" variant="outline_bg" onClick={() => onInviteMember(email)}>
                             Resend Invite
                           </Button>
                         )}
@@ -218,8 +219,10 @@ export const OrgMembersTable = ({
                           ))
                         ) : (
                           <div className='flex flex-row'>
-                            <Tag colorSchema="red">This user isn&apos;t part of any projects yet</Tag>
-                            {router.query.id !== 'undefined' && <button 
+                            {((status === 'invited' || status === 'verified') && serverDetails?.emailConfigured) 
+                            ? <Tag colorSchema="red">This user hasn&apos;t accepted the invite yet</Tag>
+                            : <Tag colorSchema="red">This user isn&apos;t part of any projects yet</Tag>}
+                            {router.query.id !== 'undefined' && !((status === 'invited' || status === 'verified') && serverDetails?.emailConfigured) && <button 
                               type="button"
                               onClick={() => router.push(`/users/${router.query.id}`)}
                               className='text-sm bg-mineshaft w-max px-1.5 py-0.5 hover:bg-primary duration-200 hover:text-black cursor-pointer rounded-sm'

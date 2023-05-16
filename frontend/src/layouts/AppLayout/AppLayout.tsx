@@ -255,7 +255,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
           <aside className="w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between">
               <div>
-                {currentWorkspace ? (
+                {currentWorkspace && router.asPath !== "/noprojects" ? (
                   <div className="mt-3 mb-4 w-full p-4">
                     <p className="ml-1.5 mb-1 text-xs font-semibold uppercase text-gray-400">
                       Project
@@ -306,10 +306,12 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   hasOrganizations && 
                     <div className="mt-3 mb-4 w-full p-4">
                       <Button
-                        className="w-full bg-mineshaft-500 py-2 text-bunker-200 hover:bg-primary/90 hover:text-black"
-                        color="mineshaft"
+                        className="border-mineshaft-500"
+                        colorSchema="primary"
+                      variant="outline_bg"
                         size="sm"
-                        onClick={() => {
+                        isFullWidth
+                      onClick={() => {
                         if (isAddingProjectsAllowed) {
                           handlePopUpOpen('addNewWs')
                         } else {
@@ -322,7 +324,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </Button>
                     </div>
                 )}
-                <div className={`${currentWorkspace ? 'block' : 'hidden'}`}>
+                <div className={`${currentWorkspace && router.asPath !== "/noprojects" ? 'block' : 'hidden'}`}>
                   <Menu>
                     <Link href={`/dashboard/${currentWorkspace?._id}`} passHref>
                       <a>

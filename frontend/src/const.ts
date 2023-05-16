@@ -30,7 +30,7 @@ interface Mapping {
 }
 
 const plansDev: Mapping = {
-  starter: 'prod_Mb4ATFT5QAHoPM',
+  starter: 'prod_Nt6kPvYsVBuzVH',
   team: 'prod_NEpD2WMXUS2eDn',
   professional: 'prod_Mb4CetZ2jE7jdl',
   enterprise: 'licence_key_required'
@@ -43,6 +43,6 @@ const plansProd: Mapping = {
   enterprise: 'licence_key_required'
 };
 
-export const plans = plansProd || plansDev;
+export const plans = plansDev || plansProd;
 
 export const leaveConfirmDefaultMessage = 'Your changes will be lost if you leave the page. Are you sure you want to continue?';

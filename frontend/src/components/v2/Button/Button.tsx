@@ -16,7 +16,7 @@ const buttonVariants = cva(
     'button',
     'transition-all',
     'font-inter font-medium',
-    'cursor-default',
+    'cursor-pointer',
     'inline-flex items-center justify-center',
     'relative',
     'whitespace-nowrap'
