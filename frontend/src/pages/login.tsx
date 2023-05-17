@@ -88,7 +88,7 @@ export default function Login() {
     }
 
     if (step === 2) {
-      <MFAStep
+      return <MFAStep
         email={email || providerEmail}
         password={password}
         providerAuthToken={providerAuthToken}
