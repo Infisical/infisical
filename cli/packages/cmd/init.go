@@ -19,7 +19,7 @@ import (
 // runCmd represents the run command
 var initCmd = &cobra.Command{
 	Use:                   "init",
-	Short:                 "Used to initialize your project with Infisical",
+	Short:                 "Used to connect your local project with Infisical project",
 	DisableFlagsInUseLine: true,
 	Example:               "infisical init",
 	Args:                  cobra.ExactArgs(0),

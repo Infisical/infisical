@@ -52,8 +52,6 @@ func init() {
 }
 
 func initLog() {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	ll, err := rootCmd.Flags().GetString("log-level")
 	if err != nil {

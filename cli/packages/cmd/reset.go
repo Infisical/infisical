@@ -12,7 +12,7 @@ import (
 
 var resetCmd = &cobra.Command{
 	Use:                   "reset",
-	Short:                 "Used delete all Infisical related data on your machine",
+	Short:                 "Used to delete all Infisical related data on your machine",
 	DisableFlagsInUseLine: true,
 	Example:               "infisical reset",
 	Args:                  cobra.NoArgs,
