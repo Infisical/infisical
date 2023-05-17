@@ -1554,8 +1554,14 @@ const syncSecretsGitLab = async ({
   accessToken: string;
 }) => {
   try {
+    interface GitLabSecret {
+      key: string;
+      value: string;
+      environment_scope: string;
+    }
+
     // get secrets from gitlab
-    const getSecretsRes = (
+    const getSecretsRes: GitLabSecret[] = (
       await request.get(
         `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables`,
         { 
@@ -1565,7 +1571,11 @@ const syncSecretsGitLab = async ({
           },
         }
       )
-    ).data;
+    )
+    .data
+    .filter((secret: GitLabSecret) => 
+      secret.environment_scope === integration.targetEnvironment
+    );
 
     for await (const key of Object.keys(secrets)) {
       const existingSecret = getSecretsRes.find((s: any) => s.key == key);
@@ -1578,7 +1588,7 @@ const syncSecretsGitLab = async ({
             protected: false,
             masked: false,
             raw: false,
-            environment_scope:'*'
+            environment_scope: integration.targetEnvironment
           },
           {
             headers: {
@@ -1589,21 +1599,23 @@ const syncSecretsGitLab = async ({
           }
         )
       } else {
-        // udpate secret 
-        await request.put(
-          `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${existingSecret.key}`,
-          {
-            ...existingSecret,
-            value: secrets[existingSecret.key]
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-              "Accept-Encoding": "application/json",
+        // update secret 
+        if (secrets[key] !== existingSecret.value) {
+          await request.put(
+            `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${existingSecret.key}?filter[environment_scope]=${integration.targetEnvironment}`,
+            {
+              ...existingSecret,
+              value: secrets[existingSecret.key]
             },
-          }
-        )
+            {
+              headers: {
+                "Authorization": `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+                "Accept-Encoding": "application/json",
+              },
+            }
+          );
+        }
       }
     }
 
@@ -1611,7 +1623,7 @@ const syncSecretsGitLab = async ({
     for await (const sec of getSecretsRes) {
       if (!(sec.key in secrets)) {
         await request.delete(
-          `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${sec.key}`,
+          `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${sec.key}?filter[environment_scope]=${integration.targetEnvironment}`,
           {
             headers: {
               "Authorization": `Bearer ${accessToken}`,
@@ -1620,7 +1632,7 @@ const syncSecretsGitLab = async ({
         );
       }
     }
-  }catch (err) {
+  } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error("Failed to sync secrets to GitLab");
