@@ -106,7 +106,7 @@ const initializePassport = async () => {
       req.providerAuthToken = providerAuthToken;
       cb(null, profile);
     } catch (err) {
-      cb(err);
+      cb(null, false);
     }
   }));
 }
