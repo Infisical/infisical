@@ -6,12 +6,12 @@ import SecurityClient, { PROVIDER_AUTH_TOKEN_KEY } from '@app/components/utiliti
 export const useProviderAuth = () => {
     const [email, setEmail] = useState<string>('');
     const [userId, setUserId] = useState<string>('');
-    const [providerAuthToken, setProviderAuthToken] = useState<string>(
-        SecurityClient.getProviderAuthToken() || ''
-    );
+    const [providerAuthToken, setProviderAuthToken] = useState<string>('');
     const [isProviderUserCompleted, setIsProviderUserCompleted] = useState<boolean>();
 
     useEffect(() => {
+        SecurityClient.setProviderAuthToken('')
+
         const handleStorageChange = (event: StorageEvent) => {
             if (event.storageArea === localStorage && event.key === PROVIDER_AUTH_TOKEN_KEY) {
                 if (event.newValue) {
@@ -36,17 +36,6 @@ export const useProviderAuth = () => {
         };
 
         window.addEventListener('storage', handleStorageChange);
-
-        if (providerAuthToken) {
-            const {
-                userId: resultUserId,
-                email: resultEmail,
-                isUserCompleted: resultIsUserCompleted,
-            } = jwt_decode(providerAuthToken) as any;
-            setEmail(resultEmail);
-            setUserId(resultUserId);
-            setIsProviderUserCompleted(resultIsUserCompleted);
-        }
 
         return () => {
             window.removeEventListener('storage', handleStorageChange);
