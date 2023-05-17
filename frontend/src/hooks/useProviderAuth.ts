@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import jwt_decode from 'jwt-decode';
 
+import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
 import SecurityClient, { PROVIDER_AUTH_TOKEN_KEY } from '@app/components/utilities/SecurityClient';
 
 export const useProviderAuth = () => {
@@ -8,12 +9,19 @@ export const useProviderAuth = () => {
     const [userId, setUserId] = useState<string>('');
     const [providerAuthToken, setProviderAuthToken] = useState<string>('');
     const [isProviderUserCompleted, setIsProviderUserCompleted] = useState<boolean>();
+    const { createNotification } = useNotificationContext();
+    const AUTH_ERROR_KEY = 'PROVIDER_AUTH_ERROR'
 
     useEffect(() => {
         SecurityClient.setProviderAuthToken('')
+        window.localStorage.removeItem(AUTH_ERROR_KEY);
 
         const handleStorageChange = (event: StorageEvent) => {
-            if (event.storageArea === localStorage && event.key === PROVIDER_AUTH_TOKEN_KEY) {
+            if (event.storageArea !== localStorage) {
+                return;
+            }
+
+            if (event.key === PROVIDER_AUTH_TOKEN_KEY) {
                 if (event.newValue) {
                     const token = event.newValue;
                     const {
@@ -32,6 +40,18 @@ export const useProviderAuth = () => {
                     setIsProviderUserCompleted(false);
                 }
                 setProviderAuthToken(event.newValue || '');
+            }
+
+            if (event.key === AUTH_ERROR_KEY) {
+                if (event.newValue) {
+                    createNotification({
+                        text: 'An error has occured during login.',
+                        type: 'error',
+                        timeoutMs: 6000,
+                    })
+
+                    window.localStorage.removeItem(AUTH_ERROR_KEY);
+                }
             }
         };
 

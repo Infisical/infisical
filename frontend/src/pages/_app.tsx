@@ -57,9 +57,11 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
   ) {
     return (
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <Component {...pageProps} />
-        </AuthProvider>
+        <NotificationProvider>
+          <AuthProvider>
+            <Component {...pageProps} />
+          </AuthProvider>
+        </NotificationProvider>
       </QueryClientProvider>
     );
   }
