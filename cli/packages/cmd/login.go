@@ -22,7 +22,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/argon2"
 )
@@ -44,12 +44,11 @@ var loginCmd = &cobra.Command{
 	Use:                   "login",
 	Short:                 "Login into your Infisical account",
 	DisableFlagsInUseLine: true,
-	PreRun:                toggleDebug,
 	Run: func(cmd *cobra.Command, args []string) {
 		currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
 		// if the key can't be found or there is an error getting current credentials from key ring, allow them to override
 		if err != nil && (strings.Contains(err.Error(), "The specified item could not be found in the keyring") || strings.Contains(err.Error(), "unable to get key from Keyring") || strings.Contains(err.Error(), "GetUserCredsFromKeyRing")) {
-			log.Debug(err)
+			log.Debug().Err(err)
 		} else if err != nil {
 			util.HandleError(err)
 		}
@@ -97,8 +96,8 @@ var loginCmd = &cobra.Command{
 
 		loginOneResponse, loginTwoResponse, err := getFreshUserCredentials(email, password)
 		if err != nil {
-			log.Infoln("Unable to authenticate with the provided credentials, please try again")
-			log.Debugln(err)
+			fmt.Println("Unable to authenticate with the provided credentials, please try again")
+			log.Debug().Err(err)
 			return
 		}
 
@@ -152,7 +151,7 @@ var loginCmd = &cobra.Command{
 		var decryptedPrivateKey []byte
 
 		if loginTwoResponse.EncryptionVersion == 1 {
-			log.Debug("Login version 1")
+			log.Debug().Msg("Login version 1")
 			encryptedPrivateKey, _ := base64.StdEncoding.DecodeString(loginTwoResponse.EncryptedPrivateKey)
 			tag, err := base64.StdEncoding.DecodeString(loginTwoResponse.Tag)
 			if err != nil {
@@ -175,7 +174,7 @@ var loginCmd = &cobra.Command{
 			decryptedPrivateKey = computedDecryptedPrivateKey
 
 		} else if loginTwoResponse.EncryptionVersion == 2 {
-			log.Debug("Login version 2")
+			log.Debug().Msg("Login version 2")
 			protectedKey, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKey)
 			if err != nil {
 				util.HandleError(err)
@@ -239,7 +238,7 @@ var loginCmd = &cobra.Command{
 		}
 
 		if string(decryptedPrivateKey) == "" || email == "" || loginTwoResponse.Token == "" {
-			log.Debugf("[decryptedPrivateKey=%s] [email=%s] [loginTwoResponse.Token=%s]", string(decryptedPrivateKey), email, loginTwoResponse.Token)
+			log.Debug().Msgf("[decryptedPrivateKey=%s] [email=%s] [loginTwoResponse.Token=%s]", string(decryptedPrivateKey), email, loginTwoResponse.Token)
 			util.PrintErrorMessageAndExit("We were unable to fetch required details to complete your login. Run with -d to see more info")
 		}
 
@@ -252,9 +251,9 @@ var loginCmd = &cobra.Command{
 		err = util.StoreUserCredsInKeyRing(userCredentialsToBeStored)
 		if err != nil {
 			currentVault, _ := util.GetCurrentVaultBackend()
-			log.Errorf("Unable to store your credentials in system vault [%s]. Rerun with flag -d to see full logs", currentVault)
-			log.Errorln("To trouble shoot further, read https://infisical.com/docs/cli/faq")
-			log.Debugln(err)
+			log.Error().Msgf("Unable to store your credentials in system vault [%s]. Rerun with flag -d to see full logs", currentVault)
+			log.Error().Msgf("\nTo trouble shoot further, read https://infisical.com/docs/cli/faq")
+			log.Debug().Err(err)
 			return
 		}
 
@@ -397,7 +396,7 @@ func askForLoginCredentials() (email string, password string, err error) {
 }
 
 func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2Response, *api.GetLoginTwoV2Response, error) {
-	log.Debugln("getFreshUserCredentials:", "email", email, "password", password)
+	log.Debug().Msg(fmt.Sprint("getFreshUserCredentials: ", "email", email, "password: ", password))
 	httpClient := resty.New()
 	httpClient.SetRetryCount(5)
 

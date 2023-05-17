@@ -19,7 +19,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/Infisical/infisical-merge/packages/visualize"
 	"github.com/go-resty/resty/v2"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +28,6 @@ var secretsCmd = &cobra.Command{
 	Short:                 "Used to create, read update and delete secrets",
 	Use:                   "secrets",
 	DisableFlagsInUseLine: true,
-	PreRun:                toggleDebug,
 	Args:                  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
@@ -73,7 +72,6 @@ var secretsGetCmd = &cobra.Command{
 	Use:                   "get [secrets]",
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.MinimumNArgs(1),
-	PreRun:                toggleDebug,
 	Run:                   getSecretsByNames,
 }
 
@@ -83,7 +81,6 @@ var secretsGenerateExampleEnvCmd = &cobra.Command{
 	Use:                   "generate-example-env",
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.NoArgs,
-	PreRun:                toggleDebug,
 	Run:                   generateExampleEnv,
 }
 
@@ -92,7 +89,6 @@ var secretsSetCmd = &cobra.Command{
 	Short:                 "Used set secrets",
 	Use:                   "set [secrets]",
 	DisableFlagsInUseLine: true,
-	PreRun:                toggleDebug,
 	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		util.RequireLocalWorkspaceFile()
@@ -134,7 +130,7 @@ var secretsSetCmd = &cobra.Command{
 		currentUsersPrivateKey, _ := base64.StdEncoding.DecodeString(loggedInUserDetails.UserCredentials.PrivateKey)
 
 		if len(currentUsersPrivateKey) == 0 || len(encryptedWorkspaceKeySenderPublicKey) == 0 {
-			log.Debugf("Missing credentials for generating plainTextEncryptionKey: [currentUsersPrivateKey=%s] [encryptedWorkspaceKeySenderPublicKey=%s]", currentUsersPrivateKey, encryptedWorkspaceKeySenderPublicKey)
+			log.Debug().Msgf("Missing credentials for generating plainTextEncryptionKey: [currentUsersPrivateKey=%s] [encryptedWorkspaceKeySenderPublicKey=%s]", currentUsersPrivateKey, encryptedWorkspaceKeySenderPublicKey)
 			util.PrintErrorMessageAndExit("Some required user credentials are missing to generate your [plainTextEncryptionKey]. Please run [infisical login] then try again")
 		}
 
@@ -278,7 +274,6 @@ var secretsDeleteCmd = &cobra.Command{
 	Short:                 "Used to delete secrets by name",
 	Use:                   "delete [secrets]",
 	DisableFlagsInUseLine: true,
-	PreRun:                toggleDebug,
 	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
