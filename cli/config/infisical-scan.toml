@@ -14,7 +14,7 @@ title = "gitleaks config"
 [allowlist]
 description = "global allow lists"
 paths = [
-    '''gitleaks.toml''',
+    '''infisical-scan.toml''',
     '''(.*?)(jpg|gif|doc|docx|zip|xls|pdf|bin|svg|socket)$''',
     '''(go.mod|go.sum)$''',
     '''gradle.lockfile''',

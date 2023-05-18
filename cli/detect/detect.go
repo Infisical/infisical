@@ -58,7 +58,7 @@ const (
 	ProtectType
 	ProtectStagedType
 
-	gitleaksAllowSignature = "gitleaks:allow"
+	gitleaksAllowSignature = "infisical-scan:ignore"
 )
 
 // Detector is the main detector struct
