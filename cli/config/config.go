@@ -32,7 +32,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-//go:embed gitleaks.toml
+//go:embed infisical-scan.toml
 var DefaultConfig string
 
 // use to keep track of how many configs we can extend
@@ -40,6 +40,10 @@ var DefaultConfig string
 var extendDepth int
 
 const maxExtendDepth = 2
+
+const DefaultScanConfigFileName = ".infisical-scan.toml"
+const DefaultScanConfigEnvName = "INFISICAL_SCAN_CONFIG"
+const DefaultInfisicalIgnoreFineName = ".infisicalignore"
 
 // ViperConfig is the config struct used by the Viper config package
 // to parse the config file. This struct does not include regular expressions.

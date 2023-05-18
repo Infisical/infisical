@@ -54,7 +54,7 @@ func TestDetect(t *testing.T) {
 		{
 			cfgName: "simple",
 			fragment: Fragment{
-				Raw:      `awsToken := \"AKIALALEMEL33243OKIA\ // gitleaks:allow"`,
+				Raw:      `awsToken := \"AKIALALEMEL33243OKIA\ // infisical-scan:ignore"`,
 				FilePath: "tmp.go",
 			},
 			expectedFindings: []report.Finding{},
@@ -64,7 +64,7 @@ func TestDetect(t *testing.T) {
 			fragment: Fragment{
 				Raw: `awsToken := \
 
-		        \"AKIALALEMEL33243OKIA\ // gitleaks:allow"
+		        \"AKIALALEMEL33243OKIA\ // infisical-scan:ignore"
 
 		        `,
 				FilePath: "tmp.go",
@@ -76,7 +76,7 @@ func TestDetect(t *testing.T) {
 			fragment: Fragment{
 				Raw: `awsToken := \"AKIALALEMEL33243OKIA\"
 
-		                // gitleaks:allow"
+		                // infisical-scan:ignore"
 
 		                `,
 				FilePath: "tmp.go",
