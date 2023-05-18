@@ -58,7 +58,7 @@
     "i18next": "^22.4.15",
     "i18next-browser-languagedetector": "^7.0.1",
     "i18next-http-backend": "^2.2.0",
-    "infisical-node": "^1.0.37",
+    "infisical-node": "^1.1.3",
     "jspdf": "^2.5.1",
     "jsrp": "^0.2.4",
     "lottie-react": "^2.4.0",
