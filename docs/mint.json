@@ -140,7 +140,7 @@
         "cli/overview",
         "cli/usage",
         {
-          "group": "Commands",
+          "group": "Core commands",
           "pages": [
             "cli/commands/login",
             "cli/commands/init",
@@ -149,9 +149,17 @@
             "cli/commands/export",
             "cli/commands/vault",
             "cli/commands/user",
-            "cli/commands/reset"
+            "cli/commands/reset",
+            {
+              "group": "infisical scan",
+              "pages": [
+                "cli/commands/scan",
+                "cli/commands/scan-git-changes"
+              ]
+            }
           ]
         },
+        "cli/scanning-overview",
         "cli/project-config",
         "cli/faq"
       ]
