@@ -89,6 +89,26 @@ git clone https://github.com/Infisical/infisical && cd infisical && copy .env.ex
 
 Create an account at `http://localhost:80`
 
+### Scan your code for leaks 
+On top managing secrets, you can also scan for leaked secrets in your files, directories and git repositories. To scan your full git history run:
+
+```
+infisical scan --verbose
+```
+
+To scan a non git repository, run the above command with --no-git flag.
+
+You can also scan your uncommitted git changes by running the following command:
+
+```
+infisical scan git-changes --verbose
+
+infisical scan git-changes --staged --verbose
+```
+
+Lean about Infisical's code scanning feature [here](https://infisical.com/docs/cli/scanning-overview) 
+
+
 ## Open-source vs. paid
 
 This repo available under the [MIT expat license](https://github.com/Infisical/infisical/blob/main/LICENSE), with the exception of the `ee` directory which will contain premium enterprise features requiring a Infisical license in the future. 
