@@ -27,11 +27,11 @@ export default function Login() {
     providerAuthToken,
     email: providerEmail,
     setProviderAuthToken,
-    isProviderUserCompleted,
+    isProviderUserCompleted
   } = useProviderAuth();
 
   if (providerAuthToken && isProviderUserCompleted === false) {
-    router.push('/signup');
+    router.push(`/signup?providerAuthToken=${encodeURIComponent(providerAuthToken)}`);
   }
 
   const setLanguage = async (to: string) => {
@@ -57,7 +57,6 @@ export default function Login() {
   }, []);
 
   const renderView = (loginStep: number) => {
-
     if (providerAuthToken && step === 1) {
       return (
         <PasswordInputStep
@@ -68,7 +67,7 @@ export default function Login() {
           setProviderAuthToken={setProviderAuthToken}
           setStep={setStep}
         />
-      )
+      );
     }
 
     if (isLoginWithEmail && loginStep === 1) {
@@ -80,26 +79,28 @@ export default function Login() {
           setPassword={setPassword}
           setStep={setStep}
         />
-      )
+      );
     }
 
     if (!isLoginWithEmail && loginStep === 1) {
-      return <InitialLoginStep setIsLoginWithEmail={setIsLoginWithEmail} />
+      return <InitialLoginStep setIsLoginWithEmail={setIsLoginWithEmail} />;
     }
 
     if (step === 2) {
-      return <MFAStep
-        email={email || providerEmail}
-        password={password}
-        providerAuthToken={providerAuthToken}
-      />
+      return (
+        <MFAStep
+          email={email || providerEmail}
+          password={password}
+          providerAuthToken={providerAuthToken}
+        />
+      );
     }
 
-    return <div />
-  }
+    return <div />;
+  };
 
   return (
-    <div className="bg-gradient-to-tr from-bunker-500 to-bunker-800 h-screen flex flex-col justify-center pb-28 px-6 ">
+    <div className="flex h-screen flex-col justify-center bg-gradient-to-tr from-bunker-500 to-bunker-800 px-6 pb-28 ">
       <Head>
         <title>{t('common.head-title', { title: t('login.title') })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -108,7 +109,7 @@ export default function Login() {
         <meta name="og:description" content={t('login.og-description') ?? ''} />
       </Head>
       <Link href="/">
-        <div className="flex justify-center mb-4 mt-20">
+        <div className="mb-4 mt-20 flex justify-center">
           <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
         </div>
       </Link>

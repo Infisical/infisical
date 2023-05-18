@@ -34,14 +34,10 @@ export default function SignUp() {
   const { data: serverDetails } = useFetchServerStatus();
   const [isSignupWithEmail, setIsSignupWithEmail] = useState(false);
   const { t } = useTranslation();
-  const {
-    email: providerEmail,
-    providerAuthToken,
-    isProviderUserCompleted,
-  } = useProviderAuth();
+  const { email: providerEmail, providerAuthToken, isProviderUserCompleted } = useProviderAuth();
 
   if (providerAuthToken && isProviderUserCompleted) {
-    router.push('/login');
+    router.push(`/login?providerAuthToken=${encodeURIComponent(providerAuthToken)}`);
   }
 
   if (providerAuthToken && step < 3) {
@@ -99,11 +95,11 @@ export default function SignUp() {
 
   const renderView = (registerStep: number) => {
     if (isSignupWithEmail && registerStep === 1) {
-      return <EnterEmailStep email={email} setEmail={setEmail} incrementStep={incrementStep} />
+      return <EnterEmailStep email={email} setEmail={setEmail} incrementStep={incrementStep} />;
     }
 
     if (!isSignupWithEmail && registerStep === 1) {
-      return <InitialSignupStep setIsSignupWithEmail={setIsSignupWithEmail} />
+      return <InitialSignupStep setIsSignupWithEmail={setIsSignupWithEmail} />;
     }
 
     if (registerStep === 2) {
@@ -114,7 +110,7 @@ export default function SignUp() {
           setCode={setCode}
           codeError={codeError}
         />
-      )
+      );
     }
 
     if (registerStep === 3) {
@@ -132,7 +128,7 @@ export default function SignUp() {
           setAttributionSource={setAttributionSource}
           providerAuthToken={providerAuthToken}
         />
-      )
+      );
     }
 
     if (registerStep === 4) {
@@ -143,18 +139,18 @@ export default function SignUp() {
           password={password}
           name={name}
         />
-      )
+      );
     }
 
     if (serverDetails?.emailConfigured) {
-      return <TeamInviteStep />
+      return <TeamInviteStep />;
     }
 
-    return ""
-  }
+    return '';
+  };
 
   return (
-    <div className="bg-gradient-to-tr from-bunker-600 to-bunker-800 min-h-screen flex flex-col justify-center pb-28 px-6 ">
+    <div className="flex min-h-screen flex-col justify-center bg-gradient-to-tr from-bunker-600 to-bunker-800 px-6 pb-28 ">
       <Head>
         <title>{t('common.head-title', { title: t('signup.title') })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -162,12 +158,10 @@ export default function SignUp() {
         <meta property="og:title" content={t('signup.og-title') as string} />
         <meta name="og:description" content={t('signup.og-description') as string} />
       </Head>
-      <div className="flex justify-center mb-8 mt-20">
+      <div className="mb-8 mt-20 flex justify-center">
         <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />
       </div>
-      <form onSubmit={(e) => e.preventDefault()}>
-        {renderView(step)}
-      </form>
+      <form onSubmit={(e) => e.preventDefault()}>{renderView(step)}</form>
     </div>
   );
 }
