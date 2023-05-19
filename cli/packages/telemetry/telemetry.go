@@ -52,13 +52,13 @@ func (t *Telemetry) GetDistinctId() (string, error) {
 		outputErr = err
 	}
 
-	userDetails, err := util.GetCurrentLoggedInUserDetails()
+	infisicalConfig, err := util.GetConfigFile()
 	if err != nil {
 		outputErr = err
 	}
 
-	if userDetails.IsUserLoggedIn && userDetails.UserCredentials.Email != "" {
-		distinctId = userDetails.UserCredentials.Email
+	if infisicalConfig.LoggedInUserEmail != "" {
+		distinctId = infisicalConfig.LoggedInUserEmail
 	} else if machineId != "" {
 		distinctId = "anonymous_cli_" + machineId
 	} else {
