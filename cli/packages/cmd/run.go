@@ -126,7 +126,7 @@ var runCmd = &cobra.Command{
 
 		log.Debug().Msgf("injecting the following environment variables into shell: %v", env)
 
-		Telemetry.CaptureEvent("cli-command:run", posthog.NewProperties().Set("secretsCount", len(secrets)).Set("environment", environmentName).Set("isUsingServiceToken", infisicalToken != "").Set("single-command", strings.Join(args, " ")).Set("multi-command", cmd.Flag("command").Value.String()))
+		Telemetry.CaptureEvent("cli-command:run", posthog.NewProperties().Set("secretsCount", len(secrets)).Set("environment", environmentName).Set("isUsingServiceToken", infisicalToken != "").Set("single-command", strings.Join(args, " ")).Set("multi-command", cmd.Flag("command").Value.String()).Set("version", util.CLI_VERSION))
 
 		if cmd.Flags().Changed("command") {
 			command := cmd.Flag("command").Value.String()
