@@ -30,7 +30,9 @@ import (
 
 	"github.com/Infisical/infisical-merge/config"
 	"github.com/Infisical/infisical-merge/detect"
+	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/Infisical/infisical-merge/report"
+	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -270,6 +272,8 @@ var scanCmd = &cobra.Command{
 			}
 		}
 
+		Telemetry.CaptureEvent("cli-command:scan", posthog.NewProperties().Set("risks", len(findings)).Set("version", util.CLI_VERSION))
+
 		// write report if desired
 		reportPath, _ := cmd.Flags().GetString("report-path")
 		ext, _ := cmd.Flags().GetString("report-format")
@@ -374,6 +378,8 @@ var scanGitChangesCmd = &cobra.Command{
 		} else {
 			log.Info().Msg("no leaks found")
 		}
+
+		Telemetry.CaptureEvent("cli-command:scan git-changes", posthog.NewProperties().Set("risks", len(findings)).Set("version", util.CLI_VERSION))
 
 		reportPath, _ := cmd.Flags().GetString("report-path")
 		ext, _ := cmd.Flags().GetString("report-format")

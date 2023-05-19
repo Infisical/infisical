@@ -8,6 +8,7 @@ import (
 
 	"github.com/99designs/keyring"
 	"github.com/Infisical/infisical-merge/packages/util"
+	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -48,6 +49,8 @@ var vaultSetCmd = &cobra.Command{
 			}
 
 			fmt.Printf("\nSuccessfully, switched vault backend from [%s] to [%s]. Please login in again to store your login details in the new vault with [infisical login]", currentVaultBackend, wantedVaultTypeName)
+
+			Telemetry.CaptureEvent("cli-command:vault set", posthog.NewProperties().Set("currentVault", currentVaultBackend).Set("wantedVault", wantedVaultTypeName).Set("version", util.CLI_VERSION))
 		} else {
 			log.Error().Msgf("The requested vault type [%s] is not available on this system. Only the following vault backends are available for you system: %s", wantedVaultTypeName, keyring.AvailableBackends())
 		}
@@ -75,6 +78,8 @@ func printAvailableVaultBackends() {
 	if err != nil {
 		log.Error().Msgf("printAvailableVaultBackends: unable to print the available vault backend because of error [err=%s]", err)
 	}
+
+	Telemetry.CaptureEvent("cli-command:vault", posthog.NewProperties().Set("currentVault", currentVaultBackend).Set("version", util.CLI_VERSION))
 
 	fmt.Printf("\n\nYou are currently using [%s] vault to store your login credentials", string(currentVaultBackend))
 }
