@@ -12,8 +12,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Infisical/infisical-merge/packages/config"
+	"github.com/Infisical/infisical-merge/packages/telemetry"
 	"github.com/Infisical/infisical-merge/packages/util"
 )
+
+var Telemetry *telemetry.Telemetry
 
 var rootCmd = &cobra.Command{
 	Use:               "infisical",
@@ -35,6 +38,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initLog)
 	rootCmd.PersistentFlags().StringP("log-level", "l", "info", "log level (trace, debug, info, warn, error, fatal)")
+	rootCmd.PersistentFlags().Bool("telemetry", true, "Infisical collects non-sensitive telemetry data to enhance features and improve user experience. Participation is voluntary")
 	rootCmd.PersistentFlags().StringVar(&config.INFISICAL_URL, "domain", util.INFISICAL_DEFAULT_API_URL, "Point the CLI to your own backend [can also set via environment variable name: INFISICAL_API_URL]")
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		if !util.IsRunningInDocker() {
@@ -49,6 +53,9 @@ func init() {
 			config.INFISICAL_URL = envInfisicalBackendUrl
 		}
 	}
+
+	isTelemetryOn, _ := rootCmd.PersistentFlags().GetBool("telemetry")
+	Telemetry = telemetry.NewTelemetry(isTelemetryOn)
 }
 
 func initLog() {

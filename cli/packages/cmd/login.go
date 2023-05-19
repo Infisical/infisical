@@ -22,6 +22,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
+	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/argon2"
@@ -275,6 +276,7 @@ var loginCmd = &cobra.Command{
 		plainBold.Println("\nQuick links")
 		fmt.Println("- Learn to inject secrets into your application at https://infisical.com/docs/cli/usage")
 		fmt.Println("- Stuck? Join our slack for quick support https://infisical.com/slack")
+		Telemetry.CaptureEvent("cli-command:login", posthog.NewProperties().Set("infisical-backend", config.INFISICAL_URL).Set("version", util.CLI_VERSION))
 	},
 }
 

@@ -15,6 +15,9 @@ monorepo:
   tag_prefix: infisical-cli/
   dir: cli
 
+env:
+  - POSTHOG_API_KEY_FOR_CLI={{ .Env.POSTHOG_API_KEY_FOR_CLI }}
+
 builds:
   - id: darwin-build
     binary: infisical

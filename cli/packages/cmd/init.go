@@ -12,6 +12,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
+	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -78,6 +79,9 @@ var initCmd = &cobra.Command{
 		if err != nil {
 			util.HandleError(err)
 		}
+
+		Telemetry.CaptureEvent("cli-command:init", posthog.NewProperties().Set("version", util.CLI_VERSION))
+
 	},
 }
 
