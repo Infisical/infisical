@@ -1,12 +1,12 @@
 package telemetry
 
 import (
-	"os"
-
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/denisbrodbeck/machineid"
 	"github.com/posthog/posthog-go"
 )
+
+var POSTHOG_API_KEY_FOR_CLI string
 
 type Telemetry struct {
 	isEnabled     bool
@@ -14,10 +14,9 @@ type Telemetry struct {
 }
 
 func NewTelemetry(telemetryIsEnabled bool) *Telemetry {
-	posthogAPIKey := os.Getenv("POSTHOG_API_KEY_FOR_CLI")
-	if posthogAPIKey != "" {
+	if POSTHOG_API_KEY_FOR_CLI != "" {
 		client, _ := posthog.NewWithConfig(
-			posthogAPIKey,
+			POSTHOG_API_KEY_FOR_CLI,
 			posthog.Config{},
 		)
 

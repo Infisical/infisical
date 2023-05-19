@@ -15,13 +15,12 @@ monorepo:
   tag_prefix: infisical-cli/
   dir: cli
 
-env:
-  - POSTHOG_API_KEY_FOR_CLI={{ .Env.POSTHOG_API_KEY_FOR_CLI }}
-
 builds:
   - id: darwin-build
     binary: infisical
-    ldflags: -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Version }}
+    ldflags:
+      - -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Version }}
+      - -X github.com/Infisical/infisical-merge/packages/telemetry.POSTHOG_API_KEY_FOR_CLI={{ .Env.POSTHOG_API_KEY_FOR_CLI }}
     flags:
       - -trimpath
     env:
@@ -39,7 +38,9 @@ builds:
     env:
       - CGO_ENABLED=0
     binary: infisical
-    ldflags: -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Version }}
+    ldflags:
+      - -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Version }}
+      - -X github.com/Infisical/infisical-merge/packages/telemetry.POSTHOG_API_KEY_FOR_CLI={{ .Env.POSTHOG_API_KEY_FOR_CLI }}
     flags:
       - -trimpath
     goos:
