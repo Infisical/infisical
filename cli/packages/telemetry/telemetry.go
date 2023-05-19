@@ -14,11 +14,17 @@ type Telemetry struct {
 }
 
 func NewTelemetry(telemetryIsEnabled bool) *Telemetry {
-	client, _ := posthog.NewWithConfig(
-		os.Getenv("POSTHOG_API_KEY_FOR_CLI"),
-		posthog.Config{},
-	)
-	return &Telemetry{isEnabled: telemetryIsEnabled, posthogClient: client}
+	posthogAPIKey := os.Getenv("POSTHOG_API_KEY_FOR_CLI")
+	if posthogAPIKey != "" {
+		client, _ := posthog.NewWithConfig(
+			posthogAPIKey,
+			posthog.Config{},
+		)
+
+		return &Telemetry{isEnabled: telemetryIsEnabled, posthogClient: client}
+	} else {
+		return &Telemetry{isEnabled: false}
+	}
 }
 
 func (t *Telemetry) CaptureEvent(eventName string, properties posthog.Properties) {
@@ -33,9 +39,9 @@ func (t *Telemetry) CaptureEvent(eventName string, properties posthog.Properties
 			Event:      eventName,
 			Properties: properties,
 		})
-	}
 
-	defer t.posthogClient.Close()
+		defer t.posthogClient.Close()
+	}
 }
 
 func (t *Telemetry) GetDistinctId() (string, error) {
@@ -55,7 +61,7 @@ func (t *Telemetry) GetDistinctId() (string, error) {
 	if userDetails.IsUserLoggedIn && userDetails.UserCredentials.Email != "" {
 		distinctId = userDetails.UserCredentials.Email
 	} else if machineId != "" {
-		distinctId = "anonymous_cli" + machineId
+		distinctId = "anonymous_cli_" + machineId
 	} else {
 		distinctId = ""
 	}
