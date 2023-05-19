@@ -12,7 +12,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@emotion/css": "^11.10.0",
+    "@emotion/css": "^11.10.8",
     "@emotion/server": "^11.10.0",
     "@fontsource/inter": "^4.5.15",
     "@fortawesome/fontawesome-svg-core": "^6.1.2",
