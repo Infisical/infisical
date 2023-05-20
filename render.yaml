@@ -17,6 +17,8 @@ services:
         generateValue: true
       - key: JWT_AUTH_SECRET
         generateValue: true
+      - key: JWT_PROVIDER_AUTH_SECRET
+        generateValue: true
       - key: MONGO_URL
         sync: false
       - key: PORT
