@@ -7,7 +7,7 @@ import {
 } from '../../helpers/signup';
 import { issueAuthTokens } from '../../helpers/auth';
 import { INVITED, ACCEPTED } from '../../variables';
-import request from '../../config/request';
+import { standardRequest } from '../../config/request';
 import { getLoopsApiKey, getHttpsEnabled } from '../../config';
 
 /**
@@ -109,7 +109,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 
 		// sending a welcome email to new users
 		if (await getLoopsApiKey()) {
-			await request.post("https://app.loops.so/api/v1/events/send", {
+			await standardRequest.post("https://app.loops.so/api/v1/events/send", {
 				"email": email,
 				"eventName": "Sign Up",
 				"firstName": firstName,

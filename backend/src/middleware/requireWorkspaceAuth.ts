@@ -31,7 +31,7 @@ const requireWorkspaceAuth = ({
 		const environment = locationEnvironment ? req[locationEnvironment]?.environment : undefined;
 		
 		// validate clients
-		const { membership } = await validateClientForWorkspace({
+		const { membership, workspace } = await validateClientForWorkspace({
 			authData: req.authData,
 			workspaceId: new Types.ObjectId(workspaceId),
 			environment,
@@ -42,6 +42,10 @@ const requireWorkspaceAuth = ({
 		
 		if (membership) {
 			req.membership = membership;
+		}
+		
+		if (workspace) {
+			req.workspace = workspace;
 		}
 
 		return next();

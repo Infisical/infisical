@@ -1,6 +1,6 @@
 import { Octokit } from "@octokit/rest";
 import { IIntegrationAuth } from "../models";
-import request from "../config/request";
+import { standardRequest } from "../config/request";
 import {
   INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_AWS_PARAMETER_STORE,
@@ -134,7 +134,7 @@ const getApps = async ({
  */
 const getAppsHeroku = async ({ accessToken }: { accessToken: string }) => {
   const res = (
-    await request.get(`${INTEGRATION_HEROKU_API_URL}/apps`, {
+    await standardRequest.get(`${INTEGRATION_HEROKU_API_URL}/apps`, {
       headers: {
         Accept: "application/vnd.heroku+json; version=3",
         Authorization: `Bearer ${accessToken}`,
@@ -164,7 +164,7 @@ const getAppsVercel = async ({
   accessToken: string;
 }) => {
   const res = (
-    await request.get(`${INTEGRATION_VERCEL_API_URL}/v9/projects`, {
+    await standardRequest.get(`${INTEGRATION_VERCEL_API_URL}/v9/projects`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Accept-Encoding": "application/json",
@@ -208,7 +208,7 @@ const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
       filter: 'all'
     });
 
-    const { data } = await request.get(
+    const { data } = await standardRequest.get(
       `${INTEGRATION_NETLIFY_API_URL}/api/v1/sites`,
       {
         params,
@@ -310,7 +310,7 @@ const getAppsGithub = async ({ accessToken }: { accessToken: string }) => {
  */
 const getAppsRender = async ({ accessToken }: { accessToken: string }) => {
   const res = (
-    await request.get(`${INTEGRATION_RENDER_API_URL}/v1/services`, {
+    await standardRequest.get(`${INTEGRATION_RENDER_API_URL}/v1/services`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json",
@@ -358,7 +358,7 @@ const getAppsRailway = async ({ accessToken }: { accessToken: string }) => {
         projects: { edges },
       },
     },
-  } = await request.post(
+  } = await standardRequest.post(
     INTEGRATION_RAILWAY_API_URL,
     {
       query,
@@ -402,7 +402,7 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
   `;
 
   const res = (
-    await request.post(
+    await standardRequest.post(
       INTEGRATION_FLYIO_API_URL,
       {
         query,
@@ -436,7 +436,7 @@ const getAppsFlyio = async ({ accessToken }: { accessToken: string }) => {
  */
 const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
   const res = (
-    await request.get(`${INTEGRATION_CIRCLECI_API_URL}/v1.1/projects`, {
+    await standardRequest.get(`${INTEGRATION_CIRCLECI_API_URL}/v1.1/projects`, {
       headers: {
         "Circle-Token": accessToken,
         "Accept-Encoding": "application/json",
@@ -455,7 +455,7 @@ const getAppsCircleCI = async ({ accessToken }: { accessToken: string }) => {
 
 const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
   const res = (
-    await request.get(`${INTEGRATION_TRAVISCI_API_URL}/repos`, {
+    await standardRequest.get(`${INTEGRATION_TRAVISCI_API_URL}/repos`, {
       headers: {
         Authorization: `token ${accessToken}`,
         "Accept-Encoding": "application/json",
@@ -502,7 +502,7 @@ const getAppsGitlab = async ({
         per_page: String(perPage),
       });
 
-      const { data } = await request.get(
+      const { data } = await standardRequest.get(
         `${INTEGRATION_GITLAB_API_URL}/v4/groups/${teamId}/projects`,
         {
           params,
@@ -530,7 +530,7 @@ const getAppsGitlab = async ({
     // case: fetch projects for individual in GitLab
 
     const { id } = (
-      await request.get(`${INTEGRATION_GITLAB_API_URL}/v4/user`, {
+      await standardRequest.get(`${INTEGRATION_GITLAB_API_URL}/v4/user`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Accept-Encoding": "application/json",
@@ -544,7 +544,7 @@ const getAppsGitlab = async ({
         per_page: String(perPage),
       });
 
-      const { data } = await request.get(
+      const { data } = await standardRequest.get(
         `${INTEGRATION_GITLAB_API_URL}/v4/users/${id}/projects`,
         {
           params,
@@ -581,7 +581,7 @@ const getAppsGitlab = async ({
  * @returns {String} apps.name - name of Supabase app
  */
 const getAppsSupabase = async ({ accessToken }: { accessToken: string }) => {
-  const { data } = await request.get(
+  const { data } = await standardRequest.get(
     `${INTEGRATION_SUPABASE_API_URL}/v1/projects`,
     {
       headers: {

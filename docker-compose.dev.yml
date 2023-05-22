@@ -37,6 +37,8 @@ services:
       - MONGO_URL=mongodb://root:example@mongo:27017/?authSource=admin
     networks:
       - infisical-dev
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   frontend:
     container_name: infisical-dev-frontend
