@@ -12,9 +12,8 @@ import (
 	"runtime"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/fatih/color"
+	"github.com/rs/zerolog/log"
 )
 
 func CheckForUpdate() {
@@ -23,7 +22,7 @@ func CheckForUpdate() {
 	}
 	latestVersion, err := getLatestTag("Infisical", "infisical")
 	if err != nil {
-		log.Debug(err)
+		log.Debug().Err(err)
 		// do nothing and continue
 		return
 	}

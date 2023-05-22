@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import queryString from 'query-string';
 
-import { Button, Card, CardTitle, FormControl, Select, SelectItem } from '../../../components/v2';
+import { 
+  Button, 
+  Card, 
+  CardTitle, 
+  FormControl, 
+  Input,
+  Select, 
+  SelectItem
+} from '../../../components/v2';
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById,
@@ -37,6 +45,7 @@ export default function GitLabCreateIntegrationPage() {
   const [targetEntity, setTargetEntity] = useState(gitLabEntities[0].value);
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
   const [targetAppId, setTargetAppId] = useState('');
+  const [targetEnvironment, setTargetEnvironment] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -86,7 +95,7 @@ export default function GitLabCreateIntegrationPage() {
           )?.name ?? null,
         appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
-        targetEnvironment: null,
+        targetEnvironment: targetEnvironment === '' ? '*' : targetEnvironment,
         targetEnvironmentId: null,
         targetService: null,
         targetServiceId: null,
@@ -188,6 +197,15 @@ export default function GitLabCreateIntegrationPage() {
               </SelectItem>
             )}
           </Select>
+        </FormControl>
+        <FormControl
+          label="GitLab Environment Scope (Optional)"
+        >
+          <Input 
+            placeholder="*" 
+            value={targetEnvironment} 
+            onChange={(e) => setTargetEnvironment(e.target.value)} 
+          />
         </FormControl>
         <Button
           onClick={handleButtonClick}
