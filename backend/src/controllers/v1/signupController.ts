@@ -21,14 +21,6 @@ export const beginEmailSignup = async (req: Request, res: Response) => {
 	try {
 		email = req.body.email;
 
-		if (await getInviteOnlySignup()) {
-			// Only one user can create an account without being invited. The rest need to be invited in order to make an account
-			const userCount = await User.countDocuments({})
-			if (userCount != 0) {
-				throw BadRequestError({ message: "New user sign ups are not allowed at this time. You must be invited to sign up." })
-			}
-		}
-
 		const user = await User.findOne({ email }).select('+publicKey');
 		if (user && user?.publicKey) {
 			// case: user has already completed account
@@ -72,6 +64,14 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
 			return res.status(403).send({
 				error: 'Failed email verification for complete user'
 			});
+		}
+
+		if (await getInviteOnlySignup()) {
+			// Only one user can create an account without being invited. The rest need to be invited in order to make an account
+			const userCount = await User.countDocuments({})
+			if (userCount != 0) {
+				throw BadRequestError({ message: "New user sign ups are not allowed at this time. You must be invited to sign up." })
+			}
 		}
 
 		// verify email

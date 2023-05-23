@@ -5,7 +5,7 @@ const client = new InfisicalClient({
 });
 
 export const getPort = async () => (await client.getSecret('PORT')).secretValue || 4000;
-export const getInviteOnlySignup = async () => (await client.getSecret('INVITE_ONLY_SIGNUP')).secretValue == undefined ? false : (await client.getSecret('INVITE_ONLY_SIGNUP')).secretValue;
+export const getInviteOnlySignup = async () => (await client.getSecret('INVITE_ONLY_SIGNUP')).secretValue === 'true'
 export const getEncryptionKey = async () => (await client.getSecret('ENCRYPTION_KEY')).secretValue;
 export const getSaltRounds = async () => parseInt((await client.getSecret('SALT_ROUNDS')).secretValue) || 10;
 export const getJwtAuthLifetime = async () => (await client.getSecret('JWT_AUTH_LIFETIME')).secretValue || '10d';
