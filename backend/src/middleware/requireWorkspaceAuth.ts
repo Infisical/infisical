@@ -1,8 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
-import { validateMembership } from '../helpers/membership';
 import { validateClientForWorkspace } from '../helpers/workspace';
-import { UnauthorizedRequestError } from '../utils/errors';
 
 type req = 'params' | 'body' | 'query';
 

@@ -9,6 +9,7 @@ import { issueAuthTokens } from '../../helpers/auth';
 import { INVITED, ACCEPTED } from '../../variables';
 import { standardRequest } from '../../config/request';
 import { getLoopsApiKey, getHttpsEnabled } from '../../config';
+import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
 
 /**
  * Complete setting up user by adding their personal and auth information as part of the
@@ -85,6 +86,19 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 		await initializeDefaultOrg({
 			organizationName,
 			user
+		});
+
+		// update organization membership statuses that are
+		// invited to completed with user attached
+		const membershipsToUpdate = await MembershipOrg.find({
+			inviteEmail: email,
+			status: INVITED
+		});
+		
+		membershipsToUpdate.forEach(async (membership) => {
+			await updateSubscriptionOrgQuantity({
+				organizationId: membership.organization.toString()
+			});
 		});
 
 		// update organization membership statuses that are
@@ -206,9 +220,20 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 
 		if (!user)
 			throw new Error('Failed to complete account for non-existent user');
-
+		
 		// update organization membership statuses that are
 		// invited to completed with user attached
+		const membershipsToUpdate = await MembershipOrg.find({
+			inviteEmail: email,
+			status: INVITED
+		});
+		
+		membershipsToUpdate.forEach(async (membership) => {
+			await updateSubscriptionOrgQuantity({
+				organizationId: membership.organization.toString()
+			});
+		});
+
 		await MembershipOrg.updateMany(
 			{
 				inviteEmail: email,
