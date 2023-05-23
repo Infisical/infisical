@@ -27,7 +27,7 @@ const requireSignupAuth = async (
 	if(AUTH_TOKEN_VALUE === null) return next(BadRequestError({message: 'Missing Authorization Body in the request header'}))
 	
 	const decodedToken = <jwt.UserIDJwtPayload>(
-		jwt.verify(AUTH_TOKEN_VALUE, await getJwtSignupSecret())
+		jwt.verify(AUTH_TOKEN_VALUE, getJwtSignupSecret())
 	);
 
 	const user = await User.findOne({

@@ -19,8 +19,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/Infisical/infisical-merge/packages/visualize"
 	"github.com/go-resty/resty/v2"
-	"github.com/posthog/posthog-go"
-	"github.com/rs/zerolog/log"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -29,6 +28,7 @@ var secretsCmd = &cobra.Command{
 	Short:                 "Used to create, read update and delete secrets",
 	Use:                   "secrets",
 	DisableFlagsInUseLine: true,
+	PreRun:                toggleDebug,
 	Args:                  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
@@ -64,7 +64,6 @@ var secretsCmd = &cobra.Command{
 		}
 
 		visualize.PrintAllSecretDetails(secrets)
-		Telemetry.CaptureEvent("cli-command:secrets", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
 	},
 }
 
@@ -74,6 +73,7 @@ var secretsGetCmd = &cobra.Command{
 	Use:                   "get [secrets]",
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.MinimumNArgs(1),
+	PreRun:                toggleDebug,
 	Run:                   getSecretsByNames,
 }
 
@@ -83,6 +83,7 @@ var secretsGenerateExampleEnvCmd = &cobra.Command{
 	Use:                   "generate-example-env",
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.NoArgs,
+	PreRun:                toggleDebug,
 	Run:                   generateExampleEnv,
 }
 
@@ -91,6 +92,7 @@ var secretsSetCmd = &cobra.Command{
 	Short:                 "Used set secrets",
 	Use:                   "set [secrets]",
 	DisableFlagsInUseLine: true,
+	PreRun:                toggleDebug,
 	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		util.RequireLocalWorkspaceFile()
@@ -132,7 +134,7 @@ var secretsSetCmd = &cobra.Command{
 		currentUsersPrivateKey, _ := base64.StdEncoding.DecodeString(loggedInUserDetails.UserCredentials.PrivateKey)
 
 		if len(currentUsersPrivateKey) == 0 || len(encryptedWorkspaceKeySenderPublicKey) == 0 {
-			log.Debug().Msgf("Missing credentials for generating plainTextEncryptionKey: [currentUsersPrivateKey=%s] [encryptedWorkspaceKeySenderPublicKey=%s]", currentUsersPrivateKey, encryptedWorkspaceKeySenderPublicKey)
+			log.Debugf("Missing credentials for generating plainTextEncryptionKey: [currentUsersPrivateKey=%s] [encryptedWorkspaceKeySenderPublicKey=%s]", currentUsersPrivateKey, encryptedWorkspaceKeySenderPublicKey)
 			util.PrintErrorMessageAndExit("Some required user credentials are missing to generate your [plainTextEncryptionKey]. Please run [infisical login] then try again")
 		}
 
@@ -268,8 +270,6 @@ var secretsSetCmd = &cobra.Command{
 		}
 
 		visualize.Table(headers, rows)
-
-		Telemetry.CaptureEvent("cli-command:secrets set", posthog.NewProperties().Set("version", util.CLI_VERSION))
 	},
 }
 
@@ -278,6 +278,7 @@ var secretsDeleteCmd = &cobra.Command{
 	Short:                 "Used to delete secrets by name",
 	Use:                   "delete [secrets]",
 	DisableFlagsInUseLine: true,
+	PreRun:                toggleDebug,
 	Args:                  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
@@ -337,7 +338,6 @@ var secretsDeleteCmd = &cobra.Command{
 
 		fmt.Printf("secret name(s) [%v] have been deleted from your project \n", strings.Join(args, ", "))
 
-		Telemetry.CaptureEvent("cli-command:secrets delete", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
 	},
 }
 
@@ -382,7 +382,6 @@ func getSecretsByNames(cmd *cobra.Command, args []string) {
 	}
 
 	visualize.PrintAllSecretDetails(requestedSecrets)
-	Telemetry.CaptureEvent("cli-command:secrets get", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
 }
 
 func generateExampleEnv(cmd *cobra.Command, args []string) {
@@ -571,8 +570,6 @@ func generateExampleEnv(cmd *cobra.Command, args []string) {
 		fmt.Println(strings.Join(dashedList, ""))
 	}
 	fmt.Println(strings.Join(fullyGeneratedDocuments, ""))
-
-	Telemetry.CaptureEvent("cli-command:generate-example-env", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
 }
 
 func CenterString(s string, numStars int) string {

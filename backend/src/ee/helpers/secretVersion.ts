@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
 import { SecretVersion } from '../models';
 
@@ -12,32 +13,41 @@ const getLatestSecretVersionIds = async ({
 }: {
     secretIds: Types.ObjectId[];
 }) => {
+    
     interface LatestSecretVersionId {
         _id: Types.ObjectId;
         version: number;
         versionId: Types.ObjectId;
     }
     
-    const latestSecretVersionIds = (await SecretVersion.aggregate([
-        {
-            $match: { 
-                secret: { 
-                    $in: secretIds 
-                } 
+    let latestSecretVersionIds: LatestSecretVersionId[];
+    try {
+        latestSecretVersionIds = (await SecretVersion.aggregate([
+            {
+                $match: { 
+                    secret: { 
+                        $in: secretIds 
+                    } 
+                }
+            },
+            {
+                $group: {
+                    _id: '$secret',
+                    version: { $max: '$version' },
+                    versionId: { $max: '$_id' } // id of latest secret version
+                }
+            },
+            {
+                $sort: { version: -1 }
             }
-        },
-        {
-            $group: {
-                _id: '$secret',
-                version: { $max: '$version' },
-                versionId: { $max: '$_id' } // id of latest secret version
-            }
-        },
-        {
-            $sort: { version: -1 }
-        }
-        ])
-        .exec());
+            ])
+            .exec());
+            
+    } catch (err) {
+        Sentry.setUser(null);
+		Sentry.captureException(err);
+        throw new Error('Failed to get latest secret versions');
+    }
     
     return latestSecretVersionIds;
 }
@@ -56,32 +66,40 @@ const getLatestNSecretSecretVersionIds = async ({
     secretIds: Types.ObjectId[];
     n: number;
 }) => {
+    
     // TODO: optimize query
-    const latestNSecretVersions = (await SecretVersion.aggregate([
-        {
-            $match: {
-            secret: {
-                $in: secretIds,
+    let latestNSecretVersions;
+    try {
+        latestNSecretVersions = (await SecretVersion.aggregate([
+            {
+                $match: {
+                secret: {
+                    $in: secretIds,
+                },
+                },
             },
+            {
+                $sort: { version: -1 },
             },
-        },
-        {
-            $sort: { version: -1 },
-        },
-        {
-            $group: {
-            _id: "$secret",
-            versions: { $push: "$$ROOT" },
+            {
+                $group: {
+                _id: "$secret",
+                versions: { $push: "$$ROOT" },
+                },
             },
-        },
-        {
-            $project: {
-            _id: 0,
-            secret: "$_id",
-            versions: { $slice: ["$versions", n] },
-            },
-        }
-    ]));
+            {
+                $project: {
+                _id: 0,
+                secret: "$_id",
+                versions: { $slice: ["$versions", n] },
+                },
+            }
+        ]));
+    } catch (err) {
+        Sentry.setUser(null);
+		Sentry.captureException(err);
+        throw new Error('Failed to get latest n secret versions');
+    }
     
     return latestNSecretVersions;
 }

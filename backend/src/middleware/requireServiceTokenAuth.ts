@@ -33,7 +33,7 @@ const requireServiceTokenAuth = async (
 	if(AUTH_TOKEN_VALUE === null) return next(BadRequestError({message: 'Missing Authorization Body in the request header'}))
 
 	const decodedToken = <jwt.UserIDJwtPayload>(
-		jwt.verify(AUTH_TOKEN_VALUE, await getJwtServiceSecret())
+		jwt.verify(AUTH_TOKEN_VALUE, getJwtServiceSecret())
 	);
 
 	const serviceToken = await ServiceToken.findOne({

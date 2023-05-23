@@ -30,8 +30,7 @@ const iconButtonVariants = cva(
         solid: '',
         outline: ['bg-transparent', 'border-2', 'border-solid'],
         plain: '',
-        star: 'text-bunker-200 bg-mineshaft-500',
-        outline_bg: ''
+        star: 'text-bunker-200 bg-mineshaft-500'
       },
       isDisabled: {
         true: 'bg-opacity-70 cursor-not-allowed',
@@ -53,11 +52,6 @@ const iconButtonVariants = cva(
         colorSchema: 'primary',
         variant: 'star',
         className: 'hover:bg-primary hover:text-black'
-      },
-      {
-        colorSchema: 'primary',
-        variant: 'outline_bg',
-        className: 'bg-mineshaft-700 border border-mineshaft-600 hover:bg-primary/[0.15] hover:border-primary/60 text-bunker-200 hover:text-bunker-100 duration-100'
       },
       {
         colorSchema: 'danger',

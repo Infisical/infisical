@@ -37,22 +37,17 @@ const apiTokenExpiry = [
   { label: '7 Days', value: 604800 },
   { label: '1 Month', value: 2592000 },
   { label: '6 months', value: 15552000 },
-  { label: '12 months', value: 31104000 },
-  { label: 'Never', value: null }
+  { label: '12 months', value: 31104000 }
 ];
 
 const createServiceTokenSchema = yup.object({
   name: yup.string().required().label('Service Token Name'),
   environment: yup.string().required().label('Environment'),
-  expiresIn: yup.string().optional().label('Service Token Expiration'),
-  permissions: yup
-    .object()
-    .shape({
-      read: yup.boolean().required(),
-      write: yup.boolean().required()
-    })
-    .defined()
-    .required()
+  expiresIn: yup.string().required().label('Service Token Expiration'),
+  permissions: yup.object().shape({
+    read: yup.boolean().required(),
+    write: yup.boolean().required()
+  }).defined().required()
 });
 
 export type CreateServiceToken = yup.InferType<typeof createServiceTokenSchema>;
@@ -97,7 +92,7 @@ export const ServiceTokenSection = ({
     'createAPIToken',
     'deleteAPITokenConfirmation'
   ] as const);
-
+  
   const {
     control,
     reset,
@@ -123,8 +118,8 @@ export const ServiceTokenSection = ({
     <div className="mt-4 mb-4 flex w-full flex-col items-start rounded-md bg-white/5 p-6">
       <div className="flex w-full flex-row justify-between">
         <div className="flex w-full flex-col">
-          <p className="mb-3 text-xl font-semibold">{t('section.token.service-tokens')}</p>
-          <p className="text-sm text-gray-400">{t('section.token.service-tokens-description')}</p>
+          <p className="mb-3 text-xl font-semibold">{t('section-token:service-tokens')}</p>
+          <p className="text-sm text-gray-400">{t('section-token:service-tokens-description')}</p>
           <p className="mb-4 text-sm text-gray-400">
             Please, make sure you are on the
             <a
@@ -149,16 +144,16 @@ export const ServiceTokenSection = ({
           >
             <ModalTrigger asChild>
               <Button color="mineshaft" leftIcon={<FontAwesomeIcon icon={faPlus} />}>
-                {t('section.token.add-new')}
+                {t('section-token:add-new')}
               </Button>
             </ModalTrigger>
             <ModalContent
               title={
-                t('section.token.add-dialog.title', {
+                t('section-token:add-dialog.title', {
                   target: workspaceName
                 }) as string
               }
-              subTitle={t('section.token.add-dialog.description') as string}
+              subTitle={t('section-token:add-dialog.description') as string}
             >
               {!hasServiceToken ? (
                 <form onSubmit={handleSubmit(onFormSubmit)}>
@@ -168,7 +163,7 @@ export const ServiceTokenSection = ({
                     defaultValue=""
                     render={({ field, fieldState: { error } }) => (
                       <FormControl
-                        label={t('section.token.add-dialog.name')}
+                        label={t('section-token:add-dialog.name')}
                         isError={Boolean(error)}
                         errorText={error?.message}
                       >
@@ -218,7 +213,7 @@ export const ServiceTokenSection = ({
                           className="w-full"
                         >
                           {apiTokenExpiry.map(({ label, value }) => (
-                            <SelectItem value={String(value || '')} key={label}>
+                            <SelectItem value={String(value)} key={label}>
                               {label}
                             </SelectItem>
                           ))}
@@ -233,18 +228,15 @@ export const ServiceTokenSection = ({
                       read: true,
                       write: false
                     }}
-                    render={({ field: { onChange, value }, fieldState: { error } }) => {
-                      const options = [
-                        {
-                          label: 'Read (default)',
-                          value: 'read'
-                        },
-                        {
-                          label: 'Write (optional)',
-                          value: 'write'
-                        }
-                      ];
-
+                    render={({ field: { onChange, value }, fieldState: { error }}) => {
+                      const options = [{
+                        label: 'Read (default)',
+                        value: 'read'
+                      }, {
+                        label: 'Write (optional)',
+                        value: 'write'
+                      }];
+                      
                       return (
                         <FormControl
                           label="Permissions"
@@ -253,23 +245,23 @@ export const ServiceTokenSection = ({
                         >
                           <>
                             {options.map(({ label, value: optionValue }) => {
-                              // TODO: refactor
-                              return (
-                                <Checkbox
-                                  id={value[optionValue]}
-                                  key={optionValue}
-                                  className="data-[state=checked]:bg-primary"
-                                  isChecked={value[optionValue]}
-                                  isDisabled={optionValue === 'read'}
-                                  onCheckedChange={(state) => {
-                                    onChange({
-                                      ...value,
-                                      [optionValue]: state
-                                    });
-                                  }}
-                                >
-                                  {label}
-                                </Checkbox>
+                                // TODO: refactor
+                                return (
+                                  <Checkbox
+                                    id={value[optionValue]}
+                                    key={optionValue}
+                                    className="data-[state=checked]:bg-primary"
+                                    isChecked={value[optionValue]}
+                                    isDisabled={ optionValue === 'read'}
+                                    onCheckedChange={(state) => {
+                                      onChange({
+                                        ...value,
+                                        [optionValue]: state
+                                      });
+                                    }}
+                                  >
+                                    {label}
+                                  </Checkbox>
                               );
                             })}
                           </>
@@ -304,7 +296,7 @@ export const ServiceTokenSection = ({
                   >
                     <FontAwesomeIcon icon={isTokenCopied ? faCheck : faCopy} />
                     <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">
-                      {t('common.click-to-copy')}
+                      {t('common:click-to-copy')}
                     </span>
                   </IconButton>
                 </div>
@@ -340,7 +332,7 @@ export const ServiceTokenSection = ({
                 <Tr key={row._id}>
                   <Td>{row.name}</Td>
                   <Td>{row.environment}</Td>
-                  <Td>{row.expiresAt && new Date(row.expiresAt).toUTCString()}</Td>
+                  <Td>{new Date(row.expiresAt).toUTCString()}</Td>
                   <Td className="flex items-center justify-end">
                     <IconButton
                       onClick={() =>

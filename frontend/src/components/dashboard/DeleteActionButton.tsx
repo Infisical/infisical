@@ -1,9 +1,10 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next';
 import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import Button from '../basic/buttons/Button';
+import { DeleteEnvVar } from '../basic/dialog/DeleteEnvVar';
 
 type Props = {
   onSubmit: () => void;
@@ -12,6 +13,7 @@ type Props = {
 
 export const DeleteActionButton = ({ onSubmit, isPlain }: Props) => {
   const { t } = useTranslation();
+  const [open, setOpen] = useState(false)
 
   return (
     <div className={`${
@@ -23,17 +25,25 @@ export const DeleteActionButton = ({ onSubmit, isPlain }: Props) => {
         onKeyDown={() => null}
         role="button"
         tabIndex={0}
-        onClick={onSubmit}
+        onClick={() => setOpen(true)}
         className="invisible group-hover:visible"
       >
         <FontAwesomeIcon className="text-bunker-300 hover:text-red pl-2 pr-6 text-lg mt-0.5" icon={faXmark} />
       </div>
       : <Button
         text={String(t("Delete"))}
+        // onButtonPressed={onSubmit}
         color="red"
         size="md"
-        onButtonPressed={onSubmit}
+        onButtonPressed={() => setOpen(true)}
       />}
+      <DeleteEnvVar 
+        isOpen={open}
+        onClose={() => {
+          setOpen(false)
+        }}
+        onSubmit={onSubmit}
+      />
     </div>
   )
 }

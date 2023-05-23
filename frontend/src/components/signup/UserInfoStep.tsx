@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { faCheck, faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import jsrp from 'jsrp';
@@ -108,6 +108,7 @@ export default function UserInfoStep({
         async () => {
           client.createVerifier(async (err: any, result: { salt: string; verifier: string }) => {
             try {
+
               // TODO: moduralize into KeyService
               const derivedKey = await deriveArgonKey({
                 password,
@@ -117,11 +118,11 @@ export default function UserInfoStep({
                 parallelism: 1,
                 hashLen: 32
               });
-
+              
               if (!derivedKey) throw new Error('Failed to derive key from password');
 
               const key = crypto.randomBytes(32);
-
+             
               // create encrypted private key by encrypting the private
               // key with the symmetric key [key]
               const {
@@ -132,7 +133,7 @@ export default function UserInfoStep({
                 text: privateKey,
                 secret: key
               });
-
+              
               // create the protected key by encrypting the symmetric key
               // [key] with the derived key
               const {
@@ -143,7 +144,7 @@ export default function UserInfoStep({
                 text: key.toString('hex'),
                 secret: Buffer.from(derivedKey.hash)
               });
-
+              
               const response = await completeAccountInformationSignup({
                 email,
                 firstName,
@@ -159,7 +160,7 @@ export default function UserInfoStep({
                 verifier: result.verifier,
                 organizationName: `${firstName}'s organization`
               });
-
+              
               // unset signup JWT token and set JWT token
               SecurityClient.setSignupToken('');
               SecurityClient.setToken(response.token);
@@ -183,6 +184,7 @@ export default function UserInfoStep({
               localStorage.setItem('projectData.id', project._id);
 
               incrementStep();
+
             } catch (error) {
               setIsLoading(false);
               console.error(error);
@@ -196,45 +198,45 @@ export default function UserInfoStep({
   };
 
   return (
-    <div className="h-7/12 mx-auto mb-36 w-max rounded-xl bg-bunker py-10 px-8 drop-shadow-xl md:mb-16">
-      <p className="mx-8 mb-6 flex justify-center text-4xl font-bold text-primary md:mx-16">
-        {t('signup.step3-message')}
+    <div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-36 md:mb-16">
+      <p className="text-4xl font-bold flex justify-center mb-6 mx-8 md:mx-16 text-primary">
+        {t('signup:step3-message')}
       </p>
-      <div className="relative z-0 flex max-h-24 w-full items-center justify-end rounded-lg md:p-2">
+      <div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">
         <InputField
-          label={t('common.first-name')}
+          label={t('common:first-name')}
           onChangeHandler={setFirstName}
           type="name"
           value={firstName}
           isRequired
           errorText={
-            t('common.validate-required', {
-              name: t('common.first-name')
+            t('common:validate-required', {
+              name: t('common:first-name')
             }) as string
           }
           error={firstNameError}
           autoComplete="given-name"
         />
       </div>
-      <div className="mt-2 flex max-h-24 w-full items-center justify-center rounded-lg md:p-2">
+      <div className="mt-2 flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
         <InputField
-          label={t('common.last-name')}
+          label={t('common:last-name')}
           onChangeHandler={setLastName}
           type="name"
           value={lastName}
           isRequired
           errorText={
-            t('common.validate-required', {
-              name: t('common.last-name')
+            t('common:validate-required', {
+              name: t('common:last-name')
             }) as string
           }
           error={lastNameError}
           autoComplete="family-name"
         />
       </div>
-      <div className="mt-2 flex max-h-60 w-full flex-col items-center justify-center rounded-lg md:p-2">
+      <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
         <InputField
-          label={t('section.password.password')}
+          label={t('section-password:password')}
           onChangeHandler={(pass: string) => {
             setPassword(pass);
             passwordCheck({
@@ -253,38 +255,38 @@ export default function UserInfoStep({
           id="new-password"
         />
         {passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber ? (
-          <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
-            <div className="mb-1 text-sm text-gray-400">{t('section.password.validate-base')}</div>
-            <div className="ml-1 flex flex-row items-center justify-start">
+          <div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
+            <div className="text-gray-400 text-sm mb-1">{t('section-password:validate-base')}</div>
+            <div className="flex flex-row justify-start items-center ml-1">
               {passwordErrorLength ? (
-                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
               ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
               )}
               <div className={`${passwordErrorLength ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                {t('section.password.validate-length')}
+                {t('section-password:validate-length')}
               </div>
             </div>
-            <div className="ml-1 flex flex-row items-center justify-start">
+            <div className="flex flex-row justify-start items-center ml-1">
               {passwordErrorLowerCase ? (
-                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
               ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
               )}
               <div
                 className={`${passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'} text-sm`}
               >
-                {t('section.password.validate-case')}
+                {t('section-password:validate-case')}
               </div>
             </div>
-            <div className="ml-1 flex flex-row items-center justify-start">
+            <div className="flex flex-row justify-start items-center ml-1">
               {passwordErrorNumber ? (
-                <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
               ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
               )}
               <div className={`${passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                {t('section.password.validate-number')}
+                {t('section-password:validate-number')}
               </div>
             </div>
           </div>
@@ -292,9 +294,9 @@ export default function UserInfoStep({
           <div className="py-2" />
         )}
       </div>
-      <div className="mx-auto flex max-h-48 max-w-max flex-col items-center justify-center px-2 py-3 text-lg md:p-2">
+      <div className="flex flex-col items-center justify-center md:p-2 max-h-48 max-w-max mx-auto text-lg px-2 py-3">
         <Button
-          text={t('signup.signup') ?? ''}
+          text={t('signup:signup') ?? ''}
           loading={isLoading}
           onButtonPressed={signupErrorCheck}
           size="lg"

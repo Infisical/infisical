@@ -44,7 +44,7 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
 			substitutions: {
 				email,
 				token,
-				callback_url: (await getSiteURL()) + '/password-reset'
+				callback_url: getSiteURL() + '/password-reset'
 			}
 		});
 	} catch (err) {
@@ -91,8 +91,8 @@ export const emailPasswordResetVerify = async (req: Request, res: Response) => {
 			payload: {
 				userId: user._id.toString()
 			},
-			expiresIn: await getJwtSignupLifetime(),
-			secret: await getJwtSignupSecret()
+			expiresIn: getJwtSignupLifetime(),
+			secret: getJwtSignupSecret()
 		});
 	} catch (err) {
 		Sentry.setUser(null);

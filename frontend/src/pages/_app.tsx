@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
+import { appWithTranslation } from 'next-i18next';
 import { config } from '@fortawesome/fontawesome-svg-core';
 import { QueryClientProvider } from '@tanstack/react-query';
 
@@ -22,8 +23,6 @@ import { queryClient } from '@app/reactQuery';
 import '@fortawesome/fontawesome-svg-core/styles.css';
 import '../styles/globals.css';
 
-import '@app/i18n';
-
 config.autoAddCss = false;
 
 type NextAppProp = AppProps & {
@@ -32,6 +31,15 @@ type NextAppProp = AppProps & {
 
 const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element => {
   const router = useRouter();
+
+  useEffect(() => {
+    const storedLang = localStorage.getItem('lang');
+    if (router.locale ?? storedLang !== 'en' ?? 'en') {
+      router.push(router.asPath, router.asPath, {
+        locale: storedLang ?? 'en'
+      });
+    }
+  }, [router.locale, router.pathname]);
 
   useEffect(() => {
     // Init for auto capturing
@@ -87,7 +95,7 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
   );
 };
 
-export default App;
+export default appWithTranslation(App);
 
 /* <Script
 src="https://www.googletagmanager.com/gtag/js?id=G-DQ1XLJJGG1"

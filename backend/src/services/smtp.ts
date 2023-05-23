@@ -3,8 +3,7 @@ import {
   SMTP_HOST_SENDGRID, 
   SMTP_HOST_MAILGUN,
   SMTP_HOST_SOCKETLABS,
-  SMTP_HOST_ZOHOMAIL,
-  SMTP_HOST_GMAIL
+  SMTP_HOST_ZOHOMAIL
 } from '../variables';
 import SMTPConnection from 'nodemailer/lib/smtp-connection';
 import * as Sentry from '@sentry/node';
@@ -16,21 +15,21 @@ import {
   getSmtpPort
 } from '../config';
 
-export const initSmtp = async () => {
+export const initSmtp = () => {
   const mailOpts: SMTPConnection.Options = {
-    host: await getSmtpHost(),
-    port: await getSmtpPort()
+    host: getSmtpHost(),
+    port: getSmtpPort()
   };
 
-  if ((await getSmtpUsername()) && (await getSmtpPassword())) {
+  if (getSmtpUsername() && getSmtpPassword()) {
     mailOpts.auth = {
-      user: await getSmtpUsername(),
-      pass: await getSmtpPassword()
+      user: getSmtpUsername(),
+      pass: getSmtpPassword()
     };
   }
 
-  if ((await getSmtpSecure()) ? (await getSmtpSecure()) : false) {
-    switch (await getSmtpHost()) {
+  if (getSmtpSecure() ? getSmtpSecure() : false) {
+    switch (getSmtpHost()) {
       case SMTP_HOST_SENDGRID:
         mailOpts.requireTLS = true;
         break;
@@ -51,15 +50,9 @@ export const initSmtp = async () => {
         mailOpts.tls = {
           ciphers: 'TLSv1.2'
         }
-        break;
-      case SMTP_HOST_GMAIL:
-        mailOpts.requireTLS = true; 
-        mailOpts.tls = {
-          ciphers: 'TLSv1.2'
-        }
         break; 
       default:
-        if ((await getSmtpHost()).includes('amazonaws.com')) {
+        if (getSmtpHost().includes('amazonaws.com')) {
           mailOpts.tls = {
             ciphers: 'TLSv1.2'
           }
@@ -77,10 +70,10 @@ export const initSmtp = async () => {
       Sentry.setUser(null);
       Sentry.captureMessage('SMTP - Successfully connected');
     })
-    .catch(async (err) => {
+    .catch((err) => {
       Sentry.setUser(null);
       Sentry.captureException(
-        `SMTP - Failed to connect to ${await getSmtpHost()}:${await getSmtpPort()} \n\t${err}`
+        `SMTP - Failed to connect to ${getSmtpHost()}:${getSmtpPort()} \n\t${err}`
       );
     });
 

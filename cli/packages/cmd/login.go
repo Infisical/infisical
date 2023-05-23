@@ -10,11 +10,9 @@ import (
 
 	"errors"
 	"fmt"
-	"net/url"
 	"regexp"
 
 	"github.com/Infisical/infisical-merge/packages/api"
-	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/srp"
@@ -22,8 +20,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
-	"github.com/posthog/posthog-go"
-	"github.com/rs/zerolog/log"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/argon2"
 )
@@ -36,57 +33,29 @@ type params struct {
 	keyLength   uint32
 }
 
-const ADD_USER = "Add a new account login"
-const REPLACE_USER = "Override current logged in user"
-const EXIT_USER_MENU = "Exit"
-
 // loginCmd represents the login command
 var loginCmd = &cobra.Command{
 	Use:                   "login",
 	Short:                 "Login into your Infisical account",
 	DisableFlagsInUseLine: true,
+	PreRun:                toggleDebug,
 	Run: func(cmd *cobra.Command, args []string) {
 		currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
 		// if the key can't be found or there is an error getting current credentials from key ring, allow them to override
 		if err != nil && (strings.Contains(err.Error(), "The specified item could not be found in the keyring") || strings.Contains(err.Error(), "unable to get key from Keyring") || strings.Contains(err.Error(), "GetUserCredsFromKeyRing")) {
-			log.Debug().Err(err)
+			log.Debug(err)
 		} else if err != nil {
 			util.HandleError(err)
 		}
 
 		if currentLoggedInUserDetails.IsUserLoggedIn && !currentLoggedInUserDetails.LoginExpired && len(currentLoggedInUserDetails.UserCredentials.PrivateKey) != 0 {
-			shouldOverride, err := userLoginMenu(currentLoggedInUserDetails.UserCredentials.Email)
+			shouldOverride, err := shouldOverrideLoginPrompt(currentLoggedInUserDetails.UserCredentials.Email)
 			if err != nil {
 				util.HandleError(err)
 			}
 
 			if !shouldOverride {
 				return
-			}
-		}
-
-		//override domain
-		domainQuery := true
-		if config.INFISICAL_URL_MANUAL_OVERRIDE != "" && config.INFISICAL_URL_MANUAL_OVERRIDE != util.INFISICAL_DEFAULT_API_URL {
-			overrideDomain, err := DomainOverridePrompt()
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			//if not override set INFISICAL_URL to exported var
-			//set domainQuery to false
-			if !overrideDomain {
-				domainQuery = false
-				config.INFISICAL_URL = config.INFISICAL_URL_MANUAL_OVERRIDE
-			}
-
-		}
-
-		//prompt user to select domain between Infisical cloud and self hosting
-		if domainQuery {
-			err = askForDomain()
-			if err != nil {
-				util.HandleError(err, "Unable to parse domain url")
 			}
 		}
 
@@ -97,8 +66,8 @@ var loginCmd = &cobra.Command{
 
 		loginOneResponse, loginTwoResponse, err := getFreshUserCredentials(email, password)
 		if err != nil {
-			fmt.Println("Unable to authenticate with the provided credentials, please try again")
-			log.Debug().Err(err)
+			log.Infoln("Unable to authenticate with the provided credentials, please try again")
+			log.Debugln(err)
 			return
 		}
 
@@ -152,7 +121,7 @@ var loginCmd = &cobra.Command{
 		var decryptedPrivateKey []byte
 
 		if loginTwoResponse.EncryptionVersion == 1 {
-			log.Debug().Msg("Login version 1")
+			log.Debug("Login version 1")
 			encryptedPrivateKey, _ := base64.StdEncoding.DecodeString(loginTwoResponse.EncryptedPrivateKey)
 			tag, err := base64.StdEncoding.DecodeString(loginTwoResponse.Tag)
 			if err != nil {
@@ -175,7 +144,7 @@ var loginCmd = &cobra.Command{
 			decryptedPrivateKey = computedDecryptedPrivateKey
 
 		} else if loginTwoResponse.EncryptionVersion == 2 {
-			log.Debug().Msg("Login version 2")
+			log.Debug("Login version 2")
 			protectedKey, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKey)
 			if err != nil {
 				util.HandleError(err)
@@ -239,7 +208,7 @@ var loginCmd = &cobra.Command{
 		}
 
 		if string(decryptedPrivateKey) == "" || email == "" || loginTwoResponse.Token == "" {
-			log.Debug().Msgf("[decryptedPrivateKey=%s] [email=%s] [loginTwoResponse.Token=%s]", string(decryptedPrivateKey), email, loginTwoResponse.Token)
+			log.Debugf("[decryptedPrivateKey=%s] [email=%s] [loginTwoResponse.Token=%s]", string(decryptedPrivateKey), email, loginTwoResponse.Token)
 			util.PrintErrorMessageAndExit("We were unable to fetch required details to complete your login. Run with -d to see more info")
 		}
 
@@ -252,9 +221,9 @@ var loginCmd = &cobra.Command{
 		err = util.StoreUserCredsInKeyRing(userCredentialsToBeStored)
 		if err != nil {
 			currentVault, _ := util.GetCurrentVaultBackend()
-			log.Error().Msgf("Unable to store your credentials in system vault [%s]. Rerun with flag -d to see full logs", currentVault)
-			log.Error().Msgf("\nTo trouble shoot further, read https://infisical.com/docs/cli/faq")
-			log.Debug().Err(err)
+			log.Errorf("Unable to store your credentials in system vault [%s]. Rerun with flag -d to see full logs", currentVault)
+			log.Errorln("To trouble shoot further, read https://infisical.com/docs/cli/faq")
+			log.Debugln(err)
 			return
 		}
 
@@ -276,83 +245,11 @@ var loginCmd = &cobra.Command{
 		plainBold.Println("\nQuick links")
 		fmt.Println("- Learn to inject secrets into your application at https://infisical.com/docs/cli/usage")
 		fmt.Println("- Stuck? Join our slack for quick support https://infisical.com/slack")
-		Telemetry.CaptureEvent("cli-command:login", posthog.NewProperties().Set("infisical-backend", config.INFISICAL_URL).Set("version", util.CLI_VERSION))
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(loginCmd)
-}
-
-func DomainOverridePrompt() (bool, error) {
-	const (
-		PRESET   = "Use Domain"
-		OVERRIDE = "Change Domain"
-	)
-
-	options := []string{PRESET, OVERRIDE}
-	optionsPrompt := promptui.Select{
-		Label: fmt.Sprintf("Current INFISICAL_API_URL Domain Override: %s", config.INFISICAL_URL_MANUAL_OVERRIDE),
-		Items: options,
-		Size:  2,
-	}
-
-	_, selectedOption, err := optionsPrompt.Run()
-	if err != nil {
-		return false, err
-	}
-
-	return selectedOption == OVERRIDE, err
-}
-
-func askForDomain() error {
-	//query user to choose between Infisical cloud or self hosting
-	const (
-		INFISICAL_CLOUD = "Infisical Cloud"
-		SELF_HOSTING    = "Self Hosting"
-	)
-
-	options := []string{INFISICAL_CLOUD, SELF_HOSTING}
-	optionsPrompt := promptui.Select{
-		Label: "Select your hosting option",
-		Items: options,
-		Size:  2,
-	}
-
-	_, selectedHostingOption, err := optionsPrompt.Run()
-	if err != nil {
-		return err
-	}
-
-	if selectedHostingOption == INFISICAL_CLOUD {
-		//cloud option
-		config.INFISICAL_URL = util.INFISICAL_DEFAULT_API_URL
-		return nil
-	}
-
-	urlValidation := func(input string) error {
-		_, err := url.ParseRequestURI(input)
-		if err != nil {
-			return errors.New("this is an invalid url")
-		}
-		return nil
-	}
-
-	domainPrompt := promptui.Prompt{
-		Label:    "Domain",
-		Validate: urlValidation,
-		Default:  "Example - https://my-self-hosted-instance.com/api",
-	}
-
-	domain, err := domainPrompt.Run()
-	if err != nil {
-		return err
-	}
-
-	//set api url
-	config.INFISICAL_URL = domain
-	//return nil
-	return nil
 }
 
 func askForLoginCredentials() (email string, password string, err error) {
@@ -398,7 +295,7 @@ func askForLoginCredentials() (email string, password string, err error) {
 }
 
 func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2Response, *api.GetLoginTwoV2Response, error) {
-	log.Debug().Msg(fmt.Sprint("getFreshUserCredentials: ", "email", email, "password: ", password))
+	log.Debugln("getFreshUserCredentials:", "email", email, "password", password)
 	httpClient := resty.New()
 	httpClient.SetRetryCount(5)
 
@@ -445,18 +342,16 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 	return &loginOneResponseResult, &loginTwoResponseResult, nil
 }
 
-func userLoginMenu(currentLoggedInUserEmail string) (bool, error) {
-	label := fmt.Sprintf("Current logged in user email: %s on domain: %s", currentLoggedInUserEmail, config.INFISICAL_URL)
-
+func shouldOverrideLoginPrompt(currentLoggedInUserEmail string) (bool, error) {
 	prompt := promptui.Select{
-		Label: label,
-		Items: []string{ADD_USER, REPLACE_USER, EXIT_USER_MENU},
+		Label: fmt.Sprintf("There seems to be a user already logged in with the email: %s. Would you like to override that login? Select[Yes/No]", currentLoggedInUserEmail),
+		Items: []string{"No", "Yes"},
 	}
 	_, result, err := prompt.Run()
 	if err != nil {
 		return false, err
 	}
-	return result != EXIT_USER_MENU, err
+	return result == "Yes", err
 }
 
 func generateFromPassword(password string, salt []byte, p *params) (hash []byte, err error) {

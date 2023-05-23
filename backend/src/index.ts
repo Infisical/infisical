@@ -1,11 +1,12 @@
+import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 dotenv.config();
+import infisical from 'infisical-node';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import * as Sentry from '@sentry/node';
 import { DatabaseService } from './services';
-import { EELicenseService } from './ee/services';
 import { setUpHealthEndpoint } from './services/health';
 import { initSmtp } from './services/smtp';
 import { TelemetryService } from './services';
@@ -25,8 +26,7 @@ import {
     workspace as eeWorkspaceRouter,
     secret as eeSecretRouter,
     secretSnapshot as eeSecretSnapshotRouter,
-    action as eeActionRouter,
-    organizations as eeOrganizationsRouter
+    action as eeActionRouter
 } from './ee/routes/v1';
 import {
     signup as v1SignupRouter,
@@ -45,8 +45,7 @@ import {
     password as v1PasswordRouter,
     stripe as v1StripeRouter,
     integration as v1IntegrationRouter,
-    integrationAuth as v1IntegrationAuthRouter,
-    secretsFolder as v1SecretsFolder
+    integrationAuth as v1IntegrationAuthRouter
 } from './routes/v1';
 import {
     signup as v2SignupRouter,
@@ -62,10 +61,6 @@ import {
     environment as v2EnvironmentRouter,
     tags as v2TagsRouter,
 } from './routes/v2';
-import {
-    secrets as v3SecretsRouter,
-    workspaces as v3WorkspacesRouter
-} from './routes/v3';
 import { healthCheck } from './routes/status';
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
@@ -79,18 +74,22 @@ import {
 } from './config';
 
 const main = async () => {
+    if (process.env.INFISICAL_TOKEN != "" || process.env.INFISICAL_TOKEN != undefined) {
+        await infisical.connect({
+            token: process.env.INFISICAL_TOKEN!
+        });
+    }
+
     TelemetryService.logTelemetryMessage();
-    setTransporter(await initSmtp());
+    setTransporter(initSmtp());
 
-    await EELicenseService.initGlobalFeatureSet();
-
-    await DatabaseService.initDatabase(await getMongoURL());
-    if ((await getNodeEnv()) !== 'test') {
+    await DatabaseService.initDatabase(getMongoURL());
+    if (getNodeEnv() !== 'test') {
         Sentry.init({
-            dsn: await getSentryDSN(),
+            dsn: getSentryDSN(),
             tracesSampleRate: 1.0,
-            debug: await getNodeEnv() === 'production' ? false : true,
-            environment: await getNodeEnv()
+            debug: getNodeEnv() === 'production' ? false : true,
+            environment: getNodeEnv()
         });
     }
 
@@ -102,13 +101,13 @@ const main = async () => {
     app.use(
         cors({
             credentials: true,
-            origin: await getSiteURL()
+            origin: getSiteURL()
         })
     );
 
     app.use(requestIp.mw());
 
-    if ((await getNodeEnv()) === 'production') {
+    if (getNodeEnv() === 'production') {
         // enable app-wide rate-limiting + helmet security
         // in production
         app.disable('x-powered-by');
@@ -121,9 +120,8 @@ const main = async () => {
     app.use('/api/v1/secret-snapshot', eeSecretSnapshotRouter);
     app.use('/api/v1/workspace', eeWorkspaceRouter);
     app.use('/api/v1/action', eeActionRouter);
-    app.use('/api/v1/organizations', eeOrganizationsRouter);
 
-    // v1 routes (default)
+    // v1 routes
     app.use('/api/v1/signup', v1SignupRouter);
     app.use('/api/v1/auth', v1AuthRouter);
     app.use('/api/v1/bot', v1BotRouter);
@@ -141,9 +139,8 @@ const main = async () => {
     app.use('/api/v1/stripe', v1StripeRouter);
     app.use('/api/v1/integration', v1IntegrationRouter);
     app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
-    app.use('/api/v1/folder', v1SecretsFolder)
 
-    // v2 routes (improvements)
+    // v2 routes
     app.use('/api/v2/signup', v2SignupRouter);
     app.use('/api/v2/auth', v2AuthRouter);
     app.use('/api/v2/users', v2UsersRouter);
@@ -156,10 +153,6 @@ const main = async () => {
     app.use('/api/v2/service-token', v2ServiceTokenDataRouter); // TODO: turn into plural route
     app.use('/api/v2/service-accounts', v2ServiceAccountsRouter); // new
     app.use('/api/v2/api-key', v2APIKeyDataRouter);
-
-    // v3 routes (experimental)
-    app.use('/api/v3/secrets', v3SecretsRouter);
-    app.use('/api/v3/workspaces', v3WorkspacesRouter);
 
     // api docs 
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile))
@@ -175,8 +168,8 @@ const main = async () => {
 
     app.use(requestErrorHandler)
 
-    const server = app.listen(await getPort(), async () => {
-        (await getLogger("backend-main")).info(`Server started listening at port ${await getPort()}`)
+    const server = app.listen(getPort(), () => {
+        getLogger("backend-main").info(`Server started listening at port ${getPort()}`)
     });
 
     await createTestUserForDevelopment();

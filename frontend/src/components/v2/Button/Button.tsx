@@ -24,7 +24,7 @@ const buttonVariants = cva(
   {
     variants: {
       colorSchema: {
-        primary: ['bg-primary', 'text-black', 'border-primary bg-opacity-90 hover:bg-opacity-100'],
+        primary: ['bg-primary', 'text-black', 'border-primary bg-opacity-80 hover:bg-opacity-100'],
         secondary: ['bg-mineshaft', 'text-gray-300', 'border-mineshaft hover:bg-opacity-80'],
         danger: ['bg-red', 'text-white', 'border-red hover:bg-opacity-90'],
         gray: ['bg-bunker-500', 'text-bunker-200']
@@ -34,13 +34,12 @@ const buttonVariants = cva(
         outline: ['bg-transparent', 'border-2', 'border-solid'],
         plain: '',
         selected: '',
-        outline_bg: '',
         // a constant color not in use on hover or click goes colorSchema color
-        star: 'text-bunker-200 bg-mineshaft-700 border-mineshaft-600'
+        star: 'text-bunker-200 bg-mineshaft-500'
       },
       isDisabled: {
-        true: 'bg-mineshaft-700 border border-mineshaft-600 text-white opacity-50 cursor-not-allowed',
-        false: 'border'
+        true: 'bg-mineshaft text-white opacity-50 cursor-not-allowed',
+        false: ''
       },
       isFullWidth: {
         true: 'w-full',
@@ -61,17 +60,12 @@ const buttonVariants = cva(
       {
         colorSchema: 'primary',
         variant: 'star',
-        className: 'bg-mineshaft-700 border border-mineshaft-600 hover:bg-primary hover:text-black hover:border-primary-400 duration-100'
+        className: 'hover:bg-primary hover:text-black'
       },
       {
         colorSchema: 'primary',
         variant: 'selected',
         className: 'bg-primary/10 border border-primary/50 text-bunker-200'
-      },
-      {
-        colorSchema: 'primary',
-        variant: 'outline_bg',
-        className: 'bg-mineshaft-700 border border-mineshaft-600 hover:bg-primary/[0.15] hover:border-primary/60 text-bunker-200 duration-100'
       },
       {
         colorSchema: 'secondary',
@@ -111,7 +105,7 @@ const buttonVariants = cva(
       {
         colorSchema: 'secondary',
         variant: 'plain',
-        className: 'text-mineshaft-300 hover:text-mineshaft-200 border-none'
+        className: 'text-mineshaft-300'
       },
       {
         colorSchema: 'danger',

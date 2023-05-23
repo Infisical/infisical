@@ -4,23 +4,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type ServiceTokenDetails struct {
-	ServiceTokenSecretReference KubeSecretReference `json:"serviceTokenSecretReference"`
-}
-
-type ServiceAccountDetails struct {
-	ServiceAccountSecretReference KubeSecretReference `json:"serviceAccountSecretReference"`
-	ProjectId                     string              `json:"projectId"`
-	EnvironmentName               string              `json:"environmentName"`
-}
-
-type Authentication struct {
-	// +kubebuilder:validation:Optional
-	ServiceAccount ServiceAccountDetails `json:"serviceAccount"`
-	// +kubebuilder:validation:Optional
-	ServiceToken ServiceTokenDetails `json:"serviceToken"`
-}
-
 type KubeSecretReference struct {
 	// The name of the Kubernetes Secret
 	// +kubebuilder:validation:Required
@@ -33,18 +16,13 @@ type KubeSecretReference struct {
 
 // InfisicalSecretSpec defines the desired state of InfisicalSecret
 type InfisicalSecretSpec struct {
-	// +kubebuilder:validation:Optional
-	TokenSecretReference KubeSecretReference `json:"tokenSecretReference"`
-
-	// +kubebuilder:validation:Optional
-	Authentication Authentication `json:"authentication"`
-
 	// +kubebuilder:validation:Required
-	ManagedSecretReference KubeSecretReference `json:"managedSecretReference"`
+	TokenSecretReference KubeSecretReference `json:"tokenSecretReference,omitempty"`
+	// +kubebuilder:validation:Required
+	ManagedSecretReference KubeSecretReference `json:"managedSecretReference,omitempty"`
 
 	// Infisical host to pull secrets from
-	// +kubebuilder:validation:Optional
-	HostAPI string `json:"hostAPI"`
+	HostAPI string `json:"hostAPI,omitempty"`
 }
 
 // InfisicalSecretStatus defines the observed state of InfisicalSecret

@@ -1,7 +1,7 @@
-import { Schema, model, Types, Document } from 'mongoose';
+import { Schema, model, Types } from 'mongoose';
 import { OWNER, ADMIN, MEMBER, INVITED, ACCEPTED } from '../variables';
 
-export interface IMembershipOrg extends Document {
+export interface IMembershipOrg {
 	_id: Types.ObjectId;
 	user: Types.ObjectId;
 	inviteEmail: string;

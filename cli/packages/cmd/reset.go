@@ -7,16 +7,18 @@ import (
 	"os"
 
 	"github.com/Infisical/infisical-merge/packages/util"
-	"github.com/posthog/posthog-go"
 	"github.com/spf13/cobra"
 )
 
 var resetCmd = &cobra.Command{
 	Use:                   "reset",
-	Short:                 "Used to delete all Infisical related data on your machine",
+	Short:                 "Used delete all Infisical related data on your machine",
 	DisableFlagsInUseLine: true,
 	Example:               "infisical reset",
 	Args:                  cobra.NoArgs,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		toggleDebug(cmd, args)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// delete config
 		_, pathToDir, err := util.GetFullConfigFilePath()
@@ -38,7 +40,6 @@ var resetCmd = &cobra.Command{
 		util.DeleteBackupSecrets()
 
 		util.PrintSuccessMessage("Reset successful")
-		Telemetry.CaptureEvent("cli-command:reset", posthog.NewProperties().Set("version", util.CLI_VERSION))
 	},
 }
 

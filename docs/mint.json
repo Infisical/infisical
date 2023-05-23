@@ -79,59 +79,29 @@
     {
       "group": "Overview",
       "pages": [
-        {
-          "group": "Getting Started",
-          "pages": [
-            "documentation/getting-started/introduction",
-            "documentation/getting-started/platform",
-            "documentation/getting-started/sdks",
-            "documentation/getting-started/cli",
-            "documentation/getting-started/docker",
-            "documentation/getting-started/kubernetes"
-          ]
-        },
-        {
-          "group": "Guides",
-          "pages": [
-            "documentation/guides/introduction",
-            "documentation/guides/node",
-            "documentation/guides/python",
-            "documentation/guides/nextjs-vercel"
-          ]
-        }
+        "getting-started/introduction",
+        "getting-started/quickstart",
+        "getting-started/features"
       ]
     },
     {
       "group": "Platform",
       "pages": [
-        "documentation/platform/organization",
-        "documentation/platform/project",
-        "documentation/platform/pit-recovery",
-        "documentation/platform/secret-versioning",
-        "documentation/platform/audit-logs",
-        "documentation/platform/mfa",
-        "documentation/platform/token"
+        "getting-started/dashboard/organization",
+        "getting-started/dashboard/project",
+        "getting-started/dashboard/pit-recovery",
+        "getting-started/dashboard/secret-versioning",
+        "getting-started/dashboard/audit-logs",
+        "getting-started/dashboard/mfa",
+        "getting-started/dashboard/token"
       ]
     },
     {
-      "group": "Self-host Infisical",
+      "group": "Self-hosting",
       "pages": [
-        {
-          "group": "Deployment options",
-          "pages": [
-            "self-hosting/overview",
-            "self-hosting/deployment-options/kubernetes-helm",
-            "self-hosting/deployment-options/aws-ec2",
-            "self-hosting/deployment-options/docker-compose",
-            "self-hosting/deployment-options/standalone-infisical",
-            "self-hosting/deployment-options/fly.io",
-            "self-hosting/deployment-options/render",
-            "self-hosting/deployment-options/digital-ocean-marketplace"
-          ]
-        },
+        "self-hosting/overview",
         "self-hosting/configuration/envars",
-        "self-hosting/configuration/email",
-        "self-hosting/faq"
+        "self-hosting/configuration/email"
       ]
     },
     {
@@ -140,7 +110,7 @@
         "cli/overview",
         "cli/usage",
         {
-          "group": "Core commands",
+          "group": "Commands",
           "pages": [
             "cli/commands/login",
             "cli/commands/init",
@@ -148,18 +118,9 @@
             "cli/commands/secrets",
             "cli/commands/export",
             "cli/commands/vault",
-            "cli/commands/user",
-            "cli/commands/reset",
-            {
-              "group": "infisical scan",
-              "pages": [
-                "cli/commands/scan",
-                "cli/commands/scan-git-changes"
-              ]
-            }
+            "cli/commands/reset"
           ]
         },
-        "cli/scanning-overview",
         "cli/project-config",
         "cli/faq"
       ]
@@ -190,13 +151,11 @@
         "integrations/cloud/render",
         "integrations/cloud/railway",
         "integrations/cloud/flyio",
-        "integrations/cloud/supabase",
         "integrations/cloud/azure-key-vault",
         "integrations/cicd/githubactions",
         "integrations/cicd/gitlab",
         "integrations/cicd/circleci",
         "integrations/cicd/travisci",
-        "integrations/frameworks/spring-boot-maven",
         "integrations/frameworks/react",
         "integrations/frameworks/vue",
         "integrations/frameworks/express",
@@ -217,6 +176,13 @@
       ]
     },
     {
+      "group": "Deployment options",
+      "pages": [
+        "self-hosting/deployments/linux",
+        "self-hosting/deployments/kubernetes"
+      ]
+    },
+    {
       "group": "Overview",
       "pages": [
         "sdks/overview"
@@ -230,8 +196,7 @@
         "sdks/languages/java",
         "sdks/languages/ruby",
         "sdks/languages/go",
-        "sdks/languages/rust",
-        "sdks/languages/php"
+        "sdks/languages/rust"
       ]
     },
     {
@@ -239,15 +204,13 @@
       "pages": [
         "api-reference/overview/introduction",
         "api-reference/overview/authentication",
-        "api-reference/overview/blind-indices",
         {
           "group": "Examples",
           "pages": [
+            "api-reference/overview/examples/create-secrets",
             "api-reference/overview/examples/retrieve-secrets",
-            "api-reference/overview/examples/create-secret",
-            "api-reference/overview/examples/retrieve-secret",
-            "api-reference/overview/examples/update-secret",
-            "api-reference/overview/examples/delete-secret"
+            "api-reference/overview/examples/update-secrets",
+            "api-reference/overview/examples/delete-secrets"
           ]
         }
       ]
@@ -286,9 +249,8 @@
         {
           "group": "Secrets",
           "pages": [
-            "api-reference/endpoints/secrets/read",
             "api-reference/endpoints/secrets/create",
-            "api-reference/endpoints/secrets/read-one",
+            "api-reference/endpoints/secrets/read",
             "api-reference/endpoints/secrets/update",
             "api-reference/endpoints/secrets/delete",
             "api-reference/endpoints/secrets/versions",
@@ -320,6 +282,7 @@
       ]
     }
   ],
+  "backgroundImage": "/images/background.png",
   "integrations": {
     "intercom": "hsg644ru"
   }

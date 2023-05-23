@@ -15,28 +15,32 @@ import {
 const requireSecretSnapshotAuth = ({
     acceptedRoles,
 }: {
-    acceptedRoles: Array<'admin' | 'member'>;
+    acceptedRoles: string[];
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
-        const { secretSnapshotId } = req.params;
-        
-        const secretSnapshot = await SecretSnapshot.findById(secretSnapshotId);
-        
-        if (!secretSnapshot) {
-            return next(SecretSnapshotNotFoundError({
-                message: 'Failed to find secret snapshot'
-            }));
-        }
-        
-        await validateMembership({
-            userId: req.user._id,
-            workspaceId: secretSnapshot.workspace,
-            acceptedRoles
-        });
-        
-        req.secretSnapshot = secretSnapshot as any;
+        try {
+            const { secretSnapshotId } = req.params;
+            
+            const secretSnapshot = await SecretSnapshot.findById(secretSnapshotId);
+            
+            if (!secretSnapshot) {
+                return next(SecretSnapshotNotFoundError({
+                    message: 'Failed to find secret snapshot'
+                }));
+            }
+            
+            await validateMembership({
+                userId: req.user._id,
+                workspaceId: secretSnapshot.workspace,
+                acceptedRoles
+            });
+            
+            req.secretSnapshot = secretSnapshot as any;
 
-        next();
+            next();
+        } catch (err) {
+            return next(UnauthorizedRequestError({ message: 'Unable to authenticate secret snapshot' }));
+        }
     }
 }
 

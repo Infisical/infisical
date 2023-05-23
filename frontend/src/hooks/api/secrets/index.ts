@@ -1,6 +1,1 @@
-export {
-  useBatchSecretsOp,
-  useGetProjectSecrets,
-  useGetProjectSecretsByKey,
-  useGetSecretVersion
-} from './queries';
+export { useBatchSecretsOp, useGetProjectSecrets, useGetSecretVersion } from './queries';

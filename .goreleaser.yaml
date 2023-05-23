@@ -11,16 +11,10 @@ before:
     - ./cli/scripts/completions.sh
     - ./cli/scripts/manpages.sh
 
-monorepo:
-  tag_prefix: infisical-cli/
-  dir: cli
-
 builds:
   - id: darwin-build
     binary: infisical
-    ldflags:
-      - -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Version }}
-      - -X github.com/Infisical/infisical-merge/packages/telemetry.POSTHOG_API_KEY_FOR_CLI={{ .Env.POSTHOG_API_KEY_FOR_CLI }}
+    ldflags: -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Version }}
     flags:
       - -trimpath
     env:
@@ -38,9 +32,7 @@ builds:
     env:
       - CGO_ENABLED=0
     binary: infisical
-    ldflags:
-      - -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Version }}
-      - -X github.com/Infisical/infisical-merge/packages/telemetry.POSTHOG_API_KEY_FOR_CLI={{ .Env.POSTHOG_API_KEY_FOR_CLI }}
+    ldflags: -X github.com/Infisical/infisical-merge/packages/util.CLI_VERSION={{ .Version }}
     flags:
       - -trimpath
     goos:
@@ -69,10 +61,10 @@ archives:
       - goos: windows
         format: zip
     files:
-      - ../README*
-      - ../LICENSE*
-      - ../manpages/*
-      - ../completions/*
+      - README*
+      - LICENSE*
+      - manpages/*
+      - completions/*
 
 release:
   replace_existing_draft: true
@@ -82,7 +74,14 @@ checksum:
   name_template: "checksums.txt"
 
 snapshot:
-  name_template: "{{ .Version }}-devel"
+  name_template: "{{ incpatch .Version }}-devel"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
 
 # publishers:
 #   - name: fury.io
@@ -165,7 +164,7 @@ aurs:
       mkdir -p "${pkgdir}/usr/share/zsh/site-functions/"
       mkdir -p "${pkgdir}/usr/share/fish/vendor_completions.d/"
       install -Dm644 "./completions/infisical.bash" "${pkgdir}/usr/share/bash-completion/completions/infisical"
-      install -Dm644 "./completions/infisical.zsh" "${pkgdir}/usr/share/zsh/site-functions/_infisical"
+      install -Dm644 "./completions/infisical.zsh" "${pkgdir}/usr/share/zsh/site-functions/infisical"
       install -Dm644 "./completions/infisical.fish" "${pkgdir}/usr/share/fish/vendor_completions.d/infisical.fish"
       # man pages
       install -Dm644 "./manpages/infisical.1.gz" "${pkgdir}/usr/share/man/man1/infisical.1.gz"

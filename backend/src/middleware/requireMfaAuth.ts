@@ -26,7 +26,7 @@ const requireMfaAuth = async (
 	if(AUTH_TOKEN_VALUE === null) return next(BadRequestError({message: 'Missing Authorization Body in the request header'}))
 	
 	const decodedToken = <jwt.UserIDJwtPayload>(
-		jwt.verify(AUTH_TOKEN_VALUE, await getJwtMfaSecret())
+		jwt.verify(AUTH_TOKEN_VALUE, getJwtMfaSecret())
 	);
 
 	const user = await User.findOne({

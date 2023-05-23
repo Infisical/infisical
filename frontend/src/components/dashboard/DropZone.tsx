@@ -1,7 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import { type ChangeEvent, type DragEvent, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import Image from 'next/image';
+import { useTranslation } from 'next-i18next';
 import { faUpload } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { parseDocument, Scalar, YAMLMap } from 'yaml';
@@ -148,7 +148,7 @@ const DropZone = ({
         setData(newData);
         setButtonReady(true);
       } catch (error) {
-        console.log('Error while dropping the file: ', error);
+        console.log("Error while dropping the file: ", error)
       }
     };
 
@@ -181,12 +181,12 @@ const DropZone = ({
   };
 
   return loading ? (
-    <div className="mb-16 flex items-center justify-center pt-16">
+    <div className="flex items-center justify-center pt-16 mb-16">
       <Image src="/images/loading/loading.gif" height={70} width={120} alt="google logo" />
     </div>
   ) : keysExist ? (
     <div
-      className="relative mx-auto mb-4 mt-1 flex w-full max-w-[calc(100%-1rem)] flex-col items-center justify-center rounded-md bg-mineshaft-900 py-8 px-2 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100"
+      className="opacity-60 hover:opacity-100 duration-200 relative bg-mineshaft-900 max-w-[calc(100%-1rem)] w-full outline-dashed outline-chicago-600 rounded-md outline-2 flex flex-col items-center justify-center mb-4 mx-auto mt-1 py-8 px-2"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -195,14 +195,14 @@ const DropZone = ({
       <input
         id="fileSelect"
         type="file"
-        className="absolute h-full w-full opacity-0"
+        className="opacity-0 absolute w-full h-full"
         accept=""
         onChange={handleFileSelect}
       />
       {errorDragAndDrop ? <div className="my-3 max-w-xl opacity-80" /> : <div className="" />}
       <div className="flex flex-row">
-        <FontAwesomeIcon icon={faUpload} className="mr-6 text-3xl text-bunker-300" />
-        <p className="mt-1 text-bunker-300">{t('common.drop-zone-keys')}</p>
+        <FontAwesomeIcon icon={faUpload} className="text-bunker-300 text-3xl mr-6" />
+        <p className="text-bunker-300 mt-1">{t('common:drop-zone-keys')}</p>
       </div>
       {errorDragAndDrop && (
         <div className="mt-8 max-w-xl opacity-80">
@@ -212,30 +212,30 @@ const DropZone = ({
     </div>
   ) : (
     <div
-      className="relative mb-16 flex w-full max-w-2xl flex-col items-center justify-center rounded-md bg-bunker px-4 pt-16 opacity-80 outline-dashed outline-2 outline-gray-700 duration-200 hover:opacity-100"
+      className="opacity-80 hover:opacity-100 duration-200 relative bg-bunker max-w-2xl w-full outline-dashed outline-gray-700 rounded-md outline-2 flex flex-col items-center justify-center pt-16 mb-16 px-4"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <FontAwesomeIcon icon={faUpload} className="mb-8 text-7xl" />
-      <p className="">{t('common.drop-zone')}</p>
+      <FontAwesomeIcon icon={faUpload} className="text-7xl mb-8" />
+      <p className="">{t('common:drop-zone')}</p>
       <input
         id="fileSelect"
         type="file"
-        className="absolute h-full w-full opacity-0"
+        className="opacity-0 absolute w-full h-full"
         accept=".txt,.env,.yml"
         onChange={handleFileSelect}
       />
-      <div className="mb-6 mt-5 flex w-full flex-row items-center justify-center">
-        <div className="w-1/5 border-t border-gray-700" />
-        <p className="mx-4 text-xs text-gray-400">OR</p>
-        <div className="w-1/5 border-t border-gray-700" />
+      <div className="flex flex-row w-full items-center justify-center mb-6 mt-5">
+        <div className="border-t border-gray-700 w-1/5" />
+        <p className="text-gray-400 text-xs mx-4">OR</p>
+        <div className="border-t border-gray-700 w-1/5" />
       </div>
       <div className="z-10 mb-6">
         <Button
           color="mineshaft"
-          text={String(t('dashboard.add-secret'))}
+          text={String(t('dashboard:add-secret'))}
           onButtonPressed={createNewFile}
           size="md"
         />

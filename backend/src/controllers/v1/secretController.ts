@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
-import { Types } from 'mongoose';
 import { Key, Secret } from '../../models';
 import {
 	v1PushSecrets as push,
@@ -39,7 +38,7 @@ export const pushSecrets = async (req: Request, res: Response) => {
 	// upload (encrypted) secrets to workspace with id [workspaceId]
 
 	try {
-		const postHogClient = await TelemetryService.getPostHogClient();
+		const postHogClient = TelemetryService.getPostHogClient();
 		let { secrets }: { secrets: PushSecret[] } = req.body;
 		const { keys, environment, channel } = req.body;
 		const { workspaceId } = req.params;
@@ -85,8 +84,7 @@ export const pushSecrets = async (req: Request, res: Response) => {
 		// trigger event - push secrets
 		EventService.handleEvent({
 			event: eventPushSecrets({
-				workspaceId: new Types.ObjectId(workspaceId),
-				environment
+				workspaceId
 			})
 		});
 
@@ -114,7 +112,7 @@ export const pullSecrets = async (req: Request, res: Response) => {
 	let secrets;
 	let key;
 	try {
-		const postHogClient = await TelemetryService.getPostHogClient();
+		const postHogClient = TelemetryService.getPostHogClient();
 		const environment: string = req.query.environment as string;
 		const channel: string = req.query.channel as string;
 		const { workspaceId } = req.params;
@@ -183,7 +181,7 @@ export const pullSecretsServiceToken = async (req: Request, res: Response) => {
 	let secrets;
 	let key;
 	try {
-		const postHogClient = await TelemetryService.getPostHogClient();
+		const postHogClient = TelemetryService.getPostHogClient();
 		const environment: string = req.query.environment as string;
 		const channel: string = req.query.channel as string;
 		const { workspaceId } = req.params;

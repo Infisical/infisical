@@ -8,8 +8,6 @@ import {
 	ServiceTokenData,
 	IServiceTokenData,
 	ISecret,
-	IOrganization,
-	IServiceAccountWorkspacePermission,
 	ServiceAccountWorkspacePermission
 } from '../models';
 import { 
@@ -111,20 +109,21 @@ const validateClientForServiceAccount = async ({
 	environment?: string;
 	requiredPermissions?: string[];
 }) => {
+	// TODO: add service account API support for workspace-level endpoints that are not
+	// tied to any specific environment
+
 	if (environment) {
-		// case: environment specified ->
-		// evaluate service account authorization for workspace
-		// in the context of a specific environment [environment]
 		const permission = await ServiceAccountWorkspacePermission.findOne({
 			serviceAccount,
 			workspace: new Types.ObjectId(workspaceId),
 			environment
 		});
-	
+		
 		if (!permission) throw UnauthorizedRequestError({
 			message: 'Failed service account authorization for the given workspace environment'
 		});
-
+		
+		// TODO: refactor
 		let runningIsDisallowed = false;
 		requiredPermissions?.forEach((requiredPermission: string) => {
 			switch (requiredPermission) {
@@ -143,20 +142,6 @@ const validateClientForServiceAccount = async ({
 					message: `Failed permissions authorization for workspace environment action : ${requiredPermission}`
 				});	
 			}
-		});
-		
-	} else {
-		// case: no environment specified ->
-		// evaluate service account authorization for workspace
-		// without need of environment [environment]
-
-		const permission = await ServiceAccountWorkspacePermission.findOne({
-			serviceAccount,
-			workspace: new Types.ObjectId(workspaceId)
-		});
-		
-		if (!permission) throw UnauthorizedRequestError({
-			message: 'Failed service account authorization for the given workspace'
 		});
 	}
 }
@@ -195,6 +180,7 @@ const validateClientForServiceAccount = async ({
 		});
 		
 		requiredPermissions?.forEach((requiredPermission: string) => {
+			// TODO: refactor
 			let runningIsDisallowed = false;
 			requiredPermissions?.forEach((requiredPermission: string) => {
 				switch (requiredPermission) {
@@ -216,6 +202,9 @@ const validateClientForServiceAccount = async ({
 			});
 		});
 	});
+
+	// TODO
+    return [];
 }
 
 /**
@@ -242,30 +231,9 @@ const validateServiceAccountClientForServiceAccount = ({
 	}
 }
 
-/**
- * Validate that service account (client) can access organization [organization]
- * @param {Object} obj
- * @param {User} obj.user - service account client
- * @param {Organization} obj.organization - organization to validate against
- */
-const validateServiceAccountClientForOrganization = async ({
-	serviceAccount,
-	organization
-}: {
-	serviceAccount: IServiceAccount;
-	organization: IOrganization;
-}) => {
-	if (!serviceAccount.organization.equals(organization._id)) {
-		throw UnauthorizedRequestError({
-			message: 'Failed service account authorization for the given organization'
-		});
-	}
-}
-
 export {
 	validateClientForServiceAccount,
     validateServiceAccountClientForWorkspace,
 	validateServiceAccountClientForSecrets,
-	validateServiceAccountClientForServiceAccount,
-	validateServiceAccountClientForOrganization
+	validateServiceAccountClientForServiceAccount
 }

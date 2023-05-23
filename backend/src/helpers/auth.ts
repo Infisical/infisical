@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
@@ -103,7 +104,7 @@ const getAuthUserPayload = async ({
 	authTokenValue: string;
 }) => {
 	const decodedToken = <jwt.UserIDJwtPayload>(
-		jwt.verify(authTokenValue, await getJwtAuthSecret())
+		jwt.verify(authTokenValue, getJwtAuthSecret())
 	);
 
 	const user = await User.findOne({
@@ -156,7 +157,7 @@ const getAuthSTDPayload = async ({
 		}, {
 			new: true
 		})
-		.select('+encryptedKey +iv +tag');
+		.select('+encryptedKey +iv +tag').populate('user');
 
 	if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
 
@@ -262,16 +263,16 @@ const issueAuthTokens = async ({ userId }: { userId: string }) => {
 		payload: {
 			userId
 		},
-		expiresIn: await getJwtAuthLifetime(),
-		secret: await getJwtAuthSecret()
+		expiresIn: getJwtAuthLifetime(),
+		secret: getJwtAuthSecret()
 	});
 
 	const refreshToken = createToken({
 		payload: {
 			userId
 		},
-		expiresIn: await getJwtRefreshLifetime(),
-		secret: await getJwtRefreshSecret()
+		expiresIn: getJwtRefreshLifetime(),
+		secret: getJwtRefreshSecret()
 	});
 
 	return {

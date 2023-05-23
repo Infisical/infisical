@@ -15,8 +15,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/fatih/color"
-	"github.com/posthog/posthog-go"
-	"github.com/rs/zerolog/log"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -29,6 +28,7 @@ var runCmd = &cobra.Command{
 	Use:                   "run [any infisical run command flags] -- [your application start command]",
 	Short:                 "Used to inject environments variables into your application process",
 	DisableFlagsInUseLine: true,
+	PreRun:                toggleDebug,
 	Args: func(cmd *cobra.Command, args []string) error {
 		// Check if the --command flag has been set
 		commandFlagSet := cmd.Flags().Changed("command")
@@ -124,9 +124,7 @@ var runCmd = &cobra.Command{
 			env = append(env, s)
 		}
 
-		log.Debug().Msgf("injecting the following environment variables into shell: %v", env)
-
-		Telemetry.CaptureEvent("cli-command:run", posthog.NewProperties().Set("secretsCount", len(secrets)).Set("environment", environmentName).Set("isUsingServiceToken", infisicalToken != "").Set("single-command", strings.Join(args, " ")).Set("multi-command", cmd.Flag("command").Value.String()).Set("version", util.CLI_VERSION))
+		log.Debugf("injecting the following environment variables into shell: %v", env)
 
 		if cmd.Flags().Changed("command") {
 			command := cmd.Flag("command").Value.String()
@@ -219,7 +217,7 @@ func executeMultipleCommandWithEnvs(fullCommand string, secretsCount int, env []
 	cmd.Env = env
 
 	color.Green("Injecting %v Infisical secrets into your application process", secretsCount)
-	log.Debug().Msgf("executing command: %s %s %s \n", shell[0], shell[1], fullCommand)
+	log.Debugf("executing command: %s %s %s \n", shell[0], shell[1], fullCommand)
 
 	return execCmd(cmd)
 }

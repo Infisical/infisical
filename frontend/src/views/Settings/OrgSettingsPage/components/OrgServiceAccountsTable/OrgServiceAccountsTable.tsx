@@ -335,11 +335,15 @@ export const OrgServiceAccountsTable = () => {
                                 );
                             })
                         )}
+                        {!isServiceAccountsLoading && filteredServiceAccounts?.length === 0 && (
+                            <Tr>
+                                <Td colSpan={4} className="text-center">
+                                    <EmptyState title="No service accounts found" icon={faServer} />
+                                </Td>
+                            </Tr>
+                        )}
                     </TBody>
                 </Table>
-                {!isServiceAccountsLoading && filteredServiceAccounts?.length === 0 && (
-                    <EmptyState title="No service accounts found" icon={faServer} />
-                )}
             </TableContainer>
             <Modal
                 isOpen={popUp?.addServiceAccount?.isOpen}

@@ -12,6 +12,7 @@ import Button from '@app/components/basic/buttons/Button';
 import InputField from '@app/components/basic/InputField';
 import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
 import Aes256Gcm from '@app/components/utilities/cryptography/aes-256-gcm';
+import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
 
 import { deriveArgonKey } from '../components/utilities/cryptography/crypto';
 import EmailVerifyOnPasswordReset from './api/auth/EmailVerifyOnPasswordReset';
@@ -82,9 +83,9 @@ export default function PasswordReset() {
               parallelism: 1,
               hashLen: 32
             });
-
+            
             if (!derivedKey) throw new Error('Failed to derive key from password');
-
+            
             const key = crypto.randomBytes(32);
 
             // create encrypted private key by encrypting the private
@@ -97,7 +98,7 @@ export default function PasswordReset() {
               text: privateKey,
               secret: key
             });
-
+            
             // create the protected key by encrypting the symmetric key
             // [key] with the derived key
             const {
@@ -133,12 +134,12 @@ export default function PasswordReset() {
 
   // Click a button to confirm email
   const stepConfirmEmail = (
-    <div className="my-32 mx-1 flex w-full max-w-xs flex-col items-center rounded-xl bg-bunker py-6 px-4 drop-shadow-xl md:max-w-lg md:px-6">
-      <p className="mb-8 flex justify-center bg-gradient-to-br from-sky-400 to-primary bg-clip-text text-center text-4xl font-semibold text-transparent">
+    <div className="bg-bunker flex flex-col items-center w-full py-6 max-w-xs md:max-w-lg my-32 px-4 md:px-6 mx-1 rounded-xl drop-shadow-xl">
+      <p className="text-4xl text-center font-semibold mb-8 flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
         Confirm your email
       </p>
       <Image src="/images/envelope.svg" height={262} width={410} alt="verify email" />
-      <div className="mx-auto mt-4 mb-2 flex max-h-24 max-w-md flex-col items-center justify-center px-4 text-lg md:p-2">
+      <div className="flex flex-col items-center justify-center md:p-2 max-h-24 max-w-md mx-auto text-lg px-4 mt-4 mb-2">
         <Button
           text="Confirm Email"
           onButtonPressed={async () => {
@@ -162,16 +163,16 @@ export default function PasswordReset() {
 
   // Input backup key
   const stepInputBackupKey = (
-    <div className="my-32 mx-1 flex w-full max-w-xs flex-col items-center rounded-xl bg-bunker px-4 pt-6 pb-3 drop-shadow-xl md:max-w-lg md:px-6">
-      <p className="mx-auto mb-4 flex w-max justify-center text-2xl font-semibold text-bunker-100 md:text-3xl">
+    <div className="bg-bunker flex flex-col items-center w-full pt-6 pb-3 max-w-xs md:max-w-lg my-32 px-4 md:px-6 mx-1 rounded-xl drop-shadow-xl">
+      <p className="text-2xl md:text-3xl w-max mx-auto flex justify-center font-semibold text-bunker-100 mb-4">
         Enter your backup key
       </p>
-      <div className="mt-4 flex flex-row items-center justify-center md:mx-2 md:pb-4">
-        <p className="flex w-max max-w-md justify-center text-sm text-gray-400">
+      <div className="flex flex-row items-center justify-center md:pb-4 mt-4 md:mx-2">
+        <p className="text-sm flex justify-center text-gray-400 w-max max-w-md">
           You can find it in your emrgency kit. You had to download the enrgency kit during signup.
         </p>
       </div>
-      <div className="mt-4 flex max-h-24 w-full items-center justify-center rounded-lg md:mt-0 md:max-h-28 md:p-2">
+      <div className="flex items-center justify-center w-full md:p-2 rounded-lg mt-4 md:mt-0 max-h-24 md:max-h-28">
         <InputField
           label="Backup Key"
           onChangeHandler={setBackupKey}
@@ -183,8 +184,8 @@ export default function PasswordReset() {
           errorText="Something is wrong with the backup key"
         />
       </div>
-      <div className="mx-auto mt-4 flex max-h-20 w-full max-w-md flex-col items-center justify-center text-sm md:p-2">
-        <div className="text-l m-8 mt-6 px-8 py-3 text-lg">
+      <div className="flex flex-col items-center justify-center w-full md:p-2 max-h-20 max-w-md mt-4 mx-auto text-sm">
+        <div className="text-l mt-6 m-8 px-8 py-3 text-lg">
           <Button
             text="Submit Backup Key"
             onButtonPressed={() => getEncryptedKeyHandler()}
@@ -197,16 +198,16 @@ export default function PasswordReset() {
 
   // Enter new password
   const stepEnterNewPassword = (
-    <div className="my-32 mx-1 flex w-full max-w-xs flex-col items-center rounded-xl bg-bunker px-4 pt-6 pb-3 drop-shadow-xl md:max-w-lg md:px-6">
-      <p className="mx-auto flex w-max justify-center text-2xl font-semibold text-bunker-100 md:text-3xl">
+    <div className="bg-bunker flex flex-col items-center w-full pt-6 pb-3 max-w-xs md:max-w-lg my-32 px-4 md:px-6 mx-1 rounded-xl drop-shadow-xl">
+      <p className="text-2xl md:text-3xl w-max mx-auto flex justify-center font-semibold text-bunker-100">
         Enter new password
       </p>
-      <div className="mt-1 flex flex-row items-center justify-center md:mx-2 md:pb-4">
-        <p className="flex w-max max-w-md justify-center text-sm text-gray-400">
+      <div className="flex flex-row items-center justify-center md:pb-4 mt-1 md:mx-2">
+        <p className="text-sm flex justify-center text-gray-400 w-max max-w-md">
           Make sure you save it somewhere save.
         </p>
       </div>
-      <div className="mt-4 flex max-h-24 w-full items-center justify-center rounded-lg md:mt-0 md:max-h-28 md:p-2">
+      <div className="flex items-center justify-center w-full md:p-2 rounded-lg mt-4 md:mt-0 max-h-24 md:max-h-28">
         <InputField
           label="New Password"
           onChangeHandler={(password) => {
@@ -228,23 +229,23 @@ export default function PasswordReset() {
         />
       </div>
       {passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber ? (
-        <div className="mx-2 mt-3 mb-2 flex w-full max-w-md flex-col items-start rounded-md bg-white/5 px-2 py-2">
-          <div className="mb-1 text-sm text-gray-400">Password should contain at least:</div>
-          <div className="ml-1 flex flex-row items-center justify-start">
+        <div className="w-full mt-3 bg-white/5 px-2 mx-2 flex flex-col items-start py-2 rounded-md max-w-md mb-2">
+          <div className="text-gray-400 text-sm mb-1">Password should contain at least:</div>
+          <div className="flex flex-row justify-start items-center ml-1">
             {passwordErrorLength ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+              <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+              <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
             )}
             <div className={`${passwordErrorLength ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
               14 characters
             </div>
           </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
+          <div className="flex flex-row justify-start items-center ml-1">
             {passwordErrorLowerCase ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+              <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+              <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
             )}
             <div
               className={`${passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'} text-sm`}
@@ -252,11 +253,11 @@ export default function PasswordReset() {
               1 lowercase character
             </div>
           </div>
-          <div className="ml-1 flex flex-row items-center justify-start">
+          <div className="flex flex-row justify-start items-center ml-1">
             {passwordErrorNumber ? (
-              <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
+              <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
             ) : (
-              <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
+              <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
             )}
             <div className={`${passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
               1 number
@@ -266,8 +267,8 @@ export default function PasswordReset() {
       ) : (
         <div className="py-2" />
       )}
-      <div className="mx-auto mt-4 flex max-h-20 w-full max-w-md flex-col items-center justify-center text-sm md:p-2">
-        <div className="text-l m-8 mt-6 px-8 py-3 text-lg">
+      <div className="flex flex-col items-center justify-center w-full md:p-2 max-h-20 max-w-md mt-4 mx-auto text-sm">
+        <div className="text-l mt-6 m-8 px-8 py-3 text-lg">
           <Button
             text="Submit New Password"
             onButtonPressed={() => resetPasswordHandler()}
@@ -279,10 +280,12 @@ export default function PasswordReset() {
   );
 
   return (
-    <div className="flex h-screen w-full flex-col items-center justify-center bg-bunker-800">
+    <div className="bg-bunker-800 h-screen w-full flex flex-col items-center justify-center">
       {step === 1 && stepConfirmEmail}
       {step === 2 && stepInputBackupKey}
       {step === 3 && stepEnterNewPassword}
     </div>
   );
 }
+
+export const getServerSideProps = getTranslatedStaticProps([]);

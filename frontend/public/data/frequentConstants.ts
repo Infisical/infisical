@@ -15,8 +15,7 @@ const integrationSlugNameMapping: Mapping = {
   'railway': 'Railway',
   'flyio': 'Fly.io',
   'circleci': 'CircleCI',
-  'travisci': 'TravisCI',
-  'supabase': 'Supabase'
+  'travisci': 'TravisCI'
 }
 
 const envMapping: Mapping = {

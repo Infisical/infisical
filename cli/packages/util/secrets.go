@@ -12,14 +12,15 @@ import (
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/models"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/go-resty/resty/v2"
-	"github.com/rs/zerolog/log"
 )
 
-func GetPlainTextSecretsViaServiceToken(fullServiceToken string) ([]models.SingleEnvironmentVariable, api.GetServiceTokenDetailsResponse, error) {
+func GetPlainTextSecretsViaServiceToken(fullServiceToken string) ([]models.SingleEnvironmentVariable, error) {
 	serviceTokenParts := strings.SplitN(fullServiceToken, ".", 4)
 	if len(serviceTokenParts) < 4 {
-		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
+		return nil, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
 	}
 
 	serviceToken := fmt.Sprintf("%v.%v.%v", serviceTokenParts[0], serviceTokenParts[1], serviceTokenParts[2])
@@ -31,7 +32,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string) ([]models.Singl
 
 	serviceTokenDetails, err := api.CallGetServiceTokenDetailsV2(httpClient)
 	if err != nil {
-		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("unable to get service token details. [err=%v]", err)
+		return nil, fmt.Errorf("unable to get service token details. [err=%v]", err)
 	}
 
 	encryptedSecrets, err := api.CallGetSecretsV2(httpClient, api.GetEncryptedSecretsV2Request{
@@ -40,25 +41,25 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string) ([]models.Singl
 	})
 
 	if err != nil {
-		return nil, api.GetServiceTokenDetailsResponse{}, err
+		return nil, err
 	}
 
 	decodedSymmetricEncryptionDetails, err := GetBase64DecodedSymmetricEncryptionDetails(serviceTokenParts[3], serviceTokenDetails.EncryptedKey, serviceTokenDetails.Iv, serviceTokenDetails.Tag)
 	if err != nil {
-		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("unable to decode symmetric encryption details [err=%v]", err)
+		return nil, fmt.Errorf("unable to decode symmetric encryption details [err=%v]", err)
 	}
 
 	plainTextWorkspaceKey, err := crypto.DecryptSymmetric([]byte(serviceTokenParts[3]), decodedSymmetricEncryptionDetails.Cipher, decodedSymmetricEncryptionDetails.Tag, decodedSymmetricEncryptionDetails.IV)
 	if err != nil {
-		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("unable to decrypt the required workspace key")
+		return nil, fmt.Errorf("unable to decrypt the required workspace key")
 	}
 
 	plainTextSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, encryptedSecrets)
 	if err != nil {
-		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("unable to decrypt your secrets [err=%v]", err)
+		return nil, fmt.Errorf("unable to decrypt your secrets [err=%v]", err)
 	}
 
-	return plainTextSecrets, serviceTokenDetails, nil
+	return plainTextSecrets, nil
 }
 
 func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, workspaceId string, environmentName string, tagSlugs string) ([]models.SingleEnvironmentVariable, error) {
@@ -96,7 +97,7 @@ func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, work
 	}
 
 	if len(currentUsersPrivateKey) == 0 || len(encryptedWorkspaceKeySenderPublicKey) == 0 {
-		log.Debug().Msgf("Missing credentials for generating plainTextEncryptionKey: [currentUsersPrivateKey=%s] [encryptedWorkspaceKeySenderPublicKey=%s]", currentUsersPrivateKey, encryptedWorkspaceKeySenderPublicKey)
+		log.Debugf("Missing credentials for generating plainTextEncryptionKey: [currentUsersPrivateKey=%s] [encryptedWorkspaceKeySenderPublicKey=%s]", currentUsersPrivateKey, encryptedWorkspaceKeySenderPublicKey)
 		PrintErrorMessageAndExit("Some required user credentials are missing to generate your [plainTextEncryptionKey]. Please run [infisical login] then try again")
 	}
 
@@ -130,17 +131,16 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 
 	isConnected := CheckIsConnectedToInternet()
 	var secretsToReturn []models.SingleEnvironmentVariable
-	// var serviceTokenDetails api.GetServiceTokenDetailsResponse
 	var errorToReturn error
 
 	if infisicalToken == "" {
 		if isConnected {
-			log.Debug().Msg("GetAllEnvironmentVariables: Connected to internet, checking logged in creds")
+			log.Debug("GetAllEnvironmentVariables: Connected to internet, checking logged in creds")
 			RequireLocalWorkspaceFile()
 			RequireLogin()
 		}
 
-		log.Debug().Msg("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
+		log.Debug("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
 
 		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
 		if err != nil {
@@ -163,7 +163,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 		}
 
 		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId, params.Environment, params.TagSlugs)
-		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
+		log.Debugf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
 
 		backupSecretsEncryptionKey := []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
 		if errorToReturn == nil {
@@ -181,12 +181,8 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 		}
 
 	} else {
-		log.Debug().Msg("Trying to fetch secrets using service token")
-		secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(infisicalToken)
-
-		// if serviceTokenDetails.Environment != params.Environment {
-		// 	PrintErrorMessageAndExit(fmt.Sprintf("Fetch secrets failed: token allows [%s] environment access, not [%s]. Service tokens are environment-specific; no need for --env flag.", params.Environment, serviceTokenDetails.Environment))
-		// }
+		log.Debug("Trying to fetch secrets using service token")
+		secretsToReturn, errorToReturn = GetPlainTextSecretsViaServiceToken(infisicalToken)
 	}
 
 	return secretsToReturn, errorToReturn
@@ -514,7 +510,7 @@ func DeleteBackupSecrets() error {
 func GetEnvFromWorkspaceFile() string {
 	workspaceFile, err := GetWorkSpaceFromFile()
 	if err != nil {
-		log.Debug().Msgf("getEnvFromWorkspaceFile: [err=%s]", err)
+		log.Debugf("getEnvFromWorkspaceFile: [err=%s]", err)
 		return ""
 	}
 
@@ -528,17 +524,17 @@ func GetEnvFromWorkspaceFile() string {
 func GetEnvelopmentBasedOnGitBranch(workspaceFile models.WorkspaceConfigFile) string {
 	branch, err := getCurrentBranch()
 	if err != nil {
-		log.Debug().Msgf("getEnvelopmentBasedOnGitBranch: [err=%s]", err)
+		log.Debugf("getEnvelopmentBasedOnGitBranch: [err=%s]", err)
 	}
 
 	envBasedOnGitBranch, ok := workspaceFile.GitBranchToEnvironmentMapping[branch]
 
-	log.Debug().Msgf("GetEnvelopmentBasedOnGitBranch: [envBasedOnGitBranch=%s] [ok=%t]", envBasedOnGitBranch, ok)
+	log.Debugf("GetEnvelopmentBasedOnGitBranch: [envBasedOnGitBranch=%s] [ok=%t]", envBasedOnGitBranch, ok)
 
 	if err == nil && ok {
 		return envBasedOnGitBranch
 	} else {
-		log.Debug().Msgf("getEnvelopmentBasedOnGitBranch: [err=%s]", err)
+		log.Debugf("getEnvelopmentBasedOnGitBranch: [err=%s]", err)
 		return ""
 	}
 }

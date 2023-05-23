@@ -21,7 +21,6 @@ const INTEGRATION_RAILWAY = "railway";
 const INTEGRATION_FLYIO = "flyio";
 const INTEGRATION_CIRCLECI = "circleci";
 const INTEGRATION_TRAVISCI = "travisci";
-const INTEGRATION_SUPABASE = 'supabase';
 const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
@@ -33,7 +32,6 @@ const INTEGRATION_SET = new Set([
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
-  INTEGRATION_SUPABASE
 ]);
 
 // integration types
@@ -59,9 +57,8 @@ const INTEGRATION_RAILWAY_API_URL = "https://backboard.railway.app/graphql/v2";
 const INTEGRATION_FLYIO_API_URL = "https://api.fly.io/graphql";
 const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
 const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
-const INTEGRATION_SUPABASE_API_URL = 'https://api.supabase.com';
 
-const getIntegrationOptions = async () => {
+const getIntegrationOptions = () => {
     const INTEGRATION_OPTIONS = [
         {
             name: 'Heroku',
@@ -69,7 +66,7 @@ const getIntegrationOptions = async () => {
             image: 'Heroku.png',
             isAvailable: true,
             type: 'oauth',
-            clientId: await getClientIdHeroku(),
+            clientId: getClientIdHeroku(),
             docsLink: ''
         },
         {
@@ -79,7 +76,7 @@ const getIntegrationOptions = async () => {
             isAvailable: true,
             type: 'oauth',
             clientId: '',
-            clientSlug: await getClientSlugVercel(),
+            clientSlug: getClientSlugVercel(),
             docsLink: ''
         },
         {
@@ -88,7 +85,7 @@ const getIntegrationOptions = async () => {
             image: 'Netlify.png',
             isAvailable: true,
             type: 'oauth',
-            clientId: await getClientIdNetlify(),
+            clientId: getClientIdNetlify(),
             docsLink: ''
         },
         {
@@ -97,7 +94,7 @@ const getIntegrationOptions = async () => {
             image: 'GitHub.png',
             isAvailable: true,
             type: 'oauth',
-            clientId: await getClientIdGitHub(),
+            clientId: getClientIdGitHub(),
             docsLink: ''
         },
         {
@@ -151,7 +148,7 @@ const getIntegrationOptions = async () => {
             image: 'Microsoft Azure.png',
             isAvailable: true,
             type: 'oauth',
-            clientId: await getClientIdAzure(),
+            clientId: getClientIdAzure(),
             docsLink: ''
         },
         {
@@ -169,22 +166,13 @@ const getIntegrationOptions = async () => {
             image: 'GitLab.png',
             isAvailable: true,
             type: 'custom',
-            clientId: await getClientIdGitLab(),
+            clientId: getClientIdGitLab(),
             docsLink: ''
         },
         {
             name: 'Travis CI',
             slug: 'travisci',
             image: 'Travis CI.png',
-            isAvailable: true,
-            type: 'pat',
-            clientId: '',
-            docsLink: ''
-        },
-        {
-            name: 'Supabase',
-            slug: 'supabase',
-            image: 'Supabase.png',
             isAvailable: true,
             type: 'pat',
             clientId: '',
@@ -219,7 +207,6 @@ export {
     INTEGRATION_FLYIO,
     INTEGRATION_CIRCLECI,
     INTEGRATION_TRAVISCI,
-    INTEGRATION_SUPABASE,
     INTEGRATION_SET,
     INTEGRATION_OAUTH2,
     INTEGRATION_AZURE_TOKEN_URL,
@@ -237,6 +224,5 @@ export {
     INTEGRATION_FLYIO_API_URL,
     INTEGRATION_CIRCLECI_API_URL,
     INTEGRATION_TRAVISCI_API_URL,
-    INTEGRATION_SUPABASE_API_URL,
     getIntegrationOptions
 };

@@ -1,9 +1,9 @@
+import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
 import { 
     Log,
     IAction
 } from '../models';
-
 /**
  * Create an (audit) log
  * @param {Object} obj
@@ -31,16 +31,23 @@ const createLogHelper = async ({
     channel: string;
     ipAddress: string;
 }) => {
-    const log = await new Log({
-        user: userId,
-        serviceAccount: serviceAccountId,
-        serviceTokenData: serviceTokenDataId,
-        workspace: workspaceId ?? undefined,
-        actionNames: actions.map((a) => a.name),
-        actions,
-        channel,
-        ipAddress
-    }).save();
+    let log;
+    try {
+        log = await new Log({
+            user: userId,
+            serviceAccount: serviceAccountId,
+            serviceTokenData: serviceTokenDataId,
+            workspace: workspaceId ?? undefined,
+            actionNames: actions.map((a) => a.name),
+            actions,
+            channel,
+            ipAddress
+        }).save();
+    } catch (err) {
+        Sentry.setUser(null);
+		Sentry.captureException(err);
+		throw new Error('Failed to create log');
+    }
 
     return log;
 }

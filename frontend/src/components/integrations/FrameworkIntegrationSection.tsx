@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 import FrameworkIntegration from './FrameworkIntegration';
 
@@ -19,11 +19,15 @@ const FrameworkIntegrationSection = ({ frameworks }: Props) => {
 
   return (
     <>
-      <div className="mx-4 mt-12 mb-4 flex max-w-5xl flex-col items-start justify-between px-2 text-xl">
-        <h1 className="text-3xl font-semibold">{t('integrations.framework-integrations')}</h1>
-        <p className="text-base text-gray-400">{t('integrations.click-to-setup')}</p>
+      <div className='flex flex-col justify-between items-start mx-4 mt-12 mb-4 text-xl max-w-5xl px-2'>
+        <h1 className='font-semibold text-3xl'>
+          {t('integrations:framework-integrations')}
+        </h1>
+        <p className='text-base text-gray-400'>
+          {t('integrations:click-to-setup')}
+        </p>
       </div>
-      <div className="mx-6 mt-4 grid max-w-5xl grid-cols-7 grid-rows-2 gap-4">
+      <div className='grid gap-4 grid-cols-7 grid-rows-2 mx-6 mt-4 max-w-5xl'>
         {frameworks.map((framework) => (
           <FrameworkIntegration
             framework={framework}

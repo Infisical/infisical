@@ -25,7 +25,7 @@ const sendMail = async ({
   recipients: string[];
   substitutions: any;
 }) => {
-  if (await getSmtpConfigured()) {
+  if (getSmtpConfigured()) {
     try {
       const html = fs.readFileSync(
         path.resolve(__dirname, '../templates/' + template),
@@ -35,7 +35,7 @@ const sendMail = async ({
       const htmlToSend = temp(substitutions);
 
       await smtpTransporter.sendMail({
-        from: `"${await getSmtpFromName()}" <${await getSmtpFromAddress()}>`,
+        from: `"${getSmtpFromName()}" <${getSmtpFromAddress()}>`,
         to: recipients.join(', '),
         subject: subjectLine,
         html: htmlToSend

@@ -1,4 +1,3 @@
-import { Types } from 'mongoose';
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import { MembershipOrg, Organization, User } from '../../models';
@@ -135,13 +134,12 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 			}
 
 			if (!inviteeMembershipOrg) {
-				
 				await new MembershipOrg({
 					user: invitee,
 					inviteEmail: inviteeEmail,
 					organization: organizationId,
 					role: MEMBER,
-					status: INVITED
+					status: invitee?.publicKey ? ACCEPTED : INVITED
 				}).save();
 			}
 		} else {
@@ -166,7 +164,6 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 		const organization = await Organization.findOne({ _id: organizationId });
 
 		if (organization) {
-
 			const token = await TokenService.createToken({
 				type: TOKEN_EMAIL_ORG_INVITATION,
 				email: inviteeEmail,
@@ -182,14 +179,13 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 					inviterEmail: req.user.email,
 					organizationName: organization.name,
 					email: inviteeEmail,
-					organizationId: organization._id.toString(),
 					token,
-					callback_url: (await getSiteURL()) + '/signupinvite'
+					callback_url: getSiteURL() + '/signupinvite'
 				}
 			});
 
-			if (!(await getSmtpConfigured())) {
-				completeInviteLink = `${siteUrl + '/signupinvite'}?token=${token}&to=${inviteeEmail}&organization_id=${organization._id}`
+			if (!getSmtpConfigured()) {
+				completeInviteLink = `${siteUrl + '/signupinvite'}?token=${token}&to=${inviteeEmail}`
 			}
 		}
 
@@ -218,18 +214,13 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 export const verifyUserToOrganization = async (req: Request, res: Response) => {
 	let user, token;
 	try {
-		const {
-			email,
-			organizationId,
-			code
-		} = req.body;
+		const { email, code } = req.body;
 
 		user = await User.findOne({ email }).select('+publicKey');
 
 		const membershipOrg = await MembershipOrg.findOne({
 			inviteEmail: email,
-			status: INVITED,
-			organization: new Types.ObjectId(organizationId)
+			status: INVITED
 		});
 
 		if (!membershipOrg)
@@ -247,10 +238,6 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 			// membership can be approved and redirected to login/dashboard
 			membershipOrg.status = ACCEPTED;
 			await membershipOrg.save();
-			
-			await updateSubscriptionOrgQuantity({
-				organizationId
-			});
 
 			return res.status(200).send({
 				message: 'Successfully verified email',
@@ -270,8 +257,8 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 			payload: {
 				userId: user._id.toString()
 			},
-			expiresIn: await getJwtSignupLifetime(),
-			secret: await getJwtSignupSecret()
+			expiresIn: getJwtSignupLifetime(),
+			secret: getJwtSignupSecret()
 		});
 	} catch (err) {
 		Sentry.setUser(null);

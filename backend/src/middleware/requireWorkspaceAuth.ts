@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
+import { validateMembership } from '../helpers/membership';
 import { validateClientForWorkspace } from '../helpers/workspace';
+import { UnauthorizedRequestError } from '../utils/errors';
 
 type req = 'params' | 'body' | 'query';
 
@@ -15,35 +17,28 @@ const requireWorkspaceAuth = ({
 	acceptedRoles,
 	locationWorkspaceId,
 	locationEnvironment = undefined,
-	requiredPermissions = [],
-	requireBlindIndicesEnabled = false
+	requiredPermissions = []
 }: {
-	acceptedRoles: Array<'admin' | 'member'>;
+	acceptedRoles: string[];
 	locationWorkspaceId: req;
 	locationEnvironment?: req | undefined;
 	requiredPermissions?: string[];
-	requireBlindIndicesEnabled?: boolean;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
+		
 		const workspaceId = req[locationWorkspaceId]?.workspaceId;
 		const environment = locationEnvironment ? req[locationEnvironment]?.environment : undefined;
 		
 		// validate clients
-		const { membership, workspace } = await validateClientForWorkspace({
+		const { membership } = await validateClientForWorkspace({
 			authData: req.authData,
 			workspaceId: new Types.ObjectId(workspaceId),
 			environment,
-			acceptedRoles,
-			requiredPermissions,
-			requireBlindIndicesEnabled
+			requiredPermissions
 		});
 		
 		if (membership) {
 			req.membership = membership;
-		}
-		
-		if (workspace) {
-			req.workspace = workspace;
 		}
 
 		return next();

@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react';
+import { Dispatch, SetStateAction, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { faCheck, faCopy, faMagnifyingGlass, faPlus, faTrash, faUsers } from '@fortawesome/free-solid-svg-icons';
@@ -27,7 +27,7 @@ import {
   THead,
   Tr,
   UpgradePlanModal} from '@app/components/v2';
-import { usePopUp, useToggle } from '@app/hooks';
+import { usePopUp } from '@app/hooks';
 import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
 import { OrgUser, Workspace } from '@app/hooks/api/types';
 
@@ -70,7 +70,6 @@ export const OrgMembersTable = ({
   const router = useRouter();
   const [searchMemberFilter, setSearchMemberFilter] = useState('');
   const {data: serverDetails } = useFetchServerStatus()
-  const [isInviteLinkCopied, setInviteLinkCopied] = useToggle(false);
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     'addMember',
     'removeMember',
@@ -117,17 +116,9 @@ export const OrgMembersTable = ({
     [members, searchMemberFilter]
   );
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isInviteLinkCopied) {
-      timer = setTimeout(() => setInviteLinkCopied.off(), 2000);
-    }
-    return () => clearTimeout(timer);
-  }, [isInviteLinkCopied]);
-
   const copyTokenToClipboard = () => {
     navigator.clipboard.writeText(completeInviteLink as string);
-    setInviteLinkCopied.on();
+    // setIsTokenCopied.on();
   };
 
   return (
@@ -184,7 +175,6 @@ export const OrgMembersTable = ({
                             defaultValue={role}
                             isDisabled={userId === user?._id}
                             className="w-40 bg-mineshaft-600"
-                            dropdownContainerClassName="border border-mineshaft-600 bg-mineshaft-800"
                             onValueChange={(selectedRole) =>
                               onRoleChange(orgMembershipId, selectedRole)
                             }
@@ -197,7 +187,7 @@ export const OrgMembersTable = ({
                           </Select>
                         )}
                         {((status === 'invited' || status === 'verified') && serverDetails?.emailConfigured) && (
-                          <Button className='w-40' colorSchema="primary" variant="outline_bg" onClick={() => onInviteMember(email)}>
+                          <Button className='w-40' colorSchema="secondary" onClick={() => onInviteMember(email)}>
                             Resend Invite
                           </Button>
                         )}
@@ -219,10 +209,8 @@ export const OrgMembersTable = ({
                           ))
                         ) : (
                           <div className='flex flex-row'>
-                            {((status === 'invited' || status === 'verified') && serverDetails?.emailConfigured) 
-                            ? <Tag colorSchema="red">This user hasn&apos;t accepted the invite yet</Tag>
-                            : <Tag colorSchema="red">This user isn&apos;t part of any projects yet</Tag>}
-                            {router.query.id !== 'undefined' && !((status === 'invited' || status === 'verified') && serverDetails?.emailConfigured) && <button 
+                            <Tag colorSchema="red">This user isn&apos;t part of any projects yet</Tag>
+                            {router.query.id !== 'undefined' && <button 
                               type="button"
                               onClick={() => router.push(`/users/${router.query.id}`)}
                               className='text-sm bg-mineshaft w-max px-1.5 py-0.5 hover:bg-primary duration-200 hover:text-black cursor-pointer rounded-sm'
@@ -315,7 +303,7 @@ export const OrgMembersTable = ({
               className="group relative"
               onClick={copyTokenToClipboard}
             >
-              <FontAwesomeIcon icon={isInviteLinkCopied ? faCheck : faCopy} />
+              <FontAwesomeIcon icon={false ? faCheck : faCopy} />
               <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">click to copy</span>
             </IconButton>
           </div>

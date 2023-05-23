@@ -1,13 +1,9 @@
-import { Types } from 'mongoose';
 import { Request, Response, NextFunction } from 'express';
 import { UnauthorizedRequestError } from '../utils/errors';
 import {
     Membership,
 } from '../models';
-import {
-    validateClientForMembership,
-    validateMembership
-} from '../helpers/membership';
+import { validateMembership } from '../helpers/membership';
 
 type req = 'params' | 'body' | 'query';
 
@@ -20,25 +16,43 @@ type req = 'params' | 'body' | 'query';
  */
 const requireMembershipAuth = ({
     acceptedRoles,
-    locationMembershipId = 'params'
+    location = 'params'
 }: {
-    acceptedRoles: Array<'admin' | 'member'>;
-    locationMembershipId: req
+    acceptedRoles: string[];
+    location?: req;
 }) => {
     return async (
         req: Request, 
         res: Response, 
         next: NextFunction
     ) => {
-        const { membershipId } = req[locationMembershipId];
-        
-        req.targetMembership = await validateClientForMembership({
-            authData: req.authData,
-            membershipId: new Types.ObjectId(membershipId),
-            acceptedRoles
-        });
-        
-        return next();
+        try {
+            const { membershipId } = req[location];
+            
+            const membership = await Membership.findById(membershipId);
+            
+            if (!membership) throw new Error('Failed to find target membership');
+            
+            const userMembership = await Membership.findOne({
+                workspace: membership.workspace
+            });
+            
+            if (!userMembership) throw new Error('Failed to validate own membership')
+            
+            const targetMembership = await validateMembership({
+                userId: req.user._id,
+                workspaceId: membership.workspace,
+                acceptedRoles
+            });
+            
+            req.targetMembership = targetMembership;
+            
+            return next();
+        } catch (err) {
+            return next(UnauthorizedRequestError({ 
+                message: 'Unable to validate workspace membership' 
+            }));
+        }
     }
 }
 

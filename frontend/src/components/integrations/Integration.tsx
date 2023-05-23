@@ -191,17 +191,6 @@ const IntegrationTile = ({
               />
             </div>
           );
-        case 'gitlab':
-          return (
-            <div>
-              <div className="mb-2 text-xs font-semibold text-gray-400">ENVIRONMENT</div>
-              <ListBox
-                data={null}
-                isSelected={integration.targetEnvironment}
-                onChange={setIntegrationTargetEnvironment}
-              />
-            </div>
-          );
         default:
           return <div />;
       }

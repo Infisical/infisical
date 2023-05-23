@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import { 
   IIntegrationAuth, 
   IntegrationAuth, 
@@ -21,28 +22,34 @@ const revokeAccess = async ({
   accessToken: string;
 }) => {
   let deletedIntegrationAuth;
-  // add any integration-specific revocation logic
-  switch (integrationAuth.integration) {
-    case INTEGRATION_HEROKU:
-      break;
-    case INTEGRATION_VERCEL:
-      break;
-    case INTEGRATION_NETLIFY:
-      break;
-    case INTEGRATION_GITHUB:
-      break;
-    case INTEGRATION_GITLAB:
-      break;
-  }
+  try {
+    // add any integration-specific revocation logic
+    switch (integrationAuth.integration) {
+      case INTEGRATION_HEROKU:
+        break;
+      case INTEGRATION_VERCEL:
+        break;
+      case INTEGRATION_NETLIFY:
+        break;
+      case INTEGRATION_GITHUB:
+        break;
+      case INTEGRATION_GITLAB:
+        break;
+    }
 
-  deletedIntegrationAuth = await IntegrationAuth.findOneAndDelete({
-    _id: integrationAuth._id
-  });
-
-  if (deletedIntegrationAuth) {
-    await Integration.deleteMany({
-      integrationAuth: deletedIntegrationAuth._id
+    deletedIntegrationAuth = await IntegrationAuth.findOneAndDelete({
+      _id: integrationAuth._id
     });
+
+    if (deletedIntegrationAuth) {
+      await Integration.deleteMany({
+        integrationAuth: deletedIntegrationAuth._id
+      });
+    }
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed to delete integration authorization');
   }
   
   return deletedIntegrationAuth;

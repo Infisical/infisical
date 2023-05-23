@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import { Key, IKey } from '../models';
 
 interface Key {
@@ -26,30 +27,36 @@ const pushKeys = async ({
 	workspaceId: string;
 	keys: Key[];
 }): Promise<void> => {
-  // filter out already-inserted keys
-  const keysSet = new Set(
-    (
-      await Key.find(
-        {
-          workspace: workspaceId
-        },
-        'receiver'
-      )
-    ).map((k: IKey) => k.receiver.toString())
-  );
+	try {
+		// filter out already-inserted keys
+		const keysSet = new Set(
+			(
+				await Key.find(
+					{
+						workspace: workspaceId
+					},
+					'receiver'
+				)
+			).map((k: IKey) => k.receiver.toString())
+		);
 
-  keys = keys.filter((key) => !keysSet.has(key.userId));
+		keys = keys.filter((key) => !keysSet.has(key.userId));
 
-  // add new shared keys only
-  await Key.insertMany(
-    keys.map((k) => ({
-      encryptedKey: k.encryptedKey,
-      nonce: k.nonce,
-      sender: userId,
-      receiver: k.userId,
-      workspace: workspaceId
-    }))
-  );
+		// add new shared keys only
+		await Key.insertMany(
+			keys.map((k) => ({
+				encryptedKey: k.encryptedKey,
+				nonce: k.nonce,
+				sender: userId,
+				receiver: k.userId,
+				workspace: workspaceId
+			}))
+		);
+	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
+		throw new Error('Failed to push access keys');
+	}
 };
 
 export { pushKeys };

@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unused-prop-types */
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import Image from 'next/image';
+import { useTranslation } from 'next-i18next';
 import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -80,9 +80,9 @@ const SideBar = ({
   const { t } = useTranslation();
 
   return (
-    <div className="min-w-sm absolute sticky top-0 right-0 z-[70] flex h-full w-full max-w-sm flex-col justify-between border-l border-mineshaft-500 bg-bunker shadow-xl">
+    <div className="absolute border-l border-mineshaft-500 bg-bunker h-full w-full min-w-sm max-w-sm sticky top-0 right-0 z-[70] shadow-xl flex flex-col justify-between">
       {isLoading ? (
-        <div className="flex h-full w-full items-center justify-center">
+        <div className="flex items-center justify-center h-full w-full">
           <Image
             src="/images/loading/loading.gif"
             height={60}
@@ -91,9 +91,9 @@ const SideBar = ({
           />
         </div>
       ) : (
-        <div className="h-min w-full overflow-y-auto">
-          <div className="flex flex-row items-center justify-between border-b border-mineshaft-500 px-4 py-3">
-            <p className="text-lg font-semibold text-bunker-200">{t('dashboard.sidebar.secret')}</p>
+        <div className="h-min overflow-y-auto w-full">
+          <div className="flex flex-row px-4 py-3 border-b border-mineshaft-500 justify-between items-center">
+            <p className="font-semibold text-lg text-bunker-200">{t('dashboard:sidebar.secret')}</p>
             <div
               onKeyDown={() => null}
               role="button"
@@ -101,12 +101,12 @@ const SideBar = ({
               className="p-1"
               onClick={() => toggleSidebar('None')}
             >
-              <FontAwesomeIcon icon={faXmark} className="h-4 w-4 cursor-pointer text-bunker-300" />
+              <FontAwesomeIcon icon={faXmark} className="w-4 h-4 text-bunker-300 cursor-pointer" />
             </div>
           </div>
-          <div className="pointer-events-none mt-4 px-4">
-            <p className="text-sm text-bunker-300">{t('dashboard.sidebar.key')}</p>
-            <div className="overflow-hidden rounded-md border border-mineshaft-600 bg-white/5">
+          <div className="mt-4 px-4 pointer-events-none">
+            <p className="text-sm text-bunker-300">{t('dashboard:sidebar.key')}</p>
+            <div className='rounded-md border overflow-hidden border-mineshaft-600 bg-white/5'>
               <DashboardInputField
                 onChangeHandler={modifyKey}
                 type="varName"
@@ -117,14 +117,14 @@ const SideBar = ({
               />
             </div>
           </div>
-          {data[0]?.value || data[0]?.value === '' ? (
+          {(data[0]?.value || data[0]?.value === "") ? (
             <div
               className={`relative mt-2 px-4 ${
-                overrideEnabled && 'pointer-events-none opacity-40'
+                overrideEnabled && 'opacity-40 pointer-events-none'
               } duration-200`}
             >
-              <p className="text-sm text-bunker-300">{t('dashboard.sidebar.value')}</p>
-              <div className="overflow-hidden rounded-md border border-mineshaft-600 bg-white/5">
+              <p className="text-sm text-bunker-300">{t('dashboard:sidebar.value')}</p>
+              <div className='rounded-md border overflow-hidden border-mineshaft-600 bg-white/5'>
                 <DashboardInputField
                   onChangeHandler={modifyValue}
                   type="value"
@@ -134,22 +134,22 @@ const SideBar = ({
                   blurred
                 />
               </div>
-              <div className="absolute right-[1.07rem] top-[1.6rem] z-50 bg-bunker-800">
+              <div className="absolute bg-bunker-800 right-[1.07rem] top-[1.6rem] z-50">
                 <GenerateSecretMenu modifyValue={modifyValue} id={data[0]?.id} />
               </div>
             </div>
           ) : (
-            <div className="px-4 pt-4 text-sm text-bunker-300">
-              <span className="mr-1 rounded-md bg-primary-200/10 py-0.5 px-1">
-                {t('common.note')}:
+            <div className="px-4 text-sm text-bunker-300 pt-4">
+              <span className="py-0.5 px-1 rounded-md bg-primary-200/10 mr-1">
+                {t('common:note')}:
               </span>
-              {t('dashboard.sidebar.personal-explanation')}
+              {t('dashboard:sidebar.personal-explanation')}
             </div>
           )}
           <div className="mt-4 px-4">
-            {(data[0]?.value || data[0]?.value === '') && (
-              <div className="my-2 flex flex-row items-center justify-between pl-1 pr-2">
-                <p className="text-sm text-bunker-300">{t('dashboard.sidebar.override')}</p>
+            {(data[0]?.value || data[0]?.value === "") && (
+              <div className="flex flex-row items-center justify-between my-2 pl-1 pr-2">
+                <p className="text-sm text-bunker-300">{t('dashboard:sidebar.override')}</p>
                 <Toggle
                   enabled={overrideEnabled}
                   setEnabled={setOverrideEnabled}
@@ -160,10 +160,10 @@ const SideBar = ({
             )}
             <div
               className={`relative ${
-                !overrideEnabled && 'pointer-events-none opacity-40'
+                !overrideEnabled && 'opacity-40 pointer-events-none'
               } duration-200`}
             >
-              <div className="overflow-hidden rounded-md border border-mineshaft-600 bg-white/5">
+              <div className='rounded-md border overflow-hidden border-mineshaft-600 bg-white/5'>
                 <DashboardInputField
                   onChangeHandler={modifyValueOverride}
                   type="value"
@@ -179,10 +179,14 @@ const SideBar = ({
             </div>
           </div>
           <SecretVersionList secretId={data[0]?.id} />
-          <CommentField comment={data[0]?.comment} modifyComment={modifyComment} id={data[0]?.id} />
+          <CommentField
+            comment={data[0]?.comment}
+            modifyComment={modifyComment}
+            id={data[0]?.id}
+          />
         </div>
       )}
-      <div className="mt-full mt-4 mb-4 flex w-96 max-w-sm flex-col justify-start space-y-2 px-4">
+      <div className="mt-full w-96 mt-4 mb-4 flex max-w-sm flex-col justify-start space-y-2 px-4">
         <div>
           <Button
             text="Compare secret across environments"
@@ -201,7 +205,7 @@ const SideBar = ({
         </div>
         <div className="flex">
           <Button
-            text={String(t('common.save-changes'))}
+            text={String(t('common:save-changes'))}
             onButtonPressed={savePush}
             color="primary"
             size="md"

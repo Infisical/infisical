@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { faCheck, faCopy } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Dialog, Transition } from '@headlessui/react';
@@ -15,7 +15,7 @@ const expiryMapping = {
   '7 days': 604800,
   '1 month': 2592000,
   '6 months': 15552000,
-  '12 months': 31104000
+  '12 months': 31104000,
 };
 
 type Props = {
@@ -27,7 +27,12 @@ type Props = {
 };
 
 // TODO: convert to TS
-const AddApiKeyDialog = ({ isOpen, closeModal, apiKeys, setApiKeys }: Props) => {
+const AddApiKeyDialog = ({
+  isOpen,
+  closeModal,
+  apiKeys,
+  setApiKeys,
+}: Props) => {
   const [apiKey, setApiKey] = useState('');
   const [apiKeyName, setApiKeyName] = useState('');
   const [apiKeyExpiresIn, setApiKeyExpiresIn] = useState('1 day');
@@ -37,7 +42,7 @@ const AddApiKeyDialog = ({ isOpen, closeModal, apiKeys, setApiKeys }: Props) => 
   const generateAPIKey = async () => {
     const newApiKey = await addAPIKey({
       name: apiKeyName,
-      expiresIn: expiryMapping[apiKeyExpiresIn as keyof typeof expiryMapping]
+      expiresIn: expiryMapping[apiKeyExpiresIn as keyof typeof expiryMapping],
     });
 
     setApiKeys([...apiKeys, newApiKey.apiKeyData]);
@@ -68,130 +73,143 @@ const AddApiKeyDialog = ({ isOpen, closeModal, apiKeys, setApiKeys }: Props) => 
   };
 
   return (
-    <div className="z-50">
+    <div className='z-50'>
       <Transition appear show={isOpen} as={Fragment}>
-        <Dialog as="div" className="relative" onClose={closeModal}>
+        <Dialog as='div' className='relative' onClose={closeModal}>
           <Transition.Child
             as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
+            enter='ease-out duration-300'
+            enterFrom='opacity-0'
+            enterTo='opacity-100'
+            leave='ease-in duration-200'
+            leaveFrom='opacity-100'
+            leaveTo='opacity-0'
           >
-            <div className="fixed inset-0 bg-bunker-700 bg-opacity-80" />
+            <div className='fixed inset-0 bg-bunker-700 bg-opacity-80' />
           </Transition.Child>
 
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4 text-center">
+          <div className='fixed inset-0 overflow-y-auto'>
+            <div className='flex min-h-full items-center justify-center p-4 text-center'>
               <Transition.Child
                 as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
+                enter='ease-out duration-300'
+                enterFrom='opacity-0 scale-95'
+                enterTo='opacity-100 scale-100'
+                leave='ease-in duration-200'
+                leaveFrom='opacity-100 scale-100'
+                leaveTo='opacity-0 scale-95'
               >
                 {apiKey === '' ? (
-                  <Dialog.Panel className="w-full max-w-md transform rounded-md border border-gray-700 bg-bunker-800 p-6 text-left align-middle shadow-xl transition-all">
+                  <Dialog.Panel className='w-full max-w-md transform rounded-md bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all'>
                     <Dialog.Title
-                      as="h3"
-                      className="z-50 text-lg font-medium leading-6 text-gray-400"
+                      as='h3'
+                      className='text-lg font-medium leading-6 text-gray-400 z-50'
                     >
-                      {t('section.api-key.add-dialog.title')}
+                      {t('section-api-key:add-dialog.title')}
                     </Dialog.Title>
-                    <div className="mt-2 mb-4">
-                      <div className="flex flex-col">
-                        <p className="text-sm text-gray-500">
-                          {t('section.api-key.add-dialog.description')}
+                    <div className='mt-2 mb-4'>
+                      <div className='flex flex-col'>
+                        <p className='text-sm text-gray-500'>
+                          {t('section-api-key:add-dialog.description')}
                         </p>
                       </div>
                     </div>
-                    <div className="mb-2 max-h-28">
+                    <div className='max-h-28 mb-2'>
                       <InputField
-                        label={t('section.api-key.add-dialog.name')}
+                        label={t('section-api-key:add-dialog.name')}
                         onChangeHandler={setApiKeyName}
-                        type="varName"
+                        type='varName'
                         value={apiKeyName}
-                        placeholder=""
+                        placeholder=''
                         isRequired
                       />
                     </div>
-                    <div className="max-h-28">
+                    <div className='max-h-28'>
                       <ListBox
                         isSelected={apiKeyExpiresIn}
                         onChange={setApiKeyExpiresIn}
-                        data={['1 day', '7 days', '1 month', '6 months', '12 months']}
+                        data={[
+                          '1 day',
+                          '7 days',
+                          '1 month',
+                          '6 months',
+                          '12 months',
+                        ]}
                         isFull
-                        text={`${t('common.expired-in')}: `}
+                        text={`${t('common:expired-in')}: `}
                       />
                     </div>
-                    <div className="max-w-max">
-                      <div className="mt-6 flex w-max flex-col justify-start">
+                    <div className='max-w-max'>
+                      <div className='mt-6 flex flex-col justify-start w-max'>
                         <Button
                           onButtonPressed={() => generateAPIKey()}
-                          color="mineshaft"
-                          text={t('section.api-key.add-dialog.add') as string}
-                          textDisabled={t('section.api-key.add-dialog.add') as string}
-                          size="md"
+                          color='mineshaft'
+                          text={t('section-api-key:add-dialog.add') as string}
+                          textDisabled={
+                            t('section-api-key:add-dialog.add') as string
+                          }
+                          size='md'
                           active={apiKeyName !== ''}
                         />
                       </div>
                     </div>
                   </Dialog.Panel>
                 ) : (
-                  <Dialog.Panel className="w-full max-w-md transform rounded-md border border-gray-700 bg-bunker-800 p-6 text-left align-middle shadow-xl transition-all">
+                  <Dialog.Panel className='w-full max-w-md transform rounded-md bg-bunker-800 border border-gray-700 p-6 text-left align-middle shadow-xl transition-all'>
                     <Dialog.Title
-                      as="h3"
-                      className="z-50 text-lg font-medium leading-6 text-gray-400"
+                      as='h3'
+                      className='text-lg font-medium leading-6 text-gray-400 z-50'
                     >
-                      {t('section.api-key.add-dialog.copy-service-token')}
+                      {t('section-api-key:add-dialog.copy-service-token')}
                     </Dialog.Title>
-                    <div className="mt-2 mb-4">
-                      <div className="flex flex-col">
-                        <p className="text-sm text-gray-500">
-                          {t('section.api-key.add-dialog.copy-service-token-description')}
+                    <div className='mt-2 mb-4'>
+                      <div className='flex flex-col'>
+                        <p className='text-sm text-gray-500'>
+                          {t(
+                            'section-api-key:add-dialog.copy-service-token-description'
+                          )}
                         </p>
                       </div>
                     </div>
-                    <div className="w-full">
-                      <div className="mt-2 mr-2 flex h-20 w-full items-center justify-end rounded-md bg-white/[0.07] text-base text-gray-400">
+                    <div className='w-full'>
+                      <div className='flex justify-end items-center bg-white/[0.07] text-base mt-2 mr-2 rounded-md text-gray-400 w-full h-20'>
                         <input
-                          type="text"
+                          type='text'
                           value={apiKey}
                           disabled
-                          id="apiKey"
-                          className="invisible w-full min-w-full bg-white/0 py-2 px-2 text-gray-400 outline-none"
-                        />
-                        <div className="w-full max-w-md break-words bg-white/0 py-2 pl-14 pr-2 text-sm text-gray-400 outline-none">
+                          id='apiKey'
+                          className='invisible bg-white/0 text-gray-400 py-2 w-full px-2 min-w-full outline-none'
+                         />
+                        <div className='bg-white/0 max-w-md text-sm text-gray-400 py-2 w-full pl-14 pr-2 break-words outline-none'>
                           {apiKey}
                         </div>
-                        <div className="group relative inline-block h-full font-normal text-gray-400 underline duration-200 hover:text-primary">
+                        <div className='group font-normal h-full relative inline-block text-gray-400 underline hover:text-primary duration-200'>
                           <button
                             type="button"
                             onClick={copyToClipboard}
-                            className="h-full border-l border-white/20 py-2 pl-3.5 pr-4 duration-200 hover:bg-white/[0.12]"
+                            className='h-full pl-3.5 pr-4 border-l border-white/20 py-2 hover:bg-white/[0.12] duration-200'
                           >
                             {apiKeyCopied ? (
-                              <FontAwesomeIcon icon={faCheck} className="pr-0.5" />
+                              <FontAwesomeIcon
+                                icon={faCheck}
+                                className='pr-0.5'
+                              />
                             ) : (
                               <FontAwesomeIcon icon={faCopy} />
                             )}
                           </button>
-                          <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-chicago-900 px-3 py-2 text-center text-sm text-gray-400 duration-300 group-hover:flex group-hover:animate-popup">
-                            {t('common.click-to-copy')}
+                          <span className='absolute hidden group-hover:flex group-hover:animate-popup duration-300 w-28 -left-8 -top-20 translate-y-full px-3 py-2 bg-chicago-900 rounded-md text-center text-gray-400 text-sm'>
+                            {t('common:click-to-copy')}
                           </span>
                         </div>
                       </div>
                     </div>
-                    <div className="mt-6 flex w-max flex-col justify-start">
+                    <div className='mt-6 flex flex-col justify-start w-max'>
                       <Button
                         onButtonPressed={() => closeAddApiKeyModal()}
-                        color="mineshaft"
-                        text="Close"
-                        size="md"
+                        color='mineshaft'
+                        text='Close'
+                        size='md'
                       />
                     </div>
                   </Dialog.Panel>

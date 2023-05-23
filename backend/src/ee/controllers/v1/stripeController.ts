@@ -12,7 +12,7 @@ import { getStripeSecretKey, getStripeWebhookSecret } from '../../../config';
 export const handleWebhook = async (req: Request, res: Response) => {
 	let event;
 	try {
-		const stripe = new Stripe(await getStripeSecretKey(), {
+		const stripe = new Stripe(getStripeSecretKey(), {
 			apiVersion: '2022-08-01'
 		});
 
@@ -21,7 +21,7 @@ export const handleWebhook = async (req: Request, res: Response) => {
 		event = stripe.webhooks.constructEvent(
 			req.body,
 			sig,
-			await getStripeWebhookSecret()
+			getStripeWebhookSecret()
 		);
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });

@@ -13,7 +13,6 @@ import {
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
-  INTEGRATION_SUPABASE
 } from "../variables";
 
 export interface IIntegration {
@@ -21,7 +20,6 @@ export interface IIntegration {
   workspace: Types.ObjectId;
   environment: string;
   isActive: boolean;
-  url: string;
   app: string;
   appId: string;
   owner: string;
@@ -44,8 +42,7 @@ export interface IIntegration {
     | 'railway' 
     | 'flyio'
     | 'circleci'
-    | 'travisci'
-    | 'supabase';
+    | 'travisci';
   integrationAuth: Types.ObjectId;
 }
 
@@ -63,11 +60,6 @@ const integrationSchema = new Schema<IIntegration>(
     isActive: {
       type: Boolean,
       required: true,
-    },
-    url: {
-      // for custom self-hosted integrations (e.g. self-hosted GitHub enterprise)
-      type: String,
-      default: null
     },
     app: {
       // name of app in provider
@@ -130,7 +122,6 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_FLYIO,
         INTEGRATION_CIRCLECI,
         INTEGRATION_TRAVISCI,
-        INTEGRATION_SUPABASE
       ],
       required: true,
     },

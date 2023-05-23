@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { faWarning } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -30,19 +30,19 @@ export default function DonwloadBackupPDFStep({
   const { t } = useTranslation();
 
   return (
-    <div className="h-7/12 mx-1 mb-36 flex w-full max-w-xs flex-col items-center rounded-xl bg-bunker py-8 px-4 drop-shadow-xl md:mb-16 md:max-w-lg md:px-6">
-      <p className="flex justify-center text-center text-4xl font-semibold text-primary">
-        {t('signup.step4-message')}
+    <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
+      <p className="text-4xl text-center font-semibold flex justify-center text-primary">
+        {t('signup:step4-message')}
       </p>
-      <div className="text-md mt-4 flex w-full max-w-md flex-col items-center justify-center rounded-md px-2 text-gray-400 md:mt-8">
-        <div>{t('signup.step4-description1')}</div>
-        <div className="mt-3">{t('signup.step4-description2')}</div>
+      <div className="flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2">
+        <div>{t('signup:step4-description1')}</div>
+        <div className="mt-3">{t('signup:step4-description2')}</div>
       </div>
-      <div className="mx-auto mt-4 flex w-full max-w-xs flex-row items-center rounded-md bg-white/10 p-2 text-gray-400 md:max-w-md">
+      <div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-400 rounded-md max-w-xs md:max-w-md mx-auto mt-4">
         <FontAwesomeIcon icon={faWarning} className="ml-2 mr-4 text-4xl" />
-        {t('signup.step4-description3')}
+        {t('signup:step4-description3')}
       </div>
-      <div className="mx-auto mt-4 flex max-h-24 max-w-max flex-col items-center justify-center px-2 py-3 text-lg md:px-4 md:py-5">
+      <div className="flex flex-col items-center justify-center md:px-4 md:py-5 mt-4 px-2 py-3 max-h-24 max-w-max mx-auto text-lg">
         <Button
           text="Download PDF"
           onButtonPressed={async () => {

@@ -30,7 +30,7 @@ interface Mapping {
 }
 
 const plansDev: Mapping = {
-  starter: 'prod_Nt6kPvYsVBuzVH',
+  starter: 'prod_Mb4ATFT5QAHoPM',
   team: 'prod_NEpD2WMXUS2eDn',
   professional: 'prod_Mb4CetZ2jE7jdl',
   enterprise: 'licence_key_required'

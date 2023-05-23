@@ -8,8 +8,6 @@ import { BadRequestError, InternalServerError, UnauthorizedRequestError, Validat
 import { AnyBulkWriteOperation } from 'mongodb';
 import { SECRET_PERSONAL, SECRET_SHARED } from "../../variables";
 import { TelemetryService } from '../../services';
-import { User } from "../../models";
-import { AccountNotFoundError } from '../../utils/errors';
 
 /**
  * Create secret for workspace with id [workspaceId] and environment [environment]
@@ -17,7 +15,7 @@ import { AccountNotFoundError } from '../../utils/errors';
  * @param res 
  */
 export const createSecret = async (req: Request, res: Response) => {
-  const postHogClient = await TelemetryService.getPostHogClient();
+  const postHogClient = TelemetryService.getPostHogClient();
   const secretToCreate: CreateSecretRequestBody = req.body.secret;
   const { workspaceId, environment } = req.params
   const sanitizedSecret: SanitizedSecretForCreate = {
@@ -70,7 +68,7 @@ export const createSecret = async (req: Request, res: Response) => {
  * @param res 
  */
 export const createSecrets = async (req: Request, res: Response) => {
-  const postHogClient = await TelemetryService.getPostHogClient();
+  const postHogClient = TelemetryService.getPostHogClient();
   const secretsToCreate: CreateSecretRequestBody[] = req.body.secrets;
   const { workspaceId, environment } = req.params
   const sanitizedSecretesToCreate: SanitizedSecretForCreate[] = []
@@ -132,7 +130,7 @@ export const createSecrets = async (req: Request, res: Response) => {
  * @param res 
  */
 export const deleteSecrets = async (req: Request, res: Response) => {
-  const postHogClient = await TelemetryService.getPostHogClient();
+  const postHogClient = TelemetryService.getPostHogClient();
   const { workspaceId, environmentName } = req.params
   const secretIdsToDelete: string[] = req.body.secretIds
 
@@ -186,7 +184,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
  * @param res
  */
 export const deleteSecret = async (req: Request, res: Response) => {
-  const postHogClient = await TelemetryService.getPostHogClient();
+  const postHogClient = TelemetryService.getPostHogClient();
   await Secret.findByIdAndDelete(req._secret._id)
 
   if (postHogClient) {
@@ -215,7 +213,7 @@ export const deleteSecret = async (req: Request, res: Response) => {
  * @returns 
  */
 export const updateSecrets = async (req: Request, res: Response) => {
-  const postHogClient = await TelemetryService.getPostHogClient();
+  const postHogClient = TelemetryService.getPostHogClient();
   const { workspaceId, environmentName } = req.params
   const secretsModificationsRequested: ModifySecretRequestBody[] = req.body.secrets;
   const [secretIdsUserCanModifyError, secretIdsUserCanModify] = await to(Secret.find({ workspace: workspaceId, environment: environmentName }, { _id: 1 }).then())
@@ -283,7 +281,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
  * @returns 
  */
 export const updateSecret = async (req: Request, res: Response) => {
-  const postHogClient = await TelemetryService.getPostHogClient();
+  const postHogClient = TelemetryService.getPostHogClient();
   const { workspaceId, environmentName } = req.params
   const secretModificationsRequested: ModifySecretRequestBody = req.body.secret;
 
@@ -337,23 +335,20 @@ export const updateSecret = async (req: Request, res: Response) => {
  * @returns 
  */
 export const getSecrets = async (req: Request, res: Response) => {
-  const postHogClient = await TelemetryService.getPostHogClient();
+  const postHogClient = TelemetryService.getPostHogClient();
   const { environment } = req.query;
   const { workspaceId } = req.params;
 
   let userId: Types.ObjectId | undefined = undefined // used for getting personal secrets for user
-  let userEmail: string | undefined = undefined // used for posthog 
+  let userEmail: Types.ObjectId | undefined = undefined // used for posthog 
   if (req.user) {
     userId = req.user._id;
     userEmail = req.user.email;
   }
 
   if (req.serviceTokenData) {
-    userId = req.serviceTokenData.user;
-    
-    const user = await User.findById(req.serviceTokenData.user, 'email');
-    if (!user) throw AccountNotFoundError();
-    userEmail = user.email;
+    userId = req.serviceTokenData.user._id
+    userEmail = req.serviceTokenData.user.email;
   }
 
   const [err, secrets] = await to(Secret.find(

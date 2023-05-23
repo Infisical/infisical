@@ -1,9 +1,9 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
 /* eslint-disable react/jsx-key */
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
+import { TFunction, useTranslation } from 'next-i18next';
 import { faGithub, faSlack } from '@fortawesome/free-brands-svg-icons';
 import { faCircleQuestion } from '@fortawesome/free-regular-svg-icons';
 import {
@@ -17,7 +17,6 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Menu, Transition } from '@headlessui/react';
-import {TFunction} from 'i18next'
 
 import logout from '@app/pages/api/auth/Logout';
 
@@ -29,22 +28,22 @@ import guidGenerator from '../utilities/randomId';
 const supportOptions = (t: TFunction) => [
   [
     <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faSlack} />,
-    t('nav.support.slack'),
+    t('nav:support.slack'),
     'https://join.slack.com/t/infisical/shared_invite/zt-1dgg63ln8-G7PCNJdCymAT9YF3j1ewVA'
   ],
   [
     <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faBook} />,
-    t('nav.support.docs'),
-    'https://infisical.com/docs/documentation/getting-started/introduction'
+    t('nav:support.docs'),
+    'https://infisical.com/docs/getting-started/introduction'
   ],
   [
     <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faGithub} />,
-    t('nav.support.issue'),
+    t('nav:support.issue'),
     'https://github.com/Infisical/infisical-cli/issues'
   ],
   [
     <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faEnvelope} />,
-    t('nav.support.email'),
+    t('nav:support.email'),
     'mailto:support@infisical.com'
   ]
 ];
@@ -106,7 +105,7 @@ export default function Navbar() {
       </div>
       <div className="relative flex justify-start items-center mx-2 z-40">
         <a
-          href="https://infisical.com/docs/documentation/getting-started/introduction"
+          href="https://infisical.com/docs/getting-started/introduction"
           target="_blank"
           rel="noopener noreferrer"
           className="text-gray-200 hover:bg-white/10 px-3 rounded-md duration-200 text-sm mr-4 py-2 flex items-center"
@@ -169,7 +168,7 @@ export default function Navbar() {
             <Menu.Items className="absolute right-0 mt-0.5 w-64 origin-top-right divide-y divide-gray-700 rounded-md bg-bunker border border-mineshaft-700 shadow-lg ring-1 ring-black z-[999] ring-opacity-5 focus:outline-none">
               <div className="px-1 py-1 z-[100]">
                 <div className="text-gray-400 self-start ml-2 mt-2 text-xs font-semibold tracking-wide">
-                  {t('nav.user.signed-in-as')}
+                  {t('nav:user.signed-in-as')}
                 </div>
                 <div
                   onKeyDown={() => null}
@@ -198,7 +197,7 @@ export default function Navbar() {
               </div>
               <div className="px-2 pt-2">
                 <div className="text-gray-400 self-start ml-2 mt-2 text-xs font-semibold tracking-wide">
-                  {t('nav.user.current-organization')}
+                  {t('nav:user.current-organization')}
                 </div>
                 <div
                   onKeyDown={() => null}
@@ -231,7 +230,7 @@ export default function Navbar() {
                     className="mt-1 relative flex justify-start cursor-pointer select-none py-2 px-2 rounded-md text-gray-400 hover:bg-white/5 duration-200 hover:text-gray-200"
                   >
                     <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faCoins} />
-                    <div className="text-sm">{t('nav.user.usage-billing')}</div>
+                    <div className="text-sm">{t('nav:user.usage-billing')}</div>
                   </div>
                 </button>
                 <button
@@ -249,14 +248,14 @@ export default function Navbar() {
                     <span className="rounded-lg absolute inset-y-0 left-0 flex items-center pl-3 pr-4">
                       <FontAwesomeIcon icon={faPlus} className="ml-1" />
                     </span>
-                    <div className="text-sm ml-1">{t('nav.user.invite')}</div>
+                    <div className="text-sm ml-1">{t('nav:user.invite')}</div>
                   </div>
                 </button>
               </div>
               {orgs?.length > 1 && (
                 <div className="px-1 pt-1">
                   <div className="text-gray-400 self-start ml-2 mt-2 text-xs font-semibold tracking-wide">
-                    {t('nav.user.other-organizations')}
+                    {t('nav:user.other-organizations')}
                   </div>
                   <div className="flex flex-col items-start px-1 mt-3 mb-2">
                     {orgs
@@ -301,7 +300,7 @@ export default function Navbar() {
                           className="text-lg ml-1.5 mr-3"
                           icon={faRightFromBracket}
                         />
-                        {t('common.logout')}
+                        {t('common:logout')}
                       </div>
                     </button>
                   )}

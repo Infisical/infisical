@@ -9,7 +9,6 @@ import Membership, { IMembership } from './membership';
 import MembershipOrg, { IMembershipOrg } from './membershipOrg';
 import Organization, { IOrganization } from './organization';
 import Secret, { ISecret } from './secret';
-import SecretBlindIndexData, { ISecretBlindIndexData } from './secretBlindIndexData';
 import ServiceToken, { IServiceToken } from './serviceToken';
 import ServiceAccount, { IServiceAccount } from './serviceAccount'; // new
 import ServiceAccountKey, { IServiceAccountKey } from './serviceAccountKey'; // new 
@@ -46,8 +45,6 @@ export {
 	IOrganization,
 	Secret,
 	ISecret,
-	SecretBlindIndexData,
-	ISecretBlindIndexData,
 	ServiceToken,
 	IServiceToken,
 	ServiceAccount,

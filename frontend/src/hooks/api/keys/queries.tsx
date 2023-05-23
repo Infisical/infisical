@@ -5,7 +5,7 @@ import { apiRequest } from '@app/config/request';
 import { UploadWsKeyDTO, UserWsKeyPair } from './types';
 
 const encKeyKeys = {
-  getUserWorkspaceKey: (workspaceID: string) => ['workspace-key-pair', { workspaceID }] as const
+  getUserWorkspaceKey: (workspaceID: string) => ['worksapce-key-pair', { workspaceID }] as const
 };
 
 const fetchUserWsKey = async (workspaceID: string) => {

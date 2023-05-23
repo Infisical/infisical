@@ -1,12 +1,11 @@
+import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
 import {
 	IUser, 
 	ISecret,
 	IServiceAccount,
 	User,
-	Membership,
-	IOrganization,
-	Organization,
+	Membership
 } from '../models';
 import { sendMail } from './nodemailer';
 import { validateMembership } from './membership';
@@ -27,9 +26,16 @@ import {
  * @returns {Object} user - the initialized user
  */
 const setupAccount = async ({ email }: { email: string }) => {
-  const user = await new User({
-    email
-  }).save();
+	let user;
+	try {
+		user = await new User({
+			email
+		}).save();
+	} catch (err) {
+		Sentry.setUser({ email });
+		Sentry.captureException(err);
+		throw new Error('Failed to set up account');
+	}
 
 	return user;
 };
@@ -81,27 +87,34 @@ const completeAccount = async ({
 	salt: string;
 	verifier: string;
 }) => {
-  const options = {
-    new: true
-  };
-  const user = await User.findByIdAndUpdate(
-    userId,
-    {
-      firstName,
-      lastName,
-      encryptionVersion,
-      protectedKey,
-      protectedKeyIV,
-      protectedKeyTag,
-      publicKey,
-      encryptedPrivateKey,
-      iv: encryptedPrivateKeyIV,
-      tag: encryptedPrivateKeyTag,
-      salt,
-      verifier
-    },
-    options
-  );
+	let user;
+	try {
+		const options = {
+			new: true
+		};
+		user = await User.findByIdAndUpdate(
+			userId,
+			{
+				firstName,
+				lastName,
+				encryptionVersion,
+				protectedKey,
+				protectedKeyIV,
+				protectedKeyTag,
+				publicKey,
+				encryptedPrivateKey,
+				iv: encryptedPrivateKeyIV,
+				tag: encryptedPrivateKeyTag,
+				salt,
+				verifier
+			},
+			options
+		);
+	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
+		throw new Error('Failed to complete account set up');
+	}
 
 	return user;
 };
@@ -164,23 +177,21 @@ const validateUserClientForWorkspace = async ({
 	user,
 	workspaceId,
 	environment,
-	acceptedRoles,
 	requiredPermissions
 }: {
 	user: IUser;
 	workspaceId: Types.ObjectId;
 	environment?: string;
-	acceptedRoles: Array<'admin' | 'member'>;
 	requiredPermissions?: string[];
 }) => {
 	
 	// validate user membership in workspace
 	const membership = await validateMembership({
         userId: user._id,
-        workspaceId,
-		acceptedRoles
+        workspaceId
     });
 	
+	// TODO: refactor
 	let runningIsDisallowed = false;
 	requiredPermissions?.forEach((requiredPermission: string) => {
 		switch (requiredPermission) {
@@ -205,42 +216,6 @@ const validateUserClientForWorkspace = async ({
 }
 
 /**
- * Validate that user (client) can access secret [secret]
- * with required permissions [requiredPermissions]
- * @param {Object} obj
- * @param {User} obj.user - user client
- * @param {Secret[]} obj.secrets - secrets to validate against
- * @param {String[]} requiredPermissions - required permissions as part of the endpoint
- */
-const validateUserClientForSecret = async ({
-	user,
-	secret,
-	acceptedRoles,
-	requiredPermissions
-}: {
-	user: IUser;
-	secret: ISecret;
-	acceptedRoles?: Array<'admin' | 'member'>;
-	requiredPermissions?: string[];
-}) => {
-	const membership = await validateMembership({
-		userId: user._id,
-		workspaceId: secret.workspace,
-		acceptedRoles
-	});
-	
-	if (requiredPermissions?.includes(PERMISSION_WRITE_SECRETS)) {
-		const isDisallowed = _.some(membership.deniedPermissions, { environmentSlug: secret.environment, ability: PERMISSION_WRITE_SECRETS });
-
-		if (isDisallowed) {
-			throw UnauthorizedRequestError({
-				message: 'You do not have the required permissions to perform this action' 
-			});
-		}
-	}
-}
-
-/**
  * Validate that user (client) can access secrets [secrets]
  * with required permissions [requiredPermissions]
  * @param {Object} obj
@@ -257,8 +232,7 @@ const validateUserClientForSecret = async ({
 	secrets: ISecret[];
 	requiredPermissions?: string[];
 }) => {
-	
-	// TODO: add acceptedRoles?
+	// TODO: refactor
 
 	const userMemberships = await Membership.find({ user: user._id })
 	const userMembershipById = _.keyBy(userMemberships, 'workspace');
@@ -314,40 +288,11 @@ const validateUserClientForServiceAccount = async ({
 	}
 }
 
-/**
- * Validate that user (client) can access organization [organization]
- * @param {Object} obj
- * @param {User} obj.user - user client
- * @param {Organization} obj.organization - organization to validate against
- */
- const validateUserClientForOrganization = async ({
-	user,
-	organization,
-	acceptedRoles,
-	acceptedStatuses
-}: {
-	user: IUser;
-	organization: IOrganization;
-	acceptedRoles: Array<'owner' | 'admin' | 'member'>;
-	acceptedStatuses: Array<'invited' | 'accepted'>;
-}) => {
-	const membershipOrg = await validateMembershipOrg({
-		userId: user._id,
-		organizationId: organization._id,
-		acceptedRoles,
-		acceptedStatuses
-	});
-	
-	return membershipOrg;
-}
-
 export { 
 	setupAccount, 
 	completeAccount, 
 	checkUserDevice,
 	validateUserClientForWorkspace,
 	validateUserClientForSecrets,
-	validateUserClientForServiceAccount,
-	validateUserClientForOrganization,
-	validateUserClientForSecret
+	validateUserClientForServiceAccount
 };

@@ -11,8 +11,7 @@ import (
 
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
-	"github.com/posthog/posthog-go"
-	"github.com/rs/zerolog/log"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -31,6 +30,11 @@ var exportCmd = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Example:               "infisical export --env=prod --format=json > secrets.json",
 	Args:                  cobra.NoArgs,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		toggleDebug(cmd, args)
+		// util.RequireLogin()
+		// util.RequireLocalWorkspaceFile()
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		environmentName, _ := cmd.Flags().GetString("env")
 		if !cmd.Flags().Changed("env") {
@@ -96,8 +100,6 @@ var exportCmd = &cobra.Command{
 		}
 
 		fmt.Print(output)
-
-		Telemetry.CaptureEvent("cli-command:export", posthog.NewProperties().Set("secretsCount", len(secrets)).Set("version", util.CLI_VERSION))
 	},
 }
 
@@ -173,7 +175,8 @@ func formatAsJson(envs []models.SingleEnvironmentVariable) string {
 	// Dump as a json array
 	json, err := json.Marshal(envs)
 	if err != nil {
-		log.Err(err).Msgf("Unable to marshal environment variables to JSON")
+		log.Errorln("Unable to marshal environment variables to JSON")
+		log.Debugln(err)
 		return ""
 	}
 	return string(json)

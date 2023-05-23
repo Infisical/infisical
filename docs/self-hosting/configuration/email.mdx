@@ -23,7 +23,7 @@ By default, you need to configure the following SMTP [environment variables](htt
 - `SMTP_FROM_ADDRESS`: Email address to be used for sending emails (e.g. team@infisical.com).
 - `SMTP_FROM_NAME`: Name label to be used in `From` field (e.g. Team).
 
-Below you will find details on how to configure common email providers:
+Below you will find details on how to configure common email providers (not in any particular order).
 
 <AccordionGroup>
 <Accordion title="Twilio SendGrid">
@@ -133,34 +133,6 @@ SMTP_FROM_NAME=Infisical
 <Info>
   Remember that you will need to restart Infisical for this to work properly.
 </Info>
-</Accordion>
-
-<Accordion title="Gmail">
-
-Create an account and enable "less secure app access" in Gmail Account Settings > Security. This will allow
-applications like Infisical to authenticate with Gmail via your username and password.
-
-![Gmail secure app access](../../images/email-gmail-app-access.png)
-
-With your Gmail username and password, you can set your SMTP environment variables:
-
-```
-SMTP_HOST=smtp.gmail.com
-SMTP_USERNAME=hey@gmail.com # your email
-SMTP_PASSWORD=password # your password
-SMTP_PORT=587
-SMTP_SECURE=true
-SMTP_FROM_ADDRESS=hey@gmail.com
-SMTP_FROM_NAME=Infisical
-```
-
-<Warning>
-  As per the [notice](https://support.google.com/accounts/answer/6010255?hl=en) by Google, you should note that using Gmail credentials for SMTP configuration
-  will only work for Google Workspace or Google Cloud Identity customers as of May 30, 2022.
-
-  Put differently, the SMTP configuration is only possible with business (not personal) Gmail credentials.
-</Warning>
-
 </Accordion>
 
 <Accordion title="Zoho Mail">

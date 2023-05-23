@@ -19,7 +19,6 @@ router.post(
 router.post(
 	'/verify',
 	body('email').exists().trim().notEmpty(),
-	body('organizationId').exists().trim().notEmpty(),
 	body('code').exists().trim().notEmpty(),
 	validateRequest,
 	membershipOrgController.verifyUserToOrganization

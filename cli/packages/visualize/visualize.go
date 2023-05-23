@@ -8,7 +8,7 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/muesli/ansi"
 	"github.com/muesli/reflow/truncate"
-	"github.com/rs/zerolog/log"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/term"
 )
 
@@ -39,9 +39,9 @@ func Table(headers [3]string, rows [][3]string) {
 	width, _, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		if shouldTruncate {
-			log.Error().Msgf("error getting terminal size: %s", err)
+			log.Errorf("error getting terminal size: %s", err)
 		} else {
-			log.Debug().Err(err)
+			log.Debug(err)
 		}
 	}
 

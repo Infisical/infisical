@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
+import { useTranslation } from 'next-i18next';
 import { faMagnifyingGlass, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -11,6 +11,7 @@ import AddProjectMemberDialog from '@app/components/basic/dialog/AddProjectMembe
 import ProjectUsersTable from '@app/components/basic/table/ProjectUsersTable';
 import NavHeader from '@app/components/navigation/NavHeader';
 import guidGenerator from '@app/components/utilities/randomId';
+import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 
 import {
   decryptAssymmetric,
@@ -145,15 +146,15 @@ export default function Users() {
   };
 
   return userList ? (
-    <div className="flex max-w-[calc(100vw-240px)] flex-col justify-start bg-bunker-800 md:h-screen">
+    <div className="bg-bunker-800 md:h-screen flex flex-col justify-start max-w-[calc(100vw-240px)]">
       <Head>
-        <title>{t('common.head-title', { title: t('settings.members.title') })}</title>
+        <title>{t('common:head-title', { title: t('settings-members:title') })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      <NavHeader pageName={t('settings.members.title')} isProjectRelated />
-      <div className="flex flex-col items-start justify-start px-6 py-6 pb-4 text-3xl">
-        <p className="mr-4 font-semibold text-white">{t('settings.members.title')}</p>
-        <p className="mr-4 text-base text-gray-400">{t('settings.members.description')}</p>
+      <NavHeader pageName={t('settings-members:title')} isProjectRelated />
+      <div className="flex flex-col justify-start items-start px-6 py-6 pb-4 text-3xl">
+        <p className="font-semibold mr-4 text-white">{t('settings-members:title')}</p>
+        <p className="mr-4 text-base text-gray-400">{t('settings-members:description')}</p>
       </div>
       <AddProjectMemberDialog
         isOpen={isAddOpen}
@@ -169,22 +170,22 @@ export default function Users() {
         setEmail={setEmail}
       />
       {/* <DeleteUserDialog isOpen={isDeleteOpen} closeModal={closeDeleteModal} submitModal={deleteMembership} userIdToBeDeleted={userIdToBeDeleted}/> */}
-      <div className="flex w-full flex-row items-start px-6 pb-1">
-        <div className="mt-2 flex h-10 w-full flex-row items-center rounded-md bg-white/5">
+      <div className="px-6 pb-1 w-full flex flex-row items-start">
+        <div className="h-10 w-full bg-white/5 mt-2 rounded-md flex flex-row items-center">
           <FontAwesomeIcon
-            className="rounded-l-md bg-white/5 py-3 pl-4 pr-2 text-gray-400"
+            className="bg-white/5 rounded-l-md py-3 pl-4 pr-2 text-gray-400"
             icon={faMagnifyingGlass}
           />
           <input
-            className="h-full w-full rounded-r-md bg-white/5 pl-2 text-gray-400 outline-none"
+            className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
             value={searchUsers}
             onChange={(e) => setSearchUsers(e.target.value)}
-            placeholder={String(t('section.members.search-members'))}
+            placeholder={String(t('section-members:search-members'))}
           />
         </div>
-        <div className="mt-2 ml-2 flex min-w-max flex-row items-start justify-start">
+        <div className="mt-2 ml-2 min-w-max flex flex-row items-start justify-start">
           <Button
-            text={String(t('section.members.add-member'))}
+            text={String(t('section-members:add-member'))}
             onButtonPressed={openAddModal}
             color="mineshaft"
             size="md"
@@ -192,7 +193,7 @@ export default function Users() {
           />
         </div>
       </div>
-      <div className="no-scrollbar::-webkit-scrollbar block overflow-x-scroll px-6 pb-6 no-scrollbar">
+      <div className="block overflow-x-scroll px-6 pb-6 no-scrollbar no-scrollbar::-webkit-scrollbar">
         <ProjectUsersTable
           userData={userList}
           changeData={setUserList}
@@ -205,10 +206,16 @@ export default function Users() {
       </div>
     </div>
   ) : (
-    <div className="relative z-10 mr-auto ml-2 flex h-full w-10/12 flex-col items-center justify-center bg-bunker-800">
+    <div className="relative z-10 w-10/12 mr-auto h-full ml-2 bg-bunker-800 flex flex-col items-center justify-center">
       <Image src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
     </div>
   );
 }
 
 Users.requireAuth = true;
+
+export const getServerSideProps = getTranslatedServerSideProps([
+  'settings',
+  'settings-members',
+  'section-members'
+]);

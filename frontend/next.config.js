@@ -1,8 +1,10 @@
+
 // @ts-check
 
 /**
  * @type {import('next').NextConfig}
  **/
+const { i18n } = require("./next-i18next.config.js");
 const path = require('path');
 
 const ContentSecurityPolicy = `
@@ -21,67 +23,62 @@ const ContentSecurityPolicy = `
 // after learning more below.
 const securityHeaders = [
   {
-    key: 'X-DNS-Prefetch-Control',
-    value: 'on'
+    key: "X-DNS-Prefetch-Control",
+    value: "on",
   },
   {
-    key: 'Strict-Transport-Security',
-    value: 'max-age=63072000; includeSubDomains; preload'
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload",
   },
   {
-    key: 'X-XSS-Protection',
-    value: '1; mode=block'
+    key: "X-XSS-Protection",
+    value: "1; mode=block",
   },
   {
-    key: 'X-Frame-Options',
-    value: 'SAMEORIGIN'
+    key: "X-Frame-Options",
+    value: "SAMEORIGIN",
   },
   {
-    key: 'Permissions-Policy',
-    value: 'camera=(), microphone=()'
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=()",
   },
   {
-    key: 'X-Content-Type-Options',
-    value: 'nosniff'
+    key: "X-Content-Type-Options",
+    value: "nosniff",
   },
   {
-    key: 'Referrer-Policy',
-    value: 'strict-origin-when-cross-origin'
+    key: "Referrer-Policy",
+    value: "strict-origin-when-cross-origin",
   },
   {
-    key: 'Content-Security-Policy',
-    value: ContentSecurityPolicy.replace(/\s{2,}/g, ' ').trim()
-  }
+    key: "Content-Security-Policy",
+    value: ContentSecurityPolicy.replace(/\s{2,}/g, " ").trim(),
+  },
 ];
 
 module.exports = {
-  output: 'standalone',
-  i18n: {
-    locales: ['en', 'ko', 'fr', 'pt-BR', 'pt-PT', 'es'],
-    defaultLocale: 'en'
-  },
+  output: "standalone",
   async headers() {
     return [
       {
         // Apply these headers to all routes in your application.
-        source: '/:path*',
-        headers: securityHeaders
-      }
+        source: "/:path*",
+        headers: securityHeaders,
+      },
     ];
   },
-  webpack: (config, { isServer, webpack }) => {
-    // config
+  webpack: (config, { isServer, webpack }) => { // config
     config.module.rules.push({
       test: /\.wasm$/,
-      loader: 'base64-loader',
-      type: 'javascript/auto'
+      loader: "base64-loader",
+      type: "javascript/auto",
     });
 
     config.module.noParse = /\.wasm$/;
 
     config.module.rules.forEach((rule) => {
       (rule.oneOf || []).forEach((oneOf) => {
-        if (oneOf.loader && oneOf.loader.indexOf('file-loader') >= 0) {
+        if (oneOf.loader && oneOf.loader.indexOf("file-loader") >= 0) {
           oneOf.exclude.push(/\.wasm$/);
         }
       });
@@ -92,9 +89,12 @@ module.exports = {
     }
 
     // Perform customizations to webpack config
-    config.plugins.push(new webpack.IgnorePlugin({ resourceRegExp: /\/__tests__\// }));
+    config.plugins.push(
+      new webpack.IgnorePlugin({ resourceRegExp: /\/__tests__\// })
+    );
 
     // Important: return the modified config
     return config;
-  }
+  },
+  i18n,
 };

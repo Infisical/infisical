@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import { Types } from 'mongoose';
 import { UnauthorizedRequestError } from '../utils/errors';
 import { Secret, Membership } from '../models';
 import { validateClientForSecrets } from '../helpers/secrets';
@@ -25,7 +24,7 @@ const requireSecretsAuth = ({
 
         req.secrets = await validateClientForSecrets({
             authData: req.authData,
-            secretIds: secretIds.map((secretId: string) => new Types.ObjectId(secretId)),
+            secretIds: [req.body.secretIds],
             requiredPermissions
         });
     

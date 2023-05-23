@@ -3,7 +3,6 @@ import {
 	SECRET_SHARED,
 	SECRET_PERSONAL,
 } from '../variables';
-import { ROOT_FOLDER_PATH } from '../utils/folder';
 
 export interface ISecret {
 	_id: Types.ObjectId;
@@ -12,7 +11,6 @@ export interface ISecret {
 	type: string;
 	user: Types.ObjectId;
 	environment: string;
-	secretBlindIndex?: string;
 	secretKeyCiphertext: string;
 	secretKeyIV: string;
 	secretKeyTag: string;
@@ -26,8 +24,6 @@ export interface ISecret {
 	secretCommentTag?: string;
 	secretCommentHash?: string;
 	tags?: string[];
-	path?: string;
-	folder?: Types.ObjectId;
 }
 
 const secretSchema = new Schema<ISecret>(
@@ -60,10 +56,6 @@ const secretSchema = new Schema<ISecret>(
 		environment: {
 			type: String,
 			required: true
-		},
-		secretBlindIndex: {
-			type: String,
-			select: false
 		},
 		secretKeyCiphertext: {
 			type: String,
@@ -110,18 +102,7 @@ const secretSchema = new Schema<ISecret>(
 		secretCommentHash: {
 			type: String,
 			required: false
-		},
-		// the full path to the secret in relation to folders
-		path: {
-			type: String,
-			required: false,
-			default: ROOT_FOLDER_PATH
-		},
-		folder: {
-			type: Schema.Types.ObjectId,
-			ref: 'Folder',
-			required: false,
-		},
+		}
 	},
 	{
 		timestamps: true

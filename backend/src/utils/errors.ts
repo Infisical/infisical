@@ -73,16 +73,6 @@ export const ValidationError = (error?: Partial<RequestErrorContext>) => new Req
     stack: error?.stack
 });
 
-//* ----->[INTEGRATION AUTH ERRORS]<-----
-export const IntegrationAuthNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
-    logLevel: error?.logLevel ?? LogLevel.ERROR,
-    statusCode: error?.statusCode ?? 404,
-    type: error?.type ?? 'integration_auth_not_found_error',
-    message: error?.message ?? 'The requested integration authorization was not found',
-    context: error?.context,
-    stack: error?.stack
-});
-
 //* ----->[INTEGRATION ERRORS]<-----
 export const IntegrationNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.ERROR,
@@ -153,16 +143,6 @@ export const SecretNotFoundError = (error?: Partial<RequestErrorContext>) => new
     stack: error?.stack
 });
 
-//* ----->[SECRET BLIND INDEX DATA ERRORS]<-----
-export const SecretBlindIndexDataNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
-    logLevel: error?.logLevel ?? LogLevel.ERROR,
-    statusCode: error?.statusCode ?? 404,
-    type: error?.type ?? 'secret_blind_index_data_not_found_error',
-    message: error?.message ?? 'The requested secret was not found',
-    context: error?.context,
-    stack: error?.stack
-});
-
 //* ----->[SECRET SNAPSHOT ERRORS]<-----
 export const SecretSnapshotNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
     logLevel: error?.logLevel ?? LogLevel.ERROR,
@@ -221,14 +201,5 @@ export const ServiceAccountKeyNotFoundError = (error?: Partial<RequestErrorConte
     context: error?.context,
     stack: error?.stack
 })
-
-export const BotNotFoundError = (error?: Partial<RequestErrorContext>) => new RequestError({
-    logLevel: error?.logLevel ?? LogLevel.ERROR,
-    statusCode: error?.statusCode ?? 404,
-    type: error?.type ?? 'bot_not_found_error',
-    message: error?.message ?? 'The requested bot was not found',
-    context: error?.context,
-    stack: error?.stack
-})    
 
 //* ----->[MISC ERRORS]<-----

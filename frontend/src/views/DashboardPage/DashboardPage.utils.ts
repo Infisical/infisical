@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import crypto from 'crypto';
 
 import * as yup from 'yup';
@@ -7,7 +6,7 @@ import {
   decryptAssymmetric,
   encryptSymmetric
 } from '@app/components/utilities/cryptography/crypto';
-import { BatchSecretDTO, DecryptedSecret } from '@app/hooks/api/secrets/types';
+import { BatchSecretDTO } from '@app/hooks/api/secrets/types';
 
 export enum SecretActionType {
   Created = 'created',
@@ -148,18 +147,10 @@ const encryptASecret = (randomBytes: string, key: string, value?: string, commen
   };
 };
 
-const deepCompareSecrets = (lhs: DecryptedSecret, rhs: any) =>
-  lhs.key === rhs.key &&
-  lhs.value === rhs.value &&
-  lhs.comment === rhs.comment &&
-  lhs?.valueOverride === rhs?.valueOverride &&
-  JSON.stringify(lhs.tags) === JSON.stringify(rhs.tags);
-
 export const transformSecretsToBatchSecretReq = (
   deletedSecretIds: string[],
   latestFileKey: any,
-  secrets: FormData['secrets'],
-  intialValues: DecryptedSecret[] = []
+  secrets: FormData['secrets']
 ) => {
   // deleted secrets
   const secretsToBeDeleted: BatchSecretDTO['requests'] = deletedSecretIds.map((id) => ({
@@ -180,80 +171,61 @@ export const transformSecretsToBatchSecretReq = (
       })
     : crypto.randomBytes(16).toString('hex');
 
-  secrets?.forEach((secret) => {
-    const {
-      _id,
-      idOverride,
-      value,
-      valueOverride,
-      overrideAction,
-      tags = [],
-      comment,
-      key
-    } = secret;
-    if (!idOverride && overrideAction === SecretActionType.Created) {
-      secretsToBeCreated.push({
-        method: 'POST',
-        secret: {
-          type: 'personal',
-          tags,
-          secretName: key,
-          ...encryptASecret(randomBytes, key, valueOverride, comment)
-        }
-      });
-    }
-    // to be created ones as they don't have server generated id
-    if (!_id) {
-      secretsToBeCreated.push({
-        method: 'POST',
-        secret: {
-          type: 'shared',
-          tags,
-          secretName: key,
-          ...encryptASecret(randomBytes, key, value, comment)
-        }
-      });
-      return; // exit as updated and delete case won't happen when created
-    }
-    // has an id means this is updated one
-    if (_id) {
-      // check value has changed or not
-      const initialSecretValue = intialValues?.find(({ _id: secId }) => secId === _id)!;
-      if (!deepCompareSecrets(initialSecretValue, secret)) {
+  secrets?.forEach(
+    ({ _id, idOverride, value, valueOverride, overrideAction, tags = [], comment, key }) => {
+      if (!idOverride && overrideAction === SecretActionType.Created) {
+        secretsToBeCreated.push({
+          method: 'POST',
+          secret: {
+            type: 'personal',
+            tags,
+            ...encryptASecret(randomBytes, key, valueOverride, comment)
+          }
+        });
+      }
+      // to be created ones as they don't have server generated id
+      if (!_id) {
+        secretsToBeCreated.push({
+          method: 'POST',
+          secret: {
+            type: 'shared',
+            tags,
+            ...encryptASecret(randomBytes, key, value, comment)
+          }
+        });
+        return; // exit as updated and delete case won't happen when created
+      }
+      // has an id means this is updated one
+      if (_id) {
         secretsToBeUpdated.push({
           method: 'PATCH',
           secret: {
             _id,
             type: 'shared',
             tags,
-            secretName: key,
             ...encryptASecret(randomBytes, key, value, comment)
           }
         });
       }
-    }
-    if (idOverride) {
-      // if action is deleted meaning override has been removed but id is kept to collect at this point
-      if (overrideAction === SecretActionType.Deleted) {
-        secretsToBeDeleted.push({ method: 'DELETE', secret: { _id: idOverride } });
-      } else {
-        // if not deleted action then as id is there its an updated
-        const initialSecretValue = intialValues?.find(({ _id: secId }) => secId === _id)!;
-        if (!deepCompareSecrets(initialSecretValue, secret)) {
+      if (idOverride) {
+        // if action is deleted meaning override has been removed but id is kept to collect at this point
+        if (overrideAction === SecretActionType.Deleted) {
+          secretsToBeDeleted.push({ method: 'DELETE', secret: { _id: idOverride } });
+        } else {
+          // if not deleted action then as id is there its an updated
           secretsToBeUpdated.push({
             method: 'PATCH',
             secret: {
               _id: idOverride,
               type: 'personal',
               tags,
-              secretName: key,
               ...encryptASecret(randomBytes, key, valueOverride, comment)
             }
           });
         }
       }
     }
-  });
+  );
 
   return secretsToBeCreated.concat(secretsToBeUpdated, secretsToBeDeleted);
 };

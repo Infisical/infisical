@@ -7,9 +7,8 @@ import {
 } from '../../helpers/signup';
 import { issueAuthTokens } from '../../helpers/auth';
 import { INVITED, ACCEPTED } from '../../variables';
-import { standardRequest } from '../../config/request';
-import { getLoopsApiKey, getHttpsEnabled } from '../../config';
-import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
+import request from '../../config/request';
+import { getNodeEnv, getLoopsApiKey } from '../../config';
 
 /**
  * Complete setting up user by adding their personal and auth information as part of the
@@ -25,9 +24,9 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			email,
 			firstName,
 			lastName,
-			protectedKey,
-			protectedKeyIV,
-			protectedKeyTag,
+            protectedKey,
+            protectedKeyIV,
+            protectedKeyTag,
 			publicKey,
 			encryptedPrivateKey,
 			encryptedPrivateKeyIV,
@@ -39,9 +38,9 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			email: string;
 			firstName: string;
 			lastName: string;
-			protectedKey: string;
-			protectedKeyIV: string;
-			protectedKeyTag: string;
+            protectedKey: string;
+            protectedKeyIV: string;
+            protectedKeyTag: string;
 			publicKey: string;
 			encryptedPrivateKey: string;
 			encryptedPrivateKeyIV: string;
@@ -49,11 +48,11 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			salt: string;
 			verifier: string;
 			organizationName: string;
-		} = req.body;
+        } = req.body;
 
 		// get user
 		user = await User.findOne({ email });
-
+		
 		if (!user || (user && user?.publicKey)) {
 			// case 1: user doesn't exist.
 			// case 2: user has already completed account
@@ -67,10 +66,10 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			userId: user._id.toString(),
 			firstName,
 			lastName,
-			encryptionVersion: 2,
-			protectedKey,
-			protectedKeyIV,
-			protectedKeyTag,
+            encryptionVersion: 2,
+            protectedKey,
+            protectedKeyIV,
+            protectedKeyTag,
 			publicKey,
 			encryptedPrivateKey,
 			encryptedPrivateKeyIV,
@@ -86,19 +85,6 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 		await initializeDefaultOrg({
 			organizationName,
 			user
-		});
-
-		// update organization membership statuses that are
-		// invited to completed with user attached
-		const membershipsToUpdate = await MembershipOrg.find({
-			inviteEmail: email,
-			status: INVITED
-		});
-		
-		membershipsToUpdate.forEach(async (membership) => {
-			await updateSubscriptionOrgQuantity({
-				organizationId: membership.organization.toString()
-			});
 		});
 
 		// update organization membership statuses that are
@@ -122,8 +108,8 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 		token = tokens.token;
 
 		// sending a welcome email to new users
-		if (await getLoopsApiKey()) {
-			await standardRequest.post("https://app.loops.so/api/v1/events/send", {
+		if (getLoopsApiKey()) {
+			await request.post("https://app.loops.so/api/v1/events/send", {
 				"email": email,
 				"eventName": "Sign Up",
 				"firstName": firstName,
@@ -131,7 +117,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			}, {
 				headers: {
 					"Accept": "application/json",
-					"Authorization": "Bearer " + (await getLoopsApiKey())
+					"Authorization": "Bearer " + getLoopsApiKey()
 				},
 			});
 		}
@@ -141,7 +127,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			httpOnly: true,
 			path: '/',
 			sameSite: 'strict',
-			secure: await getHttpsEnabled()
+			secure: getNodeEnv() === 'production' ? true : false
 		});
 	} catch (err) {
 		Sentry.setUser(null);
@@ -172,9 +158,9 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 			email,
 			firstName,
 			lastName,
-			protectedKey,
-			protectedKeyIV,
-			protectedKeyTag,
+            protectedKey,
+            protectedKeyIV,
+            protectedKeyTag,
 			publicKey,
 			encryptedPrivateKey,
 			encryptedPrivateKeyIV,
@@ -206,10 +192,10 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 			userId: user._id.toString(),
 			firstName,
 			lastName,
-			encryptionVersion: 2,
-			protectedKey,
-			protectedKeyIV,
-			protectedKeyTag,
+            encryptionVersion: 2,
+            protectedKey,
+            protectedKeyIV,
+            protectedKeyTag,
 			publicKey,
 			encryptedPrivateKey,
 			encryptedPrivateKeyIV,
@@ -220,20 +206,9 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 
 		if (!user)
 			throw new Error('Failed to complete account for non-existent user');
-		
+
 		// update organization membership statuses that are
 		// invited to completed with user attached
-		const membershipsToUpdate = await MembershipOrg.find({
-			inviteEmail: email,
-			status: INVITED
-		});
-		
-		membershipsToUpdate.forEach(async (membership) => {
-			await updateSubscriptionOrgQuantity({
-				organizationId: membership.organization.toString()
-			});
-		});
-
 		await MembershipOrg.updateMany(
 			{
 				inviteEmail: email,
@@ -257,7 +232,7 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 			httpOnly: true,
 			path: '/',
 			sameSite: 'strict',
-			secure: await getHttpsEnabled()
+			secure: getNodeEnv() === 'production' ? true : false
 		});
 	} catch (err) {
 		Sentry.setUser(null);
@@ -266,7 +241,7 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 			message: 'Failed to complete account setup'
 		});
 	}
-
+	
 	return res.status(200).send({
 		message: 'Successfully set up account',
 		user,

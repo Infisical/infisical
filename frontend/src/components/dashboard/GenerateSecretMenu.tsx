@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { faShuffle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Menu, Transition } from '@headlessui/react';
@@ -21,8 +21,8 @@ const GenerateSecretMenu = ({
   return (
     <Menu as="div" className="relative inline-block text-left">
       <div>
-        <Menu.Button className="inline-flex w-full justify-center rounded-md text-sm font-medium text-gray-200 duration-200 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75">
-          <div className="rounded-md bg-bunker-800 py-1 px-2 hover:bg-bunker-500">
+        <Menu.Button className="inline-flex w-full justify-center text-sm font-medium text-gray-200 rounded-md hover:bg-white/10 duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75">
+          <div className="py-1 px-2 rounded-md bg-bunker-800 hover:bg-bunker-500">
             <FontAwesomeIcon icon={faShuffle} className="text-bunker-300" />
           </div>
         </Menu.Button>
@@ -36,7 +36,7 @@ const GenerateSecretMenu = ({
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
-        <Menu.Items className="absolute right-0 z-50 mt-0.5 w-[20rem] origin-top-right rounded-md border border-mineshaft-500 bg-bunker px-1 py-1 shadow-lg ring-1 ring-black ring-opacity-5 drop-shadow-xl focus:outline-none">
+        <Menu.Items className="absolute z-50 drop-shadow-xl right-0 mt-0.5 w-[20rem] origin-top-right rounded-md bg-bunker border border-mineshaft-500 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none px-1 py-1">
           <div
             onKeyDown={() => null}
             role="button"
@@ -55,20 +55,20 @@ const GenerateSecretMenu = ({
                 );
               }
             }}
-            className="relative flex w-full cursor-pointer select-none flex-row items-center justify-start rounded-md py-2 px-2 text-gray-400 duration-200 hover:bg-white/10 hover:text-gray-200"
+            className="relative flex flex-row justify-start items-center cursor-pointer select-none py-2 px-2 rounded-md text-gray-400 hover:bg-white/10 duration-200 hover:text-gray-200 w-full"
           >
-            <FontAwesomeIcon className="pl-1.5 pr-3 text-lg" icon={faShuffle} />
-            <div className="flex w-full flex-row justify-between text-sm">
-              <p>{t('dashboard.sidebar.generate-random-hex')}</p>
-              <p>{t('dashboard.sidebar.digits')}</p>
+            <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faShuffle} />
+            <div className="text-sm justify-between flex flex-row w-full">
+              <p>{t('dashboard:sidebar.generate-random-hex')}</p>
+              <p>{t('dashboard:sidebar.digits')}</p>
             </div>
           </div>
-          <div className="absolute bottom-[0.4rem] right-[3.3rem] flex w-16 flex-row rounded-md border border-chicago-700 bg-bunker-800 text-bunker-200 ">
+          <div className="flex flex-row absolute bottom-[0.4rem] right-[3.3rem] w-16 bg-bunker-800 border border-chicago-700 rounded-md text-bunker-200 ">
             <div
               onKeyDown={() => null}
               role="button"
               tabIndex={0}
-              className="m-0.5 cursor-pointer rounded-md px-1 hover:bg-chicago-700"
+              className="m-0.5 px-1 cursor-pointer rounded-md hover:bg-chicago-700"
               onClick={() => {
                 if (randomStringLength > 1) {
                   setRandomStringLength(randomStringLength - 1);
@@ -80,14 +80,14 @@ const GenerateSecretMenu = ({
             <input
               onChange={(e) => setRandomStringLength(parseInt(e.target.value, 10))}
               value={randomStringLength}
-              className="peer z-20 w-full bg-transparent text-center text-sm outline-none"
+              className="text-center z-20 peer text-sm bg-transparent w-full outline-none"
               spellCheck="false"
             />
             <div
               onKeyDown={() => null}
               role="button"
               tabIndex={0}
-              className="m-0.5 cursor-pointer rounded-md px-1 pb-0.5 hover:bg-chicago-700"
+              className="m-0.5 px-1 pb-0.5 cursor-pointer rounded-md hover:bg-chicago-700"
               onClick={() => {
                 if (randomStringLength < 32) {
                   setRandomStringLength(randomStringLength + 1);

@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+import { getLogger } from '../utils/logger';
 import { 
   initDatabaseHelper,
   closeDatabaseHelper

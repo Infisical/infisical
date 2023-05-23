@@ -285,7 +285,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
                     >
                       <Select
                         className="w-16 bg-mineshaft-700"
-                        dropdownContainerClassName="bg-mineshaft-800 border border-mineshaft-600 text-bunker-200"
+                        dropdownContainerClassName="bg-mineshaft-700"
                         position="item-aligned"
                         // open={isOpen}
                         onValueChange={(val) =>

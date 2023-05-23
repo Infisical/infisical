@@ -1,9 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { Types } from 'mongoose';
 import { Integration, IntegrationAuth } from '../models';
 import { IntegrationService } from '../services';
 import { validateMembership } from '../helpers/membership';
-import { validateClientForIntegration } from '../helpers/integration';
 import { IntegrationNotFoundError, UnauthorizedRequestError } from '../utils/errors';
 
 /**
@@ -15,24 +13,42 @@ import { IntegrationNotFoundError, UnauthorizedRequestError } from '../utils/err
 const requireIntegrationAuth = ({
 	acceptedRoles
 }: {
-	acceptedRoles: Array<'admin' | 'member'>;
+	acceptedRoles: string[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
+		// integration authorization middleware
+
 		const { integrationId } = req.params;
 
-		const { integration, accessToken } = await validateClientForIntegration({
-			authData: req.authData,
-			integrationId: new Types.ObjectId(integrationId),
+		// validate integration accessibility
+		const integration = await Integration.findOne({
+			_id: integrationId
+		});
+
+		if (!integration) {
+			return next(IntegrationNotFoundError({message: 'Failed to locate Integration'}))
+		}
+		
+		await validateMembership({
+			userId: req.user._id,
+			workspaceId: integration.workspace,
 			acceptedRoles
 		});
 
-		if (integration) {
-			req.integration = integration;
+		const integrationAuth = await IntegrationAuth.findOne({
+			_id: integration.integrationAuth
+		}).select(
+			'+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt'
+		);
+
+		if (!integrationAuth) {
+			return next(UnauthorizedRequestError({message: 'Failed to locate Integration Authentication credentials'}))
 		}
-		
-		if (accessToken) {
-			req.accessToken = accessToken;
-		}
+
+		req.integration = integration;
+		req.accessToken = await IntegrationService.getIntegrationAuthAccess({
+			integrationAuthId: integrationAuth._id.toString()
+		});
 
 		return next();
 	};

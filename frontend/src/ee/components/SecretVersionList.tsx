@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
+import { useTranslation } from 'next-i18next';
 import { faCircle, faDotCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -76,11 +76,11 @@ const SecretVersionList = ({ secretId }: { secretId: string }) => {
   }, [secretId]);
 
   return (
-    <div className="min-w-40 overflow-x-none dark mt-4 h-[12.4rem] w-full px-4 text-sm text-bunker-300">
-      <p className="">{t('dashboard.sidebar.version-history')}</p>
-      <div className="overflow-x-none h-full rounded-md border border-mineshaft-500 bg-bunker-800 py-0.5 pl-1">
+    <div className="w-full min-w-40 h-[12.4rem] px-4 mt-4 text-sm text-bunker-300 overflow-x-none">
+      <p className="">{t('dashboard:sidebar.version-history')}</p>
+      <div className="pl-1 py-0.5 rounded-md bg-bunker-800 border border-mineshaft-500 overflow-x-none h-full">
         {isLoading ? (
-          <div className="flex h-full items-center justify-center">
+          <div className="flex items-center justify-center h-full">
             <Image
               src="/images/loading/loading.gif"
               height={60}
@@ -89,20 +89,20 @@ const SecretVersionList = ({ secretId }: { secretId: string }) => {
             />
           </div>
         ) : (
-          <div className="overflow-x-none h-48 overflow-y-auto dark:[color-scheme:dark]">
+          <div className="h-48 overflow-y-auto overflow-x-none dark:[color-scheme:dark]">
             {secretVersions ? (
               secretVersions
                 ?.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
                 .map((version: DecryptedSecretVersionListProps, index: number) => (
                   <div key={`${version.createdAt}.${index + 1}`} className="flex flex-row">
-                    <div className="flex flex-col items-center pr-1">
+                    <div className="pr-1 flex flex-col items-center">
                       <div className="p-1">
                         <FontAwesomeIcon icon={index === 0 ? faDotCircle : faCircle} />
                       </div>
-                      <div className="mt-1 h-full w-0 border-l border-bunker-300" />
+                      <div className="w-0 h-full border-l border-bunker-300 mt-1" />
                     </div>
-                    <div className="flex w-full max-w-[calc(100%-2.3rem)] flex-col">
-                      <div className="pr-2 text-bunker-300/90">
+                    <div className="flex flex-col w-full max-w-[calc(100%-2.3rem)]">
+                      <div className="pr-2 pt-1 text-bunker-300/90">
                         {new Date(version.createdAt).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: '2-digit',
@@ -113,18 +113,18 @@ const SecretVersionList = ({ secretId }: { secretId: string }) => {
                         })}
                       </div>
                       <div className="">
-                        <p className="ph-no-capture break-words">
-                          <span className="mr-1.5 rounded-sm bg-primary-500/30 py-0.5 px-1">
+                        <p className="break-words ph-no-capture">
+                          <span className="py-0.5 px-1 rounded-sm bg-primary-500/30 mr-1.5">
                             Value:
                           </span>
-                          <span className="font-mono">{version.value}</span>
+                          <span className='font-mono'>{version.value}</span>
                         </p>
                       </div>
                     </div>
                   </div>
                 ))
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-bunker-400">
+              <div className="w-full h-full flex items-center justify-center text-bunker-400">
                 No version history yet.
               </div>
             )}

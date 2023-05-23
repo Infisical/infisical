@@ -1,4 +1,3 @@
-import { Types } from 'mongoose';
 import { 
     EVENT_PUSH_SECRETS, 
     EVENT_PULL_SECRETS 
@@ -23,16 +22,13 @@ interface PushSecret {
  * @returns 
  */
 const eventPushSecrets = ({
-    workspaceId,
-    environment
+    workspaceId
 }: {
-    workspaceId: Types.ObjectId;
-    environment?: string;
+    workspaceId: string;
 }) => {
     return ({
         name: EVENT_PUSH_SECRETS,
         workspaceId,
-        environment,
         payload: {
 
         }

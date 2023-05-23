@@ -53,7 +53,7 @@ router.post(
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
         acceptedStatuses: [ACCEPTED],
-        locationOrganizationId: 'body'
+        location: 'body'
     }),
     serviceAccountsController.createServiceAccount
 );

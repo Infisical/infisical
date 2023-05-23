@@ -3,7 +3,6 @@ import { Types } from 'mongoose';
 import { IOrganization, MembershipOrg } from '../models';
 import { UnauthorizedRequestError, ValidationError } from '../utils/errors';
 import { validateMembershipOrg } from '../helpers/membershipOrg';
-import { validateClientForOrganization } from '../helpers/organization';
 
 type req = 'params' | 'body' | 'query';
 
@@ -17,29 +16,20 @@ type req = 'params' | 'body' | 'query';
 const requireOrganizationAuth = ({
 	acceptedRoles,
 	acceptedStatuses,
-	locationOrganizationId = 'params'
+	location = 'params'
 }: {
-	acceptedRoles: Array<'owner' | 'admin' | 'member'>;
-	acceptedStatuses: Array<'invited' | 'accepted'>;
-	locationOrganizationId?: req;
+	acceptedRoles: string[];
+	acceptedStatuses: string[];
+	location?: req;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
-		const { organizationId } = req[locationOrganizationId];
-		
-		const { organization, membershipOrg } = await validateClientForOrganization({
-			authData: req.authData,
+		const { organizationId } = req[location];
+		req.membershipOrg = await validateMembershipOrg({
+			userId: req.user._id,
 			organizationId: new Types.ObjectId(organizationId),
 			acceptedRoles,
 			acceptedStatuses
 		});
-		
-		if (organization) {
-			req.organization = organization;
-		}
-
-		if (membershipOrg) {
-			req.membershipOrg = membershipOrg;
-		}
 
 		return next();
 	};

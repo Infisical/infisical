@@ -14,8 +14,8 @@ const requireServiceAccountWorkspacePermissionAuth = ({
     acceptedStatuses,
     location = 'params'
 }: {
-    acceptedRoles: Array<'owner' | 'admin' | 'member'>;
-	acceptedStatuses: Array<'invited' | 'accepted'>;
+    acceptedRoles: string[];
+    acceptedStatuses: string[];
     location?: req;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {

@@ -62,7 +62,6 @@ type SecretTagArg = { _id: string; name: string; slug: string };
 export type UpdateSecretArg = {
   _id: string;
   type: 'shared' | 'personal';
-  secretName: string;
   secretKeyCiphertext: string;
   secretKeyIV: string;
   secretKeyTag: string;
@@ -91,7 +90,7 @@ export type BatchSecretDTO = {
 
 export type GetProjectSecretsDTO = {
   workspaceId: string;
-  env: string | string[];
+  env: string;
   decryptFileKey: UserWsKeyPair;
   isPaused?: boolean;
   onSuccess?: (data: DecryptedSecret[]) => void;

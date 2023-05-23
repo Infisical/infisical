@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/node';
-import crypto from 'crypto';
 import { Types } from 'mongoose';
 import {
 	Workspace,
@@ -14,22 +13,19 @@ import {
 	IServiceAccount,
 	ServiceTokenData,
 	IServiceTokenData,
-	SecretBlindIndexData
 } from '../models';
 import { createBot } from '../helpers/bot';
 import { validateUserClientForWorkspace } from '../helpers/user';
 import { validateServiceAccountClientForWorkspace } from '../helpers/serviceAccount';
 import { validateServiceTokenDataClientForWorkspace } from '../helpers/serviceTokenData';
 import { validateMembership } from '../helpers/membership';
-import { UnauthorizedRequestError, WorkspaceNotFoundError } from '../utils/errors';
+import { UnauthorizedRequestError } from '../utils/errors';
 import {
 	AUTH_MODE_JWT,
 	AUTH_MODE_SERVICE_ACCOUNT,
 	AUTH_MODE_SERVICE_TOKEN,
 	AUTH_MODE_API_KEY
 } from '../variables';
-import { encryptSymmetric } from '../utils/crypto';
-import { SecretService } from '../services';
 
 /**
  * Validate authenticated clients for workspace with id [workspaceId] based
@@ -38,58 +34,32 @@ import { SecretService } from '../services';
  * @param {Object} obj.authData - authenticated client details
  * @param {Types.ObjectId} obj.workspaceId - id of workspace to validate against
  * @param {String} obj.environment - (optional) environment in workspace to validate against
- * @param {Array<'admin' | 'member'>} obj.acceptedRoles - accepted workspace roles
  * @param {String[]} obj.requiredPermissions - required permissions as part of the endpoint
  */
 const validateClientForWorkspace = async ({
 	authData,
 	workspaceId,
 	environment,
-	acceptedRoles,
-	requiredPermissions,
-	requireBlindIndicesEnabled
+	requiredPermissions
 }: {
 	authData: {
 		authMode: string;
 		authPayload: IUser | IServiceAccount | IServiceTokenData;
-	};
+	},
 	workspaceId: Types.ObjectId;
 	environment?: string;
-	acceptedRoles: Array<'admin' | 'member'>;
 	requiredPermissions?: string[];
-	requireBlindIndicesEnabled: boolean;
 }) => {
-	
-	const workspace = await Workspace.findById(workspaceId);
-
-	if (!workspace) throw WorkspaceNotFoundError({
-		message: 'Failed to find workspace'
-	});
-
-	if (requireBlindIndicesEnabled) {
-		// case: blind indices are not enabled for secrets in this workspace
-		// (i.e. workspace was created before blind indices were introduced
-		// and no admin has enabled it)
-		
-		const secretBlindIndexData = await SecretBlindIndexData.exists({
-			workspace: new Types.ObjectId(workspaceId)
-		});
-		
-		if (!secretBlindIndexData) throw UnauthorizedRequestError({
-			message: 'Failed workspace authorization due to blind indices not being enabled'
-		});
-	}
 
 	if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
 		const membership = await validateUserClientForWorkspace({
 			user: authData.authPayload,
 			workspaceId,
 			environment,
-			acceptedRoles,
 			requiredPermissions
 		});
 		
-		return ({ membership, workspace });
+		return ({ membership });
 	}
 
 	if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
@@ -119,15 +89,14 @@ const validateClientForWorkspace = async ({
 			user: authData.authPayload,
 			workspaceId,
 			environment,
-			acceptedRoles,
 			requiredPermissions
 		});
 		
-		return ({ membership, workspace });
+		return ({ membership });
 	}
 	
 	throw UnauthorizedRequestError({
-		message: 'Failed client authorization for workspace'
+		message: 'Failed client authorization for workspace resource'
 	});
 }
 
@@ -150,21 +119,13 @@ const createWorkspace = async ({
 		// create workspace
 		workspace = await new Workspace({
 			name,
-			organization: organizationId,
-			autoCapitalization: true
+			organization: organizationId
 		}).save();
 		
-		// initialize bot for workspace
-		await createBot({
+		const bot = await createBot({
 			name: 'Infisical Bot',
-			workspaceId: workspace._id
+			workspaceId: workspace._id.toString()
 		});
-		
-		// initialize blind index salt for workspace
-		await SecretService.createSecretBlindIndexData({
-			workspaceId: workspace._id
-		});
-
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);

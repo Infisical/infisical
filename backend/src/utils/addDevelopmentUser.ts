@@ -19,7 +19,7 @@ export const testWorkspaceKeyId = "63cf48f0225e6955acec5eff"
 export const plainTextWorkspaceKey = "543fef8224813a46230b0a50a46c5fb2"
 
 export const createTestUserForDevelopment = async () => {
-  if ((await getNodeEnv()) === "development" || (await getNodeEnv()) === "test") {
+  if (getNodeEnv() === "development" || getNodeEnv() === "test") {
     const testUser = {
       _id: testUserId,
       email: testUserEmail,

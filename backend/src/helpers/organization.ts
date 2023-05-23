@@ -1,44 +1,31 @@
-import Stripe from "stripe";
-import { Types } from "mongoose";
+import * as Sentry from '@sentry/node';
+import Stripe from 'stripe';
+import { Types } from 'mongoose';
 import {
-  IUser,
-  User,
-  IServiceAccount,
-  ServiceAccount,
-  IServiceTokenData,
-  ServiceTokenData,
-} from "../models";
-import { Organization, MembershipOrg } from "../models";
-import {
-  ACCEPTED,
-  AUTH_MODE_JWT,
-  AUTH_MODE_SERVICE_ACCOUNT,
-  AUTH_MODE_SERVICE_TOKEN,
-  AUTH_MODE_API_KEY,
-  OWNER,
-} from "../variables";
-import {
-  getStripeSecretKey,
-  getStripeProductPro,
-  getStripeProductTeam,
-  getStripeProductStarter,
-} from "../config";
-import {
-  UnauthorizedRequestError,
-  OrganizationNotFoundError,
-} from "../utils/errors";
-import { validateUserClientForOrganization } from "../helpers/user";
-import { validateServiceAccountClientForOrganization } from "../helpers/serviceAccount";
-import {
-  EELicenseService
-} from '../ee/services';
-import {
-  getLicenseServerUrl
+	IUser,
+	User,
+	IServiceAccount,
+	ServiceAccount,
+	IServiceTokenData,
+	ServiceTokenData
+} from '../models';
+import { Organization, MembershipOrg } from '../models';
+import { 
+	ACCEPTED,
+	AUTH_MODE_JWT,
+	AUTH_MODE_SERVICE_ACCOUNT,
+	AUTH_MODE_SERVICE_TOKEN,
+	AUTH_MODE_API_KEY
+} from '../variables';
+import { 
+	getStripeSecretKey,
+	getStripeProductPro,
+	getStripeProductTeam,
+	getStripeProductStarter
 } from '../config';
 import {
-  licenseServerKeyRequest,
-  licenseKeyRequest
-} from '../config/request';
+	UnauthorizedRequestError
+} from '../utils/errors';
 
 /**
  * Validate accepted clients for organization with id [organizationId]
@@ -47,80 +34,37 @@ import {
  * @param {Types.ObjectId} obj.organizationId - id of organization to validate against
  */
 const validateClientForOrganization = async ({
-  authData,
-  organizationId,
-  acceptedRoles,
-  acceptedStatuses,
+	authData,
+	organizationId
 }: {
-  authData: {
-    authMode: string;
-    authPayload: IUser | IServiceAccount | IServiceTokenData;
-  };
-  organizationId: Types.ObjectId;
-  acceptedRoles: Array<"owner" | "admin" | "member">;
-  acceptedStatuses: Array<"invited" | "accepted">;
+	authData: {
+		authMode: string;
+		authPayload: IUser | IServiceAccount | IServiceTokenData;
+	},
+	organizationId: string;
 }) => {
-  const organization = await Organization.findById(organizationId);
+	// TODO
+	
+	if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
+		// TODO
+	}
 
-  if (!organization) {
-    throw OrganizationNotFoundError({
-      message: "Failed to find organization",
-    });
-  }
+	if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
+		// TODO
+	}
 
-  if (
-    authData.authMode === AUTH_MODE_JWT &&
-    authData.authPayload instanceof User
-  ) {
-    const membershipOrg = await validateUserClientForOrganization({
-      user: authData.authPayload,
-      organization,
-      acceptedRoles,
-      acceptedStatuses,
-    });
+	if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
+		// TODO
+	}
 
-    return { organization, membershipOrg };
-  }
-
-  if (
-    authData.authMode === AUTH_MODE_SERVICE_ACCOUNT &&
-    authData.authPayload instanceof ServiceAccount
-  ) {
-    await validateServiceAccountClientForOrganization({
-      serviceAccount: authData.authPayload,
-      organization,
-    });
-
-    return { organization };
-  }
-
-  if (
-    authData.authMode === AUTH_MODE_SERVICE_TOKEN &&
-    authData.authPayload instanceof ServiceTokenData
-  ) {
-    throw UnauthorizedRequestError({
-      message: "Failed service token authorization for organization",
-    });
-  }
-
-  if (
-    authData.authMode === AUTH_MODE_API_KEY &&
-    authData.authPayload instanceof User
-  ) {
-    const membershipOrg = await validateUserClientForOrganization({
-      user: authData.authPayload,
-      organization,
-      acceptedRoles,
-      acceptedStatuses,
-    });
-
-    return { organization, membershipOrg };
-  }
-
-  throw UnauthorizedRequestError({
-    message: "Failed client authorization for organization",
-  });
-};
+	if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
+		// TODO
+	}
+	
+	throw UnauthorizedRequestError({
+		message: 'Failed client authorization for organization resource'
+	});
+}
 
 /**
  * Create an organization with name [name]
@@ -130,37 +74,43 @@ const validateClientForOrganization = async ({
  * @param {Object} organization - new organization
  */
 const createOrganization = async ({
-  name,
-  email,
+	name,
+	email
 }: {
-  name: string;
-  email: string;
+	name: string;
+	email: string;
 }) => {
-  let organization;
-  // register stripe account
-  const stripe = new Stripe(await getStripeSecretKey(), {
-    apiVersion: "2022-08-01",
-  });
+	let organization;
+	try {
+		// register stripe account
+		const stripe = new Stripe(getStripeSecretKey(), {
+			apiVersion: '2022-08-01'
+		});
 
-  if (await getStripeSecretKey()) {
-    const customer = await stripe.customers.create({
-      email,
-      description: name,
-    });
+		if (getStripeSecretKey()) {
+			const customer = await stripe.customers.create({
+				email,
+				description: name
+			});
 
-    organization = await new Organization({
-      name,
-      customerId: customer.id,
-    }).save();
-  } else {
-    organization = await new Organization({
-      name,
-    }).save();
-  }
+			organization = await new Organization({
+				name,
+				customerId: customer.id
+			}).save();
+		} else {
+			organization = await new Organization({
+				name
+			}).save();
+		}
 
-  await initSubscriptionOrg({ organizationId: organization._id });
+		await initSubscriptionOrg({ organizationId: organization._id });
+	} catch (err) {
+		Sentry.setUser({ email });
+		Sentry.captureException(err);
+		throw new Error(`Failed to create organization [err=${err}]`);
+	}
 
-  return organization;
+	return organization;
 };
 
 /**
@@ -172,52 +122,57 @@ const createOrganization = async ({
  * @return {Subscription} obj.subscription - new subscription
  */
 const initSubscriptionOrg = async ({
-  organizationId,
+	organizationId
 }: {
-  organizationId: Types.ObjectId;
+	organizationId: Types.ObjectId;
 }) => {
-  let stripeSubscription;
-  let subscription;
+	let stripeSubscription;
+	let subscription;
+	try {
+		// find organization
+		const organization = await Organization.findOne({
+			_id: organizationId
+		});
 
-  // find organization
-  const organization = await Organization.findOne({
-    _id: organizationId,
-  });
+		if (organization) {
+			if (organization.customerId) {
+				// initialize starter subscription with quantity of 0
+				const stripe = new Stripe(getStripeSecretKey(), {
+					apiVersion: '2022-08-01'
+				});
 
-  if (organization) {
-    if (organization.customerId) {
-      // initialize starter subscription with quantity of 0
-      const stripe = new Stripe(await getStripeSecretKey(), {
-        apiVersion: "2022-08-01",
-      });
+				const productToPriceMap = {
+					starter: getStripeProductStarter(),
+					team: getStripeProductTeam(),
+					pro: getStripeProductPro()
+				};
 
-      const productToPriceMap = {
-        starter: await getStripeProductStarter(),
-        team: await getStripeProductTeam(),
-        pro: await getStripeProductPro(),
-      };
+				stripeSubscription = await stripe.subscriptions.create({
+					customer: organization.customerId,
+					items: [
+						{
+							price: productToPriceMap['starter'],
+							quantity: 1
+						}
+					],
+					payment_behavior: 'default_incomplete',
+					proration_behavior: 'none',
+					expand: ['latest_invoice.payment_intent']
+				});
+			}
+		} else {
+			throw new Error('Failed to initialize free organization subscription');
+		}
+	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
+		throw new Error('Failed to initialize free organization subscription');
+	}
 
-      stripeSubscription = await stripe.subscriptions.create({
-        customer: organization.customerId,
-        items: [
-          {
-            price: productToPriceMap["starter"],
-            quantity: 1,
-          },
-        ],
-        payment_behavior: "default_incomplete",
-        proration_behavior: "none",
-        expand: ["latest_invoice.payment_intent"],
-      });
-    }
-  } else {
-    throw new Error("Failed to initialize free organization subscription");
-  }
-
-  return {
-    stripeSubscription,
-    subscription,
-  };
+	return {
+		stripeSubscription,
+		subscription
+	};
 };
 
 /**
@@ -227,54 +182,53 @@ const initSubscriptionOrg = async ({
  * @param {Number} obj.organizationId - id of subscription's organization
  */
 const updateSubscriptionOrgQuantity = async ({
-  organizationId,
+	organizationId
 }: {
-  organizationId: string;
+	organizationId: string;
 }) => {
-  let stripeSubscription;
-  // find organization
-  const organization = await Organization.findOne({
-    _id: organizationId,
-  });
+	let stripeSubscription;
+	try {
+		// find organization
+		const organization = await Organization.findOne({
+			_id: organizationId
+		});
 
-  if (organization && organization.customerId) {
-    if (EELicenseService.instanceType === 'cloud') {
-      // instance of Infisical is a cloud instance
-      const quantity = await MembershipOrg.countDocuments({
-        organization: new Types.ObjectId(organizationId),
-        status: ACCEPTED,
-      });
-      
-      await licenseServerKeyRequest.patch(
-        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${organization.customerId}/cloud-plan`,
-        {
-          quantity
-        }
-      );
-    }
-    
-    if (EELicenseService.instanceType === 'enterprise-self-hosted') {
-      // instance of Infisical is an enterprise self-hosted instance
-      
-      const usedSeats = await MembershipOrg.countDocuments({
-        status: ACCEPTED
-      });
+		if (organization && organization.customerId) {
+			const quantity = await MembershipOrg.countDocuments({
+				organization: organizationId,
+				status: ACCEPTED
+			});
 
-      await licenseKeyRequest.patch(
-        `${await getLicenseServerUrl()}/api/license/v1/license`,
-        {
-          usedSeats
-        }
-      );
-    }
-  }
+			const stripe = new Stripe(getStripeSecretKey(), {
+				apiVersion: '2022-08-01'
+			});
 
-  return stripeSubscription;
+			const subscription = (
+				await stripe.subscriptions.list({
+					customer: organization.customerId
+				})
+			).data[0];
+
+			stripeSubscription = await stripe.subscriptions.update(subscription.id, {
+				items: [
+					{
+						id: subscription.items.data[0].id,
+						price: subscription.items.data[0].price.id,
+						quantity
+					}
+				]
+			});
+		}
+	} catch (err) {
+		Sentry.setUser(null);
+		Sentry.captureException(err);
+	}
+
+	return stripeSubscription;
 };
 
 export {
-  validateClientForOrganization,
-  createOrganization,
-  initSubscriptionOrg,
-  updateSubscriptionOrgQuantity,
+	createOrganization,
+	initSubscriptionOrg,
+	updateSubscriptionOrgQuantity
 };

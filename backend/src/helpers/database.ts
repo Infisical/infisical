@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 import { EESecretService } from '../ee/services';
-import { SecretService } from '../services';
 import { getLogger } from '../utils/logger';
 
 /**
@@ -20,12 +19,11 @@ const initDatabaseHelper = async ({
         // allow empty strings to pass the required validator
         mongoose.Schema.Types.String.checkRequired(v => typeof v === 'string');
 
-        (await getLogger("database")).info("Database connection established");
+        getLogger("database").info("Database connection established");
         
         await EESecretService.initSecretVersioning();
-        await SecretService.initSecretBlindIndexDataHelper();
     } catch (err) {
-        (await getLogger("database")).error(`Unable to establish Database connection due to the error.\n${err}`);
+        getLogger("database").error(`Unable to establish Database connection due to the error.\n${err}`);
     }
 
     return mongoose.connection;

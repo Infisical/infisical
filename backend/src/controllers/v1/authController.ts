@@ -15,10 +15,10 @@ import { BadRequestError } from '../../utils/errors';
 import { EELogService } from '../../ee/services';
 import { getChannelFromUserAgent } from '../../utils/posthog'; // TODO: move this
 import {
+  getNodeEnv,
   getJwtRefreshSecret,
   getJwtAuthLifetime,
-  getJwtAuthSecret,
-  getHttpsEnabled
+  getJwtAuthSecret
 } from '../../config';
 
 declare module 'jsonwebtoken' {
@@ -126,21 +126,21 @@ export const login2 = async (req: Request, res: Response) => {
             httpOnly: true,
             path: '/',
             sameSite: 'strict',
-            secure: await getHttpsEnabled()
+            secure: getNodeEnv() === 'production' ? true : false
           });
 
           const loginAction = await EELogService.createAction({
             name: ACTION_LOGIN,
             userId: user._id
           });
-
+          
           loginAction && await EELogService.createLog({
             userId: user._id,
             actions: [loginAction],
             channel: getChannelFromUserAgent(req.headers['user-agent']),
             ipAddress: req.ip
           });
-
+          
           // return (access) token in response
           return res.status(200).send({
             token: tokens.token,
@@ -182,14 +182,14 @@ export const logout = async (req: Request, res: Response) => {
       httpOnly: true,
       path: '/',
       sameSite: 'strict',
-      secure: (await getHttpsEnabled()) as boolean
+      secure: getNodeEnv() === 'production' ? true : false
     });
 
     const logoutAction = await EELogService.createAction({
       name: ACTION_LOGOUT,
       userId: req.user._id
     });
-
+    
     logoutAction && await EELogService.createLog({
       userId: req.user._id,
       actions: [logoutAction],
@@ -237,7 +237,7 @@ export const getNewToken = async (req: Request, res: Response) => {
     }
 
     const decodedToken = <jwt.UserIDJwtPayload>(
-      jwt.verify(refreshToken, await getJwtRefreshSecret())
+      jwt.verify(refreshToken, getJwtRefreshSecret())
     );
 
     const user = await User.findOne({
@@ -252,8 +252,8 @@ export const getNewToken = async (req: Request, res: Response) => {
       payload: {
         userId: decodedToken.userId
       },
-      expiresIn: await getJwtAuthLifetime(),
-      secret: await getJwtAuthSecret()
+      expiresIn: getJwtAuthLifetime(),
+      secret: getJwtAuthSecret()
     });
 
     return res.status(200).send({

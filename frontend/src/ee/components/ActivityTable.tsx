@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import Image from 'next/image';
+import { useTranslation } from 'next-i18next';
 import { faAngleDown, faAngleRight, faUpRightFromSquare } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -51,42 +51,43 @@ const ActivityLogsRow = ({
     if (row?.user) return `User: ${row.user}`;
     if (row?.serviceAccount) return `Service Account: ${row.serviceAccount.name}`;
     if (row?.serviceTokenData.name) return `Service Token: ${row.serviceTokenData.name}`;
-
+    
     return '';
-  };
+  }
+
   return (
     <>
-      <tr key={guidGenerator()} className="w-full bg-bunker-800 text-sm duration-100">
+      <tr key={guidGenerator()} className="bg-bunker-800 duration-100 w-full text-sm">
         <td
           onKeyDown={() => null}
           onClick={() => setPayloadOpened(!payloadOpened)}
-          className="flex cursor-pointer items-center border-t border-mineshaft-700 text-gray-300"
+          className="border-mineshaft-700 border-t text-gray-300 flex items-center cursor-pointer"
         >
           <FontAwesomeIcon
             icon={payloadOpened ? faAngleDown : faAngleRight}
             className={`mt-2.5 ml-6 text-bunker-100 hover:bg-mineshaft-700 ${
               payloadOpened && 'bg-mineshaft-500'
-            } h-4 w-4 rounded-md p-1 duration-100`}
+            } p-1 duration-100 h-4 w-4 rounded-md`}
           />
         </td>
-        <td className="border-t border-mineshaft-700 py-3 text-gray-300">
+        <td className="py-3 border-mineshaft-700 border-t text-gray-300">
           {row.payload
             ?.map(
               (action) =>
-                `${String(action.secretVersions.length)} ${t(`activity.event.${action.name}`)}`
+                `${String(action.secretVersions.length)} ${t(`activity:event.${action.name}`)}`
             )
             .join(' and ')}
         </td>
-        <td className="border-t border-mineshaft-700 py-3 pl-6 text-gray-300">{renderUser()}</td>
-        <td className="border-t border-mineshaft-700 py-3 pl-6 text-gray-300">{row.channel}</td>
-        <td className="border-t border-mineshaft-700 py-3 pl-6 text-gray-300">
+        <td className="pl-6 py-3 border-mineshaft-700 border-t text-gray-300">{renderUser()}</td>
+        <td className="pl-6 py-3 border-mineshaft-700 border-t text-gray-300">{row.channel}</td>
+        <td className="pl-6 py-3 border-mineshaft-700 border-t text-gray-300">
           {timeSince(new Date(row.createdAt))}
         </td>
       </tr>
       {payloadOpened && (
-        <tr className="h-9 border-t border-mineshaft-700 text-sm text-bunker-200">
+        <tr className="h-9 text-bunker-200 border-mineshaft-700 border-t text-sm">
           <td />
-          <td>{String(t('common.timestamp'))}</td>
+          <td>{String(t('common:timestamp'))}</td>
           <td>{row.createdAt}</td>
         </tr>
       )}
@@ -96,29 +97,29 @@ const ActivityLogsRow = ({
             action.secretVersions.length > 0 && (
               <tr
                 key={action._id}
-                className="h-9 border-t border-mineshaft-700 text-sm text-bunker-200"
+                className="h-9 text-bunker-200 border-mineshaft-700 border-t text-sm"
               >
                 <td />
-                <td className="">{t(`activity.event.${action.name}`)}</td>
+                <td className="">{t(`activity:event.${action.name}`)}</td>
                 <td
                   onKeyDown={() => null}
-                  className="cursor-pointer text-primary-300 duration-200 hover:text-primary"
+                  className="text-primary-300 cursor-pointer hover:text-primary duration-200"
                   onClick={() => toggleSidebar(action._id)}
                 >
                   {action.secretVersions.length +
                     (action.secretVersions.length !== 1 ? ' secrets' : ' secret')}
                   <FontAwesomeIcon
                     icon={faUpRightFromSquare}
-                    className="ml-2 mb-0.5 h-3 w-3 font-light"
+                    className="ml-2 mb-0.5 font-light w-3 h-3"
                   />
                 </td>
               </tr>
             )
         )}
       {payloadOpened && (
-        <tr className="h-9 border-t border-mineshaft-700 text-sm text-bunker-200">
+        <tr className="h-9 text-bunker-200 border-mineshaft-700 border-t text-sm">
           <td />
-          <td>{String(t('activity.ip-address'))}</td>
+          <td>{String(t('activity:ip-address'))}</td>
           <td>{row.ipAddress}</td>
         </tr>
       )}
@@ -146,24 +147,24 @@ const ActivityTable = ({
   const { t } = useTranslation();
 
   return (
-    <div className="mt-8 w-full px-6">
-      <div className="table-container relative mb-6 w-full rounded-md border border-mineshaft-700 bg-bunker">
-        <div className="absolute h-[3rem] w-full rounded-t-md bg-white/5" />
-        <table className="my-1 w-full">
+    <div className="w-full px-6 mt-8">
+      <div className="table-container w-full bg-bunker rounded-md mb-6 border border-mineshaft-700 relative">
+        <div className="absolute rounded-t-md w-full h-[3rem] bg-white/5" />
+        <table className="w-full my-1">
           <thead className="text-bunker-300">
             <tr className="text-sm">
-              <th aria-label="actions" className="pl-6 pt-2.5 pb-3 text-left" />
-              <th className="pt-2.5 pb-3 text-left font-semibold">
-                {String(t('common.event')).toUpperCase()}
+              <th aria-label="actions" className="text-left pl-6 pt-2.5 pb-3" />
+              <th className="text-left font-semibold pt-2.5 pb-3">
+                {String(t('common:event')).toUpperCase()}
               </th>
-              <th className="pl-6 pt-2.5 pb-3 text-left font-semibold">
-                {String(t('common.user')).toUpperCase()}
+              <th className="text-left font-semibold pl-6 pt-2.5 pb-3">
+                {String(t('common:user')).toUpperCase()}
               </th>
-              <th className="pl-6 pt-2.5 pb-3 text-left font-semibold">
-                {String(t('common.source')).toUpperCase()}
+              <th className="text-left font-semibold pl-6 pt-2.5 pb-3">
+                {String(t('common:source')).toUpperCase()}
               </th>
-              <th className="pl-6 pt-2.5 pb-3 text-left font-semibold">
-                {String(t('common.time')).toUpperCase()}
+              <th className="text-left font-semibold pl-6 pt-2.5 pb-3">
+                {String(t('common:time')).toUpperCase()}
               </th>
               <th aria-label="action" />
             </tr>
@@ -180,7 +181,7 @@ const ActivityTable = ({
         </table>
       </div>
       {isLoading && (
-        <div className="mb-8 mt-4 flex w-full justify-center">
+        <div className="w-full flex justify-center mb-8 mt-4">
           <Image
             src="/images/loading/loading.gif"
             height={60}

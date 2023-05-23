@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { FormProvider, useFieldArray, useForm } from 'react-hook-form';
+import { useEffect, useState } from 'react';
+import { FormProvider, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
 import {
@@ -28,6 +28,8 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Select,
+  SelectItem,
   TableContainer,
   Tag,
   Tooltip
@@ -84,13 +86,12 @@ const USER_ACTION_PUSH = 'first_time_secrets_pushed';
  * Instead when user delete we raise a flag so if user decides to go back to toggle personal before saving
  * They will get it back
  */
-export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
+export const DashboardPage = () => {
   const { t } = useTranslation();
   const router = useRouter();
   const { createNotification } = useNotificationContext();
   const queryClient = useQueryClient();
 
-  const secretContainer = useRef<HTMLDivElement | null>(null);
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     'secretDetails',
     'addTag',
@@ -103,7 +104,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   const [snapshotId, setSnaphotId] = useState<string | null>(null);
   const [selectedEnv, setSelectedEnv] = useState<WorkspaceEnv | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const deletedSecretIds = useRef<string[]>([]);
+  const [deletedSecretIds, setDeletedSecretIds] = useState<string[]>([]);
   const { hasUnsavedChanges, setHasUnsavedChanges } = useLeaveConfirm({ initialValue: false });
 
   const { currentWorkspace, isLoading } = useWorkspace();
@@ -125,8 +126,8 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     onSuccess: (data) => {
       // get an env with one of the access available
       const env = data.find(({ isReadDenied, isWriteDenied }) => !isWriteDenied || !isReadDenied);
-      if (env && data?.map((wsenv) => wsenv.slug).includes(envFromTop)) {
-        setSelectedEnv(data?.filter((dp) => dp.slug === envFromTop)[0]);
+      if (env) {
+        setSelectedEnv(env);
       }
     }
   });
@@ -188,15 +189,23 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     handleSubmit,
     getValues,
     setValue,
-    formState: { isSubmitting, isDirty },
+    formState: { isSubmitting, dirtyFields },
     reset
   } = method;
-  const { fields, prepend, append, remove } = useFieldArray({ control, name: 'secrets' });
+  const formSecrets = useWatch({ control, name: 'secrets' });
+  const { fields, prepend, append, remove, update } = useFieldArray({ control, name: 'secrets' });
+
   const isRollbackMode = Boolean(snapshotId);
   const isReadOnly = selectedEnv?.isWriteDenied;
   const isAddOnly = selectedEnv?.isReadDenied && !selectedEnv?.isWriteDenied;
   const canDoRollback = !isReadOnly && !isAddOnly;
-  const isSubmitDisabled = isReadOnly || (!isRollbackMode && !isDirty) || isAddOnly || isSubmitting;
+  const isSubmitDisabled =
+    isReadOnly ||
+    // on add only mode the formstate becomes dirty due to secrets missing some items
+    // to avoid this we check dirtyFields in isAddOnly Mode
+    (isAddOnly && Object.keys(dirtyFields).length === 0) ||
+    (!isRollbackMode && !isAddOnly && Object.keys(dirtyFields).length === 0) ||
+    isSubmitting;
 
   useEffect(() => {
     if (!isSnapshotChanging && Boolean(snapshotId)) {
@@ -233,16 +242,15 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     // append non conflicting ones
     Object.keys(uploadedSec).forEach((key) => {
       if (!conflictingSecIds?.[key]) {
-        delete conflictingUploadedSec[key];
-        sec.push({
+        append({
           ...DEFAULT_SECRET_VALUE,
           key,
           value: uploadedSec[key].value,
           comment: uploadedSec[key].comments.join(',')
         });
+        delete conflictingUploadedSec[key];
       }
     });
-    setValue('secrets', sec, { shouldDirty: true });
     if (conflictingSec.length > 0) {
       handlePopUpOpen('uploadedSecOpts', { secrets: conflictingUploadedSec });
     }
@@ -258,15 +266,14 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     data.forEach(({ key, index }) => {
       const { value, comments } = uploadedSec[key];
       const comment = comments.join(', ');
-      sec[index] = {
+      update(index, {
         ...DEFAULT_SECRET_VALUE,
         key,
         value,
         comment,
         tags: sec[index].tags
-      };
+      });
     });
-    setValue('secrets', sec, { shouldDirty: true });
     handlePopUpClose('uploadedSecOpts');
   };
 
@@ -314,12 +321,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     const sec = isAddOnly ? userSec.filter(({ _id }) => !_id) : userSec;
     // encrypt and format the secrets to batch api format
     // requests = [ {method:"", secret:""} ]
-    const batchedSecret = transformSecretsToBatchSecretReq(
-      deletedSecretIds.current,
-      latestFileKey,
-      sec,
-      secrets?.secrets
-    );
+    const batchedSecret = transformSecretsToBatchSecretReq(deletedSecretIds, latestFileKey, sec);
     // type check
     if (!selectedEnv?.slug) return;
     try {
@@ -332,7 +334,6 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
         text: 'Successfully saved changes',
         type: 'success'
       });
-      deletedSecretIds.current = [];
       if (!hasUserPushed) {
         await registerUserAction(USER_ACTION_PUSH);
       }
@@ -356,17 +357,15 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     }
     const env = wsEnv?.find((el) => el.slug === slug);
     if (env) setSelectedEnv(env);
-    router.push({
-      pathname: router.pathname,
-      query: { ...router.query, env: slug }
-    });
   };
 
   // record all deleted ids
   // This will make final deletion easier
   const onSecretDelete = (index: number, id?: string, overrideId?: string) => {
-    if (id) deletedSecretIds.current.push(id);
-    if (overrideId) deletedSecretIds.current.push(overrideId);
+    const ids: string[] = [];
+    if (id) ids.push(id);
+    if (overrideId) ids.push(overrideId);
+    setDeletedSecretIds((state) => [...state, ...ids]);
     remove(index);
     // just the case if this is called from drawer
     handlePopUpClose('secretDetails');
@@ -402,7 +401,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   }
 
   // when secrets is not loading and secrets list is empty
-  const isDashboardSecretEmpty = !isSecretsLoading && false;
+  const isDashboardSecretEmpty = !isSecretsLoading && !formSecrets?.length;
   // when using snapshot mode and snapshot is loading and snapshot list is empty
   const isSnapshotSecretEmtpy =
     isRollbackMode && !isSnapshotSecretsLoading && !snapshotSecret?.secrets?.length;
@@ -413,33 +412,27 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   );
 
   return (
-    <div className="mr-auto container px-6 text-mineshaft-50 dark:[color-scheme:dark] h-full">
+    <div className="container mx-auto max-w-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
       <FormProvider {...method}>
         <form autoComplete="off">
           {/* breadcrumb row */}
-          <div className="relative right-6 mb-6 -top-2">
-            <NavHeader
-              pageName={t('dashboard.title')}
-              currentEnv={
-                userAvailableEnvs?.filter((envir) => envir.slug === envFromTop)[0].name || ''
-              }
-              isProjectRelated
-              userAvailableEnvs={userAvailableEnvs}
-              onEnvChange={onEnvChange}
-            />
+          <div className="relative right-5">
+            <NavHeader pageName={t('dashboard:title')} isProjectRelated />
           </div>
-          {/* This is only for rollbacks */}
-          {isRollbackMode && 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <h1 className="text-3xl font-semibold">Secret Snapshot</h1>
-                {isRollbackMode && Boolean(snapshotSecret) && (
-                  <Tag colorSchema="green">
-                    {new Date(snapshotSecret?.createdAt || '').toLocaleString()}
-                  </Tag>
-                )}
-              </div>
-              <div className="flex items-center space-x-2">
+          {/* Secrets, commit and save button section */}
+          <div className="mt-6 flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <h1 className="text-3xl font-semibold">
+                {isRollbackMode ? 'Secret Snapshot' : 'Secrets'}
+              </h1>
+              {isRollbackMode && Boolean(snapshotSecret) && (
+                <Tag colorSchema="green">
+                  {new Date(snapshotSecret?.createdAt || '').toLocaleString()}
+                </Tag>
+              )}
+            </div>
+            <div className="flex items-center space-x-2">
+              {isRollbackMode && (
                 <Button
                   variant="star"
                   leftIcon={<FontAwesomeIcon icon={faArrowLeft} />}
@@ -447,17 +440,54 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                     setSnaphotId(null);
                     reset({ ...secrets, isSnapshotMode: false });
                   }}
-                  className="h-10"
+                  className='h-10'
                 >
                   Go back
                 </Button>
-              </div>
-            </div>}
+              )}
+              <Button
+                variant="star"
+                onClick={() => handlePopUpOpen('secretSnapshots')}
+                leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
+                isLoading={isLoadingSnapshotCount}
+                isDisabled={!canDoRollback}
+                className='h-10'
+              >
+                {snapshotCount} Commits
+              </Button>
+              <Button
+                isDisabled={isSubmitDisabled}
+                isLoading={isSubmitting}
+                leftIcon={<FontAwesomeIcon icon={isRollbackMode ? faClockRotateLeft : faCheck} />}
+                onClick={handleSubmit(onSaveSecret)}
+                className='h-10'
+              >
+                {isRollbackMode ? 'Rollback' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
           {/* Environment, search and other action row */}
-          <div className="mt-2 flex items-center space-x-2 justify-between">
-            <div className="flex-grow max-w-sm">
+          <div className="mt-4 flex items-center space-x-2">
+            <div>
+              <Tooltip content="Select environment">
+                <Select
+                  value={selectedEnv?.slug}
+                  onValueChange={onEnvChange}
+                  position="popper"
+                  className="min-w-[180px] bg-mineshaft-600 h-10 font-medium"
+                  dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 drop-shadow-2xl"
+                >
+                  {userAvailableEnvs?.map(({ name, slug }) => (
+                    <SelectItem value={slug} key={slug}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </Tooltip>
+            </div>
+            <div className="flex-grow">
               <Input
-                className="h-[2.3rem] bg-mineshaft-800 focus:bg-mineshaft-700/80 duration-200 placeholder-mineshaft-50"
+                className="bg-mineshaft-600 h-[2.3rem] placeholder-mineshaft-50"
                 placeholder="Search keys..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
@@ -468,20 +498,16 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
               <div>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <IconButton ariaLabel="download" variant="outline_bg">
+                    <IconButton ariaLabel="download" variant="star">
                       <FontAwesomeIcon icon={faDownload} />
                     </IconButton>
                   </PopoverTrigger>
-                  <PopoverContent
-                    className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-1"
-                    hideCloseBtn
-                  >
+                  <PopoverContent className="w-auto bg-mineshaft-800 border border-mineshaft-600 p-1" hideCloseBtn>
                     <div className="flex flex-col space-y-2">
                       <Button
                         onClick={() => downloadSecret(getValues('secrets'), selectedEnv?.slug)}
-                        colorSchema="primary"
-                        variant="outline_bg"
-                        className="h-8 bg-bunker-700"
+                        variant="star"
+                        className="bg-bunker-700 h-8"
                       >
                         Download as .env
                       </Button>
@@ -493,100 +519,33 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                 <Tooltip content={isSecretValueHidden ? 'Reveal Secrets' : 'Hide secrets'}>
                   <IconButton
                     ariaLabel="reveal"
-                    variant="outline_bg"
+                    variant="star"
                     onClick={() => setIsSecretValueHidden.toggle()}
                   >
                     <FontAwesomeIcon icon={isSecretValueHidden ? faEye : faEyeSlash} />
                   </IconButton>
                 </Tooltip>
               </div>
-              <div className='block xl:hidden'>
-                <Tooltip content='Point-in-time Recovery'>
-                  <IconButton
-                    ariaLabel="recovery"
-                    variant="outline_bg"
-                    onClick={() => handlePopUpOpen('secretSnapshots')}
-                  >
-                    <FontAwesomeIcon icon={faCodeCommit} />
-                  </IconButton>
-                </Tooltip>
-              </div>
-              <div className='hidden xl:block'>
-                <Button
-                  variant="outline_bg"
-                  onClick={() => handlePopUpOpen('secretSnapshots')}
-                  leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
-                  isLoading={isLoadingSnapshotCount}
-                  isDisabled={!canDoRollback}
-                  className="h-10"
-                >
-                  {snapshotCount} Commits
-                </Button>
-              </div>
-              {!isReadOnly && !isRollbackMode && (
-                <>
-                  <div className='block lg:hidden'>
-                    <Tooltip content='Point-in-time Recovery'>
-                      <IconButton
-                        ariaLabel="recovery"
-                        variant="outline_bg"
-                        onClick={() => {
-                          if (secretContainer.current) {
-                            secretContainer.current.scroll({
-                              top: 0,
-                              behavior: 'smooth'
-                            });
-                          }
-                          prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
-                        }}
-                      >
-                        <FontAwesomeIcon icon={faPlus} />
-                      </IconButton>
-                    </Tooltip>
-                  </div>
-                  <div className='hidden lg:block'>
-                    <Button
-                      leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                      onClick={() => {
-                        if (secretContainer.current) {
-                          secretContainer.current.scroll({
-                            top: 0,
-                            behavior: 'smooth'
-                          });
-                        }
-                        prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
-                      }}
-                      isDisabled={isReadOnly || isRollbackMode}
-                      variant="outline_bg"
-                      className="h-10"
-                    >
-                      Add Secret
-                    </Button>
-                  </div>
-                </>
-              )}
-              <Button
-                isDisabled={isSubmitDisabled}
-                isLoading={isSubmitting}
-                leftIcon={<FontAwesomeIcon icon={isRollbackMode ? faClockRotateLeft : faCheck} />}
-                onClick={handleSubmit(onSaveSecret)}
+              {!isReadOnly && !isRollbackMode && <Button
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                onClick={() => prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false })}
+                isDisabled={isReadOnly || isRollbackMode}
+                variant="star"
                 className="h-10"
               >
-                {isRollbackMode ? 'Rollback' : 'Save Changes'}
-              </Button>
+                Add Secret
+              </Button>}
             </div>
           </div>
-          <div
-            className={`${
-              isSecretEmpty ? 'flex flex-col items-center justify-center' : ''
-            } no-scrollbar::-webkit-scrollbar mt-3 h-[calc(100vh-220px)] overflow-x-hidden overflow-y-scroll no-scrollbar`}
-            ref={secretContainer}
-          >
+          <div className={`${isSecretEmpty ? "flex flex-col items-center justify-center" : ""} mt-4 h-[calc(100vh-270px)] overflow-y-scroll overflow-x-hidden no-scrollbar no-scrollbar::-webkit-scrollbar`}>
             {!isSecretEmpty && (
-              <TableContainer className="max-h-[calc(100%-40px)] no-scrollbar no-scrollbar::-webkit-scrollbar">
+              <TableContainer>
                 <table className="secret-table relative">
-                  <SecretTableHeader sortDir={sortDir} onSort={onSortSecrets} />
-                  <tbody className="max-h-96 overflow-y-auto">
+                  <SecretTableHeader
+                    sortDir={sortDir}
+                    onSort={onSortSecrets}
+                  />
+                  <tbody className="overflow-y-auto max-h-screen">
                     {fields.map(({ id, _id }, index) => (
                       <SecretInputRow
                         key={id}
@@ -607,11 +566,11 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                         <td colSpan={3} className="hover:bg-mineshaft-700">
                           <button
                             type="button"
-                            className="pl-12 cursor-default w-full flex h-8 items-center justify-start font-normal text-bunker-300"
+                            className="w-[calc(100vw-400px)] h-8 ml-12 font-normal text-bunker-300 flex justify-start items-center"
                             onClick={onAppendSecret}
                           >
                             <FontAwesomeIcon icon={faPlus} />
-                            <span className="ml-2 w-20">Add Secret</span>
+                            <span className="w-20 ml-2">Add Secret</span>
                           </button>
                         </td>
                       </tr>

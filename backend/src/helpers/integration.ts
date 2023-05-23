@@ -1,126 +1,23 @@
 import * as Sentry from '@sentry/node';
-import { Types } from 'mongoose';
 import {
     Bot,
     Integration,
     IntegrationAuth,
-    IUser,
-    User,
-    IServiceAccount,
-    ServiceAccount,
-    IServiceTokenData,
-    ServiceTokenData
 } from '../models';
 import { exchangeCode, exchangeRefresh, syncSecrets } from '../integrations';
 import { BotService } from '../services';
 import {
-    AUTH_MODE_JWT,
-	AUTH_MODE_SERVICE_ACCOUNT,
-	AUTH_MODE_SERVICE_TOKEN,
-	AUTH_MODE_API_KEY,
     INTEGRATION_VERCEL,
     INTEGRATION_NETLIFY
 } from '../variables';
-import { 
-    UnauthorizedRequestError,
-    IntegrationAuthNotFoundError,
-    IntegrationNotFoundError
-} from '../utils/errors';
+import { UnauthorizedRequestError } from '../utils/errors';
 import RequestError from '../utils/requestError';
-import {
-    validateClientForIntegrationAuth 
-} from '../helpers/integrationAuth';
-import {
-    validateUserClientForWorkspace
-} from '../helpers/user';
-import {
-    validateServiceAccountClientForWorkspace
-} from '../helpers/serviceAccount';
-import { IntegrationService } from '../services';
 
 interface Update {
     workspace: string;
     integration: string;
     teamId?: string;
     accountId?: string;
-}
-
-/**
- * Validate authenticated clients for integration with id [integrationId] based
- * on any known permissions.
- * @param {Object} obj
- * @param {Object} obj.authData - authenticated client details
- * @param {Types.ObjectId} obj.integrationId - id of integration to validate against
- * @param {String} obj.environment - (optional) environment in workspace to validate against
- * @param {Array<'admin' | 'member'>} obj.acceptedRoles - accepted workspace roles
- * @param {String[]} obj.requiredPermissions - required permissions as part of the endpoint
- */
- const validateClientForIntegration = async ({
-    authData,
-    integrationId,
-    acceptedRoles
-}: {
-    authData: {
-		authMode: string;
-		authPayload: IUser | IServiceAccount | IServiceTokenData;
-	};
-    integrationId: Types.ObjectId;
-    acceptedRoles: Array<'admin' | 'member'>;
-}) => {
-    
-    const integration = await Integration.findById(integrationId);
-    if (!integration) throw IntegrationNotFoundError();
-
-    const integrationAuth = await IntegrationAuth
-        .findById(integration.integrationAuth)
-        .select(
-			'+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt'
-        );
-    
-    if (!integrationAuth) throw IntegrationAuthNotFoundError();
-
-    const accessToken = (await IntegrationService.getIntegrationAuthAccess({
-        integrationAuthId: integrationAuth._id
-    })).accessToken;
-
-    if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
-        await validateUserClientForWorkspace({
-            user: authData.authPayload,
-            workspaceId: integration.workspace,
-            acceptedRoles
-        });
-        
-        return ({ integration, accessToken });
-    }
-    
-    if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
-        await validateServiceAccountClientForWorkspace({
-            serviceAccount: authData.authPayload,
-            workspaceId: integration.workspace
-        });
-        
-        return ({ integration, accessToken });
-    }
-
-    if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
-        throw UnauthorizedRequestError({
-            message: 'Failed service token authorization for integration'
-        });
-    }
-
-    if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
-        await validateUserClientForWorkspace({
-            user: authData.authPayload,
-            workspaceId: integration.workspace,
-            acceptedRoles
-        });
-        
-        return ({ integration, accessToken });
-    }
-    
-    throw UnauthorizedRequestError({
-        message: 'Failed client authorization for integration'
-    });
 }
 
 /**
@@ -217,19 +114,14 @@ const handleOAuthExchangeHelper = async ({
  * @param {Object} obj.workspaceId - id of workspace
  */
 const syncIntegrationsHelper = async ({
-    workspaceId,
-    environment
+    workspaceId
 }: {
-    workspaceId: Types.ObjectId;
-    environment?: string;
+    workspaceId: string;
 }) => {
     let integrations;
     try {
         integrations = await Integration.find({
             workspace: workspaceId,
-            ...(environment ? {
-                environment
-            } : {}),
             isActive: true,
             app: { $ne: null }
         });
@@ -239,7 +131,7 @@ const syncIntegrationsHelper = async ({
         for await (const integration of integrations) {
             // get workspace, environment (shared) secrets
             const secrets = await BotService.getSecrets({ // issue here?
-                workspaceId: integration.workspace,
+                workspaceId: integration.workspace.toString(),
                 environment: integration.environment
             });
 
@@ -248,7 +140,7 @@ const syncIntegrationsHelper = async ({
             
             // get integration auth access token
             const access = await getIntegrationAuthAccessHelper({
-                integrationAuthId: integration.integrationAuth
+                integrationAuthId: integration.integrationAuth.toString()
             });
 
             // sync secrets to integration
@@ -256,7 +148,7 @@ const syncIntegrationsHelper = async ({
                 integration,
                 integrationAuth,
                 secrets,
-                accessId: access.accessId === undefined ? null : access.accessId,
+                accessId: access.accessId,
                 accessToken: access.accessToken
             });
         }
@@ -275,7 +167,7 @@ const syncIntegrationsHelper = async ({
  * @param {String} obj.integrationAuthId - id of integration auth
  * @param {String} refreshToken - decrypted refresh token
  */
- const getIntegrationAuthRefreshHelper = async ({ integrationAuthId }: { integrationAuthId: Types.ObjectId }) => {
+ const getIntegrationAuthRefreshHelper = async ({ integrationAuthId }: { integrationAuthId: string }) => {
     let refreshToken;
 	
     try {
@@ -286,7 +178,7 @@ const syncIntegrationsHelper = async ({
         if (!integrationAuth) throw UnauthorizedRequestError({message: 'Failed to locate Integration Authentication credentials'});
 
         refreshToken = await BotService.decryptSymmetric({
-            workspaceId: integrationAuth.workspace,
+            workspaceId: integrationAuth.workspace.toString(),
             ciphertext: integrationAuth.refreshCiphertext as string,
             iv: integrationAuth.refreshIV as string,
             tag: integrationAuth.refreshTag as string
@@ -312,7 +204,7 @@ const syncIntegrationsHelper = async ({
  * @param {String} obj.integrationAuthId - id of integration auth
  * @returns {String} accessToken - decrypted access token
  */
-const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrationAuthId: Types.ObjectId }) => {
+const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrationAuthId: string }) => {
     let accessId;
     let accessToken;
     try {
@@ -323,7 +215,7 @@ const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrati
         if (!integrationAuth) throw UnauthorizedRequestError({message: 'Failed to locate Integration Authentication credentials'});
 
         accessToken = await BotService.decryptSymmetric({
-            workspaceId: integrationAuth.workspace,
+            workspaceId: integrationAuth.workspace.toString(),
             ciphertext: integrationAuth.accessCiphertext as string,
             iv: integrationAuth.accessIV as string,
             tag: integrationAuth.accessTag as string
@@ -345,7 +237,7 @@ const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrati
         
         if (integrationAuth?.accessIdCiphertext && integrationAuth?.accessIdIV && integrationAuth?.accessIdTag) {
             accessId = await BotService.decryptSymmetric({
-                workspaceId: integrationAuth.workspace,
+                workspaceId: integrationAuth.workspace.toString(),
                 ciphertext: integrationAuth.accessIdCiphertext as string,
                 iv: integrationAuth.accessIdIV as string,
                 tag: integrationAuth.accessIdTag as string
@@ -391,7 +283,7 @@ const setIntegrationAuthRefreshHelper = async ({
         if (!integrationAuth) throw new Error('Failed to find integration auth');
         
         const obj = await BotService.encryptSymmetric({
-            workspaceId: integrationAuth.workspace,
+            workspaceId: integrationAuth.workspace.toString(),
             plaintext: refreshToken
         });
         
@@ -440,14 +332,14 @@ const setIntegrationAuthAccessHelper = async ({
         if (!integrationAuth) throw new Error('Failed to find integration auth');
         
         const encryptedAccessTokenObj = await BotService.encryptSymmetric({
-            workspaceId: integrationAuth.workspace,
+            workspaceId: integrationAuth.workspace.toString(),
             plaintext: accessToken
         });
         
         let encryptedAccessIdObj;
         if (accessId) {
             encryptedAccessIdObj = await BotService.encryptSymmetric({
-                workspaceId: integrationAuth.workspace,
+                workspaceId: integrationAuth.workspace.toString(),
                 plaintext: accessId
             }); 
         }
@@ -475,7 +367,6 @@ const setIntegrationAuthAccessHelper = async ({
 }
 
 export {
-    validateClientForIntegration,
     handleOAuthExchangeHelper,
     syncIntegrationsHelper,
     getIntegrationAuthRefreshHelper,
