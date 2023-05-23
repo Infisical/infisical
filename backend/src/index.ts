@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 dotenv.config();
 import express from 'express';
@@ -6,6 +5,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import * as Sentry from '@sentry/node';
 import { DatabaseService } from './services';
+import { EELicenseService } from './ee/services';
 import { setUpHealthEndpoint } from './services/health';
 import { initSmtp } from './services/smtp';
 import { TelemetryService } from './services';
@@ -25,7 +25,8 @@ import {
     workspace as eeWorkspaceRouter,
     secret as eeSecretRouter,
     secretSnapshot as eeSecretSnapshotRouter,
-    action as eeActionRouter
+    action as eeActionRouter,
+    organizations as eeOrganizationsRouter
 } from './ee/routes/v1';
 import {
     signup as v1SignupRouter,
@@ -74,13 +75,14 @@ import {
     getNodeEnv,
     getPort,
     getSentryDSN,
-    getSiteURL,
-    getSmtpHost
+    getSiteURL
 } from './config';
 
 const main = async () => {
     TelemetryService.logTelemetryMessage();
     setTransporter(await initSmtp());
+
+    await EELicenseService.initGlobalFeatureSet();
 
     await DatabaseService.initDatabase(await getMongoURL());
     if ((await getNodeEnv()) !== 'test') {
@@ -119,6 +121,7 @@ const main = async () => {
     app.use('/api/v1/secret-snapshot', eeSecretSnapshotRouter);
     app.use('/api/v1/workspace', eeWorkspaceRouter);
     app.use('/api/v1/action', eeActionRouter);
+    app.use('/api/v1/organizations', eeOrganizationsRouter);
 
     // v1 routes (default)
     app.use('/api/v1/signup', v1SignupRouter);

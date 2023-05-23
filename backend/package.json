@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.317.0",
+    "@aws-sdk/client-secrets-manager": "^3.319.0",
     "@godaddy/terminus": "^4.12.0",
     "@octokit/rest": "^19.0.5",
     "@sentry/node": "^7.49.0",
@@ -9,7 +9,7 @@
     "@types/libsodium-wrappers": "^0.7.10",
     "argon2": "^0.30.3",
     "await-to-js": "^3.0.0",
-    "aws-sdk": "^2.1362.0",
+    "aws-sdk": "^2.1364.0",
     "axios": "^1.3.5",
     "axios-retry": "^3.4.0",
     "bcrypt": "^5.1.0",
@@ -31,6 +31,7 @@
     "libsodium-wrappers": "^0.7.10",
     "lodash": "^4.17.21",
     "mongoose": "^6.10.5",
+    "node-cache": "^5.1.2",
     "nodemailer": "^6.8.0",
     "posthog-node": "^2.6.0",
     "query-string": "^7.1.3",

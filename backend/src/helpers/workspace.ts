@@ -96,7 +96,7 @@ const validateClientForWorkspace = async ({
 			requiredPermissions
 		});
 		
-		return ({ membership });
+		return ({ membership, workspace });
 	}
 
 	if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
@@ -130,7 +130,7 @@ const validateClientForWorkspace = async ({
 			requiredPermissions
 		});
 		
-		return ({ membership });
+		return ({ membership, workspace });
 	}
 	
 	throw UnauthorizedRequestError({

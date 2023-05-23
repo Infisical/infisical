@@ -21,6 +21,7 @@ export interface IIntegration {
   workspace: Types.ObjectId;
   environment: string;
   isActive: boolean;
+  url: string;
   app: string;
   appId: string;
   owner: string;
@@ -62,6 +63,11 @@ const integrationSchema = new Schema<IIntegration>(
     isActive: {
       type: Boolean,
       required: true,
+    },
+    url: {
+      // for custom self-hosted integrations (e.g. self-hosted GitHub enterprise)
+      type: String,
+      default: null
     },
     app: {
       // name of app in provider

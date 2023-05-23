@@ -43,6 +43,6 @@ const plansProd: Mapping = {
   enterprise: 'licence_key_required'
 };
 
-export const plans = plansDev || plansProd;
+export const plans = plansProd || plansDev;
 
 export const leaveConfirmDefaultMessage = 'Your changes will be lost if you leave the page. Are you sure you want to continue?';

@@ -5,7 +5,7 @@ import (
 
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/go-resty/resty/v2"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 const USER_AGENT = "cli"
@@ -222,7 +222,7 @@ func CallIsAuthenticated(httpClient *resty.Client) bool {
 	}
 
 	if response.IsError() {
-		log.Debugln(fmt.Errorf("CallIsAuthenticated: Unsuccessful response:  [response=%v]", response))
+		log.Debug().Msgf("CallIsAuthenticated: Unsuccessful response:  [response=%v]", response)
 		return false
 	}
 

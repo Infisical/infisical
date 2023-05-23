@@ -1,0 +1,6 @@
+- id: infisical-scan
+  name: Scan for hardcoded secrets
+  description: Will scan for hardcoded secrets using Infisical CLI
+  entry: infisical scan git-changes --verbose --redact --staged
+  language: golang
+  pass_filenames: false

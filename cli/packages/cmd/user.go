@@ -8,6 +8,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/manifoldco/promptui"
+	"github.com/posthog/posthog-go"
 	"github.com/spf13/cobra"
 )
 
@@ -78,6 +79,8 @@ var switchCmd = &cobra.Command{
 		if err != nil {
 			util.HandleError(err, "")
 		}
+
+		Telemetry.CaptureEvent("cli-command:user switch", posthog.NewProperties().Set("numberOfLoggedInProfiles", len(loggedInProfiles)).Set("version", util.CLI_VERSION))
 	},
 }
 
@@ -174,7 +177,7 @@ var domainCmd = &cobra.Command{
 		if err != nil {
 			util.HandleError(err, "")
 		}
-
+		Telemetry.CaptureEvent("cli-command:user domain", posthog.NewProperties().Set("version", util.CLI_VERSION))
 	},
 }
 

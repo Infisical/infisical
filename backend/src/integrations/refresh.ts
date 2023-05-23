@@ -1,4 +1,4 @@
-import request from "../config/request";
+import { standardRequest } from "../config/request";
 import { IIntegrationAuth } from "../models";
 import {
   INTEGRATION_AZURE_KEY_VAULT,
@@ -121,7 +121,7 @@ const exchangeRefreshAzure = async ({
   refreshToken: string;
 }) => {
   const accessExpiresAt = new Date();
-  const { data }: { data: RefreshTokenAzureResponse } = await request.post(
+  const { data }: { data: RefreshTokenAzureResponse } = await standardRequest.post(
     INTEGRATION_AZURE_TOKEN_URL,
     new URLSearchParams({
       client_id: await getClientIdAzure(),
@@ -158,7 +158,7 @@ const exchangeRefreshHeroku = async ({
     data,
   }: {
     data: RefreshTokenHerokuResponse;
-  } = await request.post(
+  } = await standardRequest.post(
     INTEGRATION_HEROKU_TOKEN_URL,
     new URLSearchParams({
       grant_type: "refresh_token",
@@ -193,7 +193,7 @@ const exchangeRefreshGitLab = async ({
     data,
   }: {
     data: RefreshTokenGitLabResponse;
-  } = await request.post(
+  } = await standardRequest.post(
     INTEGRATION_GITLAB_TOKEN_URL,
     new URLSearchParams({
       grant_type: "refresh_token",
