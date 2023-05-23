@@ -54,6 +54,30 @@ In addition to scanning for past leaks, this new addition also actively aids in 
 
 #
 #
+# Automatically scan changes before you commit
+
+To lower the risk of committing hardcoded secrets to your code repository, we have designed a custom git pre-commit hook.
+This hook scans the changes you're about to commit for any exposed secrets. If any hardcoded secrets are detected, it will block your commit.
+
+### Install pre-commit hook
+
+To install this git hook, go into your local git repository and run the following command.
+
+```bash 
+infisical scan install --pre-commit-hook
+```
+
+To disable this hook after installing it, run the command `git config --bool hooks.infisical-scan false`
+
+### Third party hooks management 
+If you prefer to manage your pre-commit hook outside of the .git/hooks directory, you can easily accomplish this by adding the following command to your pre-commit script
+
+```bash
+infisical scan git-changes --staged --verbose
+```
+
+#
+#
 # Creating a baseline
 
 When scanning large repositories or repositories with a long history, it can be helpful to use a baseline.
