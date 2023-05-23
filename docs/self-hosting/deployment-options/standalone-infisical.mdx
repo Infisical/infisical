@@ -21,6 +21,11 @@ docker pull infisical/infisical:latest
 The Infisical Docker image requires a .env file to manage environment variables. 
 Create a new file called .env in your preferred location. Add the required environment variables listed below. View [all configurable environment variables](../configuration/envars)
 
+
+<ParamField query="ENCRYPTION_KEY" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+</ParamField>
+
 <ParamField query="JWT_SIGNUP_SECRET" type="string" default="none" required>
   Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
 </ParamField>
