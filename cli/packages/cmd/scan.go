@@ -526,7 +526,11 @@ func GetGitRoot() (string, error) {
 func getHooksPath() (string, error) {
 	out, err := exec.Command("git", "config", "core.hooksPath").Output()
 	if err != nil {
-		return "", fmt.Errorf("failed to get Git hooks path: %s", err)
+		if len(out) == 0 {
+			out = []byte(".git/hooks") // set the default hook
+		} else {
+			log.Error().Msgf("Failed to get Git hooks path: %s\nOutput: %s\n", err, out)
+		}
 	}
 
 	hooksPath := strings.TrimSpace(string(out))
