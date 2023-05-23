@@ -31,6 +31,7 @@
     "libsodium-wrappers": "^0.7.10",
     "lodash": "^4.17.21",
     "mongoose": "^6.10.5",
+    "node-cache": "^5.1.2",
     "nodemailer": "^6.8.0",
     "posthog-node": "^2.6.0",
     "query-string": "^7.1.3",

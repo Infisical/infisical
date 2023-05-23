@@ -1,4 +1,4 @@
-import request from "../config/request";
+import { standardRequest } from "../config/request";
 import {
   INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
@@ -142,7 +142,7 @@ const exchangeCodeAzure = async ({ code }: { code: string }) => {
   const accessExpiresAt = new Date();
 
   const res: ExchangeCodeAzureResponse = (
-    await request.post(
+    await standardRequest.post(
       INTEGRATION_AZURE_TOKEN_URL,
       new URLSearchParams({
         grant_type: "authorization_code",
@@ -178,7 +178,7 @@ const exchangeCodeHeroku = async ({ code }: { code: string }) => {
   const accessExpiresAt = new Date();
 
   const res: ExchangeCodeHerokuResponse = (
-    await request.post(
+    await standardRequest.post(
       INTEGRATION_HEROKU_TOKEN_URL,
       new URLSearchParams({
         grant_type: "authorization_code",
@@ -209,7 +209,7 @@ const exchangeCodeHeroku = async ({ code }: { code: string }) => {
  */
 const exchangeCodeVercel = async ({ code }: { code: string }) => {
   const res: ExchangeCodeVercelResponse = (
-    await request.post(
+    await standardRequest.post(
       INTEGRATION_VERCEL_TOKEN_URL,
       new URLSearchParams({
         code: code,
@@ -240,7 +240,7 @@ const exchangeCodeVercel = async ({ code }: { code: string }) => {
  */
 const exchangeCodeNetlify = async ({ code }: { code: string }) => {
   const res: ExchangeCodeNetlifyResponse = (
-    await request.post(
+    await standardRequest.post(
       INTEGRATION_NETLIFY_TOKEN_URL,
       new URLSearchParams({
         grant_type: "authorization_code",
@@ -252,14 +252,14 @@ const exchangeCodeNetlify = async ({ code }: { code: string }) => {
     )
   ).data;
 
-  const res2 = await request.get("https://api.netlify.com/api/v1/sites", {
+  const res2 = await standardRequest.get("https://api.netlify.com/api/v1/sites", {
     headers: {
       Authorization: `Bearer ${res.access_token}`,
     },
   });
 
   const res3 = (
-    await request.get("https://api.netlify.com/api/v1/accounts", {
+    await standardRequest.get("https://api.netlify.com/api/v1/accounts", {
       headers: {
         Authorization: `Bearer ${res.access_token}`,
       },
@@ -287,7 +287,7 @@ const exchangeCodeNetlify = async ({ code }: { code: string }) => {
  */
 const exchangeCodeGithub = async ({ code }: { code: string }) => {
   const res: ExchangeCodeGithubResponse = (
-    await request.get(INTEGRATION_GITHUB_TOKEN_URL, {
+    await standardRequest.get(INTEGRATION_GITHUB_TOKEN_URL, {
       params: {
         client_id: await getClientIdGitHub(),
         client_secret: await getClientSecretGitHub(),
@@ -321,7 +321,7 @@ const exchangeCodeGithub = async ({ code }: { code: string }) => {
 const exchangeCodeGitlab = async ({ code }: { code: string }) => {
   const accessExpiresAt = new Date();
   const res: ExchangeCodeGitlabResponse = (
-    await request.post(
+    await standardRequest.post(
       INTEGRATION_GITLAB_TOKEN_URL,
       new URLSearchParams({
         grant_type: "authorization_code",
