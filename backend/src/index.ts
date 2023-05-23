@@ -26,7 +26,8 @@ import {
     secret as eeSecretRouter,
     secretSnapshot as eeSecretSnapshotRouter,
     action as eeActionRouter,
-    organizations as eeOrganizationsRouter
+    organizations as eeOrganizationsRouter,
+    cloudProducts as eeCloudProductsRouter
 } from './ee/routes/v1';
 import {
     signup as v1SignupRouter,
@@ -122,6 +123,7 @@ const main = async () => {
     app.use('/api/v1/workspace', eeWorkspaceRouter);
     app.use('/api/v1/action', eeActionRouter);
     app.use('/api/v1/organizations', eeOrganizationsRouter);
+    app.use('/api/v1/cloud-products', eeCloudProductsRouter);
 
     // v1 routes (default)
     app.use('/api/v1/signup', v1SignupRouter);

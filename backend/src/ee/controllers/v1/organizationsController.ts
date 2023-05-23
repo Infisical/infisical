@@ -1,15 +1,82 @@
-import { Types } from 'mongoose';
+import * as Sentry from '@sentry/node';
 import { Request, Response } from 'express';
-import { getOrganizationPlanHelper } from '../../helpers/organizations';
+import { getLicenseServerUrl } from '../../../config';
+import { licenseServerKeyRequest } from '../../../config/request';
+import { EELicenseService } from '../../services';
 
+/**
+ * Return the organization's current plan and allowed feature set
+ */
 export const getOrganizationPlan = async (req: Request, res: Response) => {
-    const { organizationId } = req.params;
+    try {
+        if (EELicenseService.instanceType === 'cloud') {
+            // instance of Infisical is a cloud instance
 
-    const plan = await getOrganizationPlanHelper({
-        organizationId: new Types.ObjectId(organizationId)
+            const cachedPlan = EELicenseService.localFeatureSet.get(req.organization._id.toString());
+            if (cachedPlan) return cachedPlan;
+
+            const { data: { currentPlan } } = await licenseServerKeyRequest.get(
+                `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/cloud-plan`
+            );
+
+            // cache fetched plan for organization
+            EELicenseService.localFeatureSet.set(req.organization._id.toString(), currentPlan);
+
+            return res.status(200).send({
+                plan: currentPlan
+            });
+        }
+    } catch (err) {
+        Sentry.setUser({ email: req.user.email });
+		Sentry.captureException(err);
+    }
+
+    return res.status(200).send({
+        plan: EELicenseService.globalFeatureSet
     });
+}
+
+/**
+ * Return the organization's payment methods on file
+ */
+export const getOrganizationPmtMethods = async (req: Request, res: Response) => {
+    const { data: { pmtMethods } } = await licenseServerKeyRequest.get(
+        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details/payment-methods`
+    );
+
+    return res.status(200).send({
+        pmtMethods
+    }); 
+}
+
+/**
+ * Return a Stripe session URL to add payment method for organization
+ */
+export const addOrganizationPmtMethod = async (req: Request, res: Response) => {
+    const {
+        success_url,
+        cancel_url
+    } = req.body;
+    
+    const { data: { url } } = await licenseServerKeyRequest.post(
+        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details/payment-methods`,
+        {
+            success_url,
+            cancel_url
+        }
+    );
     
     return res.status(200).send({
-        plan
-    });
+        url
+    }); 
+}
+
+export const deleteOrganizationPmtMethod = async (req: Request, res: Response) => {
+    const { pmtMethodId } = req.params;
+
+    const { data } = await licenseServerKeyRequest.delete(
+        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details/payment-methods/${pmtMethodId}`,
+    );
+        
+    return res.status(200).send(data);
 }
