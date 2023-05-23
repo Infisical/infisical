@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node';
 import { Request, Response } from 'express';
 import { getLicenseServerUrl } from '../../../config';
 import { licenseServerKeyRequest } from '../../../config/request';
@@ -8,31 +7,13 @@ import { EELicenseService } from '../../services';
  * Return the organization's current plan and allowed feature set
  */
 export const getOrganizationPlan = async (req: Request, res: Response) => {
-    try {
-        if (EELicenseService.instanceType === 'cloud') {
-            // instance of Infisical is a cloud instance
+    const plan = await EELicenseService.getOrganizationPlan(req.organization._id.toString());
 
-            const cachedPlan = EELicenseService.localFeatureSet.get(req.organization._id.toString());
-            if (cachedPlan) return cachedPlan;
-
-            const { data: { currentPlan } } = await licenseServerKeyRequest.get(
-                `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/cloud-plan`
-            );
-
-            // cache fetched plan for organization
-            EELicenseService.localFeatureSet.set(req.organization._id.toString(), currentPlan);
-
-            return res.status(200).send({
-                plan: currentPlan
-            });
-        }
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-    }
+    // cache fetched plan for organization
+    EELicenseService.localFeatureSet.set(req.organization._id.toString(), plan);
 
     return res.status(200).send({
-        plan: EELicenseService.globalFeatureSet
+        plan
     });
 }
 

@@ -7,9 +7,12 @@ import {
 } from '../../config';
 import { 
     licenseKeyRequest,
+    licenseServerKeyRequest,
     refreshLicenseServerKeyToken,
     refreshLicenseKeyToken
 } from '../../config/request';
+import { Organization } from '../../models';
+import { OrganizationNotFoundError } from '../../utils/errors';
 
 interface FeatureSet {
     _id: string | null;
@@ -58,6 +61,28 @@ class EELicenseService {
         this.localFeatureSet = new NodeCache({
             stdTTL: 300
         });
+    }
+    
+    public async getOrganizationPlan(organizationId: string) {
+        try {
+            if (this.instanceType === 'cloud') {
+                const cachedPlan = this.localFeatureSet.get(organizationId);
+                if (cachedPlan) return cachedPlan;
+
+                const organization = await Organization.findById(organizationId);
+                if (!organization) throw OrganizationNotFoundError();
+
+                const { data: { currentPlan } } = await licenseServerKeyRequest.get(
+                    `${await getLicenseServerUrl()}/api/license-server/v1/customers/${organization.customerId}/cloud-plan`
+                );
+
+                return currentPlan;
+            }
+        } catch (err) {
+            return this.globalFeatureSet;
+        }
+
+        return this.globalFeatureSet;
     }
 
     public async initGlobalFeatureSet() {
