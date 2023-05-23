@@ -25,6 +25,21 @@ router.get(
     organizationsController.getOrganizationPlan
 );
 
+router.patch(
+    '/:organizationId/plan',
+    requireAuth({
+		acceptedAuthModes: ['jwt', 'apiKey']
+	}),
+    requireOrganizationAuth({
+        acceptedRoles: [OWNER, ADMIN, MEMBER],
+        acceptedStatuses: [ACCEPTED]
+    }),
+    param('organizationId').exists().trim(),
+    body('productId').exists().isString(),
+    validateRequest,
+    organizationsController.updateOrganizationPlan
+);
+
 router.get(
     '/:organizationId/billing-details/payment-methods',
     requireAuth({

@@ -37,6 +37,27 @@ export const getOrganizationPlan = async (req: Request, res: Response) => {
 }
 
 /**
+ * Update the organization plan to product with id [productId]
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const updateOrganizationPlan = async (req: Request, res: Response) => {
+    const {
+        productId
+    } = req.body;
+
+    const { data  } = await licenseServerKeyRequest.patch(
+        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/cloud-plan`,
+        {
+            productId
+        }
+    ); 
+    
+    return res.status(200).send(data);
+}
+
+/**
  * Return the organization's payment methods on file
  */
 export const getOrganizationPmtMethods = async (req: Request, res: Response) => {
