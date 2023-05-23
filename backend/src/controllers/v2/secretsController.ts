@@ -1,7 +1,7 @@
 import to from 'await-to-js';
 import { Types } from 'mongoose';
 import { Request, Response } from 'express';
-import { ISecret, Secret } from '../../models';
+import { ISecret, Secret, Workspace } from '../../models';
 import { IAction, SecretVersion } from '../../ee/models';
 import {
     SECRET_PERSONAL,
@@ -14,7 +14,7 @@ import {
 import { UnauthorizedRequestError, ValidationError } from '../../utils/errors';
 import { EventService } from '../../services';
 import { eventPushSecrets } from '../../events';
-import { EESecretService, EELogService } from '../../ee/services';
+import { EESecretService, EELogService, EELicenseService } from '../../ee/services';
 import { TelemetryService, SecretService } from '../../services';
 import { getChannelFromUserAgent } from '../../utils/posthog';
 import { PERMISSION_WRITE_SECRETS } from '../../variables';
@@ -48,6 +48,14 @@ export const batchSecrets = async (req: Request, res: Response) => {
         environment: string;
         requests: BatchSecretRequest[];
     } = req.body;
+    
+    const organizationId = (
+        await Workspace.findOne({
+                _id: workspaceId
+            })
+        )?.organization?.toString();
+    const orgPlan = await EELicenseService.getOrganizationPlan(organizationId || '');
+    const isPaid = orgPlan.slug != 'starter';
 
     const createSecrets: BatchSecret[] = [];
     const updateSecrets: BatchSecret[] = [];
@@ -139,7 +147,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     environment,
                     workspaceId,
                     channel,
-                    userAgent: req.headers?.['user-agent']
+                    userAgent: req.headers?.['user-agent'],
+                    isPaid
                 }
             });
         }
@@ -226,7 +235,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     environment,
                     workspaceId,
                     channel,
-                    userAgent: req.headers?.['user-agent']
+                    userAgent: req.headers?.['user-agent'],
+                    isPaid
                 }
             });
         }
@@ -261,7 +271,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     environment,
                     workspaceId,
                     channel: channel,
-                    userAgent: req.headers?.['user-agent']
+                    userAgent: req.headers?.['user-agent'],
+                    isPaid
                 }
             });
         }
@@ -375,6 +386,14 @@ export const createSecrets = async (req: Request, res: Response) => {
             throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
         }
     }
+
+    const organizationId = (
+        await Workspace.findOne({
+                _id: workspaceId
+            })
+        )?.organization?.toString();
+    const orgPlan = await EELicenseService.getOrganizationPlan(organizationId || '');
+    const isPaid = orgPlan.slug != 'starter';
 
     let listOfSecretsToCreate;
     if (Array.isArray(req.body.secrets)) {
@@ -531,7 +550,8 @@ export const createSecrets = async (req: Request, res: Response) => {
                 environment,
                 workspaceId,
                 channel: channel,
-                userAgent: req.headers?.['user-agent']
+                userAgent: req.headers?.['user-agent'],
+                isPaid
             }
         });
     }
@@ -594,6 +614,14 @@ export const getSecrets = async (req: Request, res: Response) => {
     const environment = req.query.environment as string;
     const normalizedPath = normalizePath(secretsPath as string)
     const folders = await getFoldersInDirectory(workspaceId as string, environment as string, normalizedPath)
+
+    const organizationId = (
+        await Workspace.findOne({
+                _id: workspaceId
+            })
+        )?.organization?.toString();
+    const orgPlan = await EELicenseService.getOrganizationPlan(organizationId || '');
+    const isPaid = orgPlan.slug != 'starter';
 
     // secrets to return 
     let secrets: ISecret[] = [];
@@ -727,7 +755,8 @@ export const getSecrets = async (req: Request, res: Response) => {
                 environment,
                 workspaceId,
                 channel,
-                userAgent: req.headers?.['user-agent']
+                userAgent: req.headers?.['user-agent'],
+                isPaid
             }
         });
     }
@@ -938,6 +967,14 @@ export const updateSecrets = async (req: Request, res: Response) => {
             workspaceId: new Types.ObjectId(key)
         })
 
+        const organizationId = (
+            await Workspace.findOne({
+                    _id: key
+                })
+            )?.organization?.toString();
+        const orgPlan = await EELicenseService.getOrganizationPlan(organizationId || '');
+        const isPaid = orgPlan.slug != 'starter';
+
         const postHogClient = await TelemetryService.getPostHogClient();
         if (postHogClient) {
             postHogClient.capture({
@@ -950,7 +987,8 @@ export const updateSecrets = async (req: Request, res: Response) => {
                     environment: workspaceSecretObj[key][0].environment,
                     workspaceId: key,
                     channel: channel,
-                    userAgent: req.headers?.['user-agent']
+                    userAgent: req.headers?.['user-agent'],
+                    isPaid
                 }
             });
         }
@@ -1072,6 +1110,14 @@ export const deleteSecrets = async (req: Request, res: Response) => {
             workspaceId: new Types.ObjectId(key)
         });
 
+        const organizationId = (
+            await Workspace.findOne({
+                    _id: key
+                })
+            )?.organization?.toString();
+        const orgPlan = await EELicenseService.getOrganizationPlan(organizationId || '');
+        const isPaid = orgPlan.slug != 'starter';
+
         const postHogClient = await TelemetryService.getPostHogClient();
         if (postHogClient) {
             postHogClient.capture({
@@ -1084,7 +1130,8 @@ export const deleteSecrets = async (req: Request, res: Response) => {
                     environment: workspaceSecretObj[key][0].environment,
                     workspaceId: key,
                     channel: channel,
-                    userAgent: req.headers?.['user-agent']
+                    userAgent: req.headers?.['user-agent'],
+                    isPaid
                 }
             });
         }
