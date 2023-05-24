@@ -13,6 +13,7 @@ jobs:
   check-be-pr:
     name: Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: ☁️ Checkout source
