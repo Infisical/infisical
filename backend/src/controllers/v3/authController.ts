@@ -76,6 +76,7 @@ export const login1 = async (req: Request, res: Response) => {
                 await LoginSRPDetail.findOneAndReplace({
                     userId: user.id,
                 }, {
+                    email,
                     userId: user.id,
                     clientPublicKey: clientPublicKey,
                     serverBInt: bigintConversion.bigintToBuf(server.bInt),
@@ -115,7 +116,7 @@ export const login2 = async (req: Request, res: Response) => {
         }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag');
 
         if (!user) throw new Error('Failed to find user');
-        
+
         if (user.authProvider) {
             await validateProviderAuthToken({
                 email,
