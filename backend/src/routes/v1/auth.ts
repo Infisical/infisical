@@ -1,6 +1,7 @@
 import express from 'express';
 const router = express.Router();
 import { body } from 'express-validator';
+import passport from 'passport';
 import { requireAuth, validateRequest } from '../../middleware';
 import { authController } from '../../controllers/v1';
 import { authLimiter } from '../../helpers/rateLimiter';
@@ -43,5 +44,21 @@ router.post(
   authController.checkAuth
 );
 
+
+
+router.get(
+  '/redirect/google',
+  authLimiter,
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    session: false,
+  }),
+)
+
+router.get(
+  '/callback/google',
+  passport.authenticate('google', { failureRedirect: '/login/provider/error', session: false }),
+  authController.handleAuthProviderCallback,
+)
 
 export default router;

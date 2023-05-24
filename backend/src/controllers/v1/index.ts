@@ -5,7 +5,6 @@ import * as integrationController from './integrationController';
 import * as keyController from './keyController';
 import * as membershipController from './membershipController';
 import * as membershipOrgController from './membershipOrgController';
-import * as oauthController from './oauthController';
 import * as organizationController from './organizationController';
 import * as passwordController from './passwordController';
 import * as secretController from './secretController';
@@ -24,7 +23,6 @@ export {
 	keyController,
 	membershipController,
 	membershipOrgController,
-	oauthController,
 	organizationController,
 	passwordController,
 	secretController,

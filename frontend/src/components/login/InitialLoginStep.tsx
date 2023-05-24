@@ -20,7 +20,7 @@ export default function InitialLoginStep({
                 colorSchema="primary" 
                 variant="solid"
                 onClick={() => {
-                    window.open('/api/v1/oauth/redirect/google')
+                    window.open('/api/v1/auth/redirect/google')
                 }} 
                 leftIcon={<FontAwesomeIcon icon={faGoogle} className="mr-1" />}
                 className="h-14 w-full mx-0"

@@ -39,7 +39,6 @@ import {
   membership as v1MembershipRouter,
   key as v1KeyRouter,
   inviteOrg as v1InviteOrgRouter,
-  oauth as v1OAuth,
   user as v1UserRouter,
   userAction as v1UserActionRouter,
   secret as v1SecretRouter,
@@ -135,7 +134,6 @@ const main = async () => {
   // v1 routes (default)
   app.use("/api/v1/signup", v1SignupRouter);
   app.use("/api/v1/auth", v1AuthRouter);
-  app.use("/api/v1/oauth", v1OAuth);
   app.use("/api/v1/bot", v1BotRouter);
   app.use("/api/v1/user", v1UserRouter);
   app.use("/api/v1/user-action", v1UserActionRouter);

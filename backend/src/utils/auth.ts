@@ -68,7 +68,7 @@ const initializePassport = async () => {
     passReqToCallback: true,
     clientID: googleClientId,
     clientSecret: googleClientSecret,
-    callbackURL: '/api/v1/oauth/callback/google',
+    callbackURL: '/api/v1/auth/callback/google',
     scope: ['profile', ' email'],
   }, async (
     req: express.Request,
