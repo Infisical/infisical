@@ -98,16 +98,10 @@ To scan your full git history, run:
 infisical scan --verbose
 ```
 
-To scan your uncommitted git changes, run:
+Install pre commit hook to scan each commit before you push to your repository 
 
 ```
-infisical scan git-changes --verbose
-```
-
-You can also scan your uncommited but staged changes by running the command below. This command can also be used as a pre-commit hook to prevent secret leak.
-
-```
-infisical scan git-changes --staged --verbose
+infisical scan install --pre-commit-hook
 ```
 
 Lean about Infisical's code scanning feature [here](https://infisical.com/docs/cli/scanning-overview) 

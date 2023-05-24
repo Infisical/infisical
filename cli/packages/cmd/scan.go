@@ -23,7 +23,11 @@
 package cmd
 
 import (
+	_ "embed"
+	"fmt"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -32,6 +36,7 @@ import (
 	"github.com/Infisical/infisical-merge/detect"
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/Infisical/infisical-merge/report"
+	"github.com/manifoldco/promptui"
 	"github.com/posthog/posthog-go"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -44,6 +49,17 @@ order of precedence:
 2. env var INFISICAL_SCAN_CONFIG
 3. (--source/-s)/.infisical-scan.toml
 If none of the three options are used, then Infisical will use the default scan config`
+
+//go:embed pre-commit-script/pre-commit.sh
+var preCommitTemplate []byte
+
+//go:embed pre-commit-script/pre-commit-without-bang.sh
+var preCommitTemplateAppend []byte
+
+const (
+	defaultHooksPath = ".git/hooks/"
+	preCommitFile    = "pre-commit"
+)
 
 func init() {
 	// scan flag for only scan command
@@ -77,6 +93,9 @@ func init() {
 	// add flags to main
 	scanCmd.AddCommand(scanGitChangesCmd)
 	rootCmd.AddCommand(scanCmd)
+
+	installCmd.Flags().Bool("pre-commit-hook", false, "installs pre commit hook for Git repository")
+	scanCmd.AddCommand(installCmd)
 }
 
 func initScanConfig(cmd *cobra.Command) {
@@ -131,6 +150,50 @@ func initScanConfig(cmd *cobra.Command) {
 		log.Fatal().Msgf("unable to load scan config, err: %s", err)
 	}
 }
+
+var installCmd = &cobra.Command{
+	Use:   "install",
+	Short: "Install scanning scripts and tools. Use --help flag to see all options",
+	Args:  cobra.ExactArgs(0),
+	Run: func(cmd *cobra.Command, args []string) {
+		installPrecommit := cmd.Flags().Changed("pre-commit-hook")
+		if installPrecommit {
+			hooksPath, err := getHooksPath()
+			if err != nil {
+				fmt.Printf("Error: %s\n", err)
+				return
+			}
+
+			if hooksPath != ".git/hooks" {
+				defaultHookOverride, err := overrideDefaultHooksPath(hooksPath)
+				if err != nil {
+					fmt.Printf("Error: %s\n", err)
+				}
+
+				if defaultHookOverride {
+					ConfigureGitHooksPath()
+
+					log.Info().Msgf("To switch back previous githooks manager run: git config core.hooksPath %s\n", hooksPath)
+					return
+				} else {
+					log.Warn().Msgf("To automatically configure this hook, you need to switch the path of the Hooks. Alternatively, you can manually configure this hook by setting your pre-commit script to run command [infisical scan git-changes -v --staged].\n")
+					return
+				}
+			}
+
+			err = createOrUpdatePreCommitFile(hooksPath)
+			if err != nil {
+				fmt.Printf("Error: %s\n", err)
+				return
+			}
+
+			log.Info().Msgf("Pre-commit hook successfully added. Infisical scan should now run on each commit you make\n")
+
+			Telemetry.CaptureEvent("cli-command:install --pre-commit-hook", posthog.NewProperties().Set("version", util.CLI_VERSION))
+
+			return
+		}
+	}}
 
 var scanCmd = &cobra.Command{
 	Use:   "scan",
@@ -416,4 +479,108 @@ func FormatDuration(d time.Duration) string {
 		scale = scale / 10
 	}
 	return d.Round(scale / 100).String()
+}
+
+func overrideDefaultHooksPath(managedHook string) (bool, error) {
+	YES := "Yes"
+	NO := "No"
+
+	options := []string{YES, NO}
+	optionsPrompt := promptui.Select{
+		Label: fmt.Sprintf("Your hooks path is set to [%s] but needs to be [.git/hooks] for automatic configuration. Would you like to switch? ", managedHook),
+		Items: options,
+		Size:  2,
+	}
+
+	_, selectedOption, err := optionsPrompt.Run()
+	if err != nil {
+		return false, err
+	}
+
+	return selectedOption == YES, err
+}
+
+func ConfigureGitHooksPath() {
+	cmd := exec.Command("git", "config", "core.hooksPath", ".git/hooks")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		log.Fatal().Msgf("Failed to configure git hooks path: %v", err)
+	}
+}
+
+// GetGitRoot returns the root directory of the current Git repository.
+func GetGitRoot() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	output, err := cmd.Output()
+
+	if err != nil {
+		return "", fmt.Errorf("failed to get git root directory: %w", err)
+	}
+
+	gitRoot := strings.TrimSpace(string(output)) // Remove any trailing newline
+	return gitRoot, nil
+}
+
+func getHooksPath() (string, error) {
+	out, err := exec.Command("git", "config", "core.hooksPath").Output()
+	if err != nil {
+		if len(out) == 0 {
+			out = []byte(".git/hooks") // set the default hook
+		} else {
+			log.Error().Msgf("Failed to get Git hooks path: %s\nOutput: %s\n", err, out)
+		}
+	}
+
+	hooksPath := strings.TrimSpace(string(out))
+	return hooksPath, nil
+}
+
+func createOrUpdatePreCommitFile(hooksPath string) error {
+	// File doesn't exist, create a new one
+	rootGitRepoPath, err := GetGitRoot()
+	if err != nil {
+		return err
+	}
+
+	filePath := fmt.Sprintf("%s/%s/%s", rootGitRepoPath, hooksPath, preCommitFile)
+
+	_, err = os.Stat(filePath)
+	if err == nil {
+		// File already exists, check if it contains the managed comments
+		content, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to read pre-commit file: %s", err)
+		}
+
+		if strings.Contains(string(content), "# MANAGED BY INFISICAL CLI (Do not modify): START") &&
+			strings.Contains(string(content), "# MANAGED BY INFISICAL CLI (Do not modify): END") {
+			return nil
+		}
+
+		// File already exists, append the template content
+		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to open pre-commit file: %s", err)
+		}
+
+		defer file.Close()
+
+		_, err = file.Write(preCommitTemplateAppend)
+		if err != nil {
+			return fmt.Errorf("failed to append to pre-commit file: %s", err)
+		}
+
+	} else if os.IsNotExist(err) {
+		err = os.WriteFile(filePath, preCommitTemplate, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to create pre-commit file: %s", err)
+		}
+	} else {
+		// Error occurred while checking file status
+		return fmt.Errorf("failed to check pre-commit file status: %s", err)
+	}
+
+	return nil
 }

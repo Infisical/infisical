@@ -4,6 +4,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/denisbrodbeck/machineid"
 	"github.com/posthog/posthog-go"
+	"github.com/rs/zerolog/log"
 )
 
 var POSTHOG_API_KEY_FOR_CLI string
@@ -13,11 +14,23 @@ type Telemetry struct {
 	posthogClient posthog.Client
 }
 
+type NoOpLogger struct{}
+
+func (NoOpLogger) Logf(format string, args ...interface{}) {
+	log.Debug().Msgf(format, args...)
+}
+
+func (NoOpLogger) Errorf(format string, args ...interface{}) {
+	log.Debug().Msgf(format, args...)
+}
+
 func NewTelemetry(telemetryIsEnabled bool) *Telemetry {
 	if POSTHOG_API_KEY_FOR_CLI != "" {
 		client, _ := posthog.NewWithConfig(
 			POSTHOG_API_KEY_FOR_CLI,
-			posthog.Config{},
+			posthog.Config{
+				Logger: NoOpLogger{},
+			},
 		)
 
 		return &Telemetry{isEnabled: telemetryIsEnabled, posthogClient: client}

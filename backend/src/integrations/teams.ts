@@ -5,7 +5,7 @@ import {
     INTEGRATION_GITLAB,
     INTEGRATION_GITLAB_API_URL
 } from '../variables';
-import request from '../config/request';
+import { standardRequest } from '../config/request';
 
 interface Team {
     name: string;
@@ -56,7 +56,7 @@ const getTeamsGitLab = async ({
     accessToken: string;
 }) => {
     let teams: Team[] = [];
-    const res = (await request.get(
+    const res = (await standardRequest.get(
         `${INTEGRATION_GITLAB_API_URL}/v4/groups`,
         {
             headers: {

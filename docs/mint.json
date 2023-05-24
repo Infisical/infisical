@@ -160,7 +160,8 @@
               "group": "infisical scan",
               "pages": [
                 "cli/commands/scan",
-                "cli/commands/scan-git-changes"
+                "cli/commands/scan-git-changes",
+                "cli/commands/scan-install"
               ]
             }
           ]
