@@ -1,17 +1,15 @@
-import to from 'await-to-js';
 import { Types } from 'mongoose';
 import { Request, Response } from 'express';
 import { ISecret, Secret, Workspace } from '../../models';
 import { IAction, SecretVersion } from '../../ee/models';
 import {
     SECRET_PERSONAL,
-    SECRET_SHARED,
     ACTION_ADD_SECRETS,
     ACTION_READ_SECRETS,
     ACTION_UPDATE_SECRETS,
     ACTION_DELETE_SECRETS
 } from '../../variables';
-import { UnauthorizedRequestError, ValidationError } from '../../utils/errors';
+import { UnauthorizedRequestError, WorkspaceNotFoundError } from '../../utils/errors';
 import { EventService } from '../../services';
 import { eventPushSecrets } from '../../events';
 import { EESecretService, EELogService, EELicenseService } from '../../ee/services';
@@ -20,7 +18,7 @@ import { getChannelFromUserAgent } from '../../utils/posthog';
 import { PERMISSION_WRITE_SECRETS } from '../../variables';
 import { userHasNoAbility, userHasWorkspaceAccess, userHasWriteOnlyAbility } from '../../ee/helpers/checkMembershipPermissions';
 import Tag from '../../models/tag';
-import _, { eq } from 'lodash';
+import _ from 'lodash';
 import {
     BatchSecretRequest,
     BatchSecret
@@ -49,13 +47,11 @@ export const batchSecrets = async (req: Request, res: Response) => {
         requests: BatchSecretRequest[];
     } = req.body;
     
-    const organizationId = (
-        await Workspace.findOne({
-                _id: workspaceId
-            })
-        )?.organization?.toString();
-    const orgPlan = await EELicenseService.getOrganizationPlan(organizationId || '');
-    const isPaid = orgPlan.slug != 'starter';
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) throw WorkspaceNotFoundError();
+    
+    const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
+    const isPaid = orgPlan.tier < 1;
 
     const createSecrets: BatchSecret[] = [];
     const updateSecrets: BatchSecret[] = [];
@@ -387,13 +383,11 @@ export const createSecrets = async (req: Request, res: Response) => {
         }
     }
 
-    const organizationId = (
-        await Workspace.findOne({
-                _id: workspaceId
-            })
-        )?.organization?.toString();
-    const orgPlan = await EELicenseService.getOrganizationPlan(organizationId || '');
-    const isPaid = orgPlan.slug != 'starter';
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) throw WorkspaceNotFoundError();
+    
+    const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
+    const isPaid = orgPlan.tier < 1;
 
     let listOfSecretsToCreate;
     if (Array.isArray(req.body.secrets)) {
@@ -615,13 +609,11 @@ export const getSecrets = async (req: Request, res: Response) => {
     const normalizedPath = normalizePath(secretsPath as string)
     const folders = await getFoldersInDirectory(workspaceId as string, environment as string, normalizedPath)
 
-    const organizationId = (
-        await Workspace.findOne({
-                _id: workspaceId
-            })
-        )?.organization?.toString();
-    const orgPlan = await EELicenseService.getOrganizationPlan(organizationId || '');
-    const isPaid = orgPlan.slug != 'starter';
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) throw WorkspaceNotFoundError();
+    
+    const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
+    const isPaid = orgPlan.tier < 1;
 
     // secrets to return 
     let secrets: ISecret[] = [];
@@ -967,13 +959,11 @@ export const updateSecrets = async (req: Request, res: Response) => {
             workspaceId: new Types.ObjectId(key)
         })
 
-        const organizationId = (
-            await Workspace.findOne({
-                    _id: key
-                })
-            )?.organization?.toString();
-        const orgPlan = await EELicenseService.getOrganizationPlan(organizationId || '');
-        const isPaid = orgPlan.slug != 'starter';
+        const workspace = await Workspace.findById(key);
+        if (!workspace) throw WorkspaceNotFoundError();
+        
+        const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
+        const isPaid = orgPlan.tier < 1;
 
         const postHogClient = await TelemetryService.getPostHogClient();
         if (postHogClient) {

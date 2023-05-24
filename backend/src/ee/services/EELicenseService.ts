@@ -43,7 +43,7 @@ class EELicenseService {
     public globalFeatureSet: FeatureSet = {
         _id: null,
         slug: null,
-        tier: null,
+        tier: -1,
         projectLimit: null,
         memberLimit: null,
         secretVersioning: true,
