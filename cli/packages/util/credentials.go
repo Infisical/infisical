@@ -103,12 +103,12 @@ func GetCurrentLoggedInUserDetails() (LoggedInUserDetails, error) {
 			if accessTokenResponse.Token != "" {
 				isAuthenticated = true
 				userCreds.JTWToken = accessTokenResponse.Token
-			}
-		}
 
-		err = StoreUserCredsInKeyRing(&userCreds)
-		if err != nil {
-			log.Debug().Msg("unable to store your user credentials with new access token")
+				err = StoreUserCredsInKeyRing(&userCreds)
+				if err != nil {
+					log.Debug().Msg("unable to store your user credentials with new access token")
+				}
+			}
 		}
 
 		if !isAuthenticated {
