@@ -98,12 +98,6 @@ To scan your full git history, run:
 infisical scan --verbose
 ```
 
-To scan your uncommitted git changes, run:
-
-```
-infisical scan git-changes --verbose
-```
-
 Install pre commit hook to scan each commit before you push to your repository 
 
 ```
