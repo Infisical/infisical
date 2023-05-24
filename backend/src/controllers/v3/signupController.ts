@@ -8,7 +8,7 @@ import {
 } from '../../helpers/signup';
 import { issueAuthTokens, validateProviderAuthToken } from '../../helpers/auth';
 import { INVITED, ACCEPTED } from '../../variables';
-import request from '../../config/request';
+import { standardRequest } from '../../config/request';
 import { getLoopsApiKey, getHttpsEnabled, getJwtSignupSecret } from '../../config';
 import { BadRequestError } from '../../utils/errors';
 
@@ -71,19 +71,19 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 				user,
 			});
 		} else {
-			const [ AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE ] = <[string, string]>req.headers['authorization']?.split(' ', 2) ?? [null, null]
-			if(AUTH_TOKEN_TYPE === null) {
-				throw BadRequestError({message: `Missing Authorization Header in the request header.`});
+			const [AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE] = <[string, string]>req.headers['authorization']?.split(' ', 2) ?? [null, null]
+			if (AUTH_TOKEN_TYPE === null) {
+				throw BadRequestError({ message: `Missing Authorization Header in the request header.` });
 			}
-			if(AUTH_TOKEN_TYPE.toLowerCase() !== 'bearer') {
-				throw BadRequestError({message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.`})
+			if (AUTH_TOKEN_TYPE.toLowerCase() !== 'bearer') {
+				throw BadRequestError({ message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.` })
 			}
-			if(AUTH_TOKEN_VALUE === null) {
+			if (AUTH_TOKEN_VALUE === null) {
 				throw BadRequestError({
 					message: 'Missing Authorization Body in the request header',
 				})
 			}
-			
+
 			const decodedToken = <jwt.UserIDJwtPayload>(
 				jwt.verify(AUTH_TOKEN_VALUE, await getJwtSignupSecret())
 			);
@@ -141,7 +141,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 
 		// sending a welcome email to new users
 		if (await getLoopsApiKey()) {
-			await request.post("https://app.loops.so/api/v1/events/send", {
+			await standardRequest.post("https://app.loops.so/api/v1/events/send", {
 				"email": email,
 				"eventName": "Sign Up",
 				"firstName": firstName,
