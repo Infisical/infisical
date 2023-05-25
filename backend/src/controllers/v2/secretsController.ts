@@ -51,7 +51,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
     if (!workspace) throw WorkspaceNotFoundError();
     
     const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
-    const isPaid = orgPlan.tier < 1;
+    const isPaid = orgPlan.tier >= 1;
 
     const createSecrets: BatchSecret[] = [];
     const updateSecrets: BatchSecret[] = [];
@@ -387,7 +387,7 @@ export const createSecrets = async (req: Request, res: Response) => {
     if (!workspace) throw WorkspaceNotFoundError();
     
     const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
-    const isPaid = orgPlan.tier < 1;
+    const isPaid = orgPlan.tier >= 1;
 
     let listOfSecretsToCreate;
     if (Array.isArray(req.body.secrets)) {
@@ -613,7 +613,7 @@ export const getSecrets = async (req: Request, res: Response) => {
     if (!workspace) throw WorkspaceNotFoundError();
     
     const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
-    const isPaid = orgPlan.tier < 1;
+    const isPaid = orgPlan.tier >= 1;
 
     // secrets to return 
     let secrets: ISecret[] = [];
@@ -963,7 +963,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
         if (!workspace) throw WorkspaceNotFoundError();
         
         const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
-        const isPaid = orgPlan.tier < 1;
+        const isPaid = orgPlan.tier >= 1;
 
         const postHogClient = await TelemetryService.getPostHogClient();
         if (postHogClient) {
@@ -1100,13 +1100,11 @@ export const deleteSecrets = async (req: Request, res: Response) => {
             workspaceId: new Types.ObjectId(key)
         });
 
-        const organizationId = (
-            await Workspace.findOne({
-                    _id: key
-                })
-            )?.organization?.toString();
-        const orgPlan = await EELicenseService.getOrganizationPlan(organizationId || '');
-        const isPaid = orgPlan.slug != 'starter';
+        const workspace = await Workspace.findById(key);
+        if (!workspace) throw WorkspaceNotFoundError();
+        
+        const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
+        const isPaid = orgPlan.tier >= 1;
 
         const postHogClient = await TelemetryService.getPostHogClient();
         if (postHogClient) {

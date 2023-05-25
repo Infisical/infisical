@@ -251,6 +251,8 @@ const updateSubscriptionOrgQuantity = async ({
           quantity
         }
       );
+
+      EELicenseService.localFeatureSet.del(organizationId);
     }
     
     if (EELicenseService.instanceType === 'enterprise-self-hosted') {

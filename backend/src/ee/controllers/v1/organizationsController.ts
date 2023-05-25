@@ -7,13 +7,12 @@ import { EELicenseService } from '../../services';
  * Return the organization's current plan and allowed feature set
  */
 export const getOrganizationPlan = async (req: Request, res: Response) => {
-    const plan = await EELicenseService.getOrganizationPlan(req.organization._id.toString());
+    const { organizationId } = req.params;
 
-    // cache fetched plan for organization
-    EELicenseService.localFeatureSet.set(req.organization._id.toString(), plan);
+    const plan = await EELicenseService.getOrganizationPlan(organizationId);
 
     return res.status(200).send({
-        plan
+        plan,
     });
 }
 

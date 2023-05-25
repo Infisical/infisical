@@ -17,7 +17,7 @@ import { OrganizationNotFoundError } from '../../utils/errors';
 interface FeatureSet {
     _id: string | null;
     slug: 'starter' | 'team' | 'pro' | 'enterprise' | null;
-    tier: number | null;
+    tier: number;
     projectLimit: number | null;
     memberLimit: number | null;
     secretVersioning: boolean;
@@ -63,11 +63,13 @@ class EELicenseService {
         });
     }
     
-    public async getOrganizationPlan(organizationId: string) {
+    public async getOrganizationPlan(organizationId: string): Promise<FeatureSet> {
         try {
             if (this.instanceType === 'cloud') {
-                const cachedPlan = this.localFeatureSet.get(organizationId);
-                if (cachedPlan) return cachedPlan;
+                const cachedPlan = this.localFeatureSet.get<FeatureSet>(organizationId);
+                if (cachedPlan) {
+                    return cachedPlan;
+                }
 
                 const organization = await Organization.findById(organizationId);
                 if (!organization) throw OrganizationNotFoundError();
@@ -75,6 +77,9 @@ class EELicenseService {
                 const { data: { currentPlan } } = await licenseServerKeyRequest.get(
                     `${await getLicenseServerUrl()}/api/license-server/v1/customers/${organization.customerId}/cloud-plan`
                 );
+
+                // cache fetched plan for organization
+                this.localFeatureSet.set(organizationId, currentPlan);
 
                 return currentPlan;
             }
