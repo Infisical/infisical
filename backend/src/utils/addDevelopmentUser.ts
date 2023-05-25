@@ -5,6 +5,7 @@
 ************************************************************************************************/
 
 import { Key, Membership, MembershipOrg, Organization, User, Workspace } from "../models";
+import { SecretService } from "../services";
 import { Types } from 'mongoose';
 import { getNodeEnv } from '../config';
 
@@ -119,7 +120,12 @@ export const createTestUserForDevelopment = async () => {
       // create workspace if not exist 
       const workspaceInDB = await Workspace.findById(testWorkspaceId)
       if (!workspaceInDB) {
-        await Workspace.create(testWorkspace)
+        const workspace = await Workspace.create(testWorkspace)
+        
+        // initialize blind index salt for workspace
+        await SecretService.createSecretBlindIndexData({
+          workspaceId: workspace._id
+        });
       }
 
       // create workspace key if not exist
