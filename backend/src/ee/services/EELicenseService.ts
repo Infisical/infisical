@@ -18,8 +18,10 @@ interface FeatureSet {
     _id: string | null;
     slug: 'starter' | 'team' | 'pro' | 'enterprise' | null;
     tier: number;
-    projectLimit: number | null;
+    workspaceLimit: number | null;
+    workspacesUsed: number;
     memberLimit: number | null;
+    membersUsed: number;
     secretVersioning: boolean;
     pitRecovery: boolean;
     rbac: boolean;
@@ -44,8 +46,10 @@ class EELicenseService {
         _id: null,
         slug: null,
         tier: -1,
-        projectLimit: null,
+        workspaceLimit: null,
+        workspacesUsed: 0,
         memberLimit: null,
+        membersUsed: 0,
         secretVersioning: true,
         pitRecovery: true,
         rbac: true,
