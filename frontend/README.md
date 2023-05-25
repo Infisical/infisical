@@ -8,7 +8,7 @@ Please ensure you have Docker and Docker Compose installed for your OS.
 
 - `CD` into the repo
 - run command `docker-compose -f docker-compose.dev.yml up --build --force-recreate`
-- Visit localhost:3000 and the website should be live
+- Visit localhost:8080 and the website should be live
 
 ### Steps to shutdown this Docker compose
 
