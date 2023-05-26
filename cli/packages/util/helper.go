@@ -74,11 +74,22 @@ func ConfigContainsEmail(users []models.LoggedInUser, email string) bool {
 }
 
 func RequireLogin() {
-	// get the config file that stores the current logged in user email
-	configFile, _ := GetConfigFile()
+	currentUserDetails, err := GetCurrentLoggedInUserDetails()
 
-	if configFile.LoggedInUserEmail == "" {
+	if err != nil {
+		HandleError(err, "unable to retrieve your login details")
+	}
+
+	if !currentUserDetails.IsUserLoggedIn {
 		PrintErrorMessageAndExit("You must be logged in to run this command. To login, run [infisical login]")
+	}
+
+	if currentUserDetails.LoginExpired {
+		PrintErrorMessageAndExit("Your login expired, please login in again. To login, run [infisical login]")
+	}
+
+	if currentUserDetails.UserCredentials.Email == "" && currentUserDetails.UserCredentials.JTWToken == "" && currentUserDetails.UserCredentials.PrivateKey == "" {
+		PrintErrorMessageAndExit("One or more of your login details is empty. Please try logging in again via by running [infisical login]")
 	}
 }
 
