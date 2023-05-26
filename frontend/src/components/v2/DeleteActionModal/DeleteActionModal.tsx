@@ -76,7 +76,7 @@ export const DeleteActionModal = ({
         <form>
           <FormControl
             label={
-              <div className="pb-2 text-sm">
+              <div className="pb-2 text-sm break-words">
                 Type <span className="font-bold">{deleteKey}</span> to delete the resource
               </div>
             }

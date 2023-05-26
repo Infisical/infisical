@@ -1,0 +1,126 @@
+---
+title: "scan"
+description: "Scan git history, directories, and files for secrets"
+---
+
+```bash 
+infisical scan
+
+# Display the full secret findings
+infisical scan --verbose
+```
+
+## Description
+The `infisical scan` command serves to scan repositories, directories, and files. It's compatible with both individual developer machines and Continuous Integration (CI) environments.
+
+When you run `infisical scan` on a Git repository, Infisical will parses the output of a `git log -p` command. This command generates [patches](https://stackoverflow.com/questions/8279602/what-is-a-patch-in-git-version-control) that Infisical uses to identify secrets in your code. 
+You can configure the range of commits that `git log` will cover using the `--log-opts` flag. 
+Any options you can use with `git log -p` are valid for `--log-opts`. 
+
+For instance, to instruct Infisical to scan a specific range of commits, use the following command: `infisical scan --log-opts="--all commitA..commitB"`. For more details, refer to the [Git log documentation](https://git-scm.com/docs/git-log).
+
+To scan individual files and directories, use the `--no-git` flag. 
+
+### Flags 
+<Accordion title="--log-opts">
+  **Description**
+
+  git log options
+</Accordion>
+
+<Accordion title="--no-git">
+  **Description**
+
+  treat git repo as a regular directory and scan those files, --log-opts has no effect on the scan when --no-git is set
+
+  Default value: `false`
+</Accordion>
+
+<Accordion title="--pipe">
+  Short hand: `-b`
+
+  **Description**
+
+  scan input from stdin, ex: `cat some_file | infisical scan --pipe`
+
+  Default value: `false`
+</Accordion>
+
+<Accordion title="--follow-symlinks">
+  Short hand: `-b`
+
+  **Description**
+  scan files that are symlinks to other files
+
+  Default value: `false`
+</Accordion>
+
+<Accordion title="--baseline-path">
+  Short hand: `-b`
+
+  **Description**
+
+  path to baseline with issues that can be ignored
+</Accordion>
+
+<Accordion title="--config">
+  Short hand: `-c`
+
+  **Description**
+
+  config file path
+
+  order of precedence:
+  1. --config flag
+  2. env var INFISICAL_SCAN_CONFIG
+  3. (--source/-s)/.infisical-scan.toml
+  If none of the three options are used, then Infisical will use the default config
+</Accordion>
+
+<Accordion title="--exit-code">
+  **Description**
+
+  exit code when leaks have been encountered (default 1)
+</Accordion>
+
+<Accordion title="--max-target-megabytes">
+  **Description**
+
+  files larger than this will be skipped
+</Accordion>
+
+<Accordion title="--no-color">
+  **Description**
+
+  turn off color for verbose output
+</Accordion>
+
+<Accordion title="--redact">
+  **Description**
+
+  redact secrets from logs and stdout
+</Accordion>
+
+<Accordion title="--report-format">
+  **Description**
+
+  output format (json, csv, sarif) (default "json")
+</Accordion>
+
+<Accordion title="--report-path">
+  **Description**
+
+  report file
+</Accordion>
+
+<Accordion title="--source">
+  **Description**
+
+  path to source (default ".")
+</Accordion>
+
+<Accordion title="--verbose">
+  **Description**
+
+  show verbose output from scan
+</Accordion>

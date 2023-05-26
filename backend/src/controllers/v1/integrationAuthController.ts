@@ -16,7 +16,7 @@ import {
 	INTEGRATION_VERCEL_API_URL,
 	INTEGRATION_RAILWAY_API_URL
 } from '../../variables';
-import request from '../../config/request';
+import { standardRequest } from '../../config/request';
 
 /***
  * Return integration authorization with id [integrationAuthId]
@@ -231,7 +231,7 @@ export const getIntegrationAuthVercelBranches = async (req: Request, res: Respon
 	let branches: string[] = [];
 	
 	if (appId && appId !== '') {
-		const { data }: { data: VercelBranch[] } = await request.get(
+		const { data }: { data: VercelBranch[] } = await standardRequest.get(
 			`${INTEGRATION_VERCEL_API_URL}/v1/integrations/git-branches`,
 			{
 				params,
@@ -294,7 +294,7 @@ export const getIntegrationAuthRailwayEnvironments = async (req: Request, res: R
 			projectId: appId
 		}
 		
-		const { data: { data: { environments: { edges } } } } = await request.post(INTEGRATION_RAILWAY_API_URL, {
+		const { data: { data: { environments: { edges } } } } = await standardRequest.post(INTEGRATION_RAILWAY_API_URL, {
 			query,
 			variables,
 		}, {
@@ -374,7 +374,7 @@ export const getIntegrationAuthRailwayServices = async (req: Request, res: Respo
 			id: appId
 		}
 		
-		const { data: { data: { project: { services: { edges } } } } } = await request.post(INTEGRATION_RAILWAY_API_URL, {
+		const { data: { data: { project: { services: { edges } } } } } = await standardRequest.post(INTEGRATION_RAILWAY_API_URL, {
 			query,
 			variables
 		}, {

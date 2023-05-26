@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import { useTranslation } from 'react-i18next';
 import Head from 'next/head';
-import { useTranslation } from 'next-i18next';
 
-import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 import { OrgSettingsPage } from '@app/views/Settings/OrgSettingsPage';
 
 export default function SettingsOrg() {
@@ -11,7 +10,7 @@ export default function SettingsOrg() {
   return (
     <>
       <Head>
-        <title>{t('common:head-title', { title: t('settings-org:title') })}</title>
+        <title>{t('common.head-title', { title: t('settings.org.title') })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
       <OrgSettingsPage />
@@ -20,10 +19,3 @@ export default function SettingsOrg() {
 }
 
 SettingsOrg.requireAuth = true;
-
-export const getServerSideProps = getTranslatedServerSideProps([
-  'settings',
-  'settings-org',
-  'section-incident',
-  'section-members'
-]);

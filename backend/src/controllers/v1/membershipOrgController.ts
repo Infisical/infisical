@@ -135,6 +135,7 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 			}
 
 			if (!inviteeMembershipOrg) {
+				
 				await new MembershipOrg({
 					user: invitee,
 					inviteEmail: inviteeEmail,
@@ -246,6 +247,10 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
 			// membership can be approved and redirected to login/dashboard
 			membershipOrg.status = ACCEPTED;
 			await membershipOrg.save();
+			
+			await updateSubscriptionOrgQuantity({
+				organizationId
+			});
 
 			return res.status(200).send({
 				message: 'Successfully verified email',

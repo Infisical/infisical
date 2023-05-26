@@ -42,7 +42,7 @@ export const ProjectNameChangeSection = ({
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
       <div className="mb-6 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pb-6 pt-3">
-        <p className="mb-4 mt-2 text-xl font-semibold">{t('common:display-name')}</p>
+        <p className="mb-4 mt-2 text-xl font-semibold">{t('common.display-name')}</p>
         <div className="mb-2 w-full max-w-lg">
           <Controller
             defaultValue=""
@@ -63,7 +63,7 @@ export const ProjectNameChangeSection = ({
           isDisabled={!isDirty || isSubmitting}
           leftIcon={<FontAwesomeIcon icon={faCheck} />}
         >
-          {t('common:save-changes')}
+          {t('common.save-changes')}
         </Button>
       </div>
     </form>

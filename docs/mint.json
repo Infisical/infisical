@@ -123,9 +123,9 @@
             "self-hosting/deployment-options/kubernetes-helm",
             "self-hosting/deployment-options/aws-ec2",
             "self-hosting/deployment-options/docker-compose",
+            "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/fly.io",
             "self-hosting/deployment-options/render",
-            "self-hosting/deployment-options/standalone-infisical",
             "self-hosting/deployment-options/digital-ocean-marketplace"
           ]
         },
@@ -140,7 +140,7 @@
         "cli/overview",
         "cli/usage",
         {
-          "group": "Commands",
+          "group": "Core commands",
           "pages": [
             "cli/commands/login",
             "cli/commands/init",
@@ -149,9 +149,18 @@
             "cli/commands/export",
             "cli/commands/vault",
             "cli/commands/user",
-            "cli/commands/reset"
+            "cli/commands/reset",
+            {
+              "group": "infisical scan",
+              "pages": [
+                "cli/commands/scan",
+                "cli/commands/scan-git-changes",
+                "cli/commands/scan-install"
+              ]
+            }
           ]
         },
+        "cli/scanning-overview",
         "cli/project-config",
         "cli/faq"
       ]
@@ -188,6 +197,7 @@
         "integrations/cicd/gitlab",
         "integrations/cicd/circleci",
         "integrations/cicd/travisci",
+        "integrations/frameworks/spring-boot-maven",
         "integrations/frameworks/react",
         "integrations/frameworks/vue",
         "integrations/frameworks/express",

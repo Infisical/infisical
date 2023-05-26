@@ -43,7 +43,7 @@ export default function NavHeader({
   const router = useRouter();
 
   return (
-    <div className="ml-6 flex flex-row items-center pt-8">
+    <div className="ml-6 flex flex-row items-center pt-6">
       <div className="mr-2 flex h-6 w-6 items-center justify-center rounded-md bg-primary-900 text-mineshaft-100">
         {currentOrg?.name?.charAt(0)}
       </div>

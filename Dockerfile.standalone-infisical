@@ -77,7 +77,7 @@ RUN npm ci --only-production
 COPY --from=backend-build /app .
 
 # Production stage
-FROM node:14-alpine AS production
+FROM node:16-alpine AS production
 
 WORKDIR / 
 

@@ -1,11 +1,10 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useState } from 'react';
 import ReactCodeInput from 'react-code-input';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
 
 import attemptLoginMfa from '@app/components/utilities/attemptLoginMfa';
-import { getTranslatedStaticProps } from '@app/components/utilities/withTranslateProps';
 import { useSendMfaToken } from '@app/hooks/api/auth';
 
 import Button from '../basic/buttons/Button';
@@ -37,10 +36,10 @@ interface VerifyMfaTokenError {
       context: {
         code: string;
         triesLeft: number;
-      }
-    },
+      };
+    };
     status: number;
-  }
+  };
 }
 
 /**
@@ -73,7 +72,7 @@ export default function MFAStep({
       if (mfaCode.length !== 6) {
         return;
       }
-      
+
       setIsLoading(true);
       const isLoginSuccessful = await attemptLoginMfa({
         email,
@@ -85,10 +84,9 @@ export default function MFAStep({
         setIsLoading(false);
         router.push(`/dashboard/${localStorage.getItem('projectData.id')}`);
       }
-      
     } catch (err) {
       const error = err as VerifyMfaTokenError;
-      
+
       if (error?.response?.status === 500) {
         window.location.reload();
       } else if (error?.response?.data?.context?.triesLeft) {
@@ -100,8 +98,8 @@ export default function MFAStep({
 
       setIsLoading(false);
     }
-  }
-  
+  };
+
   const handleResendMfaCode = async () => {
     try {
       setIsLoadingResend(true);
@@ -111,12 +109,12 @@ export default function MFAStep({
       console.error(err);
       setIsLoadingResend(false);
     }
-  }
+  };
 
   return (
-    <form className="bg-bunker w-max mx-auto h-7/12 pt-10 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-16">
-      <p className="text-l flex justify-center text-bunker-300">{t('mfa:step2-message')}</p>
-      <p className="text-l flex justify-center font-semibold my-2 text-bunker-300">{email} </p>
+    <form className="h-7/12 mx-auto mb-64 w-max rounded-xl bg-bunker px-8 pt-10 pb-4 drop-shadow-xl md:mb-16">
+      <p className="text-l flex justify-center text-bunker-300">{t('mfa.step2-message')}</p>
+      <p className="text-l my-2 flex justify-center font-semibold text-bunker-300">{email} </p>
       <div className="hidden md:block">
         <ReactCodeInput
           name=""
@@ -128,35 +126,29 @@ export default function MFAStep({
           className="mt-6 mb-2"
         />
       </div>
-      {typeof triesLeft === 'number' && <Error text={`${t('mfa:step2-code-error')} ${triesLeft}`} />}
-      <div className="flex max-w-max min-w-28 flex-col items-center justify-center md:p-2 max-h-24 mx-auto text-lg px-4 mt-4 mb-2">
-        <Button
-          text={t('mfa:verify') ?? ''} 
-          onButtonPressed={() => handleLoginMfa()} 
-          size="lg" 
-        />
+      {typeof triesLeft === 'number' && (
+        <Error text={`${t('mfa.step2-code-error')} ${triesLeft}`} />
+      )}
+      <div className="min-w-28 mx-auto mt-4 mb-2 flex max-h-24 max-w-max flex-col items-center justify-center px-4 text-lg md:p-2">
+        <Button text={t('mfa.verify') ?? ''} onButtonPressed={() => handleLoginMfa()} size="lg" />
       </div>
-      <div className="flex flex-col items-center justify-center w-full max-h-24 max-w-md mx-auto pt-2">
+      <div className="mx-auto flex max-h-24 w-full max-w-md flex-col items-center justify-center pt-2">
         <div className="flex flex-row items-baseline gap-1 text-sm">
-          <span className="text-bunker-400">{t('mfa:step2-resend-alert')}</span>
+          <span className="text-bunker-400">{t('mfa.step2-resend-alert')}</span>
           <u
             className={`font-normal ${
               isLoadingResend
                 ? 'text-bunker-400'
-                : 'text-primary-700 hover:text-primary duration-200'
+                : 'text-primary-700 duration-200 hover:text-primary'
             }`}
           >
             <button disabled={isLoading} onClick={() => handleResendMfaCode()} type="button">
-              {isLoadingResend
-                ? t('mfa:step2-resend-progress')
-                : t('mfa:step2-resend-submit')}
+              {isLoadingResend ? t('mfa.step2-resend-progress') : t('mfa.step2-resend-submit')}
             </button>
           </u>
         </div>
-        <p className="text-sm text-bunker-400 pb-2">{t('mfa:step2-spam-alert')}</p>
+        <p className="pb-2 text-sm text-bunker-400">{t('mfa.step2-spam-alert')}</p>
       </div>
     </form>
   );
 }
-
-export const getStaticProps = getTranslatedStaticProps(['auth', 'mfa']);

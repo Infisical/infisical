@@ -10,6 +10,16 @@ import {
   getStripeProductTeam,
   getStripeProductStarter,
 } from "../config";
+import {
+  EELicenseService
+} from '../ee/services';
+import {
+  getLicenseServerUrl
+} from '../config';
+import {
+  licenseServerKeyRequest,
+  licenseKeyRequest
+} from '../config/request';
 
 /**
  * Create an organization with name [name]
@@ -127,30 +137,37 @@ const updateSubscriptionOrgQuantity = async ({
   });
 
   if (organization && organization.customerId) {
-    const quantity = await MembershipOrg.countDocuments({
-      organization: organizationId,
-      status: ACCEPTED,
-    });
-
-    const stripe = new Stripe(await getStripeSecretKey(), {
-      apiVersion: "2022-08-01",
-    });
-
-    const subscription = (
-      await stripe.subscriptions.list({
-        customer: organization.customerId,
-      })
-    ).data[0];
-
-    stripeSubscription = await stripe.subscriptions.update(subscription.id, {
-      items: [
+    if (EELicenseService.instanceType === 'cloud') {
+      // instance of Infisical is a cloud instance
+      const quantity = await MembershipOrg.countDocuments({
+        organization: new Types.ObjectId(organizationId),
+        status: ACCEPTED,
+      });
+      
+      await licenseServerKeyRequest.patch(
+        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${organization.customerId}/cloud-plan`,
         {
-          id: subscription.items.data[0].id,
-          price: subscription.items.data[0].price.id,
-          quantity,
-        },
-      ],
-    });
+          quantity
+        }
+      );
+
+      EELicenseService.localFeatureSet.del(organizationId);
+    }
+    
+    if (EELicenseService.instanceType === 'enterprise-self-hosted') {
+      // instance of Infisical is an enterprise self-hosted instance
+      
+      const usedSeats = await MembershipOrg.countDocuments({
+        status: ACCEPTED
+      });
+
+      await licenseKeyRequest.patch(
+        `${await getLicenseServerUrl()}/api/license/v1/license`,
+        {
+          usedSeats
+        }
+      );
+    }
   }
 
   return stripeSubscription;

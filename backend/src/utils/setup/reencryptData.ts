@@ -78,8 +78,6 @@ export const reencryptSecretBlindIndexDataSalts = async () => {
     const encryptionKey = await getEncryptionKey();
     const rootEncryptionKey = await getRootEncryptionKey();
 
-    // 2. re-encrypt secret blind index salts under ROOT_ENCRYPTION_KEY
-
     if (encryptionKey && rootEncryptionKey) {
         const secretBlindIndexData = await SecretBlindIndexData.find({
             algorithm: ALGORITHM_AES_256_GCM,

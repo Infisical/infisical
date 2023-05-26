@@ -22,7 +22,8 @@ import (
 	"github.com/fatih/color"
 	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
-	log "github.com/sirupsen/logrus"
+	"github.com/posthog/posthog-go"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/argon2"
 )
@@ -44,12 +45,11 @@ var loginCmd = &cobra.Command{
 	Use:                   "login",
 	Short:                 "Login into your Infisical account",
 	DisableFlagsInUseLine: true,
-	PreRun:                toggleDebug,
 	Run: func(cmd *cobra.Command, args []string) {
 		currentLoggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
 		// if the key can't be found or there is an error getting current credentials from key ring, allow them to override
 		if err != nil && (strings.Contains(err.Error(), "The specified item could not be found in the keyring") || strings.Contains(err.Error(), "unable to get key from Keyring") || strings.Contains(err.Error(), "GetUserCredsFromKeyRing")) {
-			log.Debug(err)
+			log.Debug().Err(err)
 		} else if err != nil {
 			util.HandleError(err)
 		}
@@ -67,7 +67,7 @@ var loginCmd = &cobra.Command{
 
 		//override domain
 		domainQuery := true
-		if config.INFISICAL_URL_MANUAL_OVERRIDE != util.INFISICAL_DEFAULT_API_URL {
+		if config.INFISICAL_URL_MANUAL_OVERRIDE != "" && config.INFISICAL_URL_MANUAL_OVERRIDE != util.INFISICAL_DEFAULT_API_URL {
 			overrideDomain, err := DomainOverridePrompt()
 			if err != nil {
 				util.HandleError(err)
@@ -97,8 +97,8 @@ var loginCmd = &cobra.Command{
 
 		loginOneResponse, loginTwoResponse, err := getFreshUserCredentials(email, password)
 		if err != nil {
-			log.Infoln("Unable to authenticate with the provided credentials, please try again")
-			log.Debugln(err)
+			log.Warn().Msg("Unable to authenticate with the provided credentials, please ensure your email and password are correct")
+			log.Debug().Err(err)
 			return
 		}
 
@@ -152,7 +152,7 @@ var loginCmd = &cobra.Command{
 		var decryptedPrivateKey []byte
 
 		if loginTwoResponse.EncryptionVersion == 1 {
-			log.Debug("Login version 1")
+			log.Debug().Msg("Login version 1")
 			encryptedPrivateKey, _ := base64.StdEncoding.DecodeString(loginTwoResponse.EncryptedPrivateKey)
 			tag, err := base64.StdEncoding.DecodeString(loginTwoResponse.Tag)
 			if err != nil {
@@ -175,7 +175,7 @@ var loginCmd = &cobra.Command{
 			decryptedPrivateKey = computedDecryptedPrivateKey
 
 		} else if loginTwoResponse.EncryptionVersion == 2 {
-			log.Debug("Login version 2")
+			log.Debug().Msg("Login version 2")
 			protectedKey, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKey)
 			if err != nil {
 				util.HandleError(err)
@@ -239,22 +239,23 @@ var loginCmd = &cobra.Command{
 		}
 
 		if string(decryptedPrivateKey) == "" || email == "" || loginTwoResponse.Token == "" {
-			log.Debugf("[decryptedPrivateKey=%s] [email=%s] [loginTwoResponse.Token=%s]", string(decryptedPrivateKey), email, loginTwoResponse.Token)
+			log.Debug().Msgf("[decryptedPrivateKey=%s] [email=%s] [loginTwoResponse.Token=%s]", string(decryptedPrivateKey), email, loginTwoResponse.Token)
 			util.PrintErrorMessageAndExit("We were unable to fetch required details to complete your login. Run with -d to see more info")
 		}
 
 		userCredentialsToBeStored := &models.UserCredentials{
-			Email:      email,
-			PrivateKey: string(decryptedPrivateKey),
-			JTWToken:   loginTwoResponse.Token,
+			Email:        email,
+			PrivateKey:   string(decryptedPrivateKey),
+			JTWToken:     loginTwoResponse.Token,
+			RefreshToken: loginTwoResponse.RefreshToken,
 		}
 
 		err = util.StoreUserCredsInKeyRing(userCredentialsToBeStored)
 		if err != nil {
 			currentVault, _ := util.GetCurrentVaultBackend()
-			log.Errorf("Unable to store your credentials in system vault [%s]. Rerun with flag -d to see full logs", currentVault)
-			log.Errorln("To trouble shoot further, read https://infisical.com/docs/cli/faq")
-			log.Debugln(err)
+			log.Error().Msgf("Unable to store your credentials in system vault [%s]. Rerun with flag -d to see full logs", currentVault)
+			log.Error().Msgf("\nTo trouble shoot further, read https://infisical.com/docs/cli/faq")
+			log.Debug().Err(err)
 			return
 		}
 
@@ -276,6 +277,7 @@ var loginCmd = &cobra.Command{
 		plainBold.Println("\nQuick links")
 		fmt.Println("- Learn to inject secrets into your application at https://infisical.com/docs/cli/usage")
 		fmt.Println("- Stuck? Join our slack for quick support https://infisical.com/slack")
+		Telemetry.CaptureEvent("cli-command:login", posthog.NewProperties().Set("infisical-backend", config.INFISICAL_URL).Set("version", util.CLI_VERSION))
 	},
 }
 
@@ -397,7 +399,7 @@ func askForLoginCredentials() (email string, password string, err error) {
 }
 
 func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2Response, *api.GetLoginTwoV2Response, error) {
-	log.Debugln("getFreshUserCredentials:", "email", email, "password", password)
+	log.Debug().Msg(fmt.Sprint("getFreshUserCredentials: ", "email", email, "password: ", password))
 	httpClient := resty.New()
 	httpClient.SetRetryCount(5)
 
@@ -413,7 +415,7 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 	})
 
 	if err != nil {
-		util.HandleError(err)
+		return nil, nil, err
 	}
 
 	// **** Login 2

@@ -1,11 +1,9 @@
-import to from 'await-to-js';
 import { Types } from 'mongoose';
 import { Request, Response } from 'express';
-import { ISecret, Secret } from '../../models';
+import { ISecret, Secret, Workspace } from '../../models';
 import { IAction, SecretVersion } from '../../ee/models';
 import {
     SECRET_PERSONAL,
-    SECRET_SHARED,
     ACTION_ADD_SECRETS,
     ACTION_READ_SECRETS,
     ACTION_UPDATE_SECRETS,
@@ -13,16 +11,16 @@ import {
     ALGORITHM_AES_256_GCM,
     ENCODING_SCHEME_UTF8
 } from '../../variables';
-import { UnauthorizedRequestError, ValidationError } from '../../utils/errors';
+import { UnauthorizedRequestError, WorkspaceNotFoundError } from '../../utils/errors';
 import { EventService } from '../../services';
 import { eventPushSecrets } from '../../events';
-import { EESecretService, EELogService } from '../../ee/services';
+import { EESecretService, EELogService, EELicenseService } from '../../ee/services';
 import { TelemetryService, SecretService } from '../../services';
 import { getChannelFromUserAgent } from '../../utils/posthog';
 import { PERMISSION_WRITE_SECRETS } from '../../variables';
 import { userHasNoAbility, userHasWorkspaceAccess, userHasWriteOnlyAbility } from '../../ee/helpers/checkMembershipPermissions';
 import Tag from '../../models/tag';
-import _, { eq } from 'lodash';
+import _ from 'lodash';
 import {
     BatchSecretRequest,
     BatchSecret
@@ -50,6 +48,12 @@ export const batchSecrets = async (req: Request, res: Response) => {
         environment: string;
         requests: BatchSecretRequest[];
     } = req.body;
+    
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) throw WorkspaceNotFoundError();
+    
+    const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
+    const isPaid = orgPlan.tier >= 1;
 
     const createSecrets: BatchSecret[] = [];
     const updateSecrets: BatchSecret[] = [];
@@ -145,7 +149,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     environment,
                     workspaceId,
                     channel,
-                    userAgent: req.headers?.['user-agent']
+                    userAgent: req.headers?.['user-agent'],
+                    isPaid
                 }
             });
         }
@@ -234,7 +239,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     environment,
                     workspaceId,
                     channel,
-                    userAgent: req.headers?.['user-agent']
+                    userAgent: req.headers?.['user-agent'],
+                    isPaid
                 }
             });
         }
@@ -269,7 +275,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     environment,
                     workspaceId,
                     channel: channel,
-                    userAgent: req.headers?.['user-agent']
+                    userAgent: req.headers?.['user-agent'],
+                    isPaid
                 }
             });
         }
@@ -383,6 +390,12 @@ export const createSecrets = async (req: Request, res: Response) => {
             throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
         }
     }
+
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) throw WorkspaceNotFoundError();
+    
+    const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
+    const isPaid = orgPlan.tier >= 1;
 
     let listOfSecretsToCreate;
     if (Array.isArray(req.body.secrets)) {
@@ -543,7 +556,8 @@ export const createSecrets = async (req: Request, res: Response) => {
                 environment,
                 workspaceId,
                 channel: channel,
-                userAgent: req.headers?.['user-agent']
+                userAgent: req.headers?.['user-agent'],
+                isPaid
             }
         });
     }
@@ -606,6 +620,12 @@ export const getSecrets = async (req: Request, res: Response) => {
     const environment = req.query.environment as string;
     const normalizedPath = normalizePath(secretsPath as string)
     const folders = await getFoldersInDirectory(workspaceId as string, environment as string, normalizedPath)
+
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) throw WorkspaceNotFoundError();
+    
+    const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
+    const isPaid = orgPlan.tier >= 1;
 
     // secrets to return 
     let secrets: ISecret[] = [];
@@ -739,7 +759,8 @@ export const getSecrets = async (req: Request, res: Response) => {
                 environment,
                 workspaceId,
                 channel,
-                userAgent: req.headers?.['user-agent']
+                userAgent: req.headers?.['user-agent'],
+                isPaid
             }
         });
     }
@@ -954,6 +975,12 @@ export const updateSecrets = async (req: Request, res: Response) => {
             workspaceId: new Types.ObjectId(key)
         })
 
+        const workspace = await Workspace.findById(key);
+        if (!workspace) throw WorkspaceNotFoundError();
+        
+        const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
+        const isPaid = orgPlan.tier >= 1;
+
         const postHogClient = await TelemetryService.getPostHogClient();
         if (postHogClient) {
             postHogClient.capture({
@@ -966,7 +993,8 @@ export const updateSecrets = async (req: Request, res: Response) => {
                     environment: workspaceSecretObj[key][0].environment,
                     workspaceId: key,
                     channel: channel,
-                    userAgent: req.headers?.['user-agent']
+                    userAgent: req.headers?.['user-agent'],
+                    isPaid
                 }
             });
         }
@@ -1088,6 +1116,12 @@ export const deleteSecrets = async (req: Request, res: Response) => {
             workspaceId: new Types.ObjectId(key)
         });
 
+        const workspace = await Workspace.findById(key);
+        if (!workspace) throw WorkspaceNotFoundError();
+        
+        const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
+        const isPaid = orgPlan.tier >= 1;
+
         const postHogClient = await TelemetryService.getPostHogClient();
         if (postHogClient) {
             postHogClient.capture({
@@ -1100,7 +1134,8 @@ export const deleteSecrets = async (req: Request, res: Response) => {
                     environment: workspaceSecretObj[key][0].environment,
                     workspaceId: key,
                     channel: channel,
-                    userAgent: req.headers?.['user-agent']
+                    userAgent: req.headers?.['user-agent'],
+                    isPaid
                 }
             });
         }

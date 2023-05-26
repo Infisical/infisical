@@ -3,4 +3,76 @@ title: "Docker"
 description: "Learn to install Infisical purely on docker"
 ---
 
-Documentation coming soon
+The Infisical standalone version combines all the essential components of the application into a single container, making deployment and management more straightforward than using Kubernetes or Docker Compose. 
+
+Since all the components are bundled into one image, running this version of Infisical requires a minimum of **230MB of memory**.
+
+This guide assumes you have basic knowledge of Docker and have it installed on your system. If you don't have Docker installed, please follow the official installation guide: https://docs.docker.com/get-docker/
+
+## Pull the Infisical Docker image
+
+Open your terminal or command prompt and enter the following command to pull the Infisical Docker image:
+
+```
+docker pull infisical/infisical:latest
+```
+
+## Create a .env file
+The Infisical Docker image requires a .env file to manage environment variables. 
+Create a new file called .env in your preferred location. Add the required environment variables listed below. View [all configurable environment variables](../configuration/envars)
+
+
+<ParamField query="ENCRYPTION_KEY" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+</ParamField>
+
+<ParamField query="JWT_SIGNUP_SECRET" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+</ParamField>
+
+<ParamField query="JWT_REFRESH_SECRET" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+</ParamField>
+
+<ParamField query="JWT_AUTH_SECRET" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+</ParamField>
+
+<ParamField query="JWT_MFA_SECRET" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+</ParamField>
+
+<ParamField query="JWT_SERVICE_SECRET" type="string" default="none" required>
+  Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+</ParamField>
+
+<ParamField query="MONGO_URL" type="string" default="none" required>
+  *TLS based connection string is not yet supported
+</ParamField>
+
+
+```env .example-env
+ENCRYPTION_KEY=f40c9178624764ad85a6830b37ce239a 
+JWT_SIGNUP_SECRET=38ea90fb7998b92176080f457d890392 
+JWT_REFRESH_SECRET=7764c7bbf3928ad501591a3e005eb364
+JWT_AUTH_SECRET=5239fea3a4720c0e524f814a540e14a2
+JWT_SERVICE_SECRET=8509fb8b90c9b53e9e61d1e35826dcb5 
+MONGO_URL=<>
+```
+
+<Warning>
+  The sample environment variables listed above are only to be used as an example and should not be used in production 
+</Warning>
+
+## Run the Infisical Docker container:
+
+In the terminal or command prompt, navigate to the directory containing the .env file you created. Run the following command to start the Infisical Docker container:
+
+```
+docker run --name infisical-app --env-file ./.env -p 80:80 infisical/infisical:latest
+```
+
+This command will create a new container named infisical-app using the Infisical Docker image. It will also load the environment variables from the .env file and map the container's port 80 to the host's port 80.
+
+## Verify the installation:
+Once the container is running, open a web browser and navigate to http://localhost:80. That's it! You have successfully installed the Infisical application using a single Docker image.

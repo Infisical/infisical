@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 
 import { useState } from 'react';
-import { useTranslation } from 'next-i18next';
+import { useTranslation } from 'react-i18next';
 import { faMinus, faPlus, faShuffle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -28,7 +28,7 @@ export const GenRandomNumber = ({ onGenerate }: Props) => {
         leftIcon={<FontAwesomeIcon icon={faShuffle} />}
         onClick={onGenerateRandomHex}
       >
-        {t('dashboard:sidebar.generate-random-hex')}
+        {t('dashboard.sidebar.generate-random-hex')}
       </Button>
       <div className="rounded-r-md bg-mineshaft p-2">
         <div className="flex rounded-md border-mineshaft-400 bg-bunker-800 p-1 px-2">

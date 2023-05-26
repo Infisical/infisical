@@ -25,7 +25,7 @@
     <img src="https://img.shields.io/github/commit-activity/m/infisical/infisical" alt="git commit activity" />
   </a>
   <a href="https://cloudsmith.io/~infisical/repos/">
-    <img src="https://img.shields.io/badge/Downloads-150.8k-orange" alt="Cloudsmith downloads" />
+    <img src="https://img.shields.io/badge/Downloads-240.2k-orange" alt="Cloudsmith downloads" />
   </a>
   <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
@@ -55,7 +55,7 @@ We're on a mission to make secret management more accessible to everyone, not ju
 -   **[Audit logs](https://infisical.com/docs/documentation/platform/audit-logs)** to record every action taken in a project
 -   **Role-based Access Controls** per environment
 -   [**Simple on-premise deployments** to AWS and Digital Ocean](https://infisical.com/docs/self-hosting/overview)
-- [**2FA**](https://infisical.com/docs/documentation/platform/mfa) with more options coming soon
+-   [**Secret Scanning**](https://infisical.com/docs/cli/scanning-overview)
 
 And much more.
 
@@ -88,6 +88,24 @@ git clone https://github.com/Infisical/infisical && cd infisical && copy .env.ex
 ```
 
 Create an account at `http://localhost:80`
+
+### Scan and prevent secret leaks 
+On top managing secrets with Infisical, you can also scan for over 140+ secret types in your files, directories and git repositories. 
+
+To scan your full git history, run:
+
+```
+infisical scan --verbose
+```
+
+Install pre commit hook to scan each commit before you push to your repository 
+
+```
+infisical scan install --pre-commit-hook
+```
+
+Lean about Infisical's code scanning feature [here](https://infisical.com/docs/cli/scanning-overview) 
+
 
 ## Open-source vs. paid
 

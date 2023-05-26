@@ -5,9 +5,9 @@ import crypto from 'crypto';
 
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
 import { faBookOpen, faMobile, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -28,9 +28,11 @@ import {
   Modal,
   ModalContent,
   Select,
-  SelectItem
+  SelectItem,
+  UpgradePlanModal
 } from '@app/components/v2';
-import { useOrganization, useUser, useWorkspace } from '@app/context';
+import { plans } from '@app/const';
+import { useOrganization, useSubscription, useUser, useWorkspace } from '@app/context';
 import { usePopUp } from '@app/hooks';
 import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useUploadWsKey } from '@app/hooks/api';
 import getOrganizations from '@app/pages/api/organization/getOrgs';
@@ -54,17 +56,21 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { createNotification } = useNotificationContext();
 
   // eslint-disable-next-line prefer-const
-  let { workspaces, currentWorkspace } = useWorkspace();
+  const { workspaces, currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
-  workspaces = workspaces.filter((ws) => ws.organization === currentOrg?._id);
   const { user } = useUser();
+  const { subscriptionPlan } = useSubscription();
+  const host = window.location.origin;
+  const isAddingProjectsAllowed =
+    subscriptionPlan !== plans.starter || (subscriptionPlan === plans.starter && workspaces.length < 3) || host !== 'https://app.infisical.com';
 
   const createWs = useCreateWorkspace();
   const uploadWsKey = useUploadWsKey();
   const addWsUser = useAddUserToWs();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    'addNewWs'
+    'addNewWs',
+    'upgradePlan'
   ] as const);
   const {
     control,
@@ -242,7 +248,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
           <aside className="w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between">
               <div>
-                {currentWorkspace ? (
+                {currentWorkspace && router.asPath !== "/noprojects" ? (
                   <div className="mt-3 mb-4 w-full p-4">
                     <p className="ml-1.5 mb-1 text-xs font-semibold uppercase text-gray-400">
                       Project
@@ -257,15 +263,17 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       position="popper"
                       dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50"
                     >
-                      {workspaces.map(({ _id, name }) => (
-                        <SelectItem
-                          key={`ws-layout-list-${_id}`}
-                          value={_id}
-                          className={`${currentWorkspace?._id === _id && 'bg-mineshaft-600'}`}
-                        >
-                          {name}
-                        </SelectItem>
-                      ))}
+                      {workspaces
+                        .filter((ws) => ws.organization === currentOrg?._id)
+                        .map(({ _id, name }) => (
+                          <SelectItem
+                            key={`ws-layout-list-${_id}`}
+                            value={_id}
+                            className={`${currentWorkspace?._id === _id && 'bg-mineshaft-600'}`}
+                          >
+                            {name}
+                          </SelectItem>
+                        ))}
                       {/* <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" /> */}
                       <div className="w-full">
                         <Button
@@ -273,7 +281,13 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           colorSchema="primary"
                           variant="outline_bg"
                           size="sm"
-                          onClick={() => handlePopUpOpen('addNewWs')}
+                          onClick={() => {
+                            if (isAddingProjectsAllowed) {
+                              handlePopUpOpen('addNewWs')
+                            } else {
+                              handlePopUpOpen('upgradePlan');
+                            }
+                          }}
                           leftIcon={<FontAwesomeIcon icon={faPlus} />}
                         >
                           Add Project
@@ -284,17 +298,25 @@ export const AppLayout = ({ children }: LayoutProps) => {
                 ) : (
                   <div className="mt-3 mb-4 w-full p-4">
                     <Button
-                      className="w-full bg-mineshaft-500 py-2 text-bunker-200 hover:bg-primary/90 hover:text-black"
-                      color="mineshaft"
+                      className="border-mineshaft-500"
+                      colorSchema="primary"
+                      variant="outline_bg"
                       size="sm"
-                      onClick={() => handlePopUpOpen('addNewWs')}
+                      isFullWidth
+                      onClick={() => {
+                        if (isAddingProjectsAllowed) {
+                          handlePopUpOpen('addNewWs')
+                        } else {
+                          handlePopUpOpen('upgradePlan');
+                        }
+                      }}
                       leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     >
                       Add Project
                     </Button>
                   </div>
                 )}
-                <div className={`${currentWorkspace ? 'block' : 'hidden'}`}>
+                <div className={`${currentWorkspace && router.asPath !== "/noprojects" ? 'block' : 'hidden'}`}>
                   <Menu>
                     <Link href={`/dashboard/${currentWorkspace?._id}`} passHref>
                       <a>
@@ -302,7 +324,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           isSelected={router.asPath.includes(`/dashboard/${currentWorkspace?._id}`)}
                           icon="system-outline-90-lock-closed"
                         >
-                          {t('nav:menu.secrets')}
+                          {t('nav.menu.secrets')}
                         </MenuItem>
                       </a>
                     </Link>
@@ -312,7 +334,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           isSelected={router.asPath === `/users/${currentWorkspace?._id}`}
                           icon="system-outline-96-groups"
                         >
-                          {t('nav:menu.members')}
+                          {t('nav.menu.members')}
                         </MenuItem>
                       </a>
                     </Link>
@@ -322,7 +344,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           isSelected={router.asPath === `/integrations/${currentWorkspace?._id}`}
                           icon="system-outline-82-extension"
                         >
-                          {t('nav:menu.integrations')}
+                          {t('nav.menu.integrations')}
                         </MenuItem>
                       </a>
                     </Link>
@@ -343,7 +365,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           }
                           icon="system-outline-109-slider-toggle-settings"
                         >
-                          {t('nav:menu.project-settings')}
+                          {t('nav.menu.project-settings')}
                         </MenuItem>
                       </a>
                     </Link>
@@ -463,6 +485,11 @@ export const AppLayout = ({ children }: LayoutProps) => {
               </form>
             </ModalContent>
           </Modal>
+          <UpgradePlanModal
+            isOpen={popUp.upgradePlan.isOpen}
+            onOpenChange={(isOpen) => handlePopUpToggle('upgradePlan', isOpen)}
+            text="You have exceeded the number of projects allowed on the free plan."
+          />
           <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">
             {children}
           </main>
@@ -471,7 +498,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       <div className="z-[200] flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
         <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
         <p className="max-w-sm px-6 text-center text-lg text-gray-200">
-          {` ${t('common:no-mobile')} `}
+          {` ${t('common.no-mobile')} `}
         </p>
       </div>
     </>

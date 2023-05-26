@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/node';
 import { DatabaseService, TelemetryService } from '../../services';
 import { setTransporter } from '../../helpers/nodemailer';
+import { EELicenseService } from '../../ee/services';
 import { initSmtp } from '../../services/smtp';
 import { createTestUserForDevelopment } from '../addDevelopmentUser'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -28,6 +29,7 @@ import {
  * Prepare Infisical upon startup. This includes tasks like:
  * - Log initial telemetry message
  * - Initializing SMTP configuration
+ * - Initializing the instance global feature set (if applicable)
  * - Initializing the database connection
  * - Initializing Sentry
  * - Backfilling data
@@ -40,6 +42,9 @@ export const setup = async () => {
 
     // initializing SMTP configuration
     setTransporter(await initSmtp());
+    
+    // initializing global feature set
+    await EELicenseService.initGlobalFeatureSet();
     
     // initializing the database connection
     await DatabaseService.initDatabase(await getMongoURL());

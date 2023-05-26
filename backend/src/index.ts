@@ -1,10 +1,10 @@
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 dotenv.config();
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import { DatabaseService } from './services';
+import { EELicenseService } from './ee/services';
 import { setUpHealthEndpoint } from './services/health';
 import cookieParser from 'cookie-parser';
 import swaggerUi = require('swagger-ui-express');
@@ -17,7 +17,9 @@ import {
     workspace as eeWorkspaceRouter,
     secret as eeSecretRouter,
     secretSnapshot as eeSecretSnapshotRouter,
-    action as eeActionRouter
+    action as eeActionRouter,
+    organizations as eeOrganizationsRouter,
+    cloudProducts as eeCloudProductsRouter
 } from './ee/routes/v1';
 import {
     signup as v1SignupRouter,
@@ -62,18 +64,16 @@ import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
 import { requestErrorHandler } from './middleware/requestErrorHandler';
 import {
-    getMongoURL,
     getNodeEnv,
     getPort,
-    getSentryDSN,
-    getSiteURL,
-    getSmtpHost
+    getSiteURL
 } from './config';
 import { setup } from './utils/setup';
-import { patchRouterParam } from './utils/patchAsyncRoutes';
 
 const main = async () => {
     await setup();
+
+    await EELicenseService.initGlobalFeatureSet();
 
     const app = express();
     app.enable('trust proxy');
@@ -101,6 +101,8 @@ const main = async () => {
     app.use('/api/v1/secret-snapshot', eeSecretSnapshotRouter);
     app.use('/api/v1/workspace', eeWorkspaceRouter);
     app.use('/api/v1/action', eeActionRouter);
+    app.use('/api/v1/organizations', eeOrganizationsRouter);
+    app.use('/api/v1/cloud-products', eeCloudProductsRouter);
 
     // v1 routes (default)
     app.use('/api/v1/signup', v1SignupRouter);

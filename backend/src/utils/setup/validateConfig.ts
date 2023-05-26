@@ -22,14 +22,6 @@ export const validateEncryptionKeysConfig = async () => {
     const encryptionKey = await getEncryptionKey();
     const rootEncryptionKey = await getRootEncryptionKey();
     
-    // TODO: handle case where either of keys can be empty strings
-    // and it would actually count as being defined for encryption
-    // within the application
-    
-    // console.log('validateEncryptionKeysConfig');
-    // console.log('encryptionKey: ', encryptionKey);
-    // console.log('rootEncryptionKey: ', rootEncryptionKey);
-    
     if (
         (encryptionKey === undefined || encryptionKey === "") &&
         (rootEncryptionKey === undefined || rootEncryptionKey === "")

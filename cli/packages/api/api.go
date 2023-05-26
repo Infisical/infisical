@@ -2,10 +2,11 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/go-resty/resty/v2"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 const USER_AGENT = "cli"
@@ -179,6 +180,19 @@ func CallLogin2V2(httpClient *resty.Client, request GetLoginTwoV2Request) (GetLo
 		SetBody(request).
 		Post(fmt.Sprintf("%v/v2/auth/login2", config.INFISICAL_URL))
 
+	cookies := response.Cookies()
+	// Find a cookie by name
+	cookieName := "jid"
+	var refreshToken *http.Cookie
+	for _, cookie := range cookies {
+		if cookie.Name == cookieName {
+			refreshToken = cookie
+			break
+		}
+	}
+
+	loginTwoV2Response.RefreshToken = refreshToken.Value
+
 	if err != nil {
 		return GetLoginTwoV2Response{}, fmt.Errorf("CallLogin2V2: Unable to complete api request [err=%s]", err)
 	}
@@ -222,7 +236,7 @@ func CallIsAuthenticated(httpClient *resty.Client) bool {
 	}
 
 	if response.IsError() {
-		log.Debugln(fmt.Errorf("CallIsAuthenticated: Unsuccessful response:  [response=%v]", response))
+		log.Debug().Msgf("CallIsAuthenticated: Unsuccessful response:  [response=%v]", response)
 		return false
 	}
 
@@ -246,4 +260,27 @@ func CallGetAccessibleEnvironments(httpClient *resty.Client, request GetAccessib
 	}
 
 	return accessibleEnvironmentsResponse, nil
+}
+
+func CallGetNewAccessTokenWithRefreshToken(httpClient *resty.Client, refreshToken string) (GetNewAccessTokenWithRefreshTokenResponse, error) {
+	var newAccessToken GetNewAccessTokenWithRefreshTokenResponse
+	response, err := httpClient.
+		R().
+		SetResult(&newAccessToken).
+		SetHeader("User-Agent", USER_AGENT).
+		SetCookie(&http.Cookie{
+			Name:  "jid",
+			Value: refreshToken,
+		}).
+		Post(fmt.Sprintf("%v/v1/auth/token", config.INFISICAL_URL))
+
+	if err != nil {
+		return GetNewAccessTokenWithRefreshTokenResponse{}, err
+	}
+
+	if response.IsError() {
+		return GetNewAccessTokenWithRefreshTokenResponse{}, fmt.Errorf("CallGetNewAccessTokenWithRefreshToken: Unsuccessful response:  [response=%v]", response)
+	}
+
+	return newAccessToken, nil
 }

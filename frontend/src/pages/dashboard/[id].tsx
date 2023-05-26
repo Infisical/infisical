@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 
-import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 import { DashboardPage } from '@app/views/DashboardPage';
 import { DashboardEnvOverview } from '@app/views/DashboardPage/DashboardEnvOverview';
 
@@ -23,17 +22,19 @@ const Dashboard = () => {
   return (
     <>
       <Head>
-        <title>{t('common:head-title', { title: t('dashboard:title') })}</title>
+        <title>{t('common.head-title', { title: t('dashboard.title') })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={String(t('dashboard:og-title'))} />
-        <meta name="og:description" content={String(t('dashboard:og-description'))} />
+        <meta property="og:title" content={String(t('dashboard.og-title'))} />
+        <meta name="og:description" content={String(t('dashboard.og-description'))} />
       </Head>
-      {isOverviewMode ? (
-        <DashboardEnvOverview onEnvChange={onExploreEnv} />
-      ) : (
-        <DashboardPage envFromTop={queryEnv} />
-      )}
+      <div className="h-full">
+        {isOverviewMode ? (
+          <DashboardEnvOverview onEnvChange={onExploreEnv} />
+        ) : (
+          <DashboardPage envFromTop={queryEnv} />
+        )}
+      </div>
     </>
   );
 };
@@ -41,5 +42,3 @@ const Dashboard = () => {
 export default Dashboard;
 
 Dashboard.requireAuth = true;
-
-export const getServerSideProps = getTranslatedServerSideProps(['dashboard']);
