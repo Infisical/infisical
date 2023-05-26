@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
-import { validateClientForWorkspace } from '../helpers/workspace';
+import { validateClientForWorkspace } from '../validation';
 
 type req = 'params' | 'body' | 'query';
 

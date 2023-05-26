@@ -18,8 +18,8 @@ import {
 	AUTH_MODE_SERVICE_TOKEN,
 	AUTH_MODE_API_KEY
 } from '../variables';
-import { validateUserClientForWorkspace } from '../helpers/user';
-import { validateServiceAccountClientForWorkspace } from '../helpers/serviceAccount';
+import { validateUserClientForWorkspace } from './user';
+import { validateServiceAccountClientForWorkspace } from './serviceAccount';
 
 /**
  * Validate authenticated clients for service token with id [serviceTokenId] based
@@ -29,7 +29,7 @@ import { validateServiceAccountClientForWorkspace } from '../helpers/serviceAcco
  * @param {Types.ObjectId} obj.serviceTokenData - id of service token to validate against
  * @param {Array<'admin' | 'member'>} obj.acceptedRoles - accepted workspace roles
  */
-const validateClientForServiceTokenData = async ({
+export const validateClientForServiceTokenData = async ({
     authData,
     serviceTokenDataId,
     acceptedRoles
@@ -100,7 +100,7 @@ const validateClientForServiceTokenData = async ({
  * @param {String} environment - (optional) environment in workspace to validate against
  * @param {String[]} requiredPermissions - required permissions as part of the endpoint
  */
- const validateServiceTokenDataClientForWorkspace = async ({
+export const validateServiceTokenDataClientForWorkspace = async ({
     serviceTokenData,
 	workspaceId,
 	environment,
@@ -146,7 +146,7 @@ const validateClientForServiceTokenData = async ({
  * @param {Secret[]} secrets - secrets to validate against
  * @param {string[]} requiredPermissions - required permissions as part of the endpoint
  */
- const validateServiceTokenDataClientForSecrets = async ({
+export const validateServiceTokenDataClientForSecrets = async ({
     serviceTokenData,
     secrets,
 	requiredPermissions
@@ -179,10 +179,4 @@ const validateClientForServiceTokenData = async ({
             }
         });
     });
-}
-
-export {
-    validateClientForServiceTokenData,
-    validateServiceTokenDataClientForWorkspace,
-    validateServiceTokenDataClientForSecrets
 }

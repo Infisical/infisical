@@ -1,10 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
-import { Integration, IntegrationAuth } from '../models';
-import { IntegrationService } from '../services';
-import { validateMembership } from '../helpers/membership';
-import { validateClientForIntegration } from '../helpers/integration';
-import { IntegrationNotFoundError, UnauthorizedRequestError } from '../utils/errors';
+import { validateClientForIntegration } from '../validation';
 
 /**
  * Validate if user on request is a member of workspace with proper roles associated

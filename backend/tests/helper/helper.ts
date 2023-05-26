@@ -10,7 +10,9 @@ const jsrp = require('jsrp');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const axios = require('axios');
 import { plainTextWorkspaceKey, testWorkspaceId } from "../../src/utils/addDevelopmentUser";
-import { encryptSymmetric } from "../../src/utils/crypto";
+import {
+  encryptSymmetric128BitHexKeyUTF8
+} from '../../src/utils/crypto';
 
 interface TokenData {
   token: string;
@@ -64,7 +66,7 @@ export const getJWTFromTestUser = (): Promise<TokenData> => {
 export const getServiceTokenFromTestUser = async () => {
   const loggedInUserDetails = await getJWTFromTestUser()
   const randomBytes = crypto.randomBytes(16).toString('hex');
-  const { ciphertext, iv, tag } = encryptSymmetric({
+  const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
     plaintext: plainTextWorkspaceKey,
     key: randomBytes,
   });

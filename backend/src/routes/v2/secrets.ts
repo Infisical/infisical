@@ -7,9 +7,9 @@ import {
     requireSecretsAuth,
     validateRequest
 } from '../../middleware';
+import { validateClientForSecrets } from '../../validation';
 import { query, body } from 'express-validator';
 import { secretsController } from '../../controllers/v2';
-import { validateClientForSecrets } from '../../helpers/secrets';
 import {
     ADMIN,
     MEMBER,

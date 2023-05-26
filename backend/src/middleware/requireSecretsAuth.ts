@@ -1,8 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
-import { UnauthorizedRequestError } from '../utils/errors';
-import { Secret, Membership } from '../models';
-import { validateClientForSecrets } from '../helpers/secrets';
+import { validateClientForSecrets } from '../validation';
 
 const requireSecretsAuth = ({
     acceptedRoles,

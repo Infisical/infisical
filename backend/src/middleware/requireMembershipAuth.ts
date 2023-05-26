@@ -1,13 +1,6 @@
 import { Types } from 'mongoose';
 import { Request, Response, NextFunction } from 'express';
-import { UnauthorizedRequestError } from '../utils/errors';
-import {
-    Membership,
-} from '../models';
-import {
-    validateClientForMembership,
-    validateMembership
-} from '../helpers/membership';
+import { validateClientForMembership } from '../validation';
 
 type req = 'params' | 'body' | 'query';
 

@@ -41,7 +41,6 @@ const validateAuthMode = ({
 	headers: { [key: string]: string | string[] | undefined },
 	acceptedAuthModes: string[]
 }) => {
-	// TODO: refactor middleware
 	const apiKey = headers['x-api-key'];
 	const authHeader = headers['authorization'];
 

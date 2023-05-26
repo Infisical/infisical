@@ -4,107 +4,26 @@ import {
   BotKey,
   Secret,
   ISecret,
-  IUser,
-  User,
-  IServiceAccount,
-  ServiceAccount,
-  IServiceTokenData,
-  ServiceTokenData,
+  IUser
 } from "../models";
 import {
   generateKeyPair,
-  encryptSymmetric,
-  decryptSymmetric,
-  decryptAsymmetric,
-} from "../utils/crypto";
+  encryptSymmetric128BitHexKeyUTF8,
+  decryptSymmetric128BitHexKeyUTF8,
+  decryptAsymmetric
+} from '../utils/crypto';
 import {
   SECRET_SHARED,
-  AUTH_MODE_JWT,
-  AUTH_MODE_SERVICE_ACCOUNT,
-  AUTH_MODE_SERVICE_TOKEN,
-  AUTH_MODE_API_KEY,
+  ALGORITHM_AES_256_GCM,
+  ENCODING_SCHEME_UTF8,
+  ENCODING_SCHEME_BASE64
 } from "../variables";
-import { getEncryptionKey } from "../config";
-import { BotNotFoundError, UnauthorizedRequestError } from "../utils/errors";
-import { validateMembership } from "../helpers/membership";
-import { validateUserClientForWorkspace } from "../helpers/user";
-import { validateServiceAccountClientForWorkspace } from "../helpers/serviceAccount";
-
-/**
- * Validate authenticated clients for bot with id [botId] based
- * on any known permissions.
- * @param {Object} obj
- * @param {Object} obj.authData - authenticated client details
- * @param {Types.ObjectId} obj.botId - id of bot to validate against
- * @param {Array<'admin' | 'member'>} obj.acceptedRoles - accepted workspace roles
- */
-const validateClientForBot = async ({
-  authData,
-  botId,
-  acceptedRoles,
-}: {
-  authData: {
-    authMode: string;
-    authPayload: IUser | IServiceAccount | IServiceTokenData;
-  };
-  botId: Types.ObjectId;
-  acceptedRoles: Array<"admin" | "member">;
-}) => {
-  const bot = await Bot.findById(botId);
-
-  if (!bot) throw BotNotFoundError();
-
-  if (
-    authData.authMode === AUTH_MODE_JWT &&
-    authData.authPayload instanceof User
-  ) {
-    await validateUserClientForWorkspace({
-      user: authData.authPayload,
-      workspaceId: bot.workspace,
-      acceptedRoles,
-    });
-
-    return bot;
-  }
-
-  if (
-    authData.authMode === AUTH_MODE_SERVICE_ACCOUNT &&
-    authData.authPayload instanceof ServiceAccount
-  ) {
-    await validateServiceAccountClientForWorkspace({
-      serviceAccount: authData.authPayload,
-      workspaceId: bot.workspace,
-    });
-
-    return bot;
-  }
-
-  if (
-    authData.authMode === AUTH_MODE_SERVICE_TOKEN &&
-    authData.authPayload instanceof ServiceTokenData
-  ) {
-    throw UnauthorizedRequestError({
-      message: "Failed service token authorization for bot",
-    });
-  }
-
-  if (
-    authData.authMode === AUTH_MODE_API_KEY &&
-    authData.authPayload instanceof User
-  ) {
-    await validateUserClientForWorkspace({
-      user: authData.authPayload,
-      workspaceId: bot.workspace,
-      acceptedRoles,
-    });
-
-    return bot;
-  }
-
-  throw BotNotFoundError({
-    message: "Failed client authorization for bot",
-  });
-};
+import { 
+  getEncryptionKey, 
+  getRootEncryptionKey,
+  client
+} from "../config";
+import { InternalServerError } from "../utils/errors";
 
 /**
  * Create an inactive bot with name [name] for workspace with id [workspaceId]
@@ -119,23 +38,52 @@ const createBot = async ({
   name: string;
   workspaceId: Types.ObjectId;
 }) => {
+  const encryptionKey = await getEncryptionKey();
+  const rootEncryptionKey = await getRootEncryptionKey();
+  
   const { publicKey, privateKey } = generateKeyPair();
-  const { ciphertext, iv, tag } = encryptSymmetric({
-    plaintext: privateKey,
-    key: await getEncryptionKey(),
+  
+  if (rootEncryptionKey) {
+    const { 
+      ciphertext, 
+      iv, 
+      tag 
+    } = client.encryptSymmetric(privateKey, rootEncryptionKey);
+
+    return await new Bot({
+      name,
+      workspace: workspaceId,
+      isActive: false,
+      publicKey,
+      encryptedPrivateKey: ciphertext,
+      iv,
+      tag,
+      algorithm: ALGORITHM_AES_256_GCM,
+      keyEncoding: ENCODING_SCHEME_BASE64
+    }).save();
+  
+  } else if (encryptionKey) {
+    const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
+      plaintext: privateKey,
+      key: await getEncryptionKey(),
+    });
+
+    return await new Bot({
+      name,
+      workspace: workspaceId,
+      isActive: false,
+      publicKey,
+      encryptedPrivateKey: ciphertext,
+      iv,
+      tag,
+      algorithm: ALGORITHM_AES_256_GCM,
+      keyEncoding: ENCODING_SCHEME_UTF8
+    }).save();
+  }
+
+  throw InternalServerError({
+    message: 'Failed to create new bot due to missing encryption key'
   });
-
-  const bot = await new Bot({
-    name,
-    workspace: workspaceId,
-    isActive: false,
-    publicKey,
-    encryptedPrivateKey: ciphertext,
-    iv,
-    tag,
-  }).save();
-
-  return bot;
 };
 
 /**
@@ -161,14 +109,14 @@ const getSecretsHelper = async ({
   });
 
   secrets.forEach((secret: ISecret) => {
-    const secretKey = decryptSymmetric({
+    const secretKey = decryptSymmetric128BitHexKeyUTF8({
       ciphertext: secret.secretKeyCiphertext,
       iv: secret.secretKeyIV,
       tag: secret.secretKeyTag,
       key,
     });
 
-    const secretValue = decryptSymmetric({
+    const secretValue = decryptSymmetric128BitHexKeyUTF8({
       ciphertext: secret.secretValueCiphertext,
       iv: secret.secretValueIV,
       tag: secret.secretValueTag,
@@ -189,34 +137,54 @@ const getSecretsHelper = async ({
  * @returns {String} key - decrypted workspace key
  */
 const getKey = async ({ workspaceId }: { workspaceId: string }) => {
+  const encryptionKey = await getEncryptionKey();
+  const rootEncryptionKey = await getRootEncryptionKey();
+
   const botKey = await BotKey.findOne({
     workspace: workspaceId,
-  }).populate<{ sender: IUser }>("sender", "publicKey");
+  })
+  .populate<{ sender: IUser }>("sender", "publicKey");
 
   if (!botKey) throw new Error("Failed to find bot key");
 
   const bot = await Bot.findOne({
     workspace: workspaceId,
-  }).select("+encryptedPrivateKey +iv +tag");
+  }).select("+encryptedPrivateKey +iv +tag +algorithm +keyEncoding");
 
   if (!bot) throw new Error("Failed to find bot");
   if (!bot.isActive) throw new Error("Bot is not active");
 
-  const privateKeyBot = decryptSymmetric({
-    ciphertext: bot.encryptedPrivateKey,
-    iv: bot.iv,
-    tag: bot.tag,
-    key: await getEncryptionKey(),
-  });
+  if (rootEncryptionKey && bot.keyEncoding === ENCODING_SCHEME_BASE64) {
+    // case: encoding scheme is base64
+    const privateKeyBot = client.decryptSymmetric(bot.encryptedPrivateKey, rootEncryptionKey, bot.iv, bot.tag);
 
-  const key = decryptAsymmetric({
-    ciphertext: botKey.encryptedKey,
-    nonce: botKey.nonce,
-    publicKey: botKey.sender.publicKey as string,
-    privateKey: privateKeyBot,
-  });
+    return decryptAsymmetric({
+      ciphertext: botKey.encryptedKey,
+      nonce: botKey.nonce,
+      publicKey: botKey.sender.publicKey as string,
+      privateKey: privateKeyBot,
+    });
+  } else if (encryptionKey && bot.keyEncoding === ENCODING_SCHEME_UTF8) {
+    
+    // case: encoding scheme is utf8
+    const privateKeyBot = decryptSymmetric128BitHexKeyUTF8({
+      ciphertext: bot.encryptedPrivateKey,
+      iv: bot.iv,
+      tag: bot.tag,
+      key: encryptionKey
+    });
+    
+    return decryptAsymmetric({
+      ciphertext: botKey.encryptedKey,
+      nonce: botKey.nonce,
+      publicKey: botKey.sender.publicKey as string,
+      privateKey: privateKeyBot,
+    });
+  }
 
-  return key;
+  throw InternalServerError({
+    message: "Failed to obtain bot's copy of workspace key needed for bot operations"
+  });
 };
 
 /**
@@ -234,7 +202,7 @@ const encryptSymmetricHelper = async ({
   plaintext: string;
 }) => {
   const key = await getKey({ workspaceId: workspaceId.toString() });
-  const { ciphertext, iv, tag } = encryptSymmetric({
+  const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
     plaintext,
     key,
   });
@@ -266,7 +234,7 @@ const decryptSymmetricHelper = async ({
   tag: string;
 }) => {
   const key = await getKey({ workspaceId: workspaceId.toString() });
-  const plaintext = decryptSymmetric({
+  const plaintext = decryptSymmetric128BitHexKeyUTF8({
     ciphertext,
     iv,
     tag,
@@ -277,9 +245,8 @@ const decryptSymmetricHelper = async ({
 };
 
 export {
-  validateClientForBot,
   createBot,
   getSecretsHelper,
   encryptSymmetricHelper,
-  decryptSymmetricHelper,
+  decryptSymmetricHelper
 };

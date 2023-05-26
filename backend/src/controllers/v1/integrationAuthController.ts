@@ -5,7 +5,7 @@ import {
 	IntegrationAuth,
 	Bot 
 } from '../../models';
-import { INTEGRATION_SET, getIntegrationOptions as getIntegrationOptionsFunc } from '../../variables';
+import { ALGORITHM_AES_256_GCM, ENCODING_SCHEME_UTF8, INTEGRATION_SET, getIntegrationOptions as getIntegrationOptionsFunc } from '../../variables';
 import { IntegrationService } from '../../services';
 import {
 	getApps, 
@@ -129,7 +129,9 @@ export const saveIntegrationAccessToken = async (
             integration
         }, {
             workspace: new Types.ObjectId(workspaceId),
-            integration
+            integration,
+			algorithm: ALGORITHM_AES_256_GCM,
+			keyEncoding: ENCODING_SCHEME_UTF8
 		}, {
             new: true,
             upsert: true
