@@ -261,8 +261,22 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         router.push(`/dashboard/${value}`);
                       }}
                       position="popper"
-                      dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50 overflow-y-scroll max-h-96 no-scrollbar border-gray-700"
+                      dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 z-50 max-h-96 border-gray-700"
                     >
+                      <div className='h-full no-scrollbar no-scrollbar::-webkit-scrollbar'>
+                        {workspaces
+                        .filter((ws) => ws.organization === currentOrg?._id)
+                        .map(({ _id, name }) => (
+                          <SelectItem
+                            key={`ws-layout-list-${_id}`}
+                            value={_id}
+                            className={`${currentWorkspace?._id === _id && 'bg-mineshaft-600'}`}
+                          >
+                            {name}
+                          </SelectItem>
+                        ))}
+                      </div>
+                      <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" />
                       <div className="w-full">
                         <Button
                           className="w-full bg-mineshaft-700 py-2 text-bunker-200"
@@ -280,19 +294,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         >
                           Add Project
                         </Button>
-                        <hr className="mt-1 mb-1 h-px border-0 bg-gray-700" />
                       </div>
-                      {workspaces
-                        .filter((ws) => ws.organization === currentOrg?._id)
-                        .map(({ _id, name }) => (
-                          <SelectItem
-                            key={`ws-layout-list-${_id}`}
-                            value={_id}
-                            className={`${currentWorkspace?._id === _id && 'bg-mineshaft-600'}`}
-                          >
-                            {name}
-                          </SelectItem>
-                        ))}
                     </Select>
                   </div>
                 ) : (
