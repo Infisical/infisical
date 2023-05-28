@@ -3,8 +3,7 @@ import { ISecretVersion } from '../models';
 import { 
     takeSecretSnapshotHelper,
     addSecretVersionsHelper,
-    markDeletedSecretVersionsHelper,
-    initSecretVersioningHelper
+    markDeletedSecretVersionsHelper
 } from '../helpers/secret';
 import EELicenseService from './EELicenseService';
 
@@ -63,15 +62,6 @@ class EESecretService {
         await markDeletedSecretVersionsHelper({
             secretIds
         });
-    }
-    
-    /**
-     * Initialize secret versioning by setting previously unversioned
-     * secrets to version 1 and begin populating secret versions.
-     */
-    static async initSecretVersioning() {
-        if (!EELicenseService.isLicenseValid) return; 
-        await initSecretVersioningHelper();
     }
 }
 

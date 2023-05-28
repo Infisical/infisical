@@ -70,7 +70,8 @@ infisical scan install --pre-commit-hook
 To disable this hook after installing it, run the command `git config --bool hooks.infisical-scan false`
 
 ### Third party hooks management 
-If you prefer to manage your pre-commit hook outside of the .git/hooks directory, you can easily accomplish this by adding the following command to your pre-commit script
+If you would rather handle your pre-commit hook outside of the standard `.git/hooks` directory, you can quickly achieve this by adding the following command into your pre-commit script. 
+For instance, if you utilize [Husky](https://typicode.github.io/husky/) for managing your Git hooks, you can insert the command provided below into your `.husky/pre-commit` file.
 
 ```bash
 infisical scan git-changes --staged --verbose

@@ -93,52 +93,8 @@ const markDeletedSecretVersionsHelper = async ({
   );
 };
 
-/**
- * Initialize secret versioning by setting previously unversioned
- * secrets to version 1 and begin populating secret versions.
- */
-const initSecretVersioningHelper = async () => {
-  await Secret.updateMany(
-    { version: { $exists: false } },
-    { $set: { version: 1 } }
-  );
-
-  const unversionedSecrets: ISecret[] = await Secret.aggregate([
-    {
-      $lookup: {
-        from: "secretversions",
-        localField: "_id",
-        foreignField: "secret",
-        as: "versions",
-      },
-    },
-    {
-      $match: {
-        versions: { $size: 0 },
-      },
-    },
-  ]);
-
-  if (unversionedSecrets.length > 0) {
-    await addSecretVersionsHelper({
-      secretVersions: unversionedSecrets.map(
-        (s, idx) =>
-          new SecretVersion({
-            ...s,
-            secret: s._id,
-            version: s.version ? s.version : 1,
-            isDeleted: false,
-            workspace: s.workspace,
-            environment: s.environment,
-          })
-      ),
-    });
-  }
-};
-
 export {
   takeSecretSnapshotHelper,
   addSecretVersionsHelper,
-  markDeletedSecretVersionsHelper,
-  initSecretVersioningHelper,
+  markDeletedSecretVersionsHelper
 };

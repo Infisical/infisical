@@ -22,10 +22,12 @@ class Capturer {
     }
   }
 
-  identify(id: string) {
+  identify(id: string, email?: string) {
     if (ENV === 'production' && TELEMETRY_CAPTURING_ENABLED) {
       try {
-        this.api.identify(id);
+        this.api.identify(id, {
+          email: email
+        });
       } catch (error) {
         console.error('PostHog', error);
       }
