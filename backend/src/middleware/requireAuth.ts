@@ -42,58 +42,61 @@ const requireAuth = ({
 	acceptedAuthModes: string[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
-		
+
 		// validate auth token against accepted auth modes [acceptedAuthModes]
 		// and return token type [authTokenType] and value [authTokenValue]
-		
-		const { authMode, authTokenValue } = validateAuthMode({
-			headers: req.headers,
-			acceptedAuthModes
-		});
+		try {
+			const { authMode, authTokenValue } = validateAuthMode({
+				headers: req.headers,
+				acceptedAuthModes
+			});
 
-		let authPayload: IUser | IServiceAccount | IServiceTokenData;
-		switch (authMode) {
-			case AUTH_MODE_SERVICE_ACCOUNT:
-				authPayload = await getAuthSAAKPayload({
-					authTokenValue
-				});
-				req.serviceAccount = authPayload;
-				break;
-			case AUTH_MODE_SERVICE_TOKEN:
-				authPayload = await getAuthSTDPayload({
-					authTokenValue
-				});
-				req.serviceTokenData = authPayload;
-				break;
-			case AUTH_MODE_API_KEY:
-				authPayload = await getAuthAPIKeyPayload({
-					authTokenValue
-				});
-				req.user = authPayload;
-				break;
-			default:
-				authPayload = await getAuthUserPayload({
-					authTokenValue
-				});
-				req.user = authPayload;
-				break;
+			let authPayload: IUser | IServiceAccount | IServiceTokenData;
+			switch (authMode) {
+				case AUTH_MODE_SERVICE_ACCOUNT:
+					authPayload = await getAuthSAAKPayload({
+						authTokenValue
+					});
+					req.serviceAccount = authPayload;
+					break;
+				case AUTH_MODE_SERVICE_TOKEN:
+					authPayload = await getAuthSTDPayload({
+						authTokenValue
+					});
+					req.serviceTokenData = authPayload;
+					break;
+				case AUTH_MODE_API_KEY:
+					authPayload = await getAuthAPIKeyPayload({
+						authTokenValue
+					});
+					req.user = authPayload;
+					break;
+				default:
+					authPayload = await getAuthUserPayload({
+						authTokenValue
+					});
+					req.user = authPayload;
+					break;
+			}
+
+			req.requestData = {
+				...req.params,
+				...req.query,
+				...req.body,
+			}
+
+			req.authData = {
+				authMode,
+				authPayload, // User, ServiceAccount, ServiceTokenData
+				authChannel: getChannelFromUserAgent(req.headers['user-agent']),
+				authIP: req.ip,
+				authUserAgent: req.headers['user-agent'] ?? 'other'
+			}
+
+			return next();
+		} catch (err) {
+			return next(err);
 		}
-		
-		req.requestData = {
-			...req.params,
-			...req.query,
-			...req.body,
-		}
-		
-		req.authData = {
-			authMode,
-			authPayload, // User, ServiceAccount, ServiceTokenData
-			authChannel: getChannelFromUserAgent(req.headers['user-agent']),
-			authIP: req.ip,
-			authUserAgent: req.headers['user-agent'] ?? 'other'
-		}
-		
-		return next();
 	}
 }
 

@@ -166,7 +166,6 @@ const main = async () => {
     );
   });
 
-  // await createTestUserForDevelopment();
   setUpHealthEndpoint(server);
 
   server.on("close", async () => {
