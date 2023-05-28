@@ -43,7 +43,7 @@ const validateAuthMode = ({
 }) => {
 	const apiKey = headers['x-api-key'];
 	const authHeader = headers['authorization'];
-
+	
 	let authMode, authTokenValue;
 	if (apiKey === undefined && authHeader === undefined) {
 		// case: no auth or X-API-KEY header present
