@@ -1559,20 +1559,35 @@ const syncSecretsGitLab = async ({
       environment_scope: string;
     }
 
-    // get secrets from gitlab
-    const getSecretsRes: GitLabSecret[] = (
-      await standardRequest.get(
-        `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables`,
-        { 
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json",
-          },
+    const getAllEnvVariables = async (integrationAppId: string, accessToken: string) => {
+      const gitLabApiUrl = `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integrationAppId}/variables`;
+      const headers = {
+        "Authorization": `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json",
+      };
+    
+      let allEnvVariables: GitLabSecret[] = [];
+      let url: string | null = `${gitLabApiUrl}?per_page=100`;
+    
+      while (url) {
+        const response: any = await standardRequest.get(url, { headers });
+        allEnvVariables = [...allEnvVariables, ...response.data];
+    
+        const linkHeader = response.headers.link;
+        const nextLink = linkHeader?.split(',').find((part: string) => part.includes('rel="next"'));
+    
+        if (nextLink) {
+          url = nextLink.trim().split(';')[0].slice(1, -1);
+        } else {
+          url = null;
         }
-      )
-    )
-    .data
-    .filter((secret: GitLabSecret) => 
+      }
+    
+      return allEnvVariables;
+    };
+
+    const allEnvVariables = await getAllEnvVariables(integration?.appId, accessToken);
+    const getSecretsRes: GitLabSecret[] = allEnvVariables.filter((secret: GitLabSecret) => 
       secret.environment_scope === integration.targetEnvironment
     );
 
@@ -1631,6 +1646,7 @@ const syncSecretsGitLab = async ({
         );
       }
     }
+
   } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
