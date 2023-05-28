@@ -144,7 +144,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     workspaceId,
                     channel,
                     userAgent: req.headers?.['user-agent'],
-                    isPaid
+                    isPaid,
+                    email: req.user.email
                 }
             });
         }
@@ -232,7 +233,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     workspaceId,
                     channel,
                     userAgent: req.headers?.['user-agent'],
-                    isPaid
+                    isPaid,
+                    email: req.user.email
                 }
             });
         }
@@ -268,7 +270,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     workspaceId,
                     channel: channel,
                     userAgent: req.headers?.['user-agent'],
-                    isPaid
+                    isPaid,
+                    email: req.user.email
                 }
             });
         }
@@ -545,7 +548,10 @@ export const createSecrets = async (req: Request, res: Response) => {
                 workspaceId,
                 channel: channel,
                 userAgent: req.headers?.['user-agent'],
-                isPaid
+                isPaid,
+                email: await TelemetryService.getDistinctId({
+                    authData: req.authData
+                })
             }
         });
     }
@@ -748,7 +754,10 @@ export const getSecrets = async (req: Request, res: Response) => {
                 workspaceId,
                 channel,
                 userAgent: req.headers?.['user-agent'],
-                isPaid
+                isPaid,
+                email: await TelemetryService.getDistinctId({
+                    authData: req.authData
+                })
             }
         });
     }
@@ -978,7 +987,10 @@ export const updateSecrets = async (req: Request, res: Response) => {
                     workspaceId: key,
                     channel: channel,
                     userAgent: req.headers?.['user-agent'],
-                    isPaid
+                    isPaid,
+                    email: await TelemetryService.getDistinctId({
+                        authData: req.authData
+                    })
                 }
             });
         }
@@ -1119,7 +1131,10 @@ export const deleteSecrets = async (req: Request, res: Response) => {
                     workspaceId: key,
                     channel: channel,
                     userAgent: req.headers?.['user-agent'],
-                    isPaid
+                    isPaid,
+                    email: await TelemetryService.getDistinctId({
+                        authData: req.authData
+                    })
                 }
             });
         }
