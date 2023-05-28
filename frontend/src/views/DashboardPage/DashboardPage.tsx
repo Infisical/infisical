@@ -571,6 +571,8 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                 leftIcon={<FontAwesomeIcon icon={isRollbackMode ? faClockRotateLeft : faCheck} />}
                 onClick={handleSubmit(onSaveSecret)}
                 className="h-10"
+                color="primary"
+                variant="star"
               >
                 {isRollbackMode ? 'Rollback' : 'Save Changes'}
               </Button>

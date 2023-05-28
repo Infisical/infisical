@@ -16,6 +16,7 @@ interface Props {
   organizationName: string;
   salt: string;
   verifier: string;
+  attributionSource?: string;
 }
 
 /**
@@ -52,6 +53,7 @@ const completeAccountInformationSignup = async ({
   verifier,
   organizationName,
   providerAuthToken,
+  attributionSource
 }: Props) => {
   const { data } = await apiRequest.post('/api/v3/signup/complete-account/signup', {
     email,
@@ -68,6 +70,7 @@ const completeAccountInformationSignup = async ({
     verifier,
     organizationName,
     providerAuthToken,
+    attributionSource,
   });
 
   return data;

@@ -11,6 +11,7 @@ import { INVITED, ACCEPTED } from '../../variables';
 import { standardRequest } from '../../config/request';
 import { getLoopsApiKey, getHttpsEnabled, getJwtSignupSecret } from '../../config';
 import { BadRequestError } from '../../utils/errors';
+import { TelemetryService } from '../../services';
 
 /**
  * Complete setting up user by adding their personal and auth information as part of the
@@ -37,6 +38,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			verifier,
 			organizationName,
 			providerAuthToken,
+			attributionSource,
 		}: {
 			email: string;
 			firstName: string;
@@ -52,6 +54,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			verifier: string;
 			organizationName: string;
 			providerAuthToken?: string;
+			attributionSource?: string;
 		} = req.body;
 
 		user = await User.findOne({ email });
@@ -161,6 +164,18 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			sameSite: 'strict',
 			secure: await getHttpsEnabled()
 		});
+
+		const postHogClient = await TelemetryService.getPostHogClient();
+		if (postHogClient) {
+			postHogClient.capture({
+				event: 'User Signed Up',
+				distinctId: req.user.email,
+				properties: {
+					email,
+					attributionSource
+				}
+			});
+		}
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);

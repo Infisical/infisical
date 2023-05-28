@@ -76,7 +76,7 @@ const buttonVariants = cva(
       {
         colorSchema: 'primary',
         variant: 'outline_bg',
-        className: 'bg-mineshaft-800 border border-mineshaft-600 hover:bg-primary/[0.1] hover:border-primary/40 text-bunker-200'
+        className: 'bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/[0.1] hover:border-primary/40 text-bunker-200'
       },
       {
         colorSchema: 'secondary',

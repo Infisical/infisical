@@ -100,7 +100,7 @@ export default function Login() {
   };
 
   return (
-    <div className="flex h-screen flex-col justify-center bg-gradient-to-tr from-bunker-500 to-bunker-800 px-6 pb-28 ">
+    <div className="flex h-screen flex-col justify-center bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28 ">
       <Head>
         <title>{t('common.head-title', { title: t('login.title') })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -114,7 +114,7 @@ export default function Login() {
         </div>
       </Link>
       {renderView(step)}
-      <div className="absolute right-4 top-0 mt-4 flex items-center justify-center">
+      {/* <div className="absolute right-4 top-0 mt-4 flex items-center justify-center">
         <div className="mx-auto w-48">
           <ListBox
             isSelected={lang}
@@ -124,7 +124,7 @@ export default function Login() {
             text={`${t('common.language')}: `}
           />
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

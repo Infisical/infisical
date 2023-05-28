@@ -17,6 +17,7 @@ export const publicPaths = [
   `/subprocessors`,
   `/verify-email`,
   `/password-reset`,
+  `/saml-sso`,
   `/login/provider/success`,
   `/login/provider/error`
 ];

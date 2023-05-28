@@ -83,9 +83,9 @@ export default function EnterEmailStep({
       <div className="mx-auto mb-48 mt-2 flex w-full max-w-md flex-col items-center justify-center pt-2 md:mb-16 md:pb-2">
         <Link href="/login">
           <button type="button" className="w-max pb-3 duration-200 hover:opacity-90">
-            <u className="text-sm font-normal text-primary-500">
+            <span className="text-sm text-mineshaft-400 hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer">
               {t('signup.already-have-account')}
-            </u>
+            </span>
           </button>
         </Link>
       </div>

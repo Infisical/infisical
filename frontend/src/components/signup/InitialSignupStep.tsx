@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
-import { faGoogle } from '@fortawesome/free-brands-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useRouter } from 'next/router';
 
+// import { faGoogle } from '@fortawesome/free-brands-svg-icons';
+// import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button } from '../v2';
 
 export default function InitialSignupStep({
@@ -11,10 +12,11 @@ export default function InitialSignupStep({
     setIsSignupWithEmail: (value: boolean) => void
 }) {
     const { t } = useTranslation();
+    const router = useRouter();
 
-    return <div className='flex flex-col mx-auto w-full justify-center items-center '>
+    return <div className='flex flex-col mx-auto w-full justify-center items-center'>
         <h1 className='text-xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 text-center mb-8' >{t('signup.initial-title')}</h1>
-        <div className='lg:w-1/6 w-1/4 min-w-[20rem] rounded-md'>
+        {/* <div className='lg:w-1/6 w-1/4 min-w-[20rem] rounded-md'>
             <Button
                 colorSchema="primary"
                 variant="solid"
@@ -26,11 +28,11 @@ export default function InitialSignupStep({
             >
                 {t('signup.continue-with-google')}
             </Button>
-        </div>
-        <div className='lg:w-1/6 w-1/4 min-w-[20rem] text-center rounded-md mt-4'>
+        </div> */}
+        <div className='lg:w-1/6 w-1/4 min-w-[20rem] text-center rounded-md'>
             <Button
                 colorSchema="primary"
-                variant="outline_bg"
+                variant="solid"
                 onClick={() => {
                     setIsSignupWithEmail(true);
                 }}
@@ -38,6 +40,17 @@ export default function InitialSignupStep({
                 className="h-14 w-full mx-0"
             >
                 {t('signup.continue-with-email')}
+            </Button>
+        </div>
+        <div className='lg:w-1/6 w-1/4 min-w-[20rem] text-center rounded-md mt-4'>
+            <Button
+                colorSchema="primary" 
+                variant="outline_bg"
+                onClick={() => router.push("/saml-sso")} 
+                isFullWidth
+                className="h-14 w-full mx-0"
+            > 
+                Continue with SAML SSO
             </Button>
         </div>
         <div className='lg:w-1/6 w-1/4 min-w-[20rem] px-8 text-center mt-6 text-xs text-bunker-400'>

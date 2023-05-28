@@ -43,13 +43,13 @@ export default function TeamInviteStep(): JSX.Element {
       <p className="text-center flex justify-center text-bunker-400 md:mx-8 mb-6 mt-4">
         {t('signup.step5-subtitle')}
       </p>
-      <div className="bg-mineshaft-800 border border-mineshaft-600 w-max mx-auto pt-6 pb-4 px-8 rounded-xl drop-shadow-xl mb-6">
+      <div className="bg-mineshaft-800 border border-mineshaft-500 w-max mx-auto pt-6 pb-4 px-8 rounded-xl drop-shadow-xl mb-6">
         <div>
           <div className="text-bunker-300 font-medium pl-1 pb-1 text-sm">
             <span>Emails</span>
           </div>
           <textarea
-            className="bg-mineshaft-900 min-w-[30rem] h-20 w-full placeholder:text-bunker-400 py-1 px-2 rounded-md border border-mineshaft-500 text-sm text-bunker-300 outline-none focus:ring-2 ring-primary-800 ring-opacity-70"
+            className="bg-mineshaft-900/70 min-w-[30rem] h-20 w-full placeholder:text-bunker-400 py-1 px-2 rounded-md border border-mineshaft-500 text-sm text-bunker-300 outline-none focus:ring-2 ring-primary-800 ring-opacity-70"
             value={emails}
             onChange={(e) => setEmails(e.target.value)}
             placeholder="email@example.com, email2@example.com..."

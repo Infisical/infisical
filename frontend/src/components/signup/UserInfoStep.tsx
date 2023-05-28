@@ -153,7 +153,7 @@ export default function UserInfoStep({
               const response = await completeAccountInformationSignup({
                 email,
                 firstName: name.split(" ")[0],
-                lastName: name.split(" ")[1],
+                lastName: name.split(" ").slice(1).join(' '),
                 protectedKey,
                 protectedKeyIV,
                 protectedKeyTag,
@@ -165,6 +165,7 @@ export default function UserInfoStep({
                 salt: result.salt,
                 verifier: result.verifier,
                 organizationName,
+                attributionSource,
               });
 
               // unset signup JWT token and set JWT token
