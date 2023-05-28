@@ -9,9 +9,9 @@ import {
 	IServiceTokenData,
 	ISecret,
 	IOrganization,
-	IServiceAccountWorkspacePermission,
 	ServiceAccountWorkspacePermission
 } from '../models';
+import { validateUserClientForServiceAccount } from './user';
 import { 
 	BadRequestError, 
 	UnauthorizedRequestError,
@@ -25,11 +25,8 @@ import {
 	AUTH_MODE_SERVICE_TOKEN,
 	AUTH_MODE_API_KEY
 } from '../variables';
-import {
-	validateUserClientForServiceAccount
-} from '../helpers/user';
 
-const validateClientForServiceAccount = async ({
+export const validateClientForServiceAccount = async ({
 	authData,
 	serviceAccountId,
 	requiredPermissions
@@ -100,7 +97,7 @@ const validateClientForServiceAccount = async ({
  * @param {String} environment - (optional) environment in workspace to validate against
  * @param {String[]} requiredPermissions - required permissions as part of the endpoint
  */
- const validateServiceAccountClientForWorkspace = async ({
+export const validateServiceAccountClientForWorkspace = async ({
     serviceAccount,
 	workspaceId,
 	environment,
@@ -169,7 +166,7 @@ const validateClientForServiceAccount = async ({
  * @param {Secret[]} secrets - secrets to validate against
  * @param {string[]} requiredPermissions - required permissions as part of the endpoint
  */
- const validateServiceAccountClientForSecrets = async ({
+export const validateServiceAccountClientForSecrets = async ({
 	serviceAccount,
 	secrets,
 	requiredPermissions
@@ -226,7 +223,7 @@ const validateClientForServiceAccount = async ({
  * @param {ServiceAccount} targetServiceAccount - target service account to validate against
  * @param {string[]} requiredPermissions - required permissions as part of the endpoint
  */
-const validateServiceAccountClientForServiceAccount = ({
+export const validateServiceAccountClientForServiceAccount = ({
 	serviceAccount,
 	targetServiceAccount,
 	requiredPermissions
@@ -248,7 +245,7 @@ const validateServiceAccountClientForServiceAccount = ({
  * @param {User} obj.user - service account client
  * @param {Organization} obj.organization - organization to validate against
  */
-const validateServiceAccountClientForOrganization = async ({
+export const validateServiceAccountClientForOrganization = async ({
 	serviceAccount,
 	organization
 }: {
@@ -260,12 +257,4 @@ const validateServiceAccountClientForOrganization = async ({
 			message: 'Failed service account authorization for the given organization'
 		});
 	}
-}
-
-export {
-	validateClientForServiceAccount,
-    validateServiceAccountClientForWorkspace,
-	validateServiceAccountClientForSecrets,
-	validateServiceAccountClientForServiceAccount,
-	validateServiceAccountClientForOrganization
 }

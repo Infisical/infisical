@@ -9,6 +9,8 @@ import {
   ACTION_UPDATE_SECRETS,
   ACTION_DELETE_SECRETS,
   ACTION_READ_SECRETS,
+  ALGORITHM_AES_256_GCM,
+  ENCODING_SCHEME_UTF8,
 } from "../variables";
 import _ from "lodash";
 import { BadRequestError, UnauthorizedRequestError } from "../utils/errors";
@@ -194,6 +196,8 @@ const v1PushSecrets = async ({
         secretValueIV: newSecret.ivValue,
         secretValueTag: newSecret.tagValue,
         secretValueHash: newSecret.hashValue,
+        algorithm: ALGORITHM_AES_256_GCM,
+        keyEncoding: ENCODING_SCHEME_UTF8
       });
     }),
   });
@@ -225,6 +229,8 @@ const v1PushSecrets = async ({
             secretCommentIV: s.ivComment,
             secretCommentTag: s.tagComment,
             secretCommentHash: s.hashComment,
+            algorithm: ALGORITHM_AES_256_GCM,
+            keyEncoding: ENCODING_SCHEME_UTF8
           };
 
           if (toAdd[idx].type === "personal") {
@@ -254,6 +260,8 @@ const v1PushSecrets = async ({
           secretValueIV,
           secretValueTag,
           secretValueHash,
+          algorithm,
+          keyEncoding
         }) =>
           new SecretVersion({
             secret: _id,
@@ -271,6 +279,8 @@ const v1PushSecrets = async ({
             secretValueIV,
             secretValueTag,
             secretValueHash,
+            algorithm,
+            keyEncoding
           })
       ),
     });
@@ -467,6 +477,8 @@ const v2PushSecrets = async ({
         workspace: workspaceId,
         type: toAdd[idx].type,
         environment,
+        algorithm: ALGORITHM_AES_256_GCM,
+        keyEncoding: ENCODING_SCHEME_UTF8,
         ...(toAdd[idx].type === "personal" ? { user: userId } : {}),
       }))
     );
@@ -478,6 +490,8 @@ const v2PushSecrets = async ({
           ...secretDocument,
           secret: secretDocument._id,
           isDeleted: false,
+          algorithm: ALGORITHM_AES_256_GCM,
+          keyEncoding: ENCODING_SCHEME_UTF8
         });
       }),
     });

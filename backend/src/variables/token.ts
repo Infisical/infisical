@@ -1,11 +1,4 @@
-const TOKEN_EMAIL_CONFIRMATION = 'emailConfirmation';
-const TOKEN_EMAIL_MFA = 'emailMfa';
-const TOKEN_EMAIL_ORG_INVITATION = 'organizationInvitation';
-const TOKEN_EMAIL_PASSWORD_RESET = 'passwordReset';
-
-export {
-    TOKEN_EMAIL_CONFIRMATION,
-    TOKEN_EMAIL_MFA,
-    TOKEN_EMAIL_ORG_INVITATION,
-    TOKEN_EMAIL_PASSWORD_RESET
-}
+export const TOKEN_EMAIL_CONFIRMATION = 'emailConfirmation';
+export const TOKEN_EMAIL_MFA = 'emailMfa';
+export const TOKEN_EMAIL_ORG_INVITATION = 'organizationInvitation';
+export const TOKEN_EMAIL_PASSWORD_RESET = 'passwordReset';

@@ -1,12 +1,19 @@
 import InfisicalClient from 'infisical-node';
 
-const client = new InfisicalClient({
+export const client = new InfisicalClient({
   token: process.env.INFISICAL_TOKEN!
 });
 
 export const getPort = async () => (await client.getSecret('PORT')).secretValue || 4000;
+export const getEncryptionKey = async () => {
+  const secretValue = (await client.getSecret('ENCRYPTION_KEY')).secretValue;
+  return secretValue === '' ? undefined : secretValue;
+}
+export const getRootEncryptionKey = async () => {
+  const secretValue = (await client.getSecret('ROOT_ENCRYPTION_KEY')).secretValue; 
+  return secretValue === '' ? undefined : secretValue;
+}
 export const getInviteOnlySignup = async () => (await client.getSecret('INVITE_ONLY_SIGNUP')).secretValue === 'true'
-export const getEncryptionKey = async () => (await client.getSecret('ENCRYPTION_KEY')).secretValue;
 export const getSaltRounds = async () => parseInt((await client.getSecret('SALT_ROUNDS')).secretValue) || 10;
 export const getJwtAuthLifetime = async () => (await client.getSecret('JWT_AUTH_LIFETIME')).secretValue || '10d';
 export const getJwtAuthSecret = async () => (await client.getSecret('JWT_AUTH_SECRET')).secretValue;
@@ -50,8 +57,14 @@ export const getSmtpPassword = async () => (await client.getSecret('SMTP_PASSWOR
 export const getSmtpFromAddress = async () => (await client.getSecret('SMTP_FROM_ADDRESS')).secretValue;
 export const getSmtpFromName = async () => (await client.getSecret('SMTP_FROM_NAME')).secretValue || 'Infisical';
 
-export const getLicenseKey = async () => (await client.getSecret('LICENSE_KEY')).secretValue;
-export const getLicenseServerKey = async () => (await client.getSecret('LICENSE_SERVER_KEY')).secretValue;
+export const getLicenseKey = async () => {
+  const secretValue = (await client.getSecret('LICENSE_KEY')).secretValue;
+  return secretValue === '' ? undefined : secretValue;
+}
+export const getLicenseServerKey = async () => {
+  const secretValue = (await client.getSecret('LICENSE_SERVER_KEY')).secretValue;
+  return secretValue === '' ? undefined : secretValue;
+}
 export const getLicenseServerUrl = async () => (await client.getSecret('LICENSE_SERVER_URL')).secretValue || 'https://portal.infisical.com';
 
 // TODO: deprecate from here

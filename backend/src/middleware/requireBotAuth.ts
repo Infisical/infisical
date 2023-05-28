@@ -1,9 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
-import { Bot } from '../models';
-import { validateMembership } from '../helpers/membership';
-import { validateClientForBot } from '../helpers/bot';
-import { AccountNotFoundError } from '../utils/errors';
+import { validateClientForBot } from '../validation';
 
 type req = 'params' | 'body' | 'query';
 
