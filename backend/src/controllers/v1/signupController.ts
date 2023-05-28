@@ -39,7 +39,7 @@ export const beginEmailSignup = async (req: Request, res: Response) => {
 			error: 'Failed to send email verification code'
 		});
 	}
-
+	
 	return res.status(200).send({
 		message: `Sent an email verification code to ${email}`
 	});

@@ -1,5 +1,1 @@
-const MFA_METHOD_EMAIL = 'email';
-
-export {
-    MFA_METHOD_EMAIL
-}
+export const MFA_METHOD_EMAIL = 'email';

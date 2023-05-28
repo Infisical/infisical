@@ -7,58 +7,35 @@ import {
     DeleteSecretParams
 } from '../interfaces/services/SecretService';
 import {
-    AuthData
-} from '../interfaces/middleware';
-import {
-    User,
-    Workspace,
-    ServiceAccount,
-    ServiceTokenData,
     Secret,
     ISecret,
     SecretBlindIndexData,
 } from '../models';
 import { SecretVersion } from '../ee/models';
-import {
-    validateMembership
-} from '../helpers/membership';
-import {
-    validateUserClientForSecret,
-    validateUserClientForSecrets
-} from '../helpers/user';
-import {
-    validateServiceTokenDataClientForSecrets, 
-    validateServiceTokenDataClientForWorkspace
-} from '../helpers/serviceTokenData';
-import {
-    validateServiceAccountClientForSecrets,
-    validateServiceAccountClientForWorkspace
-} from '../helpers/serviceAccount';
 import { 
     BadRequestError, 
-    UnauthorizedRequestError,
     SecretNotFoundError,
-    SecretBlindIndexDataNotFoundError
+    SecretBlindIndexDataNotFoundError,
+    InternalServerError
 } from '../utils/errors';
 import {
-    AUTH_MODE_JWT,
-    AUTH_MODE_SERVICE_ACCOUNT,
-    AUTH_MODE_SERVICE_TOKEN,
-    AUTH_MODE_API_KEY,
     SECRET_PERSONAL,
     SECRET_SHARED,
     ACTION_ADD_SECRETS,
     ACTION_READ_SECRETS,
     ACTION_UPDATE_SECRETS,
-    ACTION_DELETE_SECRETS
+    ACTION_DELETE_SECRETS,
+    ALGORITHM_AES_256_GCM,
+    ENCODING_SCHEME_UTF8,
+    ENCODING_SCHEME_BASE64
 } from '../variables';
 import crypto from 'crypto';
 import * as argon2 from 'argon2';
-import { 
-    encryptSymmetric,
-    decryptSymmetric
+import {
+    encryptSymmetric128BitHexKeyUTF8,
+    decryptSymmetric128BitHexKeyUTF8
 } from '../utils/crypto';
-import { getEncryptionKey } from '../config';
+import { getEncryptionKey, client, getRootEncryptionKey } from '../config';
 import { TelemetryService } from '../services';
 import {
     EESecretService,
@@ -68,199 +45,6 @@ import {
     getAuthDataPayloadIdObj,
     getAuthDataPayloadUserObj
 } from '../utils/auth';
-
-/**
- * Validate authenticated clients for secrets with id [secretId] based
- * on any known permissions.
- * @param {Object} obj
- * @param {Object} obj.authData - authenticated client details
- * @param {Types.ObjectId} obj.secretId - id of secret to validate against
- * @param {Array<'admin' | 'member'>} obj.acceptedRoles - accepted workspace roles
- * @param {String[]} obj.requiredPermissions - required permissions as part of the endpoint
- */
-const validateClientForSecret = async ({
-    authData,
-    secretId,
-    acceptedRoles,
-    requiredPermissions
-}: {
-    authData: AuthData;
-    secretId: Types.ObjectId;
-    acceptedRoles: Array<'admin' | 'member'>;
-    requiredPermissions: string[];
-}) => {
-    const secret = await Secret.findById(secretId);
-
-    if (!secret) throw SecretNotFoundError({
-        message: 'Failed to find secret'
-    });
-
-    if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
-        await validateUserClientForSecret({
-            user: authData.authPayload,
-            secret,
-            acceptedRoles,
-            requiredPermissions
-        });
-
-        return secret;
-    }
-
-    if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
-        await validateServiceAccountClientForWorkspace({
-            serviceAccount: authData.authPayload,
-            workspaceId: secret.workspace,
-            environment: secret.environment,
-            requiredPermissions
-        });
-        
-        return secret;
-    }
-
-    if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
-        await validateServiceTokenDataClientForWorkspace({
-            serviceTokenData: authData.authPayload,
-            workspaceId: secret.workspace,
-            environment: secret.environment
-        });
-    
-        return secret;
-    }
-    
-    if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
-        await validateUserClientForSecret({
-            user: authData.authPayload,
-            secret,
-            acceptedRoles,
-            requiredPermissions
-        });
-
-        return secret;
-    }
-    
-    throw UnauthorizedRequestError({
-        message: 'Failed client authorization for secret'
-    });
-}
-
-/**
- * Validate authenticated clients for secrets with ids [secretIds] based
- * on any known permissions.
- * @param {Object} obj
- * @param {Object} obj.authData - authenticated client details
- * @param {Types.ObjectId[]} obj.secretIds - id of workspace to validate against
- * @param {String} obj.environment - (optional) environment in workspace to validate against
- * @param {Array<'admin' | 'member'>} obj.acceptedRoles - accepted workspace roles
- * @param {String[]} obj.requiredPermissions - required permissions as part of the endpoint
- */
-const validateClientForSecrets = async ({
-    authData,
-    secretIds,
-    requiredPermissions
-}: {
-    authData: AuthData;
-    secretIds: Types.ObjectId[];
-    requiredPermissions: string[];
-}) => {
-
-    let secrets: ISecret[] = [];
-    
-    secrets = await Secret.find({
-        _id: {
-            $in: secretIds
-        }
-    });
-
-    if (secrets.length != secretIds.length) {
-        throw BadRequestError({ message: 'Failed to validate non-existent secrets' })
-    }
-
-    if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
-        await validateUserClientForSecrets({
-            user: authData.authPayload,
-            secrets,
-            requiredPermissions
-        });
-        
-        return secrets;
-    }
-    
-    if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
-        await validateServiceAccountClientForSecrets({
-            serviceAccount: authData.authPayload,
-            secrets,
-            requiredPermissions
-        });
-        
-        return secrets;
-    }
-        
-    if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
-        await validateServiceTokenDataClientForSecrets({
-            serviceTokenData: authData.authPayload,
-            secrets,
-            requiredPermissions
-        });
-        
-        return secrets;
-    }
-
-    if (authData.authMode === AUTH_MODE_API_KEY && authData.authPayload instanceof User) {
-        await validateUserClientForSecrets({
-            user: authData.authPayload,
-            secrets,
-            requiredPermissions
-        });
-        
-        return secrets;
-    }
-
-    throw UnauthorizedRequestError({
-        message: 'Failed client authorization for secrets resource'
-    });
-}
-
-/**
- * Initialize secret blind index data by setting previously
- * un-initialized projects to have secret blind index data
- * (Ensures that all projects have associated blind index data)
- */
-const initSecretBlindIndexDataHelper = async () => {
-    const workspaceIdsBlindIndexed = await SecretBlindIndexData.distinct('workspace');
-    const workspaceIdsToBlindIndex = await Workspace.distinct('_id', {
-        _id: {
-            $nin: workspaceIdsBlindIndexed
-        }
-    });
-    
-    const secretBlindIndexDataToInsert = await Promise.all(
-        workspaceIdsToBlindIndex.map(async (workspaceToBlindIndex) => {
-            const salt = crypto.randomBytes(16).toString('base64');
-
-            const { 
-                ciphertext: encryptedSaltCiphertext,
-                iv: saltIV,
-                tag: saltTag
-            } = encryptSymmetric({
-                plaintext: salt,
-                key: await getEncryptionKey()
-            });
-
-            const secretBlindIndexData = new SecretBlindIndexData({
-                workspace: workspaceToBlindIndex,
-                encryptedSaltCiphertext,
-                saltIV,
-                saltTag
-            })
-            
-            return secretBlindIndexData;
-        })
-    );
-    
-    if (secretBlindIndexDataToInsert.length > 0) {
-        await SecretBlindIndexData.insertMany(secretBlindIndexDataToInsert);
-    }
-}
 
 /**
  * Create secret blind index data containing encrypted blind index [salt]
@@ -273,26 +57,47 @@ const createSecretBlindIndexDataHelper = async ({
 }: {
     workspaceId: Types.ObjectId;
 }) => {
+
     // initialize random blind index salt for workspace
     const salt = crypto.randomBytes(16).toString('base64');
-    
-    const { 
-        ciphertext: encryptedSaltCiphertext,
-        iv: saltIV,
-        tag: saltTag
-    } = encryptSymmetric({
-        plaintext: salt,
-        key: await getEncryptionKey()
-    });
-    
-    const secretBlindIndexData = await new SecretBlindIndexData({
-        workspace: workspaceId,
-        encryptedSaltCiphertext,
-        saltIV,
-        saltTag
-    }).save();
-    
-    return secretBlindIndexData;
+
+    const encryptionKey = await getEncryptionKey();
+    const rootEncryptionKey = await getRootEncryptionKey();
+
+    if (rootEncryptionKey) {
+        const { 
+            ciphertext: encryptedSaltCiphertext,
+            iv: saltIV,
+            tag: saltTag
+        } = client.encryptSymmetric(salt, rootEncryptionKey);
+        
+        return await new SecretBlindIndexData({
+            workspace: workspaceId,
+            encryptedSaltCiphertext,
+            saltIV,
+            saltTag,
+            algorithm: ALGORITHM_AES_256_GCM,
+            keyEncoding: ENCODING_SCHEME_BASE64
+        }).save();
+    } else {
+        const { 
+            ciphertext: encryptedSaltCiphertext,
+            iv: saltIV,
+            tag: saltTag
+        } = encryptSymmetric128BitHexKeyUTF8({
+            plaintext: salt,
+            key: encryptionKey
+        });
+        
+        return await new SecretBlindIndexData({
+            workspace: workspaceId,
+            encryptedSaltCiphertext,
+            saltIV,
+            saltTag,
+            algorithm: ALGORITHM_AES_256_GCM,
+            keyEncoding: ENCODING_SCHEME_UTF8
+        }).save();
+    }
 }
 
 /**
@@ -306,22 +111,36 @@ const getSecretBlindIndexSaltHelper = async ({
 }: {
     workspaceId: Types.ObjectId;
 }) => {
-    // check if workspace blind index data exists
+    
+    const encryptionKey = await getEncryptionKey();
+    const rootEncryptionKey = await getRootEncryptionKey();
+
     const secretBlindIndexData = await SecretBlindIndexData.findOne({
         workspace: workspaceId
-    });
+    }).select('+algorithm +keyEncoding');
     
     if (!secretBlindIndexData) throw SecretBlindIndexDataNotFoundError();
-    
-    // decrypt workspace salt
-    const salt = decryptSymmetric({
-        ciphertext: secretBlindIndexData.encryptedSaltCiphertext,
-        iv: secretBlindIndexData.saltIV,
-        tag: secretBlindIndexData.saltTag,
-        key: await getEncryptionKey()
+
+    if (rootEncryptionKey && secretBlindIndexData.keyEncoding === ENCODING_SCHEME_BASE64) {
+        return client.decryptSymmetric(
+            secretBlindIndexData.encryptedSaltCiphertext, 
+            rootEncryptionKey, 
+            secretBlindIndexData.saltIV, 
+            secretBlindIndexData.saltTag
+        );
+    } else if (encryptionKey && secretBlindIndexData.keyEncoding === ENCODING_SCHEME_UTF8) {
+        // decrypt workspace salt
+        return decryptSymmetric128BitHexKeyUTF8({
+            ciphertext: secretBlindIndexData.encryptedSaltCiphertext,
+            iv: secretBlindIndexData.saltIV,
+            tag: secretBlindIndexData.saltTag,
+            key: encryptionKey
+        });
+    }
+
+    throw InternalServerError({
+        message: 'Failed to obtain workspace salt needed for secret blind indexing'
     });
-    
-    return salt;
 }
 
 /**
@@ -376,7 +195,7 @@ const generateSecretBlindIndexHelper = async ({
     if (!secretBlindIndexData) throw SecretBlindIndexDataNotFoundError();
     
     // decrypt workspace salt
-    const salt = decryptSymmetric({
+    const salt = decryptSymmetric128BitHexKeyUTF8({
         ciphertext: secretBlindIndexData.encryptedSaltCiphertext,
         iv: secretBlindIndexData.saltIV,
         tag: secretBlindIndexData.saltTag,
@@ -464,7 +283,9 @@ const createSecretHelper = async ({
         secretValueTag,
         secretCommentCiphertext,
         secretCommentIV,
-        secretCommentTag
+        secretCommentTag,
+        algorithm: ALGORITHM_AES_256_GCM,
+        keyEncoding: ENCODING_SCHEME_UTF8
     }).save();
     
     const secretVersion = new SecretVersion({
@@ -481,7 +302,9 @@ const createSecretHelper = async ({
         secretKeyTag,
         secretValueCiphertext,
         secretValueIV,
-        secretValueTag
+        secretValueTag,
+        algorithm: ALGORITHM_AES_256_GCM,
+        keyEncoding: ENCODING_SCHEME_UTF8
     });
 
     // // (EE) add version for new secret
@@ -771,7 +594,9 @@ const updateSecretHelper = async ({
         secretKeyTag: secret.secretKeyTag,
         secretValueCiphertext,
         secretValueIV,
-        secretValueTag
+        secretValueTag,
+        algorithm: ALGORITHM_AES_256_GCM,
+        keyEncoding: ENCODING_SCHEME_UTF8
     });
 
     // (EE) add version for new secret
@@ -932,9 +757,6 @@ const deleteSecretHelper = async ({
 }
 
 export {
-    validateClientForSecret,
-    validateClientForSecrets,
-    initSecretBlindIndexDataHelper,
     createSecretBlindIndexDataHelper,
     getSecretBlindIndexSaltHelper,
     generateSecretBlindIndexWithSaltHelper,

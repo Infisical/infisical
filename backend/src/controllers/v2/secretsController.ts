@@ -7,7 +7,9 @@ import {
     ACTION_ADD_SECRETS,
     ACTION_READ_SECRETS,
     ACTION_UPDATE_SECRETS,
-    ACTION_DELETE_SECRETS
+    ACTION_DELETE_SECRETS,
+    ALGORITHM_AES_256_GCM,
+    ENCODING_SCHEME_UTF8
 } from '../../variables';
 import { UnauthorizedRequestError, WorkspaceNotFoundError } from '../../utils/errors';
 import { EventService } from '../../services';
@@ -85,7 +87,9 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     workspace: new Types.ObjectId(workspaceId),
                     path: fullFolderPath,
                     folder: folderId,
-                    secretBlindIndex
+                    secretBlindIndex,
+                    algorithm: ALGORITHM_AES_256_GCM,
+                    keyEncoding: ENCODING_SCHEME_UTF8
                 });
                 break;
             case 'PATCH':
@@ -100,6 +104,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     secretBlindIndex,
                     folder: folderId,
                     path: fullFolderPath,
+                    algorithm: ALGORITHM_AES_256_GCM,
+                    keyEncoding: ENCODING_SCHEME_UTF8
                 });
                 break;
             case 'DELETE':
@@ -202,6 +208,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
             secretCommentCiphertext: u.secretCommentCiphertext,
             secretCommentIV: u.secretCommentIV,
             secretCommentTag: u.secretCommentTag,
+            algorithm: ALGORITHM_AES_256_GCM,
+            keyEncoding: ENCODING_SCHEME_UTF8,
             tags: u.tags
         }));
 
@@ -460,6 +468,8 @@ export const createSecrets = async (req: Request, res: Response) => {
                 secretCommentCiphertext,
                 secretCommentIV,
                 secretCommentTag,
+                algorithm: ALGORITHM_AES_256_GCM,
+                keyEncoding: ENCODING_SCHEME_UTF8,
                 tags
             });
         })
@@ -506,7 +516,9 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretKeyTag,
             secretValueCiphertext,
             secretValueIV,
-            secretValueTag
+            secretValueTag,
+            algorithm: ALGORITHM_AES_256_GCM,
+            keyEncoding: ENCODING_SCHEME_UTF8
         }))
     });
 
@@ -861,6 +873,8 @@ export const updateSecrets = async (req: Request, res: Response) => {
                     secretValueCiphertext,
                     secretValueIV,
                     secretValueTag,
+                    algorithm: ALGORITHM_AES_256_GCM,
+                    keyEncoding: ENCODING_SCHEME_UTF8,
                     tags,
                     ...((
                         secretCommentCiphertext !== undefined &&
@@ -914,6 +928,8 @@ export const updateSecrets = async (req: Request, res: Response) => {
                 secretCommentCiphertext: secretCommentCiphertext ? secretCommentCiphertext : secret.secretCommentCiphertext,
                 secretCommentIV: secretCommentIV ? secretCommentIV : secret.secretCommentIV,
                 secretCommentTag: secretCommentTag ? secretCommentTag : secret.secretCommentTag,
+                algorithm: ALGORITHM_AES_256_GCM,
+                keyEncoding: ENCODING_SCHEME_UTF8,
                 tags: tags ? tags : secret.tags
             });
         })

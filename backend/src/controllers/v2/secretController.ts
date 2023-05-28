@@ -6,7 +6,7 @@ import { CreateSecretRequestBody, ModifySecretRequestBody, SanitizedSecretForCre
 const { ValidationError } = mongoose.Error;
 import { BadRequestError, InternalServerError, UnauthorizedRequestError, ValidationError as RouteValidationError } from '../../utils/errors';
 import { AnyBulkWriteOperation } from 'mongodb';
-import { SECRET_PERSONAL, SECRET_SHARED } from "../../variables";
+import { ALGORITHM_AES_256_GCM, ENCODING_SCHEME_UTF8, SECRET_PERSONAL, SECRET_SHARED } from "../../variables";
 import { TelemetryService } from '../../services';
 import { User } from "../../models";
 import { AccountNotFoundError } from '../../utils/errors';
@@ -36,7 +36,9 @@ export const createSecret = async (req: Request, res: Response) => {
     workspace: new Types.ObjectId(workspaceId),
     environment,
     type: secretToCreate.type,
-    user: new Types.ObjectId(req.user._id)
+    user: new Types.ObjectId(req.user._id),
+    algorithm: ALGORITHM_AES_256_GCM,
+    keyEncoding: ENCODING_SCHEME_UTF8
   }
 
 
@@ -92,7 +94,9 @@ export const createSecrets = async (req: Request, res: Response) => {
       workspace: new Types.ObjectId(workspaceId),
       environment,
       type: rawSecret.type,
-      user: new Types.ObjectId(req.user._id)
+      user: new Types.ObjectId(req.user._id),
+      algorithm: ALGORITHM_AES_256_GCM,
+      keyEncoding: ENCODING_SCHEME_UTF8
     }
 
     sanitizedSecretesToCreate.push(safeUpdateFields)

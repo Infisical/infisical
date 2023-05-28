@@ -1,10 +1,6 @@
 import { Types } from 'mongoose';
 import { Request, Response, NextFunction } from 'express';
-import { IntegrationAuth, IWorkspace } from '../models';
-import { IntegrationService } from '../services';
-import { validateClientForIntegrationAuth } from '../helpers/integrationAuth';
-import { validateMembership } from '../helpers/membership';
-import { UnauthorizedRequestError } from '../utils/errors';
+import { validateClientForIntegrationAuth } from '../validation';
 
 type req = 'params' | 'body' | 'query';
 

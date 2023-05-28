@@ -3,17 +3,9 @@ dotenv.config();
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
-import * as Sentry from '@sentry/node';
 import { DatabaseService } from './services';
 import { EELicenseService } from './ee/services';
 import { setUpHealthEndpoint } from './services/health';
-import { initSmtp } from './services/smtp';
-import { TelemetryService } from './services';
-import { setTransporter } from './helpers/nodemailer';
-import { createTestUserForDevelopment } from './utils/addDevelopmentUser';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { patchRouterParam } = require('./utils/patchAsyncRoutes');
-
 import cookieParser from 'cookie-parser';
 import swaggerUi = require('swagger-ui-express');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -72,30 +64,17 @@ import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
 import { requestErrorHandler } from './middleware/requestErrorHandler';
 import {
-    getMongoURL,
     getNodeEnv,
     getPort,
-    getSentryDSN,
     getSiteURL
 } from './config';
+import { setup } from './utils/setup';
 
 const main = async () => {
-    TelemetryService.logTelemetryMessage();
-    setTransporter(await initSmtp());
+    await setup();
 
     await EELicenseService.initGlobalFeatureSet();
 
-    await DatabaseService.initDatabase(await getMongoURL());
-    if ((await getNodeEnv()) !== 'test') {
-        Sentry.init({
-            dsn: await getSentryDSN(),
-            tracesSampleRate: 1.0,
-            debug: await getNodeEnv() === 'production' ? false : true,
-            environment: await getNodeEnv()
-        });
-    }
-
-    patchRouterParam();
     const app = express();
     app.enable('trust proxy');
     app.use(express.json());
@@ -137,8 +116,8 @@ const main = async () => {
     app.use('/api/v1/membership', v1MembershipRouter);
     app.use('/api/v1/key', v1KeyRouter);
     app.use('/api/v1/invite-org', v1InviteOrgRouter);
-    app.use('/api/v1/secret', v1SecretRouter);
-    app.use('/api/v1/service-token', v1ServiceTokenRouter); // deprecated
+    app.use('/api/v1/secret', v1SecretRouter); // deprecate
+    app.use('/api/v1/service-token', v1ServiceTokenRouter); // deprecate
     app.use('/api/v1/password', v1PasswordRouter);
     app.use('/api/v1/stripe', v1StripeRouter);
     app.use('/api/v1/integration', v1IntegrationRouter);
@@ -153,9 +132,9 @@ const main = async () => {
     app.use('/api/v2/workspace', v2EnvironmentRouter);
     app.use('/api/v2/workspace', v2TagsRouter);
     app.use('/api/v2/workspace', v2WorkspaceRouter);
-    app.use('/api/v2/secret', v2SecretRouter); // deprecated
-    app.use('/api/v2/secrets', v2SecretsRouter);
-    app.use('/api/v2/service-token', v2ServiceTokenDataRouter); // TODO: turn into plural route
+    app.use('/api/v2/secret', v2SecretRouter); // deprecate
+    app.use('/api/v2/secrets', v2SecretsRouter); // note: in the process of moving to v3/secrets
+    app.use('/api/v2/service-token', v2ServiceTokenDataRouter);
     app.use('/api/v2/service-accounts', v2ServiceAccountsRouter); // new
     app.use('/api/v2/api-key', v2APIKeyDataRouter);
 
@@ -166,7 +145,7 @@ const main = async () => {
     // api docs 
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile))
 
-    // Server status
+    // server status
     app.use('/api', healthCheck)
 
     //* Handle unrouted requests and respond with proper error message as well as status code
@@ -181,7 +160,7 @@ const main = async () => {
         (await getLogger("backend-main")).info(`Server started listening at port ${await getPort()}`)
     });
 
-    await createTestUserForDevelopment();
+    // await createTestUserForDevelopment();
     setUpHealthEndpoint(server);
 
     server.on('close', async () => {
