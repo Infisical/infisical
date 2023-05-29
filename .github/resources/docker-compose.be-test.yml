@@ -13,6 +13,7 @@ services:
       - MONGO_URL=mongodb://test:example@mongo:27017/?authSource=admin
       - MONGO_USERNAME=test
       - MONGO_PASSWORD=example
+      - ENCRYPTION_KEY=a984ecdf82ec779e55dbcc21303a900f
     networks:
       - infisical-test
 
