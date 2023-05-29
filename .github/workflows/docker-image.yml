@@ -28,8 +28,8 @@ jobs:
       - name: 🐋 Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.GAMMA_DOCKERHUB_TOKEN }}
-          password: ${{ secrets.GAMMA_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.GAMMA_DOCKERHUB_TOKEN }}
+          username: ${{ secrets.GAMMA_DOCKERHUB_USERNAME }}
       - name: Set up Depot CLI
         uses: depot/setup-action@v1
       - name: 📦 Build backend and export to Docker
@@ -79,8 +79,8 @@ jobs:
       - name: 🐋 Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.GAMMA_DOCKERHUB_TOKEN }}
-          password: ${{ secrets.GAMMA_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.GAMMA_DOCKERHUB_TOKEN }}
+          username: ${{ secrets.GAMMA_DOCKERHUB_USERNAME }}
       - name: Set up Depot CLI
         uses: depot/setup-action@v1
       - name: 📦 Build frontend and export to Docker
