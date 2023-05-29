@@ -39,13 +39,13 @@ jobs:
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           load: true
           context: backend
-          tags: lacisifni/backend:test
+          tags: infisical/backend:test
       - name: ⏻ Spawn backend container and dependencies
         run: |
           docker compose -f .github/resources/docker-compose.be-test.yml up --wait --quiet-pull
       - name: 🧪 Test backend image
         run: |
-          ./.github/resources/healthcheck.sh lacisifni-backend-test
+          ./.github/resources/healthcheck.sh infisical-backend-test
       - name: ⏻ Shut down backend container and dependencies
         run: |
           docker compose -f .github/resources/docker-compose.be-test.yml down
@@ -90,18 +90,18 @@ jobs:
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           project: 64mmf0n610
           context: frontend
-          tags: lacisifni/frontend:test
+          tags: infisical/frontend:test
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
       - name: ⏻ Spawn frontend container
         run: |
-          docker run -d --rm --name lacisifni-frontend-test lacisifni/frontend:test
+          docker run -d --rm --name infisical-frontend-test infisical/frontend:test
       - name: 🧪 Test frontend image
         run: |
-          ./.github/resources/healthcheck.sh lacisifni-frontend-test
+          ./.github/resources/healthcheck.sh infisical-frontend-test
       - name: ⏻ Shut down frontend container
         run: |
-          docker stop lacisifni-frontend-test
+          docker stop infisical-frontend-test
       - name: 🏗️ Build frontend and push
         uses: depot/build-push-action@v1
         with:
