@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { Secret, ISecret, Membership } from "../models";
+import { Secret, ISecret } from "../models";
 import { EESecretService, EELogService } from "../ee/services";
 import { IAction, SecretVersion } from "../ee/models";
 import {
@@ -12,8 +12,6 @@ import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
 } from "../variables";
-import _ from "lodash";
-import { BadRequestError, UnauthorizedRequestError } from "../utils/errors";
 
 interface V1PushSecret {
   ciphertextKey: string;
@@ -197,7 +195,7 @@ const v1PushSecrets = async ({
         secretValueTag: newSecret.tagValue,
         secretValueHash: newSecret.hashValue,
         algorithm: ALGORITHM_AES_256_GCM,
-        keyEncoding: ENCODING_SCHEME_UTF8
+        keyEncoding: ENCODING_SCHEME_UTF8,
       });
     }),
   });
@@ -230,7 +228,7 @@ const v1PushSecrets = async ({
             secretCommentTag: s.tagComment,
             secretCommentHash: s.hashComment,
             algorithm: ALGORITHM_AES_256_GCM,
-            keyEncoding: ENCODING_SCHEME_UTF8
+            keyEncoding: ENCODING_SCHEME_UTF8,
           };
 
           if (toAdd[idx].type === "personal") {
@@ -261,7 +259,7 @@ const v1PushSecrets = async ({
           secretValueTag,
           secretValueHash,
           algorithm,
-          keyEncoding
+          keyEncoding,
         }) =>
           new SecretVersion({
             secret: _id,
@@ -280,7 +278,7 @@ const v1PushSecrets = async ({
             secretValueTag,
             secretValueHash,
             algorithm,
-            keyEncoding
+            keyEncoding,
           })
       ),
     });
@@ -289,6 +287,7 @@ const v1PushSecrets = async ({
   // (EE) take a secret snapshot
   await EESecretService.takeSecretSnapshot({
     workspaceId: new Types.ObjectId(workspaceId),
+    environment,
   });
 };
 
@@ -491,7 +490,7 @@ const v2PushSecrets = async ({
           secret: secretDocument._id,
           isDeleted: false,
           algorithm: ALGORITHM_AES_256_GCM,
-          keyEncoding: ENCODING_SCHEME_UTF8
+          keyEncoding: ENCODING_SCHEME_UTF8,
         });
       }),
     });
@@ -508,6 +507,7 @@ const v2PushSecrets = async ({
   // (EE) take a secret snapshot
   await EESecretService.takeSecretSnapshot({
     workspaceId: new Types.ObjectId(workspaceId),
+    environment,
   });
 
   // (EE) create (audit) log

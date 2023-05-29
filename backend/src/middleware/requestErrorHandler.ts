@@ -7,6 +7,11 @@ import { getNodeEnv } from '../config';
 
 export const requestErrorHandler: ErrorRequestHandler = async (error: RequestError | Error, req, res, next) => {
     if (res.headersSent) return next();
+    if ((await getNodeEnv()) !== "production") {
+        /* eslint-disable no-console */
+        console.log(error)
+        /* eslint-enable no-console */
+    }
 
     //TODO: Find better way to type check for error. In current setting you need to cast type to get the functions and variables from RequestError
     if (!(error instanceof RequestError)) {

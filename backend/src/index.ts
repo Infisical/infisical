@@ -1,8 +1,6 @@
-import dotenv from "dotenv";
+import dotenv from 'dotenv';
 dotenv.config();
 import express from 'express';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-require('express-async-errors');
 import helmet from 'helmet';
 import cors from 'cors';
 import { DatabaseService } from './services';
@@ -21,7 +19,7 @@ import {
   secretSnapshot as eeSecretSnapshotRouter,
   action as eeActionRouter,
   organizations as eeOrganizationsRouter,
-  cloudProducts as eeCloudProductsRouter
+  cloudProducts as eeCloudProductsRouter,
 } from './ee/routes/v1';
 import {
   signup as v1SignupRouter,
@@ -41,7 +39,7 @@ import {
   stripe as v1StripeRouter,
   integration as v1IntegrationRouter,
   integrationAuth as v1IntegrationAuthRouter,
-  secretsFolder as v1SecretsFolder
+  secretsFolder as v1SecretsFolder,
 } from './routes/v1';
 import {
   signup as v2SignupRouter,
@@ -61,17 +59,13 @@ import {
   auth as v3AuthRouter,
   secrets as v3SecretsRouter,
   signup as v3SignupRouter,
-  workspaces as v3WorkspacesRouter
+  workspaces as v3WorkspacesRouter,
 } from './routes/v3';
 import { healthCheck } from './routes/status';
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
 import { requestErrorHandler } from './middleware/requestErrorHandler';
-import {
-  getNodeEnv,
-  getPort,
-  getSiteURL
-} from './config';
+import { getNodeEnv, getPort, getSiteURL } from './config';
 import { setup } from './utils/setup';
 
 const main = async () => {
@@ -86,7 +80,7 @@ const main = async () => {
   app.use(
     cors({
       credentials: true,
-      origin: await getSiteURL()
+      origin: await getSiteURL(),
     })
   );
 
@@ -126,7 +120,7 @@ const main = async () => {
   app.use('/api/v1/stripe', v1StripeRouter);
   app.use('/api/v1/integration', v1IntegrationRouter);
   app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
-  app.use('/api/v1/folder', v1SecretsFolder)
+  app.use('/api/v1/folders', v1SecretsFolder);
 
   // v2 routes (improvements)
   app.use('/api/v2/signup', v2SignupRouter);
@@ -143,34 +137,37 @@ const main = async () => {
   app.use('/api/v2/api-key', v2APIKeyDataRouter);
 
   // v3 routes (experimental)
-  app.use("/api/v3/auth", v3AuthRouter);
   app.use('/api/v3/secrets', v3SecretsRouter);
   app.use('/api/v3/workspaces', v3WorkspacesRouter);
-  app.use("/api/v3/signup", v3SignupRouter);
 
-  // api docs 
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile))
+  // api docs
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
   // server status
-  app.use('/api', healthCheck)
+  app.use('/api', healthCheck);
 
   //* Handle unrouted requests and respond with proper error message as well as status code
   app.use((req, res, next) => {
     if (res.headersSent) return next();
-    next(RouteNotFoundError({ message: `The requested source '(${req.method})${req.url}' was not found` }))
-  })
+    next(
+      RouteNotFoundError({
+        message: `The requested source '(${req.method})${req.url}' was not found`,
+      })
+    );
+  });
 
   app.use(requestErrorHandler);
 
   const server = app.listen(await getPort(), async () => {
-    (await getLogger("backend-main")).info(
+    (await getLogger('backend-main')).info(
       `Server started listening at port ${await getPort()}`
     );
   });
 
+  // await createTestUserForDevelopment();
   setUpHealthEndpoint(server);
 
-  server.on("close", async () => {
+  server.on('close', async () => {
     await DatabaseService.closeDatabase();
   });
 

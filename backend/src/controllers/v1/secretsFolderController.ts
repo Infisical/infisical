@@ -1,107 +1,233 @@
-import { Request, Response } from 'express';
-import { Secret } from '../../models';
-import Folder from '../../models/folder';
-import { BadRequestError } from '../../utils/errors';
-import { ROOT_FOLDER_PATH, getFolderPath, getParentPath, normalizePath, validateFolderName } from '../../utils/folder';
-import { ADMIN, MEMBER } from '../../variables';
-import { validateMembership } from '../../helpers/membership';
+import { Request, Response } from "express";
+import { Secret } from "../../models";
+import Folder from "../../models/folder";
+import { BadRequestError } from "../../utils/errors";
+import {
+  appendFolder,
+  deleteFolderById,
+  getAllFolderIds,
+  searchByFolderIdWithDir,
+  searchByFolderId,
+  validateFolderName,
+  generateFolderId,
+  getParentFromFolderId,
+} from "../../services/FolderService";
+import { ADMIN, MEMBER } from "../../variables";
+import { validateMembership } from "../../helpers/membership";
+import { FolderVersion } from "../../ee/models";
+import { EESecretService } from "../../ee/services";
 
 // TODO
 // verify workspace id/environment
 export const createFolder = async (req: Request, res: Response) => {
-  const { workspaceId, environment, folderName, parentFolderId } = req.body
+  const { workspaceId, environment, folderName, parentFolderId } = req.body;
   if (!validateFolderName(folderName)) {
-    throw BadRequestError({ message: "Folder name cannot contain spaces. Only underscore and dashes" })
+    throw BadRequestError({
+      message: "Folder name cannot contain spaces. Only underscore and dashes",
+    });
   }
 
-  if (parentFolderId) {
-    const parentFolder = await Folder.find({ environment: environment, workspace: workspaceId, id: parentFolderId });
-    if (!parentFolder) {
-      throw BadRequestError({ message: "The parent folder doesn't exist" })
-    }
-  }
-
-  let completePath = await getFolderPath(parentFolderId)
-  if (completePath == ROOT_FOLDER_PATH) {
-    completePath = ""
-  }
-
-  const currentFolderPath = completePath + "/" + folderName // construct new path with current folder to be created
-  const normalizedCurrentPath = normalizePath(currentFolderPath)
-  const normalizedParentPath = getParentPath(normalizedCurrentPath)
-
-  const existingFolder = await Folder.findOne({
-    name: folderName,
+  const folders = await Folder.findOne({
     workspace: workspaceId,
-    environment: environment,
-    parent: parentFolderId,
-    path: normalizedCurrentPath
+    environment,
+  }).lean();
+  // space has no folders initialized
+  if (!folders) {
+    const id = generateFolderId();
+    const folder = new Folder({
+      workspace: workspaceId,
+      environment,
+      nodes: {
+        id: "root",
+        name: "root",
+        version: 1,
+        children: [{ id, name: folderName, children: [], version: 1 }],
+      },
+    });
+    await folder.save();
+    const folderVersion = new FolderVersion({
+      workspace: workspaceId,
+      environment,
+      nodes: folder.nodes,
+    });
+    await folderVersion.save();
+    return res.json({ folder: { id, name: folderName } });
+  }
+
+  const folder = appendFolder(folders.nodes, { folderName, parentFolderId });
+  await Folder.findByIdAndUpdate(folders._id, folders);
+
+  const parentFolder = searchByFolderId(folders.nodes, parentFolderId);
+  const folderVersion = new FolderVersion({
+    workspace: workspaceId,
+    environment,
+    // root condition
+    nodes: parentFolder || folders.nodes,
+  });
+  await folderVersion.save();
+
+  return res.json({ folder });
+};
+
+export const updateFolderById = async (req: Request, res: Response) => {
+  const { folderId } = req.params;
+  const { name, workspaceId, environment } = req.body;
+
+  const folders = await Folder.findOne({ workspace: workspaceId, environment });
+  if (!folders) {
+    throw BadRequestError({ message: "The folder doesn't exist" });
+  }
+
+  // check that user is a member of the workspace
+  await validateMembership({
+    userId: req.user._id.toString(),
+    workspaceId,
+    acceptedRoles: [ADMIN, MEMBER],
   });
 
-  if (existingFolder) {
-    return res.json(existingFolder)
+  const parentFolder = getParentFromFolderId(folders.nodes, folderId);
+  if (!parentFolder) {
+    throw BadRequestError({ message: "The folder doesn't exist" });
+  }
+  const folder = parentFolder.children.find(({ id }) => id === folderId);
+  if (!folder) {
+    throw BadRequestError({ message: "The folder doesn't exist" });
   }
 
-  const newFolder = new Folder({
-    name: folderName,
+  parentFolder.version += 1;
+  folder.name = name;
+  folder.version += 1;
+
+  await Folder.findByIdAndUpdate(folders._id, folders);
+  const folderVersion = new FolderVersion({
     workspace: workspaceId,
-    environment: environment,
-    parent: parentFolderId,
-    path: normalizedCurrentPath,
-    parentPath: normalizedParentPath
+    environment,
+    nodes: parentFolder,
   });
+  await folderVersion.save();
 
-  await newFolder.save();
+  // decision to take snapshot ot not
+  const secretCount = await Secret.count({
+    workspace: workspaceId,
+    environment,
+    folder: folderId,
+  });
+  if (secretCount || folder.children.length) {
+    await EESecretService.takeSecretSnapshot({
+      workspaceId,
+      environment,
+      folderId: parentFolder.name === "root" ? undefined : parentFolder.id,
+    });
+  }
 
-  return res.json(newFolder)
-}
+  return res.json({
+    message: "Successfully updated folder",
+    folder: { name: folder.name, id: folder.id },
+  });
+};
 
 export const deleteFolder = async (req: Request, res: Response) => {
-  const { folderId } = req.params
-  const queue: any[] = [folderId];
+  const { folderId } = req.params;
+  const { workspaceId, environment } = req.body;
 
-  const folder = await Folder.findById(folderId);
-  if (!folder) {
-    throw BadRequestError({ message: "The folder doesn't exist" })
+  const folders = await Folder.findOne({ workspace: workspaceId, environment });
+  if (!folders) {
+    throw BadRequestError({ message: "The folder doesn't exist" });
   }
 
   // check that user is a member of the workspace
   await validateMembership({
     userId: req.user._id.toString(),
-    workspaceId: folder.workspace as any,
-    acceptedRoles: [ADMIN, MEMBER]
+    workspaceId,
+    acceptedRoles: [ADMIN, MEMBER],
   });
 
-  while (queue.length > 0) {
-    const currentFolderId = queue.shift();
+  const delOp = deleteFolderById(folders.nodes, folderId);
+  if (!delOp) {
+    throw BadRequestError({ message: "The folder doesn't exist" });
+  }
+  const { deletedNode: delFolder, parent: parentFolder } = delOp;
 
-    const childFolders = await Folder.find({ parent: currentFolderId });
-    for (const childFolder of childFolders) {
-      queue.push(childFolder._id);
-    }
+  const delFolderIds = getAllFolderIds(delFolder);
 
-    await Secret.deleteMany({ folder: currentFolderId });
+  // take a pre-delete snapshot if there are secrets inside the folders
+  const secretCount = await Secret.count({
+    workspace: workspaceId,
+    environment,
+    folder: folderId,
+  });
 
-    await Folder.deleteOne({ _id: currentFolderId });
+  if (secretCount || delFolder.children.length) {
+    await EESecretService.takeSecretSnapshot({
+      workspaceId,
+      environment,
+      folderId: parentFolder.id,
+    });
   }
 
-  res.send()
-}
+  await Folder.findByIdAndUpdate(folders._id, folders);
+  const folderVersion = new FolderVersion({
+    workspace: workspaceId,
+    environment,
+    nodes: parentFolder,
+  });
+  await folderVersion.save();
+  if (delFolderIds.length) {
+    await Secret.deleteMany({
+      folder: { $in: delFolderIds.map(({ id }) => id) },
+      workspace: workspaceId,
+      environment,
+    });
+  }
+
+  // post delete snapshot
+  await EESecretService.takeSecretSnapshot({
+    workspaceId,
+    environment,
+    folderId: parentFolder.id,
+  });
+
+  res.send({ message: "successfully deleted folders", folders: delFolderIds });
+};
 
 // TODO: validate workspace
-export const getFolderById = async (req: Request, res: Response) => {
-  const { folderId } = req.params
+export const getFolders = async (req: Request, res: Response) => {
+  const { workspaceId, environment, parentFolderId } = req.query as {
+    workspaceId: string;
+    environment: string;
+    parentFolderId?: string;
+  };
 
-  const folder = await Folder.findById(folderId);
-  if (!folder) {
-    throw BadRequestError({ message: "The folder doesn't exist" })
+  const folders = await Folder.findOne({ workspace: workspaceId, environment });
+  if (!folders) {
+    res.send({ folders: [], dir: [] });
+    return;
   }
+
   // check that user is a member of the workspace
   await validateMembership({
     userId: req.user._id.toString(),
-    workspaceId: folder.workspace as any,
-    acceptedRoles: [ADMIN, MEMBER]
+    workspaceId,
+    acceptedRoles: [ADMIN, MEMBER],
   });
 
-  res.send({ folder })
-}
+  if (!parentFolderId) {
+    const rootFolders = folders.nodes.children.map(({ id, name }) => ({
+      id,
+      name,
+    }));
+    res.send({ folders: rootFolders });
+    return;
+  }
+
+  const folderBySearch = searchByFolderIdWithDir(folders.nodes, parentFolderId);
+  if (!folderBySearch) {
+    throw BadRequestError({ message: "The folder doesn't exist" });
+  }
+  const { folder, dir } = folderBySearch;
+
+  res.send({
+    folders: folder.children.map(({ id, name }) => ({ id, name })),
+    dir,
+  });
+};

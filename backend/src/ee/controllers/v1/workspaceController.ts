@@ -1,25 +1,33 @@
-import { Request, Response } from 'express';
-import * as Sentry from '@sentry/node';
-import { Types } from 'mongoose';
+import { Request, Response } from "express";
+import * as Sentry from "@sentry/node";
+import { Types } from "mongoose";
+import { Secret } from "../../../models";
 import {
-	Secret
-} from '../../../models';
-import { 
-	SecretSnapshot,
-	Log,
-	SecretVersion,
-	ISecretVersion
-} from '../../models';
-import { EESecretService } from '../../services';
-import { getLatestSecretVersionIds } from '../../helpers/secretVersion';
+  SecretSnapshot,
+  Log,
+  SecretVersion,
+  ISecretVersion,
+  FolderVersion,
+  TFolderRootVersionSchema,
+} from "../../models";
+import { EESecretService } from "../../services";
+import { getLatestSecretVersionIds } from "../../helpers/secretVersion";
+import Folder from "../../../models/folder";
+import {
+  getAllFolderIds,
+  searchByFolderId,
+} from "../../../services/FolderService";
 
 /**
  * Return secret snapshots for workspace with id [workspaceId]
- * @param req 
- * @param res 
+ * @param req
+ * @param res
  */
- export const getWorkspaceSecretSnapshots = async (req: Request, res: Response) => {
-	/* 
+export const getWorkspaceSecretSnapshots = async (
+  req: Request,
+  res: Response
+) => {
+  /* 
     #swagger.summary = 'Return project secret snapshot ids'
     #swagger.description = 'Return project secret snapshots ids'
     
@@ -64,66 +72,78 @@ import { getLatestSecretVersionIds } from '../../helpers/secretVersion';
         }
     }
     */
-	let secretSnapshots;
-	try {
-		const { workspaceId } = req.params;
+  let secretSnapshots;
+  try {
+    const { workspaceId } = req.params;
+    const { environment, folderId } = req.query;
 
-		const offset: number = parseInt(req.query.offset as string);
-		const limit: number = parseInt(req.query.limit as string);
-		
-		secretSnapshots = await SecretSnapshot.find({
-			workspace: workspaceId
-		})
-		.sort({ createdAt: -1 })
-		.skip(offset)
-		.limit(limit);
+    const offset: number = parseInt(req.query.offset as string);
+    const limit: number = parseInt(req.query.limit as string);
 
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get secret snapshots'
-		});
-	}
-	
-	return res.status(200).send({
-		secretSnapshots
-	});
-}
+    secretSnapshots = await SecretSnapshot.find({
+      workspace: workspaceId,
+      environment,
+      folderId: folderId || "root",
+    })
+      .sort({ createdAt: -1 })
+      .skip(offset)
+      .limit(limit);
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to get secret snapshots",
+    });
+  }
+
+  return res.status(200).send({
+    secretSnapshots,
+  });
+};
 
 /**
  * Return count of secret snapshots for workspace with id [workspaceId]
- * @param req 
- * @param res 
+ * @param req
+ * @param res
  */
-export const getWorkspaceSecretSnapshotsCount = async (req: Request, res: Response) => {
-	let count;
-	try {
-		const { workspaceId } = req.params;
-		count = await SecretSnapshot.countDocuments({
-			workspace: workspaceId
-		});
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to count number of secret snapshots'
-		});
-	}
-	
-	return res.status(200).send({
-		count
-	});
-}
+export const getWorkspaceSecretSnapshotsCount = async (
+  req: Request,
+  res: Response
+) => {
+  let count;
+  try {
+    const { workspaceId } = req.params;
+    const { environment, folderId } = req.query;
+
+    count = await SecretSnapshot.countDocuments({
+      workspace: workspaceId,
+      environment,
+      folderId: folderId || "root",
+    });
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to count number of secret snapshots",
+    });
+  }
+
+  return res.status(200).send({
+    count,
+  });
+};
 
 /**
  * Rollback secret snapshot with id [secretSnapshotId] to version [version]
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
-export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Response) => {
-	/* 
+export const rollbackWorkspaceSecretSnapshot = async (
+  req: Request,
+  res: Response
+) => {
+  /* 
     #swagger.summary = 'Roll back project secrets to those captured in a secret snapshot version.'
     #swagger.description = 'Roll back project secrets to those captured in a secret snapshot version.'
     
@@ -173,168 +193,235 @@ export const rollbackWorkspaceSecretSnapshot = async (req: Request, res: Respons
         }
     }   
     */
-	
-	let secrets;
-    try {	
-        const { workspaceId } = req.params;
-        const { version } = req.body;
-        
-		// validate secret snapshot
-		const secretSnapshot = await SecretSnapshot.findOne({
-			workspace: workspaceId,
-			version
-		}).populate<{ secretVersions: ISecretVersion[]}>({
-			path: 'secretVersions',
-			select: '+secretBlindIndex'
-		});
-        
-        if (!secretSnapshot) throw new Error('Failed to find secret snapshot');
 
-		// TODO: fix any
-		const oldSecretVersionsObj: any = secretSnapshot.secretVersions
-			.reduce((accumulator, s) => ({ 
-				...accumulator, 
-				[`${s.secret.toString()}`]: s 
-			}), {});	
-		
-		const latestSecretVersionIds = await getLatestSecretVersionIds({
-			secretIds: secretSnapshot.secretVersions.map((sv) => sv.secret)
-		});
-		
-		// TODO: fix any
-		const latestSecretVersions: any = (await SecretVersion.find({
-			_id: {
-				$in: latestSecretVersionIds.map((s) => s.versionId)
-			}
-		}, 'secret version'))
-		.reduce((accumulator, s) => ({ 
-			...accumulator, 
-			[`${s.secret.toString()}`]: s 
-		}), {});
-		
-		// delete existing secrets
-		await Secret.deleteMany({
-			workspace: workspaceId
-		});
+  let secrets;
+  try {
+    const { workspaceId } = req.params;
+    const { version, environment, folderId = "root" } = req.body;
 
-		// add secrets
-        secrets = await Secret.insertMany(
-			secretSnapshot.secretVersions.map((sv) => {
-				const secretId = sv.secret;
-				const {
-					workspace,
-					type,
-					user,
-					environment,
-					secretBlindIndex,
-					secretKeyCiphertext,
-					secretKeyIV,
-					secretKeyTag,
-					secretKeyHash,
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash,
-					createdAt
-				} = oldSecretVersionsObj[secretId.toString()];
-				
-				return ({
-					_id: secretId,
-					version: latestSecretVersions[secretId.toString()].version + 1,
-					workspace,
-					type,
-					user,
-					environment,
-					secretBlindIndex: secretBlindIndex ?? undefined,
-					secretKeyCiphertext,
-					secretKeyIV,
-					secretKeyTag,
-					secretKeyHash,
-					secretValueCiphertext,
-					secretValueIV,
-					secretValueTag,
-					secretValueHash,
-					secretCommentCiphertext: '',
-					secretCommentIV: '',
-					secretCommentTag: '',
-					createdAt
-				});
-			})
-		);
-		
-		// add secret versions
-		const secretV = await SecretVersion.insertMany(
-			secrets.map(({
-				_id,
-				version,
-				workspace,
-				type,
-				user,
-				environment,
-				secretBlindIndex,
-				secretKeyCiphertext,
-				secretKeyIV,
-				secretKeyTag,
-				secretKeyHash,
-				secretValueCiphertext,
-				secretValueIV,
-				secretValueTag,
-				secretValueHash
-			}) => ({
-				_id: new Types.ObjectId(),
-				secret: _id,
-				version,
-				workspace,
-				type,
-				user,
-				environment,
-				isDeleted: false,
-				secretBlindIndex: secretBlindIndex ?? undefined,
-				secretKeyCiphertext,
-				secretKeyIV,
-				secretKeyTag,
-				secretKeyHash,
-				secretValueCiphertext,
-				secretValueIV,
-				secretValueTag,
-				secretValueHash
-			}))
-		);
-		
-		// update secret versions of restored secrets as not deleted
-		await SecretVersion.updateMany({
-			secret: {
-				$in: secretSnapshot.secretVersions.map((sv) => sv.secret)
-			}
-		}, {
-			isDeleted: false
-		});
-		
-        // take secret snapshot
-		await EESecretService.takeSecretSnapshot({
-			workspaceId: new Types.ObjectId(workspaceId)
-		});
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to roll back secret snapshot'
-		}); 
+    // validate secret snapshot
+    const secretSnapshot = await SecretSnapshot.findOne({
+      workspace: workspaceId,
+      version,
+      environment,
+      folderId: folderId,
+    })
+      .populate<{ secretVersions: ISecretVersion[] }>({
+        path: "secretVersions",
+        select: "+secretBlindIndex",
+      })
+      .populate<{ folderVersion: TFolderRootVersionSchema }>("folderVersion");
+
+    if (!secretSnapshot) throw new Error("Failed to find secret snapshot");
+
+    // TODO: fix any
+    const oldSecretVersionsObj: any = secretSnapshot.secretVersions.reduce(
+      (accumulator, s) => ({
+        ...accumulator,
+        [`${s.secret.toString()}`]: s,
+      }),
+      {}
+    );
+
+    const latestSecretVersionIds = await getLatestSecretVersionIds({
+      secretIds: secretSnapshot.secretVersions.map((sv) => sv.secret),
+    });
+
+    // TODO: fix any
+    const latestSecretVersions: any = (
+      await SecretVersion.find(
+        {
+          _id: {
+            $in: latestSecretVersionIds.map((s) => s.versionId),
+          },
+        },
+        "secret version"
+      )
+    ).reduce(
+      (accumulator, s) => ({
+        ...accumulator,
+        [`${s.secret.toString()}`]: s,
+      }),
+      {}
+    );
+
+    let folderIds: string[] = [];
+
+    const folders = await Folder.findOne({
+      workspace: workspaceId,
+      environment,
+    }).lean();
+    const latestFolderVersion = await FolderVersion.findOne({
+      environment,
+      workspace: workspaceId,
+      "nodes.id": folderId,
+    }).sort({ "nodes.version": -1 });
+
+    if (folders && folderId) {
+      const folder = searchByFolderId(folders.nodes, folderId);
+      if (folder) {
+        folderIds = getAllFolderIds(folder).map(({ id }) => id);
+        folder.children = secretSnapshot?.folderVersion?.nodes?.children || [];
+        folder.version = (latestFolderVersion?.nodes?.version || 0) + 1;
+      }
     }
-    
-	return res.status(200).send({
-		secrets
-	});
-}
+
+    const secDelQuery: Record<string, unknown> = {
+      workspace: workspaceId,
+      environment,
+      // undefined means root thus collect all secrets
+    };
+    if (folderId !== "root" && folderIds.length)
+      secDelQuery.folder = { $in: folderIds };
+
+    // delete existing secrets
+    await Secret.deleteMany(secDelQuery);
+    await Folder.deleteOne({
+      workspace: workspaceId,
+      environment,
+    });
+
+    // add secrets
+    secrets = await Secret.insertMany(
+      secretSnapshot.secretVersions.map((sv) => {
+        const secretId = sv.secret;
+        const {
+          workspace,
+          type,
+          user,
+          environment,
+          secretBlindIndex,
+          secretKeyCiphertext,
+          secretKeyIV,
+          secretKeyTag,
+          secretKeyHash,
+          secretValueCiphertext,
+          secretValueIV,
+          secretValueTag,
+          secretValueHash,
+          createdAt,
+          folder: secFolderId,
+        } = oldSecretVersionsObj[secretId.toString()];
+
+        return {
+          _id: secretId,
+          version: latestSecretVersions[secretId.toString()].version + 1,
+          workspace,
+          type,
+          user,
+          environment,
+          secretBlindIndex: secretBlindIndex ?? undefined,
+          secretKeyCiphertext,
+          secretKeyIV,
+          secretKeyTag,
+          secretKeyHash,
+          secretValueCiphertext,
+          secretValueIV,
+          secretValueTag,
+          secretValueHash,
+          secretCommentCiphertext: "",
+          secretCommentIV: "",
+          secretCommentTag: "",
+          createdAt,
+          folder: secFolderId,
+        };
+      })
+    );
+
+    // add secret versions
+    const secretV = await SecretVersion.insertMany(
+      secrets.map(
+        ({
+          _id,
+          version,
+          workspace,
+          type,
+          user,
+          environment,
+          secretBlindIndex,
+          secretKeyCiphertext,
+          secretKeyIV,
+          secretKeyTag,
+          secretKeyHash,
+          secretValueCiphertext,
+          secretValueIV,
+          secretValueTag,
+          secretValueHash,
+          folder: secFolderId,
+        }) => ({
+          _id: new Types.ObjectId(),
+          secret: _id,
+          version,
+          workspace,
+          type,
+          user,
+          environment,
+          isDeleted: false,
+          secretBlindIndex: secretBlindIndex ?? undefined,
+          secretKeyCiphertext,
+          secretKeyIV,
+          secretKeyTag,
+          secretKeyHash,
+          secretValueCiphertext,
+          secretValueIV,
+          secretValueTag,
+          secretValueHash,
+          folder: secFolderId,
+        })
+      )
+    );
+
+    const newFolder = new Folder(folders);
+    newFolder._id = new Types.ObjectId();
+    newFolder.isNew = true;
+    await newFolder.save();
+    // create new folder version
+    const newFolderVersion = new FolderVersion({
+      workspace: workspaceId,
+      environment,
+      nodes: newFolder.nodes,
+    });
+    await newFolderVersion.save();
+
+    // update secret versions of restored secrets as not deleted
+    await SecretVersion.updateMany(
+      {
+        secret: {
+          $in: secretSnapshot.secretVersions.map((sv) => sv.secret),
+        },
+      },
+      {
+        isDeleted: false,
+      }
+    );
+
+    // take secret snapshot
+    await EESecretService.takeSecretSnapshot({
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment,
+      folderId,
+    });
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to roll back secret snapshot",
+    });
+  }
+
+  return res.status(200).send({
+    secrets,
+  });
+};
 
 /**
  * Return (audit) logs for workspace with id [workspaceId]
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const getWorkspaceLogs = async (req: Request, res: Response) => {
-	/* 
+  /* 
     #swagger.summary = 'Return project (audit) logs'
     #swagger.description = 'Return project (audit) logs'
     
@@ -400,43 +487,41 @@ export const getWorkspaceLogs = async (req: Request, res: Response) => {
         }
     }   
     */
-	let logs
-	try {
-		const { workspaceId } = req.params;
+  let logs;
+  try {
+    const { workspaceId } = req.params;
 
-		const offset: number = parseInt(req.query.offset as string);
-		const limit: number = parseInt(req.query.limit as string);
-		const sortBy: string = req.query.sortBy as string;
-		const userId: string = req.query.userId as string;
-		const actionNames: string = req.query.actionNames as string;
-		
-		logs = await Log.find({
-			workspace: workspaceId,
-			...( userId ? { user: userId } : {}),
-			...( 
-				actionNames 
-				? { 
-					actionNames: {
-						$in: actionNames.split(',')
-					}
-				} : {}
-			)
-		})
-		.sort({ createdAt: sortBy === 'recent' ? -1 : 1 })
-		.skip(offset)
-		.limit(limit)
-		.populate('actions')
-		.populate('user serviceAccount serviceTokenData');
+    const offset: number = parseInt(req.query.offset as string);
+    const limit: number = parseInt(req.query.limit as string);
+    const sortBy: string = req.query.sortBy as string;
+    const userId: string = req.query.userId as string;
+    const actionNames: string = req.query.actionNames as string;
 
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get workspace logs'
-		});
-	}
-	
-	return res.status(200).send({
-		logs
-	});
-}
+    logs = await Log.find({
+      workspace: workspaceId,
+      ...(userId ? { user: userId } : {}),
+      ...(actionNames
+        ? {
+            actionNames: {
+              $in: actionNames.split(","),
+            },
+          }
+        : {}),
+    })
+      .sort({ createdAt: sortBy === "recent" ? -1 : 1 })
+      .skip(offset)
+      .limit(limit)
+      .populate("actions")
+      .populate("user serviceAccount serviceTokenData");
+  } catch (err) {
+    Sentry.setUser({ email: req.user.email });
+    Sentry.captureException(err);
+    return res.status(400).send({
+      message: "Failed to get workspace logs",
+    });
+  }
+
+  return res.status(200).send({
+    logs,
+  });
+};
