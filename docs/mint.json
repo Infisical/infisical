@@ -55,6 +55,11 @@
       "url": "api-reference"
     },
     {
+      "name": "Changelog",
+      "icon": "timer",
+      "url": "changelog"
+    },
+    {
       "name": "Contributing",
       "icon": "code",
       "url": "contributing"
@@ -310,6 +315,12 @@
         "security/overview",
         "security/data-model",
         "security/mechanics"
+      ]
+    },
+    {
+      "group": "Overview",
+      "pages": [
+        "changelog/overview"
       ]
     },
     {
