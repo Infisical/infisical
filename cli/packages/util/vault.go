@@ -33,7 +33,7 @@ func GetKeyRing() (keyring.Keyring, error) {
 		LibSecretCollectionName:        KEYRING_SERVICE_NAME,
 		KWalletAppID:                   KEYRING_SERVICE_NAME,
 		KWalletFolder:                  KEYRING_SERVICE_NAME,
-		KeychainName:                   "infisical", // default so user will not be prompted
+		KeychainName:                   "login", // default so user will not be prompted
 		KeychainTrustApplication:       true,
 		WinCredPrefix:                  KEYRING_SERVICE_NAME,
 		FileDir:                        fmt.Sprintf("~/%s-file-vault", KEYRING_SERVICE_NAME),
