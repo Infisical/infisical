@@ -119,7 +119,7 @@ jobs:
   gamma-deployment:
     name: Deploy to gamma
     runs-on: ubuntu-latest
-    needs: [frontend-image, backend-image]
+    needs: [gamma-frontend-image, gamma-backend-image]
     steps:
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
