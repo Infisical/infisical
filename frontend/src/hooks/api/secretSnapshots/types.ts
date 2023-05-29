@@ -13,6 +13,7 @@ export type TWorkspaceSecretSnapshot = {
 
 export type TSnapshotSecret = Omit<TWorkspaceSecretSnapshot, 'secretVersions'> & {
   secretVersions: EncryptedSecretVersion[];
+  folderVersion: Array<{ name: string; id: string }>;
 };
 
 export type TSnapshotSecretProps = {
@@ -24,9 +25,13 @@ export type TSnapshotSecretProps = {
 export type GetWorkspaceSecretSnapshotsDTO = {
   workspaceId: string;
   limit: number;
+  environment: string;
+  folder?: string;
 };
 
 export type TSecretRollbackDTO = {
   workspaceId: string;
   version: number;
+  environment: string;
+  folderId?: string;
 };

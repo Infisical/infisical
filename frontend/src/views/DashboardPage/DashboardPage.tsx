@@ -10,6 +10,7 @@ import {
   faDownload,
   faEye,
   faEyeSlash,
+  faFolderPlus,
   faMagnifyingGlass,
   faPlus
 } from '@fortawesome/free-solid-svg-icons';
@@ -21,6 +22,7 @@ import { useNotificationContext } from '@app/components/context/Notifications/No
 import NavHeader from '@app/components/navigation/NavHeader';
 import {
   Button,
+  DeleteActionModal,
   IconButton,
   Input,
   Modal,
@@ -37,7 +39,10 @@ import { useWorkspace } from '@app/context';
 import { useLeaveConfirm, usePopUp, useToggle } from '@app/hooks';
 import {
   useBatchSecretsOp,
+  useCreateFolder,
   useCreateWsTag,
+  useDeleteFolder,
+  useGetProjectFolders,
   useGetProjectSecrets,
   useGetSecretVersion,
   useGetSnapshotSecrets,
@@ -48,13 +53,20 @@ import {
   useGetWsSnapshotCount,
   useGetWsTags,
   usePerformSecretRollback,
-  useRegisterUserAction
+  useRegisterUserAction,
+  useUpdateFolder
 } from '@app/hooks/api';
 import { secretKeys } from '@app/hooks/api/secrets/queries';
 import { WorkspaceEnv } from '@app/hooks/api/types';
 
 import { CompareSecret } from './components/CompareSecret';
 import { CreateTagModal } from './components/CreateTagModal';
+import {
+  FolderForm,
+  FolderSection,
+  TDeleteFolderForm,
+  TEditFolderForm
+} from './components/FolderSection';
 import { PitDrawer } from './components/PitDrawer';
 import { SecretDetailDrawer } from './components/SecretDetailDrawer';
 import { SecretDropzone } from './components/SecretDropzone';
@@ -96,7 +108,9 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     'addTag',
     'secretSnapshots',
     'uploadedSecOpts',
-    'compareSecrets'
+    'compareSecrets',
+    'folderForm',
+    'deleteFolder'
   ] as const);
   const [isSecretValueHidden, setIsSecretValueHidden] = useToggle(true);
   const [searchFilter, setSearchFilter] = useState('');
@@ -105,6 +119,9 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const deletedSecretIds = useRef<string[]>([]);
   const { hasUnsavedChanges, setHasUnsavedChanges } = useLeaveConfirm({ initialValue: false });
+
+  const folderId = router.query.folderId as string;
+  const isRollbackMode = Boolean(snapshotId);
 
   const { currentWorkspace, isLoading } = useWorkspace();
   const workspaceId = currentWorkspace?._id as string;
@@ -142,7 +159,16 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     workspaceId,
     env: selectedEnv?.slug || '',
     decryptFileKey: latestFileKey!,
-    isPaused: Boolean(snapshotId)
+    isPaused: Boolean(snapshotId),
+    folderId
+  });
+
+  const { data: folderData, isLoading: isFoldersLoading } = useGetProjectFolders({
+    workspaceId: workspaceId || '',
+    environment: selectedEnv?.slug || '',
+    parentFolderId: folderId,
+    isPaused: isRollbackMode,
+    sortDir
   });
 
   const {
@@ -152,6 +178,8 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     isFetchingNextPage
   } = useGetWorkspaceSecretSnapshots({
     workspaceId,
+    environment: selectedEnv?.slug || '',
+    folder: folderId,
     limit: 10
   });
 
@@ -165,8 +193,11 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     decryptFileKey: latestFileKey!
   });
 
-  const { data: snapshotCount, isLoading: isLoadingSnapshotCount } =
-    useGetWsSnapshotCount(workspaceId);
+  const { data: snapshotCount, isLoading: isLoadingSnapshotCount } = useGetWsSnapshotCount(
+    workspaceId,
+    selectedEnv?.slug || '',
+    folderId
+  );
 
   const { data: wsTags } = useGetWsTags(workspaceId);
   // mutation calls
@@ -174,6 +205,9 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   const { mutateAsync: performSecretRollback } = usePerformSecretRollback();
   const { mutateAsync: registerUserAction } = useRegisterUserAction();
   const { mutateAsync: createWsTag } = useCreateWsTag();
+  const { mutateAsync: createFolder } = useCreateFolder();
+  const { mutateAsync: updateFolder } = useUpdateFolder(folderId);
+  const { mutateAsync: deleteFolder } = useDeleteFolder(folderId);
 
   const method = useForm<FormData>({
     // why any: well yup inferred ts expects other keys to defined as undefined
@@ -192,7 +226,6 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     reset
   } = method;
   const { fields, prepend, append, remove } = useFieldArray({ control, name: 'secrets' });
-  const isRollbackMode = Boolean(snapshotId);
   const isReadOnly = selectedEnv?.isWriteDenied;
   const isAddOnly = selectedEnv?.isReadDenied && !selectedEnv?.isWriteDenied;
   const canDoRollback = !isReadOnly && !isAddOnly;
@@ -281,7 +314,9 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     try {
       await performSecretRollback({
         workspaceId,
-        version: snapshotSecret.version
+        version: snapshotSecret.version,
+        environment: selectedEnv?.slug || '',
+        folderId
       });
       setValue('isSnapshotMode', false);
       setSnaphotId(null);
@@ -326,6 +361,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
       await batchSecretOp({
         requests: batchedSecret,
         workspaceId,
+        folderId,
         environment: selectedEnv?.slug
       });
       createNotification({
@@ -393,7 +429,99 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     }
   };
 
-  if (isSecretsLoading || isEnvListLoading) {
+  const handleFolderOpen = (id: string) => {
+    setSearchFilter('');
+    router.push({
+      pathname: router.pathname,
+      query: {
+        ...router.query,
+        folderId: id
+      }
+    });
+  };
+
+  const isEditFolder = Boolean(popUp?.folderForm?.data);
+
+  const handleFolderCreate = async (name: string) => {
+    try {
+      await createFolder({
+        workspaceId,
+        environment: selectedEnv?.slug || '',
+        folderName: name,
+        parentFolderId: folderId
+      });
+      createNotification({
+        type: 'success',
+        text: 'Successfully created folder'
+      });
+      handlePopUpClose('folderForm');
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: 'Failed to create folder',
+        type: 'error'
+      });
+    }
+  };
+
+  const handleFolderUpdate = async (name: string) => {
+    const { id } = popUp?.folderForm?.data as TDeleteFolderForm;
+    try {
+      await updateFolder({
+        folderId: id,
+        workspaceId,
+        environment: selectedEnv?.slug || '',
+        name
+      });
+      createNotification({
+        type: 'success',
+        text: 'Successfully updated folder'
+      });
+      handlePopUpClose('folderForm');
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: 'Failed to update folder',
+        type: 'error'
+      });
+    }
+  };
+
+  const handleFolderDelete = async () => {
+    const { id } = popUp?.deleteFolder?.data as TDeleteFolderForm;
+    try {
+      deleteFolder({
+        workspaceId,
+        environment: selectedEnv?.slug || '',
+        folderId: id
+      });
+      createNotification({
+        type: 'success',
+        text: 'Successfully removed folder'
+      });
+      handlePopUpClose('deleteFolder');
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: 'Failed to remove folder',
+        type: 'error'
+      });
+    }
+  };
+
+  // when secrets is not loading and secrets list is empty
+  const isDashboardSecretEmpty = !isSecretsLoading && !fields?.length;
+
+  // folder list checks
+  const isFolderListLoading = isRollbackMode ? isSnapshotSecretsLoading : isFoldersLoading;
+  const folderList = isRollbackMode ? snapshotSecret?.folders : folderData?.folders;
+
+  // when using snapshot mode and snapshot is loading and snapshot list is empty
+  const isSnapshotSecretEmtpy =
+    isRollbackMode && !isSnapshotSecretsLoading && !snapshotSecret?.secrets?.length;
+  const isSecretEmpty = (!isRollbackMode && isDashboardSecretEmpty) || isSnapshotSecretEmtpy;
+
+  if (isSecretsLoading || isEnvListLoading || isFolderListLoading) {
     return (
       <div className="container mx-auto flex h-1/2 w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
         <img src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
@@ -401,64 +529,42 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     );
   }
 
-  // when secrets is not loading and secrets list is empty
-  const isDashboardSecretEmpty = !isSecretsLoading && false;
-  // when using snapshot mode and snapshot is loading and snapshot list is empty
-  const isSnapshotSecretEmtpy =
-    isRollbackMode && !isSnapshotSecretsLoading && !snapshotSecret?.secrets?.length;
-  const isSecretEmpty = (!isRollbackMode && isDashboardSecretEmpty) || isSnapshotSecretEmtpy;
-
   const userAvailableEnvs = wsEnv?.filter(
     ({ isReadDenied, isWriteDenied }) => !isReadDenied || !isWriteDenied
   );
 
   return (
-    <div className="mr-auto container px-6 text-mineshaft-50 dark:[color-scheme:dark] h-full">
+    <div className="container mx-auto h-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
       <FormProvider {...method}>
-        <form autoComplete="off">
+        <form autoComplete="off" className="h-full">
           {/* breadcrumb row */}
-          <div className="relative right-6 mb-6 -top-2">
+          <div className="relative right-6 -top-2 mb-2">
             <NavHeader
               pageName={t('dashboard.title')}
               currentEnv={
                 userAvailableEnvs?.filter((envir) => envir.slug === envFromTop)[0].name || ''
               }
+              isFolderMode
+              folders={folderData?.dir}
               isProjectRelated
               userAvailableEnvs={userAvailableEnvs}
               onEnvChange={onEnvChange}
             />
           </div>
-          {/* This is only for rollbacks */}
-          {isRollbackMode && 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <h1 className="text-3xl font-semibold">Secret Snapshot</h1>
-                {isRollbackMode && Boolean(snapshotSecret) && (
-                  <Tag colorSchema="green">
-                    {new Date(snapshotSecret?.createdAt || '').toLocaleString()}
-                  </Tag>
-                )}
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="star"
-                  leftIcon={<FontAwesomeIcon icon={faArrowLeft} />}
-                  onClick={() => {
-                    setSnaphotId(null);
-                    reset({ ...secrets, isSnapshotMode: false });
-                  }}
-                  className="h-10"
-                >
-                  Go back
-                </Button>
-              </div>
-            </div>}
+          <div className="mb-4">
+            <h6 className="text-2xl">{isRollbackMode ? 'Secret Snapshot' : 'Secrets'}</h6>
+            {isRollbackMode && Boolean(snapshotSecret) && (
+              <Tag colorSchema="green">
+                {new Date(snapshotSecret?.createdAt || '').toLocaleString()}
+              </Tag>
+            )}
+          </div>
           {/* Environment, search and other action row */}
-          <div className="mt-2 flex items-center space-x-2 justify-between">
-            <div className="flex-grow max-w-sm">
+          <div className="flex items-center justify-between space-x-2">
+            <div className="flex max-w-lg flex-grow space-x-2">
               <Input
-                className="h-[2.3rem] bg-mineshaft-800 focus:bg-mineshaft-700/80 duration-200 placeholder-mineshaft-50"
-                placeholder="Search keys..."
+                className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
+                placeholder="Search by folder name, key name, comment..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
                 leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
@@ -500,8 +606,8 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                   </IconButton>
                 </Tooltip>
               </div>
-              <div className='block xl:hidden'>
-                <Tooltip content='Point-in-time Recovery'>
+              <div className="block xl:hidden">
+                <Tooltip content="Point-in-time Recovery">
                   <IconButton
                     ariaLabel="recovery"
                     variant="outline_bg"
@@ -511,7 +617,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                   </IconButton>
                 </Tooltip>
               </div>
-              <div className='hidden xl:block'>
+              <div className="hidden xl:block">
                 <Button
                   variant="outline_bg"
                   onClick={() => handlePopUpOpen('secretSnapshots')}
@@ -525,8 +631,20 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
               </div>
               {!isReadOnly && !isRollbackMode && (
                 <>
-                  <div className='block lg:hidden'>
-                    <Tooltip content='Point-in-time Recovery'>
+                  <div className="block lg:hidden">
+                    <Tooltip content="Add Folder">
+                      <IconButton
+                        ariaLabel="recovery"
+                        variant="outline_bg"
+                        onClick={() => handlePopUpOpen('folderForm')}
+                      >
+                        <FontAwesomeIcon icon={faFolderPlus} />
+                      </IconButton>
+                    </Tooltip>
+                  </div>
+
+                  <div className="block lg:hidden">
+                    <Tooltip content="Point-in-time Recovery">
                       <IconButton
                         ariaLabel="recovery"
                         variant="outline_bg"
@@ -544,7 +662,19 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                       </IconButton>
                     </Tooltip>
                   </div>
-                  <div className='hidden lg:block'>
+                  <div className="hidden lg:block">
+                    <Button
+                      leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
+                      onClick={() => handlePopUpOpen('folderForm')}
+                      isDisabled={isReadOnly || isRollbackMode}
+                      variant="outline_bg"
+                      className="h-10"
+                    >
+                      Add Folder
+                    </Button>
+                  </div>
+
+                  <div className="hidden lg:block">
                     <Button
                       leftIcon={<FontAwesomeIcon icon={faPlus} />}
                       onClick={() => {
@@ -565,6 +695,19 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                   </div>
                 </>
               )}
+              {isRollbackMode && (
+                <Button
+                  variant="star"
+                  leftIcon={<FontAwesomeIcon icon={faArrowLeft} />}
+                  onClick={() => {
+                    setSnaphotId(null);
+                    reset({ ...secrets, isSnapshotMode: false });
+                  }}
+                  className="h-10"
+                >
+                  Go back
+                </Button>
+              )}
               <Button
                 isDisabled={isSubmitDisabled}
                 isLoading={isSubmitting}
@@ -581,14 +724,21 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
           <div
             className={`${
               isSecretEmpty ? 'flex flex-col items-center justify-center' : ''
-            } no-scrollbar::-webkit-scrollbar mt-3 h-[calc(100vh-220px)] overflow-x-hidden overflow-y-scroll no-scrollbar`}
+            } no-scrollbar::-webkit-scrollbar mt-3 h-3/4 overflow-x-hidden overflow-y-scroll no-scrollbar`}
             ref={secretContainer}
           >
             {!isSecretEmpty && (
-              <TableContainer className="max-h-[calc(100%-40px)] no-scrollbar no-scrollbar::-webkit-scrollbar">
+              <TableContainer className="no-scrollbar::-webkit-scrollbar max-h-[calc(100%-120px)] no-scrollbar">
                 <table className="secret-table relative">
                   <SecretTableHeader sortDir={sortDir} onSort={onSortSecrets} />
                   <tbody className="max-h-96 overflow-y-auto">
+                    <FolderSection
+                      onFolderOpen={handleFolderOpen}
+                      onFolderUpdate={(id, name) => handlePopUpOpen('folderForm', { id, name })}
+                      onFolderDelete={(id, name) => handlePopUpOpen('deleteFolder', { id, name })}
+                      folders={folderList}
+                      search={searchFilter}
+                    />
                     {fields.map(({ id, _id }, index) => (
                       <SecretInputRow
                         key={id}
@@ -609,7 +759,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                         <td colSpan={3} className="hover:bg-mineshaft-700">
                           <button
                             type="button"
-                            className="pl-12 cursor-default w-full flex h-8 items-center justify-start font-normal text-bunker-300"
+                            className="flex h-8 w-full cursor-default items-center justify-start pl-12 font-normal text-bunker-300"
                             onClick={onAppendSecret}
                           >
                             <FontAwesomeIcon icon={faPlus} />
@@ -695,6 +845,26 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
             </div>
           </ModalContent>
         </Modal>
+        <Modal
+          isOpen={popUp?.folderForm?.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle('folderForm', isOpen)}
+        >
+          <ModalContent title={isEditFolder ? 'Edit Folder' : 'Create Folder'}>
+            <FolderForm
+              isEdit={isEditFolder}
+              onUpdateFolder={handleFolderUpdate}
+              onCreateFolder={handleFolderCreate}
+              defaultFolderName={(popUp?.folderForm?.data as TEditFolderForm)?.name}
+            />
+          </ModalContent>
+        </Modal>
+        <DeleteActionModal
+          isOpen={popUp.deleteFolder.isOpen}
+          deleteKey={(popUp.deleteFolder?.data as TDeleteFolderForm)?.name}
+          title="Do you want to delete this folder?"
+          onChange={(isOpen) => handlePopUpToggle('deleteFolder', isOpen)}
+          onDeleteApproved={handleFolderDelete}
+        />
         <Modal
           isOpen={popUp?.compareSecrets?.isOpen}
           onOpenChange={(open) => handlePopUpToggle('compareSecrets', open)}

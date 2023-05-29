@@ -2,6 +2,7 @@ export * from './auth';
 export * from './incidentContacts';
 export * from './keys';
 export * from './organization';
+export * from './secretFolders';
 export * from './secrets';
 export * from './secretSnapshots';
 export * from './serviceAccounts';
