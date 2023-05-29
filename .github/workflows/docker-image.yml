@@ -39,13 +39,13 @@ jobs:
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           load: true
           context: backend
-          tags: infisical/backend:test
+          tags: lacisifni/backend:test
       - name: ⏻ Spawn backend container and dependencies
         run: |
           docker compose -f .github/resources/docker-compose.be-test.yml up --wait --quiet-pull
       - name: 🧪 Test backend image
         run: |
-          ./.github/resources/healthcheck.sh infisical-backend-test
+          ./.github/resources/healthcheck.sh lacisifni-backend-test
       - name: ⏻ Shut down backend container and dependencies
         run: |
           docker compose -f .github/resources/docker-compose.be-test.yml down
@@ -57,9 +57,9 @@ jobs:
           push: true
           context: backend
           tags: |
-            infisical/backend:${{ steps.commit.outputs.short }}
-            infisical/backend:latest
-            infisical/backend:${{ steps.extract_version.outputs.version }}
+            lacisifni/backend:${{ steps.commit.outputs.short }}
+            lacisifni/backend:latest
+            lacisifni/backend:${{ steps.extract_version.outputs.version }}
           platforms: linux/amd64,linux/arm64
 
   gamma-frontend-image:
@@ -90,18 +90,18 @@ jobs:
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           project: 64mmf0n610
           context: frontend
-          tags: infisical/frontend:test
+          tags: lacisifni/frontend:test
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
       - name: ⏻ Spawn frontend container
         run: |
-          docker run -d --rm --name infisical-frontend-test infisical/frontend:test
+          docker run -d --rm --name lacisifni-frontend-test lacisifni/frontend:test
       - name: 🧪 Test frontend image
         run: |
-          ./.github/resources/healthcheck.sh infisical-frontend-test
+          ./.github/resources/healthcheck.sh lacisifni-frontend-test
       - name: ⏻ Shut down frontend container
         run: |
-          docker stop infisical-frontend-test
+          docker stop lacisifni-frontend-test
       - name: 🏗️ Build frontend and push
         uses: depot/build-push-action@v1
         with:
@@ -110,9 +110,9 @@ jobs:
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           context: frontend
           tags: |
-            infisical/frontend:${{ steps.commit.outputs.short }}
-            infisical/frontend:latest
-            infisical/frontend:${{ steps.extract_version.outputs.version }}
+            lacisifni/frontend:${{ steps.commit.outputs.short }}
+            lacisifni/frontend:latest
+            lacisifni/frontend:${{ steps.extract_version.outputs.version }}
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
