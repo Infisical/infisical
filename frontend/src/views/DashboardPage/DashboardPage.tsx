@@ -552,7 +552,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
             />
           </div>
           <div className="mb-4">
-            <h6 className="text-2xl">{isRollbackMode ? 'Secret Snapshot' : 'Secrets'}</h6>
+            <h6 className="text-2xl">{isRollbackMode ? 'Secret Snapshot' : ''}</h6>
             {isRollbackMode && Boolean(snapshotSecret) && (
               <Tag colorSchema="green">
                 {new Date(snapshotSecret?.createdAt || '').toLocaleString()}

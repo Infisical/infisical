@@ -1,4 +1,4 @@
-import { faEdit, faFolder, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faEdit, faFolder, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { IconButton, Tooltip } from '@app/components/v2';
@@ -23,8 +23,8 @@ export const FolderSection = ({
       {folders
         .filter(({ name }) => name.toLowerCase().includes(search.toLowerCase()))
         .map(({ id, name }) => (
-          <tr key={id} className="group flex flex-row items-center">
-            <td className="flex h-10 w-10 items-center justify-center border-none px-4">
+          <tr key={id} className="group flex flex-row items-center hover:bg-mineshaft-700 cursor-default">
+            <td className="flex h-10 w-10 items-center justify-center border-none px-4 ml-0.5">
               <FontAwesomeIcon icon={faFolder} className="text-primary-700" />
             </td>
             <td
@@ -33,7 +33,7 @@ export const FolderSection = ({
               style={{ paddingTop: '0', paddingBottom: '0' }}
             >
               <div
-                className="flex-grow cursor-pointer p-2 pl-3"
+                className="flex-grow p-2 cursor-default"
                 onKeyDown={() => null}
                 tabIndex={0}
                 role="button"
@@ -43,9 +43,9 @@ export const FolderSection = ({
               </div>
               <div className="duration-0 flex h-10 w-16 items-center justify-end space-x-2.5 overflow-hidden border-l border-mineshaft-600 transition-all">
                 <div className="opacity-0 group-hover:opacity-100">
-                  <Tooltip content="Settings">
+                  <Tooltip content="Settings" className="capitalize">
                     <IconButton
-                      size="lg"
+                      size="md"
                       colorSchema="primary"
                       variant="plain"
                       onClick={() => handleFolderUpdate(id, name)}
@@ -56,7 +56,7 @@ export const FolderSection = ({
                   </Tooltip>
                 </div>
                 <div className="opacity-0 group-hover:opacity-100">
-                  <Tooltip content="Delete">
+                  <Tooltip content="Delete" className="capitalize">
                     <IconButton
                       size="md"
                       variant="plain"
@@ -64,7 +64,7 @@ export const FolderSection = ({
                       ariaLabel="delete"
                       onClick={() => handleFolderDelete(id, name)}
                     >
-                      <FontAwesomeIcon icon={faTrash} />
+                      <FontAwesomeIcon icon={faXmark} />
                     </IconButton>
                   </Tooltip>
                 </div>
