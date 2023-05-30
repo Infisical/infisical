@@ -37,7 +37,7 @@ nano .env
   Infisical assumes that you have configured HTTPS. If you didn't configure HTTPS, set `HTTPS_ENABLED` to `false` in the .env file to avoid frequent logouts.
 </Info>
 
-## Get the service up and running.
+## Get the service up and running
 
 ```bash
 # Start up services in detached mode
@@ -45,3 +45,7 @@ docker-compose -f docker-compose.yml up -d
 ```
 
 Your Infisical installation is complete and should be running on [http://localhost:80](http://localhost:80). Please note that the containers are not exposed to the internet and only bind to the localhost. It's up to you to configure a firewall, SSL certificates, and implement any additional security measures.
+
+<Info>
+Once installation is complete, you will have to create the first account. No default account is provided.
+</Info>
