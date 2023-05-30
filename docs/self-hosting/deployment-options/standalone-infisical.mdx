@@ -17,9 +17,9 @@ Open your terminal or command prompt and enter the following command to pull the
 docker pull infisical/infisical:latest
 ```
 
-## Create a .env file
-The Infisical Docker image requires a .env file to manage environment variables. 
-Create a new file called .env in your preferred location. Add the required environment variables listed below. View [all configurable environment variables](../configuration/envars)
+## Run with docker 
+The Infisical Docker image requires several required environment variables. 
+Add the required environment variables listed below to your docker run command. View [all configurable environment variables](../configuration/envars)
 
 
 <ParamField query="ENCRYPTION_KEY" type="string" default="none" required>
@@ -51,28 +51,22 @@ Create a new file called .env in your preferred location. Add the required envir
 </ParamField>
 
 
-```env .example-env
-ENCRYPTION_KEY=f40c9178624764ad85a6830b37ce239a 
-JWT_SIGNUP_SECRET=38ea90fb7998b92176080f457d890392 
-JWT_REFRESH_SECRET=7764c7bbf3928ad501591a3e005eb364
-JWT_AUTH_SECRET=5239fea3a4720c0e524f814a540e14a2
-JWT_SERVICE_SECRET=8509fb8b90c9b53e9e61d1e35826dcb5 
-MONGO_URL=<>
+Once you have added the required environment variables to your docker run command, execute it in your terminal.
+
+```bash
+docker run -p 80:80  \
+-e ENCRYPTION_KEY=f40c9178624764ad85a6830b37ce239a \
+-e JWT_SIGNUP_SECRET=38ea90fb7998b92176080f457d890392 \
+-e JWT_REFRESH_SECRET=7764c7bbf3928ad501591a3e005eb364 \
+-e JWT_AUTH_SECRET=5239fea3a4720c0e524f814a540e14a2 \
+-e JWT_SERVICE_SECRET=8509fb8b90c9b53e9e61d1e35826dcb5  \
+-e MONGO_URL=“<>” \
+infisical/infisical:latest
 ```
 
 <Warning>
   The sample environment variables listed above are only to be used as an example and should not be used in production 
 </Warning>
-
-## Run the Infisical Docker container:
-
-In the terminal or command prompt, navigate to the directory containing the .env file you created. Run the following command to start the Infisical Docker container:
-
-```
-docker run --name infisical-app --env-file ./.env -p 80:80 infisical/infisical:latest
-```
-
-This command will create a new container named infisical-app using the Infisical Docker image. It will also load the environment variables from the .env file and map the container's port 80 to the host's port 80.
 
 ## Verify the installation:
 Once the container is running, open a web browser and navigate to http://localhost:80. That's it! You have successfully installed the Infisical application using a single Docker image.
