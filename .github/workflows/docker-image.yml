@@ -158,6 +158,3 @@ jobs:
     runs-on: ubuntu-latest
     needs: [gamma-deployment]
     environment: production-docker-img-release
-    steps:
-      - name: ☁️ Checkout source
-        uses: actions/checkout@v3
