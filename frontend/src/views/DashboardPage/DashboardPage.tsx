@@ -392,9 +392,11 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     }
     const env = wsEnv?.find((el) => el.slug === slug);
     if (env) setSelectedEnv(env);
+    const query: Record<string, string> = { ...router.query, env: slug };
+    delete query.folderId;
     router.push({
       pathname: router.pathname,
-      query: { ...router.query, env: slug }
+      query
     });
   };
 
@@ -517,11 +519,13 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   const folderList = isRollbackMode ? snapshotSecret?.folders : folderData?.folders;
 
   // when using snapshot mode and snapshot is loading and snapshot list is empty
+  const isFoldersEmpty = !isFolderListLoading && !folderList?.length;
   const isSnapshotSecretEmtpy =
     isRollbackMode && !isSnapshotSecretsLoading && !snapshotSecret?.secrets?.length;
   const isSecretEmpty = (!isRollbackMode && isDashboardSecretEmpty) || isSnapshotSecretEmtpy;
+  const isEmptyPage = isFoldersEmpty && isSecretEmpty;
 
-  if (isSecretsLoading || isEnvListLoading || isFolderListLoading) {
+  if (isSecretsLoading || isEnvListLoading) {
     return (
       <div className="container mx-auto flex h-1/2 w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
         <img src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
@@ -723,11 +727,11 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
           </div>
           <div
             className={`${
-              isSecretEmpty ? 'flex flex-col items-center justify-center' : ''
+              isEmptyPage ? 'flex flex-col items-center justify-center' : ''
             } no-scrollbar::-webkit-scrollbar mt-3 h-3/4 overflow-x-hidden overflow-y-scroll no-scrollbar`}
             ref={secretContainer}
           >
-            {!isSecretEmpty && (
+            {!isEmptyPage && (
               <TableContainer className="no-scrollbar::-webkit-scrollbar max-h-[calc(100%-120px)] no-scrollbar">
                 <table className="secret-table relative">
                   <SecretTableHeader sortDir={sortDir} onSort={onSortSecrets} />
@@ -793,7 +797,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
               onEnvCompare={(key) => handlePopUpOpen('compareSecrets', key)}
             />
             <SecretDropzone
-              isSmaller={!isSecretEmpty}
+              isSmaller={!isEmptyPage}
               onParsedEnv={handleUploadedEnv}
               onAddNewSecret={onAppendSecret}
             />

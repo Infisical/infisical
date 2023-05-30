@@ -300,6 +300,8 @@ export const rollbackWorkspaceSecretSnapshot = async (
           secretValueTag,
           secretValueHash,
           createdAt,
+          algorithm,
+          keyEncoding,
           folder: secFolderId,
         } = oldSecretVersionsObj[secretId.toString()];
 
@@ -323,6 +325,8 @@ export const rollbackWorkspaceSecretSnapshot = async (
           secretCommentIV: "",
           secretCommentTag: "",
           createdAt,
+          algorithm,
+          keyEncoding,
           folder: secFolderId,
         };
       })
@@ -347,6 +351,8 @@ export const rollbackWorkspaceSecretSnapshot = async (
           secretValueIV,
           secretValueTag,
           secretValueHash,
+          algorithm,
+          keyEncoding,
           folder: secFolderId,
         }) => ({
           _id: new Types.ObjectId(),
@@ -366,22 +372,27 @@ export const rollbackWorkspaceSecretSnapshot = async (
           secretValueIV,
           secretValueTag,
           secretValueHash,
+          algorithm,
+          keyEncoding,
           folder: secFolderId,
         })
       )
     );
 
-    const newFolder = new Folder(folders);
-    newFolder._id = new Types.ObjectId();
-    newFolder.isNew = true;
-    await newFolder.save();
-    // create new folder version
-    const newFolderVersion = new FolderVersion({
-      workspace: workspaceId,
-      environment,
-      nodes: newFolder.nodes,
-    });
-    await newFolderVersion.save();
+    if (folders) {
+      const newFolder = new Folder(folders);
+      newFolder._id = new Types.ObjectId();
+      newFolder.isNew = true;
+      // when there is no
+      await newFolder.save();
+      // create new folder version
+      const newFolderVersion = new FolderVersion({
+        workspace: workspaceId,
+        environment,
+        nodes: newFolder.nodes,
+      });
+      await newFolderVersion.save();
+    }
 
     // update secret versions of restored secrets as not deleted
     await SecretVersion.updateMany(

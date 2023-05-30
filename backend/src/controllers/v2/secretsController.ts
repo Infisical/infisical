@@ -649,7 +649,7 @@ export const getSecrets = async (req: Request, res: Response) => {
 
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
   if (
-    (!folders && folderId !== "root" && folderId) ||
+    (!folders && folderId && folderId !== "root") ||
     (!folders && secretPath)
   ) {
     throw BadRequestError({ message: "Folder not found" });

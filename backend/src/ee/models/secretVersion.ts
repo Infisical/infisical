@@ -99,11 +99,13 @@ const secretVersionSchema = new Schema<ISecretVersion>(
       type: String,
       enum: [ALGORITHM_AES_256_GCM],
       required: true,
+      default: ALGORITHM_AES_256_GCM,
     },
     keyEncoding: {
       type: String,
       enum: [ENCODING_SCHEME_UTF8, ENCODING_SCHEME_BASE64],
       required: true,
+      default: ENCODING_SCHEME_UTF8,
     },
     folder: {
       type: String,

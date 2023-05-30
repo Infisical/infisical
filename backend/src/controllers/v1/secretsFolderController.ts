@@ -116,7 +116,7 @@ export const updateFolderById = async (req: Request, res: Response) => {
     await EESecretService.takeSecretSnapshot({
       workspaceId,
       environment,
-      folderId: parentFolder.name === "root" ? undefined : parentFolder.id,
+      folderId: parentFolder.id,
     });
   }
 
