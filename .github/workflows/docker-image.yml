@@ -5,7 +5,7 @@ on:
       - "infisical/v*.*.*"
 
 jobs:
-  gamma-backend-image:
+  backend-image:
     name: Build backend image
     runs-on: ubuntu-latest
     steps:
@@ -28,8 +28,8 @@ jobs:
       - name: 🐋 Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.GAMMA_DOCKERHUB_TOKEN }}
-          password: ${{ secrets.GAMMA_DOCKERHUB_USERNAME }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Set up Depot CLI
         uses: depot/setup-action@v1
       - name: 📦 Build backend and export to Docker
@@ -62,7 +62,7 @@ jobs:
             infisical/backend:${{ steps.extract_version.outputs.version }}
           platforms: linux/amd64,linux/arm64
 
-  gamma-frontend-image:
+  frontend-image:
     name: Build frontend image
     runs-on: ubuntu-latest
     steps:
@@ -79,8 +79,8 @@ jobs:
       - name: 🐋 Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.GAMMA_DOCKERHUB_TOKEN }}
-          password: ${{ secrets.GAMMA_DOCKERHUB_USERNAME }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Set up Depot CLI
         uses: depot/setup-action@v1
       - name: 📦 Build frontend and export to Docker
@@ -146,15 +146,10 @@ jobs:
       - name: Download helm values to file and upgrade gamma deploy
         run: |
           wget https://raw.githubusercontent.com/Infisical/infisical/main/.github/values.yaml
-          helm upgrade --wait --install infisical infisical-helm-charts/infisical  --values values.yaml --recreate-pods
+          helm upgrade infisical infisical-helm-charts/infisical  --values values.yaml --recreate-pods
           if [[ $(helm status infisical) == *"FAILED"* ]]; then
             echo "Helm upgrade failed"
             exit 1
           else
             echo "Helm upgrade was successful"
           fi
-  prod-image-release:
-    name: Release prod image
-    runs-on: ubuntu-latest
-    needs: [gamma-deployment]
-    environment: production-docker-img-release
