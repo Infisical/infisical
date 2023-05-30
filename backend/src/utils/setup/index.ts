@@ -59,8 +59,8 @@ export const setup = async () => {
     
     // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
     // to base64 256-bit ROOT_ENCRYPTION_KEY
-    await reencryptBotPrivateKeys();
-    await reencryptSecretBlindIndexDataSalts();
+    // await reencryptBotPrivateKeys();
+    // await reencryptSecretBlindIndexDataSalts();
 
     // initializing Sentry
     Sentry.init({
