@@ -4,6 +4,13 @@ const mongoose = require('mongoose');
 const Bot = require('../models/bot');
 const SecretBlindIndexData = require('../models/secretBlindIndexData');
 
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY; // 16-byte hex encryption key to migrate from
+const ROOT_ENCRYPTION_KEY = process.env.ROOT_ENCRYPTION_KEY; // 32-byte base64 encryption key to migrate to
+
+const ALGORITHM_AES_256_GCM = 'aes-256-gcm';
+const ENCODING_SCHEME_UTF8 = 'utf8';
+const ENCODING_SCHEME_BASE64 = 'base64';
+
 const decryptSymmetric = ({
     ciphertext,
     iv,
@@ -13,12 +20,12 @@ const decryptSymmetric = ({
     const decipher = crypto.createDecipheriv(
         'aes-256-gcm',
         key,
-        Buffer.from(iv, 'base64')
+        Buffer.from(iv, ENCODING_SCHEME_BASE64)
     );
 
-    decipher.setAuthTag(Buffer.from(tag, 'base64'));
+    decipher.setAuthTag(Buffer.from(tag, ENCODING_SCHEME_BASE64));
 
-    let cleartext = decipher.update(ciphertext, 'base64', 'utf8');
+    let cleartext = decipher.update(ciphertext, ENCODING_SCHEME_BASE64, ENCODING_SCHEME_UTF8);
     cleartext += decipher.final('utf8');
     
     return cleartext;
@@ -30,24 +37,45 @@ const encryptSymmetric = (
 ) => {
     const iv = crypto.randomBytes(12);
 
-    const secretKey = crypto.createSecretKey(key, 'base64');
-    const cipher = crypto.createCipheriv('aes-256-gcm', secretKey, iv);
+    const secretKey = crypto.createSecretKey(key, ENCODING_SCHEME_BASE64);
+    const cipher = crypto.createCipheriv(ALGORITHM_AES_256_GCM, secretKey, iv);
 
-    let ciphertext = cipher.update(plaintext, 'utf8', 'base64');
-    ciphertext += cipher.final('base64');
+    let ciphertext = cipher.update(plaintext, ENCODING_SCHEME_UTF8, ENCODING_SCHEME_BASE64);
+    ciphertext += cipher.final(ENCODING_SCHEME_BASE64);
 
 	return {
 		ciphertext,
-		iv: iv.toString('base64'),
-		tag: cipher.getAuthTag().toString('base64')
+		iv: iv.toString(ENCODING_SCHEME_BASE64),
+		tag: cipher.getAuthTag().toString(ENCODING_SCHEME_BASE64)
 	};
 };
 
-const main = async () => {
-    console.log('main');
+/**
+ * Validate that encryption key [key] is encoded in [encoding] and [bytes] bytes
+ * @param {String} key - encryption key to validate
+ * @param {String} encoding - encoding like hex or base64
+ * @param {Number} bytes - number of bytes
+ */
+const validateEncryptionKey = (encryptionKey, encoding, bytes) => {
+    const keyBuffer = Buffer.from(encryptionKey, encoding);
+    const decoded = keyBuffer.toString(encoding);
 
-    const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY; // 128-bit hex encryption key
-    const ROOT_ENCRYPTION_KEY = process.env.ROOT_ENCRYPTION_KEY; // 256-bit base64 encryption key
+    if (decoded !== encryptionKey) throw Error({
+        message: `Failed to validate that encryption key is encoded in ${encoding}`
+    });
+    
+    if (keyBuffer.length !== bytes) throw Error({
+        message: `Failed to validate that encryption key is ${bytes} bytes`
+    }); 
+}
+
+const main = async () => {
+
+    // validate that ENCRYPTION_KEY is a 16-byte hex string
+    validateEncryptionKey(ENCRYPTION_KEY, 'hex', 16);
+
+    // validate that ROOT_ENCRYPTION_KEY is a 32-byte base64 string
+    validateEncryptionKey(ROOT_ENCRYPTION_KEY, 'base64', 32);
 
     mongoose.connect(process.env.MONGO_URI)
         .then(async () => {
@@ -57,8 +85,8 @@ const main = async () => {
 
                 // re-encrypt bot private keys
                 const bots = await Bot.find({
-                    algorithm: 'aes-256-gcm',
-                    keyEncoding: 'utf8'
+                    algorithm: ALGORITHM_AES_256_GCM,
+                    keyEncoding: ENCODING_SCHEME_UTF8
                 }).select('+encryptedPrivateKey iv tag algorithm keyEncoding workspace');
                 
                 if (bots.length > 0) {
@@ -87,8 +115,8 @@ const main = async () => {
                                         encryptedPrivateKey,
                                         iv,
                                         tag,
-                                        algorithm: 'aes-256-gcm',
-                                        keyEncoding: 'base64'
+                                        algorithm: ALGORITHM_AES_256_GCM,
+                                        keyEncoding: ENCODING_SCHEME_BASE64
                                     }
                                 }
                             })
@@ -101,8 +129,8 @@ const main = async () => {
             
                 // re-encrypt secret blind index data salts
                 const secretBlindIndexData = await SecretBlindIndexData.find({
-                    algorithm: 'aes-256-gcm',
-                    keyEncoding: 'utf8'
+                    algorithm: ALGORITHM_AES_256_GCM,
+                    keyEncoding: ENCODING_SCHEME_UTF8
                 }).select('+encryptedSaltCiphertext +saltIV +saltTag +algorithm +keyEncoding');
                 
                 if (secretBlindIndexData.length > 0) {
@@ -131,8 +159,8 @@ const main = async () => {
                                         encryptedSaltCiphertext,
                                         saltIV,
                                         saltTag,
-                                        algorithm: 'aes-256-gcm',
-                                        keyEncoding: 'base64'
+                                        algorithm: ALGORITHM_AES_256_GCM,
+                                        keyEncoding: ENCODING_SCHEME_BASE64
                                     }
                                 }
                             })
