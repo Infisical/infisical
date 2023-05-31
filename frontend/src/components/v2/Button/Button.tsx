@@ -177,10 +177,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {isLoading && (
           <img
-            src="/images/loading/loadingblack.gif"
+            src="/images/loading/loading.gif"
             width={36}
             alt="loading animation"
-            className="absolute rounded-xl"
+            className="absolute rounded-xl opacity-80"
           />
         )}
         <div

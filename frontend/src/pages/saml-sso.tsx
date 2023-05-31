@@ -56,10 +56,10 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               type="password"
-              placeholder="Enter your password..."
+              placeholder="Enter your email..."
               isRequired
-              autoComplete="current-password"
-              id="current-password"
+              autoComplete="email"
+              id="email"
               className="h-12"
             />
           </div>

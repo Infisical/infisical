@@ -51,6 +51,7 @@ interface CodeInputStepProps {
   incrementStep: () => void;
   setCode: (value: string) => void;
   codeError: boolean;
+  isCodeInputCheckLoading: boolean;
 }
 
 /**
@@ -66,7 +67,8 @@ export default function CodeInputStep({
   email,
   incrementStep,
   setCode,
-  codeError
+  codeError,
+  isCodeInputCheckLoading
 }: CodeInputStepProps): JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const [isResendingVerificationEmail, setIsResendingVerificationEmail] = useState(false);
@@ -118,6 +120,7 @@ export default function CodeInputStep({
             className='h-14'
             colorSchema="primary"
             variant="outline_bg"
+            isLoading={isCodeInputCheckLoading}
           > {String(t('signup.verify'))} </Button>
         </div>
       </div>

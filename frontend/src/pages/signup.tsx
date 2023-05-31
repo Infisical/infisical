@@ -33,6 +33,7 @@ export default function SignUp() {
   const router = useRouter();
   const { data: serverDetails } = useFetchServerStatus();
   const [isSignupWithEmail, setIsSignupWithEmail] = useState(false);
+  const [isCodeInputCheckLoading, setIsCodeInputCheckLoading] = useState(false);
   const { t } = useTranslation();
   const { email: providerEmail, providerAuthToken, isProviderUserCompleted } = useProviderAuth();
 
@@ -68,6 +69,7 @@ export default function SignUp() {
     if (step === 1 || step === 3 || step === 4) {
       setStep(step + 1);
     } else if (step === 2) {
+      setIsCodeInputCheckLoading(true);
       // Checking if the code matches the email.
       const response = await checkEmailVerificationCode({ email, code });
       if (response.status === 200) {
@@ -77,6 +79,7 @@ export default function SignUp() {
       } else {
         setCodeError(true);
       }
+      setIsCodeInputCheckLoading(false);
     }
   };
 
@@ -109,6 +112,7 @@ export default function SignUp() {
           incrementStep={incrementStep}
           setCode={setCode}
           codeError={codeError}
+          isCodeInputCheckLoading={isCodeInputCheckLoading}
         />
       );
     }
