@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
-import ListBox from '@app/components/basic/Listbox';
+// import ListBox from '@app/components/basic/Listbox';
 import InitialLoginStep from '@app/components/login/InitialLoginStep';
 import LoginStep from '@app/components/login/LoginStep';
 import MFAStep from '@app/components/login/MFAStep';
@@ -21,7 +21,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [step, setStep] = useState(1);
   const { t } = useTranslation();
-  const lang = router.locale ?? 'en';
+  // const lang = router.locale ?? 'en';
   const [isLoginWithEmail, setIsLoginWithEmail] = useState(false);
   const {
     providerAuthToken,
@@ -34,10 +34,10 @@ export default function Login() {
     router.push(`/signup?providerAuthToken=${encodeURIComponent(providerAuthToken)}`);
   }
 
-  const setLanguage = async (to: string) => {
-    router.push('/login', '/login', { locale: to });
-    localStorage.setItem('lang', to);
-  };
+  // const setLanguage = async (to: string) => {
+  //   router.push('/login', '/login', { locale: to });
+  //   localStorage.setItem('lang', to);
+  // };
 
   useEffect(() => {
     // TODO(akhilmhdh): workspace will be controlled by a workspace context
