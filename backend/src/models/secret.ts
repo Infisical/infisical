@@ -2,7 +2,11 @@ import { Schema, model, Types } from 'mongoose';
 import {
 	SECRET_SHARED,
 	SECRET_PERSONAL,
+	ALGORITHM_AES_256_GCM,
+	ENCODING_SCHEME_UTF8,
+	ENCODING_SCHEME_BASE64
 } from '../variables';
+import { ROOT_FOLDER_PATH } from '../utils/folder';
 
 export interface ISecret {
 	_id: Types.ObjectId;
@@ -24,7 +28,11 @@ export interface ISecret {
 	secretCommentIV?: string;
 	secretCommentTag?: string;
 	secretCommentHash?: string;
+	algorithm: 'aes-256-gcm';
+	keyEncoding: 'utf8' | 'base64';
 	tags?: string[];
+	path?: string;
+	folder?: Types.ObjectId;
 }
 
 const secretSchema = new Schema<ISecret>(
@@ -107,7 +115,31 @@ const secretSchema = new Schema<ISecret>(
 		secretCommentHash: {
 			type: String,
 			required: false
-		}
+		},
+		algorithm: { // the encryption algorithm used
+			type: String,
+			enum: [ALGORITHM_AES_256_GCM],
+			required: true
+		},
+		keyEncoding: {
+			type: String,
+			enum: [
+				ENCODING_SCHEME_UTF8,
+				ENCODING_SCHEME_BASE64
+			],
+			required: true
+		},
+		// the full path to the secret in relation to folders
+		path: {
+			type: String,
+			required: false,
+			default: ROOT_FOLDER_PATH
+		},
+		folder: {
+			type: Schema.Types.ObjectId,
+			ref: 'Folder',
+			required: false,
+		},
 	},
 	{
 		timestamps: true

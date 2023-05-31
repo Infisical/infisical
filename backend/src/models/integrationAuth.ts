@@ -15,6 +15,9 @@ import {
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_TRAVISCI,
   INTEGRATION_SUPABASE,
+  ALGORITHM_AES_256_GCM,
+  ENCODING_SCHEME_UTF8,
+  ENCODING_SCHEME_BASE64
 } from "../variables";
 
 export interface IIntegrationAuth extends Document {
@@ -32,6 +35,8 @@ export interface IIntegrationAuth extends Document {
   accessCiphertext?: string;
   accessIV?: string;
   accessTag?: string;
+  algorithm?: 'aes-256-gcm';
+  keyEncoding?: 'utf8' | 'base64';
   accessExpiresAt?: Date;
 }
 
@@ -111,6 +116,19 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
       type: Date,
       select: false,
     },
+    algorithm: { // the encryption algorithm used
+      type: String,
+      enum: [ALGORITHM_AES_256_GCM],
+      required: true
+    },
+    keyEncoding: {
+        type: String,
+        enum: [
+            ENCODING_SCHEME_UTF8,
+            ENCODING_SCHEME_BASE64
+        ],
+        required: true
+    }
   },
   {
     timestamps: true,

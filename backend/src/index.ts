@@ -1,20 +1,13 @@
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 dotenv.config();
-import infisical from 'infisical-node';
 import express from 'express';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+require('express-async-errors');
 import helmet from 'helmet';
 import cors from 'cors';
-import * as Sentry from '@sentry/node';
 import { DatabaseService } from './services';
+import { EELicenseService } from './ee/services';
 import { setUpHealthEndpoint } from './services/health';
-import { initSmtp } from './services/smtp';
-import { TelemetryService } from './services';
-import { setTransporter } from './helpers/nodemailer';
-import { createTestUserForDevelopment } from './utils/addDevelopmentUser';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { patchRouterParam } = require('./utils/patchAsyncRoutes');
-
 import cookieParser from 'cookie-parser';
 import swaggerUi = require('swagger-ui-express');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -26,7 +19,9 @@ import {
     workspace as eeWorkspaceRouter,
     secret as eeSecretRouter,
     secretSnapshot as eeSecretSnapshotRouter,
-    action as eeActionRouter
+    action as eeActionRouter,
+    organizations as eeOrganizationsRouter,
+    cloudProducts as eeCloudProductsRouter
 } from './ee/routes/v1';
 import {
     signup as v1SignupRouter,
@@ -45,7 +40,8 @@ import {
     password as v1PasswordRouter,
     stripe as v1StripeRouter,
     integration as v1IntegrationRouter,
-    integrationAuth as v1IntegrationAuthRouter
+    integrationAuth as v1IntegrationAuthRouter,
+    secretsFolder as v1SecretsFolder
 } from './routes/v1';
 import {
     signup as v2SignupRouter,
@@ -70,35 +66,17 @@ import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
 import { requestErrorHandler } from './middleware/requestErrorHandler';
 import {
-    getMongoURL,
     getNodeEnv,
     getPort,
-    getSentryDSN,
-    getSiteURL,
-    getSmtpHost
+    getSiteURL
 } from './config';
+import { setup } from './utils/setup';
 
 const main = async () => {
-    if (process.env.INFISICAL_TOKEN != "" || process.env.INFISICAL_TOKEN != undefined) {
-        await infisical.connect({
-            token: process.env.INFISICAL_TOKEN!
-        });
-    }
+    await setup();
 
-    TelemetryService.logTelemetryMessage();
-    setTransporter(initSmtp());
+    await EELicenseService.initGlobalFeatureSet();
 
-    await DatabaseService.initDatabase(getMongoURL());
-    if (getNodeEnv() !== 'test') {
-        Sentry.init({
-            dsn: getSentryDSN(),
-            tracesSampleRate: 1.0,
-            debug: getNodeEnv() === 'production' ? false : true,
-            environment: getNodeEnv()
-        });
-    }
-
-    patchRouterParam();
     const app = express();
     app.enable('trust proxy');
     app.use(express.json());
@@ -106,13 +84,13 @@ const main = async () => {
     app.use(
         cors({
             credentials: true,
-            origin: getSiteURL()
+            origin: await getSiteURL()
         })
     );
 
     app.use(requestIp.mw());
 
-    if (getNodeEnv() === 'production') {
+    if ((await getNodeEnv()) === 'production') {
         // enable app-wide rate-limiting + helmet security
         // in production
         app.disable('x-powered-by');
@@ -125,6 +103,8 @@ const main = async () => {
     app.use('/api/v1/secret-snapshot', eeSecretSnapshotRouter);
     app.use('/api/v1/workspace', eeWorkspaceRouter);
     app.use('/api/v1/action', eeActionRouter);
+    app.use('/api/v1/organizations', eeOrganizationsRouter);
+    app.use('/api/v1/cloud-products', eeCloudProductsRouter);
 
     // v1 routes (default)
     app.use('/api/v1/signup', v1SignupRouter);
@@ -138,12 +118,13 @@ const main = async () => {
     app.use('/api/v1/membership', v1MembershipRouter);
     app.use('/api/v1/key', v1KeyRouter);
     app.use('/api/v1/invite-org', v1InviteOrgRouter);
-    app.use('/api/v1/secret', v1SecretRouter);
-    app.use('/api/v1/service-token', v1ServiceTokenRouter); // deprecated
+    app.use('/api/v1/secret', v1SecretRouter); // deprecate
+    app.use('/api/v1/service-token', v1ServiceTokenRouter); // deprecate
     app.use('/api/v1/password', v1PasswordRouter);
     app.use('/api/v1/stripe', v1StripeRouter);
     app.use('/api/v1/integration', v1IntegrationRouter);
     app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
+    app.use('/api/v1/folder', v1SecretsFolder)
 
     // v2 routes (improvements)
     app.use('/api/v2/signup', v2SignupRouter);
@@ -153,12 +134,12 @@ const main = async () => {
     app.use('/api/v2/workspace', v2EnvironmentRouter);
     app.use('/api/v2/workspace', v2TagsRouter);
     app.use('/api/v2/workspace', v2WorkspaceRouter);
-    app.use('/api/v2/secret', v2SecretRouter); // deprecated
-    app.use('/api/v2/secrets', v2SecretsRouter);
-    app.use('/api/v2/service-token', v2ServiceTokenDataRouter); // TODO: turn into plural route
+    app.use('/api/v2/secret', v2SecretRouter); // deprecate
+    app.use('/api/v2/secrets', v2SecretsRouter); // note: in the process of moving to v3/secrets
+    app.use('/api/v2/service-token', v2ServiceTokenDataRouter);
     app.use('/api/v2/service-accounts', v2ServiceAccountsRouter); // new
     app.use('/api/v2/api-key', v2APIKeyDataRouter);
-    
+
     // v3 routes (experimental)
     app.use('/api/v3/secrets', v3SecretsRouter);
     app.use('/api/v3/workspaces', v3WorkspacesRouter);
@@ -166,7 +147,7 @@ const main = async () => {
     // api docs 
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile))
 
-    // Server status
+    // server status
     app.use('/api', healthCheck)
 
     //* Handle unrouted requests and respond with proper error message as well as status code
@@ -177,11 +158,11 @@ const main = async () => {
 
     app.use(requestErrorHandler)
 
-    const server = app.listen(getPort(), () => {
-        getLogger("backend-main").info(`Server started listening at port ${getPort()}`)
+    const server = app.listen(await getPort(), async () => {
+        (await getLogger("backend-main")).info(`Server started listening at port ${await getPort()}`)
     });
 
-    await createTestUserForDevelopment();
+    // await createTestUserForDevelopment();
     setUpHealthEndpoint(server);
 
     server.on('close', async () => {

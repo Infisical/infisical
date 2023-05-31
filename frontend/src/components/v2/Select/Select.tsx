@@ -1,6 +1,6 @@
 import { forwardRef, ReactNode } from 'react';
 import { IconProp } from '@fortawesome/fontawesome-svg-core';
-import { faCaretDown, faCheck, faChevronUp } from '@fortawesome/free-solid-svg-icons';
+import { faCaretDown, faCaretUp,faCheck } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { twMerge } from 'tailwind-merge';
@@ -63,7 +63,9 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
             style={{ width: 'var(--radix-select-trigger-width)' }}
           >
             <SelectPrimitive.ScrollUpButton>
-              <FontAwesomeIcon icon={faChevronUp} size="sm" />
+              <div className="flex items-center justify-center">
+                <FontAwesomeIcon icon={faCaretUp} size="sm" />
+              </div>
             </SelectPrimitive.ScrollUpButton>
             <SelectPrimitive.Viewport className="p-1">
               {isLoading ? (
@@ -76,7 +78,9 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
               )}
             </SelectPrimitive.Viewport>
             <SelectPrimitive.ScrollDownButton>
-              <FontAwesomeIcon icon={faCaretDown} size="xs" />
+              <div className="flex items-center justify-center">
+                <FontAwesomeIcon icon={faCaretDown} size="sm" />
+              </div>
             </SelectPrimitive.ScrollDownButton>
           </SelectPrimitive.Content>
         </SelectPrimitive.Portal>

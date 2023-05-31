@@ -1,9 +1,9 @@
 import crypto from 'crypto';
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
 import frameworkIntegrationOptions from 'public/json/frameworkIntegrations.json';
 
 import ActivateBotDialog from '@app/components/basic/dialog/ActivateBotDialog';
@@ -11,7 +11,6 @@ import CloudIntegrationSection from '@app/components/integrations/CloudIntegrati
 import FrameworkIntegrationSection from '@app/components/integrations/FrameworkIntegrationSection';
 import IntegrationSection from '@app/components/integrations/IntegrationSection';
 import NavHeader from '@app/components/navigation/NavHeader';
-import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 
 import {
   decryptAssymmetric,
@@ -73,7 +72,8 @@ export default function Integrations() {
   // TODO: These will have its type when migratiing towards react-query
   const [bot, setBot] = useState<any>(null);
   const [isActivateBotDialogOpen, setIsActivateBotDialogOpen] = useState(false);
-  const [selectedIntegrationOption, setSelectedIntegrationOption] = useState<IntegrationOption | null>(null);
+  const [selectedIntegrationOption, setSelectedIntegrationOption] =
+    useState<IntegrationOption | null>(null);
 
   const router = useRouter();
   const workspaceId = router.query.id as string;
@@ -226,7 +226,7 @@ export default function Integrations() {
     } catch (err) {
       console.error(err);
     }
-  }
+  };
 
   const handleAuthorizedIntegrationOptionPress = (integrationAuth: IntegrationAuth) => {
     try {
@@ -287,7 +287,7 @@ export default function Integrations() {
     } catch (err) {
       console.error(err);
     }
-  }
+  };
 
   /**
    * Open dialog to activate bot if bot is not active.
@@ -300,7 +300,9 @@ export default function Integrations() {
    */
   const integrationOptionPress = async (integrationOption: IntegrationOption) => {
     try {
-      const integrationAuthX = integrationAuths.find((integrationAuth) => integrationAuth.integration === integrationOption.slug);
+      const integrationAuthX = integrationAuths.find(
+        (integrationAuth) => integrationAuth.integration === integrationOption.slug
+      );
 
       if (!bot.isActive) {
         await handleBotActivate();
@@ -323,10 +325,20 @@ export default function Integrations() {
    * @param {Object} obj
    * @param {IntegrationAuth} obj.integrationAuth - integrationAuth to delete
    */
-  const handleDeleteIntegrationAuth = async ({ integrationAuth: deletedIntegrationAuth }: { integrationAuth: IntegrationAuth }) => {
+  const handleDeleteIntegrationAuth = async ({
+    integrationAuth: deletedIntegrationAuth
+  }: {
+    integrationAuth: IntegrationAuth;
+  }) => {
     try {
-      const newIntegrations = integrations.filter((integration) => integration.integrationAuth !== deletedIntegrationAuth._id);
-      setIntegrationAuths(integrationAuths.filter((integrationAuth) => integrationAuth._id !== deletedIntegrationAuth._id));
+      const newIntegrations = integrations.filter(
+        (integration) => integration.integrationAuth !== deletedIntegrationAuth._id
+      );
+      setIntegrationAuths(
+        integrationAuths.filter(
+          (integrationAuth) => integrationAuth._id !== deletedIntegrationAuth._id
+        )
+      );
       setIntegrations(newIntegrations);
 
       // handle updating bot
@@ -344,7 +356,7 @@ export default function Integrations() {
     } catch (err) {
       console.error(err);
     }
-  }
+  };
 
   /**
    * Handle deleting integration [integration]
@@ -375,19 +387,19 @@ export default function Integrations() {
     } catch (err) {
       console.error(err);
     }
-  }
+  };
 
   return (
-    <div className="bg-bunker-800 max-h-screen flex flex-col justify-between text-white">
+    <div className="flex max-h-screen flex-col justify-between bg-bunker-800 text-white">
       <Head>
-        <title>{t('common:head-title', { title: t('integrations:title') })}</title>
+        <title>{t('common.head-title', { title: t('integrations.title') })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
         <meta property="og:title" content="Manage your .env files in seconds" />
-        <meta name="og:description" content={t('integrations:description') as string} />
+        <meta name="og:description" content={t('integrations.description') as string} />
       </Head>
-      <div className="w-full pb-2 h-screen max-h-[calc(100vh-10px)] overflow-y-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
-        <NavHeader pageName={t('integrations:title')} isProjectRelated />
+      <div className="no-scrollbar::-webkit-scrollbar h-screen max-h-[calc(100vh-10px)] w-full overflow-y-scroll pb-2 no-scrollbar">
+        <NavHeader pageName={t('integrations.title')} isProjectRelated />
         <ActivateBotDialog
           isOpen={isActivateBotDialogOpen}
           closeModal={() => setIsActivateBotDialogOpen(false)}
@@ -412,7 +424,7 @@ export default function Integrations() {
                 setIsActivateBotDialogOpen(true);
                 return;
               }
-              integrationOptionPress(integrationOption)
+              integrationOptionPress(integrationOption);
             }}
             integrationAuths={integrationAuths}
             handleDeleteIntegrationAuth={handleDeleteIntegrationAuth}
@@ -427,5 +439,3 @@ export default function Integrations() {
 }
 
 Integrations.requireAuth = true;
-
-export const getServerSideProps = getTranslatedServerSideProps(['integrations']);

@@ -19,7 +19,8 @@ export const getOrganizations = async (req: Request, res: Response) => {
 	try {
 		organizations = (
 			await MembershipOrg.find({
-				user: req.user._id
+				user: req.user._id,
+				status: ACCEPTED
 			}).populate('organization')
 		).map((m) => m.organization);
 	} catch (err) {
@@ -85,7 +86,7 @@ export const createOrganization = async (req: Request, res: Response) => {
 export const getOrganization = async (req: Request, res: Response) => {
 	let organization;
 	try {
-		organization = req.membershipOrg.organization;
+		organization = req.organization
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
@@ -317,29 +318,29 @@ export const createOrganizationPortalSession = async (
 ) => {
 	let session;
 	try {
-		const stripe = new Stripe(getStripeSecretKey(), {
+		const stripe = new Stripe(await getStripeSecretKey(), {
 			apiVersion: '2022-08-01'
 		});
 
 		// check if there is a payment method on file
 		const paymentMethods = await stripe.paymentMethods.list({
-			customer: req.membershipOrg.organization.customerId,
+			customer: req.organization.customerId,
 			type: 'card'
 		});
-
+		
 		if (paymentMethods.data.length < 1) {
 			// case: no payment method on file
 			session = await stripe.checkout.sessions.create({
-				customer: req.membershipOrg.organization.customerId,
+				customer: req.organization.customerId,
 				mode: 'setup',
 				payment_method_types: ['card'],
-				success_url: getSiteURL() + '/dashboard',
-				cancel_url: getSiteURL() + '/dashboard'
+				success_url: (await getSiteURL()) + '/dashboard',
+				cancel_url: (await getSiteURL()) + '/dashboard'
 			});
 		} else {
 			session = await stripe.billingPortal.sessions.create({
-				customer: req.membershipOrg.organization.customerId,
-				return_url: getSiteURL() + '/dashboard'
+				customer: req.organization.customerId,
+				return_url: (await getSiteURL()) + '/dashboard'
 			});
 		}
 
@@ -365,12 +366,12 @@ export const getOrganizationSubscriptions = async (
 ) => {
 	let subscriptions;
 	try {
-		const stripe = new Stripe(getStripeSecretKey(), {
+		const stripe = new Stripe(await getStripeSecretKey(), {
 			apiVersion: '2022-08-01'
 		});
 		
 		subscriptions = await stripe.subscriptions.list({
-			customer: req.membershipOrg.organization.customerId
+			customer: req.organization.customerId
 		});
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });

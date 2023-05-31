@@ -5,7 +5,7 @@ import {
 	IntegrationAuth,
 	Bot 
 } from '../../models';
-import { INTEGRATION_SET, getIntegrationOptions as getIntegrationOptionsFunc } from '../../variables';
+import { ALGORITHM_AES_256_GCM, ENCODING_SCHEME_UTF8, INTEGRATION_SET, getIntegrationOptions as getIntegrationOptionsFunc } from '../../variables';
 import { IntegrationService } from '../../services';
 import {
 	getApps, 
@@ -16,7 +16,7 @@ import {
 	INTEGRATION_VERCEL_API_URL,
 	INTEGRATION_RAILWAY_API_URL
 } from '../../variables';
-import request from '../../config/request';
+import { standardRequest } from '../../config/request';
 
 /***
  * Return integration authorization with id [integrationAuthId]
@@ -44,7 +44,7 @@ export const getIntegrationAuth = async (req: Request, res: Response) => {
 }
 
 export const getIntegrationOptions = async (req: Request, res: Response) => {
-	const INTEGRATION_OPTIONS = getIntegrationOptionsFunc();
+	const INTEGRATION_OPTIONS = await getIntegrationOptionsFunc();
 
 	return res.status(200).send({
 		integrationOptions: INTEGRATION_OPTIONS,
@@ -129,7 +129,9 @@ export const saveIntegrationAccessToken = async (
             integration
         }, {
             workspace: new Types.ObjectId(workspaceId),
-            integration
+            integration,
+			algorithm: ALGORITHM_AES_256_GCM,
+			keyEncoding: ENCODING_SCHEME_UTF8
 		}, {
             new: true,
             upsert: true
@@ -229,7 +231,7 @@ export const getIntegrationAuthVercelBranches = async (req: Request, res: Respon
 	let branches: string[] = [];
 	
 	if (appId && appId !== '') {
-		const { data }: { data: VercelBranch[] } = await request.get(
+		const { data }: { data: VercelBranch[] } = await standardRequest.get(
 			`${INTEGRATION_VERCEL_API_URL}/v1/integrations/git-branches`,
 			{
 				params,
@@ -292,7 +294,7 @@ export const getIntegrationAuthRailwayEnvironments = async (req: Request, res: R
 			projectId: appId
 		}
 		
-		const { data: { data: { environments: { edges } } } } = await request.post(INTEGRATION_RAILWAY_API_URL, {
+		const { data: { data: { environments: { edges } } } } = await standardRequest.post(INTEGRATION_RAILWAY_API_URL, {
 			query,
 			variables,
 		}, {
@@ -372,7 +374,7 @@ export const getIntegrationAuthRailwayServices = async (req: Request, res: Respo
 			id: appId
 		}
 		
-		const { data: { data: { project: { services: { edges } } } } } = await request.post(INTEGRATION_RAILWAY_API_URL, {
+		const { data: { data: { project: { services: { edges } } } } } = await standardRequest.post(INTEGRATION_RAILWAY_API_URL, {
 			query,
 			variables
 		}, {

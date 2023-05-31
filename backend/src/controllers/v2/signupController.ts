@@ -7,8 +7,9 @@ import {
 } from '../../helpers/signup';
 import { issueAuthTokens } from '../../helpers/auth';
 import { INVITED, ACCEPTED } from '../../variables';
-import request from '../../config/request';
+import { standardRequest } from '../../config/request';
 import { getLoopsApiKey, getHttpsEnabled } from '../../config';
+import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
 
 /**
  * Complete setting up user by adding their personal and auth information as part of the
@@ -89,6 +90,19 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 
 		// update organization membership statuses that are
 		// invited to completed with user attached
+		const membershipsToUpdate = await MembershipOrg.find({
+			inviteEmail: email,
+			status: INVITED
+		});
+		
+		membershipsToUpdate.forEach(async (membership) => {
+			await updateSubscriptionOrgQuantity({
+				organizationId: membership.organization.toString()
+			});
+		});
+
+		// update organization membership statuses that are
+		// invited to completed with user attached
 		await MembershipOrg.updateMany(
 			{
 				inviteEmail: email,
@@ -108,8 +122,8 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 		token = tokens.token;
 
 		// sending a welcome email to new users
-		if (getLoopsApiKey()) {
-			await request.post("https://app.loops.so/api/v1/events/send", {
+		if (await getLoopsApiKey()) {
+			await standardRequest.post("https://app.loops.so/api/v1/events/send", {
 				"email": email,
 				"eventName": "Sign Up",
 				"firstName": firstName,
@@ -117,7 +131,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			}, {
 				headers: {
 					"Accept": "application/json",
-					"Authorization": "Bearer " + getLoopsApiKey()
+					"Authorization": "Bearer " + (await getLoopsApiKey())
 				},
 			});
 		}
@@ -127,7 +141,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			httpOnly: true,
 			path: '/',
 			sameSite: 'strict',
-			secure: getHttpsEnabled()
+			secure: await getHttpsEnabled()
 		});
 	} catch (err) {
 		Sentry.setUser(null);
@@ -206,9 +220,20 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 
 		if (!user)
 			throw new Error('Failed to complete account for non-existent user');
-
+		
 		// update organization membership statuses that are
 		// invited to completed with user attached
+		const membershipsToUpdate = await MembershipOrg.find({
+			inviteEmail: email,
+			status: INVITED
+		});
+		
+		membershipsToUpdate.forEach(async (membership) => {
+			await updateSubscriptionOrgQuantity({
+				organizationId: membership.organization.toString()
+			});
+		});
+
 		await MembershipOrg.updateMany(
 			{
 				inviteEmail: email,
@@ -232,7 +257,7 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 			httpOnly: true,
 			path: '/',
 			sameSite: 'strict',
-			secure: getHttpsEnabled()
+			secure: await getHttpsEnabled()
 		});
 	} catch (err) {
 		Sentry.setUser(null);

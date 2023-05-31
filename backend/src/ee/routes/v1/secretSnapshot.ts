@@ -7,7 +7,7 @@ import {
     requireAuth,
     validateRequest
 } from '../../../middleware';
-import { param, body } from 'express-validator';
+import { param } from 'express-validator';
 import { ADMIN, MEMBER } from '../../../variables';
 import { secretSnapshotController } from '../../controllers/v1';
 

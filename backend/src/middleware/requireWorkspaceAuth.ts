@@ -1,8 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
-import { validateMembership } from '../helpers/membership';
-import { validateClientForWorkspace } from '../helpers/workspace';
-import { UnauthorizedRequestError } from '../utils/errors';
+import { validateClientForWorkspace } from '../validation';
 
 type req = 'params' | 'body' | 'query';
 
@@ -31,7 +29,7 @@ const requireWorkspaceAuth = ({
 		const environment = locationEnvironment ? req[locationEnvironment]?.environment : undefined;
 		
 		// validate clients
-		const { membership } = await validateClientForWorkspace({
+		const { membership, workspace } = await validateClientForWorkspace({
 			authData: req.authData,
 			workspaceId: new Types.ObjectId(workspaceId),
 			environment,
@@ -42,6 +40,10 @@ const requireWorkspaceAuth = ({
 		
 		if (membership) {
 			req.membership = membership;
+		}
+		
+		if (workspace) {
+			req.workspace = workspace;
 		}
 
 		return next();

@@ -12,9 +12,8 @@ import (
 	"github.com/Infisical/infisical-merge/packages/api"
 	"github.com/Infisical/infisical-merge/packages/crypto"
 	"github.com/Infisical/infisical-merge/packages/models"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/go-resty/resty/v2"
+	"github.com/rs/zerolog/log"
 )
 
 func GetPlainTextSecretsViaServiceToken(fullServiceToken string) ([]models.SingleEnvironmentVariable, api.GetServiceTokenDetailsResponse, error) {
@@ -97,7 +96,7 @@ func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, work
 	}
 
 	if len(currentUsersPrivateKey) == 0 || len(encryptedWorkspaceKeySenderPublicKey) == 0 {
-		log.Debugf("Missing credentials for generating plainTextEncryptionKey: [currentUsersPrivateKey=%s] [encryptedWorkspaceKeySenderPublicKey=%s]", currentUsersPrivateKey, encryptedWorkspaceKeySenderPublicKey)
+		log.Debug().Msgf("Missing credentials for generating plainTextEncryptionKey: [currentUsersPrivateKey=%s] [encryptedWorkspaceKeySenderPublicKey=%s]", currentUsersPrivateKey, encryptedWorkspaceKeySenderPublicKey)
 		PrintErrorMessageAndExit("Some required user credentials are missing to generate your [plainTextEncryptionKey]. Please run [infisical login] then try again")
 	}
 
@@ -131,17 +130,17 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 
 	isConnected := CheckIsConnectedToInternet()
 	var secretsToReturn []models.SingleEnvironmentVariable
-	var serviceTokenDetails api.GetServiceTokenDetailsResponse
+	// var serviceTokenDetails api.GetServiceTokenDetailsResponse
 	var errorToReturn error
 
 	if infisicalToken == "" {
 		if isConnected {
-			log.Debug("GetAllEnvironmentVariables: Connected to internet, checking logged in creds")
+			log.Debug().Msg("GetAllEnvironmentVariables: Connected to internet, checking logged in creds")
 			RequireLocalWorkspaceFile()
 			RequireLogin()
 		}
 
-		log.Debug("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
+		log.Debug().Msg("GetAllEnvironmentVariables: Trying to fetch secrets using logged in details")
 
 		loggedInUserDetails, err := GetCurrentLoggedInUserDetails()
 		if err != nil {
@@ -164,7 +163,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 		}
 
 		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId, params.Environment, params.TagSlugs)
-		log.Debugf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
+		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
 
 		backupSecretsEncryptionKey := []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
 		if errorToReturn == nil {
@@ -182,12 +181,12 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 		}
 
 	} else {
-		log.Debug("Trying to fetch secrets using service token")
-		secretsToReturn, serviceTokenDetails, errorToReturn = GetPlainTextSecretsViaServiceToken(infisicalToken)
+		log.Debug().Msg("Trying to fetch secrets using service token")
+		secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(infisicalToken)
 
-		if serviceTokenDetails.Environment != params.Environment {
-			PrintErrorMessageAndExit(fmt.Sprintf("Fetch secrets failed: token allows [%s] environment access, not [%s]. Service tokens are environment-specific; no need for --env flag.", params.Environment, serviceTokenDetails.Environment))
-		}
+		// if serviceTokenDetails.Environment != params.Environment {
+		// 	PrintErrorMessageAndExit(fmt.Sprintf("Fetch secrets failed: token allows [%s] environment access, not [%s]. Service tokens are environment-specific; no need for --env flag.", params.Environment, serviceTokenDetails.Environment))
+		// }
 	}
 
 	return secretsToReturn, errorToReturn
@@ -515,7 +514,7 @@ func DeleteBackupSecrets() error {
 func GetEnvFromWorkspaceFile() string {
 	workspaceFile, err := GetWorkSpaceFromFile()
 	if err != nil {
-		log.Debugf("getEnvFromWorkspaceFile: [err=%s]", err)
+		log.Debug().Msgf("getEnvFromWorkspaceFile: [err=%s]", err)
 		return ""
 	}
 
@@ -529,17 +528,17 @@ func GetEnvFromWorkspaceFile() string {
 func GetEnvelopmentBasedOnGitBranch(workspaceFile models.WorkspaceConfigFile) string {
 	branch, err := getCurrentBranch()
 	if err != nil {
-		log.Debugf("getEnvelopmentBasedOnGitBranch: [err=%s]", err)
+		log.Debug().Msgf("getEnvelopmentBasedOnGitBranch: [err=%s]", err)
 	}
 
 	envBasedOnGitBranch, ok := workspaceFile.GitBranchToEnvironmentMapping[branch]
 
-	log.Debugf("GetEnvelopmentBasedOnGitBranch: [envBasedOnGitBranch=%s] [ok=%t]", envBasedOnGitBranch, ok)
+	log.Debug().Msgf("GetEnvelopmentBasedOnGitBranch: [envBasedOnGitBranch=%s] [ok=%t]", envBasedOnGitBranch, ok)
 
 	if err == nil && ok {
 		return envBasedOnGitBranch
 	} else {
-		log.Debugf("getEnvelopmentBasedOnGitBranch: [err=%s]", err)
+		log.Debug().Msgf("getEnvelopmentBasedOnGitBranch: [err=%s]", err)
 		return ""
 	}
 }

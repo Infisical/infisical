@@ -1,7 +1,4 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { faKey, faUser } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import { Meta, StoryObj } from '@storybook/react';
 
 import { Menu, MenuGroup, MenuItem } from './Menu';
@@ -74,14 +71,14 @@ export const WithIcons: Story = {
   render: (args) => (
     <Menu {...args}>
       <MenuGroup title="Group 1">
-        <MenuItem isDisabled icon={<FontAwesomeIcon icon={faKey} />}>
+        <MenuItem isDisabled icon="system-outline-90-lock-closed">
           Secrets
         </MenuItem>
-        <MenuItem icon={<FontAwesomeIcon icon={faUser} />}>Members</MenuItem>
+        <MenuItem icon="system-outline-96-groups">Members</MenuItem>
       </MenuGroup>
       <MenuGroup title="Group 2">
-        <MenuItem icon={<FontAwesomeIcon icon={faKey} />}>Secrets</MenuItem>
-        <MenuItem icon={<FontAwesomeIcon icon={faKey} />}>Members</MenuItem>
+        <MenuItem icon="system-outline-90-lock-closed">Secrets</MenuItem>
+        <MenuItem icon="system-outline-96-groups">Members</MenuItem>
       </MenuGroup>
     </Menu>
   ),
@@ -93,12 +90,12 @@ export const WithDescription: Story = {
     <Menu {...args}>
       <MenuItem
         isDisabled
-        icon={<FontAwesomeIcon icon={faKey} />}
+        icon="system-outline-90-lock-closed"
         description="Some random description"
       >
         Secrets
       </MenuItem>
-      <MenuItem icon={<FontAwesomeIcon icon={faUser} />} description="Some random description">
+      <MenuItem icon="system-outline-96-groups" description="Some random description">
         Members
       </MenuItem>
     </Menu>

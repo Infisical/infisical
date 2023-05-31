@@ -81,13 +81,13 @@ export default class RequestError extends Error{
         return obj
     }
 
-    public format(req: Request){
+    public async format(req: Request){
         let _context = Object.assign({
             stacktrace: this.stacktrace
         }, this.context)
 
         //* Omit sensitive information from context that can leak internal workings of this program if user is not developer
-        if(!getVerboseErrorOutput()){
+        if(!(await getVerboseErrorOutput())){
             _context = this._omit(_context, [
                 'stacktrace',
                 'exception',

@@ -1,5 +1,5 @@
 import React, { Fragment } from 'react';
-import { useTranslation } from 'next-i18next';
+import { useTranslation } from 'react-i18next';
 import {
   faAngleDown,
   faEye,
@@ -45,16 +45,16 @@ const EventFilter = ({ selected, select }: ListBoxProps): JSX.Element => {
   const { t } = useTranslation();
 
   return (
-    <Listbox value={t(`activity:event.${selected}`)} onChange={select}>
+    <Listbox value={t(`activity.event.${selected}`)} onChange={select}>
       <div className="relative">
-        <Listbox.Button className="bg-mineshaft-800 hover:bg-mineshaft-700 duration-200 cursor-pointer rounded-md h-10 flex items-center justify-between pl-4 pr-2 w-52 text-bunker-200 text-sm">
+        <Listbox.Button className="flex h-10 w-52 cursor-pointer items-center justify-between rounded-md bg-mineshaft-800 pl-4 pr-2 text-sm text-bunker-200 duration-200 hover:bg-mineshaft-700">
           {selected !== '' ? (
-            <p className="select-none text-bunker-100">{t(`activity:event.${selected}`)}</p>
+            <p className="select-none text-bunker-100">{t(`activity.event.${selected}`)}</p>
           ) : (
-            <p className="select-none">{String(t('common:select-event'))}</p>
+            <p className="select-none">{String(t('common.select-event'))}</p>
           )}
           {selected !== '' ? (
-            <FontAwesomeIcon icon={faX} className="pl-2 w-2 p-2" onClick={() => select('')} />
+            <FontAwesomeIcon icon={faX} className="w-2 p-2 pl-2" onClick={() => select('')} />
           ) : (
             <FontAwesomeIcon icon={faAngleDown} className="pl-4 pr-2" />
           )}
@@ -65,12 +65,12 @@ const EventFilter = ({ selected, select }: ListBoxProps): JSX.Element => {
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <Listbox.Options className="border border-mineshaft-700 z-50 w-52 p-1 absolute mt-1 max-h-60 overflow-auto rounded-md bg-bunker text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+          <Listbox.Options className="absolute z-50 mt-1 max-h-60 w-52 overflow-auto rounded-md border border-mineshaft-700 bg-bunker p-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
             {eventOptions.map((event, id) => (
               <Listbox.Option
                 key={`${event.name}.${id + 1}`}
-                className={`px-4 h-10 flex items-center text-sm cursor-pointer hover:bg-mineshaft-700 text-bunker-200 rounded-md ${
-                  selected === t(`activity:event.${event.name}`) && 'bg-mineshaft-700'
+                className={`flex h-10 cursor-pointer items-center rounded-md px-4 text-sm text-bunker-200 hover:bg-mineshaft-700 ${
+                  selected === t(`activity.event.${event.name}`) && 'bg-mineshaft-700'
                 }`}
                 value={event.name}
               >
@@ -79,7 +79,7 @@ const EventFilter = ({ selected, select }: ListBoxProps): JSX.Element => {
                     className={`block truncate ${isSelected ? 'font-semibold' : 'font-normal'}`}
                   >
                     <FontAwesomeIcon icon={event.icon} className="pr-4" />{' '}
-                    {t(`activity:event.${event.name}`)}
+                    {t(`activity.event.${event.name}`)}
                   </span>
                 )}
               </Listbox.Option>

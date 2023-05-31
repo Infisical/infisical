@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -21,6 +22,7 @@ import { Select, SelectItem, Tooltip } from '../v2';
  * @param {string} obj.onEnvChange - the action that happens when an env is changed
  * @returns
  */
+// TODO(akhilmhdh): simply this header and nav system later
 export default function NavHeader({
   pageName,
   isProjectRelated,
@@ -38,10 +40,10 @@ export default function NavHeader({
 }): JSX.Element {
   const { currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
-  const router = useRouter()
+  const router = useRouter();
 
   return (
-    <div className="ml-6 flex flex-row items-center pt-8">
+    <div className="ml-6 flex flex-row items-center pt-6">
       <div className="mr-2 flex h-6 w-6 items-center justify-center rounded-md bg-primary-900 text-mineshaft-100">
         {currentOrg?.name?.charAt(0)}
       </div>
@@ -59,31 +61,40 @@ export default function NavHeader({
         </>
       )}
       <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-sm text-gray-400" />
-      {pageName === 'Secrets'
-      ? <a className="text-sm font-semibold text-primary/80 hover:text-primary" href={`${router.asPath.split("?")[0]}`}>{pageName}</a>
-      : <div className="text-sm text-gray-400">{pageName}</div>}
-      {currentEnv &&
-      <>
-        <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
-        <div className='pl-3 rounded-md hover:bg-bunker-100/10'>
-          <Tooltip content="Select environment">
-            <Select
-              value={userAvailableEnvs?.filter(uae => uae.name === currentEnv)[0]?.slug}
-              onValueChange={(value) => {
-                if (value && onEnvChange) onEnvChange(value);
-              }}
-              className="text-sm pl-0 font-medium text-primary/80 hover:text-primary bg-transparent"
-              dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 drop-shadow-2xl"
-            >
-              {userAvailableEnvs?.map(({ name, slug }) => (
-                <SelectItem value={slug} key={slug}>
-                  {name}
-                </SelectItem>
-              ))}
-            </Select>
-          </Tooltip>
-        </div>
-      </>}
+      {pageName === 'Secrets' ? (
+        <Link
+          passHref
+          legacyBehavior
+          href={{ pathname: '/dashboard/[id]', query: { id: router.query.id } }}
+        >
+          <a className="text-sm font-semibold text-primary/80 hover:text-primary">{pageName}</a>
+        </Link>
+      ) : (
+        <div className="text-sm text-gray-400">{pageName}</div>
+      )}
+      {currentEnv && (
+        <>
+          <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
+          <div className="rounded-md pl-3 hover:bg-bunker-100/10">
+            <Tooltip content="Select environment">
+              <Select
+                value={userAvailableEnvs?.filter((uae) => uae.name === currentEnv)[0]?.slug}
+                onValueChange={(value) => {
+                  if (value && onEnvChange) onEnvChange(value);
+                }}
+                className="bg-transparent pl-0 text-sm font-medium text-primary/80 hover:text-primary"
+                dropdownContainerClassName="text-bunker-200 bg-mineshaft-800 border border-mineshaft-600 drop-shadow-2xl"
+              >
+                {userAvailableEnvs?.map(({ name, slug }) => (
+                  <SelectItem value={slug} key={slug}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </Select>
+            </Tooltip>
+          </div>
+        </>
+      )}
     </div>
   );
 }

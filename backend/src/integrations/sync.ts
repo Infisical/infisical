@@ -42,8 +42,7 @@ import {
   INTEGRATION_GCP_SECRET_MANAGER,
   INTEGRATION_SUPABASE_API_URL
 } from "../variables";
-import request from '../config/request';
-import axios from "axios";
+import { standardRequest} from '../config/request';
 
 /**
  * Sync/push [secrets] to [app] in integration named [integration]
@@ -227,7 +226,7 @@ const syncSecretsAzureKeyVault = async ({
       let result: GetAzureKeyVaultSecret[] = [];
       try {
         while (url) {
-          const res = await request.get(url, {
+          const res = await standardRequest.get(url, {
             headers: {
               Authorization: `Bearer ${accessToken}`
             }
@@ -254,7 +253,7 @@ const syncSecretsAzureKeyVault = async ({
         lastSlashIndex = getAzureKeyVaultSecret.id.lastIndexOf('/');
       }
       
-      const azureKeyVaultSecret = await request.get(`${getAzureKeyVaultSecret.id}?api-version=7.3`, {
+      const azureKeyVaultSecret = await standardRequest.get(`${getAzureKeyVaultSecret.id}?api-version=7.3`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -320,7 +319,7 @@ const syncSecretsAzureKeyVault = async ({
       while (!isSecretSet && maxTries > 0) {
         // try to set secret
         try {
-          await request.put(
+          await standardRequest.put(
             `${integration.app}/secrets/${key}?api-version=7.3`,
             {
               value
@@ -337,7 +336,7 @@ const syncSecretsAzureKeyVault = async ({
         } catch (err) {
           const error: any = err;
           if (error?.response?.data?.error?.innererror?.code === 'ObjectIsDeletedButRecoverable') {
-            await request.post(
+            await standardRequest.post(
               `${integration.app}/deletedsecrets/${key}/recover?api-version=7.3`, {},
               {
                 headers: {
@@ -367,7 +366,7 @@ const syncSecretsAzureKeyVault = async ({
     
     for await (const deleteSecret of deleteSecrets) {
       const { key } = deleteSecret;
-      await request.delete(`${integration.app}/secrets/${key}?api-version=7.3`, {
+      await standardRequest.delete(`${integration.app}/secrets/${key}?api-version=7.3`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -580,7 +579,7 @@ const syncSecretsHeroku = async ({
 }) => {
   try {
     const herokuSecrets = (
-      await request.get(
+      await standardRequest.get(
         `${INTEGRATION_HEROKU_API_URL}/apps/${integration.app}/config-vars`,
         {
           headers: {
@@ -598,7 +597,7 @@ const syncSecretsHeroku = async ({
       }
     });
 
-    await request.patch(
+    await standardRequest.patch(
       `${INTEGRATION_HEROKU_API_URL}/apps/${integration.app}/config-vars`,
       secrets,
       {
@@ -654,7 +653,7 @@ const syncSecretsVercel = async ({
         : {}),
     };
       
-    const vercelSecrets: VercelSecret[] = (await request.get(
+    const vercelSecrets: VercelSecret[] = (await standardRequest.get(
       `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env`,
       {
         params,
@@ -687,7 +686,7 @@ const syncSecretsVercel = async ({
     for await (const vercelSecret of vercelSecrets) {
       if (vercelSecret.type === 'encrypted') {
         // case: secret is encrypted -> need to decrypt
-        const decryptedSecret = (await request.get(
+        const decryptedSecret = (await standardRequest.get(
             `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${vercelSecret.id}`,
             {
               params,
@@ -759,7 +758,7 @@ const syncSecretsVercel = async ({
 
     // Sync/push new secrets
     if (newSecrets.length > 0) {
-      await request.post(
+      await standardRequest.post(
         `${INTEGRATION_VERCEL_API_URL}/v10/projects/${integration.app}/env`,
         newSecrets,
         {
@@ -775,7 +774,7 @@ const syncSecretsVercel = async ({
     for await (const secret of updateSecrets) {
       if (secret.type !== 'sensitive') {
         const { id, ...updatedSecret } = secret;
-        await request.patch(
+        await standardRequest.patch(
           `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
           updatedSecret,
           {
@@ -790,7 +789,7 @@ const syncSecretsVercel = async ({
     }
 
     for await (const secret of deleteSecrets) {
-      await request.delete(
+      await standardRequest.delete(
         `${INTEGRATION_VERCEL_API_URL}/v9/projects/${integration.app}/env/${secret.id}`,
         {
           params,
@@ -849,7 +848,7 @@ const syncSecretsNetlify = async ({
     });
 
     const res = (
-      await request.get(
+      await standardRequest.get(
         `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env`,
         {
           params: getParams,
@@ -963,7 +962,7 @@ const syncSecretsNetlify = async ({
     });
 
     if (newSecrets.length > 0) {
-      await request.post(
+      await standardRequest.post(
         `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env`,
         newSecrets,
         {
@@ -978,7 +977,7 @@ const syncSecretsNetlify = async ({
 
     if (updateSecrets.length > 0) {
       updateSecrets.forEach(async (secret: NetlifySecret) => {
-        await request.patch(
+        await standardRequest.patch(
           `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${secret.key}`,
           {
             context: secret.values[0].context,
@@ -997,7 +996,7 @@ const syncSecretsNetlify = async ({
 
     if (deleteSecrets.length > 0) {
       deleteSecrets.forEach(async (key: string) => {
-        await request.delete(
+        await standardRequest.delete(
           `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${key}`,
           {
             params: syncParams,
@@ -1012,7 +1011,7 @@ const syncSecretsNetlify = async ({
 
     if (deleteSecretValues.length > 0) {
       deleteSecretValues.forEach(async (secret: NetlifySecret) => {
-        await request.delete(
+        await standardRequest.delete(
           `${INTEGRATION_NETLIFY_API_URL}/api/v1/accounts/${integrationAuth.accountId}/env/${secret.key}/value/${secret.values[0].id}`,
           {
             params: syncParams,
@@ -1163,7 +1162,7 @@ const syncSecretsRender = async ({
   accessToken: string;
 }) => {
   try {
-    await request.put(
+    await standardRequest.put(
       `${INTEGRATION_RENDER_API_URL}/v1/services/${integration.appId}/env-vars`,
       Object.keys(secrets).map((key) => ({
         key,
@@ -1215,7 +1214,7 @@ const syncSecretsRailway = async ({
       variables: secrets
     };
 
-    await request.post(INTEGRATION_RAILWAY_API_URL, {
+    await standardRequest.post(INTEGRATION_RAILWAY_API_URL, {
       query,
       variables: {
         input,
@@ -1273,7 +1272,7 @@ const syncSecretsFlyio = async ({
       }
     `;
 
-    await request.post(INTEGRATION_FLYIO_API_URL, {
+    await standardRequest.post(INTEGRATION_FLYIO_API_URL, {
       query: SetSecrets,
       variables: {
         input: {
@@ -1308,7 +1307,7 @@ const syncSecretsFlyio = async ({
         }
     }`;
 
-    const getSecretsRes = (await request.post(INTEGRATION_FLYIO_API_URL, {
+    const getSecretsRes = (await standardRequest.post(INTEGRATION_FLYIO_API_URL, {
       query: GetSecrets,
       variables: {
         appName: integration.app,
@@ -1344,7 +1343,7 @@ const syncSecretsFlyio = async ({
         }
     }`;
 
-    await request.post(INTEGRATION_FLYIO_API_URL, {
+    await standardRequest.post(INTEGRATION_FLYIO_API_URL, {
       query: DeleteSecrets,
       variables: {
         input: {
@@ -1385,7 +1384,7 @@ const syncSecretsCircleCI = async ({
 }) => {  
   try {
     const circleciOrganizationDetail = (
-      await request.get(`${INTEGRATION_CIRCLECI_API_URL}/v2/me/collaborations`, {
+      await standardRequest.get(`${INTEGRATION_CIRCLECI_API_URL}/v2/me/collaborations`, {
         headers: {
           "Circle-Token": accessToken,
           "Accept-Encoding": "application/json",
@@ -1398,7 +1397,7 @@ const syncSecretsCircleCI = async ({
     // sync secrets to CircleCI
     Object.keys(secrets).forEach(
       async (key) =>
-        await request.post(
+        await standardRequest.post(
           `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar`,
           {
             name: key,
@@ -1415,7 +1414,7 @@ const syncSecretsCircleCI = async ({
 
     // get secrets from CircleCI
     const getSecretsRes = (
-      await request.get(
+      await standardRequest.get(
         `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar`,
         {
           headers: {
@@ -1429,7 +1428,7 @@ const syncSecretsCircleCI = async ({
     // delete secrets from CircleCI
     getSecretsRes.forEach(async (sec: any) => {
       if (!(sec.name in secrets)) {
-        await request.delete(
+        await standardRequest.delete(
           `${INTEGRATION_CIRCLECI_API_URL}/v2/project/${slug}/${integration.app}/envvar/${sec.name}`,
           {
             headers: {
@@ -1466,7 +1465,7 @@ const syncSecretsTravisCI = async ({
   try {
     // get secrets from travis-ci  
     const getSecretsRes = (
-      await request.get(
+      await standardRequest.get(
         `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars?repository_id=${integration.appId}`,
         {
           headers: {
@@ -1488,7 +1487,7 @@ const syncSecretsTravisCI = async ({
       if (!(key in getSecretsRes)) {
         // case: secret does not exist in travis ci
         // -> add secret
-        await request.post(
+        await standardRequest.post(
           `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars?repository_id=${integration.appId}`,
           {
             env_var: {
@@ -1507,7 +1506,7 @@ const syncSecretsTravisCI = async ({
       } else {
         // case: secret exists in travis ci
         // -> update/set secret
-        await request.patch(
+        await standardRequest.patch(
           `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars/${getSecretsRes[key].id}?repository_id=${getSecretsRes[key].repository_id}`,
           {
             env_var: {
@@ -1529,7 +1528,7 @@ const syncSecretsTravisCI = async ({
     for await (const key of Object.keys(getSecretsRes)) {
       if (!(key in secrets)){
         // delete secret
-        await request.delete(
+        await standardRequest.delete(
           `${INTEGRATION_TRAVISCI_API_URL}/settings/env_vars/${getSecretsRes[key].id}?repository_id=${getSecretsRes[key].repository_id}`,
           {
             headers: {
@@ -1566,23 +1565,48 @@ const syncSecretsGitLab = async ({
   accessToken: string;
 }) => {
   try {
-    // get secrets from gitlab
-    const getSecretsRes = (
-      await request.get(
-        `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables`,
-        { 
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json",
-          },
+    interface GitLabSecret {
+      key: string;
+      value: string;
+      environment_scope: string;
+    }
+
+    const getAllEnvVariables = async (integrationAppId: string, accessToken: string) => {
+      const gitLabApiUrl = `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integrationAppId}/variables`;
+      const headers = {
+        "Authorization": `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json",
+      };
+    
+      let allEnvVariables: GitLabSecret[] = [];
+      let url: string | null = `${gitLabApiUrl}?per_page=100`;
+    
+      while (url) {
+        const response: any = await standardRequest.get(url, { headers });
+        allEnvVariables = [...allEnvVariables, ...response.data];
+    
+        const linkHeader = response.headers.link;
+        const nextLink = linkHeader?.split(',').find((part: string) => part.includes('rel="next"'));
+    
+        if (nextLink) {
+          url = nextLink.trim().split(';')[0].slice(1, -1);
+        } else {
+          url = null;
         }
-      )
-    ).data;
+      }
+    
+      return allEnvVariables;
+    };
+
+    const allEnvVariables = await getAllEnvVariables(integration?.appId, accessToken);
+    const getSecretsRes: GitLabSecret[] = allEnvVariables.filter((secret: GitLabSecret) => 
+      secret.environment_scope === integration.targetEnvironment
+    );
 
     for await (const key of Object.keys(secrets)) {
       const existingSecret = getSecretsRes.find((s: any) => s.key == key);
       if (!existingSecret) {
-        await request.post(
+        await standardRequest.post(
           `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables`,
           {
             key: key,
@@ -1590,7 +1614,7 @@ const syncSecretsGitLab = async ({
             protected: false,
             masked: false,
             raw: false,
-            environment_scope:'*'
+            environment_scope: integration.targetEnvironment
           },
           {
             headers: {
@@ -1601,29 +1625,31 @@ const syncSecretsGitLab = async ({
           }
         )
       } else {
-        // udpate secret 
-        await request.put(
-          `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${existingSecret.key}`,
-          {
-            ...existingSecret,
-            value: secrets[existingSecret.key]
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-              "Accept-Encoding": "application/json",
+        // update secret 
+        if (secrets[key] !== existingSecret.value) {
+          await standardRequest.put(
+            `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${existingSecret.key}?filter[environment_scope]=${integration.targetEnvironment}`,
+            {
+              ...existingSecret,
+              value: secrets[existingSecret.key]
             },
-          }
-        )
+            {
+              headers: {
+                "Authorization": `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+                "Accept-Encoding": "application/json",
+              },
+            }
+          );
+        }
       }
     }
 
     // delete secrets 
     for await (const sec of getSecretsRes) {
       if (!(sec.key in secrets)) {
-        await request.delete(
-          `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${sec.key}`,
+        await standardRequest.delete(
+          `${INTEGRATION_GITLAB_API_URL}/v4/projects/${integration?.appId}/variables/${sec.key}?filter[environment_scope]=${integration.targetEnvironment}`,
           {
             headers: {
               "Authorization": `Bearer ${accessToken}`,
@@ -1632,7 +1658,8 @@ const syncSecretsGitLab = async ({
         );
       }
     }
-  }catch (err) {
+
+  } catch (err) {
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error("Failed to sync secrets to GitLab");
@@ -1686,7 +1713,7 @@ const syncSecretsGCPSecretManager = async ({
 					url.searchParams.append("pageToken", nextPageToken);
 
 				const currPageSecretsRes: GCPSecretManager.IListSecretsResponse =
-					(await request.get(url.href, { headers: DEFAULT_HEADERS }))
+					(await standardRequest.get(url.href, { headers: DEFAULT_HEADERS }))
 						?.data;
 
 				if (currPageSecretsRes.secrets) {
@@ -1718,7 +1745,7 @@ const syncSecretsGCPSecretManager = async ({
 			const url = `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${projectId}/secrets/${secretId}/versions/latest:access`;
 
 			const latestSecretVersion: GCPSecretManager.IAccessSecretVersionResponse =
-				(await request.get(url, { headers: DEFAULT_HEADERS }))?.data;
+				(await standardRequest.get(url, { headers: DEFAULT_HEADERS }))?.data;
 
 			return latestSecretVersion;
 		};
@@ -1741,7 +1768,7 @@ const syncSecretsGCPSecretManager = async ({
 			const url = `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${projectId}/secrets/${secretId}/versions`;
 
 			const secretVersionsList: GCPSecretManager.IListSecretVersionsResponse =
-				(await request.get(url, { headers: DEFAULT_HEADERS }))?.data;
+				(await standardRequest.get(url, { headers: DEFAULT_HEADERS }))?.data;
 
 			return secretVersionsList;
 		};
@@ -1772,7 +1799,7 @@ const syncSecretsGCPSecretManager = async ({
 			url.searchParams.append("secretId", secretId);
 
 			const createdSecret: GCPSecretManager.Secret = (
-				await request.post(url.href, body, { headers: DEFAULT_HEADERS })
+				await standardRequest.post(url.href, body, { headers: DEFAULT_HEADERS })
 			)?.data;
 
 			return createdSecret;
@@ -1797,7 +1824,7 @@ const syncSecretsGCPSecretManager = async ({
 				`${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${projectId}/secrets/${secretId}`
 			);
 
-			await request.delete(url.href, { headers: DEFAULT_HEADERS });
+			await standardRequest.delete(url.href, { headers: DEFAULT_HEADERS });
 		};
 
 		/**
@@ -1827,7 +1854,7 @@ const syncSecretsGCPSecretManager = async ({
 
 			const url = `${INTEGRATION_GCP_SECRET_MANAGER_URL}/v1/projects/${projectId}/secrets/${secretId}:addVersion`;
 
-			await request.post(url, body, { headers: DEFAULT_HEADERS });
+			await standardRequest.post(url, body, { headers: DEFAULT_HEADERS });
 		};
 
 		/**
@@ -2050,7 +2077,7 @@ const syncSecretsSupabase = async ({
   accessToken: string;
 }) => {
   try {
-    const { data: getSecretsRes } = await request.get(
+    const { data: getSecretsRes } = await standardRequest.get(
       `${INTEGRATION_SUPABASE_API_URL}/v1/projects/${integration.appId}/secrets`,
       {
         headers: {
@@ -2070,7 +2097,7 @@ const syncSecretsSupabase = async ({
       }
     );
 
-    await request.post(
+    await standardRequest.post(
       `${INTEGRATION_SUPABASE_API_URL}/v1/projects/${integration.appId}/secrets`,
       modifiedFormatForSecretInjection,
       {
@@ -2088,7 +2115,7 @@ const syncSecretsSupabase = async ({
       }
     });
 
-    await request.delete(
+    await standardRequest.delete(
       `${INTEGRATION_SUPABASE_API_URL}/v1/projects/${integration.appId}/secrets`,
       {
         headers: {

@@ -1,30 +1,32 @@
-import to from 'await-to-js';
 import { Types } from 'mongoose';
 import { Request, Response } from 'express';
-import { ISecret, Secret } from '../../models';
+import { ISecret, Secret, Workspace } from '../../models';
 import { IAction, SecretVersion } from '../../ee/models';
 import {
     SECRET_PERSONAL,
-    SECRET_SHARED,
     ACTION_ADD_SECRETS,
     ACTION_READ_SECRETS,
     ACTION_UPDATE_SECRETS,
-    ACTION_DELETE_SECRETS
+    ACTION_DELETE_SECRETS,
+    ALGORITHM_AES_256_GCM,
+    ENCODING_SCHEME_UTF8
 } from '../../variables';
-import { UnauthorizedRequestError, ValidationError } from '../../utils/errors';
+import { UnauthorizedRequestError, WorkspaceNotFoundError } from '../../utils/errors';
 import { EventService } from '../../services';
 import { eventPushSecrets } from '../../events';
-import { EESecretService, EELogService } from '../../ee/services';
+import { EESecretService, EELogService, EELicenseService } from '../../ee/services';
 import { TelemetryService, SecretService } from '../../services';
 import { getChannelFromUserAgent } from '../../utils/posthog';
 import { PERMISSION_WRITE_SECRETS } from '../../variables';
 import { userHasNoAbility, userHasWorkspaceAccess, userHasWriteOnlyAbility } from '../../ee/helpers/checkMembershipPermissions';
 import Tag from '../../models/tag';
-import _, { eq } from 'lodash';
+import _ from 'lodash';
 import {
     BatchSecretRequest,
     BatchSecret
 } from '../../types/secret';
+import { getFolderPath, getFoldersInDirectory, normalizePath } from '../../utils/folder';
+import { ROOT_FOLDER_PATH } from '../../utils/folder';
 
 /**
  * Peform a batch of any specified CUD secret operations
@@ -35,7 +37,7 @@ import {
 export const batchSecrets = async (req: Request, res: Response) => {
 
     const channel = getChannelFromUserAgent(req.headers['user-agent']);
-    const postHogClient = TelemetryService.getPostHogClient();
+    const postHogClient = await TelemetryService.getPostHogClient();
 
     const {
         workspaceId,
@@ -46,18 +48,29 @@ export const batchSecrets = async (req: Request, res: Response) => {
         environment: string;
         requests: BatchSecretRequest[];
     } = req.body;
+    
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) throw WorkspaceNotFoundError();
+    
+    const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
+    const isPaid = orgPlan.tier >= 1;
 
     const createSecrets: BatchSecret[] = [];
     const updateSecrets: BatchSecret[] = [];
     const deleteSecrets: Types.ObjectId[] = [];
     const actions: IAction[] = [];
-    
+
     // get secret blind index salt
     const salt = await SecretService.getSecretBlindIndexSalt({
         workspaceId: new Types.ObjectId(workspaceId)
     });
 
     for await (const request of requests) {
+        const folderId = request.secret.folderId
+
+        // TODO: need to auth folder
+        const fullFolderPath = await getFolderPath(folderId)
+
         let secretBlindIndex = '';
         switch (request.method) {
             case 'POST':
@@ -72,19 +85,27 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     user: request.secret.type === SECRET_PERSONAL ? req.user : undefined,
                     environment,
                     workspace: new Types.ObjectId(workspaceId),
-                    secretBlindIndex
+                    path: fullFolderPath,
+                    folder: folderId,
+                    secretBlindIndex,
+                    algorithm: ALGORITHM_AES_256_GCM,
+                    keyEncoding: ENCODING_SCHEME_UTF8
                 });
                 break;
             case 'PATCH':
                 secretBlindIndex = await SecretService.generateSecretBlindIndexWithSalt({
                     secretName: request.secret.secretName,
-                    salt
+                    salt,
                 });
 
                 updateSecrets.push({
                     ...request.secret,
                     _id: new Types.ObjectId(request.secret._id),
-                    secretBlindIndex
+                    secretBlindIndex,
+                    folder: folderId,
+                    path: fullFolderPath,
+                    algorithm: ALGORITHM_AES_256_GCM,
+                    keyEncoding: ENCODING_SCHEME_UTF8
                 });
                 break;
             case 'DELETE':
@@ -128,7 +149,9 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     environment,
                     workspaceId,
                     channel,
-                    userAgent: req.headers?.['user-agent']
+                    userAgent: req.headers?.['user-agent'],
+                    isPaid,
+                    email: req.user.email
                 }
             });
         }
@@ -185,6 +208,8 @@ export const batchSecrets = async (req: Request, res: Response) => {
             secretCommentCiphertext: u.secretCommentCiphertext,
             secretCommentIV: u.secretCommentIV,
             secretCommentTag: u.secretCommentTag,
+            algorithm: ALGORITHM_AES_256_GCM,
+            keyEncoding: ENCODING_SCHEME_UTF8,
             tags: u.tags
         }));
 
@@ -215,7 +240,9 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     environment,
                     workspaceId,
                     channel,
-                    userAgent: req.headers?.['user-agent']
+                    userAgent: req.headers?.['user-agent'],
+                    isPaid,
+                    email: req.user.email
                 }
             });
         }
@@ -250,7 +277,9 @@ export const batchSecrets = async (req: Request, res: Response) => {
                     environment,
                     workspaceId,
                     channel: channel,
-                    userAgent: req.headers?.['user-agent']
+                    userAgent: req.headers?.['user-agent'],
+                    isPaid,
+                    email: req.user.email
                 }
             });
         }
@@ -365,6 +394,12 @@ export const createSecrets = async (req: Request, res: Response) => {
         }
     }
 
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) throw WorkspaceNotFoundError();
+    
+    const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
+    const isPaid = orgPlan.tier >= 1;
+
     let listOfSecretsToCreate;
     if (Array.isArray(req.body.secrets)) {
         // case: create multiple secrets
@@ -433,13 +468,15 @@ export const createSecrets = async (req: Request, res: Response) => {
                 secretCommentCiphertext,
                 secretCommentIV,
                 secretCommentTag,
+                algorithm: ALGORITHM_AES_256_GCM,
+                keyEncoding: ENCODING_SCHEME_UTF8,
                 tags
             });
         })
     );
-    
+
     const newlyCreatedSecrets: ISecret[] = (await Secret.insertMany(secretsToInsert)).map((insertedSecret) => insertedSecret.toObject());
-    
+
     setTimeout(async () => {
         // trigger event - push secrets
         await EventService.handleEvent({
@@ -479,7 +516,9 @@ export const createSecrets = async (req: Request, res: Response) => {
             secretKeyTag,
             secretValueCiphertext,
             secretValueIV,
-            secretValueTag
+            secretValueTag,
+            algorithm: ALGORITHM_AES_256_GCM,
+            keyEncoding: ENCODING_SCHEME_UTF8
         }))
     });
 
@@ -508,7 +547,7 @@ export const createSecrets = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(workspaceId)
     });
 
-    const postHogClient = TelemetryService.getPostHogClient();
+    const postHogClient = await TelemetryService.getPostHogClient();
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets added',
@@ -520,7 +559,11 @@ export const createSecrets = async (req: Request, res: Response) => {
                 environment,
                 workspaceId,
                 channel: channel,
-                userAgent: req.headers?.['user-agent']
+                userAgent: req.headers?.['user-agent'],
+                isPaid,
+                email: await TelemetryService.getDistinctId({
+                    authData: req.authData
+                })
             }
         });
     }
@@ -578,9 +621,17 @@ export const getSecrets = async (req: Request, res: Response) => {
     }   
     */
 
-    const { tagSlugs } = req.query;
+    const { tagSlugs, secretsPath } = req.query;
     const workspaceId = req.query.workspaceId as string;
     const environment = req.query.environment as string;
+    const normalizedPath = normalizePath(secretsPath as string)
+    const folders = await getFoldersInDirectory(workspaceId as string, environment as string, normalizedPath)
+
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) throw WorkspaceNotFoundError();
+    
+    const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
+    const isPaid = orgPlan.tier >= 1;
 
     // secrets to return 
     let secrets: ISecret[] = [];
@@ -613,6 +664,12 @@ export const getSecrets = async (req: Request, res: Response) => {
             ]
         }
 
+        if (normalizedPath == ROOT_FOLDER_PATH) {
+            secretQuery.path = { $in: [ROOT_FOLDER_PATH, null, undefined] }
+        } else if (normalizedPath) {
+            secretQuery.path = normalizedPath
+        }
+
         if (tagIds.length > 0) {
             secretQuery.tags = { $in: tagIds };
         }
@@ -638,6 +695,13 @@ export const getSecrets = async (req: Request, res: Response) => {
             ]
         }
 
+        // TODO: check if user can query for given path
+        if (normalizedPath == ROOT_FOLDER_PATH) {
+            secretQuery.path = { $in: [ROOT_FOLDER_PATH, null, undefined] }
+        } else if (normalizedPath) {
+            secretQuery.path = normalizedPath
+        }
+
         if (tagIds.length > 0) {
             secretQuery.tags = { $in: tagIds };
         }
@@ -653,6 +717,12 @@ export const getSecrets = async (req: Request, res: Response) => {
             workspace: workspaceId,
             environment,
             user: { $exists: false } // shared secrets only from workspace
+        }
+
+        if (normalizedPath == ROOT_FOLDER_PATH) {
+            secretQuery.path = { $in: [ROOT_FOLDER_PATH, null, undefined] }
+        } else if (normalizedPath) {
+            secretQuery.path = normalizedPath
         }
 
         if (tagIds.length > 0) {
@@ -683,7 +753,7 @@ export const getSecrets = async (req: Request, res: Response) => {
         ipAddress: req.ip
     });
 
-    const postHogClient = TelemetryService.getPostHogClient();
+    const postHogClient = await TelemetryService.getPostHogClient();
     if (postHogClient) {
         postHogClient.capture({
             event: 'secrets pulled',
@@ -695,13 +765,18 @@ export const getSecrets = async (req: Request, res: Response) => {
                 environment,
                 workspaceId,
                 channel,
-                userAgent: req.headers?.['user-agent']
+                userAgent: req.headers?.['user-agent'],
+                isPaid,
+                email: await TelemetryService.getDistinctId({
+                    authData: req.authData
+                })
             }
         });
     }
 
     return res.status(200).send({
-        secrets
+        secrets,
+        folders
     });
 }
 
@@ -798,6 +873,8 @@ export const updateSecrets = async (req: Request, res: Response) => {
                     secretValueCiphertext,
                     secretValueIV,
                     secretValueTag,
+                    algorithm: ALGORITHM_AES_256_GCM,
+                    keyEncoding: ENCODING_SCHEME_UTF8,
                     tags,
                     ...((
                         secretCommentCiphertext !== undefined &&
@@ -851,6 +928,8 @@ export const updateSecrets = async (req: Request, res: Response) => {
                 secretCommentCiphertext: secretCommentCiphertext ? secretCommentCiphertext : secret.secretCommentCiphertext,
                 secretCommentIV: secretCommentIV ? secretCommentIV : secret.secretCommentIV,
                 secretCommentTag: secretCommentTag ? secretCommentTag : secret.secretCommentTag,
+                algorithm: ALGORITHM_AES_256_GCM,
+                keyEncoding: ENCODING_SCHEME_UTF8,
                 tags: tags ? tags : secret.tags
             });
         })
@@ -905,7 +984,13 @@ export const updateSecrets = async (req: Request, res: Response) => {
             workspaceId: new Types.ObjectId(key)
         })
 
-        const postHogClient = TelemetryService.getPostHogClient();
+        const workspace = await Workspace.findById(key);
+        if (!workspace) throw WorkspaceNotFoundError();
+        
+        const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
+        const isPaid = orgPlan.tier >= 1;
+
+        const postHogClient = await TelemetryService.getPostHogClient();
         if (postHogClient) {
             postHogClient.capture({
                 event: 'secrets modified',
@@ -917,7 +1002,11 @@ export const updateSecrets = async (req: Request, res: Response) => {
                     environment: workspaceSecretObj[key][0].environment,
                     workspaceId: key,
                     channel: channel,
-                    userAgent: req.headers?.['user-agent']
+                    userAgent: req.headers?.['user-agent'],
+                    isPaid,
+                    email: await TelemetryService.getDistinctId({
+                        authData: req.authData
+                    })
                 }
             });
         }
@@ -1039,7 +1128,13 @@ export const deleteSecrets = async (req: Request, res: Response) => {
             workspaceId: new Types.ObjectId(key)
         });
 
-        const postHogClient = TelemetryService.getPostHogClient();
+        const workspace = await Workspace.findById(key);
+        if (!workspace) throw WorkspaceNotFoundError();
+        
+        const orgPlan = await EELicenseService.getOrganizationPlan(workspace.organization.toString());
+        const isPaid = orgPlan.tier >= 1;
+
+        const postHogClient = await TelemetryService.getPostHogClient();
         if (postHogClient) {
             postHogClient.capture({
                 event: 'secrets deleted',
@@ -1051,7 +1146,11 @@ export const deleteSecrets = async (req: Request, res: Response) => {
                     environment: workspaceSecretObj[key][0].environment,
                     workspaceId: key,
                     channel: channel,
-                    userAgent: req.headers?.['user-agent']
+                    userAgent: req.headers?.['user-agent'],
+                    isPaid,
+                    email: await TelemetryService.getDistinctId({
+                        authData: req.authData
+                    })
                 }
             });
         }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
 
 import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
 import { usePopUp } from '@app/hooks/usePopUp';
@@ -17,10 +17,8 @@ export default function TeamInviteStep(): JSX.Element {
   const [emails, setEmails] = useState('');
   const { t } = useTranslation();
   const router = useRouter();
-  const {data: serverDetails } = useFetchServerStatus()
-  const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
-    'setUpEmail'
-  ] as const);
+  const { data: serverDetails } = useFetchServerStatus();
+  const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(['setUpEmail'] as const);
 
   // Redirect user to the getting started page
   const redirectToHome = async () => {
@@ -39,40 +37,40 @@ export default function TeamInviteStep(): JSX.Element {
   };
 
   return (
-    <div className="bg-bunker w-max mx-auto h-7/12 pt-6 pb-4 px-8 rounded-xl drop-shadow-xl mb-64 md:mb-32">
-      <p className="text-4xl font-semibold flex justify-center text-primary">
-        {t('signup:step5-invite-team')}
+    <div className="h-7/12 mx-auto mb-64 w-max rounded-xl bg-bunker px-8 pt-6 pb-4 drop-shadow-xl md:mb-32">
+      <p className="flex justify-center text-4xl font-semibold text-primary">
+        {t('signup.step5-invite-team')}
       </p>
-      <p className="text-center flex justify-center text-bunker-300 max-w-xs md:max-w-sm md:mx-8 mb-6 mt-4">
-        {t('signup:step5-subtitle')}
+      <p className="mb-6 mt-4 flex max-w-xs justify-center text-center text-bunker-300 md:mx-8 md:max-w-sm">
+        {t('signup.step5-subtitle')}
       </p>
       <div>
         <div className="overflow-auto bg-bunker-800">
           <div className="whitespace-pre-wrap break-words bg-transparent" />
         </div>
         <textarea
-          className="bg-bunker-800 h-20 w-full placeholder:text-bunker-400 py-1 px-2 rounded-md border border-mineshaft-500 text-sm text-bunker-300 outline-none focus:ring-2 ring-primary-800 ring-opacity-70"
+          className="h-20 w-full rounded-md border border-mineshaft-500 bg-bunker-800 py-1 px-2 text-sm text-bunker-300 outline-none ring-primary-800 ring-opacity-70 placeholder:text-bunker-400 focus:ring-2"
           value={emails}
           onChange={(e) => setEmails(e.target.value)}
           placeholder="email@example.com, email2@example.com..."
         />
       </div>
-      <div className="flex flex-row max-w-max min-w-28 items-center justify-center md:p-2 max-h-24 mx-auto text-lg px-4 mt-4 mb-2">
+      <div className="min-w-28 mx-auto mt-4 mb-2 flex max-h-24 max-w-max flex-row items-center justify-center px-4 text-lg md:p-2">
         <div
           onKeyDown={() => null}
           role="button"
           tabIndex={0}
-          className="text-md md:text-sm mx-3 text-bunker-300 bg-mineshaft-700 py-3 md:py-3.5 px-5 rounded-md cursor-pointer hover:bg-mineshaft-500 duration-200"
+          className="text-md mx-3 cursor-pointer rounded-md bg-mineshaft-700 py-3 px-5 text-bunker-300 duration-200 hover:bg-mineshaft-500 md:py-3.5 md:text-sm"
           onClick={redirectToHome}
         >
-          {t('signup:step5-skip')}
+          {t('signup.step5-skip')}
         </div>
         <Button
-          text={t('signup:step5-send-invites') ?? ''}
+          text={t('signup.step5-send-invites') ?? ''}
           onButtonPressed={() => {
-            if(serverDetails?.emailConfigured){
-              inviteUsers({ emails })
-            }else{
+            if (serverDetails?.emailConfigured) {
+              inviteUsers({ emails });
+            } else {
               handlePopUpOpen('setUpEmail');
             }
           }}

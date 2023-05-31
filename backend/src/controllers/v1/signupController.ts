@@ -21,14 +21,6 @@ export const beginEmailSignup = async (req: Request, res: Response) => {
 	try {
 		email = req.body.email;
 
-		if (getInviteOnlySignup()) {
-			// Only one user can create an account without being invited. The rest need to be invited in order to make an account
-			const userCount = await User.countDocuments({})
-			if (userCount != 0) {
-				throw BadRequestError({ message: "New user sign ups are not allowed at this time. You must be invited to sign up." })
-			}
-		}
-
 		const user = await User.findOne({ email }).select('+publicKey');
 		if (user && user?.publicKey) {
 			// case: user has already completed account
@@ -47,7 +39,7 @@ export const beginEmailSignup = async (req: Request, res: Response) => {
 			error: 'Failed to send email verification code'
 		});
 	}
-
+	
 	return res.status(200).send({
 		message: `Sent an email verification code to ${email}`
 	});
@@ -74,8 +66,16 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
 			});
 		}
 
+		if (await getInviteOnlySignup()) {
+			// Only one user can create an account without being invited. The rest need to be invited in order to make an account
+			const userCount = await User.countDocuments({})
+			if (userCount != 0) {
+				throw BadRequestError({ message: "New user sign ups are not allowed at this time. You must be invited to sign up." })
+			}
+		}
+
 		// verify email
-		if (getSmtpConfigured()) {
+		if (await getSmtpConfigured()) {
 			await checkEmailVerification({
 				email,
 				code
@@ -93,8 +93,8 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
 			payload: {
 				userId: user._id.toString()
 			},
-			expiresIn: getJwtSignupLifetime(),
-			secret: getJwtSignupSecret()
+			expiresIn: await getJwtSignupLifetime(),
+			secret: await getJwtSignupSecret()
 		});
 	} catch (err) {
 		Sentry.setUser(null);

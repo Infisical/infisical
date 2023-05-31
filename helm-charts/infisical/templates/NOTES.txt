@@ -60,13 +60,13 @@
 $ kubectl get all -n {{ .Release.Namespace }}
  
 → Get your release status
-$ helm status {{ .Release.Namespace }} {{ .Release.Name }}
+$ helm status -n {{ .Release.Namespace }} {{ .Release.Name }}
 
 → Get your release resources
-$ helm get all {{ .Release.Namespace }} {{ .Release.Name }}
+$ helm get all -n {{ .Release.Namespace }} {{ .Release.Name }}
 
 → Uninstall your release
-$ helm uninstall {{ .Release.Namespace }} {{ .Release.Name }}
+$ helm uninstall -n {{ .Release.Namespace }} {{ .Release.Name }}
 
 → Get MongoDB root password
 $ kubectl get secret -n {{ .Release.Namespace }} mongodb

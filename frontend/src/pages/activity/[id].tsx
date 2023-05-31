@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
 
 import Button from '@app/components/basic/buttons/Button';
 import EventFilter from '@app/components/basic/EventFilter';
 import NavHeader from '@app/components/navigation/NavHeader';
-import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
 import ActivitySideBar from '@app/ee/components/ActivitySideBar';
 
 import getProjectLogs from '../../ee/api/secrets/GetProjectLogs';
@@ -154,9 +153,9 @@ export default function Activity() {
       )}
       <div className="flex flex-col justify-between items-start mx-4 mt-6 mb-4 text-xl max-w-5xl px-2">
         <div className="flex flex-row justify-start items-center text-3xl">
-          <p className="font-semibold mr-4 text-bunker-100">{t('activity:title')}</p>
+          <p className="font-semibold mr-4 text-bunker-100">{t('activity.title')}</p>
         </div>
-        <p className="mr-4 text-base text-gray-400">{t('activity:subtitle')}</p>
+        <p className="mr-4 text-base text-gray-400">{t('activity.subtitle')}</p>
       </div>
       <div className="px-6 h-8 mt-2">
         <EventFilter selected={eventChosen} select={setEventChosen} />
@@ -165,8 +164,8 @@ export default function Activity() {
       <div className="flex justify-center w-full mb-6">
         <div className="items-center w-60">
           <Button
-            text={String(t('common:view-more'))}
-            textDisabled={String(t('common:end-of-history'))}
+            text={String(t('common.view-more'))}
+            textDisabled={String(t('common.end-of-history'))}
             active={logsData.length % 10 === 0}
             onButtonPressed={loadMoreLogs}
             size="md"
@@ -180,4 +179,3 @@ export default function Activity() {
 
 Activity.requireAuth = true;
 
-export const getServerSideProps = getTranslatedServerSideProps(['activity', 'common']);

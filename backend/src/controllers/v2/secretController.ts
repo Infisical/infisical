@@ -6,7 +6,7 @@ import { CreateSecretRequestBody, ModifySecretRequestBody, SanitizedSecretForCre
 const { ValidationError } = mongoose.Error;
 import { BadRequestError, InternalServerError, UnauthorizedRequestError, ValidationError as RouteValidationError } from '../../utils/errors';
 import { AnyBulkWriteOperation } from 'mongodb';
-import { SECRET_PERSONAL, SECRET_SHARED } from "../../variables";
+import { ALGORITHM_AES_256_GCM, ENCODING_SCHEME_UTF8, SECRET_PERSONAL, SECRET_SHARED } from "../../variables";
 import { TelemetryService } from '../../services';
 import { User } from "../../models";
 import { AccountNotFoundError } from '../../utils/errors';
@@ -17,7 +17,7 @@ import { AccountNotFoundError } from '../../utils/errors';
  * @param res 
  */
 export const createSecret = async (req: Request, res: Response) => {
-  const postHogClient = TelemetryService.getPostHogClient();
+  const postHogClient = await TelemetryService.getPostHogClient();
   const secretToCreate: CreateSecretRequestBody = req.body.secret;
   const { workspaceId, environment } = req.params
   const sanitizedSecret: SanitizedSecretForCreate = {
@@ -36,7 +36,9 @@ export const createSecret = async (req: Request, res: Response) => {
     workspace: new Types.ObjectId(workspaceId),
     environment,
     type: secretToCreate.type,
-    user: new Types.ObjectId(req.user._id)
+    user: new Types.ObjectId(req.user._id),
+    algorithm: ALGORITHM_AES_256_GCM,
+    keyEncoding: ENCODING_SCHEME_UTF8
   }
 
 
@@ -70,7 +72,7 @@ export const createSecret = async (req: Request, res: Response) => {
  * @param res 
  */
 export const createSecrets = async (req: Request, res: Response) => {
-  const postHogClient = TelemetryService.getPostHogClient();
+  const postHogClient = await TelemetryService.getPostHogClient();
   const secretsToCreate: CreateSecretRequestBody[] = req.body.secrets;
   const { workspaceId, environment } = req.params
   const sanitizedSecretesToCreate: SanitizedSecretForCreate[] = []
@@ -92,7 +94,9 @@ export const createSecrets = async (req: Request, res: Response) => {
       workspace: new Types.ObjectId(workspaceId),
       environment,
       type: rawSecret.type,
-      user: new Types.ObjectId(req.user._id)
+      user: new Types.ObjectId(req.user._id),
+      algorithm: ALGORITHM_AES_256_GCM,
+      keyEncoding: ENCODING_SCHEME_UTF8
     }
 
     sanitizedSecretesToCreate.push(safeUpdateFields)
@@ -132,7 +136,7 @@ export const createSecrets = async (req: Request, res: Response) => {
  * @param res 
  */
 export const deleteSecrets = async (req: Request, res: Response) => {
-  const postHogClient = TelemetryService.getPostHogClient();
+  const postHogClient = await TelemetryService.getPostHogClient();
   const { workspaceId, environmentName } = req.params
   const secretIdsToDelete: string[] = req.body.secretIds
 
@@ -186,7 +190,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
  * @param res
  */
 export const deleteSecret = async (req: Request, res: Response) => {
-  const postHogClient = TelemetryService.getPostHogClient();
+  const postHogClient = await TelemetryService.getPostHogClient();
   await Secret.findByIdAndDelete(req._secret._id)
 
   if (postHogClient) {
@@ -215,7 +219,7 @@ export const deleteSecret = async (req: Request, res: Response) => {
  * @returns 
  */
 export const updateSecrets = async (req: Request, res: Response) => {
-  const postHogClient = TelemetryService.getPostHogClient();
+  const postHogClient = await TelemetryService.getPostHogClient();
   const { workspaceId, environmentName } = req.params
   const secretsModificationsRequested: ModifySecretRequestBody[] = req.body.secrets;
   const [secretIdsUserCanModifyError, secretIdsUserCanModify] = await to(Secret.find({ workspace: workspaceId, environment: environmentName }, { _id: 1 }).then())
@@ -283,7 +287,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
  * @returns 
  */
 export const updateSecret = async (req: Request, res: Response) => {
-  const postHogClient = TelemetryService.getPostHogClient();
+  const postHogClient = await TelemetryService.getPostHogClient();
   const { workspaceId, environmentName } = req.params
   const secretModificationsRequested: ModifySecretRequestBody = req.body.secret;
 
@@ -337,7 +341,7 @@ export const updateSecret = async (req: Request, res: Response) => {
  * @returns 
  */
 export const getSecrets = async (req: Request, res: Response) => {
-  const postHogClient = TelemetryService.getPostHogClient();
+  const postHogClient = await TelemetryService.getPostHogClient();
   const { environment } = req.query;
   const { workspaceId } = req.params;
 

@@ -1,0 +1,110 @@
+---
+title: "Changelog"
+---
+
+The changelog below reflects new product developments and updates on a monthly basis; it will be updated later this quarter to include issues-addressed on a weekly basis.
+
+## May 2023
+
+- Released secret scanning capability for the CLI.
+- Released customer / license service to manage customer billing information, cloud plans, and self-hosted enterprise licenses; all instances of Infisicals now fetch/relay information from this service.
+- Completed penetration test.
+- Released new landing page.
+- Started SOC 2 (Type II) compliance certification preparation.
+
+More coming soon.
+
+## April 2023
+
+- Upgraded secret-handling to include blind-indexing (can be thought of as a fingerprint).
+- Added Node SDK support for working with individual secrets.
+- Released preliminary Python SDK.
+- Released service accounts, a client type capable of accessing multiple projects.
+- Added native Supabase integration.
+- Added native Railway integration.
+- Improved dashboard speed / performance.
+- Released the Secrets Overview page for users to view and identify missing environment secrets within one dashboard.
+- Updated documentation to include quickstarts and guides; also updated `README.md`.
+
+## March 2023
+
+- Added support for global configs to the Kubernetes operator.
+- Added support for self-hosted deployments to operate without any attached email service / SMTP configuration.
+- Added native Azure Key Vault integration.
+- Released one-click AWS EC2 deployment method.
+- Released preliminary Node SDK.
+
+## Feb 2023
+
+- Upgraded private key encryption/decryption mechanism to use Argon2id and 256-bit protected keys.
+- Added preliminary emai-based 2FA capability
+- Added suspicious login alerting if user logs in via new device or IP address.
+- Added documentation for PM2 integration.
+- Added secret backups support for the CLI; it now fetches and caches secrets locally to be used in the event of future failed fetch.
+- Added support for comparing secret values across environments on each secret.
+- Added native AWS Parameter Store integration.
+- Added native AWS Secret Manager integration.
+- Added native GitLab integration.
+- Added native CircleCI integration.
+- Added native Travis CI integration.
+- Added secret tagging capability for enhanced organizational structure/grouping.
+- Released new dashboard design allowing more actions to be performed within the dashboard itself.
+- Added capability to generate `.env.example` file.
+
+## Jan 2023
+
+- Added preliminary audit logging capability covering CRUD secret operations.
+- Added secret overriding capability for team members to have their own branch of a secret.
+- Added secret versioning capability.
+- Added secret snapshot and point-in-time recovery capabilities to track and roll back the full state of a project.
+- Added native Vercel integration.
+- Added native Netlify integration.
+- Added native GitHub Actions integration.
+- Added custom environment names.
+- Added auto-redeployment capability to the Kubernetes operator.
+- (Service Token 2.0) Shortened the length of service tokens
+- Added a public-facing API
+- Added preliminary access control capability for users to be provisioned read/write access to environments
+- Performed various web UI optimizations.
+
+## Nov 2022
+
+- Infisical is open sourced.
+- Added Infisical CLI support for Docker and Docker Compose.
+- Rewrote the Infisical CLI in Golang to be platform-agnostic.
+- Rewrote the documentation.
+
+## Oct 2022
+
+- Added support for organizations; projects now belong to organizations.
+- Improved speed / performance of dashboard by 25x.
+- Added capability to change account password in settings.
+- Added persistence for logging into the organization and project that users left from in their previous session.
+- Added password recovery emergency kit with automatic download enforcement upon account creation.
+- Added capability to copy-to-clipboard capabilities.
+- Released first native integration between Infisical and Heroku; environment variables can now be sent and kept in sync with Heroku.
+
+## Sep 2022
+
+- Added capability to change user roles in projects.
+- Added capabilty to delete projects.
+- Added Stripe.
+- Added default environments (development, staging, production) for new users with example key-pairs.
+- Added loading indicators.
+- Moved from push/pull mode of secret operation to automatically pulling and injecting secrets into processes upon startup.
+- Added drag-and-drop capability for adding new .env files.
+- Improved security measures against common attacks (e.g. XSS, clickjacking, etc.).
+- Added support for personal secrets (later modified to be secret overrides in Jan 2023).
+- Improved account password validation and enforce minimum requirements.
+- Added sorting capability to sort keys by name alphabetically in dashboard.
+- Added downloading secrets back as `.env` file capability.
+
+## August 2022
+
+- Released first version of the Infisical platform with push/pull capability and end-to-end encryption.
+- Improved security handling of authentication tokens by storing refresh tokens in HttpOnly cookies.
+- Added hiding key values on client-side.
+- Added search bar to dashboard to query for keys on client-side.
+- Added capability to rename a project.
+- Added user roles for projects.
+- Added incident contacts.

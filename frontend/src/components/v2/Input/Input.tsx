@@ -33,7 +33,7 @@ const inputVariants = cva(
       },
       isError: {
         true: 'focus:ring-red/50 placeholder-red-300',
-        false: 'focus:ring-primary/50'
+        false: 'focus:ring-mineshaft-400/80 duration-200 focus:ring-1'
       }
     },
     compoundVariants: []
@@ -48,7 +48,7 @@ const inputParentContainerVariants = cva('inline-flex font-inter items-center bo
     },
     isError: {
       true: 'border-red',
-      false: 'border-mineshaft-500'
+      false: 'border-mineshaft-600'
     },
     isFullWidth: {
       true: 'w-full',

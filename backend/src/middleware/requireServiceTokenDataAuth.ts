@@ -1,9 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
-import { ServiceToken, ServiceTokenData } from '../models';
-import { validateClientForServiceTokenData } from '../helpers/serviceTokenData';
-import { validateMembership } from '../helpers/membership';
-import { AccountNotFoundError, UnauthorizedRequestError } from '../utils/errors';
+import { validateClientForServiceTokenData } from '../validation';
 
 type req = 'params' | 'body' | 'query';
 

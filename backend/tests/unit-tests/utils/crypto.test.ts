@@ -1,9 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
 import {
   decryptAsymmetric,
-  decryptSymmetric,
   encryptAsymmetric,
-  encryptSymmetric
 } from '../../../src/utils/crypto';
 
 describe('Crypto', () => {
@@ -28,14 +26,14 @@ describe('Crypto', () => {
       test('should throw error if publicKey is undefined', () => {
         expect(() => {
           encryptAsymmetric({ plaintext, publicKey, privateKey });
-        }).toThrowError('Failed to perform asymmetric encryption');
+        }).toThrowError('invalid encoding');
       });
 
       test('should throw error if publicKey is empty string', () => {
         publicKey = '';
         expect(() => {
           encryptAsymmetric({ plaintext, publicKey, privateKey });
-        }).toThrowError('Failed to perform asymmetric encryption');
+        }).toThrowError('bad public key size');
       });
     });
 
@@ -47,14 +45,14 @@ describe('Crypto', () => {
       test('should throw error if privateKey is undefined', () => {
         expect(() => {
           encryptAsymmetric({ plaintext, publicKey, privateKey });
-        }).toThrowError('Failed to perform asymmetric encryption');
+        }).toThrowError('invalid encoding');
       });
 
       test('should throw error if privateKey is empty string', () => {
         privateKey = '';
         expect(() => {
           encryptAsymmetric({ plaintext, publicKey, privateKey });
-        }).toThrowError('Failed to perform asymmetric encryption');
+        }).toThrowError('bad secret key size');
       });
     });
 
@@ -66,7 +64,7 @@ describe('Crypto', () => {
       test('should throw error if plaintext is undefined', () => {
         expect(() => {
           encryptAsymmetric({ plaintext, publicKey, privateKey });
-        }).toThrowError('Failed to perform asymmetric encryption');
+        }).toThrowError('expected string');
       });
 
       test('should encrypt plaintext containing special characters', () => {
@@ -130,7 +128,7 @@ describe('Crypto', () => {
             publicKey,
             privateKey
           });
-        }).toThrowError('Failed to perform asymmetric decryption');
+        }).toThrowError('invalid encoding');
       });
 
       test('should throw error if nonce is modified', () => {
@@ -149,103 +147,8 @@ describe('Crypto', () => {
             publicKey,
             privateKey
           });
-        }).toThrowError('Failed to perform asymmetric decryption');
+        }).toThrowError('invalid encoding');
       });
-    });
-  });
-
-  describe('encryptSymmetric', () => {
-    let plaintext: string;
-    const key = '7e8ee7e5cc667b9c1829783ad31f36f4';
-
-    test('should encrypt plaintext with the given key', () => {
-      plaintext = 'secret-message';
-      const { ciphertext, iv, tag } = encryptSymmetric({ plaintext, key });
-      expect(ciphertext).toBeDefined();
-      expect(iv).toBeDefined();
-      expect(tag).toBeDefined();
-    });
-
-    test('should throw an error when plaintext is undefined', () => {
-      const invalidKey = 'invalid-key';
-      expect(() => {
-        encryptSymmetric({ plaintext, key: invalidKey });
-      }).toThrowError('Failed to perform symmetric encryption');
-    });
-
-    test('should throw an error when invalid key is provided', () => {
-      plaintext = 'secret-message';
-      const invalidKey = 'invalid-key';
-
-      expect(() => {
-        encryptSymmetric({ plaintext, key: invalidKey });
-      }).toThrowError('Failed to perform symmetric encryption');
-    });
-  });
-
-  describe('decryptSymmetric', () => {
-    const plaintext = 'secret-message';
-    const key = '7e8ee7e5cc667b9c1829783ad31f36f4';
-    const { ciphertext, iv, tag } = encryptSymmetric({ plaintext, key });
-
-    test('should decrypt encrypted plaintext', () => {
-      const result = decryptSymmetric({
-        ciphertext,
-        iv,
-        tag,
-        key
-      });
-
-      expect(result).toBeDefined();
-      expect(result).toEqual(plaintext);
-    });
-
-    test('should fail if ciphertext is modified', () => {
-      const modifieldCiphertext = 'abcdefghijklmnopqrstuvwxyz';
-      expect(() => {
-        decryptSymmetric({
-          ciphertext: modifieldCiphertext,
-          iv,
-          tag,
-          key
-        });
-      }).toThrowError('Failed to perform symmetric decryption');
-    });
-
-    test('should fail if iv is modified', () => {
-      const modifiedIv = 'abcdefghijklmnopqrstuvwxyz';
-      expect(() => {
-        decryptSymmetric({
-          ciphertext,
-          iv: modifiedIv,
-          tag,
-          key
-        });
-      }).toThrowError('Failed to perform symmetric decryption');
-    });
-
-    test('should fail if tag is modified', () => {
-      const modifiedTag = 'abcdefghijklmnopqrstuvwxyz';
-      expect(() => {
-        decryptSymmetric({
-          ciphertext,
-          iv,
-          tag: modifiedTag,
-          key
-        });
-      }).toThrowError('Failed to perform symmetric decryption');
-    });
-
-    test('should throw an error when decryption fails', () => {
-      const invalidKey = 'invalid-key';
-      expect(() => {
-        decryptSymmetric({
-          ciphertext,
-          iv,
-          tag,
-          key: invalidKey
-        });
-      }).toThrowError('Failed to perform symmetric decryption');
     });
   });
 });

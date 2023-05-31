@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
@@ -42,10 +41,9 @@ const validateAuthMode = ({
 	headers: { [key: string]: string | string[] | undefined },
 	acceptedAuthModes: string[]
 }) => {
-	// TODO: refactor middleware
 	const apiKey = headers['x-api-key'];
 	const authHeader = headers['authorization'];
-
+	
 	let authMode, authTokenValue;
 	if (apiKey === undefined && authHeader === undefined) {
 		// case: no auth or X-API-KEY header present
@@ -104,7 +102,7 @@ const getAuthUserPayload = async ({
 	authTokenValue: string;
 }) => {
 	const decodedToken = <jwt.UserIDJwtPayload>(
-		jwt.verify(authTokenValue, getJwtAuthSecret())
+		jwt.verify(authTokenValue, await getJwtAuthSecret())
 	);
 
 	const user = await User.findOne({
@@ -263,16 +261,16 @@ const issueAuthTokens = async ({ userId }: { userId: string }) => {
 		payload: {
 			userId
 		},
-		expiresIn: getJwtAuthLifetime(),
-		secret: getJwtAuthSecret()
+		expiresIn: await getJwtAuthLifetime(),
+		secret: await getJwtAuthSecret()
 	});
 
 	const refreshToken = createToken({
 		payload: {
 			userId
 		},
-		expiresIn: getJwtRefreshLifetime(),
-		secret: getJwtRefreshSecret()
+		expiresIn: await getJwtRefreshLifetime(),
+		secret: await getJwtRefreshSecret()
 	});
 
 	return {

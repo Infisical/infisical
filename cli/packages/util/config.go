@@ -9,7 +9,7 @@ import (
 
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
-	log "github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 func WriteInitalConfig(userCredentials *models.UserCredentials) error {
@@ -73,7 +73,7 @@ func WriteInitalConfig(userCredentials *models.UserCredentials) error {
 func ConfigFileExists() bool {
 	fullConfigFileURI, _, err := GetFullConfigFilePath()
 	if err != nil {
-		log.Debugln("There was an error when creating the full path to config file", err)
+		log.Debug().Err(err).Msgf("There was an error when creating the full path to config file")
 		return false
 	}
 
@@ -88,7 +88,7 @@ func WorkspaceConfigFileExistsInCurrentPath() bool {
 	if _, err := os.Stat(INFISICAL_WORKSPACE_CONFIG_FILE_NAME); err == nil {
 		return true
 	} else {
-		log.Debugln(err)
+		log.Debug().Err(err)
 		return false
 	}
 }
@@ -125,7 +125,7 @@ func FindWorkspaceConfigFile() (string, error) {
 		_, err := os.Stat(path)
 		if err == nil {
 			// file found
-			log.Debugf("FindWorkspaceConfigFile: workspace file found at [path=%s]", path)
+			log.Debug().Msgf("FindWorkspaceConfigFile: workspace file found at [path=%s]", path)
 
 			return path, nil
 		}

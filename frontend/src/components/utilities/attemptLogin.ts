@@ -120,7 +120,7 @@ const attemptLogin = async (
             }
 
             if (email) {
-              telemetry.identify(email);
+              telemetry.identify(email, email);
               telemetry.capture('User Logged In');
             }
             
