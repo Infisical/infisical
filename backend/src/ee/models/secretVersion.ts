@@ -25,6 +25,7 @@ export interface ISecretVersion {
   secretValueTag: string;
   algorithm: "aes-256-gcm";
   keyEncoding: "utf8" | "base64";
+  createdAt: string;
   folder?: string;
 }
 
@@ -109,7 +110,7 @@ const secretVersionSchema = new Schema<ISecretVersion>(
     },
     folder: {
       type: String,
-      required: false,
+      required: true,
     },
   },
   {

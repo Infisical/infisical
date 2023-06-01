@@ -33,6 +33,18 @@ export const searchByFolderId = (
   }
 };
 
+export const folderBfsTraversal = async (
+  root: TFolderSchema,
+  callback: (data: TFolderSchema) => void | Promise<void>
+) => {
+  const queue = [root];
+  while (queue.length) {
+    const folder = queue.pop() as TFolderSchema;
+    await callback(folder);
+    queue.push(...folder.children);
+  }
+};
+
 // bfs and then append to the folder
 const appendChild = (folders: TFolderSchema, folderName: string) => {
   const folder = folders.children.find(({ name }) => name === folderName);
@@ -85,7 +97,6 @@ export const deleteFolderById = (folders: TFolderSchema, folderId: string) => {
   const queue = [folders];
   while (queue.length) {
     const folder = queue.pop() as TFolderSchema;
-    folder.version += 1;
     const index = folder.children.findIndex(({ id }) => folderId === id);
     if (index !== -1) {
       const deletedFolder = folder.children.splice(index, 1);

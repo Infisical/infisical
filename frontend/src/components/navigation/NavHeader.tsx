@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { faAngleRight, faHome } from '@fortawesome/free-solid-svg-icons';
+import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import { useOrganization, useWorkspace } from '@app/context';
@@ -114,7 +114,7 @@ export default function NavHeader({
               ) : (
                 <Link passHref legacyBehavior href={{ pathname: '/dashboard/[id]', query }}>
                   <a className="text-sm font-semibold text-primary/80 hover:text-primary">
-                    {name === 'root' ? <FontAwesomeIcon icon={faHome} /> : name}
+                    {name === 'root' ? '/' : name}
                   </a>
                 </Link>
               )}

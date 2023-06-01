@@ -180,6 +180,7 @@ export const usePerformSecretRollback = () => {
       return data;
     },
     onSuccess: (_, { workspaceId, environment, folderId }) => {
+      queryClient.invalidateQueries([{ workspaceId, environment }, 'secrets']);
       queryClient.invalidateQueries(secretSnapshotKeys.list(workspaceId, environment, folderId));
       queryClient.invalidateQueries(secretSnapshotKeys.count(workspaceId, environment, folderId));
     }

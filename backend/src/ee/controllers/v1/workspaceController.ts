@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as Sentry from "@sentry/node";
-import { Types } from "mongoose";
+import { PipelineStage, Types } from "mongoose";
 import { Secret } from "../../../models";
 import {
   SecretSnapshot,
@@ -12,11 +12,8 @@ import {
 } from "../../models";
 import { EESecretService } from "../../services";
 import { getLatestSecretVersionIds } from "../../helpers/secretVersion";
-import Folder from "../../../models/folder";
-import {
-  getAllFolderIds,
-  searchByFolderId,
-} from "../../../services/FolderService";
+import Folder, { TFolderSchema } from "../../../models/folder";
+import { searchByFolderId } from "../../../services/FolderService";
 
 /**
  * Return secret snapshots for workspace with id [workspaceId]
@@ -214,17 +211,135 @@ export const rollbackWorkspaceSecretSnapshot = async (
 
     if (!secretSnapshot) throw new Error("Failed to find secret snapshot");
 
-    // TODO: fix any
-    const oldSecretVersionsObj: any = secretSnapshot.secretVersions.reduce(
-      (accumulator, s) => ({
-        ...accumulator,
-        [`${s.secret.toString()}`]: s,
-      }),
-      {}
-    );
+    const snapshotFolderTree = secretSnapshot.folderVersion;
+    const latestFolderTree = await Folder.findOne({
+      workspace: workspaceId,
+      environment,
+    });
 
+    const latestFolderVersion = await FolderVersion.findOne({
+      environment,
+      workspace: workspaceId,
+      "nodes.id": folderId,
+    }).sort({ "nodes.version": -1 });
+
+    const oldSecretVersionsObj: Record<string, ISecretVersion> = {};
+    const secretIds: Types.ObjectId[] = [];
+    const folderIds: string[] = [folderId];
+
+    secretSnapshot.secretVersions.forEach((snapSecVer) => {
+      oldSecretVersionsObj[snapSecVer.secret.toString()] = snapSecVer;
+      secretIds.push(snapSecVer.secret);
+    });
+
+    // the parent node from current latest one
+    // this will be modified according to the snapshot and latest snapshots
+    const newFolderTree =
+      latestFolderTree && searchByFolderId(latestFolderTree.nodes, folderId);
+
+    if (newFolderTree) {
+      newFolderTree.children = snapshotFolderTree?.nodes?.children || [];
+      const queue = [newFolderTree];
+      // a bfs algorithm in which we take the latest snapshots of all the folders in a level
+      while (queue.length) {
+        const groupByFolderId: Record<string, TFolderSchema> = {};
+        // the original queue is popped out completely to get what ever in a level
+        // subqueue is filled with all the children thus next level folders
+        // subQueue will then be transfered to the oriinal queue
+        const subQueue: TFolderSchema[] = [];
+        // get everything inside a level
+        while (queue.length) {
+          const folder = queue.pop() as TFolderSchema;
+          folder.children.forEach((el) => {
+            folderIds.push(el.id); // push ids and data into queu
+            subQueue.push(el);
+            // to modify the original tree very fast we keep a reference object
+            // key with folder id and pointing to the various nodes
+            groupByFolderId[el.id] = el;
+          });
+        }
+        // get latest snapshots of all the folder
+        const matchWsFoldersPipeline = {
+          $match: {
+            workspace: new Types.ObjectId(workspaceId),
+            environment,
+            folderId: {
+              $in: Object.keys(groupByFolderId),
+            },
+          },
+        };
+        const sortByFolderIdAndVersion: PipelineStage = {
+          $sort: { folderId: 1, version: -1 },
+        };
+        const pickLatestVersionOfEachFolder = {
+          $group: {
+            _id: "$folderId",
+            latestVersion: { $first: "$version" },
+            doc: {
+              $first: "$$ROOT",
+            },
+          },
+        };
+        const populateSecVersion = {
+          $lookup: {
+            from: SecretVersion.collection.name,
+            localField: "doc.secretVersions",
+            foreignField: "_id",
+            as: "doc.secretVersions",
+          },
+        };
+        const populateFolderVersion = {
+          $lookup: {
+            from: FolderVersion.collection.name,
+            localField: "doc.folderVersion",
+            foreignField: "_id",
+            as: "doc.folderVersion",
+          },
+        };
+        const unwindFolderVerField = {
+          $unwind: {
+            path: "$doc.folderVersion",
+            preserveNullAndEmptyArrays: true,
+          },
+        };
+        const latestSnapshotsByFolders: Array<{ doc: typeof secretSnapshot }> =
+          await SecretSnapshot.aggregate([
+            matchWsFoldersPipeline,
+            sortByFolderIdAndVersion,
+            pickLatestVersionOfEachFolder,
+            populateSecVersion,
+            populateFolderVersion,
+            unwindFolderVerField,
+          ]);
+
+        // recursive snapshotting each level
+        latestSnapshotsByFolders.forEach((snap) => {
+          // mutate the folder tree to update the nodes to the latest version tree
+          // we are reconstructing the folder tree by latest snapshots here
+          if (groupByFolderId[snap.doc.folderId]) {
+            groupByFolderId[snap.doc.folderId].children =
+              snap.doc?.folderVersion?.nodes?.children || [];
+          }
+
+          // push all children of next level snapshots
+          if (snap.doc.folderVersion?.nodes?.children) {
+            queue.push(...snap.doc.folderVersion.nodes.children);
+          }
+
+          snap.doc.secretVersions.forEach((snapSecVer) => {
+            // record all the secrets
+            oldSecretVersionsObj[snapSecVer.secret.toString()] = snapSecVer;
+            secretIds.push(snapSecVer.secret);
+          });
+        });
+
+        queue.push(...subQueue);
+      }
+    }
+
+    // TODO: fix any
     const latestSecretVersionIds = await getLatestSecretVersionIds({
-      secretIds: secretSnapshot.secretVersions.map((sv) => sv.secret),
+      secretIds,
     });
 
     // TODO: fix any
@@ -245,27 +360,6 @@ export const rollbackWorkspaceSecretSnapshot = async (
       {}
     );
 
-    let folderIds: string[] = [];
-
-    const folders = await Folder.findOne({
-      workspace: workspaceId,
-      environment,
-    }).lean();
-    const latestFolderVersion = await FolderVersion.findOne({
-      environment,
-      workspace: workspaceId,
-      "nodes.id": folderId,
-    }).sort({ "nodes.version": -1 });
-
-    if (folders && folderId) {
-      const folder = searchByFolderId(folders.nodes, folderId);
-      if (folder) {
-        folderIds = getAllFolderIds(folder).map(({ id }) => id);
-        folder.children = secretSnapshot?.folderVersion?.nodes?.children || [];
-        folder.version = (latestFolderVersion?.nodes?.version || 0) + 1;
-      }
-    }
-
     const secDelQuery: Record<string, unknown> = {
       workspace: workspaceId,
       environment,
@@ -283,9 +377,9 @@ export const rollbackWorkspaceSecretSnapshot = async (
 
     // add secrets
     secrets = await Secret.insertMany(
-      secretSnapshot.secretVersions.map((sv) => {
-        const secretId = sv.secret;
+      Object.keys(oldSecretVersionsObj).map((sv) => {
         const {
+          secret: secretId,
           workspace,
           type,
           user,
@@ -294,16 +388,14 @@ export const rollbackWorkspaceSecretSnapshot = async (
           secretKeyCiphertext,
           secretKeyIV,
           secretKeyTag,
-          secretKeyHash,
           secretValueCiphertext,
           secretValueIV,
           secretValueTag,
-          secretValueHash,
           createdAt,
           algorithm,
           keyEncoding,
           folder: secFolderId,
-        } = oldSecretVersionsObj[secretId.toString()];
+        } = oldSecretVersionsObj[sv];
 
         return {
           _id: secretId,
@@ -316,11 +408,9 @@ export const rollbackWorkspaceSecretSnapshot = async (
           secretKeyCiphertext,
           secretKeyIV,
           secretKeyTag,
-          secretKeyHash,
           secretValueCiphertext,
           secretValueIV,
           secretValueTag,
-          secretValueHash,
           secretCommentCiphertext: "",
           secretCommentIV: "",
           secretCommentTag: "",
@@ -346,11 +436,9 @@ export const rollbackWorkspaceSecretSnapshot = async (
           secretKeyCiphertext,
           secretKeyIV,
           secretKeyTag,
-          secretKeyHash,
           secretValueCiphertext,
           secretValueIV,
           secretValueTag,
-          secretValueHash,
           algorithm,
           keyEncoding,
           folder: secFolderId,
@@ -367,11 +455,9 @@ export const rollbackWorkspaceSecretSnapshot = async (
           secretKeyCiphertext,
           secretKeyIV,
           secretKeyTag,
-          secretKeyHash,
           secretValueCiphertext,
           secretValueIV,
           secretValueTag,
-          secretValueHash,
           algorithm,
           keyEncoding,
           folder: secFolderId,
@@ -379,17 +465,18 @@ export const rollbackWorkspaceSecretSnapshot = async (
       )
     );
 
-    if (folders) {
-      const newFolder = new Folder(folders);
-      newFolder._id = new Types.ObjectId();
-      newFolder.isNew = true;
-      // when there is no
-      await newFolder.save();
+    if (newFolderTree && latestFolderTree) {
+      // save the updated folder tree to the present one
+      newFolderTree.version = (latestFolderVersion?.nodes?.version || 0) + 1;
+      latestFolderTree._id = new Types.ObjectId();
+      latestFolderTree.isNew = true;
+      await latestFolderTree.save();
+
       // create new folder version
       const newFolderVersion = new FolderVersion({
         workspace: workspaceId,
         environment,
-        nodes: newFolder.nodes,
+        nodes: newFolderTree,
       });
       await newFolderVersion.save();
     }
@@ -398,7 +485,9 @@ export const rollbackWorkspaceSecretSnapshot = async (
     await SecretVersion.updateMany(
       {
         secret: {
-          $in: secretSnapshot.secretVersions.map((sv) => sv.secret),
+          $in: Object.keys(oldSecretVersionsObj).map(
+            (sv) => oldSecretVersionsObj[sv].secret
+          ),
         },
       },
       {

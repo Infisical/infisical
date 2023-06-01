@@ -51,6 +51,10 @@ export const createFolder = async (req: Request, res: Response) => {
       nodes: folder.nodes,
     });
     await folderVersion.save();
+    await EESecretService.takeSecretSnapshot({
+      workspaceId,
+      environment,
+    });
     return res.json({ folder: { id, name: folderName } });
   }
 
@@ -65,6 +69,12 @@ export const createFolder = async (req: Request, res: Response) => {
     nodes: parentFolder || folders.nodes,
   });
   await folderVersion.save();
+
+  await EESecretService.takeSecretSnapshot({
+    workspaceId,
+    environment,
+    folderId: parentFolderId,
+  });
 
   return res.json({ folder });
 };
@@ -96,7 +106,6 @@ export const updateFolderById = async (req: Request, res: Response) => {
 
   parentFolder.version += 1;
   folder.name = name;
-  folder.version += 1;
 
   await Folder.findByIdAndUpdate(folders._id, folders);
   const folderVersion = new FolderVersion({
@@ -106,19 +115,11 @@ export const updateFolderById = async (req: Request, res: Response) => {
   });
   await folderVersion.save();
 
-  // decision to take snapshot ot not
-  const secretCount = await Secret.count({
-    workspace: workspaceId,
+  await EESecretService.takeSecretSnapshot({
+    workspaceId,
     environment,
-    folder: folderId,
+    folderId: parentFolder.id,
   });
-  if (secretCount || folder.children.length) {
-    await EESecretService.takeSecretSnapshot({
-      workspaceId,
-      environment,
-      folderId: parentFolder.id,
-    });
-  }
 
   return res.json({
     message: "Successfully updated folder",
@@ -148,22 +149,8 @@ export const deleteFolder = async (req: Request, res: Response) => {
   }
   const { deletedNode: delFolder, parent: parentFolder } = delOp;
 
+  parentFolder.version += 1;
   const delFolderIds = getAllFolderIds(delFolder);
-
-  // take a pre-delete snapshot if there are secrets inside the folders
-  const secretCount = await Secret.count({
-    workspace: workspaceId,
-    environment,
-    folder: folderId,
-  });
-
-  if (secretCount || delFolder.children.length) {
-    await EESecretService.takeSecretSnapshot({
-      workspaceId,
-      environment,
-      folderId: parentFolder.id,
-    });
-  }
 
   await Folder.findByIdAndUpdate(folders._id, folders);
   const folderVersion = new FolderVersion({
@@ -180,7 +167,6 @@ export const deleteFolder = async (req: Request, res: Response) => {
     });
   }
 
-  // post delete snapshot
   await EESecretService.takeSecretSnapshot({
     workspaceId,
     environment,

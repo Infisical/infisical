@@ -1,10 +1,5 @@
 import { Types } from "mongoose";
 import { Secret, ISecret } from "../../models";
-import Folder from "../../models/folder";
-import {
-  getAllFolderIds,
-  searchByFolderId,
-} from "../../services/FolderService";
 import {
   SecretSnapshot,
   SecretVersion,
@@ -30,25 +25,17 @@ const takeSecretSnapshotHelper = async ({
   folderId?: string;
 }) => {
   // get all folder ids
-  let folderIds: string[] = [];
-  const folders = await Folder.findOne({
-    workspace: workspaceId,
-    environment,
-  }).lean();
-  if (folders && folderId) {
-    const folder = searchByFolderId(folders.nodes, folderId);
-    if (folder) folderIds = getAllFolderIds(folder).map(({ id }) => id);
-  }
-
-  const secQuery: Record<string, unknown> = {
-    workspace: workspaceId,
-    environment,
-    // undefined means root thus collect all secrets
-  };
-  if (folderId !== "root") secQuery.folder = { $in: folderIds };
-  const secretIds = (await Secret.find(secQuery, "_id").lean()).map(
-    (s) => s._id
-  );
+  const secretIds = (
+    await Secret.find(
+      {
+        workspace: workspaceId,
+        environment,
+        folder: folderId,
+        // undefined means root thus collect all secrets
+      },
+      "_id"
+    ).lean()
+  ).map((s) => s._id);
 
   const latestSecretVersions = (
     await SecretVersion.aggregate([
@@ -76,7 +63,7 @@ const takeSecretSnapshotHelper = async ({
   const latestFolderVersion = await FolderVersion.findOne({
     environment,
     workspace: workspaceId,
-    "nodes.id": folderId || "root",
+    "nodes.id": folderId,
   }).sort({ "nodes.version": -1 });
 
   const latestSecretSnapshot = await SecretSnapshot.findOne({
@@ -132,5 +119,5 @@ const markDeletedSecretVersionsHelper = async ({
 export {
   takeSecretSnapshotHelper,
   addSecretVersionsHelper,
-  markDeletedSecretVersionsHelper
+  markDeletedSecretVersionsHelper,
 };
