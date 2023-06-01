@@ -225,7 +225,7 @@ export default function Home() {
           icon: faSlack,
           time: '1 min',
           userAction: 'slack_cta_clicked',
-          link: 'https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g'
+          link: 'https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg'
         })}
         {learningItem({
           text: 'Star Infisical on GitHub',

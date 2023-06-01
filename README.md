@@ -7,7 +7,7 @@
 </p>
 
 <h4 align="center">
-  <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">Slack</a> |
+  <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg">Slack</a> |
   <a href="https://infisical.com/">Infisical Cloud</a> |
   <a href="https://infisical.com/docs/self-hosting/overview">Self-Hosting</a> |
   <a href="https://infisical.com/docs/documentation/getting-started/introduction">Docs</a> |
@@ -27,7 +27,7 @@
   <a href="https://cloudsmith.io/~infisical/repos/">
     <img src="https://img.shields.io/badge/Downloads-240.2k-orange" alt="Cloudsmith downloads" />
   </a>
-  <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">
+  <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
   </a>
   <a href="https://twitter.com/infisical">
@@ -126,12 +126,12 @@ Whether it's big or small, we love contributions. Check out our guide to see how
 Not sure where to get started? You can:
 
 -   [Book a free, non-pressure pairing sessions with one of our teammates](mailto:tony@infisical.com?subject=Pairing%20session&body=I'd%20like%20to%20do%20a%20pairing%20session!)!
--   Join our <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g">Slack</a>, and ask us any questions there.
+-   Join our <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg">Slack</a>, and ask us any questions there.
 
 ## Resources
 
 - [Docs](https://infisical.com/docs/documentation/getting-started/introduction) for comprehensive documentation and guides
-- [Slack](https://join.slack.com/t/infisical-users/shared_invite/zt-1kdbk07ro-RtoyEt_9E~fyzGo_xQYP6g) for discussion with the community and Infisical team.
+- [Slack](https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg) for discussion with the community and Infisical team.
 - [GitHub](https://github.com/Infisical/infisical) for code, issues, and pull requests
 - [Twitter](https://twitter.com/infisical) for fast news
 - [YouTube](https://www.youtube.com/@infisical5306) for videos on secret management

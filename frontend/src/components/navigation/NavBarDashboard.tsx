@@ -30,7 +30,7 @@ const supportOptions = (t: TFunction) => [
   [
     <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faSlack} />,
     t('nav.support.slack'),
-    'https://join.slack.com/t/infisical/shared_invite/zt-1dgg63ln8-G7PCNJdCymAT9YF3j1ewVA'
+    'https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg'
   ],
   [
     <FontAwesomeIcon className="text-lg pl-1.5 pr-3" icon={faBook} />,
