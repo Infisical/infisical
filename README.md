@@ -69,7 +69,7 @@ The fastest and most reliable way to get started with Infisical is signing up fo
 
 ### Deploy Infisical on premise
 
-<a href=""><img src=".github/images/do-k8-install-btn.png" width="200"/></a> <a href="https://infisical.com/docs/self-hosting/deployment-options/aws-ec2"><img src=".github/images/deploy-aws-button.png" width="150" width="300" /></a>
+<a href="https://infisical.com/docs/self-hosting/deployment-options/digital-ocean-marketplace"><img src=".github/images/do-k8-install-btn.png" width="200"/></a> <a href="https://infisical.com/docs/self-hosting/deployment-options/aws-ec2"><img src=".github/images/deploy-aws-button.png" width="150" width="300" /></a>
 
 View all [deployment options](https://infisical.com/docs/self-hosting/overview)
 
