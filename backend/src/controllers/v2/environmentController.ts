@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import * as Sentry from '@sentry/node';
 import {
   Secret,
   ServiceToken,
@@ -25,29 +24,21 @@ export const createWorkspaceEnvironment = async (
 ) => {
   const { workspaceId } = req.params;
   const { environmentName, environmentSlug } = req.body;
-  try {
-    const workspace = await Workspace.findById(workspaceId).exec();
-    if (
-      !workspace ||
-      workspace?.environments.find(
-        ({ name, slug }) => slug === environmentSlug || environmentName === name
-      )
-    ) {
-      throw new Error('Failed to create workspace environment');
-    }
-
-    workspace?.environments.push({
-      name: environmentName,
-      slug: environmentSlug.toLowerCase(),
-    });
-    await workspace.save();
-  } catch (err) {
-    Sentry.setUser({ email: req.user.email });
-    Sentry.captureException(err);
-    return res.status(400).send({
-      message: 'Failed to create new workspace environment',
-    });
+  const workspace = await Workspace.findById(workspaceId).exec();
+  if (
+    !workspace ||
+    workspace?.environments.find(
+      ({ name, slug }) => slug === environmentSlug || environmentName === name
+    )
+  ) {
+    throw new Error('Failed to create workspace environment');
   }
+
+  workspace?.environments.push({
+    name: environmentName,
+    slug: environmentSlug.toLowerCase(),
+  });
+  await workspace.save();
 
   return res.status(200).send({
     message: 'Successfully created new environment',
@@ -72,74 +63,66 @@ export const renameWorkspaceEnvironment = async (
 ) => {
   const { workspaceId } = req.params;
   const { environmentName, environmentSlug, oldEnvironmentSlug } = req.body;
-  try {
-    // user should pass both new slug and env name
-    if (!environmentSlug || !environmentName) {
-      throw new Error('Invalid environment given.');
-    }
-
-    // atomic update the env to avoid conflict
-    const workspace = await Workspace.findById(workspaceId).exec();
-    if (!workspace) {
-      throw new Error('Failed to create workspace environment');
-    }
-
-    const isEnvExist = workspace.environments.some(
-      ({ name, slug }) =>
-        slug !== oldEnvironmentSlug &&
-        (name === environmentName || slug === environmentSlug)
-    );
-    if (isEnvExist) {
-      throw new Error('Invalid environment given');
-    }
-
-    const envIndex = workspace?.environments.findIndex(
-      ({ slug }) => slug === oldEnvironmentSlug
-    );
-    if (envIndex === -1) {
-      throw new Error('Invalid environment given');
-    }
-
-    workspace.environments[envIndex].name = environmentName;
-    workspace.environments[envIndex].slug = environmentSlug.toLowerCase();
-
-    await workspace.save();
-    await Secret.updateMany(
-      { workspace: workspaceId, environment: oldEnvironmentSlug },
-      { environment: environmentSlug }
-    );
-    await SecretVersion.updateMany(
-      { workspace: workspaceId, environment: oldEnvironmentSlug },
-      { environment: environmentSlug }
-    );
-    await ServiceToken.updateMany(
-      { workspace: workspaceId, environment: oldEnvironmentSlug },
-      { environment: environmentSlug }
-    );
-    await ServiceTokenData.updateMany(
-      { workspace: workspaceId, environment: oldEnvironmentSlug },
-      { environment: environmentSlug }
-    );
-    await Integration.updateMany(
-      { workspace: workspaceId, environment: oldEnvironmentSlug },
-      { environment: environmentSlug }
-    );
-    await Membership.updateMany(
-      {
-        workspace: workspaceId,
-        "deniedPermissions.environmentSlug": oldEnvironmentSlug
-      },
-      { $set: { "deniedPermissions.$[element].environmentSlug": environmentSlug } },
-      { arrayFilters: [{ "element.environmentSlug": oldEnvironmentSlug }] }
-    )
-
-  } catch (err) {
-    Sentry.setUser({ email: req.user.email });
-    Sentry.captureException(err);
-    return res.status(400).send({
-      message: 'Failed to update workspace environment',
-    });
+  // user should pass both new slug and env name
+  if (!environmentSlug || !environmentName) {
+    throw new Error('Invalid environment given.');
   }
+
+  // atomic update the env to avoid conflict
+  const workspace = await Workspace.findById(workspaceId).exec();
+  if (!workspace) {
+    throw new Error('Failed to create workspace environment');
+  }
+
+  const isEnvExist = workspace.environments.some(
+    ({ name, slug }) =>
+      slug !== oldEnvironmentSlug &&
+      (name === environmentName || slug === environmentSlug)
+  );
+  if (isEnvExist) {
+    throw new Error('Invalid environment given');
+  }
+
+  const envIndex = workspace?.environments.findIndex(
+    ({ slug }) => slug === oldEnvironmentSlug
+  );
+  if (envIndex === -1) {
+    throw new Error('Invalid environment given');
+  }
+
+  workspace.environments[envIndex].name = environmentName;
+  workspace.environments[envIndex].slug = environmentSlug.toLowerCase();
+
+  await workspace.save();
+  await Secret.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+  await SecretVersion.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+  await ServiceToken.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+  await ServiceTokenData.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+  await Integration.updateMany(
+    { workspace: workspaceId, environment: oldEnvironmentSlug },
+    { environment: environmentSlug }
+  );
+  await Membership.updateMany(
+    {
+      workspace: workspaceId,
+      "deniedPermissions.environmentSlug": oldEnvironmentSlug
+    },
+    { $set: { "deniedPermissions.$[element].environmentSlug": environmentSlug } },
+    { arrayFilters: [{ "element.environmentSlug": oldEnvironmentSlug }] }
+  )
+
 
   return res.status(200).send({
     message: 'Successfully update environment',
@@ -163,56 +146,47 @@ export const deleteWorkspaceEnvironment = async (
 ) => {
   const { workspaceId } = req.params;
   const { environmentSlug } = req.body;
-  try {
-    // atomic update the env to avoid conflict
-    const workspace = await Workspace.findById(workspaceId).exec();
-    if (!workspace) {
-      throw new Error('Failed to create workspace environment');
-    }
-
-    const envIndex = workspace?.environments.findIndex(
-      ({ slug }) => slug === environmentSlug
-    );
-    if (envIndex === -1) {
-      throw new Error('Invalid environment given');
-    }
-
-    workspace.environments.splice(envIndex, 1);
-    await workspace.save();
-
-    // clean up
-    await Secret.deleteMany({
-      workspace: workspaceId,
-      environment: environmentSlug,
-    });
-    await SecretVersion.deleteMany({
-      workspace: workspaceId,
-      environment: environmentSlug,
-    });
-    await ServiceToken.deleteMany({
-      workspace: workspaceId,
-      environment: environmentSlug,
-    });
-    await ServiceTokenData.deleteMany({
-      workspace: workspaceId,
-      environment: environmentSlug,
-    });
-    await Integration.deleteMany({
-      workspace: workspaceId,
-      environment: environmentSlug,
-    });
-    await Membership.updateMany(
-      { workspace: workspaceId },
-      { $pull: { deniedPermissions: { environmentSlug: environmentSlug } } }
-    )
-
-  } catch (err) {
-    Sentry.setUser({ email: req.user.email });
-    Sentry.captureException(err);
-    return res.status(400).send({
-      message: 'Failed to delete workspace environment',
-    });
+  // atomic update the env to avoid conflict
+  const workspace = await Workspace.findById(workspaceId).exec();
+  if (!workspace) {
+    throw new Error('Failed to create workspace environment');
   }
+
+  const envIndex = workspace?.environments.findIndex(
+    ({ slug }) => slug === environmentSlug
+  );
+  if (envIndex === -1) {
+    throw new Error('Invalid environment given');
+  }
+
+  workspace.environments.splice(envIndex, 1);
+  await workspace.save();
+
+  // clean up
+  await Secret.deleteMany({
+    workspace: workspaceId,
+    environment: environmentSlug,
+  });
+  await SecretVersion.deleteMany({
+    workspace: workspaceId,
+    environment: environmentSlug,
+  });
+  await ServiceToken.deleteMany({
+    workspace: workspaceId,
+    environment: environmentSlug,
+  });
+  await ServiceTokenData.deleteMany({
+    workspace: workspaceId,
+    environment: environmentSlug,
+  });
+  await Integration.deleteMany({
+    workspace: workspaceId,
+    environment: environmentSlug,
+  });
+  await Membership.updateMany(
+    { workspace: workspaceId },
+    { $pull: { deniedPermissions: { environmentSlug: environmentSlug } } }
+  )
 
   return res.status(200).send({
     message: 'Successfully deleted environment',
