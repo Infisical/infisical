@@ -16,7 +16,7 @@ import ServiceAccountKey, { IServiceAccountKey } from './serviceAccountKey'; // 
 import ServiceAccountOrganizationPermission, { IServiceAccountOrganizationPermission } from './serviceAccountOrganizationPermission'; // new
 import ServiceAccountWorkspacePermission, { IServiceAccountWorkspacePermission } from './serviceAccountWorkspacePermission'; // new
 import TokenData, { ITokenData } from './tokenData';
-import User, { IUser } from './user';
+import User,{ AuthProvider, IUser } from './user';
 import UserAction, { IUserAction } from './userAction';
 import Workspace, { IWorkspace } from './workspace';
 import ServiceTokenData, { IServiceTokenData } from './serviceTokenData';
@@ -24,6 +24,7 @@ import APIKeyData, { IAPIKeyData } from './apiKeyData';
 import LoginSRPDetail, { ILoginSRPDetail } from './loginSRPDetail';
 
 export {
+	AuthProvider,
 	BackupPrivateKey,
 	IBackupPrivateKey,
 	Bot,

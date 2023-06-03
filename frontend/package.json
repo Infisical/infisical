@@ -62,6 +62,7 @@
     "jspdf": "^2.5.1",
     "jsrp": "^0.2.4",
     "lottie-react": "^2.4.0",
+    "jwt-decode": "^3.1.2",
     "markdown-it": "^13.0.1",
     "next": "^12.3.4",
     "posthog-js": "^1.58.0",

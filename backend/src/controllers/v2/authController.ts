@@ -288,6 +288,8 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
 
   if (!user) throw new Error('Failed to find user');
 
+  await LoginSRPDetail.deleteOne({ userId: user.id })
+
   await checkUserDevice({
     user,
     ip: req.ip,

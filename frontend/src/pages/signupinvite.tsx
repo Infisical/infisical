@@ -180,7 +180,7 @@ export default function SignupInvite() {
 
   // Step 4 of the sign up process (download the emergency kit pdf)
   const stepConfirmEmail = (
-    <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
+    <div className="border border-mineshaft-600 bg-mineshaft-800 flex flex-col items-center w-full max-w-xs md:max-w-lg h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
       <p className="text-4xl text-center font-semibold mb-6 flex justify-center text-primary-100">
         Confirm your email
       </p>
@@ -219,8 +219,8 @@ export default function SignupInvite() {
 
   // Because this is the invite signup - we directly go to the last step of signup (email is already verified)
   const main = (
-    <div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-32 md:mb-16">
-      <p className="text-4xl font-bold flex justify-center mb-6 text-gray-400 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
+    <div className="border border-mineshaft-600 bg-mineshaft-800 w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-32 md:mb-16">
+      <p className="text-4xl font-bold flex justify-center mb-6 mx-8 md:mx-16 text-transparent bg-clip-text bg-gradient-to-tr from-mineshaft-300 to-white">
         Almost there!
       </p>
       <div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">
@@ -322,8 +322,8 @@ export default function SignupInvite() {
 
   // Step 4 of the sign up process (download the emergency kit pdf)
   const step4 = (
-    <div className="bg-bunker flex flex-col items-center w-full max-w-xs md:max-w-lg h-7/12 py-8 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
-      <p className="text-4xl text-center font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-sky-400 to-primary">
+    <div className="border border-mineshaft-600 bg-mineshaft-800 flex flex-col items-center w-full max-w-xs md:max-w-lg h-7/12 pt-8 pb-6 px-4 md:px-6 mx-1 mb-36 md:mb-16 rounded-xl drop-shadow-xl">
+      <p className="text-4xl text-center font-semibold flex justify-center text-transparent bg-clip-text bg-gradient-to-br from-white to-mineshaft-300">
         Save your Emergency Kit
       </p>
       <div className="flex flex-col items-center justify-center w-full mt-4 md:mt-8 max-w-md text-gray-400 text-md rounded-md px-2">
@@ -336,7 +336,7 @@ export default function SignupInvite() {
         <FontAwesomeIcon icon={faWarning} className="ml-2 mr-4 text-4xl" />
         It contains your Secret Key which we cannot access or recover for you if you lose it.
       </div>
-      <div className="flex flex-col items-center justify-center md:px-4 md:py-5 mt-2 px-2 py-3 max-h-24 max-w-max mx-auto text-lg">
+      <div className="flex flex-col items-center justify-center md:px-4 md:py-5 mt-4 px-2 py-3 max-h-24 max-w-max mx-auto text-lg">
         <Button
           text="Download PDF"
           onButtonPressed={async () => {
@@ -368,14 +368,14 @@ export default function SignupInvite() {
   );
 
   return (
-    <div className="bg-bunker-800 h-screen flex flex-col items-center justify-center">
+    <div className="bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 h-screen flex flex-col items-center justify-center">
       <Head>
         <title>Sign Up</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
       <Link href="/">
-        <div className="flex justify-center mb-2 md:mb-4 opacity-80 cursor-pointer">
-          <Image src="/images/biglogo.png" height={90} width={120} alt="Infisical Wide Logo" />
+        <div className="mb-4 mt-20 flex justify-center">
+          <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />
         </div>
       </Link>
       {step === 1 ? stepConfirmEmail : step === 2 ? main : step4}

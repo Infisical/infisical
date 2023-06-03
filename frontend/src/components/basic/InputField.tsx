@@ -61,22 +61,6 @@ const InputField = ({
     <div className="flex-col w-full">
       <div className="flex flex-row text-mineshaft-300 items-center mb-0.5">
         <p className="text-sm font-semibold mr-1">{label}</p>
-        {/* {label === "Password" && router.asPath !== "/login" && (
-						<div className="mb-0.5 relative inline-block text-gray-400 underline hover:text-primary duration-200">
-							<FontAwesomeIcon
-								icon={faCircleExclamation}
-								className={`text-sm peer ${
-									error && "text-red"
-								}`}
-							/>
-							<span className="absolute hidden peer-hover:block duration-200 w-60 -left-28 -top-2 -translate-y-full px-2 py-2 bg-gray-700 rounded-md text-center text-gray-200 text-sm after:content-[''] after:absolute after:left-1/2 after:top-[100%] after:-translate-x-1/2 after:border-8 after:border-x-transparent after:border-b-transparent after:border-t-gray-700">
-								The password should contain at least 8
-								characters including at least 1 lowercase
-								character, uppercase character, number, and a
-								special character.
-							</span>
-						</div>
-					)} */}
       </div>
       <div
         className={`group relative flex flex-col justify-center w-full max-w-2xl border ${
@@ -95,7 +79,7 @@ const InputField = ({
               : ''
           } ${
             error ? 'focus:ring-red/50' : 'focus:ring-primary/50'
-          } relative peer bg-bunker-800 rounded-md text-gray-400 text-md p-2 w-full min-w-16 outline-none focus:ring-4 duration-200`}
+          } relative peer bg-mineshaft-900 rounded-md text-gray-400 text-md p-2 w-full min-w-16 outline-none focus:ring-4 duration-200`}
           name={name}
           spellCheck="false"
           autoComplete={autoComplete}

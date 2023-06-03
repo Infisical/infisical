@@ -7,21 +7,22 @@ import { createTestUserForDevelopment } from '../addDevelopmentUser'
 import {
     validateEncryptionKeysConfig
 } from './validateConfig';
-import { 
-    backfillSecretVersions, 
+import {
+    backfillSecretVersions,
     backfillBots,
-    backfillSecretBlindIndexData, 
+    backfillSecretBlindIndexData,
     backfillEncryptionMetadata
 } from './backfillData';
 import {
     reencryptBotPrivateKeys,
     reencryptSecretBlindIndexDataSalts
 } from './reencryptData';
-import { 
+import {
     getNodeEnv,
     getMongoURL,
     getSentryDSN
 } from '../../config';
+import { initializePassport } from '../auth';
 
 /**
  * Prepare Infisical upon startup. This includes tasks like:
@@ -39,13 +40,14 @@ export const setup = async () => {
 
     // initializing SMTP configuration
     setTransporter(await initSmtp());
-    
+
     // initializing global feature set
     await EELicenseService.initGlobalFeatureSet();
-    
+
     // initializing the database connection
     await DatabaseService.initDatabase(await getMongoURL());
-    
+    await initializePassport();
+
     /**
      * NOTE: the order in this setup function is critical.
      * It is important to backfill data before performing any re-encryption functionality.
@@ -56,7 +58,7 @@ export const setup = async () => {
     await backfillBots();
     await backfillSecretBlindIndexData();
     await backfillEncryptionMetadata();
-    
+
     // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
     // to base64 256-bit ROOT_ENCRYPTION_KEY
     // await reencryptBotPrivateKeys();

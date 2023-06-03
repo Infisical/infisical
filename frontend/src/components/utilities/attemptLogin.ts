@@ -26,9 +26,17 @@ interface IsLoginSuccessful {
  * @param {string} password - password of user to log in
  */
 const attemptLogin = async (
-  email: string,
-  password: string
+  {
+    email,
+    password,
+    providerAuthToken,
+  }: {
+    email: string;
+    password: string;
+    providerAuthToken?: string;
+  }
 ): Promise<IsLoginSuccessful> => {
+
   const telemetry = new Telemetry().getInstance();
   return new Promise((resolve, reject) => {
     client.init(
@@ -39,7 +47,11 @@ const attemptLogin = async (
       async () => {
         try {
           const clientPublicKey = client.getPublicKey();
-          const { serverPublicKey, salt } = await login1(email, clientPublicKey);
+          const { serverPublicKey, salt } = await login1({
+            email,
+            clientPublicKey,
+            providerAuthToken,
+          });
 
           client.setSalt(salt);
           client.setServerPublicKey(serverPublicKey);
@@ -57,8 +69,11 @@ const attemptLogin = async (
             iv, 
             tag 
           } = await login2(
-            email,
-            clientProof
+            {
+              email,
+              clientProof,
+              providerAuthToken,
+            }
           );
           
           if (mfaEnabled) {
@@ -80,7 +95,9 @@ const attemptLogin = async (
             token
           ) {
             // case: MFA is not enabled
-            
+
+            // unset provider auth token in case it was used
+            SecurityClient.setProviderAuthToken('');            
             // set JWT token
             SecurityClient.setToken(token);
             

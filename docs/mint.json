@@ -122,6 +122,12 @@
       "group": "Self-host Infisical",
       "pages": [
         {
+          "group": "Authentication",
+          "pages": [
+            "self-hosting/authentication/google"
+          ]
+        },
+        {
           "group": "Deployment options",
           "pages": [
             "self-hosting/overview",

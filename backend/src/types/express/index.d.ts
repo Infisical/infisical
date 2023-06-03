@@ -9,6 +9,12 @@ import {
 	AuthData
 } from '../../interfaces/middleware';
 
+declare module 'express' {
+	interface Request {
+		user?: any;
+	}
+}
+
 // TODO: fix (any) types
 declare global {
 	namespace Express {
@@ -18,6 +24,7 @@ declare global {
 			workspace: any;
 			membership: any;
 			targetMembership: any;
+			providerAuthToken: any;
 			organization: any;
 			membershipOrg: any;
 			integration: any;
