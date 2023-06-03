@@ -20,7 +20,9 @@ import {
 import {
     getNodeEnv,
     getMongoURL,
-    getSentryDSN
+    getSentryDSN,
+    getClientSecretGoogle,
+    getClientIdGoogle
 } from '../../config';
 import { initializePassport } from '../auth';
 
@@ -46,7 +48,13 @@ export const setup = async () => {
 
     // initializing the database connection
     await DatabaseService.initDatabase(await getMongoURL());
-    await initializePassport();
+
+    const googleClientSecret: string = await getClientSecretGoogle();
+    const googleClientId: string = await getClientIdGoogle();
+
+    if (googleClientId && googleClientSecret) {
+        await initializePassport();
+    }
 
     /**
      * NOTE: the order in this setup function is critical.
