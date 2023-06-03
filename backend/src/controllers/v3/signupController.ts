@@ -169,7 +169,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 		if (postHogClient) {
 			postHogClient.capture({
 				event: 'User Signed Up',
-				distinctId: req.user.email,
+				distinctId: email,
 				properties: {
 					email,
 					attributionSource
