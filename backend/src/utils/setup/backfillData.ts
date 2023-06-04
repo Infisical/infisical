@@ -64,6 +64,7 @@ export const backfillSecretVersions = async () => {
       ),
     });
   }
+  console.log("Migration: Secret version migration v1 complete")
 };
 
 /**
@@ -370,4 +371,6 @@ export const backfillSecretFolders = async () => {
       .populate<{ secretVersions: ISecretVersion[] }>("secretVersions")
       .limit(50);
   }
+
+  console.log("Migration: Folder migration v1 complete")
 };
