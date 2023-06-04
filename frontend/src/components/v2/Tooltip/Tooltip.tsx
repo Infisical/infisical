@@ -35,7 +35,7 @@ export const Tooltip = ({
       sideOffset={5}
       {...props}
       className={twMerge(
-        `z-20 select-none max-w-[15rem] rounded-md bg-mineshaft-800 border border-mineshaft-600 py-2 px-4 font-light text-sm text-bunker-200 shadow-md 
+        `z-50 max-w-[15rem] select-none rounded-md border border-mineshaft-600 bg-mineshaft-800 py-2 px-4 text-sm font-light text-bunker-200 shadow-md 
 data-[state=delayed-open]:data-[side=top]:animate-slideDownAndFade
 data-[state=delayed-open]:data-[side=right]:animate-slideLeftAndFade
 data-[state=delayed-open]:data-[side=left]:animate-slideRightAndFade

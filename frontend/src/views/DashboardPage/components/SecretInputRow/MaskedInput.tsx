@@ -24,9 +24,9 @@ export const MaskedInput = ({ isReadOnly, isSecretValueHidden, index, isOverridd
 
   const syntaxHighlight = useCallback((val: string) => {
     if (val?.length === 0) return <span className="font-sans text-bunker-400/80">EMPTY</span>;
-    return val?.split(REGEX).map((word) =>
+    return val?.split(REGEX).map((word, i) =>
       word.match(REGEX) !== null ? (
-        <span className="ph-no-capture text-yellow" key={`${val}-${index + 1}`}>
+        <span className="ph-no-capture text-yellow" key={`${val}-${i + 1}`}>
           {word.slice(0, 2)}
           <span className="ph-no-capture text-yellow-200/80">{word.slice(2, word.length - 1)}</span>
           {word.slice(word.length - 1, word.length) === '}' ? (
@@ -40,7 +40,7 @@ export const MaskedInput = ({ isReadOnly, isSecretValueHidden, index, isOverridd
           )}
         </span>
       ) : (
-        <span key={`${word}_${index + 1}`} className="ph-no-capture">
+        <span key={`${word}_${i + 1}`} className="ph-no-capture">
           {word}
         </span>
       )

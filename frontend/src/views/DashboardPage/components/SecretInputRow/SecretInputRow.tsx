@@ -6,7 +6,6 @@ import {
   faComment,
   faEllipsis,
   faInfoCircle,
-  faKey,
   faPlus,
   faTags,
   faXmark
@@ -159,9 +158,8 @@ export const SecretInputRow = memo(
 
     return (
       <tr className="group flex flex-row items-center" key={index}>
-        <td className="flex h-10 w-10 items-center justify-center px-4 border-none">
-          {/* <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div> */}
-          <div className="w-10 text-center text-xs text-bunker-400"><FontAwesomeIcon icon={faKey} className="w-4 h-4 text-bunker-400/60 pl-2.5 pt-0.5" /></div>
+        <td className="flex h-10 w-10 items-center justify-center border-none px-4">
+          <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div>
         </td>
         <Controller
           control={control}
@@ -200,7 +198,7 @@ export const SecretInputRow = memo(
             </HoverCard>
           )}
         />
-        <td className="flex h-10 border-none w-full flex-grow flex-row items-center justify-center border-r border-red">
+        <td className="flex h-10 w-full flex-grow flex-row items-center justify-center border-r border-none border-red">
           <MaskedInput
             isReadOnly={
               isReadOnly || isRollbackMode || (isOverridden ? isAddOnly : shouldBeBlockedInAddOnly)
@@ -226,10 +224,10 @@ export const SecretInputRow = memo(
               </Tag>
             ))}
             {!(isReadOnly || isAddOnly || isRollbackMode) && (
-              <div className="overflow-hidden duration-0 ml-1">
+              <div className="duration-0 ml-1 overflow-hidden">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <div className="w-0 data-[state=open]:w-6 group-hover:w-6">
+                    <div className="w-0 group-hover:w-6 data-[state=open]:w-6">
                       <Tooltip content="Add tags">
                         <IconButton
                           variant="plain"
@@ -291,7 +289,7 @@ export const SecretInputRow = memo(
               </div>
             )}
           </div>
-          <div className="flex flex-row items-center h-full pr-2">
+          <div className="flex h-full flex-row items-center pr-2">
             {!isAddOnly && (
               <div>
                 <Tooltip content="Override with a personal value">
@@ -314,16 +312,14 @@ export const SecretInputRow = memo(
               </div>
             )}
             <Tooltip content="Comment">
-              <div
-                className={`mt-0.5 overflow-hidden `}
-              >
+              <div className={`mt-0.5 overflow-hidden `}>
                 <Popover>
                   <PopoverTrigger asChild>
                     <IconButton
                       className={twMerge(
-                        'overflow-hidden p-0 w-7',
-                        'data-[state=open]:w-7 group-hover:w-7 w-0',
-                        hasComment ? 'text-primary w-7' : 'group-hover:w-7'
+                        'w-7 overflow-hidden p-0',
+                        'w-0 group-hover:w-7 data-[state=open]:w-7',
+                        hasComment ? 'w-7 text-primary' : 'group-hover:w-7'
                       )}
                       variant="plain"
                       size="md"
@@ -332,12 +328,13 @@ export const SecretInputRow = memo(
                       <FontAwesomeIcon icon={faComment} />
                     </IconButton>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-2 drop-shadow-2xl" sticky="always">
+                  <PopoverContent
+                    className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-2 drop-shadow-2xl"
+                    sticky="always"
+                  >
                     <FormControl label="Comment" className="mb-0">
                       <TextArea
-                        isDisabled={
-                          isReadOnly || isRollbackMode || shouldBeBlockedInAddOnly
-                        }
+                        isDisabled={isReadOnly || isRollbackMode || shouldBeBlockedInAddOnly}
                         className="border border-mineshaft-600 text-sm"
                         {...register(`secrets.${index}.comment`)}
                         rows={8}
@@ -349,7 +346,7 @@ export const SecretInputRow = memo(
               </div>
             </Tooltip>
           </div>
-          <div className="duration-0 w-0 flex items-center justify-end space-x-2.5 overflow-hidden transition-all w-16 border-l border-mineshaft-600 h-10">
+          <div className="duration-0 flex h-10 w-16 items-center justify-end space-x-2.5 overflow-hidden border-l border-mineshaft-600 transition-all">
             {!isAddOnly && (
               <div className="opacity-0 group-hover:opacity-100">
                 <Tooltip content="Settings">

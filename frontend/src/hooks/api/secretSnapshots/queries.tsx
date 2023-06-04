@@ -17,18 +17,31 @@ import {
 } from './types';
 
 export const secretSnapshotKeys = {
-  list: (workspaceId: string) => [{ workspaceId }, 'secret-snapshot'] as const,
+  list: (workspaceId: string, env: string, folderId?: string) =>
+    [{ workspaceId, env, folderId }, 'secret-snapshot'] as const,
   snapshotSecrets: (snapshotId: string) => [{ snapshotId }, 'secret-snapshot'] as const,
-  count: (workspaceId: string) => [{ workspaceId }, 'count', 'secret-snapshot']
+  count: (workspaceId: string, env: string, folderId?: string) => [
+    { workspaceId, env, folderId },
+    'count',
+    'secret-snapshot'
+  ]
 };
 
-const fetchWorkspaceSecretSnaphots = async (workspaceId: string, limit = 10, offset = 0) => {
+const fetchWorkspaceSecretSnaphots = async (
+  workspaceId: string,
+  environment: string,
+  folderId?: string,
+  limit = 10,
+  offset = 0
+) => {
   const res = await apiRequest.get<{ secretSnapshots: TWorkspaceSecretSnapshot[] }>(
     `/api/v1/workspace/${workspaceId}/secret-snapshots`,
     {
       params: {
         limit,
-        offset
+        offset,
+        environment,
+        folderId
       }
     }
   );
@@ -38,9 +51,16 @@ const fetchWorkspaceSecretSnaphots = async (workspaceId: string, limit = 10, off
 
 export const useGetWorkspaceSecretSnapshots = (dto: GetWorkspaceSecretSnapshotsDTO) =>
   useInfiniteQuery({
-    enabled: Boolean(dto.workspaceId),
-    queryKey: secretSnapshotKeys.list(dto.workspaceId),
-    queryFn: ({ pageParam }) => fetchWorkspaceSecretSnaphots(dto.workspaceId, dto.limit, pageParam),
+    enabled: Boolean(dto.workspaceId && dto.environment),
+    queryKey: secretSnapshotKeys.list(dto.workspaceId, dto.environment, dto?.folder),
+    queryFn: ({ pageParam }) =>
+      fetchWorkspaceSecretSnaphots(
+        dto.workspaceId,
+        dto.environment,
+        dto?.folder,
+        dto.limit,
+        pageParam
+      ),
     getNextPageParam: (lastPage, pages) =>
       lastPage.length !== 0 ? pages.length * dto.limit : undefined
   });
@@ -115,40 +135,54 @@ export const useGetSnapshotSecrets = ({ decryptFileKey, env, snapshotId }: TSnap
         }
       });
 
-      return { version: data.version, secrets: sharedSecrets, createdAt: data.createdAt };
+      return {
+        version: data.version,
+        secrets: sharedSecrets,
+        createdAt: data.createdAt,
+        folders: data.folderVersion
+      };
     }
   });
 
-const fetchWorkspaceSecretSnaphotCount = async (workspaceId: string) => {
+const fetchWorkspaceSecretSnaphotCount = async (
+  workspaceId: string,
+  environment: string,
+  folderId?: string
+) => {
   const res = await apiRequest.get<{ count: number }>(
-    `/api/v1/workspace/${workspaceId}/secret-snapshots/count`
+    `/api/v1/workspace/${workspaceId}/secret-snapshots/count`,
+    {
+      params: {
+        environment,
+        folderId
+      }
+    }
   );
   return res.data.count;
 };
 
-export const useGetWsSnapshotCount = (workspaceId: string) =>
+export const useGetWsSnapshotCount = (workspaceId: string, env: string, folderId?: string) =>
   useQuery({
-    enabled: Boolean(workspaceId),
-    queryKey: secretSnapshotKeys.count(workspaceId),
-    queryFn: () => fetchWorkspaceSecretSnaphotCount(workspaceId)
+    enabled: Boolean(workspaceId && env),
+    queryKey: secretSnapshotKeys.count(workspaceId, env, folderId),
+    queryFn: () => fetchWorkspaceSecretSnaphotCount(workspaceId, env, folderId)
   });
 
 export const usePerformSecretRollback = () => {
   const queryClient = useQueryClient();
 
   return useMutation<{}, {}, TSecretRollbackDTO>({
-    mutationFn: async (dto) => {
+    mutationFn: async ({ workspaceId, ...dto }) => {
       const { data } = await apiRequest.post(
-        `/api/v1/workspace/${dto.workspaceId}/secret-snapshots/rollback`,
-        {
-          version: dto.version
-        }
+        `/api/v1/workspace/${workspaceId}/secret-snapshots/rollback`,
+        dto
       );
       return data;
     },
-    onSuccess: (_, dto) => {
-      queryClient.invalidateQueries(secretSnapshotKeys.list(dto.workspaceId));
-      queryClient.invalidateQueries(secretSnapshotKeys.count(dto.workspaceId));
+    onSuccess: (_, { workspaceId, environment, folderId }) => {
+      queryClient.invalidateQueries([{ workspaceId, environment }, 'secrets']);
+      queryClient.invalidateQueries(secretSnapshotKeys.list(workspaceId, environment, folderId));
+      queryClient.invalidateQueries(secretSnapshotKeys.count(workspaceId, environment, folderId));
     }
   });
 };

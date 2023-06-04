@@ -7,6 +7,17 @@ import { useOrganization, useWorkspace } from '@app/context';
 
 import { Select, SelectItem, Tooltip } from '../v2';
 
+type Props = {
+  pageName: string;
+  isProjectRelated?: boolean;
+  isOrganizationRelated?: boolean;
+  currentEnv?: string;
+  userAvailableEnvs?: any[];
+  onEnvChange?: (slug: string) => void;
+  folders?: Array<{ id: string; name: string }>;
+  isFolderMode?: boolean;
+};
+
 // TODO: make links clickable and clean up
 
 /**
@@ -29,15 +40,10 @@ export default function NavHeader({
   isOrganizationRelated,
   currentEnv,
   userAvailableEnvs,
-  onEnvChange
-}: {
-  pageName: string;
-  isProjectRelated?: boolean;
-  isOrganizationRelated?: boolean;
-  currentEnv?: string;
-  userAvailableEnvs?: any[];
-  onEnvChange?: (slug: string) => void;
-}): JSX.Element {
+  onEnvChange,
+  folders,
+  isFolderMode
+}: Props): JSX.Element {
   const { currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
   const router = useRouter();
@@ -95,6 +101,26 @@ export default function NavHeader({
           </div>
         </>
       )}
+      {isFolderMode &&
+        folders?.map(({ id, name }, index) => {
+          const query = { ...router.query };
+          if (name !== 'root') query.folderId = id;
+          else delete query.folderId;
+          return (
+            <div className="flex items-center space-x-3" key={`breadcrumb-folder-${id}`}>
+              <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
+              {index + 1 === folders?.length ? (
+                <span className="text-sm font-semibold text-bunker-300">{name}</span>
+              ) : (
+                <Link passHref legacyBehavior href={{ pathname: '/dashboard/[id]', query }}>
+                  <a className="text-sm font-semibold capitalize text-primary/80 hover:text-primary">
+                    {name}
+                  </a>
+                </Link>
+              )}
+            </div>
+          );
+        })}
     </div>
   );
 }

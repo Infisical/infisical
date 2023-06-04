@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { SizeProp } from '@fortawesome/fontawesome-svg-core';
 import { faCubesStacked, IconDefinition } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { twMerge } from 'tailwind-merge';
@@ -8,13 +9,25 @@ type Props = {
   className?: string;
   children?: ReactNode;
   icon?: IconDefinition;
+  iconSize?: SizeProp;
 };
 
-export const EmptyState = ({ title, className, children, icon = faCubesStacked }: Props) => (
-  <div className={twMerge('flex w-full bg-bunker-700 flex-col items-center px-2 pt-6 text-bunker-300', className)}>
-    <FontAwesomeIcon icon={icon} size="2x" className='mr-4' />
-    <div className='flex flex-row items-center py-4'>
-      <div className="text-bunker-300 text-sm">{title}</div>
+export const EmptyState = ({
+  title,
+  className,
+  children,
+  icon = faCubesStacked,
+  iconSize = '2x'
+}: Props) => (
+  <div
+    className={twMerge(
+      'flex w-full flex-col items-center bg-bunker-700 px-2 pt-6 text-bunker-300',
+      className
+    )}
+  >
+    <FontAwesomeIcon icon={icon} size={iconSize} className="mr-4" />
+    <div className="flex flex-row items-center py-4">
+      <div className="text-sm text-bunker-300">{title}</div>
       <div>{children}</div>
     </div>
   </div>
