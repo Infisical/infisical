@@ -74,7 +74,7 @@ export const login1 = async (req: Request, res: Response) => {
                 // generate server-side public key
                 const serverPublicKey = server.getPublicKey();
                 await LoginSRPDetail.findOneAndReplace({
-                    userId: user.id,
+                    email: email
                 }, {
                     email,
                     userId: user.id,
@@ -125,7 +125,7 @@ export const login2 = async (req: Request, res: Response) => {
             })
         }
 
-        const loginSRPDetail = await LoginSRPDetail.findOneAndDelete({ userId: user.id });
+        const loginSRPDetail = await LoginSRPDetail.findOneAndDelete({ email: email })
 
         if (!loginSRPDetail) {
             return BadRequestError(Error("Failed to find login details for SRP"))

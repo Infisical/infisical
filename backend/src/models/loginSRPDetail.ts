@@ -20,10 +20,6 @@ const loginSRPDetailSchema = new Schema<ILoginSRPDetail>(
 			unique: true
 		},
 		serverBInt: { type: mongoose.Schema.Types.Buffer },
-		userId: {
-			type: String,
-			unique: true,
-		},
 		expireAt: { type: Date }
 	}
 );
