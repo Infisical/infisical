@@ -661,7 +661,7 @@ export const getSecrets = async (req: Request, res: Response) => {
 
   if (folders && secretPath) {
     if (!folders) throw BadRequestError({ message: "Folder not found" });
-    const folder = getFolderByPath(folders.nodes, folderId as string);
+    const folder = getFolderByPath(folders.nodes, secretPath as string);
     if (!folder) {
       throw BadRequestError({ message: "Secret path not found" });
     }
