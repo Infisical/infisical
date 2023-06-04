@@ -7,8 +7,10 @@ import { createToken } from '../../helpers/auth';
 import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
 import { sendMail } from '../../helpers/nodemailer';
 import { TokenService } from '../../services';
+import { EELicenseService } from '../../ee/services';
 import { OWNER, ADMIN, MEMBER, ACCEPTED, INVITED, TOKEN_EMAIL_ORG_INVITATION } from '../../variables';
 import { getSiteURL, getJwtSignupLifetime, getJwtSignupSecret, getSmtpConfigured } from '../../config';
+import { validateUserEmail } from '../../validation';
 
 /**
  * Delete organization membership with id [membershipOrgId] from organization
@@ -115,6 +117,19 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 		if (!membershipOrg) {
 			throw new Error('Failed to validate organization membership');
 		}
+		
+		const plan = await EELicenseService.getOrganizationPlan(organizationId);
+		
+		if (plan.memberLimit !== null) {
+			// case: limit imposed on number of members allowed
+			
+			if (plan.membersUsed >= plan.memberLimit) {
+				// case: number of members used exceeds the number of members allowed
+				return res.status(400).send({
+					message: 'Failed to invite member due to member limit reached. Upgrade plan to invite more members.'
+				});
+			}
+		}
 
 		invitee = await User.findOne({
 			email: inviteeEmail
@@ -153,6 +168,9 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 
 			if (!inviteeMembershipOrg) {
 				// case: invitee has never been invited before
+				
+				// validate that email is not disposable
+				validateUserEmail(inviteeEmail);
 
 				await new MembershipOrg({
 					inviteEmail: inviteeEmail,

@@ -28,7 +28,7 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
 			// case: user has already completed account
 
 			return res.status(403).send({
-				error: 'Failed to send email verification for password reset'
+				message: "If an account exists with this email, a password reset link has been sent"
 			});
 		}
 		
@@ -56,7 +56,7 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
 	}
 
 	return res.status(200).send({
-		message: `Sent an email for account recovery to ${email}`
+		message:"If an account exists with this email, a password reset link has been sent" 
 	});
 }
 

@@ -22,6 +22,10 @@ import {
   getHttpsEnabled
 } from '../../config';
 
+// note: move this out
+import path from 'path';
+import fs from 'fs';
+
 declare module 'jsonwebtoken' {
   export interface UserIDJwtPayload extends jwt.JwtPayload {
     userId: string;
@@ -93,7 +97,7 @@ export const login2 = async (req: Request, res: Response) => {
     const { email, clientProof } = req.body;
     const user = await User.findOne({
       email
-    }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag');
+    }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag +devices');
 
     if (!user) throw new Error('Failed to find user');
 
@@ -230,6 +234,8 @@ export const login2 = async (req: Request, res: Response) => {
     });
   }
 };
+
+import { validateUserEmail } from '../../validation';
 
 /**
  * Send MFA token to email [email]

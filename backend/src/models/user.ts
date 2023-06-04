@@ -94,7 +94,8 @@ const userSchema = new Schema<IUser>(
 				ip: String,
 				userAgent: String
 			}],
-			default: []
+			default: [],
+			select: false
 		}
 	}, 
 	{

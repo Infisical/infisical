@@ -34,12 +34,13 @@ const sendMail = async ({
       const temp = handlebars.compile(html);
       const htmlToSend = temp(substitutions);
 
-      await smtpTransporter.sendMail({
+      const x = await smtpTransporter.sendMail({
         from: `"${await getSmtpFromName()}" <${await getSmtpFromAddress()}>`,
         to: recipients.join(', '),
         subject: subjectLine,
         html: htmlToSend
       });
+      
     } catch (err) {
       Sentry.setUser(null);
       Sentry.captureException(err);

@@ -1,3 +1,4 @@
+export * from './user';
 export * from './workspace';
 export * from './bot';
 export * from './integration';

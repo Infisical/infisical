@@ -13,7 +13,6 @@ import swaggerUi = require('swagger-ui-express');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const swaggerFile = require('../spec.json');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const requestIp = require('request-ip');
 import { apiLimiter } from './helpers/rateLimiter';
 import {
     workspace as eeWorkspaceRouter,
@@ -87,8 +86,6 @@ const main = async () => {
             origin: await getSiteURL()
         })
     );
-
-    app.use(requestIp.mw());
 
     if ((await getNodeEnv()) === 'production') {
         // enable app-wide rate-limiting + helmet security

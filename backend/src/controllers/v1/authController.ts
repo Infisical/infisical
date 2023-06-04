@@ -89,7 +89,7 @@ export const login2 = async (req: Request, res: Response) => {
     const { email, clientProof } = req.body;
     const user = await User.findOne({
       email
-    }).select('+salt +verifier +publicKey +encryptedPrivateKey +iv +tag');
+    }).select('+salt +verifier +publicKey +encryptedPrivateKey +iv +tag +devices');
 
     if (!user) throw new Error('Failed to find user');
 
