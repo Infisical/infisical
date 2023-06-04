@@ -65,8 +65,7 @@ export const createFolder = async (req: Request, res: Response) => {
   const folderVersion = new FolderVersion({
     workspace: workspaceId,
     environment,
-    // root condition
-    nodes: parentFolder || folders.nodes,
+    nodes: parentFolder,
   });
   await folderVersion.save();
 

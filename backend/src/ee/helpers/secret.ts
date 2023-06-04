@@ -31,7 +31,6 @@ const takeSecretSnapshotHelper = async ({
         workspace: workspaceId,
         environment,
         folder: folderId,
-        // undefined means root thus collect all secrets
       },
       "_id"
     ).lean()

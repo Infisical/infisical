@@ -127,7 +127,6 @@ const secretSchema = new Schema<ISecret>(
       required: true,
       default: ENCODING_SCHEME_UTF8,
     },
-    // the full path to the secret in relation to folders
     folder: {
       type: String,
       default: "root",
