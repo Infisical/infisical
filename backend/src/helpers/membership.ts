@@ -17,7 +17,7 @@ import {
  * @param {String} obj.workspaceId - id of workspace
  * @returns {Membership} membership - membership of user with id [userId] for workspace with id [workspaceId]
  */
-const validateMembership = async ({
+export const validateMembership = async ({
 	userId,
 	workspaceId,
 	acceptedRoles,
@@ -50,7 +50,7 @@ const validateMembership = async ({
  * @param {Object} queryObj - query object
  * @return {Object} membership - membership
  */
-const findMembership = async (queryObj: any) => {
+export const findMembership = async (queryObj: any) => {
 	let membership;
 	try {
 		membership = await Membership.findOne(queryObj);
@@ -71,7 +71,7 @@ const findMembership = async (queryObj: any) => {
  * @param {String} obj.workspaceId - id of workspace.
  * @param {String[]} obj.roles - roles of users.
  */
-const addMemberships = async ({
+export const addMemberships = async ({
 	userIds,
 	workspaceId,
 	roles
@@ -112,7 +112,7 @@ const addMemberships = async ({
  * @param {Object} obj
  * @param {String} obj.membershipId - id of membership to delete
  */
-const deleteMembership = async ({ membershipId }: { membershipId: string }) => {
+export const deleteMembership = async ({ membershipId }: { membershipId: string }) => {
 	let deletedMembership;
 	try {
 		deletedMembership = await Membership.findOneAndDelete({
@@ -134,11 +134,4 @@ const deleteMembership = async ({ membershipId }: { membershipId: string }) => {
 	}
 
 	return deletedMembership;
-};
-
-export { 
-	validateMembership,
-	addMemberships, 
-	findMembership, 
-	deleteMembership 
 };

@@ -16,7 +16,7 @@ import { SecretService } from '../services';
  * @param {String} organizationId - id of organization to create workspace in
  * @param {Object} workspace - new workspace
  */
-const createWorkspace = async ({
+export const createWorkspace = async ({
 	name,
 	organizationId
 }: {
@@ -58,7 +58,7 @@ const createWorkspace = async ({
  * @param {Object} obj
  * @param {String} obj.id - id of workspace to delete
  */
-const deleteWorkspace = async ({ id }: { id: string }) => {
+export const deleteWorkspace = async ({ id }: { id: string }) => {
 	try {
 		await Workspace.deleteOne({ _id: id });
 		await Bot.deleteOne({
@@ -78,9 +78,4 @@ const deleteWorkspace = async ({ id }: { id: string }) => {
 		Sentry.captureException(err);
 		throw new Error('Failed to delete workspace');
 	}
-};
-
-export {
-	createWorkspace, 
-	deleteWorkspace 
 };

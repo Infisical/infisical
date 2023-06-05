@@ -13,7 +13,7 @@ import {
 } from '../../variables';
 import { BadRequestError } from '../../utils/errors';
 import { EELogService } from '../../ee/services';
-import { getChannelFromUserAgent } from '../../utils/posthog'; // TODO: move this
+import { getChannelFromUserAgent } from '../../utils/posthog';
 import {
   getJwtRefreshSecret,
   getJwtAuthLifetime,
@@ -24,6 +24,7 @@ import {
 declare module 'jsonwebtoken' {
   export interface UserIDJwtPayload extends jwt.JwtPayload {
     userId: string;
+    refreshVersion?: number;
   }
 }
 
@@ -173,9 +174,7 @@ export const login2 = async (req: Request, res: Response) => {
  */
 export const logout = async (req: Request, res: Response) => {
   try {
-    await clearTokens({
-      userId: req.user._id.toString()
-    });
+    await clearTokens(req.user._id);
 
     // clear httpOnly cookie
     res.cookie('jid', '', {
@@ -223,7 +222,7 @@ export const checkAuth = async (req: Request, res: Response) => {
 }
 
 /**
- * Return new token by redeeming refresh token
+ * Return new JWT access token by first validating the refresh token
  * @param req
  * @param res
  * @returns
@@ -233,7 +232,7 @@ export const getNewToken = async (req: Request, res: Response) => {
     const refreshToken = req.cookies.jid;
 
     if (!refreshToken) {
-      throw new Error('Failed to find token in request cookies');
+      throw new Error('Failed to find refresh token in request cookies');
     }
 
     const decodedToken = <jwt.UserIDJwtPayload>(
@@ -242,11 +241,15 @@ export const getNewToken = async (req: Request, res: Response) => {
 
     const user = await User.findOne({
       _id: decodedToken.userId
-    }).select('+publicKey');
+    }).select('+publicKey +refreshVersion');
 
     if (!user) throw new Error('Failed to authenticate unfound user');
     if (!user?.publicKey)
       throw new Error('Failed to authenticate not fully set up account');
+
+    if (decodedToken?.refreshVersion !== user.refreshVersion) throw BadRequestError({
+      message: 'Failed to validate refresh token'
+    });
 
     const token = createToken({
       payload: {

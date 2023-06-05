@@ -34,7 +34,7 @@ import {
  * @param {Object} obj
  * @param {Object} obj.headers - HTTP request headers object
  */
-const validateAuthMode = ({
+export const validateAuthMode = ({
 	headers,
 	acceptedAuthModes
 }: {
@@ -96,7 +96,7 @@ const validateAuthMode = ({
  * @param {String} obj.authTokenValue - JWT token value
  * @returns {User} user - user corresponding to JWT token
  */
-const getAuthUserPayload = async ({
+export const getAuthUserPayload = async ({
 	authTokenValue
 }: {
 	authTokenValue: string;
@@ -122,7 +122,7 @@ const getAuthUserPayload = async ({
  * @param {String} obj.authTokenValue - service token value
  * @returns {ServiceTokenData} serviceTokenData - service token data
  */
-const getAuthSTDPayload = async ({
+export const getAuthSTDPayload = async ({
 	authTokenValue
 }: {
 	authTokenValue: string;
@@ -168,7 +168,7 @@ const getAuthSTDPayload = async ({
  * @param {String} obj.authTokenValue - service account access token value
  * @returns {ServiceAccount} serviceAccount
  */
-const getAuthSAAKPayload = async ({
+export const getAuthSAAKPayload = async ({
 	authTokenValue
 }: {
 	authTokenValue: string;
@@ -197,7 +197,7 @@ const getAuthSAAKPayload = async ({
  * @param {String} obj.authTokenValue - API key value
  * @returns {APIKeyData} apiKeyData - API key data
  */
-const getAuthAPIKeyPayload = async ({
+export const getAuthAPIKeyPayload = async ({
 	authTokenValue
 }: {
 	authTokenValue: string;
@@ -254,7 +254,10 @@ const getAuthAPIKeyPayload = async ({
  * @return {String} obj.token - issued JWT token
  * @return {String} obj.refreshToken - issued refresh token
  */
-const issueAuthTokens = async ({ userId }: { userId: string }) => {
+export const issueAuthTokens = async ({ userId }: { userId: string }) => {
+
+	const user = await User.findById(userId).select('+refreshVersion');
+	if (!user) throw AccountNotFoundError();
 
 	// issue tokens
 	const token = createToken({
@@ -267,7 +270,8 @@ const issueAuthTokens = async ({ userId }: { userId: string }) => {
 
 	const refreshToken = createToken({
 		payload: {
-			userId
+			userId,
+			refreshVersion: user.refreshVersion
 		},
 		expiresIn: await getJwtRefreshLifetime(),
 		secret: await getJwtRefreshSecret()
@@ -284,9 +288,9 @@ const issueAuthTokens = async ({ userId }: { userId: string }) => {
  * @param {Object} obj
  * @param {String} obj.userId - id of user whose tokens are cleared.
  */
-const clearTokens = async ({ userId }: { userId: string }): Promise<void> => {
+export const clearTokens = async (userId: Types.ObjectId): Promise<void> => {
 	// increment refreshVersion on user by 1
-	User.findOneAndUpdate({
+	await User.findOneAndUpdate({
 		_id: userId
 	}, {
 		$inc: {
@@ -303,7 +307,7 @@ const clearTokens = async ({ userId }: { userId: string }): Promise<void> => {
  * @param {String} obj.secret - (JWT) secret such as [JWT_AUTH_SECRET]
  * @param {String} obj.expiresIn - string describing time span such as '10h' or '7d'
  */
-const createToken = ({
+export const createToken = ({
 	payload,
 	expiresIn,
 	secret
@@ -315,15 +319,4 @@ const createToken = ({
 	return jwt.sign(payload, secret, {
 		expiresIn
 	});
-};
-
-export {
-	validateAuthMode,
-	getAuthUserPayload,
-	getAuthSTDPayload,
-	getAuthSAAKPayload,
-	getAuthAPIKeyPayload,
-	createToken,
-	issueAuthTokens,
-	clearTokens
 };

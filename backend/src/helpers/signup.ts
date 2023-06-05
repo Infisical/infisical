@@ -14,7 +14,7 @@ import { TOKEN_EMAIL_CONFIRMATION } from '../variables';
  * @param {String} obj.email - email
  * @returns {Boolean} success - whether or not operation was successful
  */
-const sendEmailVerification = async ({ email }: { email: string }) => {
+export const sendEmailVerification = async ({ email }: { email: string }) => {
 	try {
 		const token = await TokenService.createToken({
 			type: TOKEN_EMAIL_CONFIRMATION,
@@ -45,7 +45,7 @@ const sendEmailVerification = async ({ email }: { email: string }) => {
  * @param {String} obj.email - emai
  * @param {String} obj.code - code that was sent to [email]
  */
-const checkEmailVerification = async ({
+export const checkEmailVerification = async ({
 	email,
 	code
 }: {
@@ -72,7 +72,7 @@ const checkEmailVerification = async ({
  * @param {String} obj.organizationName - name of organization to initialize
  * @param {IUser} obj.user - user who we are initializing for
  */
-const initializeDefaultOrg = async ({
+export const initializeDefaultOrg = async ({
 	organizationName,
 	user
 }: {
@@ -97,5 +97,3 @@ const initializeDefaultOrg = async ({
 		throw new Error(`Failed to initialize default organization and workspace [err=${err}]`);
 	}
 };
-
-export { sendEmailVerification, checkEmailVerification, initializeDefaultOrg };

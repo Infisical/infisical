@@ -4,12 +4,20 @@ import * as Sentry from '@sentry/node';
 const jsrp = require('jsrp');
 import * as bigintConversion from 'bigint-conversion';
 import { User, BackupPrivateKey, LoginSRPDetail } from '../../models';
-import { createToken } from '../../helpers/auth';
-import { sendMail } from '../../helpers/nodemailer';
+import {
+	createToken,
+	sendMail,
+	clearTokens
+} from '../../helpers';
 import { TokenService } from '../../services';
 import { TOKEN_EMAIL_PASSWORD_RESET } from '../../variables';
 import { BadRequestError } from '../../utils/errors';
-import { getSiteURL, getJwtSignupLifetime, getJwtSignupSecret } from '../../config';
+import { 
+	getSiteURL, 
+	getJwtSignupLifetime, 
+	getJwtSignupSecret,
+	getHttpsEnabled
+} from '../../config';
 
 /**
  * Password reset step 1: Send email verification link to email [email] 
@@ -117,6 +125,7 @@ export const emailPasswordResetVerify = async (req: Request, res: Response) => {
  */
 export const srp1 = async (req: Request, res: Response) => {
 	// return salt, serverPublicKey as part of first step of SRP protocol
+	
 	try {
 		const { clientPublicKey } = req.body;
 		const user = await User.findOne({
@@ -221,6 +230,17 @@ export const changePassword = async (req: Request, res: Response) => {
 							new: true
 						}
 					);
+				
+					// await clearTokens(user._id);
+
+					// // clear httpOnly cookie
+					
+					// res.cookie('jid', '', {
+					// 	httpOnly: true,
+					// 	path: '/',
+					// 	sameSite: 'strict',
+					// 	secure: (await getHttpsEnabled()) as boolean
+					// });
 
 					return res.status(200).send({
 						message: 'Successfully changed password'

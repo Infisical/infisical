@@ -15,7 +15,7 @@ export interface IUser extends Document {
 	tag?: string;
 	salt?: string;
 	verifier?: string;
-	refreshVersion?: number;
+	refreshVersion: number;
 	isMfaEnabled: boolean;
 	mfaMethods: boolean;
 	devices: {

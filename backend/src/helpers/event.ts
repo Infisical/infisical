@@ -18,7 +18,7 @@ interface Event {
  * @param {String} obj.event.workspaceId - id of workspace that event is part of
  * @param {Object} obj.event.payload - payload of event (depends on event)
  */
-const handleEventHelper = async ({ event }: { event: Event }) => {
+export const handleEventHelper = async ({ event }: { event: Event }) => {
   const { workspaceId, environment } = event;
 
   // TODO: moduralize bot check into separate function
@@ -38,5 +38,3 @@ const handleEventHelper = async ({ event }: { event: Event }) => {
       break;
   }
 };
-
-export { handleEventHelper };

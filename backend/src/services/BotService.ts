@@ -1,6 +1,6 @@
 import { Types } from 'mongoose';
 import {
-    getSecretsHelper,
+    getSecretsBotHelper,
     encryptSymmetricHelper,
     decryptSymmetricHelper
 } from '../helpers/bot';
@@ -25,7 +25,7 @@ class BotService {
         workspaceId: Types.ObjectId;
         environment: string;
     }) {
-        return await getSecretsHelper({
+        return await getSecretsBotHelper({
             workspaceId,
             environment
         });

@@ -28,7 +28,7 @@ import {
  * @param {String} obj.email - POC email that will receive invoice info
  * @param {Object} organization - new organization
  */
-const createOrganization = async ({
+export const createOrganization = async ({
   name,
   email,
 }: {
@@ -70,7 +70,7 @@ const createOrganization = async ({
  * @return {Object} obj.stripeSubscription - new stripe subscription
  * @return {Subscription} obj.subscription - new subscription
  */
-const initSubscriptionOrg = async ({
+export const initSubscriptionOrg = async ({
   organizationId,
 }: {
   organizationId: Types.ObjectId;
@@ -125,7 +125,7 @@ const initSubscriptionOrg = async ({
  * @param {Object} obj
  * @param {Number} obj.organizationId - id of subscription's organization
  */
-const updateSubscriptionOrgQuantity = async ({
+export const updateSubscriptionOrgQuantity = async ({
   organizationId,
 }: {
   organizationId: string;
@@ -171,10 +171,4 @@ const updateSubscriptionOrgQuantity = async ({
   }
 
   return stripeSubscription;
-};
-
-export {
-  createOrganization,
-  initSubscriptionOrg,
-  updateSubscriptionOrgQuantity
 };

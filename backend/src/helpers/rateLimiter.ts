@@ -1,7 +1,7 @@
 import rateLimit from 'express-rate-limit';
 
 // 120 requests per minute
-const apiLimiter = rateLimit({
+export const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 240,
   standardHeaders: true,
@@ -20,23 +20,17 @@ const authLimit = rateLimit({
 });
 
 // 10 requests per hour
-const passwordLimiter = rateLimit({
+export const passwordLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
   standardHeaders: true,
   legacyHeaders: false
 });
 
-const authLimiter = (req: any, res: any, next: any) => {
+export const authLimiter = (req: any, res: any, next: any) => {
   if (process.env.NODE_ENV === 'production') {
     authLimit(req, res, next);
   } else {
     next();
   }
-};
-
-export {
-  apiLimiter,
-  authLimiter,
-  passwordLimiter
 };
