@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
@@ -39,14 +40,21 @@ export default function NavHeader({
   isProjectRelated,
   isOrganizationRelated,
   currentEnv,
-  userAvailableEnvs,
+  userAvailableEnvs = [],
   onEnvChange,
-  folders,
+  folders = [],
   isFolderMode
 }: Props): JSX.Element {
   const { currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
   const router = useRouter();
+
+  const isInRootFolder = isFolderMode && folders.length <= 1;
+
+  const selectedEnv = useMemo(
+    () => userAvailableEnvs?.find((uae) => uae.name === currentEnv),
+    [userAvailableEnvs, currentEnv]
+  );
 
   return (
     <div className="ml-6 flex flex-row items-center pt-6">
@@ -78,13 +86,13 @@ export default function NavHeader({
       ) : (
         <div className="text-sm text-gray-400">{pageName}</div>
       )}
-      {currentEnv && (
+      {currentEnv && isInRootFolder && (
         <>
           <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
           <div className="rounded-md pl-3 hover:bg-bunker-100/10">
             <Tooltip content="Select environment">
               <Select
-                value={userAvailableEnvs?.filter((uae) => uae.name === currentEnv)[0]?.slug}
+                value={selectedEnv?.slug}
                 onValueChange={(value) => {
                   if (value && onEnvChange) onEnvChange(value);
                 }}
@@ -114,7 +122,7 @@ export default function NavHeader({
               ) : (
                 <Link passHref legacyBehavior href={{ pathname: '/dashboard/[id]', query }}>
                   <a className="text-sm font-semibold capitalize text-primary/80 hover:text-primary">
-                    {name}
+                    {name === 'root' ? selectedEnv?.name : name}
                   </a>
                 </Link>
               )}
