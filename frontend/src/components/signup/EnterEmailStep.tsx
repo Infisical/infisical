@@ -4,8 +4,7 @@ import Link from 'next/link';
 
 import sendVerificationEmail from '@app/pages/api/auth/SendVerificationEmail';
 
-import Button from '../basic/buttons/Button';
-import InputField from '../basic/InputField';
+import { Button, Input } from '../v2';
 
 interface DownloadBackupPDFStepProps {
   incrementStep: () => void;
@@ -27,7 +26,6 @@ export default function EnterEmailStep({
   incrementStep
 }: DownloadBackupPDFStepProps): JSX.Element {
   const [emailError, setEmailError] = useState(false);
-  const [emailErrorMessage, setEmailErrorMessage] = useState('');
   const { t } = useTranslation();
 
   /**
@@ -37,11 +35,9 @@ export default function EnterEmailStep({
     let emailCheckBool = false;
     if (!email) {
       setEmailError(true);
-      setEmailErrorMessage('Please enter your email.');
       emailCheckBool = true;
     } else if (!email.includes('@') || !email.includes('.') || !/[a-z]/.test(email)) {
       setEmailError(true);
-      setEmailErrorMessage('Please enter a valid email.');
       emailCheckBool = true;
     } else {
       setEmailError(false);
@@ -56,41 +52,40 @@ export default function EnterEmailStep({
 
   return (
     <div>
-      <div className="h-7/12 mx-1 w-full max-w-md rounded-xl bg-bunker py-8 drop-shadow-xl md:px-6">
-        <p className="flex justify-center text-4xl font-semibold text-primary">
+      <div className="w-full md:px-6 mx-auto">
+        <p className="text-xl font-medium flex justify-center text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
           {t('signup.step1-start')}
         </p>
-        <div className="m-auto mt-4 flex max-h-24 w-5/6 items-center justify-center rounded-lg md:w-full md:p-2">
-          <InputField
-            label={t('common.email') ?? ''}
-            onChangeHandler={setEmail}
-            type="email"
+        <div className="flex flex-col items-center justify-center lg:w-1/6 w-1/4 min-w-[20rem] m-auto rounded-lg mt-8">
+          <Input
+            placeholder="Enter your email address..."
+            onChange={(e) => setEmail(e.target.value)}
             value={email}
-            placeholder=""
             isRequired
-            error={emailError}
-            errorText={emailErrorMessage}
             autoComplete="username"
+            className="h-12"
           />
+          {emailError && <p className="text-red-600 text-xs text-left w-full ml-1.5 mt-1.5">Please enter a valid email.</p>}
         </div>
-        <div className="mx-auto mt-4 flex max-h-28 w-5/6 max-w-xs flex-col items-center justify-center text-center text-sm md:mt-4 md:w-full md:max-w-md md:p-2 md:text-left">
-          <p className="mt-2 text-gray-400 md:mx-0.5">{t('signup.step1-privacy')}</p>
-          <div className="text-l m-2 mt-6 px-8 py-1 text-lg md:m-8">
+        <div className="flex flex-col items-center justify-center lg:w-1/6 w-1/4 min-w-[20rem] mt-2 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">
+          <div className="text-l py-1 text-lg w-full">
             <Button
-              text={t('signup.step1-submit') ?? ''}
-              type="submit"
-              onButtonPressed={emailCheck}
-              size="lg"
-            />
+              onClick={emailCheck}
+              size="sm"
+              isFullWidth
+              className='h-14'
+              colorSchema="primary"
+              variant="outline_bg"
+            > {String(t('signup.step1-submit'))} </Button>
           </div>
         </div>
       </div>
       <div className="mx-auto mb-48 mt-2 flex w-full max-w-md flex-col items-center justify-center pt-2 md:mb-16 md:pb-2">
         <Link href="/login">
           <button type="button" className="w-max pb-3 duration-200 hover:opacity-90">
-            <u className="text-sm font-normal text-primary-500">
+            <span className="text-sm text-mineshaft-400 hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer">
               {t('signup.already-have-account')}
-            </u>
+            </span>
           </button>
         </Link>
       </div>

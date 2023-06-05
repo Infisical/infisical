@@ -65,13 +65,18 @@ const buttonVariants = cva(
       },
       {
         colorSchema: 'primary',
+        variant: 'solid',
+        className: 'bg-primary-500 bg-opacity-90 hover:bg-primary-500 hover:text-black'
+      },
+      {
+        colorSchema: 'primary',
         variant: 'selected',
         className: 'bg-primary/10 border border-primary/50 text-bunker-200'
       },
       {
         colorSchema: 'primary',
         variant: 'outline_bg',
-        className: 'bg-mineshaft-700 border border-mineshaft-600 hover:bg-primary/[0.15] hover:border-primary/60 text-bunker-200 duration-100'
+        className: 'bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/[0.1] hover:border-primary/40 text-bunker-200'
       },
       {
         colorSchema: 'secondary',
@@ -91,7 +96,7 @@ const buttonVariants = cva(
       {
         colorSchema: 'secondary',
         variant: 'outline',
-        className: 'hover:bg-mineshaft'
+        className: 'border-mineshaft-700 hover:border-mineshaft-500'
       },
       {
         colorSchema: 'danger',
@@ -172,10 +177,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {isLoading && (
           <img
-            src="/images/loading/loadingblack.gif"
+            src="/images/loading/loading.gif"
             width={36}
             alt="loading animation"
-            className="absolute rounded-xl"
+            className="absolute rounded-xl opacity-80"
           />
         )}
         <div

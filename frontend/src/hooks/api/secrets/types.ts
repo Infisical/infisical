@@ -61,6 +61,7 @@ type SecretTagArg = { _id: string; name: string; slug: string };
 
 export type UpdateSecretArg = {
   _id: string;
+  folderId?: string;
   type: 'shared' | 'personal';
   secretName: string;
   secretKeyCiphertext: string;
@@ -81,6 +82,7 @@ export type DeleteSecretArg = { _id: string };
 
 export type BatchSecretDTO = {
   workspaceId: string;
+  folderId: string;
   environment: string;
   requests: Array<
     | { method: 'POST'; secret: CreateSecretArg }
@@ -93,6 +95,7 @@ export type GetProjectSecretsDTO = {
   workspaceId: string;
   env: string | string[];
   decryptFileKey: UserWsKeyPair;
+  folderId?: string;
   isPaused?: boolean;
   onSuccess?: (data: DecryptedSecret[]) => void;
 };

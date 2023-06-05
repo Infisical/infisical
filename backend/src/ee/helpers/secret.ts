@@ -1,6 +1,11 @@
 import { Types } from "mongoose";
 import { Secret, ISecret } from "../../models";
-import { SecretSnapshot, SecretVersion, ISecretVersion } from "../models";
+import {
+  SecretSnapshot,
+  SecretVersion,
+  ISecretVersion,
+  FolderVersion,
+} from "../models";
 
 /**
  * Save a secret snapshot that is a copy of the current state of secrets in workspace with id
@@ -12,22 +17,31 @@ import { SecretSnapshot, SecretVersion, ISecretVersion } from "../models";
  */
 const takeSecretSnapshotHelper = async ({
   workspaceId,
+  environment,
+  folderId = "root",
 }: {
   workspaceId: Types.ObjectId;
+  environment: string;
+  folderId?: string;
 }) => {
+  // get all folder ids
   const secretIds = (
     await Secret.find(
       {
         workspace: workspaceId,
+        environment,
+        folder: folderId,
       },
       "_id"
-    )
+    ).lean()
   ).map((s) => s._id);
 
   const latestSecretVersions = (
     await SecretVersion.aggregate([
       {
         $match: {
+          environment,
+          workspace: new Types.ObjectId(workspaceId),
           secret: {
             $in: secretIds,
           },
@@ -45,6 +59,11 @@ const takeSecretSnapshotHelper = async ({
       },
     ]).exec()
   ).map((s) => s.versionId);
+  const latestFolderVersion = await FolderVersion.findOne({
+    environment,
+    workspace: workspaceId,
+    "nodes.id": folderId,
+  }).sort({ "nodes.version": -1 });
 
   const latestSecretSnapshot = await SecretSnapshot.findOne({
     workspace: workspaceId,
@@ -52,8 +71,11 @@ const takeSecretSnapshotHelper = async ({
 
   const secretSnapshot = await new SecretSnapshot({
     workspace: workspaceId,
+    environment,
     version: latestSecretSnapshot ? latestSecretSnapshot.version + 1 : 1,
     secretVersions: latestSecretVersions,
+    folderId,
+    folderVersion: latestFolderVersion,
   }).save();
 
   return secretSnapshot;
@@ -96,5 +118,5 @@ const markDeletedSecretVersionsHelper = async ({
 export {
   takeSecretSnapshotHelper,
   addSecretVersionsHelper,
-  markDeletedSecretVersionsHelper
+  markDeletedSecretVersionsHelper,
 };

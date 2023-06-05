@@ -19,19 +19,24 @@ import {
 
 export const secretKeys = {
   // this is also used in secretSnapshot part
-  getProjectSecret: (workspaceId: string, env: string | string[]) => [
-    { workspaceId, env },
+  getProjectSecret: (workspaceId: string, env: string | string[], folderId?: string) => [
+    { workspaceId, env, folderId },
     'secrets'
   ],
   getSecretVersion: (secretId: string) => [{ secretId }, 'secret-versions']
 };
 
-const fetchProjectEncryptedSecrets = async (workspaceId: string, env: string | string[]) => {
+const fetchProjectEncryptedSecrets = async (
+  workspaceId: string,
+  env: string | string[],
+  folderId?: string
+) => {
   if (typeof env === 'string') {
     const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
       params: {
         environment: env,
-        workspaceId
+        workspaceId,
+        folderId: folderId || undefined
       }
     });
     return data.secrets;
@@ -46,7 +51,8 @@ const fetchProjectEncryptedSecrets = async (workspaceId: string, env: string | s
       const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
         params: {
           environment: envPoint,
-          workspaceId
+          workspaceId,
+          folderId
         }
       });
       allEnvData = allEnvData.concat(data.secrets);
@@ -63,13 +69,14 @@ export const useGetProjectSecrets = ({
   workspaceId,
   env,
   decryptFileKey,
-  isPaused
+  isPaused,
+  folderId
 }: GetProjectSecretsDTO) =>
   useQuery({
     // wait for all values to be available
     enabled: Boolean(decryptFileKey && workspaceId && env) && !isPaused,
-    queryKey: secretKeys.getProjectSecret(workspaceId, env),
-    queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env),
+    queryKey: secretKeys.getProjectSecret(workspaceId, env, folderId),
+    queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, folderId),
     select: (data) => {
       const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
       const latestKey = decryptFileKey;
@@ -283,9 +290,15 @@ export const useBatchSecretsOp = () => {
       return data;
     },
     onSuccess: (_, dto) => {
-      queryClient.invalidateQueries(secretKeys.getProjectSecret(dto.workspaceId, dto.environment));
-      queryClient.invalidateQueries(secretSnapshotKeys.list(dto.workspaceId));
-      queryClient.invalidateQueries(secretSnapshotKeys.count(dto.workspaceId));
+      queryClient.invalidateQueries(
+        secretKeys.getProjectSecret(dto.workspaceId, dto.environment, dto.folderId)
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.list(dto.workspaceId, dto.environment, dto?.folderId)
+      );
+      queryClient.invalidateQueries(
+        secretSnapshotKeys.count(dto.workspaceId, dto.environment, dto?.folderId)
+      );
     }
   });
 };

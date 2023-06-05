@@ -69,7 +69,7 @@ Other environment variables are listed below to increase the functionality of yo
       Name label to be used in From field (e.g. Team)
     </ParamField>
   </Tab>
-  <Tab title="Integrations">
+  <Tab title="Secret Integrations">
     To sync secret to third party services, provide value for the related services 
 
     <ParamField query="CLIENT_ID_HEROKU" type="string" default="none" optional>
@@ -108,6 +108,18 @@ Other environment variables are listed below to increase the functionality of yo
       OAuth2 slug for Netlify integration
     </ParamField>
   </Tab>
+  <Tab title="Auth Integrations">
+    To integrate with external auth providers, provide value for the related keys
+    <ParamField query="JWT_PROVIDER_AUTH_SECRET" type="string" required>
+      Must be a random 16 byte hex string. Can be generated with `openssl rand -hex 16`
+    </ParamField>
+    <ParamField query="CLIENT_ID_GOOGLE" type="string" default="none" optional>
+      OAuth2 client ID for Google auth integration         
+    </ParamField>
+    <ParamField query="CLIENT_SECRET_GOOGLE" type="string" default="none" optional>
+      OAuth2 client secret for Google auth integration         
+    </ParamField>
+  </Tab>
   <Tab title="Others">
     #### JWT
     <ParamField query="JWT_SIGNUP_LIFETIME" type="string" default="15m" optional>
@@ -123,6 +135,10 @@ Other environment variables are listed below to increase the functionality of yo
     </ParamField>
 
     <ParamField query="JWT_MFA_LIFETIME" type="string" default="5m" optional>
+      JWT token lifetime expressed in seconds or a string describing a time span
+    </ParamField>
+
+    <ParamField query="JWT_PROVIDER_AUTH_LIFETIME" type="string" default="5m" optional>
       JWT token lifetime expressed in seconds or a string describing a time span
     </ParamField>
 

@@ -131,6 +131,7 @@ backendEnvironmentVariables:
   ## @param backendEnvironmentVariables.JWT_AUTH_SECRET **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)
   ## @param backendEnvironmentVariables.JWT_SERVICE_SECRET **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)
   ## @param backendEnvironmentVariables.JWT_MFA_SECRET **Required** Secrets to sign JWT tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)
+  ## @param backendEnvironmentVariables.JWT_PROVIDER_AUTH_SECRET **Required** Secrets to sign JWT OAuth tokens (128-bit hex value, 32-characters hex, [example](https://stackoverflow.com/a/34329057))</br><kbd>auto-generated</kbd> variable (if not provided, and not found in an existing secret)
   ## Command to generate the required value (linux) : 'hexdump -vn16 -e'4/4 "%08X" 1 "\n"' /dev/urandom', 'openssl rand -hex 16'
   ##
   JWT_SIGNUP_SECRET: ""
@@ -138,6 +139,7 @@ backendEnvironmentVariables:
   JWT_AUTH_SECRET: ""
   JWT_SERVICE_SECRET: ""
   JWT_MFA_SECRET: ""
+  JWT_PROVIDER_AUTH_SECRET: ""
   ## @param backendEnvironmentVariables.SMTP_HOST **Required** Hostname to connect to for establishing SMTP connections
   ## @param backendEnvironmentVariables.SMTP_PORT Port to connect to for establishing SMTP connections
   ## @param backendEnvironmentVariables.SMTP_SECURE If true, use TLS when connecting to host. If false, TLS will be used if STARTTLS is supported

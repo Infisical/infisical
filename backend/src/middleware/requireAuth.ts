@@ -42,10 +42,9 @@ const requireAuth = ({
 	acceptedAuthModes: string[];
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
-		
+
 		// validate auth token against accepted auth modes [acceptedAuthModes]
 		// and return token type [authTokenType] and value [authTokenValue]
-		
 		const { authMode, authTokenValue } = validateAuthMode({
 			headers: req.headers,
 			acceptedAuthModes
@@ -78,13 +77,13 @@ const requireAuth = ({
 				req.user = authPayload;
 				break;
 		}
-		
+
 		req.requestData = {
 			...req.params,
 			...req.query,
 			...req.body,
 		}
-		
+
 		req.authData = {
 			authMode,
 			authPayload, // User, ServiceAccount, ServiceTokenData
@@ -92,7 +91,7 @@ const requireAuth = ({
 			authIP: req.ip,
 			authUserAgent: req.headers['user-agent'] ?? 'other'
 		}
-		
+
 		return next();
 	}
 }

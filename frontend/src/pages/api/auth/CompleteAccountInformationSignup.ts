@@ -8,6 +8,7 @@ interface Props {
   protectedKey: string;
   protectedKeyIV: string;
   protectedKeyTag: string;
+  providerAuthToken?: string;
   publicKey: string;
   encryptedPrivateKey: string;
   encryptedPrivateKeyIV: string;
@@ -15,6 +16,7 @@ interface Props {
   organizationName: string;
   salt: string;
   verifier: string;
+  attributionSource?: string;
 }
 
 /**
@@ -49,9 +51,11 @@ const completeAccountInformationSignup = async ({
   encryptedPrivateKeyTag,
   salt,
   verifier,
-  organizationName
+  organizationName,
+  providerAuthToken,
+  attributionSource
 }: Props) => {
-  const { data } = await apiRequest.post('/api/v2/signup/complete-account/signup', {
+  const { data } = await apiRequest.post('/api/v3/signup/complete-account/signup', {
     email,
     firstName,
     lastName,
@@ -64,7 +68,9 @@ const completeAccountInformationSignup = async ({
     encryptedPrivateKeyTag,
     salt,
     verifier,
-    organizationName
+    organizationName,
+    providerAuthToken,
+    attributionSource,
   });
 
   return data;

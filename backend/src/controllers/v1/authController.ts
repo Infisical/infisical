@@ -270,3 +270,7 @@ export const getNewToken = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const handleAuthProviderCallback = (req: Request, res: Response) => {
+  res.redirect(`/login/provider/success?token=${encodeURIComponent(req.providerAuthToken)}`);
+}

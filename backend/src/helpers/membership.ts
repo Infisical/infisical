@@ -1,13 +1,7 @@
 import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
-import { 
-	Membership, 
-	Key
-} from '../models';
-import {
-	MembershipNotFoundError,
-	BadRequestError
-} from '../utils/errors';
+import { Membership, Key } from '../models';
+import { MembershipNotFoundError, BadRequestError } from '../utils/errors';
 
 /**
  * Validate that user with id [userId] is a member of workspace with id [workspaceId]
@@ -22,28 +16,31 @@ export const validateMembership = async ({
 	workspaceId,
 	acceptedRoles,
 }: {
-	userId: Types.ObjectId;
-	workspaceId: Types.ObjectId;
-	acceptedRoles?: Array<'admin' | 'member'>;
+  userId: Types.ObjectId | string;
+  workspaceId: Types.ObjectId | string;
+  acceptedRoles?: Array<'admin' | 'member'>;
 }) => {
-	
-	const membership = await Membership.findOne({
-		user: userId,
-		workspace: workspaceId
-	}).populate("workspace");
-	
-	if (!membership) {
-		throw MembershipNotFoundError({ message: 'Failed to find workspace membership' });
-	}
-	
-	if (acceptedRoles) {
-		if (!acceptedRoles.includes(membership.role)) {
-			throw BadRequestError({ message: 'Failed authorization for membership role' });
-		}
-	}
-	
-	return membership;
-}
+  const membership = await Membership.findOne({
+    user: userId,
+    workspace: workspaceId,
+  }).populate('workspace');
+
+  if (!membership) {
+    throw MembershipNotFoundError({
+      message: 'Failed to find workspace membership',
+    });
+  }
+
+  if (acceptedRoles) {
+    if (!acceptedRoles.includes(membership.role)) {
+      throw BadRequestError({
+        message: 'Failed authorization for membership role',
+      });
+    }
+  }
+
+  return membership;
+};
 
 /**
  * Return membership matching criteria specified in query [queryObj]
@@ -60,7 +57,7 @@ export const findMembership = async (queryObj: any) => {
 		throw new Error('Failed to find membership');
 	}
 
-	return membership;
+  return membership;
 };
 
 /**
@@ -76,35 +73,35 @@ export const addMemberships = async ({
 	workspaceId,
 	roles
 }: {
-	userIds: string[];
-	workspaceId: string;
-	roles: string[];
+  userIds: string[];
+  workspaceId: string;
+  roles: string[];
 }): Promise<void> => {
-	try {
-		const operations = userIds.map((userId, idx) => {
-			return {
-				updateOne: {
-					filter: {
-						user: userId,
-						workspace: workspaceId,
-						role: roles[idx]
-					},
-					update: {
-						user: userId,
-						workspace: workspaceId,
-						role: roles[idx]
-					},
-					upsert: true
-				}
-			};
-		});
+  try {
+    const operations = userIds.map((userId, idx) => {
+      return {
+        updateOne: {
+          filter: {
+            user: userId,
+            workspace: workspaceId,
+            role: roles[idx],
+          },
+          update: {
+            user: userId,
+            workspace: workspaceId,
+            role: roles[idx],
+          },
+          upsert: true,
+        },
+      };
+    });
 
-		await Membership.bulkWrite(operations as any);
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to add users to workspace');
-	}
+    await Membership.bulkWrite(operations as any);
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed to add users to workspace');
+  }
 };
 
 /**
@@ -119,19 +116,19 @@ export const deleteMembership = async ({ membershipId }: { membershipId: string 
 			_id: membershipId
 		});
 
-		// delete keys associated with the membership
-		if (deletedMembership?.user) {
-			// case: membership had a registered user
-			await Key.deleteMany({
-				receiver: deletedMembership.user,
-				workspace: deletedMembership.workspace
-			});
-		}
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to delete membership');
-	}
+    // delete keys associated with the membership
+    if (deletedMembership?.user) {
+      // case: membership had a registered user
+      await Key.deleteMany({
+        receiver: deletedMembership.user,
+        workspace: deletedMembership.workspace,
+      });
+    }
+  } catch (err) {
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error('Failed to delete membership');
+  }
 
 	return deletedMembership;
 };

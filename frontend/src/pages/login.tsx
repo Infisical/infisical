@@ -5,9 +5,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
-import ListBox from '@app/components/basic/Listbox';
+// import ListBox from '@app/components/basic/Listbox';
+import InitialLoginStep from '@app/components/login/InitialLoginStep';
 import LoginStep from '@app/components/login/LoginStep';
 import MFAStep from '@app/components/login/MFAStep';
+import PasswordInputStep from '@app/components/login/PasswordInputStep';
+import { useProviderAuth } from '@app/hooks/useProviderAuth';
 import { isLoggedIn } from '@app/reactQuery';
 
 import getWorkspaces from './api/workspace/getWorkspaces';
@@ -18,12 +21,23 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [step, setStep] = useState(1);
   const { t } = useTranslation();
-  const lang = router.locale ?? 'en';
+  // const lang = router.locale ?? 'en';
+  const [isLoginWithEmail, setIsLoginWithEmail] = useState(false);
+  const {
+    providerAuthToken,
+    email: providerEmail,
+    setProviderAuthToken,
+    isProviderUserCompleted
+  } = useProviderAuth();
 
-  const setLanguage = async (to: string) => {
-    router.push('/login', '/login', { locale: to });
-    localStorage.setItem('lang', to);
-  };
+  if (providerAuthToken && isProviderUserCompleted === false) {
+    router.push(`/signup?providerAuthToken=${encodeURIComponent(providerAuthToken)}`);
+  }
+
+  // const setLanguage = async (to: string) => {
+  //   router.push('/login', '/login', { locale: to });
+  //   localStorage.setItem('lang', to);
+  // };
 
   useEffect(() => {
     // TODO(akhilmhdh): workspace will be controlled by a workspace context
@@ -42,29 +56,51 @@ export default function Login() {
     }
   }, []);
 
-  const renderStep = (loginStep: number) => {
-    // TODO: add MFA step
-    switch (loginStep) {
-      case 1:
-        return (
-          <LoginStep
-            email={email}
-            setEmail={setEmail}
-            password={password}
-            setPassword={setPassword}
-            setStep={setStep}
-          />
-        );
-      case 2:
-        // TODO: add MFA step
-        return <MFAStep email={email} password={password} />;
-      default:
-        return <div />;
+  const renderView = (loginStep: number) => {
+    if (providerAuthToken && step === 1) {
+      return (
+        <PasswordInputStep
+          email={providerEmail}
+          password={password}
+          providerAuthToken={providerAuthToken}
+          setPassword={setPassword}
+          setProviderAuthToken={setProviderAuthToken}
+          setStep={setStep}
+        />
+      );
     }
+
+    if (isLoginWithEmail && loginStep === 1) {
+      return (
+        <LoginStep
+          email={email}
+          setEmail={setEmail}
+          password={password}
+          setPassword={setPassword}
+          setStep={setStep}
+        />
+      );
+    }
+
+    if (!isLoginWithEmail && loginStep === 1) {
+      return <InitialLoginStep setIsLoginWithEmail={setIsLoginWithEmail} />;
+    }
+
+    if (step === 2) {
+      return (
+        <MFAStep
+          email={email || providerEmail}
+          password={password}
+          providerAuthToken={providerAuthToken}
+        />
+      );
+    }
+
+    return <div />;
   };
 
   return (
-    <div className="flex h-screen flex-col justify-start bg-bunker-800 px-6">
+    <div className="flex h-screen flex-col justify-center bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28 ">
       <Head>
         <title>{t('common.head-title', { title: t('login.title') })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -73,12 +109,12 @@ export default function Login() {
         <meta name="og:description" content={t('login.og-description') ?? ''} />
       </Head>
       <Link href="/">
-        <div className="mb-8 mt-20 flex cursor-pointer justify-center">
-          <Image src="/images/biglogo.png" height={90} width={120} alt="long logo" />
+        <div className="mb-4 mt-20 flex justify-center">
+          <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
         </div>
       </Link>
-      {renderStep(step)}
-      <div className="absolute right-4 top-0 mt-4 flex items-center justify-center">
+      {renderView(step)}
+      {/* <div className="absolute right-4 top-0 mt-4 flex items-center justify-center">
         <div className="mx-auto w-48">
           <ListBox
             isSelected={lang}
@@ -88,7 +124,7 @@ export default function Login() {
             text={`${t('common.language')}: `}
           />
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

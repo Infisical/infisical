@@ -57,7 +57,8 @@ export const ProjectNameChangeSection = ({
         </div>
         <Button
           isLoading={isSubmitting}
-          color="mineshaft"
+          color="primary"
+          variant="outline_bg"
           size="sm"
           type="submit"
           isDisabled={!isDirty || isSubmitting}

@@ -19,6 +19,7 @@ import {
 import {
 	getJwtAuthLifetime,
 	getJwtAuthSecret,
+	getJwtProviderAuthSecret,
 	getJwtRefreshLifetime,
 	getJwtRefreshSecret
 } from '../config';
@@ -43,7 +44,7 @@ export const validateAuthMode = ({
 }) => {
 	const apiKey = headers['x-api-key'];
 	const authHeader = headers['authorization'];
-	
+
 	let authMode, authTokenValue;
 	if (apiKey === undefined && authHeader === undefined) {
 		// case: no auth or X-API-KEY header present
@@ -320,3 +321,28 @@ export const createToken = ({
 		expiresIn
 	});
 };
+
+export const validateProviderAuthToken = async ({
+	email,
+	user,
+	providerAuthToken,
+}: {
+	email: string;
+	user: IUser,
+	providerAuthToken?: string;
+}) => {
+	if (!providerAuthToken) {
+		throw new Error('Invalid authentication request.');
+	}
+
+	const decodedToken = <jwt.ProviderAuthJwtPayload>(
+		jwt.verify(providerAuthToken, await getJwtProviderAuthSecret())
+	);
+	
+	if (
+		decodedToken.authProvider !== user.authProvider ||
+		decodedToken.email !== email
+	) {
+		throw new Error('Invalid authentication credentials.')
+	}
+}

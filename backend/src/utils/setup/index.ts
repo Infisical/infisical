@@ -3,25 +3,29 @@ import { DatabaseService, TelemetryService } from '../../services';
 import { setTransporter } from '../../helpers/nodemailer';
 import { EELicenseService } from '../../ee/services';
 import { initSmtp } from '../../services/smtp';
-import { createTestUserForDevelopment } from '../addDevelopmentUser'
+import { createTestUserForDevelopment } from '../addDevelopmentUser';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { patchRouterParam } = require('../patchAsyncRoutes');
+import { validateEncryptionKeysConfig } from './validateConfig';
 import {
-    validateEncryptionKeysConfig
-} from './validateConfig';
-import { 
-    backfillSecretVersions, 
-    backfillBots,
-    backfillSecretBlindIndexData, 
-    backfillEncryptionMetadata
+  backfillSecretVersions,
+  backfillBots,
+  backfillSecretBlindIndexData,
+  backfillEncryptionMetadata,
+  backfillSecretFolders,
 } from './backfillData';
 import {
-    reencryptBotPrivateKeys,
-    reencryptSecretBlindIndexDataSalts
+  reencryptBotPrivateKeys,
+  reencryptSecretBlindIndexDataSalts,
 } from './reencryptData';
-import { 
-    getNodeEnv,
-    getMongoURL,
-    getSentryDSN
+import {
+  getNodeEnv,
+  getMongoURL,
+  getSentryDSN,
+  getClientSecretGoogle,
+  getClientIdGoogle,
 } from '../../config';
+import { initializePassport } from '../auth';
 
 /**
  * Prepare Infisical upon startup. This includes tasks like:
@@ -34,42 +38,58 @@ import {
  * - Re-encrypting data
  */
 export const setup = async () => {
-    await validateEncryptionKeysConfig();
-    await TelemetryService.logTelemetryMessage();
+  patchRouterParam();
+  await validateEncryptionKeysConfig();
+  await TelemetryService.logTelemetryMessage();
 
-    // initializing SMTP configuration
-    setTransporter(await initSmtp());
-    
-    // initializing global feature set
-    await EELicenseService.initGlobalFeatureSet();
-    
-    // initializing the database connection
-    await DatabaseService.initDatabase(await getMongoURL());
-    
-    /**
-     * NOTE: the order in this setup function is critical.
-     * It is important to backfill data before performing any re-encryption functionality.
-     */
+  // initializing SMTP configuration
+  setTransporter(await initSmtp());
 
-    // backfilling data to catch up with new collections and updated fields
-    await backfillSecretVersions();
-    await backfillBots();
-    await backfillSecretBlindIndexData();
-    await backfillEncryptionMetadata();
-    
-    // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
-    // to base64 256-bit ROOT_ENCRYPTION_KEY
-    // await reencryptBotPrivateKeys();
-    // await reencryptSecretBlindIndexDataSalts();
+  // initializing global feature set
+  await EELicenseService.initGlobalFeatureSet();
 
-    // initializing Sentry
-    Sentry.init({
-        dsn: await getSentryDSN(),
-        tracesSampleRate: 1.0,
-        debug: (await getNodeEnv()) === 'production' ? false : true,
-        environment: (await getNodeEnv())
-    });
+  // initializing the database connection
+  await DatabaseService.initDatabase(await getMongoURL());
 
-    await createTestUserForDevelopment();
-}
+  const googleClientSecret: string = await getClientSecretGoogle();
+  const googleClientId: string = await getClientIdGoogle();
 
+  if (googleClientId && googleClientSecret) {
+    await initializePassport();
+  }
+
+  // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
+  // to base64 256-bit ROOT_ENCRYPTION_KEY
+  // await reencryptBotPrivateKeys();
+  // await reencryptSecretBlindIndexDataSalts();
+
+  // initializing the database connection
+  await DatabaseService.initDatabase(await getMongoURL());
+
+  /**
+   * NOTE: the order in this setup function is critical.
+   * It is important to backfill data before performing any re-encryption functionality.
+   */
+
+  // backfilling data to catch up with new collections and updated fields
+  await backfillSecretVersions();
+  await backfillBots();
+  await backfillSecretBlindIndexData();
+  await backfillEncryptionMetadata();
+  await backfillSecretFolders();
+
+  // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
+  // to base64 256-bit ROOT_ENCRYPTION_KEY
+  await reencryptBotPrivateKeys();
+  await reencryptSecretBlindIndexDataSalts();
+
+  // initializing Sentry
+  Sentry.init({
+    dsn: await getSentryDSN(),
+    tracesSampleRate: 1.0,
+    debug: (await getNodeEnv()) === 'production' ? false : true,
+    environment: await getNodeEnv(),
+  });
+
+  await createTestUserForDevelopment();
+};

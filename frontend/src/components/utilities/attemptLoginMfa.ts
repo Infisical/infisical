@@ -23,10 +23,12 @@ const client = new jsrp.client();
 const attemptLoginMfa = async ({
     email,
     password,
+    providerAuthToken,
     mfaToken
 }: {
     email: string;
     password: string;
+    providerAuthToken?: string,
     mfaToken: string;
 }): Promise<Boolean> => {
     return new Promise((resolve, reject) => {
@@ -36,7 +38,11 @@ const attemptLoginMfa = async ({
         }, async () => {
             try {
                 const clientPublicKey = client.getPublicKey();
-                const { salt } = await login1(email, clientPublicKey);
+                const { salt } = await login1({
+                    email,
+                    clientPublicKey,
+                    providerAuthToken,
+                });
                 
                 const {
                     encryptionVersion,
@@ -56,6 +62,7 @@ const attemptLoginMfa = async ({
                 // unset temporary (MFA) JWT token and set JWT token
                 SecurityClient.setMfaToken('');
                 SecurityClient.setToken(token);
+                SecurityClient.setProviderAuthToken('');
 
                 const privateKey = await KeyService.decryptPrivateKey({
                     encryptionVersion,

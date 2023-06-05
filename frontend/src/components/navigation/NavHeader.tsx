@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
@@ -6,6 +7,17 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useOrganization, useWorkspace } from '@app/context';
 
 import { Select, SelectItem, Tooltip } from '../v2';
+
+type Props = {
+  pageName: string;
+  isProjectRelated?: boolean;
+  isOrganizationRelated?: boolean;
+  currentEnv?: string;
+  userAvailableEnvs?: any[];
+  onEnvChange?: (slug: string) => void;
+  folders?: Array<{ id: string; name: string }>;
+  isFolderMode?: boolean;
+};
 
 // TODO: make links clickable and clean up
 
@@ -28,19 +40,21 @@ export default function NavHeader({
   isProjectRelated,
   isOrganizationRelated,
   currentEnv,
-  userAvailableEnvs,
-  onEnvChange
-}: {
-  pageName: string;
-  isProjectRelated?: boolean;
-  isOrganizationRelated?: boolean;
-  currentEnv?: string;
-  userAvailableEnvs?: any[];
-  onEnvChange?: (slug: string) => void;
-}): JSX.Element {
+  userAvailableEnvs = [],
+  onEnvChange,
+  folders = [],
+  isFolderMode
+}: Props): JSX.Element {
   const { currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
   const router = useRouter();
+
+  const isInRootFolder = isFolderMode && folders.length <= 1;
+
+  const selectedEnv = useMemo(
+    () => userAvailableEnvs?.find((uae) => uae.name === currentEnv),
+    [userAvailableEnvs, currentEnv]
+  );
 
   return (
     <div className="ml-6 flex flex-row items-center pt-6">
@@ -72,13 +86,13 @@ export default function NavHeader({
       ) : (
         <div className="text-sm text-gray-400">{pageName}</div>
       )}
-      {currentEnv && (
+      {currentEnv && isInRootFolder && (
         <>
           <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
           <div className="rounded-md pl-3 hover:bg-bunker-100/10">
             <Tooltip content="Select environment">
               <Select
-                value={userAvailableEnvs?.filter((uae) => uae.name === currentEnv)[0]?.slug}
+                value={selectedEnv?.slug}
                 onValueChange={(value) => {
                   if (value && onEnvChange) onEnvChange(value);
                 }}
@@ -95,6 +109,26 @@ export default function NavHeader({
           </div>
         </>
       )}
+      {isFolderMode &&
+        folders?.map(({ id, name }, index) => {
+          const query = { ...router.query };
+          if (name !== 'root') query.folderId = id;
+          else delete query.folderId;
+          return (
+            <div className="flex items-center space-x-3" key={`breadcrumb-folder-${id}`}>
+              <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-1.5 text-xs text-gray-400" />
+              {index + 1 === folders?.length ? (
+                <span className="text-sm font-semibold text-bunker-300">{name}</span>
+              ) : (
+                <Link passHref legacyBehavior href={{ pathname: '/dashboard/[id]', query }}>
+                  <a className="text-sm font-semibold capitalize text-primary/80 hover:text-primary">
+                    {name === 'root' ? selectedEnv?.name : name}
+                  </a>
+                </Link>
+              )}
+            </div>
+          );
+        })}
     </div>
   );
 }

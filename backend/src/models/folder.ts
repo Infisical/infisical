@@ -1,36 +1,56 @@
-import { Schema, Types, model } from 'mongoose';
+import { Schema, model, Types } from "mongoose";
 
-const folderSchema = new Schema({
+export type TFolderRootSchema = {
+  _id: Types.ObjectId;
+  workspace: Types.ObjectId;
+  environment: string;
+  nodes: TFolderSchema;
+};
+
+export type TFolderSchema = {
+  id: string;
+  name: string;
+  version: number;
+  children: TFolderSchema[];
+};
+
+const folderSchema = new Schema<TFolderSchema>({
+  id: {
+    required: true,
+    type: String,
+  },
+  version: {
+    required: true,
+    type: Number,
+    default: 1,
+  },
   name: {
-    type: String,
     required: true,
-  },
-  workspace: {
-    type: Schema.Types.ObjectId,
-    ref: 'Workspace',
-    required: true,
-  },
-  environment: {
     type: String,
-    required: true,
+    default: "root",
   },
-  parent: {
-    type: Schema.Types.ObjectId,
-    ref: 'Folder',
-    required: false, // optional for root folders
-  },
-  path: {
-    type: String,
-    required: true
-  },
-  parentPath: {
-    type: String,
-    required: true,
-  },
-}, {
-  timestamps: true
 });
 
-const Folder = model('Folder', folderSchema);
+folderSchema.add({ children: [folderSchema] });
+
+const folderRootSchema = new Schema<TFolderRootSchema>(
+  {
+    workspace: {
+      type: Schema.Types.ObjectId,
+      ref: "Workspace",
+      required: true,
+    },
+    environment: {
+      type: String,
+      required: true,
+    },
+    nodes: folderSchema,
+  },
+  {
+    timestamps: true,
+  }
+);
+
+const Folder = model<TFolderRootSchema>("Folder", folderRootSchema);
 
 export default Folder;

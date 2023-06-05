@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import {
-  SMTP_HOST_SENDGRID, 
+  SMTP_HOST_SENDGRID,
   SMTP_HOST_MAILGUN,
   SMTP_HOST_SOCKETLABS,
   SMTP_HOST_ZOHOMAIL,
@@ -35,29 +35,29 @@ export const initSmtp = async () => {
         mailOpts.requireTLS = true;
         break;
       case SMTP_HOST_MAILGUN:
-        mailOpts.requireTLS = true; 
+        mailOpts.requireTLS = true;
         mailOpts.tls = {
           ciphers: 'TLSv1.2'
         }
         break;
       case SMTP_HOST_SOCKETLABS:
-        mailOpts.requireTLS = true; 
+        mailOpts.requireTLS = true;
         mailOpts.tls = {
           ciphers: 'TLSv1.2'
         }
         break;
       case SMTP_HOST_ZOHOMAIL:
-        mailOpts.requireTLS = true; 
+        mailOpts.requireTLS = true;
         mailOpts.tls = {
           ciphers: 'TLSv1.2'
         }
         break;
       case SMTP_HOST_GMAIL:
-        mailOpts.requireTLS = true; 
+        mailOpts.requireTLS = true;
         mailOpts.tls = {
           ciphers: 'TLSv1.2'
         }
-        break; 
+        break;
       default:
         if ((await getSmtpHost()).includes('amazonaws.com')) {
           mailOpts.tls = {
@@ -76,6 +76,7 @@ export const initSmtp = async () => {
     .then((err) => {
       Sentry.setUser(null);
       Sentry.captureMessage('SMTP - Successfully connected');
+      console.log("SMTP - Successfully connected")
     })
     .catch(async (err) => {
       Sentry.setUser(null);

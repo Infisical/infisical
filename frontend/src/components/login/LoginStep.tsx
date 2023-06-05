@@ -5,10 +5,10 @@ import { useRouter } from 'next/router';
 import { faWarning } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
-import Button from '@app/components/basic/buttons/Button';
 import Error from '@app/components/basic/Error';
-import InputField from '@app/components/basic/InputField';
 import attemptLogin from '@app/components/utilities/attemptLogin';
+
+import { Button, Input } from '../v2';
 
 /**
  * 1st step of login - user enters their username and password
@@ -46,7 +46,10 @@ export default function LoginStep({
       }
 
       setIsLoading(true);
-      const isLoginSuccessful = await attemptLogin(email, password);
+      const isLoginSuccessful = await attemptLogin({
+        email,
+        password,
+      });
       if (isLoginSuccessful && isLoginSuccessful.success) {
         // case: login was successful
 
@@ -60,82 +63,71 @@ export default function LoginStep({
         // case: login does not require MFA step
         router.push(`/dashboard/${localStorage.getItem('projectData.id')}`);
       }
+
     } catch (err) {
       setLoginError(true);
     }
 
     setIsLoading(false);
-  };
+  }
 
   return (
     <form onSubmit={(e) => e.preventDefault()}>
-      <div className="h-7/12 mx-auto w-full max-w-md rounded-xl bg-bunker py-4 px-6 pt-8 drop-shadow-xl">
-        <p className="mx-auto mb-6 flex w-max justify-center text-3xl font-semibold text-bunker-100">
+      <div className="w-full mx-auto h-full px-6">
+        <p className="text-xl w-max mx-auto flex justify-center text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 mb-6">
           {t('login.login')}
         </p>
-        <div className="mt-4 flex max-h-24 w-full items-center justify-center rounded-lg md:mt-0 md:max-h-28 md:p-2">
-          <InputField
-            label={t('common.email')}
-            onChangeHandler={setEmail}
-            type="email"
+        <div className="flex items-center justify-center lg:w-1/6 w-1/4 min-w-[22rem] mx-auto w-full md:p-2 rounded-lg mt-4 md:mt-0 max-h-24 md:max-h-28">
+          <Input
             value={email}
-            placeholder=""
+            onChange={(e) => setEmail(e.target.value)}
+            type="email"
+            placeholder="Enter your email..."
             isRequired
             autoComplete="username"
+            className="h-12"
           />
         </div>
-        <div className="relative mt-6 flex max-h-24 w-full items-center justify-center rounded-lg md:mt-2 md:max-h-28 md:p-2">
-          <InputField
-            label={t('common.password')}
-            onChangeHandler={setPassword}
-            type="password"
-            value={password}
-            placeholder=""
-            isRequired
-            autoComplete="current-password"
-            id="current-password"
-          />
-          <div className="absolute top-2 right-3 cursor-pointer text-sm text-primary-700 duration-200 hover:text-primary">
-            <Link href="/verify-email">
-              <button
-                type="button"
-                className="ml-1.5 text-sm font-normal text-primary-700 underline-offset-4 duration-200 hover:text-primary"
-              >
-                {t('login.forgot-password')}
-              </button>
-            </Link>
-          </div>
-        </div>
-        {!isLoading && loginError && <Error text={t('login.error-login') ?? ''} />}
-        <div className="mx-auto mt-4 flex max-h-20 w-full max-w-md flex-col items-center justify-center text-sm md:p-2">
-          <div className="text-l m-8 mt-6 px-8 py-3 text-lg">
-            <Button
-              type="submit"
-              text={t('login.login') ?? ''}
-              onButtonPressed={async () => handleLogin()}
-              loading={isLoading}
-              size="lg"
+        <div className="relative flex items-center justify-center lg:w-1/6 w-1/4 min-w-[22rem] mx-auto w-full rounded-lg max-h-24 md:max-h-28">
+          <div className="flex items-center justify-center w-full md:p-2 rounded-lg max-h-24 md:max-h-28">
+            <Input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              placeholder="Enter your password..."
+              isRequired
+              autoComplete="current-password"
+              id="current-password"
+              className="h-12"
             />
           </div>
         </div>
+        {!isLoading && loginError && <Error text={t('login.error-login') ?? ''} />}
+        <div className="flex flex-col items-center justify-center lg:w-1/6 w-1/4 min-w-[22rem] px-2 mt-4 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">
+          <div className="text-l py-1 text-lg w-full">
+            <Button
+              onClick={async () => handleLogin()}
+              size="sm"
+              isFullWidth
+              className='h-14'
+              colorSchema="primary"
+              variant="outline_bg"
+              isLoading={isLoading}
+            > {String(t('login.login'))} </Button>
+          </div>
+        </div>
+      </div>
+      <div className="text-bunker-400 text-sm flex flex-row w-max mx-auto">
+        <Link href="/verify-email">
+          <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>{t('login.forgot-password')}</span>
+        </Link>
       </div>
       {false && (
-        <div className="mx-auto mt-4 flex w-full max-w-md flex-row items-center rounded-md bg-white/10 p-2 text-gray-300">
+        <div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-300 rounded-md max-w-md mx-auto mt-4">
           <FontAwesomeIcon icon={faWarning} className="ml-2 mr-6 text-6xl" />
           {t('common.maintenance-alert')}
         </div>
       )}
-      <div className="mt-4 flex flex-row items-center justify-center md:pb-4">
-        <p className="flex w-max justify-center text-sm text-gray-400">{t('login.need-account')}</p>
-        <Link href="/signup">
-          <button
-            type="button"
-            className="ml-1.5 text-sm font-normal text-primary-700 underline-offset-4 duration-200 hover:text-primary"
-          >
-            {t('login.create-account')}
-          </button>
-        </Link>
-      </div>
     </form>
   );
 }
