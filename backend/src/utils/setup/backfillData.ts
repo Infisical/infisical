@@ -335,6 +335,33 @@ export const backfillSecretFolders = async () => {
     }
   );
 
+  await SecretVersion.updateMany(
+    {
+      folder: {
+        $exists: false,
+      },
+    },
+    {
+      $set: {
+        folder: "root",
+      },
+    }
+  );
+
+  // Back fill because tags were missing in secret versions
+  await SecretVersion.updateMany(
+    {
+      tags: {
+        $exists: false,
+      },
+    },
+    {
+      $set: {
+        tags: [],
+      },
+    }
+  );
+
   let secretSnapshots = await SecretSnapshot.find({
     environment: {
       $exists: false,
@@ -352,12 +379,15 @@ export const backfillSecretFolders = async () => {
         groupSnapByEnv[secVer.environment].push(secVer);
       });
 
-      const newSnapshots = Object.keys(groupSnapByEnv).map((snapEnv) => ({
-        ...secSnapshot.toObject({ virtuals: false }),
-        _id: new Types.ObjectId(),
-        environment: snapEnv,
-        secretVersions: groupSnapByEnv[snapEnv],
-      }));
+      const newSnapshots = Object.keys(groupSnapByEnv).map((snapEnv) => {
+        const secretIdsOfEnvGroup = groupSnapByEnv[snapEnv] ? groupSnapByEnv[snapEnv].map(secretVersion => secretVersion._id) : []
+        return {
+          ...secSnapshot.toObject({ virtuals: false }),
+          _id: new Types.ObjectId(),
+          environment: snapEnv,
+          secretVersions: secretIdsOfEnvGroup,
+        }
+      });
 
       await SecretSnapshot.insertMany(newSnapshots);
       await secSnapshot.delete();

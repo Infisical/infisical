@@ -13,13 +13,20 @@ import {
  */
 export const getSecretSnapshot = async (req: Request, res: Response) => {
   const { secretSnapshotId } = req.params;
+
   const secretSnapshot = await SecretSnapshot.findById(secretSnapshotId)
     .lean()
-    .populate<{ secretVersions: ISecretVersion[] }>("secretVersions")
+    .populate<{ secretVersions: ISecretVersion[] }>({
+      path: 'secretVersions',
+      populate: {
+        path: 'tags',
+        model: 'Tag'
+      }
+    })
     .populate<{ folderVersion: TFolderRootVersionSchema }>("folderVersion");
-
+  
   if (!secretSnapshot) throw new Error("Failed to find secret snapshot");
-
+  
   const folderId = secretSnapshot.folderId;
   // to show only the folder required secrets
   secretSnapshot.secretVersions = secretSnapshot.secretVersions.filter(
