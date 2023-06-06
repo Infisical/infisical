@@ -27,6 +27,7 @@ export interface ISecretVersion {
   keyEncoding: "utf8" | "base64";
   createdAt: string;
   folder?: string;
+  tags?: string[];
 }
 
 const secretVersionSchema = new Schema<ISecretVersion>(
@@ -111,6 +112,11 @@ const secretVersionSchema = new Schema<ISecretVersion>(
     folder: {
       type: String,
       required: true,
+    },
+    tags: {
+      ref: 'Tag',
+      type: [Schema.Types.ObjectId],
+      default: []
     },
   },
   {

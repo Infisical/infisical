@@ -348,6 +348,20 @@ export const backfillSecretFolders = async () => {
     }
   );
 
+  // Back fill because tags were missing in secret versions
+  await SecretVersion.updateMany(
+    {
+      tags: {
+        $exists: false,
+      },
+    },
+    {
+      $set: {
+        tags: [],
+      },
+    }
+  );
+
   let secretSnapshots = await SecretSnapshot.find({
     environment: {
       $exists: false,
