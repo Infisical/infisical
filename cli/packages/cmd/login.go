@@ -67,7 +67,8 @@ var loginCmd = &cobra.Command{
 
 		//override domain
 		domainQuery := true
-		if config.INFISICAL_URL_MANUAL_OVERRIDE != "" && config.INFISICAL_URL_MANUAL_OVERRIDE != util.INFISICAL_DEFAULT_API_URL {
+		// We ask for domain change if we've got saved config and we didn't override it by command argument or env var
+		if config.INFISICAL_URL_MANUAL_OVERRIDE != "" && config.INFISICAL_URL_MANUAL_OVERRIDE == config.INFISICAL_URL {
 			overrideDomain, err := DomainOverridePrompt()
 			if err != nil {
 				util.HandleError(err)
@@ -80,6 +81,9 @@ var loginCmd = &cobra.Command{
 				config.INFISICAL_URL = config.INFISICAL_URL_MANUAL_OVERRIDE
 			}
 
+		} else {
+			// don't query for domain selection if we're not using default domain
+			domainQuery = config.INFISICAL_URL == util.INFISICAL_DEFAULT_API_URL
 		}
 
 		//prompt user to select domain between Infisical cloud and self hosting

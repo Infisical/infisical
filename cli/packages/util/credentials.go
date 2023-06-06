@@ -90,9 +90,13 @@ func GetCurrentLoggedInUserDetails() (LoggedInUserDetails, error) {
 
 		config.INFISICAL_URL_MANUAL_OVERRIDE = config.INFISICAL_URL
 		//configFile.LoggedInUserDomain
-		//if not empty set as infisical url
+		//if not empty set as infisical manual override url
 		if configFile.LoggedInUserDomain != "" {
-			config.INFISICAL_URL = configFile.LoggedInUserDomain
+			config.INFISICAL_URL_MANUAL_OVERRIDE = configFile.LoggedInUserDomain
+			// if infisical url did't change by command argument or env var - set it to the logged in user domain
+			if config.INFISICAL_URL == INFISICAL_DEFAULT_API_URL {
+				config.INFISICAL_URL = configFile.LoggedInUserDomain
+			}
 		}
 
 		isAuthenticated := api.CallIsAuthenticated(httpClient)
