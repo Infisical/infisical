@@ -1,4 +1,6 @@
 export {
     useGetAuthToken,
     useSendMfaToken, 
-    useVerifyMfaToken} from './queries'
+    useVerifyMfaToken,
+    useRevokeAllSessions
+} from './queries'

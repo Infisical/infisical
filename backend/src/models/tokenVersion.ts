@@ -2,9 +2,11 @@ import { Schema, model, Types, Document } from 'mongoose';
 
 export interface ITokenVersion extends Document {
     user: Types.ObjectId;
-    name: string;
+    ip: string;
+    userAgent: string;
     refreshVersion: number;
     accessVersion: number;
+    lastUsed: Date;
 }
 
 const tokenVersionSchema = new Schema<ITokenVersion>(
@@ -14,7 +16,11 @@ const tokenVersionSchema = new Schema<ITokenVersion>(
             ref: 'User',
             required: true
         },
-        name: {
+        ip: {
+            type: String,
+            required: true
+        },
+        userAgent: {
             type: String,
             required: true
         },
@@ -24,6 +30,10 @@ const tokenVersionSchema = new Schema<ITokenVersion>(
         },
         accessVersion: {
             type: Number,
+            required: true
+        },
+        lastUsed: {
+            type: Date,
             required: true
         }
     },

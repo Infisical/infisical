@@ -22,10 +22,6 @@ import {
   getHttpsEnabled
 } from '../../config';
 
-// note: move this out
-import path from 'path';
-import fs from 'fs';
-
 declare module 'jsonwebtoken' {
   export interface UserIDJwtPayload extends jwt.JwtPayload {
     userId: string;
@@ -160,7 +156,11 @@ export const login2 = async (req: Request, res: Response) => {
           });
 
           // issue tokens
-          const tokens = await issueAuthTokens({ userId: user._id.toString() });
+          const tokens = await issueAuthTokens({ 
+            userId: user._id,
+            ip: req.ip,
+            userAgent: req.headers['user-agent'] ?? ''
+          });
 
           // store (refresh) token in httpOnly cookie
           res.cookie('jid', tokens.refreshToken, {
@@ -301,7 +301,11 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
   });
 
   // issue tokens
-  const tokens = await issueAuthTokens({ userId: user._id.toString() });
+  const tokens = await issueAuthTokens({ 
+    userId: user._id,
+    ip: req.ip,
+    userAgent: req.headers['user-agent'] ?? ''
+  });
 
   // store (refresh) token in httpOnly cookie
   res.cookie('jid', tokens.refreshToken, {

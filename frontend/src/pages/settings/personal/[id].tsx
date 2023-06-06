@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { faCheck, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faPlus, faX, faBan } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import Button from '@app/components/basic/buttons/Button';
@@ -18,6 +18,9 @@ import { SecuritySection } from '@app/views/Settings/PersonalSettingsPage/Securi
 import AddApiKeyDialog from '../../../components/basic/dialog/AddApiKeyDialog';
 import getAPIKeys from '../../api/apiKey/getAPIKeys';
 import getUser from '../../api/user/getUser';
+import {
+  useRevokeAllSessions
+} from '@app/hooks/api';
 
 export default function PersonalSettings() {
   const [personalEmail, setPersonalEmail] = useState('');
@@ -34,6 +37,8 @@ export default function PersonalSettings() {
   const [backupKeyError, setBackupKeyError] = useState(false);
   const [isAddApiKeyDialogOpen, setIsAddApiKeyDialogOpen] = useState(false);
   const [apiKeys, setApiKeys] = useState<any[]>([]);
+  
+  const revokeAllSessions = useRevokeAllSessions();
 
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -253,6 +258,28 @@ export default function PersonalSettings() {
                   } duration-300`}
                 />
               </div>
+            </div>
+            <div className="mb-6 mt-2 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pb-6 pt-2">
+              <div className="my-4 flex w-full flex-row justify-between">
+                <p className="text-xl font-semibold w-full">
+                  Sessions
+                </p>
+                <div className="w-40">
+                  <Button
+                    text="Revoke all"
+                    onButtonPressed={async () => {
+                      await revokeAllSessions.mutateAsync();
+                      router.push('/login');
+                    }}
+                    color="mineshaft"
+                    icon={faBan}
+                    size="md"
+                    />
+                </div>
+              </div>
+              <p className="mb-5 text-sm text-mineshaft-300">
+                Logging into Infisical via browser or CLI creates a session. Revoking all sessions logs your account out all active sessions across all browsers and CLIs.
+              </p> 
             </div>
 
             <div className="mt-2 mb-6 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pt-5 pb-6">

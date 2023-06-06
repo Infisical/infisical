@@ -13,7 +13,8 @@ import { createToken, issueAuthTokens, clearTokens } from '../../helpers/auth';
 import { checkUserDevice } from '../../helpers/user';
 import {
   ACTION_LOGIN,
-  ACTION_LOGOUT
+  ACTION_LOGOUT,
+  AUTH_MODE_JWT
 } from '../../variables';
 import { 
   BadRequestError,
@@ -127,7 +128,11 @@ export const login2 = async (req: Request, res: Response) => {
             userAgent: req.headers['user-agent'] ?? ''
           });
 
-          const tokens = await issueAuthTokens({ userId: user._id.toString() });
+          const tokens = await issueAuthTokens({ 
+            userId: user._id,
+            ip: req.ip,
+            userAgent: req.headers['user-agent'] ?? ''
+          });
 
           // store (refresh) token in httpOnly cookie
           res.cookie('jid', tokens.refreshToken, {
@@ -181,7 +186,10 @@ export const login2 = async (req: Request, res: Response) => {
  */
 export const logout = async (req: Request, res: Response) => {
   try {
-    await clearTokens(req.user._id);
+    
+    if (req.authData.authMode === AUTH_MODE_JWT && req.authData.authPayload instanceof User && req.authData.tokenVersionId) {
+      await clearTokens(req.authData.tokenVersionId)
+    }
 
     // clear httpOnly cookie
     res.cookie('jid', '', {
@@ -215,6 +223,21 @@ export const logout = async (req: Request, res: Response) => {
     message: 'Successfully logged out.'
   });
 };
+
+export const revokeAllSessions = async (req: Request, res: Response) => {
+  await TokenVersion.updateMany({
+    user: req.user._id
+  }, {
+    $inc: {
+      refreshVersion: 1,
+      accessVersion: 1
+    }
+  });
+
+  return res.status(200).send({
+    message: 'Successfully revoked all sessions.'
+  }); 
+}
 
 /**
  * Return user is authenticated
@@ -254,12 +277,7 @@ export const getNewToken = async (req: Request, res: Response) => {
     if (!user?.publicKey)
       throw new Error('Failed to authenticate not fully set up account');
     
-    const tokenVersion = await TokenVersion.findOne({
-      _id: decodedToken.tokenVersionId,
-      user: user._id
-    });
-
-    console.log('tokenVersion: ', tokenVersion);
+    const tokenVersion = await TokenVersion.findById(decodedToken.tokenVersionId);
 	
     if (!tokenVersion) throw UnauthorizedRequestError({
       message: 'Failed to validate refresh token'
@@ -272,6 +290,7 @@ export const getNewToken = async (req: Request, res: Response) => {
     const token = createToken({
       payload: {
         userId: decodedToken.userId,
+        tokenVersionId: tokenVersion._id.toString(),
         accessVersion: tokenVersion.refreshVersion
       },
       expiresIn: await getJwtAuthLifetime(),

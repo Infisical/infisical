@@ -7,7 +7,8 @@ import {
 	ServiceTokenData,
 	ServiceAccount,
 	APIKeyData,
-	TokenVersion
+	TokenVersion,
+	ITokenVersion
 } from '../models';
 import {
 	AccountNotFoundError,
@@ -108,35 +109,32 @@ export const getAuthUserPayload = async ({
 	);
 
 	const user = await User.findOne({
-		_id: decodedToken.userId
+		_id: new Types.ObjectId(decodedToken.userId)
 	}).select('+publicKey +accessVersion');
 
 	if (!user) throw AccountNotFoundError({ message: 'Failed to find user' });
 
 	if (!user?.publicKey) throw UnauthorizedRequestError({ message: 'Failed to authenticate user with partially set up account' });
 
-	console.log('getAuthUserPayload');
-
-	const tokenVersion = await TokenVersion.findOne({
-		_id: decodedToken.tokenVersionId,
+	const tokenVersion = await TokenVersion.findOneAndUpdate({
+		_id: new Types.ObjectId(decodedToken.tokenVersionId),
 		user: user._id
+	}, {
+		lastUsed: new Date()
 	});
-	
-	console.log('tokenVersion: ', tokenVersion);
 	
 	if (!tokenVersion) throw UnauthorizedRequestError({
 		message: 'Failed to validate access token'
 	});
 	
-	if (decodedToken.accessVersion !== tokenVersion.accessVersion) {
-		console.log('incorrect version');
+	if (decodedToken.accessVersion !== tokenVersion.accessVersion) throw UnauthorizedRequestError({
+		message: 'Failed to validate access token'
+	});
 
-		throw UnauthorizedRequestError({
-			message: 'Failed to validate access token'
-		});
-	}
-
-	return user;
+	return ({
+		user,
+		tokenVersionId: tokenVersion._id
+	});
 }
 
 /**
@@ -277,17 +275,36 @@ export const getAuthAPIKeyPayload = async ({
  * @return {String} obj.token - issued JWT token
  * @return {String} obj.refreshToken - issued refresh token
  */
-export const issueAuthTokens = async ({ userId }: { userId: string }) => {
-	
-	// TODO: create tokenVersion here
-	// TODO: include some kind of (channel) name here
+export const issueAuthTokens = async ({ 
+	userId,
+	ip,
+	userAgent
+}: { 
+	userId: Types.ObjectId;
+	ip: string;
+	userAgent: string;
+}) => {
+	let tokenVersion: ITokenVersion | null;
 
-	const tokenVersion = await new TokenVersion({
-		user: new Types.ObjectId(userId),
-		name: '', // improve to channel
-		refreshVersion: 0,
-		accessVersion: 0
+	// continue with (session) token version matching existing ip and user agent
+	tokenVersion = await TokenVersion.findOne({
+		user: userId,
+		ip,
+		userAgent
 	});
+	
+	if (!tokenVersion) {
+		// case: no existing ip and user agent exists
+		// -> create new (session) token version for ip and user agent
+		tokenVersion = await new TokenVersion({
+			user: userId,
+			refreshVersion: 0,
+			accessVersion: 0,
+			ip,
+			userAgent,
+			lastUsed: new Date()
+		}).save();
+	}
 
 	// issue tokens
 	const token = createToken({
@@ -321,12 +338,11 @@ export const issueAuthTokens = async ({ userId }: { userId: string }) => {
  * @param {Object} obj
  * @param {String} obj.userId - id of user whose tokens are cleared.
  */
-export const clearTokens = async (userId: Types.ObjectId): Promise<void> => {
+export const clearTokens = async (tokenVersionId: Types.ObjectId): Promise<void> => {
 	// increment refreshVersion on user by 1
-	
-	// change this
-	await User.findOneAndUpdate({
-		_id: userId
+
+	await TokenVersion.findOneAndUpdate({
+		_id: tokenVersionId
 	}, {
 		$inc: {
 			refreshVersion: 1,

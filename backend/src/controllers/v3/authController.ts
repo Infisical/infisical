@@ -183,12 +183,12 @@ export const login2 = async (req: Request, res: Response) => {
                         userAgent: req.headers['user-agent'] ?? ''
                     });
 
-                    console.log('logged in, issue tokens');
-                    console.log('ip: ', req.ip);
-                    console.log('userAgent: ', req.headers['user-agent']);
-
                     // issue tokens
-                    const tokens = await issueAuthTokens({ userId: user._id.toString() });
+                    const tokens = await issueAuthTokens({ 
+                        userId: user._id,
+                        ip: req.ip,
+                        userAgent: req.headers['user-agent'] ?? ''
+                    });
 
                     // store (refresh) token in httpOnly cookie
                     res.cookie('jid', tokens.refreshToken, {
