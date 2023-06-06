@@ -2,7 +2,7 @@ import crypto from 'crypto';
 
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { faCheck, faXmark } from '@fortawesome/free-solid-svg-icons';
+import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import jsrp from 'jsrp';
 import nacl from 'tweetnacl';
@@ -13,7 +13,7 @@ import getOrganizations from '@app/pages/api/organization/getOrgs';
 import ProjectService from '@app/services/ProjectService';
 
 import InputField from '../basic/InputField';
-import passwordCheck from '../utilities/checks/PasswordCheck';
+import checkPassword from '../utilities/checks/checkPassword';
 import Aes256Gcm from '../utilities/cryptography/aes-256-gcm';
 import { deriveArgonKey } from '../utilities/cryptography/crypto';
 import { saveTokenToLocalStorage } from '../utilities/saveTokenToLocalStorage';
@@ -36,6 +36,15 @@ interface UserInfoStepProps {
   setAttributionSource: (value: string) => void;
   providerAuthToken?: string;
 }
+
+type Errors = {
+  length?: string,
+  upperCase?: string,
+  lowerCase?: string,
+  number?: string,
+  specialChar?: string,
+  repeatedChar?: string,
+};
 
 /**
  * This is the step of the sign up flow where people provife their name/surname and password
@@ -69,6 +78,8 @@ export default function UserInfoStep({
   const [passwordErrorNumber, setPasswordErrorNumber] = useState(false);
   const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
 
+  const [errors, setErrors] = useState<Errors>({});
+
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
 
@@ -89,12 +100,10 @@ export default function UserInfoStep({
     } else {
       setOrganizationNameError(false);
     }
-    errorCheck = passwordCheck({
+    
+    errorCheck = checkPassword({
       password,
-      setPasswordErrorLength,
-      setPasswordErrorNumber,
-      setPasswordErrorLowerCase,
-      errorCheck
+      setErrors
     });
 
     if (!errorCheck) {
@@ -248,12 +257,9 @@ export default function UserInfoStep({
             label={t('section.password.password')}
             onChangeHandler={(pass: string) => {
               setPassword(pass);
-              passwordCheck({
+              checkPassword({
                 password: pass,
-                setPasswordErrorLength,
-                setPasswordErrorNumber,
-                setPasswordErrorLowerCase,
-                errorCheck: false
+                setErrors
               });
             }}
             type="password"
@@ -263,44 +269,29 @@ export default function UserInfoStep({
             autoComplete="new-password"
             id="new-password"
           />
-          {passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber ? (
+          {Object.keys(errors).length > 0 && (
             <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
-              <div className="mb-1 text-sm text-gray-400">{t('section.password.validate-base')}</div>
-              <div className="ml-1 flex flex-row items-center justify-start">
-                {passwordErrorLength ? (
-                  <FontAwesomeIcon icon={faXmark} className="text-md text-red ml-0.5 mr-2.5" />
-                ) : (
-                  <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-                )}
-                <div className={`${passwordErrorLength ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                  {t('section.password.validate-length')}
-                </div>
-              </div>
-              <div className="ml-1 flex flex-row items-center justify-start">
-                {passwordErrorLowerCase ? (
-                  <FontAwesomeIcon icon={faXmark} className="text-md text-red ml-0.5 mr-2.5" />
-                ) : (
-                  <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-                )}
-                <div
-                  className={`${passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'} text-sm`}
-                >
-                  {t('section.password.validate-case')}
-                </div>
-              </div>
-              <div className="ml-1 flex flex-row items-center justify-start">
-                {passwordErrorNumber ? (
-                  <FontAwesomeIcon icon={faXmark} className="text-md text-red ml-0.5 mr-2.5" />
-                ) : (
-                  <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-                )}
-                <div className={`${passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                  {t('section.password.validate-number')}
-                </div>
-              </div>
+              <div className="mb-2 text-sm text-gray-400">{t('section.password.validate-base')}</div> 
+              {Object.keys(errors).map((key) => {
+                if (errors[key as keyof Errors]) {
+                  return (
+                    <div className="ml-1 flex flex-row items-top justify-start">
+                      <div>
+                        <FontAwesomeIcon 
+                          icon={faXmark} 
+                          className="text-md text-red ml-0.5 mr-2.5"
+                        />
+                      </div>
+                      <p className="text-gray-400 text-sm">
+                        {errors[key as keyof Errors]} 
+                      </p>
+                    </div>
+                  );
+                }
+
+                return null;
+              })}
             </div>
-          ) : (
-            <div className="py-2" />
           )}
         </div>
         <div className="flex flex-col items-center justify-center lg:w-[19%] w-1/4 min-w-[20rem] mt-2 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">

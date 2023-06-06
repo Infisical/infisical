@@ -10,7 +10,10 @@ import {
 	clearTokens
 } from '../../helpers';
 import { TokenService } from '../../services';
-import { TOKEN_EMAIL_PASSWORD_RESET } from '../../variables';
+import { 
+	TOKEN_EMAIL_PASSWORD_RESET,
+	AUTH_MODE_JWT
+} from '../../variables';
 import { BadRequestError } from '../../utils/errors';
 import { 
 	getSiteURL, 
@@ -231,7 +234,9 @@ export const changePassword = async (req: Request, res: Response) => {
 						}
 					);
 				
-					await clearTokens(user._id);
+					if (req.authData.authMode === AUTH_MODE_JWT && req.authData.authPayload instanceof User && req.authData.tokenVersionId) {
+						await clearTokens(req.authData.tokenVersionId)
+					}
 
 					// clear httpOnly cookie
 					

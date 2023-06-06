@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { faCheck, faPlus, faX, faBan } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faPlus, faXmark, faBan } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import Button from '@app/components/basic/buttons/Button';
@@ -10,7 +10,7 @@ import InputField from '@app/components/basic/InputField';
 import ListBox from '@app/components/basic/Listbox';
 import ApiKeyTable from '@app/components/basic/table/ApiKeyTable';
 import NavHeader from '@app/components/navigation/NavHeader';
-import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
+import checkPassword from '@app/components/utilities/checks/checkPassword';
 import changePassword from '@app/components/utilities/cryptography/changePassword';
 import issueBackupKey from '@app/components/utilities/cryptography/issueBackupKey';
 import { SecuritySection } from '@app/views/Settings/PersonalSettingsPage/SecuritySection/SecuritySection';
@@ -22,12 +22,18 @@ import {
   useRevokeAllSessions
 } from '@app/hooks/api';
 
+type Errors = {
+  length?: string,
+  upperCase?: string,
+  lowerCase?: string,
+  number?: string,
+  specialChar?: string,
+  repeatedChar?: string,
+};
+
 export default function PersonalSettings() {
   const [personalEmail, setPersonalEmail] = useState('');
   const [personalName, setPersonalName] = useState('');
-  const [passwordErrorLength, setPasswordErrorLength] = useState(false);
-  const [passwordErrorNumber, setPasswordErrorNumber] = useState(false);
-  const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
   const [currentPasswordError, setCurrentPasswordError] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -37,6 +43,7 @@ export default function PersonalSettings() {
   const [backupKeyError, setBackupKeyError] = useState(false);
   const [isAddApiKeyDialogOpen, setIsAddApiKeyDialogOpen] = useState(false);
   const [apiKeys, setApiKeys] = useState<any[]>([]);
+  const [errors, setErrors] = useState<Errors>({});
   
   const revokeAllSessions = useRevokeAllSessions();
 
@@ -159,78 +166,52 @@ export default function PersonalSettings() {
                   label={t('section.password.new') as string}
                   onChangeHandler={(password) => {
                     setNewPassword(password);
-                    passwordCheck({
+                    checkPassword({
                       password,
-                      setPasswordErrorLength,
-                      setPasswordErrorNumber,
-                      setPasswordErrorLowerCase,
-                      errorCheck: false
+                      setErrors
                     });
                   }}
                   type="password"
                   value={newPassword}
                   isRequired
-                  error={passwordErrorLength && passwordErrorLowerCase && passwordErrorNumber}
+                  error={Object.keys(errors).length > 0}
                   autoComplete="new-password"
                   id="new-password"
                 />
               </div>
-              {passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber ? (
-                <div className="mt-3 mb-2 flex w-full max-w-xl flex-col items-start rounded-md bg-white/5 px-2 py-2">
-                  <div className="mb-1 text-sm text-gray-400">
-                    {t('section.password.validate-base')}
-                  </div>
-                  <div className="ml-1 flex flex-row items-center justify-start">
-                    {passwordErrorLength ? (
-                      <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-                    ) : (
-                      <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-                    )}
-                    <div
-                      className={`${
-                        passwordErrorLength ? 'text-gray-400' : 'text-gray-600'
-                      } text-sm`}
-                    >
-                      {t('section.password.validate-length')}
-                    </div>
-                  </div>
-                  <div className="ml-1 flex flex-row items-center justify-start">
-                    {passwordErrorLowerCase ? (
-                      <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-                    ) : (
-                      <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-                    )}
-                    <div
-                      className={`${
-                        passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'
-                      } text-sm`}
-                    >
-                      {t('section.password.validate-case')}
-                    </div>
-                  </div>
-                  <div className="ml-1 flex flex-row items-center justify-start">
-                    {passwordErrorNumber ? (
-                      <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-                    ) : (
-                      <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-                    )}
-                    <div
-                      className={`${
-                        passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'
-                      } text-sm`}
-                    >
-                      {t('section.password.validate-number')}
-                    </div>
-                  </div>
+              {Object.keys(errors).length > 0 && (
+                <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
+                  <div className="mb-2 text-sm text-gray-400">{t('section.password.validate-base')}</div> 
+                  {Object.keys(errors).map((key) => {
+                    if (errors[key as keyof Errors]) {
+                      return (
+                        <div className="ml-1 flex flex-row items-top justify-start">
+                          <div>
+                            <FontAwesomeIcon 
+                              icon={faXmark} 
+                              className="text-md text-red ml-0.5 mr-2.5"
+                            />
+                          </div>
+                          <p className="text-gray-400 text-sm">
+                            {errors[key as keyof Errors]} 
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return null;
+                  })}
                 </div>
-              ) : (
-                <div className="py-2" />
               )}
               <div className="mt-3 flex w-52 flex-row items-center pr-3">
                 <Button
                   text={t('section.password.change') as string}
                   onButtonPressed={() => {
-                    if (!passwordErrorLength && !passwordErrorLowerCase && !passwordErrorNumber) {
+                    const errorCheck = checkPassword({
+                      password: newPassword,
+                      setErrors
+                    });
+                    if (!errorCheck) {
                       changePassword(
                         personalEmail,
                         currentPassword,
@@ -244,11 +225,7 @@ export default function PersonalSettings() {
                   }}
                   color="mineshaft"
                   size="md"
-                  active={
-                    newPassword !== '' &&
-                    currentPassword !== '' &&
-                    !(passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber)
-                  }
+                  active={true}
                   textDisabled={t('section.password.change') as string}
                 />
                 <FontAwesomeIcon
