@@ -59,8 +59,15 @@ router.get(
   authController.handleAuthProviderCallback,
 );
 
+router.get(
+  '/common-passwords',
+  authLimiter,
+  authController.getCommonPasswords
+);
+
 router.delete(
   '/sessions',
+  authLimiter,
   requireAuth({
     acceptedAuthModes: [AUTH_MODE_JWT]
   }), 

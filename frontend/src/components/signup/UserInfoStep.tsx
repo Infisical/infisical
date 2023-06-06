@@ -19,6 +19,7 @@ import { deriveArgonKey } from '../utilities/cryptography/crypto';
 import { saveTokenToLocalStorage } from '../utilities/saveTokenToLocalStorage';
 import SecurityClient from '../utilities/SecurityClient';
 import { Button, Input } from '../v2';
+import { useGetCommonPasswords } from '@app/hooks/api';
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -72,6 +73,7 @@ export default function UserInfoStep({
   setAttributionSource,
   providerAuthToken,
 }: UserInfoStepProps): JSX.Element {
+  const { data: commonPasswords } = useGetCommonPasswords();
   const [nameError, setNameError] = useState(false);
   const [organizationNameError, setOrganizationNameError] = useState(false);
   const [passwordErrorLength, setPasswordErrorLength] = useState(false);
@@ -103,6 +105,7 @@ export default function UserInfoStep({
     
     errorCheck = checkPassword({
       password,
+      commonPasswords,
       setErrors
     });
 

@@ -2,5 +2,6 @@ export {
     useGetAuthToken,
     useSendMfaToken, 
     useVerifyMfaToken,
-    useRevokeAllSessions
+    useRevokeAllSessions,
+    useGetCommonPasswords
 } from './queries'

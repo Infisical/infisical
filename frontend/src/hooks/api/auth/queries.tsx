@@ -10,7 +10,8 @@ import {
   VerifyMfaTokenRes} from './types';
 
 const authKeys = {
-  getAuthToken: ['token'] as const
+  getAuthToken: ['token'] as const,
+  commonPasswords: ['common-passwords'] as const
 };
 
 export const useSendMfaToken = () => {
@@ -58,3 +59,11 @@ export const useRevokeAllSessions = () => {
     }
   });
 }
+
+const fetchCommonPasswords = async () => {
+  const { data } = await apiRequest.get('/api/v1/auth/common-passwords');
+  return data || [];
+};
+
+export const useGetCommonPasswords = () =>
+  useQuery({ queryKey: authKeys.commonPasswords, queryFn: fetchCommonPasswords });

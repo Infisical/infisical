@@ -1,5 +1,7 @@
 import * as Sentry from '@sentry/node';
 import { Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import jwt from 'jsonwebtoken';
 import * as bigintConversion from 'bigint-conversion';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -223,6 +225,15 @@ export const logout = async (req: Request, res: Response) => {
     message: 'Successfully logged out.'
   });
 };
+
+export const getCommonPasswords = async (req: Request, res: Response) => {
+  const commonPasswords = fs.readFileSync(
+		path.resolve(__dirname, '../../data/' + 'common_passwords.txt'),
+		'utf8'
+	).split('\n');	
+
+  return res.status(200).send(commonPasswords);
+}
 
 export const revokeAllSessions = async (req: Request, res: Response) => {
   await TokenVersion.updateMany({

@@ -17,7 +17,6 @@ import { encodeBase64 } from 'tweetnacl-util';
 import Button from '@app/components/basic/buttons/Button';
 import InputField from '@app/components/basic/InputField';
 import attemptLogin from '@app/components/utilities/attemptLogin';
-import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
 
 import checkPassword from '@app/components/utilities/checks/checkPassword';
 
@@ -28,7 +27,9 @@ import { saveTokenToLocalStorage } from '@app/components/utilities/saveTokenToLo
 import SecurityClient from '@app/components/utilities/SecurityClient';
 import getOrganizations from '@app/pages/api/organization/getOrgs';
 import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserProjects';
-
+import {
+  useGetCommonPasswords
+} from '@app/hooks/api';
 import completeAccountInformationSignupInvite from './api/auth/CompleteAccountInformationSignupInvite';
 import verifySignupInvite from './api/auth/VerifySignupInvite';
 
@@ -45,6 +46,7 @@ type Errors = {
 };
 
 export default function SignupInvite() {
+  const { data: commonPasswords } = useGetCommonPasswords();
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -81,6 +83,7 @@ export default function SignupInvite() {
   
     errorCheck = checkPassword({
       password,
+      commonPasswords,
       setErrors
     });
 

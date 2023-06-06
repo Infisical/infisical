@@ -19,7 +19,8 @@ import AddApiKeyDialog from '../../../components/basic/dialog/AddApiKeyDialog';
 import getAPIKeys from '../../api/apiKey/getAPIKeys';
 import getUser from '../../api/user/getUser';
 import {
-  useRevokeAllSessions
+  useRevokeAllSessions,
+  useGetCommonPasswords
 } from '@app/hooks/api';
 
 type Errors = {
@@ -32,6 +33,7 @@ type Errors = {
 };
 
 export default function PersonalSettings() {
+  const { data: commonPasswords } = useGetCommonPasswords();
   const [personalEmail, setPersonalEmail] = useState('');
   const [personalName, setPersonalName] = useState('');
   const [currentPasswordError, setCurrentPasswordError] = useState(false);
@@ -168,6 +170,7 @@ export default function PersonalSettings() {
                     setNewPassword(password);
                     checkPassword({
                       password,
+                      commonPasswords,
                       setErrors
                     });
                   }}

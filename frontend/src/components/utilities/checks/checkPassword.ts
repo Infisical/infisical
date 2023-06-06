@@ -5,10 +5,12 @@ type Errors = {
     number?: string,
     specialChar?: string,
     repeatedChar?: string,
+    commonPassword?: string
   };
 
 interface CheckPasswordParams {
     password: string;
+    commonPasswords: string[];
     setErrors: (value: Errors) => void;
 }
 
@@ -30,6 +32,7 @@ interface CheckPasswordParams {
  */
 const checkPassword = ({
     password,
+    commonPasswords,
     setErrors
 }: CheckPasswordParams): boolean => {
     let errors: Errors = {}; 
@@ -56,6 +59,10 @@ const checkPassword = ({
 
     if (/([A-Za-z0-9])\1\1\1/.test(password)) {
         errors.repeatedChar = "No 3 repeat, consecutive characters";
+    }
+    
+    if (commonPasswords.includes(password)) {
+        errors.commonPassword = "No common passwords"; 
     }
     
     setErrors(errors);
