@@ -90,7 +90,7 @@ const requireAuth = ({
 			authMode,
 			authPayload, // User, ServiceAccount, ServiceTokenData
 			authChannel: getChannelFromUserAgent(req.headers['user-agent']),
-			authIP: req.ip,
+			authIP: req.realIP,
 			authUserAgent: req.headers['user-agent'] ?? 'other',
 			tokenVersionId: req.tokenVersionId
 		}

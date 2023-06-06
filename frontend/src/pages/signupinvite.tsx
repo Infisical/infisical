@@ -263,6 +263,7 @@ export default function SignupInvite() {
             setPassword(pass);
             checkPassword({
               password: pass,
+              commonPasswords,
               setErrors
             });
           }}
@@ -279,7 +280,7 @@ export default function SignupInvite() {
               {Object.keys(errors).map((key) => {
                 if (errors[key as keyof Errors]) {
                   return (
-                    <div className="ml-1 flex flex-row items-top justify-start">
+                    <div className="ml-1 flex flex-row items-top justify-start" key={key}>
                       <div>
                         <FontAwesomeIcon 
                           icon={faXmark} 

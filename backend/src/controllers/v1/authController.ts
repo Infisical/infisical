@@ -126,13 +126,13 @@ export const login2 = async (req: Request, res: Response) => {
 
           await checkUserDevice({
             user,
-            ip: req.ip,
+            ip: req.realIP,
             userAgent: req.headers['user-agent'] ?? ''
           });
 
           const tokens = await issueAuthTokens({ 
             userId: user._id,
-            ip: req.ip,
+            ip: req.realIP,
             userAgent: req.headers['user-agent'] ?? ''
           });
 
@@ -153,7 +153,7 @@ export const login2 = async (req: Request, res: Response) => {
             userId: user._id,
             actions: [loginAction],
             channel: getChannelFromUserAgent(req.headers['user-agent']),
-            ipAddress: req.ip
+            ipAddress: req.realIP
           });
 
           // return (access) token in response
@@ -210,7 +210,7 @@ export const logout = async (req: Request, res: Response) => {
       userId: req.user._id,
       actions: [logoutAction],
       channel: getChannelFromUserAgent(req.headers['user-agent']),
-      ipAddress: req.ip
+      ipAddress: req.realIP
     });
 
   } catch (err) {

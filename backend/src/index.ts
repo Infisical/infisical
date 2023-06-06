@@ -11,7 +11,6 @@ import swaggerUi = require("swagger-ui-express");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const swaggerFile = require("../spec.json");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const requestIp = require("request-ip");
 import { apiLimiter } from "./helpers/rateLimiter";
 import {
   workspace as eeWorkspaceRouter,
@@ -84,8 +83,6 @@ const main = async () => {
     })
   );
 
-  app.use(requestIp.mw());
-
   if ((await getNodeEnv()) === "production") {
     // enable app-wide rate-limiting + helmet security
     // in production
@@ -93,6 +90,13 @@ const main = async () => {
     app.use(apiLimiter);
     app.use(helmet());
   }
+
+  app.use((req, res, next) => {
+    // default to IP address provided by Cloudflare
+    const cfIp = req.headers['cf-connecting-ip'];
+    req.realIP = Array.isArray(cfIp) ? cfIp[0] : (cfIp as string) || req.ip;
+    next();
+  });
 
   // (EE) routes
   app.use("/api/v1/secret", eeSecretRouter);

@@ -42,6 +42,7 @@ declare global {
 			query?: any;
 			tokenVersionId?: Types.ObjectId;
 			authData: AuthData;
+			realIP: string;
 			requestData: {
 				[key: string]: string
 			};

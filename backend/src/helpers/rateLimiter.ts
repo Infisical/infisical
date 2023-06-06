@@ -15,6 +15,9 @@ export const apiLimiter = rateLimit({
   legacyHeaders: false,
   skip: (request) => {
     return request.path === '/healthcheck' || request.path === '/api/status'
+  },
+  keyGenerator: (req, res) => {
+    return req.realIP
   }
 });
 
@@ -29,7 +32,10 @@ const authLimit = rateLimit({
   windowMs: 1000 * 60 * 60,
   max: 50,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  keyGenerator: (req, res) => {
+    return req.realIP
+  }
 });
 
 // 50 requests per 1 hour
@@ -43,7 +49,10 @@ export const passwordLimiter = rateLimit({
   windowMs: 1000 * 60 * 60,
   max: 50,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  keyGenerator: (req, res) => {
+    return req.realIP
+  }
 });
 
 export const authLimiter = (req: any, res: any, next: any) => {

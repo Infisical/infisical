@@ -70,7 +70,7 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
 			environment,
 			secrets,
 			channel: channel ? channel : 'cli',
-			ipAddress: req.ip
+			ipAddress: req.realIP
 		});
 
 		await pushKeys({
@@ -145,7 +145,7 @@ export const pullSecrets = async (req: Request, res: Response) => {
 			workspaceId,
 			environment,
 			channel: channel ? channel : 'cli',
-			ipAddress: req.ip
+			ipAddress: req.realIP
 		});
 
 		if (channel !== 'cli') {

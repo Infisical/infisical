@@ -179,14 +179,14 @@ export const login2 = async (req: Request, res: Response) => {
 
                     await checkUserDevice({
                         user,
-                        ip: req.ip,
+                        ip: req.realIP,
                         userAgent: req.headers['user-agent'] ?? ''
                     });
 
                     // issue tokens
                     const tokens = await issueAuthTokens({ 
                         userId: user._id,
-                        ip: req.ip,
+                        ip: req.realIP,
                         userAgent: req.headers['user-agent'] ?? ''
                     });
 
@@ -243,7 +243,7 @@ export const login2 = async (req: Request, res: Response) => {
                         userId: user._id,
                         actions: [loginAction],
                         channel: getChannelFromUserAgent(req.headers['user-agent']),
-                        ipAddress: req.ip
+                        ipAddress: req.realIP
                     });
 
                     return res.status(200).send(response);

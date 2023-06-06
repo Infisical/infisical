@@ -130,7 +130,7 @@ export const pullSecrets = async (req: Request, res: Response) => {
 			workspaceId,
 			environment,
 			channel: channel ? channel : 'cli',
-			ipAddress: req.ip
+			ipAddress: req.realIP
 		});
 
 		key = await Key.findOne({
@@ -199,7 +199,7 @@ export const pullSecretsServiceToken = async (req: Request, res: Response) => {
 			workspaceId,
 			environment,
 			channel: 'cli',
-			ipAddress: req.ip
+			ipAddress: req.realIP
 		});
 
 		key = {
