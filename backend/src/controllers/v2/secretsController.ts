@@ -218,6 +218,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
           algorithm: ALGORITHM_AES_256_GCM,
           keyEncoding: ENCODING_SCHEME_UTF8,
           tags: u.tags,
+          folder: u.folder
         })
     );
 
@@ -909,13 +910,13 @@ export const updateSecrets = async (req: Request, res: Response) => {
             keyEncoding: ENCODING_SCHEME_UTF8,
             tags,
             ...(secretCommentCiphertext !== undefined &&
-            secretCommentIV &&
-            secretCommentTag
+              secretCommentIV &&
+              secretCommentTag
               ? {
-                  secretCommentCiphertext,
-                  secretCommentIV,
-                  secretCommentTag,
-                }
+                secretCommentCiphertext,
+                secretCommentIV,
+                secretCommentTag,
+              }
               : {}),
           },
         },
