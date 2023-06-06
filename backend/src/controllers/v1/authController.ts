@@ -4,14 +4,21 @@ import jwt from 'jsonwebtoken';
 import * as bigintConversion from 'bigint-conversion';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const jsrp = require('jsrp');
-import { User, LoginSRPDetail } from '../../models';
+import { 
+  User, 
+  LoginSRPDetail,
+  TokenVersion
+} from '../../models';
 import { createToken, issueAuthTokens, clearTokens } from '../../helpers/auth';
 import { checkUserDevice } from '../../helpers/user';
 import {
   ACTION_LOGIN,
   ACTION_LOGOUT
 } from '../../variables';
-import { BadRequestError } from '../../utils/errors';
+import { 
+  BadRequestError,
+  UnauthorizedRequestError
+} from '../../utils/errors';
 import { EELogService } from '../../ee/services';
 import { getChannelFromUserAgent } from '../../utils/posthog';
 import {
@@ -241,19 +248,31 @@ export const getNewToken = async (req: Request, res: Response) => {
 
     const user = await User.findOne({
       _id: decodedToken.userId
-    }).select('+publicKey +refreshVersion');
+    }).select('+publicKey +refreshVersion +accessVersion');
 
     if (!user) throw new Error('Failed to authenticate unfound user');
     if (!user?.publicKey)
       throw new Error('Failed to authenticate not fully set up account');
+    
+    const tokenVersion = await TokenVersion.findOne({
+      _id: decodedToken.tokenVersionId,
+      user: user._id
+    });
 
-    if (decodedToken?.refreshVersion !== user.refreshVersion) throw BadRequestError({
+    console.log('tokenVersion: ', tokenVersion);
+	
+    if (!tokenVersion) throw UnauthorizedRequestError({
+      message: 'Failed to validate refresh token'
+    });
+
+    if (decodedToken.refreshVersion !== tokenVersion.refreshVersion) throw BadRequestError({
       message: 'Failed to validate refresh token'
     });
 
     const token = createToken({
       payload: {
-        userId: decodedToken.userId
+        userId: decodedToken.userId,
+        accessVersion: tokenVersion.refreshVersion
       },
       expiresIn: await getJwtAuthLifetime(),
       secret: await getJwtAuthSecret()

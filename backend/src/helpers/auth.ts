@@ -6,7 +6,8 @@ import {
 	User,
 	ServiceTokenData,
 	ServiceAccount,
-	APIKeyData
+	APIKeyData,
+	TokenVersion
 } from '../models';
 import {
 	AccountNotFoundError,
@@ -108,11 +109,32 @@ export const getAuthUserPayload = async ({
 
 	const user = await User.findOne({
 		_id: decodedToken.userId
-	}).select('+publicKey');
+	}).select('+publicKey +accessVersion');
 
-	if (!user) throw AccountNotFoundError({ message: 'Failed to find User' });
+	if (!user) throw AccountNotFoundError({ message: 'Failed to find user' });
 
-	if (!user?.publicKey) throw UnauthorizedRequestError({ message: 'Failed to authenticate User with partially set up account' });
+	if (!user?.publicKey) throw UnauthorizedRequestError({ message: 'Failed to authenticate user with partially set up account' });
+
+	console.log('getAuthUserPayload');
+
+	const tokenVersion = await TokenVersion.findOne({
+		_id: decodedToken.tokenVersionId,
+		user: user._id
+	});
+	
+	console.log('tokenVersion: ', tokenVersion);
+	
+	if (!tokenVersion) throw UnauthorizedRequestError({
+		message: 'Failed to validate access token'
+	});
+	
+	if (decodedToken.accessVersion !== tokenVersion.accessVersion) {
+		console.log('incorrect version');
+
+		throw UnauthorizedRequestError({
+			message: 'Failed to validate access token'
+		});
+	}
 
 	return user;
 }
@@ -256,14 +278,23 @@ export const getAuthAPIKeyPayload = async ({
  * @return {String} obj.refreshToken - issued refresh token
  */
 export const issueAuthTokens = async ({ userId }: { userId: string }) => {
+	
+	// TODO: create tokenVersion here
+	// TODO: include some kind of (channel) name here
 
-	const user = await User.findById(userId).select('+refreshVersion');
-	if (!user) throw AccountNotFoundError();
+	const tokenVersion = await new TokenVersion({
+		user: new Types.ObjectId(userId),
+		name: '', // improve to channel
+		refreshVersion: 0,
+		accessVersion: 0
+	});
 
 	// issue tokens
 	const token = createToken({
 		payload: {
-			userId
+			userId,
+			tokenVersionId: tokenVersion._id.toString(),
+			accessVersion: tokenVersion.accessVersion
 		},
 		expiresIn: await getJwtAuthLifetime(),
 		secret: await getJwtAuthSecret()
@@ -272,7 +303,8 @@ export const issueAuthTokens = async ({ userId }: { userId: string }) => {
 	const refreshToken = createToken({
 		payload: {
 			userId,
-			refreshVersion: user.refreshVersion
+			tokenVersionId: tokenVersion._id.toString(),
+			refreshVersion: tokenVersion.refreshVersion
 		},
 		expiresIn: await getJwtRefreshLifetime(),
 		secret: await getJwtRefreshSecret()
@@ -291,11 +323,14 @@ export const issueAuthTokens = async ({ userId }: { userId: string }) => {
  */
 export const clearTokens = async (userId: Types.ObjectId): Promise<void> => {
 	// increment refreshVersion on user by 1
+	
+	// change this
 	await User.findOneAndUpdate({
 		_id: userId
 	}, {
 		$inc: {
-			refreshVersion: 1
+			refreshVersion: 1,
+			accessVersion: 1
 		}
 	});
 };

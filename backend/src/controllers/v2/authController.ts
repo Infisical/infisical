@@ -235,8 +235,6 @@ export const login2 = async (req: Request, res: Response) => {
   }
 };
 
-import { validateUserEmail } from '../../validation';
-
 /**
  * Send MFA token to email [email]
  * @param req 

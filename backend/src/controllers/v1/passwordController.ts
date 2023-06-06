@@ -231,16 +231,16 @@ export const changePassword = async (req: Request, res: Response) => {
 						}
 					);
 				
-					// await clearTokens(user._id);
+					await clearTokens(user._id);
 
-					// // clear httpOnly cookie
+					// clear httpOnly cookie
 					
-					// res.cookie('jid', '', {
-					// 	httpOnly: true,
-					// 	path: '/',
-					// 	sameSite: 'strict',
-					// 	secure: (await getHttpsEnabled()) as boolean
-					// });
+					res.cookie('jid', '', {
+						httpOnly: true,
+						path: '/',
+						sameSite: 'strict',
+						secure: (await getHttpsEnabled()) as boolean
+					});
 
 					return res.status(200).send({
 						message: 'Successfully changed password'

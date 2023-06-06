@@ -113,7 +113,7 @@ export const login2 = async (req: Request, res: Response) => {
 
         const user = await User.findOne({
             email,
-        }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag');
+        }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag +devices');
 
         if (!user) throw new Error('Failed to find user');
 
@@ -182,6 +182,10 @@ export const login2 = async (req: Request, res: Response) => {
                         ip: req.ip,
                         userAgent: req.headers['user-agent'] ?? ''
                     });
+
+                    console.log('logged in, issue tokens');
+                    console.log('ip: ', req.ip);
+                    console.log('userAgent: ', req.headers['user-agent']);
 
                     // issue tokens
                     const tokens = await issueAuthTokens({ userId: user._id.toString() });
