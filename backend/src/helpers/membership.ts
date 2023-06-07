@@ -1,7 +1,6 @@
-import * as Sentry from '@sentry/node';
-import { Types } from 'mongoose';
-import { Membership, Key } from '../models';
-import { MembershipNotFoundError, BadRequestError } from '../utils/errors';
+import { Types } from "mongoose";
+import { Membership, Key } from "../models";
+import { MembershipNotFoundError, BadRequestError } from "../utils/errors";
 
 /**
  * Validate that user with id [userId] is a member of workspace with id [workspaceId]
@@ -18,23 +17,23 @@ export const validateMembership = async ({
 }: {
   userId: Types.ObjectId | string;
   workspaceId: Types.ObjectId | string;
-  acceptedRoles?: Array<'admin' | 'member'>;
+  acceptedRoles?: Array<"admin" | "member">;
 }) => {
   const membership = await Membership.findOne({
     user: userId,
     workspace: workspaceId,
-  }).populate('workspace');
+  }).populate("workspace");
 
   if (!membership) {
     throw MembershipNotFoundError({
-      message: 'Failed to find workspace membership',
+      message: "Failed to find workspace membership",
     });
   }
 
   if (acceptedRoles) {
     if (!acceptedRoles.includes(membership.role)) {
       throw BadRequestError({
-        message: 'Failed authorization for membership role',
+        message: "Failed authorization for membership role",
       });
     }
   }
@@ -48,15 +47,7 @@ export const validateMembership = async ({
  * @return {Object} membership - membership
  */
 export const findMembership = async (queryObj: any) => {
-	let membership;
-	try {
-		membership = await Membership.findOne(queryObj);
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to find membership');
-	}
-
+	const membership = await Membership.findOne(queryObj);
   return membership;
 };
 
@@ -77,31 +68,24 @@ export const addMemberships = async ({
   workspaceId: string;
   roles: string[];
 }): Promise<void> => {
-  try {
-    const operations = userIds.map((userId, idx) => {
-      return {
-        updateOne: {
-          filter: {
-            user: userId,
-            workspace: workspaceId,
-            role: roles[idx],
-          },
-          update: {
-            user: userId,
-            workspace: workspaceId,
-            role: roles[idx],
-          },
-          upsert: true,
+  const operations = userIds.map((userId, idx) => {
+    return {
+      updateOne: {
+        filter: {
+          user: userId,
+          workspace: workspaceId,
+          role: roles[idx],
         },
-      };
-    });
-
-    await Membership.bulkWrite(operations as any);
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error('Failed to add users to workspace');
-  }
+        update: {
+          user: userId,
+          workspace: workspaceId,
+          role: roles[idx],
+        },
+        upsert: true,
+      },
+    };
+  });
+  await Membership.bulkWrite(operations as any);
 };
 
 /**
@@ -110,24 +94,17 @@ export const addMemberships = async ({
  * @param {String} obj.membershipId - id of membership to delete
  */
 export const deleteMembership = async ({ membershipId }: { membershipId: string }) => {
-	let deletedMembership;
-	try {
-		deletedMembership = await Membership.findOneAndDelete({
-			_id: membershipId
-		});
+	const deletedMembership = await Membership.findOneAndDelete({
+    _id: membershipId
+  });
 
-    // delete keys associated with the membership
-    if (deletedMembership?.user) {
-      // case: membership had a registered user
-      await Key.deleteMany({
-        receiver: deletedMembership.user,
-        workspace: deletedMembership.workspace,
-      });
-    }
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error('Failed to delete membership');
+  // delete keys associated with the membership
+  if (deletedMembership?.user) {
+    // case: membership had a registered user
+    await Key.deleteMany({
+      receiver: deletedMembership.user,
+      workspace: deletedMembership.workspace,
+    });
   }
 
 	return deletedMembership;

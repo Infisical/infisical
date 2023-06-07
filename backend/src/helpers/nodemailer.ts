@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node';
 import fs from 'fs';
 import path from 'path';
 import handlebars from 'handlebars';
@@ -26,25 +25,19 @@ export const sendMail = async ({
   substitutions: any;
 }) => {
   if (await getSmtpConfigured()) {
-    try {
-      const html = fs.readFileSync(
-        path.resolve(__dirname, '../templates/' + template),
-        'utf8'
-      );
-      const temp = handlebars.compile(html);
-      const htmlToSend = temp(substitutions);
+    const html = fs.readFileSync(
+      path.resolve(__dirname, '../templates/' + template),
+      'utf8'
+    );
+    const temp = handlebars.compile(html);
+    const htmlToSend = temp(substitutions);
 
-      const x = await smtpTransporter.sendMail({
-        from: `"${await getSmtpFromName()}" <${await getSmtpFromAddress()}>`,
-        to: recipients.join(', '),
-        subject: subjectLine,
-        html: htmlToSend
-      });
-      
-    } catch (err) {
-      Sentry.setUser(null);
-      Sentry.captureException(err);
-    }
+    await smtpTransporter.sendMail({
+      from: `"${await getSmtpFromName()}" <${await getSmtpFromAddress()}>`,
+      to: recipients.join(', '),
+      subject: subjectLine,
+      html: htmlToSend
+    });
   }
 };
 

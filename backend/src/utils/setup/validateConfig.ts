@@ -21,39 +21,39 @@ import {
 export const validateEncryptionKeysConfig = async () => {
     const encryptionKey = await getEncryptionKey();
     const rootEncryptionKey = await getRootEncryptionKey();
-    
+
     if (
         (encryptionKey === undefined || encryptionKey === "") &&
         (rootEncryptionKey === undefined || rootEncryptionKey === "")
     ) throw InternalServerError({
         message: "Failed to find required root encryption key environment variable. Please make sure that you're passing in a ROOT_ENCRYPTION_KEY environment variable."
     });
-    
-    if (encryptionKey && encryptionKey !== '') {
-        // validate [encryptionKey]
-        
-        const keyBuffer = Buffer.from(encryptionKey, 'hex');
-        const decoded = keyBuffer.toString('hex');
 
-        if (decoded !== encryptionKey) throw InternalServerError({
-            message: 'Failed to validate that the encryption key is correctly encoded in hex.'
-        });
-        
-        if (keyBuffer.length !== 16) throw InternalServerError({
-            message: 'Failed to validate that the encryption key is a 128-bit hex string.'
-        });
-    }
+    // if (encryptionKey && encryptionKey !== '') {
+    //     // validate [encryptionKey]
+
+    //     const keyBuffer = Buffer.from(encryptionKey, 'hex');
+    //     const decoded = keyBuffer.toString('hex');
+
+    //     if (decoded !== encryptionKey) throw InternalServerError({
+    //         message: 'Failed to validate that the encryption key is correctly encoded in hex.'
+    //     });
+
+    //     if (keyBuffer.length !== 16) throw InternalServerError({
+    //         message: 'Failed to validate that the encryption key is a 128-bit hex string.'
+    //     });
+    // }
 
     if (rootEncryptionKey && rootEncryptionKey !== '') {
         // validate [rootEncryptionKey]
-        
+
         const keyBuffer = Buffer.from(rootEncryptionKey, 'base64')
         const decoded = keyBuffer.toString('base64');
 
         if (decoded !== rootEncryptionKey) throw InternalServerError({
             message: 'Failed to validate that the root encryption key is correctly encoded in base64'
         });
-        
+
         if (keyBuffer.length !== 32) throw InternalServerError({
             message: 'Failed to validate that the encryption key is a 256-bit base64 string'
         });

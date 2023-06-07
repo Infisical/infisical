@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node';
 import { IUser } from '../models';
 import { createOrganization } from './organization';
 import { addMembershipsOrg } from './membershipOrg';
@@ -15,28 +14,20 @@ import { TOKEN_EMAIL_CONFIRMATION } from '../variables';
  * @returns {Boolean} success - whether or not operation was successful
  */
 export const sendEmailVerification = async ({ email }: { email: string }) => {
-	try {
-		const token = await TokenService.createToken({
-			type: TOKEN_EMAIL_CONFIRMATION,
-			email
-		});
+	const token = await TokenService.createToken({
+		type: TOKEN_EMAIL_CONFIRMATION,
+		email
+	});
 
-		// send mail
-		await sendMail({
-			template: 'emailVerification.handlebars',
-			subjectLine: 'Infisical confirmation code',
-			recipients: [email],
-			substitutions: {
-				code: token
-			}
-		});
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error(
-			"Ouch. We weren't able to send your email verification code"
-		);
-	}
+  // send mail
+  await sendMail({
+    template: 'emailVerification.handlebars',
+    subjectLine: 'Infisical confirmation code',
+    recipients: [email],
+    substitutions: {
+      code: token
+    }
+  });
 };
 
 /**
@@ -52,17 +43,11 @@ export const checkEmailVerification = async ({
 	email: string;
 	code: string;
 }) => {
-	try {
-		await TokenService.validateToken({
-			type: TOKEN_EMAIL_CONFIRMATION,
-			email,
-			token: code
-		});
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error("Oops. We weren't able to verify");
-	}
+  await TokenService.validateToken({
+    type: TOKEN_EMAIL_CONFIRMATION,
+    email,
+    token: code
+  });
 };
 
 /**

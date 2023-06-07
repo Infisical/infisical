@@ -217,11 +217,11 @@ export default function UserInfoStep({
   };
 
   return (
-    <div className="h-full mx-auto mb-36 w-max rounded-xl px-8 md:mb-16">
+    <div className="h-full mx-auto mb-36 w-max rounded-xl md:px-8 md:mb-16">
       <p className="mx-8 mb-6 flex justify-center text-xl font-bold text-medium md:mx-16 text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
         {t('signup.step3-message')}
       </p>
-      <div className="h-full mx-auto mb-36 w-max rounded-xl py-6 px-8 md:mb-16 border border-mineshaft-600 bg-mineshaft-800">
+      <div className="h-full mx-auto mb-36 w-max rounded-xl py-6 md:px-8 md:mb-16 md:border md:border-mineshaft-600 md:bg-mineshaft-800">
         <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
           <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Your Name</p>
           <Input

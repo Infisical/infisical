@@ -185,26 +185,56 @@ export const generateSecretBlindIndexHelper = async ({
   workspaceId: Types.ObjectId;
 }) => {
   // check if workspace blind index data exists
+  const encryptionKey = await getEncryptionKey();
+  const rootEncryptionKey = await getRootEncryptionKey();
+
   const secretBlindIndexData = await SecretBlindIndexData.findOne({
     workspace: workspaceId,
-  });
+  }).select('+algorithm +keyEncoding');
 
   if (!secretBlindIndexData) throw SecretBlindIndexDataNotFoundError();
 
-  // decrypt workspace salt
-  const salt = decryptSymmetric128BitHexKeyUTF8({
-    ciphertext: secretBlindIndexData.encryptedSaltCiphertext,
-    iv: secretBlindIndexData.saltIV,
-    tag: secretBlindIndexData.saltTag,
-    key: await getEncryptionKey(),
-  });
+  let salt;
+  if (
+    rootEncryptionKey &&
+    secretBlindIndexData.keyEncoding === ENCODING_SCHEME_BASE64
+  ) {
+    salt = client.decryptSymmetric(
+      secretBlindIndexData.encryptedSaltCiphertext,
+      rootEncryptionKey,
+      secretBlindIndexData.saltIV,
+      secretBlindIndexData.saltTag
+    );
 
-  const secretBlindIndex = await generateSecretBlindIndexWithSaltHelper({
-    secretName,
-    salt,
-  });
+    const secretBlindIndex = await generateSecretBlindIndexWithSaltHelper({
+      secretName,
+      salt,
+    });
 
-  return secretBlindIndex;
+    return secretBlindIndex;
+  } else if (
+    encryptionKey &&
+    secretBlindIndexData.keyEncoding === ENCODING_SCHEME_UTF8
+  ) {
+    // decrypt workspace salt
+    salt = decryptSymmetric128BitHexKeyUTF8({
+      ciphertext: secretBlindIndexData.encryptedSaltCiphertext,
+      iv: secretBlindIndexData.saltIV,
+      tag: secretBlindIndexData.saltTag,
+      key: encryptionKey,
+    });
+
+    const secretBlindIndex = await generateSecretBlindIndexWithSaltHelper({
+      secretName,
+      salt,
+    });
+
+    return secretBlindIndex;
+  }
+  
+  throw InternalServerError({
+    message: 'Failed to generate secret blind index'
+  });
 };
 
 /**
