@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node';
 import {
 	Workspace,
 	Bot,
@@ -23,31 +22,24 @@ const createWorkspace = async ({
 	name: string;
 	organizationId: string;
 }) => {
-	let workspace;
-	try {
-		// create workspace
-		workspace = await new Workspace({
-			name,
-			organization: organizationId,
-			autoCapitalization: true
-		}).save();
-		
-		// initialize bot for workspace
-		await createBot({
-			name: 'Infisical Bot',
-			workspaceId: workspace._id
-		});
-		
-		// initialize blind index salt for workspace
-		await SecretService.createSecretBlindIndexData({
-			workspaceId: workspace._id
-		});
+  // create workspace
+  const workspace = await new Workspace({
+    name,
+    organization: organizationId,
+    autoCapitalization: true
+  }).save();
+  
+  // initialize bot for workspace
+  await createBot({
+    name: 'Infisical Bot',
+    workspaceId: workspace._id
+  });
+  
+  // initialize blind index salt for workspace
+  await SecretService.createSecretBlindIndexData({
+    workspaceId: workspace._id
+  });
 
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to create workspace');
-	}
 
 	return workspace;
 };
@@ -59,25 +51,19 @@ const createWorkspace = async ({
  * @param {String} obj.id - id of workspace to delete
  */
 const deleteWorkspace = async ({ id }: { id: string }) => {
-	try {
-		await Workspace.deleteOne({ _id: id });
-		await Bot.deleteOne({
-			workspace: id
-		});
-		await Membership.deleteMany({
-			workspace: id
-		});
-		await Secret.deleteMany({
-			workspace: id
-		});
-		await Key.deleteMany({
-			workspace: id
-		});
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to delete workspace');
-	}
+  await Workspace.deleteOne({ _id: id });
+  await Bot.deleteOne({
+    workspace: id
+  });
+  await Membership.deleteMany({
+    workspace: id
+  });
+  await Secret.deleteMany({
+    workspace: id
+  });
+  await Key.deleteMany({
+    workspace: id
+  });
 };
 
 export {

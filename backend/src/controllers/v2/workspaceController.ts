@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
 import {
 	Workspace,
@@ -47,66 +46,57 @@ interface V2PushSecret {
  */
 export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
 	// upload (encrypted) secrets to workspace with id [workspaceId]
-	try {
-		const postHogClient = await TelemetryService.getPostHogClient();
-		let { secrets }: { secrets: V2PushSecret[] } = req.body;
-		const { keys, environment, channel } = req.body;
-		const { workspaceId } = req.params;
+  const postHogClient = await TelemetryService.getPostHogClient();
+  let { secrets }: { secrets: V2PushSecret[] } = req.body;
+  const { keys, environment, channel } = req.body;
+  const { workspaceId } = req.params;
 
-		// validate environment
-		const workspaceEnvs = req.membership.workspace.environments;
-		if (!workspaceEnvs.find(({ slug }: { slug: string }) => slug === environment)) {
-			throw new Error('Failed to validate environment');
-		}
+  // validate environment
+  const workspaceEnvs = req.membership.workspace.environments;
+  if (!workspaceEnvs.find(({ slug }: { slug: string }) => slug === environment)) {
+    throw new Error('Failed to validate environment');
+  }
 
-		// sanitize secrets
-		secrets = secrets.filter(
-			(s: V2PushSecret) => s.secretKeyCiphertext !== '' && s.secretValueCiphertext !== ''
-		);
+  // sanitize secrets
+  secrets = secrets.filter(
+    (s: V2PushSecret) => s.secretKeyCiphertext !== '' && s.secretValueCiphertext !== ''
+  );
 
-		await push({
-			userId: req.user._id,
-			workspaceId,
-			environment,
-			secrets,
-			channel: channel ? channel : 'cli',
-			ipAddress: req.ip
-		});
+  await push({
+    userId: req.user._id,
+    workspaceId,
+    environment,
+    secrets,
+    channel: channel ? channel : 'cli',
+    ipAddress: req.ip
+  });
 
-		await pushKeys({
-			userId: req.user._id,
-			workspaceId,
-			keys
-		});
+  await pushKeys({
+    userId: req.user._id,
+    workspaceId,
+    keys
+  });
 
-		if (postHogClient) {
-			postHogClient.capture({
-				event: 'secrets pushed',
-				distinctId: req.user.email,
-				properties: {
-					numberOfSecrets: secrets.length,
-					environment,
-					workspaceId,
-					channel: channel ? channel : 'cli'
-				}
-			});
-		}
+  if (postHogClient) {
+    postHogClient.capture({
+      event: 'secrets pushed',
+      distinctId: req.user.email,
+      properties: {
+        numberOfSecrets: secrets.length,
+        environment,
+        workspaceId,
+        channel: channel ? channel : 'cli'
+      }
+    });
+  }
 
-		// trigger event - push secrets
-		EventService.handleEvent({
-			event: eventPushSecrets({
-				workspaceId: new Types.ObjectId(workspaceId),
-				environment
-			})
-		});
-
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to upload workspace secrets'
-		});
-	}
+  // trigger event - push secrets
+  EventService.handleEvent({
+    event: eventPushSecrets({
+      workspaceId: new Types.ObjectId(workspaceId),
+      environment
+    })
+  });
 
 	return res.status(200).send({
 		message: 'Successfully uploaded workspace secrets'
@@ -121,57 +111,49 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
  * @returns
  */
 export const pullSecrets = async (req: Request, res: Response) => {
-	let secrets;
-	try {
-		const postHogClient = await TelemetryService.getPostHogClient();
-		const environment: string = req.query.environment as string;
-		const channel: string = req.query.channel as string;
-		const { workspaceId } = req.params;
+  const postHogClient = await TelemetryService.getPostHogClient();
+  const environment: string = req.query.environment as string;
+  const channel: string = req.query.channel as string;
+  const { workspaceId } = req.params;
 
-		let userId;
-		if (req.user) {
-			userId = req.user._id.toString();
-		} else if (req.serviceTokenData) {
-			userId = req.serviceTokenData.user.toString();
-		}
-		// validate environment
-		const workspaceEnvs = req.membership.workspace.environments;
-		if (!workspaceEnvs.find(({ slug }: { slug: string }) => slug === environment)) {
-			throw new Error('Failed to validate environment');
-		}
+  let userId;
+  if (req.user) {
+    userId = req.user._id.toString();
+  } else if (req.serviceTokenData) {
+    userId = req.serviceTokenData.user.toString();
+  }
+  // validate environment
+  const workspaceEnvs = req.membership.workspace.environments;
+  if (!workspaceEnvs.find(({ slug }: { slug: string }) => slug === environment)) {
+    throw new Error('Failed to validate environment');
+  }
 
-		secrets = await pull({
-			userId,
-			workspaceId,
-			environment,
-			channel: channel ? channel : 'cli',
-			ipAddress: req.ip
-		});
+  let secrets = await pull({
+    userId,
+    workspaceId,
+    environment,
+    channel: channel ? channel : 'cli',
+    ipAddress: req.ip
+  });
 
-		if (channel !== 'cli') {
-			secrets = reformatPullSecrets({ secrets });
-		}
+  if (channel !== 'cli') {
+    // FIX: Fix this any
+    secrets = reformatPullSecrets({ secrets }) as any;
+  }
 
-		if (postHogClient) {
-			// capture secrets pushed event in production
-			postHogClient.capture({
-				distinctId: req.user.email,
-				event: 'secrets pulled',
-				properties: {
-					numberOfSecrets: secrets.length,
-					environment,
-					workspaceId,
-					channel: channel ? channel : 'cli'
-				}
-			});
-		}
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to pull workspace secrets'
-		});
-	}
+  if (postHogClient) {
+    // capture secrets pushed event in production
+    postHogClient.capture({
+      distinctId: req.user.email,
+      event: 'secrets pulled',
+      properties: {
+        numberOfSecrets: secrets.length,
+        environment,
+        workspaceId,
+        channel: channel ? channel : 'cli'
+      }
+    });
+  }
 
 	return res.status(200).send({
 		secrets
@@ -208,22 +190,14 @@ export const getWorkspaceKey = async (req: Request, res: Response) => {
     }   
     */
 	let key;
-	try {
-		const { workspaceId } = req.params;
+  const { workspaceId } = req.params;
 
-		key = await Key.findOne({
-			workspace: workspaceId,
-			receiver: req.user._id
-		}).populate('sender', '+publicKey');
+  key = await Key.findOne({
+    workspace: workspaceId,
+    receiver: req.user._id
+  }).populate('sender', '+publicKey');
 
-		if (!key) throw new Error('Failed to find workspace key');
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get workspace key'
-		});
-	}
+  if (!key) throw new Error('Failed to find workspace key');
 
 	return res.status(200).json(key);
 }
@@ -231,23 +205,13 @@ export const getWorkspaceServiceTokenData = async (
 	req: Request,
 	res: Response
 ) => {
-	let serviceTokenData;
-	try {
-		const { workspaceId } = req.params;
+  const { workspaceId } = req.params;
 
-		serviceTokenData = await ServiceTokenData
-			.find({
-				workspace: workspaceId
-			})
-			.select('+encryptedKey +iv +tag');
-
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get workspace service token data'
-		});
-	}
+  const serviceTokenData = await ServiceTokenData
+    .find({
+      workspace: workspaceId
+    })
+    .select('+encryptedKey +iv +tag');
 
 	return res.status(200).send({
 		serviceTokenData
@@ -294,20 +258,11 @@ export const getWorkspaceMemberships = async (req: Request, res: Response) => {
         }
     }   
     */
-	let memberships;
-	try {
-		const { workspaceId } = req.params;
+  const { workspaceId } = req.params;
 
-		memberships = await Membership.find({
-			workspace: workspaceId
-		}).populate('user', '+publicKey');
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get workspace memberships'
-		});
-	}
+  const memberships = await Membership.find({
+    workspace: workspaceId
+  }).populate('user', '+publicKey');
 
 	return res.status(200).send({
 		memberships
@@ -374,29 +329,20 @@ export const updateWorkspaceMembership = async (req: Request, res: Response) => 
         }
     }   
     */
-	let membership;
-	try {
-		const {
-			membershipId
-		} = req.params;
-		const { role } = req.body;
-		
-		membership = await Membership.findByIdAndUpdate(
-			membershipId,
-			{
-				role
-			}, {
-				new: true
-			}
-		);
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to update workspace membership'
-		});
-	}
-	
+  const {
+    membershipId
+  } = req.params;
+  const { role } = req.body;
+  
+  const membership = await Membership.findByIdAndUpdate(
+    membershipId,
+    {
+      role
+    }, {
+      new: true
+    }
+  );
+
 	return res.status(200).send({
 		membership
 	}); 
@@ -445,27 +391,18 @@ export const deleteWorkspaceMembership = async (req: Request, res: Response) => 
         }
     }   
     */
-	let membership;
-	try {
-		const { 
-			membershipId
-		} = req.params;
-		
-		membership = await Membership.findByIdAndDelete(membershipId);
-		
-		if (!membership) throw new Error('Failed to delete workspace membership');
-		
-		await Key.deleteMany({
-			receiver: membership.user,
-			workspace: membership.workspace
-		});
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to delete workspace membership'
-		});	
-	}
+  const { 
+    membershipId
+  } = req.params;
+  
+  const membership = await Membership.findByIdAndDelete(membershipId);
+  
+  if (!membership) throw new Error('Failed to delete workspace membership');
+  
+  await Key.deleteMany({
+    receiver: membership.user,
+    workspace: membership.workspace
+  });
 	
 	return res.status(200).send({
 		membership
@@ -479,29 +416,20 @@ export const deleteWorkspaceMembership = async (req: Request, res: Response) => 
  * @returns
  */
 export const toggleAutoCapitalization = async (req: Request, res: Response) => {
-	let workspace;
-	try {
-		const { workspaceId } = req.params;
-		const { autoCapitalization } = req.body;
+  const { workspaceId } = req.params;
+  const { autoCapitalization } = req.body;
 
-		workspace = await Workspace.findOneAndUpdate(
-			{
-				_id: workspaceId
-			},
-			{
-				autoCapitalization
-			},
-			{
-				new: true
-			}
-		);
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to change autoCapitalization setting'
-		});
-	}
+  const workspace = await Workspace.findOneAndUpdate(
+    {
+      _id: workspaceId
+    },
+    {
+      autoCapitalization
+    },
+    {
+      new: true
+    }
+  );
 
 	return res.status(200).send({
 		message: 'Successfully changed autoCapitalization setting',
