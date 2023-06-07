@@ -46,16 +46,16 @@ export default function Login() {
           <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical logo" />
         </div>
       </Link>
-      <div className="mx-auto w-full max-w-md px-6">
+      <div className="mx-auto w-full max-w-md md:px-6">
         <p className="mx-auto mb-6 flex w-max justify-center text-xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 text-center mb-8">
           What’s your email?
         </p>
-        <div className="relative flex items-center justify-center lg:w-1/6 w-1/4 min-w-[22rem] mx-auto w-full rounded-lg max-h-24 md:max-h-28">
+        <div className="relative flex items-center justify-center lg:w-1/6 w-1/4 min-w-[20rem] md:min-w-[22rem] mx-auto w-full rounded-lg max-h-24 md:max-h-28">
           <div className="flex items-center justify-center w-full rounded-lg max-h-24 md:max-h-28">
             <Input
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              type="password"
+              type="email"
               placeholder="Enter your email..."
               isRequired
               autoComplete="email"
@@ -64,7 +64,7 @@ export default function Login() {
             />
           </div>
         </div>
-        <div className='lg:w-1/6 w-1/4 w-full mx-auto flex items-center justify-center min-w-[22rem] text-center rounded-md mt-4'>
+        <div className='lg:w-1/6 w-1/4 w-full mx-auto flex items-center justify-center min-w-[20rem] md:min-w-[22rem] text-center rounded-md mt-4'>
           <Button
               colorSchema="primary" 
               variant="outline_bg"

@@ -717,9 +717,9 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                 isLoading={isSubmitting}
                 leftIcon={<FontAwesomeIcon icon={isRollbackMode ? faClockRotateLeft : faCheck} />}
                 onClick={handleSubmit(onSaveSecret)}
-                className="h-10"
+                className="h-10 text-black"
                 color="primary"
-                variant="star"
+                variant="solid"
               >
                 {isRollbackMode ? 'Rollback' : 'Save Changes'}
               </Button>

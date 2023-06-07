@@ -39,7 +39,7 @@ export default function InitialSignupStep({
                 isFullWidth
                 className="h-14 w-full mx-0"
             >
-                {t('signup.continue-with-email')}
+                Sign Up with email
             </Button>
         </div>
         <div className='lg:w-1/6 w-1/4 min-w-[20rem] text-center rounded-md mt-4'>
