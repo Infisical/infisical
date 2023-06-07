@@ -262,7 +262,7 @@ export const verifyMfaToken = async (req: Request, res: Response) => {
 
   const user = await User.findOne({
     email
-  }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag');
+  }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag +devices');
 
   if (!user) throw new Error('Failed to find user');
 
