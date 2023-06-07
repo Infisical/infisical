@@ -611,9 +611,9 @@ const getAppsSupabase = async ({ accessToken }: { accessToken: string }) => {
 /**
  * Return list of projects for the Checkly integration
  * @param {Object} obj
- * @param {String} obj.accessToken - access token for Supabase API
- * @returns {Object[]} apps - names of Supabase apps
- * @returns {String} apps.name - name of Supabase app
+ * @param {String} obj.accessToken - api key for the Checkly API
+ * @returns {Object[]} apps - Сheckly accounts
+ * @returns {String} apps.name - name of Checkly account
  */
 const getAppsCheckly = async ({ accessToken }: { accessToken: string }) => {
   const { data } = await standardRequest.get(
