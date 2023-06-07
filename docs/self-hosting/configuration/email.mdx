@@ -3,17 +3,15 @@ title: "Configure email service"
 description: "How to configure your email when self-hosting Infisical."
 ---
 
-Infisical requires you to configure your own SMTP server for certain functionality like:
+By default, the core functions of Infisical work without any email service configuration. Without email service, the following functionality will be deactivated.
 
 - Sending email confirmation links to sign up.
 - Sending invite links for projects.
 - Sending alerts.
 
-We strongly recommend using an email service to act as your email server and provide examples for common providers.
-
 ## General configuration
 
-By default, you need to configure the following SMTP [environment variables](https://infisical.com/docs/self-hosting/configuration/envars):
+If you choose to setup email service, yuu need to configure the following SMTP [environment variables](https://infisical.com/docs/self-hosting/configuration/envars):
 
 - `SMTP_HOST`: Hostname to connect to for establishing SMTP connections.
 - `SMTP_USERNAME`: Credential to connect to host (e.g. team@infisical.com)
