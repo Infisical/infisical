@@ -1830,7 +1830,6 @@ const syncSecretsCheckly = async ({
       }
     }
   } catch (err) {
-    console.log(err)
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error("Failed to sync secrets to Checkly");
