@@ -8,6 +8,7 @@ import jsrp from 'jsrp';
 import nacl from 'tweetnacl';
 import { encodeBase64 } from 'tweetnacl-util';
 
+import { useGetCommonPasswords } from '@app/hooks/api';
 import completeAccountInformationSignup from '@app/pages/api/auth/CompleteAccountInformationSignup';
 import getOrganizations from '@app/pages/api/organization/getOrgs';
 import ProjectService from '@app/services/ProjectService';
@@ -19,7 +20,6 @@ import { deriveArgonKey } from '../utilities/cryptography/crypto';
 import { saveTokenToLocalStorage } from '../utilities/saveTokenToLocalStorage';
 import SecurityClient from '../utilities/SecurityClient';
 import { Button, Input } from '../v2';
-import { useGetCommonPasswords } from '@app/hooks/api';
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -76,9 +76,6 @@ export default function UserInfoStep({
   const { data: commonPasswords } = useGetCommonPasswords();
   const [nameError, setNameError] = useState(false);
   const [organizationNameError, setOrganizationNameError] = useState(false);
-  const [passwordErrorLength, setPasswordErrorLength] = useState(false);
-  const [passwordErrorNumber, setPasswordErrorNumber] = useState(false);
-  const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
 
   const [errors, setErrors] = useState<Errors>({});
 
@@ -269,7 +266,7 @@ export default function UserInfoStep({
             type="password"
             value={password}
             isRequired
-            error={passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase}
+            error={Object.keys(errors).length > 0}
             autoComplete="new-password"
             id="new-password"
           />

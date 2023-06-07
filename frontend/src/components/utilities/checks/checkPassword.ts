@@ -35,7 +35,7 @@ const checkPassword = ({
     commonPasswords,
     setErrors
 }: CheckPasswordParams): boolean => {
-    let errors: Errors = {}; 
+    const errors: Errors = {}; 
     
     if (password.length < 8) {
         errors.length = "8 characters";

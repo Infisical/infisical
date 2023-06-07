@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { faCheck, faPlus, faXmark, faBan } from '@fortawesome/free-solid-svg-icons';
+import { faBan,faCheck, faPlus, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import Button from '@app/components/basic/buttons/Button';
@@ -13,15 +13,14 @@ import NavHeader from '@app/components/navigation/NavHeader';
 import checkPassword from '@app/components/utilities/checks/checkPassword';
 import changePassword from '@app/components/utilities/cryptography/changePassword';
 import issueBackupKey from '@app/components/utilities/cryptography/issueBackupKey';
+import {
+  useGetCommonPasswords,
+  useRevokeAllSessions} from '@app/hooks/api';
 import { SecuritySection } from '@app/views/Settings/PersonalSettingsPage/SecuritySection/SecuritySection';
 
 import AddApiKeyDialog from '../../../components/basic/dialog/AddApiKeyDialog';
 import getAPIKeys from '../../api/apiKey/getAPIKeys';
 import getUser from '../../api/user/getUser';
-import {
-  useRevokeAllSessions,
-  useGetCommonPasswords
-} from '@app/hooks/api';
 
 type Errors = {
   length?: string,
@@ -229,7 +228,6 @@ export default function PersonalSettings() {
                   }}
                   color="mineshaft"
                   size="md"
-                  active={true}
                   textDisabled={t('section.password.change') as string}
                 />
                 <FontAwesomeIcon
