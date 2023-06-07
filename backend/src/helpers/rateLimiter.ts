@@ -38,7 +38,7 @@ const authLimit = rateLimit({
   }
 });
 
-// 50 requests per 1 hour
+// 5 requests per 1 hour
 export const passwordLimiter = rateLimit({
   store: new MongoStore({
     uri: process.env.MONGO_URL,
@@ -47,7 +47,7 @@ export const passwordLimiter = rateLimit({
     collectionName: "expressRateRecords-passwordLimiter",
   }),
   windowMs: 1000 * 60 * 60,
-  max: 50,
+  max: 5,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req, res) => {
