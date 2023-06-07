@@ -16,6 +16,7 @@ import {
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
   INTEGRATION_SUPABASE,
+  INTEGRATION_CHECKLY,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_GITLAB_API_URL,
   INTEGRATION_VERCEL_API_URL,
@@ -26,6 +27,7 @@ import {
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_SUPABASE_API_URL,
+  INTEGRATION_CHECKLY_API_URL
 } from "../variables";
 
 interface App {
@@ -117,6 +119,11 @@ const getApps = async ({
       break;
     case INTEGRATION_SUPABASE:
       apps = await getAppsSupabase({
+        accessToken,
+      });
+      break;
+    case INTEGRATION_CHECKLY:
+      apps = await getAppsCheckly({
         accessToken,
       });
       break;
@@ -587,6 +594,34 @@ const getAppsSupabase = async ({ accessToken }: { accessToken: string }) => {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Accept-Encoding": "application/json",
+      },
+    }
+  );
+
+  const apps = data.map((a: any) => {
+    return {
+      name: a.name,
+      appId: a.id,
+    };
+  });
+
+  return apps;
+};
+
+/**
+ * Return list of projects for the Checkly integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Supabase API
+ * @returns {Object[]} apps - names of Supabase apps
+ * @returns {String} apps.name - name of Supabase app
+ */
+const getAppsCheckly = async ({ accessToken }: { accessToken: string }) => {
+  const { data } = await standardRequest.get(
+    `${INTEGRATION_CHECKLY_API_URL}/v1/accounts`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept": "application/json",
       },
     }
   );

@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { faCheck, faX } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import deleteIntegrationAuth from '../../pages/api/integrations/DeleteIntegrationAuth';
@@ -44,9 +44,9 @@ const CloudIntegration = ({
       tabIndex={0}
       className={`relative ${
         cloudIntegrationOption.isAvailable
-          ? 'cursor-pointer duration-200 hover:bg-white/10'
+          ? 'cursor-pointer duration-200 hover:bg-mineshaft-700'
           : 'opacity-50'
-      } flex h-32 flex-row items-center rounded-md bg-white/5 p-4`}
+      } flex h-32 flex-row items-center rounded-md bg-mineshaft-800 border border-mineshaft-600 p-4`}
       onClick={() => {
         if (!cloudIntegrationOption.isAvailable) return;
         setSelectedIntegrationOption(cloudIntegrationOption);
@@ -95,12 +95,12 @@ const CloudIntegration = ({
                   integrationAuth: deletedIntegrationAuth
                 });
               }}
-              className="flex w-max cursor-pointer flex-row items-center rounded-b-md bg-red py-0.5 px-2 text-xs opacity-0 duration-200 group-hover:opacity-100"
+              className="flex w-max cursor-pointer flex-row items-center rounded-bl-md bg-red py-0.5 px-2 text-xs opacity-30 duration-200 group-hover:opacity-100"
             >
-              <FontAwesomeIcon icon={faX} className="mr-2 py-px text-xs" />
+              <FontAwesomeIcon icon={faXmark} className="mr-2 text-xs" />
               Revoke
             </div>
-            <div className="flex w-max flex-row items-center rounded-bl-md rounded-tr-md bg-primary py-0.5 px-2 text-xs text-black opacity-90 duration-200 group-hover:opacity-100">
+            <div className="flex w-max flex-row items-center rounded-tr-md bg-primary py-0.5 px-2 text-xs text-black opacity-70 duration-200 group-hover:opacity-100">
               <FontAwesomeIcon icon={faCheck} className="mr-2 text-xs" />
               Authorized
             </div>

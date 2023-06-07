@@ -13,7 +13,8 @@ import {
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
-  INTEGRATION_SUPABASE
+  INTEGRATION_SUPABASE,
+  INTEGRATION_CHECKLY
 } from "../variables";
 
 export interface IIntegration {
@@ -45,7 +46,8 @@ export interface IIntegration {
     | 'flyio'
     | 'circleci'
     | 'travisci'
-    | 'supabase';
+    | 'supabase'
+    | 'checkly';
   integrationAuth: Types.ObjectId;
 }
 
@@ -130,7 +132,8 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_FLYIO,
         INTEGRATION_CIRCLECI,
         INTEGRATION_TRAVISCI,
-        INTEGRATION_SUPABASE
+        INTEGRATION_SUPABASE,
+        INTEGRATION_CHECKLY
       ],
       required: true,
     },

@@ -35,7 +35,9 @@ import {
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_CIRCLECI_API_URL,
   INTEGRATION_TRAVISCI_API_URL,
-  INTEGRATION_SUPABASE_API_URL
+  INTEGRATION_SUPABASE_API_URL,
+  INTEGRATION_CHECKLY,
+  INTEGRATION_CHECKLY_API_URL
 } from "../variables";
 import { standardRequest} from '../config/request';
 
@@ -163,6 +165,13 @@ const syncSecrets = async ({
             integration,
             secrets,
             accessToken
+        });
+        break;
+      case INTEGRATION_CHECKLY:
+        await syncSecretsCheckly({
+          integration,
+          secrets,
+          accessToken,
         });
         break;
     }
@@ -1725,6 +1734,106 @@ const syncSecretsSupabase = async ({
     Sentry.setUser(null);
     Sentry.captureException(err);
     throw new Error('Failed to sync secrets to Supabase');
+  }
+};
+
+
+/**
+ * Sync/push [secrets] to Checkly app
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Checkly integration
+ */
+const syncSecretsCheckly = async ({
+  integration,
+  secrets,
+  accessToken,
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  try {
+    // get secrets from travis-ci  
+    const getSecretsRes = (
+      await standardRequest.get(
+        `${INTEGRATION_CHECKLY_API_URL}/v1/variables`,
+        {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept-Encoding": "application/json",
+            "X-Checkly-Account": integration.appId
+          },
+        }
+      )
+    )
+    .data
+    .reduce((obj: any, secret: any) => ({
+        ...obj,
+        [secret.key]: secret.value
+    }), {});
+    
+    // add secrets
+    for await (const key of Object.keys(secrets)) {
+      if (!(key in getSecretsRes)) {
+        // case: secret does not exist in checkly
+        // -> add secret
+        await standardRequest.post(
+          `${INTEGRATION_CHECKLY_API_URL}/v1/variables`,
+          {
+            key,
+            value: secrets[key] ? secrets[key] : 'EMPTY'
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+              "X-Checkly-Account": integration.appId
+            },
+          }
+        );
+      } else {
+        // case: secret exists in checkly
+        // -> update/set secret
+        await standardRequest.put(
+          `${INTEGRATION_CHECKLY_API_URL}/v1/variables/${key}`,
+          {
+            value: secrets[key] ? secrets[key] : 'EMPTY'
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+              "X-Checkly-Account": integration.appId
+            },
+          }
+        );
+      }
+    }
+
+    for await (const key of Object.keys(getSecretsRes)) {
+      if (!(key in secrets)){
+        // delete secret
+        await standardRequest.delete(
+          `${INTEGRATION_CHECKLY_API_URL}/v1/variables/${key}`,
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Accept": "application/json",
+              "X-Checkly-Account": integration.appId
+            },
+          }
+        );
+      }
+    }
+  } catch (err) {
+    console.log(err)
+    Sentry.setUser(null);
+    Sentry.captureException(err);
+    throw new Error("Failed to sync secrets to Checkly");
   }
 };
 

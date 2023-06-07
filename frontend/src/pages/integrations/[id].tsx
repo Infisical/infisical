@@ -210,6 +210,9 @@ export default function Integrations() {
         case 'supabase':
           link = `${window.location.origin}/integrations/supabase/authorize`;
           break;
+        case 'checkly':
+          link = `${window.location.origin}/integrations/checkly/authorize`;
+          break;
         case 'railway':
           link = `${window.location.origin}/integrations/railway/authorize`;
           break;
@@ -267,6 +270,9 @@ export default function Integrations() {
           break;
         case 'supabase':
           link = `${window.location.origin}/integrations/supabase/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case 'checkly':
+          link = `${window.location.origin}/integrations/checkly/create?integrationAuthId=${integrationAuth._id}`;
           break;
         case 'railway':
           link = `${window.location.origin}/integrations/railway/create?integrationAuthId=${integrationAuth._id}`;
@@ -384,7 +390,7 @@ export default function Integrations() {
   };
 
   return (
-    <div className="flex max-h-screen flex-col justify-between bg-bunker-800 text-white">
+    <div className="flex max-h-full flex-col justify-between bg-bunker-800 text-white">
       <Head>
         <title>{t('common.head-title', { title: t('integrations.title') })}</title>
         <link rel="icon" href="/infisical.ico" />
@@ -392,7 +398,7 @@ export default function Integrations() {
         <meta property="og:title" content="Manage your .env files in seconds" />
         <meta name="og:description" content={t('integrations.description') as string} />
       </Head>
-      <div className="no-scrollbar::-webkit-scrollbar h-screen max-h-[calc(100vh-10px)] w-full overflow-y-scroll pb-2 no-scrollbar">
+      <div className="no-scrollbar::-webkit-scrollbar h-screen max-h-[calc(100vh-10px)] w-full overflow-y-scroll pb-6 no-scrollbar">
         <NavHeader pageName={t('integrations.title')} isProjectRelated />
         <ActivateBotDialog
           isOpen={isActivateBotDialogOpen}
