@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import NodeCache from 'node-cache';
 import { 
     getLicenseKey,
@@ -97,29 +98,35 @@ class EELicenseService {
         const licenseServerKey = await getLicenseServerKey();
         const licenseKey = await getLicenseKey();
 
-        if (licenseServerKey) {
-            // license server key is present -> validate it
-            const token = await refreshLicenseServerKeyToken()
+        try {
+            if (licenseServerKey) {
+                // license server key is present -> validate it
+                const token = await refreshLicenseServerKeyToken()
+                    
+                if (token) {
+                    this.instanceType = 'cloud';
+                }
                 
-            if (token) {
-                this.instanceType = 'cloud';
+                return;
             }
             
-            return;
-        }
-        
-        if (licenseKey) {
-            // license key is present -> validate it
-            const token = await refreshLicenseKeyToken();
-                
-            if (token) {
-                const { data: { currentPlan } } = await licenseKeyRequest.get(
-                    `${await getLicenseServerUrl()}/api/license/v1/plan`
-                );
-                
-                this.globalFeatureSet = currentPlan;
-                this.instanceType = 'enterprise-self-hosted';
+            if (licenseKey) {
+                // license key is present -> validate it
+                const token = await refreshLicenseKeyToken();
+                    
+                if (token) {
+                    const { data: { currentPlan } } = await licenseKeyRequest.get(
+                        `${await getLicenseServerUrl()}/api/license/v1/plan`
+                    );
+                    
+                    this.globalFeatureSet = currentPlan;
+                    this.instanceType = 'enterprise-self-hosted';
+                }
             }
+        } catch (err) {
+            // case: self-hosted free
+            Sentry.setUser(null);
+            Sentry.captureException(err);
         }
     }
 
