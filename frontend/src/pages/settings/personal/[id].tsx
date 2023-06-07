@@ -226,6 +226,7 @@ export default function PersonalSettings() {
                       );
                     }
                   }}
+                  active={Object.keys(errors).length === 0 && currentPassword !== ''}
                   color="mineshaft"
                   size="md"
                   textDisabled={t('section.password.change') as string}
