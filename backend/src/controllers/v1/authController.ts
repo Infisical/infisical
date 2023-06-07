@@ -1,18 +1,28 @@
 import { Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import jwt from 'jsonwebtoken';
 import * as bigintConversion from 'bigint-conversion';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const jsrp = require('jsrp');
-import { User, LoginSRPDetail } from '../../models';
+import { 
+  User, 
+  LoginSRPDetail,
+  TokenVersion
+} from '../../models';
 import { createToken, issueAuthTokens, clearTokens } from '../../helpers/auth';
 import { checkUserDevice } from '../../helpers/user';
 import {
   ACTION_LOGIN,
-  ACTION_LOGOUT
+  ACTION_LOGOUT,
+  AUTH_MODE_JWT
 } from '../../variables';
-import { BadRequestError } from '../../utils/errors';
+import { 
+  BadRequestError,
+  UnauthorizedRequestError
+} from '../../utils/errors';
 import { EELogService } from '../../ee/services';
-import { getChannelFromUserAgent } from '../../utils/posthog'; // TODO: move this
+import { getChannelFromUserAgent } from '../../utils/posthog';
 import {
   getJwtRefreshSecret,
   getJwtAuthLifetime,
@@ -23,6 +33,7 @@ import {
 declare module 'jsonwebtoken' {
   export interface UserIDJwtPayload extends jwt.JwtPayload {
     userId: string;
+    refreshVersion?: number;
   }
 }
 
@@ -105,11 +116,15 @@ export const login2 = async (req: Request, res: Response) => {
 
         await checkUserDevice({
           user,
-          ip: req.ip,
+          ip: req.realIP,
           userAgent: req.headers['user-agent'] ?? ''
         });
 
-        const tokens = await issueAuthTokens({ userId: user._id.toString() });
+        const tokens = await issueAuthTokens({ 
+          userId: user._id,
+          ip: req.realIP,
+          userAgent: req.headers['user-agent'] ?? ''
+        });
 
         // store (refresh) token in httpOnly cookie
         res.cookie('jid', tokens.refreshToken, {
@@ -128,7 +143,7 @@ export const login2 = async (req: Request, res: Response) => {
           userId: user._id,
           actions: [loginAction],
           channel: getChannelFromUserAgent(req.headers['user-agent']),
-          ipAddress: req.ip
+          ipAddress: req.realIP
         });
 
         // return (access) token in response
@@ -155,9 +170,9 @@ export const login2 = async (req: Request, res: Response) => {
  * @returns
  */
 export const logout = async (req: Request, res: Response) => {
-  await clearTokens({
-    userId: req.user._id.toString()
-  });
+  if (req.authData.authMode === AUTH_MODE_JWT && req.authData.authPayload instanceof User && req.authData.tokenVersionId) {
+    await clearTokens(req.authData.tokenVersionId)
+  }
 
   // clear httpOnly cookie
   res.cookie('jid', '', {
@@ -176,13 +191,37 @@ export const logout = async (req: Request, res: Response) => {
     userId: req.user._id,
     actions: [logoutAction],
     channel: getChannelFromUserAgent(req.headers['user-agent']),
-    ipAddress: req.ip
+    ipAddress: req.realIP
   });
 
   return res.status(200).send({
     message: 'Successfully logged out.'
   });
 };
+
+export const getCommonPasswords = async (req: Request, res: Response) => {
+  const commonPasswords = fs.readFileSync(
+		path.resolve(__dirname, '../../data/' + 'common_passwords.txt'),
+		'utf8'
+	).split('\n');	
+
+  return res.status(200).send(commonPasswords);
+}
+
+export const revokeAllSessions = async (req: Request, res: Response) => {
+  await TokenVersion.updateMany({
+    user: req.user._id
+  }, {
+    $inc: {
+      refreshVersion: 1,
+      accessVersion: 1
+    }
+  });
+
+  return res.status(200).send({
+    message: 'Successfully revoked all sessions.'
+  }); 
+}
 
 /**
  * Return user is authenticated
@@ -197,7 +236,7 @@ export const checkAuth = async (req: Request, res: Response) => {
 }
 
 /**
- * Return new token by redeeming refresh token
+ * Return new JWT access token by first validating the refresh token
  * @param req
  * @param res
  * @returns
@@ -206,7 +245,7 @@ export const getNewToken = async (req: Request, res: Response) => {
   const refreshToken = req.cookies.jid;
 
   if (!refreshToken) {
-    throw new Error('Failed to find token in request cookies');
+    throw new Error('Failed to find refresh token in request cookies');
   }
 
   const decodedToken = <jwt.UserIDJwtPayload>(
@@ -215,15 +254,27 @@ export const getNewToken = async (req: Request, res: Response) => {
 
   const user = await User.findOne({
     _id: decodedToken.userId
-  }).select('+publicKey');
+  }).select('+publicKey +refreshVersion +accessVersion');
 
   if (!user) throw new Error('Failed to authenticate unfound user');
   if (!user?.publicKey)
     throw new Error('Failed to authenticate not fully set up account');
+  
+  const tokenVersion = await TokenVersion.findById(decodedToken.tokenVersionId);
+
+  if (!tokenVersion) throw UnauthorizedRequestError({
+    message: 'Failed to validate refresh token'
+  });
+
+  if (decodedToken.refreshVersion !== tokenVersion.refreshVersion) throw BadRequestError({
+    message: 'Failed to validate refresh token'
+  });
 
   const token = createToken({
     payload: {
-      userId: decodedToken.userId
+      userId: decodedToken.userId,
+      tokenVersionId: tokenVersion._id.toString(),
+      accessVersion: tokenVersion.refreshVersion
     },
     expiresIn: await getJwtAuthLifetime(),
     secret: await getJwtAuthSecret()

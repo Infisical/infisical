@@ -6,7 +6,9 @@ import {
 	User,
 	ServiceTokenData,
 	ServiceAccount,
-	APIKeyData
+	APIKeyData,
+	TokenVersion,
+	ITokenVersion
 } from '../models';
 import {
 	AccountNotFoundError,
@@ -35,7 +37,7 @@ import {
  * @param {Object} obj
  * @param {Object} obj.headers - HTTP request headers object
  */
-const validateAuthMode = ({
+export const validateAuthMode = ({
 	headers,
 	acceptedAuthModes
 }: {
@@ -97,7 +99,7 @@ const validateAuthMode = ({
  * @param {String} obj.authTokenValue - JWT token value
  * @returns {User} user - user corresponding to JWT token
  */
-const getAuthUserPayload = async ({
+export const getAuthUserPayload = async ({
 	authTokenValue
 }: {
 	authTokenValue: string;
@@ -107,14 +109,32 @@ const getAuthUserPayload = async ({
 	);
 
 	const user = await User.findOne({
-		_id: decodedToken.userId
-	}).select('+publicKey');
+		_id: new Types.ObjectId(decodedToken.userId)
+	}).select('+publicKey +accessVersion');
 
-	if (!user) throw AccountNotFoundError({ message: 'Failed to find User' });
+	if (!user) throw AccountNotFoundError({ message: 'Failed to find user' });
 
-	if (!user?.publicKey) throw UnauthorizedRequestError({ message: 'Failed to authenticate User with partially set up account' });
+	if (!user?.publicKey) throw UnauthorizedRequestError({ message: 'Failed to authenticate user with partially set up account' });
 
-	return user;
+	const tokenVersion = await TokenVersion.findOneAndUpdate({
+		_id: new Types.ObjectId(decodedToken.tokenVersionId),
+		user: user._id
+	}, {
+		lastUsed: new Date()
+	});
+	
+	if (!tokenVersion) throw UnauthorizedRequestError({
+		message: 'Failed to validate access token'
+	});
+	
+	if (decodedToken.accessVersion !== tokenVersion.accessVersion) throw UnauthorizedRequestError({
+		message: 'Failed to validate access token'
+	});
+
+	return ({
+		user,
+		tokenVersionId: tokenVersion._id
+	});
 }
 
 /**
@@ -123,7 +143,7 @@ const getAuthUserPayload = async ({
  * @param {String} obj.authTokenValue - service token value
  * @returns {ServiceTokenData} serviceTokenData - service token data
  */
-const getAuthSTDPayload = async ({
+export const getAuthSTDPayload = async ({
 	authTokenValue
 }: {
 	authTokenValue: string;
@@ -169,7 +189,7 @@ const getAuthSTDPayload = async ({
  * @param {String} obj.authTokenValue - service account access token value
  * @returns {ServiceAccount} serviceAccount
  */
-const getAuthSAAKPayload = async ({
+export const getAuthSAAKPayload = async ({
 	authTokenValue
 }: {
 	authTokenValue: string;
@@ -198,7 +218,7 @@ const getAuthSAAKPayload = async ({
  * @param {String} obj.authTokenValue - API key value
  * @returns {APIKeyData} apiKeyData - API key data
  */
-const getAuthAPIKeyPayload = async ({
+export const getAuthAPIKeyPayload = async ({
 	authTokenValue
 }: {
 	authTokenValue: string;
@@ -255,12 +275,43 @@ const getAuthAPIKeyPayload = async ({
  * @return {String} obj.token - issued JWT token
  * @return {String} obj.refreshToken - issued refresh token
  */
-const issueAuthTokens = async ({ userId }: { userId: string }) => {
+export const issueAuthTokens = async ({ 
+	userId,
+	ip,
+	userAgent
+}: { 
+	userId: Types.ObjectId;
+	ip: string;
+	userAgent: string;
+}) => {
+	let tokenVersion: ITokenVersion | null;
+
+	// continue with (session) token version matching existing ip and user agent
+	tokenVersion = await TokenVersion.findOne({
+		user: userId,
+		ip,
+		userAgent
+	});
+	
+	if (!tokenVersion) {
+		// case: no existing ip and user agent exists
+		// -> create new (session) token version for ip and user agent
+		tokenVersion = await new TokenVersion({
+			user: userId,
+			refreshVersion: 0,
+			accessVersion: 0,
+			ip,
+			userAgent,
+			lastUsed: new Date()
+		}).save();
+	}
 
 	// issue tokens
 	const token = createToken({
 		payload: {
-			userId
+			userId,
+			tokenVersionId: tokenVersion._id.toString(),
+			accessVersion: tokenVersion.accessVersion
 		},
 		expiresIn: await getJwtAuthLifetime(),
 		secret: await getJwtAuthSecret()
@@ -268,7 +319,9 @@ const issueAuthTokens = async ({ userId }: { userId: string }) => {
 
 	const refreshToken = createToken({
 		payload: {
-			userId
+			userId,
+			tokenVersionId: tokenVersion._id.toString(),
+			refreshVersion: tokenVersion.refreshVersion
 		},
 		expiresIn: await getJwtRefreshLifetime(),
 		secret: await getJwtRefreshSecret()
@@ -285,13 +338,15 @@ const issueAuthTokens = async ({ userId }: { userId: string }) => {
  * @param {Object} obj
  * @param {String} obj.userId - id of user whose tokens are cleared.
  */
-const clearTokens = async ({ userId }: { userId: string }): Promise<void> => {
+export const clearTokens = async (tokenVersionId: Types.ObjectId): Promise<void> => {
 	// increment refreshVersion on user by 1
-	User.findOneAndUpdate({
-		_id: userId
+
+	await TokenVersion.findOneAndUpdate({
+		_id: tokenVersionId
 	}, {
 		$inc: {
-			refreshVersion: 1
+			refreshVersion: 1,
+			accessVersion: 1
 		}
 	});
 };
@@ -304,7 +359,7 @@ const clearTokens = async ({ userId }: { userId: string }): Promise<void> => {
  * @param {String} obj.secret - (JWT) secret such as [JWT_AUTH_SECRET]
  * @param {String} obj.expiresIn - string describing time span such as '10h' or '7d'
  */
-const createToken = ({
+export const createToken = ({
 	payload,
 	expiresIn,
 	secret
@@ -318,7 +373,7 @@ const createToken = ({
 	});
 };
 
-const validateProviderAuthToken = async ({
+export const validateProviderAuthToken = async ({
 	email,
 	user,
 	providerAuthToken,
@@ -342,15 +397,3 @@ const validateProviderAuthToken = async ({
 		throw new Error('Invalid authentication credentials.')
 	}
 }
-
-export {
-	validateAuthMode,
-	validateProviderAuthToken,
-	getAuthUserPayload,
-	getAuthSTDPayload,
-	getAuthSAAKPayload,
-	getAuthAPIKeyPayload,
-	createToken,
-	issueAuthTokens,
-	clearTokens
-};

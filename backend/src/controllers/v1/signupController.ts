@@ -7,6 +7,7 @@ import {
 import { createToken } from '../../helpers/auth';
 import { BadRequestError } from '../../utils/errors';
 import { getInviteOnlySignup, getJwtSignupLifetime, getJwtSignupSecret, getSmtpConfigured } from '../../config';
+import { validateUserEmail } from '../../validation';
 
 /**
  * Signup step 1: Initialize account for user under email [email] and send a verification code
@@ -16,7 +17,11 @@ import { getInviteOnlySignup, getJwtSignupLifetime, getJwtSignupSecret, getSmtpC
  * @returns
  */
 export const beginEmailSignup = async (req: Request, res: Response) => {
-  const email = req.body.email;
+	let email: string;
+  email = req.body.email;
+  
+  // validate that email is not disposable
+  validateUserEmail(email);
 
   const user = await User.findOne({ email }).select('+publicKey');
   if (user && user?.publicKey) {

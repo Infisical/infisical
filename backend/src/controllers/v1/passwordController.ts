@@ -3,12 +3,23 @@ import { Request, Response } from 'express';
 const jsrp = require('jsrp');
 import * as bigintConversion from 'bigint-conversion';
 import { User, BackupPrivateKey, LoginSRPDetail } from '../../models';
-import { createToken } from '../../helpers/auth';
-import { sendMail } from '../../helpers/nodemailer';
+import {
+	createToken,
+	sendMail,
+	clearTokens
+} from '../../helpers';
 import { TokenService } from '../../services';
-import { TOKEN_EMAIL_PASSWORD_RESET } from '../../variables';
+import { 
+	TOKEN_EMAIL_PASSWORD_RESET,
+	AUTH_MODE_JWT
+} from '../../variables';
 import { BadRequestError } from '../../utils/errors';
-import { getSiteURL, getJwtSignupLifetime, getJwtSignupSecret } from '../../config';
+import { 
+	getSiteURL, 
+	getJwtSignupLifetime, 
+	getJwtSignupSecret,
+	getHttpsEnabled
+} from '../../config';
 
 /**
  * Password reset step 1: Send email verification link to email [email] 
@@ -18,14 +29,15 @@ import { getSiteURL, getJwtSignupLifetime, getJwtSignupSecret } from '../../conf
  * @returns
  */
 export const emailPasswordReset = async (req: Request, res: Response) => {
-  const email = req.body.email;
+	let email: string;
+  email = req.body.email;
 
   const user = await User.findOne({ email }).select('+publicKey');
   if (!user || !user?.publicKey) {
     // case: user has already completed account
 
     return res.status(403).send({
-      error: 'Failed to send email verification for password reset'
+      message: "If an account exists with this email, a password reset link has been sent"
     });
   }
   
@@ -46,7 +58,7 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
   });
 
 	return res.status(200).send({
-		message: `Sent an email for account recovery to ${email}`
+		message:"If an account exists with this email, a password reset link has been sent" 
 	});
 }
 
@@ -98,6 +110,7 @@ export const emailPasswordResetVerify = async (req: Request, res: Response) => {
  */
 export const srp1 = async (req: Request, res: Response) => {
 	// return salt, serverPublicKey as part of first step of SRP protocol
+	
   const { clientPublicKey } = req.body;
   const user = await User.findOne({
     email: req.user.email
@@ -127,7 +140,8 @@ export const srp1 = async (req: Request, res: Response) => {
       });
     }
   );
-};
+}
+
 
 /**
  * Change account SRP authentication information for user
@@ -193,6 +207,19 @@ export const changePassword = async (req: Request, res: Response) => {
             new: true
           }
         );
+      
+        if (req.authData.authMode === AUTH_MODE_JWT && req.authData.authPayload instanceof User && req.authData.tokenVersionId) {
+          await clearTokens(req.authData.tokenVersionId)
+        }
+
+        // clear httpOnly cookie
+        
+        res.cookie('jid', '', {
+          httpOnly: true,
+          path: '/',
+          sameSite: 'strict',
+          secure: (await getHttpsEnabled()) as boolean
+        });
 
         return res.status(200).send({
           message: 'Successfully changed password'

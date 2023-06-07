@@ -13,7 +13,7 @@ let smtpTransporter: nodemailer.Transporter;
  * @param {String[]} obj.recipients - email addresses of people to send email to
  * @param {Object} obj.substitutions - object containing template substitutions
  */
-const sendMail = async ({
+export const sendMail = async ({
   template,
   subjectLine,
   recipients,
@@ -41,8 +41,6 @@ const sendMail = async ({
   }
 };
 
-const setTransporter = (transporter: nodemailer.Transporter) => {
+export const setTransporter = (transporter: nodemailer.Transporter) => {
   smtpTransporter = transporter;
 };
-
-export { sendMail, setTransporter };

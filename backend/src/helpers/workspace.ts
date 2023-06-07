@@ -15,7 +15,7 @@ import { SecretService } from '../services';
  * @param {String} organizationId - id of organization to create workspace in
  * @param {Object} workspace - new workspace
  */
-const createWorkspace = async ({
+export const createWorkspace = async ({
 	name,
 	organizationId
 }: {
@@ -50,23 +50,18 @@ const createWorkspace = async ({
  * @param {Object} obj
  * @param {String} obj.id - id of workspace to delete
  */
-const deleteWorkspace = async ({ id }: { id: string }) => {
-  await Workspace.deleteOne({ _id: id });
-  await Bot.deleteOne({
-    workspace: id
-  });
-  await Membership.deleteMany({
-    workspace: id
-  });
-  await Secret.deleteMany({
-    workspace: id
-  });
-  await Key.deleteMany({
-    workspace: id
-  });
-};
-
-export {
-	createWorkspace, 
-	deleteWorkspace 
+export const deleteWorkspace = async ({ id }: { id: string }) => {
+	await Workspace.deleteOne({ _id: id });
+	await Bot.deleteOne({
+		workspace: id
+	});
+	await Membership.deleteMany({
+		workspace: id
+	});
+	await Secret.deleteMany({
+		workspace: id
+	});
+	await Key.deleteMany({
+		workspace: id
+	});
 };

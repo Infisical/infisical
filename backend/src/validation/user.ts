@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Types } from 'mongoose';
 import {
 	IUser, 
@@ -8,7 +10,7 @@ import {
 } from '../models';
 import { validateMembership } from '../helpers/membership';
 import _ from 'lodash';
-import { BadRequestError, UnauthorizedRequestError } from '../utils/errors';
+import { BadRequestError, UnauthorizedRequestError, ValidationError } from '../utils/errors';
 import {
 	validateMembershipOrg
 } from '../helpers/membershipOrg';
@@ -16,6 +18,22 @@ import {
 	PERMISSION_READ_SECRETS,
 	PERMISSION_WRITE_SECRETS
 } from '../variables';
+
+/**
+ * Validate that email [email] is not disposable
+ * @param email - email to validate
+ */
+export const validateUserEmail = (email: string) => {
+	const emailDomain = email.split('@')[1];
+	const disposableEmails = fs.readFileSync(
+		path.resolve(__dirname, '../data/' + 'disposable_emails.txt'),
+		'utf8'
+	).split('\n');	
+	
+	if (disposableEmails.includes(emailDomain)) throw ValidationError({
+		message: 'Failed to validate email as non-disposable'
+	});
+}
 
 /**
  * Validate that user (client) can access workspace

@@ -10,10 +10,10 @@ import { MembershipNotFoundError, BadRequestError } from "../utils/errors";
  * @param {String} obj.workspaceId - id of workspace
  * @returns {Membership} membership - membership of user with id [userId] for workspace with id [workspaceId]
  */
-const validateMembership = async ({
-  userId,
-  workspaceId,
-  acceptedRoles,
+export const validateMembership = async ({
+	userId,
+	workspaceId,
+	acceptedRoles,
 }: {
   userId: Types.ObjectId | string;
   workspaceId: Types.ObjectId | string;
@@ -46,8 +46,8 @@ const validateMembership = async ({
  * @param {Object} queryObj - query object
  * @return {Object} membership - membership
  */
-const findMembership = async (queryObj: any) => {
-  const membership = await Membership.findOne(queryObj);
+export const findMembership = async (queryObj: any) => {
+	const membership = await Membership.findOne(queryObj);
   return membership;
 };
 
@@ -59,10 +59,10 @@ const findMembership = async (queryObj: any) => {
  * @param {String} obj.workspaceId - id of workspace.
  * @param {String[]} obj.roles - roles of users.
  */
-const addMemberships = async ({
-  userIds,
-  workspaceId,
-  roles,
+export const addMemberships = async ({
+	userIds,
+	workspaceId,
+	roles
 }: {
   userIds: string[];
   workspaceId: string;
@@ -93,9 +93,9 @@ const addMemberships = async ({
  * @param {Object} obj
  * @param {String} obj.membershipId - id of membership to delete
  */
-const deleteMembership = async ({ membershipId }: { membershipId: string }) => {
-  const deletedMembership = await Membership.findOneAndDelete({
-    _id: membershipId,
+export const deleteMembership = async ({ membershipId }: { membershipId: string }) => {
+	const deletedMembership = await Membership.findOneAndDelete({
+    _id: membershipId
   });
 
   // delete keys associated with the membership
@@ -107,7 +107,5 @@ const deleteMembership = async ({ membershipId }: { membershipId: string }) => {
     });
   }
 
-  return deletedMembership;
+	return deletedMembership;
 };
-
-export { validateMembership, addMemberships, findMembership, deleteMembership };

@@ -125,6 +125,10 @@ const changePassword = async (
                 setPasswordChanged(true);
                 setCurrentPassword('');
                 setNewPassword('');
+
+                window.location.href = '/login';
+
+                // move to login page
               } catch (error) {
                 setCurrentPasswordError(true);
                 console.log(error);

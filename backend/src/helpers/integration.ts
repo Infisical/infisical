@@ -15,7 +15,6 @@ import {
 import { 
     UnauthorizedRequestError,
 } from '../utils/errors';
-import RequestError from '../utils/requestError';
 
 interface Update {
     workspace: string;
@@ -36,7 +35,7 @@ interface Update {
  * @param {String} obj.code - code
  * @returns {IntegrationAuth} integrationAuth - integration auth after OAuth2 code-token exchange
 */
-const handleOAuthExchangeHelper = async ({
+export const handleOAuthExchangeHelper = async ({
     workspaceId,
     integration,
     code,
@@ -110,7 +109,7 @@ const handleOAuthExchangeHelper = async ({
  * @param {Object} obj
  * @param {Object} obj.workspaceId - id of workspace
  */
-const syncIntegrationsHelper = async ({
+export const syncIntegrationsHelper = async ({
     workspaceId,
     environment
 }: {
@@ -162,7 +161,7 @@ const syncIntegrationsHelper = async ({
  * @param {String} obj.integrationAuthId - id of integration auth
  * @param {String} refreshToken - decrypted refresh token
  */
- const getIntegrationAuthRefreshHelper = async ({ integrationAuthId }: { integrationAuthId: Types.ObjectId }) => {
+export const getIntegrationAuthRefreshHelper = async ({ integrationAuthId }: { integrationAuthId: Types.ObjectId }) => {
     const integrationAuth = await IntegrationAuth
         .findById(integrationAuthId)
         .select('+refreshCiphertext +refreshIV +refreshTag');
@@ -187,7 +186,7 @@ const syncIntegrationsHelper = async ({
  * @param {String} obj.integrationAuthId - id of integration auth
  * @returns {String} accessToken - decrypted access token
  */
-const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrationAuthId: Types.ObjectId }) => {
+export const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrationAuthId: Types.ObjectId }) => {
     let accessId;
     let accessToken;
     const integrationAuth = await IntegrationAuth
@@ -240,7 +239,7 @@ const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrati
  * @param {String} obj.integrationAuthId - id of integration auth
  * @param {String} obj.refreshToken - refresh token
  */
-const setIntegrationAuthRefreshHelper = async ({
+export const setIntegrationAuthRefreshHelper = async ({
     integrationAuthId,
     refreshToken
 }: {
@@ -282,7 +281,7 @@ const setIntegrationAuthRefreshHelper = async ({
  * @param {String} obj.accessToken - access token
  * @param {Date} obj.accessExpiresAt - expiration date of access token
  */
-const setIntegrationAuthAccessHelper = async ({
+export const setIntegrationAuthAccessHelper = async ({
     integrationAuthId,
     accessId,
     accessToken,
@@ -327,13 +326,4 @@ const setIntegrationAuthAccessHelper = async ({
     });
     
     return integrationAuth;
-}
-
-export {
-    handleOAuthExchangeHelper,
-    syncIntegrationsHelper,
-    getIntegrationAuthRefreshHelper,
-    getIntegrationAuthAccessHelper,
-    setIntegrationAuthRefreshHelper,
-    setIntegrationAuthAccessHelper
 }

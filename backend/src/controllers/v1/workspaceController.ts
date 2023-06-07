@@ -13,6 +13,7 @@ import {
   createWorkspace as create,
   deleteWorkspace as deleteWork,
 } from "../../helpers/workspace";
+import { EELicenseService } from '../../ee/services';
 import { addMemberships } from "../../helpers/membership";
 import { ADMIN } from "../../variables";
 
@@ -113,6 +114,18 @@ export const createWorkspace = async (req: Request, res: Response) => {
 
   if (!membershipOrg) {
     throw new Error("Failed to validate organization membership");
+  }
+
+  const plan = await EELicenseService.getOrganizationPlan(organizationId);
+  
+  if (plan.workspaceLimit !== null) {
+    // case: limit imposed on number of workspaces allowed
+    if (plan.workspacesUsed >= plan.workspaceLimit) {
+      // case: number of workspaces used exceeds the number of workspaces allowed
+      return res.status(400).send({
+        message: 'Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces.'
+      });
+    }
   }
 
   if (workspaceName.length < 1) {

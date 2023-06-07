@@ -68,7 +68,7 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
     environment,
     secrets,
     channel: channel ? channel : 'cli',
-    ipAddress: req.ip
+    ipAddress: req.realIP
   });
 
   await pushKeys({
@@ -111,6 +111,7 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
  * @returns
  */
 export const pullSecrets = async (req: Request, res: Response) => {
+	let secrets;
   const postHogClient = await TelemetryService.getPostHogClient();
   const environment: string = req.query.environment as string;
   const channel: string = req.query.channel as string;
@@ -128,17 +129,16 @@ export const pullSecrets = async (req: Request, res: Response) => {
     throw new Error('Failed to validate environment');
   }
 
-  let secrets = await pull({
+  secrets = await pull({
     userId,
     workspaceId,
     environment,
     channel: channel ? channel : 'cli',
-    ipAddress: req.ip
+    ipAddress: req.realIP
   });
 
   if (channel !== 'cli') {
-    // FIX: Fix this any
-    secrets = reformatPullSecrets({ secrets }) as any;
+    secrets = reformatPullSecrets({ secrets });
   }
 
   if (postHogClient) {

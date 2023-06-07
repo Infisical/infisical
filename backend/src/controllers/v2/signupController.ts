@@ -114,7 +114,9 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 
   // issue tokens
   const tokens = await issueAuthTokens({
-    userId: user._id.toString()
+    userId: user._id,
+    ip: req.realIP,
+    userAgent: req.headers['user-agent'] ?? ''
   });
 
   token = tokens.token;
@@ -237,7 +239,9 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
 
   // issue tokens
   const tokens = await issueAuthTokens({
-    userId: user._id.toString()
+    userId: user._id,
+    ip: req.realIP,
+    userAgent: req.headers['user-agent'] ?? ''
   });
 
   token = tokens.token;
