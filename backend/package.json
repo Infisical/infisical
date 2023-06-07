@@ -58,7 +58,7 @@
     "start": "node build/index.js",
     "dev": "nodemon",
     "swagger-autogen": "node ./swagger/index.ts",
-    "build": "rimraf ./build && tsc && cp -R ./src/templates ./build",
+    "build": "rimraf ./build && tsc && cp -R ./src/templates ./build && cp -R ./src/data ./build",
     "lint": "eslint . --ext .ts",
     "lint-and-fix": "eslint . --ext .ts --fix",
     "lint-staged": "lint-staged",
