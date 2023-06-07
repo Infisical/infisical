@@ -112,19 +112,12 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
     }
   );
 
-<<<<<<< HEAD
-		// issue tokens
-		const tokens = await issueAuthTokens({
-			userId: user._id,
-			ip: req.realIP,
-			userAgent: req.headers['user-agent'] ?? ''
-		});
-=======
   // issue tokens
   const tokens = await issueAuthTokens({
-    userId: user._id.toString()
+    userId: user._id,
+    ip: req.realIP,
+    userAgent: req.headers['user-agent'] ?? ''
   });
->>>>>>> origin/main
 
   token = tokens.token;
 
@@ -244,19 +237,12 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
     }
   );
 
-<<<<<<< HEAD
-		// issue tokens
-		const tokens = await issueAuthTokens({
-			userId: user._id,
-			ip: req.realIP,
-			userAgent: req.headers['user-agent'] ?? ''
-		});
-=======
   // issue tokens
   const tokens = await issueAuthTokens({
-    userId: user._id.toString()
+    userId: user._id,
+    ip: req.realIP,
+    userAgent: req.headers['user-agent'] ?? ''
   });
->>>>>>> origin/main
 
   token = tokens.token;
 

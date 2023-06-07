@@ -46,68 +46,6 @@ interface V2PushSecret {
  */
 export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
 	// upload (encrypted) secrets to workspace with id [workspaceId]
-<<<<<<< HEAD
-	try {
-		const postHogClient = await TelemetryService.getPostHogClient();
-		let { secrets }: { secrets: V2PushSecret[] } = req.body;
-		const { keys, environment, channel } = req.body;
-		const { workspaceId } = req.params;
-
-		// validate environment
-		const workspaceEnvs = req.membership.workspace.environments;
-		if (!workspaceEnvs.find(({ slug }: { slug: string }) => slug === environment)) {
-			throw new Error('Failed to validate environment');
-		}
-
-		// sanitize secrets
-		secrets = secrets.filter(
-			(s: V2PushSecret) => s.secretKeyCiphertext !== '' && s.secretValueCiphertext !== ''
-		);
-
-		await push({
-			userId: req.user._id,
-			workspaceId,
-			environment,
-			secrets,
-			channel: channel ? channel : 'cli',
-			ipAddress: req.realIP
-		});
-
-		await pushKeys({
-			userId: req.user._id,
-			workspaceId,
-			keys
-		});
-
-		if (postHogClient) {
-			postHogClient.capture({
-				event: 'secrets pushed',
-				distinctId: req.user.email,
-				properties: {
-					numberOfSecrets: secrets.length,
-					environment,
-					workspaceId,
-					channel: channel ? channel : 'cli'
-				}
-			});
-		}
-
-		// trigger event - push secrets
-		EventService.handleEvent({
-			event: eventPushSecrets({
-				workspaceId: new Types.ObjectId(workspaceId),
-				environment
-			})
-		});
-
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to upload workspace secrets'
-		});
-	}
-=======
   const postHogClient = await TelemetryService.getPostHogClient();
   let { secrets }: { secrets: V2PushSecret[] } = req.body;
   const { keys, environment, channel } = req.body;
@@ -130,7 +68,7 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
     environment,
     secrets,
     channel: channel ? channel : 'cli',
-    ipAddress: req.ip
+    ipAddress: req.realIP
   });
 
   await pushKeys({
@@ -159,7 +97,6 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
       environment
     })
   });
->>>>>>> origin/main
 
 	return res.status(200).send({
 		message: 'Successfully uploaded workspace secrets'
@@ -174,59 +111,7 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
  * @returns
  */
 export const pullSecrets = async (req: Request, res: Response) => {
-<<<<<<< HEAD
 	let secrets;
-	try {
-		const postHogClient = await TelemetryService.getPostHogClient();
-		const environment: string = req.query.environment as string;
-		const channel: string = req.query.channel as string;
-		const { workspaceId } = req.params;
-
-		let userId;
-		if (req.user) {
-			userId = req.user._id.toString();
-		} else if (req.serviceTokenData) {
-			userId = req.serviceTokenData.user.toString();
-		}
-		// validate environment
-		const workspaceEnvs = req.membership.workspace.environments;
-		if (!workspaceEnvs.find(({ slug }: { slug: string }) => slug === environment)) {
-			throw new Error('Failed to validate environment');
-		}
-
-		secrets = await pull({
-			userId,
-			workspaceId,
-			environment,
-			channel: channel ? channel : 'cli',
-			ipAddress: req.realIP
-		});
-
-		if (channel !== 'cli') {
-			secrets = reformatPullSecrets({ secrets });
-		}
-
-		if (postHogClient) {
-			// capture secrets pushed event in production
-			postHogClient.capture({
-				distinctId: req.user.email,
-				event: 'secrets pulled',
-				properties: {
-					numberOfSecrets: secrets.length,
-					environment,
-					workspaceId,
-					channel: channel ? channel : 'cli'
-				}
-			});
-		}
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to pull workspace secrets'
-		});
-	}
-=======
   const postHogClient = await TelemetryService.getPostHogClient();
   const environment: string = req.query.environment as string;
   const channel: string = req.query.channel as string;
@@ -244,17 +129,16 @@ export const pullSecrets = async (req: Request, res: Response) => {
     throw new Error('Failed to validate environment');
   }
 
-  let secrets = await pull({
+  secrets = await pull({
     userId,
     workspaceId,
     environment,
     channel: channel ? channel : 'cli',
-    ipAddress: req.ip
+    ipAddress: req.realIP
   });
 
   if (channel !== 'cli') {
-    // FIX: Fix this any
-    secrets = reformatPullSecrets({ secrets }) as any;
+    secrets = reformatPullSecrets({ secrets });
   }
 
   if (postHogClient) {
@@ -270,7 +154,6 @@ export const pullSecrets = async (req: Request, res: Response) => {
       }
     });
   }
->>>>>>> origin/main
 
 	return res.status(200).send({
 		secrets
