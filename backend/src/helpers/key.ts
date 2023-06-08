@@ -17,7 +17,7 @@ interface Key {
  * @param {String} obj.keys.nonce - nonce for encryption
  * @param {String} obj.keys.userId - id of receiver user
  */
-const pushKeys = async ({
+export const pushKeys = async ({
 	userId,
 	workspaceId,
 	keys
@@ -51,5 +51,3 @@ const pushKeys = async ({
     }))
   );
 };
-
-export { pushKeys };

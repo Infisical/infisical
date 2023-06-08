@@ -17,6 +17,7 @@ const passwordCheck = ({
   setPasswordErrorLowerCase,
   errorCheck
 }: PasswordCheckProps) => {
+  
   if (!password || password.length < 14) {
     setPasswordErrorLength(true);
     errorCheck = true;

@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node';
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
@@ -14,18 +13,9 @@ import { getSaltRounds } from '../../config';
  * @returns 
  */
 export const getAPIKeyData = async (req: Request, res: Response) => {
-    let apiKeyData;
-    try {
-        apiKeyData = await APIKeyData.find({
-            user: req.user._id
-        });
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-        Sentry.captureException(err);
-        return res.status(400).send({
-            message: 'Failed to get API key data'
-        });
-    }
+    const apiKeyData = await APIKeyData.find({
+        user: req.user._id
+    });
     
     return res.status(200).send({
         apiKeyData
@@ -38,39 +28,30 @@ export const getAPIKeyData = async (req: Request, res: Response) => {
  * @param res 
  */
 export const createAPIKeyData = async (req: Request, res: Response) => {
-    let apiKey, apiKeyData;
-    try {
-        const { name, expiresIn } = req.body;
-        
-        const secret = crypto.randomBytes(16).toString('hex');
-        const secretHash = await bcrypt.hash(secret, await getSaltRounds());
-        
-		const expiresAt = new Date();
-		expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
-        
-        apiKeyData = await new APIKeyData({
-            name,
-            lastUsed: new Date(),
-            expiresAt,
-            user: req.user._id,
-            secretHash
-        }).save();
-        
-        // return api key data without sensitive data
-        apiKeyData = await APIKeyData.findById(apiKeyData._id);
-        
-        if (!apiKeyData) throw new Error('Failed to find API key data');
-        
-        apiKey = `ak.${apiKeyData._id.toString()}.${secret}`;
-            
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-        Sentry.captureException(err);
-        return res.status(400).send({
-            message: 'Failed to API key data'
-        });
-    }
+    const { name, expiresIn } = req.body;
     
+    const secret = crypto.randomBytes(16).toString('hex');
+    const secretHash = await bcrypt.hash(secret, await getSaltRounds());
+    
+    const expiresAt = new Date();
+    expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
+    
+    let apiKeyData = await new APIKeyData({
+        name,
+        lastUsed: new Date(),
+        expiresAt,
+        user: req.user._id,
+        secretHash
+    }).save();
+    
+    // return api key data without sensitive data
+    // FIX: fix this any
+    apiKeyData = await APIKeyData.findById(apiKeyData._id) as any
+    
+    if (!apiKeyData) throw new Error('Failed to find API key data');
+    
+    const apiKey = `ak.${apiKeyData._id.toString()}.${secret}`;
+            
     return res.status(200).send({
         apiKey,
         apiKeyData
@@ -84,19 +65,8 @@ export const createAPIKeyData = async (req: Request, res: Response) => {
  * @returns 
  */
 export const deleteAPIKeyData = async (req: Request, res: Response) => {
-    let apiKeyData;
-    try {
-        const { apiKeyDataId } = req.params;
-
-        apiKeyData = await APIKeyData.findByIdAndDelete(apiKeyDataId);
-        
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-        Sentry.captureException(err);
-        return res.status(400).send({
-            message: 'Failed to delete API key data'
-        });
-    }
+    const { apiKeyDataId } = req.params;
+    const apiKeyData = await APIKeyData.findByIdAndDelete(apiKeyDataId);
     
     return res.status(200).send({
         apiKeyData

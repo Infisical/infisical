@@ -16,10 +16,10 @@ const props = {
     fontFamily: 'monospace',
     margin: '4px',
     MozAppearance: 'textfield',
-    width: '55px',
+    width: '48px',
     borderRadius: '5px',
     fontSize: '24px',
-    height: '55px',
+    height: '48px',
     paddingLeft: '7',
     backgroundColor: '#0d1117',
     color: 'white',
@@ -115,7 +115,7 @@ export default function MFAStep({
   };
 
   return (
-    <form className="mx-auto w-max px-8 pb-4 pt-4 md:mb-16">
+    <form className="mx-auto w-max md:px-8 pb-4 pt-4 md:mb-16">
       <p className="text-l flex justify-center text-bunker-300">{t('mfa.step2-message')}</p>
       <p className="text-l my-1 flex justify-center font-semibold text-bunker-300">{email} </p>
       <div className="hidden md:block w-max min-w-[20rem] mx-auto">

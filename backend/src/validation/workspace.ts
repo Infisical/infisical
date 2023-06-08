@@ -51,7 +51,6 @@ export const validateClientForWorkspace = async ({
 	requiredPermissions?: string[];
 	requireBlindIndicesEnabled: boolean;
 }) => {
-	
 	const workspace = await Workspace.findById(workspaceId);
 
 	if (!workspace) throw WorkspaceNotFoundError({

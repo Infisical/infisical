@@ -7,7 +7,6 @@ import { useRouter } from 'next/router';
 
 // import ListBox from '@app/components/basic/Listbox';
 import InitialLoginStep from '@app/components/login/InitialLoginStep';
-import LoginStep from '@app/components/login/LoginStep';
 import MFAStep from '@app/components/login/MFAStep';
 import PasswordInputStep from '@app/components/login/PasswordInputStep';
 import { useProviderAuth } from '@app/hooks/useProviderAuth';
@@ -22,7 +21,6 @@ export default function Login() {
   const [step, setStep] = useState(1);
   const { t } = useTranslation();
   // const lang = router.locale ?? 'en';
-  const [isLoginWithEmail, setIsLoginWithEmail] = useState(false);
   const {
     providerAuthToken,
     email: providerEmail,
@@ -70,20 +68,14 @@ export default function Login() {
       );
     }
 
-    if (isLoginWithEmail && loginStep === 1) {
-      return (
-        <LoginStep
-          email={email}
-          setEmail={setEmail}
-          password={password}
-          setPassword={setPassword}
-          setStep={setStep}
-        />
-      );
-    }
-
-    if (!isLoginWithEmail && loginStep === 1) {
-      return <InitialLoginStep setIsLoginWithEmail={setIsLoginWithEmail} />;
+    if (loginStep === 1) {
+      return <InitialLoginStep 
+        setStep={setStep}
+        email={email}
+        setEmail={setEmail}
+        password={password}
+        setPassword={setPassword}
+      />;
     }
 
     if (step === 2) {

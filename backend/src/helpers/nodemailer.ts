@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node';
 import fs from 'fs';
 import path from 'path';
 import handlebars from 'handlebars';
@@ -14,7 +13,7 @@ let smtpTransporter: nodemailer.Transporter;
  * @param {String[]} obj.recipients - email addresses of people to send email to
  * @param {Object} obj.substitutions - object containing template substitutions
  */
-const sendMail = async ({
+export const sendMail = async ({
   template,
   subjectLine,
   recipients,
@@ -26,29 +25,22 @@ const sendMail = async ({
   substitutions: any;
 }) => {
   if (await getSmtpConfigured()) {
-    try {
-      const html = fs.readFileSync(
-        path.resolve(__dirname, '../templates/' + template),
-        'utf8'
-      );
-      const temp = handlebars.compile(html);
-      const htmlToSend = temp(substitutions);
+    const html = fs.readFileSync(
+      path.resolve(__dirname, '../templates/' + template),
+      'utf8'
+    );
+    const temp = handlebars.compile(html);
+    const htmlToSend = temp(substitutions);
 
-      await smtpTransporter.sendMail({
-        from: `"${await getSmtpFromName()}" <${await getSmtpFromAddress()}>`,
-        to: recipients.join(', '),
-        subject: subjectLine,
-        html: htmlToSend
-      });
-    } catch (err) {
-      Sentry.setUser(null);
-      Sentry.captureException(err);
-    }
+    await smtpTransporter.sendMail({
+      from: `"${await getSmtpFromName()}" <${await getSmtpFromAddress()}>`,
+      to: recipients.join(', '),
+      subject: subjectLine,
+      html: htmlToSend
+    });
   }
 };
 
-const setTransporter = (transporter: nodemailer.Transporter) => {
+export const setTransporter = (transporter: nodemailer.Transporter) => {
   smtpTransporter = transporter;
 };
-
-export { sendMail, setTransporter };

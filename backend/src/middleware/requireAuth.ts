@@ -71,10 +71,12 @@ const requireAuth = ({
 				req.user = authPayload;
 				break;
 			default:
-				authPayload = await getAuthUserPayload({
+				const { user, tokenVersionId } = await getAuthUserPayload({
 					authTokenValue
 				});
-				req.user = authPayload;
+				authPayload = user;
+				req.user = user;
+				req.tokenVersionId = tokenVersionId;
 				break;
 		}
 
@@ -88,8 +90,9 @@ const requireAuth = ({
 			authMode,
 			authPayload, // User, ServiceAccount, ServiceTokenData
 			authChannel: getChannelFromUserAgent(req.headers['user-agent']),
-			authIP: req.ip,
-			authUserAgent: req.headers['user-agent'] ?? 'other'
+			authIP: req.realIP,
+			authUserAgent: req.headers['user-agent'] ?? 'other',
+			tokenVersionId: req.tokenVersionId
 		}
 
 		return next();

@@ -1,5 +1,5 @@
-import NodeCache from 'node-cache';
 import * as Sentry from '@sentry/node';
+import NodeCache from 'node-cache';
 import { 
     getLicenseKey,
     getLicenseServerKey,

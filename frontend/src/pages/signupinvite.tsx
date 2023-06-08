@@ -7,7 +7,7 @@ import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { faCheck, faWarning, faX } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faWarning, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import jsrp from 'jsrp';
 import queryString from 'query-string';
@@ -17,7 +17,9 @@ import { encodeBase64 } from 'tweetnacl-util';
 import Button from '@app/components/basic/buttons/Button';
 import InputField from '@app/components/basic/InputField';
 import attemptLogin from '@app/components/utilities/attemptLogin';
-import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
+
+import checkPassword from '@app/components/utilities/checks/checkPassword';
+
 import Aes256Gcm from '@app/components/utilities/cryptography/aes-256-gcm';
 import { deriveArgonKey } from '@app/components/utilities/cryptography/crypto';
 import issueBackupKey from '@app/components/utilities/cryptography/issueBackupKey';
@@ -25,28 +27,36 @@ import { saveTokenToLocalStorage } from '@app/components/utilities/saveTokenToLo
 import SecurityClient from '@app/components/utilities/SecurityClient';
 import getOrganizations from '@app/pages/api/organization/getOrgs';
 import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserProjects';
-
+import {
+  useGetCommonPasswords
+} from '@app/hooks/api';
 import completeAccountInformationSignupInvite from './api/auth/CompleteAccountInformationSignupInvite';
 import verifySignupInvite from './api/auth/VerifySignupInvite';
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
 
+type Errors = {
+  length?: string,
+  upperCase?: string,
+  lowerCase?: string,
+  number?: string,
+  specialChar?: string,
+  repeatedChar?: string,
+};
+
 export default function SignupInvite() {
+  const { data: commonPasswords } = useGetCommonPasswords();
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [firstNameError, setFirstNameError] = useState(false);
   const [lastNameError, setLastNameError] = useState(false);
-  const [passwordErrorLength, setPasswordErrorLength] = useState(false);
-  const [passwordErrorNumber, setPasswordErrorNumber] = useState(false);
-  const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
-  const [errorLogin, setErrorLogin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [backupKeyError, setBackupKeyError] = useState(false);
-  const [verificationToken, setVerificationToken] = useState('');
   const [backupKeyIssued, setBackupKeyIssued] = useState(false);
+  const [errors, setErrors] = useState<Errors>({});
 
   const router = useRouter();
   const parsedUrl = queryString.parse(router.asPath.split('?')[1]);
@@ -70,12 +80,11 @@ export default function SignupInvite() {
     } else {
       setLastNameError(false);
     }
-    errorCheck = passwordCheck({
+  
+    errorCheck = checkPassword({
       password,
-      setPasswordErrorLength,
-      setPasswordErrorNumber,
-      setPasswordErrorLowerCase,
-      errorCheck
+      commonPasswords,
+      setErrors
     });
 
     if (!errorCheck) {
@@ -252,60 +261,43 @@ export default function SignupInvite() {
           label="Password"
           onChangeHandler={(pass) => {
             setPassword(pass);
-            passwordCheck({
+            checkPassword({
               password: pass,
-              setPasswordErrorLength,
-              setPasswordErrorNumber,
-              setPasswordErrorLowerCase,
-              errorCheck: false
+              commonPasswords,
+              setErrors
             });
           }}
           type="password"
           value={password}
           isRequired
-          error={passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase}
+          error={Object.keys(errors).length > 0}
           autoComplete="new-password"
           id="new-password"
         />
-        {passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber ? (
-          <div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
-            <div className="text-gray-400 text-sm mb-1">Password should contain at least:</div>
-            <div className="flex flex-row justify-start items-center ml-1">
-              {passwordErrorLength ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
-              )}
-              <div className={`${passwordErrorLength ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                14 characters
-              </div>
+        {Object.keys(errors).length > 0 && (
+            <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
+              <div className="mb-2 text-sm text-gray-400">Password should contain at least:</div> 
+              {Object.keys(errors).map((key) => {
+                if (errors[key as keyof Errors]) {
+                  return (
+                    <div className="ml-1 flex flex-row items-top justify-start" key={key}>
+                      <div>
+                        <FontAwesomeIcon 
+                          icon={faXmark} 
+                          className="text-md text-red ml-0.5 mr-2.5"
+                        />
+                      </div>
+                      <p className="text-gray-400 text-sm">
+                        {errors[key as keyof Errors]} 
+                      </p>
+                    </div>
+                  );
+                }
+
+                return null;
+              })}
             </div>
-            <div className="flex flex-row justify-start items-center ml-1">
-              {passwordErrorLowerCase ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
-              )}
-              <div
-                className={`${passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'} text-sm`}
-              >
-                1 lowercase character
-              </div>
-            </div>
-            <div className="flex flex-row justify-start items-center ml-1">
-              {passwordErrorNumber ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
-              )}
-              <div className={`${passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                1 number
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="py-2" />
-        )}
+          )}
       </div>
       <div className="flex flex-col items-center justify-center md:px-4 md:py-5 mt-2 px-2 py-3 max-h-24 max-w-max mx-auto text-lg">
         <Button

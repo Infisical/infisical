@@ -218,6 +218,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
           algorithm: ALGORITHM_AES_256_GCM,
           keyEncoding: ENCODING_SCHEME_UTF8,
           tags: u.tags,
+          folder: u.folder
         })
     );
 
@@ -296,7 +297,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
       workspaceId: new Types.ObjectId(workspaceId),
       actions,
       channel,
-      ipAddress: req.ip,
+      ipAddress: req.realIP,
     });
   }
 
@@ -562,7 +563,7 @@ export const createSecrets = async (req: Request, res: Response) => {
       workspaceId: new Types.ObjectId(workspaceId),
       actions: [addAction],
       channel,
-      ipAddress: req.ip,
+      ipAddress: req.realIP,
     }));
 
   // (EE) take a secret snapshot
@@ -784,7 +785,7 @@ export const getSecrets = async (req: Request, res: Response) => {
       workspaceId: new Types.ObjectId(workspaceId as string),
       actions: [readAction],
       channel,
-      ipAddress: req.ip,
+      ipAddress: req.realIP,
     }));
 
   const postHogClient = await TelemetryService.getPostHogClient();
@@ -909,13 +910,13 @@ export const updateSecrets = async (req: Request, res: Response) => {
             keyEncoding: ENCODING_SCHEME_UTF8,
             tags,
             ...(secretCommentCiphertext !== undefined &&
-            secretCommentIV &&
-            secretCommentTag
+              secretCommentIV &&
+              secretCommentTag
               ? {
-                  secretCommentCiphertext,
-                  secretCommentIV,
-                  secretCommentTag,
-                }
+                secretCommentCiphertext,
+                secretCommentIV,
+                secretCommentTag,
+              }
               : {}),
           },
         },
@@ -1019,7 +1020,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(key),
         actions: [updateAction],
         channel,
-        ipAddress: req.ip,
+        ipAddress: req.realIP,
       }));
 
     // (EE) take a secret snapshot
@@ -1157,7 +1158,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(key),
         actions: [deleteAction],
         channel,
-        ipAddress: req.ip,
+        ipAddress: req.realIP,
       }));
 
     // (EE) take a secret snapshot

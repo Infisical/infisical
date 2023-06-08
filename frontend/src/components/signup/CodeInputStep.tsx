@@ -85,7 +85,7 @@ export default function CodeInputStep({
   };
 
   return (
-    <div className="mx-auto h-full w-full pb-4 px-8">
+    <div className="mx-auto h-full w-full pb-4 md:px-8">
       <p className="text-md flex justify-center text-bunker-200">{t('signup.step2-message')}</p>
       <p className="text-md flex justify-center font-semibold my-1 text-bunker-200">{email} </p>
       <div className="hidden md:block w-max min-w-[20rem] mx-auto">

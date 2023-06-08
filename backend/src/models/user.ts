@@ -21,7 +21,6 @@ export interface IUser extends Document {
 	tag?: string;
 	salt?: string;
 	verifier?: string;
-	refreshVersion?: number;
 	isMfaEnabled: boolean;
 	mfaMethods: boolean;
 	devices: {
@@ -91,11 +90,6 @@ const userSchema = new Schema<IUser>(
 			type: String,
 			select: false
 		},
-		refreshVersion: {
-			type: Number,
-			default: 0,
-			select: false
-		},
 		isMfaEnabled: {
 			type: Boolean,
 			default: false
@@ -108,7 +102,8 @@ const userSchema = new Schema<IUser>(
 				ip: String,
 				userAgent: String
 			}],
-			default: []
+			default: [],
+			select: false
 		}
 	}, 
 	{

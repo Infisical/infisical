@@ -40,7 +40,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           ref={ref}
           className={twMerge(
             `inline-flex items-center justify-between rounded-md
-            bg-bunker-800 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-gray-500`,
+            bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-gray-500`,
             className
           )}
         >
@@ -56,7 +56,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
         <SelectPrimitive.Portal>
           <SelectPrimitive.Content
             className={twMerge(
-              'relative top-1 z-[100] overflow-hidden rounded-md bg-bunker-800 font-inter text-bunker-100 shadow-md',
+              'relative top-1 z-[100] overflow-hidden rounded-md bg-mineshaft-900 border border-mineshaft-600 font-inter text-bunker-100 shadow-md',
               dropdownContainerClassName
             )}
             position={position}

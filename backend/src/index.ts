@@ -1,18 +1,19 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 dotenv.config();
-import express from 'express';
-import helmet from 'helmet';
-import cors from 'cors';
-import { DatabaseService } from './services';
-import { EELicenseService } from './ee/services';
-import { setUpHealthEndpoint } from './services/health';
-import cookieParser from 'cookie-parser';
-import swaggerUi = require('swagger-ui-express');
+import express from "express";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const swaggerFile = require('../spec.json');
+require('express-async-errors');
+import helmet from "helmet";
+import cors from "cors";
+import { DatabaseService } from "./services";
+import { EELicenseService } from "./ee/services";
+import { setUpHealthEndpoint } from "./services/health";
+import cookieParser from "cookie-parser";
+import swaggerUi = require("swagger-ui-express");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const requestIp = require('request-ip');
-import { apiLimiter } from './helpers/rateLimiter';
+const swaggerFile = require("../spec.json");
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+import { apiLimiter } from "./helpers/rateLimiter";
 import {
   workspace as eeWorkspaceRouter,
   secret as eeSecretRouter,
@@ -20,7 +21,7 @@ import {
   action as eeActionRouter,
   organizations as eeOrganizationsRouter,
   cloudProducts as eeCloudProductsRouter,
-} from './ee/routes/v1';
+} from "./ee/routes/v1";
 import {
   signup as v1SignupRouter,
   auth as v1AuthRouter,
@@ -40,7 +41,7 @@ import {
   integration as v1IntegrationRouter,
   integrationAuth as v1IntegrationAuthRouter,
   secretsFolder as v1SecretsFolder,
-} from './routes/v1';
+} from "./routes/v1";
 import {
   signup as v2SignupRouter,
   auth as v2AuthRouter,
@@ -54,19 +55,19 @@ import {
   apiKeyData as v2APIKeyDataRouter,
   environment as v2EnvironmentRouter,
   tags as v2TagsRouter,
-} from './routes/v2';
+} from "./routes/v2";
 import {
   auth as v3AuthRouter,
   secrets as v3SecretsRouter,
   signup as v3SignupRouter,
   workspaces as v3WorkspacesRouter,
-} from './routes/v3';
-import { healthCheck } from './routes/status';
-import { getLogger } from './utils/logger';
-import { RouteNotFoundError } from './utils/errors';
-import { requestErrorHandler } from './middleware/requestErrorHandler';
-import { getNodeEnv, getPort, getSiteURL } from './config';
-import { setup } from './utils/setup';
+} from "./routes/v3";
+import { healthCheck } from "./routes/status";
+import { getLogger } from "./utils/logger";
+import { RouteNotFoundError } from "./utils/errors";
+import { requestErrorHandler } from "./middleware/requestErrorHandler";
+import { getNodeEnv, getPort, getSiteURL } from "./config";
+import { setup } from "./utils/setup";
 
 const main = async () => {
   await setup();
@@ -74,7 +75,7 @@ const main = async () => {
   await EELicenseService.initGlobalFeatureSet();
 
   const app = express();
-  app.enable('trust proxy');
+  app.enable("trust proxy");
   app.use(express.json());
   app.use(cookieParser());
   app.use(
@@ -84,67 +85,74 @@ const main = async () => {
     })
   );
 
-  app.use(requestIp.mw());
-
-  if ((await getNodeEnv()) === 'production') {
+  if ((await getNodeEnv()) === "production") {
     // enable app-wide rate-limiting + helmet security
     // in production
-    app.disable('x-powered-by');
+    app.disable("x-powered-by");
     app.use(apiLimiter);
     app.use(helmet());
   }
 
+  app.use((req, res, next) => {
+    // default to IP address provided by Cloudflare
+    const cfIp = req.headers['cf-connecting-ip'];
+    req.realIP = Array.isArray(cfIp) ? cfIp[0] : (cfIp as string) || req.ip;
+    next();
+  });
+
   // (EE) routes
-  app.use('/api/v1/secret', eeSecretRouter);
-  app.use('/api/v1/secret-snapshot', eeSecretSnapshotRouter);
-  app.use('/api/v1/workspace', eeWorkspaceRouter);
-  app.use('/api/v1/action', eeActionRouter);
-  app.use('/api/v1/organizations', eeOrganizationsRouter);
-  app.use('/api/v1/cloud-products', eeCloudProductsRouter);
+  app.use("/api/v1/secret", eeSecretRouter);
+  app.use("/api/v1/secret-snapshot", eeSecretSnapshotRouter);
+  app.use("/api/v1/workspace", eeWorkspaceRouter);
+  app.use("/api/v1/action", eeActionRouter);
+  app.use("/api/v1/organizations", eeOrganizationsRouter);
+  app.use("/api/v1/cloud-products", eeCloudProductsRouter);
 
   // v1 routes (default)
-  app.use('/api/v1/signup', v1SignupRouter);
-  app.use('/api/v1/auth', v1AuthRouter);
-  app.use('/api/v1/bot', v1BotRouter);
-  app.use('/api/v1/user', v1UserRouter);
-  app.use('/api/v1/user-action', v1UserActionRouter);
-  app.use('/api/v1/organization', v1OrganizationRouter);
-  app.use('/api/v1/workspace', v1WorkspaceRouter);
-  app.use('/api/v1/membership-org', v1MembershipOrgRouter);
-  app.use('/api/v1/membership', v1MembershipRouter);
-  app.use('/api/v1/key', v1KeyRouter);
-  app.use('/api/v1/invite-org', v1InviteOrgRouter);
-  app.use('/api/v1/secret', v1SecretRouter); // deprecate
-  app.use('/api/v1/service-token', v1ServiceTokenRouter); // deprecate
-  app.use('/api/v1/password', v1PasswordRouter);
-  app.use('/api/v1/stripe', v1StripeRouter);
-  app.use('/api/v1/integration', v1IntegrationRouter);
-  app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
-  app.use('/api/v1/folders', v1SecretsFolder);
+  app.use("/api/v1/signup", v1SignupRouter);
+  app.use("/api/v1/auth", v1AuthRouter);
+  app.use("/api/v1/bot", v1BotRouter);
+  app.use("/api/v1/user", v1UserRouter);
+  app.use("/api/v1/user-action", v1UserActionRouter);
+  app.use("/api/v1/organization", v1OrganizationRouter);
+  app.use("/api/v1/workspace", v1WorkspaceRouter);
+  app.use("/api/v1/membership-org", v1MembershipOrgRouter);
+  app.use("/api/v1/membership", v1MembershipRouter);
+  app.use("/api/v1/key", v1KeyRouter);
+  app.use("/api/v1/invite-org", v1InviteOrgRouter);
+  app.use("/api/v1/secret", v1SecretRouter); // deprecate
+  app.use("/api/v1/service-token", v1ServiceTokenRouter); // deprecate
+  app.use("/api/v1/password", v1PasswordRouter);
+  app.use("/api/v1/stripe", v1StripeRouter);
+  app.use("/api/v1/integration", v1IntegrationRouter);
+  app.use("/api/v1/integration-auth", v1IntegrationAuthRouter);
+  app.use("/api/v1/folders", v1SecretsFolder);
 
   // v2 routes (improvements)
-  app.use('/api/v2/signup', v2SignupRouter);
-  app.use('/api/v2/auth', v2AuthRouter);
-  app.use('/api/v2/users', v2UsersRouter);
-  app.use('/api/v2/organizations', v2OrganizationsRouter);
-  app.use('/api/v2/workspace', v2EnvironmentRouter);
-  app.use('/api/v2/workspace', v2TagsRouter);
-  app.use('/api/v2/workspace', v2WorkspaceRouter);
-  app.use('/api/v2/secret', v2SecretRouter); // deprecate
-  app.use('/api/v2/secrets', v2SecretsRouter); // note: in the process of moving to v3/secrets
-  app.use('/api/v2/service-token', v2ServiceTokenDataRouter);
-  app.use('/api/v2/service-accounts', v2ServiceAccountsRouter); // new
-  app.use('/api/v2/api-key', v2APIKeyDataRouter);
+  app.use("/api/v2/signup", v2SignupRouter);
+  app.use("/api/v2/auth", v2AuthRouter);
+  app.use("/api/v2/users", v2UsersRouter);
+  app.use("/api/v2/organizations", v2OrganizationsRouter);
+  app.use("/api/v2/workspace", v2EnvironmentRouter);
+  app.use("/api/v2/workspace", v2TagsRouter);
+  app.use("/api/v2/workspace", v2WorkspaceRouter);
+  app.use("/api/v2/secret", v2SecretRouter); // deprecate
+  app.use("/api/v2/secrets", v2SecretsRouter); // note: in the process of moving to v3/secrets
+  app.use("/api/v2/service-token", v2ServiceTokenDataRouter);
+  app.use("/api/v2/service-accounts", v2ServiceAccountsRouter); // new
+  app.use("/api/v2/api-key", v2APIKeyDataRouter);
 
   // v3 routes (experimental)
-  app.use('/api/v3/secrets', v3SecretsRouter);
-  app.use('/api/v3/workspaces', v3WorkspacesRouter);
+  app.use("/api/v3/auth", v3AuthRouter);
+  app.use("/api/v3/secrets", v3SecretsRouter);
+  app.use("/api/v3/workspaces", v3WorkspacesRouter);
+  app.use("/api/v3/signup", v3SignupRouter);
 
   // api docs
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile));
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
   // server status
-  app.use('/api', healthCheck);
+  app.use("/api", healthCheck);
 
   //* Handle unrouted requests and respond with proper error message as well as status code
   app.use((req, res, next) => {
@@ -159,7 +167,7 @@ const main = async () => {
   app.use(requestErrorHandler);
 
   const server = app.listen(await getPort(), async () => {
-    (await getLogger('backend-main')).info(
+    (await getLogger("backend-main")).info(
       `Server started listening at port ${await getPort()}`
     );
   });
@@ -167,7 +175,7 @@ const main = async () => {
   // await createTestUserForDevelopment();
   setUpHealthEndpoint(server);
 
-  server.on('close', async () => {
+  server.on("close", async () => {
     await DatabaseService.closeDatabase();
   });
 

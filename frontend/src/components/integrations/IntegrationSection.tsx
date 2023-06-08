@@ -37,7 +37,7 @@ const ProjectIntegrationSection = ({
     <div className="mb-12">
       <div className="mx-4 mb-4 mt-6 flex max-w-5xl flex-col items-start justify-between px-2 text-xl">
         <h1 className="text-3xl font-semibold">Current Integrations</h1>
-        <p className="text-base text-gray-400">Manage integrations with third-party services.</p>
+        <p className="text-base text-bunker-300">Manage integrations with third-party services.</p>
       </div>
       {integrations.map((integration: Integration) => {
         return (

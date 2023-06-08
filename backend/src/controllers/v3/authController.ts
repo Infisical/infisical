@@ -113,7 +113,7 @@ export const login2 = async (req: Request, res: Response) => {
 
         const user = await User.findOne({
             email,
-        }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag');
+        }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag +devices');
 
         if (!user) throw new Error('Failed to find user');
 
@@ -179,12 +179,16 @@ export const login2 = async (req: Request, res: Response) => {
 
                     await checkUserDevice({
                         user,
-                        ip: req.ip,
+                        ip: req.realIP,
                         userAgent: req.headers['user-agent'] ?? ''
                     });
 
                     // issue tokens
-                    const tokens = await issueAuthTokens({ userId: user._id.toString() });
+                    const tokens = await issueAuthTokens({ 
+                        userId: user._id,
+                        ip: req.realIP,
+                        userAgent: req.headers['user-agent'] ?? ''
+                    });
 
                     // store (refresh) token in httpOnly cookie
                     res.cookie('jid', tokens.refreshToken, {
@@ -239,7 +243,7 @@ export const login2 = async (req: Request, res: Response) => {
                         userId: user._id,
                         actions: [loginAction],
                         channel: getChannelFromUserAgent(req.headers['user-agent']),
-                        ipAddress: req.ip
+                        ipAddress: req.realIP
                     });
 
                     return res.status(200).send(response);
