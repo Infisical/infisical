@@ -57,7 +57,7 @@ const Button = ({
     color === 'mineshaft' && !activityStatus && 'bg-mineshaft',
     (color === 'primary' || !color) && activityStatus && 'bg-primary border border-primary-400 opacity-80 hover:opacity-100',
     (color === 'primary' || !color) && !activityStatus && 'bg-primary',
-    color === 'red' && 'bg-red',
+    color === 'red' && 'bg-red-800 border border-red',
 
     // Changing the opacity when active vs when not
     activityStatus ? 'opacity-100 cursor-pointer' : 'opacity-40',
