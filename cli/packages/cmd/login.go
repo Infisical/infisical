@@ -331,6 +331,7 @@ func askForDomain() error {
 	}
 
 	urlValidation := func(input string) error {
+		input = strings.Replace(input, "Example - ", "", 1)
 		_, err := url.ParseRequestURI(input)
 		if err != nil {
 			return errors.New("this is an invalid url")
