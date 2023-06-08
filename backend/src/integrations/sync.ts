@@ -1706,11 +1706,12 @@ const syncSecretsCheckly = async ({
     if (!(key in getSecretsRes)) {
       // case: secret does not exist in checkly
       // -> add secret
+      
       await standardRequest.post(
         `${INTEGRATION_CHECKLY_API_URL}/v1/variables`,
         {
           key,
-          value: secrets[key] ? secrets[key] : 'EMPTY'
+          value: secrets[key]
         },
         {
           headers: {
@@ -1724,20 +1725,23 @@ const syncSecretsCheckly = async ({
     } else {
       // case: secret exists in checkly
       // -> update/set secret
-      await standardRequest.put(
-        `${INTEGRATION_CHECKLY_API_URL}/v1/variables/${key}`,
-        {
-          value: secrets[key] ? secrets[key] : 'EMPTY'
-        },
-        {
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "X-Checkly-Account": integration.appId
+      
+      if (secrets[key] !== getSecretsRes[key]) {
+        await standardRequest.put(
+          `${INTEGRATION_CHECKLY_API_URL}/v1/variables/${key}`,
+          {
+            value: secrets[key]
           },
-        }
-      );
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+              "X-Checkly-Account": integration.appId
+            },
+          }
+        );
+      }
     }
   }
 
