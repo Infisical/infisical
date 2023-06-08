@@ -5,7 +5,6 @@ import { EELicenseService } from '../../ee/services';
 import { initSmtp } from '../../services/smtp';
 import { createTestUserForDevelopment } from '../addDevelopmentUser';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { patchRouterParam } = require('../patchAsyncRoutes');
 import { validateEncryptionKeysConfig } from './validateConfig';
 import {
   backfillSecretVersions,
@@ -38,7 +37,6 @@ import { initializePassport } from '../auth';
  * - Re-encrypting data
  */
 export const setup = async () => {
-  patchRouterParam();
   await validateEncryptionKeysConfig();
   await TelemetryService.logTelemetryMessage();
 

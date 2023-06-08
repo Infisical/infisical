@@ -1,4 +1,5 @@
 import * as express from 'express';
+import { Types } from 'mongoose';
 import { 
 	IUser,
 	IServiceAccount,
@@ -39,7 +40,9 @@ declare global {
 			serviceTokenData: any;
 			apiKeyData: any;
 			query?: any;
+			tokenVersionId?: Types.ObjectId;
 			authData: AuthData;
+			realIP: string;
 			requestData: {
 				[key: string]: string
 			};

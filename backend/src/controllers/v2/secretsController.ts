@@ -297,7 +297,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
       workspaceId: new Types.ObjectId(workspaceId),
       actions,
       channel,
-      ipAddress: req.ip,
+      ipAddress: req.realIP,
     });
   }
 
@@ -563,7 +563,7 @@ export const createSecrets = async (req: Request, res: Response) => {
       workspaceId: new Types.ObjectId(workspaceId),
       actions: [addAction],
       channel,
-      ipAddress: req.ip,
+      ipAddress: req.realIP,
     }));
 
   // (EE) take a secret snapshot
@@ -785,7 +785,7 @@ export const getSecrets = async (req: Request, res: Response) => {
       workspaceId: new Types.ObjectId(workspaceId as string),
       actions: [readAction],
       channel,
-      ipAddress: req.ip,
+      ipAddress: req.realIP,
     }));
 
   const postHogClient = await TelemetryService.getPostHogClient();
@@ -1020,7 +1020,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(key),
         actions: [updateAction],
         channel,
-        ipAddress: req.ip,
+        ipAddress: req.realIP,
       }));
 
     // (EE) take a secret snapshot
@@ -1158,7 +1158,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
         workspaceId: new Types.ObjectId(key),
         actions: [deleteAction],
         channel,
-        ipAddress: req.ip,
+        ipAddress: req.realIP,
       }));
 
     // (EE) take a secret snapshot

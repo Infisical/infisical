@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import * as Sentry from '@sentry/node';
 import { User, MembershipOrg } from '../../models';
 import { completeAccount } from '../../helpers/user';
 import {
@@ -20,136 +19,130 @@ import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
  */
 export const completeAccountSignup = async (req: Request, res: Response) => {
 	let user, token, refreshToken;
-	try {
-		const {
-			email,
-			firstName,
-			lastName,
-			protectedKey,
-			protectedKeyIV,
-			protectedKeyTag,
-			publicKey,
-			encryptedPrivateKey,
-			encryptedPrivateKeyIV,
-			encryptedPrivateKeyTag,
-			salt,
-			verifier,
-			organizationName
-		}: {
-			email: string;
-			firstName: string;
-			lastName: string;
-			protectedKey: string;
-			protectedKeyIV: string;
-			protectedKeyTag: string;
-			publicKey: string;
-			encryptedPrivateKey: string;
-			encryptedPrivateKeyIV: string;
-			encryptedPrivateKeyTag: string;
-			salt: string;
-			verifier: string;
-			organizationName: string;
-		} = req.body;
+  const {
+    email,
+    firstName,
+    lastName,
+    protectedKey,
+    protectedKeyIV,
+    protectedKeyTag,
+    publicKey,
+    encryptedPrivateKey,
+    encryptedPrivateKeyIV,
+    encryptedPrivateKeyTag,
+    salt,
+    verifier,
+    organizationName
+  }: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    protectedKey: string;
+    protectedKeyIV: string;
+    protectedKeyTag: string;
+    publicKey: string;
+    encryptedPrivateKey: string;
+    encryptedPrivateKeyIV: string;
+    encryptedPrivateKeyTag: string;
+    salt: string;
+    verifier: string;
+    organizationName: string;
+  } = req.body;
 
-		// get user
-		user = await User.findOne({ email });
+  // get user
+  user = await User.findOne({ email });
 
-		if (!user || (user && user?.publicKey)) {
-			// case 1: user doesn't exist.
-			// case 2: user has already completed account
-			return res.status(403).send({
-				error: 'Failed to complete account for complete user'
-			});
-		}
+  if (!user || (user && user?.publicKey)) {
+    // case 1: user doesn't exist.
+    // case 2: user has already completed account
+    return res.status(403).send({
+      error: 'Failed to complete account for complete user'
+    });
+  }
 
-		// complete setting up user's account
-		user = await completeAccount({
-			userId: user._id.toString(),
-			firstName,
-			lastName,
-			encryptionVersion: 2,
-			protectedKey,
-			protectedKeyIV,
-			protectedKeyTag,
-			publicKey,
-			encryptedPrivateKey,
-			encryptedPrivateKeyIV,
-			encryptedPrivateKeyTag,
-			salt,
-			verifier
-		});
+  // complete setting up user's account
+  user = await completeAccount({
+    userId: user._id.toString(),
+    firstName,
+    lastName,
+    encryptionVersion: 2,
+    protectedKey,
+    protectedKeyIV,
+    protectedKeyTag,
+    publicKey,
+    encryptedPrivateKey,
+    encryptedPrivateKeyIV,
+    encryptedPrivateKeyTag,
+    salt,
+    verifier
+  });
 
-		if (!user)
-			throw new Error('Failed to complete account for non-existent user'); // ensure user is non-null
+  if (!user)
+    throw new Error('Failed to complete account for non-existent user'); // ensure user is non-null
 
-		// initialize default organization and workspace
-		await initializeDefaultOrg({
-			organizationName,
-			user
-		});
+  // initialize default organization and workspace
+  await initializeDefaultOrg({
+    organizationName,
+    user
+  });
 
-		// update organization membership statuses that are
-		// invited to completed with user attached
-		const membershipsToUpdate = await MembershipOrg.find({
-			inviteEmail: email,
-			status: INVITED
-		});
-		
-		membershipsToUpdate.forEach(async (membership) => {
-			await updateSubscriptionOrgQuantity({
-				organizationId: membership.organization.toString()
-			});
-		});
+  // update organization membership statuses that are
+  // invited to completed with user attached
+  const membershipsToUpdate = await MembershipOrg.find({
+    inviteEmail: email,
+    status: INVITED
+  });
+  
+  membershipsToUpdate.forEach(async (membership) => {
+    await updateSubscriptionOrgQuantity({
+      organizationId: membership.organization.toString()
+    });
+  });
 
-		// update organization membership statuses that are
-		// invited to completed with user attached
-		await MembershipOrg.updateMany(
-			{
-				inviteEmail: email,
-				status: INVITED
-			},
-			{
-				user,
-				status: ACCEPTED
-			}
-		);
+  // update organization membership statuses that are
+  // invited to completed with user attached
+  await MembershipOrg.updateMany(
+    {
+      inviteEmail: email,
+      status: INVITED
+    },
+    {
+      user,
+      status: ACCEPTED
+    }
+  );
 
-		// issue tokens
-		const tokens = await issueAuthTokens({
-			userId: user._id.toString()
-		});
+  // issue tokens
+  const tokens = await issueAuthTokens({
+    userId: user._id,
+    ip: req.realIP,
+    userAgent: req.headers['user-agent'] ?? ''
+  });
 
-		token = tokens.token;
+  token = tokens.token;
 
-		// sending a welcome email to new users
-		if (await getLoopsApiKey()) {
-			await standardRequest.post("https://app.loops.so/api/v1/events/send", {
-				"email": email,
-				"eventName": "Sign Up",
-				"firstName": firstName,
-				"lastName": lastName
-			}, {
-				headers: {
-					"Accept": "application/json",
-					"Authorization": "Bearer " + (await getLoopsApiKey())
-				},
-			});
-		}
+  // sending a welcome email to new users
+  if (await getLoopsApiKey()) {
+    await standardRequest.post("https://app.loops.so/api/v1/events/send", {
+      "email": email,
+      "eventName": "Sign Up",
+      "firstName": firstName,
+      "lastName": lastName
+    }, {
+      headers: {
+        "Accept": "application/json",
+        "Authorization": "Bearer " + (await getLoopsApiKey())
+      },
+    });
+  }
 
-		// store (refresh) token in httpOnly cookie
-		res.cookie('jid', tokens.refreshToken, {
-			httpOnly: true,
-			path: '/',
-			sameSite: 'strict',
-			secure: await getHttpsEnabled()
-		});
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to complete account setup'
-		});
-	}
+  // store (refresh) token in httpOnly cookie
+  res.cookie('jid', tokens.refreshToken, {
+    httpOnly: true,
+    path: '/',
+    sameSite: 'strict',
+    secure: await getHttpsEnabled()
+  });
 
 	return res.status(200).send({
 		message: 'Successfully set up account',
@@ -167,105 +160,99 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
  */
 export const completeAccountInvite = async (req: Request, res: Response) => {
 	let user, token, refreshToken;
-	try {
-		const {
-			email,
-			firstName,
-			lastName,
-			protectedKey,
-			protectedKeyIV,
-			protectedKeyTag,
-			publicKey,
-			encryptedPrivateKey,
-			encryptedPrivateKeyIV,
-			encryptedPrivateKeyTag,
-			salt,
-			verifier
-		} = req.body;
+  const {
+    email,
+    firstName,
+    lastName,
+    protectedKey,
+    protectedKeyIV,
+    protectedKeyTag,
+    publicKey,
+    encryptedPrivateKey,
+    encryptedPrivateKeyIV,
+    encryptedPrivateKeyTag,
+    salt,
+    verifier
+  } = req.body;
 
-		// get user
-		user = await User.findOne({ email });
+  // get user
+  user = await User.findOne({ email });
 
-		if (!user || (user && user?.publicKey)) {
-			// case 1: user doesn't exist.
-			// case 2: user has already completed account
-			return res.status(403).send({
-				error: 'Failed to complete account for complete user'
-			});
-		}
+  if (!user || (user && user?.publicKey)) {
+    // case 1: user doesn't exist.
+    // case 2: user has already completed account
+    return res.status(403).send({
+      error: 'Failed to complete account for complete user'
+    });
+  }
 
-		const membershipOrg = await MembershipOrg.findOne({
-			inviteEmail: email,
-			status: INVITED
-		});
+  const membershipOrg = await MembershipOrg.findOne({
+    inviteEmail: email,
+    status: INVITED
+  });
 
-		if (!membershipOrg) throw new Error('Failed to find invitations for email');
+  if (!membershipOrg) throw new Error('Failed to find invitations for email');
 
-		// complete setting up user's account
-		user = await completeAccount({
-			userId: user._id.toString(),
-			firstName,
-			lastName,
-			encryptionVersion: 2,
-			protectedKey,
-			protectedKeyIV,
-			protectedKeyTag,
-			publicKey,
-			encryptedPrivateKey,
-			encryptedPrivateKeyIV,
-			encryptedPrivateKeyTag,
-			salt,
-			verifier
-		});
+  // complete setting up user's account
+  user = await completeAccount({
+    userId: user._id.toString(),
+    firstName,
+    lastName,
+    encryptionVersion: 2,
+    protectedKey,
+    protectedKeyIV,
+    protectedKeyTag,
+    publicKey,
+    encryptedPrivateKey,
+    encryptedPrivateKeyIV,
+    encryptedPrivateKeyTag,
+    salt,
+    verifier
+  });
 
-		if (!user)
-			throw new Error('Failed to complete account for non-existent user');
-		
-		// update organization membership statuses that are
-		// invited to completed with user attached
-		const membershipsToUpdate = await MembershipOrg.find({
-			inviteEmail: email,
-			status: INVITED
-		});
-		
-		membershipsToUpdate.forEach(async (membership) => {
-			await updateSubscriptionOrgQuantity({
-				organizationId: membership.organization.toString()
-			});
-		});
+  if (!user)
+    throw new Error('Failed to complete account for non-existent user');
+  
+  // update organization membership statuses that are
+  // invited to completed with user attached
+  const membershipsToUpdate = await MembershipOrg.find({
+    inviteEmail: email,
+    status: INVITED
+  });
+  
+  membershipsToUpdate.forEach(async (membership) => {
+    await updateSubscriptionOrgQuantity({
+      organizationId: membership.organization.toString()
+    });
+  });
 
-		await MembershipOrg.updateMany(
-			{
-				inviteEmail: email,
-				status: INVITED
-			},
-			{
-				user,
-				status: ACCEPTED
-			}
-		);
+  await MembershipOrg.updateMany(
+    {
+      inviteEmail: email,
+      status: INVITED
+    },
+    {
+      user,
+      status: ACCEPTED
+    }
+  );
 
-		// issue tokens
-		const tokens = await issueAuthTokens({
-			userId: user._id.toString()
-		});
+  // issue tokens
+  const tokens = await issueAuthTokens({
+    userId: user._id,
+    ip: req.realIP,
+    userAgent: req.headers['user-agent'] ?? ''
+  });
 
-		token = tokens.token;
+  token = tokens.token;
 
-		// store (refresh) token in httpOnly cookie
-		res.cookie('jid', tokens.refreshToken, {
-			httpOnly: true,
-			path: '/',
-			sameSite: 'strict',
-			secure: await getHttpsEnabled()
-		});
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to complete account setup'
-		});
-	}
+  // store (refresh) token in httpOnly cookie
+  res.cookie('jid', tokens.refreshToken, {
+    httpOnly: true,
+    path: '/',
+    sameSite: 'strict',
+    secure: await getHttpsEnabled()
+  });
 
 	return res.status(200).send({
 		message: 'Successfully set up account',

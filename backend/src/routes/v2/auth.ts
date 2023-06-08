@@ -26,7 +26,7 @@ router.post(
 router.post(
   '/mfa/send',
   authLimiter,
-  body('email').isString().trim().notEmpty(),
+  body('email').isString().trim().notEmpty().isEmail(),
   validateRequest,
   authController.sendMfaToken
 );

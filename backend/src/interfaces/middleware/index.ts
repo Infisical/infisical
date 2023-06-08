@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import {
     IUser,
     IServiceAccount,
@@ -10,4 +11,5 @@ export interface AuthData {
     authChannel: string;
     authIP: string;
     authUserAgent: string;
+    tokenVersionId?: Types.ObjectId;
 }

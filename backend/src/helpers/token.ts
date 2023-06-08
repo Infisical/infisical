@@ -20,7 +20,7 @@ import { getSaltRounds } from "../config";
  * @param {Types.ObjectId} obj.organizationId
  * @returns {String} token - the created token
  */
-const createTokenHelper = async ({
+export const createTokenHelper = async ({
   type,
   email,
   phoneNumber,
@@ -121,7 +121,7 @@ const createTokenHelper = async ({
  * @param {String} obj.email - email associated with the token
  * @param {String} obj.token - value of the token
  */
-const validateTokenHelper = async ({
+export const validateTokenHelper = async ({
   type,
   email,
   phoneNumber,
@@ -213,5 +213,3 @@ const validateTokenHelper = async ({
   // case: token is valid
   await TokenData.findByIdAndDelete(tokenData._id);
 };
-
-export { createTokenHelper, validateTokenHelper };

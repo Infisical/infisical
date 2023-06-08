@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import * as Sentry from '@sentry/node';
 import {
     User,
     MembershipOrg
@@ -37,18 +36,9 @@ export const getMe = async (req: Request, res: Response) => {
         }
     }   
     */
-    let user;
-    try {
-        user = await User
-            .findById(req.user._id)
-            .select('+salt +publicKey +encryptedPrivateKey +iv +tag +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag');
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get current user'
-		});
-    }
+    const user = await User
+        .findById(req.user._id)
+        .select('+salt +publicKey +encryptedPrivateKey +iv +tag +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag');
     
     return res.status(200).send({
         user
@@ -64,29 +54,20 @@ export const getMe = async (req: Request, res: Response) => {
  * @returns 
  */
 export const updateMyMfaEnabled = async (req: Request, res: Response) => {
-    let user;
-    try {
-        const { isMfaEnabled }: { isMfaEnabled: boolean } = req.body;
-        req.user.isMfaEnabled = isMfaEnabled;
-        
-        if (isMfaEnabled) { 
-            // TODO: adapt this route/controller 
-            // to work for different forms of MFA
-            req.user.mfaMethods = ['email'];
-        } else {
-            req.user.mfaMethods = [];
-        }
-
-        await req.user.save();
-        
-        user = req.user;
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: "Failed to update current user's MFA status"
-		}); 
+    const { isMfaEnabled }: { isMfaEnabled: boolean } = req.body;
+    req.user.isMfaEnabled = isMfaEnabled;
+    
+    if (isMfaEnabled) { 
+        // TODO: adapt this route/controller 
+        // to work for different forms of MFA
+        req.user.mfaMethods = ['email'];
+    } else {
+        req.user.mfaMethods = [];
     }
+
+    await req.user.save();
+    
+    const user = req.user;
     
     return res.status(200).send({
         user
@@ -126,20 +107,11 @@ export const getMyOrganizations = async (req: Request, res: Response) => {
         }
     }   
     */
-	let organizations;
-	try {
-		organizations = (
-			await MembershipOrg.find({
-				user: req.user._id
-			}).populate('organization')
-		).map((m) => m.organization);
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: "Failed to get current user's organizations"
-		});
-	}
+  const organizations = (
+    await MembershipOrg.find({
+      user: req.user._id
+    }).populate('organization')
+  ).map((m) => m.organization);
 
 	return res.status(200).send({
 		organizations

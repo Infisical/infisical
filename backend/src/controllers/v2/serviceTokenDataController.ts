@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node';
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';

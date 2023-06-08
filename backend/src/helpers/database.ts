@@ -7,7 +7,7 @@ import { getLogger } from '../utils/logger';
  * @param {String} obj.mongoURL - mongo connection string
  * @returns 
  */
-const initDatabaseHelper = async ({
+export const initDatabaseHelper = async ({
     mongoURL
 }: {
     mongoURL: string;
@@ -30,7 +30,7 @@ const initDatabaseHelper = async ({
 /**
  * Close database conection
  */
-const closeDatabaseHelper = async () => {
+export const closeDatabaseHelper = async () => {
     return Promise.all([
         new Promise((resolve) => {
             if (mongoose.connection && mongoose.connection.readyState == 1) {
@@ -41,9 +41,4 @@ const closeDatabaseHelper = async () => {
             }
         })
     ]);
-}
-
-export {
-    initDatabaseHelper,
-    closeDatabaseHelper
 }

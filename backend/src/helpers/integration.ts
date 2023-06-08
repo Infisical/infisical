@@ -1,4 +1,3 @@
-import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
 import {
     Bot,
@@ -16,7 +15,6 @@ import {
 import { 
     UnauthorizedRequestError,
 } from '../utils/errors';
-import RequestError from '../utils/requestError';
 
 interface Update {
     workspace: string;
@@ -37,7 +35,7 @@ interface Update {
  * @param {String} obj.code - code
  * @returns {IntegrationAuth} integrationAuth - integration auth after OAuth2 code-token exchange
 */
-const handleOAuthExchangeHelper = async ({
+export const handleOAuthExchangeHelper = async ({
     workspaceId,
     integration,
     code,
@@ -48,66 +46,59 @@ const handleOAuthExchangeHelper = async ({
     code: string;
     environment: string;
 }) => {
-    let integrationAuth;
-    try {
-        const bot = await Bot.findOne({
-            workspace: workspaceId,
-            isActive: true
+    const bot = await Bot.findOne({
+        workspace: workspaceId,
+        isActive: true
+    });
+    
+    if (!bot) throw new Error('Bot must be enabled for OAuth2 code-token exchange');
+    
+    // exchange code for access and refresh tokens
+    const res = await exchangeCode({
+        integration,
+        code
+    });
+    
+    const update: Update = {
+        workspace: workspaceId,
+        integration
+    }
+    
+    switch (integration) {
+        case INTEGRATION_VERCEL:
+            update.teamId = res.teamId;
+            break;
+        case INTEGRATION_NETLIFY:
+            update.accountId = res.accountId;
+            break;
+    }
+    
+    const integrationAuth = await IntegrationAuth.findOneAndUpdate({
+        workspace: workspaceId,
+        integration
+    }, update, {
+        new: true,
+        upsert: true
+    });
+    
+    if (res.refreshToken) {
+        // case: refresh token returned from exchange
+        // set integration auth refresh token
+        await setIntegrationAuthRefreshHelper({
+            integrationAuthId: integrationAuth._id.toString(),
+            refreshToken: res.refreshToken
         });
-        
-        if (!bot) throw new Error('Bot must be enabled for OAuth2 code-token exchange');
-        
-        // exchange code for access and refresh tokens
-        const res = await exchangeCode({
-            integration,
-            code
+    }
+    
+    if (res.accessToken) {
+        // case: access token returned from exchange
+        // set integration auth access token
+        await setIntegrationAuthAccessHelper({
+            integrationAuthId: integrationAuth._id.toString(),
+            accessId: null,
+            accessToken: res.accessToken,
+            accessExpiresAt: res.accessExpiresAt
         });
-        
-        const update: Update = {
-            workspace: workspaceId,
-            integration
-        }
-        
-        switch (integration) {
-            case INTEGRATION_VERCEL:
-                update.teamId = res.teamId;
-                break;
-            case INTEGRATION_NETLIFY:
-                update.accountId = res.accountId;
-                break;
-        }
-        
-        integrationAuth = await IntegrationAuth.findOneAndUpdate({
-            workspace: workspaceId,
-            integration
-        }, update, {
-            new: true,
-            upsert: true
-        });
-        
-        if (res.refreshToken) {
-            // case: refresh token returned from exchange
-            // set integration auth refresh token
-            await setIntegrationAuthRefreshHelper({
-                integrationAuthId: integrationAuth._id.toString(),
-                refreshToken: res.refreshToken
-            });
-        }
-        
-        if (res.accessToken) {
-            // case: access token returned from exchange
-            // set integration auth access token
-            await setIntegrationAuthAccessHelper({
-                integrationAuthId: integrationAuth._id.toString(),
-                accessId: null,
-                accessToken: res.accessToken,
-                accessExpiresAt: res.accessExpiresAt
-            });
-        }
-    } catch (err) {
-        Sentry.setUser(null);
-        Sentry.captureException(err);
-        throw new Error('Failed to handle OAuth2 code-token exchange')
     }
     
     return integrationAuth;
@@ -118,54 +109,47 @@ const handleOAuthExchangeHelper = async ({
  * @param {Object} obj
  * @param {Object} obj.workspaceId - id of workspace
  */
-const syncIntegrationsHelper = async ({
+export const syncIntegrationsHelper = async ({
     workspaceId,
     environment
 }: {
     workspaceId: Types.ObjectId;
     environment?: string;
 }) => {
-    let integrations;
-    try {
-        integrations = await Integration.find({
-            workspace: workspaceId,
-            ...(environment ? {
-                environment
-            } : {}),
-            isActive: true,
-            app: { $ne: null }
+    const integrations = await Integration.find({
+        workspace: workspaceId,
+        ...(environment ? {
+            environment
+        } : {}),
+        isActive: true,
+        app: { $ne: null }
+    });
+
+    // for each workspace integration, sync/push secrets
+    // to that integration
+    for await (const integration of integrations) {
+        // get workspace, environment (shared) secrets
+        const secrets = await BotService.getSecrets({ // issue here?
+            workspaceId: integration.workspace,
+            environment: integration.environment
         });
 
-        // for each workspace integration, sync/push secrets
-        // to that integration
-        for await (const integration of integrations) {
-            // get workspace, environment (shared) secrets
-            const secrets = await BotService.getSecrets({ // issue here?
-                workspaceId: integration.workspace,
-                environment: integration.environment
-            });
+        const integrationAuth = await IntegrationAuth.findById(integration.integrationAuth);
+        if (!integrationAuth) throw new Error('Failed to find integration auth');
+        
+        // get integration auth access token
+        const access = await getIntegrationAuthAccessHelper({
+            integrationAuthId: integration.integrationAuth
+        });
 
-            const integrationAuth = await IntegrationAuth.findById(integration.integrationAuth);
-            if (!integrationAuth) throw new Error('Failed to find integration auth');
-            
-            // get integration auth access token
-            const access = await getIntegrationAuthAccessHelper({
-                integrationAuthId: integration.integrationAuth
-            });
-
-            // sync secrets to integration
-            await syncSecrets({
-                integration,
-                integrationAuth,
-                secrets,
-                accessId: access.accessId === undefined ? null : access.accessId,
-                accessToken: access.accessToken
-            });
-        }
-    } catch (err) {
-        Sentry.setUser(null);
-        Sentry.captureException(err);
-        throw new Error('Failed to sync secrets to integrations');
+        // sync secrets to integration
+        await syncSecrets({
+            integration,
+            integrationAuth,
+            secrets,
+            accessId: access.accessId === undefined ? null : access.accessId,
+            accessToken: access.accessToken
+        });
     }
 }
 
@@ -177,31 +161,19 @@ const syncIntegrationsHelper = async ({
  * @param {String} obj.integrationAuthId - id of integration auth
  * @param {String} refreshToken - decrypted refresh token
  */
- const getIntegrationAuthRefreshHelper = async ({ integrationAuthId }: { integrationAuthId: Types.ObjectId }) => {
-    let refreshToken;
-	
-    try {
-        const integrationAuth = await IntegrationAuth
-            .findById(integrationAuthId)
-            .select('+refreshCiphertext +refreshIV +refreshTag');
+export const getIntegrationAuthRefreshHelper = async ({ integrationAuthId }: { integrationAuthId: Types.ObjectId }) => {
+    const integrationAuth = await IntegrationAuth
+        .findById(integrationAuthId)
+        .select('+refreshCiphertext +refreshIV +refreshTag');
 
-        if (!integrationAuth) throw UnauthorizedRequestError({message: 'Failed to locate Integration Authentication credentials'});
+    if (!integrationAuth) throw UnauthorizedRequestError({message: 'Failed to locate Integration Authentication credentials'});
 
-        refreshToken = await BotService.decryptSymmetric({
-            workspaceId: integrationAuth.workspace,
-            ciphertext: integrationAuth.refreshCiphertext as string,
-            iv: integrationAuth.refreshIV as string,
-            tag: integrationAuth.refreshTag as string
-        });
-
-    } catch (err) {
-        Sentry.setUser(null);
-		Sentry.captureException(err);
-        if(err instanceof RequestError)
-            throw err
-        else
-            throw new Error('Failed to get integration refresh token');
-    }
+    const refreshToken = await BotService.decryptSymmetric({
+        workspaceId: integrationAuth.workspace,
+        ciphertext: integrationAuth.refreshCiphertext as string,
+        iv: integrationAuth.refreshIV as string,
+        tag: integrationAuth.refreshTag as string
+    });
     
     return refreshToken;
 }
@@ -214,53 +186,43 @@ const syncIntegrationsHelper = async ({
  * @param {String} obj.integrationAuthId - id of integration auth
  * @returns {String} accessToken - decrypted access token
  */
-const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrationAuthId: Types.ObjectId }) => {
+export const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrationAuthId: Types.ObjectId }) => {
     let accessId;
     let accessToken;
-    try {
-        const integrationAuth = await IntegrationAuth
-            .findById(integrationAuthId)
-            .select('workspace integration +accessCiphertext +accessIV +accessTag +accessExpiresAt + refreshCiphertext +accessIdCiphertext +accessIdIV +accessIdTag');
+    const integrationAuth = await IntegrationAuth
+        .findById(integrationAuthId)
+        .select('workspace integration +accessCiphertext +accessIV +accessTag +accessExpiresAt + refreshCiphertext +accessIdCiphertext +accessIdIV +accessIdTag');
 
-        if (!integrationAuth) throw UnauthorizedRequestError({message: 'Failed to locate Integration Authentication credentials'});
+    if (!integrationAuth) throw UnauthorizedRequestError({message: 'Failed to locate Integration Authentication credentials'});
 
-        accessToken = await BotService.decryptSymmetric({
-            workspaceId: integrationAuth.workspace,
-            ciphertext: integrationAuth.accessCiphertext as string,
-            iv: integrationAuth.accessIV as string,
-            tag: integrationAuth.accessTag as string
-        });
+    accessToken = await BotService.decryptSymmetric({
+        workspaceId: integrationAuth.workspace,
+        ciphertext: integrationAuth.accessCiphertext as string,
+        iv: integrationAuth.accessIV as string,
+        tag: integrationAuth.accessTag as string
+    });
 
-        if (integrationAuth?.accessExpiresAt && integrationAuth?.refreshCiphertext) {
-            // there is a access token expiration date
-            // and refresh token to exchange with the OAuth2 server
-            
-            if (integrationAuth.accessExpiresAt < new Date()) {
-                // access token is expired
-                const refreshToken = await getIntegrationAuthRefreshHelper({ integrationAuthId });
-                accessToken = await exchangeRefresh({
-                    integrationAuth,
-                    refreshToken
-                });
-            }
-        }
+    if (integrationAuth?.accessExpiresAt && integrationAuth?.refreshCiphertext) {
+        // there is a access token expiration date
+        // and refresh token to exchange with the OAuth2 server
         
-        if (integrationAuth?.accessIdCiphertext && integrationAuth?.accessIdIV && integrationAuth?.accessIdTag) {
-            accessId = await BotService.decryptSymmetric({
-                workspaceId: integrationAuth.workspace,
-                ciphertext: integrationAuth.accessIdCiphertext as string,
-                iv: integrationAuth.accessIdIV as string,
-                tag: integrationAuth.accessIdTag as string
+        if (integrationAuth.accessExpiresAt < new Date()) {
+            // access token is expired
+            const refreshToken = await getIntegrationAuthRefreshHelper({ integrationAuthId });
+            accessToken = await exchangeRefresh({
+                integrationAuth,
+                refreshToken
             });
         }
-
-    } catch (err) {
-        Sentry.setUser(null);
-		Sentry.captureException(err);
-        if(err instanceof RequestError)
-            throw err
-        else
-            throw new Error('Failed to get integration access token');
+    }
+    
+    if (integrationAuth?.accessIdCiphertext && integrationAuth?.accessIdIV && integrationAuth?.accessIdTag) {
+        accessId = await BotService.decryptSymmetric({
+            workspaceId: integrationAuth.workspace,
+            ciphertext: integrationAuth.accessIdCiphertext as string,
+            iv: integrationAuth.accessIdIV as string,
+            tag: integrationAuth.accessIdTag as string
+        });
     }
     
     return ({
@@ -277,7 +239,7 @@ const getIntegrationAuthAccessHelper = async ({ integrationAuthId }: { integrati
  * @param {String} obj.integrationAuthId - id of integration auth
  * @param {String} obj.refreshToken - refresh token
  */
-const setIntegrationAuthRefreshHelper = async ({
+export const setIntegrationAuthRefreshHelper = async ({
     integrationAuthId,
     refreshToken
 }: {
@@ -285,34 +247,27 @@ const setIntegrationAuthRefreshHelper = async ({
     refreshToken: string;
 }) => {
     
-    let integrationAuth;
-    try {
-        integrationAuth = await IntegrationAuth
-            .findById(integrationAuthId);
-        
-        if (!integrationAuth) throw new Error('Failed to find integration auth');
-        
-        const obj = await BotService.encryptSymmetric({
-            workspaceId: integrationAuth.workspace,
-            plaintext: refreshToken
-        });
-        
-        integrationAuth = await IntegrationAuth.findOneAndUpdate({
-            _id: integrationAuthId
-        }, {
-            refreshCiphertext: obj.ciphertext,
-            refreshIV: obj.iv,
-            refreshTag: obj.tag,
-            algorithm: ALGORITHM_AES_256_GCM,
-            keyEncoding: ENCODING_SCHEME_UTF8
-        }, {
-            new: true
-        });
-    } catch (err) {
-        Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to set integration auth refresh token');
-    }
+    let integrationAuth = await IntegrationAuth
+        .findById(integrationAuthId);
+    
+    if (!integrationAuth) throw new Error('Failed to find integration auth');
+    
+    const obj = await BotService.encryptSymmetric({
+        workspaceId: integrationAuth.workspace,
+        plaintext: refreshToken
+    });
+    
+    integrationAuth = await IntegrationAuth.findOneAndUpdate({
+        _id: integrationAuthId
+    }, {
+        refreshCiphertext: obj.ciphertext,
+        refreshIV: obj.iv,
+        refreshTag: obj.tag,
+        algorithm: ALGORITHM_AES_256_GCM,
+        keyEncoding: ENCODING_SCHEME_UTF8
+    }, {
+        new: true
+    });
     
     return integrationAuth;
 }
@@ -326,7 +281,7 @@ const setIntegrationAuthRefreshHelper = async ({
  * @param {String} obj.accessToken - access token
  * @param {Date} obj.accessExpiresAt - expiration date of access token
  */
-const setIntegrationAuthAccessHelper = async ({
+export const setIntegrationAuthAccessHelper = async ({
     integrationAuthId,
     accessId,
     accessToken,
@@ -337,54 +292,38 @@ const setIntegrationAuthAccessHelper = async ({
     accessToken: string;
     accessExpiresAt: Date | undefined;
 }) => {
-    let integrationAuth;
-    try {
-        integrationAuth = await IntegrationAuth.findById(integrationAuthId);
-        
-        if (!integrationAuth) throw new Error('Failed to find integration auth');
-        
-        const encryptedAccessTokenObj = await BotService.encryptSymmetric({
+    let integrationAuth = await IntegrationAuth.findById(integrationAuthId);
+    
+    if (!integrationAuth) throw new Error('Failed to find integration auth');
+    
+    const encryptedAccessTokenObj = await BotService.encryptSymmetric({
+        workspaceId: integrationAuth.workspace,
+        plaintext: accessToken
+    });
+    
+    let encryptedAccessIdObj;
+    if (accessId) {
+        encryptedAccessIdObj = await BotService.encryptSymmetric({
             workspaceId: integrationAuth.workspace,
-            plaintext: accessToken
-        });
-        
-        let encryptedAccessIdObj;
-        if (accessId) {
-            encryptedAccessIdObj = await BotService.encryptSymmetric({
-                workspaceId: integrationAuth.workspace,
-                plaintext: accessId
-            }); 
-        }
-        
-        integrationAuth = await IntegrationAuth.findOneAndUpdate({
-            _id: integrationAuthId
-        }, {
-            accessIdCiphertext: encryptedAccessIdObj?.ciphertext ?? undefined,
-            accessIdIV: encryptedAccessIdObj?.iv ?? undefined,
-            accessIdTag: encryptedAccessIdObj?.tag ?? undefined,
-            accessCiphertext: encryptedAccessTokenObj.ciphertext,
-            accessIV: encryptedAccessTokenObj.iv,
-            accessTag: encryptedAccessTokenObj.tag,
-            accessExpiresAt,
-            algorithm: ALGORITHM_AES_256_GCM,
-            keyEncoding: ENCODING_SCHEME_UTF8
-        }, {
-            new: true
-        });
-    } catch (err) {
-        Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to save integration auth access token');
+            plaintext: accessId
+        }); 
     }
     
+    integrationAuth = await IntegrationAuth.findOneAndUpdate({
+        _id: integrationAuthId
+    }, {
+        accessIdCiphertext: encryptedAccessIdObj?.ciphertext ?? undefined,
+        accessIdIV: encryptedAccessIdObj?.iv ?? undefined,
+        accessIdTag: encryptedAccessIdObj?.tag ?? undefined,
+        accessCiphertext: encryptedAccessTokenObj.ciphertext,
+        accessIV: encryptedAccessTokenObj.iv,
+        accessTag: encryptedAccessTokenObj.tag,
+        accessExpiresAt,
+        algorithm: ALGORITHM_AES_256_GCM,
+        keyEncoding: ENCODING_SCHEME_UTF8
+    }, {
+        new: true
+    });
+    
     return integrationAuth;
-}
-
-export {
-    handleOAuthExchangeHelper,
-    syncIntegrationsHelper,
-    getIntegrationAuthRefreshHelper,
-    getIntegrationAuthAccessHelper,
-    setIntegrationAuthRefreshHelper,
-    setIntegrationAuthAccessHelper
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { faCheck, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
+import { faBan,faCheck, faPlus, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import Button from '@app/components/basic/buttons/Button';
@@ -10,21 +10,31 @@ import InputField from '@app/components/basic/InputField';
 import ListBox from '@app/components/basic/Listbox';
 import ApiKeyTable from '@app/components/basic/table/ApiKeyTable';
 import NavHeader from '@app/components/navigation/NavHeader';
-import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
+import checkPassword from '@app/components/utilities/checks/checkPassword';
 import changePassword from '@app/components/utilities/cryptography/changePassword';
 import issueBackupKey from '@app/components/utilities/cryptography/issueBackupKey';
+import {
+  useGetCommonPasswords,
+  useRevokeAllSessions} from '@app/hooks/api';
 import { SecuritySection } from '@app/views/Settings/PersonalSettingsPage/SecuritySection/SecuritySection';
 
 import AddApiKeyDialog from '../../../components/basic/dialog/AddApiKeyDialog';
 import getAPIKeys from '../../api/apiKey/getAPIKeys';
 import getUser from '../../api/user/getUser';
 
+type Errors = {
+  length?: string,
+  upperCase?: string,
+  lowerCase?: string,
+  number?: string,
+  specialChar?: string,
+  repeatedChar?: string,
+};
+
 export default function PersonalSettings() {
+  const { data: commonPasswords } = useGetCommonPasswords();
   const [personalEmail, setPersonalEmail] = useState('');
   const [personalName, setPersonalName] = useState('');
-  const [passwordErrorLength, setPasswordErrorLength] = useState(false);
-  const [passwordErrorNumber, setPasswordErrorNumber] = useState(false);
-  const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
   const [currentPasswordError, setCurrentPasswordError] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -34,6 +44,9 @@ export default function PersonalSettings() {
   const [backupKeyError, setBackupKeyError] = useState(false);
   const [isAddApiKeyDialogOpen, setIsAddApiKeyDialogOpen] = useState(false);
   const [apiKeys, setApiKeys] = useState<any[]>([]);
+  const [errors, setErrors] = useState<Errors>({});
+  
+  const revokeAllSessions = useRevokeAllSessions();
 
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -154,78 +167,54 @@ export default function PersonalSettings() {
                   label={t('section.password.new') as string}
                   onChangeHandler={(password) => {
                     setNewPassword(password);
-                    passwordCheck({
+                    checkPassword({
                       password,
-                      setPasswordErrorLength,
-                      setPasswordErrorNumber,
-                      setPasswordErrorLowerCase,
-                      errorCheck: false
+                      commonPasswords,
+                      setErrors
                     });
                   }}
                   type="password"
                   value={newPassword}
                   isRequired
-                  error={passwordErrorLength && passwordErrorLowerCase && passwordErrorNumber}
+                  error={Object.keys(errors).length > 0}
                   autoComplete="new-password"
                   id="new-password"
                 />
               </div>
-              {passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber ? (
-                <div className="mt-3 mb-2 flex w-full max-w-xl flex-col items-start rounded-md bg-white/5 px-2 py-2">
-                  <div className="mb-1 text-sm text-gray-400">
-                    {t('section.password.validate-base')}
-                  </div>
-                  <div className="ml-1 flex flex-row items-center justify-start">
-                    {passwordErrorLength ? (
-                      <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-                    ) : (
-                      <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-                    )}
-                    <div
-                      className={`${
-                        passwordErrorLength ? 'text-gray-400' : 'text-gray-600'
-                      } text-sm`}
-                    >
-                      {t('section.password.validate-length')}
-                    </div>
-                  </div>
-                  <div className="ml-1 flex flex-row items-center justify-start">
-                    {passwordErrorLowerCase ? (
-                      <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-                    ) : (
-                      <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-                    )}
-                    <div
-                      className={`${
-                        passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'
-                      } text-sm`}
-                    >
-                      {t('section.password.validate-case')}
-                    </div>
-                  </div>
-                  <div className="ml-1 flex flex-row items-center justify-start">
-                    {passwordErrorNumber ? (
-                      <FontAwesomeIcon icon={faX} className="text-md mr-2.5 text-red" />
-                    ) : (
-                      <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
-                    )}
-                    <div
-                      className={`${
-                        passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'
-                      } text-sm`}
-                    >
-                      {t('section.password.validate-number')}
-                    </div>
-                  </div>
+              {Object.keys(errors).length > 0 && (
+                <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
+                  <div className="mb-2 text-sm text-gray-400">{t('section.password.validate-base')}</div> 
+                  {Object.keys(errors).map((key) => {
+                    if (errors[key as keyof Errors]) {
+                      return (
+                        <div className="ml-1 flex flex-row items-top justify-start" key={key}>
+                          <div>
+                            <FontAwesomeIcon 
+                              icon={faXmark} 
+                              className="text-md text-red ml-0.5 mr-2.5"
+                            />
+                          </div>
+                          <p className="text-gray-400 text-sm">
+                            {errors[key as keyof Errors]} 
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return null;
+                  })}
                 </div>
-              ) : (
-                <div className="py-2" />
               )}
               <div className="mt-3 flex w-52 flex-row items-center pr-3">
                 <Button
                   text={t('section.password.change') as string}
                   onButtonPressed={() => {
-                    if (!passwordErrorLength && !passwordErrorLowerCase && !passwordErrorNumber) {
+                    const errorCheck = checkPassword({
+                      password: newPassword,
+                      commonPasswords,
+                      setErrors
+                    });
+                    if (!errorCheck) {
                       changePassword(
                         personalEmail,
                         currentPassword,
@@ -237,13 +226,9 @@ export default function PersonalSettings() {
                       );
                     }
                   }}
+                  active={Object.keys(errors).length === 0 && currentPassword !== ''}
                   color="mineshaft"
                   size="md"
-                  active={
-                    newPassword !== '' &&
-                    currentPassword !== '' &&
-                    !(passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber)
-                  }
                   textDisabled={t('section.password.change') as string}
                 />
                 <FontAwesomeIcon
@@ -253,6 +238,28 @@ export default function PersonalSettings() {
                   } duration-300`}
                 />
               </div>
+            </div>
+            <div className="mb-6 mt-2 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pb-6 pt-2">
+              <div className="my-4 flex w-full flex-row justify-between">
+                <p className="text-xl font-semibold w-full">
+                  Sessions
+                </p>
+                <div className="w-40">
+                  <Button
+                    text="Revoke all"
+                    onButtonPressed={async () => {
+                      await revokeAllSessions.mutateAsync();
+                      router.push('/login');
+                    }}
+                    color="mineshaft"
+                    icon={faBan}
+                    size="md"
+                    />
+                </div>
+              </div>
+              <p className="mb-5 text-sm text-mineshaft-300">
+                Logging into Infisical via browser or CLI creates a session. Revoking all sessions logs your account out all active sessions across all browsers and CLIs.
+              </p> 
             </div>
 
             <div className="mt-2 mb-6 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pt-5 pb-6">
