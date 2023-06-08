@@ -201,10 +201,6 @@ const syncSecrets = async ({
         });
         break;
     }
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-  }
 };
 
 /**
@@ -1686,85 +1682,79 @@ const syncSecretsCheckly = async ({
   secrets: any;
   accessToken: string;
 }) => {
-  try {
-    // get secrets from travis-ci  
-    const getSecretsRes = (
-      await standardRequest.get(
+  // get secrets from travis-ci  
+  const getSecretsRes = (
+    await standardRequest.get(
+      `${INTEGRATION_CHECKLY_API_URL}/v1/variables`,
+      {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json",
+          "X-Checkly-Account": integration.appId
+        },
+      }
+    )
+  )
+  .data
+  .reduce((obj: any, secret: any) => ({
+      ...obj,
+      [secret.key]: secret.value
+  }), {});
+  
+  // add secrets
+  for await (const key of Object.keys(secrets)) {
+    if (!(key in getSecretsRes)) {
+      // case: secret does not exist in checkly
+      // -> add secret
+      await standardRequest.post(
         `${INTEGRATION_CHECKLY_API_URL}/v1/variables`,
+        {
+          key,
+          value: secrets[key] ? secrets[key] : 'EMPTY'
+        },
         {
           headers: {
             "Authorization": `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
             "X-Checkly-Account": integration.appId
           },
         }
-      )
-    )
-    .data
-    .reduce((obj: any, secret: any) => ({
-        ...obj,
-        [secret.key]: secret.value
-    }), {});
-    
-    // add secrets
-    for await (const key of Object.keys(secrets)) {
-      if (!(key in getSecretsRes)) {
-        // case: secret does not exist in checkly
-        // -> add secret
-        await standardRequest.post(
-          `${INTEGRATION_CHECKLY_API_URL}/v1/variables`,
-          {
-            key,
-            value: secrets[key] ? secrets[key] : 'EMPTY'
+      );
+    } else {
+      // case: secret exists in checkly
+      // -> update/set secret
+      await standardRequest.put(
+        `${INTEGRATION_CHECKLY_API_URL}/v1/variables/${key}`,
+        {
+          value: secrets[key] ? secrets[key] : 'EMPTY'
+        },
+        {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "X-Checkly-Account": integration.appId
           },
-          {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Accept": "application/json",
-              "Content-Type": "application/json",
-              "X-Checkly-Account": integration.appId
-            },
-          }
-        );
-      } else {
-        // case: secret exists in checkly
-        // -> update/set secret
-        await standardRequest.put(
-          `${INTEGRATION_CHECKLY_API_URL}/v1/variables/${key}`,
-          {
-            value: secrets[key] ? secrets[key] : 'EMPTY'
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-              "Accept": "application/json",
-              "X-Checkly-Account": integration.appId
-            },
-          }
-        );
-      }
+        }
+      );
     }
+  }
 
-    for await (const key of Object.keys(getSecretsRes)) {
-      if (!(key in secrets)){
-        // delete secret
-        await standardRequest.delete(
-          `${INTEGRATION_CHECKLY_API_URL}/v1/variables/${key}`,
-          {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Accept": "application/json",
-              "X-Checkly-Account": integration.appId
-            },
-          }
-        );
-      }
+  for await (const key of Object.keys(getSecretsRes)) {
+    if (!(key in secrets)){
+      // delete secret
+      await standardRequest.delete(
+        `${INTEGRATION_CHECKLY_API_URL}/v1/variables/${key}`,
+        {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept": "application/json",
+            "X-Checkly-Account": integration.appId
+          },
+        }
+      );
     }
-  } catch (err) {
-    Sentry.setUser(null);
-    Sentry.captureException(err);
-    throw new Error("Failed to sync secrets to Checkly");
   }
 };
 
