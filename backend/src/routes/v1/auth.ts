@@ -44,8 +44,6 @@ router.post(
   authController.checkAuth
 );
 
-
-
 router.get(
   '/redirect/google',
   authLimiter,
@@ -53,12 +51,27 @@ router.get(
     scope: ['profile', 'email'],
     session: false,
   }),
-)
+);
 
 router.get(
   '/callback/google',
   passport.authenticate('google', { failureRedirect: '/login/provider/error', session: false }),
   authController.handleAuthProviderCallback,
-)
+);
+
+router.get(
+  '/common-passwords',
+  authLimiter,
+  authController.getCommonPasswords
+);
+
+router.delete(
+  '/sessions',
+  authLimiter,
+  requireAuth({
+    acceptedAuthModes: [AUTH_MODE_JWT]
+  }), 
+  authController.revokeAllSessions
+);
 
 export default router;

@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import * as Sentry from '@sentry/node';
 import { User } from '../../models';
 import {
 	sendEmailVerification,
@@ -8,6 +7,7 @@ import {
 import { createToken } from '../../helpers/auth';
 import { BadRequestError } from '../../utils/errors';
 import { getInviteOnlySignup, getJwtSignupLifetime, getJwtSignupSecret, getSmtpConfigured } from '../../config';
+import { validateUserEmail } from '../../validation';
 
 /**
  * Signup step 1: Initialize account for user under email [email] and send a verification code
@@ -18,28 +18,23 @@ import { getInviteOnlySignup, getJwtSignupLifetime, getJwtSignupSecret, getSmtpC
  */
 export const beginEmailSignup = async (req: Request, res: Response) => {
 	let email: string;
-	try {
-		email = req.body.email;
+  email = req.body.email;
+  
+  // validate that email is not disposable
+  validateUserEmail(email);
 
-		const user = await User.findOne({ email }).select('+publicKey');
-		if (user && user?.publicKey) {
-			// case: user has already completed account
+  const user = await User.findOne({ email }).select('+publicKey');
+  if (user && user?.publicKey) {
+    // case: user has already completed account
 
-			return res.status(403).send({
-				error: 'Failed to send email verification code for complete account'
-			});
-		}
+    return res.status(403).send({
+      error: 'Failed to send email verification code for complete account'
+    });
+  }
 
-		// send send verification email
-		await sendEmailVerification({ email });
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		return res.status(400).send({
-			error: 'Failed to send email verification code'
-		});
-	}
-	
+  // send send verification email
+  await sendEmailVerification({ email });
+
 	return res.status(200).send({
 		message: `Sent an email verification code to ${email}`
 	});
@@ -54,55 +49,47 @@ export const beginEmailSignup = async (req: Request, res: Response) => {
  */
 export const verifyEmailSignup = async (req: Request, res: Response) => {
 	let user, token;
-	try {
-		const { email, code } = req.body;
+  const { email, code } = req.body;
 
-		// initialize user account
-		user = await User.findOne({ email }).select('+publicKey');
-		if (user && user?.publicKey) {
-			// case: user has already completed account
-			return res.status(403).send({
-				error: 'Failed email verification for complete user'
-			});
-		}
+  // initialize user account
+  user = await User.findOne({ email }).select('+publicKey');
+  if (user && user?.publicKey) {
+    // case: user has already completed account
+    return res.status(403).send({
+      error: 'Failed email verification for complete user'
+    });
+  }
 
-		if (await getInviteOnlySignup()) {
-			// Only one user can create an account without being invited. The rest need to be invited in order to make an account
-			const userCount = await User.countDocuments({})
-			if (userCount != 0) {
-				throw BadRequestError({ message: "New user sign ups are not allowed at this time. You must be invited to sign up." })
-			}
-		}
+  if (await getInviteOnlySignup()) {
+    // Only one user can create an account without being invited. The rest need to be invited in order to make an account
+    const userCount = await User.countDocuments({})
+    if (userCount != 0) {
+      throw BadRequestError({ message: "New user sign ups are not allowed at this time. You must be invited to sign up." })
+    }
+  }
 
-		// verify email
-		if (await getSmtpConfigured()) {
-			await checkEmailVerification({
-				email,
-				code
-			});
-		}
+  // verify email
+  if (await getSmtpConfigured()) {
+    await checkEmailVerification({
+      email,
+      code
+    });
+  }
 
-		if (!user) {
-			user = await new User({
-				email
-			}).save();
-		}
+  if (!user) {
+    user = await new User({
+      email
+    }).save();
+  }
 
-		// generate temporary signup token
-		token = createToken({
-			payload: {
-				userId: user._id.toString()
-			},
-			expiresIn: await getJwtSignupLifetime(),
-			secret: await getJwtSignupSecret()
-		});
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		return res.status(400).send({
-			error: 'Failed email verification'
-		});
-	}
+  // generate temporary signup token
+  token = createToken({
+    payload: {
+      userId: user._id.toString()
+    },
+    expiresIn: await getJwtSignupLifetime(),
+    secret: await getJwtSignupSecret()
+  });
 
 	return res.status(200).send({
 		message: 'Successfuly verified email',

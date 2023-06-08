@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import * as Sentry from '@sentry/node';
 import { Action, SecretVersion } from '../../models';
 import { ActionNotFoundError } from '../../../utils/errors';
 

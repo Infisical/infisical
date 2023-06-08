@@ -18,7 +18,7 @@ import {
  * @param {Types.ObjectId} obj.organizationId
  * @param {String[]} obj.acceptedRoles
  */
-const validateMembershipOrg = async ({
+export const validateMembershipOrg = async ({
 	userId,
 	organizationId,
 	acceptedRoles,
@@ -59,7 +59,7 @@ const validateMembershipOrg = async ({
  * @param {Object} queryObj - query object
  * @return {Object} membershipOrg - membership
  */
-const findMembershipOrg = (queryObj: any) => {
+export const findMembershipOrg = (queryObj: any) => {
 	const membershipOrg = MembershipOrg.findOne(queryObj);
 	return membershipOrg;
 };
@@ -72,7 +72,7 @@ const findMembershipOrg = (queryObj: any) => {
  * @param {String} obj.organizationId - id of organization.
  * @param {String[]} obj.roles - roles of users.
  */
-const addMembershipsOrg = async ({
+export const addMembershipsOrg = async ({
 	userIds,
 	organizationId,
 	roles,
@@ -111,7 +111,7 @@ const addMembershipsOrg = async ({
  * @param {Object} obj
  * @param {String} obj.membershipOrgId - id of organization membership to delete
  */
-const deleteMembershipOrg = async ({
+export const deleteMembershipOrg = async ({
 	membershipOrgId
 }: {
 	membershipOrgId: string;
@@ -149,10 +149,3 @@ const deleteMembershipOrg = async ({
 
 	return deletedMembershipOrg;
 };
-
-export {
-	validateMembershipOrg,
-	findMembershipOrg,
-	addMembershipsOrg, 
-	deleteMembershipOrg 
-}; 

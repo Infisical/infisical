@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import * as Sentry from '@sentry/node';
 import { Key } from '../../models';
 import { findMembership } from '../../helpers/membership';
 
@@ -11,34 +10,26 @@ import { findMembership } from '../../helpers/membership';
  * @returns
  */
 export const uploadKey = async (req: Request, res: Response) => {
-	try {
-		const { workspaceId } = req.params;
-		const { key } = req.body;
+  const { workspaceId } = req.params;
+  const { key } = req.body;
 
-		// validate membership of receiver
-		const receiverMembership = await findMembership({
-			user: key.userId,
-			workspace: workspaceId
-		});
+  // validate membership of receiver
+  const receiverMembership = await findMembership({
+    user: key.userId,
+    workspace: workspaceId
+  });
 
-		if (!receiverMembership) {
-			throw new Error('Failed receiver membership validation for workspace');
-		}
+  if (!receiverMembership) {
+    throw new Error('Failed receiver membership validation for workspace');
+  }
 
-		await new Key({
-			encryptedKey: key.encryptedKey,
-			nonce: key.nonce,
-			sender: req.user._id,
-			receiver: key.userId,
-			workspace: workspaceId
-		}).save();
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to upload key to workspace'
-		});
-	}
+  await new Key({
+    encryptedKey: key.encryptedKey,
+    nonce: key.nonce,
+    sender: req.user._id,
+    receiver: key.userId,
+    workspace: workspaceId
+  }).save();
 
 	return res.status(200).send({
 		message: 'Successfully uploaded key to workspace'
@@ -52,25 +43,16 @@ export const uploadKey = async (req: Request, res: Response) => {
  * @returns
  */
 export const getLatestKey = async (req: Request, res: Response) => {
-	let latestKey;
-	try {
-		const { workspaceId } = req.params;
+  const { workspaceId } = req.params;
 
-		// get latest key
-		latestKey = await Key.find({
-			workspace: workspaceId,
-			receiver: req.user._id
-		})
-			.sort({ createdAt: -1 })
-			.limit(1)
-			.populate('sender', '+publicKey');
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get latest key'
-		});
-	}
+  // get latest key
+  const latestKey = await Key.find({
+    workspace: workspaceId,
+    receiver: req.user._id
+  })
+    .sort({ createdAt: -1 })
+    .limit(1)
+    .populate('sender', '+publicKey');
 
 	const resObj: any = {};
 

@@ -31,7 +31,7 @@ import { InternalServerError } from "../utils/errors";
  * @param {String} obj.name - name of bot
  * @param {String} obj.workspaceId - id of workspace that bot belongs to
  */
-const createBot = async ({
+export const createBot = async ({
   name,
   workspaceId,
 }: {
@@ -93,7 +93,7 @@ const createBot = async ({
  * @param {String} obj.workspaceId - id of workspace
  * @param {String} obj.environment - environment
  */
-const getSecretsHelper = async ({
+export const getSecretsBotHelper = async ({
   workspaceId,
   environment,
 }: {
@@ -136,7 +136,7 @@ const getSecretsHelper = async ({
  * @param {String} obj.workspaceId - id of workspace
  * @returns {String} key - decrypted workspace key
  */
-const getKey = async ({ workspaceId }: { workspaceId: string }) => {
+export const getKey = async ({ workspaceId }: { workspaceId: string }) => {
   const encryptionKey = await getEncryptionKey();
   const rootEncryptionKey = await getRootEncryptionKey();
 
@@ -194,7 +194,7 @@ const getKey = async ({ workspaceId }: { workspaceId: string }) => {
  * @param {String} obj1.workspaceId - id of workspace
  * @param {String} obj1.plaintext - plaintext to encrypt
  */
-const encryptSymmetricHelper = async ({
+export const encryptSymmetricHelper = async ({
   workspaceId,
   plaintext,
 }: {
@@ -222,7 +222,7 @@ const encryptSymmetricHelper = async ({
  * @param {String} obj.iv - iv
  * @param {String} obj.tag - tag
  */
-const decryptSymmetricHelper = async ({
+export const decryptSymmetricHelper = async ({
   workspaceId,
   ciphertext,
   iv,
@@ -242,11 +242,4 @@ const decryptSymmetricHelper = async ({
   });
 
   return plaintext;
-};
-
-export {
-  createBot,
-  getSecretsHelper,
-  encryptSymmetricHelper,
-  decryptSymmetricHelper
 };

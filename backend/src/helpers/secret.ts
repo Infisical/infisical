@@ -60,7 +60,7 @@ interface Update {
  * @param {String} obj.environment - environment for secrets
  * @param {Object[]} obj.secrets - secrets to push
  */
-const v1PushSecrets = async ({
+export const v1PushSecrets = async ({
   userId,
   workspaceId,
   environment,
@@ -304,7 +304,7 @@ const v1PushSecrets = async ({
  * @param {String} obj.channel - channel (web/cli/auto)
  * @param {String} obj.ipAddress - ip address of request to push secrets
  */
-const v2PushSecrets = async ({
+export const v2PushSecrets = async ({
   userId,
   workspaceId,
   environment,
@@ -530,7 +530,7 @@ const v2PushSecrets = async ({
  * @param {String} obj.workspaceId - id of workspace to pull from
  * @param {String} obj.environment - environment for secrets
  */
-const getSecrets = async ({
+export const getSecrets = async ({
   userId,
   workspaceId,
   environment,
@@ -570,7 +570,7 @@ const getSecrets = async ({
  * @param {String} obj.channel - channel (web/cli/auto)
  * @param {String} obj.ipAddress - ip address of request to push secrets
  */
-const pullSecrets = async ({
+export const pullSecrets = async ({
   userId,
   workspaceId,
   environment,
@@ -614,7 +614,7 @@ const pullSecrets = async ({
  * @param {Object} obj
  * @param {Object} obj.secrets
  */
-const reformatPullSecrets = ({ secrets }: { secrets: ISecret[] }) => {
+export const reformatPullSecrets = ({ secrets }: { secrets: ISecret[] }) => {
   const reformatedSecrets = secrets.map((s) => ({
     _id: s._id,
     workspace: s.workspace,
@@ -645,5 +645,3 @@ const reformatPullSecrets = ({ secrets }: { secrets: ISecret[] }) => {
 
   return reformatedSecrets;
 };
-
-export { v1PushSecrets, v2PushSecrets, pullSecrets, reformatPullSecrets };

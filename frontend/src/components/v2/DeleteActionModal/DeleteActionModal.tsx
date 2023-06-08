@@ -73,10 +73,15 @@ export const DeleteActionModal = ({
         }
         onClose={onClose}
       >
-        <form>
+        <form
+          onSubmit={(evt) => {
+            evt.preventDefault();
+            if (deleteKey === inputData) onDelete();
+          }}
+        >
           <FormControl
             label={
-              <div className="pb-2 text-sm break-words">
+              <div className="break-words pb-2 text-sm">
                 Type <span className="font-bold">{deleteKey}</span> to delete the resource
               </div>
             }

@@ -45,8 +45,8 @@ import {
  * @param {Object} obj
  * @param {Types.ObjectId} obj.workspaceId
  */
-const createSecretBlindIndexDataHelper = async ({
-  workspaceId,
+export const createSecretBlindIndexDataHelper = async ({
+    workspaceId
 }: {
   workspaceId: Types.ObjectId;
 }) => {
@@ -98,8 +98,8 @@ const createSecretBlindIndexDataHelper = async ({
  * @param {Types.ObjectId} obj.workspaceId - id of workspace to get salt for
  * @returns
  */
-const getSecretBlindIndexSaltHelper = async ({
-  workspaceId,
+export const getSecretBlindIndexSaltHelper = async ({
+    workspaceId
 }: {
   workspaceId: Types.ObjectId;
 }) => {
@@ -147,9 +147,9 @@ const getSecretBlindIndexSaltHelper = async ({
  * @param {String} obj.secretName - name of secret to generate blind index for
  * @param {String} obj.salt - base64-salt
  */
-const generateSecretBlindIndexWithSaltHelper = async ({
-  secretName,
-  salt,
+export const generateSecretBlindIndexWithSaltHelper = async ({
+    secretName,
+    salt
 }: {
   secretName: string;
   salt: string;
@@ -177,9 +177,9 @@ const generateSecretBlindIndexWithSaltHelper = async ({
  * @param {Stringj} obj.secretName - name of secret to generate blind index for
  * @param {Types.ObjectId} obj.workspaceId - id of workspace that secret belongs to
  */
-const generateSecretBlindIndexHelper = async ({
-  secretName,
-  workspaceId,
+export const generateSecretBlindIndexHelper = async ({
+    secretName,
+    workspaceId
 }: {
   secretName: string;
   workspaceId: Types.ObjectId;
@@ -247,7 +247,7 @@ const generateSecretBlindIndexHelper = async ({
  * @param {AuthData} obj.authData - authentication data on request
  * @returns
  */
-const createSecretHelper = async ({
+export const createSecretHelper = async ({
   secretName,
   workspaceId,
   environment,
@@ -397,10 +397,10 @@ const createSecretHelper = async ({
  * @param {AuthData} obj.authData - authentication data on request
  * @returns
  */
-const getSecretsHelper = async ({
-  workspaceId,
-  environment,
-  authData,
+export const getSecretsHelper = async ({
+    workspaceId,
+    environment,
+    authData
 }: GetSecretsParams) => {
   let secrets: ISecret[] = [];
 
@@ -472,7 +472,7 @@ const getSecretsHelper = async ({
  * @param {AuthData} obj.authData - authentication data on request
  * @returns
  */
-const getSecretHelper = async ({
+export const getSecretHelper = async ({
   secretName,
   workspaceId,
   environment,
@@ -558,7 +558,8 @@ const getSecretHelper = async ({
  * @param {AuthData} obj.authData - authentication data on request
  * @returns
  */
-const updateSecretHelper = async ({
+
+export const updateSecretHelper = async ({
   secretName,
   workspaceId,
   environment,
@@ -698,7 +699,7 @@ const updateSecretHelper = async ({
  * @param {AuthData} obj.authData - authentication data on request
  * @returns
  */
-const deleteSecretHelper = async ({
+export const deleteSecretHelper = async ({
   secretName,
   workspaceId,
   environment,
@@ -799,16 +800,4 @@ const deleteSecretHelper = async ({
     secrets,
     secret,
   };
-};
-
-export {
-  createSecretBlindIndexDataHelper,
-  getSecretBlindIndexSaltHelper,
-  generateSecretBlindIndexWithSaltHelper,
-  generateSecretBlindIndexHelper,
-  createSecretHelper,
-  getSecretsHelper,
-  getSecretHelper,
-  updateSecretHelper,
-  deleteSecretHelper,
 };
