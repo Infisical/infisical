@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import crypto from "crypto";
 import { Types } from "mongoose";
 import { encryptSymmetric128BitHexKeyUTF8 } from "../crypto";
@@ -11,6 +12,7 @@ import {
   Bot,
   BackupPrivateKey,
   IntegrationAuth,
+  ServiceTokenData,
 } from "../../models";
 import { generateKeyPair } from "../../utils/crypto";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../../config";
@@ -64,7 +66,7 @@ export const backfillSecretVersions = async () => {
       ),
     });
   }
-  console.log("Migration: Secret version migration v1 complete")
+  console.log("Migration: Secret version migration v1 complete");
 };
 
 /**
@@ -380,13 +382,15 @@ export const backfillSecretFolders = async () => {
       });
 
       const newSnapshots = Object.keys(groupSnapByEnv).map((snapEnv) => {
-        const secretIdsOfEnvGroup = groupSnapByEnv[snapEnv] ? groupSnapByEnv[snapEnv].map(secretVersion => secretVersion._id) : []
+        const secretIdsOfEnvGroup = groupSnapByEnv[snapEnv]
+          ? groupSnapByEnv[snapEnv].map((secretVersion) => secretVersion._id)
+          : [];
         return {
           ...secSnapshot.toObject({ virtuals: false }),
           _id: new Types.ObjectId(),
           environment: snapEnv,
           secretVersions: secretIdsOfEnvGroup,
-        }
+        };
       });
 
       await SecretSnapshot.insertMany(newSnapshots);
@@ -402,5 +406,22 @@ export const backfillSecretFolders = async () => {
       .limit(50);
   }
 
-  console.log("Migration: Folder migration v1 complete")
+  console.log("Migration: Folder migration v1 complete");
+};
+
+export const backfillServiceToken = async () => {
+  // Back fill because tags were missing in secret versions
+  await ServiceTokenData.updateMany(
+    {
+      secretPath: {
+        $exists: false,
+      },
+    },
+    {
+      $set: {
+        secretPath: "/",
+      },
+    }
+  );
+  console.log("Migration: Service token migration v1 complete");
 };

@@ -174,6 +174,11 @@ export const searchByFolderIdWithDir = (
 // to get folder of a path given
 // Like /frontend/folder#1
 export const getFolderByPath = (folders: TFolderSchema, searchPath: string) => {
+  // corner case when its just / return root
+  if (searchPath === "/") {
+    return folders.id === "root" ? folders : undefined;
+  }
+
   const path = searchPath.split("/").filter(Boolean);
   const queue = [folders];
   let segment: TFolderSchema | undefined;

@@ -1,29 +1,25 @@
-import { Request, Response } from 'express';
-import crypto from 'crypto';
-import bcrypt from 'bcrypt';
+import { Request, Response } from "express";
+import crypto from "crypto";
+import bcrypt from "bcrypt";
+import { User, ServiceAccount, ServiceTokenData } from "../../models";
+import { userHasWorkspaceAccess } from "../../ee/helpers/checkMembershipPermissions";
 import {
-    User,
-    ServiceAccount,
-    ServiceTokenData
-} from '../../models';
-import { userHasWorkspaceAccess } from '../../ee/helpers/checkMembershipPermissions';
-import { 
-    PERMISSION_READ_SECRETS,
-    AUTH_MODE_JWT,
-    AUTH_MODE_SERVICE_ACCOUNT,
-    AUTH_MODE_SERVICE_TOKEN
-} from '../../variables';
-import { getSaltRounds } from '../../config';
-import { BadRequestError } from '../../utils/errors';
+  PERMISSION_READ_SECRETS,
+  AUTH_MODE_JWT,
+  AUTH_MODE_SERVICE_ACCOUNT,
+  AUTH_MODE_SERVICE_TOKEN,
+} from "../../variables";
+import { getSaltRounds } from "../../config";
+import { BadRequestError } from "../../utils/errors";
 
 /**
  * Return service token data associated with service token on request
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const getServiceTokenData = async (req: Request, res: Response) => {
-    /* 
+  /* 
     #swagger.summary = 'Return Infisical Token data'
     #swagger.description = 'Return Infisical Token data'
     
@@ -49,98 +45,110 @@ export const getServiceTokenData = async (req: Request, res: Response) => {
     }   
     */
 
-    if (!(req.authData.authPayload instanceof ServiceTokenData)) throw BadRequestError({
-        message: 'Failed accepted client validation for service token data'
+  if (!(req.authData.authPayload instanceof ServiceTokenData))
+    throw BadRequestError({
+      message: "Failed accepted client validation for service token data",
     });
 
-    const serviceTokenData = await ServiceTokenData
-        .findById(req.authData.authPayload._id)
-        .select('+encryptedKey +iv +tag')
-        .populate('user');
+  const serviceTokenData = await ServiceTokenData.findById(
+    req.authData.authPayload._id
+  )
+    .select("+encryptedKey +iv +tag")
+    .populate("user");
 
-    return res.status(200).json(serviceTokenData);
-}
+  return res.status(200).json(serviceTokenData);
+};
 
 /**
  * Create new service token data for workspace with id [workspaceId] and
  * environment [environment].
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const createServiceTokenData = async (req: Request, res: Response) => {
-    let serviceTokenData;
+  let serviceTokenData;
 
-    const {
-        name,
-        workspaceId,
-        environment,
-        encryptedKey,
-        iv,
-        tag,
-        expiresIn,
-        permissions
-    } = req.body;
+  const {
+    name,
+    workspaceId,
+    environment,
+    encryptedKey,
+    iv,
+    tag,
+    expiresIn,
+    secretPath,
+    permissions,
+  } = req.body;
 
-    const secret = crypto.randomBytes(16).toString('hex');
-    const secretHash = await bcrypt.hash(secret, await getSaltRounds());
+  const secret = crypto.randomBytes(16).toString("hex");
+  const secretHash = await bcrypt.hash(secret, await getSaltRounds());
 
-    let expiresAt; 
-    if (expiresIn) {
-        expiresAt = new Date()
-        expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
-    }
+  let expiresAt;
+  if (expiresIn) {
+    expiresAt = new Date();
+    expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
+  }
 
-    let user, serviceAccount;
-    
-    if (req.authData.authMode === AUTH_MODE_JWT && req.authData.authPayload instanceof User) {
-        user = req.authData.authPayload._id;
-    }
+  let user, serviceAccount;
 
-    if (req.authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && req.authData.authPayload instanceof ServiceAccount) {
-        serviceAccount = req.authData.authPayload._id;
-    }
-        
-    serviceTokenData = await new ServiceTokenData({
-        name,
-        workspace: workspaceId,
-        environment,
-        user,
-        serviceAccount,
-        lastUsed: new Date(),
-        expiresAt,
-        secretHash,
-        encryptedKey,
-        iv,
-        tag,
-        permissions
-    }).save();
+  if (
+    req.authData.authMode === AUTH_MODE_JWT &&
+    req.authData.authPayload instanceof User
+  ) {
+    user = req.authData.authPayload._id;
+  }
 
-    // return service token data without sensitive data
-    serviceTokenData = await ServiceTokenData.findById(serviceTokenData._id);
+  if (
+    req.authData.authMode === AUTH_MODE_SERVICE_ACCOUNT &&
+    req.authData.authPayload instanceof ServiceAccount
+  ) {
+    serviceAccount = req.authData.authPayload._id;
+  }
 
-    if (!serviceTokenData) throw new Error('Failed to find service token data');
+  serviceTokenData = await new ServiceTokenData({
+    name,
+    workspace: workspaceId,
+    environment,
+    user,
+    serviceAccount,
+    lastUsed: new Date(),
+    expiresAt,
+    secretHash,
+    encryptedKey,
+    iv,
+    tag,
+    secretPath,
+    permissions,
+  }).save();
 
-    const serviceToken = `st.${serviceTokenData._id.toString()}.${secret}`;
+  // return service token data without sensitive data
+  serviceTokenData = await ServiceTokenData.findById(serviceTokenData._id);
 
-    return res.status(200).send({
-        serviceToken,
-        serviceTokenData
-    });
-}
+  if (!serviceTokenData) throw new Error("Failed to find service token data");
+
+  const serviceToken = `st.${serviceTokenData._id.toString()}.${secret}`;
+
+  return res.status(200).send({
+    serviceToken,
+    serviceTokenData,
+  });
+};
 
 /**
  * Delete service token data with id [serviceTokenDataId].
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const deleteServiceTokenData = async (req: Request, res: Response) => {
-    const { serviceTokenDataId } = req.params;
+  const { serviceTokenDataId } = req.params;
 
-    const serviceTokenData = await ServiceTokenData.findByIdAndDelete(serviceTokenDataId);
+  const serviceTokenData = await ServiceTokenData.findByIdAndDelete(
+    serviceTokenDataId
+  );
 
-    return res.status(200).send({
-        serviceTokenData
-    });
-}
+  return res.status(200).send({
+    serviceTokenData,
+  });
+};
