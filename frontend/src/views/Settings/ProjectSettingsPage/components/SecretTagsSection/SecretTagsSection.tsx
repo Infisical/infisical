@@ -74,7 +74,7 @@ export const SecretTagsSection = ({
   };
 
   return (
-    <div className="mt-4 mb-4 flex w-full flex-col items-start rounded-md bg-white/5 p-6">
+    <div className="mt-4 mb-4 flex w-full flex-col items-start rounded-md bg-mineshaft-900 p-6">
       <div className="flex w-full flex-row justify-between">
         <div className="flex w-full flex-col">
           <p className="mb-3 text-xl font-semibold">Secret Tags</p>

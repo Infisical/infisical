@@ -25,6 +25,7 @@ type Props = {
   changeData: (users: any[]) => void;
   myUser: string;
   filter: string;
+  isUserListLoading: boolean;
 };
 
 type EnvironmentProps = {
@@ -38,7 +39,7 @@ type EnvironmentProps = {
  * @param {*} props
  * @returns
  */
-const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
+const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoading }: Props) => {
   const [roleSelected, setRoleSelected] = useState(
     Array(userData?.length).fill(userData.map((user) => user.role))
   );
@@ -205,7 +206,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
   };
 
   return (
-    <div className="table-container relative mb-6 mt-1 min-w-max rounded-md border border-mineshaft-700 bg-bunker">
+    <div className="table-container relative mb-6 mt-1 min-w-max rounded-md border border-mineshaft-600 bg-bunker">
       <div className="absolute h-[3.1rem] w-full rounded-t-md bg-white/5" />
       <UpgradePlanModal
         isOpen={isUpgradeModalOpen}
@@ -213,7 +214,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
         text="You can change user permissions if you switch to Infisical's Professional plan."
       />
       <table className="my-0.5 w-full">
-        <thead className="text-xs font-light text-gray-400">
+        <thead className="text-xs font-light text-gray-400 bg-mineshaft-800">
           <tr>
             <th className="py-3.5 pl-4 text-left">NAME</th>
             <th className="py-3.5 pl-4 text-left">EMAIL</th>
@@ -231,7 +232,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
           </tr>
         </thead>
         <tbody>
-          {userData?.filter(
+          {!isUserListLoading && userData?.filter(
             (user) =>
               user.firstName?.toLowerCase().includes(filter) ||
               user.lastName?.toLowerCase().includes(filter) ||
@@ -245,14 +246,14 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
                   user.email?.toLowerCase().includes(filter)
               )
               .map((row, index) => (
-                <tr key={guidGenerator()} className="bg-bunker-600 text-sm hover:bg-bunker-500">
-                  <td className="border-t border-mineshaft-700 py-2 pl-4 text-gray-300">
+                <tr key={guidGenerator()} className="bg-mineshaft-800 text-sm">
+                  <td className="border-t border-mineshaft-600 py-2 pl-4 text-gray-300">
                     {row.firstName} {row.lastName}
                   </td>
-                  <td className="border-t border-mineshaft-700 py-2 pl-4 text-gray-300">
+                  <td className="border-t border-mineshaft-600 py-2 pl-4 text-gray-300">
                     {row.email}
                   </td>
-                  <td className="border-t border-mineshaft-700 py-2 pl-6 pr-10 text-gray-300">
+                  <td className="border-t border-mineshaft-600 py-2 pl-6 pr-10 text-gray-300">
                     <div className="flex h-full flex-row items-center justify-start">
                       <Select
                         className="w-36 bg-mineshaft-700"
@@ -391,6 +392,10 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter }: Props) => {
                   </td>
                 </tr>
               ))}
+              {isUserListLoading && <>
+                <tr key={guidGenerator()} className="bg-mineshaft-800 text-sm animate-pulse h-14 w-full"/>
+                <tr key={guidGenerator()} className="bg-mineshaft-800 text-sm animate-pulse h-14 w-full"/>
+              </>}
         </tbody>
       </table>
     </div>

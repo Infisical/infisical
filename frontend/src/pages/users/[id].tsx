@@ -11,6 +11,7 @@ import AddProjectMemberDialog from '@app/components/basic/dialog/AddProjectMembe
 import ProjectUsersTable from '@app/components/basic/table/ProjectUsersTable';
 import NavHeader from '@app/components/navigation/NavHeader';
 import guidGenerator from '@app/components/utilities/randomId';
+import { Input } from '@app/components/v2';
 
 import {
   decryptAssymmetric,
@@ -56,6 +57,7 @@ export default function Users() {
   const workspaceId = router.query.id as string;
 
   const [userList, setUserList] = useState<any[]>([]);
+  const [isUserListLoading, setIsUserListLoading] = useState(true);
   const [orgUserList, setOrgUserList] = useState<any[]>([]);
 
   useEffect(() => {
@@ -80,6 +82,8 @@ export default function Users() {
         publicKey: membership.user?.publicKey
       }));
       setUserList(tempUserList);
+
+      setIsUserListLoading(false);
 
       // This is needed to know wha users from an org (if any), we are able to add to a certain project
       const orgUsers = await getOrganizationUsers({
@@ -151,9 +155,8 @@ export default function Users() {
         <link rel="icon" href="/infisical.ico" />
       </Head>
       <NavHeader pageName={t('settings.members.title')} isProjectRelated />
-      <div className="flex flex-col items-start justify-start px-6 py-6 pb-4 text-3xl">
+      <div className="flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl mb-4">
         <p className="mr-4 font-semibold text-white">{t('settings.members.title')}</p>
-        <p className="mr-4 text-base text-gray-400">{t('settings.members.description')}</p>
       </div>
       <AddProjectMemberDialog
         isOpen={isAddOpen}
@@ -169,20 +172,17 @@ export default function Users() {
         setEmail={setEmail}
       />
       {/* <DeleteUserDialog isOpen={isDeleteOpen} closeModal={closeDeleteModal} submitModal={deleteMembership} userIdToBeDeleted={userIdToBeDeleted}/> */}
-      <div className="flex w-full flex-row items-start px-6 pb-1">
-        <div className="mt-2 flex h-10 w-full flex-row items-center rounded-md bg-white/5">
-          <FontAwesomeIcon
-            className="rounded-l-md bg-white/5 py-3 pl-4 pr-2 text-gray-400"
-            icon={faMagnifyingGlass}
-          />
-          <input
-            className="h-full w-full rounded-r-md bg-white/5 pl-2 text-gray-400 outline-none"
+      <div className="absolute right-4 top-36 flex w-full flex-row items-start px-6 pb-1">
+        <div className="flex w-full max-w-sm flex flex-row ml-auto">
+          <Input
+            className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
+            placeholder="Search by secret name..."
             value={searchUsers}
             onChange={(e) => setSearchUsers(e.target.value)}
-            placeholder={String(t('section.members.search-members'))}
+            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
           />
         </div>
-        <div className="mt-2 ml-2 flex min-w-max flex-row items-start justify-start">
+        <div className="ml-2 flex min-w-max flex-row items-start justify-start">
           <Button
             text={String(t('section.members.add-member'))}
             onButtonPressed={openAddModal}
@@ -198,6 +198,7 @@ export default function Users() {
           changeData={setUserList}
           myUser={personalEmail}
           filter={searchUsers}
+          isUserListLoading={isUserListLoading}
           // onClick={openDeleteModal}
           // deleteUser={deleteMembership}
           // setUserIdToBeDeleted={setUserIdToBeDeleted}

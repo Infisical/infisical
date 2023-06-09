@@ -18,7 +18,7 @@ export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Ele
           href={`/settings/billing/${localStorage.getItem('projectData.id') as string}`}
           key="upgrade-plan"
         >
-          <Button className="mr-4 ml-2">Upgrade Plan</Button>
+          <Button className="mr-4 ml-2 mb-2">Upgrade Plan</Button>
         </Link>,
         <ModalClose asChild key="upgrade-plan-cancel">
           <Button colorSchema="secondary" variant="plain">

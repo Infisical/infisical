@@ -2,20 +2,20 @@ import { useQuery } from '@tanstack/react-query';
 
 import { apiRequest } from '@app/config/request';
 
-import { GetSubscriptionPlan } from './types';
+import { SubscriptionPlan } from './types';
 
 // import { Workspace } from './types';
 
 const subscriptionKeys = {
-  getOrgSubsription: (orgID: string) => ['subscription', { orgID }] as const
+  getOrgSubsription: (orgID: string) => ['plan', { orgID }] as const
 };
 
 const fetchOrgSubscription = async (orgID: string) => {
-  const { data } = await apiRequest.get<{ subscriptions: GetSubscriptionPlan }>(
-    `/api/v1/organization/${orgID}/subscriptions`
+  const { data } = await apiRequest.get<{ plan: SubscriptionPlan }>(
+    `/api/v1/organizations/${orgID}/plan`
   );
 
-  return data.subscriptions;
+  return data.plan;
 };
 
 type UseGetOrgSubscriptionProps = {

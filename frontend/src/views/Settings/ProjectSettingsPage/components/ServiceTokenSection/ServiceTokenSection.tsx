@@ -120,23 +120,11 @@ export const ServiceTokenSection = ({
   };
 
   return (
-    <div className="mt-4 mb-4 flex w-full flex-col items-start rounded-md bg-white/5 p-6">
+    <div className="mt-4 mb-4 flex w-full flex-col items-start rounded-md bg-mineshaft-900 p-6">
       <div className="flex w-full flex-row justify-between">
         <div className="flex w-full flex-col">
           <p className="mb-3 text-xl font-semibold">{t('section.token.service-tokens')}</p>
-          <p className="text-sm text-gray-400">{t('section.token.service-tokens-description')}</p>
-          <p className="mb-4 text-sm text-gray-400">
-            Please, make sure you are on the
-            <a
-              className="ml-1 text-primary underline underline-offset-2"
-              href="https://infisical.com/docs/cli/overview"
-              target="_blank"
-              rel="noreferrer"
-            >
-              latest version of CLI
-            </a>
-            .
-          </p>
+          <p className="text-sm text-gray-400 mb-4">{t('section.token.service-tokens-description')}</p>
         </div>
         <div>
           <Modal
@@ -359,7 +347,7 @@ export const ServiceTokenSection = ({
               ))}
             {!isLoading && tokens?.length === 0 && (
               <Tr>
-                <Td colSpan={4} className="py-6 text-center text-bunker-400">
+                <Td colSpan={4} className="bg-mineshaft-800 text-center text-bunker-400">
                   <EmptyState title="No service tokens found" icon={faKey} />
                 </Td>
               </Tr>
