@@ -61,7 +61,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { subscription } = useSubscription();
 
   const host = window.location.origin;
-  const isAddingProjectsAllowed = ((subscription?.workspacesUsed || 0) < (subscription?.workspaceLimit || 1)) || host !== 'https://app.infisical.com';
+  const isAddingProjectsAllowed = ((subscription?.workspacesUsed || 1) < (subscription?.workspaceLimit || 3)) || host !== 'https://app.infisical.com';
 
   const createWs = useCreateWorkspace();
   const uploadWsKey = useUploadWsKey();
