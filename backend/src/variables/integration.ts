@@ -23,6 +23,7 @@ export const INTEGRATION_CIRCLECI = "circleci";
 export const INTEGRATION_TRAVISCI = "travisci";
 export const INTEGRATION_SUPABASE = 'supabase';
 export const INTEGRATION_CHECKLY = 'checkly';
+export const INTEGRATION_HASHICORP_VAULT = 'hashicorp-vault';
 export const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
@@ -35,7 +36,8 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
   INTEGRATION_SUPABASE,
-  INTEGRATION_CHECKLY
+  INTEGRATION_CHECKLY,
+  INTEGRATION_HASHICORP_VAULT
 ]);
 
 // integration types
@@ -197,6 +199,15 @@ export const getIntegrationOptions = async () => {
             name: 'Checkly',
             slug: 'checkly',
             image: 'Checkly.png',
+            isAvailable: true,
+            type: 'pat',
+            clientId: '',
+            docsLink: ''
+        },
+        {
+            name: 'HashiCorp Vault',
+            slug: 'hashicorp-vault',
+            image: 'Vault.png',
             isAvailable: true,
             type: 'pat',
             clientId: '',

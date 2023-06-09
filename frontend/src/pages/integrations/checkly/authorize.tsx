@@ -24,7 +24,9 @@ export default function ChecklyCreateIntegrationPage() {
         workspaceId: localStorage.getItem('projectData.id'),
         integration: 'checkly',
         accessId: null,
-        accessToken
+        accessToken,
+        url: null,
+        namespace: null
       });
 
       setIsLoading(false);

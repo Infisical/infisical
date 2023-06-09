@@ -57,6 +57,8 @@ router.post(
 	body('workspaceId').exists().trim().notEmpty(),
 	body('accessId').trim(),
 	body('accessToken').exists().trim().notEmpty(),
+	body('url').trim(),
+	body('namespace').trim(),
 	body('integration').exists().trim().notEmpty(),
 	validateRequest,
 	requireAuth({

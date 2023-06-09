@@ -24,7 +24,9 @@ export default function CircleCICreateIntegrationPage() {
         workspaceId: localStorage.getItem('projectData.id'),
         integration: 'circleci',
         accessToken: apiKey,
-        accessId: null
+        accessId: null,
+        url: null,
+        namespace:null
       });
 
       setIsLoading(false);

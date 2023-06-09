@@ -1,0 +1,37 @@
+---
+title: "Checkly"
+description: "How to sync secrets from Infisical to Checkly"
+---
+
+Prerequisites:
+
+- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+
+## Navigate to your project's integrations tab
+
+![integrations](../../images/integrations.png)
+
+## Enter your Checkly API Key
+
+Obtain a Checkly API Key in User Settings > API Keys.
+
+![integrations checkly dashboard](../../images/integrations-checkly-dashboard.png)
+![integrations checkly token](../../images/integrations-checkly-token.png)
+
+Press on the Checkly tile and input your Checkly API Key to grant Infisical access to your Checkly account.
+
+![integrations checkly authorization](../../images/integrations-checkly-auth.png)
+
+<Info>
+  If this is your project's first cloud integration, then you'll have to grant
+  Infisical access to your project's environment variables. Although this step
+  breaks E2EE, it's necessary for Infisical to sync the environment variables to
+  the cloud platform.
+</Info>
+
+## Start integration
+
+Select which Infisical environment secrets you want to sync to Checkly press create integration to start syncing secrets.
+
+![integrations checkly](../../images/integrations-checkly-create.png)
+![integrations checkly](../../images/integrations-checkly.png)

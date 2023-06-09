@@ -17,7 +17,8 @@ const integrationSlugNameMapping: Mapping = {
   'circleci': 'CircleCI',
   'travisci': 'TravisCI',
   'supabase': 'Supabase',
-  'checkly': 'Checkly'
+  'checkly': 'Checkly',
+  'hashicorp-vault': 'Vault'
 }
 
 const envMapping: Mapping = {

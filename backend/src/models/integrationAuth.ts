@@ -14,6 +14,7 @@ import {
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
   INTEGRATION_SUPABASE,
+  INTEGRATION_HASHICORP_VAULT,
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
   ENCODING_SCHEME_BASE64
@@ -25,6 +26,8 @@ export interface IIntegrationAuth extends Document {
   integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'gitlab' | 'render' | 'railway' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'supabase' | 'aws-parameter-store' | 'aws-secret-manager' | 'checkly';
   teamId: string;
   accountId: string;
+  url: string;
+  namespace: string;
   refreshCiphertext?: string;
   refreshIV?: string;
   refreshTag?: string;
@@ -62,13 +65,22 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_FLYIO,
         INTEGRATION_CIRCLECI,
         INTEGRATION_TRAVISCI,
-        INTEGRATION_SUPABASE
+        INTEGRATION_SUPABASE,
+        INTEGRATION_HASHICORP_VAULT
       ],
       required: true,
     },
     teamId: {
       // vercel-specific integration param
       type: String,
+    },
+    url: {
+      // for any self-hosted integrations (e.g. self-hosted hashicorp-vault)
+      type: String
+    },
+    namespace: {
+      // hashicorp-vault-specific integration param
+      type: String
     },
     accountId: {
       // netlify-specific integration param

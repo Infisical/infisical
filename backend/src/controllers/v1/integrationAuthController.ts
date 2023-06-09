@@ -86,47 +86,53 @@ export const saveIntegrationAccessToken = async (
 	// TODO: check if access token is valid for each integration
 
 	let integrationAuth;
-  const {
-    workspaceId,
-    accessId,
-    accessToken,
-    integration
-  }: {
-    workspaceId: string;
-    accessId: string | null;
-    accessToken: string;
-    integration: string;
-  } = req.body;
+	const {
+		workspaceId,
+		accessId,
+		accessToken,
+		url,
+		namespace,
+		integration
+	}: {
+		workspaceId: string;
+		accessId: string | null;
+		accessToken: string;
+		url: string;
+		namespace: string;
+		integration: string;
+	} = req.body;
 
-  const bot = await Bot.findOne({
-          workspace: new Types.ObjectId(workspaceId),
-          isActive: true
-      });
+	const bot = await Bot.findOne({
+		workspace: new Types.ObjectId(workspaceId),
+		isActive: true
+	});
       
-      if (!bot) throw new Error('Bot must be enabled to save integration access token');
+    if (!bot) throw new Error('Bot must be enabled to save integration access token');
 
-  integrationAuth = await IntegrationAuth.findOneAndUpdate({
-          workspace: new Types.ObjectId(workspaceId),
-          integration
-      }, {
-          workspace: new Types.ObjectId(workspaceId),
-          integration,
-    algorithm: ALGORITHM_AES_256_GCM,
-    keyEncoding: ENCODING_SCHEME_UTF8
-  }, {
-          new: true,
-          upsert: true
-      });
+  	integrationAuth = await IntegrationAuth.findOneAndUpdate({
+		workspace: new Types.ObjectId(workspaceId),
+		integration
+    }, {
+		workspace: new Types.ObjectId(workspaceId),
+		integration,
+		url,
+		namespace,
+		algorithm: ALGORITHM_AES_256_GCM,
+		keyEncoding: ENCODING_SCHEME_UTF8
+  	}, {
+		new: true,
+		upsert: true
+    });
   
-  // encrypt and save integration access details
-  integrationAuth = await IntegrationService.setIntegrationAuthAccess({
-    integrationAuthId: integrationAuth._id.toString(),
-    accessId,
-    accessToken,
-    accessExpiresAt: undefined
-  });
+	// encrypt and save integration access details
+	integrationAuth = await IntegrationService.setIntegrationAuthAccess({
+		integrationAuthId: integrationAuth._id.toString(),
+		accessId,
+		accessToken,
+		accessExpiresAt: undefined
+	});
   
-  if (!integrationAuth) throw new Error('Failed to save integration access token');
+  	if (!integrationAuth) throw new Error('Failed to save integration access token');
 	
 	return res.status(200).send({
 		integrationAuth

@@ -24,7 +24,9 @@ export default function RailwayAuthorizeIntegrationPage() {
         workspaceId: localStorage.getItem('projectData.id'),
         integration: 'railway',
         accessId: null,
-        accessToken: apiKey
+        accessToken: apiKey,
+        url: null,
+        namespace: null
       });
 
       setIsLoading(false);

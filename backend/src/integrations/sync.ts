@@ -36,7 +36,8 @@ import {
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_SUPABASE_API_URL,
   INTEGRATION_CHECKLY,
-  INTEGRATION_CHECKLY_API_URL
+  INTEGRATION_CHECKLY_API_URL,
+  INTEGRATION_HASHICORP_VAULT
 } from "../variables";
 import { standardRequest} from '../config/request';
 
@@ -198,6 +199,15 @@ const syncSecrets = async ({
           integration,
           secrets,
           accessToken,
+        });
+        break;
+      case INTEGRATION_HASHICORP_VAULT:
+        await syncSecretsHashiCorpVault({
+          integration,
+          integrationAuth,
+          secrets,
+          accessId,
+          accessToken
         });
         break;
     }
@@ -1762,5 +1772,65 @@ const syncSecretsCheckly = async ({
   }
 };
 
+/**
+ * Sync/push [secrets] to HashiCorp Vault path
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for HashiCorp Vault integration
+ */
+const syncSecretsHashiCorpVault = async ({
+  integration,
+  integrationAuth,
+  secrets,
+  accessId,
+  accessToken,
+}: {
+  integration: IIntegration;
+  integrationAuth: IIntegrationAuth;
+  secrets: any;
+  accessId: string | null;
+  accessToken: string;
+}) => {
+  if (!accessId) return;
+  
+  interface LoginAppRoleRes {
+    auth: {
+      client_token: string;
+    }
+  }
+  
+  // get Vault client token (could be optimized)
+  const { data }: { data: LoginAppRoleRes } = await standardRequest.post(
+    `${integrationAuth.url}/v1/auth/approle/login`,
+    {
+      "role_id": accessId,
+      "secret_id": accessToken
+    },
+    {
+      headers: {
+        "X-Vault-Namespace": integrationAuth.namespace
+      }
+    }
+  );
+  
+  const clientToken = data.auth.client_token;
+
+  await standardRequest.post(
+    `${integrationAuth.url}/v1/${integration.app}/data/${integration.path}`,
+    {
+      data: secrets
+    },
+    {
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-Vault-Token": clientToken,
+        "X-Vault-Namespace": integrationAuth.namespace
+      },
+    }
+  );
+};
 
 export { syncSecrets };
