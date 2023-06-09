@@ -6,8 +6,6 @@ import {
     EventService
 } from '../../services';
 import { eventPushSecrets } from '../../events';
-import { getAuthDataPayloadIdObj } from '../../utils/auth';
-import { BadRequestError } from '../../utils/errors';
 
 /**
  * Get secrets for workspace with id [workspaceId] and environment
@@ -68,9 +66,11 @@ export const createSecret = async (req: Request, res: Response) => {
         secretKeyCiphertext,
         secretKeyIV,
         secretKeyTag,
+        secretValue,
         secretValueCiphertext,
         secretValueIV,
         secretValueTag,
+        secretComment,
         secretCommentCiphertext,
         secretCommentIV,
         secretCommentTag
@@ -85,14 +85,14 @@ export const createSecret = async (req: Request, res: Response) => {
         secretKeyCiphertext,
         secretKeyIV,
         secretKeyTag,
+        secretValue,
         secretValueCiphertext,
         secretValueIV,
         secretValueTag,
-        ...((secretCommentCiphertext && secretCommentIV && secretCommentTag) ? {
-            secretCommentCiphertext,
-            secretCommentIV,
-            secretCommentTag
-        } : {})
+        secretComment,
+        secretCommentCiphertext,
+        secretCommentIV,
+        secretCommentTag
     });
 
     await EventService.handleEvent({

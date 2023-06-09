@@ -6,7 +6,12 @@ import {
   UpdateSecretParams,
   DeleteSecretParams,
 } from '../interfaces/services/SecretService';
-import { Secret, ISecret, SecretBlindIndexData } from '../models';
+import { 
+  ISecret, 
+  Secret, 
+  SecretBlindIndexData,
+  BotKey
+} from '../models';
 import { SecretVersion } from '../ee/models';
 import {
   BadRequestError,
@@ -32,7 +37,7 @@ import {
   decryptSymmetric128BitHexKeyUTF8,
 } from '../utils/crypto';
 import { getEncryptionKey, client, getRootEncryptionKey } from '../config';
-import { TelemetryService } from '../services';
+import { BotService, TelemetryService } from '../services';
 import { EESecretService, EELogService } from '../ee/services';
 import {
   getAuthDataPayloadIdObj,
@@ -237,6 +242,23 @@ export const generateSecretBlindIndexHelper = async ({
   });
 };
 
+// secretName,
+// workspaceId,
+// environment,
+// type,
+// authData,
+// secretKeyCiphertext,
+// secretKeyIV,
+// secretKeyTag,
+// secretValue,
+// secretValueCiphertext,
+// secretValueIV,
+// secretValueTag,
+// secretCommentCiphertext,
+// secretCommentIV,
+// secretCommentTag,
+// folderId,
+
 /**
  * Create secret with name [secretName]
  * @param {Object} obj
@@ -256,14 +278,17 @@ export const createSecretHelper = async ({
   secretKeyCiphertext,
   secretKeyIV,
   secretKeyTag,
+  secretValue,
   secretValueCiphertext,
   secretValueIV,
   secretValueTag,
+  secretComment,
   secretCommentCiphertext,
   secretCommentIV,
   secretCommentTag,
   folderId,
 }: CreateSecretParams) => {
+
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
     workspaceId: new Types.ObjectId(workspaceId),
@@ -297,6 +322,52 @@ export const createSecretHelper = async ({
           'Failed to create personal secret override for no corresponding shared secret',
       });
   }
+
+  // can generate secretKeyCiphertext etc. if not E2EE.
+  const isWorkspaceE2EE = await BotService.getIsWorkspaceE2EE(workspaceId);
+  
+  if (!isWorkspaceE2EE) {
+    // if workspace is not end-to-end encrypted, then decrypt
+    // secret and return it in plaintext
+    
+    const key = await BotService.getWorkspaceKeyWithBot({
+      workspaceId
+    });
+    
+    if (secretName) {
+      const encryptedSecretKey = encryptSymmetric128BitHexKeyUTF8({
+        plaintext: secretName,
+        key
+      });
+
+      secretKeyCiphertext = encryptedSecretKey.ciphertext;
+      secretKeyIV = encryptedSecretKey.iv;
+      secretKeyTag = encryptedSecretKey.tag;
+    }
+
+    if (secretValue) {
+      const encryptedSecretValue = encryptSymmetric128BitHexKeyUTF8({
+        plaintext: secretValue,
+        key
+      });
+
+      secretValueCiphertext = encryptedSecretValue.ciphertext;
+      secretValueIV = encryptedSecretValue.iv;
+      secretValueTag = encryptedSecretValue.tag;
+    }
+    
+    if (secretComment) {
+      const encryptedSecretComment = encryptSymmetric128BitHexKeyUTF8({
+        plaintext: secretComment,
+        key
+      });
+
+      secretCommentCiphertext = encryptedSecretComment.ciphertext;
+      secretCommentIV = encryptedSecretComment.iv;
+      secretCommentTag = encryptedSecretComment.tag;
+    }
+  }
+  
 
   // create secret
   const secret = await new Secret({
@@ -410,7 +481,7 @@ export const getSecretsHelper = async ({
     environment,
     type: SECRET_PERSONAL,
     ...getAuthDataPayloadUserObj(authData),
-  });
+  }).lean();
 
   // concat with shared secrets
   secrets = secrets.concat(
@@ -421,7 +492,7 @@ export const getSecretsHelper = async ({
       secretBlindIndex: {
         $nin: secrets.map((secret) => secret.secretBlindIndex),
       },
-    })
+    }).lean()
   );
 
   // (EE) create (audit) log
@@ -458,8 +529,45 @@ export const getSecretsHelper = async ({
       },
     });
   }
+  
+  const isWorkspaceE2EE = await BotService.getIsWorkspaceE2EE(workspaceId);
 
-  return secrets;
+  if (!isWorkspaceE2EE) {
+    // if workspace is not end-to-end encrypted, then decrypt
+    // secret and return it in plaintext
+
+    const key = await BotService.getWorkspaceKeyWithBot({
+      workspaceId
+    });
+    
+    return secrets.map((secret) => {
+      const secretName = decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretKeyCiphertext,
+        iv: secret.secretKeyIV,
+        tag: secret.secretKeyTag,
+        key
+      });
+
+      const secretValue = decryptSymmetric128BitHexKeyUTF8({
+        ciphertext: secret.secretValueCiphertext,
+        iv: secret.secretValueIV,
+        tag: secret.secretValueTag,
+        key
+      });
+  
+      return ({
+        ...secret,
+        secretName,
+        secretValue
+      });
+    });
+  }
+
+  return secrets.map((secret) => ({
+    ...secret,
+    secretName: null,
+    secretValue: null
+  }));
 };
 
 /**
@@ -492,7 +600,7 @@ export const getSecretHelper = async ({
     environment,
     type: type ?? SECRET_PERSONAL,
     ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {}),
-  });
+  }).lean();
 
   if (!secret) {
     // case: failed to find personal secret matching criteria
@@ -502,7 +610,7 @@ export const getSecretHelper = async ({
       workspace: new Types.ObjectId(workspaceId),
       environment,
       type: SECRET_SHARED,
-    });
+    }).lean();
   }
 
   if (!secret) throw SecretNotFoundError();
@@ -541,8 +649,36 @@ export const getSecretHelper = async ({
       },
     });
   }
+  
+  const isWorkspaceE2EE = await BotService.getIsWorkspaceE2EE(workspaceId);
+  
+  if (!isWorkspaceE2EE) {
+    // if workspace is not end-to-end encrypted, then decrypt
+    // secret and return it in plaintext
 
-  return secret;
+    const key = await BotService.getWorkspaceKeyWithBot({
+      workspaceId
+    });
+    
+    const secretValue = decryptSymmetric128BitHexKeyUTF8({
+      ciphertext: secret.secretValueCiphertext,
+      iv: secret.secretValueIV,
+      tag: secret.secretValueTag,
+      key
+    });
+
+    return ({
+      ...secret,
+      secretName,
+      secretValue
+    }); 
+  }
+  
+  return ({
+    ...secret,
+    secretName: null,
+    secretValue: null
+  });
 };
 
 /**

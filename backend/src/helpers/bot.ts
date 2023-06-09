@@ -87,6 +87,18 @@ export const createBot = async ({
 };
 
 /**
+ * Return whether or not workspace with id [workspaceId] is end-to-end encrypted
+ * @param {Types.ObjectId} workspaceId - id of workspace to check
+ */
+export const getIsWorkspaceE2EEHelper = async (workspaceId: Types.ObjectId) => {
+  const botKey = await BotKey.exists({
+    workspace: workspaceId
+  }); 
+  
+  return botKey ? false : true;
+}
+
+/**
  * Return decrypted secrets for workspace with id [workspaceId]
  * and [environment] using bot
  * @param {Object} obj
@@ -101,7 +113,7 @@ export const getSecretsBotHelper = async ({
   environment: string;
 }) => {
   const content = {} as any;
-  const key = await getKey({ workspaceId: workspaceId.toString() });
+  const key = await getKey({ workspaceId: workspaceId });
   const secrets = await Secret.find({
     workspace: workspaceId,
     environment,
@@ -136,7 +148,7 @@ export const getSecretsBotHelper = async ({
  * @param {String} obj.workspaceId - id of workspace
  * @returns {String} key - decrypted workspace key
  */
-export const getKey = async ({ workspaceId }: { workspaceId: string }) => {
+export const getKey = async ({ workspaceId }: { workspaceId: Types.ObjectId }) => {
   const encryptionKey = await getEncryptionKey();
   const rootEncryptionKey = await getRootEncryptionKey();
 
@@ -201,7 +213,7 @@ export const encryptSymmetricHelper = async ({
   workspaceId: Types.ObjectId;
   plaintext: string;
 }) => {
-  const key = await getKey({ workspaceId: workspaceId.toString() });
+  const key = await getKey({ workspaceId: workspaceId });
   const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
     plaintext,
     key,
@@ -233,7 +245,7 @@ export const decryptSymmetricHelper = async ({
   iv: string;
   tag: string;
 }) => {
-  const key = await getKey({ workspaceId: workspaceId.toString() });
+  const key = await getKey({ workspaceId: workspaceId });
   const plaintext = decryptSymmetric128BitHexKeyUTF8({
     ciphertext,
     iv,

@@ -2,13 +2,31 @@ import { Types } from 'mongoose';
 import {
     getSecretsBotHelper,
     encryptSymmetricHelper,
-    decryptSymmetricHelper
+    decryptSymmetricHelper,
+    getKey,
+    getIsWorkspaceE2EEHelper
 } from '../helpers/bot';
+
+// rename the functions here
+// refactor the interface situation here
 
 /**
  * Class to handle bot actions
  */
 class BotService {
+    static async getIsWorkspaceE2EE(workspaceId: Types.ObjectId) {
+        return await getIsWorkspaceE2EEHelper(workspaceId);
+    }
+
+    static async getWorkspaceKeyWithBot({
+        workspaceId
+    }: {
+        workspaceId: Types.ObjectId;
+    }) {
+        return await getKey({
+            workspaceId
+        });
+    }
     
     /**
      * Return decrypted secrets for workspace with id [workspaceId] and 

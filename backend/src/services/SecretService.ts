@@ -1,8 +1,5 @@
 import { Types } from 'mongoose';
 import {
-    ISecret
-} from '../models';
-import {
     CreateSecretParams,
     GetSecretsParams,
     GetSecretParams,
