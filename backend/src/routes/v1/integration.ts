@@ -15,7 +15,7 @@ import {
 import { body, param } from 'express-validator';
 import { integrationController } from '../../controllers/v1';
 
-router.post( // new: add new integration for integration auth
+router.post(
 	'/',
 	requireAuth({
         acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY]

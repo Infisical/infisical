@@ -3,6 +3,7 @@ import { ErrorRequestHandler } from 'express';
 import { InternalServerError } from '../utils/errors';
 import { getLogger } from '../utils/logger';
 import RequestError, { LogLevel } from '../utils/requestError';
+import { getNodeEnv } from '../config';
 
 export const requestErrorHandler: ErrorRequestHandler = async (
   error: RequestError | Error,
@@ -11,6 +12,11 @@ export const requestErrorHandler: ErrorRequestHandler = async (
   next
 ) => {
   if (res.headersSent) return next();
+
+  if (await getNodeEnv() !== "production") {
+    /* eslint-disable no-console */
+    console.error(error);
+  }
 
   //TODO: Find better way to type check for error. In current setting you need to cast type to get the functions and variables from RequestError
   if (!(error instanceof RequestError)) {

@@ -24,7 +24,9 @@ export default function RenderCreateIntegrationPage() {
         workspaceId: localStorage.getItem('projectData.id'),
         integration: 'render',
         accessId: null,
-        accessToken: apiKey
+        accessToken: apiKey,
+        url: null,
+        namespace: null
       });
 
       setIsLoading(false);

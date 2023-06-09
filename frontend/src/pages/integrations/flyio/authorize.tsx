@@ -24,7 +24,9 @@ export default function FlyioCreateIntegrationPage() {
         workspaceId: localStorage.getItem('projectData.id'),
         integration: 'flyio',
         accessId: null,
-        accessToken
+        accessToken,
+        url: null,
+        namespace: null
       });
 
       setIsLoading(false);

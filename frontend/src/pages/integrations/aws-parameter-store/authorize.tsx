@@ -34,7 +34,9 @@ export default function AWSParameterStoreAuthorizeIntegrationPage() {
         workspaceId: localStorage.getItem('projectData.id'),
         integration: 'aws-parameter-store',
         accessId: accessKey,
-        accessToken: accessSecretKey
+        accessToken: accessSecretKey,
+        url: null,
+        namespace: null
       });
 
       setAccessKey('');
@@ -58,7 +60,11 @@ export default function AWSParameterStoreAuthorizeIntegrationPage() {
           errorText={accessKeyErrorText}
           isError={accessKeyErrorText !== '' ?? false}
         >
-          <Input placeholder="" value={accessKey} onChange={(e) => setAccessKey(e.target.value)} />
+          <Input 
+            placeholder="" 
+            value={accessKey} 
+            onChange={(e) => setAccessKey(e.target.value)} 
+          />
         </FormControl>
         <FormControl
           label="Secret Access Key"

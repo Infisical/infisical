@@ -197,6 +197,8 @@
         "integrations/cloud/railway",
         "integrations/cloud/flyio",
         "integrations/cloud/supabase",
+        "integrations/cloud/checkly",
+        "integrations/cloud/hashicorp-vault",
         "integrations/cloud/azure-key-vault",
         "integrations/cicd/githubactions",
         "integrations/cicd/gitlab",

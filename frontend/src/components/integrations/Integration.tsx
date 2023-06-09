@@ -213,6 +213,8 @@ const IntegrationTile = ({
   };
 
   if (!integrationApp && integration.integration !== "checkly") return  <div />;
+  
+  const isSelected = integration.integration === 'hashicorp-vault' ? `${integration.app} - path: ${integration.path}` : integrationApp;
 
   return (
     <div className="mx-6 mb-8 flex max-w-5xl justify-between rounded-md bg-mineshaft-800 border border-mineshaft-600 p-6">
@@ -245,13 +247,15 @@ const IntegrationTile = ({
         </div>
         <div className="mr-2">
           <div className="mb-2 text-xs font-semibold text-gray-400">APP</div>
-          {integrationApp ? <div title={integrationApp}><ListBox
+          {integrationApp ? <div title={integrationApp}>
+            <ListBox
             data={!integration.isActive ? apps.map((app) => app.name) : null}
-            isSelected={integrationApp}
+            isSelected={isSelected}
             onChange={(app) => {
               setIntegrationApp(app);
             }}
-          /></div> : <div className='w-52 h-10 rounded-md bg-mineshaft-600 animate-pulse px-4 font-bold py-2'>-</div>}
+          />
+          </div> : <div className='w-52 h-10 rounded-md bg-mineshaft-600 animate-pulse px-4 font-bold py-2'>-</div>}
         </div>
         {renderIntegrationSpecificParams(integration)}
       </div>

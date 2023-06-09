@@ -14,7 +14,8 @@ import {
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
   INTEGRATION_SUPABASE,
-  INTEGRATION_CHECKLY
+  INTEGRATION_CHECKLY,
+  INTEGRATION_HASHICORP_VAULT
 } from "../variables";
 
 export interface IIntegration {
@@ -47,7 +48,8 @@ export interface IIntegration {
     | 'circleci'
     | 'travisci'
     | 'supabase'
-    | 'checkly';
+    | 'checkly'
+    | 'hashicorp-vault';
   integrationAuth: Types.ObjectId;
 }
 
@@ -133,7 +135,8 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_CIRCLECI,
         INTEGRATION_TRAVISCI,
         INTEGRATION_SUPABASE,
-        INTEGRATION_CHECKLY
+        INTEGRATION_CHECKLY,
+        INTEGRATION_HASHICORP_VAULT
       ],
       required: true,
     },
