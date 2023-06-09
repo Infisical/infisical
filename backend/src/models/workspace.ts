@@ -38,10 +38,6 @@ const workspaceSchema = new Schema<IWorkspace>({
 				slug: "dev"
 			},
 			{
-				name: "Test",
-				slug: "test"
-			},
-			{
 				name: "Staging",
 				slug: "staging"
 			},
