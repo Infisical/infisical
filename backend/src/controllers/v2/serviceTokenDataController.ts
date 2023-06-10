@@ -11,6 +11,8 @@ import {
 } from "../../variables";
 import { getSaltRounds } from "../../config";
 import { BadRequestError } from "../../utils/errors";
+import Folder from "../../models/folder";
+import { getFolderByPath } from "../../services/FolderService";
 
 /**
  * Return service token data associated with service token on request
@@ -32,13 +34,13 @@ export const getServiceTokenData = async (req: Request, res: Response) => {
             "application/json": {
                 "schema": { 
                     "type": "object",
-					"properties": {
+          "properties": {
                         "serviceTokenData": {
                             "type": "object",
                             $ref: "#/components/schemas/ServiceTokenData",
                             "description": "Details of service token"
                         }
-					}
+          }
                 }
             }           
         }
@@ -80,6 +82,18 @@ export const createServiceTokenData = async (req: Request, res: Response) => {
     secretPath,
     permissions,
   } = req.body;
+
+  const folders = await Folder.findOne({
+    workspace: workspaceId,
+    environment,
+  });
+
+  if (folders) {
+    const folder = getFolderByPath(folders.nodes, secretPath);
+    if (folder == undefined) {
+      throw BadRequestError({ message: "Path for service token does not exist" })
+    }
+  }
 
   const secret = crypto.randomBytes(16).toString("hex");
   const secretHash = await bcrypt.hash(secret, await getSaltRounds());
