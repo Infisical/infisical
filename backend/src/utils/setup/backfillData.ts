@@ -410,7 +410,6 @@ export const backfillSecretFolders = async () => {
 };
 
 export const backfillServiceToken = async () => {
-  // Back fill because tags were missing in secret versions
   await ServiceTokenData.updateMany(
     {
       secretPath: {
