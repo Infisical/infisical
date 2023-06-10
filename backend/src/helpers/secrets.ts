@@ -18,6 +18,7 @@ import {
   SecretNotFoundError,
   SecretBlindIndexDataNotFoundError,
   InternalServerError,
+  UnauthorizedRequestError,
 } from "../utils/errors";
 import {
   SECRET_PERSONAL,
@@ -302,7 +303,7 @@ export const createSecretHelper = async ({
   if (authData.authPayload instanceof ServiceTokenData) {
     const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
     if (secretPath !== serviceTkScopedSecretPath) {
-      throw new Error("Folder Permission Denied");
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
   const folderId = await getFolderIdFromServiceToken(
@@ -454,7 +455,7 @@ export const getSecretsHelper = async ({
   if (authData.authPayload instanceof ServiceTokenData) {
     const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
     if (secretPath !== serviceTkScopedSecretPath) {
-      throw new Error("Folder Permission Denied");
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
   const folderId = await getFolderIdFromServiceToken(
@@ -551,7 +552,7 @@ export const getSecretHelper = async ({
   if (authData.authPayload instanceof ServiceTokenData) {
     const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
     if (secretPath !== serviceTkScopedSecretPath) {
-      throw new Error("Folder Permission Denied");
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
   const folderId = await getFolderIdFromServiceToken(
@@ -658,7 +659,7 @@ export const updateSecretHelper = async ({
   if (authData.authPayload instanceof ServiceTokenData) {
     const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
     if (secretPath !== serviceTkScopedSecretPath) {
-      throw new Error("Folder Permission Denied");
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
   const folderId = await getFolderIdFromServiceToken(
@@ -811,7 +812,7 @@ export const deleteSecretHelper = async ({
   if (authData.authPayload instanceof ServiceTokenData) {
     const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
     if (secretPath !== serviceTkScopedSecretPath) {
-      throw new Error("Folder Permission Denied");
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
   const folderId = await getFolderIdFromServiceToken(
