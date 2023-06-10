@@ -176,7 +176,7 @@ export default function Users() {
         <div className="flex w-full max-w-sm flex flex-row ml-auto">
           <Input
             className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-            placeholder="Search by secret name..."
+            placeholder="Search by users..."
             value={searchUsers}
             onChange={(e) => setSearchUsers(e.target.value)}
             leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
