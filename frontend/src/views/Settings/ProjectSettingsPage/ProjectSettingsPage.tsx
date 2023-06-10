@@ -13,7 +13,6 @@ import {
   encryptSymmetric
 } from '@app/components/utilities/cryptography/crypto';
 import { Button, FormControl, Input } from '@app/components/v2';
-import { plans } from '@app/const';
 import { useSubscription, useWorkspace } from '@app/context';
 import { useToggle } from '@app/hooks';
 import {
@@ -89,10 +88,9 @@ export const ProjectSettingsPage = () => {
   const deleteWsTag = useDeleteWsTag();
 
   // get user subscription
-  const { subscriptionPlan } = useSubscription();
+  const { subscription } = useSubscription();
   const host = window.location.origin;
-  const isEnvServiceAllowed =
-    subscriptionPlan !== plans.starter || host !== 'https://app.infisical.com';
+  const isEnvServiceAllowed = ((currentWorkspace?.environments || []).length < (subscription?.envLimit || 3) && host === 'https://app.infisical.com');
 
   const onRenameWorkspace = async (name: string) => {
     try {
@@ -219,7 +217,8 @@ export const ProjectSettingsPage = () => {
     environment,
     expiresIn,
     name,
-    permissions
+    permissions,
+    secretPath
   }: CreateServiceToken) => {
     // type guard
     if (!latestFileKey) return '';
@@ -243,6 +242,7 @@ export const ProjectSettingsPage = () => {
         iv,
         tag,
         environment,
+        secretPath,
         expiresIn: Number(expiresIn),
         name,
         workspaceId: workspaceID,
@@ -402,7 +402,7 @@ export const ProjectSettingsPage = () => {
       {!isBlindIndexedLoading && !isBlindIndexed && (
         <ProjectIndexSecretsSection onEnableBlindIndices={onEnableBlindIndices} />
       )}
-      <div className="mb-6 mt-4 flex w-full flex-col items-start rounded-md border-l border-red bg-white/5 px-6 pl-6 pb-4 pt-4">
+      <div className="mb-6 mt-4 flex w-full flex-col items-start rounded-md border-l border-red bg-mineshaft-900 px-6 pl-6 pb-4 pt-4">
         <p className="text-xl font-bold text-red">{t('settings.project.danger-zone')}</p>
         <p className="text-md mt-2 text-gray-400">{t('settings.project.danger-zone-note')}</p>
         <div className="mr-auto mt-4 max-h-28 w-full max-w-md">
@@ -418,6 +418,7 @@ export const ProjectSettingsPage = () => {
               onChange={(e) => setDeleteProjectInput(e.target.value)}
               value={deleteProjectInput}
               placeholder="Type the project name to delete"
+              className="bg-mineshaft-800"
             />
           </FormControl>
         </div>

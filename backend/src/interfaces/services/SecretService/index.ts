@@ -5,7 +5,6 @@ export interface CreateSecretParams {
   secretName: string;
   workspaceId: Types.ObjectId;
   environment: string;
-  folderId?: string;
   type: "shared" | "personal";
   authData: AuthData;
   secretKeyCiphertext?: string;
@@ -19,17 +18,20 @@ export interface CreateSecretParams {
   secretCommentCiphertext?: string;
   secretCommentIV?: string;
   secretCommentTag?: string;
+  secretPath: string;
 }
 
 export interface GetSecretsParams {
   workspaceId: Types.ObjectId;
   environment: string;
+  secretPath: string;
   authData: AuthData;
 }
 
 export interface GetSecretParams {
   secretName: string;
   workspaceId: Types.ObjectId;
+  secretPath: string;
   environment: string;
   type?: "shared" | "personal";
   authData: AuthData;
@@ -44,7 +46,7 @@ export interface UpdateSecretParams {
   secretValueCiphertext: string;
   secretValueIV: string;
   secretValueTag: string;
-  folderId?: string;
+  secretPath: string;
 }
 
 export interface DeleteSecretParams {
@@ -53,4 +55,5 @@ export interface DeleteSecretParams {
   environment: string;
   type: "shared" | "personal";
   authData: AuthData;
+  secretPath: string;
 }

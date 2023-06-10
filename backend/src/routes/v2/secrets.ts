@@ -1,15 +1,15 @@
-import express from 'express';
+import express from "express";
 const router = express.Router();
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import {
   requireAuth,
   requireWorkspaceAuth,
   requireSecretsAuth,
   validateRequest,
-} from '../../middleware';
-import { validateClientForSecrets } from '../../validation';
-import { query, body } from 'express-validator';
-import { secretsController } from '../../controllers/v2';
+} from "../../middleware";
+import { validateClientForSecrets } from "../../validation";
+import { query, body } from "express-validator";
+import { secretsController } from "../../controllers/v2";
 import {
   ADMIN,
   MEMBER,
@@ -21,11 +21,11 @@ import {
   AUTH_MODE_SERVICE_ACCOUNT,
   AUTH_MODE_SERVICE_TOKEN,
   AUTH_MODE_API_KEY,
-} from '../../variables';
-import { BatchSecretRequest } from '../../types/secret';
+} from "../../variables";
+import { BatchSecretRequest } from "../../types/secret";
 
 router.post(
-  '/batch',
+  "/batch",
   requireAuth({
     acceptedAuthModes: [
       AUTH_MODE_JWT,
@@ -35,12 +35,13 @@ router.post(
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: 'body',
+    locationWorkspaceId: "body",
   }),
-  body('workspaceId').exists().isString().trim(),
-  body('folderId').default('root').isString().trim(),
-  body('environment').exists().isString().trim(),
-  body('requests')
+  body("workspaceId").exists().isString().trim(),
+  body("folderId").default("root").isString().trim(),
+  body("environment").exists().isString().trim(),
+  body("secretPath").optional().isString().trim(),
+  body("requests")
     .exists()
     .custom(async (requests: BatchSecretRequest[], { req }) => {
       if (Array.isArray(requests)) {
@@ -65,17 +66,18 @@ router.post(
 );
 
 router.post(
-  '/',
-  body('workspaceId').exists().isString().trim(),
-  body('environment').exists().isString().trim(),
-  body('folderId').default('root').isString().trim(),
-  body('secrets')
+  "/",
+  body("workspaceId").exists().isString().trim(),
+  body("environment").exists().isString().trim(),
+  body("folderId").default("root").isString().trim(),
+  body("secretPath").optional().isString().trim(),
+  body("secrets")
     .exists()
     .custom((value) => {
       if (Array.isArray(value)) {
         // case: create multiple secrets
         if (value.length === 0)
-          throw new Error('secrets cannot be an empty array');
+          throw new Error("secrets cannot be an empty array");
         for (const secret of value) {
           if (
             !secret.type ||
@@ -85,16 +87,16 @@ router.post(
             !secret.secretKeyCiphertext ||
             !secret.secretKeyIV ||
             !secret.secretKeyTag ||
-            typeof secret.secretValueCiphertext !== 'string' ||
+            typeof secret.secretValueCiphertext !== "string" ||
             !secret.secretValueIV ||
             !secret.secretValueTag
           ) {
             throw new Error(
-              'secrets array must contain objects that have required secret properties'
+              "secrets array must contain objects that have required secret properties"
             );
           }
         }
-      } else if (typeof value === 'object') {
+      } else if (typeof value === "object") {
         // case: update 1 secret
         if (
           !value.type ||
@@ -107,11 +109,11 @@ router.post(
           !value.secretValueTag
         ) {
           throw new Error(
-            'secrets object is missing required secret properties'
+            "secrets object is missing required secret properties"
           );
         }
       } else {
-        throw new Error('secrets must be an object or an array of objects');
+        throw new Error("secrets must be an object or an array of objects");
       }
 
       return true;
@@ -126,19 +128,20 @@ router.post(
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: 'body',
-    locationEnvironment: 'body',
+    locationWorkspaceId: "body",
+    locationEnvironment: "body",
     requiredPermissions: [PERMISSION_WRITE_SECRETS],
   }),
   secretsController.createSecrets
 );
 
 router.get(
-  '/',
-  query('workspaceId').exists().trim(),
-  query('environment').exists().trim(),
-  query('tagSlugs'),
-  query('folderId').default('root').isString().trim(),
+  "/",
+  query("workspaceId").exists().trim(),
+  query("environment").exists().trim(),
+  query("tagSlugs"),
+  query("folderId").default("root").isString().trim(),
+  query("secretPath").optional().isString().trim(),
   validateRequest,
   requireAuth({
     acceptedAuthModes: [
@@ -150,34 +153,34 @@ router.get(
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: 'query',
-    locationEnvironment: 'query',
+    locationWorkspaceId: "query",
+    locationEnvironment: "query",
     requiredPermissions: [PERMISSION_READ_SECRETS],
   }),
   secretsController.getSecrets
 );
 
 router.patch(
-  '/',
-  body('secrets')
+  "/",
+  body("secrets")
     .exists()
     .custom((value) => {
       if (Array.isArray(value)) {
         // case: update multiple secrets
         if (value.length === 0)
-          throw new Error('secrets cannot be an empty array');
+          throw new Error("secrets cannot be an empty array");
         for (const secret of value) {
           if (!secret.id) {
-            throw new Error('Each secret must contain a ID property');
+            throw new Error("Each secret must contain a ID property");
           }
         }
-      } else if (typeof value === 'object') {
+      } else if (typeof value === "object") {
         // case: update 1 secret
         if (!value.id) {
-          throw new Error('secret must contain a ID property');
+          throw new Error("secret must contain a ID property");
         }
       } else {
-        throw new Error('secrets must be an object or an array of objects');
+        throw new Error("secrets must be an object or an array of objects");
       }
 
       return true;
@@ -198,21 +201,21 @@ router.patch(
 );
 
 router.delete(
-  '/',
-  body('secretIds')
+  "/",
+  body("secretIds")
     .exists()
     .custom((value) => {
       // case: delete 1 secret
-      if (typeof value === 'string') return true;
+      if (typeof value === "string") return true;
 
       if (Array.isArray(value)) {
         // case: delete multiple secrets
         if (value.length === 0)
-          throw new Error('secrets cannot be an empty array');
-        return value.every((id: string) => typeof id === 'string');
+          throw new Error("secrets cannot be an empty array");
+        return value.every((id: string) => typeof id === "string");
       }
 
-      throw new Error('secretIds must be a string or an array of strings');
+      throw new Error("secretIds must be a string or an array of strings");
     })
     .not()
     .isEmpty(),

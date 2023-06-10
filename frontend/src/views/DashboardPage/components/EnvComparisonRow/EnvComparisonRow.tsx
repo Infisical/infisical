@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-no-useless-fragment */
 import { useCallback, useState } from 'react';
-import { faCircle, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+import { faCircle, faEye, faEyeSlash, faMinus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { twMerge } from 'tailwind-merge';
 
@@ -29,7 +29,9 @@ const DashboardInput = ({
   const syntaxHighlight = useCallback((val: string) => {
     if (val === undefined)
       return (
-        <span className="cursor-default font-sans text-xs italic text-red-500/80">missing</span>
+        <span className="cursor-default font-sans text-xs italic text-red-500/80">
+            <FontAwesomeIcon icon={faMinus} className="mt-1" />
+        </span>
       );
     if (val?.length === 0)
       return <span className="w-full font-sans text-bunker-400/80">EMPTY</span>;

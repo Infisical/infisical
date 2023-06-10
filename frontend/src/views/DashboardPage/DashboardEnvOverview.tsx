@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/router';
+import { faKey, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { yupResolver } from '@hookform/resolvers/yup';
 
 import NavHeader from '@app/components/navigation/NavHeader';
-import { Button, TableContainer, Tooltip } from '@app/components/v2';
+import { Button, Input, TableContainer, Tooltip } from '@app/components/v2';
 import { useWorkspace } from '@app/context';
 import {
   useGetProjectSecretsByKey,
@@ -26,6 +28,8 @@ export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
   const { currentWorkspace, isLoading } = useWorkspace();
   const workspaceId = currentWorkspace?._id as string;
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
+
+  const [searchFilter, setSearchFilter] = useState('');
 
   useEffect(() => {
     if (!isLoading && !workspaceId && router.isReady) {
@@ -88,7 +92,7 @@ export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
   }
 
   // when secrets is not loading and secrets list is empty
-  const isDashboardSecretEmpty = !isSecretsLoading && !Object.keys(secrets?.secrets || {})?.length;
+  const isDashboardSecretEmpty = !isSecretsLoading && !Object.keys(secrets?.secrets || {})?.filter((secret: any) => secret.toUpperCase().includes(searchFilter.toUpperCase()))?.length;
 
   return (
     <div className="container mx-auto max-w-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
@@ -120,6 +124,15 @@ export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
                 Infisical SDKs
               </a>
             </p>
+          </div>
+          <div className="absolute top-[11.1rem] right-6 flex w-full max-w-sm flex-grow space-x-2">
+            <Input
+              className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
+              placeholder="Search by secret name..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+            />
           </div>
           <div className="overflow-y-auto">
             <div className="sticky top-0 mt-8 flex h-10 min-w-[60.3rem] flex-row rounded-md border border-mineshaft-600 bg-mineshaft-800">
@@ -167,7 +180,7 @@ export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
                 <TableContainer className="border-none">
                   <table className="secret-table relative w-full bg-mineshaft-900">
                     <tbody className="max-h-screen overflow-y-auto">
-                      {Object.keys(secrets?.secrets || {}).map((key, index) => (
+                      {Object.keys(secrets?.secrets || {})?.filter((secret: any) => secret.toUpperCase().includes(searchFilter.toUpperCase())).map((key, index) => (
                         <EnvComparisonRow
                           key={`row-${key}`}
                           secrets={secrets?.secrets?.[key]}
@@ -184,8 +197,9 @@ export const DashboardEnvOverview = ({ onEnvChange }: { onEnvChange: any }) => {
               {isDashboardSecretEmpty && (
                 <div className="flex h-40 w-full flex-row rounded-md">
                   <div className="flex w-full min-w-[11rem] flex-col items-center justify-center rounded-md border-none bg-mineshaft-800 text-bunker-300">
-                    <span className="mb-1">No secrets are available in this project yet.</span>
-                    <span>You can go into any environment to add secrets there.</span>
+                    <FontAwesomeIcon icon={faKey} className="text-4xl mb-4" />
+                    <span className="mb-1">No secrets found.</span>
+                    <span>To add more secrets you can explore any environment.</span>
                   </div>
                 </div>
               )}

@@ -42,8 +42,9 @@ const apiTokenExpiry = [
 ];
 
 const createServiceTokenSchema = yup.object({
-  name: yup.string().required().label('Service Token Name'),
-  environment: yup.string().required().label('Environment'),
+  name: yup.string().max(100).required().label('Service Token Name'),
+  environment: yup.string().max(50).required().label('Environment'),
+  secretPath: yup.string().required().default('/').label('Secret Path'),
   expiresIn: yup.string().optional().label('Service Token Expiration'),
   permissions: yup
     .object()
@@ -120,23 +121,11 @@ export const ServiceTokenSection = ({
   };
 
   return (
-    <div className="mt-4 mb-4 flex w-full flex-col items-start rounded-md bg-white/5 p-6">
+    <div className="mt-4 mb-4 flex w-full flex-col items-start rounded-md bg-mineshaft-900 p-6">
       <div className="flex w-full flex-row justify-between">
         <div className="flex w-full flex-col">
           <p className="mb-3 text-xl font-semibold">{t('section.token.service-tokens')}</p>
-          <p className="text-sm text-gray-400">{t('section.token.service-tokens-description')}</p>
-          <p className="mb-4 text-sm text-gray-400">
-            Please, make sure you are on the
-            <a
-              className="ml-1 text-primary underline underline-offset-2"
-              href="https://infisical.com/docs/cli/overview"
-              target="_blank"
-              rel="noreferrer"
-            >
-              latest version of CLI
-            </a>
-            .
-          </p>
+          <p className="text-sm text-gray-400 mb-4">{t('section.token.service-tokens-description')}</p>
         </div>
         <div>
           <Modal
@@ -201,6 +190,22 @@ export const ServiceTokenSection = ({
                       </FormControl>
                     )}
                   />
+                  <Controller
+                    control={control}
+                    name="secretPath"
+                    defaultValue="/"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Secrets Path"
+                        isError={Boolean(error)}
+                        helperText="Tokens can be scoped to a folder path. Default path is /"
+                        errorText={error?.message}
+                      >
+                        <Input {...field} placeholder="Provide a path, default is /" />
+                      </FormControl>
+                    )}
+                  />
+
                   <Controller
                     control={control}
                     name="expiresIn"
@@ -329,6 +334,7 @@ export const ServiceTokenSection = ({
             <Tr>
               <Th>Token Name</Th>
               <Th>Environment</Th>
+              <Th>Secret Path</Th>
               <Th>Valid Until</Th>
               <Th aria-label="button" />
             </Tr>
@@ -340,6 +346,7 @@ export const ServiceTokenSection = ({
                 <Tr key={row._id}>
                   <Td>{row.name}</Td>
                   <Td>{row.environment}</Td>
+                  <Td>{row.secretPath}</Td>
                   <Td>{row.expiresAt && new Date(row.expiresAt).toUTCString()}</Td>
                   <Td className="flex items-center justify-end">
                     <IconButton
@@ -359,7 +366,7 @@ export const ServiceTokenSection = ({
               ))}
             {!isLoading && tokens?.length === 0 && (
               <Tr>
-                <Td colSpan={4} className="py-6 text-center text-bunker-400">
+                <Td colSpan={4} className="bg-mineshaft-800 text-center text-bunker-400">
                   <EmptyState title="No service tokens found" icon={faKey} />
                 </Td>
               </Tr>

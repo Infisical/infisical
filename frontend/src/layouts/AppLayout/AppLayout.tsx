@@ -31,7 +31,6 @@ import {
   SelectItem,
   UpgradePlanModal
 } from '@app/components/v2';
-import { plans } from '@app/const';
 import { useOrganization, useSubscription, useUser, useWorkspace } from '@app/context';
 import { usePopUp } from '@app/hooks';
 import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useUploadWsKey } from '@app/hooks/api';
@@ -59,10 +58,10 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { workspaces, currentWorkspace } = useWorkspace();
   const { currentOrg } = useOrganization();
   const { user } = useUser();
-  const { subscriptionPlan } = useSubscription();
+  const { subscription } = useSubscription();
+
   const host = window.location.origin;
-  const isAddingProjectsAllowed =
-    subscriptionPlan !== plans.starter || (subscriptionPlan === plans.starter && workspaces.length < 3) || host !== 'https://app.infisical.com';
+  const isAddingProjectsAllowed = ((subscription?.workspacesUsed || 1) < (subscription?.workspaceLimit || 3)) || host !== 'https://app.infisical.com';
 
   const createWs = useCreateWorkspace();
   const uploadWsKey = useUploadWsKey();
@@ -104,7 +103,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       });
       const userWorkspaces = orgUserProjects;
       if (
-        (userWorkspaces.length === 0 &&
+        (userWorkspaces?.length === 0 &&
           router.asPath !== '/noprojects' &&
           !router.asPath.includes('home') &&
           !router.asPath.includes('settings')) ||

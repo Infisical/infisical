@@ -6,7 +6,10 @@ import { useRouter } from 'next/router';
 import Button from '@app/components/basic/buttons/Button';
 import EventFilter from '@app/components/basic/EventFilter';
 import NavHeader from '@app/components/navigation/NavHeader';
+import { UpgradePlanModal } from '@app/components/v2';
+import { useSubscription } from '@app/context';
 import ActivitySideBar from '@app/ee/components/ActivitySideBar';
+import { usePopUp } from '@app/hooks/usePopUp';
 
 import getProjectLogs from '../../ee/api/secrets/GetProjectLogs';
 import ActivityTable from '../../ee/components/ActivityTable';
@@ -67,6 +70,10 @@ export default function Activity() {
   const currentLimit = 10;
   const [currentSidebarAction, toggleSidebar] = useState<string>();
   const { t } = useTranslation();
+  const { subscription } = useSubscription();
+  const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
+    'upgradePlan'
+  ] as const);
 
   // this use effect updates the data in case of a new filter being added
   useEffect(() => {
@@ -137,11 +144,15 @@ export default function Activity() {
   }, [currentLimit, currentOffset]);
 
   const loadMoreLogs = () => {
-    setCurrentOffset(currentOffset + currentLimit);
+    if (subscription?.auditLogs === false) {
+      handlePopUpOpen('upgradePlan');
+    } else {
+      setCurrentOffset(currentOffset + currentLimit);
+    }
   };
 
   return (
-    <div className="mx-6 lg:mx-0 w-full h-screen">
+    <div className="mx-6 lg:mx-0 w-full h-full">
       <Head>
         <title>Audit Logs</title>
         <link rel="icon" href="/infisical.ico" />
@@ -173,6 +184,11 @@ export default function Activity() {
           />
         </div>
       </div>
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={() => handlePopUpClose('upgradePlan')}
+        text="You can see more logs if you switch to Infisical's Business/Professional Plan."
+      />
     </div>
   );
 }

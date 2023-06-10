@@ -53,7 +53,7 @@ const AddProjectMemberDialog = ({
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-md transform rounded-md border border-gray-700 bg-bunker-800 p-6 text-left align-middle shadow-xl transition-all">
+                <Dialog.Panel className="w-full max-w-md transform rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 text-left align-middle shadow-xl transition-all">
                   {data?.length > 0 ? (
                     <Dialog.Title
                       as="h3"
@@ -64,7 +64,7 @@ const AddProjectMemberDialog = ({
                   ) : (
                     <Dialog.Title
                       as="h3"
-                      className="z-50 text-lg font-medium leading-6 text-gray-400"
+                      className="z-50 text-lg font-medium text-mineshaft-300 mb-4"
                     >
                       {t('section.members.add-dialog.already-all-invited')}
                     </Dialog.Title>

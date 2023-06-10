@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import {
   CreateSecretParams,
   GetSecretsParams,
@@ -6,19 +6,20 @@ import {
   UpdateSecretParams,
   DeleteSecretParams,
 } from '../interfaces/services/SecretService';
-import { 
-  ISecret, 
-  Secret, 
+import {
+  Secret,
+  ISecret,
   SecretBlindIndexData,
-  BotKey
-} from '../models';
-import { SecretVersion } from '../ee/models';
+  ServiceTokenData,
+} from "../models";
+import { SecretVersion } from "../ee/models";
 import {
   BadRequestError,
   SecretNotFoundError,
   SecretBlindIndexDataNotFoundError,
   InternalServerError,
-} from '../utils/errors';
+  UnauthorizedRequestError,
+} from "../utils/errors";
 import {
   SECRET_PERSONAL,
   SECRET_SHARED,
@@ -29,20 +30,21 @@ import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
   ENCODING_SCHEME_BASE64,
-} from '../variables';
-import crypto from 'crypto';
-import * as argon2 from 'argon2';
+} from "../variables";
+import crypto from "crypto";
+import * as argon2 from "argon2";
 import {
   encryptSymmetric128BitHexKeyUTF8,
   decryptSymmetric128BitHexKeyUTF8,
 } from '../utils/crypto';
-import { getEncryptionKey, client, getRootEncryptionKey } from '../config';
 import { BotService, TelemetryService } from '../services';
-import { EESecretService, EELogService } from '../ee/services';
+import { getEncryptionKey, client, getRootEncryptionKey } from "../config";
+import { EESecretService, EELogService } from "../ee/services";
 import {
   getAuthDataPayloadIdObj,
   getAuthDataPayloadUserObj,
-} from '../utils/auth';
+} from "../utils/auth";
+import { getFolderIdFromServiceToken } from "../services/FolderService";
 
 /**
  * Create secret blind index data containing encrypted blind index [salt]
@@ -51,12 +53,12 @@ import {
  * @param {Types.ObjectId} obj.workspaceId
  */
 export const createSecretBlindIndexDataHelper = async ({
-    workspaceId
+  workspaceId,
 }: {
   workspaceId: Types.ObjectId;
 }) => {
   // initialize random blind index salt for workspace
-  const salt = crypto.randomBytes(16).toString('base64');
+  const salt = crypto.randomBytes(16).toString("base64");
 
   const encryptionKey = await getEncryptionKey();
   const rootEncryptionKey = await getRootEncryptionKey();
@@ -104,7 +106,7 @@ export const createSecretBlindIndexDataHelper = async ({
  * @returns
  */
 export const getSecretBlindIndexSaltHelper = async ({
-    workspaceId
+  workspaceId,
 }: {
   workspaceId: Types.ObjectId;
 }) => {
@@ -113,7 +115,7 @@ export const getSecretBlindIndexSaltHelper = async ({
 
   const secretBlindIndexData = await SecretBlindIndexData.findOne({
     workspace: workspaceId,
-  }).select('+algorithm +keyEncoding');
+  }).select("+algorithm +keyEncoding");
 
   if (!secretBlindIndexData) throw SecretBlindIndexDataNotFoundError();
 
@@ -141,7 +143,7 @@ export const getSecretBlindIndexSaltHelper = async ({
   }
 
   throw InternalServerError({
-    message: 'Failed to obtain workspace salt needed for secret blind indexing',
+    message: "Failed to obtain workspace salt needed for secret blind indexing",
   });
 };
 
@@ -153,8 +155,8 @@ export const getSecretBlindIndexSaltHelper = async ({
  * @param {String} obj.salt - base64-salt
  */
 export const generateSecretBlindIndexWithSaltHelper = async ({
-    secretName,
-    salt
+  secretName,
+  salt,
 }: {
   secretName: string;
   salt: string;
@@ -163,14 +165,14 @@ export const generateSecretBlindIndexWithSaltHelper = async ({
   const secretBlindIndex = (
     await argon2.hash(secretName, {
       type: argon2.argon2id,
-      salt: Buffer.from(salt, 'base64'),
+      salt: Buffer.from(salt, "base64"),
       saltLength: 16, // default 16 bytes
       memoryCost: 65536, // default pool of 64 MiB per thread.
       hashLength: 32,
       parallelism: 1,
       raw: true,
     })
-  ).toString('base64');
+  ).toString("base64");
 
   return secretBlindIndex;
 };
@@ -183,8 +185,8 @@ export const generateSecretBlindIndexWithSaltHelper = async ({
  * @param {Types.ObjectId} obj.workspaceId - id of workspace that secret belongs to
  */
 export const generateSecretBlindIndexHelper = async ({
-    secretName,
-    workspaceId
+  secretName,
+  workspaceId,
 }: {
   secretName: string;
   workspaceId: Types.ObjectId;
@@ -195,7 +197,7 @@ export const generateSecretBlindIndexHelper = async ({
 
   const secretBlindIndexData = await SecretBlindIndexData.findOne({
     workspace: workspaceId,
-  }).select('+algorithm +keyEncoding');
+  }).select("+algorithm +keyEncoding");
 
   if (!secretBlindIndexData) throw SecretBlindIndexDataNotFoundError();
 
@@ -236,9 +238,9 @@ export const generateSecretBlindIndexHelper = async ({
 
     return secretBlindIndex;
   }
-  
+
   throw InternalServerError({
-    message: 'Failed to generate secret blind index'
+    message: "Failed to generate secret blind index",
   });
 };
 
@@ -286,7 +288,7 @@ export const createSecretHelper = async ({
   secretCommentCiphertext,
   secretCommentIV,
   secretCommentTag,
-  folderId,
+  secretPath = "/",
 }: CreateSecretParams) => {
 
   const secretBlindIndex = await generateSecretBlindIndexHelper({
@@ -294,16 +296,30 @@ export const createSecretHelper = async ({
     workspaceId: new Types.ObjectId(workspaceId),
   });
 
+  // if using service token filter towards the folderId by secretpath
+  if (authData.authPayload instanceof ServiceTokenData) {
+    const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
+    if (secretPath !== serviceTkScopedSecretPath) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
+  }
+  const folderId = await getFolderIdFromServiceToken(
+    workspaceId,
+    environment,
+    secretPath
+  );
+
   const exists = await Secret.exists({
     secretBlindIndex,
     workspace: new Types.ObjectId(workspaceId),
+    folder: folderId,
     type,
     ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {}),
   });
 
   if (exists)
     throw BadRequestError({
-      message: 'Failed to create secret that already exists',
+      message: "Failed to create secret that already exists",
     });
 
   if (type === SECRET_PERSONAL) {
@@ -312,6 +328,7 @@ export const createSecretHelper = async ({
 
     const exists = await Secret.exists({
       secretBlindIndex,
+      folder: folderId,
       workspace: new Types.ObjectId(workspaceId),
       type: SECRET_SHARED,
     });
@@ -319,7 +336,7 @@ export const createSecretHelper = async ({
     if (!exists)
       throw BadRequestError({
         message:
-          'Failed to create personal secret override for no corresponding shared secret',
+          "Failed to create personal secret override for no corresponding shared secret",
       });
   }
 
@@ -396,6 +413,7 @@ export const createSecretHelper = async ({
     version: secret.version,
     workspace: secret.workspace,
     type,
+    folder: folderId,
     ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {}),
     environment: secret.environment,
     isDeleted: false,
@@ -443,7 +461,7 @@ export const createSecretHelper = async ({
 
   if (postHogClient) {
     postHogClient.capture({
-      event: 'secrets added',
+      event: "secrets added",
       distinctId: await TelemetryService.getDistinctId({
         authData,
       }),
@@ -451,6 +469,7 @@ export const createSecretHelper = async ({
         numberOfSecrets: 1,
         environment,
         workspaceId,
+        folderId,
         channel: authData.authChannel,
         userAgent: authData.authUserAgent,
       },
@@ -469,16 +488,30 @@ export const createSecretHelper = async ({
  * @returns
  */
 export const getSecretsHelper = async ({
-    workspaceId,
-    environment,
-    authData
+  workspaceId,
+  environment,
+  authData,
+  secretPath = "/",
 }: GetSecretsParams) => {
   let secrets: ISecret[] = [];
+  // if using service token filter towards the folderId by secretpath
+  if (authData.authPayload instanceof ServiceTokenData) {
+    const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
+    if (secretPath !== serviceTkScopedSecretPath) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
+  }
+  const folderId = await getFolderIdFromServiceToken(
+    workspaceId,
+    environment,
+    secretPath
+  );
 
   // get personal secrets first
   secrets = await Secret.find({
     workspace: new Types.ObjectId(workspaceId),
     environment,
+    folder: folderId,
     type: SECRET_PERSONAL,
     ...getAuthDataPayloadUserObj(authData),
   }).lean();
@@ -488,6 +521,7 @@ export const getSecretsHelper = async ({
     await Secret.find({
       workspace: new Types.ObjectId(workspaceId),
       environment,
+      folder: folderId,
       type: SECRET_SHARED,
       secretBlindIndex: {
         $nin: secrets.map((secret) => secret.secretBlindIndex),
@@ -516,7 +550,7 @@ export const getSecretsHelper = async ({
 
   if (postHogClient) {
     postHogClient.capture({
-      event: 'secrets pulled',
+      event: "secrets pulled",
       distinctId: await TelemetryService.getDistinctId({
         authData,
       }),
@@ -524,6 +558,7 @@ export const getSecretsHelper = async ({
         numberOfSecrets: secrets.length,
         environment,
         workspaceId,
+        folderId,
         channel: authData.authChannel,
         userAgent: authData.authUserAgent,
       },
@@ -586,18 +621,32 @@ export const getSecretHelper = async ({
   environment,
   type,
   authData,
+  secretPath = "/",
 }: GetSecretParams) => {
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
     workspaceId: new Types.ObjectId(workspaceId),
   });
   let secret: ISecret | null = null;
+  // if using service token filter towards the folderId by secretpath
+  if (authData.authPayload instanceof ServiceTokenData) {
+    const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
+    if (secretPath !== serviceTkScopedSecretPath) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
+  }
+  const folderId = await getFolderIdFromServiceToken(
+    workspaceId,
+    environment,
+    secretPath
+  );
 
   // try getting personal secret first (if exists)
   secret = await Secret.findOne({
     secretBlindIndex,
     workspace: new Types.ObjectId(workspaceId),
     environment,
+    folder: folderId,
     type: type ?? SECRET_PERSONAL,
     ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {}),
   }).lean();
@@ -609,6 +658,7 @@ export const getSecretHelper = async ({
       secretBlindIndex,
       workspace: new Types.ObjectId(workspaceId),
       environment,
+      folder: folderId,
       type: SECRET_SHARED,
     }).lean();
   }
@@ -636,7 +686,7 @@ export const getSecretHelper = async ({
 
   if (postHogClient) {
     postHogClient.capture({
-      event: 'secrets pull',
+      event: "secrets pull",
       distinctId: await TelemetryService.getDistinctId({
         authData,
       }),
@@ -644,6 +694,7 @@ export const getSecretHelper = async ({
         numberOfSecrets: 1,
         environment,
         workspaceId,
+        folderId,
         channel: authData.authChannel,
         userAgent: authData.authUserAgent,
       },
@@ -704,6 +755,7 @@ export const updateSecretHelper = async ({
   secretValueCiphertext,
   secretValueIV,
   secretValueTag,
+  secretPath,
 }: UpdateSecretParams) => {
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
@@ -711,6 +763,18 @@ export const updateSecretHelper = async ({
   });
 
   let secret: ISecret | null = null;
+  // if using service token filter towards the folderId by secretpath
+  if (authData.authPayload instanceof ServiceTokenData) {
+    const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
+    if (secretPath !== serviceTkScopedSecretPath) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
+  }
+  const folderId = await getFolderIdFromServiceToken(
+    workspaceId,
+    environment,
+    secretPath
+  );
 
   if (type === SECRET_SHARED) {
     // case: update shared secret
@@ -719,6 +783,7 @@ export const updateSecretHelper = async ({
         secretBlindIndex,
         workspace: new Types.ObjectId(workspaceId),
         environment,
+        folder: folderId,
         type,
       },
       {
@@ -740,6 +805,7 @@ export const updateSecretHelper = async ({
         workspace: new Types.ObjectId(workspaceId),
         environment,
         type,
+        folder: folderId,
         ...getAuthDataPayloadUserObj(authData),
       },
       {
@@ -760,6 +826,7 @@ export const updateSecretHelper = async ({
     secret: secret._id,
     version: secret.version,
     workspace: secret.workspace,
+    folder: folderId,
     type,
     ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {}),
     environment: secret.environment,
@@ -808,7 +875,7 @@ export const updateSecretHelper = async ({
 
   if (postHogClient) {
     postHogClient.capture({
-      event: 'secrets modified',
+      event: "secrets modified",
       distinctId: await TelemetryService.getDistinctId({
         authData,
       }),
@@ -816,6 +883,7 @@ export const updateSecretHelper = async ({
         numberOfSecrets: 1,
         environment,
         workspaceId,
+        folderId,
         channel: authData.authChannel,
         userAgent: authData.authUserAgent,
       },
@@ -841,11 +909,25 @@ export const deleteSecretHelper = async ({
   environment,
   type,
   authData,
+  secretPath = "/",
 }: DeleteSecretParams) => {
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
     workspaceId: new Types.ObjectId(workspaceId),
   });
+
+  // if using service token filter towards the folderId by secretpath
+  if (authData.authPayload instanceof ServiceTokenData) {
+    const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
+    if (secretPath !== serviceTkScopedSecretPath) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
+  }
+  const folderId = await getFolderIdFromServiceToken(
+    workspaceId,
+    environment,
+    secretPath
+  );
 
   let secrets: ISecret[] = [];
   let secret: ISecret | null = null;
@@ -855,6 +937,7 @@ export const deleteSecretHelper = async ({
       secretBlindIndex,
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
+      folder: folderId,
     });
 
     secret = await Secret.findOneAndDelete({
@@ -862,16 +945,19 @@ export const deleteSecretHelper = async ({
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
       type,
+      folder: folderId,
     });
 
     await Secret.deleteMany({
       secretBlindIndex,
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
+      folder: folderId,
     });
   } else {
     secret = await Secret.findOneAndDelete({
       secretBlindIndex,
+      folder: folderId,
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
       type,
@@ -918,7 +1004,7 @@ export const deleteSecretHelper = async ({
 
   if (postHogClient) {
     postHogClient.capture({
-      event: 'secrets deleted',
+      event: "secrets deleted",
       distinctId: await TelemetryService.getDistinctId({
         authData,
       }),
@@ -926,6 +1012,7 @@ export const deleteSecretHelper = async ({
         numberOfSecrets: secrets.length,
         environment,
         workspaceId,
+        folderId,
         channel: authData.authChannel,
         userAgent: authData.authUserAgent,
       },
