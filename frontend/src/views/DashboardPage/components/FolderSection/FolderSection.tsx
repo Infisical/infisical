@@ -23,17 +23,20 @@ export const FolderSection = ({
       {folders
         .filter(({ name }) => name.toLowerCase().includes(search.toLowerCase()))
         .map(({ id, name }) => (
-          <tr key={id} className="group flex flex-row items-center hover:bg-mineshaft-700 cursor-default">
-            <td className="flex h-10 w-10 items-center justify-center border-none px-4 ml-0.5">
+          <tr
+            key={id}
+            className="group flex cursor-default flex-row items-center hover:bg-mineshaft-700"
+          >
+            <td className="ml-0.5 flex h-10 w-10 items-center justify-center border-none px-4">
               <FontAwesomeIcon icon={faFolder} className="text-primary-700" />
             </td>
             <td
               colSpan={2}
-              className="relative flex w-full min-w-[220px] items-center justify-between overflow-hidden text-ellipsis uppercase lg:min-w-[240px] xl:min-w-[280px]"
+              className="relative flex w-full min-w-[220px] items-center justify-between overflow-hidden text-ellipsis lg:min-w-[240px] xl:min-w-[280px]"
               style={{ paddingTop: '0', paddingBottom: '0' }}
             >
               <div
-                className="flex-grow p-2 cursor-default"
+                className="flex-grow cursor-default p-2"
                 onKeyDown={() => null}
                 tabIndex={0}
                 role="button"
