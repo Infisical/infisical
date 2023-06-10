@@ -42,8 +42,9 @@ const apiTokenExpiry = [
 ];
 
 const createServiceTokenSchema = yup.object({
-  name: yup.string().required().label('Service Token Name'),
-  environment: yup.string().required().label('Environment'),
+  name: yup.string().max(100).required().label('Service Token Name'),
+  environment: yup.string().max(50).required().label('Environment'),
+  secretPath: yup.string().required().default('/').label('Secret Path'),
   expiresIn: yup.string().optional().label('Service Token Expiration'),
   permissions: yup
     .object()
@@ -191,6 +192,22 @@ export const ServiceTokenSection = ({
                   />
                   <Controller
                     control={control}
+                    name="secretPath"
+                    defaultValue="/"
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        label="Secrets Path"
+                        isError={Boolean(error)}
+                        helperText="Tokens can be scoped to a folder path. Default path is /"
+                        errorText={error?.message}
+                      >
+                        <Input {...field} placeholder="Provide a path, default is /" />
+                      </FormControl>
+                    )}
+                  />
+
+                  <Controller
+                    control={control}
                     name="expiresIn"
                     defaultValue={String(apiTokenExpiry?.[0]?.value)}
                     render={({ field: { onChange, ...field }, fieldState: { error } }) => (
@@ -317,6 +334,7 @@ export const ServiceTokenSection = ({
             <Tr>
               <Th>Token Name</Th>
               <Th>Environment</Th>
+              <Th>Secret Path</Th>
               <Th>Valid Until</Th>
               <Th aria-label="button" />
             </Tr>
@@ -328,6 +346,7 @@ export const ServiceTokenSection = ({
                 <Tr key={row._id}>
                   <Td>{row.name}</Td>
                   <Td>{row.environment}</Td>
+                  <Td>{row.secretPath}</Td>
                   <Td>{row.expiresAt && new Date(row.expiresAt).toUTCString()}</Td>
                   <Td className="flex items-center justify-end">
                     <IconButton

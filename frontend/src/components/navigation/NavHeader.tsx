@@ -121,7 +121,7 @@ export default function NavHeader({
                 <span className="text-sm font-semibold text-bunker-300">{name}</span>
               ) : (
                 <Link passHref legacyBehavior href={{ pathname: '/dashboard/[id]', query }}>
-                  <a className="text-sm font-semibold capitalize text-primary/80 hover:text-primary">
+                  <a className="text-sm font-semibold text-primary/80 hover:text-primary">
                     {name === 'root' ? selectedEnv?.name : name}
                   </a>
                 </Link>

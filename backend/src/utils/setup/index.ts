@@ -1,30 +1,31 @@
-import * as Sentry from '@sentry/node';
-import { DatabaseService, TelemetryService } from '../../services';
-import { setTransporter } from '../../helpers/nodemailer';
-import { EELicenseService } from '../../ee/services';
-import { initSmtp } from '../../services/smtp';
-import { createTestUserForDevelopment } from '../addDevelopmentUser';
+import * as Sentry from "@sentry/node";
+import { DatabaseService, TelemetryService } from "../../services";
+import { setTransporter } from "../../helpers/nodemailer";
+import { EELicenseService } from "../../ee/services";
+import { initSmtp } from "../../services/smtp";
+import { createTestUserForDevelopment } from "../addDevelopmentUser";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-import { validateEncryptionKeysConfig } from './validateConfig';
+import { validateEncryptionKeysConfig } from "./validateConfig";
 import {
   backfillSecretVersions,
   backfillBots,
   backfillSecretBlindIndexData,
   backfillEncryptionMetadata,
   backfillSecretFolders,
-} from './backfillData';
+  backfillServiceToken,
+} from "./backfillData";
 import {
   reencryptBotPrivateKeys,
   reencryptSecretBlindIndexDataSalts,
-} from './reencryptData';
+} from "./reencryptData";
 import {
   getNodeEnv,
   getMongoURL,
   getSentryDSN,
   getClientSecretGoogle,
   getClientIdGoogle,
-} from '../../config';
-import { initializePassport } from '../auth';
+} from "../../config";
+import { initializePassport } from "../auth";
 
 /**
  * Prepare Infisical upon startup. This includes tasks like:
@@ -75,6 +76,7 @@ export const setup = async () => {
   await backfillSecretBlindIndexData();
   await backfillEncryptionMetadata();
   await backfillSecretFolders();
+  await backfillServiceToken();
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
   // to base64 256-bit ROOT_ENCRYPTION_KEY
@@ -85,7 +87,7 @@ export const setup = async () => {
   Sentry.init({
     dsn: await getSentryDSN(),
     tracesSampleRate: 1.0,
-    debug: (await getNodeEnv()) === 'production' ? false : true,
+    debug: (await getNodeEnv()) === "production" ? false : true,
     environment: await getNodeEnv(),
   });
 

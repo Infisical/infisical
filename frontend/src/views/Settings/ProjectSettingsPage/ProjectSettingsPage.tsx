@@ -217,7 +217,8 @@ export const ProjectSettingsPage = () => {
     environment,
     expiresIn,
     name,
-    permissions
+    permissions,
+    secretPath
   }: CreateServiceToken) => {
     // type guard
     if (!latestFileKey) return '';
@@ -241,6 +242,7 @@ export const ProjectSettingsPage = () => {
         iv,
         tag,
         environment,
+        secretPath,
         expiresIn: Number(expiresIn),
         name,
         workspaceId: workspaceID,
