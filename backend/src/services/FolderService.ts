@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
-import { TFolderSchema } from "../models/folder";
+import { Types } from "mongoose";
+import Folder, { TFolderSchema } from "../models/folder";
 
 type TAppendFolderDTO = {
   folderName: string;
@@ -191,4 +192,26 @@ export const getFolderByPath = (folders: TFolderSchema, searchPath: string) => {
     queue.push(segment);
   }
   return segment;
+};
+
+export const getFolderIdFromServiceToken = async (
+  workspaceId: Types.ObjectId | string,
+  environment: string,
+  secretPath: string
+) => {
+  const folders = await Folder.findOne({
+    workspace: workspaceId,
+    environment,
+  });
+
+  if (!folders) {
+    if (secretPath !== "/") throw new Error("Invalid path. Folders not found");
+  } else {
+    const folder = getFolderByPath(folders.nodes, secretPath);
+    if (!folder) {
+      throw new Error("Folder not found");
+    }
+    return folder.id;
+  }
+  return "root";
 };

@@ -44,30 +44,7 @@ import {
   getAuthDataPayloadIdObj,
   getAuthDataPayloadUserObj,
 } from "../utils/auth";
-import Folder from "../models/folder";
-import { getFolderByPath } from "../services/FolderService";
-
-export const getFolderIdFromServiceToken = async (
-  workspaceId: Types.ObjectId | string,
-  environment: string,
-  secretPath: string
-) => {
-  const folders = await Folder.findOne({
-    workspace: workspaceId,
-    environment,
-  });
-
-  if (!folders) {
-    if (secretPath !== "/") throw new Error("Invalid path. Folders not found");
-  } else {
-    const folder = getFolderByPath(folders.nodes, secretPath);
-    if (!folder) {
-      throw new Error("Folder not found");
-    }
-    return folder.id;
-  }
-  return "root";
-};
+import { getFolderIdFromServiceToken } from "../services/FolderService";
 
 /**
  * Create secret blind index data containing encrypted blind index [salt]

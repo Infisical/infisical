@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import { Request, Response } from "express";
-import { ISecret, Secret } from "../../models";
+import { ISecret, Secret, ServiceTokenData } from "../../models";
 import { IAction, SecretVersion } from "../../ee/models";
 import {
   SECRET_PERSONAL,
@@ -29,6 +29,7 @@ import { BatchSecretRequest, BatchSecret } from "../../types/secret";
 import Folder from "../../models/folder";
 import {
   getFolderByPath,
+  getFolderIdFromServiceToken,
   searchByFolderId,
 } from "../../services/FolderService";
 
@@ -45,14 +46,15 @@ export const batchSecrets = async (req: Request, res: Response) => {
   const {
     workspaceId,
     environment,
-    folderId,
     requests,
+    secretPath,
   }: {
     workspaceId: string;
     environment: string;
-    folderId: string;
     requests: BatchSecretRequest[];
+    secretPath: string;
   } = req.body;
+  let folderId = req.body.folderId as string;
 
   const createSecrets: BatchSecret[] = [];
   const updateSecrets: BatchSecret[] = [];
@@ -68,6 +70,25 @@ export const batchSecrets = async (req: Request, res: Response) => {
   if (folders && folderId !== "root") {
     const folder = searchByFolderId(folders.nodes, folderId as string);
     if (!folder) throw BadRequestError({ message: "Folder not found" });
+  }
+
+  if (req.authData.authPayload instanceof ServiceTokenData) {
+    const { secretPath: serviceTkScopedSecretPath } = req.authData.authPayload;
+    // in service token when not giving secretpath folderid must be root
+    // this is to avoid giving folderid when service tokens are used
+    if (
+      (!secretPath && folderId !== "root") ||
+      (secretPath && secretPath !== serviceTkScopedSecretPath)
+    ) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
+  }
+  if (secretPath) {
+    folderId = await getFolderIdFromServiceToken(
+      workspaceId,
+      environment,
+      secretPath
+    );
   }
 
   for await (const request of requests) {
@@ -152,6 +173,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
           numberOfSecrets: createdSecrets.length,
           environment,
           workspaceId,
+          folderId,
           channel,
           userAgent: req.headers?.["user-agent"],
         },
@@ -218,7 +240,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
           algorithm: ALGORITHM_AES_256_GCM,
           keyEncoding: ENCODING_SCHEME_UTF8,
           tags: u.tags,
-          folder: u.folder
+          folder: u.folder,
         })
     );
 
@@ -248,6 +270,7 @@ export const batchSecrets = async (req: Request, res: Response) => {
           numberOfSecrets: updateSecrets.length,
           environment,
           workspaceId,
+          folderId,
           channel,
           userAgent: req.headers?.["user-agent"],
         },
@@ -395,8 +418,13 @@ export const createSecrets = async (req: Request, res: Response) => {
   const {
     workspaceId,
     environment,
-    folderId,
-  }: { workspaceId: string; environment: string; folderId: string } = req.body;
+    secretPath,
+  }: {
+    workspaceId: string;
+    environment: string;
+    secretPath?: string;
+  } = req.body;
+  let folderId = req.body.folderId;
 
   if (req.user) {
     const hasAccess = await userHasWorkspaceAccess(
@@ -420,6 +448,24 @@ export const createSecrets = async (req: Request, res: Response) => {
   } else if (typeof req.body.secrets === "object") {
     // case: create 1 secret
     listOfSecretsToCreate = [req.body.secrets];
+  }
+  if (req.authData.authPayload instanceof ServiceTokenData) {
+    const { secretPath: serviceTkScopedSecretPath } = req.authData.authPayload;
+    // in service token when not giving secretpath folderid must be root
+    // this is to avoid giving folderid when service tokens are used
+    if (
+      (!secretPath && folderId !== "root") ||
+      (secretPath && secretPath !== serviceTkScopedSecretPath)
+    ) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
+  }
+  if (secretPath) {
+    folderId = await getFolderIdFromServiceToken(
+      workspaceId,
+      environment,
+      secretPath
+    );
   }
 
   // get secret blind index salt
@@ -585,6 +631,7 @@ export const createSecrets = async (req: Request, res: Response) => {
         environment,
         workspaceId,
         channel: channel,
+        folderId,
         userAgent: req.headers?.["user-agent"],
       },
     });
@@ -658,6 +705,18 @@ export const getSecrets = async (req: Request, res: Response) => {
   if (folders && folderId !== "root") {
     const folder = searchByFolderId(folders.nodes, folderId as string);
     if (!folder) throw BadRequestError({ message: "Folder not found" });
+  }
+
+  if (req.authData.authPayload instanceof ServiceTokenData) {
+    const { secretPath: serviceTkScopedSecretPath } = req.authData.authPayload;
+    // in service token when not giving secretpath folderid must be root
+    // this is to avoid giving folderid when service tokens are used
+    if (
+      (!secretPath && folderId !== "root") ||
+      (secretPath && secretPath !== serviceTkScopedSecretPath)
+    ) {
+      throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
+    }
   }
 
   if (folders && secretPath) {
@@ -800,6 +859,7 @@ export const getSecrets = async (req: Request, res: Response) => {
         environment,
         workspaceId,
         channel,
+        folderId,
         userAgent: req.headers?.["user-agent"],
       },
     });
@@ -910,13 +970,13 @@ export const updateSecrets = async (req: Request, res: Response) => {
             keyEncoding: ENCODING_SCHEME_UTF8,
             tags,
             ...(secretCommentCiphertext !== undefined &&
-              secretCommentIV &&
-              secretCommentTag
+            secretCommentIV &&
+            secretCommentTag
               ? {
-                secretCommentCiphertext,
-                secretCommentIV,
-                secretCommentTag,
-              }
+                  secretCommentCiphertext,
+                  secretCommentIV,
+                  secretCommentTag,
+                }
               : {}),
           },
         },
