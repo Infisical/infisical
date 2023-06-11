@@ -13,6 +13,7 @@ import { validateServiceAccountClientForWorkspace } from './serviceAccount';
 import { validateUserClientForWorkspace } from './user';
 import { validateServiceTokenDataClientForWorkspace } from './serviceTokenData';
 import { 
+	BadRequestError,
     UnauthorizedRequestError,
     WorkspaceNotFoundError 
 } from '../utils/errors';
@@ -22,6 +23,7 @@ import {
     AUTH_MODE_SERVICE_TOKEN,
     AUTH_MODE_API_KEY
 } from '../variables';
+import { BotService } from '../services';
 
 /**
  * Validate authenticated clients for workspace with id [workspaceId] based
@@ -39,7 +41,8 @@ export const validateClientForWorkspace = async ({
 	environment,
 	acceptedRoles,
 	requiredPermissions,
-	requireBlindIndicesEnabled
+	requireBlindIndicesEnabled,
+	requireE2EEOff
 }: {
 	authData: {
 		authMode: string;
@@ -50,6 +53,7 @@ export const validateClientForWorkspace = async ({
 	acceptedRoles: Array<'admin' | 'member'>;
 	requiredPermissions?: string[];
 	requireBlindIndicesEnabled: boolean;
+	requireE2EEOff: boolean;
 }) => {
 	const workspace = await Workspace.findById(workspaceId);
 
@@ -68,6 +72,14 @@ export const validateClientForWorkspace = async ({
 		
 		if (!secretBlindIndexData) throw UnauthorizedRequestError({
 			message: 'Failed workspace authorization due to blind indices not being enabled'
+		});
+	}
+	
+	if (requireE2EEOff) {
+		const isWorkspaceE2EE = await BotService.getIsWorkspaceE2EE(workspaceId);
+		
+		if (isWorkspaceE2EE) throw BadRequestError({
+			message: 'Failed workspace authorization due to end-to-end encryption not being disabled'
 		});
 	}
 
