@@ -17,7 +17,7 @@ const requireWorkspaceAuth = ({
 	locationEnvironment = undefined,
 	requiredPermissions = [],
 	requireBlindIndicesEnabled = false,
-	requireE2EEOff = true
+	requireE2EEOff = false
 }: {
 	acceptedRoles: Array<'admin' | 'member'>;
 	locationWorkspaceId: req;

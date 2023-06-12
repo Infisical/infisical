@@ -7,17 +7,26 @@ import {
     getIsWorkspaceE2EEHelper
 } from '../helpers/bot';
 
-// rename the functions here
-// refactor the interface situation here
-
 /**
  * Class to handle bot actions
  */
 class BotService {
+    
+    /**
+     * Return whether or not workspace with id [workspaceId] is end-to-end encrypted
+     * @param workspaceId - id of workspace
+     * @returns {Boolean}
+     */
     static async getIsWorkspaceE2EE(workspaceId: Types.ObjectId) {
         return await getIsWorkspaceE2EEHelper(workspaceId);
     }
 
+    /**
+     * Get workspace key for workspace with id [workspaceId] shared to bot.
+     * @param {Object} obj
+     * @param {Types.ObjectId} obj.workspaceId - id of workspace to get workspace key for
+     * @returns 
+     */
     static async getWorkspaceKeyWithBot({
         workspaceId
     }: {

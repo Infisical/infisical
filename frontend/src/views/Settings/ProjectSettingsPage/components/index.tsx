@@ -6,3 +6,4 @@ export { ProjectNameChangeSection } from './ProjectNameChangeSection';
 export type { CreateWsTag } from './SecretTagsSection/SecretTagsSection';
 export { ServiceTokenSection } from './ServiceTokenSection';
 export type { CreateServiceToken } from './ServiceTokenSection/ServiceTokenSection';
+export { E2EESection } from './E2EESection';

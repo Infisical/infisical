@@ -8,10 +8,9 @@ import {
 import { workspacesController } from '../../controllers/v3';
 import {
     AUTH_MODE_JWT,
-    ADMIN,
-    PERMISSION_READ_SECRETS
+    ADMIN
 } from '../../variables';
-import { param, body, validationResult } from 'express-validator';
+import { param, body } from 'express-validator';
 
 // -- migration to blind indices endpoints
 
