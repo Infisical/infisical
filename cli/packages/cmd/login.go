@@ -74,15 +74,13 @@ var loginCmd = &cobra.Command{
 				util.HandleError(err)
 			}
 
-			//if not override set INFISICAL_URL to exported var
-			//set domainQuery to false
+			//if not override set domainQuery to false
 			if !overrideDomain {
 				domainQuery = false
-				config.INFISICAL_URL = config.INFISICAL_URL_MANUAL_OVERRIDE
 			}
 
 		} else {
-			// don't query for domain selection if we're not using default domain
+			// don't query for domain selection if we're not using the default domain (e.g. overrided it)
 			domainQuery = config.INFISICAL_URL == util.INFISICAL_DEFAULT_API_URL
 		}
 
