@@ -23,7 +23,7 @@ export default function TeamInviteStep(): JSX.Element {
   const redirectToHome = async () => {
     const userWorkspaces = await getWorkspaces();
     const userWorkspace = userWorkspaces[0]._id;
-    router.push(`/home/${userWorkspace}`);
+    router.push(`/dashboard/${userWorkspace}`);
   };
 
   const inviteUsers = async ({ emails: inviteEmails }: { emails: string }) => {
