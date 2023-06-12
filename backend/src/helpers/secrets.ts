@@ -5,7 +5,7 @@ import {
   GetSecretParams,
   UpdateSecretParams,
   DeleteSecretParams,
-} from "../interfaces/services/SecretService";
+} from '../interfaces/services/SecretService';
 import {
   Secret,
   ISecret,
@@ -36,15 +36,69 @@ import * as argon2 from "argon2";
 import {
   encryptSymmetric128BitHexKeyUTF8,
   decryptSymmetric128BitHexKeyUTF8,
-} from "../utils/crypto";
+} from '../utils/crypto';
+import { TelemetryService } from '../services';
 import { getEncryptionKey, client, getRootEncryptionKey } from "../config";
-import { TelemetryService } from "../services";
 import { EESecretService, EELogService } from "../ee/services";
 import {
   getAuthDataPayloadIdObj,
   getAuthDataPayloadUserObj,
 } from "../utils/auth";
 import { getFolderIdFromServiceToken } from "../services/FolderService";
+
+/**
+ * Returns an object containing secret [secret] but with its value, key, comment decrypted.
+ * 
+ * Precondition: the workspace for secret [secret] must have E2EE disabled
+ * @param {ISecret} secret - secret to repackage to raw
+ * @param {String} key - symmetric key to use to decrypt secret
+ * @returns 
+ */
+export const repackageSecretToRaw = ({
+  secret,
+  key
+}:{
+  secret: ISecret;
+  key: string;
+}) => {
+
+  const secretKey = decryptSymmetric128BitHexKeyUTF8({
+    ciphertext: secret.secretKeyCiphertext,
+    iv: secret.secretKeyIV,
+    tag: secret.secretKeyTag,
+    key
+  });
+
+  const secretValue = decryptSymmetric128BitHexKeyUTF8({
+    ciphertext: secret.secretValueCiphertext,
+    iv: secret.secretValueIV,
+    tag: secret.secretValueTag,
+    key
+  });
+
+  let secretComment: string = ''; 
+  
+  if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
+    secretComment = decryptSymmetric128BitHexKeyUTF8({
+      ciphertext: secret.secretCommentCiphertext,
+      iv: secret.secretCommentIV,
+      tag: secret.secretCommentTag,
+      key
+    });
+  }
+  
+  return ({
+    _id: secret._id,
+    version: secret.version,
+    workspace: secret.workspace,
+    type: secret.type,
+    environment: secret.environment,
+    user: secret.user,
+    secretKey,
+    secretValue,
+    secretComment
+  });
+}
 
 /**
  * Create secret blind index data containing encrypted blind index [salt]
@@ -271,6 +325,7 @@ export const createSecretHelper = async ({
   secretCommentTag,
   secretPath = "/",
 }: CreateSecretParams) => {
+
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
     workspaceId: new Types.ObjectId(workspaceId),
@@ -448,7 +503,7 @@ export const getSecretsHelper = async ({
     folder: folderId,
     type: SECRET_PERSONAL,
     ...getAuthDataPayloadUserObj(authData),
-  });
+  }).lean();
 
   // concat with shared secrets
   secrets = secrets.concat(
@@ -460,7 +515,7 @@ export const getSecretsHelper = async ({
       secretBlindIndex: {
         $nin: secrets.map((secret) => secret.secretBlindIndex),
       },
-    })
+    }).lean()
   );
 
   // (EE) create (audit) log
@@ -498,7 +553,7 @@ export const getSecretsHelper = async ({
       },
     });
   }
-
+  
   return secrets;
 };
 
@@ -546,7 +601,7 @@ export const getSecretHelper = async ({
     folder: folderId,
     type: type ?? SECRET_PERSONAL,
     ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {}),
-  });
+  }).lean();
 
   if (!secret) {
     // case: failed to find personal secret matching criteria
@@ -557,7 +612,7 @@ export const getSecretHelper = async ({
       environment,
       folder: folderId,
       type: SECRET_SHARED,
-    });
+    }).lean();
   }
 
   if (!secret) throw SecretNotFoundError();
@@ -597,7 +652,7 @@ export const getSecretHelper = async ({
       },
     });
   }
-
+  
   return secret;
 };
 
@@ -788,6 +843,7 @@ export const deleteSecretHelper = async ({
   // if using service token filter towards the folderId by secretpath
   if (authData.authPayload instanceof ServiceTokenData) {
     const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
+    
     if (secretPath !== serviceTkScopedSecretPath) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
@@ -807,7 +863,7 @@ export const deleteSecretHelper = async ({
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
       folder: folderId,
-    });
+    }).lean();
 
     secret = await Secret.findOneAndDelete({
       secretBlindIndex,
@@ -815,7 +871,7 @@ export const deleteSecretHelper = async ({
       environment,
       type,
       folder: folderId,
-    });
+    }).lean();
 
     await Secret.deleteMany({
       secretBlindIndex,
@@ -831,7 +887,7 @@ export const deleteSecretHelper = async ({
       environment,
       type,
       ...getAuthDataPayloadUserObj(authData),
-    });
+    }).lean();
 
     if (secret) {
       secrets = [secret];
@@ -852,9 +908,7 @@ export const deleteSecretHelper = async ({
     secretIds: secrets.map((secret) => secret._id),
   });
 
-  // (EE) take a secret snapshot
-  action &&
-    (await EELogService.createLog({
+  action && (await EELogService.createLog({
       ...getAuthDataPayloadIdObj(authData),
       workspaceId,
       actions: [action],
@@ -887,9 +941,9 @@ export const deleteSecretHelper = async ({
       },
     });
   }
-
-  return {
+  
+  return ({
     secrets,
-    secret,
-  };
+    secret
+  });
 };

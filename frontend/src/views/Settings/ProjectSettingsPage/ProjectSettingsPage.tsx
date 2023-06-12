@@ -44,7 +44,8 @@ import {
   EnvironmentSection,
   ProjectIndexSecretsSection,
   ProjectNameChangeSection,
-  ServiceTokenSection
+  ServiceTokenSection,
+  E2EESection
 } from './components';
 
 export const ProjectSettingsPage = () => {
@@ -400,8 +401,13 @@ export const ProjectSettingsPage = () => {
         onAutoCapitalizationChange={onAutoCapitalizationToggle}
       />
       {!isBlindIndexedLoading && !isBlindIndexed && (
-        <ProjectIndexSecretsSection onEnableBlindIndices={onEnableBlindIndices} />
+        <ProjectIndexSecretsSection 
+          onEnableBlindIndices={onEnableBlindIndices} 
+        />
       )}
+      <E2EESection 
+        workspaceId={currentWorkspace?._id || ''}
+      />
       <div className="mb-6 mt-4 flex w-full flex-col items-start rounded-md border-l border-red bg-mineshaft-900 px-6 pl-6 pb-4 pt-4">
         <p className="text-xl font-bold text-red">{t('settings.project.danger-zone')}</p>
         <p className="text-md mt-2 text-gray-400">{t('settings.project.danger-zone-note')}</p>

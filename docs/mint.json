@@ -247,17 +247,15 @@
       "pages": [
         "api-reference/overview/introduction",
         "api-reference/overview/authentication",
-        "api-reference/overview/blind-indices",
         {
           "group": "Examples",
           "pages": [
-            "api-reference/overview/examples/retrieve-secrets",
-            "api-reference/overview/examples/create-secret",
-            "api-reference/overview/examples/retrieve-secret",
-            "api-reference/overview/examples/update-secret",
-            "api-reference/overview/examples/delete-secret"
+            "api-reference/overview/encryption-modes/overview",
+            "api-reference/overview/encryption-modes/es-mode",
+            "api-reference/overview/encryption-modes/e2ee-mode"
           ]
-        }
+        },
+        "api-reference/overview/blind-indices"
       ]
     },
     {
