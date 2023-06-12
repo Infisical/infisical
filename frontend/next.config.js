@@ -7,14 +7,14 @@ const path = require('path');
 
 const ContentSecurityPolicy = `
 	default-src 'self';
-	script-src 'self' https://app.posthog.com https://js.stripe.com https://api.stripe.com 'unsafe-inline' 'unsafe-eval';
+	script-src 'self' https://app.posthog.com https://js.stripe.com https://api.stripe.com https://widget.intercom.io https://js.intercomcdn.com 'unsafe-inline' 'unsafe-eval';
 	style-src 'self' https://rsms.me 'unsafe-inline';
 	child-src https://api.stripe.com;
 	frame-src https://js.stripe.com/ https://api.stripe.com;
-	connect-src 'self' https://api.heroku.com/ https://id.heroku.com/oauth/authorize https://id.heroku.com/oauth/token https://checkout.stripe.com https://app.posthog.com https://api.stripe.com;
-	img-src 'self' https://*.stripe.com https://i.ytimg.com/ data:;
-	media-src;
-	font-src 'self' https://maxcdn.bootstrapcdn.com https://rsms.me https://fonts.gstatic.com;  
+	connect-src 'self' wss://nexus-websocket-a.intercom.io https://api-iam.intercom.io https://api.heroku.com/ https://id.heroku.com/oauth/authorize https://id.heroku.com/oauth/token https://checkout.stripe.com https://app.posthog.com https://api.stripe.com;
+	img-src 'self' https://static.intercomassets.com https://js.intercomcdn.com https://downloads.intercomcdn.com https://*.stripe.com https://i.ytimg.com/ data:;
+	media-src https://js.intercomcdn.com;
+	font-src 'self' https://fonts.intercomcdn.com/ https://maxcdn.bootstrapcdn.com https://rsms.me https://fonts.gstatic.com;  
 `;
 
 // You can choose which headers to add to the list
