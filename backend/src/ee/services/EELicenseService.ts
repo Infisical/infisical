@@ -95,6 +95,13 @@ class EELicenseService {
 
         return this.globalFeatureSet;
     }
+    
+    public async refreshOrganizationPlan(organizationId: string) {
+        if (this.instanceType === 'cloud') {
+            this.localFeatureSet.del(organizationId);
+            await this.getOrganizationPlan(organizationId);
+        }
+    }
 
     public async initGlobalFeatureSet() {
         const licenseServerKey = await getLicenseServerKey();

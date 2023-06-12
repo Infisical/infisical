@@ -6,6 +6,7 @@ import {
 	Secret
 } from '../models';
 import { createBot } from '../helpers/bot';
+import { EELicenseService } from '../ee/services';
 import { SecretService } from '../services';
 
 /**
@@ -22,24 +23,25 @@ export const createWorkspace = async ({
 	name: string;
 	organizationId: string;
 }) => {
-  // create workspace
-  const workspace = await new Workspace({
-    name,
-    organization: organizationId,
-    autoCapitalization: true
-  }).save();
+	// create workspace
+	const workspace = await new Workspace({
+		name,
+		organization: organizationId,
+		autoCapitalization: true
+	}).save();
   
-  // initialize bot for workspace
-  await createBot({
-    name: 'Infisical Bot',
-    workspaceId: workspace._id
-  });
+	// initialize bot for workspace
+	await createBot({
+		name: 'Infisical Bot',
+		workspaceId: workspace._id
+	});
   
-  // initialize blind index salt for workspace
-  await SecretService.createSecretBlindIndexData({
-    workspaceId: workspace._id
-  });
+	// initialize blind index salt for workspace
+	await SecretService.createSecretBlindIndexData({
+		workspaceId: workspace._id
+	});
 
+	await EELicenseService.refreshOrganizationPlan(organizationId);
 
 	return workspace;
 };

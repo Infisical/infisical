@@ -153,22 +153,24 @@ export const updateSubscriptionOrgQuantity = async ({
 
       EELicenseService.localFeatureSet.del(organizationId);
     }
-    
-    if (EELicenseService.instanceType === 'enterprise-self-hosted') {
-      // instance of Infisical is an enterprise self-hosted instance
-      
-      const usedSeats = await MembershipOrg.countDocuments({
-        status: ACCEPTED
-      });
-
-      await licenseKeyRequest.patch(
-        `${await getLicenseServerUrl()}/api/license/v1/license`,
-        {
-          usedSeats
-        }
-      );
-    }
   }
+
+  if (EELicenseService.instanceType === 'enterprise-self-hosted') {
+    // instance of Infisical is an enterprise self-hosted instance
+    
+    const usedSeats = await MembershipOrg.countDocuments({
+      status: ACCEPTED
+    });
+
+    await licenseKeyRequest.patch(
+      `${await getLicenseServerUrl()}/api/license/v1/license`,
+      {
+        usedSeats
+      }
+    );
+  }
+
+  await EELicenseService.refreshOrganizationPlan(organizationId);
 
   return stripeSubscription;
 };

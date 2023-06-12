@@ -60,7 +60,7 @@ export const OrgSettingsPage = () => {
 
   const [completeInviteLink, setcompleteInviteLink] = useState<string | undefined>('');
 
-  const isMoreUsersNotAllowed = ((subscription?.membersUsed || 0) >= (subscription?.membersLimit || 1)) && host === 'https://app.infisical.com';
+  const isMoreUsersNotAllowed = subscription?.memberLimit ? (subscription.membersUsed >= subscription.memberLimit) : false;
 
   const onRenameOrg = async (name: string) => {
     if (!currentOrg?._id) return;
