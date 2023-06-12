@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import {
-    Checkbox
-} from "@app/components/v2";
+
 import {
     decryptAssymmetric,
     encryptAssymmetric
 } from "@app/components/utilities/cryptography/crypto";
+import {
+    Checkbox
+} from "@app/components/v2";
+
 import getBot from '../../../../../pages/api/bot/getBot';
 import setBotActiveStatus from '../../../../../pages/api/bot/setBotActiveStatus';
 import getLatestFileKey from '../../../../../pages/api/workspace/getLatestFileKey';
@@ -101,7 +103,7 @@ export const E2EESection = ({
           className="data-[state=checked]:bg-primary"
           id="autoCapitalization"
           isChecked={!bot.isActive}
-          onCheckedChange={async (state) => {
+          onCheckedChange={async () => {
             await toggleBotActivate();
           }}
         >
