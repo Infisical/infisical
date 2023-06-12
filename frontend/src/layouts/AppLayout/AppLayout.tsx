@@ -60,7 +60,6 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { user } = useUser();
   const { subscription } = useSubscription();
 
-  const host = window.location.origin;
   const isAddingProjectsAllowed = subscription?.workspaceLimit ? (subscription.workspacesUsed < subscription.workspaceLimit) : true;
 
   const createWs = useCreateWorkspace();
