@@ -23,6 +23,7 @@ export const INTEGRATION_CIRCLECI = "circleci";
 export const INTEGRATION_TRAVISCI = "travisci";
 export const INTEGRATION_SUPABASE = 'supabase';
 export const INTEGRATION_CHECKLY = 'checkly';
+export const INTEGRATION_CLOUDFLARE_PAGES = 'cloudflare-pages';
 export const INTEGRATION_HASHICORP_VAULT = 'hashicorp-vault';
 export const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
@@ -65,6 +66,7 @@ export const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
 export const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
 export const INTEGRATION_SUPABASE_API_URL = 'https://api.supabase.com';
 export const INTEGRATION_CHECKLY_API_URL = 'https://api.checklyhq.com';
+export const INTEGRATION_CLOUDFLARE_PAGES_API_URL = 'https://api.cloudflare.com';
 
 export const getIntegrationOptions = async () => {
     const INTEGRATION_OPTIONS = [
@@ -219,6 +221,15 @@ export const getIntegrationOptions = async () => {
             image: 'Google Cloud Platform.png',
             isAvailable: false,
             type: '',
+            clientId: '',
+            docsLink: ''
+        },
+        {
+            name: 'Cloudflare Pages',
+            slug: 'cloudflare-pages',
+            image: 'Cloudflare.png',
+            isAvailable: true,
+            type: 'pat',
             clientId: '',
             docsLink: ''
         }
