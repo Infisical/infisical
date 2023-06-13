@@ -700,11 +700,15 @@ export const getSecrets = async (req: Request, res: Response) => {
     (!folders && folderId && folderId !== "root") ||
     (!folders && secretPath)
   ) {
-    throw BadRequestError({ message: "Folder not found" });
+    res.send({ secrets: [] });
+    return;
   }
   if (folders && folderId !== "root") {
     const folder = searchByFolderId(folders.nodes, folderId as string);
-    if (!folder) throw BadRequestError({ message: "Folder not found" });
+    if (!folder) {
+      res.send({ secrets: [] });
+      return;
+    }
   }
 
   if (req.authData.authPayload instanceof ServiceTokenData) {
@@ -720,10 +724,11 @@ export const getSecrets = async (req: Request, res: Response) => {
   }
 
   if (folders && secretPath) {
-    if (!folders) throw BadRequestError({ message: "Folder not found" });
+    // avoid throwing error and send empty list
     const folder = getFolderByPath(folders.nodes, secretPath as string);
     if (!folder) {
-      throw BadRequestError({ message: "Secret path not found" });
+      res.send({ secrets: [] });
+      return;
     }
     folderId = folder.id;
   }
