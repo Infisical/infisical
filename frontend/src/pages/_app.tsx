@@ -11,6 +11,7 @@ import { config } from '@fortawesome/fontawesome-svg-core';
 import { QueryClientProvider } from '@tanstack/react-query';
 
 import NotificationProvider from '@app/components/context/Notifications/NotificationProvider';
+import { IntercomProvider } from '@app/components/utilities/intercom/intercomProvider';
 import Telemetry from '@app/components/utilities/telemetry/Telemetry';
 import { TooltipProvider } from '@app/components/v2';
 import { publicPaths } from '@app/const';
@@ -81,9 +82,11 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
               <SubscriptionProvider>
                 <UserProvider>
                   <NotificationProvider>
-                    <AppLayout>
-                      <Component {...pageProps} />
-                    </AppLayout>
+                    <IntercomProvider>
+                      <AppLayout>
+                        <Component {...pageProps} />
+                      </AppLayout>
+                    </IntercomProvider>
                   </NotificationProvider>
                 </UserProvider>
               </SubscriptionProvider>
