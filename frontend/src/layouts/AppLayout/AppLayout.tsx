@@ -125,8 +125,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
 		)();
 
 		window.Intercom('boot', {
-			app_id: {INTERCOM_ID},
-      email: user.email || 'undefined'
+			app_id: {INTERCOM_ID} || "undefined",
+      email: user?.email || 'undefined'
 		});
 	}, []);
 
