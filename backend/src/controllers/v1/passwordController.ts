@@ -36,8 +36,8 @@ export const emailPasswordReset = async (req: Request, res: Response) => {
   if (!user || !user?.publicKey) {
     // case: user has already completed account
 
-    return res.status(403).send({
-      message: "If an account exists with this email, a password reset link has been sent"
+    return res.status(200).send({
+      message:"If an account exists with this email, a password reset link has been sent" 
     });
   }
   
