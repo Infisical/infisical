@@ -1,6 +1,10 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable no-unexpected-multiline */
 /* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable vars-on-top */
+/* eslint-disable no-var */
+/* eslint-disable func-names */
+// @ts-nocheck
 import crypto from 'crypto';
 
 import { useEffect, useState } from 'react';
@@ -17,6 +21,7 @@ import * as yup from 'yup';
 import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
 import onboardingCheck from '@app/components/utilities/checks/OnboardingCheck';
 import { tempLocalStorage } from '@app/components/utilities/checks/tempLocalStorage';
+import { INTERCOM_ID } from '@app/components/utilities/config';
 import { encryptAssymmetric } from '@app/components/utilities/cryptography/crypto';
 import {
   Button,
@@ -84,6 +89,58 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const [totalOnboardingActionsDone, setTotalOnboardingActionsDone] = useState(0);
 
   const { t } = useTranslation();
+
+  useEffect(() => {
+		// Intercom code snippet
+		(function() {
+			var w=window;var ic=w.Intercom;
+			if(typeof ic==="function") {
+				ic('reattach_activator');
+				ic('update',w.intercomSettings);
+			} else {
+				var d=document;
+				var i=function() {
+					// eslint-disable-next-line prefer-rest-params
+					i.c(arguments);
+				}; 
+				i.q=[]; 
+				i.c=function(args) {
+					i.q.push(args);
+				};
+				w.Intercom=i;
+				var l=function() { 
+					var s=d.createElement('script');
+					s.type='text/javascript';
+					s.async=true;
+					s.src=`https://widget.intercom.io/widget/${INTERCOM_ID}`;
+					var x=d.getElementsByTagName('script')[0];
+					x.parentNode.insertBefore(s,x);};
+					if(w.attachEvent) { 
+						w.attachEvent('onload',l); 
+					} else {
+						w.addEventListener('load',l,false);
+					}
+				}
+			}
+		)();
+
+		window.Intercom('boot', {
+			app_id: {INTERCOM_ID},
+      email: user.email || 'undefined'
+		});
+	}, []);
+
+	useEffect(() => {
+		const handleRouteChange = () => {
+			(window).Intercom('update');
+		};
+		
+		router.events.on('routeChangeComplete', handleRouteChange);
+		
+		return () => {
+		  router.events.off('routeChangeComplete', handleRouteChange);
+		};
+	}, []);
 
   // TODO(akhilmhdh): This entire logic will be rechecked and will try to avoid
   // Placing the localstorage as much as possible
