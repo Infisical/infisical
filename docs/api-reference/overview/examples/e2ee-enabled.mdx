@@ -1,23 +1,16 @@
 ---
-title: "E2EE Mode"
+title: "E2EE Enabled"
 ---
 
-End-to-End Encrypted (E2EE) mode is the default way to use Infisical's API. With it, you must perform client-side encryption/decryption
-when reading/writing secrets via HTTP call to Infisical.
-
-Prerequisites:
-
-- Set up and add envars to [Infisical Cloud](https://app.infisical.com).
-- Create an [Infisical Token](/documentation/platform/token) for your project and environment with write access enabled.
-- Grasp a basic understanding of the system and its underlying cryptography [here](/api-reference/overview/introduction).
-- [Ensure that your project is blind-indexed](../blind-indices).
-
-Below, we showcase how to execute common CRUD operations to manage secrets in **E2EE** mode:
+Using Infisical's API to read/write secrets with E2EE enabled allows you to create, update, and retrieve secrets
+but requires you to perform client-side encryption/decryption operations. For this reason, we recommend using one of the available
+SDKs instead.
 
 <AccordionGroup>
     <Accordion title="Retrieve secrets">
         <Tabs>
   <Tab title="Javascript">
+   Retrieve all secrets for an Infisical project and environment.
 ```js
 const crypto = require('crypto');
 const axios = require('axios');
@@ -194,6 +187,7 @@ get_secrets()
     <Accordion title="Create secret">
         <Tabs>
 <Tab title="Javascript">
+Create a secret in Infisical.
 ```js
 const crypto = require('crypto');
 const axios = require('axios');
@@ -408,6 +402,7 @@ create_secrets()
     <Accordion title="Retrieve secret">
         <Tabs>
   <Tab title="Javascript">
+  Retrieve a secret from Infisical.
 ```js
 const crypto = require('crypto');
 const axios = require('axios');
@@ -569,6 +564,7 @@ get_secret()
     <Accordion title="Update secret">
         <Tabs>
 <Tab title="Javascript">
+Update an existing secret in Infisical.
 ```js
 const crypto = require('crypto');
 const axios = require('axios');
@@ -779,6 +775,7 @@ update_secret()
     <Accordion title="Delete secret">
         <Tabs>
   <Tab title="Javascript">
+  Delete a secret in Infisical.
 ```js
 const axios = require('axios'); 
 const BASE_URL = 'https://app.infisical.com';
