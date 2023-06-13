@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiRequest } from '@app/config/request';
 
@@ -7,6 +7,7 @@ import { secretSnapshotKeys } from '../secretSnapshots/queries';
 import {
   CreateFolderDTO,
   DeleteFolderDTO,
+  GetProjectFoldersBatchDTO,
   GetProjectFoldersDTO,
   TSecretFolder,
   UpdateFolderDTO
@@ -15,6 +16,26 @@ import {
 const queryKeys = {
   getSecretFolders: (workspaceId: string, environment: string, parentFolderId?: string) =>
     ['secret-folders', { workspaceId, environment, parentFolderId }] as const
+};
+
+const fetchProjectFolders = async (
+  workspaceId: string,
+  environment: string,
+  parentFolderId?: string,
+  parentFolderPath?: string
+) => {
+  const { data } = await apiRequest.get<{ folders: TSecretFolder[]; dir: TSecretFolder[] }>(
+    '/api/v1/folders',
+    {
+      params: {
+        workspaceId,
+        environment,
+        parentFolderId,
+        parentFolderPath
+      }
+    }
+  );
+  return data;
 };
 
 export const useGetProjectFolders = ({
@@ -27,19 +48,7 @@ export const useGetProjectFolders = ({
   useQuery({
     queryKey: queryKeys.getSecretFolders(workspaceId, environment, parentFolderId),
     enabled: Boolean(workspaceId) && Boolean(environment) && !isPaused,
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ folders: TSecretFolder[]; dir: TSecretFolder[] }>(
-        '/api/v1/folders',
-        {
-          params: {
-            workspaceId,
-            environment,
-            parentFolderId
-          }
-        }
-      );
-      return data;
-    },
+    queryFn: async () => fetchProjectFolders(workspaceId, environment, parentFolderId),
     select: useCallback(
       ({ folders, dir }: { folders: TSecretFolder[]; dir: TSecretFolder[] }) => ({
         dir,
@@ -51,6 +60,25 @@ export const useGetProjectFolders = ({
       }),
       [sortDir]
     )
+  });
+
+export const useGetProjectFoldersBatch = ({
+  folders = [],
+  isPaused,
+  parentFolderPath
+}: GetProjectFoldersBatchDTO) =>
+  useQueries({
+    queries: folders.map(({ workspaceId, environment, parentFolderId }) => ({
+      queryKey: queryKeys.getSecretFolders(workspaceId, environment, parentFolderPath),
+      queryFn: async () =>
+        fetchProjectFolders(workspaceId, environment, parentFolderId, parentFolderPath),
+      enabled: Boolean(workspaceId) && Boolean(environment) && !isPaused,
+      select: (data: { folders: TSecretFolder[]; dir: TSecretFolder[] }) => ({
+        environment,
+        folders: data.folders,
+        dir: data.dir
+      })
+    }))
   });
 
 export const useCreateFolder = () => {

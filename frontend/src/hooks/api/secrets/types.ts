@@ -96,6 +96,7 @@ export type GetProjectSecretsDTO = {
   env: string | string[];
   decryptFileKey: UserWsKeyPair;
   folderId?: string;
+  secretPath?: string;
   isPaused?: boolean;
   onSuccess?: (data: DecryptedSecret[]) => void;
 };

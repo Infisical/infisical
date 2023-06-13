@@ -12,13 +12,6 @@ const Dashboard = () => {
   const queryEnv = router.query.env as string;
   const isOverviewMode = !queryEnv;
 
-  const onExploreEnv = (slug: string) => {
-    router.push({
-      pathname: router.pathname,
-      query: { ...router.query, env: slug }
-    });
-  };
-
   return (
     <>
       <Head>
@@ -29,11 +22,7 @@ const Dashboard = () => {
         <meta name="og:description" content={String(t('dashboard.og-description'))} />
       </Head>
       <div className="h-full">
-        {isOverviewMode ? (
-          <DashboardEnvOverview onEnvChange={onExploreEnv} />
-        ) : (
-          <DashboardPage envFromTop={queryEnv} />
-        )}
+        {isOverviewMode ? <DashboardEnvOverview /> : <DashboardPage envFromTop={queryEnv} />}
       </div>
     </>
   );
