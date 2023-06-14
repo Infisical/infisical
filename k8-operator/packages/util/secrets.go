@@ -7,15 +7,9 @@ import (
 
 	"github.com/Infisical/infisical/k8-operator/packages/api"
 	"github.com/Infisical/infisical/k8-operator/packages/crypto"
+	"github.com/Infisical/infisical/k8-operator/packages/model"
 	"github.com/go-resty/resty/v2"
 )
-
-type SingleEnvironmentVariable struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-	Type  string `json:"type"`
-	ID    string `json:"_id"`
-}
 
 type DecodedSymmetricEncryptionDetails = struct {
 	Cipher []byte
@@ -54,7 +48,7 @@ func GetServiceTokenDetails(infisicalToken string) (api.GetServiceTokenDetailsRe
 	return serviceTokenDetails, nil
 }
 
-func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string) ([]SingleEnvironmentVariable, api.GetEncryptedSecretsV2Response, error) {
+func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string) ([]model.SingleEnvironmentVariable, api.GetEncryptedSecretsV2Response, error) {
 	serviceTokenParts := strings.SplitN(fullServiceToken, ".", 4)
 	if len(serviceTokenParts) < 4 {
 		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
@@ -100,6 +94,77 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string, etag string) ([
 	return plainTextSecrets, encryptedSecretsResponse, nil
 }
 
+// Fetches plaintext secrets from an API endpoint using a service account.
+// The function fetches the service account details and keys, decrypts the workspace key, fetches the encrypted secrets for the specified project and environment, and decrypts the secrets using the decrypted workspace key.
+// Returns the plaintext secrets, encrypted secrets response, and any errors that occurred during the process.
+func GetPlainTextSecretsViaServiceAccount(serviceAccountCreds model.ServiceAccountDetails, projectId string, environmentName string, etag string) ([]model.SingleEnvironmentVariable, api.GetEncryptedSecretsV2Response, error) {
+	httpClient := resty.New()
+	httpClient.SetAuthToken(serviceAccountCreds.AccessKey).
+		SetHeader("Accept", "application/json")
+
+	serviceAccountDetails, err := api.CallGetServiceTokenAccountDetailsV2(httpClient)
+	if err != nil {
+		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to get service account details. [err=%v]", err)
+	}
+
+	serviceAccountKeys, err := api.CallGetServiceAccountKeysV2(httpClient, api.GetServiceAccountKeysRequest{ServiceAccountId: serviceAccountDetails.ServiceAccount.ID})
+	if err != nil {
+		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to get service account key details. [err=%v]", err)
+	}
+
+	// find key for requested project
+	var workspaceServiceAccountKey api.ServiceAccountKey
+	for _, serviceAccountKey := range serviceAccountKeys.ServiceAccountKeys {
+		if serviceAccountKey.Workspace == projectId {
+			workspaceServiceAccountKey = serviceAccountKey
+		}
+	}
+
+	if workspaceServiceAccountKey.ID == "" || workspaceServiceAccountKey.EncryptedKey == "" || workspaceServiceAccountKey.Nonce == "" || serviceAccountCreds.PublicKey == "" || serviceAccountCreds.PrivateKey == "" {
+		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("unable to find key for [projectId=%s] [err=%v]. Ensure that the given service account has access to given projectId", projectId, err)
+	}
+
+	cipherText, err := base64.StdEncoding.DecodeString(workspaceServiceAccountKey.EncryptedKey)
+	if err != nil {
+		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to decode EncryptedKey secrets because [err=%v]", err)
+	}
+
+	nonce, err := base64.StdEncoding.DecodeString(workspaceServiceAccountKey.Nonce)
+	if err != nil {
+		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to decode nonce secrets because [err=%v]", err)
+	}
+
+	publickey, err := base64.StdEncoding.DecodeString(serviceAccountCreds.PublicKey)
+	if err != nil {
+		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to decode PublicKey secrets because [err=%v]", err)
+	}
+
+	privateKey, err := base64.StdEncoding.DecodeString(serviceAccountCreds.PrivateKey)
+
+	if err != nil {
+		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to decode PrivateKey secrets because [err=%v]", err)
+	}
+
+	plainTextWorkspaceKey := crypto.DecryptAsymmetric(cipherText, nonce, publickey, privateKey)
+
+	encryptedSecretsResponse, err := api.CallGetSecretsV2(httpClient, api.GetEncryptedSecretsV2Request{
+		WorkspaceId: projectId,
+		Environment: environmentName,
+		ETag:        etag,
+	})
+
+	if err != nil {
+		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("unable to fetch secrets because [err=%v]", err)
+	}
+
+	plainTextSecrets, err := GetPlainTextSecrets(plainTextWorkspaceKey, encryptedSecretsResponse)
+	if err != nil {
+		return nil, api.GetEncryptedSecretsV2Response{}, fmt.Errorf("GetPlainTextSecretsViaServiceAccount: unable to get plain text secrets because [err=%v]", err)
+	}
+
+	return plainTextSecrets, encryptedSecretsResponse, nil
+}
+
 func GetBase64DecodedSymmetricEncryptionDetails(key string, cipher string, IV string, tag string) (DecodedSymmetricEncryptionDetails, error) {
 	cipherx, err := base64.StdEncoding.DecodeString(cipher)
 	if err != nil {
@@ -129,8 +194,8 @@ func GetBase64DecodedSymmetricEncryptionDetails(key string, cipher string, IV st
 	}, nil
 }
 
-func GetPlainTextSecrets(key []byte, encryptedSecretsResponse api.GetEncryptedSecretsV2Response) ([]SingleEnvironmentVariable, error) {
-	plainTextSecrets := []SingleEnvironmentVariable{}
+func GetPlainTextSecrets(key []byte, encryptedSecretsResponse api.GetEncryptedSecretsV2Response) ([]model.SingleEnvironmentVariable, error) {
+	plainTextSecrets := []model.SingleEnvironmentVariable{}
 	for _, secret := range encryptedSecretsResponse.Secrets {
 		// Decrypt key
 		key_iv, err := base64.StdEncoding.DecodeString(secret.SecretKeyIV)
@@ -174,7 +239,7 @@ func GetPlainTextSecrets(key []byte, encryptedSecretsResponse api.GetEncryptedSe
 			return nil, fmt.Errorf("unable to symmetrically decrypt secret value")
 		}
 
-		plainTextSecret := SingleEnvironmentVariable{
+		plainTextSecret := model.SingleEnvironmentVariable{
 			Key:   string(plainTextKey),
 			Value: string(plainTextValue),
 			Type:  string(secret.Type),

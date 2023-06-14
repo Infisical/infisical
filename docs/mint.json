@@ -55,6 +55,11 @@
       "url": "api-reference"
     },
     {
+      "name": "Changelog",
+      "icon": "timer",
+      "url": "changelog"
+    },
+    {
       "name": "Contributing",
       "icon": "code",
       "url": "contributing"
@@ -67,7 +72,7 @@
     {
       "name": "Slack",
       "icon": "slack",
-      "url": "https://join.slack.com/t/infisical-users/shared_invite/zt-1kovn1q6p-p5fvJo7o083naouDkOzgZQ"
+      "url": "https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg"
     },
     {
       "name": "GitHub",
@@ -79,29 +84,60 @@
     {
       "group": "Overview",
       "pages": [
-        "getting-started/introduction",
-        "getting-started/quickstart",
-        "getting-started/features"
+        {
+          "group": "Getting Started",
+          "pages": [
+            "documentation/getting-started/introduction",
+            "documentation/getting-started/platform",
+            "documentation/getting-started/sdks",
+            "documentation/getting-started/cli",
+            "documentation/getting-started/docker",
+            "documentation/getting-started/kubernetes",
+            "documentation/getting-started/api"
+          ]
+        },
+        {
+          "group": "Guides",
+          "pages": [
+            "documentation/guides/introduction",
+            "documentation/guides/node",
+            "documentation/guides/python",
+            "documentation/guides/nextjs-vercel"
+          ]
+        }
       ]
     },
     {
       "group": "Platform",
       "pages": [
-        "getting-started/dashboard/organization",
-        "getting-started/dashboard/project",
-        "getting-started/dashboard/pit-recovery",
-        "getting-started/dashboard/secret-versioning",
-        "getting-started/dashboard/audit-logs",
-        "getting-started/dashboard/mfa",
-        "getting-started/dashboard/token"
+        "documentation/platform/organization",
+        "documentation/platform/project",
+        "documentation/platform/pit-recovery",
+        "documentation/platform/secret-versioning",
+        "documentation/platform/audit-logs",
+        "documentation/platform/mfa",
+        "documentation/platform/token"
       ]
     },
     {
-      "group": "Self-hosting",
+      "group": "Self-host Infisical",
       "pages": [
-        "self-hosting/overview",
+        {
+          "group": "Deployment options",
+          "pages": [
+            "self-hosting/overview",
+            "self-hosting/deployment-options/kubernetes-helm",
+            "self-hosting/deployment-options/aws-ec2",
+            "self-hosting/deployment-options/docker-compose",
+            "self-hosting/deployment-options/standalone-infisical",
+            "self-hosting/deployment-options/fly.io",
+            "self-hosting/deployment-options/render",
+            "self-hosting/deployment-options/digital-ocean-marketplace"
+          ]
+        },
         "self-hosting/configuration/envars",
-        "self-hosting/configuration/email"
+        "self-hosting/configuration/email",
+        "self-hosting/faq"
       ]
     },
     {
@@ -110,7 +146,7 @@
         "cli/overview",
         "cli/usage",
         {
-          "group": "Commands",
+          "group": "Core commands",
           "pages": [
             "cli/commands/login",
             "cli/commands/init",
@@ -118,9 +154,19 @@
             "cli/commands/secrets",
             "cli/commands/export",
             "cli/commands/vault",
-            "cli/commands/reset"
+            "cli/commands/user",
+            "cli/commands/reset",
+            {
+              "group": "infisical scan",
+              "pages": [
+                "cli/commands/scan",
+                "cli/commands/scan-git-changes",
+                "cli/commands/scan-install"
+              ]
+            }
           ]
         },
+        "cli/scanning-overview",
         "cli/project-config",
         "cli/faq"
       ]
@@ -149,12 +195,17 @@
         "integrations/cloud/vercel",
         "integrations/cloud/netlify",
         "integrations/cloud/render",
+        "integrations/cloud/railway",
         "integrations/cloud/flyio",
+        "integrations/cloud/supabase",
+        "integrations/cloud/checkly",
+        "integrations/cloud/hashicorp-vault",
         "integrations/cloud/azure-key-vault",
         "integrations/cicd/githubactions",
         "integrations/cicd/gitlab",
         "integrations/cicd/circleci",
         "integrations/cicd/travisci",
+        "integrations/frameworks/spring-boot-maven",
         "integrations/frameworks/react",
         "integrations/frameworks/vue",
         "integrations/frameworks/express",
@@ -175,13 +226,6 @@
       ]
     },
     {
-      "group": "Deployment options",
-      "pages": [
-        "self-hosting/deployments/linux",
-        "self-hosting/deployments/kubernetes"
-      ]
-    },
-    {
       "group": "Overview",
       "pages": [
         "sdks/overview"
@@ -195,7 +239,8 @@
         "sdks/languages/java",
         "sdks/languages/ruby",
         "sdks/languages/go",
-        "sdks/languages/rust"
+        "sdks/languages/rust",
+        "sdks/languages/php"
       ]
     },
     {
@@ -206,12 +251,12 @@
         {
           "group": "Examples",
           "pages": [
-            "api-reference/overview/examples/create-secrets",
-            "api-reference/overview/examples/retrieve-secrets",
-            "api-reference/overview/examples/update-secrets",
-            "api-reference/overview/examples/delete-secrets"
+            "api-reference/overview/examples/note",
+            "api-reference/overview/examples/e2ee-disabled",
+            "api-reference/overview/examples/e2ee-enabled"
           ]
-        }
+        },
+        "api-reference/overview/blind-indices"
       ]
     },
     {
@@ -248,8 +293,9 @@
         {
           "group": "Secrets",
           "pages": [
-            "api-reference/endpoints/secrets/create",
             "api-reference/endpoints/secrets/read",
+            "api-reference/endpoints/secrets/create",
+            "api-reference/endpoints/secrets/read-one",
             "api-reference/endpoints/secrets/update",
             "api-reference/endpoints/secrets/delete",
             "api-reference/endpoints/secrets/versions",
@@ -273,15 +319,21 @@
       ]
     },
     {
+      "group": "Overview",
+      "pages": [
+        "changelog/overview"
+      ]
+    },
+    {
       "group": "Contributing",
       "pages": [
         "contributing/overview",
         "contributing/code-of-conduct",
-        "contributing/developing"
+        "contributing/developing",
+        "contributing/pull-requests"
       ]
     }
   ],
-  "backgroundImage": "/images/background.png",
   "integrations": {
     "intercom": "hsg644ru"
   }

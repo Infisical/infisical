@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { faArrowRight, faRotate, faX } from '@fortawesome/free-solid-svg-icons';
+import { faArrowRight, faCheck, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // TODO: This needs to be moved from public folder
 import { contextNetlifyMapping, integrationSlugNameMapping, reverseContextNetlifyMapping } from 'public/data/frequentConstants';
@@ -45,6 +45,7 @@ type Props = {
   handleDeleteIntegration: (args: { integration: Integration }) => void;
 };
 
+// TODO: refactor
 const IntegrationTile = ({
   integration,
   integrations,
@@ -55,7 +56,6 @@ const IntegrationTile = ({
   handleDeleteIntegration
 }: Props) => {
 
-  // set initial environment. This find will only execute when component is mounting
   const [integrationEnvironment, setIntegrationEnvironment] = useState<Props['environments'][0]>(
     environments.find(({ slug }) => slug === integration?.environment) || {
       name: '',
@@ -176,6 +176,32 @@ const IntegrationTile = ({
               />
             </div>
           );
+        case 'railway':
+          return (
+            <div>
+              <div className="mb-2 text-xs font-semibold text-gray-400">ENVIRONMENT</div>
+              <ListBox
+                data={
+                  !integration.isActive
+                    ? ['Production', 'Deploy previews', 'Branch deploys', 'Local development']
+                    : null
+                }
+                isSelected={integration.targetEnvironment}
+                onChange={setIntegrationTargetEnvironment}
+              />
+            </div>
+          );
+        case 'gitlab':
+          return (
+            <div>
+              <div className="mb-2 text-xs font-semibold text-gray-400">ENVIRONMENT</div>
+              <ListBox
+                data={null}
+                isSelected={integration.targetEnvironment}
+                onChange={setIntegrationTargetEnvironment}
+              />
+            </div>
+          );
         default:
           return <div />;
       }
@@ -186,10 +212,12 @@ const IntegrationTile = ({
     return <div />;
   };
 
-  if (!integrationApp) return <div />;
+  if (!integrationApp && integration.integration !== "checkly") return  <div />;
+  
+  const isSelected = integration.integration === 'hashicorp-vault' ? `${integration.app} - path: ${integration.path}` : integrationApp;
 
   return (
-    <div className="mx-6 mb-8 flex max-w-5xl justify-between rounded-md bg-white/5 p-6">
+    <div className="mx-6 mb-8 flex max-w-5xl justify-between rounded-md bg-mineshaft-800 border border-mineshaft-600 p-6">
       <div className="flex">
         <div>
           <p className="mb-2 text-xs font-semibold text-gray-400">ENVIRONMENT</p>
@@ -212,27 +240,29 @@ const IntegrationTile = ({
         </div>
         <div className="mr-2">
           <p className="text-gray-400 text-xs font-semibold mb-2">INTEGRATION</p>
-          <div className="py-2.5 bg-white/[.07] rounded-md pl-4 pr-10 text-sm font-semibold text-gray-300">
+          <div className="py-2.5 bg-white/[.07] rounded-md pl-4 pr-10 text-sm font-semibold text-gray-300 cursor-default">
             {/* {integration.integration.charAt(0).toUpperCase() + integration.integration.slice(1)} */}
             {integrationSlugNameMapping[integration.integration]}
           </div>
         </div>
         <div className="mr-2">
           <div className="mb-2 text-xs font-semibold text-gray-400">APP</div>
-          <ListBox
+          {integrationApp ? <div title={integrationApp}>
+            <ListBox
             data={!integration.isActive ? apps.map((app) => app.name) : null}
-            isSelected={integrationApp}
+            isSelected={isSelected}
             onChange={(app) => {
               setIntegrationApp(app);
             }}
           />
+          </div> : <div className='w-52 h-10 rounded-md bg-mineshaft-600 animate-pulse px-4 font-bold py-2'>-</div>}
         </div>
         {renderIntegrationSpecificParams(integration)}
       </div>
-      <div className="flex items-end">
+      <div className="flex items-end cursor-default">
         {integration.isActive ? (
-          <div className="flex max-w-5xl flex-row items-center rounded-md bg-white/5 p-2 px-4">
-            <FontAwesomeIcon icon={faRotate} className="mr-2.5 animate-spin text-lg text-primary" />
+          <div className="flex max-w-5xl flex-row items-center rounded-md bg-mineshaft-600 p-[0.44rem] px-4 border border-mineshaft-500">
+            <FontAwesomeIcon icon={faCheck} className="mr-2.5 text-lg text-primary" />
             <div className="font-semibold text-gray-300">In Sync</div>
           </div>
         ) : (
@@ -243,7 +273,7 @@ const IntegrationTile = ({
             size="md"
           />
         )}
-        <div className="ml-2 opacity-50 duration-200 hover:opacity-100">
+        <div className="ml-2 opacity-80 duration-200 hover:opacity-100">
           <Button
             onButtonPressed={() =>
               handleDeleteIntegration({
@@ -252,7 +282,7 @@ const IntegrationTile = ({
             }
             color="red"
             size="icon-md"
-            icon={faX}
+            icon={faXmark}
           />
         </div>
       </div>

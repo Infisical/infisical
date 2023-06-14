@@ -12,9 +12,13 @@ const integrationSlugNameMapping: Mapping = {
   'github': 'GitHub',
   'gitlab': 'GitLab',
   'render': 'Render',
+  'railway': 'Railway',
   'flyio': 'Fly.io',
   'circleci': 'CircleCI',
-  'travisci': 'TravisCI'
+  'travisci': 'TravisCI',
+  'supabase': 'Supabase',
+  'checkly': 'Checkly',
+  'hashicorp-vault': 'Vault'
 }
 
 const envMapping: Mapping = {

@@ -61,7 +61,7 @@ export const createServiceToken = async (req: Request, res: Response) => {
 				workspaceId
 			},
 			expiresIn: expiresIn,
-			secret: getJwtServiceSecret()
+			secret: await getJwtServiceSecret()
 		});
 	} catch (err) {
 		return res.status(400).send({

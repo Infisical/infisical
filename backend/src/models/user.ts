@@ -1,7 +1,13 @@
 import { Schema, model, Types, Document } from 'mongoose';
 
+export enum AuthProvider {
+	GOOGLE = 'google',
+}
+
 export interface IUser extends Document {
 	_id: Types.ObjectId;
+	authId?: string;
+	authProvider?: AuthProvider;
 	email: string;
 	firstName?: string;
 	lastName?: string;
@@ -15,7 +21,6 @@ export interface IUser extends Document {
 	tag?: string;
 	salt?: string;
 	verifier?: string;
-	refreshVersion?: number;
 	isMfaEnabled: boolean;
 	mfaMethods: boolean;
 	devices: {
@@ -26,9 +31,17 @@ export interface IUser extends Document {
 
 const userSchema = new Schema<IUser>(
 	{
+		authId: {
+			type: String,
+		},
+		authProvider: {
+			type: String,
+			enum: AuthProvider,
+		},
 		email: {
 			type: String,
-			required: true
+			required: true,
+			unique: true,
 		},
 		firstName: {
 			type: String
@@ -77,11 +90,6 @@ const userSchema = new Schema<IUser>(
 			type: String,
 			select: false
 		},
-		refreshVersion: {
-			type: Number,
-			default: 0,
-			select: false
-		},
 		isMfaEnabled: {
 			type: Boolean,
 			default: false
@@ -94,7 +102,8 @@ const userSchema = new Schema<IUser>(
 				ip: String,
 				userAgent: String
 			}],
-			default: []
+			default: [],
+			select: false
 		}
 	}, 
 	{

@@ -1,24 +1,25 @@
 import crypto from 'crypto';
 
 import React, { useState } from 'react';
-import { useTranslation } from 'next-i18next';
-import { faCheck, faX } from '@fortawesome/free-solid-svg-icons';
+import { useTranslation } from 'react-i18next';
+import { faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import jsrp from 'jsrp';
 import nacl from 'tweetnacl';
 import { encodeBase64 } from 'tweetnacl-util';
 
+import { useGetCommonPasswords } from '@app/hooks/api';
 import completeAccountInformationSignup from '@app/pages/api/auth/CompleteAccountInformationSignup';
 import getOrganizations from '@app/pages/api/organization/getOrgs';
 import ProjectService from '@app/services/ProjectService';
 
-import Button from '../basic/buttons/Button';
 import InputField from '../basic/InputField';
-import passwordCheck from '../utilities/checks/PasswordCheck';
+import checkPassword from '../utilities/checks/checkPassword';
 import Aes256Gcm from '../utilities/cryptography/aes-256-gcm';
 import { deriveArgonKey } from '../utilities/cryptography/crypto';
 import { saveTokenToLocalStorage } from '../utilities/saveTokenToLocalStorage';
 import SecurityClient from '../utilities/SecurityClient';
+import { Button, Input } from '../v2';
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -28,11 +29,23 @@ interface UserInfoStepProps {
   email: string;
   password: string;
   setPassword: (value: string) => void;
-  firstName: string;
-  setFirstName: (value: string) => void;
-  lastName: string;
-  setLastName: (value: string) => void;
+  name: string;
+  setName: (value: string) => void;
+  organizationName: string;
+  setOrganizationName: (value: string) => void;
+  attributionSource: string;
+  setAttributionSource: (value: string) => void;
+  providerAuthToken?: string;
 }
+
+type Errors = {
+  length?: string,
+  upperCase?: string,
+  lowerCase?: string,
+  number?: string,
+  specialChar?: string,
+  repeatedChar?: string,
+};
 
 /**
  * This is the step of the sign up flow where people provife their name/surname and password
@@ -52,16 +65,19 @@ export default function UserInfoStep({
   email,
   password,
   setPassword,
-  firstName,
-  setFirstName,
-  lastName,
-  setLastName
+  name,
+  setName,
+  organizationName,
+  setOrganizationName,
+  attributionSource,
+  setAttributionSource,
+  providerAuthToken,
 }: UserInfoStepProps): JSX.Element {
-  const [firstNameError, setFirstNameError] = useState(false);
-  const [lastNameError, setLastNameError] = useState(false);
-  const [passwordErrorLength, setPasswordErrorLength] = useState(false);
-  const [passwordErrorNumber, setPasswordErrorNumber] = useState(false);
-  const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
+  const { data: commonPasswords } = useGetCommonPasswords();
+  const [nameError, setNameError] = useState(false);
+  const [organizationNameError, setOrganizationNameError] = useState(false);
+
+  const [errors, setErrors] = useState<Errors>({});
 
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
@@ -71,24 +87,23 @@ export default function UserInfoStep({
   const signupErrorCheck = async () => {
     setIsLoading(true);
     let errorCheck = false;
-    if (!firstName) {
-      setFirstNameError(true);
+    if (!name) {
+      setNameError(true);
       errorCheck = true;
     } else {
-      setFirstNameError(false);
+      setNameError(false);
     }
-    if (!lastName) {
-      setLastNameError(true);
+    if (!organizationName) {
+      setOrganizationNameError(true);
       errorCheck = true;
     } else {
-      setLastNameError(false);
+      setOrganizationNameError(false);
     }
-    errorCheck = passwordCheck({
+    
+    errorCheck = checkPassword({
       password,
-      setPasswordErrorLength,
-      setPasswordErrorNumber,
-      setPasswordErrorLowerCase,
-      errorCheck
+      commonPasswords,
+      setErrors
     });
 
     if (!errorCheck) {
@@ -108,7 +123,6 @@ export default function UserInfoStep({
         async () => {
           client.createVerifier(async (err: any, result: { salt: string; verifier: string }) => {
             try {
-
               // TODO: moduralize into KeyService
               const derivedKey = await deriveArgonKey({
                 password,
@@ -118,11 +132,11 @@ export default function UserInfoStep({
                 parallelism: 1,
                 hashLen: 32
               });
-              
+
               if (!derivedKey) throw new Error('Failed to derive key from password');
 
               const key = crypto.randomBytes(32);
-             
+
               // create encrypted private key by encrypting the private
               // key with the symmetric key [key]
               const {
@@ -133,7 +147,7 @@ export default function UserInfoStep({
                 text: privateKey,
                 secret: key
               });
-              
+
               // create the protected key by encrypting the symmetric key
               // [key] with the derived key
               const {
@@ -144,11 +158,11 @@ export default function UserInfoStep({
                 text: key.toString('hex'),
                 secret: Buffer.from(derivedKey.hash)
               });
-              
+
               const response = await completeAccountInformationSignup({
                 email,
-                firstName,
-                lastName,
+                firstName: name.split(" ")[0],
+                lastName: name.split(" ").slice(1).join(' '),
                 protectedKey,
                 protectedKeyIV,
                 protectedKeyTag,
@@ -156,14 +170,17 @@ export default function UserInfoStep({
                 encryptedPrivateKey,
                 encryptedPrivateKeyIV,
                 encryptedPrivateKeyTag,
+                providerAuthToken,
                 salt: result.salt,
                 verifier: result.verifier,
-                organizationName: `${firstName}'s organization`
+                organizationName,
+                attributionSource,
               });
-              
+
               // unset signup JWT token and set JWT token
               SecurityClient.setSignupToken('');
               SecurityClient.setToken(response.token);
+              SecurityClient.setProviderAuthToken('');
 
               saveTokenToLocalStorage({
                 publicKey,
@@ -184,7 +201,6 @@ export default function UserInfoStep({
               localStorage.setItem('projectData.id', project._id);
 
               incrementStep();
-
             } catch (error) {
               setIsLoading(false);
               console.error(error);
@@ -198,109 +214,103 @@ export default function UserInfoStep({
   };
 
   return (
-    <div className="bg-bunker w-max mx-auto h-7/12 py-10 px-8 rounded-xl drop-shadow-xl mb-36 md:mb-16">
-      <p className="text-4xl font-bold flex justify-center mb-6 mx-8 md:mx-16 text-primary">
-        {t('signup:step3-message')}
+    <div className="h-full mx-auto mb-36 w-max rounded-xl md:px-8 md:mb-16">
+      <p className="mx-8 mb-6 flex justify-center text-xl font-bold text-medium md:mx-16 text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
+        {t('signup.step3-message')}
       </p>
-      <div className="relative z-0 flex items-center justify-end w-full md:p-2 rounded-lg max-h-24">
-        <InputField
-          label={t('common:first-name')}
-          onChangeHandler={setFirstName}
-          type="name"
-          value={firstName}
-          isRequired
-          errorText={
-            t('common:validate-required', {
-              name: t('common:first-name')
-            }) as string
-          }
-          error={firstNameError}
-          autoComplete="given-name"
-        />
-      </div>
-      <div className="mt-2 flex items-center justify-center w-full md:p-2 rounded-lg max-h-24">
-        <InputField
-          label={t('common:last-name')}
-          onChangeHandler={setLastName}
-          type="name"
-          value={lastName}
-          isRequired
-          errorText={
-            t('common:validate-required', {
-              name: t('common:last-name')
-            }) as string
-          }
-          error={lastNameError}
-          autoComplete="family-name"
-        />
-      </div>
-      <div className="mt-2 flex flex-col items-center justify-center w-full md:p-2 rounded-lg max-h-60">
-        <InputField
-          label={t('section-password:password')}
-          onChangeHandler={(pass: string) => {
-            setPassword(pass);
-            passwordCheck({
-              password: pass,
-              setPasswordErrorLength,
-              setPasswordErrorNumber,
-              setPasswordErrorLowerCase,
-              errorCheck: false
-            });
-          }}
-          type="password"
-          value={password}
-          isRequired
-          error={passwordErrorLength && passwordErrorNumber && passwordErrorLowerCase}
-          autoComplete="new-password"
-          id="new-password"
-        />
-        {passwordErrorLength || passwordErrorLowerCase || passwordErrorNumber ? (
-          <div className="w-full mt-4 bg-white/5 px-2 flex flex-col items-start py-2 rounded-md">
-            <div className="text-gray-400 text-sm mb-1">{t('section-password:validate-base')}</div>
-            <div className="flex flex-row justify-start items-center ml-1">
-              {passwordErrorLength ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
-              )}
-              <div className={`${passwordErrorLength ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                {t('section-password:validate-length')}
-              </div>
+      <div className="h-full mx-auto mb-36 w-max rounded-xl py-6 md:px-8 md:mb-16 md:border md:border-mineshaft-600 md:bg-mineshaft-800">
+        <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
+          <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Your Name</p>
+          <Input
+            placeholder="Jane Doe"
+            onChange={(e) => setName(e.target.value)}
+            value={name}
+            isRequired
+            autoComplete="given-name"
+            className="h-12"
+          />
+          {nameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your name</p>}
+        </div>
+        <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
+          <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Organization Name</p>
+          <Input
+            placeholder="Infisical"
+            onChange={(e) => setOrganizationName(e.target.value)}
+            value={organizationName}
+            isRequired
+            className="h-12"
+          />
+          {organizationNameError && <p className='text-left w-full text-xs text-red-600 mt-1 ml-1'>Please, specify your organization name</p>}
+        </div>
+        <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
+          <p className='text-left w-full text-sm text-bunker-300 mb-1 ml-1 font-medium'>Where did you hear about us? <span className="font-light">(optional)</span></p>
+          <Input
+            placeholder=""
+            onChange={(e) => setAttributionSource(e.target.value)}
+            value={attributionSource}
+            isRequired
+            className="h-12"
+          />
+        </div>
+        <div className="mt-2 flex lg:w-1/6 w-1/4 min-w-[20rem] max-h-60 w-full flex-col items-center justify-center rounded-lg py-2">
+          <InputField
+            label={t('section.password.password')}
+            onChangeHandler={(pass: string) => {
+              setPassword(pass);
+              checkPassword({
+                password: pass,
+                commonPasswords,
+                setErrors
+              });
+            }}
+            type="password"
+            value={password}
+            isRequired
+            error={Object.keys(errors).length > 0}
+            autoComplete="new-password"
+            id="new-password"
+          />
+          {Object.keys(errors).length > 0 && (
+            <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
+              <div className="mb-2 text-sm text-gray-400">{t('section.password.validate-base')}</div> 
+              {Object.keys(errors).map((key) => {
+                if (errors[key as keyof Errors]) {
+                  return (
+                    <div 
+                      className="ml-1 flex flex-row items-top justify-start"
+                      key={key}
+                    >
+                      <div>
+                        <FontAwesomeIcon 
+                          icon={faXmark} 
+                          className="text-md text-red ml-0.5 mr-2.5"
+                        />
+                      </div>
+                      <p className="text-gray-400 text-sm">
+                        {errors[key as keyof Errors]} 
+                      </p>
+                    </div>
+                  );
+                }
+
+                return null;
+              })}
             </div>
-            <div className="flex flex-row justify-start items-center ml-1">
-              {passwordErrorLowerCase ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
-              )}
-              <div
-                className={`${passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'} text-sm`}
-              >
-                {t('section-password:validate-case')}
-              </div>
-            </div>
-            <div className="flex flex-row justify-start items-center ml-1">
-              {passwordErrorNumber ? (
-                <FontAwesomeIcon icon={faX} className="text-md text-red mr-2.5" />
-              ) : (
-                <FontAwesomeIcon icon={faCheck} className="text-md text-primary mr-2" />
-              )}
-              <div className={`${passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                {t('section-password:validate-number')}
-              </div>
-            </div>
+          )}
+        </div>
+        <div className="flex flex-col items-center justify-center lg:w-[19%] w-1/4 min-w-[20rem] mt-2 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">
+          <div className="text-l py-1 text-lg w-full">
+            <Button
+              onClick={signupErrorCheck}
+              size="sm"
+              isFullWidth
+              className='h-14'
+              colorSchema="primary"
+              variant="outline_bg"
+              isLoading={isLoading}
+            > {String(t('signup.signup'))} </Button>
           </div>
-        ) : (
-          <div className="py-2" />
-        )}
-      </div>
-      <div className="flex flex-col items-center justify-center md:p-2 max-h-48 max-w-max mx-auto text-lg px-2 py-3">
-        <Button
-          text={t('signup:signup') ?? ''}
-          loading={isLoading}
-          onButtonPressed={signupErrorCheck}
-          size="lg"
-        />
+        </div>
       </div>
     </div>
   );

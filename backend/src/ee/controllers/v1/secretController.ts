@@ -1,16 +1,15 @@
-import { Request, Response } from 'express';
-import * as Sentry from '@sentry/node';
-import { Secret } from '../../../models';
-import { SecretVersion } from '../../models';
-import { EESecretService } from '../../services';
+import { Request, Response } from "express";
+import { Secret } from "../../../models";
+import { SecretVersion } from "../../models";
+import { EESecretService } from "../../services";
 
 /**
  * Return secret versions for secret with id [secretId]
- * @param req 
- * @param res 
+ * @param req
+ * @param res
  */
- export const getSecretVersions = async (req: Request, res: Response) => {
-	/* 
+export const getSecretVersions = async (req: Request, res: Response) => {
+  /* 
     #swagger.summary = 'Return secret versions'
     #swagger.description = 'Return secret versions'
     
@@ -55,41 +54,34 @@ import { EESecretService } from '../../services';
         }
     }   
     */
-	let secretVersions;
-	try {
-		const { secretId } = req.params;
+  const { secretId, workspaceId, environment, folderId } = req.params;
 
-		const offset: number = parseInt(req.query.offset as string);
-		const limit: number = parseInt(req.query.limit as string);
-		
-		secretVersions = await SecretVersion.find({
-			secret: secretId
-		})
-		.sort({ createdAt: -1 })
-		.skip(offset)
-		.limit(limit);
+  const offset: number = parseInt(req.query.offset as string);
+  const limit: number = parseInt(req.query.limit as string);
 
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get secret versions'
-		});
-	}
-	
-	return res.status(200).send({
-		secretVersions
-	});
-}
+  const secretVersions = await SecretVersion.find({
+    secret: secretId,
+    workspace: workspaceId,
+    environment,
+    folder: folderId,
+  })
+    .sort({ createdAt: -1 })
+    .skip(offset)
+    .limit(limit);
+
+  return res.status(200).send({
+    secretVersions,
+  });
+};
 
 /**
  * Roll back secret with id [secretId] to version [version]
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const rollbackSecretVersion = async (req: Request, res: Response) => {
-	/* 
+  /* 
     #swagger.summary = 'Roll back secret to a version.'
     #swagger.description = 'Roll back secret to a version.'
     
@@ -137,88 +129,92 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
         }
     }   
     */
-	let secret;
-	try {
-		const { secretId } = req.params;
-		const { version } = req.body;
-		
-		// validate secret version
-		const oldSecretVersion = await SecretVersion.findOne({
-			secret: secretId,
-			version
-		});
-		
-		if (!oldSecretVersion) throw new Error('Failed to find secret version');
-		
-		const {
-			workspace,
-			type,
-			user,
-			environment,
-			secretKeyCiphertext,
-			secretKeyIV,
-			secretKeyTag,
-			secretValueCiphertext,
-			secretValueIV,
-			secretValueTag,
-		} = oldSecretVersion;
-		
-		// update secret
-		secret = await Secret.findByIdAndUpdate(
-			secretId,
-			{
-				$inc: {
-					version: 1
-				},
-				workspace,
-				type,
-				user,
-				environment,
-				secretKeyCiphertext,
-				secretKeyIV,
-				secretKeyTag,
-				secretValueCiphertext,
-				secretValueIV,
-				secretValueTag,
-			},
-			{
-				new: true
-			}
-		);
-		
-		if (!secret) throw new Error('Failed to find and update secret');
+  const { secretId } = req.params;
+  const { version } = req.body;
 
-		// add new secret version
-		await new SecretVersion({
-			secret: secretId,
-			version: secret.version,
-			workspace,
-			type,
-			user,
-			environment,
-			isDeleted: false,
-			secretKeyCiphertext,
-			secretKeyIV,
-			secretKeyTag,
-			secretValueCiphertext,
-			secretValueIV,
-			secretValueTag
-		}).save();
-		
-		// take secret snapshot
-		await EESecretService.takeSecretSnapshot({
-			workspaceId: secret.workspace.toString()
-		});
-		
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to roll back secret version'
-		});
-	}
-	
-	return res.status(200).send({
-		secret
-	});
-}
+  // validate secret version
+  const oldSecretVersion = await SecretVersion.findOne({
+    secret: secretId,
+    version,
+  }).select("+secretBlindIndex");
+
+  if (!oldSecretVersion) throw new Error("Failed to find secret version");
+
+  const {
+    workspace,
+    type,
+    user,
+    environment,
+    secretBlindIndex,
+    secretKeyCiphertext,
+    secretKeyIV,
+    secretKeyTag,
+    secretValueCiphertext,
+    secretValueIV,
+    secretValueTag,
+    algorithm,
+    folder,
+    keyEncoding,
+  } = oldSecretVersion;
+
+  // update secret
+  const secret = await Secret.findByIdAndUpdate(
+    secretId,
+    {
+      $inc: {
+        version: 1,
+      },
+      workspace,
+      type,
+      user,
+      environment,
+      ...(secretBlindIndex ? { secretBlindIndex } : {}),
+      secretKeyCiphertext,
+      secretKeyIV,
+      secretKeyTag,
+      secretValueCiphertext,
+      secretValueIV,
+      secretValueTag,
+      folderId: folder,
+      algorithm,
+      keyEncoding,
+    },
+    {
+      new: true,
+    }
+  );
+
+  if (!secret) throw new Error("Failed to find and update secret");
+
+  // add new secret version
+  await new SecretVersion({
+    secret: secretId,
+    version: secret.version,
+    workspace,
+    type,
+    user,
+    environment,
+    isDeleted: false,
+    ...(secretBlindIndex ? { secretBlindIndex } : {}),
+    secretKeyCiphertext,
+    secretKeyIV,
+    secretKeyTag,
+    secretValueCiphertext,
+    secretValueIV,
+    secretValueTag,
+    folder,
+    algorithm,
+    keyEncoding,
+  }).save();
+
+  // take secret snapshot
+  await EESecretService.takeSecretSnapshot({
+    workspaceId: secret.workspace,
+    environment,
+    folderId: folder,
+  });
+
+  return res.status(200).send({
+    secret,
+  });
+};

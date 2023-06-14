@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import * as Sentry from '@sentry/node';
 import Stripe from 'stripe';
 import { getStripeSecretKey, getStripeWebhookSecret } from '../../config';
 
@@ -10,26 +9,17 @@ import { getStripeSecretKey, getStripeWebhookSecret } from '../../config';
  * @returns
  */
 export const handleWebhook = async (req: Request, res: Response) => {
-	let event;
-	try {
-		// check request for valid stripe signature
-		const stripe = new Stripe(getStripeSecretKey(), {
-			apiVersion: '2022-08-01'
-		});
+  // check request for valid stripe signature
+  const stripe = new Stripe(await getStripeSecretKey(), {
+    apiVersion: '2022-08-01'
+  });
 
-		const sig = req.headers['stripe-signature'] as string;
-		event = stripe.webhooks.constructEvent(
-			req.body,
-			sig,
-			getStripeWebhookSecret()
-		);
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			error: 'Failed to process webhook'
-		});
-	}
+  const sig = req.headers['stripe-signature'] as string;
+  const event = stripe.webhooks.constructEvent(
+    req.body,
+    sig,
+    await getStripeWebhookSecret()
+  );
 
 	switch (event.type) {
 		case '':

@@ -12,14 +12,15 @@ import (
 	"github.com/Infisical/infisical-merge/packages/util"
 	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
-	log "github.com/sirupsen/logrus"
+	"github.com/posthog/posthog-go"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
 // runCmd represents the run command
 var initCmd = &cobra.Command{
 	Use:                   "init",
-	Short:                 "Used to initialize your project with Infisical",
+	Short:                 "Used to connect your local project with Infisical project",
 	DisableFlagsInUseLine: true,
 	Example:               "infisical init",
 	Args:                  cobra.ExactArgs(0),
@@ -30,8 +31,8 @@ var initCmd = &cobra.Command{
 		if util.WorkspaceConfigFileExistsInCurrentPath() {
 			shouldOverride, err := shouldOverrideWorkspacePrompt()
 			if err != nil {
-				log.Errorln("Unable to parse your answer")
-				log.Debug(err)
+				log.Error().Msg("Unable to parse your answer")
+				log.Debug().Err(err)
 				return
 			}
 
@@ -78,6 +79,9 @@ var initCmd = &cobra.Command{
 		if err != nil {
 			util.HandleError(err)
 		}
+
+		Telemetry.CaptureEvent("cli-command:init", posthog.NewProperties().Set("version", util.CLI_VERSION))
+
 	},
 }
 

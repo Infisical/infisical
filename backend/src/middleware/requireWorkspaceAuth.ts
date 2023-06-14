@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { validateMembership } from '../helpers/membership';
-import { UnauthorizedRequestError } from '../utils/errors';
+import { Types } from 'mongoose';
+import { validateClientForWorkspace } from '../validation';
 
 type req = 'params' | 'body' | 'query';
 
@@ -13,38 +13,43 @@ type req = 'params' | 'body' | 'query';
  */
 const requireWorkspaceAuth = ({
 	acceptedRoles,
-	location = 'params'
+	locationWorkspaceId,
+	locationEnvironment = undefined,
+	requiredPermissions = [],
+	requireBlindIndicesEnabled = false,
+	requireE2EEOff = false
 }: {
-	acceptedRoles: string[];
-	location?: req;
+	acceptedRoles: Array<'admin' | 'member'>;
+	locationWorkspaceId: req;
+	locationEnvironment?: req | undefined;
+	requiredPermissions?: string[];
+	requireBlindIndicesEnabled?: boolean;
+	requireE2EEOff?: boolean;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
-		try {
-			const { workspaceId } = req[location];
-			
-			if (req.user) {
-				// case: jwt auth
-				const membership = await validateMembership({
-					userId: req.user._id.toString(),
-					workspaceId,
-					acceptedRoles
-				});
-
-				req.membership = membership;
-			}
-
-			if (
-				req.serviceTokenData 
-				&& req.serviceTokenData.workspace.toString() !== workspaceId
-				&& req.serviceTokenData.environment !== req.body.environment
-			) {
-				next(UnauthorizedRequestError({message: 'Unable to authenticate workspace'}))	
-			}
-
-			return next();
-		} catch (err) {
-			return next(UnauthorizedRequestError({message: 'Unable to authenticate workspace'}))
+		const workspaceId = req[locationWorkspaceId]?.workspaceId;
+		const environment = locationEnvironment ? req[locationEnvironment]?.environment : undefined;
+		
+		// validate clients
+		const { membership, workspace } = await validateClientForWorkspace({
+			authData: req.authData,
+			workspaceId: new Types.ObjectId(workspaceId),
+			environment,
+			acceptedRoles,
+			requiredPermissions,
+			requireBlindIndicesEnabled,
+			requireE2EEOff
+		});
+		
+		if (membership) {
+			req.membership = membership;
 		}
+		
+		if (workspace) {
+			req.workspace = workspace;
+		}
+
+		return next();
 	};
 };
 

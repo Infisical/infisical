@@ -1,9 +1,6 @@
-import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
 import { Request, Response, NextFunction } from 'express';
-import { IntegrationAuth, IWorkspace } from '../models';
-import { IntegrationService } from '../services';
-import { validateMembership } from '../helpers/membership';
-import { UnauthorizedRequestError } from '../utils/errors';
+import { validateClientForIntegrationAuth } from '../validation';
 
 type req = 'params' | 'body' | 'query';
 
@@ -19,36 +16,26 @@ const requireIntegrationAuthorizationAuth = ({
 	attachAccessToken = true,
 	location = 'params'
 }: {
-	acceptedRoles: string[];
+	acceptedRoles: Array<'admin' | 'member'>;
 	attachAccessToken?: boolean;
 	location?: req;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
 		const { integrationAuthId } = req[location];
-		const integrationAuth = await IntegrationAuth.findOne({
-			_id: integrationAuthId
-		})
-		.populate<{ workspace: IWorkspace }>('workspace')
-		.select(
-			'+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt'
-		);
 
-		if (!integrationAuth) {
-			return next(UnauthorizedRequestError({message: 'Failed to locate Integration Authorization credentials'}))
-		}
-		
-		await validateMembership({
-			userId: req.user._id.toString(),
-			workspaceId: integrationAuth.workspace._id.toString(),
-			acceptedRoles
+		const { integrationAuth, accessToken } = await validateClientForIntegrationAuth({
+			authData: req.authData,
+			integrationAuthId: new Types.ObjectId(integrationAuthId),
+			acceptedRoles,
+			attachAccessToken
 		});
+		
+		if (integrationAuth) {
+			req.integrationAuth = integrationAuth;
+		}
 
-		req.integrationAuth = integrationAuth;
-		if (attachAccessToken) {
-			const access = await IntegrationService.getIntegrationAuthAccess({
-				integrationAuthId: integrationAuth._id.toString()
-			});
-			req.accessToken = access.accessToken;
+		if (accessToken) {
+			req.accessToken = accessToken;
 		}
 		
 		return next();

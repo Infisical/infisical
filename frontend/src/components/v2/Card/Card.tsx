@@ -10,7 +10,7 @@ export type CardTitleProps = {
 export const CardTitle = ({ children, className, subTitle }: CardTitleProps) => (
   <div
     className={twMerge(
-      'px-6 py-4 mb-5 font-sans text-lg font-normal border-b border-mineshaft-600',
+      'px-6 py-4 mb-5 font-sans text-lg font-normal border-b border-mineshaft-600 break-words',
       className
     )}
   >
@@ -25,7 +25,7 @@ export type CardFooterProps = {
 };
 
 export const CardFooter = ({ children, className }: CardFooterProps) => (
-  <div className={twMerge('p-6 pt-0', className)}>{children}</div>
+  <div className={twMerge('p-4 pt-0', className)}>{children}</div>
 );
 
 export type CardBodyProps = {

@@ -1,40 +1,56 @@
-import * as Sentry from '@sentry/node';
 import { Types } from 'mongoose';
-import { MembershipOrg, Workspace, Membership, Key } from '../models';
+import { 
+	MembershipOrg, 
+	Workspace, 
+	Membership, 
+	Key
+} from '../models';
+import {
+	MembershipOrgNotFoundError,
+	UnauthorizedRequestError
+} from '../utils/errors';
 
 /**
  * Validate that user with id [userId] is a member of organization with id [organizationId]
  * and has at least one of the roles in [acceptedRoles]
- *
+ * @param {Object} obj
+ * @param {Types.ObjectId} obj.userId
+ * @param {Types.ObjectId} obj.organizationId
+ * @param {String[]} obj.acceptedRoles
  */
-const validateMembership = async ({
+export const validateMembershipOrg = async ({
 	userId,
 	organizationId,
-	acceptedRoles
+	acceptedRoles,
+	acceptedStatuses
 }: {
-	userId: string;
-	organizationId: string;
-	acceptedRoles: string[];
+	userId: Types.ObjectId;
+	organizationId: Types.ObjectId;
+	acceptedRoles?: Array<'owner' | 'admin' | 'member'>;
+	acceptedStatuses?: Array<'invited' | 'accepted'>;
 }) => {
-	let membership;
-	try {
-		membership = await MembershipOrg.findOne({
-			user: new Types.ObjectId(userId),
-			organization: new Types.ObjectId(organizationId)
-		});
-		
-		if (!membership) throw new Error('Failed to find organization membership');
-		
-		if (!acceptedRoles.includes(membership.role)) {
-			throw new Error('Failed to validate organization membership role');
-		}
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to validate organization membership');
+	const membershipOrg = await MembershipOrg.findOne({
+		user: userId,
+		organization: organizationId
+	});
+	
+	if (!membershipOrg) {
+		throw MembershipOrgNotFoundError({ message: 'Failed to find organization membership' });
 	}
 	
-	return membership;
+	if (acceptedRoles) {
+		if (!acceptedRoles.includes(membershipOrg.role)) {
+			throw UnauthorizedRequestError({ message: 'Failed to validate organization membership role' });
+		}
+	}
+	
+	if (acceptedStatuses) {
+		if (!acceptedStatuses.includes(membershipOrg.status)) {
+			throw UnauthorizedRequestError({ message: 'Failed to validate organization membership status' });
+		}
+	}
+	
+	return membershipOrg;
 }
 
 /**
@@ -43,16 +59,8 @@ const validateMembership = async ({
  * @param {Object} queryObj - query object
  * @return {Object} membershipOrg - membership
  */
-const findMembershipOrg = (queryObj: any) => {
-	let membershipOrg;
-	try {
-		membershipOrg = MembershipOrg.findOne(queryObj);
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to find organization membership');
-	}
-
+export const findMembershipOrg = (queryObj: any) => {
+	const membershipOrg = MembershipOrg.findOne(queryObj);
 	return membershipOrg;
 };
 
@@ -64,7 +72,7 @@ const findMembershipOrg = (queryObj: any) => {
  * @param {String} obj.organizationId - id of organization.
  * @param {String[]} obj.roles - roles of users.
  */
-const addMembershipsOrg = async ({
+export const addMembershipsOrg = async ({
 	userIds,
 	organizationId,
 	roles,
@@ -75,33 +83,27 @@ const addMembershipsOrg = async ({
 	roles: string[];
 	statuses: string[];
 }) => {
-	try {
-		const operations = userIds.map((userId, idx) => {
-			return {
-				updateOne: {
-					filter: {
-						user: userId,
-						organization: organizationId,
-						role: roles[idx],
-						status: statuses[idx]
-					},
-					update: {
-						user: userId,
-						organization: organizationId,
-						role: roles[idx],
-						status: statuses[idx]
-					},
-					upsert: true
-				}
-			};
-		});
+  const operations = userIds.map((userId, idx) => {
+    return {
+      updateOne: {
+        filter: {
+          user: userId,
+          organization: organizationId,
+          role: roles[idx],
+          status: statuses[idx]
+        },
+        update: {
+          user: userId,
+          organization: organizationId,
+          role: roles[idx],
+          status: statuses[idx]
+        },
+        upsert: true
+      }
+    };
+  });
 
-		await MembershipOrg.bulkWrite(operations as any);
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to add users to organization');
-	}
+  await MembershipOrg.bulkWrite(operations as any);
 };
 
 /**
@@ -109,55 +111,41 @@ const addMembershipsOrg = async ({
  * @param {Object} obj
  * @param {String} obj.membershipOrgId - id of organization membership to delete
  */
-const deleteMembershipOrg = async ({
+export const deleteMembershipOrg = async ({
 	membershipOrgId
 }: {
 	membershipOrgId: string;
 }) => {
-	let deletedMembershipOrg;
-	try {
-		deletedMembershipOrg = await MembershipOrg.findOneAndDelete({
-			_id: membershipOrgId
-		});
+  const deletedMembershipOrg = await MembershipOrg.findOneAndDelete({
+    _id: membershipOrgId
+  });
 
-		if (!deletedMembershipOrg) throw new Error('Failed to delete organization membership');
+  if (!deletedMembershipOrg) throw new Error('Failed to delete organization membership');
 
-		// delete keys associated with organization membership
-		if (deletedMembershipOrg?.user) {
-			// case: organization membership had a registered user
+  // delete keys associated with organization membership
+  if (deletedMembershipOrg?.user) {
+    // case: organization membership had a registered user
 
-			const workspaces = (
-				await Workspace.find({
-					organization: deletedMembershipOrg.organization
-				})
-			).map((w) => w._id.toString());
+    const workspaces = (
+      await Workspace.find({
+        organization: deletedMembershipOrg.organization
+      })
+    ).map((w) => w._id.toString());
 
-			await Membership.deleteMany({
-				user: deletedMembershipOrg.user,
-				workspace: {
-					$in: workspaces
-				}
-			});
+    await Membership.deleteMany({
+      user: deletedMembershipOrg.user,
+      workspace: {
+        $in: workspaces
+      }
+    });
 
-			await Key.deleteMany({
-				receiver: deletedMembershipOrg.user,
-				workspace: {
-					$in: workspaces
-				}
-			});
-		}
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to delete organization membership');
-	}
+    await Key.deleteMany({
+      receiver: deletedMembershipOrg.user,
+      workspace: {
+        $in: workspaces
+      }
+    });
+  }
 
 	return deletedMembershipOrg;
 };
-
-export {
-	validateMembership,
-	findMembershipOrg,
-	addMembershipsOrg, 
-	deleteMembershipOrg 
-}; 

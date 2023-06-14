@@ -9,9 +9,13 @@ import {
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
+  INTEGRATION_RAILWAY,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
+  INTEGRATION_SUPABASE,
+  INTEGRATION_CHECKLY,
+  INTEGRATION_HASHICORP_VAULT
 } from "../variables";
 
 export interface IIntegration {
@@ -19,10 +23,14 @@ export interface IIntegration {
   workspace: Types.ObjectId;
   environment: string;
   isActive: boolean;
+  url: string;
   app: string;
+  appId: string;
   owner: string;
   targetEnvironment: string;
-  appId: string;
+  targetEnvironmentId: string;
+  targetService: string;
+  targetServiceId: string;
   path: string;
   region: string;
   integration:
@@ -35,9 +43,13 @@ export interface IIntegration {
     | 'github'
     | 'gitlab'
     | 'render' 
+    | 'railway' 
     | 'flyio'
     | 'circleci'
-    | 'travisci';
+    | 'travisci'
+    | 'supabase'
+    | 'checkly'
+    | 'hashicorp-vault';
   integrationAuth: Types.ObjectId;
 }
 
@@ -56,6 +68,11 @@ const integrationSchema = new Schema<IIntegration>(
       type: Boolean,
       required: true,
     },
+    url: {
+      // for custom self-hosted integrations (e.g. self-hosted GitHub enterprise)
+      type: String,
+      default: null
+    },
     app: {
       // name of app in provider
       type: String,
@@ -71,6 +88,20 @@ const integrationSchema = new Schema<IIntegration>(
       type: String,
       default: null,
     },
+    targetEnvironmentId: {
+      type: String,
+      default: null
+    },
+    targetService: {
+      // railway-specific service
+      type: String,
+      default: null
+    },
+    targetServiceId: {
+      // railway-specific service
+      type: String,
+      default: null
+    },
     owner: {
       // github-specific repo owner-login
       type: String,
@@ -78,6 +109,7 @@ const integrationSchema = new Schema<IIntegration>(
     },
     path: {
       // aws-parameter-store-specific path
+      // (also) vercel preview-branch
       type: String,
       default: null
     },
@@ -98,9 +130,13 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_GITHUB,
         INTEGRATION_GITLAB,
         INTEGRATION_RENDER,
+        INTEGRATION_RAILWAY,
         INTEGRATION_FLYIO,
         INTEGRATION_CIRCLECI,
         INTEGRATION_TRAVISCI,
+        INTEGRATION_SUPABASE,
+        INTEGRATION_CHECKLY,
+        INTEGRATION_HASHICORP_VAULT
       ],
       required: true,
     },

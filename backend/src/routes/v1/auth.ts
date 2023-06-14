@@ -1,9 +1,11 @@
 import express from 'express';
 const router = express.Router();
 import { body } from 'express-validator';
+import passport from 'passport';
 import { requireAuth, validateRequest } from '../../middleware';
 import { authController } from '../../controllers/v1';
 import { authLimiter } from '../../helpers/rateLimiter';
+import { AUTH_MODE_JWT } from '../../variables';
 
 router.post('/token', validateRequest, authController.getNewToken);
 
@@ -26,20 +28,50 @@ router.post( // deprecated (moved to api/v2/auth/login2)
 );
 
 router.post(
-  '/logout', 
+  '/logout',
   authLimiter,
   requireAuth({
-    acceptedAuthModes: ['jwt']
-  }), 
+    acceptedAuthModes: [AUTH_MODE_JWT]
+  }),
   authController.logout
 );
 
 router.post(
-  '/checkAuth', 
+  '/checkAuth',
   requireAuth({
-    acceptedAuthModes: ['jwt']
-  }), 
+    acceptedAuthModes: [AUTH_MODE_JWT]
+  }),
   authController.checkAuth
+);
+
+router.get(
+  '/redirect/google',
+  authLimiter,
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    session: false,
+  }),
+);
+
+router.get(
+  '/callback/google',
+  passport.authenticate('google', { failureRedirect: '/login/provider/error', session: false }),
+  authController.handleAuthProviderCallback,
+);
+
+router.get(
+  '/common-passwords',
+  authLimiter,
+  authController.getCommonPasswords
+);
+
+router.delete(
+  '/sessions',
+  authLimiter,
+  requireAuth({
+    acceptedAuthModes: [AUTH_MODE_JWT]
+  }), 
+  authController.revokeAllSessions
 );
 
 export default router;

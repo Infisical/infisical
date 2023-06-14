@@ -24,20 +24,23 @@ const buttonVariants = cva(
   {
     variants: {
       colorSchema: {
-        primary: ['bg-primary', 'text-black', 'border-primary bg-opacity-80 hover:bg-opacity-100'],
+        primary: ['bg-primary', 'text-black', 'border-primary bg-opacity-90 hover:bg-opacity-100'],
         secondary: ['bg-mineshaft', 'text-gray-300', 'border-mineshaft hover:bg-opacity-80'],
-        danger: ['bg-red', 'text-white', 'border-red hover:bg-opacity-90']
+        danger: ['bg-red', 'text-white', 'border-red hover:bg-opacity-90'],
+        gray: ['bg-bunker-500', 'text-bunker-200']
       },
       variant: {
         solid: '',
         outline: ['bg-transparent', 'border-2', 'border-solid'],
         plain: '',
+        selected: '',
+        outline_bg: '',
         // a constant color not in use on hover or click goes colorSchema color
-        star: 'text-bunker-200 bg-mineshaft-500'
+        star: 'text-bunker-200 bg-mineshaft-700 border-mineshaft-600'
       },
       isDisabled: {
-        true: 'bg-mineshaft opacity-40 cursor-not-allowed',
-        false: ''
+        true: 'bg-mineshaft-700 border border-mineshaft-600 text-white opacity-50 cursor-not-allowed',
+        false: 'border'
       },
       isFullWidth: {
         true: 'w-full',
@@ -58,7 +61,27 @@ const buttonVariants = cva(
       {
         colorSchema: 'primary',
         variant: 'star',
-        className: 'hover:bg-primary hover:text-black'
+        className: 'bg-mineshaft-700 border border-mineshaft-600 hover:bg-primary hover:text-black hover:border-primary-400 duration-100'
+      },
+      {
+        colorSchema: 'primary',
+        variant: 'solid',
+        className: 'bg-primary-500 bg-opacity-90 hover:bg-primary-500 hover:text-black'
+      },
+      {
+        colorSchema: 'primary',
+        variant: 'selected',
+        className: 'bg-primary/10 border border-primary/50 text-bunker-200'
+      },
+      {
+        colorSchema: 'primary',
+        variant: 'outline_bg',
+        className: 'bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/[0.1] hover:border-primary/40 text-bunker-200'
+      },
+      {
+        colorSchema: 'secondary',
+        variant: 'star',
+        className: 'bg-mineshaft-700 border border-mineshaft-600 hover:bg-mineshaft hover:text-white'
       },
       {
         colorSchema: 'danger',
@@ -73,7 +96,7 @@ const buttonVariants = cva(
       {
         colorSchema: 'secondary',
         variant: 'outline',
-        className: 'hover:bg-mineshaft'
+        className: 'border-mineshaft-700 hover:border-mineshaft-500'
       },
       {
         colorSchema: 'danger',
@@ -86,9 +109,14 @@ const buttonVariants = cva(
         className: 'text-primary'
       },
       {
+        colorSchema: 'gray',
+        variant: 'plain',
+        className: 'bg-transparent text-bunker-200'
+      },
+      {
         colorSchema: 'secondary',
         variant: 'plain',
-        className: 'text-mineshaft-300'
+        className: 'text-mineshaft-300 hover:text-mineshaft-200 border-none'
       },
       {
         colorSchema: 'danger',
@@ -149,32 +177,32 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {isLoading && (
           <img
-            src="/images/loading/loadingblack.gif"
+            src="/images/loading/loading.gif"
             width={36}
             alt="loading animation"
-            className="absolute rounded-xl"
+            className="absolute rounded-xl opacity-80"
           />
         )}
-        <span
+        <div
           className={twMerge(
-            'shrink-0 cursor-pointer transition-all',
+            'inline-flex shrink-0 cursor-pointer items-center justify-center transition-all',
             loadingToggleClass,
             leftIcon && 'ml-2',
-            size === 'xs' ? 'mr-1' : 'mr-3'
+            size === 'xs' ? 'mr-1' : 'mr-2'
           )}
         >
           {leftIcon}
-        </span>
-        <span className={twMerge('transition-all', loadingToggleClass)}>{children}</span>
-        <span
+        </div>
+        <span className={twMerge('transition-all', isFullWidth ? 'w-full' : 'w-min', loadingToggleClass)}>{children}</span>
+        <div
           className={twMerge(
-            'shrink-0 cursor-pointer transition-all',
+            'inline-flex shrink-0 cursor-pointer items-center justify-center transition-all',
             loadingToggleClass,
-            size === 'xs' ? 'ml-1' : 'ml-3'
+            size === 'xs' ? 'ml-1' : 'ml-2'
           )}
         >
           {rightIcon}
-        </span>
+        </div>
       </button>
     );
   }

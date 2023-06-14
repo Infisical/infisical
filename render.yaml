@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: infisical
+    env: docker
+    dockerfilePath: ./Dockerfile.standalone-infisical
+    autoDeploy: false
+    # healthCheckPath: /api/status
+    repo: https://github.com/Infisical/infisical.git
+    envVars:
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: JWT_SIGNUP_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_SERVICE_SECRET
+        generateValue: true
+      - key: JWT_AUTH_SECRET
+        generateValue: true
+      - key: JWT_PROVIDER_AUTH_SECRET
+        generateValue: true
+      - key: MONGO_URL
+        sync: false
+      - key: PORT
+        value: 443

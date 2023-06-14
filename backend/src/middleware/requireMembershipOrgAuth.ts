@@ -1,10 +1,6 @@
+import { Types } from 'mongoose';
 import { Request, Response, NextFunction } from 'express';
-import { UnauthorizedRequestError } from '../utils/errors';
-import {
-    MembershipOrg
-} from '../models';
-import { validateMembership } from '../helpers/membershipOrg';
-
+import { validateClientForMembershipOrg } from '../validation';
 
 type req = 'params' | 'body' | 'query';
 
@@ -17,32 +13,24 @@ type req = 'params' | 'body' | 'query';
  */
 const requireMembershipOrgAuth = ({
     acceptedRoles,
-    location = 'params'
+    acceptedStatuses,
+    locationMembershipOrgId = 'params'
 }: {
-    acceptedRoles: string[];
-    location?: req;
+    acceptedRoles: Array<'owner' | 'admin' | 'member'>;
+	acceptedStatuses: Array<'invited' | 'accepted'>;
+    locationMembershipOrgId?: req;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
-        try {
-            const { membershipId } = req[location];
-            const membershipOrg = await MembershipOrg.findById(membershipId);
-            
-            if (!membershipOrg) throw new Error('Failed to find target organization membership');
-            
-            const targetMembership = await validateMembership({
-                userId: req.user._id.toString(),
-                organizationId: membershipOrg.organization.toString(),
-                acceptedRoles
-            });
-            
-            req.targetMembership = targetMembership;
-            
-            return next();
-        } catch (err) {
-            return next(UnauthorizedRequestError({
-                message: 'Unable to validate organization membership'
-            }));
-        }
+        const { membershipId } = req[locationMembershipOrgId];
+        
+        req.membershipOrg = await validateClientForMembershipOrg({
+            authData: req.authData,
+            membershipOrgId: new Types.ObjectId(membershipId),
+            acceptedRoles,
+            acceptedStatuses
+        });
+        
+        return next();
     }
 }
 

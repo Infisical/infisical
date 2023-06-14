@@ -41,14 +41,14 @@ export const ProjectNameChangeSection = ({
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
-      <div className="mb-6 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pb-6 pt-3">
-        <p className="mb-4 mt-2 text-xl font-semibold">{t('common:display-name')}</p>
+      <div className="mb-6 flex w-full flex-col items-start rounded-md bg-mineshaft-900 px-6 pb-6 pt-3">
+        <p className="mb-4 mt-2 text-xl font-semibold">{t('common.display-name')}</p>
         <div className="mb-2 w-full max-w-lg">
           <Controller
             defaultValue=""
             render={({ field, fieldState: { error } }) => (
               <FormControl isError={Boolean(error)} errorText={error?.message}>
-                <Input placeholder="Type your project name" {...field} />
+                <Input placeholder="Type your project name" {...field} className="bg-mineshaft-800" />
               </FormControl>
             )}
             control={control}
@@ -57,13 +57,14 @@ export const ProjectNameChangeSection = ({
         </div>
         <Button
           isLoading={isSubmitting}
-          color="mineshaft"
+          color="primary"
+          variant="outline_bg"
           size="sm"
           type="submit"
           isDisabled={!isDirty || isSubmitting}
           leftIcon={<FontAwesomeIcon icon={faCheck} />}
         >
-          {t('common:save-changes')}
+          {t('common.save-changes')}
         </Button>
       </div>
     </form>

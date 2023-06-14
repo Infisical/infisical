@@ -1,5 +1,20 @@
 import * as express from 'express';
-import { ISecret } from '../../models';
+import { Types } from 'mongoose';
+import { 
+	IUser,
+	IServiceAccount,
+	IServiceTokenData,
+	ISecret 
+} from '../../models';
+import {
+	AuthData
+} from '../../interfaces/middleware';
+
+declare module 'express' {
+	interface Request {
+		user?: any;
+	}
+}
 
 // TODO: fix (any) types
 declare global {
@@ -10,6 +25,7 @@ declare global {
 			workspace: any;
 			membership: any;
 			targetMembership: any;
+			providerAuthToken: any;
 			organization: any;
 			membershipOrg: any;
 			integration: any;
@@ -19,10 +35,17 @@ declare global {
 			secrets: any;
 			secretSnapshot: any;
 			serviceToken: any;
+			serviceAccount: any;
 			accessToken: any;
 			serviceTokenData: any;
 			apiKeyData: any;
 			query?: any;
+			tokenVersionId?: Types.ObjectId;
+			authData: AuthData;
+			realIP: string;
+			requestData: {
+				[key: string]: string
+			};
 		}
 	}
 }

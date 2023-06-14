@@ -1,15 +1,19 @@
-import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import {
 	IUser,
 	User,
 	ServiceTokenData,
-	APIKeyData
+	ServiceAccount,
+	APIKeyData,
+	TokenVersion,
+	ITokenVersion
 } from '../models';
 import {
 	AccountNotFoundError,
 	ServiceTokenDataNotFoundError,
+	ServiceAccountNotFoundError,
 	APIKeyDataNotFoundError,
 	UnauthorizedRequestError,
 	BadRequestError
@@ -17,27 +21,33 @@ import {
 import {
 	getJwtAuthLifetime,
 	getJwtAuthSecret,
+	getJwtProviderAuthSecret,
 	getJwtRefreshLifetime,
 	getJwtRefreshSecret
 } from '../config';
+import {
+	AUTH_MODE_JWT,
+	AUTH_MODE_SERVICE_ACCOUNT,
+	AUTH_MODE_SERVICE_TOKEN,
+	AUTH_MODE_API_KEY
+} from '../variables';
 
 /**
  * 
  * @param {Object} obj
  * @param {Object} obj.headers - HTTP request headers object
  */
-const validateAuthMode = ({
+export const validateAuthMode = ({
 	headers,
 	acceptedAuthModes
 }: {
 	headers: { [key: string]: string | string[] | undefined },
 	acceptedAuthModes: string[]
 }) => {
-	// TODO: refactor middleware
 	const apiKey = headers['x-api-key'];
 	const authHeader = headers['authorization'];
 
-	let authTokenType, authTokenValue;
+	let authMode, authTokenValue;
 	if (apiKey === undefined && authHeader === undefined) {
 		// case: no auth or X-API-KEY header present
 		throw BadRequestError({ message: 'Missing Authorization or X-API-KEY in request header.' });
@@ -45,7 +55,7 @@ const validateAuthMode = ({
 
 	if (typeof apiKey === 'string') {
 		// case: treat request authentication type as via X-API-KEY (i.e. API Key)
-		authTokenType = 'apiKey';
+		authMode = AUTH_MODE_API_KEY;
 		authTokenValue = apiKey;
 	}
 
@@ -61,20 +71,24 @@ const validateAuthMode = ({
 
 		switch (tokenValue.split('.', 1)[0]) {
 			case 'st':
-				authTokenType = 'serviceToken';
+				authMode = AUTH_MODE_SERVICE_TOKEN;
+				break;
+			case 'sa':
+				authMode = AUTH_MODE_SERVICE_ACCOUNT;
 				break;
 			default:
-				authTokenType = 'jwt';
+				authMode = AUTH_MODE_JWT;
 		}
+
 		authTokenValue = tokenValue;
 	}
 
-	if (!authTokenType || !authTokenValue) throw BadRequestError({ message: 'Missing valid Authorization or X-API-KEY in request header.' });
+	if (!authMode || !authTokenValue) throw BadRequestError({ message: 'Missing valid Authorization or X-API-KEY in request header.' });
 
-	if (!acceptedAuthModes.includes(authTokenType)) throw BadRequestError({ message: 'The provided authentication type is not supported.' });
+	if (!acceptedAuthModes.includes(authMode)) throw BadRequestError({ message: 'The provided authentication type is not supported.' });
 
 	return ({
-		authTokenType,
+		authMode,
 		authTokenValue
 	});
 }
@@ -85,32 +99,42 @@ const validateAuthMode = ({
  * @param {String} obj.authTokenValue - JWT token value
  * @returns {User} user - user corresponding to JWT token
  */
-const getAuthUserPayload = async ({
+export const getAuthUserPayload = async ({
 	authTokenValue
 }: {
 	authTokenValue: string;
 }) => {
-	let user;
-	try {
-		const decodedToken = <jwt.UserIDJwtPayload>(
-			jwt.verify(authTokenValue, getJwtAuthSecret())
-		);
+	const decodedToken = <jwt.UserIDJwtPayload>(
+		jwt.verify(authTokenValue, await getJwtAuthSecret())
+	);
 
-		user = await User.findOne({
-			_id: decodedToken.userId
-		}).select('+publicKey');
+	const user = await User.findOne({
+		_id: new Types.ObjectId(decodedToken.userId)
+	}).select('+publicKey +accessVersion');
 
-		if (!user) throw AccountNotFoundError({ message: 'Failed to find User' });
+	if (!user) throw AccountNotFoundError({ message: 'Failed to find user' });
 
-		if (!user?.publicKey) throw UnauthorizedRequestError({ message: 'Failed to authenticate User with partially set up account' });
+	if (!user?.publicKey) throw UnauthorizedRequestError({ message: 'Failed to authenticate user with partially set up account' });
 
-	} catch (err) {
-		throw UnauthorizedRequestError({
-			message: 'Failed to authenticate JWT token'
-		});
-	}
+	const tokenVersion = await TokenVersion.findOneAndUpdate({
+		_id: new Types.ObjectId(decodedToken.tokenVersionId),
+		user: user._id
+	}, {
+		lastUsed: new Date()
+	});
+	
+	if (!tokenVersion) throw UnauthorizedRequestError({
+		message: 'Failed to validate access token'
+	});
+	
+	if (decodedToken.accessVersion !== tokenVersion.accessVersion) throw UnauthorizedRequestError({
+		message: 'Failed to validate access token'
+	});
 
-	return user;
+	return ({
+		user,
+		tokenVersionId: tokenVersion._id
+	});
 }
 
 /**
@@ -119,48 +143,73 @@ const getAuthUserPayload = async ({
  * @param {String} obj.authTokenValue - service token value
  * @returns {ServiceTokenData} serviceTokenData - service token data
  */
-const getAuthSTDPayload = async ({
+export const getAuthSTDPayload = async ({
 	authTokenValue
 }: {
 	authTokenValue: string;
 }) => {
-	let serviceTokenData;
-	try {
-		const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
+	const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
 
-		// TODO: optimize double query
-		serviceTokenData = await ServiceTokenData
-			.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt');
+	let serviceTokenData = await ServiceTokenData
+		.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt');
 
-		if (!serviceTokenData) {
-			throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
-		} else if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
-			// case: service token expired
-			await ServiceTokenData.findByIdAndDelete(serviceTokenData._id);
-			throw UnauthorizedRequestError({
-				message: 'Failed to authenticate expired service token'
-			});
-		}
-
-		const isMatch = await bcrypt.compare(TOKEN_SECRET, serviceTokenData.secretHash);
-		if (!isMatch) throw UnauthorizedRequestError({
-			message: 'Failed to authenticate service token'
-		});
-
-		serviceTokenData = await ServiceTokenData
-			.findById(TOKEN_IDENTIFIER)
-			.select('+encryptedKey +iv +tag')
-			.populate<{user: IUser}>('user');
-		
-		if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
-
-	} catch (err) {
+	if (!serviceTokenData) {
+		throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
+	} else if (serviceTokenData?.expiresAt && new Date(serviceTokenData.expiresAt) < new Date()) {
+		// case: service token expired
+		await ServiceTokenData.findByIdAndDelete(serviceTokenData._id);
 		throw UnauthorizedRequestError({
-			message: 'Failed to authenticate service token'
+			message: 'Failed to authenticate expired service token'
 		});
 	}
 
+	const isMatch = await bcrypt.compare(TOKEN_SECRET, serviceTokenData.secretHash);
+	if (!isMatch) throw UnauthorizedRequestError({
+		message: 'Failed to authenticate service token'
+	});
+
+	serviceTokenData = await ServiceTokenData
+		.findOneAndUpdate({
+			_id: new Types.ObjectId(TOKEN_IDENTIFIER)
+		}, {
+			lastUsed: new Date()
+		}, {
+			new: true
+		})
+		.select('+encryptedKey +iv +tag');
+
+	if (!serviceTokenData) throw ServiceTokenDataNotFoundError({ message: 'Failed to find service token data' });
+
 	return serviceTokenData;
+}
+
+/**
+ * Return service account access key payload
+ * @param {Object} obj
+ * @param {String} obj.authTokenValue - service account access token value
+ * @returns {ServiceAccount} serviceAccount
+ */
+export const getAuthSAAKPayload = async ({
+	authTokenValue
+}: {
+	authTokenValue: string;
+}) => {
+	const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
+
+	const serviceAccount = await ServiceAccount.findById(
+		Buffer.from(TOKEN_IDENTIFIER, 'base64').toString('hex')
+	).select('+secretHash');
+
+	if (!serviceAccount) {
+		throw ServiceAccountNotFoundError({ message: 'Failed to find service account' });
+	}
+
+	const result = await bcrypt.compare(TOKEN_SECRET, serviceAccount.secretHash);
+	if (!result) throw UnauthorizedRequestError({
+		message: 'Failed to authenticate service account access key'
+	});
+
+	return serviceAccount;
 }
 
 /**
@@ -169,38 +218,49 @@ const getAuthSTDPayload = async ({
  * @param {String} obj.authTokenValue - API key value
  * @returns {APIKeyData} apiKeyData - API key data
  */
-const getAuthAPIKeyPayload = async ({
+export const getAuthAPIKeyPayload = async ({
 	authTokenValue
 }: {
 	authTokenValue: string;
 }) => {
-	let user;
-	try {
-		const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
+	const [_, TOKEN_IDENTIFIER, TOKEN_SECRET] = <[string, string, string]>authTokenValue.split('.', 3);
 
-		const apiKeyData = await APIKeyData
-			.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt')
-			.populate('user', '+publicKey');
+	let apiKeyData = await APIKeyData
+		.findById(TOKEN_IDENTIFIER, '+secretHash +expiresAt')
+		.populate<{ user: IUser }>('user', '+publicKey');
 
-		if (!apiKeyData) {
-			throw APIKeyDataNotFoundError({ message: 'Failed to find API key data' });
-		} else if (apiKeyData?.expiresAt && new Date(apiKeyData.expiresAt) < new Date()) {
-			// case: API key expired
-			await APIKeyData.findByIdAndDelete(apiKeyData._id);
-			throw UnauthorizedRequestError({
-				message: 'Failed to authenticate expired API key'
-			});
-		}
-
-		const isMatch = await bcrypt.compare(TOKEN_SECRET, apiKeyData.secretHash);
-		if (!isMatch) throw UnauthorizedRequestError({
-			message: 'Failed to authenticate API key'
-		});
-
-		user = apiKeyData.user;
-	} catch (err) {
+	if (!apiKeyData) {
+		throw APIKeyDataNotFoundError({ message: 'Failed to find API key data' });
+	} else if (apiKeyData?.expiresAt && new Date(apiKeyData.expiresAt) < new Date()) {
+		// case: API key expired
+		await APIKeyData.findByIdAndDelete(apiKeyData._id);
 		throw UnauthorizedRequestError({
-			message: 'Failed to authenticate API key'
+			message: 'Failed to authenticate expired API key'
+		});
+	}
+
+	const isMatch = await bcrypt.compare(TOKEN_SECRET, apiKeyData.secretHash);
+	if (!isMatch) throw UnauthorizedRequestError({
+		message: 'Failed to authenticate API key'
+	});
+
+	apiKeyData = await APIKeyData.findOneAndUpdate({
+		_id: new Types.ObjectId(TOKEN_IDENTIFIER)
+	}, {
+		lastUsed: new Date()
+	}, {
+		new: true
+	});
+
+	if (!apiKeyData) {
+		throw APIKeyDataNotFoundError({ message: 'Failed to find API key data' });
+	}
+
+	const user = await User.findById(apiKeyData.user).select('+publicKey');
+
+	if (!user) {
+		throw AccountNotFoundError({
+			message: 'Failed to find user'
 		});
 	}
 
@@ -215,31 +275,57 @@ const getAuthAPIKeyPayload = async ({
  * @return {String} obj.token - issued JWT token
  * @return {String} obj.refreshToken - issued refresh token
  */
-const issueAuthTokens = async ({ userId }: { userId: string }) => {
-	let token: string;
-	let refreshToken: string;
-	try {
-		// issue tokens
-		token = createToken({
-			payload: {
-				userId
-			},
-			expiresIn: getJwtAuthLifetime(),
-			secret: getJwtAuthSecret()
-		});
+export const issueAuthTokens = async ({ 
+	userId,
+	ip,
+	userAgent
+}: { 
+	userId: Types.ObjectId;
+	ip: string;
+	userAgent: string;
+}) => {
+	let tokenVersion: ITokenVersion | null;
 
-		refreshToken = createToken({
-			payload: {
-				userId
-			},
-			expiresIn: getJwtRefreshLifetime(),
-			secret: getJwtRefreshSecret()
-		});
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to issue tokens');
+	// continue with (session) token version matching existing ip and user agent
+	tokenVersion = await TokenVersion.findOne({
+		user: userId,
+		ip,
+		userAgent
+	});
+	
+	if (!tokenVersion) {
+		// case: no existing ip and user agent exists
+		// -> create new (session) token version for ip and user agent
+		tokenVersion = await new TokenVersion({
+			user: userId,
+			refreshVersion: 0,
+			accessVersion: 0,
+			ip,
+			userAgent,
+			lastUsed: new Date()
+		}).save();
 	}
+
+	// issue tokens
+	const token = createToken({
+		payload: {
+			userId,
+			tokenVersionId: tokenVersion._id.toString(),
+			accessVersion: tokenVersion.accessVersion
+		},
+		expiresIn: await getJwtAuthLifetime(),
+		secret: await getJwtAuthSecret()
+	});
+
+	const refreshToken = createToken({
+		payload: {
+			userId,
+			tokenVersionId: tokenVersion._id.toString(),
+			refreshVersion: tokenVersion.refreshVersion
+		},
+		expiresIn: await getJwtRefreshLifetime(),
+		secret: await getJwtRefreshSecret()
+	});
 
 	return {
 		token,
@@ -252,20 +338,17 @@ const issueAuthTokens = async ({ userId }: { userId: string }) => {
  * @param {Object} obj
  * @param {String} obj.userId - id of user whose tokens are cleared.
  */
-const clearTokens = async ({ userId }: { userId: string }): Promise<void> => {
-	try {
-		// increment refreshVersion on user by 1
-		User.findOneAndUpdate({
-			_id: userId
-		}, {
-			$inc: {
-				refreshVersion: 1
-			}
-		});
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-	}
+export const clearTokens = async (tokenVersionId: Types.ObjectId): Promise<void> => {
+	// increment refreshVersion on user by 1
+
+	await TokenVersion.findOneAndUpdate({
+		_id: tokenVersionId
+	}, {
+		$inc: {
+			refreshVersion: 1,
+			accessVersion: 1
+		}
+	});
 };
 
 /**
@@ -276,7 +359,7 @@ const clearTokens = async ({ userId }: { userId: string }): Promise<void> => {
  * @param {String} obj.secret - (JWT) secret such as [JWT_AUTH_SECRET]
  * @param {String} obj.expiresIn - string describing time span such as '10h' or '7d'
  */
-const createToken = ({
+export const createToken = ({
 	payload,
 	expiresIn,
 	secret
@@ -285,23 +368,32 @@ const createToken = ({
 	expiresIn: string | number;
 	secret: string;
 }) => {
-	try {
-		return jwt.sign(payload, secret, {
-			expiresIn
-		});
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to create a token');
-	}
+	return jwt.sign(payload, secret, {
+		expiresIn
+	});
 };
 
-export {
-	validateAuthMode,
-	getAuthUserPayload,
-	getAuthSTDPayload,
-	getAuthAPIKeyPayload,
-	createToken,
-	issueAuthTokens,
-	clearTokens
-};
+export const validateProviderAuthToken = async ({
+	email,
+	user,
+	providerAuthToken,
+}: {
+	email: string;
+	user: IUser,
+	providerAuthToken?: string;
+}) => {
+	if (!providerAuthToken) {
+		throw new Error('Invalid authentication request.');
+	}
+
+	const decodedToken = <jwt.ProviderAuthJwtPayload>(
+		jwt.verify(providerAuthToken, await getJwtProviderAuthSecret())
+	);
+	
+	if (
+		decodedToken.authProvider !== user.authProvider ||
+		decodedToken.email !== email
+	) {
+		throw new Error('Invalid authentication credentials.')
+	}
+}

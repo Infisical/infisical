@@ -3,10 +3,22 @@ kind: InfisicalSecret
 metadata:
   name: infisicalsecret-sample
 spec:
-  hostAPI: https://app.infisical.com/api
-  tokenSecretReference:
-    secretName: service-token
-    secretNamespace: default
+  hostAPI: http://localhost:7070/api
+  authentication:
+    serviceAccount:
+      serviceAccountSecretReference:
+        secretName: service-account
+        secretNamespace: default
+      projectId: "6439ec224cfbf7ea2a95b651"
+      environmentName: "dev"
+    serviceToken:
+      serviceTokenSecretReference:
+        secretName: service-token
+        secretNamespace: default
   managedSecretReference:
     secretName: managed-secret
+    secretNamespace: default
+  # To be depreciated soon
+  tokenSecretReference:
+    secretName: service-token
     secretNamespace: default

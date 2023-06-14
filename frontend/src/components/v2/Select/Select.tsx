@@ -1,6 +1,6 @@
 import { forwardRef, ReactNode } from 'react';
 import { IconProp } from '@fortawesome/fontawesome-svg-core';
-import { faCheck, faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
+import { faCaretDown, faCaretUp,faCheck } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { twMerge } from 'tailwind-merge';
@@ -40,7 +40,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           ref={ref}
           className={twMerge(
             `inline-flex items-center justify-between rounded-md
-            bg-bunker-800 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-gray-500`,
+            bg-mineshaft-900 px-3 py-2 font-inter text-sm font-normal text-bunker-200 outline-none data-[placeholder]:text-gray-500`,
             className
           )}
         >
@@ -49,21 +49,23 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           </SelectPrimitive.Value>
           {!isDisabled && (
             <SelectPrimitive.Icon className="ml-3">
-              <FontAwesomeIcon icon={faChevronDown} size="sm" />
+              <FontAwesomeIcon icon={faCaretDown} size="sm" />
             </SelectPrimitive.Icon>
           )}
         </SelectPrimitive.Trigger>
         <SelectPrimitive.Portal>
           <SelectPrimitive.Content
             className={twMerge(
-              'relative top-1 z-[100] overflow-hidden rounded-md bg-bunker-800 font-inter text-bunker-100 shadow-md',
+              'relative top-1 z-[100] overflow-hidden rounded-md bg-mineshaft-900 border border-mineshaft-600 font-inter text-bunker-100 shadow-md',
               dropdownContainerClassName
             )}
             position={position}
             style={{ width: 'var(--radix-select-trigger-width)' }}
           >
             <SelectPrimitive.ScrollUpButton>
-              <FontAwesomeIcon icon={faChevronUp} size="sm" />
+              <div className="flex items-center justify-center">
+                <FontAwesomeIcon icon={faCaretUp} size="sm" />
+              </div>
             </SelectPrimitive.ScrollUpButton>
             <SelectPrimitive.Viewport className="p-1">
               {isLoading ? (
@@ -76,7 +78,9 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
               )}
             </SelectPrimitive.Viewport>
             <SelectPrimitive.ScrollDownButton>
-              <FontAwesomeIcon icon={faChevronDown} size="sm" />
+              <div className="flex items-center justify-center">
+                <FontAwesomeIcon icon={faCaretDown} size="sm" />
+              </div>
             </SelectPrimitive.ScrollDownButton>
           </SelectPrimitive.Content>
         </SelectPrimitive.Portal>

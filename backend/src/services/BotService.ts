@@ -1,13 +1,41 @@
+import { Types } from 'mongoose';
 import {
-    getSecretsHelper,
+    getSecretsBotHelper,
     encryptSymmetricHelper,
-    decryptSymmetricHelper
+    decryptSymmetricHelper,
+    getKey,
+    getIsWorkspaceE2EEHelper
 } from '../helpers/bot';
 
 /**
  * Class to handle bot actions
  */
 class BotService {
+    
+    /**
+     * Return whether or not workspace with id [workspaceId] is end-to-end encrypted
+     * @param workspaceId - id of workspace
+     * @returns {Boolean}
+     */
+    static async getIsWorkspaceE2EE(workspaceId: Types.ObjectId) {
+        return await getIsWorkspaceE2EEHelper(workspaceId);
+    }
+
+    /**
+     * Get workspace key for workspace with id [workspaceId] shared to bot.
+     * @param {Object} obj
+     * @param {Types.ObjectId} obj.workspaceId - id of workspace to get workspace key for
+     * @returns 
+     */
+    static async getWorkspaceKeyWithBot({
+        workspaceId
+    }: {
+        workspaceId: Types.ObjectId;
+    }) {
+        return await getKey({
+            workspaceId
+        });
+    }
     
     /**
      * Return decrypted secrets for workspace with id [workspaceId] and 
@@ -21,10 +49,10 @@ class BotService {
         workspaceId,
         environment
     }: {
-        workspaceId: string;
+        workspaceId: Types.ObjectId;
         environment: string;
     }) {
-        return await getSecretsHelper({
+        return await getSecretsBotHelper({
             workspaceId,
             environment
         });
@@ -41,7 +69,7 @@ class BotService {
         workspaceId,
         plaintext
     }: {
-        workspaceId: string;
+        workspaceId: Types.ObjectId;
         plaintext: string;
     }) {
         return await encryptSymmetricHelper({
@@ -65,7 +93,7 @@ class BotService {
         iv,
         tag
     }: {
-        workspaceId: string;
+        workspaceId: Types.ObjectId;
         ciphertext: string;
         iv: string;
         tag: string;

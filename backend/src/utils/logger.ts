@@ -12,7 +12,7 @@ const logFormat = (prefix: string) => combine(
   printf((info) => `${info.timestamp} ${info.label} ${info.level}: ${info.message}`)
 );
 
-const createLoggerWithLabel = (level: string, label: string) => {
+const createLoggerWithLabel = async (level: string, label: string) => {
   const _level = level.toLowerCase() || 'info'
   //* Always add Console output to transports
   const _transports: any[] = [
@@ -25,10 +25,10 @@ const createLoggerWithLabel = (level: string, label: string) => {
     })
   ]
   //* Add LokiTransport if it's enabled
-  if(getLokiHost() !== undefined){
+  if((await getLokiHost()) !== undefined){
     _transports.push(
       new LokiTransport({
-        host: getLokiHost(),
+        host: await getLokiHost(),
         handleExceptions: true,
         handleRejections: true,
         batching: true,
@@ -40,7 +40,7 @@ const createLoggerWithLabel = (level: string, label: string) => {
         labels: {
           app: process.env.npm_package_name, 
           version: process.env.npm_package_version, 
-          environment: getNodeEnv()
+          environment: await getNodeEnv()
         },
         onConnectionError: (err: Error)=> console.error('Connection error while connecting to Loki Server.\n', err)
       })
@@ -58,12 +58,10 @@ const createLoggerWithLabel = (level: string, label: string) => {
   });
 }
 
-const DEFAULT_LOGGERS = {
-  "backend-main": createLoggerWithLabel('info', '[IFSC:backend-main]'),
-  "database": createLoggerWithLabel('info', '[IFSC:database]'),
-}
-type LoggerNames = keyof typeof DEFAULT_LOGGERS
-
-export const getLogger = (loggerName: LoggerNames) => {
-  return DEFAULT_LOGGERS[loggerName]
+export const getLogger = async (loggerName: 'backend-main' | 'database') => {
+  const logger = {
+    "backend-main": await createLoggerWithLabel('info', '[IFSC:backend-main]'),
+    "database": await createLoggerWithLabel('info', '[IFSC:database]'),
+  }
+  return logger[loggerName]
 } 

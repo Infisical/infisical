@@ -9,10 +9,10 @@ import NavHeader from '@app/components/navigation/NavHeader';
 // TODO(akhilmhdh):Refactor this into a better utility module package
 import {
   decryptAssymmetric,
+  decryptSymmetric,
   encryptSymmetric
 } from '@app/components/utilities/cryptography/crypto';
 import { Button, FormControl, Input } from '@app/components/v2';
-import { plans } from '@app/const';
 import { useSubscription, useWorkspace } from '@app/context';
 import { useToggle } from '@app/hooks';
 import {
@@ -25,7 +25,10 @@ import {
   useDeleteWsTag,
   useGetUserWsKey,
   useGetUserWsServiceTokens,
+  useGetWorkspaceIndexStatus,
+  useGetWorkspaceSecrets,
   useGetWsTags,
+  useNameWorkspaceSecrets,
   useRenameWorkspace,
   useToggleAutoCapitalization,
   useUpdateWsEnvironment
@@ -39,8 +42,10 @@ import {
   CreateUpdateEnvFormData,
   CreateWsTag,
   EnvironmentSection,
+  ProjectIndexSecretsSection,
   ProjectNameChangeSection,
-  ServiceTokenSection
+  ServiceTokenSection,
+  E2EESection
 } from './components';
 
 export const ProjectSettingsPage = () => {
@@ -55,6 +60,7 @@ export const ProjectSettingsPage = () => {
   const [isDeleting, setIsDeleting] = useToggle();
 
   const renameWorkspace = useRenameWorkspace();
+  const nameWorkspaceSecrets = useNameWorkspaceSecrets();
   const toggleAutoCapitalization = useToggleAutoCapitalization();
 
   const deleteWorkspace = useDeleteWorkspace();
@@ -63,11 +69,17 @@ export const ProjectSettingsPage = () => {
   const updateWsEnv = useUpdateWsEnvironment();
   const deleteWsEnv = useDeleteWsEnvironment();
 
+  const { data: isBlindIndexed, isLoading: isBlindIndexedLoading } =
+    useGetWorkspaceIndexStatus(workspaceID);
+
   // service token
   const { data: serviceTokens, isLoading: isServiceTokenLoading } = useGetUserWsServiceTokens({
     workspaceID: currentWorkspace?._id || ''
   });
+
   const { data: latestFileKey } = useGetUserWsKey(workspaceID);
+  const { data: encryptedSecrets } = useGetWorkspaceSecrets(workspaceID);
+
   const createServiceToken = useCreateServiceToken();
   const deleteServiceToken = useDeleteServiceToken();
 
@@ -77,10 +89,9 @@ export const ProjectSettingsPage = () => {
   const deleteWsTag = useDeleteWsTag();
 
   // get user subscription
-  const { subscriptionPlan } = useSubscription();
+  const { subscription } = useSubscription();
   const host = window.location.origin;
-  const isEnvServiceAllowed =
-    subscriptionPlan !== plans.starter || host !== 'https://app.infisical.com';
+  const isEnvServiceAllowed = ((currentWorkspace?.environments || []).length < (subscription?.envLimit || 3) || host !== 'https://app.infisical.com');
 
   const onRenameWorkspace = async (name: string) => {
     try {
@@ -203,37 +214,45 @@ export const ProjectSettingsPage = () => {
     }
   };
 
-  const onCreateServiceToken = async ({ environment, expiresIn, name, permissions }: CreateServiceToken) => {
+  const onCreateServiceToken = async ({
+    environment,
+    expiresIn,
+    name,
+    permissions,
+    secretPath
+  }: CreateServiceToken) => {
     // type guard
     if (!latestFileKey) return '';
     try {
-      // crypo calculation to generate the key
       const key = decryptAssymmetric({
         ciphertext: latestFileKey.encryptedKey,
         nonce: latestFileKey.nonce,
         publicKey: latestFileKey.sender.publicKey,
         privateKey: localStorage.getItem('PRIVATE_KEY') as string
       });
+
       const randomBytes = crypto.randomBytes(16).toString('hex');
+
       const { ciphertext, iv, tag } = encryptSymmetric({
         plaintext: key,
         key: randomBytes
       });
-      
+
       const res = await createServiceToken.mutateAsync({
         encryptedKey: ciphertext,
         iv,
         tag,
         environment,
+        secretPath,
         expiresIn: Number(expiresIn),
         name,
         workspaceId: workspaceID,
         randomBytes,
         permissions: Object.entries(permissions)
-        .filter(([, permissionsValue]) => permissionsValue)
-        .map(([permissionsKey]) => permissionsKey)
+          .filter(([, permissionsValue]) => permissionsValue)
+          .map(([permissionsKey]) => permissionsKey)
       });
-      
+
       createNotification({
         text: 'Successfully created a service token',
         type: 'success'
@@ -303,17 +322,49 @@ export const ProjectSettingsPage = () => {
     }
   };
 
+  const onEnableBlindIndices = async () => {
+    if (!currentWorkspace?._id) return;
+    if (!encryptedSecrets) return;
+    if (!latestFileKey) return;
+
+    const key = decryptAssymmetric({
+      ciphertext: latestFileKey.encryptedKey,
+      nonce: latestFileKey.nonce,
+      publicKey: latestFileKey.sender.publicKey,
+      privateKey: localStorage.getItem('PRIVATE_KEY') as string
+    });
+
+    const secretsToUpdate = encryptedSecrets.map((encryptedSecret) => {
+      const secretName = decryptSymmetric({
+        ciphertext: encryptedSecret.secretKeyCiphertext,
+        iv: encryptedSecret.secretKeyIV,
+        tag: encryptedSecret.secretKeyTag,
+        key
+      });
+
+      return {
+        secretName,
+        _id: encryptedSecret._id
+      };
+    });
+
+    await nameWorkspaceSecrets.mutateAsync({
+      workspaceId: currentWorkspace._id,
+      secretsToUpdate
+    });
+  };
+
   return (
     <div className="dark container mx-auto flex flex-col px-8 text-mineshaft-50 dark:[color-scheme:dark]">
       {/* TODO(akhilmhdh): Remove this right when layout is refactored  */}
       <div className="relative right-5">
-        <NavHeader pageName={t('settings-project:title')} isProjectRelated />
+        <NavHeader pageName={t('settings.project.title')} isProjectRelated />
       </div>
       <div className="my-8 flex max-w-5xl flex-row items-center justify-between text-xl">
         <div className="flex flex-col items-start justify-start text-3xl">
-          <p className="mr-4 font-semibold text-gray-200">{t('settings-project:title')}</p>
+          <p className="mr-4 font-semibold text-gray-200">{t('settings.project.title')}</p>
           <p className="mr-4 text-base font-normal text-gray-400">
-            {t('settings-project:description')}
+            {t('settings.project.description')}
           </p>
         </div>
       </div>
@@ -349,9 +400,17 @@ export const ProjectSettingsPage = () => {
         workspaceAutoCapitalization={currentWorkspace?.autoCapitalization}
         onAutoCapitalizationChange={onAutoCapitalizationToggle}
       />
-      <div className="mb-6 mt-4 flex w-full flex-col items-start rounded-md border-l border-red bg-white/5 px-6 pl-6 pb-4 pt-4">
-        <p className="text-xl font-bold text-red">{t('settings-project:danger-zone')}</p>
-        <p className="text-md mt-2 text-gray-400">{t('settings-project:danger-zone-note')}</p>
+      {!isBlindIndexedLoading && !isBlindIndexed && (
+        <ProjectIndexSecretsSection 
+          onEnableBlindIndices={onEnableBlindIndices} 
+        />
+      )}
+      <E2EESection 
+        workspaceId={currentWorkspace?._id || ''}
+      />
+      <div className="mb-6 mt-4 flex w-full flex-col items-start rounded-md border-l border-red bg-mineshaft-900 px-6 pl-6 pb-4 pt-4">
+        <p className="text-xl font-bold text-red">{t('settings.project.danger-zone')}</p>
+        <p className="text-md mt-2 text-gray-400">{t('settings.project.danger-zone-note')}</p>
         <div className="mr-auto mt-4 max-h-28 w-full max-w-md">
           <FormControl
             label={
@@ -365,6 +424,7 @@ export const ProjectSettingsPage = () => {
               onChange={(e) => setDeleteProjectInput(e.target.value)}
               value={deleteProjectInput}
               placeholder="Type the project name to delete"
+              className="bg-mineshaft-800"
             />
           </FormControl>
         </div>
@@ -374,10 +434,10 @@ export const ProjectSettingsPage = () => {
           isDisabled={deleteProjectInput !== currentWorkspace?.name || isDeleting}
           isLoading={isDeleting}
         >
-          {t('settings-project:delete-project')}
+          {t('settings.project.delete-project')}
         </Button>
         <p className="mt-3 ml-0.5 text-xs text-gray-500">
-          {t('settings-project:delete-project-note')}
+          {t('settings.project.delete-project-note')}
         </p>
       </div>
     </div>

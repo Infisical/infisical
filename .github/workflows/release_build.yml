@@ -4,7 +4,7 @@ on:
   push:
     # run only against tags
     tags:
-      - "v*"
+      - "infisical-cli/v*.*.*"
 
 permissions:
   contents: write
@@ -41,13 +41,15 @@ jobs:
           git clone https://github.com/plentico/osxcross-target.git ../../osxcross/target
       - uses: goreleaser/goreleaser-action@v4
         with:
-          distribution: goreleaser
+          distribution: goreleaser-pro
           version: latest
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GO_RELEASER_GITHUB_TOKEN }}
+          POSTHOG_API_KEY_FOR_CLI: ${{ secrets.POSTHOG_API_KEY_FOR_CLI }}
           FURY_TOKEN: ${{ secrets.FURYPUSHTOKEN }}
           AUR_KEY: ${{ secrets.AUR_KEY }}
+          GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
       - uses: actions/setup-python@v4
       - run: pip install --upgrade cloudsmith-cli
       - name: Publish to CloudSmith

@@ -1,16 +1,10 @@
 // membership roles
-const OWNER = "owner";
-const ADMIN = "admin";
-const MEMBER = "member";
+export const OWNER = "owner";
+export const ADMIN = "admin";
+export const MEMBER = "member";
 
 // membership statuses
-const INVITED = "invited";
-
-// membership permissions ability
-const ABILITY_READ = "read";
-const ABILITY_WRITE = "write";
+export const INVITED = "invited";
 
 // -- organization
-const ACCEPTED = "accepted";
-
-export { OWNER, ADMIN, MEMBER, INVITED, ACCEPTED, ABILITY_READ, ABILITY_WRITE };
+export const ACCEPTED = "accepted";

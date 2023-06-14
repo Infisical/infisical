@@ -5,20 +5,22 @@
 ************************************************************************************************/
 
 import { Key, Membership, MembershipOrg, Organization, User, Workspace } from "../models";
+import { SecretService } from "../services";
 import { Types } from 'mongoose';
 import { getNodeEnv } from '../config';
 
-export const createTestUserForDevelopment = async () => {
-  if (getNodeEnv() === "development") {
-    const testUserEmail = "test@localhost.local"
-    const testUserPassword = "testInfisical1"
-    const testUserId = "63cefa6ec8d3175601cfa980"
-    const testWorkspaceId = "63cefb15c8d3175601cfa989"
-    const testOrgId = "63cefb15c8d3175601cfa985"
-    const testMembershipId = "63cefb159185d9aa3ef0cf35"
-    const testMembershipOrgId = "63cefb159185d9aa3ef0cf31"
-    const testWorkspaceKeyId = "63cf48f0225e6955acec5eff"
+export const testUserEmail = "test@localhost.local"
+export const testUserPassword = "testInfisical1"
+export const testUserId = "63cefa6ec8d3175601cfa980"
+export const testWorkspaceId = "63cefb15c8d3175601cfa989"
+export const testOrgId = "63cefb15c8d3175601cfa985"
+export const testMembershipId = "63cefb159185d9aa3ef0cf35"
+export const testMembershipOrgId = "63cefb159185d9aa3ef0cf31"
+export const testWorkspaceKeyId = "63cf48f0225e6955acec5eff"
+export const plainTextWorkspaceKey = "543fef8224813a46230b0a50a46c5fb2"
 
+export const createTestUserForDevelopment = async () => {
+  if ((await getNodeEnv()) === "development" || (await getNodeEnv()) === "test") {
     const testUser = {
       _id: testUserId,
       email: testUserEmail,
@@ -118,7 +120,12 @@ export const createTestUserForDevelopment = async () => {
       // create workspace if not exist 
       const workspaceInDB = await Workspace.findById(testWorkspaceId)
       if (!workspaceInDB) {
-        await Workspace.create(testWorkspace)
+        const workspace = await Workspace.create(testWorkspace)
+        
+        // initialize blind index salt for workspace
+        await SecretService.createSecretBlindIndexData({
+          workspaceId: workspace._id
+        });
       }
 
       // create workspace key if not exist

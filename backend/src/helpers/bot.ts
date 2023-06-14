@@ -1,57 +1,101 @@
-import * as Sentry from '@sentry/node';
+import { Types } from "mongoose";
 import {
-    Bot,
-    BotKey,
-    Secret,
-    ISecret,
-    IUser
-} from '../models';
-import { 
-    generateKeyPair, 
-    encryptSymmetric,
-    decryptSymmetric,
-    decryptAsymmetric
+  Bot,
+  BotKey,
+  Secret,
+  ISecret,
+  IUser
+} from "../models";
+import {
+  generateKeyPair,
+  encryptSymmetric128BitHexKeyUTF8,
+  decryptSymmetric128BitHexKeyUTF8,
+  decryptAsymmetric
 } from '../utils/crypto';
-import { SECRET_SHARED } from '../variables';
-import { getEncryptionKey } from '../config';
+import {
+  SECRET_SHARED,
+  ALGORITHM_AES_256_GCM,
+  ENCODING_SCHEME_UTF8,
+  ENCODING_SCHEME_BASE64
+} from "../variables";
+import { 
+  getEncryptionKey, 
+  getRootEncryptionKey,
+  client
+} from "../config";
+import { InternalServerError } from "../utils/errors";
 
 /**
  * Create an inactive bot with name [name] for workspace with id [workspaceId]
- * @param {Object} obj 
+ * @param {Object} obj
  * @param {String} obj.name - name of bot
  * @param {String} obj.workspaceId - id of workspace that bot belongs to
  */
-const createBot = async ({
-    name,
-    workspaceId,
+export const createBot = async ({
+  name,
+  workspaceId,
 }: {
-    name: string;
-    workspaceId: string;
+  name: string;
+  workspaceId: Types.ObjectId;
 }) => {
-    let bot;
-    try {
-        const { publicKey, privateKey } = generateKeyPair();
-        const { ciphertext, iv, tag } = encryptSymmetric({
-            plaintext: privateKey,
-            key: getEncryptionKey()
-        });
+  const encryptionKey = await getEncryptionKey();
+  const rootEncryptionKey = await getRootEncryptionKey();
+  
+  const { publicKey, privateKey } = generateKeyPair();
+  
+  if (rootEncryptionKey) {
+    const { 
+      ciphertext, 
+      iv, 
+      tag 
+    } = client.encryptSymmetric(privateKey, rootEncryptionKey);
 
-        bot = await new Bot({
-            name,
-            workspace: workspaceId,
-            isActive: false,
-            publicKey,
-            encryptedPrivateKey: ciphertext,
-            iv,
-            tag
-        }).save();
-    } catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to create bot');
-    }
-    
-    return bot;
+    return await new Bot({
+      name,
+      workspace: workspaceId,
+      isActive: false,
+      publicKey,
+      encryptedPrivateKey: ciphertext,
+      iv,
+      tag,
+      algorithm: ALGORITHM_AES_256_GCM,
+      keyEncoding: ENCODING_SCHEME_BASE64
+    }).save();
+  
+  } else if (encryptionKey) {
+    const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
+      plaintext: privateKey,
+      key: await getEncryptionKey(),
+    });
+
+    return await new Bot({
+      name,
+      workspace: workspaceId,
+      isActive: false,
+      publicKey,
+      encryptedPrivateKey: ciphertext,
+      iv,
+      tag,
+      algorithm: ALGORITHM_AES_256_GCM,
+      keyEncoding: ENCODING_SCHEME_UTF8
+    }).save();
+  }
+
+  throw InternalServerError({
+    message: 'Failed to create new bot due to missing encryption key'
+  });
+};
+
+/**
+ * Return whether or not workspace with id [workspaceId] is end-to-end encrypted
+ * @param {Types.ObjectId} workspaceId - id of workspace to check
+ */
+export const getIsWorkspaceE2EEHelper = async (workspaceId: Types.ObjectId) => {
+  const botKey = await BotKey.exists({
+    workspace: workspaceId
+  }); 
+  
+  return botKey ? false : true;
 }
 
 /**
@@ -61,126 +105,126 @@ const createBot = async ({
  * @param {String} obj.workspaceId - id of workspace
  * @param {String} obj.environment - environment
  */
-const getSecretsHelper = async ({
-    workspaceId,
-    environment
+export const getSecretsBotHelper = async ({
+  workspaceId,
+  environment,
 }: {
-    workspaceId: string;
-    environment: string;
+  workspaceId: Types.ObjectId;
+  environment: string;
 }) => {
-    const content = {} as any;
-    try {
-        const key = await getKey({ workspaceId });
-        const secrets = await Secret.find({
-            workspace: workspaceId,
-            environment,
-            type: SECRET_SHARED
-        });
-        
-        secrets.forEach((secret: ISecret) => {
-            const secretKey = decryptSymmetric({
-                ciphertext: secret.secretKeyCiphertext,
-                iv: secret.secretKeyIV,
-                tag: secret.secretKeyTag,
-                key
-            });
+  const content = {} as any;
+  const key = await getKey({ workspaceId: workspaceId });
+  const secrets = await Secret.find({
+    workspace: workspaceId,
+    environment,
+    type: SECRET_SHARED,
+  });
 
-            const secretValue = decryptSymmetric({
-                ciphertext: secret.secretValueCiphertext,
-                iv: secret.secretValueIV,
-                tag: secret.secretValueTag,
-                key
-            });
+  secrets.forEach((secret: ISecret) => {
+    const secretKey = decryptSymmetric128BitHexKeyUTF8({
+      ciphertext: secret.secretKeyCiphertext,
+      iv: secret.secretKeyIV,
+      tag: secret.secretKeyTag,
+      key,
+    });
 
-            content[secretKey] = secretValue;
-        });
-    } catch (err) {
-        Sentry.setUser(null);
-        Sentry.captureException(err);
-        throw new Error('Failed to get secrets');
-    }
+    const secretValue = decryptSymmetric128BitHexKeyUTF8({
+      ciphertext: secret.secretValueCiphertext,
+      iv: secret.secretValueIV,
+      tag: secret.secretValueTag,
+      key,
+    });
 
-    return content;
-}
+    content[secretKey] = secretValue;
+  });
+
+  return content;
+};
 
 /**
- * Return bot's copy of the workspace key for workspace 
+ * Return bot's copy of the workspace key for workspace
  * with id [workspaceId]
  * @param {Object} obj
  * @param {String} obj.workspaceId - id of workspace
  * @returns {String} key - decrypted workspace key
  */
-const getKey = async ({ workspaceId }: { workspaceId: string }) => {
-    let key;
-    try {
-        const botKey = await BotKey.findOne({
-            workspace: workspaceId
-        }).populate<{ sender: IUser }>('sender', 'publicKey');
-        
-        if (!botKey) throw new Error('Failed to find bot key');
-        
-        const bot = await Bot.findOne({
-            workspace: workspaceId
-        }).select('+encryptedPrivateKey +iv +tag');
-        
-        if (!bot) throw new Error('Failed to find bot');
-        if (!bot.isActive) throw new Error('Bot is not active');
-        
-        const privateKeyBot = decryptSymmetric({
-            ciphertext: bot.encryptedPrivateKey,
-            iv: bot.iv,
-            tag: bot.tag,
-            key: getEncryptionKey()
-        });
-        
-        key = decryptAsymmetric({
-            ciphertext: botKey.encryptedKey,
-            nonce: botKey.nonce,
-            publicKey: botKey.sender.publicKey as string,
-            privateKey: privateKeyBot
-        });
-    } catch (err) {
-        Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to get workspace key');
-    }
+export const getKey = async ({ workspaceId }: { workspaceId: Types.ObjectId }) => {
+  const encryptionKey = await getEncryptionKey();
+  const rootEncryptionKey = await getRootEncryptionKey();
+
+  const botKey = await BotKey.findOne({
+    workspace: workspaceId,
+  })
+  .populate<{ sender: IUser }>("sender", "publicKey");
+
+  if (!botKey) throw new Error("Failed to find bot key");
+
+  const bot = await Bot.findOne({
+    workspace: workspaceId,
+  }).select("+encryptedPrivateKey +iv +tag +algorithm +keyEncoding");
+
+  if (!bot) throw new Error("Failed to find bot");
+  if (!bot.isActive) throw new Error("Bot is not active");
+
+  if (rootEncryptionKey && bot.keyEncoding === ENCODING_SCHEME_BASE64) {
+    // case: encoding scheme is base64
+    const privateKeyBot = client.decryptSymmetric(bot.encryptedPrivateKey, rootEncryptionKey, bot.iv, bot.tag);
+
+    return decryptAsymmetric({
+      ciphertext: botKey.encryptedKey,
+      nonce: botKey.nonce,
+      publicKey: botKey.sender.publicKey as string,
+      privateKey: privateKeyBot,
+    });
+  } else if (encryptionKey && bot.keyEncoding === ENCODING_SCHEME_UTF8) {
     
-    return key;
-}
+    // case: encoding scheme is utf8
+    const privateKeyBot = decryptSymmetric128BitHexKeyUTF8({
+      ciphertext: bot.encryptedPrivateKey,
+      iv: bot.iv,
+      tag: bot.tag,
+      key: encryptionKey
+    });
+    
+    return decryptAsymmetric({
+      ciphertext: botKey.encryptedKey,
+      nonce: botKey.nonce,
+      publicKey: botKey.sender.publicKey as string,
+      privateKey: privateKeyBot,
+    });
+  }
+
+  throw InternalServerError({
+    message: "Failed to obtain bot's copy of workspace key needed for bot operations"
+  });
+};
 
 /**
  * Return symmetrically encrypted [plaintext] using the
- * key for workspace with id [workspaceId] 
+ * key for workspace with id [workspaceId]
  * @param {Object} obj1
  * @param {String} obj1.workspaceId - id of workspace
  * @param {String} obj1.plaintext - plaintext to encrypt
  */
-const encryptSymmetricHelper = async ({
-    workspaceId,
-    plaintext
+export const encryptSymmetricHelper = async ({
+  workspaceId,
+  plaintext,
 }: {
-    workspaceId: string;
-    plaintext: string;
+  workspaceId: Types.ObjectId;
+  plaintext: string;
 }) => {
-    
-    try {
-        const key = await getKey({ workspaceId });
-        const { ciphertext, iv, tag } = encryptSymmetric({
-            plaintext,
-            key
-        });
-        
-        return ({
-            ciphertext,
-            iv,
-            tag
-        });
-    } catch (err) {
-        Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to perform symmetric encryption with bot');
-    }
-}
+  const key = await getKey({ workspaceId: workspaceId });
+  const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
+    plaintext,
+    key,
+  });
+
+  return {
+    ciphertext,
+    iv,
+    tag,
+  };
+};
 /**
  * Return symmetrically decrypted [ciphertext] using the
  * key for workspace with id [workspaceId]
@@ -190,40 +234,24 @@ const encryptSymmetricHelper = async ({
  * @param {String} obj.iv - iv
  * @param {String} obj.tag - tag
  */
-const decryptSymmetricHelper = async ({
-    workspaceId,
+export const decryptSymmetricHelper = async ({
+  workspaceId,
+  ciphertext,
+  iv,
+  tag,
+}: {
+  workspaceId: Types.ObjectId;
+  ciphertext: string;
+  iv: string;
+  tag: string;
+}) => {
+  const key = await getKey({ workspaceId: workspaceId });
+  const plaintext = decryptSymmetric128BitHexKeyUTF8({
     ciphertext,
     iv,
-    tag
-}: {
-    workspaceId: string;
-    ciphertext: string;
-    iv: string;
-    tag: string;
-}) => {
-    let plaintext;
-    try {
-        const key = await getKey({ workspaceId });
-        const plaintext = decryptSymmetric({
-            ciphertext,
-            iv,
-            tag,
-            key
-        });
-        
-        return plaintext;
-    } catch (err) {
-        Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to perform symmetric decryption with bot');
-    }
-    
-    return plaintext;
-}
+    tag,
+    key,
+  });
 
-export {
-    createBot,
-    getSecretsHelper,
-    encryptSymmetricHelper,
-    decryptSymmetricHelper
-}
+  return plaintext;
+};

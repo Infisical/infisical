@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import { EESecretService } from '../ee/services';
 import { getLogger } from '../utils/logger';
 
 /**
@@ -8,7 +7,7 @@ import { getLogger } from '../utils/logger';
  * @param {String} obj.mongoURL - mongo connection string
  * @returns 
  */
-const initDatabaseHelper = async ({
+export const initDatabaseHelper = async ({
     mongoURL
 }: {
     mongoURL: string;
@@ -19,11 +18,10 @@ const initDatabaseHelper = async ({
         // allow empty strings to pass the required validator
         mongoose.Schema.Types.String.checkRequired(v => typeof v === 'string');
 
-        getLogger("database").info("Database connection established");
-        
-        await EESecretService.initSecretVersioning();
+        (await getLogger("database")).info("Database connection established");
+
     } catch (err) {
-        getLogger("database").error(`Unable to establish Database connection due to the error.\n${err}`);
+        (await getLogger("database")).error(`Unable to establish Database connection due to the error.\n${err}`);
     }
 
     return mongoose.connection;
@@ -32,7 +30,7 @@ const initDatabaseHelper = async ({
 /**
  * Close database conection
  */
-const closeDatabaseHelper = async () => {
+export const closeDatabaseHelper = async () => {
     return Promise.all([
         new Promise((resolve) => {
             if (mongoose.connection && mongoose.connection.readyState == 1) {
@@ -43,9 +41,4 @@ const closeDatabaseHelper = async () => {
             }
         })
     ]);
-}
-
-export {
-    initDatabaseHelper,
-    closeDatabaseHelper
 }

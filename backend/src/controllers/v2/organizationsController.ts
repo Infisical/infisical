@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
-import * as Sentry from '@sentry/node';
+import { Types } from 'mongoose';
 import { 
     MembershipOrg,
     Membership,
-    Workspace
+    Workspace,
+    ServiceAccount
 } from '../../models';
 import { deleteMembershipOrg } from '../../helpers/membershipOrg';
 import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
@@ -47,20 +48,11 @@ export const getOrganizationMemberships = async (req: Request, res: Response) =>
         }
     }   
     */
-    let memberships;
-    try {
-        const { organizationId } = req.params;
+    const { organizationId } = req.params;
 
-		memberships = await MembershipOrg.find({
+		const memberships = await MembershipOrg.find({
 			organization: organizationId
 		}).populate('user', '+publicKey');
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get organization memberships'
-		});
-    }
     
     return res.status(200).send({
         memberships
@@ -126,26 +118,17 @@ export const updateOrganizationMembership = async (req: Request, res: Response) 
         }
     }   
     */
-    let membership;
-    try {
-        const { membershipId } = req.params;
-        const { role } = req.body;
-        
-        membership = await MembershipOrg.findByIdAndUpdate(
-            membershipId,
-            {
-                role
-            }, {
-                new: true
-            }
-        );
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to update organization membership'
-		});
-    }
+    const { membershipId } = req.params;
+    const { role } = req.body;
+    
+    const membership = await MembershipOrg.findByIdAndUpdate(
+        membershipId,
+        {
+            role
+        }, {
+            new: true
+        }
+    );
     
     return res.status(200).send({
         membership
@@ -195,25 +178,16 @@ export const deleteOrganizationMembership = async (req: Request, res: Response) 
         }
     }   
     */
-    let membership;
-    try {
-        const { membershipId } = req.params;
-        
-        // delete organization membership
-        membership = await deleteMembershipOrg({
-            membershipOrgId: membershipId
-        });
+    const { membershipId } = req.params;
+    
+    // delete organization membership
+    const membership = await deleteMembershipOrg({
+        membershipOrgId: membershipId
+    });
 
-        await updateSubscriptionOrgQuantity({
+    await updateSubscriptionOrgQuantity({
 			organizationId: membership.organization.toString()
 		});
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to delete organization membership'
-		});	
-    }
 
     return res.status(200).send({
         membership
@@ -260,37 +234,45 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
         }
     }   
     */
-    let workspaces;
-    try {
-        const { organizationId } = req.params;
+    const { organizationId } = req.params;
 
-		const workspacesSet = new Set(
-			(
-				await Workspace.find(
-					{
-						organization: organizationId
-					},
-					'_id'
-				)
-			).map((w) => w._id.toString())
-		);
+    const workspacesSet = new Set(
+        (
+            await Workspace.find(
+                {
+                    organization: organizationId
+                },
+                '_id'
+            )
+        ).map((w) => w._id.toString())
+    );
 
-		workspaces = (
-			await Membership.find({
-				user: req.user._id
-			}).populate('workspace')
-		)
-			.filter((m) => workspacesSet.has(m.workspace._id.toString()))
-			.map((m) => m.workspace);
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get organization workspaces'
-		});	
-    }
+    const workspaces = (
+        await Membership.find({
+            user: req.user._id
+        }).populate('workspace')
+    )
+    .filter((m) => workspacesSet.has(m.workspace._id.toString()))
+    .map((m) => m.workspace);
+
+return res.status(200).send({
+        workspaces
+    });
+}
+
+/**
+ * Return service accounts for organization with id [organizationId]
+ * @param req 
+ * @param res 
+ */
+export const getOrganizationServiceAccounts = async (req: Request, res: Response) => {
+    const { organizationId } = req.params;
+    
+    const serviceAccounts = await ServiceAccount.find({
+        organization: new Types.ObjectId(organizationId)
+    });
     
     return res.status(200).send({
-        workspaces
+        serviceAccounts
     });
 }

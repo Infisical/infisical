@@ -1,9 +1,6 @@
+import { Types } from 'mongoose';
 import { Request, Response, NextFunction } from 'express';
-import { UnauthorizedRequestError } from '../utils/errors';
-import {
-    Membership,
-} from '../models';
-import { validateMembership } from '../helpers/membership';
+import { validateClientForMembership } from '../validation';
 
 type req = 'params' | 'body' | 'query';
 
@@ -16,43 +13,25 @@ type req = 'params' | 'body' | 'query';
  */
 const requireMembershipAuth = ({
     acceptedRoles,
-    location = 'params'
+    locationMembershipId = 'params'
 }: {
-    acceptedRoles: string[];
-    location?: req;
+    acceptedRoles: Array<'admin' | 'member'>;
+    locationMembershipId: req
 }) => {
     return async (
         req: Request, 
         res: Response, 
         next: NextFunction
     ) => {
-        try {
-            const { membershipId } = req[location];
-            
-            const membership = await Membership.findById(membershipId);
-            
-            if (!membership) throw new Error('Failed to find target membership');
-            
-            const userMembership = await Membership.findOne({
-                workspace: membership.workspace
-            });
-            
-            if (!userMembership) throw new Error('Failed to validate own membership')
-            
-            const targetMembership = await validateMembership({
-                userId: req.user._id.toString(),
-                workspaceId: membership.workspace.toString(),
-                acceptedRoles
-            });
-            
-            req.targetMembership = targetMembership;
-            
-            return next();
-        } catch (err) {
-            return next(UnauthorizedRequestError({ 
-                message: 'Unable to validate workspace membership' 
-            }));
-        }
+        const { membershipId } = req[locationMembershipId];
+        
+        req.targetMembership = await validateClientForMembership({
+            authData: req.authData,
+            membershipId: new Types.ObjectId(membershipId),
+            acceptedRoles
+        });
+        
+        return next();
     }
 }
 

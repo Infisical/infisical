@@ -1,14 +1,13 @@
 import { createContext, ReactNode, useContext, useMemo } from 'react';
 
 import { useGetOrgSubscription } from '@app/hooks/api';
-import { GetSubscriptionPlan } from '@app/hooks/api/types';
+import { SubscriptionPlan } from '@app/hooks/api/types';
 
 import { useWorkspace } from '../WorkspaceContext';
 // import { Subscription } from '@app/hooks/api/workspace/types';
 
 type TSubscriptionContext = {
-  subscription?: GetSubscriptionPlan;
-  subscriptionPlan: string;
+  subscription?: SubscriptionPlan;
   isLoading: boolean;
 };
 
@@ -28,7 +27,6 @@ export const SubscriptionProvider = ({ children }: Props): JSX.Element => {
   const value = useMemo<TSubscriptionContext>(
     () => ({
       subscription: data,
-      subscriptionPlan: data?.data?.[0]?.plan?.product || '',
       isLoading
     }),
     [data, isLoading]

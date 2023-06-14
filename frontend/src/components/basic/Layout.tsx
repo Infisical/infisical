@@ -4,9 +4,9 @@
 import crypto from 'crypto';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
 import {
   faBookOpen,
   faFileLines,
@@ -147,17 +147,17 @@ const Layout = ({ children }: LayoutProps) => {
     () => [
       {
         href: `/dashboard/${workspaceMapping[workspaceSelected as any]}`,
-        title: t('nav:menu.secrets'),
+        title: t('nav.menu.secrets'),
         emoji: <FontAwesomeIcon icon={faKey} />
       },
       {
         href: `/users/${workspaceMapping[workspaceSelected as any]}`,
-        title: t('nav:menu.members'),
+        title: t('nav.menu.members'),
         emoji: <FontAwesomeIcon icon={faUser} />
       },
       {
         href: `/integrations/${workspaceMapping[workspaceSelected as any]}`,
-        title: t('nav:menu.integrations'),
+        title: t('nav.menu.integrations'),
         emoji: <FontAwesomeIcon icon={faPlug} />
       },
       {
@@ -167,7 +167,7 @@ const Layout = ({ children }: LayoutProps) => {
       },
       {
         href: `/settings/project/${workspaceMapping[workspaceSelected as any]}`,
-        title: t('nav:menu.project-settings'),
+        title: t('nav.menu.project-settings'),
         emoji: <FontAwesomeIcon icon={faGear} />
       }
     ],
@@ -176,6 +176,7 @@ const Layout = ({ children }: LayoutProps) => {
 
   useEffect(() => {
     // Put a user in a workspace if they're not in one yet
+    
     const putUserInWorkSpace = async () => {
       if (tempLocalStorage('orgData.id') === '') {
         const userOrgs = await getOrganizations();
@@ -255,7 +256,7 @@ const Layout = ({ children }: LayoutProps) => {
               <div>
                 <div className="mt-6 mb-6 flex h-20 w-full flex-col items-center justify-center bg-bunker-600 px-4">
                   <div className="ml-1 mb-1 self-start text-xs font-semibold tracking-wide text-gray-400">
-                    {t('nav:menu.project')}
+                    {t('nav.menu.project')}
                   </div>
                   {Object.keys(workspaceMapping).length > 0 ? (
                     <Listbox
@@ -374,7 +375,7 @@ const Layout = ({ children }: LayoutProps) => {
       <div className="flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 z-[200] md:hidden">
         <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
         <p className="max-w-sm px-6 text-center text-lg text-gray-200">
-          {` ${t('common:no-mobile')} `}
+          {` ${t('common.no-mobile')} `}
         </p>
       </div>
     </>

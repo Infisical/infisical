@@ -1,0 +1,107 @@
+ARG POSTHOG_HOST=https://app.posthog.com
+ARG POSTHOG_API_KEY=posthog-api-key
+
+FROM node:16-alpine AS frontend-dependencies
+
+WORKDIR /app
+
+COPY frontend/package.json frontend/package-lock.json frontend/next.config.js ./
+
+# Install dependencies
+RUN npm ci --only-production --ignore-scripts
+
+# Rebuild the source code only when needed
+FROM node:16-alpine AS frontend-builder
+WORKDIR /app
+
+# Copy dependencies
+COPY --from=frontend-dependencies /app/node_modules ./node_modules
+# Copy all files 
+COPY /frontend .
+
+ENV NODE_ENV production
+ENV NEXT_PUBLIC_ENV production
+ARG POSTHOG_HOST
+ENV NEXT_PUBLIC_POSTHOG_HOST $POSTHOG_HOST
+ARG POSTHOG_API_KEY
+ENV NEXT_PUBLIC_POSTHOG_API_KEY $POSTHOG_API_KEY
+ARG INTERCOM_ID
+ENV NEXT_PUBLIC_INTERCOM_ID $INTERCOM_ID
+
+# Build
+RUN npm run build
+
+# Production image
+FROM node:16-alpine AS frontend-runner
+WORKDIR /app
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+RUN mkdir -p /app/.next/cache/images && chown nextjs:nodejs /app/.next/cache/images
+VOLUME /app/.next/cache/images
+
+ARG POSTHOG_API_KEY
+ENV NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY \
+  BAKED_NEXT_PUBLIC_POSTHOG_API_KEY=$POSTHOG_API_KEY
+ARG INTERCOM_ID
+ENV NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID \
+  BAKED_NEXT_PUBLIC_INTERCOM_ID=$INTERCOM_ID
+
+COPY --chown=nextjs:nodejs --chmod=555 frontend/scripts ./scripts
+COPY --from=frontend-builder /app/public ./public
+RUN chown nextjs:nodejs ./public/data
+COPY --from=frontend-builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=frontend-builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+ENV NEXT_TELEMETRY_DISABLED 1
+
+##
+## BACKEND
+##
+FROM node:16-alpine AS backend-build
+
+WORKDIR /app
+
+COPY backend/package*.json ./
+RUN npm ci --only-production
+
+COPY /backend .
+RUN npm run build
+
+# Production stage
+FROM node:16-alpine AS backend-runner
+
+WORKDIR /app
+
+COPY backend/package*.json ./
+RUN npm ci --only-production
+
+COPY --from=backend-build /app .
+
+# Production stage
+FROM node:16-alpine AS production
+
+WORKDIR / 
+
+# Install PM2
+RUN npm install -g pm2
+# Copy ecosystem.config.js
+COPY ecosystem.config.js .
+
+RUN apk add --no-cache nginx
+
+COPY nginx/default-stand-alone-docker.conf /etc/nginx/nginx.conf
+
+COPY --from=backend-runner /app /backend
+
+COPY --from=frontend-runner /app/ /app/
+
+EXPOSE 80
+ENV HTTPS_ENABLED false 
+
+CMD ["pm2-runtime", "start", "ecosystem.config.js"]
+
+

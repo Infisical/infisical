@@ -3,6 +3,7 @@ export type ServiceToken = {
   name: string;
   workspace: string;
   environment: string;
+  secretPath: string;
   user: string;
   expiresAt: string;
   createdAt: string;
@@ -15,6 +16,7 @@ export type CreateServiceTokenDTO = {
   workspaceId: string;
   environment: string;
   expiresIn: number;
+  secretPath: string;
   encryptedKey: string;
   iv: string;
   tag: string;

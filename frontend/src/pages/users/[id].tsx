@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
 import { faMagnifyingGlass, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
@@ -11,7 +11,7 @@ import AddProjectMemberDialog from '@app/components/basic/dialog/AddProjectMembe
 import ProjectUsersTable from '@app/components/basic/table/ProjectUsersTable';
 import NavHeader from '@app/components/navigation/NavHeader';
 import guidGenerator from '@app/components/utilities/randomId';
-import { getTranslatedServerSideProps } from '@app/components/utilities/withTranslateProps';
+import { Input } from '@app/components/v2';
 
 import {
   decryptAssymmetric,
@@ -57,6 +57,7 @@ export default function Users() {
   const workspaceId = router.query.id as string;
 
   const [userList, setUserList] = useState<any[]>([]);
+  const [isUserListLoading, setIsUserListLoading] = useState(true);
   const [orgUserList, setOrgUserList] = useState<any[]>([]);
 
   useEffect(() => {
@@ -81,6 +82,8 @@ export default function Users() {
         publicKey: membership.user?.publicKey
       }));
       setUserList(tempUserList);
+
+      setIsUserListLoading(false);
 
       // This is needed to know wha users from an org (if any), we are able to add to a certain project
       const orgUsers = await getOrganizationUsers({
@@ -146,15 +149,14 @@ export default function Users() {
   };
 
   return userList ? (
-    <div className="bg-bunker-800 md:h-screen flex flex-col justify-start max-w-[calc(100vw-240px)]">
+    <div className="flex max-w-[calc(100vw-240px)] flex-col justify-start bg-bunker-800 md:h-screen">
       <Head>
-        <title>{t('common:head-title', { title: t('settings-members:title') })}</title>
+        <title>{t('common.head-title', { title: t('settings.members.title') })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      <NavHeader pageName={t('settings-members:title')} isProjectRelated />
-      <div className="flex flex-col justify-start items-start px-6 py-6 pb-4 text-3xl">
-        <p className="font-semibold mr-4 text-white">{t('settings-members:title')}</p>
-        <p className="mr-4 text-base text-gray-400">{t('settings-members:description')}</p>
+      <NavHeader pageName={t('settings.members.title')} isProjectRelated />
+      <div className="flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl mb-4">
+        <p className="mr-4 font-semibold text-white">{t('settings.members.title')}</p>
       </div>
       <AddProjectMemberDialog
         isOpen={isAddOpen}
@@ -170,22 +172,19 @@ export default function Users() {
         setEmail={setEmail}
       />
       {/* <DeleteUserDialog isOpen={isDeleteOpen} closeModal={closeDeleteModal} submitModal={deleteMembership} userIdToBeDeleted={userIdToBeDeleted}/> */}
-      <div className="px-6 pb-1 w-full flex flex-row items-start">
-        <div className="h-10 w-full bg-white/5 mt-2 rounded-md flex flex-row items-center">
-          <FontAwesomeIcon
-            className="bg-white/5 rounded-l-md py-3 pl-4 pr-2 text-gray-400"
-            icon={faMagnifyingGlass}
-          />
-          <input
-            className="pl-2 text-gray-400 rounded-r-md bg-white/5 w-full h-full outline-none"
+      <div className="absolute right-4 top-36 flex w-full flex-row items-start px-6 pb-1">
+        <div className="flex w-full max-w-sm flex flex-row ml-auto">
+          <Input
+            className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
+            placeholder="Search by users..."
             value={searchUsers}
             onChange={(e) => setSearchUsers(e.target.value)}
-            placeholder={String(t('section-members:search-members'))}
+            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
           />
         </div>
-        <div className="mt-2 ml-2 min-w-max flex flex-row items-start justify-start">
+        <div className="ml-2 flex min-w-max flex-row items-start justify-start">
           <Button
-            text={String(t('section-members:add-member'))}
+            text={String(t('section.members.add-member'))}
             onButtonPressed={openAddModal}
             color="mineshaft"
             size="md"
@@ -193,12 +192,13 @@ export default function Users() {
           />
         </div>
       </div>
-      <div className="block overflow-x-scroll px-6 pb-6 no-scrollbar no-scrollbar::-webkit-scrollbar">
+      <div className="no-scrollbar::-webkit-scrollbar block overflow-x-scroll px-6 pb-6 no-scrollbar">
         <ProjectUsersTable
           userData={userList}
           changeData={setUserList}
           myUser={personalEmail}
           filter={searchUsers}
+          isUserListLoading={isUserListLoading}
           // onClick={openDeleteModal}
           // deleteUser={deleteMembership}
           // setUserIdToBeDeleted={setUserIdToBeDeleted}
@@ -206,16 +206,10 @@ export default function Users() {
       </div>
     </div>
   ) : (
-    <div className="relative z-10 w-10/12 mr-auto h-full ml-2 bg-bunker-800 flex flex-col items-center justify-center">
+    <div className="relative z-10 mr-auto ml-2 flex h-full w-10/12 flex-col items-center justify-center bg-bunker-800">
       <Image src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
     </div>
   );
 }
 
 Users.requireAuth = true;
-
-export const getServerSideProps = getTranslatedServerSideProps([
-  'settings',
-  'settings-members',
-  'section-members'
-]);

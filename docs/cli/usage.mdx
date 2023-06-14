@@ -18,7 +18,7 @@ Prerequisite: [Install the CLI](/cli/overview)
 
   <Tab title="Infisical Token">
     To use Infisical CLI in environments where you cannot run the `infisical login` command, you can authenticate via a
-    Infisical Token instead. Learn more about [Infisical Token](../getting-started/dashboard/token).
+    Infisical Token instead. Learn more about [Infisical Token](/documentation/platform/token).
   </Tab>
 </Tabs>
 
@@ -34,10 +34,29 @@ infisical init
 
 ## Inject environment variables
 
-```bash
-# inject environment variables into app
-infisical run -- [your application start command]
-```
+<Accordion title="Injecting environment variables directly" defaultOpen="true">
+  ```bash
+  # inject environment variables into app
+  infisical run -- [your application start command]
+  ```
+</Accordion>
+
+<Accordion title="Injecting environment variables in custom aliases">
+  Custom aliases can utilize secrets from Infisical. Suppose there is a custom alias `yd` in `custom.sh` that runs `yarn dev` and needs the secrets provided by Infisical.
+  ```bash
+  #!/bin/sh
+
+  yd() {
+    yarn dev
+  }
+  ```
+
+  To make the secrets available from Infisical to `yd`, you can run the following command:
+
+  ```bash
+  infisical run --command="source custom.sh && yd"
+  ```
+</Accordion>
 
 View all available options for `run` command [here](./commands/run)
 

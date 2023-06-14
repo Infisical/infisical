@@ -1,5 +1,7 @@
-import * as Sentry from '@sentry/node';
-import { IUser, User } from '../models';
+import {
+	IUser, 
+	User,
+} from '../models';
 import { sendMail } from './nodemailer';
 
 /**
@@ -8,17 +10,10 @@ import { sendMail } from './nodemailer';
  * @param {String} obj.email - email of user to initialize
  * @returns {Object} user - the initialized user
  */
-const setupAccount = async ({ email }: { email: string }) => {
-	let user;
-	try {
-		user = await new User({
-			email
-		}).save();
-	} catch (err) {
-		Sentry.setUser({ email });
-		Sentry.captureException(err);
-		throw new Error('Failed to set up account');
-	}
+export const setupAccount = async ({ email }: { email: string }) => {
+  const user = await new User({
+    email
+  }).save();
 
 	return user;
 };
@@ -41,7 +36,7 @@ const setupAccount = async ({ email }: { email: string }) => {
  * @param {String} obj.verifier - verifier for auth SRP
  * @returns {Object} user - the completed user
  */
-const completeAccount = async ({
+export const completeAccount = async ({
 	userId,
 	firstName,
 	lastName,
@@ -70,34 +65,27 @@ const completeAccount = async ({
 	salt: string;
 	verifier: string;
 }) => {
-	let user;
-	try {
-		const options = {
-			new: true
-		};
-		user = await User.findByIdAndUpdate(
-			userId,
-			{
-				firstName,
-				lastName,
-				encryptionVersion,
-				protectedKey,
-				protectedKeyIV,
-				protectedKeyTag,
-				publicKey,
-				encryptedPrivateKey,
-				iv: encryptedPrivateKeyIV,
-				tag: encryptedPrivateKeyTag,
-				salt,
-				verifier
-			},
-			options
-		);
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to complete account set up');
-	}
+  const options = {
+    new: true
+  };
+  const user = await User.findByIdAndUpdate(
+    userId,
+    {
+      firstName,
+      lastName,
+      encryptionVersion,
+      protectedKey,
+      protectedKeyIV,
+      protectedKeyTag,
+      publicKey,
+      encryptedPrivateKey,
+      iv: encryptedPrivateKeyIV,
+      tag: encryptedPrivateKeyTag,
+      salt,
+      verifier
+    },
+    options
+  );
 
 	return user;
 };
@@ -109,7 +97,7 @@ const completeAccount = async ({
  * @param {String} obj.ip - login ip address
  * @param {String} obj.userAgent - login user-agent
  */
-const checkUserDevice = async ({
+export const checkUserDevice = async ({
 	user,
 	ip,
 	userAgent
@@ -145,5 +133,3 @@ const checkUserDevice = async ({
 		}); 
 	}
 }
-
-export { setupAccount, completeAccount, checkUserDevice };

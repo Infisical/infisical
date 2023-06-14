@@ -1,22 +1,27 @@
-import * as Sentry from '@sentry/node';
-import { Request, Response } from 'express';
-import crypto from 'crypto';
-import bcrypt from 'bcrypt';
+import { Request, Response } from "express";
+import crypto from "crypto";
+import bcrypt from "bcrypt";
+import { User, ServiceAccount, ServiceTokenData } from "../../models";
+import { userHasWorkspaceAccess } from "../../ee/helpers/checkMembershipPermissions";
 import {
-    ServiceTokenData
-} from '../../models';
-import { userHasWorkspaceAccess } from '../../ee/helpers/checkMembershipPermissions';
-import { ABILITY_READ } from '../../variables/organization';
-import { getSaltRounds } from '../../config';
+  PERMISSION_READ_SECRETS,
+  AUTH_MODE_JWT,
+  AUTH_MODE_SERVICE_ACCOUNT,
+  AUTH_MODE_SERVICE_TOKEN,
+} from "../../variables";
+import { getSaltRounds } from "../../config";
+import { BadRequestError } from "../../utils/errors";
+import Folder from "../../models/folder";
+import { getFolderByPath } from "../../services/FolderService";
 
 /**
  * Return service token data associated with service token on request
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const getServiceTokenData = async (req: Request, res: Response) => {
-    /* 
+  /* 
     #swagger.summary = 'Return Infisical Token data'
     #swagger.description = 'Return Infisical Token data'
     
@@ -29,115 +34,135 @@ export const getServiceTokenData = async (req: Request, res: Response) => {
             "application/json": {
                 "schema": { 
                     "type": "object",
-					"properties": {
+          "properties": {
                         "serviceTokenData": {
                             "type": "object",
                             $ref: "#/components/schemas/ServiceTokenData",
                             "description": "Details of service token"
                         }
-					}
+          }
                 }
             }           
         }
     }   
     */
 
-    return res.status(200).json(req.serviceTokenData);
-}
+  if (!(req.authData.authPayload instanceof ServiceTokenData))
+    throw BadRequestError({
+      message: "Failed accepted client validation for service token data",
+    });
+
+  const serviceTokenData = await ServiceTokenData.findById(
+    req.authData.authPayload._id
+  )
+    .select("+encryptedKey +iv +tag")
+    .populate("user");
+
+  return res.status(200).json(serviceTokenData);
+};
 
 /**
  * Create new service token data for workspace with id [workspaceId] and
  * environment [environment].
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const createServiceTokenData = async (req: Request, res: Response) => {
-    let serviceToken, serviceTokenData;
+  let serviceTokenData;
 
-    try {
-        const {
-            name,
-            workspaceId,
-            environment,
-            encryptedKey,
-            iv,
-            tag,
-            expiresIn,
-            permissions
-        } = req.body;
+  const {
+    name,
+    workspaceId,
+    environment,
+    encryptedKey,
+    iv,
+    tag,
+    expiresIn,
+    secretPath,
+    permissions,
+  } = req.body;
 
-        const hasAccess = await userHasWorkspaceAccess(req.user, workspaceId, environment, ABILITY_READ)
-        if (!hasAccess) {
-            throw UnauthorizedRequestError({ message: "You do not have the necessary permission(s) perform this action" })
-        }
+  const folders = await Folder.findOne({
+    workspace: workspaceId,
+    environment,
+  });
 
-        const secret = crypto.randomBytes(16).toString('hex');
-        const secretHash = await bcrypt.hash(secret, getSaltRounds());
-
-        const expiresAt = new Date();
-        expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
-
-        serviceTokenData = await new ServiceTokenData({
-            name,
-            workspace: workspaceId,
-            environment,
-            user: req.user._id,
-            expiresAt,
-            secretHash,
-            encryptedKey,
-            iv,
-            tag,
-            permissions
-        }).save();
-
-        // return service token data without sensitive data
-        serviceTokenData = await ServiceTokenData.findById(serviceTokenData._id);
-
-        if (!serviceTokenData) throw new Error('Failed to find service token data');
-
-        serviceToken = `st.${serviceTokenData._id.toString()}.${secret}`;
-
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-        Sentry.captureException(err);
-        return res.status(400).send({
-            message: 'Failed to create service token data'
-        });
+  if (folders) {
+    const folder = getFolderByPath(folders.nodes, secretPath);
+    if (folder == undefined) {
+      throw BadRequestError({ message: "Path for service token does not exist" })
     }
+  }
 
-    return res.status(200).send({
-        serviceToken,
-        serviceTokenData
-    });
-}
+  const secret = crypto.randomBytes(16).toString("hex");
+  const secretHash = await bcrypt.hash(secret, await getSaltRounds());
+
+  let expiresAt;
+  if (expiresIn) {
+    expiresAt = new Date();
+    expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
+  }
+
+  let user, serviceAccount;
+
+  if (
+    req.authData.authMode === AUTH_MODE_JWT &&
+    req.authData.authPayload instanceof User
+  ) {
+    user = req.authData.authPayload._id;
+  }
+
+  if (
+    req.authData.authMode === AUTH_MODE_SERVICE_ACCOUNT &&
+    req.authData.authPayload instanceof ServiceAccount
+  ) {
+    serviceAccount = req.authData.authPayload._id;
+  }
+
+  serviceTokenData = await new ServiceTokenData({
+    name,
+    workspace: workspaceId,
+    environment,
+    user,
+    serviceAccount,
+    lastUsed: new Date(),
+    expiresAt,
+    secretHash,
+    encryptedKey,
+    iv,
+    tag,
+    secretPath,
+    permissions,
+  }).save();
+
+  // return service token data without sensitive data
+  serviceTokenData = await ServiceTokenData.findById(serviceTokenData._id);
+
+  if (!serviceTokenData) throw new Error("Failed to find service token data");
+
+  const serviceToken = `st.${serviceTokenData._id.toString()}.${secret}`;
+
+  return res.status(200).send({
+    serviceToken,
+    serviceTokenData,
+  });
+};
 
 /**
  * Delete service token data with id [serviceTokenDataId].
- * @param req 
- * @param res 
- * @returns 
+ * @param req
+ * @param res
+ * @returns
  */
 export const deleteServiceTokenData = async (req: Request, res: Response) => {
-    let serviceTokenData;
-    try {
-        const { serviceTokenDataId } = req.params;
+  const { serviceTokenDataId } = req.params;
 
-        serviceTokenData = await ServiceTokenData.findByIdAndDelete(serviceTokenDataId);
+  const serviceTokenData = await ServiceTokenData.findByIdAndDelete(
+    serviceTokenDataId
+  );
 
-    } catch (err) {
-        Sentry.setUser({ email: req.user.email });
-        Sentry.captureException(err);
-        return res.status(400).send({
-            message: 'Failed to delete service token data'
-        });
-    }
-
-    return res.status(200).send({
-        serviceTokenData
-    });
-}
-
-function UnauthorizedRequestError(arg0: { message: string; }) {
-    throw new Error('Function not implemented.');
-}
+  return res.status(200).send({
+    serviceTokenData,
+  });
+};

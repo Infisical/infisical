@@ -1,4 +1,4 @@
-import { Schema, model, Types } from "mongoose";
+import { Schema, model, Types, Document } from "mongoose";
 import {
   INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_AWS_PARAMETER_STORE,
@@ -9,17 +9,25 @@ import {
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_RENDER,
+  INTEGRATION_RAILWAY,
   INTEGRATION_FLYIO,
   INTEGRATION_CIRCLECI,
   INTEGRATION_TRAVISCI,
+  INTEGRATION_SUPABASE,
+  INTEGRATION_HASHICORP_VAULT,
+  ALGORITHM_AES_256_GCM,
+  ENCODING_SCHEME_UTF8,
+  ENCODING_SCHEME_BASE64
 } from "../variables";
 
-export interface IIntegrationAuth {
+export interface IIntegrationAuth extends Document {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'gitlab' | 'render' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'aws-parameter-store' | 'aws-secret-manager';
+  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'gitlab' | 'render' | 'railway' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'supabase' | 'aws-parameter-store' | 'aws-secret-manager' | 'checkly';
   teamId: string;
   accountId: string;
+  url: string;
+  namespace: string;
   refreshCiphertext?: string;
   refreshIV?: string;
   refreshTag?: string;
@@ -29,6 +37,8 @@ export interface IIntegrationAuth {
   accessCiphertext?: string;
   accessIV?: string;
   accessTag?: string;
+  algorithm?: 'aes-256-gcm';
+  keyEncoding?: 'utf8' | 'base64';
   accessExpiresAt?: Date;
 }
 
@@ -51,15 +61,26 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_GITHUB,
         INTEGRATION_GITLAB,
         INTEGRATION_RENDER,
+        INTEGRATION_RAILWAY,
         INTEGRATION_FLYIO,
         INTEGRATION_CIRCLECI,
         INTEGRATION_TRAVISCI,
+        INTEGRATION_SUPABASE,
+        INTEGRATION_HASHICORP_VAULT
       ],
       required: true,
     },
     teamId: {
       // vercel-specific integration param
       type: String,
+    },
+    url: {
+      // for any self-hosted integrations (e.g. self-hosted hashicorp-vault)
+      type: String
+    },
+    namespace: {
+      // hashicorp-vault-specific integration param
+      type: String
     },
     accountId: {
       // netlify-specific integration param
@@ -105,6 +126,19 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
       type: Date,
       select: false,
     },
+    algorithm: { // the encryption algorithm used
+      type: String,
+      enum: [ALGORITHM_AES_256_GCM],
+      required: true
+    },
+    keyEncoding: {
+        type: String,
+        enum: [
+            ENCODING_SCHEME_UTF8,
+            ENCODING_SCHEME_BASE64
+        ],
+        required: true
+    }
   },
   {
     timestamps: true,

@@ -1,13 +1,19 @@
+/* eslint-disable vars-on-top */
+/* eslint-disable no-var */
+/* eslint-disable func-names */
 /* eslint-disable react/jsx-props-no-spreading */
+// @ts-nocheck
+
 import { useEffect } from 'react';
 import { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
-import { appWithTranslation } from 'next-i18next';
 import { config } from '@fortawesome/fontawesome-svg-core';
 import { QueryClientProvider } from '@tanstack/react-query';
 
 import NotificationProvider from '@app/components/context/Notifications/NotificationProvider';
+import { IntercomProvider } from '@app/components/utilities/intercom/intercomProvider';
 import Telemetry from '@app/components/utilities/telemetry/Telemetry';
+import { TooltipProvider } from '@app/components/v2';
 import { publicPaths } from '@app/const';
 import {
   AuthProvider,
@@ -22,6 +28,8 @@ import { queryClient } from '@app/reactQuery';
 import '@fortawesome/fontawesome-svg-core/styles.css';
 import '../styles/globals.css';
 
+import '@app/i18n';
+
 config.autoAddCss = false;
 
 type NextAppProp = AppProps & {
@@ -32,19 +40,11 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
   const router = useRouter();
 
   useEffect(() => {
-    const storedLang = localStorage.getItem('lang');
-    if (router.locale ?? storedLang !== 'en' ?? 'en') {
-      router.push(router.asPath, router.asPath, {
-        locale: storedLang ?? 'en'
-      });
-    }
-  }, [router.locale, router.pathname]);
-
-  useEffect(() => {
     // Init for auto capturing
     const telemetry = new Telemetry().getInstance();
 
     const handleRouteChange = () => {
+			// (window).Intercom('update');
       if (typeof window !== 'undefined') {
         telemetry.capture('$pageview');
       }
@@ -64,35 +64,41 @@ const App = ({ Component, pageProps, ...appProps }: NextAppProp): JSX.Element =>
   ) {
     return (
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <Component {...pageProps} />
-        </AuthProvider>
+        <NotificationProvider>
+          <AuthProvider>
+            <Component {...pageProps} />
+          </AuthProvider>
+        </NotificationProvider>
       </QueryClientProvider>
     );
   }
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <WorkspaceProvider>
-          <OrgProvider>
-            <SubscriptionProvider>
-              <UserProvider>
-                <NotificationProvider>
-                  <AppLayout>
-                    <Component {...pageProps} />
-                  </AppLayout>
-                </NotificationProvider>
-              </UserProvider>
-            </SubscriptionProvider>
-          </OrgProvider>
-        </WorkspaceProvider>
-      </AuthProvider>
+      <TooltipProvider>
+        <AuthProvider>
+          <WorkspaceProvider>
+            <OrgProvider>
+              <SubscriptionProvider>
+                <UserProvider>
+                  <NotificationProvider>
+                    <IntercomProvider>
+                      <AppLayout>
+                        <Component {...pageProps} />
+                      </AppLayout>
+                    </IntercomProvider>
+                  </NotificationProvider>
+                </UserProvider>
+              </SubscriptionProvider>
+            </OrgProvider>
+          </WorkspaceProvider>
+        </AuthProvider>
+      </TooltipProvider>
     </QueryClientProvider>
   );
 };
 
-export default appWithTranslation(App);
+export default App;
 
 /* <Script
 src="https://www.googletagmanager.com/gtag/js?id=G-DQ1XLJJGG1"

@@ -6,14 +6,19 @@ import {
 	requireIntegrationAuthorizationAuth,
 	validateRequest
 } from '../../middleware';
-import { ADMIN, MEMBER } from '../../variables';
+import {
+	ADMIN, 
+	MEMBER,
+	AUTH_MODE_JWT,
+	AUTH_MODE_API_KEY
+} from '../../variables';
 import { body, param } from 'express-validator';
 import { integrationController } from '../../controllers/v1';
 
-router.post( // new: add new integration for integration auth
+router.post(
 	'/',
 	requireAuth({
-        acceptedAuthModes: ['jwt', 'apiKey']
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY]
     }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
@@ -25,6 +30,9 @@ router.post( // new: add new integration for integration auth
 	body('appId').trim(),
 	body('sourceEnvironment').trim(),
 	body('targetEnvironment').trim(),
+	body('targetEnvironmentId').trim(),
+	body('targetService').trim(),
+	body('targetServiceId').trim(),
 	body('owner').trim(),
 	body('path').trim(),
 	body('region').trim(),
@@ -35,7 +43,7 @@ router.post( // new: add new integration for integration auth
 router.patch(
 	'/:integrationId',
 	requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
 	requireIntegrationAuth({
 		acceptedRoles: [ADMIN, MEMBER]
@@ -54,7 +62,7 @@ router.patch(
 router.delete(
 	'/:integrationId',
 	requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: [AUTH_MODE_JWT]
     }),
 	requireIntegrationAuth({
 		acceptedRoles: [ADMIN, MEMBER]

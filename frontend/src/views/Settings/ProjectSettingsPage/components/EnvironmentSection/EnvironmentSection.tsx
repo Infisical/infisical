@@ -1,5 +1,5 @@
 import { Controller, useForm } from 'react-hook-form';
-import { faPencil, faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faPencil, faPlus, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -82,7 +82,7 @@ export const EnvironmentSection = ({
   };
 
   return (
-    <div className="mt-4 mb-4 flex w-full flex-col items-start rounded-md bg-white/5 p-6">
+    <div className="mt-4 mb-4 flex w-full flex-col items-start rounded-md bg-mineshaft-900 p-6">
       <div className="mb-2 flex w-full flex-row justify-between">
         <div className="flex w-full flex-col">
           <p className="mb-3 text-xl font-semibold">Project Environments</p>
@@ -128,32 +128,27 @@ export const EnvironmentSection = ({
                   <Td>{slug}</Td>
                   <Td className="flex items-center justify-end">
                     <IconButton
-                      className="mr-3"
+                      className="mr-3 py-2"
                       onClick={() => {
-                        if (isEnvServiceAllowed) {
-                          handlePopUpOpen('createUpdateEnv', { name, slug });
-                          reset({ environmentName: name, environmentSlug: slug });
-                        } else {
-                          handlePopUpOpen('upgradePlan');
-                        }
+                        handlePopUpOpen('createUpdateEnv', { name, slug });
+                        reset({ environmentName: name, environmentSlug: slug });
                       }}
-                      colorSchema="secondary"
+                      colorSchema="primary"
+                      variant="plain"
                       ariaLabel="update"
                     >
                       <FontAwesomeIcon icon={faPencil} />
                     </IconButton>
                     <IconButton
                       onClick={() => {
-                        if (isEnvServiceAllowed) {
-                          handlePopUpOpen('deleteEnv', { name, slug });
-                        } else {
-                          handlePopUpOpen('upgradePlan');
-                        }
+                        handlePopUpOpen('deleteEnv', { name, slug });
                       }}
+                      size="lg"
                       colorSchema="danger"
+                      variant="plain"
                       ariaLabel="update"
                     >
-                      <FontAwesomeIcon icon={faTrashCan} />
+                      <FontAwesomeIcon icon={faXmark} />
                     </IconButton>
                   </Td>
                 </Tr>

@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
-import { useTranslation } from 'next-i18next';
 
 import sendVerificationEmail from '@app/pages/api/auth/SendVerificationEmail';
 
-import Button from '../basic/buttons/Button';
-import InputField from '../basic/InputField';
+import { Button, Input } from '../v2';
 
 interface DownloadBackupPDFStepProps {
   incrementStep: () => void;
@@ -27,7 +26,6 @@ export default function EnterEmailStep({
   incrementStep
 }: DownloadBackupPDFStepProps): JSX.Element {
   const [emailError, setEmailError] = useState(false);
-  const [emailErrorMessage, setEmailErrorMessage] = useState('');
   const { t } = useTranslation();
 
   /**
@@ -37,11 +35,9 @@ export default function EnterEmailStep({
     let emailCheckBool = false;
     if (!email) {
       setEmailError(true);
-      setEmailErrorMessage('Please enter your email.');
       emailCheckBool = true;
     } else if (!email.includes('@') || !email.includes('.') || !/[a-z]/.test(email)) {
       setEmailError(true);
-      setEmailErrorMessage('Please enter a valid email.');
       emailCheckBool = true;
     } else {
       setEmailError(false);
@@ -56,41 +52,40 @@ export default function EnterEmailStep({
 
   return (
     <div>
-      <div className="bg-bunker w-full max-w-md h-7/12 py-8 md:px-6 mx-1 rounded-xl drop-shadow-xl">
-        <p className="text-4xl font-semibold flex justify-center text-primary">
-          {t('signup:step1-start')}
+      <div className="w-full md:px-6 mx-auto">
+        <p className="text-xl font-medium flex justify-center text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
+          {t('signup.step1-start')}
         </p>
-        <div className="flex items-center justify-center w-5/6 md:w-full m-auto md:p-2 rounded-lg max-h-24 mt-4">
-          <InputField
-            label={t('common:email') ?? ''}
-            onChangeHandler={setEmail}
-            type="email"
+        <div className="flex flex-col items-center justify-center lg:w-1/6 w-1/4 min-w-[20rem] m-auto rounded-lg mt-8">
+          <Input
+            placeholder="Enter your email address..."
+            onChange={(e) => setEmail(e.target.value)}
             value={email}
-            placeholder=""
             isRequired
-            error={emailError}
-            errorText={emailErrorMessage}
             autoComplete="username"
+            className="h-12"
           />
+          {emailError && <p className="text-red-600 text-xs text-left w-full ml-1.5 mt-1.5">Please enter a valid email.</p>}
         </div>
-        <div className="flex flex-col items-center justify-center w-5/6 md:w-full md:p-2 max-h-28 max-w-xs md:max-w-md mx-auto mt-4 md:mt-4 text-sm text-center md:text-left">
-          <p className="text-gray-400 mt-2 md:mx-0.5">{t('signup:step1-privacy')}</p>
-          <div className="text-l mt-6 m-2 md:m-8 px-8 py-1 text-lg">
+        <div className="flex flex-col items-center justify-center lg:w-1/6 w-1/4 min-w-[20rem] mt-2 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">
+          <div className="text-l py-1 text-lg w-full">
             <Button
-              text={t('signup:step1-submit') ?? ''}
-              type="submit"
-              onButtonPressed={emailCheck}
-              size="lg"
-            />
+              onClick={emailCheck}
+              size="sm"
+              isFullWidth
+              className='h-14'
+              colorSchema="primary"
+              variant="outline_bg"
+            > {String(t('signup.step1-submit'))} </Button>
           </div>
         </div>
       </div>
-      <div className="flex flex-col items-center justify-center w-full md:pb-2 max-w-md mx-auto pt-2 mb-48 md:mb-16 mt-2">
+      <div className="mx-auto mb-48 mt-2 flex w-full max-w-md flex-col items-center justify-center pt-2 md:mb-16 md:pb-2">
         <Link href="/login">
-          <button type="button" className="w-max pb-3 hover:opacity-90 duration-200">
-            <u className="font-normal text-sm text-primary-500">
-              {t('signup:already-have-account')}
-            </u>
+          <button type="button" className="w-max pb-3 duration-200 hover:opacity-90">
+            <span className="text-sm text-mineshaft-400 hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer">
+              {t('signup.already-have-account')}
+            </span>
           </button>
         </Link>
       </div>
