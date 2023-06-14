@@ -97,7 +97,7 @@ var loginCmd = &cobra.Command{
 
 		loginOneResponse, loginTwoResponse, err := getFreshUserCredentials(email, password)
 		if err != nil {
-			fmt.Println("Unable to authenticate with the provided credentials, please try again")
+			log.Warn().Msg("Unable to authenticate with the provided credentials, please ensure your email and password are correct")
 			log.Debug().Err(err)
 			return
 		}
@@ -244,9 +244,10 @@ var loginCmd = &cobra.Command{
 		}
 
 		userCredentialsToBeStored := &models.UserCredentials{
-			Email:      email,
-			PrivateKey: string(decryptedPrivateKey),
-			JTWToken:   loginTwoResponse.Token,
+			Email:        email,
+			PrivateKey:   string(decryptedPrivateKey),
+			JTWToken:     loginTwoResponse.Token,
+			RefreshToken: loginTwoResponse.RefreshToken,
 		}
 
 		err = util.StoreUserCredsInKeyRing(userCredentialsToBeStored)
@@ -414,7 +415,7 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 	})
 
 	if err != nil {
-		util.HandleError(err)
+		return nil, nil, err
 	}
 
 	// **** Login 2

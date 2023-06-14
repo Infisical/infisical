@@ -9,6 +9,7 @@ import (
 	"github.com/Infisical/infisical-merge/packages/config"
 	"github.com/Infisical/infisical-merge/packages/models"
 	"github.com/go-resty/resty/v2"
+	"github.com/rs/zerolog/log"
 )
 
 type LoggedInUserDetails struct {
@@ -96,6 +97,20 @@ func GetCurrentLoggedInUserDetails() (LoggedInUserDetails, error) {
 		}
 
 		isAuthenticated := api.CallIsAuthenticated(httpClient)
+
+		if !isAuthenticated {
+			accessTokenResponse, _ := api.CallGetNewAccessTokenWithRefreshToken(httpClient, userCreds.RefreshToken)
+			if accessTokenResponse.Token != "" {
+				isAuthenticated = true
+				userCreds.JTWToken = accessTokenResponse.Token
+			}
+		}
+
+		err = StoreUserCredsInKeyRing(&userCreds)
+		if err != nil {
+			log.Debug().Msg("unable to store your user credentials with new access token")
+		}
+
 		if !isAuthenticated {
 			return LoggedInUserDetails{
 				IsUserLoggedIn:  true, // was logged in
