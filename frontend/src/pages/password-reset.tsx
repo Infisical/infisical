@@ -166,9 +166,9 @@ export default function PasswordReset() {
       <p className="mx-auto mb-4 flex w-max justify-center text-2xl font-semibold text-bunker-100 md:text-3xl">
         Enter your backup key
       </p>
-      <div className="mt-4 flex flex-row items-center justify-center md:mx-2 md:pb-4">
-        <p className="flex w-max max-w-md justify-center text-sm text-gray-400">
-          You can find it in your emrgency kit. You had to download the enrgency kit during signup.
+      <div className="flex flex-row items-center justify-center md:pb-4 mt-4 md:mx-2">
+        <p className="text-sm flex justify-center text-gray-400 w-max max-w-md">
+          You can find it in your emergency kit. You had to download the emergency kit during signup.
         </p>
       </div>
       <div className="mt-4 flex max-h-24 w-full items-center justify-center rounded-lg md:mt-0 md:max-h-28 md:p-2">
