@@ -8,6 +8,7 @@ import {
   Membership,
 } from '../../models';
 import { SecretVersion } from '../../ee/models';
+import { EELicenseService } from '../../ee/services';
 import { BadRequestError } from '../../utils/errors';
 import _ from 'lodash';
 import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from '../../variables';
@@ -39,6 +40,8 @@ export const createWorkspaceEnvironment = async (
     slug: environmentSlug.toLowerCase(),
   });
   await workspace.save();
+
+  await EELicenseService.refreshPlan(workspace.organization.toString(), workspaceId);
 
   return res.status(200).send({
     message: 'Successfully created new environment',
@@ -186,7 +189,9 @@ export const deleteWorkspaceEnvironment = async (
   await Membership.updateMany(
     { workspace: workspaceId },
     { $pull: { deniedPermissions: { environmentSlug: environmentSlug } } }
-  )
+  );
+
+  await EELicenseService.refreshPlan(workspace.organization.toString(), workspaceId);
 
   return res.status(200).send({
     message: 'Successfully deleted environment',

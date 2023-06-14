@@ -104,9 +104,9 @@ class EELicenseService {
         return this.globalFeatureSet;
     }
     
-    public async refreshOrganizationPlan(organizationId: string, workspaceId?: string) {
+    public async refreshPlan(organizationId: string, workspaceId?: string) {
         if (this.instanceType === 'cloud') {
-            this.localFeatureSet.del(organizationId);
+            this.localFeatureSet.del(`${organizationId}-${workspaceId ?? ''}`);
             await this.getPlan(organizationId, workspaceId);
         }
     }

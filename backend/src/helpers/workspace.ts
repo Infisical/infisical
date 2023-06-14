@@ -41,7 +41,7 @@ export const createWorkspace = async ({
 		workspaceId: workspace._id
 	});
 
-	await EELicenseService.refreshOrganizationPlan(organizationId);
+	await EELicenseService.refreshPlan(organizationId);
 
 	return workspace;
 };
