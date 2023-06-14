@@ -160,6 +160,22 @@ func CallVerifyMfaToken(httpClient *resty.Client, request VerifyMfaTokenRequest)
 		SetBody(request).
 		Post(fmt.Sprintf("%v/v2/auth/mfa/verify", config.INFISICAL_URL))
 
+	cookies := response.Cookies()
+	// Find a cookie by name
+	cookieName := "jid"
+	var refreshToken *http.Cookie
+	for _, cookie := range cookies {
+		if cookie.Name == cookieName {
+			refreshToken = cookie
+			break
+		}
+	}
+
+	// When MFA is enabled
+	if refreshToken != nil {
+		verifyMfaTokenResponse.RefreshToken = refreshToken.Value
+	}
+
 	if err != nil {
 		return nil, nil, fmt.Errorf("CallVerifyMfaToken: Unable to complete api request [err=%s]", err)
 	}
@@ -191,7 +207,10 @@ func CallLogin2V2(httpClient *resty.Client, request GetLoginTwoV2Request) (GetLo
 		}
 	}
 
-	loginTwoV2Response.RefreshToken = refreshToken.Value
+	// When MFA is enabled
+	if refreshToken != nil {
+		loginTwoV2Response.RefreshToken = refreshToken.Value
+	}
 
 	if err != nil {
 		return GetLoginTwoV2Response{}, fmt.Errorf("CallLogin2V2: Unable to complete api request [err=%s]", err)

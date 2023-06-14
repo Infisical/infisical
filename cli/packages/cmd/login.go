@@ -143,7 +143,7 @@ var loginCmd = &cobra.Command{
 					loginTwoResponse.Tag = verifyMFAresponse.Tag
 					loginTwoResponse.Token = verifyMFAresponse.Token
 					loginTwoResponse.EncryptionVersion = verifyMFAresponse.EncryptionVersion
-
+					loginTwoResponse.RefreshToken = verifyMFAresponse.RefreshToken
 					break
 				}
 			}

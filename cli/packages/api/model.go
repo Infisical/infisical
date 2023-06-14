@@ -299,6 +299,7 @@ type VerifyMfaTokenResponse struct {
 	ProtectedKey        string `json:"protectedKey"`
 	ProtectedKeyIV      string `json:"protectedKeyIV"`
 	ProtectedKeyTag     string `json:"protectedKeyTag"`
+	RefreshToken        string `json:"refreshToken"`
 }
 
 type VerifyMfaTokenErrorResponse struct {
