@@ -170,7 +170,7 @@ export const updateSubscriptionOrgQuantity = async ({
     );
   }
 
-  await EELicenseService.refreshOrganizationPlan(organizationId);
+  await EELicenseService.refreshPlan(organizationId);
 
   return stripeSubscription;
 };

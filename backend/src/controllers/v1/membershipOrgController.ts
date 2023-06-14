@@ -99,7 +99,7 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
     throw new Error('Failed to validate organization membership');
   }
   
-  const plan = await EELicenseService.getOrganizationPlan(organizationId);
+  const plan = await EELicenseService.getPlan(organizationId);
   
   if (plan.memberLimit !== null) {
     // case: limit imposed on number of members allowed
