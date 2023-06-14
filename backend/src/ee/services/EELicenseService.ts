@@ -22,6 +22,8 @@ interface FeatureSet {
     workspacesUsed: number;
     memberLimit: number | null;
     membersUsed: number;
+    environmentLimit: number | null;
+    environmentsUsed: number;
     secretVersioning: boolean;
     pitRecovery: boolean;
     rbac: boolean;
@@ -51,6 +53,8 @@ class EELicenseService {
         workspacesUsed: 0,
         memberLimit: null,
         membersUsed: 0,
+        environmentLimit: null,
+        environmentsUsed: 0,
         secretVersioning: true,
         pitRecovery: true,
         rbac: true,
@@ -69,10 +73,10 @@ class EELicenseService {
         });
     }
     
-    public async getOrganizationPlan(organizationId: string): Promise<FeatureSet> {
+    public async getPlan(organizationId: string, workspaceId?: string): Promise<FeatureSet> {
         try {
             if (this.instanceType === 'cloud') {
-                const cachedPlan = this.localFeatureSet.get<FeatureSet>(organizationId);
+                const cachedPlan = this.localFeatureSet.get<FeatureSet>(`${organizationId}-${workspaceId ?? ''}`);
                 if (cachedPlan) {
                     return cachedPlan;
                 }
@@ -80,12 +84,16 @@ class EELicenseService {
                 const organization = await Organization.findById(organizationId);
                 if (!organization) throw OrganizationNotFoundError();
 
-                const { data: { currentPlan } } = await licenseServerKeyRequest.get(
-                    `${await getLicenseServerUrl()}/api/license-server/v1/customers/${organization.customerId}/cloud-plan`
-                );
+                let url = `${await getLicenseServerUrl()}/api/license-server/v1/customers/${organization.customerId}/cloud-plan`;
+
+                if (workspaceId) {
+                    url += `?workspaceId=${workspaceId}`;
+                }
+
+                const { data: { currentPlan } } = await licenseServerKeyRequest.get(url);
 
                 // cache fetched plan for organization
-                this.localFeatureSet.set(organizationId, currentPlan);
+                this.localFeatureSet.set(`${organizationId}-${workspaceId ?? ''}`, currentPlan);
 
                 return currentPlan;
             }
@@ -96,10 +104,10 @@ class EELicenseService {
         return this.globalFeatureSet;
     }
     
-    public async refreshOrganizationPlan(organizationId: string) {
+    public async refreshOrganizationPlan(organizationId: string, workspaceId?: string) {
         if (this.instanceType === 'cloud') {
             this.localFeatureSet.del(organizationId);
-            await this.getOrganizationPlan(organizationId);
+            await this.getPlan(organizationId, workspaceId);
         }
     }
 
