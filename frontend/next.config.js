@@ -11,7 +11,7 @@ const ContentSecurityPolicy = `
 	style-src 'self' https://rsms.me 'unsafe-inline';
 	child-src https://api.stripe.com;
 	frame-src https://js.stripe.com/ https://api.stripe.com;
-	connect-src 'self' https://api.heroku.com/ https://id.heroku.com/oauth/authorize https://id.heroku.com/oauth/token https://checkout.stripe.com https://app.posthog.com https://api.stripe.com;
+	connect-src 'self' https://api.heroku.com/ https://id.heroku.com/oauth/authorize https://id.heroku.com/oauth/token https://checkout.stripe.com https://app.posthog.com https://api.stripe.com http://localhost:*;
 	img-src 'self' https://*.stripe.com https://i.ytimg.com/ data:;
 	media-src;
 	font-src 'self' https://maxcdn.bootstrapcdn.com https://rsms.me https://fonts.gstatic.com;  

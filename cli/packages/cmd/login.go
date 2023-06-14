@@ -6,10 +6,14 @@ package cmd
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"strings"
+	"time"
 
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
 	"net/url"
 	"regexp"
 
@@ -22,7 +26,9 @@ import (
 	"github.com/fatih/color"
 	"github.com/go-resty/resty/v2"
 	"github.com/manifoldco/promptui"
+	"github.com/pkg/browser"
 	"github.com/posthog/posthog-go"
+	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/argon2"
@@ -90,16 +96,43 @@ var loginCmd = &cobra.Command{
 			}
 		}
 
-		email, password, err := askForLoginCredentials()
+		var (
+			email            string
+			password         string
+			loginOneResponse *api.GetLoginOneV2Response
+			loginTwoResponse *api.GetLoginTwoV2Response
+		)
+
+		//check for --browser flag
+		browserLogin, err := cmd.Flags().GetBool("browser")
 		if err != nil {
-			util.HandleError(err, "Unable to parse email and password for authentication")
+			util.HandleError(err, "Unable to parse browser flag")
 		}
 
-		loginOneResponse, loginTwoResponse, err := getFreshUserCredentials(email, password)
-		if err != nil {
-			fmt.Println("Unable to authenticate with the provided credentials, please try again")
-			log.Debug().Err(err)
-			return
+		if browserLogin {
+			log.Debug().Msg("Login via browser")
+			//call browser login function
+			loginResponse, err := browserCliLogin()
+			if err != nil {
+				util.HandleError(err, err.Error())
+			}
+			email = loginResponse.Email
+			password = loginResponse.Password
+			loginOneResponse = &loginResponse.LoginOneResponse
+			loginTwoResponse = &loginResponse.LoginTwoResponse
+			//util.HandleError(errors.New("not implemented"), " login via browser not fully implemented")
+		} else {
+			email, password, err = askForLoginCredentials()
+			if err != nil {
+				util.HandleError(err, "Unable to parse email and password for authentication")
+			}
+
+			loginOneResponse, loginTwoResponse, err = getFreshUserCredentials(email, password)
+			if err != nil {
+				fmt.Println("Unable to authenticate with the provided credentials, please try again")
+				log.Debug().Err(err)
+				return
+			}
 		}
 
 		if loginTwoResponse.MfaEnabled {
@@ -282,6 +315,7 @@ var loginCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(loginCmd)
+	loginCmd.Flags().BoolP("browser", "b", false, "Login via browser")
 }
 
 func DomainOverridePrompt() (bool, error) {
@@ -326,7 +360,8 @@ func askForDomain() error {
 
 	if selectedHostingOption == INFISICAL_CLOUD {
 		//cloud option
-		config.INFISICAL_URL = util.INFISICAL_DEFAULT_API_URL
+		config.INFISICAL_URL = fmt.Sprintf("%s/api", util.INFISICAL_DEFAULT_URL)
+		config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", util.INFISICAL_DEFAULT_URL)
 		return nil
 	}
 
@@ -341,7 +376,7 @@ func askForDomain() error {
 	domainPrompt := promptui.Prompt{
 		Label:    "Domain",
 		Validate: urlValidation,
-		Default:  "Example - https://my-self-hosted-instance.com/api",
+		Default:  "Example - https://my-self-hosted-instance.com",
 	}
 
 	domain, err := domainPrompt.Run()
@@ -349,8 +384,9 @@ func askForDomain() error {
 		return err
 	}
 
-	//set api url
-	config.INFISICAL_URL = domain
+	//set api and login url
+	config.INFISICAL_URL = fmt.Sprintf("%s/api", domain)
+	config.INFISICAL_LOGIN_URL = fmt.Sprintf("%s/login", domain)
 	//return nil
 	return nil
 }
@@ -475,4 +511,92 @@ func askForMFACode() string {
 	}
 
 	return mfaVerifyCode
+}
+
+type CliLoginResponse struct {
+	Email            string                    `json:"email"`
+	Password         string                    `json:"password"`
+	LoginOneResponse api.GetLoginOneV2Response `json:"loginOneResponse"`
+	LoginTwoResponse api.GetLoginTwoV2Response `json:"loginTwoResponse"`
+}
+
+// Manages the browser login flow
+// returns a CLILoginResponse on success and an error on failure
+func browserCliLogin() (CliLoginResponse, error) {
+
+	//create listener
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return CliLoginResponse{}, err
+	}
+
+	//get callback port
+	callbackPort := listener.Addr().(*net.TCPAddr).Port
+	url := fmt.Sprintf("%s?callback_port=%d", config.INFISICAL_LOGIN_URL, callbackPort)
+
+	//open browser and login
+	err = browser.OpenURL(url)
+	if err != nil {
+		return CliLoginResponse{}, err
+	}
+
+	//flow channels
+	success := make(chan CliLoginResponse)
+	failure := make(chan error)
+	timeout := time.After(time.Second * 60)
+
+	//create handler
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{strings.ReplaceAll(config.INFISICAL_LOGIN_URL, "/login", "")},
+		AllowCredentials: true,
+		AllowedMethods:   []string{"POST", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type"},
+		Debug:            false,
+	})
+	corsHandler := c.Handler(browserLoginHandler(success, failure))
+
+	log.Debug().Msgf("Callback server listening on port %d", callbackPort)
+	go http.Serve(listener, corsHandler)
+
+	for {
+		select {
+		case loginResponse := <-success:
+			err = closeListener(&listener)
+			return loginResponse, nil
+
+		case err = <-failure:
+			err = closeListener(&listener)
+			return CliLoginResponse{}, err
+
+		case _ = <-timeout:
+			err = closeListener(&listener)
+			return CliLoginResponse{}, errors.New("server timeout")
+		}
+	}
+}
+
+func closeListener(listener *net.Listener) error {
+	err := (*listener).Close()
+	if err != nil {
+		return err
+	}
+	log.Debug().Msg("Callback server shutdown successfully")
+	return nil
+}
+
+func browserLoginHandler(success chan CliLoginResponse, failure chan error) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var loginResponse CliLoginResponse
+
+		decoder := json.NewDecoder(r.Body)
+		err := decoder.Decode(&loginResponse)
+		if err != nil {
+			failure <- err
+		}
+
+		w.WriteHeader(http.StatusOK)
+		success <- loginResponse
+
+	}
 }
