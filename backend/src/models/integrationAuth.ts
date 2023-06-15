@@ -15,6 +15,7 @@ import {
   INTEGRATION_TRAVISCI,
   INTEGRATION_SUPABASE,
   INTEGRATION_HASHICORP_VAULT,
+  INTEGRATION_CLOUDFLARE_PAGES,
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
   ENCODING_SCHEME_BASE64
@@ -23,7 +24,7 @@ import {
 export interface IIntegrationAuth extends Document {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'gitlab' | 'render' | 'railway' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'supabase' | 'aws-parameter-store' | 'aws-secret-manager' | 'checkly';
+  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'gitlab' | 'render' | 'railway' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'supabase' | 'aws-parameter-store' | 'aws-secret-manager' | 'checkly' | 'cloudflare-pages';
   teamId: string;
   accountId: string;
   url: string;
@@ -66,7 +67,8 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_CIRCLECI,
         INTEGRATION_TRAVISCI,
         INTEGRATION_SUPABASE,
-        INTEGRATION_HASHICORP_VAULT
+        INTEGRATION_HASHICORP_VAULT,
+        INTEGRATION_CLOUDFLARE_PAGES,
       ],
       required: true,
     },

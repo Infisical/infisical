@@ -18,7 +18,8 @@ const integrationSlugNameMapping: Mapping = {
   'travisci': 'TravisCI',
   'supabase': 'Supabase',
   'checkly': 'Checkly',
-  'hashicorp-vault': 'Vault'
+  'hashicorp-vault': 'Vault',
+  'cloudflare-pages': 'Cloudflare Pages'
 }
 
 const envMapping: Mapping = {

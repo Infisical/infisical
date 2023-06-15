@@ -26,8 +26,8 @@ export default function CloudflarePagesIntegrationPage() {
             const integrationAuth = await saveIntegrationAccessToken({
                 workspaceId: localStorage.getItem('projectData.id'),
                 integration: 'cloudflare-pages',
-                accessId: accessKey,
-                accessToken: accountId,
+                accessId: accountId,
+                accessToken: accessKey,
                 url: null,
                 namespace: null
             });
