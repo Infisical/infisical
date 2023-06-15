@@ -44,6 +44,7 @@ interface Integration {
   integration: string;
   targetEnvironment: string;
   workspace: string;
+  secretPath:string;
   integrationAuth: string;
 }
 

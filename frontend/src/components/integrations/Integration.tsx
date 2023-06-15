@@ -4,7 +4,11 @@ import { useRouter } from 'next/router';
 import { faArrowRight, faCheck, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 // TODO: This needs to be moved from public folder
-import { contextNetlifyMapping, integrationSlugNameMapping, reverseContextNetlifyMapping } from 'public/data/frequentConstants';
+import {
+  contextNetlifyMapping,
+  integrationSlugNameMapping,
+  reverseContextNetlifyMapping
+} from 'public/data/frequentConstants';
 
 import Button from '@app/components/basic/buttons/Button';
 import ListBox from '@app/components/basic/Listbox';
@@ -27,6 +31,7 @@ interface Integration {
   targetEnvironment: string;
   workspace: string;
   integrationAuth: string;
+  secretPath: string;
 }
 
 interface IntegrationApp {
@@ -55,7 +60,6 @@ const IntegrationTile = ({
   environments = [],
   handleDeleteIntegration
 }: Props) => {
-
   const [integrationEnvironment, setIntegrationEnvironment] = useState<Props['environments'][0]>(
     environments.find(({ slug }) => slug === integration?.environment) || {
       name: '',
@@ -74,16 +78,16 @@ const IntegrationTile = ({
       });
 
       setApps(tempApps);
-      
+
       if (integration?.app) {
         setIntegrationApp(integration.app);
       } else if (integration?.path && integration?.region) {
         setIntegrationApp(`${integration.path} (${integration.region})`);
       } else if (tempApps.length > 0) {
-          setIntegrationApp(tempApps[0].name)
-        } else {
-          setIntegrationApp('');
-        }
+        setIntegrationApp(tempApps[0].name);
+      } else {
+        setIntegrationApp('');
+      }
 
       switch (integration.integration) {
         case 'vercel':
@@ -212,12 +216,15 @@ const IntegrationTile = ({
     return <div />;
   };
 
-  if (!integrationApp && integration.integration !== "checkly") return  <div />;
-  
-  const isSelected = integration.integration === 'hashicorp-vault' ? `${integration.app} - path: ${integration.path}` : integrationApp;
+  if (!integrationApp && integration.integration !== 'checkly') return <div />;
+
+  const isSelected =
+    integration.integration === 'hashicorp-vault'
+      ? `${integration.app} - path: ${integration.path}`
+      : integrationApp;
 
   return (
-    <div className="mx-6 mb-8 flex max-w-5xl justify-between rounded-md bg-mineshaft-800 border border-mineshaft-600 p-6">
+    <div className="mx-6 mb-8 flex max-w-5xl justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6">
       <div className="flex">
         <div>
           <p className="mb-2 text-xs font-semibold text-gray-400">ENVIRONMENT</p>
@@ -235,33 +242,46 @@ const IntegrationTile = ({
             isFull
           />
         </div>
+        <div className="ml-2">
+          <p className="mb-2 text-xs font-semibold text-gray-400">SECRET PATH</p>
+          <div className="cursor-default rounded-md bg-white/[.07] py-2.5 pl-4 pr-10 text-sm font-semibold text-gray-300">
+            {/* {integration.integration.charAt(0).toUpperCase() + integration.integration.slice(1)} */}
+            {integration.secretPath}
+          </div>
+        </div>
         <div className="pt-2">
           <FontAwesomeIcon icon={faArrowRight} className="mx-4 mt-8 text-gray-400" />
         </div>
         <div className="mr-2">
-          <p className="text-gray-400 text-xs font-semibold mb-2">INTEGRATION</p>
-          <div className="py-2.5 bg-white/[.07] rounded-md pl-4 pr-10 text-sm font-semibold text-gray-300 cursor-default">
+          <p className="mb-2 text-xs font-semibold text-gray-400">INTEGRATION</p>
+          <div className="cursor-default rounded-md bg-white/[.07] py-2.5 pl-4 pr-10 text-sm font-semibold text-gray-300">
             {/* {integration.integration.charAt(0).toUpperCase() + integration.integration.slice(1)} */}
             {integrationSlugNameMapping[integration.integration]}
           </div>
         </div>
         <div className="mr-2">
           <div className="mb-2 text-xs font-semibold text-gray-400">APP</div>
-          {integrationApp ? <div title={integrationApp}>
-            <ListBox
-            data={!integration.isActive ? apps.map((app) => app.name) : null}
-            isSelected={isSelected}
-            onChange={(app) => {
-              setIntegrationApp(app);
-            }}
-          />
-          </div> : <div className='w-52 h-10 rounded-md bg-mineshaft-600 animate-pulse px-4 font-bold py-2'>-</div>}
+          {integrationApp ? (
+            <div title={integrationApp}>
+              <ListBox
+                data={!integration.isActive ? apps.map((app) => app.name) : null}
+                isSelected={isSelected}
+                onChange={(app) => {
+                  setIntegrationApp(app);
+                }}
+              />
+            </div>
+          ) : (
+            <div className="h-10 w-52 animate-pulse rounded-md bg-mineshaft-600 px-4 py-2 font-bold">
+              -
+            </div>
+          )}
         </div>
         {renderIntegrationSpecificParams(integration)}
       </div>
-      <div className="flex items-end cursor-default">
+      <div className="flex cursor-default items-end">
         {integration.isActive ? (
-          <div className="flex max-w-5xl flex-row items-center rounded-md bg-mineshaft-600 p-[0.44rem] px-4 border border-mineshaft-500">
+          <div className="flex max-w-5xl flex-row items-center rounded-md border border-mineshaft-500 bg-mineshaft-600 p-[0.44rem] px-4">
             <FontAwesomeIcon icon={faCheck} className="mr-2.5 text-lg text-primary" />
             <div className="font-semibold text-gray-300">In Sync</div>
           </div>

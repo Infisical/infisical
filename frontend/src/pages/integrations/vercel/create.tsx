@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import queryString from 'query-string';
 
-import { Button, Card, CardTitle, FormControl, Select, SelectItem } from '../../../components/v2';
+import {
+  Button,
+  Card,
+  CardTitle,
+  FormControl,
+  Input,
+  Select,
+  SelectItem
+} from '../../../components/v2';
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById,
@@ -21,6 +29,7 @@ export default function VercelCreateIntegrationPage() {
   const router = useRouter();
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
+  const [secretPath, setSecretPath] = useState('/');
   const [targetAppId, setTargetAppId] = useState('');
   const [targetEnvironment, setTargetEnvironment] = useState('');
   const [targetBranch, setTargetBranch] = useState('');
@@ -84,7 +93,8 @@ export default function VercelCreateIntegrationPage() {
         targetServiceId: null,
         owner: null,
         path,
-        region: null
+        region: null,
+        secretPath
       });
 
       setIsLoading(false);
@@ -118,6 +128,13 @@ export default function VercelCreateIntegrationPage() {
               </SelectItem>
             ))}
           </Select>
+        </FormControl>
+        <FormControl label="Secrets Path">
+          <Input
+            value={secretPath}
+            onChange={(evt) => setSecretPath(evt.target.value)}
+            placeholder="Provide a path, default is /"
+          />
         </FormControl>
         <FormControl label="Vercel App">
           <Select

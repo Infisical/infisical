@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import queryString from 'query-string';
 
-import { Button, Card, CardTitle, FormControl, Select, SelectItem } from '../../../components/v2';
+import {
+  Button,
+  Card,
+  CardTitle,
+  FormControl,
+  Input,
+  Select,
+  SelectItem
+} from '../../../components/v2';
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
@@ -22,6 +30,7 @@ export default function GitHubCreateIntegrationPage() {
   });
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
+  const [secretPath, setSecretPath] = useState('/');
   const [targetAppId, setTargetAppId] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -66,7 +75,8 @@ export default function GitHubCreateIntegrationPage() {
         targetServiceId: null,
         owner: targetApp.owner,
         path: null,
-        region: null
+        region: null,
+        secretPath
       });
 
       setIsLoading(false);
@@ -99,6 +109,13 @@ export default function GitHubCreateIntegrationPage() {
               </SelectItem>
             ))}
           </Select>
+        </FormControl>
+        <FormControl label="Secrets Path">
+          <Input
+            value={secretPath}
+            onChange={(evt) => setSecretPath(evt.target.value)}
+            placeholder="Provide a path, default is /"
+          />
         </FormControl>
         <FormControl label="GitHub Repo" className="mt-4">
           <Select
