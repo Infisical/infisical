@@ -30,7 +30,6 @@ interface FeatureSet {
     customRateLimits: boolean;
     customAlerts: boolean;
     auditLogs: boolean;
-    envLimit?: number | null;
 }
 
 /**
@@ -60,8 +59,7 @@ class EELicenseService {
         rbac: true,
         customRateLimits: true,
         customAlerts: true,
-        auditLogs: false,
-        envLimit: null
+        auditLogs: false
     }
 
     public localFeatureSet: NodeCache;
