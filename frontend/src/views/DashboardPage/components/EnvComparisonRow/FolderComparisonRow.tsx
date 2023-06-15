@@ -1,4 +1,4 @@
-import { faCheck, faFolder, faX } from '@fortawesome/free-solid-svg-icons';
+import { faCheck, faFolder, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 type Props = {
@@ -35,7 +35,7 @@ export const FolderComparisonRow = ({
         }`}
         key={`${folderName}-${slug}`}
       >
-        <FontAwesomeIcon icon={folderInEnv[slug] ? faCheck : faX} />
+        <FontAwesomeIcon icon={folderInEnv[slug] ? faCheck : faXmark} />
       </td>
     ))}
   </tr>

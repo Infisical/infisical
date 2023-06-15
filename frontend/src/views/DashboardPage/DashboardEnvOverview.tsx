@@ -170,10 +170,10 @@ export const DashboardEnvOverview = () => {
           </a>
         </p>
       </div>
-      <div className="mt-4 flex items-center justify-between">
+      <div className="mt-8 flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <div
-            className="breadcrumb relative z-20 border-solid border-mineshaft-600 bg-mineshaft-800 py-1 px-5"
+            className="breadcrumb relative z-20 border-solid border-mineshaft-600 bg-mineshaft-800 hover:bg-mineshaft-600 py-1 pl-5 pr-2 text-sm"
             onClick={() => onFolderCrumbClick(0)}
             onKeyDown={() => null}
             role="button"
@@ -189,7 +189,7 @@ export const DashboardEnvOverview = () => {
                 key={`secret-path-${index + 1}`}
                 className={`breadcrumb relative z-20 ${
                   index + 1 === arr.length ? 'cursor-default' : 'cursor-pointer'
-                } border-solid border-mineshaft-600 py-1 px-5`}
+                } border-solid border-mineshaft-600 py-1 pl-5 pr-2 text-sm text-mineshaft-200`}
                 onClick={() => onFolderCrumbClick(index + 1)}
                 onKeyDown={() => null}
                 role="button"
@@ -210,7 +210,7 @@ export const DashboardEnvOverview = () => {
         </div>
       </div>
       <div className="overflow-y-auto">
-        <div className="sticky top-0 mt-8 flex h-10 min-w-[60.3rem] flex-row rounded-md border border-mineshaft-600 bg-mineshaft-800">
+        <div className="sticky top-0 mt-3 flex h-10 min-w-[60.3rem] flex-row rounded-md border border-mineshaft-600 bg-mineshaft-800">
           <div className="sticky top-0 flex w-10 items-center justify-center border-none px-4">
             <div className="w-10 text-center text-xs text-transparent">{0}</div>
           </div>

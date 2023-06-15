@@ -49,6 +49,14 @@
     @apply bg-mineshaft-800;
   }
 
+  .breadcrumb:hover::before {
+    @apply bg-mineshaft-600;
+  }
+
+  .breadcrumb:hover::after {
+    @apply bg-mineshaft-600;
+  }
+
   .breadcrumb::after {
     left: 5px;
     bottom: -3px;
