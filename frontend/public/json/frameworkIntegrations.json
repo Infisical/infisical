@@ -18,6 +18,12 @@
         "docsLink": "https://infisical.com/docs/integrations/platforms/kubernetes"
     },
     {
+        "name": "Terraform",
+        "slug": "terraform",
+        "image": "Terraform",
+        "docsLink": "https://infisical.com/docs/integrations/frameworks/terraform"
+    },
+    {
         "name": "React",
         "slug": "react",
         "image": "React",
