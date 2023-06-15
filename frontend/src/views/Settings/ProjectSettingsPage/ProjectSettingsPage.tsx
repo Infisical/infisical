@@ -89,8 +89,8 @@ export const ProjectSettingsPage = () => {
 
   // get user subscription
   const { subscription } = useSubscription();
-  const host = window.location.origin;
-  const isEnvServiceAllowed = (((currentWorkspace?.environments || []).length < (subscription?.environmentLimit || 3)) || host !== 'https://app.infisical.com');
+  
+  const isEnvServiceAllowed = (subscription?.environmentLimit && currentWorkspace?.environments) ? (currentWorkspace.environments.length < subscription.environmentLimit) : true;
 
   const onRenameWorkspace = async (name: string) => {
     try {
