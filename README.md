@@ -127,7 +127,7 @@ Whether it's big or small, we love contributions. Check out our guide to see how
 
 Not sure where to get started? You can:
 
--   [Book a free, non-pressure pairing sessions with one of our teammates](mailto:tony@infisical.com?subject=Pairing%20session&body=I'd%20like%20to%20do%20a%20pairing%20session!)!
+-   [Book a free, non-pressure pairing session / code walkthrough with one of our teammates](https://cal.com/tony-infisical/30-min-meeting-contributing)!
 -   Join our <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg">Slack</a>, and ask us any questions there.
 
 ## Resources
