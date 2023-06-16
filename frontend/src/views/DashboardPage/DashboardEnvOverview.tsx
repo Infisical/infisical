@@ -24,7 +24,6 @@ export const DashboardEnvOverview = () => {
   const { currentWorkspace, isLoading } = useWorkspace();
   const workspaceId = currentWorkspace?._id as string;
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
-
   const [searchFilter, setSearchFilter] = useState('');
   const secretPath = router.query?.secretPath as string;
 

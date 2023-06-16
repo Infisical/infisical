@@ -150,7 +150,7 @@ export const useGetProjectSecrets = ({
         }
       });
       return { secrets: sharedSecrets };
-    }, [])
+    }, [decryptFileKey])
   });
 
 export const useGetProjectSecretsByKey = ({
@@ -242,7 +242,7 @@ export const useGetProjectSecretsByKey = ({
       });
 
       return { secrets: sharedSecrets, uniqueSecCount: Object.keys(uniqSecKeys).length };
-    }, [])
+    }, [decryptFileKey])
   });
 
 const fetchEncryptedSecretVersion = async (secretId: string, offset: number, limit: number) => {
