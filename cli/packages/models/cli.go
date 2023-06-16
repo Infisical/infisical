@@ -64,4 +64,5 @@ type GetAllSecretsParameters struct {
 	InfisicalToken           string
 	TagSlugs                 string
 	WorkspaceId              string
+	SecretsPath              string
 }
