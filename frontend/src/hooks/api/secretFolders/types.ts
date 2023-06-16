@@ -11,6 +11,12 @@ export type GetProjectFoldersDTO = {
   sortDir?: 'asc' | 'desc';
 };
 
+export type GetProjectFoldersBatchDTO = {
+  folders: Omit<GetProjectFoldersDTO, 'isPaused' | 'sortDir'>[];
+  isPaused?: boolean;
+  parentFolderPath?: string;
+};
+
 export type CreateFolderDTO = {
   workspaceId: string;
   environment: string;
