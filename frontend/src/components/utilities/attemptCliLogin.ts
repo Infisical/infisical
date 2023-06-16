@@ -15,23 +15,11 @@ import SecurityClient from './SecurityClient';
 const client = new jsrp.client();
 
 interface IsCliLoginSuccessful {
-    loginResponse: {
-        loginOneResponse: {
-            serverPublicKey: string;
-            salt: string;
-        };
-        loginTwoResponse: {
-            mfaEnabled: boolean;
-            token: string;
-            encryptionVersion?: number;
-            protectedKey?: string;
-            protectedKeyIV?: string;
-            protectedKeyTag?: string;
-            publicKey?: string;
-            encryptedPrivateKey?: string;
-            iv?: string;
-            tag?: string;
-        };
+    mfaEnabled: boolean;
+    loginResponse?: {
+        email: string;
+        privateKey: string;
+        JTWToken: string;
     };
     success: boolean;
 }
@@ -92,27 +80,54 @@ const attemptLogin = async (
                             providerAuthToken,
                         }
                     );
+                    if (mfaEnabled) {
+                        // case: MFA is enabled
 
-                    resolve({
-                        loginResponse: {
-                            loginOneResponse: { serverPublicKey, salt },
-                            loginTwoResponse: {
-                                mfaEnabled,
-                                encryptionVersion,
-                                protectedKey,
-                                protectedKeyIV,
-                                protectedKeyTag,
-                                token,
-                                publicKey,
-                                encryptedPrivateKey,
-                                iv,
-                                tag
-                            }
-                        },
-                        success: true
-                    })
+                        // set temporary (MFA) JWT token
+                        SecurityClient.setMfaToken(token);
 
+                        resolve({
+                            mfaEnabled,
+                            success: true
+                        });
+                    } else if (
+                        !mfaEnabled &&
+                        encryptionVersion &&
+                        encryptedPrivateKey &&
+                        iv &&
+                        tag &&
+                        token
+                    ) {
+                        // case: MFA is not enabled
 
+                        // unset provider auth token in case it was used
+                        SecurityClient.setProviderAuthToken('');
+                        // set JWT token
+                        SecurityClient.setToken(token);
+
+                        const privateKey = await KeyService.decryptPrivateKey({
+                            encryptionVersion,
+                            encryptedPrivateKey,
+                            iv,
+                            tag,
+                            password,
+                            salt,
+                            protectedKey,
+                            protectedKeyIV,
+                            protectedKeyTag
+                        });
+
+                        resolve({
+                            mfaEnabled: false,
+                            loginResponse: {
+                                email: email,
+                                privateKey: privateKey,
+                                JTWToken: token
+                            },
+                            success: true
+                        })
+
+                    }
                 } catch (err) {
                     reject(err);
                 }

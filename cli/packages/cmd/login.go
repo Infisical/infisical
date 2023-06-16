@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"os"
 	"strings"
 	"time"
 
@@ -32,6 +33,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/argon2"
+	"golang.org/x/term"
 )
 
 type params struct {
@@ -45,6 +47,7 @@ type params struct {
 const ADD_USER = "Add a new account login"
 const REPLACE_USER = "Override current logged in user"
 const EXIT_USER_MENU = "Exit"
+const QUIT_BROWSER_LOGIN = "q"
 
 // loginCmd represents the login command
 var loginCmd = &cobra.Command{
@@ -96,202 +99,25 @@ var loginCmd = &cobra.Command{
 			}
 		}
 
-		var (
-			email            string
-			password         string
-			loginOneResponse *api.GetLoginOneV2Response
-			loginTwoResponse *api.GetLoginTwoV2Response
-		)
-
-		//check for --browser flag
-		browserLogin, err := cmd.Flags().GetBool("browser")
+		//call browser login function
+		fmt.Printf("\nLogging in via browser... Hit '%s' to cancel\n", QUIT_BROWSER_LOGIN)
+		userCredentialsToBeStored, err := browserCliLogin()
 		if err != nil {
-			util.HandleError(err, "Unable to parse browser flag")
+			//default to cli login on error
+			cliDefaultLogin(&userCredentialsToBeStored)
 		}
 
-		if browserLogin {
-			log.Debug().Msg("Login via browser")
-			//call browser login function
-			loginResponse, err := browserCliLogin()
-			if err != nil {
-				util.HandleError(err, err.Error())
-			}
-			email = loginResponse.Email
-			password = loginResponse.Password
-			loginOneResponse = &loginResponse.LoginOneResponse
-			loginTwoResponse = &loginResponse.LoginTwoResponse
-			//util.HandleError(errors.New("not implemented"), " login via browser not fully implemented")
-		} else {
-			email, password, err = askForLoginCredentials()
-			if err != nil {
-				util.HandleError(err, "Unable to parse email and password for authentication")
-			}
-
-			loginOneResponse, loginTwoResponse, err = getFreshUserCredentials(email, password)
-			if err != nil {
-				fmt.Println("Unable to authenticate with the provided credentials, please try again")
-				log.Debug().Err(err)
-				return
-			}
-		}
-
-		if loginTwoResponse.MfaEnabled {
-			i := 1
-			for i < 6 {
-				mfaVerifyCode := askForMFACode()
-
-				httpClient := resty.New()
-				httpClient.SetAuthToken(loginTwoResponse.Token)
-				verifyMFAresponse, mfaErrorResponse, requestError := api.CallVerifyMfaToken(httpClient, api.VerifyMfaTokenRequest{
-					Email:    email,
-					MFAToken: mfaVerifyCode,
-				})
-
-				if requestError != nil {
-					util.HandleError(err)
-					break
-				} else if mfaErrorResponse != nil {
-					if mfaErrorResponse.Context.Code == "mfa_invalid" {
-						msg := fmt.Sprintf("Incorrect, verification code. You have %v attempts left", 5-i)
-						fmt.Println(msg)
-						if i == 5 {
-							util.PrintErrorMessageAndExit("No tries left, please try again in a bit")
-							break
-						}
-					}
-
-					if mfaErrorResponse.Context.Code == "mfa_expired" {
-						util.PrintErrorMessageAndExit("Your 2FA verification code has expired, please try logging in again")
-						break
-					}
-					i++
-				} else {
-					loginTwoResponse.EncryptedPrivateKey = verifyMFAresponse.EncryptedPrivateKey
-					loginTwoResponse.EncryptionVersion = verifyMFAresponse.EncryptionVersion
-					loginTwoResponse.Iv = verifyMFAresponse.Iv
-					loginTwoResponse.ProtectedKey = verifyMFAresponse.ProtectedKey
-					loginTwoResponse.ProtectedKeyIV = verifyMFAresponse.ProtectedKeyIV
-					loginTwoResponse.ProtectedKeyTag = verifyMFAresponse.ProtectedKeyTag
-					loginTwoResponse.PublicKey = verifyMFAresponse.PublicKey
-					loginTwoResponse.Tag = verifyMFAresponse.Tag
-					loginTwoResponse.Token = verifyMFAresponse.Token
-					loginTwoResponse.EncryptionVersion = verifyMFAresponse.EncryptionVersion
-
-					break
-				}
-			}
-		}
-
-		var decryptedPrivateKey []byte
-
-		if loginTwoResponse.EncryptionVersion == 1 {
-			log.Debug().Msg("Login version 1")
-			encryptedPrivateKey, _ := base64.StdEncoding.DecodeString(loginTwoResponse.EncryptedPrivateKey)
-			tag, err := base64.StdEncoding.DecodeString(loginTwoResponse.Tag)
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			IV, err := base64.StdEncoding.DecodeString(loginTwoResponse.Iv)
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			paddedPassword := fmt.Sprintf("%032s", password)
-			key := []byte(paddedPassword)
-
-			computedDecryptedPrivateKey, err := crypto.DecryptSymmetric(key, encryptedPrivateKey, tag, IV)
-			if err != nil || len(computedDecryptedPrivateKey) == 0 {
-				util.HandleError(err)
-			}
-
-			decryptedPrivateKey = computedDecryptedPrivateKey
-
-		} else if loginTwoResponse.EncryptionVersion == 2 {
-			log.Debug().Msg("Login version 2")
-			protectedKey, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKey)
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			protectedKeyTag, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKeyTag)
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			protectedKeyIV, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKeyIV)
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			nonProtectedTag, err := base64.StdEncoding.DecodeString(loginTwoResponse.Tag)
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			nonProtectedIv, err := base64.StdEncoding.DecodeString(loginTwoResponse.Iv)
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			parameters := &params{
-				memory:      64 * 1024,
-				iterations:  3,
-				parallelism: 1,
-				keyLength:   32,
-			}
-
-			derivedKey, err := generateFromPassword(password, []byte(loginOneResponse.Salt), parameters)
-			if err != nil {
-				util.HandleError(fmt.Errorf("unable to generate argon hash from password [err=%s]", err))
-			}
-
-			decryptedProtectedKey, err := crypto.DecryptSymmetric(derivedKey, protectedKey, protectedKeyTag, protectedKeyIV)
-			if err != nil {
-				util.HandleError(fmt.Errorf("unable to get decrypted protected key [err=%s]", err))
-			}
-
-			encryptedPrivateKey, err := base64.StdEncoding.DecodeString(loginTwoResponse.EncryptedPrivateKey)
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			decryptedProtectedKeyInHex, err := hex.DecodeString(string(decryptedProtectedKey))
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			computedDecryptedPrivateKey, err := crypto.DecryptSymmetric(decryptedProtectedKeyInHex, encryptedPrivateKey, nonProtectedTag, nonProtectedIv)
-			if err != nil {
-				util.HandleError(err)
-			}
-
-			decryptedPrivateKey = computedDecryptedPrivateKey
-		} else {
-			util.PrintErrorMessageAndExit("Insufficient details to decrypt private key")
-		}
-
-		if string(decryptedPrivateKey) == "" || email == "" || loginTwoResponse.Token == "" {
-			log.Debug().Msgf("[decryptedPrivateKey=%s] [email=%s] [loginTwoResponse.Token=%s]", string(decryptedPrivateKey), email, loginTwoResponse.Token)
-			util.PrintErrorMessageAndExit("We were unable to fetch required details to complete your login. Run with -d to see more info")
-		}
-
-		userCredentialsToBeStored := &models.UserCredentials{
-			Email:      email,
-			PrivateKey: string(decryptedPrivateKey),
-			JTWToken:   loginTwoResponse.Token,
-		}
-
-		err = util.StoreUserCredsInKeyRing(userCredentialsToBeStored)
+		err = util.StoreUserCredsInKeyRing(&userCredentialsToBeStored)
 		if err != nil {
 			currentVault, _ := util.GetCurrentVaultBackend()
 			log.Error().Msgf("Unable to store your credentials in system vault [%s]. Rerun with flag -d to see full logs", currentVault)
 			log.Error().Msgf("\nTo trouble shoot further, read https://infisical.com/docs/cli/faq")
 			log.Debug().Err(err)
-			return
+			//return here
+			util.HandleError(err)
 		}
 
-		err = util.WriteInitalConfig(userCredentialsToBeStored)
+		err = util.WriteInitalConfig(&userCredentialsToBeStored)
 		if err != nil {
 			util.HandleError(err, "Unable to write write to Infisical Config file. Please try again")
 		}
@@ -301,8 +127,9 @@ var loginCmd = &cobra.Command{
 
 		whilte := color.New(color.FgGreen)
 		boldWhite := whilte.Add(color.Bold)
+		time.Sleep(time.Second * 1)
 		boldWhite.Printf(">>>> Welcome to Infisical!")
-		boldWhite.Printf(" You are now logged in as %v <<<< \n", email)
+		boldWhite.Printf(" You are now logged in as %v <<<< \n", userCredentialsToBeStored.Email)
 
 		plainBold := color.New(color.Bold)
 
@@ -313,9 +140,169 @@ var loginCmd = &cobra.Command{
 	},
 }
 
+func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
+	email, password, err := askForLoginCredentials()
+	if err != nil {
+		util.HandleError(err, "Unable to parse email and password for authentication")
+	}
+
+	loginOneResponse, loginTwoResponse, err := getFreshUserCredentials(email, password)
+	if err != nil {
+		fmt.Println("Unable to authenticate with the provided credentials, please try again")
+		log.Debug().Err(err)
+		//return here
+		util.HandleError(err)
+	}
+
+	if loginTwoResponse.MfaEnabled {
+		i := 1
+		for i < 6 {
+			mfaVerifyCode := askForMFACode()
+
+			httpClient := resty.New()
+			httpClient.SetAuthToken(loginTwoResponse.Token)
+			verifyMFAresponse, mfaErrorResponse, requestError := api.CallVerifyMfaToken(httpClient, api.VerifyMfaTokenRequest{
+				Email:    email,
+				MFAToken: mfaVerifyCode,
+			})
+
+			if requestError != nil {
+				util.HandleError(err)
+				break
+			} else if mfaErrorResponse != nil {
+				if mfaErrorResponse.Context.Code == "mfa_invalid" {
+					msg := fmt.Sprintf("Incorrect, verification code. You have %v attempts left", 5-i)
+					fmt.Println(msg)
+					if i == 5 {
+						util.PrintErrorMessageAndExit("No tries left, please try again in a bit")
+						break
+					}
+				}
+
+				if mfaErrorResponse.Context.Code == "mfa_expired" {
+					util.PrintErrorMessageAndExit("Your 2FA verification code has expired, please try logging in again")
+					break
+				}
+				i++
+			} else {
+				loginTwoResponse.EncryptedPrivateKey = verifyMFAresponse.EncryptedPrivateKey
+				loginTwoResponse.EncryptionVersion = verifyMFAresponse.EncryptionVersion
+				loginTwoResponse.Iv = verifyMFAresponse.Iv
+				loginTwoResponse.ProtectedKey = verifyMFAresponse.ProtectedKey
+				loginTwoResponse.ProtectedKeyIV = verifyMFAresponse.ProtectedKeyIV
+				loginTwoResponse.ProtectedKeyTag = verifyMFAresponse.ProtectedKeyTag
+				loginTwoResponse.PublicKey = verifyMFAresponse.PublicKey
+				loginTwoResponse.Tag = verifyMFAresponse.Tag
+				loginTwoResponse.Token = verifyMFAresponse.Token
+				loginTwoResponse.EncryptionVersion = verifyMFAresponse.EncryptionVersion
+
+				break
+			}
+		}
+	}
+
+	var decryptedPrivateKey []byte
+
+	if loginTwoResponse.EncryptionVersion == 1 {
+		log.Debug().Msg("Login version 1")
+		encryptedPrivateKey, _ := base64.StdEncoding.DecodeString(loginTwoResponse.EncryptedPrivateKey)
+		tag, err := base64.StdEncoding.DecodeString(loginTwoResponse.Tag)
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		IV, err := base64.StdEncoding.DecodeString(loginTwoResponse.Iv)
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		paddedPassword := fmt.Sprintf("%032s", password)
+		key := []byte(paddedPassword)
+
+		computedDecryptedPrivateKey, err := crypto.DecryptSymmetric(key, encryptedPrivateKey, tag, IV)
+		if err != nil || len(computedDecryptedPrivateKey) == 0 {
+			util.HandleError(err)
+		}
+
+		decryptedPrivateKey = computedDecryptedPrivateKey
+
+	} else if loginTwoResponse.EncryptionVersion == 2 {
+		log.Debug().Msg("Login version 2")
+		protectedKey, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKey)
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		protectedKeyTag, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKeyTag)
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		protectedKeyIV, err := base64.StdEncoding.DecodeString(loginTwoResponse.ProtectedKeyIV)
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		nonProtectedTag, err := base64.StdEncoding.DecodeString(loginTwoResponse.Tag)
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		nonProtectedIv, err := base64.StdEncoding.DecodeString(loginTwoResponse.Iv)
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		parameters := &params{
+			memory:      64 * 1024,
+			iterations:  3,
+			parallelism: 1,
+			keyLength:   32,
+		}
+
+		derivedKey, err := generateFromPassword(password, []byte(loginOneResponse.Salt), parameters)
+		if err != nil {
+			util.HandleError(fmt.Errorf("unable to generate argon hash from password [err=%s]", err))
+		}
+
+		decryptedProtectedKey, err := crypto.DecryptSymmetric(derivedKey, protectedKey, protectedKeyTag, protectedKeyIV)
+		if err != nil {
+			util.HandleError(fmt.Errorf("unable to get decrypted protected key [err=%s]", err))
+		}
+
+		encryptedPrivateKey, err := base64.StdEncoding.DecodeString(loginTwoResponse.EncryptedPrivateKey)
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		decryptedProtectedKeyInHex, err := hex.DecodeString(string(decryptedProtectedKey))
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		computedDecryptedPrivateKey, err := crypto.DecryptSymmetric(decryptedProtectedKeyInHex, encryptedPrivateKey, nonProtectedTag, nonProtectedIv)
+		if err != nil {
+			util.HandleError(err)
+		}
+
+		decryptedPrivateKey = computedDecryptedPrivateKey
+	} else {
+		util.PrintErrorMessageAndExit("Insufficient details to decrypt private key")
+	}
+
+	if string(decryptedPrivateKey) == "" || email == "" || loginTwoResponse.Token == "" {
+		log.Debug().Msgf("[decryptedPrivateKey=%s] [email=%s] [loginTwoResponse.Token=%s]", string(decryptedPrivateKey), email, loginTwoResponse.Token)
+		util.PrintErrorMessageAndExit("We were unable to fetch required details to complete your login. Run with -d to see more info")
+	}
+
+	//updating usercredentials
+	userCredentialsToBeStored.Email = email
+	userCredentialsToBeStored.PrivateKey = string(decryptedPrivateKey)
+	userCredentialsToBeStored.JTWToken = loginTwoResponse.Token
+}
+
 func init() {
 	rootCmd.AddCommand(loginCmd)
-	loginCmd.Flags().BoolP("browser", "b", false, "Login via browser")
 }
 
 func DomainOverridePrompt() (bool, error) {
@@ -400,6 +387,7 @@ func askForLoginCredentials() (email string, password string, err error) {
 		return nil
 	}
 
+	fmt.Println("Enter Credentials...")
 	emailPrompt := promptui.Prompt{
 		Label:    "Email",
 		Validate: validateEmail,
@@ -513,21 +501,15 @@ func askForMFACode() string {
 	return mfaVerifyCode
 }
 
-type CliLoginResponse struct {
-	Email            string                    `json:"email"`
-	Password         string                    `json:"password"`
-	LoginOneResponse api.GetLoginOneV2Response `json:"loginOneResponse"`
-	LoginTwoResponse api.GetLoginTwoV2Response `json:"loginTwoResponse"`
-}
-
-// Manages the browser login flow
-// returns a CLILoginResponse on success and an error on failure
-func browserCliLogin() (CliLoginResponse, error) {
+// Manages the browser login flow.
+// Returns a UserCredentials object on success and an error on failure
+func browserCliLogin() (models.UserCredentials, error) {
+	SERVER_TIMEOUT := 60 * 10
 
 	//create listener
-	listener, err := net.Listen("tcp", ":0")
+	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
-		return CliLoginResponse{}, err
+		return models.UserCredentials{}, err
 	}
 
 	//get callback port
@@ -537,13 +519,17 @@ func browserCliLogin() (CliLoginResponse, error) {
 	//open browser and login
 	err = browser.OpenURL(url)
 	if err != nil {
-		return CliLoginResponse{}, err
+		return models.UserCredentials{}, err
 	}
 
 	//flow channels
-	success := make(chan CliLoginResponse)
+	success := make(chan models.UserCredentials)
 	failure := make(chan error)
-	timeout := time.After(time.Second * 60)
+	timeout := time.After(time.Second * time.Duration(SERVER_TIMEOUT))
+	quit := make(chan bool)
+
+	//
+	done := false
 
 	//create handler
 	c := cors.New(cors.Options{
@@ -556,21 +542,53 @@ func browserCliLogin() (CliLoginResponse, error) {
 	corsHandler := c.Handler(browserLoginHandler(success, failure))
 
 	log.Debug().Msgf("Callback server listening on port %d", callbackPort)
+	go quitBrowserLogin(quit, &done)
 	go http.Serve(listener, corsHandler)
 
 	for {
 		select {
 		case loginResponse := <-success:
 			err = closeListener(&listener)
+			done = true
 			return loginResponse, nil
 
 		case err = <-failure:
 			err = closeListener(&listener)
-			return CliLoginResponse{}, err
+			done = true
+			return models.UserCredentials{}, err
 
 		case _ = <-timeout:
 			err = closeListener(&listener)
-			return CliLoginResponse{}, errors.New("server timeout")
+			done = true
+			return models.UserCredentials{}, errors.New("server timeout")
+
+		case _ = <-quit:
+			return models.UserCredentials{}, errors.New("quitting browser login, defaulting to cli...")
+
+		}
+	}
+}
+
+// listens to 'q' input on terminal and
+// sends 'true' to 'quit' channel
+func quitBrowserLogin(quit chan bool, done *bool) {
+	//
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer term.Restore(int(os.Stdin.Fd()), oldState)
+	b := make([]byte, 1)
+	for {
+		_, _ = os.Stdin.Read(b)
+		if string(b) == QUIT_BROWSER_LOGIN {
+			quit <- true
+			break
+		}
+
+		if *done {
+			break
 		}
 	}
 }
@@ -584,10 +602,10 @@ func closeListener(listener *net.Listener) error {
 	return nil
 }
 
-func browserLoginHandler(success chan CliLoginResponse, failure chan error) http.HandlerFunc {
+func browserLoginHandler(success chan models.UserCredentials, failure chan error) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		var loginResponse CliLoginResponse
+		var loginResponse models.UserCredentials
 
 		decoder := json.NewDecoder(r.Body)
 		err := decoder.Decode(&loginResponse)

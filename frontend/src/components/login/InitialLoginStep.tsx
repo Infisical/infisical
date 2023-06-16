@@ -49,12 +49,20 @@ export default function InitialLoginStep({
                 })
 
                 if (isCliLoginSuccessful && isCliLoginSuccessful.success) {
+
+                    if (isCliLoginSuccessful.mfaEnabled) {
+                        // case: login requires MFA step
+                        setStep(2);
+                        setIsLoading(false);
+                        return;
+                    }
                     // case: login was successful
                     const cliUrl = `http://localhost:${callbackPort}`
 
                     //send request to server endpoint
                     const instance = axios.create()
-                    const cliResp = await instance.post(cliUrl,{...isCliLoginSuccessful.loginResponse,email,password})
+                    const cliResp = await instance.post(cliUrl,{...isCliLoginSuccessful.loginResponse})
+                    console.log(cliResp)
 
                     //cli page
                     router.push("/cli-redirect");
