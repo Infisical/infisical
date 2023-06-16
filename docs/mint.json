@@ -25,11 +25,7 @@
     "baseUrl": [
       "https://app.infisical.com",
       "http://localhost:8080"
-    ],
-    "auth": {
-      "method": "key",
-      "name": "X-API-KEY"
-    }
+    ]
   },
   "topbarLinks": [
     { "name": "Log In", "url": "https://app.infisical.com/login" }
