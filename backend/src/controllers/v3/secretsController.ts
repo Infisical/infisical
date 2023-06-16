@@ -34,7 +34,7 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
         secret,
         key
       });
-  
+
       return rep;
     })
   });
@@ -88,7 +88,7 @@ export const createSecretRaw = async (req: Request, res: Response) => {
     secretComment,
     secretPath = "/"
   } = req.body;
-  
+
   const key = await BotService.getWorkspaceKeyWithBot({
     workspaceId: new Types.ObjectId(workspaceId)
   });
@@ -102,12 +102,12 @@ export const createSecretRaw = async (req: Request, res: Response) => {
     plaintext: secretValue,
     key
   });
-  
+
   const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8({
     plaintext: secretComment,
     key
-  }); 
-  
+  });
+
   const secret = await SecretService.createSecret({
     secretName,
     workspaceId: new Types.ObjectId(workspaceId),
@@ -135,7 +135,7 @@ export const createSecretRaw = async (req: Request, res: Response) => {
 
   const secretWithoutBlindIndex = secret.toObject();
   delete secretWithoutBlindIndex.secretBlindIndex;
-  
+
   return res.status(200).send({
     secret: repackageSecretToRaw({
       secret: secretWithoutBlindIndex,
@@ -202,11 +202,11 @@ export const updateSecretByNameRaw = async (req: Request, res: Response) => {
  */
 export const deleteSecretByNameRaw = async (req: Request, res: Response) => {
   const { secretName } = req.params;
-  const { 
-    workspaceId, 
-    environment, 
-    type, 
-    secretPath = "/" 
+  const {
+    workspaceId,
+    environment,
+    type,
+    secretPath = "/"
   } = req.body;
 
   const { secret } = await SecretService.deleteSecret({
@@ -391,11 +391,11 @@ export const updateSecretByName = async (req: Request, res: Response) => {
  */
 export const deleteSecretByName = async (req: Request, res: Response) => {
   const { secretName } = req.params;
-  const { 
-    workspaceId, 
-    environment, 
-    type, 
-    secretPath = "/" 
+  const {
+    workspaceId,
+    environment,
+    type,
+    secretPath = "/"
   } = req.body;
 
   const { secret } = await SecretService.deleteSecret({
