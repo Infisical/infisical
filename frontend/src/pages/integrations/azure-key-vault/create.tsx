@@ -24,6 +24,7 @@ export default function AzureKeyVaultCreateIntegrationPage() {
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? '');
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
+  const [secretPath, setSecretPath] = useState('/');
 
   const [vaultBaseUrl, setVaultBaseUrl] = useState('');
   const [vaultBaseUrlErrorText, setVaultBaseUrlErrorText] = useState('');
@@ -63,7 +64,8 @@ export default function AzureKeyVaultCreateIntegrationPage() {
         targetServiceId: null,
         owner: null,
         path: null,
-        region: null
+        region: null,
+        secretPath
       });
       setIsLoading(false);
 
@@ -92,6 +94,13 @@ export default function AzureKeyVaultCreateIntegrationPage() {
               </SelectItem>
             ))}
           </Select>
+        </FormControl>
+        <FormControl label="Secrets Path">
+          <Input
+            value={secretPath}
+            onChange={(evt) => setSecretPath(evt.target.value)}
+            placeholder="Provide a path, default is /"
+          />
         </FormControl>
         <FormControl
           label="Vault URI"

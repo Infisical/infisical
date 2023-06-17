@@ -1,10 +1,11 @@
-import { Request, Response } from 'express';
-import { Types } from 'mongoose';
-import { 
-	Integration
-} from '../../models';
-import { EventService } from '../../services';
-import { eventPushSecrets } from '../../events';
+import { Request, Response } from "express";
+import { Types } from "mongoose";
+import { Integration } from "../../models";
+import { EventService } from "../../services";
+import { eventPushSecrets } from "../../events";
+import Folder from "../../models/folder";
+import { getFolderByPath } from "../../services/FolderService";
+import { BadRequestError } from "../../utils/errors";
 
 /**
  * Create/initialize an (empty) integration for integration authorization
@@ -25,9 +26,24 @@ export const createIntegration = async (req: Request, res: Response) => {
     targetServiceId,
     owner,
     path,
-    region
+    region,
+    secretPath,
   } = req.body;
-  
+
+  const folders = await Folder.findOne({
+    workspace: req.integrationAuth.workspace._id,
+    environment: sourceEnvironment,
+  });
+
+  if (folders) {
+    const folder = getFolderByPath(folders.nodes, secretPath);
+    if (!folder) {
+      throw BadRequestError({
+        message: "Path for service token does not exist",
+      });
+    }
+  }
+
   // TODO: validate [sourceEnvironment] and [targetEnvironment]
 
   // initialize new integration after saving integration access token
@@ -44,17 +60,18 @@ export const createIntegration = async (req: Request, res: Response) => {
     owner,
     path,
     region,
+    secretPath,
     integration: req.integrationAuth.integration,
-    integrationAuth: new Types.ObjectId(integrationAuthId)
+    integrationAuth: new Types.ObjectId(integrationAuthId),
   }).save();
-  
+
   if (integration) {
     // trigger event - push secrets
     EventService.handleEvent({
       event: eventPushSecrets({
         workspaceId: integration.workspace,
-        environment: sourceEnvironment
-      })
+        environment: sourceEnvironment,
+      }),
     });
   }
 
@@ -70,7 +87,6 @@ export const createIntegration = async (req: Request, res: Response) => {
  * @returns
  */
 export const updateIntegration = async (req: Request, res: Response) => {
-
   // TODO: add integration-specific validation to ensure that each
   // integration has the correct fields populated in [Integration]
 
@@ -81,7 +97,22 @@ export const updateIntegration = async (req: Request, res: Response) => {
     appId,
     targetEnvironment,
     owner, // github-specific integration param
+    secretPath,
   } = req.body;
+
+  const folders = await Folder.findOne({
+    workspace: req.integration.workspace,
+    environment,
+  });
+
+  if (folders) {
+    const folder = getFolderByPath(folders.nodes, secretPath);
+    if (!folder) {
+      throw BadRequestError({
+        message: "Path for service token does not exist",
+      });
+    }
+  }
 
   const integration = await Integration.findOneAndUpdate(
     {
@@ -94,6 +125,7 @@ export const updateIntegration = async (req: Request, res: Response) => {
       appId,
       targetEnvironment,
       owner,
+      secretPath,
     },
     {
       new: true,
@@ -105,7 +137,7 @@ export const updateIntegration = async (req: Request, res: Response) => {
     EventService.handleEvent({
       event: eventPushSecrets({
         workspaceId: integration.workspace,
-        environment
+        environment,
       }),
     });
   }

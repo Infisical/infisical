@@ -13,6 +13,7 @@ import {
   backfillEncryptionMetadata,
   backfillSecretFolders,
   backfillServiceToken,
+  backfillIntegration,
 } from "./backfillData";
 import {
   reencryptBotPrivateKeys,
@@ -77,6 +78,7 @@ export const setup = async () => {
   await backfillEncryptionMetadata();
   await backfillSecretFolders();
   await backfillServiceToken();
+  await backfillIntegration();
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
   // to base64 256-bit ROOT_ENCRYPTION_KEY

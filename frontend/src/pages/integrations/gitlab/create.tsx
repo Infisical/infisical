@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import queryString from 'query-string';
 
-import { 
-  Button, 
-  Card, 
-  CardTitle, 
-  FormControl, 
+import {
+  Button,
+  Card,
+  CardTitle,
+  FormControl,
   Input,
-  Select, 
+  Select,
   SelectItem
 } from '../../../components/v2';
 import {
@@ -44,6 +44,7 @@ export default function GitLabCreateIntegrationPage() {
 
   const [targetEntity, setTargetEntity] = useState(gitLabEntities[0].value);
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
+  const [secretPath, setSecretPath] = useState('/');
   const [targetAppId, setTargetAppId] = useState('');
   const [targetEnvironment, setTargetEnvironment] = useState('');
 
@@ -101,7 +102,8 @@ export default function GitLabCreateIntegrationPage() {
         targetServiceId: null,
         owner: null,
         path: null,
-        region: null
+        region: null,
+        secretPath
       });
 
       setIsLoading(false);
@@ -135,6 +137,13 @@ export default function GitLabCreateIntegrationPage() {
               </SelectItem>
             ))}
           </Select>
+        </FormControl>
+        <FormControl label="Secrets Path">
+          <Input
+            value={secretPath}
+            onChange={(evt) => setSecretPath(evt.target.value)}
+            placeholder="Provide a path, default is /"
+          />
         </FormControl>
         <FormControl label="GitLab Integration Type">
           <Select
@@ -198,13 +207,11 @@ export default function GitLabCreateIntegrationPage() {
             )}
           </Select>
         </FormControl>
-        <FormControl
-          label="GitLab Environment Scope (Optional)"
-        >
-          <Input 
-            placeholder="*" 
-            value={targetEnvironment} 
-            onChange={(e) => setTargetEnvironment(e.target.value)} 
+        <FormControl label="GitLab Environment Scope (Optional)">
+          <Input
+            placeholder="*"
+            value={targetEnvironment}
+            onChange={(e) => setTargetEnvironment(e.target.value)}
           />
         </FormControl>
         <Button
