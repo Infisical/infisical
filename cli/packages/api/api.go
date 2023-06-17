@@ -11,63 +11,6 @@ import (
 
 const USER_AGENT = "cli"
 
-func CallBatchModifySecretsByWorkspaceAndEnv(httpClient *resty.Client, request BatchModifySecretsByWorkspaceAndEnvRequest) error {
-	endpoint := fmt.Sprintf("%v/v2/secrets", config.INFISICAL_URL)
-	response, err := httpClient.
-		R().
-		SetBody(request).
-		SetHeader("User-Agent", USER_AGENT).
-		Patch(endpoint)
-
-	if err != nil {
-		return fmt.Errorf("CallBatchModifySecretsByWorkspaceAndEnv: Unable to complete api request [err=%s]", err)
-	}
-
-	if response.IsError() {
-		return fmt.Errorf("CallBatchModifySecretsByWorkspaceAndEnv: Unsuccessful response: [response=%s]", response)
-	}
-
-	return nil
-}
-
-func CallBatchCreateSecretsByWorkspaceAndEnv(httpClient *resty.Client, request BatchCreateSecretsByWorkspaceAndEnvRequest) error {
-	endpoint := fmt.Sprintf("%v/v2/secrets/", config.INFISICAL_URL)
-	response, err := httpClient.
-		R().
-		SetBody(request).
-		SetHeader("User-Agent", USER_AGENT).
-		Post(endpoint)
-
-	if err != nil {
-		return fmt.Errorf("CallBatchCreateSecretsByWorkspaceAndEnv: Unable to complete api request [err=%s]", err)
-	}
-
-	if response.IsError() {
-		return fmt.Errorf("CallBatchCreateSecretsByWorkspaceAndEnv: Unsuccessful response: [response=%s]", response)
-	}
-
-	return nil
-}
-
-func CallBatchDeleteSecretsByWorkspaceAndEnv(httpClient *resty.Client, request BatchDeleteSecretsBySecretIdsRequest) error {
-	endpoint := fmt.Sprintf("%v/v2/secrets", config.INFISICAL_URL)
-	response, err := httpClient.
-		R().
-		SetBody(request).
-		SetHeader("User-Agent", USER_AGENT).
-		Delete(endpoint)
-
-	if err != nil {
-		return fmt.Errorf("CallBatchDeleteSecretsByWorkspaceAndEnv: Unable to complete api request [err=%s]", err)
-	}
-
-	if response.IsError() {
-		return fmt.Errorf("CallBatchDeleteSecretsByWorkspaceAndEnv: Unsuccessful response: [response=%s]", response)
-	}
-
-	return nil
-}
-
 func CallGetEncryptedWorkspaceKey(httpClient *resty.Client, request GetEncryptedWorkspaceKeyRequest) (GetEncryptedWorkspaceKeyResponse, error) {
 	endpoint := fmt.Sprintf("%v/v2/workspace/%v/encrypted-key", config.INFISICAL_URL, request.WorkspaceId)
 	var result GetEncryptedWorkspaceKeyResponse
@@ -105,28 +48,6 @@ func CallGetServiceTokenDetailsV2(httpClient *resty.Client) (GetServiceTokenDeta
 	}
 
 	return tokenDetailsResponse, nil
-}
-
-func CallGetSecretsV2(httpClient *resty.Client, request GetEncryptedSecretsV2Request) (GetEncryptedSecretsV2Response, error) {
-	var secretsResponse GetEncryptedSecretsV2Response
-	response, err := httpClient.
-		R().
-		SetResult(&secretsResponse).
-		SetHeader("User-Agent", USER_AGENT).
-		SetQueryParam("environment", request.Environment).
-		SetQueryParam("workspaceId", request.WorkspaceId).
-		SetQueryParam("tagSlugs", request.TagSlugs).
-		Get(fmt.Sprintf("%v/v2/secrets", config.INFISICAL_URL))
-
-	if err != nil {
-		return GetEncryptedSecretsV2Response{}, fmt.Errorf("CallGetSecretsV2: Unable to complete api request [err=%s]", err)
-	}
-
-	if response.IsError() {
-		return GetEncryptedSecretsV2Response{}, fmt.Errorf("CallGetSecretsV2: Unsuccessful response: [response=%s]", response)
-	}
-
-	return secretsResponse, nil
 }
 
 func CallLogin1V2(httpClient *resty.Client, request GetLoginOneV2Request) (GetLoginOneV2Response, error) {
@@ -302,4 +223,111 @@ func CallGetNewAccessTokenWithRefreshToken(httpClient *resty.Client, refreshToke
 	}
 
 	return newAccessToken, nil
+}
+
+func CallGetSecretsV3(httpClient *resty.Client, request GetEncryptedSecretsV3Request) (GetEncryptedSecretsV3Response, error) {
+	var secretsResponse GetEncryptedSecretsV3Response
+
+	httpRequest := httpClient.
+		R().
+		SetResult(&secretsResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetQueryParam("environment", request.Environment).
+		SetQueryParam("workspaceId", request.WorkspaceId)
+
+	if request.SecretPath != "" {
+		httpRequest.SetQueryParam("secretPath", request.SecretPath)
+	}
+
+	response, err := httpRequest.Get(fmt.Sprintf("%v/v3/secrets", config.INFISICAL_URL))
+
+	if err != nil {
+		return GetEncryptedSecretsV3Response{}, fmt.Errorf("CallGetSecretsV3: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return GetEncryptedSecretsV3Response{}, fmt.Errorf("CallGetSecretsV3: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
+	}
+
+	return secretsResponse, nil
+}
+
+func CallCreateSecretsV3(httpClient *resty.Client, request CreateSecretV3Request) error {
+	var secretsResponse GetEncryptedSecretsV3Response
+	response, err := httpClient.
+		R().
+		SetResult(&secretsResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v3/secrets/%s", config.INFISICAL_URL, request.SecretName))
+
+	if err != nil {
+		return fmt.Errorf("CallCreateSecretsV3: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return fmt.Errorf("CallCreateSecretsV3: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
+	}
+
+	return nil
+}
+
+func CallDeleteSecretsV3(httpClient *resty.Client, request DeleteSecretV3Request) error {
+	var secretsResponse GetEncryptedSecretsV3Response
+	response, err := httpClient.
+		R().
+		SetResult(&secretsResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Delete(fmt.Sprintf("%v/v3/secrets/%s", config.INFISICAL_URL, request.SecretName))
+
+	if err != nil {
+		return fmt.Errorf("CallDeleteSecretsV3: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return fmt.Errorf("CallDeleteSecretsV3: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
+	}
+
+	return nil
+}
+
+func CallUpdateSecretsV3(httpClient *resty.Client, request UpdateSecretByNameV3Request) error {
+	var secretsResponse GetEncryptedSecretsV3Response
+	response, err := httpClient.
+		R().
+		SetResult(&secretsResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Patch(fmt.Sprintf("%v/v3/secrets/%s", config.INFISICAL_URL, request.SecretName))
+
+	if err != nil {
+		return fmt.Errorf("CallUpdateSecretsV3: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return fmt.Errorf("CallUpdateSecretsV3: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
+	}
+
+	return nil
+}
+
+func CallGetSingleSecretByNameV3(httpClient *resty.Client, request CreateSecretV3Request) error {
+	var secretsResponse GetEncryptedSecretsV3Response
+	response, err := httpClient.
+		R().
+		SetResult(&secretsResponse).
+		SetHeader("User-Agent", USER_AGENT).
+		SetBody(request).
+		Post(fmt.Sprintf("%v/v3/secrets/%s", config.INFISICAL_URL, request.SecretName))
+
+	if err != nil {
+		return fmt.Errorf("CallGetSingleSecretByNameV3: Unable to complete api request [err=%s]", err)
+	}
+
+	if response.IsError() {
+		return fmt.Errorf("CallGetSingleSecretByNameV3: Unsuccessful response. Please make sure your secret path, workspace and environment name are all correct [response=%s]", response)
+	}
+
+	return nil
 }
