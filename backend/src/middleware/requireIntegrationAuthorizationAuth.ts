@@ -23,7 +23,7 @@ const requireIntegrationAuthorizationAuth = ({
 	return async (req: Request, res: Response, next: NextFunction) => {
 		const { integrationAuthId } = req[location];
 
-		const { integrationAuth, accessToken } = await validateClientForIntegrationAuth({
+		const { integrationAuth, accessToken, accessId } = await validateClientForIntegrationAuth({
 			authData: req.authData,
 			integrationAuthId: new Types.ObjectId(integrationAuthId),
 			acceptedRoles,
@@ -36,6 +36,10 @@ const requireIntegrationAuthorizationAuth = ({
 
 		if (accessToken) {
 			req.accessToken = accessToken;
+		}
+		
+		if (accessId) {
+			req.accessId = accessId;
 		}
 		
 		return next();

@@ -56,11 +56,14 @@ import { validateServiceAccountClientForWorkspace } from './serviceAccount';
     
     if (!integrationAuth) throw IntegrationAuthNotFoundError();
     
-    let accessToken;
+    let accessToken, accessId;
     if (attachAccessToken) {
-        accessToken = (await IntegrationService.getIntegrationAuthAccess({
+        const access = (await IntegrationService.getIntegrationAuthAccess({
             integrationAuthId: integrationAuth._id
-        })).accessToken;
+        }));
+        
+        accessToken = access.accessToken;
+        accessId = access.accessId;
     }
     
     if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
@@ -70,7 +73,7 @@ import { validateServiceAccountClientForWorkspace } from './serviceAccount';
             acceptedRoles
         });
 
-        return ({ integrationAuth, accessToken });
+        return ({ integrationAuth, accessToken, accessId });
     }
     
     if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
@@ -79,7 +82,7 @@ import { validateServiceAccountClientForWorkspace } from './serviceAccount';
             workspaceId: integrationAuth.workspace._id
         });
 
-        return ({ integrationAuth, accessToken });
+        return ({ integrationAuth, accessToken, accessId });
     }
 
     if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
@@ -95,7 +98,7 @@ import { validateServiceAccountClientForWorkspace } from './serviceAccount';
             acceptedRoles
         });
 
-        return ({ integrationAuth, accessToken });
+        return ({ integrationAuth, accessToken, accessId });
     }
     
     throw UnauthorizedRequestError({

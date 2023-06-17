@@ -48,10 +48,12 @@ interface App {
 const getApps = async ({
   integrationAuth,
   accessToken,
+  accessId,
   teamId,
 }: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
+  accessId?: string;
   teamId?: string;
 }) => {
   let apps: App[] = [];
