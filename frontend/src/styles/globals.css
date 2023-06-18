@@ -4,20 +4,20 @@
 
 @layer utilities {
   .flex-0 {
-    flex:0;
+    flex: 0;
   }
   .flex-2 {
     flex-grow: 2;
   }
 
   .flex-3 {
-      flex-grow: 3;
+    flex-grow: 3;
   }
 }
 
 @layer components {
   .secret-table {
-    @apply bg-mineshaft-800 text-left text-bunker-300 w-full;
+    @apply w-full bg-mineshaft-800 text-left text-bunker-300;
   }
 
   /* padding except for comment column */
@@ -29,12 +29,44 @@
     @apply py-1 px-1 pr-2 text-sm;
   }
 
-  .secret-table th:not(:last-child),.secret-table td:not(:last-child) {
+  .secret-table th:not(:last-child),
+  .secret-table td:not(:last-child) {
     @apply border-r border-mineshaft-600;
   }
 
   .secret-table tr {
     @apply border-b border-mineshaft-600;
+  }
+
+  .breadcrumb::after,
+  .breadcrumb::before {
+    content: '';
+    height: 60%;
+    width: 100%;
+    z-index: -1;
+    display: block;
+    position: absolute;
+    @apply bg-mineshaft-800;
+  }
+
+  .breadcrumb:hover::before {
+    @apply bg-mineshaft-600;
+  }
+
+  .breadcrumb:hover::after {
+    @apply bg-mineshaft-600;
+  }
+
+  .breadcrumb::after {
+    left: 5px;
+    bottom: -3px;
+    transform: skew(-30deg);
+  }
+
+  .breadcrumb::before {
+    left: 5px;
+    top: -3px;
+    transform: skew(30deg);
   }
 }
 

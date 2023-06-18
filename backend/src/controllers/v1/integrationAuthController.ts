@@ -151,6 +151,7 @@ export const getIntegrationAuthApps = async (req: Request, res: Response) => {
   const apps = await getApps({
     integrationAuth: req.integrationAuth,
     accessToken: req.accessToken,
+	accessId: req.accessId,
     ...teamId && { teamId }
   });
 

@@ -34,7 +34,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string) ([]models.Singl
 		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("unable to get service token details. [err=%v]", err)
 	}
 
-	encryptedSecrets, err := api.CallGetSecretsV2(httpClient, api.GetEncryptedSecretsV2Request{
+	encryptedSecrets, err := api.CallGetSecretsV3(httpClient, api.GetEncryptedSecretsV3Request{
 		WorkspaceId: serviceTokenDetails.Workspace,
 		Environment: serviceTokenDetails.Environment,
 	})
@@ -61,7 +61,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string) ([]models.Singl
 	return plainTextSecrets, serviceTokenDetails, nil
 }
 
-func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, workspaceId string, environmentName string, tagSlugs string) ([]models.SingleEnvironmentVariable, error) {
+func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, workspaceId string, environmentName string, tagSlugs string, secretsPath string) ([]models.SingleEnvironmentVariable, error) {
 	httpClient := resty.New()
 	httpClient.SetAuthToken(JTWToken).
 		SetHeader("Accept", "application/json")
@@ -102,11 +102,17 @@ func GetPlainTextSecretsViaJTW(JTWToken string, receiversPrivateKey string, work
 
 	plainTextWorkspaceKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
-	encryptedSecrets, err := api.CallGetSecretsV2(httpClient, api.GetEncryptedSecretsV2Request{
+	getSecretsRequest := api.GetEncryptedSecretsV3Request{
 		WorkspaceId: workspaceId,
 		Environment: environmentName,
-		TagSlugs:    tagSlugs,
-	})
+		// TagSlugs:    tagSlugs,
+	}
+
+	if secretsPath != "" {
+		getSecretsRequest.SecretPath = secretsPath
+	}
+
+	encryptedSecrets, err := api.CallGetSecretsV3(httpClient, getSecretsRequest)
 
 	if err != nil {
 		return nil, err
@@ -162,7 +168,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 			return nil, fmt.Errorf("unable to validate environment name because [err=%s]", err)
 		}
 
-		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId, params.Environment, params.TagSlugs)
+		secretsToReturn, errorToReturn = GetPlainTextSecretsViaJTW(loggedInUserDetails.UserCredentials.JTWToken, loggedInUserDetails.UserCredentials.PrivateKey, workspaceFile.WorkspaceId, params.Environment, params.TagSlugs, params.SecretsPath)
 		log.Debug().Msgf("GetAllEnvironmentVariables: Trying to fetch secrets JTW token [err=%s]", errorToReturn)
 
 		backupSecretsEncryptionKey := []byte(loggedInUserDetails.UserCredentials.PrivateKey)[0:32]
@@ -333,7 +339,7 @@ func OverrideSecrets(secrets []models.SingleEnvironmentVariable, secretType stri
 	return secretsToReturn
 }
 
-func GetPlainTextSecrets(key []byte, encryptedSecrets api.GetEncryptedSecretsV2Response) ([]models.SingleEnvironmentVariable, error) {
+func GetPlainTextSecrets(key []byte, encryptedSecrets api.GetEncryptedSecretsV3Response) ([]models.SingleEnvironmentVariable, error) {
 	plainTextSecrets := []models.SingleEnvironmentVariable{}
 	for _, secret := range encryptedSecrets.Secrets {
 		// Decrypt key

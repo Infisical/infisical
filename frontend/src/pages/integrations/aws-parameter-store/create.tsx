@@ -56,6 +56,7 @@ export default function AWSParameterStoreCreateIntegrationPage() {
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? '');
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
+  const [secretPath, setSecretPath] = useState('/');
   const [selectedAWSRegion, setSelectedAWSRegion] = useState('');
   const [path, setPath] = useState('');
   const [pathErrorText, setPathErrorText] = useState('');
@@ -69,9 +70,9 @@ export default function AWSParameterStoreCreateIntegrationPage() {
     }
   }, [workspace]);
 
-  const isValidAWSParameterStorePath = (secretPath: string) => {
+  const isValidAWSParameterStorePath = (awsStorePath: string) => {
     const pattern = /^\/([\w-]+\/)*[\w-]+\/$/;
-    return pattern.test(secretPath) && secretPath.length <= 2048;
+    return pattern.test(awsStorePath) && awsStorePath.length <= 2048;
   };
 
   const handleButtonClick = async () => {
@@ -101,7 +102,8 @@ export default function AWSParameterStoreCreateIntegrationPage() {
         targetServiceId: null,
         owner: null,
         path,
-        region: selectedAWSRegion
+        region: selectedAWSRegion,
+        secretPath
       });
 
       setIsLoading(false);
@@ -132,6 +134,13 @@ export default function AWSParameterStoreCreateIntegrationPage() {
               </SelectItem>
             ))}
           </Select>
+        </FormControl>
+        <FormControl label="Secrets Path">
+          <Input
+            value={secretPath}
+            onChange={(evt) => setSecretPath(evt.target.value)}
+            placeholder="Provide a path, default is /"
+          />
         </FormControl>
         <FormControl label="AWS Region">
           <Select

@@ -13,6 +13,7 @@ import {
   BackupPrivateKey,
   IntegrationAuth,
   ServiceTokenData,
+  Integration,
 } from "../../models";
 import { generateKeyPair } from "../../utils/crypto";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../../config";
@@ -423,4 +424,20 @@ export const backfillServiceToken = async () => {
     }
   );
   console.log("Migration: Service token migration v1 complete");
+};
+
+export const backfillIntegration = async () => {
+  await Integration.updateMany(
+    {
+      secretPath: {
+        $exists: false,
+      },
+    },
+    {
+      $set: {
+        secretPath: "/",
+      },
+    }
+  );
+  console.log("Migration: Integration migration v1 complete");
 };

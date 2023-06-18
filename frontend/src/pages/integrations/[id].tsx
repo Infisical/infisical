@@ -44,6 +44,7 @@ interface Integration {
   integration: string;
   targetEnvironment: string;
   workspace: string;
+  secretPath:string;
   integrationAuth: string;
 }
 
@@ -441,7 +442,15 @@ export default function Integrations() {
             handleDeleteIntegrationAuth={handleDeleteIntegrationAuth}
           />
         ) : (
-          <div />
+          <>
+            <div className="m-4 mt-7 flex max-w-5xl flex-col items-start justify-between px-2 text-xl">
+              <h1 className="text-3xl font-semibold">{t('integrations.cloud-integrations')}</h1>
+              <p className="text-base text-gray-400">{t('integrations.click-to-start')}</p>
+            </div>
+            <div className="mx-6 grid max-w-5xl grid-cols-4 grid-rows-2 gap-4">
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map(elem => <div key={elem} className="bg-mineshaft-800 border border-mineshaft-600 animate-pulse h-32 rounded-md"/>)}
+            </div>
+          </>
         )}
         <FrameworkIntegrationSection frameworks={frameworkIntegrationOptions as any} />
       </div>

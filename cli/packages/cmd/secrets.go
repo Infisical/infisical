@@ -44,6 +44,11 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
+		secretsPath, err := cmd.Flags().GetString("path")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		shouldExpandSecrets, err := cmd.Flags().GetBool("expand")
 		if err != nil {
 			util.HandleError(err)
@@ -54,7 +59,7 @@ var secretsCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs})
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, SecretsPath: secretsPath})
 		if err != nil {
 			util.HandleError(err)
 		}
@@ -103,6 +108,11 @@ var secretsSetCmd = &cobra.Command{
 			}
 		}
 
+		secretsPath, err := cmd.Flags().GetString("path")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		workspaceFile, err := util.GetWorkSpaceFromFile()
 		if err != nil {
 			util.HandleError(err, "Unable to get your local config details")
@@ -140,7 +150,7 @@ var secretsSetCmd = &cobra.Command{
 		plainTextEncryptionKey := crypto.DecryptAsymmetric(encryptedWorkspaceKey, encryptedWorkspaceKeyNonce, encryptedWorkspaceKeySenderPublicKey, currentUsersPrivateKey)
 
 		// pull current secrets
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName})
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, SecretsPath: secretsPath})
 		if err != nil {
 			util.HandleError(err, "unable to retrieve secrets")
 		}
@@ -191,6 +201,8 @@ var secretsSetCmd = &cobra.Command{
 					SecretValueIV:         base64.StdEncoding.EncodeToString(encryptedValue.Nonce),
 					SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
 					SecretValueHash:       hashedValue,
+					PlainTextKey:          key,
+					Type:                  existingSecret.Type,
 				}
 
 				// Only add to modifications if the value is different
@@ -222,6 +234,7 @@ var secretsSetCmd = &cobra.Command{
 					SecretValueTag:        base64.StdEncoding.EncodeToString(encryptedValue.AuthTag),
 					SecretValueHash:       hashedValue,
 					Type:                  util.SECRET_TYPE_SHARED,
+					PlainTextKey:          key,
 				}
 				secretsToCreate = append(secretsToCreate, encryptedSecretDetails)
 				secretOperations = append(secretOperations, SecretSetOperation{
@@ -232,30 +245,43 @@ var secretsSetCmd = &cobra.Command{
 			}
 		}
 
-		if len(secretsToCreate) > 0 {
-			batchCreateRequest := api.BatchCreateSecretsByWorkspaceAndEnvRequest{
-				WorkspaceId: workspaceFile.WorkspaceId,
-				Environment: environmentName,
-				Secrets:     secretsToCreate,
+		for _, secret := range secretsToCreate {
+			createSecretRequest := api.CreateSecretV3Request{
+				WorkspaceID:           workspaceFile.WorkspaceId,
+				Environment:           environmentName,
+				SecretName:            secret.PlainTextKey,
+				SecretKeyCiphertext:   secret.SecretKeyCiphertext,
+				SecretKeyIV:           secret.SecretKeyIV,
+				SecretKeyTag:          secret.SecretKeyTag,
+				SecretValueCiphertext: secret.SecretValueCiphertext,
+				SecretValueIV:         secret.SecretValueIV,
+				SecretValueTag:        secret.SecretValueTag,
+				Type:                  secret.Type,
+				SecretPath:            secretsPath,
 			}
 
-			err = api.CallBatchCreateSecretsByWorkspaceAndEnv(httpClient, batchCreateRequest)
+			err = api.CallCreateSecretsV3(httpClient, createSecretRequest)
 			if err != nil {
 				util.HandleError(err, "Unable to process new secret creations")
 				return
 			}
 		}
 
-		if len(secretsToModify) > 0 {
-			batchModifyRequest := api.BatchModifySecretsByWorkspaceAndEnvRequest{
-				WorkspaceId: workspaceFile.WorkspaceId,
-				Environment: environmentName,
-				Secrets:     secretsToModify,
+		for _, secret := range secretsToModify {
+			updateSecretRequest := api.UpdateSecretByNameV3Request{
+				WorkspaceID:           workspaceFile.WorkspaceId,
+				Environment:           environmentName,
+				SecretName:            secret.PlainTextKey,
+				SecretValueCiphertext: secret.SecretValueCiphertext,
+				SecretValueIV:         secret.SecretValueIV,
+				SecretValueTag:        secret.SecretValueTag,
+				Type:                  secret.Type,
+				SecretPath:            secretsPath,
 			}
 
-			err = api.CallBatchModifySecretsByWorkspaceAndEnv(httpClient, batchModifyRequest)
+			err = api.CallUpdateSecretsV3(httpClient, updateSecretRequest)
 			if err != nil {
-				util.HandleError(err, "Unable to process the modifications to your secrets")
+				util.HandleError(err, "Unable to process secret update request")
 				return
 			}
 		}
@@ -288,6 +314,16 @@ var secretsDeleteCmd = &cobra.Command{
 			}
 		}
 
+		secretsPath, err := cmd.Flags().GetString("path")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		secretType, err := cmd.Flags().GetString("type")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
 		loggedInUserDetails, err := util.GetCurrentLoggedInUserDetails()
 		if err != nil {
 			util.HandleError(err, "Unable to authenticate")
@@ -298,46 +334,28 @@ var secretsDeleteCmd = &cobra.Command{
 			util.HandleError(err, "Unable to get local project details")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName})
-		if err != nil {
-			util.HandleError(err, "Unable to fetch secrets")
-		}
-
-		secretByKey := getSecretsByKeys(secrets)
-		validSecretIdsToDelete := []string{}
-		invalidSecretNamesThatDoNotExist := []string{}
-
-		for _, secretKeyFromArg := range args {
-			if value, ok := secretByKey[strings.ToUpper(secretKeyFromArg)]; ok {
-				validSecretIdsToDelete = append(validSecretIdsToDelete, value.ID)
-			} else {
-				invalidSecretNamesThatDoNotExist = append(invalidSecretNamesThatDoNotExist, secretKeyFromArg)
+		for _, secretName := range args {
+			request := api.DeleteSecretV3Request{
+				WorkspaceId: workspaceFile.WorkspaceId,
+				Environment: environmentName,
+				SecretName:  secretName,
+				Type:        secretType,
+				SecretPath:  secretsPath,
 			}
-		}
 
-		if len(invalidSecretNamesThatDoNotExist) != 0 {
-			message := fmt.Sprintf("secret name(s) [%v] does not exist in your project. To see which secrets exist run [infisical secrets]", strings.Join(invalidSecretNamesThatDoNotExist, ", "))
-			util.PrintErrorMessageAndExit(message)
-		}
+			httpClient := resty.New().
+				SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken).
+				SetHeader("Accept", "application/json")
 
-		request := api.BatchDeleteSecretsBySecretIdsRequest{
-			WorkspaceId:     workspaceFile.WorkspaceId,
-			EnvironmentName: environmentName,
-			SecretIds:       validSecretIdsToDelete,
-		}
-
-		httpClient := resty.New().
-			SetAuthToken(loggedInUserDetails.UserCredentials.JTWToken).
-			SetHeader("Accept", "application/json")
-
-		err = api.CallBatchDeleteSecretsByWorkspaceAndEnv(httpClient, request)
-		if err != nil {
-			util.HandleError(err, "Unable to complete your batch delete request")
+			err = api.CallDeleteSecretsV3(httpClient, request)
+			if err != nil {
+				util.HandleError(err, "Unable to complete your delete request")
+			}
 		}
 
 		fmt.Printf("secret name(s) [%v] have been deleted from your project \n", strings.Join(args, ", "))
 
-		Telemetry.CaptureEvent("cli-command:secrets delete", posthog.NewProperties().Set("secretCount", len(secrets)).Set("version", util.CLI_VERSION))
+		Telemetry.CaptureEvent("cli-command:secrets delete", posthog.NewProperties().Set("secretCount", len(args)).Set("version", util.CLI_VERSION))
 	},
 }
 
@@ -611,11 +629,15 @@ func init() {
 	secretsCmd.AddCommand(secretsGetCmd)
 
 	secretsCmd.AddCommand(secretsSetCmd)
+	secretsSetCmd.Flags().String("path", "/", "get secrets within a folder path")
+
 	secretsSetCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		util.RequireLogin()
 		util.RequireLocalWorkspaceFile()
 	}
 
+	secretsDeleteCmd.Flags().String("type", "personal", "the type of secret to delete: personal or shared  (default: personal)")
+	secretsDeleteCmd.Flags().String("path", "/", "get secrets within a folder path")
 	secretsCmd.AddCommand(secretsDeleteCmd)
 	secretsDeleteCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		util.RequireLogin()
@@ -626,5 +648,6 @@ func init() {
 	secretsCmd.PersistentFlags().String("env", "dev", "Used to select the environment name on which actions should be taken on")
 	secretsCmd.Flags().Bool("expand", true, "Parse shell parameter expansions in your secrets")
 	secretsCmd.PersistentFlags().StringP("tags", "t", "", "filter secrets by tag slugs")
+	secretsCmd.Flags().String("path", "/", "get secrets within a folder path")
 	rootCmd.AddCommand(secretsCmd)
 }

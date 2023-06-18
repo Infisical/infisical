@@ -3,32 +3,29 @@ title: "Authentication"
 description: "How to authenticate with the Infisical Public API"
 ---
 
-## Essentials
+The Public API accepts multiple modes of authentication being via [Infisical Token](/documentation/platform/token) or API Key.
 
-The Public API accepts multiple modes of authentication being via API Key or [Infisical Token](/documentation/platform/token).
-
-- API Key: Provides full access to all endpoints representing the user without ability to encrypt/decrypt secrets in **E2EE** mode.
 - [Infisical Token](/documentation/platform/token): Provides short-lived, scoped CRUD access to the secrets of a specific project and environment.
+- API Key: Provides full access to all endpoints representing the user without ability to encrypt/decrypt secrets for **E2EE** endpoints.
 
-<AccordionGroup>
-<Accordion title="API Key">
-The API key mode uses an API key to authenticate with the API.
+<Tabs>
+    <Tab title="Infisical Token">
+        The Infisical Token mode uses an Infisical Token to authenticate with the API.
 
-To authenticate requests with Infisical using the API Key, you must include an API key in the `X-API-KEY` header of HTTP requests made to the platform. 
+        To authenticate requests with Infisical using the Infisical Token, you must include your Infisical Token in the `Authorization` header of HTTP requests made to the platform with the value `Bearer <infisical_token>`.
 
-You can obtain an API key in User Settings > API Keys
+        You can obtain an Infisical Token in Project Settings > Service Tokens.
 
-![API key dashboard](../../images/api-key-dashboard.png)
-![API key in personal settings](../../images/api-key-settings.png)
-</Accordion>
-<Accordion title="Infisical Token">
+        ![token add](../../images/project-token-add.png)
+    </Tab>
+    <Tab title="API Key">
+        The API key mode uses an API key to authenticate with the API.
 
-The Infisical Token mode uses an Infisical Token to authenticate with the API.
+        To authenticate requests with Infisical using the API Key, you must include an API key in the `X-API-KEY` header of HTTP requests made to the platform. 
 
-To authenticate requests with Infisical using the Infisical Token, you must include your Infisical Token in the `Authorization` header of HTTP requests made to the platform with the value `Bearer <infisical_token>`.
+        You can obtain an API key in User Settings > API Keys
 
-You can obtain an Infisical Token in Project Settings > Service Tokens.
-
-![token add](../../images/project-token-add.png)
-</Accordion>
-</AccordionGroup>
+        ![API key dashboard](../../images/api-key-dashboard.png)
+        ![API key in personal settings](../../images/api-key-settings.png)
+    </Tab>
+</Tabs>

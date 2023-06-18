@@ -23,6 +23,7 @@ interface Integration {
   targetEnvironment: string;
   workspace: string;
   integrationAuth: string;
+  secretPath: string;
 }
 
 const ProjectIntegrationSection = ({

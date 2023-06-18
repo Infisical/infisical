@@ -57,7 +57,7 @@ import { getFolderIdFromServiceToken } from "../services/FolderService";
 export const repackageSecretToRaw = ({
   secret,
   key
-}:{
+}: {
   secret: ISecret;
   key: string;
 }) => {
@@ -76,8 +76,8 @@ export const repackageSecretToRaw = ({
     key
   });
 
-  let secretComment: string = ''; 
-  
+  let secretComment: string = '';
+
   if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
     secretComment = decryptSymmetric128BitHexKeyUTF8({
       ciphertext: secret.secretCommentCiphertext,
@@ -86,7 +86,7 @@ export const repackageSecretToRaw = ({
       key
     });
   }
-  
+
   return ({
     _id: secret._id,
     version: secret.version,
@@ -503,7 +503,7 @@ export const getSecretsHelper = async ({
     folder: folderId,
     type: SECRET_PERSONAL,
     ...getAuthDataPayloadUserObj(authData),
-  }).lean();
+  }).populate("tags").lean();
 
   // concat with shared secrets
   secrets = secrets.concat(
@@ -515,7 +515,7 @@ export const getSecretsHelper = async ({
       secretBlindIndex: {
         $nin: secrets.map((secret) => secret.secretBlindIndex),
       },
-    }).lean()
+    }).populate("tags").lean()
   );
 
   // (EE) create (audit) log
@@ -553,7 +553,7 @@ export const getSecretsHelper = async ({
       },
     });
   }
-  
+
   return secrets;
 };
 
@@ -652,7 +652,7 @@ export const getSecretHelper = async ({
       },
     });
   }
-  
+
   return secret;
 };
 
@@ -843,7 +843,7 @@ export const deleteSecretHelper = async ({
   // if using service token filter towards the folderId by secretpath
   if (authData.authPayload instanceof ServiceTokenData) {
     const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
-    
+
     if (secretPath !== serviceTkScopedSecretPath) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
@@ -909,12 +909,12 @@ export const deleteSecretHelper = async ({
   });
 
   action && (await EELogService.createLog({
-      ...getAuthDataPayloadIdObj(authData),
-      workspaceId,
-      actions: [action],
-      channel: authData.authChannel,
-      ipAddress: authData.authIP,
-    }));
+    ...getAuthDataPayloadIdObj(authData),
+    workspaceId,
+    actions: [action],
+    channel: authData.authChannel,
+    ipAddress: authData.authIP,
+  }));
 
   // (EE) take a secret snapshot
   await EESecretService.takeSecretSnapshot({
@@ -941,7 +941,7 @@ export const deleteSecretHelper = async ({
       },
     });
   }
-  
+
   return ({
     secrets,
     secret

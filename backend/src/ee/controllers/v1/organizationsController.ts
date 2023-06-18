@@ -8,8 +8,9 @@ import { EELicenseService } from '../../services';
  */
 export const getOrganizationPlan = async (req: Request, res: Response) => {
     const { organizationId } = req.params;
+    const workspaceId = req.query.workspaceId as string;
 
-    const plan = await EELicenseService.getOrganizationPlan(organizationId);
+    const plan = await EELicenseService.getPlan(organizationId, workspaceId);
 
     return res.status(200).send({
         plan,

@@ -41,12 +41,11 @@ import {
   CreateServiceToken,
   CreateUpdateEnvFormData,
   CreateWsTag,
+  E2EESection,
   EnvironmentSection,
   ProjectIndexSecretsSection,
   ProjectNameChangeSection,
-  ServiceTokenSection,
-  E2EESection
-} from './components';
+  ServiceTokenSection} from './components';
 
 export const ProjectSettingsPage = () => {
   const { t } = useTranslation();
@@ -90,8 +89,8 @@ export const ProjectSettingsPage = () => {
 
   // get user subscription
   const { subscription } = useSubscription();
-  const host = window.location.origin;
-  const isEnvServiceAllowed = ((currentWorkspace?.environments || []).length < (subscription?.envLimit || 3) || host !== 'https://app.infisical.com');
+  
+  const isEnvServiceAllowed = (subscription?.environmentLimit && currentWorkspace?.environments) ? (currentWorkspace.environments.length < subscription.environmentLimit) : true;
 
   const onRenameWorkspace = async (name: string) => {
     try {

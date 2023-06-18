@@ -1,0 +1,59 @@
+---
+title: "REST API"
+---
+
+Infisical's Public (REST) API is the most flexible, platform-agnostic way to read/write secrets for your application.
+
+Prerequisites:
+
+- Have a project with secrets ready in [Infisical Cloud](https://app.infisical.com).
+- Create an [Infisical Token](/documentation/platform/token) scoped to an environment in your project in Infisical.
+
+To keep it simple, we're going to fetch secrets from the API with **End-to-End Encryption (E2EE)** disabled.
+
+<Note>
+    It's possible to use the API with **E2EE** enabled but this means learning about how encryption works with Infisical and performing client-side encryption/decryption operations yourself.
+    yourself. 
+    
+    If **E2EE** is a must for your team, we recommend either using one of the [Infisical SDKs](/documentation/getting-started/sdks) or checking out the [examples for E2EE](/api-reference/overview/examples/e2ee-disabled).
+</Note>
+
+## Configuration
+
+Head to your Project Settings, where you created your service token, and un-check the **E2EE** setting.
+
+## Retrieve Secret
+
+Retrieve a secret from the project and environment in Infisical scoped to your service token by making a HTTP request with the following format/details:
+
+```bash
+curl --location --request GET 'https://app.infisical.com/api/v3/secrets/raw/secretName?workspaceId=workspaceId&environment=environment' \
+    --header 'Authorization: Bearer serviceToken'
+```
+
+<ParamField path="secretName" type="string" required>
+    Name of secret to retrieve
+</ParamField>
+<ParamField query="workspaceId" type="string" required>
+    The ID of the workspace
+</ParamField>
+<ParamField query="environment" type="string" required>
+    The environment slug
+</ParamField>
+<ParamField query="secretPath" type="string" default="/" optional>
+    Path to secrets in workspace
+</ParamField>
+<ParamField query="type" type="string" optional default="personal">
+    The type of the secret. Valid options are “shared” or “personal”
+</ParamField>
+
+Depending on your application requirements, you may wish to use Infisical's API in different ways such as by retaining **E2EE**
+or fetching multiple secrets at once instead of one at a time.
+
+Whatever the case, we recommend glossing over the [API Examples](/api-reference/overview/examples/note)
+to gain a deeper understanding of how you to best leverage the Infisical API for your use-case.
+
+See also:
+
+- Explore the [API Examples](/api-reference/overview/examples/note)
+- [API Reference](/api-reference/overview/introduction)

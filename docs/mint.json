@@ -92,7 +92,8 @@
             "documentation/getting-started/sdks",
             "documentation/getting-started/cli",
             "documentation/getting-started/docker",
-            "documentation/getting-started/kubernetes"
+            "documentation/getting-started/kubernetes",
+            "documentation/getting-started/api"
           ]
         },
         {
@@ -250,9 +251,9 @@
         {
           "group": "Examples",
           "pages": [
-            "api-reference/overview/encryption-modes/overview",
-            "api-reference/overview/encryption-modes/es-mode",
-            "api-reference/overview/encryption-modes/e2ee-mode"
+            "api-reference/overview/examples/note",
+            "api-reference/overview/examples/e2ee-disabled",
+            "api-reference/overview/examples/e2ee-enabled"
           ]
         },
         "api-reference/overview/blind-indices"

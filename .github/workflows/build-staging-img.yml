@@ -1,17 +1,11 @@
 name: Build, Publish and Deploy to Gamma
-on:
-  push:
-    tags:
-      - "infisical/v*.*.*"
+on: [workflow_dispatch]
 
 jobs:
   backend-image:
     name: Build backend image
     runs-on: ubuntu-latest
     steps:
-      - name: Extract version from tag
-        id: extract_version
-        run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical/}"
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
       - name: 📦 Install dependencies to test all dependencies
@@ -57,18 +51,14 @@ jobs:
           push: true
           context: backend
           tags: |
-            infisical/backend:${{ steps.commit.outputs.short }}
-            infisical/backend:latest
-            infisical/backend:${{ steps.extract_version.outputs.version }}
+            infisical/staging_deployment_backend:${{ steps.commit.outputs.short }}
+            infisical/staging_deployment_backend:latest
           platforms: linux/amd64,linux/arm64
 
   frontend-image:
     name: Build frontend image
     runs-on: ubuntu-latest
     steps:
-      - name: Extract version from tag
-        id: extract_version
-        run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical/}"
       - name: ☁️ Checkout source
         uses: actions/checkout@v3
       - name: Save commit hashes for tag
@@ -90,12 +80,12 @@ jobs:
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           project: 64mmf0n610
           context: frontend
-          tags: infisical/frontend:test
+          tags: infisical/staging_deployment_frontend:test
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
       - name: ⏻ Spawn frontend container
         run: |
-          docker run -d --rm --name infisical-frontend-test infisical/frontend:test
+          docker run -d --rm --name infisical-frontend-test infisical/staging_deployment_frontend:test
       - name: 🧪 Test frontend image
         run: |
           ./.github/resources/healthcheck.sh infisical-frontend-test
@@ -110,9 +100,8 @@ jobs:
           token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
           context: frontend
           tags: |
-            infisical/frontend:${{ steps.commit.outputs.short }}
-            infisical/frontend:latest
-            infisical/frontend:${{ steps.extract_version.outputs.version }}
+            infisical/staging_deployment_frontend:${{ steps.commit.outputs.short }}
+            infisical/staging_deployment_frontend:latest
           platforms: linux/amd64,linux/arm64
           build-args: |
             POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
@@ -146,7 +135,7 @@ jobs:
       - name: Download helm values to file and upgrade gamma deploy
         run: |
           wget https://raw.githubusercontent.com/Infisical/infisical/main/.github/values.yaml
-          helm upgrade infisical infisical-helm-charts/infisical  --values values.yaml --recreate-pods
+          helm upgrade infisical infisical-helm-charts/infisical  --values values.yaml --wait
           if [[ $(helm status infisical) == *"FAILED"* ]]; then
             echo "Helm upgrade failed"
             exit 1

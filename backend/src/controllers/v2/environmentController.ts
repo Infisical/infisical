@@ -8,7 +8,8 @@ import {
   Membership,
 } from '../../models';
 import { SecretVersion } from '../../ee/models';
-import { BadRequestError } from '../../utils/errors';
+import { EELicenseService } from '../../ee/services';
+import { BadRequestError, WorkspaceNotFoundError } from '../../utils/errors';
 import _ from 'lodash';
 import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from '../../variables';
 
@@ -22,9 +23,26 @@ export const createWorkspaceEnvironment = async (
   req: Request,
   res: Response
 ) => {
+
   const { workspaceId } = req.params;
   const { environmentName, environmentSlug } = req.body;
   const workspace = await Workspace.findById(workspaceId).exec();
+  
+  if (!workspace) throw WorkspaceNotFoundError();
+  
+  const plan = await EELicenseService.getPlan(workspace.organization.toString());
+  
+  if (plan.environmentLimit !== null) {
+    // case: limit imposed on number of environments allowed
+    if (workspace.environments.length >= plan.environmentLimit) {
+      // case: number of environments used exceeds the number of environments allowed
+      
+      return res.status(400).send({
+        message: 'Failed to create environment due to environment limit reached. Upgrade plan to create more environments.'
+      });
+    }
+  }
+
   if (
     !workspace ||
     workspace?.environments.find(
@@ -39,6 +57,8 @@ export const createWorkspaceEnvironment = async (
     slug: environmentSlug.toLowerCase(),
   });
   await workspace.save();
+
+  await EELicenseService.refreshPlan(workspace.organization.toString(), workspaceId);
 
   return res.status(200).send({
     message: 'Successfully created new environment',
@@ -186,7 +206,9 @@ export const deleteWorkspaceEnvironment = async (
   await Membership.updateMany(
     { workspace: workspaceId },
     { $pull: { deniedPermissions: { environmentSlug: environmentSlug } } }
-  )
+  );
+
+  await EELicenseService.refreshPlan(workspace.organization.toString(), workspaceId);
 
   return res.status(200).send({
     message: 'Successfully deleted environment',

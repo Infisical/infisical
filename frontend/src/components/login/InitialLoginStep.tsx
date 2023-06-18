@@ -76,7 +76,7 @@ export default function InitialLoginStep({
                 {t('login.continue-with-google')}
             </Button>
         </div> */}
-        <div className="relative md:px-1.5 flex items-center justify-center lg:w-1/6 w-1/4 min-w-[20rem] md:min-w-[22rem] mx-auto w-full rounded-lg max-h-24 md:max-h-28">
+        <div className="relative md:px-1.5 flex items-center justify-center lg:w-1/6 w-1/4 min-w-[21.3rem] md:min-w-[22rem] mx-auto rounded-lg max-h-24 md:max-h-28">
             <div className="flex items-center justify-center w-full md:px-2 md:py-1 rounded-lg max-h-24 md:max-h-28">
                 <Input
                     value={email}
@@ -89,7 +89,7 @@ export default function InitialLoginStep({
                 />
             </div>
         </div>
-        <div className="relative pt-2 md:pt-0 md:px-1.5 flex items-center justify-center lg:w-1/6 w-1/4 min-w-[20rem] md:min-w-[22rem] mx-auto w-full rounded-lg max-h-24 md:max-h-28">
+        <div className="relative pt-2 md:pt-0 md:px-1.5 flex items-center justify-center w-1/4 lg:w-1/6 min-w-[21.3rem] md:min-w-[22rem] mx-auto rounded-lg max-h-24 md:max-h-28">
           <div className="flex items-center justify-center w-full md:p-2 rounded-lg max-h-24 md:max-h-28">
             <Input
               value={password}
@@ -135,6 +135,12 @@ export default function InitialLoginStep({
             <span className="mr-1">Don&apos;t have an acount yet?</span>
             <Link href="/signup">
                 <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>{t('login.create-account')}</span>
+            </Link>
+        </div>
+        <div className="text-bunker-400 text-sm flex flex-row">
+            <span className="mr-1">Forgot password?</span>
+            <Link href="/verify-email">
+                <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>Recover your account</span>
             </Link>
         </div>
     </div>

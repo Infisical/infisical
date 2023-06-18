@@ -6,7 +6,7 @@ frontend:
     secrets.infisical.com/auto-reload: "true"
   replicaCount: 2
   image:
-    repository: infisical/frontend
+    repository: infisical/staging_deployment_frontend
     tag: "latest"
     pullPolicy: Always
   kubeSecretRef: managed-secret-frontend
@@ -25,7 +25,7 @@ backend:
     secrets.infisical.com/auto-reload: "true"
   replicaCount: 2
   image:
-    repository: infisical/backend
+    repository: infisical/staging_deployment_backend
     tag: "latest"
     pullPolicy: Always
   kubeSecretRef: managed-backend-secret

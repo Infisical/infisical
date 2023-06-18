@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import queryString from 'query-string';
 
-import { Button, Card, CardTitle, FormControl, Select, SelectItem } from '../../../components/v2';
+import {
+  Button,
+  Card,
+  CardTitle,
+  FormControl,
+  Input,
+  Select,
+  SelectItem
+} from '../../../components/v2';
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
@@ -22,6 +30,8 @@ export default function ChecklyCreateIntegrationPage() {
   });
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
+  const [secretPath, setSecretPath] = useState('/');
+
   const [targetApp, setTargetApp] = useState('');
   const [targetAppId, setTargetAppId] = useState('');
 
@@ -63,7 +73,8 @@ export default function ChecklyCreateIntegrationPage() {
         targetServiceId: null,
         owner: null,
         path: null,
-        region: null
+        region: null,
+        secretPath
       });
 
       setIsLoading(false);
@@ -80,8 +91,13 @@ export default function ChecklyCreateIntegrationPage() {
     integrationAuthApps &&
     targetApp ? (
     <div className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900">
-      <Card className="max-w-lg rounded-md p-0 border border-mineshaft-600">
-        <CardTitle className="text-left px-6" subTitle="Choose which environment in Infisical you want to sync with your Checkly account.">Checkly Integration</CardTitle>
+      <Card className="max-w-lg rounded-md border border-mineshaft-600 p-0">
+        <CardTitle
+          className="px-6 text-left"
+          subTitle="Choose which environment in Infisical you want to sync with your Checkly account."
+        >
+          Checkly Integration
+        </CardTitle>
         <FormControl label="Infisical Project Environment" className="mt-2 px-6">
           <Select
             value={selectedSourceEnvironment}
@@ -97,6 +113,13 @@ export default function ChecklyCreateIntegrationPage() {
               </SelectItem>
             ))}
           </Select>
+        </FormControl>
+        <FormControl label="Secrets Path">
+          <Input
+            value={secretPath}
+            onChange={(evt) => setSecretPath(evt.target.value)}
+            placeholder="Provide a path, default is /"
+          />
         </FormControl>
         <FormControl label="Checkly Account" className="mt-4 px-6">
           <Select

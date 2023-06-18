@@ -1,11 +1,10 @@
 /* eslint-disable react/jsx-no-useless-fragment */
 import { useCallback, useState } from 'react';
-import { faCircle, faEye, faEyeSlash, faMinus } from '@fortawesome/free-solid-svg-icons';
+import { faCircle, faEye, faEyeSlash, faKey, faMinus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { twMerge } from 'tailwind-merge';
 
 type Props = {
-  index: number;
   secrets: any[] | undefined;
   // permission and external state's that decided to hide or show
   isReadOnly?: boolean;
@@ -30,7 +29,7 @@ const DashboardInput = ({
     if (val === undefined)
       return (
         <span className="cursor-default font-sans text-xs italic text-red-500/80">
-            <FontAwesomeIcon icon={faMinus} className="mt-1" />
+          <FontAwesomeIcon icon={faMinus} className="mt-1" />
         </span>
       );
     if (val?.length === 0)
@@ -110,7 +109,6 @@ const DashboardInput = ({
 };
 
 export const EnvComparisonRow = ({
-  index,
   secrets,
   isSecretValueHidden,
   isReadOnly,
@@ -126,7 +124,9 @@ export const EnvComparisonRow = ({
   return (
     <tr className="group flex min-w-full flex-row items-center hover:bg-mineshaft-800">
       <td className="flex h-10 w-10 items-center justify-center border-none px-4">
-        <div className="w-10 text-center text-xs text-bunker-400">{index + 1}</div>
+        <div className="w-10 text-center text-xs text-bunker-400">
+          <FontAwesomeIcon icon={faKey} />
+        </div>
       </td>
       <td className="flex h-full min-w-[200px] flex-row items-center justify-between lg:min-w-[220px] xl:min-w-[250px]">
         <div className="flex h-8 cursor-default flex-row items-center truncate">

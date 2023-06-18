@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import queryString from 'query-string';
 
-import { Button, Card, CardTitle, FormControl, Select, SelectItem } from '../../../components/v2';
+import {
+  Button,
+  Card,
+  CardTitle,
+  FormControl,
+  Input,
+  Select,
+  SelectItem
+} from '../../../components/v2';
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
@@ -23,7 +31,7 @@ export default function RenderCreateIntegrationPage() {
 
   const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
   const [targetApp, setTargetApp] = useState('');
-
+  const [secretPath, setSecretPath] = useState('/');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -62,7 +70,8 @@ export default function RenderCreateIntegrationPage() {
         targetServiceId: null,
         owner: null,
         path: null,
-        region: null
+        region: null,
+        secretPath
       });
 
       setIsLoading(false);
@@ -96,6 +105,13 @@ export default function RenderCreateIntegrationPage() {
               </SelectItem>
             ))}
           </Select>
+        </FormControl>
+        <FormControl label="Secrets Path">
+          <Input
+            value={secretPath}
+            onChange={(evt) => setSecretPath(evt.target.value)}
+            placeholder="Provide a path, default is /"
+          />
         </FormControl>
         <FormControl label="Render Service" className="mt-4">
           <Select

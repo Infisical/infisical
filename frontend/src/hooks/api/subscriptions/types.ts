@@ -12,5 +12,5 @@ export type SubscriptionPlan = {
   tier: number;
   workspaceLimit: number;
   workspacesUsed: number;
-  envLimit: number;
+  environmentLimit: number;
 };

@@ -23,7 +23,6 @@ import {
 router.get(
   "/raw",
   query("workspaceId").exists().isString().trim(),
-  query("workspaceId").exists().isString().trim(),
   query("environment").exists().isString().trim(),
   query("secretPath").default("/").isString().trim(),
   validateRequest,

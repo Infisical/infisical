@@ -5,7 +5,7 @@ import {
     requireOrganizationAuth,
     validateRequest
 } from '../../../middleware';
-import { param, body } from 'express-validator';
+import { param, body, query } from 'express-validator';
 import { organizationsController } from '../../controllers/v1';
 import {
     OWNER, ADMIN, MEMBER, ACCEPTED
@@ -21,6 +21,7 @@ router.get(
         acceptedStatuses: [ACCEPTED]
     }),
     param('organizationId').exists().trim(),
+    query('workspaceId').optional().isString(),
     validateRequest,
     organizationsController.getOrganizationPlan
 );
