@@ -57,7 +57,8 @@ export default function CloudflarePagesIntegrationPage() {
                 targetServiceId: null,
                 owner: null,
                 path: null,
-                region: null
+                region: null,
+                secretPath: '/',
             });
 
             setIsLoading(false);
@@ -82,14 +83,14 @@ export default function CloudflarePagesIntegrationPage() {
                         onValueChange={(val) => setSelectedSourceEnvironment(val)}
                         className="w-full border border-mineshaft-500"
                     >
-                        {workspace?.environments.map((sourceEnvironment) => {
-                            <SelectItem
-                                value={sourceEnvironment.slug}
-                                key={`sourcce-environment-${sourceEnvironment.slug}`}
-                            >
-                                {sourceEnvironment.name}
-                            </SelectItem>
-                        })}
+                        {workspace?.environments.map((sourceEnvironment) => (
+                        <SelectItem
+                            value={sourceEnvironment.slug}
+                            key={`source-environment-${sourceEnvironment.slug}`}
+                        >
+                            {sourceEnvironment.name}
+                        </SelectItem>
+                        ))}
                     </Select>
                 </FormControl>
                 <FormControl label="Cloudflare Pages Project" className="mt-4 px-6">
@@ -100,18 +101,18 @@ export default function CloudflarePagesIntegrationPage() {
                         isDisabled={integrationAuthApps.length === 0}
                     >
                         {integrationAuthApps.length > 0 ? (
-                            integrationAuthApps.map((integrationAuthApp) => {
-                                <SelectItem
-                                    value={integrationAuthApp.name}
-                                    key={`target-app-${integrationAuthApp.name}`}
-                                >
-                                    {integrationAuthApp.name}
-                                </SelectItem>
-                            })
-                        ) : (
-                            <SelectItem value="none" key="target-app-none">
-                                No projects found
+                        integrationAuthApps.map((integrationAuthApp) => (
+                            <SelectItem
+                            value={integrationAuthApp.name}
+                            key={`target-app-${integrationAuthApp.name}`}
+                            >
+                            {integrationAuthApp.name}
                             </SelectItem>
+                        ))
+                        ) : (
+                        <SelectItem value="none" key="target-app-none">
+                            No apps found
+                        </SelectItem>
                         )}
                     </Select>
                 </FormControl>

@@ -134,7 +134,7 @@ const getApps = async ({
     case INTEGRATION_CLOUDFLARE_PAGES:
       apps = await getAppsCloudflarePages({
         accessToken,
-        accountId: ''
+        accountId: accessId
       })
       break;
   }
@@ -670,13 +670,12 @@ const getAppsCloudflarePages = async ({
         }
     );
 
-    const apps = data.map((a: any) => {
+    const apps = data.result.map((a: any) => {
         return {
-            name: a["project_name"],
+            name: a.name,
             appId: a.id,
         };
     });
-
     return apps;
 }
 
