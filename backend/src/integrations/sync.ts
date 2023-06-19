@@ -37,7 +37,9 @@ import {
   INTEGRATION_SUPABASE_API_URL,
   INTEGRATION_CHECKLY,
   INTEGRATION_CHECKLY_API_URL,
-  INTEGRATION_HASHICORP_VAULT
+  INTEGRATION_HASHICORP_VAULT,
+  INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUDFLARE_PAGES_API_URL
 } from "../variables";
 import { standardRequest} from '../config/request';
 
@@ -208,6 +210,14 @@ const syncSecrets = async ({
           secrets,
           accessId,
           accessToken
+        });
+        break;
+      case INTEGRATION_CLOUDFLARE_PAGES:
+        await syncSecretsCloudflarePages({
+            integration,
+            secrets,
+            accessId,
+            accessToken
         });
         break;
     }
@@ -1832,5 +1842,65 @@ const syncSecretsHashiCorpVault = async ({
     }
   );
 };
+
+const syncSecretsCloudflarePages = async ({
+    integration,
+    secrets,
+    accessId,
+    accessToken,
+}: {
+    integration: IIntegration;
+    secrets: any;
+    accessId: string | null;
+    accessToken: string;
+}) => {
+    // get secrets from cloudflare pages
+    const getSecretsRes = (
+        await standardRequest.get(
+            `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "Accept": "application/json",
+                },
+            }
+        )
+    )
+    .data.result['deployment_configs'].production['env_vars'];
+
+    // copy the secrets object, so we can set deleted keys to null
+    const secretsObj: any = {...secrets};
+
+    for (const [key, val] of Object.entries(secretsObj)) {
+        secretsObj[key] = { value: val };
+    }
+
+    for await (const key of Object.keys(getSecretsRes)) {
+        if (!(key in secrets)) {
+            // case: secret deos not exist in infisical
+            // -> delete secret from cloudflare pages
+            secretsObj[key] = null;
+        }
+    }
+
+    await standardRequest.patch(
+        `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`,
+        {
+            data: {
+                "deployment_configs": {
+                    "production": {
+                        "env_vars": secretsObj
+                    }
+                }
+            }
+        },
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept": "application/json",
+            },
+        }
+    )
+}
 
 export { syncSecrets };
