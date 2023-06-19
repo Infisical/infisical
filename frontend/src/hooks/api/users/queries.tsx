@@ -24,7 +24,7 @@ const userKeys = {
   getOrgUsers: (orgId: string) => [{ orgId }, 'user']
 };
 
-const fetchUserDetails = async () => {
+export const fetchUserDetails = async () => {
   const { data } = await apiRequest.get<{ user: User }>('/api/v1/user');
 
   return data.user;

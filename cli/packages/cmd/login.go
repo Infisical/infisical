@@ -528,7 +528,8 @@ func browserCliLogin() (models.UserCredentials, error) {
 	timeout := time.After(time.Second * time.Duration(SERVER_TIMEOUT))
 	quit := make(chan bool)
 
-	//
+	//terminal state
+	var oldState term.State
 
 	//create handler
 	c := cors.New(cors.Options{
@@ -541,21 +542,24 @@ func browserCliLogin() (models.UserCredentials, error) {
 	corsHandler := c.Handler(browserLoginHandler(success, failure))
 
 	log.Debug().Msgf("Callback server listening on port %d", callbackPort)
-	go quitBrowserLogin(quit)
+	go quitBrowserLogin(quit, &oldState)
 	go http.Serve(listener, corsHandler)
 
 	for {
 		select {
 		case loginResponse := <-success:
 			err = closeListener(&listener)
+			restoreTerminal(&oldState)
 			return loginResponse, nil
 
 		case err = <-failure:
 			err = closeListener(&listener)
+			restoreTerminal(&oldState)
 			return models.UserCredentials{}, err
 
 		case _ = <-timeout:
 			err = closeListener(&listener)
+			restoreTerminal(&oldState)
 			return models.UserCredentials{}, errors.New("server timeout")
 
 		case _ = <-quit:
@@ -565,16 +569,20 @@ func browserCliLogin() (models.UserCredentials, error) {
 	}
 }
 
+func restoreTerminal(oldState *term.State) {
+	term.Restore(int(os.Stdin.Fd()), oldState)
+}
+
 // listens to 'q' input on terminal and
 // sends 'true' to 'quit' channel
-func quitBrowserLogin(quit chan bool) {
+func quitBrowserLogin(quit chan bool, oState *term.State) {
 	//
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
-		fmt.Println(err)
 		return
 	}
-	defer term.Restore(int(os.Stdin.Fd()), oldState)
+	*oState = *oldState
+	defer restoreTerminal(oldState)
 	b := make([]byte, 1)
 	for {
 		_, _ = os.Stdin.Read(b)

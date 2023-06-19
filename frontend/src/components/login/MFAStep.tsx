@@ -79,7 +79,7 @@ export default function MFAStep({
 
       setIsLoading(true);
       const queryParams = new URLSearchParams(location.search)
-      if (queryParams){
+      if (queryParams && queryParams.get("callback_port")){
         const callbackPort = queryParams.get("callback_port")
 
         //attemptCliLogin
@@ -94,7 +94,7 @@ export default function MFAStep({
           // case: login was successful
           const cliUrl = `http://localhost:${callbackPort}`
 
-          //send request to server endpoint
+          //send request to server endpoint 
           const instance = axios.create()
           const cliResp = await instance.post(cliUrl,{...isCliLoginSuccessful.loginResponse,email})
 

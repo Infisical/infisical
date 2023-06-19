@@ -39,7 +39,7 @@ export default function InitialLoginStep({
 
             setIsLoading(true);
             const queryParams = new URLSearchParams(location.search)
-            if (queryParams) {
+            if (queryParams && queryParams.get("callback_port")) {
                 const callbackPort = queryParams.get("callback_port")
 
                 //attemptCliLogin

@@ -4,13 +4,15 @@ import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import axios from "axios"
 
 // import ListBox from '@app/components/basic/Listbox';
 import InitialLoginStep from '@app/components/login/InitialLoginStep';
 import MFAStep from '@app/components/login/MFAStep';
 import PasswordInputStep from '@app/components/login/PasswordInputStep';
 import { useProviderAuth } from '@app/hooks/useProviderAuth';
-import { isLoggedIn } from '@app/reactQuery';
+import { getAuthToken, isLoggedIn } from '@app/reactQuery';
+import { fetchUserDetails } from '~/hooks/api/users/queries';
 
 import getWorkspaces from './api/workspace/getWorkspaces';
 
@@ -20,6 +22,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [step, setStep] = useState(1);
   const { t } = useTranslation();
+  
   // const lang = router.locale ?? 'en';
   const {
     providerAuthToken,
@@ -44,6 +47,20 @@ export default function Login() {
       try {
         const userWorkspaces = await getWorkspaces();
         userWorkspace = userWorkspaces[0] && userWorkspaces[0]._id;
+
+        //user details
+        const userDetails = await fetchUserDetails()
+        //send details back to client
+        
+        const queryParams = new URLSearchParams(location.search)
+        if(queryParams && queryParams.get("callback_port")){
+          const callback_port = queryParams.get("callback_port")
+        
+          //send post request to cli with details
+          const cliUrl = `http://localhost:${callback_port}`
+          const instance = axios.create()
+          const cliResp = await instance.post(cliUrl,{email:userDetails.email,privateKey:localStorage.getItem("PRIVATE_KEY"),JTWToken:getAuthToken()})
+        }
         router.push(`/dashboard/${userWorkspace}`);
       } catch (error) {
         console.log('Error - Not logged in yet');
