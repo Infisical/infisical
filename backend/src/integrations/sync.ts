@@ -1872,18 +1872,18 @@ const syncSecretsCloudflarePages = async ({
     const secretsObj: any = {...secrets};
 
     for (const [key, val] of Object.entries(secretsObj)) {
-        secretsObj[key] = { value: val };
+        secretsObj[key] = { type: "secret_text", value: val };
     }
 
-    for await (const key of Object.keys(getSecretsRes)) {
-        if (!(key in secrets)) {
-            // case: secret deos not exist in infisical
-            // -> delete secret from cloudflare pages
-            secretsObj[key] = null;
+    if (getSecretsRes) { // if there are no env vars set in cloudflare pages, none have to be deleted either
+        for await (const key of Object.keys(getSecretsRes)) {
+            if (!(key in secrets)) {
+                // case: secret deos not exist in infisical
+                // -> delete secret from cloudflare pages
+                secretsObj[key] = null;
+            }
         }
     }
-
-    console.log(secretsObj); // -> { test: { value: 'test' }, aaa: null, test_cf: null }
 
     const result = await standardRequest.patch(
         `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`,
@@ -1901,8 +1901,6 @@ const syncSecretsCloudflarePages = async ({
             },
         }
     )
-
-    console.log(result);
 }
 
 export { syncSecrets };
