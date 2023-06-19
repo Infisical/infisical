@@ -98,13 +98,22 @@ var loginCmd = &cobra.Command{
 				util.HandleError(err, "Unable to parse domain url")
 			}
 		}
+		var userCredentialsToBeStored models.UserCredentials
+
+		interactiveLogin := false
+		if cmd.Flags().Changed("interactive") {
+			interactiveLogin = true
+			cliDefaultLogin(&userCredentialsToBeStored)
+		}
 
 		//call browser login function
-		fmt.Printf("\nLogging in via browser... Hit '%s' to cancel\n", QUIT_BROWSER_LOGIN)
-		userCredentialsToBeStored, err := browserCliLogin()
-		if err != nil {
-			//default to cli login on error
-			cliDefaultLogin(&userCredentialsToBeStored)
+		if !interactiveLogin {
+			fmt.Printf("\nLogging in via browser... Hit '%s' to cancel\n", QUIT_BROWSER_LOGIN)
+			userCredentialsToBeStored, err = browserCliLogin()
+			if err != nil {
+				//default to cli login on error
+				cliDefaultLogin(&userCredentialsToBeStored)
+			}
 		}
 
 		err = util.StoreUserCredsInKeyRing(&userCredentialsToBeStored)
@@ -303,6 +312,7 @@ func cliDefaultLogin(userCredentialsToBeStored *models.UserCredentials) {
 
 func init() {
 	rootCmd.AddCommand(loginCmd)
+	loginCmd.Flags().BoolP("interactive", "i", false, "login via the command line")
 }
 
 func DomainOverridePrompt() (bool, error) {
