@@ -1883,14 +1883,14 @@ const syncSecretsCloudflarePages = async ({
         }
     }
 
-    await standardRequest.patch(
+    console.log(secretsObj); // -> { test: { value: 'test' }, aaa: null, test_cf: null }
+
+    const result = await standardRequest.patch(
         `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`,
         {
-            data: {
-                "deployment_configs": {
-                    "production": {
-                        "env_vars": secretsObj
-                    }
+            "deployment_configs": {
+                "production": {
+                    "env_vars": secretsObj
                 }
             }
         },
@@ -1901,6 +1901,8 @@ const syncSecretsCloudflarePages = async ({
             },
         }
     )
+
+    console.log(result);
 }
 
 export { syncSecrets };
