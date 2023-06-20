@@ -6,6 +6,11 @@ import { useGetIntegrationAuthApps, useGetIntegrationAuthById } from '~/hooks/ap
 import createIntegration from '~/pages/api/integrations/createIntegration';
 import { Button, Card, CardTitle, FormControl, Select, SelectItem } from '~/components/v2';
 
+const cloudflareEnvironments = [
+    { name: 'Production', slug: 'production' },
+    { name: 'Preview', slug: 'preview' }
+];
+
 export default function CloudflarePagesIntegrationPage() {
     const router = useRouter();
 
@@ -19,6 +24,7 @@ export default function CloudflarePagesIntegrationPage() {
     const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
     const [targetApp, setTargetApp] = useState('');
     const [targetAppId, setTargetAppId] = useState('');
+    const [targetEnvironment, setTargetEnvironment] = useState('');
 
     const [isLoading, setIsLoading] = useState(false);
 
@@ -33,8 +39,10 @@ export default function CloudflarePagesIntegrationPage() {
             if (integrationAuthApps.length > 0) {
                 setTargetApp(integrationAuthApps[0].name);
                 setTargetAppId(String(integrationAuthApps[0].appId));
+                setTargetEnvironment(cloudflareEnvironments[0].slug);
             } else {
                 setTargetApp('none');
+                setTargetEnvironment(cloudflareEnvironments[0].slug);
             }
         }
     }, [integrationAuthApps]);
@@ -51,7 +59,7 @@ export default function CloudflarePagesIntegrationPage() {
                 app: targetApp,
                 appId: targetAppId,
                 sourceEnvironment: selectedSourceEnvironment,
-                targetEnvironment: null,
+                targetEnvironment,
                 targetEnvironmentId: null,
                 targetService: null,
                 targetServiceId: null,
@@ -73,6 +81,7 @@ export default function CloudflarePagesIntegrationPage() {
         workspace &&
         selectedSourceEnvironment &&
         integrationAuthApps &&
+        targetEnvironment &&
         targetApp ? (
         <div className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900">
             <Card className="max-w-lg rounded-md p-0 border border-mineshaft-600">
@@ -114,6 +123,22 @@ export default function CloudflarePagesIntegrationPage() {
                             No apps found
                         </SelectItem>
                         )}
+                    </Select>
+                </FormControl>
+                <FormControl label="Cloudflare Pages Environment" className="mt-4 px-6">
+                    <Select
+                        value={targetEnvironment}
+                        onValueChange={(val) => setTargetEnvironment(val)}
+                        className="w-full border border-mineshaft-500"
+                    >
+                        {cloudflareEnvironments.map((cloudflareEnvironment) => (
+                            <SelectItem
+                                value={cloudflareEnvironment.slug}
+                                key={`target-environment-${cloudflareEnvironment.slug}`}
+                            >
+                                {cloudflareEnvironment.name}
+                            </SelectItem>
+                        ))}
                     </Select>
                 </FormControl>
                 <Button
