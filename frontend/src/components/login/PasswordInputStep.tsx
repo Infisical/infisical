@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
+import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
+import Link from "next/link";
+import { useRouter } from "next/router";
 
-import Error from '@app/components/basic/Error';
-import attemptLogin from '@app/components/utilities/attemptLogin';
+import Error from "@app/components/basic/Error";
+import attemptLogin from "@app/components/utilities/attemptLogin";
 
-import SecurityClient from '../utilities/SecurityClient';
-import { Button, Input } from '../v2';
+import SecurityClient from "../utilities/SecurityClient";
+import { Button, Input } from "../v2";
 
 export default function PasswordInputStep({
   email,
@@ -50,7 +50,7 @@ export default function PasswordInputStep({
         }
 
         // case: login does not require MFA step
-        router.push(`/dashboard/${localStorage.getItem('projectData.id')}`);
+        router.push(`/dashboard/${localStorage.getItem("projectData.id")}`);
       }
     } catch (err) {
       setLoginError(true);
@@ -79,7 +79,7 @@ export default function PasswordInputStep({
             />
           </div>
         </div>
-        {!isLoading && loginError && <Error text={t('login.error-login') ?? ''} />}
+        {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
         <div className='lg:w-1/6 w-1/4 w-full mx-auto flex items-center justify-center min-w-[22rem] text-center rounded-md mt-4'>
           <Button
               colorSchema="primary" 
@@ -89,7 +89,7 @@ export default function PasswordInputStep({
               isLoading={isLoading}
               className="h-14"
           > 
-              {t('login.login')} 
+              {t("login.login")} 
           </Button>
         </div>
         <div className="text-bunker-400 text-xs flex flex-col items-center w-max mx-auto mt-4">
@@ -97,20 +97,20 @@ export default function PasswordInputStep({
             Infisical Master Password serves as a decryption mechanism so that even Google is not able to access your secrets.
           </span>
           <Link href="/verify-email">
-            <span className='hover:underline mt-2 hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>{t('login.forgot-password')}</span>
+            <span className='hover:underline mt-2 hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>{t("login.forgot-password")}</span>
           </Link>
         </div>
         <div className="flex flex-row items-center justify-center">
           <button
             onClick={(e) => {
               e.preventDefault();
-              SecurityClient.setProviderAuthToken('');
-              setProviderAuthToken('');
+              SecurityClient.setProviderAuthToken("");
+              setProviderAuthToken("");
             }}
             type="button"
             className="text-bunker-400 text-xs hover:underline mt-2 hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer"
           >
-            {t('login.other-option')}
+            {t("login.other-option")}
           </button>
         </div>
       </div>

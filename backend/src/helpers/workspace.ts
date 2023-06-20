@@ -1,13 +1,13 @@
 import {
-	Workspace,
 	Bot,
-	Membership,
 	Key,
-	Secret
-} from '../models';
-import { createBot } from '../helpers/bot';
-import { EELicenseService } from '../ee/services';
-import { SecretService } from '../services';
+	Membership,
+	Secret,
+	Workspace,
+} from "../models";
+import { createBot } from "../helpers/bot";
+import { EELicenseService } from "../ee/services";
+import { SecretService } from "../services";
 
 /**
  * Create a workspace with name [name] in organization with id [organizationId]
@@ -18,7 +18,7 @@ import { SecretService } from '../services';
  */
 export const createWorkspace = async ({
 	name,
-	organizationId
+	organizationId,
 }: {
 	name: string;
 	organizationId: string;
@@ -27,18 +27,18 @@ export const createWorkspace = async ({
 	const workspace = await new Workspace({
 		name,
 		organization: organizationId,
-		autoCapitalization: true
+		autoCapitalization: true,
 	}).save();
   
 	// initialize bot for workspace
 	await createBot({
-		name: 'Infisical Bot',
-		workspaceId: workspace._id
+		name: "Infisical Bot",
+		workspaceId: workspace._id,
 	});
   
 	// initialize blind index salt for workspace
 	await SecretService.createSecretBlindIndexData({
-		workspaceId: workspace._id
+		workspaceId: workspace._id,
 	});
 
 	await EELicenseService.refreshPlan(organizationId);
@@ -55,15 +55,15 @@ export const createWorkspace = async ({
 export const deleteWorkspace = async ({ id }: { id: string }) => {
 	await Workspace.deleteOne({ _id: id });
 	await Bot.deleteOne({
-		workspace: id
+		workspace: id,
 	});
 	await Membership.deleteMany({
-		workspace: id
+		workspace: id,
 	});
 	await Secret.deleteMany({
-		workspace: id
+		workspace: id,
 	});
 	await Key.deleteMany({
-		workspace: id
+		workspace: id,
 	});
 };

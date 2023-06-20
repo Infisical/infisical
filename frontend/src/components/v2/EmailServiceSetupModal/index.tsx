@@ -1,1 +1,1 @@
-export { EmailServiceSetupModal } from './EmailServiceSetupModal';
+export { EmailServiceSetupModal } from "./EmailServiceSetupModal";

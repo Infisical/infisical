@@ -1,54 +1,54 @@
-import express, { Response, Request } from 'express';
+import express from "express";
 const router = express.Router();
-import { body, param } from 'express-validator';
-import { tagController } from '../../controllers/v2';
+import { body, param } from "express-validator";
+import { tagController } from "../../controllers/v2";
 import {
   requireAuth,
   requireWorkspaceAuth,
-  validateRequest
-} from '../../middleware';
+  validateRequest,
+} from "../../middleware";
 import { 
   ADMIN, 
+  AUTH_MODE_JWT,
   MEMBER,
-  AUTH_MODE_JWT
-} from '../../variables';
+} from "../../variables";
 
 router.get(
-  '/:workspaceId/tags',
+  "/:workspaceId/tags",
   requireAuth({
     acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [MEMBER, ADMIN],
-    locationWorkspaceId: 'params'
+    locationWorkspaceId: "params",
   }),
-  param('workspaceId').exists().trim(),
+  param("workspaceId").exists().trim(),
   validateRequest,
   tagController.getWorkspaceTags
 );
 
 router.delete(
-  '/tags/:tagId',
+  "/tags/:tagId",
   requireAuth({
     acceptedAuthModes: [AUTH_MODE_JWT],
   }),
-  param('tagId').exists().trim(),
+  param("tagId").exists().trim(),
   validateRequest,
   tagController.deleteWorkspaceTag
 );
 
 router.post(
-  '/:workspaceId/tags',
+  "/:workspaceId/tags",
   requireAuth({
     acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [MEMBER, ADMIN],
-    locationWorkspaceId: 'params'
+    locationWorkspaceId: "params",
   }),
-  param('workspaceId').exists().trim(),
-  body('name').exists().trim(),
-  body('slug').exists().trim(),
+  param("workspaceId").exists().trim(),
+  body("name").exists().trim(),
+  body("slug").exists().trim(),
   validateRequest,
   tagController.createWorkspaceTag
 );

@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface BotKey {
   encryptedKey: string;
@@ -23,9 +23,9 @@ interface Props {
  */
 const setBotActiveStatus = async ({ botId, isActive, botKey }: Props) =>
   SecurityClient.fetchCall(`/api/v1/bot/${botId}/active`, {
-    method: 'PATCH',
+    method: "PATCH",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       isActive,
@@ -35,7 +35,7 @@ const setBotActiveStatus = async ({ botId, isActive, botKey }: Props) =>
     if (res && res.status === 200) {
       return res.json();
     }
-    console.log('Failed to get bot for project');
+    console.log("Failed to get bot for project");
     return undefined;
   });
 

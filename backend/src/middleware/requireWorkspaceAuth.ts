@@ -1,8 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
-import { Types } from 'mongoose';
-import { validateClientForWorkspace } from '../validation';
+import { NextFunction, Request, Response } from "express";
+import { Types } from "mongoose";
+import { validateClientForWorkspace } from "../validation";
 
-type req = 'params' | 'body' | 'query';
+type req = "params" | "body" | "query";
 
 /**
  * Validate if user on request is a member with proper roles for workspace
@@ -17,9 +17,9 @@ const requireWorkspaceAuth = ({
 	locationEnvironment = undefined,
 	requiredPermissions = [],
 	requireBlindIndicesEnabled = false,
-	requireE2EEOff = false
+	requireE2EEOff = false,
 }: {
-	acceptedRoles: Array<'admin' | 'member'>;
+	acceptedRoles: Array<"admin" | "member">;
 	locationWorkspaceId: req;
 	locationEnvironment?: req | undefined;
 	requiredPermissions?: string[];
@@ -38,7 +38,7 @@ const requireWorkspaceAuth = ({
 			acceptedRoles,
 			requiredPermissions,
 			requireBlindIndicesEnabled,
-			requireE2EEOff
+			requireE2EEOff,
 		});
 		
 		if (membership) {

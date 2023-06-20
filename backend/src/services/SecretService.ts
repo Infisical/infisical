@@ -1,22 +1,22 @@
 import { Types } from "mongoose";
 import {
     CreateSecretParams,
-    GetSecretsParams,
+    DeleteSecretParams,
     GetSecretParams,
+    GetSecretsParams,
     UpdateSecretParams,
-    DeleteSecretParams
-} from '../interfaces/services/SecretService';
+} from "../interfaces/services/SecretService";
 import { 
     createSecretBlindIndexDataHelper,
-    getSecretBlindIndexSaltHelper,
-    generateSecretBlindIndexWithSaltHelper,
-    generateSecretBlindIndexHelper,
     createSecretHelper,
-    getSecretsHelper,
+    deleteSecretHelper,
+    generateSecretBlindIndexHelper,
+    generateSecretBlindIndexWithSaltHelper,
+    getSecretBlindIndexSaltHelper,
     getSecretHelper,
+    getSecretsHelper,
     updateSecretHelper,
-    deleteSecretHelper
-} from '../helpers/secrets';
+} from "../helpers/secrets";
 
 class SecretService {
   /**

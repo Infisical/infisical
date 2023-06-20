@@ -1,7 +1,7 @@
-import { HTMLAttributes, ReactNode, TdHTMLAttributes } from 'react';
-import { twMerge } from 'tailwind-merge';
+import { HTMLAttributes, ReactNode, TdHTMLAttributes } from "react";
+import { twMerge } from "tailwind-merge";
 
-import { Skeleton } from '../Skeleton';
+import { Skeleton } from "../Skeleton";
 
 export type TableContainerProps = {
   children: ReactNode;
@@ -16,8 +16,8 @@ export const TableContainer = ({
 }: TableContainerProps): JSX.Element => (
   <div
     className={twMerge(
-      'relative w-full overflow-x-auto border border-solid border-mineshaft-700 bg-mineshaft-800 font-inter',
-      isRounded && 'rounded-lg',
+      "relative w-full overflow-x-auto border border-solid border-mineshaft-700 bg-mineshaft-800 font-inter",
+      isRounded && "rounded-lg",
       className
     )}
   >
@@ -34,7 +34,7 @@ export type TableProps = {
 export const Table = ({ children, className }: TableProps): JSX.Element => (
   <table
     className={twMerge(
-      'w-full bg-mineshaft-800 p-2 text-left text-sm text-gray-300',
+      "w-full bg-mineshaft-800 p-2 text-left text-sm text-gray-300",
       className
     )}
   >
@@ -49,7 +49,7 @@ export type THeadProps = {
 };
 
 export const THead = ({ children, className }: THeadProps): JSX.Element => (
-  <thead className={twMerge('bg-mineshaft-800 text-xs uppercase text-bunker-300', className)}>
+  <thead className={twMerge("bg-mineshaft-800 text-xs uppercase text-bunker-300", className)}>
     {children}
   </thead>
 );
@@ -62,7 +62,7 @@ export type TrProps = {
 
 export const Tr = ({ children, className, ...props }: TrProps): JSX.Element => (
   <tr
-    className={twMerge('border border-solid border-mineshaft-700 cursor-default', className)}
+    className={twMerge("border border-solid border-mineshaft-700 cursor-default", className)}
     {...props}
   >
     {children}
@@ -76,7 +76,7 @@ export type ThProps = {
 };
 
 export const Th = ({ children, className }: ThProps): JSX.Element => (
-  <th className={twMerge('bg-mineshaft-800 px-5 pt-4 pb-3.5 font-semibold border-b-2 border-mineshaft-600', className)}>{children}</th>
+  <th className={twMerge("bg-mineshaft-800 px-5 pt-4 pb-3.5 font-semibold border-b-2 border-mineshaft-600", className)}>{children}</th>
 );
 
 // table body
@@ -96,7 +96,7 @@ export type TdProps = {
 } & TdHTMLAttributes<HTMLTableCellElement>;
 
 export const Td = ({ children, className, ...props }: TdProps): JSX.Element => (
-  <td className={twMerge('px-5 py-2 text-left', className)} {...props}>
+  <td className={twMerge("px-5 py-2 text-left", className)} {...props}>
     {children}
   </td>
 );

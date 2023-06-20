@@ -1,21 +1,21 @@
-import { useEffect } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { faCheck } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { useEffect } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
 import {
     Button,
     FormControl,
-    Input} from '@app/components/v2';
+    Input} from "@app/components/v2";
 import {
     useGetServiceAccountById,
     useRenameServiceAccount
-} from '@app/hooks/api';
+} from "@app/hooks/api";
 
 const formSchema = yup.object({
-    name: yup.string().required().label('Service Account Name')
+    name: yup.string().required().label("Service Account Name")
 });
 
 type FormData = yup.InferType<typeof formSchema>;

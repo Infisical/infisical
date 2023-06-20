@@ -1,12 +1,12 @@
-import { useRouter } from 'next/router';
+import { useRouter } from "next/router";
 
-import NavHeader from '@app/components/navigation/NavHeader';
+import NavHeader from "@app/components/navigation/NavHeader";
 
-import { SAProjectLevelPermissionsTable } from './components/SAProjectLevelPermissionsTable';
+import { SAProjectLevelPermissionsTable } from "./components/SAProjectLevelPermissionsTable";
 import {
     CopyServiceAccountPublicKeySection,
     ServiceAccountNameChangeSection
-} from './components';
+} from "./components";
 
 export const CreateServiceAccountPage = () => {
     const router = useRouter();
@@ -24,7 +24,7 @@ export const CreateServiceAccountPage = () => {
                     A service account represents a machine identity such as a VM or application client.
                 </p>
             </div>
-            {typeof serviceAccountId === 'string' && (
+            {typeof serviceAccountId === "string" && (
                 <div className="max-w-8xl mx-6">
                     <ServiceAccountNameChangeSection 
                         serviceAccountId={serviceAccountId}

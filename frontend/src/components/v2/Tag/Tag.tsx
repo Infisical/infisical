@@ -1,8 +1,8 @@
-import { ReactNode } from 'react';
-import { faClose } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { cva, VariantProps } from 'cva';
-import { twMerge } from 'tailwind-merge';
+import { ReactNode } from "react";
+import { faClose } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { cva, VariantProps } from "cva";
+import { twMerge } from "tailwind-merge";
 
 type Props = {
   children: ReactNode;
@@ -13,16 +13,16 @@ type Props = {
 } & VariantProps<typeof tagVariants>;
 
 const tagVariants = cva(
-  'inline-flex items-center whitespace-nowrap text-sm rounded-sm mr-1.5 text-bunker-200',
+  "inline-flex items-center whitespace-nowrap text-sm rounded-sm mr-1.5 text-bunker-200",
   {
     variants: {
       colorSchema: {
-        gray: 'bg-mineshaft-500',
-        red: 'bg-red/80 text-bunker-100',
-        green: 'bg-primary-800 text-white'
+        gray: "bg-mineshaft-500",
+        red: "bg-red/80 text-bunker-100",
+        green: "bg-primary-800 text-white"
       },
       size: {
-        sm: 'px-2 py-0.5'
+        sm: "px-2 py-0.5"
       }
     }
   }
@@ -31,10 +31,10 @@ const tagVariants = cva(
 export const Tag = ({
   children,
   className,
-  colorSchema = 'gray',
+  colorSchema = "gray",
   color,
   isDisabled,
-  size = 'sm',
+  size = "sm",
   onClose
 }: Props) => (
   <div

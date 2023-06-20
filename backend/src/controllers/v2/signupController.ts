@@ -1,14 +1,14 @@
-import { Request, Response } from 'express';
-import { User, MembershipOrg } from '../../models';
-import { completeAccount } from '../../helpers/user';
+import { Request, Response } from "express";
+import { MembershipOrg, User } from "../../models";
+import { completeAccount } from "../../helpers/user";
 import {
-	initializeDefaultOrg
-} from '../../helpers/signup';
-import { issueAuthTokens } from '../../helpers/auth';
-import { INVITED, ACCEPTED } from '../../variables';
-import { standardRequest } from '../../config/request';
-import { getLoopsApiKey, getHttpsEnabled } from '../../config';
-import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
+	initializeDefaultOrg,
+} from "../../helpers/signup";
+import { issueAuthTokens } from "../../helpers/auth";
+import { ACCEPTED, INVITED } from "../../variables";
+import { standardRequest } from "../../config/request";
+import { getHttpsEnabled, getLoopsApiKey } from "../../config";
+import { updateSubscriptionOrgQuantity } from "../../helpers/organization";
 
 /**
  * Complete setting up user by adding their personal and auth information as part of the
@@ -32,7 +32,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
     encryptedPrivateKeyTag,
     salt,
     verifier,
-    organizationName
+    organizationName,
   }: {
     email: string;
     firstName: string;
@@ -56,7 +56,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
     // case 1: user doesn't exist.
     // case 2: user has already completed account
     return res.status(403).send({
-      error: 'Failed to complete account for complete user'
+      error: "Failed to complete account for complete user",
     });
   }
 
@@ -74,28 +74,28 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
     encryptedPrivateKeyIV,
     encryptedPrivateKeyTag,
     salt,
-    verifier
+    verifier,
   });
 
   if (!user)
-    throw new Error('Failed to complete account for non-existent user'); // ensure user is non-null
+    throw new Error("Failed to complete account for non-existent user"); // ensure user is non-null
 
   // initialize default organization and workspace
   await initializeDefaultOrg({
     organizationName,
-    user
+    user,
   });
 
   // update organization membership statuses that are
   // invited to completed with user attached
   const membershipsToUpdate = await MembershipOrg.find({
     inviteEmail: email,
-    status: INVITED
+    status: INVITED,
   });
   
   membershipsToUpdate.forEach(async (membership) => {
     await updateSubscriptionOrgQuantity({
-      organizationId: membership.organization.toString()
+      organizationId: membership.organization.toString(),
     });
   });
 
@@ -104,11 +104,11 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
   await MembershipOrg.updateMany(
     {
       inviteEmail: email,
-      status: INVITED
+      status: INVITED,
     },
     {
       user,
-      status: ACCEPTED
+      status: ACCEPTED,
     }
   );
 
@@ -116,7 +116,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
   const tokens = await issueAuthTokens({
     userId: user._id,
     ip: req.realIP,
-    userAgent: req.headers['user-agent'] ?? ''
+    userAgent: req.headers["user-agent"] ?? "",
   });
 
   token = tokens.token;
@@ -127,27 +127,27 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
       "email": email,
       "eventName": "Sign Up",
       "firstName": firstName,
-      "lastName": lastName
+      "lastName": lastName,
     }, {
       headers: {
         "Accept": "application/json",
-        "Authorization": "Bearer " + (await getLoopsApiKey())
+        "Authorization": "Bearer " + (await getLoopsApiKey()),
       },
     });
   }
 
   // store (refresh) token in httpOnly cookie
-  res.cookie('jid', tokens.refreshToken, {
+  res.cookie("jid", tokens.refreshToken, {
     httpOnly: true,
-    path: '/',
-    sameSite: 'strict',
-    secure: await getHttpsEnabled()
+    path: "/",
+    sameSite: "strict",
+    secure: await getHttpsEnabled(),
   });
 
 	return res.status(200).send({
-		message: 'Successfully set up account',
+		message: "Successfully set up account",
 		user,
-		token
+		token,
 	});
 };
 
@@ -172,7 +172,7 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
     encryptedPrivateKeyIV,
     encryptedPrivateKeyTag,
     salt,
-    verifier
+    verifier,
   } = req.body;
 
   // get user
@@ -182,16 +182,16 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
     // case 1: user doesn't exist.
     // case 2: user has already completed account
     return res.status(403).send({
-      error: 'Failed to complete account for complete user'
+      error: "Failed to complete account for complete user",
     });
   }
 
   const membershipOrg = await MembershipOrg.findOne({
     inviteEmail: email,
-    status: INVITED
+    status: INVITED,
   });
 
-  if (!membershipOrg) throw new Error('Failed to find invitations for email');
+  if (!membershipOrg) throw new Error("Failed to find invitations for email");
 
   // complete setting up user's account
   user = await completeAccount({
@@ -207,33 +207,33 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
     encryptedPrivateKeyIV,
     encryptedPrivateKeyTag,
     salt,
-    verifier
+    verifier,
   });
 
   if (!user)
-    throw new Error('Failed to complete account for non-existent user');
+    throw new Error("Failed to complete account for non-existent user");
   
   // update organization membership statuses that are
   // invited to completed with user attached
   const membershipsToUpdate = await MembershipOrg.find({
     inviteEmail: email,
-    status: INVITED
+    status: INVITED,
   });
   
   membershipsToUpdate.forEach(async (membership) => {
     await updateSubscriptionOrgQuantity({
-      organizationId: membership.organization.toString()
+      organizationId: membership.organization.toString(),
     });
   });
 
   await MembershipOrg.updateMany(
     {
       inviteEmail: email,
-      status: INVITED
+      status: INVITED,
     },
     {
       user,
-      status: ACCEPTED
+      status: ACCEPTED,
     }
   );
 
@@ -241,22 +241,22 @@ export const completeAccountInvite = async (req: Request, res: Response) => {
   const tokens = await issueAuthTokens({
     userId: user._id,
     ip: req.realIP,
-    userAgent: req.headers['user-agent'] ?? ''
+    userAgent: req.headers["user-agent"] ?? "",
   });
 
   token = tokens.token;
 
   // store (refresh) token in httpOnly cookie
-  res.cookie('jid', tokens.refreshToken, {
+  res.cookie("jid", tokens.refreshToken, {
     httpOnly: true,
-    path: '/',
-    sameSite: 'strict',
-    secure: await getHttpsEnabled()
+    path: "/",
+    sameSite: "strict",
+    secure: await getHttpsEnabled(),
   });
 
 	return res.status(200).send({
-		message: 'Successfully set up account',
+		message: "Successfully set up account",
 		user,
-		token
+		token,
 	});
 };

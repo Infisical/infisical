@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
-import { getLogger } from '../utils/logger';
+import mongoose from "mongoose";
+import { getLogger } from "../utils/logger";
 
 /**
  * Initialize database connection
@@ -8,7 +8,7 @@ import { getLogger } from '../utils/logger';
  * @returns 
  */
 export const initDatabaseHelper = async ({
-    mongoURL
+    mongoURL,
 }: {
     mongoURL: string;
 }) => {
@@ -16,7 +16,7 @@ export const initDatabaseHelper = async ({
         await mongoose.connect(mongoURL);
     
         // allow empty strings to pass the required validator
-        mongoose.Schema.Types.String.checkRequired(v => typeof v === 'string');
+        mongoose.Schema.Types.String.checkRequired(v => typeof v === "string");
 
         (await getLogger("database")).info("Database connection established");
 
@@ -35,10 +35,10 @@ export const closeDatabaseHelper = async () => {
         new Promise((resolve) => {
             if (mongoose.connection && mongoose.connection.readyState == 1) {
             mongoose.connection.close()
-                .then(() => resolve('Database connection closed'));
+                .then(() => resolve("Database connection closed"));
             } else {
-            resolve('Database connection already closed');
+            resolve("Database connection already closed");
             }
-        })
+        }),
     ]);
 }

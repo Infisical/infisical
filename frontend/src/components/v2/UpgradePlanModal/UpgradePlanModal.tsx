@@ -1,7 +1,7 @@
-import Link from 'next/link';
+import Link from "next/link";
 
-import { Button } from '../Button';
-import { Modal, ModalClose, ModalContent } from '../Modal';
+import { Button } from "../Button";
+import { Modal, ModalClose, ModalContent } from "../Modal";
 
 type Props = {
   isOpen?: boolean;
@@ -15,7 +15,7 @@ export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Ele
       title="Unleash Infisical's Full Power"
       footerContent={[
         <Link
-          href={`/settings/billing/${localStorage.getItem('projectData.id') as string}`}
+          href={`/settings/billing/${localStorage.getItem("projectData.id") as string}`}
           key="upgrade-plan"
         >
           <Button className="mr-4 ml-2 mb-2">Upgrade Plan</Button>

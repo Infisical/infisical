@@ -1,4 +1,4 @@
-import Notification, { TNotification } from './Notification';
+import Notification, { TNotification } from "./Notification";
 
 interface NoticationsProps {
   notifications: Required<TNotification>[];

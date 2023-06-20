@@ -1,6 +1,6 @@
-import { useFormContext, useWatch } from 'react-hook-form';
-import { faCircle, faCircleDot, faShuffle } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useFormContext, useWatch } from "react-hook-form";
+import { faCircle, faCircleDot, faShuffle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
   Button,
@@ -13,11 +13,11 @@ import {
   PopoverTrigger,
   Switch,
   TextArea
-} from '@app/components/v2';
-import { useToggle } from '@app/hooks';
+} from "@app/components/v2";
+import { useToggle } from "@app/hooks";
 
-import { FormData, SecretActionType } from '../../DashboardPage.utils';
-import { GenRandomNumber } from './GenRandomNumber';
+import { FormData, SecretActionType } from "../../DashboardPage.utils";
+import { GenRandomNumber } from "./GenRandomNumber";
 
 type Props = {
   isDrawerOpen: boolean;
@@ -55,7 +55,7 @@ export const SecretDetailDrawer = ({
     if (isOverridden) {
       // when user created a new override but then removes
       if (SecretActionType.Created) {
-        setValue(`secrets.${index}.valueOverride`, '', { shouldDirty: true });
+        setValue(`secrets.${index}.valueOverride`, "", { shouldDirty: true });
       }
       setValue(`secrets.${index}.overrideAction`, SecretActionType.Deleted, { shouldDirty: true });
     } else {
@@ -114,7 +114,7 @@ export const SecretDetailDrawer = ({
                 placeholder="EMPTY"
                 onBlur={setCanRevealSecVal.off}
                 onFocus={setCanRevealSecVal.on}
-                type={canRevealSecVal ? 'text' : 'password'}
+                type={canRevealSecVal ? "text" : "password"}
                 rightIcon={
                   <PopoverTrigger disabled={isOverridden || isReadOnly}>
                     <FontAwesomeIcon icon={faShuffle} />
@@ -150,7 +150,7 @@ export const SecretDetailDrawer = ({
                 isReadOnly={!isOverridden || isReadOnly}
                 {...register(`secrets.${index}.valueOverride`)}
                 placeholder="EMPTY"
-                type={canRevealSecOverride ? 'text' : 'password'}
+                type={canRevealSecOverride ? "text" : "password"}
                 onBlur={setCanRevealSecOverride.off}
                 onFocus={setCanRevealSecOverride.on}
                 rightIcon={
@@ -182,13 +182,13 @@ export const SecretDetailDrawer = ({
                       <FontAwesomeIcon icon={i === 0 ? faCircleDot : faCircle} size="sm" />
                     </div>
                     <div>
-                      {new Date(createdAt).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit'
+                      {new Date(createdAt).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit"
                       })}
                     </div>
                   </div>

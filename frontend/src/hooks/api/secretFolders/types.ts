@@ -8,11 +8,11 @@ export type GetProjectFoldersDTO = {
   environment: string;
   parentFolderId?: string;
   isPaused?: boolean;
-  sortDir?: 'asc' | 'desc';
+  sortDir?: "asc" | "desc";
 };
 
 export type GetProjectFoldersBatchDTO = {
-  folders: Omit<GetProjectFoldersDTO, 'isPaused' | 'sortDir'>[];
+  folders: Omit<GetProjectFoldersDTO, "isPaused" | "sortDir">[];
   isPaused?: boolean;
   parentFolderPath?: string;
 };

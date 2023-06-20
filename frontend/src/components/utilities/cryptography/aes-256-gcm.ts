@@ -2,9 +2,9 @@
  * @fileoverview Provides easy encryption/decryption methods using AES 256 GCM.
  */
 
-import crypto from 'crypto';
+import crypto from "crypto";
 
-const ALGORITHM = 'aes-256-gcm';
+const ALGORITHM = "aes-256-gcm";
 const BLOCK_SIZE_BYTES = 16; // 128 bit
 
 interface EncryptProps {
@@ -45,12 +45,12 @@ class Aes256Gcm {
     const iv = crypto.randomBytes(BLOCK_SIZE_BYTES);
     const cipher = crypto.createCipheriv(ALGORITHM, secret, iv);
 
-    let ciphertext = cipher.update(text, 'utf8', 'base64');
-    ciphertext += cipher.final('base64');
+    let ciphertext = cipher.update(text, "utf8", "base64");
+    ciphertext += cipher.final("base64");
     return {
       ciphertext,
-      iv: iv.toString('base64'),
-      tag: cipher.getAuthTag().toString('base64')
+      iv: iv.toString("base64"),
+      tag: cipher.getAuthTag().toString("base64")
     };
   }
 
@@ -64,11 +64,11 @@ class Aes256Gcm {
    * @returns {string}
    */
   static decrypt({ ciphertext, iv, tag, secret }: DecryptProps): string {
-    const decipher = crypto.createDecipheriv(ALGORITHM, secret, Buffer.from(iv, 'base64'));
-    decipher.setAuthTag(Buffer.from(tag, 'base64'));
+    const decipher = crypto.createDecipheriv(ALGORITHM, secret, Buffer.from(iv, "base64"));
+    decipher.setAuthTag(Buffer.from(tag, "base64"));
 
-    let cleartext = decipher.update(ciphertext, 'base64', 'utf8');
-    cleartext += decipher.final('utf8');
+    let cleartext = decipher.update(ciphertext, "base64", "utf8");
+    cleartext += decipher.final("utf8");
 
     return cleartext;
   }

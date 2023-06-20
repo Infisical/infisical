@@ -1,9 +1,9 @@
-import { useCallback } from 'react';
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from "react";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { apiRequest } from '@app/config/request';
+import { apiRequest } from "@app/config/request";
 
-import { secretSnapshotKeys } from '../secretSnapshots/queries';
+import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import {
   CreateFolderDTO,
   DeleteFolderDTO,
@@ -11,11 +11,11 @@ import {
   GetProjectFoldersDTO,
   TSecretFolder,
   UpdateFolderDTO
-} from './types';
+} from "./types";
 
 const queryKeys = {
   getSecretFolders: (workspaceId: string, environment: string, parentFolderId?: string) =>
-    ['secret-folders', { workspaceId, environment, parentFolderId }] as const
+    ["secret-folders", { workspaceId, environment, parentFolderId }] as const
 };
 
 const fetchProjectFolders = async (
@@ -25,7 +25,7 @@ const fetchProjectFolders = async (
   parentFolderPath?: string
 ) => {
   const { data } = await apiRequest.get<{ folders: TSecretFolder[]; dir: TSecretFolder[] }>(
-    '/api/v1/folders',
+    "/api/v1/folders",
     {
       params: {
         workspaceId,
@@ -53,9 +53,9 @@ export const useGetProjectFolders = ({
       ({ folders, dir }: { folders: TSecretFolder[]; dir: TSecretFolder[] }) => ({
         dir,
         folders: folders.sort((a, b) =>
-          sortDir === 'asc'
-            ? a?.name?.localeCompare(b?.name || '')
-            : b?.name?.localeCompare(a?.name || '')
+          sortDir === "asc"
+            ? a?.name?.localeCompare(b?.name || "")
+            : b?.name?.localeCompare(a?.name || "")
         )
       }),
       [sortDir]
@@ -86,7 +86,7 @@ export const useCreateFolder = () => {
 
   return useMutation<{}, {}, CreateFolderDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.post('/api/v1/folders', dto);
+      const { data } = await apiRequest.post("/api/v1/folders", dto);
       return data;
     },
     onSuccess: (_, { workspaceId, environment, parentFolderId }) => {

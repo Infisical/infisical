@@ -1,4 +1,4 @@
-import { Schema, model, Types, Document } from 'mongoose';
+import { Document, Schema, Types, model } from "mongoose";
 
 export interface IServiceAccountOrganizationPermission extends Document {
     _id: Types.ObjectId;
@@ -9,15 +9,15 @@ const serviceAccountOrganizationPermissionSchema = new Schema<IServiceAccountOrg
     {
         serviceAccount: {
             type: Schema.Types.ObjectId,
-            ref: 'ServiceAccount',
-            required: true
-        }
+            ref: "ServiceAccount",
+            required: true,
+        },
     },
     {
-        timestamps: true
+        timestamps: true,
     }
 );
 
-const ServiceAccountOrganizationPermission = model<IServiceAccountOrganizationPermission>('ServiceAccountOrganizationPermission', serviceAccountOrganizationPermissionSchema);
+const ServiceAccountOrganizationPermission = model<IServiceAccountOrganizationPermission>("ServiceAccountOrganizationPermission", serviceAccountOrganizationPermissionSchema);
 
 export default ServiceAccountOrganizationPermission;

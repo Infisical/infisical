@@ -7,24 +7,24 @@ import { createTestUserForDevelopment } from "../addDevelopmentUser";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import { validateEncryptionKeysConfig } from "./validateConfig";
 import {
-  backfillSecretVersions,
   backfillBots,
-  backfillSecretBlindIndexData,
   backfillEncryptionMetadata,
-  backfillSecretFolders,
-  backfillServiceToken,
   backfillIntegration,
+  backfillSecretBlindIndexData,
+  backfillSecretFolders,
+  backfillSecretVersions,
+  backfillServiceToken,
 } from "./backfillData";
 import {
   reencryptBotPrivateKeys,
   reencryptSecretBlindIndexDataSalts,
 } from "./reencryptData";
 import {
-  getNodeEnv,
-  getMongoURL,
-  getSentryDSN,
-  getClientSecretGoogle,
   getClientIdGoogle,
+  getClientSecretGoogle,
+  getMongoURL,
+  getNodeEnv,
+  getSentryDSN,
 } from "../../config";
 import { initializePassport } from "../auth";
 

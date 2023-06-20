@@ -4,4 +4,4 @@ export {
   useGetProjectFolders,
   useGetProjectFoldersBatch,
   useUpdateFolder
-} from './queries';
+} from "./queries";

@@ -1,12 +1,12 @@
-import { ReactNode } from 'react';
-import { faCheck } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
-import { twMerge } from 'tailwind-merge';
+import { ReactNode } from "react";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
+import { twMerge } from "tailwind-merge";
 
 export type CheckboxProps = Omit<
   CheckboxPrimitive.CheckboxProps,
-  'checked' | 'disabled' | 'required'
+  "checked" | "disabled" | "required"
 > & {
   children: ReactNode;
   id: string;
@@ -28,9 +28,9 @@ export const Checkbox = ({
     <div className="flex items-center font-inter text-bunker-300">
       <CheckboxPrimitive.Root
         className={twMerge(
-          'flex items-center justify-center w-4 h-4 mr-3 transition-all rounded shadow border border-mineshaft-400 hover:bg-mineshaft-500 bg-mineshaft-600',
-          isDisabled && 'bg-bunker-400 hover:bg-bunker-400',
-          isChecked && 'bg-primary hover:bg-primary',
+          "flex items-center justify-center w-4 h-4 mr-3 transition-all rounded shadow border border-mineshaft-400 hover:bg-mineshaft-500 bg-mineshaft-600",
+          isDisabled && "bg-bunker-400 hover:bg-bunker-400",
+          isChecked && "bg-primary hover:bg-primary",
           className
         )}
         required={isRequired}

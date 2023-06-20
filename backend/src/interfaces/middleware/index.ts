@@ -1,9 +1,9 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import {
-    IUser,
     IServiceAccount,
-    IServiceTokenData
-} from '../../models';
+    IServiceTokenData,
+    IUser,
+} from "../../models";
 
 export interface AuthData {
     authMode: string;

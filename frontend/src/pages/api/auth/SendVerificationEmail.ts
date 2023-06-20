@@ -3,10 +3,10 @@
  * @param {*} email
  */
 const sendVerificationEmail = (email: string) => {
-  fetch('/api/v1/signup/email/signup', {
-    method: 'POST',
+  fetch("/api/v1/signup/email/signup", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       email

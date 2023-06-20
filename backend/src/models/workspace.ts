@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, Types, model } from "mongoose";
 
 export interface IWorkspace {
 	_id: Types.ObjectId;
@@ -14,7 +14,7 @@ export interface IWorkspace {
 const workspaceSchema = new Schema<IWorkspace>({
 	name: {
 		type: String,
-		required: true
+		required: true,
 	},
 	autoCapitalization: {
 		type: Boolean,
@@ -22,8 +22,8 @@ const workspaceSchema = new Schema<IWorkspace>({
 	},
 	organization: {
 		type: Schema.Types.ObjectId,
-		ref: 'Organization',
-		required: true
+		ref: "Organization",
+		required: true,
 	},
 	environments: {
 		type: [
@@ -35,20 +35,20 @@ const workspaceSchema = new Schema<IWorkspace>({
 		default: [
 			{
 				name: "Development",
-				slug: "dev"
+				slug: "dev",
 			},
 			{
 				name: "Staging",
-				slug: "staging"
+				slug: "staging",
 			},
 			{
 				name: "Production",
-				slug: "prod"
-			}
+				slug: "prod",
+			},
 		],
 	},
 });
 
-const Workspace = model<IWorkspace>('Workspace', workspaceSchema);
+const Workspace = model<IWorkspace>("Workspace", workspaceSchema);
 
 export default Workspace;

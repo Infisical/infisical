@@ -9,4 +9,4 @@ export {
   useLogoutUser,
   useRegisterUserAction,
   useUpdateOrgUserRole
-} from './queries';
+} from "./queries";

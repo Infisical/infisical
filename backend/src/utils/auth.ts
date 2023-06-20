@@ -1,22 +1,22 @@
-import express from 'express';
-import passport from 'passport';
-import { AuthData } from '../interfaces/middleware';
+import express from "express";
+import passport from "passport";
+import { AuthData } from "../interfaces/middleware";
 import {
   AuthProvider,
-  User,
   ServiceAccount,
   ServiceTokenData,
-} from '../models';
-import { createToken } from '../helpers/auth';
+  User,
+} from "../models";
+import { createToken } from "../helpers/auth";
 import {
   getClientIdGoogle,
   getClientSecretGoogle,
   getJwtProviderAuthLifetime,
-  getJwtProviderAuthSecret
-} from '../config';
+  getJwtProviderAuthSecret,
+} from "../config";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
 
 // TODO: find a more optimal folder structure to store these types of functions
 
@@ -68,8 +68,8 @@ const initializePassport = async () => {
     passReqToCallback: true,
     clientID: googleClientId,
     clientSecret: googleClientSecret,
-    callbackURL: '/api/v1/auth/callback/google',
-    scope: ['profile', ' email'],
+    callbackURL: "/api/v1/auth/callback/google",
+    scope: ["profile", " email"],
   }, async (
     req: express.Request,
     accessToken: string,
@@ -82,7 +82,7 @@ const initializePassport = async () => {
       let user = await User.findOne({
         authProvider: AuthProvider.GOOGLE,
         authId: profile.id,
-      }).select('+publicKey')
+      }).select("+publicKey")
 
       if (!user) {
         user = await new User({
@@ -97,7 +97,7 @@ const initializePassport = async () => {
           userId: user._id.toString(),
           email: user.email,
           authProvider: user.authProvider,
-          isUserCompleted: !!user.publicKey
+          isUserCompleted: !!user.publicKey,
         },
         expiresIn: await getJwtProviderAuthLifetime(),
         secret: await getJwtProviderAuthSecret(),

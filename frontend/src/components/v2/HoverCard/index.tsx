@@ -1,2 +1,2 @@
-export type { HoverCardProps } from './HoverCard';
-export { HoverObject } from './HoverCard';
+export type { HoverCardProps } from "./HoverCard";
+export { HoverObject } from "./HoverCard";

@@ -1,10 +1,10 @@
-import { ReactNode, useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { ReactNode, useEffect } from "react";
+import { useRouter } from "next/router";
 
-import { publicPaths } from '@app/const';
-import { useToggle } from '@app/hooks';
-import { useGetAuthToken } from '@app/hooks/api';
-import { isLoggedIn } from '@app/reactQuery';
+import { publicPaths } from "@app/const";
+import { useToggle } from "@app/hooks";
+import { useGetAuthToken } from "@app/hooks/api";
+import { isLoggedIn } from "@app/reactQuery";
 
 type Props = {
   children: ReactNode;
@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }: Props): JSX.Element => {
     if (!isLoading) {
       // not a public path and not authenticated kick to login page
       if (!publicPaths.includes(pathname) && !isLoggedIn()) {
-        push('/login').then(() => {
+        push("/login").then(() => {
           setIsReady.on();
         });
       } else {

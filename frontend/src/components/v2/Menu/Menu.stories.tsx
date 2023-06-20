@@ -1,12 +1,12 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { Meta, StoryObj } from '@storybook/react';
+import { Meta, StoryObj } from "@storybook/react";
 
-import { Menu, MenuGroup, MenuItem } from './Menu';
+import { Menu, MenuGroup, MenuItem } from "./Menu";
 
 const meta: Meta<typeof Menu> = {
-  title: 'Components/Menu',
+  title: "Components/Menu",
   component: Menu,
-  tags: ['v2'],
+  tags: ["v2"],
   argTypes: {}
 };
 

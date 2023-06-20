@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This route deletes a specified workspace.
@@ -7,15 +7,15 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const deleteWorkspace = (workspaceId: string) =>
   SecurityClient.fetchCall(`/api/v1/workspace/${workspaceId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res && res.status === 200) {
       return res;
     }
-    console.log('Failed to delete a project');
+    console.log("Failed to delete a project");
     return undefined;
   });
 

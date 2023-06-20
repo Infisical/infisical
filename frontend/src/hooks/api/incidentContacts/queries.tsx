@@ -1,11 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { apiRequest } from '@app/config/request';
+import { apiRequest } from "@app/config/request";
 
-import { AddIncidentContactDTO, DeleteIncidentContactDTO, IncidentContact } from './types';
+import { AddIncidentContactDTO, DeleteIncidentContactDTO, IncidentContact } from "./types";
 
 const incidentContactKeys = {
-  getAllContact: (orgId: string) => ['org-incident-contacts', { orgId }] as const
+  getAllContact: (orgId: string) => ["org-incident-contacts", { orgId }] as const
 };
 
 const fetchOrgIncidentContacts = async (orgId: string) => {

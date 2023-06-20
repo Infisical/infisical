@@ -1,5 +1,5 @@
-import { forwardRef, ReactNode } from 'react';
-import { twMerge } from 'tailwind-merge';
+import { forwardRef, ReactNode } from "react";
+import { twMerge } from "tailwind-merge";
 
 export type CardTitleProps = {
   children: ReactNode;
@@ -10,7 +10,7 @@ export type CardTitleProps = {
 export const CardTitle = ({ children, className, subTitle }: CardTitleProps) => (
   <div
     className={twMerge(
-      'px-6 py-4 mb-5 font-sans text-lg font-normal border-b border-mineshaft-600 break-words',
+      "px-6 py-4 mb-5 font-sans text-lg font-normal border-b border-mineshaft-600 break-words",
       className
     )}
   >
@@ -25,7 +25,7 @@ export type CardFooterProps = {
 };
 
 export const CardFooter = ({ children, className }: CardFooterProps) => (
-  <div className={twMerge('p-4 pt-0', className)}>{children}</div>
+  <div className={twMerge("p-4 pt-0", className)}>{children}</div>
 );
 
 export type CardBodyProps = {
@@ -34,7 +34,7 @@ export type CardBodyProps = {
 };
 
 export const CardBody = ({ children, className }: CardBodyProps) => (
-  <div className={twMerge('px-6 pb-6 pt-0', className)}>{children}</div>
+  <div className={twMerge("px-6 pb-6 pt-0", className)}>{children}</div>
 );
 
 export type CardProps = {
@@ -52,11 +52,11 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={twMerge(
-          'flex w-full flex-col bg-mineshaft-800 font-inter text-gray-200 shadow-md',
-          isFullHeight && 'h-full',
-          isRounded && 'rounded-md',
-          isPlain && 'shadow-none',
-          isHoverable && 'hover:shadow-xl',
+          "flex w-full flex-col bg-mineshaft-800 font-inter text-gray-200 shadow-md",
+          isFullHeight && "h-full",
+          isRounded && "rounded-md",
+          isPlain && "shadow-none",
+          isHoverable && "hover:shadow-xl",
           className
         )}
       >
@@ -66,4 +66,4 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
   }
 );
 
-Card.displayName = 'Card';
+Card.displayName = "Card";

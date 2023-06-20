@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This route redirects the user to the right stripe billing page.
@@ -8,16 +8,16 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const StripeRedirect = ({ orgId }: { orgId: string }) =>
   SecurityClient.fetchCall(`/api/v1/organization/${orgId}/customer-portal-session`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res && res.status === 200) {
       window.location.href = (await res.json()).url;
       return;
     }
-    console.log('Failed to redirect to Stripe');
+    console.log("Failed to redirect to Stripe");
   });
 
 export default StripeRedirect;

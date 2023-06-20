@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface Props {
   integrationAuthId: string;
@@ -36,10 +36,10 @@ const createIntegration = ({
   region,
   secretPath
 }: Props) =>
-  SecurityClient.fetchCall('/api/v1/integration', {
-    method: 'POST',
+  SecurityClient.fetchCall("/api/v1/integration", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       integrationAuthId,
@@ -60,7 +60,7 @@ const createIntegration = ({
     if (res && res.status === 200) {
       return (await res.json()).integration;
     }
-    console.log('Failed to create integration');
+    console.log("Failed to create integration");
     return undefined;
   });
 

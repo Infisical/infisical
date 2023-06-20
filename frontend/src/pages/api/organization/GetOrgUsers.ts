@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 export interface IMembershipOrg {
   _id: string;
@@ -11,8 +11,8 @@ export interface IMembershipOrg {
   };
   inviteEmail: string;
   organization: string;
-  role: 'owner' | 'admin' | 'member';
-  status: 'invited' | 'accepted';
+  role: "owner" | "admin" | "member";
+  status: "invited" | "accepted";
   deniedPermissions: any[];
 }
 /**
@@ -23,15 +23,15 @@ export interface IMembershipOrg {
  */
 const getOrganizationUsers = ({ orgId }: { orgId: string }): Promise<IMembershipOrg[]> =>
   SecurityClient.fetchCall(`/api/v1/organization/${orgId}/users`, {
-    method: 'GET',
+    method: "GET",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res?.status === 200) {
       return (await res.json()).users;
     }
-    console.log('Failed to get org users');
+    console.log("Failed to get org users");
     return undefined;
   });
 

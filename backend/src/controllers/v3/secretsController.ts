@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
-import { SecretService, EventService } from "../../services";
+import { EventService, SecretService } from "../../services";
 import { eventPushSecrets } from "../../events";
 import { BotService } from "../../services";
 import { repackageSecretToRaw } from "../../helpers/secrets";
@@ -25,18 +25,18 @@ export const getSecretsRaw = async (req: Request, res: Response) => {
   });
 
   const key = await BotService.getWorkspaceKeyWithBot({
-    workspaceId: new Types.ObjectId(workspaceId)
+    workspaceId: new Types.ObjectId(workspaceId),
   });
 
   return res.status(200).send({
     secrets: secrets.map((secret) => {
       const rep = repackageSecretToRaw({
         secret,
-        key
+        key,
       });
 
       return rep;
-    })
+    }),
   });
 };
 
@@ -62,14 +62,14 @@ export const getSecretByNameRaw = async (req: Request, res: Response) => {
   });
 
   const key = await BotService.getWorkspaceKeyWithBot({
-    workspaceId: new Types.ObjectId(workspaceId)
+    workspaceId: new Types.ObjectId(workspaceId),
   });
 
   return res.status(200).send({
     secret: repackageSecretToRaw({
       secret,
-      key
-    })
+      key,
+    }),
   });
 };
 
@@ -86,26 +86,26 @@ export const createSecretRaw = async (req: Request, res: Response) => {
     type,
     secretValue,
     secretComment,
-    secretPath = "/"
+    secretPath = "/",
   } = req.body;
 
   const key = await BotService.getWorkspaceKeyWithBot({
-    workspaceId: new Types.ObjectId(workspaceId)
+    workspaceId: new Types.ObjectId(workspaceId),
   });
 
   const secretKeyEncrypted = encryptSymmetric128BitHexKeyUTF8({
     plaintext: secretName,
-    key
+    key,
   });
 
   const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8({
     plaintext: secretValue,
-    key
+    key,
   });
 
   const secretCommentEncrypted = encryptSymmetric128BitHexKeyUTF8({
     plaintext: secretComment,
-    key
+    key,
   });
 
   const secret = await SecretService.createSecret({
@@ -123,7 +123,7 @@ export const createSecretRaw = async (req: Request, res: Response) => {
     secretPath,
     secretCommentCiphertext: secretCommentEncrypted.ciphertext,
     secretCommentIV: secretCommentEncrypted.iv,
-    secretCommentTag: secretCommentEncrypted.tag
+    secretCommentTag: secretCommentEncrypted.tag,
   });
 
   await EventService.handleEvent({
@@ -139,8 +139,8 @@ export const createSecretRaw = async (req: Request, res: Response) => {
   return res.status(200).send({
     secret: repackageSecretToRaw({
       secret: secretWithoutBlindIndex,
-      key
-    })
+      key,
+    }),
   });
 }
 
@@ -160,12 +160,12 @@ export const updateSecretByNameRaw = async (req: Request, res: Response) => {
   } = req.body;
 
   const key = await BotService.getWorkspaceKeyWithBot({
-    workspaceId: new Types.ObjectId(workspaceId)
+    workspaceId: new Types.ObjectId(workspaceId),
   });
 
   const secretValueEncrypted = encryptSymmetric128BitHexKeyUTF8({
     plaintext: secretValue,
-    key
+    key,
   });
 
   const secret = await SecretService.updateSecret({
@@ -190,8 +190,8 @@ export const updateSecretByNameRaw = async (req: Request, res: Response) => {
   return res.status(200).send({
     secret: repackageSecretToRaw({
       secret,
-      key
-    })
+      key,
+    }),
   });
 };
 
@@ -206,7 +206,7 @@ export const deleteSecretByNameRaw = async (req: Request, res: Response) => {
     workspaceId,
     environment,
     type,
-    secretPath = "/"
+    secretPath = "/",
   } = req.body;
 
   const { secret } = await SecretService.deleteSecret({
@@ -226,14 +226,14 @@ export const deleteSecretByNameRaw = async (req: Request, res: Response) => {
   });
 
   const key = await BotService.getWorkspaceKeyWithBot({
-    workspaceId: new Types.ObjectId(workspaceId)
+    workspaceId: new Types.ObjectId(workspaceId),
   });
 
   return res.status(200).send({
     secret: repackageSecretToRaw({
       secret,
-      key
-    })
+      key,
+    }),
   });
 };
 
@@ -324,7 +324,7 @@ export const createSecret = async (req: Request, res: Response) => {
     secretPath,
     secretCommentCiphertext,
     secretCommentIV,
-    secretCommentTag
+    secretCommentTag,
   });
 
   await EventService.handleEvent({
@@ -395,7 +395,7 @@ export const deleteSecretByName = async (req: Request, res: Response) => {
     workspaceId,
     environment,
     type,
-    secretPath = "/"
+    secretPath = "/",
   } = req.body;
 
   const { secret } = await SecretService.deleteSecret({

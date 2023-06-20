@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This function adds a user to a project
@@ -8,9 +8,9 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const addUserToWorkspace = (email: string, workspaceId: string) =>
   SecurityClient.fetchCall(`/api/v1/workspace/${workspaceId}/invite-signup`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       email
@@ -19,7 +19,7 @@ const addUserToWorkspace = (email: string, workspaceId: string) =>
     if (res && res.status === 200) {
       return res.json();
     }
-    console.log('Failed to add a user to project');
+    console.log("Failed to add a user to project");
     return undefined;
   });
 

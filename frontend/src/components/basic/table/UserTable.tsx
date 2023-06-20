@@ -1,18 +1,18 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { faX } from '@fortawesome/free-solid-svg-icons';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import { faX } from "@fortawesome/free-solid-svg-icons";
 
-import changeUserRoleInOrganization from '@app/pages/api/organization/changeUserRoleInOrganization';
-import deleteUserFromOrganization from '@app/pages/api/organization/deleteUserFromOrganization';
-import getOrganizationProjectMemberships from '@app/pages/api/organization/GetOrgProjectMemberships';
-import deleteUserFromWorkspace from '@app/pages/api/workspace/deleteUserFromWorkspace';
-import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
-import uploadKeys from '@app/pages/api/workspace/uploadKeys';
+import changeUserRoleInOrganization from "@app/pages/api/organization/changeUserRoleInOrganization";
+import deleteUserFromOrganization from "@app/pages/api/organization/deleteUserFromOrganization";
+import getOrganizationProjectMemberships from "@app/pages/api/organization/GetOrgProjectMemberships";
+import deleteUserFromWorkspace from "@app/pages/api/workspace/deleteUserFromWorkspace";
+import getLatestFileKey from "@app/pages/api/workspace/getLatestFileKey";
+import uploadKeys from "@app/pages/api/workspace/uploadKeys";
 
-import { decryptAssymmetric, encryptAssymmetric } from '../../utilities/cryptography/crypto';
-import guidGenerator from '../../utilities/randomId';
-import Button from '../buttons/Button';
-import Listbox from '../Listbox';
+import { decryptAssymmetric, encryptAssymmetric } from "../../utilities/cryptography/crypto";
+import guidGenerator from "../../utilities/randomId";
+import Button from "../buttons/Button";
+import Listbox from "../Listbox";
 
 // const roles = ['admin', 'user'];
 // TODO: Set type for this
@@ -36,7 +36,7 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
     Array(userData?.length).fill(userData.map((user) => user.role))
   );
   const router = useRouter();
-  const [myRole, setMyRole] = useState('member');
+  const [myRole, setMyRole] = useState("member");
   const [userProjectMemberships, setUserProjectMemberships] = useState<any[]>([]);
 
   const workspaceId = router.query.id as string;
@@ -90,7 +90,7 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
   const grantAccess = async (id: string, publicKey: string) => {
     const result = await getLatestFileKey({ workspaceId });
 
-    const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+    const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 
     // assymmetrically decrypt symmetric key with local private key
     const key = decryptAssymmetric({
@@ -152,29 +152,29 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
                   </td>
                   <td className="pl-6 pr-10 py-2 border-mineshaft-700 border-t text-gray-300">
                     <div className="justify-start h-full flex flex-row items-center">
-                      {row.status === 'accepted' &&
-                      ((myRole === 'admin' && row.role !== 'owner') || myRole === 'owner') &&
+                      {row.status === "accepted" &&
+                      ((myRole === "admin" && row.role !== "owner") || myRole === "owner") &&
                       (myUser !== row.email) ? (
                         <Listbox
                           isSelected={row.role}
                           onChange={(e) => handleRoleUpdate(index, e)}
                           data={
-                            myRole === 'owner' ? ['owner', 'admin', 'member'] : ['admin', 'member']
+                            myRole === "owner" ? ["owner", "admin", "member"] : ["admin", "member"]
                           }
                         />
                       ) : (
-                        row.status !== 'invited' &&
-                        row.status !== 'verified' && (
+                        row.status !== "invited" &&
+                        row.status !== "verified" && (
                           <Listbox
                             isSelected={row.role}
                             onChange={() => {
-                              throw new Error('Function not implemented.');
+                              throw new Error("Function not implemented.");
                             }}
                             data={null}
                           />
                         )
                       )}
-                      {(row.status === 'invited' || row.status === 'verified') && (
+                      {(row.status === "invited" || row.status === "verified") && (
                         <div className="w-full pr-20">
                           <Button
                             onButtonPressed={() => deleteMembershipAndResendInvite(row.email)}
@@ -184,7 +184,7 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
                           />
                         </div>
                       )}
-                      {row.status === 'completed' && myUser !== row.email && (
+                      {row.status === "completed" && myUser !== row.email && (
                         <div className="border border-mineshaft-700 rounded-md bg-white/5 hover:bg-primary text-white hover:text-black duration-200">
                           <Button
                             onButtonPressed={() => grantAccess(row.userId, row.publicKey)}
@@ -210,7 +210,7 @@ const UserTable = ({ userData, changeData, myUser, filter, resendInvite, isOrg }
                   <td className="flex flex-row justify-end pl-8 pr-8 py-2 border-t border-0.5 border-mineshaft-700">
                     {myUser !== row.email &&
                     // row.role !== "admin" &&
-                    myRole !== 'member' ? (
+                    myRole !== "member" ? (
                       <div className="opacity-50 hover:opacity-100 flex items-center mt-0.5">
                         <Button
                           onButtonPressed={() => handleDelete(row.membershipId, index)}

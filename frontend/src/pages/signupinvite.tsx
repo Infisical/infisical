@@ -1,37 +1,36 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import crypto from 'crypto';
+import crypto from "crypto";
 
-import { useState } from 'react';
-import Head from 'next/head';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { faCheck, faWarning, faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import jsrp from 'jsrp';
-import queryString from 'query-string';
-import nacl from 'tweetnacl';
-import { encodeBase64 } from 'tweetnacl-util';
+import { useState } from "react";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { faCheck, faWarning, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import jsrp from "jsrp";
+import queryString from "query-string";
+import nacl from "tweetnacl";
+import { encodeBase64 } from "tweetnacl-util";
 
-import Button from '@app/components/basic/buttons/Button';
-import InputField from '@app/components/basic/InputField';
-import attemptLogin from '@app/components/utilities/attemptLogin';
-
-import checkPassword from '@app/components/utilities/checks/checkPassword';
-
-import Aes256Gcm from '@app/components/utilities/cryptography/aes-256-gcm';
-import { deriveArgonKey } from '@app/components/utilities/cryptography/crypto';
-import issueBackupKey from '@app/components/utilities/cryptography/issueBackupKey';
-import { saveTokenToLocalStorage } from '@app/components/utilities/saveTokenToLocalStorage';
-import SecurityClient from '@app/components/utilities/SecurityClient';
-import getOrganizations from '@app/pages/api/organization/getOrgs';
-import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserProjects';
+import Button from "@app/components/basic/buttons/Button";
+import InputField from "@app/components/basic/InputField";
+import attemptLogin from "@app/components/utilities/attemptLogin";
+import checkPassword from "@app/components/utilities/checks/checkPassword";
+import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
+import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
+import issueBackupKey from "@app/components/utilities/cryptography/issueBackupKey";
+import { saveTokenToLocalStorage } from "@app/components/utilities/saveTokenToLocalStorage";
+import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   useGetCommonPasswords
-} from '@app/hooks/api';
-import completeAccountInformationSignupInvite from './api/auth/CompleteAccountInformationSignupInvite';
-import verifySignupInvite from './api/auth/VerifySignupInvite';
+} from "@app/hooks/api";
+import getOrganizations from "@app/pages/api/organization/getOrgs";
+import getOrganizationUserProjects from "@app/pages/api/organization/GetOrgUserProjects";
+
+import completeAccountInformationSignupInvite from "./api/auth/CompleteAccountInformationSignupInvite";
+import verifySignupInvite from "./api/auth/VerifySignupInvite";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -47,9 +46,9 @@ type Errors = {
 
 export default function SignupInvite() {
   const { data: commonPasswords } = useGetCommonPasswords();
-  const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [firstNameError, setFirstNameError] = useState(false);
   const [lastNameError, setLastNameError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,10 +58,10 @@ export default function SignupInvite() {
   const [errors, setErrors] = useState<Errors>({});
 
   const router = useRouter();
-  const parsedUrl = queryString.parse(router.asPath.split('?')[1]);
+  const parsedUrl = queryString.parse(router.asPath.split("?")[1]);
   const token = parsedUrl.token as string;
   const organizationId = parsedUrl.organization_id as string;
-  const email = (parsedUrl.to as string)?.replace(' ', '+').trim();
+  const email = (parsedUrl.to as string)?.replace(" ", "+").trim();
 
   // Verifies if the information that the users entered (name, workspace) is there, and if the password matched the criteria.
   const signupErrorCheck = async () => {
@@ -95,7 +94,7 @@ export default function SignupInvite() {
       const privateKey = encodeBase64(secretKeyUint8Array);
       const publicKey = encodeBase64(publicKeyUint8Array);
 
-      localStorage.setItem('PRIVATE_KEY', privateKey);
+      localStorage.setItem("PRIVATE_KEY", privateKey);
 
       client.init(
         {
@@ -114,7 +113,7 @@ export default function SignupInvite() {
                 hashLen: 32
               });
 
-              if (!derivedKey) throw new Error('Failed to derive key from password');
+              if (!derivedKey) throw new Error("Failed to derive key from password");
 
               const key = crypto.randomBytes(32);
              
@@ -136,7 +135,7 @@ export default function SignupInvite() {
                 iv: protectedKeyIV,
                 tag: protectedKeyTag
               } = Aes256Gcm.encrypt({
-                text: key.toString('hex'),
+                text: key.toString("hex"),
                 secret: Buffer.from(derivedKey.hash)
               });
               
@@ -158,7 +157,7 @@ export default function SignupInvite() {
               });
               
               // unset temporary signup JWT token and set JWT token
-              SecurityClient.setSignupToken('');
+              SecurityClient.setSignupToken("");
               SecurityClient.setToken(jwtToken);
 
               saveTokenToLocalStorage({
@@ -172,7 +171,7 @@ export default function SignupInvite() {
               const userOrgs = await getOrganizations(); 
 
               const orgId = userOrgs[0]._id;
-              localStorage.setItem('orgData.id', orgId);
+              localStorage.setItem("orgData.id", orgId);
 
               setStep(3);
             } catch (error) {
@@ -213,11 +212,11 @@ export default function SignupInvite() {
               } else {
                 // user will be redirected to dashboard
                 // if not logged in gets kicked out to login
-                router.push('/dashboard');
+                router.push("/dashboard");
               }
             } else {
-              console.log('ERROR', response);
-              router.push('/requestnewinvite');
+              console.log("ERROR", response);
+              router.push("/requestnewinvite");
             }
           }}
           size="lg"
@@ -339,7 +338,7 @@ export default function SignupInvite() {
               setBackupKeyError,
               setBackupKeyIssued
             });
-            router.push('/noprojects/');
+            router.push("/noprojects/");
           }}
           size="lg"
         />

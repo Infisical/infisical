@@ -1,13 +1,13 @@
-import { Request, Response } from 'express';
-import { Types } from 'mongoose';
+import { Request, Response } from "express";
+import { Types } from "mongoose";
 import { 
-    MembershipOrg,
     Membership,
+    MembershipOrg,
+    ServiceAccount,
     Workspace,
-    ServiceAccount
-} from '../../models';
-import { deleteMembershipOrg } from '../../helpers/membershipOrg';
-import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
+} from "../../models";
+import { deleteMembershipOrg } from "../../helpers/membershipOrg";
+import { updateSubscriptionOrgQuantity } from "../../helpers/organization";
 
 /**
  * Return memberships for organization with id [organizationId]
@@ -51,11 +51,11 @@ export const getOrganizationMemberships = async (req: Request, res: Response) =>
     const { organizationId } = req.params;
 
 		const memberships = await MembershipOrg.find({
-			organization: organizationId
-		}).populate('user', '+publicKey');
+			organization: organizationId,
+		}).populate("user", "+publicKey");
     
     return res.status(200).send({
-        memberships
+        memberships,
     });
 }
 
@@ -124,14 +124,14 @@ export const updateOrganizationMembership = async (req: Request, res: Response) 
     const membership = await MembershipOrg.findByIdAndUpdate(
         membershipId,
         {
-            role
+            role,
         }, {
-            new: true
+            new: true,
         }
     );
     
     return res.status(200).send({
-        membership
+        membership,
     });
 }
 
@@ -182,15 +182,15 @@ export const deleteOrganizationMembership = async (req: Request, res: Response) 
     
     // delete organization membership
     const membership = await deleteMembershipOrg({
-        membershipOrgId: membershipId
+        membershipOrgId: membershipId,
     });
 
     await updateSubscriptionOrgQuantity({
-			organizationId: membership.organization.toString()
+			organizationId: membership.organization.toString(),
 		});
 
     return res.status(200).send({
-        membership
+        membership,
     });
 }
 
@@ -240,23 +240,23 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
         (
             await Workspace.find(
                 {
-                    organization: organizationId
+                    organization: organizationId,
                 },
-                '_id'
+                "_id"
             )
         ).map((w) => w._id.toString())
     );
 
     const workspaces = (
         await Membership.find({
-            user: req.user._id
-        }).populate('workspace')
+            user: req.user._id,
+        }).populate("workspace")
     )
     .filter((m) => workspacesSet.has(m.workspace._id.toString()))
     .map((m) => m.workspace);
 
 return res.status(200).send({
-        workspaces
+        workspaces,
     });
 }
 
@@ -269,10 +269,10 @@ export const getOrganizationServiceAccounts = async (req: Request, res: Response
     const { organizationId } = req.params;
     
     const serviceAccounts = await ServiceAccount.find({
-        organization: new Types.ObjectId(organizationId)
+        organization: new Types.ObjectId(organizationId),
     });
     
     return res.status(200).send({
-        serviceAccounts
+        serviceAccounts,
     });
 }

@@ -1,8 +1,8 @@
-import { cloneElement, ReactNode } from 'react';
-import { faExclamationTriangle } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import * as Label from '@radix-ui/react-label';
-import { twMerge } from 'tailwind-merge';
+import { cloneElement, ReactNode } from "react";
+import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as Label from "@radix-ui/react-label";
+import { twMerge } from "tailwind-merge";
 
 export type FormLabelProps = {
   id?: string;
@@ -25,8 +25,8 @@ export type FormHelperTextProps = {
 export const FormHelperText = ({ isError, text }: FormHelperTextProps) => (
   <div
     className={twMerge(
-      'mt-2 flex items-center font-inter text-xs text-mineshaft-300 opacity-90',
-      isError && 'text-red-600'
+      "mt-2 flex items-center font-inter text-xs text-mineshaft-300 opacity-90",
+      isError && "text-red-600"
     )}
   >
     {isError && (
@@ -60,13 +60,13 @@ export const FormControl = ({
   className
 }: FormControlProps): JSX.Element => {
   return (
-    <div className={twMerge('mb-4', className)}>
-      {typeof label === 'string' ? (
+    <div className={twMerge("mb-4", className)}>
+      {typeof label === "string" ? (
         <FormLabel label={label} isRequired={isRequired} id={id} />
       ) : (
         label
       )}
-      {cloneElement(children, { isRequired, 'data-required': isRequired, isError })}
+      {cloneElement(children, { isRequired, "data-required": isRequired, isError })}
       {!isError && helperText && <FormHelperText isError={isError} text={helperText} />}
       {isError && errorText && <FormHelperText isError={isError} text={errorText} />}
     </div>

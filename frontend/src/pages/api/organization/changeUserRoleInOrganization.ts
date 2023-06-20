@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This function change the access of a user in a certain organization
@@ -9,9 +9,9 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const changeUserRoleInOrganization = (organizationId: string, membershipId: string, role: string) =>
   SecurityClient.fetchCall(`/api/v2/organizations/${organizationId}/memberships/${membershipId}`, {
-    method: 'PATCH',
+    method: "PATCH",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       role
@@ -20,7 +20,7 @@ const changeUserRoleInOrganization = (organizationId: string, membershipId: stri
     if (res && res.status === 200) {
       return res;
     }
-    console.log('Failed to change the user role in an org');
+    console.log("Failed to change the user role in an org");
     return undefined;
   });
 

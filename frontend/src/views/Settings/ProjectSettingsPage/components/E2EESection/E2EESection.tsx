@@ -8,9 +8,9 @@ import {
     Checkbox
 } from "@app/components/v2";
 
-import getBot from '../../../../../pages/api/bot/getBot';
-import setBotActiveStatus from '../../../../../pages/api/bot/setBotActiveStatus';
-import getLatestFileKey from '../../../../../pages/api/workspace/getLatestFileKey';
+import getBot from "../../../../../pages/api/bot/getBot";
+import setBotActiveStatus from "../../../../../pages/api/bot/setBotActiveStatus";
+import getLatestFileKey from "../../../../../pages/api/workspace/getLatestFileKey";
 
 type Props = {
     workspaceId: string;
@@ -44,10 +44,10 @@ export const E2EESection = ({
                 if (!bot.isActive) {
                     // bot is not active -> activate bot
                     const key = await getLatestFileKey({ workspaceId });
-                    const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
+                    const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
 
                     if (!PRIVATE_KEY) {
-                        throw new Error('Private Key missing');
+                        throw new Error("Private Key missing");
                     }
 
                     const WORKSPACE_KEY = decryptAssymmetric({

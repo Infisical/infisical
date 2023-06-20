@@ -2,4 +2,4 @@ export {
   useAddIncidentContact,
   useDeleteIncidentContact,
   useGetOrgIncidentContact
-} from './queries';
+} from "./queries";

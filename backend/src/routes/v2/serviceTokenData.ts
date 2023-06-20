@@ -2,18 +2,18 @@ import express from "express";
 const router = express.Router();
 import {
   requireAuth,
-  requireWorkspaceAuth,
   requireServiceTokenDataAuth,
+  requireWorkspaceAuth,
   validateRequest,
 } from "../../middleware";
-import { param, body } from "express-validator";
+import { body, param } from "express-validator";
 import {
   ADMIN,
-  MEMBER,
-  PERMISSION_WRITE_SECRETS,
   AUTH_MODE_JWT,
   AUTH_MODE_SERVICE_ACCOUNT,
   AUTH_MODE_SERVICE_TOKEN,
+  MEMBER,
+  PERMISSION_WRITE_SECRETS,
 } from "../../variables";
 import { serviceTokenDataController } from "../../controllers/v2";
 

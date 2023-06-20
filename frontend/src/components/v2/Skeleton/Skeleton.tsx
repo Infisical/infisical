@@ -1,4 +1,4 @@
-import { twMerge } from 'tailwind-merge';
+import { twMerge } from "tailwind-merge";
 
 export type Props = {
   className?: string;
@@ -8,5 +8,5 @@ export type Props = {
 // Can be used with cards
 // Tables etc
 export const Skeleton = ({ className }: Props) => (
-  <div className={twMerge('h-6 w-full animate-pulse rounded-md bg-mineshaft-800', className)} />
+  <div className={twMerge("h-6 w-full animate-pulse rounded-md bg-mineshaft-800", className)} />
 );

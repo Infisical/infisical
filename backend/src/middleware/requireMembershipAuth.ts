@@ -1,8 +1,8 @@
-import { Types } from 'mongoose';
-import { Request, Response, NextFunction } from 'express';
-import { validateClientForMembership } from '../validation';
+import { Types } from "mongoose";
+import { NextFunction, Request, Response } from "express";
+import { validateClientForMembership } from "../validation";
 
-type req = 'params' | 'body' | 'query';
+type req = "params" | "body" | "query";
 
 /**
  * Validate membership with id [membershipId] and that user with id
@@ -13,9 +13,9 @@ type req = 'params' | 'body' | 'query';
  */
 const requireMembershipAuth = ({
     acceptedRoles,
-    locationMembershipId = 'params'
+    locationMembershipId = "params",
 }: {
-    acceptedRoles: Array<'admin' | 'member'>;
+    acceptedRoles: Array<"admin" | "member">;
     locationMembershipId: req
 }) => {
     return async (
@@ -28,7 +28,7 @@ const requireMembershipAuth = ({
         req.targetMembership = await validateClientForMembership({
             authData: req.authData,
             membershipId: new Types.ObjectId(membershipId),
-            acceptedRoles
+            acceptedRoles,
         });
         
         return next();

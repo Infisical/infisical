@@ -1,8 +1,8 @@
-import fs from 'fs';
-import path from 'path';
-import handlebars from 'handlebars';
-import nodemailer from 'nodemailer';
-import { getSmtpFromName, getSmtpFromAddress, getSmtpConfigured } from '../config';
+import fs from "fs";
+import path from "path";
+import handlebars from "handlebars";
+import nodemailer from "nodemailer";
+import { getSmtpConfigured, getSmtpFromAddress, getSmtpFromName } from "../config";
 
 let smtpTransporter: nodemailer.Transporter;
 
@@ -17,7 +17,7 @@ export const sendMail = async ({
   template,
   subjectLine,
   recipients,
-  substitutions
+  substitutions,
 }: {
   template: string;
   subjectLine: string;
@@ -26,17 +26,17 @@ export const sendMail = async ({
 }) => {
   if (await getSmtpConfigured()) {
     const html = fs.readFileSync(
-      path.resolve(__dirname, '../templates/' + template),
-      'utf8'
+      path.resolve(__dirname, "../templates/" + template),
+      "utf8"
     );
     const temp = handlebars.compile(html);
     const htmlToSend = temp(substitutions);
 
     await smtpTransporter.sendMail({
       from: `"${await getSmtpFromName()}" <${await getSmtpFromAddress()}>`,
-      to: recipients.join(', '),
+      to: recipients.join(", "),
       subject: subjectLine,
-      html: htmlToSend
+      html: htmlToSend,
     });
   }
 };

@@ -1,28 +1,28 @@
-import { useState } from 'react';
-import { useRouter } from 'next/router';
+import { useState } from "react";
+import { useRouter } from "next/router";
 
-import { Button, Card, CardTitle, FormControl, Input } from '../../../components/v2';
-import saveIntegrationAccessToken from '../../api/integrations/saveIntegrationAccessToken';
+import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
+import saveIntegrationAccessToken from "../../api/integrations/saveIntegrationAccessToken";
 
 export default function RailwayAuthorizeIntegrationPage() {
   const router = useRouter();
-  const [apiKey, setApiKey] = useState('');
-  const [apiKeyErrorText, setApiKeyErrorText] = useState('');
+  const [apiKey, setApiKey] = useState("");
+  const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleButtonClick = async () => {
     try {
-      setApiKeyErrorText('');
+      setApiKeyErrorText("");
       if (apiKey.length === 0) {
-        setApiKeyErrorText('API Key cannot be blank');
+        setApiKeyErrorText("API Key cannot be blank");
         return;
       }
 
       setIsLoading(true);
 
       const integrationAuth = await saveIntegrationAccessToken({
-        workspaceId: localStorage.getItem('projectData.id'),
-        integration: 'railway',
+        workspaceId: localStorage.getItem("projectData.id"),
+        integration: "railway",
         accessId: null,
         accessToken: apiKey,
         url: null,
@@ -44,7 +44,7 @@ export default function RailwayAuthorizeIntegrationPage() {
         <FormControl
           label="Railway API Key"
           errorText={apiKeyErrorText}
-          isError={apiKeyErrorText !== '' ?? false}
+          isError={apiKeyErrorText !== "" ?? false}
         >
           <Input placeholder="" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
         </FormControl>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 type TPersisntentStateReturn<T extends unknown> = [T, (val: T) => void];
 

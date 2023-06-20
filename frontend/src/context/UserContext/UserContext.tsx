@@ -1,7 +1,7 @@
-import { createContext, ReactNode, useContext, useMemo } from 'react';
+import { createContext, ReactNode, useContext, useMemo } from "react";
 
-import { useGetUser } from '@app/hooks/api';
-import { User } from '@app/hooks/api/types';
+import { useGetUser } from "@app/hooks/api";
+import { User } from "@app/hooks/api/types";
 
 type TUserContext = {
   user: User;
@@ -31,7 +31,7 @@ export const UserProvider = ({ children }: Props): JSX.Element => {
 export const useUser = () => {
   const ctx = useContext(UserContext);
   if (!ctx) {
-    throw new Error('useUser has to be used within <UserContext.Provider>');
+    throw new Error("useUser has to be used within <UserContext.Provider>");
   }
 
   return ctx;

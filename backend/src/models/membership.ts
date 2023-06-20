@@ -1,5 +1,5 @@
-import { Schema, model, Types } from 'mongoose';
-import { ADMIN, MEMBER } from '../variables';
+import { Schema, Types, model } from "mongoose";
+import { ADMIN, MEMBER } from "../variables";
 
 export interface IMembershipPermission {
 	environmentSlug: string,
@@ -11,7 +11,7 @@ export interface IMembership {
 	user: Types.ObjectId;
 	inviteEmail?: string;
 	workspace: Types.ObjectId;
-	role: 'admin' | 'member';
+	role: "admin" | "member";
 	deniedPermissions: IMembershipPermission[]
 }
 
@@ -19,15 +19,15 @@ const membershipSchema = new Schema<IMembership>(
 	{
 		user: {
 			type: Schema.Types.ObjectId,
-			ref: 'User'
+			ref: "User",
 		},
 		inviteEmail: {
-			type: String
+			type: String,
 		},
 		workspace: {
 			type: Schema.Types.ObjectId,
-			ref: 'Workspace',
-			required: true
+			ref: "Workspace",
+			required: true,
 		},
 		deniedPermissions: {
 			type: [
@@ -35,23 +35,23 @@ const membershipSchema = new Schema<IMembership>(
 					environmentSlug: String,
 					ability: {
 						type: String,
-						enum: ['read', 'write']
+						enum: ["read", "write"],
 					},
 				},
 			],
-			default: []
+			default: [],
 		},
 		role: {
 			type: String,
 			enum: [ADMIN, MEMBER],
-			required: true
-		}
+			required: true,
+		},
 	},
 	{
-		timestamps: true
+		timestamps: true,
 	}
 );
 
-const Membership = model<IMembership>('Membership', membershipSchema);
+const Membership = model<IMembership>("Membership", membershipSchema);
 
 export default Membership;

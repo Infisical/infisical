@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-require('express-async-errors');
+require("express-async-errors");
 import helmet from "helmet";
 import cors from "cors";
 import { DatabaseService } from "./services";
@@ -15,32 +15,32 @@ const swaggerFile = require("../spec.json");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import { apiLimiter } from "./helpers/rateLimiter";
 import {
-  workspace as eeWorkspaceRouter,
+  action as eeActionRouter,
+  cloudProducts as eeCloudProductsRouter,
+  organizations as eeOrganizationsRouter,
   secret as eeSecretRouter,
   secretSnapshot as eeSecretSnapshotRouter,
-  action as eeActionRouter,
-  organizations as eeOrganizationsRouter,
-  cloudProducts as eeCloudProductsRouter,
+  workspace as eeWorkspaceRouter,
 } from "./ee/routes/v1";
 import {
-  signup as v1SignupRouter,
   auth as v1AuthRouter,
   bot as v1BotRouter,
-  organization as v1OrganizationRouter,
-  workspace as v1WorkspaceRouter,
+  integrationAuth as v1IntegrationAuthRouter,
+  integration as v1IntegrationRouter,
+  inviteOrg as v1InviteOrgRouter,
+  key as v1KeyRouter,
   membershipOrg as v1MembershipOrgRouter,
   membership as v1MembershipRouter,
-  key as v1KeyRouter,
-  inviteOrg as v1InviteOrgRouter,
-  user as v1UserRouter,
-  userAction as v1UserActionRouter,
-  secret as v1SecretRouter,
-  serviceToken as v1ServiceTokenRouter,
+  organization as v1OrganizationRouter,
   password as v1PasswordRouter,
-  stripe as v1StripeRouter,
-  integration as v1IntegrationRouter,
-  integrationAuth as v1IntegrationAuthRouter,
+  secret as v1SecretRouter,
   secretsFolder as v1SecretsFolder,
+  serviceToken as v1ServiceTokenRouter,
+  signup as v1SignupRouter,
+  stripe as v1StripeRouter,
+  userAction as v1UserActionRouter,
+  user as v1UserRouter,
+  workspace as v1WorkspaceRouter,
 } from "./routes/v1";
 import {
   signup as v2SignupRouter,
@@ -95,7 +95,7 @@ const main = async () => {
 
   app.use((req, res, next) => {
     // default to IP address provided by Cloudflare
-    const cfIp = req.headers['cf-connecting-ip'];
+    const cfIp = req.headers["cf-connecting-ip"];
     req.realIP = Array.isArray(cfIp) ? cfIp[0] : (cfIp as string) || req.ip;
     next();
   });

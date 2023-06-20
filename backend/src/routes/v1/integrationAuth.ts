@@ -1,156 +1,156 @@
-import express from 'express';
+import express from "express";
 const router = express.Router();
-import { body, param, query } from 'express-validator';
+import { body, param, query } from "express-validator";
 import {
 	requireAuth,
-	requireWorkspaceAuth,
 	requireIntegrationAuthorizationAuth,
-	validateRequest
-} from '../../middleware';
+	requireWorkspaceAuth,
+	validateRequest,
+} from "../../middleware";
 import {
 	ADMIN, 
-	MEMBER,
+	AUTH_MODE_API_KEY,
 	AUTH_MODE_JWT,
-	AUTH_MODE_API_KEY
-} from '../../variables';
-import { integrationAuthController } from '../../controllers/v1';
+	MEMBER,
+} from "../../variables";
+import { integrationAuthController } from "../../controllers/v1";
 
 router.get(
-	'/integration-options',
+	"/integration-options",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT]
+        acceptedAuthModes: [AUTH_MODE_JWT],
     }),
 	integrationAuthController.getIntegrationOptions
 );
 
 router.get(
-	'/:integrationAuthId',
+	"/:integrationAuthId",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT]
+        acceptedAuthModes: [AUTH_MODE_JWT],
     }),
 	requireIntegrationAuthorizationAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
 	}),
-	param('integrationAuthId'),
+	param("integrationAuthId"),
 	validateRequest,
 	integrationAuthController.getIntegrationAuth	
 );
 
 router.post(
-	'/oauth-token',
+	"/oauth-token",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT]
+        acceptedAuthModes: [AUTH_MODE_JWT],
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		locationWorkspaceId: 'body'
+		locationWorkspaceId: "body",
 	}),
-	body('workspaceId').exists().trim().notEmpty(),
-	body('code').exists().trim().notEmpty(),
-	body('integration').exists().trim().notEmpty(),
+	body("workspaceId").exists().trim().notEmpty(),
+	body("code").exists().trim().notEmpty(),
+	body("integration").exists().trim().notEmpty(),
 	validateRequest,
 	integrationAuthController.oAuthExchange
 );
 
 router.post(
-	'/access-token',
-	body('workspaceId').exists().trim().notEmpty(),
-	body('accessId').trim(),
-	body('accessToken').exists().trim().notEmpty(),
-	body('url').trim(),
-	body('namespace').trim(),
-	body('integration').exists().trim().notEmpty(),
+	"/access-token",
+	body("workspaceId").exists().trim().notEmpty(),
+	body("accessId").trim(),
+	body("accessToken").exists().trim().notEmpty(),
+	body("url").trim(),
+	body("namespace").trim(),
+	body("integration").exists().trim().notEmpty(),
 	validateRequest,
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY]
+        acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		locationWorkspaceId: 'body'
+		locationWorkspaceId: "body",
 	}),
 	integrationAuthController.saveIntegrationAccessToken
 );
 
 router.get(
-	'/:integrationAuthId/apps',
+	"/:integrationAuthId/apps",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT]
+        acceptedAuthModes: [AUTH_MODE_JWT],
     }),
 	requireIntegrationAuthorizationAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
 	}),
-	param('integrationAuthId'),
-	query('teamId'),
+	param("integrationAuthId"),
+	query("teamId"),
 	validateRequest,
 	integrationAuthController.getIntegrationAuthApps
 );
 
 router.get(
-	'/:integrationAuthId/teams',
+	"/:integrationAuthId/teams",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT]
+        acceptedAuthModes: [AUTH_MODE_JWT],
     }),
 	requireIntegrationAuthorizationAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
 	}),
-	param('integrationAuthId'),
+	param("integrationAuthId"),
 	validateRequest,
 	integrationAuthController.getIntegrationAuthTeams
 );
 
 router.get(
-	'/:integrationAuthId/vercel/branches',
+	"/:integrationAuthId/vercel/branches",
 	requireAuth({
-        acceptedAuthModes: ['jwt']
+        acceptedAuthModes: ["jwt"],
     }),
 	requireIntegrationAuthorizationAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
 	}),
-	param('integrationAuthId').exists().isString(),
-	query('appId').exists().isString(),
-	query('teamId').optional().isString(),
+	param("integrationAuthId").exists().isString(),
+	query("appId").exists().isString(),
+	query("teamId").optional().isString(),
 	validateRequest,
 	integrationAuthController.getIntegrationAuthVercelBranches
 );
 
 router.get(
-	'/:integrationAuthId/railway/environments',
+	"/:integrationAuthId/railway/environments",
 	requireAuth({
-		acceptedAuthModes: ['jwt']
+		acceptedAuthModes: ["jwt"],
 	}),
 	requireIntegrationAuthorizationAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
 	}),
-	param('integrationAuthId').exists().isString(),
-	query('appId').exists().isString(),
+	param("integrationAuthId").exists().isString(),
+	query("appId").exists().isString(),
 	validateRequest,
 	integrationAuthController.getIntegrationAuthRailwayEnvironments
 );
 
 router.get(
-	'/:integrationAuthId/railway/services',
+	"/:integrationAuthId/railway/services",
 	requireAuth({
-		acceptedAuthModes: ['jwt']
+		acceptedAuthModes: ["jwt"],
 	}),
 	requireIntegrationAuthorizationAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
 	}),
-	param('integrationAuthId').exists().isString(),
-	query('appId').exists().isString(),
+	param("integrationAuthId").exists().isString(),
+	query("appId").exists().isString(),
 	validateRequest,
 	integrationAuthController.getIntegrationAuthRailwayServices
 );
 
 router.delete(
-	'/:integrationAuthId',
+	"/:integrationAuthId",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT]
+        acceptedAuthModes: [AUTH_MODE_JWT],
     }),
 	requireIntegrationAuthorizationAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		attachAccessToken: false
+		attachAccessToken: false,
 	}),
-	param('integrationAuthId'),
+	param("integrationAuthId"),
 	validateRequest,
 	integrationAuthController.deleteIntegrationAuth
 );

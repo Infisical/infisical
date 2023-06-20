@@ -1,6 +1,6 @@
-import { useEffect, useMemo,useState } from 'react';
-import { Controller,useForm } from 'react-hook-form';
-import { useRouter } from 'next/router';
+import { useEffect, useMemo,useState } from "react";
+import { Controller,useForm } from "react-hook-form";
+import { useRouter } from "next/router";
 import { 
     faCheck, 
     faCopy, 
@@ -8,12 +8,12 @@ import {
     faPencil,
     faPlus, 
     faServer, 
-    faTrash} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+    faTrash} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
-import { generateKeyPair } from '@app/components/utilities/cryptography/crypto';
+import { generateKeyPair } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   DeleteActionModal,
@@ -33,26 +33,26 @@ import {
   Th,
   THead,
   Tr
-} from '@app/components/v2';
-import { useOrganization, useWorkspace } from '@app/context';
-import { usePopUp, useToggle } from '@app/hooks';
+} from "@app/components/v2";
+import { useOrganization, useWorkspace } from "@app/context";
+import { usePopUp, useToggle } from "@app/hooks";
 import {
     useCreateServiceAccount,
     useDeleteServiceAccount,
-    useGetServiceAccounts} from '@app/hooks/api';
+    useGetServiceAccounts} from "@app/hooks/api";
 
 const serviceAccountExpiration = [
-  { label: '1 Day', value: 86400 },
-  { label: '7 Days', value: 604800 },
-  { label: '1 Month', value: 2592000 },
-  { label: '6 months', value: 15552000 },
-  { label: '12 months', value: 31104000 },
-  { label: 'Never', value: -1 }
+  { label: "1 Day", value: 86400 },
+  { label: "7 Days", value: 604800 },
+  { label: "1 Month", value: 2592000 },
+  { label: "6 months", value: 15552000 },
+  { label: "12 months", value: 31104000 },
+  { label: "Never", value: -1 }
 ];
 
 const addServiceAccountFormSchema = yup.object({
-    name: yup.string().required().label('Name').trim(),
-    expiresIn: yup.string().required().label('Service Account Expiration')
+    name: yup.string().required().label("Name").trim(),
+    expiresIn: yup.string().required().label("Service Account Expiration")
 });
 
 type TAddServiceAccountForm = yup.InferType<typeof addServiceAccountFormSchema>;
@@ -62,18 +62,18 @@ export const OrgServiceAccountsTable = () => {
     const { currentOrg } = useOrganization();
     const { currentWorkspace } = useWorkspace();
     
-    const orgId = currentOrg?._id || '';
+    const orgId = currentOrg?._id || "";
     const [step, setStep] = useState(0);
     const [isAccessKeyCopied, setIsAccessKeyCopied] = useToggle(false);
     const [isPublicKeyCopied, setIsPublicKeyCopied] = useToggle(false);
     const [isPrivateKeyCopied, setIsPrivateKeyCopied] = useToggle(false);
-    const [accessKey, setAccessKey] = useState('');
-    const [publicKey, setPublicKey] = useState('');
-    const [privateKey, setPrivateKey] = useState('');
-    const [searchServiceAccountFilter, setSearchServiceAccountFilter] = useState('');
+    const [accessKey, setAccessKey] = useState("");
+    const [publicKey, setPublicKey] = useState("");
+    const [privateKey, setPrivateKey] = useState("");
+    const [searchServiceAccountFilter, setSearchServiceAccountFilter] = useState("");
     const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
-        'addServiceAccount',
-        'removeServiceAccount',
+        "addServiceAccount",
+        "removeServiceAccount",
     ] as const);
 
     const { data: serviceAccounts = [], isLoading: isServiceAccountsLoading } = useGetServiceAccounts(orgId);
@@ -128,7 +128,7 @@ export const OrgServiceAccountsTable = () => {
     const onRemoveServiceAccount = async () => {
         const serviceAccountId = (popUp?.removeServiceAccount?.data as { _id: string })?._id;
         await removeServiceAccount.mutateAsync(serviceAccountId);
-        handlePopUpClose('removeServiceAccount');
+        handlePopUpClose("removeServiceAccount");
     }
     
     const filteredServiceAccounts = useMemo(
@@ -195,7 +195,7 @@ export const OrgServiceAccountsTable = () => {
                             <Button
                                 colorSchema="secondary"
                                 variant="plain"
-                                onClick={() => handlePopUpClose('addServiceAccount')}
+                                onClick={() => handlePopUpClose("addServiceAccount")}
                             >
                                 Cancel
                             </Button>
@@ -283,7 +283,7 @@ export const OrgServiceAccountsTable = () => {
                     onClick={() => {
                         setStep(0);
                         reset();
-                        handlePopUpOpen('addServiceAccount');
+                        handlePopUpOpen("addServiceAccount");
                     }}
                 >
                     Add Service Account
@@ -325,7 +325,7 @@ export const OrgServiceAccountsTable = () => {
                                                 <IconButton
                                                     ariaLabel="delete"
                                                     colorSchema="danger"
-                                                    onClick={() => handlePopUpOpen('removeServiceAccount', { _id: serviceAccountId })}
+                                                    onClick={() => handlePopUpOpen("removeServiceAccount", { _id: serviceAccountId })}
                                                 >
                                                     <FontAwesomeIcon icon={faTrash} />
                                                 </IconButton>
@@ -344,7 +344,7 @@ export const OrgServiceAccountsTable = () => {
             <Modal
                 isOpen={popUp?.addServiceAccount?.isOpen}
                 onOpenChange={(isOpen) => {
-                    handlePopUpToggle('addServiceAccount', isOpen);
+                    handlePopUpToggle("addServiceAccount", isOpen);
                     reset();
                 }}
             >
@@ -359,7 +359,7 @@ export const OrgServiceAccountsTable = () => {
                 isOpen={popUp.removeServiceAccount.isOpen}
                 deleteKey="remove"
                 title="Do you want to remove this service account from the org?"
-                onChange={(isOpen) => handlePopUpToggle('removeServiceAccount', isOpen)}
+                onChange={(isOpen) => handlePopUpToggle("removeServiceAccount", isOpen)}
                 onDeleteApproved={onRemoveServiceAccount}
             />
         </div>

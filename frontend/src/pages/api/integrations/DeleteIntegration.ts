@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface Props {
   integrationId: string;
@@ -11,9 +11,9 @@ interface Props {
  */
 const deleteIntegration = ({ integrationId }: Props) =>
   SecurityClient.fetchCall(`/api/v1/integration/${integrationId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res && res.status === 200) {

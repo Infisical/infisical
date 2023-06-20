@@ -1,14 +1,14 @@
-import { Request, Response, NextFunction } from 'express';
-import { Types } from 'mongoose';
-import { validateClientForBot } from '../validation';
+import { NextFunction, Request, Response } from "express";
+import { Types } from "mongoose";
+import { validateClientForBot } from "../validation";
 
-type req = 'params' | 'body' | 'query';
+type req = "params" | "body" | "query";
 
 const requireBotAuth = ({
     acceptedRoles,
-    locationBotId = 'params'
+    locationBotId = "params",
 }: {
-    acceptedRoles: Array<'admin' | 'member'>;
+    acceptedRoles: Array<"admin" | "member">;
     locationBotId?: req;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
@@ -17,7 +17,7 @@ const requireBotAuth = ({
         req.bot = await validateClientForBot({
             authData: req.authData,
             botId: new Types.ObjectId(botId),
-            acceptedRoles
+            acceptedRoles,
         });
         
         next();

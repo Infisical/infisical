@@ -1,5 +1,5 @@
-import getOrganizationUsers from '@app/pages/api/organization/GetOrgUsers';
-import checkUserAction from '@app/pages/api/userActions/checkUserAction';
+import getOrganizationUsers from "@app/pages/api/organization/GetOrgUsers";
+import checkUserAction from "@app/pages/api/userActions/checkUserAction";
 
 interface OnboardingCheckProps {
   setTotalOnboardingActionsDone?: (value: number) => void;
@@ -23,7 +23,7 @@ const onboardingCheck = async ({
 }: OnboardingCheckProps) => {
   let countActions = 0;
   const userActionSlack = await checkUserAction({
-    action: 'slack_cta_clicked'
+    action: "slack_cta_clicked"
   });
   if (userActionSlack) {
     countActions += 1;
@@ -31,7 +31,7 @@ const onboardingCheck = async ({
   if (setHasUserClickedSlack) setHasUserClickedSlack(!!userActionSlack);
 
   const userActionSecrets = await checkUserAction({
-    action: 'first_time_secrets_pushed'
+    action: "first_time_secrets_pushed"
   });
   if (userActionSecrets) {
     countActions += 1;
@@ -39,7 +39,7 @@ const onboardingCheck = async ({
   if (setHasUserPushedSecrets) setHasUserPushedSecrets(!!userActionSecrets);
 
   const userActionIntro = await checkUserAction({
-    action: 'intro_cta_clicked'
+    action: "intro_cta_clicked"
   });
   if (userActionIntro) {
     countActions += 1;
@@ -47,16 +47,16 @@ const onboardingCheck = async ({
   if (setHasUserClickedIntro) setHasUserClickedIntro(!!userActionIntro);
 
   const userActionStar = await checkUserAction({
-    action: 'star_cta_clicked'
+    action: "star_cta_clicked"
   });
   if (userActionStar) {
     countActions += 1;
   }
   if (setHasUserStarred) setHasUserStarred(!!userActionStar);
 
-  const orgId = localStorage.getItem('orgData.id');
+  const orgId = localStorage.getItem("orgData.id");
   const orgUsers = await getOrganizationUsers({
-    orgId: orgId || ''
+    orgId: orgId || ""
   });
   if (orgUsers.length > 1) {
     countActions += 1;

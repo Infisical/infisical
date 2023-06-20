@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, Types, model } from "mongoose";
 
 export interface IUserAction {
 	_id: Types.ObjectId;
@@ -10,19 +10,19 @@ const userActionSchema = new Schema<IUserAction>(
 	{
 		user: {
 			type: Schema.Types.ObjectId,
-			ref: 'User',
-			required: true
+			ref: "User",
+			required: true,
 		},
 		action: {
 			type: String,
-			required: true
-		}
+			required: true,
+		},
 	},
 	{
-		timestamps: true
+		timestamps: true,
 	}
 );
 
-const UserAction = model<IUserAction>('UserAction', userActionSchema);
+const UserAction = model<IUserAction>("UserAction", userActionSchema);
 
 export default UserAction;

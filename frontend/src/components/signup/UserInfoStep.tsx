@@ -1,25 +1,25 @@
-import crypto from 'crypto';
+import crypto from "crypto";
 
-import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import jsrp from 'jsrp';
-import nacl from 'tweetnacl';
-import { encodeBase64 } from 'tweetnacl-util';
+import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import jsrp from "jsrp";
+import nacl from "tweetnacl";
+import { encodeBase64 } from "tweetnacl-util";
 
-import { useGetCommonPasswords } from '@app/hooks/api';
-import completeAccountInformationSignup from '@app/pages/api/auth/CompleteAccountInformationSignup';
-import getOrganizations from '@app/pages/api/organization/getOrgs';
-import ProjectService from '@app/services/ProjectService';
+import { useGetCommonPasswords } from "@app/hooks/api";
+import completeAccountInformationSignup from "@app/pages/api/auth/CompleteAccountInformationSignup";
+import getOrganizations from "@app/pages/api/organization/getOrgs";
+import ProjectService from "@app/services/ProjectService";
 
-import InputField from '../basic/InputField';
-import checkPassword from '../utilities/checks/checkPassword';
-import Aes256Gcm from '../utilities/cryptography/aes-256-gcm';
-import { deriveArgonKey } from '../utilities/cryptography/crypto';
-import { saveTokenToLocalStorage } from '../utilities/saveTokenToLocalStorage';
-import SecurityClient from '../utilities/SecurityClient';
-import { Button, Input } from '../v2';
+import InputField from "../basic/InputField";
+import checkPassword from "../utilities/checks/checkPassword";
+import Aes256Gcm from "../utilities/cryptography/aes-256-gcm";
+import { deriveArgonKey } from "../utilities/cryptography/crypto";
+import { saveTokenToLocalStorage } from "../utilities/saveTokenToLocalStorage";
+import SecurityClient from "../utilities/SecurityClient";
+import { Button, Input } from "../v2";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -113,7 +113,7 @@ export default function UserInfoStep({
       const publicKeyUint8Array = pair.publicKey;
       const privateKey = encodeBase64(secretKeyUint8Array);
       const publicKey = encodeBase64(publicKeyUint8Array);
-      localStorage.setItem('PRIVATE_KEY', privateKey);
+      localStorage.setItem("PRIVATE_KEY", privateKey);
 
       client.init(
         {
@@ -133,7 +133,7 @@ export default function UserInfoStep({
                 hashLen: 32
               });
 
-              if (!derivedKey) throw new Error('Failed to derive key from password');
+              if (!derivedKey) throw new Error("Failed to derive key from password");
 
               const key = crypto.randomBytes(32);
 
@@ -155,14 +155,14 @@ export default function UserInfoStep({
                 iv: protectedKeyIV,
                 tag: protectedKeyTag
               } = Aes256Gcm.encrypt({
-                text: key.toString('hex'),
+                text: key.toString("hex"),
                 secret: Buffer.from(derivedKey.hash)
               });
 
               const response = await completeAccountInformationSignup({
                 email,
                 firstName: name.split(" ")[0],
-                lastName: name.split(" ").slice(1).join(' '),
+                lastName: name.split(" ").slice(1).join(" "),
                 protectedKey,
                 protectedKeyIV,
                 protectedKeyTag,
@@ -178,9 +178,9 @@ export default function UserInfoStep({
               });
 
               // unset signup JWT token and set JWT token
-              SecurityClient.setSignupToken('');
+              SecurityClient.setSignupToken("");
               SecurityClient.setToken(response.token);
-              SecurityClient.setProviderAuthToken('');
+              SecurityClient.setProviderAuthToken("");
 
               saveTokenToLocalStorage({
                 publicKey,
@@ -194,11 +194,11 @@ export default function UserInfoStep({
               const orgId = userOrgs[0]?._id;
               const project = await ProjectService.initProject({
                 organizationId: orgId,
-                projectName: 'Example Project'
+                projectName: "Example Project"
               });
 
-              localStorage.setItem('orgData.id', orgId);
-              localStorage.setItem('projectData.id', project._id);
+              localStorage.setItem("orgData.id", orgId);
+              localStorage.setItem("projectData.id", project._id);
 
               incrementStep();
             } catch (error) {
@@ -216,7 +216,7 @@ export default function UserInfoStep({
   return (
     <div className="h-full mx-auto mb-36 w-max rounded-xl md:px-8 md:mb-16">
       <p className="mx-8 mb-6 flex justify-center text-xl font-bold text-medium md:mx-16 text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
-        {t('signup.step3-message')}
+        {t("signup.step3-message")}
       </p>
       <div className="h-full mx-auto mb-36 w-max rounded-xl py-6 md:px-8 md:mb-16 md:border md:border-mineshaft-600 md:bg-mineshaft-800">
         <div className="relative z-0 lg:w-1/6 w-1/4 min-w-[20rem] flex flex-col items-center justify-end w-full py-2 rounded-lg">
@@ -254,7 +254,7 @@ export default function UserInfoStep({
         </div>
         <div className="mt-2 flex lg:w-1/6 w-1/4 min-w-[20rem] max-h-60 w-full flex-col items-center justify-center rounded-lg py-2">
           <InputField
-            label={t('section.password.password')}
+            label={t("section.password.password")}
             onChangeHandler={(pass: string) => {
               setPassword(pass);
               checkPassword({
@@ -272,7 +272,7 @@ export default function UserInfoStep({
           />
           {Object.keys(errors).length > 0 && (
             <div className="mt-4 flex w-full flex-col items-start rounded-md bg-white/5 px-2 py-2">
-              <div className="mb-2 text-sm text-gray-400">{t('section.password.validate-base')}</div> 
+              <div className="mb-2 text-sm text-gray-400">{t("section.password.validate-base")}</div> 
               {Object.keys(errors).map((key) => {
                 if (errors[key as keyof Errors]) {
                   return (
@@ -308,7 +308,7 @@ export default function UserInfoStep({
               colorSchema="primary"
               variant="outline_bg"
               isLoading={isLoading}
-            > {String(t('signup.signup'))} </Button>
+            > {String(t("signup.signup"))} </Button>
           </div>
         </div>
       </div>

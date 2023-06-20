@@ -2,19 +2,19 @@ import {
     Bot,
     IBot,
     ISecretBlindIndexData,
-    SecretBlindIndexData
-} from '../../models';
-import { decryptSymmetric128BitHexKeyUTF8 } from '../../utils/crypto';
+    SecretBlindIndexData,
+} from "../../models";
+import { decryptSymmetric128BitHexKeyUTF8 } from "../../utils/crypto";
 import { 
     client,
     getEncryptionKey, 
-    getRootEncryptionKey 
-} from '../../config';
+    getRootEncryptionKey, 
+} from "../../config";
 import {
     ALGORITHM_AES_256_GCM,
+    ENCODING_SCHEME_BASE64,
     ENCODING_SCHEME_UTF8,
-    ENCODING_SCHEME_BASE64
-} from '../../variables';
+} from "../../variables";
 
 /**
  * Re-encrypt bot private keys from hex 128-bit ENCRYPTION_KEY
@@ -28,8 +28,8 @@ export const reencryptBotPrivateKeys = async () => {
         // 1: re-encrypt bot private keys under ROOT_ENCRYPTION_KEY
         const bots = await Bot.find({
             algorithm: ALGORITHM_AES_256_GCM,
-            keyEncoding: ENCODING_SCHEME_UTF8
-        }).select('+encryptedPrivateKey iv tag algorithm keyEncoding');
+            keyEncoding: ENCODING_SCHEME_UTF8,
+        }).select("+encryptedPrivateKey iv tag algorithm keyEncoding");
         
         if (bots.length === 0) return;
         
@@ -40,28 +40,28 @@ export const reencryptBotPrivateKeys = async () => {
                     ciphertext: bot.encryptedPrivateKey,
                     iv: bot.iv,
                     tag: bot.tag,
-                    key: encryptionKey
+                    key: encryptionKey,
                 });
 
                 const {
                     ciphertext: encryptedPrivateKey,
                     iv,
-                    tag
+                    tag,
                 } = client.encryptSymmetric(privateKey, rootEncryptionKey);
                 
                 return ({
                     updateOne: {
                         filter: {
-                            _id: bot._id
+                            _id: bot._id,
                         },
                         update: {
                             encryptedPrivateKey,
                             iv,
                             tag,
                             algorithm: ALGORITHM_AES_256_GCM,
-                            keyEncoding: ENCODING_SCHEME_BASE64
-                        }
-                    }
+                            keyEncoding: ENCODING_SCHEME_BASE64,
+                        },
+                    },
                 })
             })
         );
@@ -81,8 +81,8 @@ export const reencryptSecretBlindIndexDataSalts = async () => {
     if (encryptionKey && rootEncryptionKey) {
         const secretBlindIndexData = await SecretBlindIndexData.find({
             algorithm: ALGORITHM_AES_256_GCM,
-            keyEncoding: ENCODING_SCHEME_UTF8
-        }).select('+encryptedSaltCiphertext +saltIV +saltTag +algorithm +keyEncoding');
+            keyEncoding: ENCODING_SCHEME_UTF8,
+        }).select("+encryptedSaltCiphertext +saltIV +saltTag +algorithm +keyEncoding");
         
         if (secretBlindIndexData.length == 0) return;
         
@@ -93,28 +93,28 @@ export const reencryptSecretBlindIndexDataSalts = async () => {
                     ciphertext: secretBlindIndexDatum.encryptedSaltCiphertext,
                     iv: secretBlindIndexDatum.saltIV,
                     tag: secretBlindIndexDatum.saltTag,
-                    key: encryptionKey
+                    key: encryptionKey,
                 });
                 
                 const {
                     ciphertext: encryptedSaltCiphertext,
                     iv: saltIV,
-                    tag: saltTag
+                    tag: saltTag,
                 } = client.encryptSymmetric(salt, rootEncryptionKey);
 
                 return ({
                     updateOne: {
                         filter: {
-                            _id: secretBlindIndexDatum._id
+                            _id: secretBlindIndexDatum._id,
                         },
                         update: {
                             encryptedSaltCiphertext,
                             saltIV,
                             saltTag,
                             algorithm: ALGORITHM_AES_256_GCM,
-                            keyEncoding: ENCODING_SCHEME_BASE64
-                        }
-                    }
+                            keyEncoding: ENCODING_SCHEME_BASE64,
+                        },
+                    },
                 })
             })
         );

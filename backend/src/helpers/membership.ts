@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
-import { Membership, Key } from "../models";
-import { MembershipNotFoundError, BadRequestError } from "../utils/errors";
+import { Key, Membership } from "../models";
+import { BadRequestError, MembershipNotFoundError } from "../utils/errors";
 
 /**
  * Validate that user with id [userId] is a member of workspace with id [workspaceId]
@@ -62,7 +62,7 @@ export const findMembership = async (queryObj: any) => {
 export const addMemberships = async ({
 	userIds,
 	workspaceId,
-	roles
+	roles,
 }: {
   userIds: string[];
   workspaceId: string;
@@ -95,7 +95,7 @@ export const addMemberships = async ({
  */
 export const deleteMembership = async ({ membershipId }: { membershipId: string }) => {
 	const deletedMembership = await Membership.findOneAndDelete({
-    _id: membershipId
+    _id: membershipId,
   });
 
   // delete keys associated with the membership

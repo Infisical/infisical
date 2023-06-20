@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface WorkspaceProps {
   actionId: string;
@@ -12,15 +12,15 @@ interface WorkspaceProps {
  */
 const getActionData = async ({ actionId }: WorkspaceProps) =>
   SecurityClient.fetchCall(`/api/v1/action/${actionId}`, {
-    method: 'GET',
+    method: "GET",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res && res.status === 200) {
       return (await res.json()).action;
     }
-    console.log('Failed to get the info about an action');
+    console.log("Failed to get the info about an action");
     return undefined;
   });
 

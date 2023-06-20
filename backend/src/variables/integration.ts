@@ -1,16 +1,16 @@
 import {
-    getClientIdHeroku,
-    getClientSlugVercel,
-    getClientIdNetlify,
     getClientIdAzure,
+    getClientIdGitHub,
     getClientIdGitLab,
-    getClientIdGitHub
-} from '../config';
+    getClientIdHeroku,
+    getClientIdNetlify,
+    getClientSlugVercel,
+} from "../config";
 
 // integrations
-export const INTEGRATION_AZURE_KEY_VAULT = 'azure-key-vault';
-export const INTEGRATION_AWS_PARAMETER_STORE = 'aws-parameter-store';
-export const INTEGRATION_AWS_SECRET_MANAGER = 'aws-secret-manager';
+export const INTEGRATION_AZURE_KEY_VAULT = "azure-key-vault";
+export const INTEGRATION_AWS_PARAMETER_STORE = "aws-parameter-store";
+export const INTEGRATION_AWS_SECRET_MANAGER = "aws-secret-manager";
 export const INTEGRATION_HEROKU = "heroku";
 export const INTEGRATION_VERCEL = "vercel";
 export const INTEGRATION_NETLIFY = "netlify";
@@ -21,9 +21,9 @@ export const INTEGRATION_RAILWAY = "railway";
 export const INTEGRATION_FLYIO = "flyio";
 export const INTEGRATION_CIRCLECI = "circleci";
 export const INTEGRATION_TRAVISCI = "travisci";
-export const INTEGRATION_SUPABASE = 'supabase';
-export const INTEGRATION_CHECKLY = 'checkly';
-export const INTEGRATION_HASHICORP_VAULT = 'hashicorp-vault';
+export const INTEGRATION_SUPABASE = "supabase";
+export const INTEGRATION_CHECKLY = "checkly";
+export const INTEGRATION_HASHICORP_VAULT = "hashicorp-vault";
 export const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
@@ -37,15 +37,15 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_TRAVISCI,
   INTEGRATION_SUPABASE,
   INTEGRATION_CHECKLY,
-  INTEGRATION_HASHICORP_VAULT
+  INTEGRATION_HASHICORP_VAULT,
 ]);
 
 // integration types
 export const INTEGRATION_OAUTH2 = "oauth2";
 
 // integration oauth endpoints
-export const INTEGRATION_AZURE_TOKEN_URL = `https://login.microsoftonline.com/common/oauth2/v2.0/token`;
-export const INTEGRATION_HEROKU_TOKEN_URL = 'https://id.heroku.com/oauth/token';
+export const INTEGRATION_AZURE_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+export const INTEGRATION_HEROKU_TOKEN_URL = "https://id.heroku.com/oauth/token";
 export const INTEGRATION_VERCEL_TOKEN_URL =
   "https://api.vercel.com/v2/oauth/access_token";
 export const INTEGRATION_NETLIFY_TOKEN_URL = "https://api.netlify.com/oauth/token";
@@ -63,165 +63,165 @@ export const INTEGRATION_RAILWAY_API_URL = "https://backboard.railway.app/graphq
 export const INTEGRATION_FLYIO_API_URL = "https://api.fly.io/graphql";
 export const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
 export const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
-export const INTEGRATION_SUPABASE_API_URL = 'https://api.supabase.com';
-export const INTEGRATION_CHECKLY_API_URL = 'https://api.checklyhq.com';
+export const INTEGRATION_SUPABASE_API_URL = "https://api.supabase.com";
+export const INTEGRATION_CHECKLY_API_URL = "https://api.checklyhq.com";
 
 export const getIntegrationOptions = async () => {
     const INTEGRATION_OPTIONS = [
         {
-            name: 'Heroku',
-            slug: 'heroku',
-            image: 'Heroku.png',
+            name: "Heroku",
+            slug: "heroku",
+            image: "Heroku.png",
             isAvailable: true,
-            type: 'oauth',
+            type: "oauth",
             clientId: await getClientIdHeroku(),
-            docsLink: ''
+            docsLink: "",
         },
         {
-            name: 'Vercel',
-            slug: 'vercel',
-            image: 'Vercel.png',
+            name: "Vercel",
+            slug: "vercel",
+            image: "Vercel.png",
             isAvailable: true,
-            type: 'oauth',
-            clientId: '',
+            type: "oauth",
+            clientId: "",
             clientSlug: await getClientSlugVercel(),
-            docsLink: ''
+            docsLink: "",
         },
         {
-            name: 'Netlify',
-            slug: 'netlify',
-            image: 'Netlify.png',
+            name: "Netlify",
+            slug: "netlify",
+            image: "Netlify.png",
             isAvailable: true,
-            type: 'oauth',
+            type: "oauth",
             clientId: await getClientIdNetlify(),
-            docsLink: ''
+            docsLink: "",
         },
         {
-            name: 'GitHub',
-            slug: 'github',
-            image: 'GitHub.png',
+            name: "GitHub",
+            slug: "github",
+            image: "GitHub.png",
             isAvailable: true,
-            type: 'oauth',
+            type: "oauth",
             clientId: await getClientIdGitHub(),
-            docsLink: ''
+            docsLink: "",
         },
         {
-            name: 'Render',
-            slug: 'render',
-            image: 'Render.png',
+            name: "Render",
+            slug: "render",
+            image: "Render.png",
             isAvailable: true,
-            type: 'pat',
-            clientId: '',
-            docsLink: ''
+            type: "pat",
+            clientId: "",
+            docsLink: "",
         },
         {
-            name: 'Railway',
-            slug: 'railway',
-            image: 'Railway.png',
+            name: "Railway",
+            slug: "railway",
+            image: "Railway.png",
             isAvailable: true,
-            type: 'pat',
-            clientId: '',
-            docsLink: ''
+            type: "pat",
+            clientId: "",
+            docsLink: "",
         },
         {
-            name: 'Fly.io',
-            slug: 'flyio',
-            image: 'Flyio.svg',
+            name: "Fly.io",
+            slug: "flyio",
+            image: "Flyio.svg",
             isAvailable: true,
-            type: 'pat',
-            clientId: '',
-            docsLink: ''
+            type: "pat",
+            clientId: "",
+            docsLink: "",
         },
         {
-            name: 'AWS Parameter Store',
-            slug: 'aws-parameter-store',
-            image: 'Amazon Web Services.png',
+            name: "AWS Parameter Store",
+            slug: "aws-parameter-store",
+            image: "Amazon Web Services.png",
             isAvailable: true,
-            type: 'custom',
-            clientId: '',
-            docsLink: ''
+            type: "custom",
+            clientId: "",
+            docsLink: "",
         },
         {
-            name: 'AWS Secret Manager',
-            slug: 'aws-secret-manager',
-            image: 'Amazon Web Services.png',
+            name: "AWS Secret Manager",
+            slug: "aws-secret-manager",
+            image: "Amazon Web Services.png",
             isAvailable: true,
-            type: 'custom',
-            clientId: '',
-            docsLink: ''
+            type: "custom",
+            clientId: "",
+            docsLink: "",
         },
         {
-            name: 'Azure Key Vault',
-            slug: 'azure-key-vault',
-            image: 'Microsoft Azure.png',
+            name: "Azure Key Vault",
+            slug: "azure-key-vault",
+            image: "Microsoft Azure.png",
             isAvailable: true,
-            type: 'oauth',
+            type: "oauth",
             clientId: await getClientIdAzure(),
-            docsLink: ''
+            docsLink: "",
         },
         {
-            name: 'Circle CI',
-            slug: 'circleci',
-            image: 'Circle CI.png',
+            name: "Circle CI",
+            slug: "circleci",
+            image: "Circle CI.png",
             isAvailable: true,
-            type: 'pat',
-            clientId: '',
-            docsLink: ''
+            type: "pat",
+            clientId: "",
+            docsLink: "",
         },
         {
-            name: 'GitLab',
-            slug: 'gitlab',
-            image: 'GitLab.png',
+            name: "GitLab",
+            slug: "gitlab",
+            image: "GitLab.png",
             isAvailable: true,
-            type: 'custom',
+            type: "custom",
             clientId: await getClientIdGitLab(),
-            docsLink: ''
+            docsLink: "",
         },
         {
-            name: 'Travis CI',
-            slug: 'travisci',
-            image: 'Travis CI.png',
+            name: "Travis CI",
+            slug: "travisci",
+            image: "Travis CI.png",
             isAvailable: true,
-            type: 'pat',
-            clientId: '',
-            docsLink: ''
+            type: "pat",
+            clientId: "",
+            docsLink: "",
         },
         {
-            name: 'Supabase',
-            slug: 'supabase',
-            image: 'Supabase.png',
+            name: "Supabase",
+            slug: "supabase",
+            image: "Supabase.png",
             isAvailable: true,
-            type: 'pat',
-            clientId: '',
-            docsLink: ''
+            type: "pat",
+            clientId: "",
+            docsLink: "",
         },
         {
-            name: 'Checkly',
-            slug: 'checkly',
-            image: 'Checkly.png',
+            name: "Checkly",
+            slug: "checkly",
+            image: "Checkly.png",
             isAvailable: true,
-            type: 'pat',
-            clientId: '',
-            docsLink: ''
+            type: "pat",
+            clientId: "",
+            docsLink: "",
         },
         {
-            name: 'HashiCorp Vault',
-            slug: 'hashicorp-vault',
-            image: 'Vault.png',
+            name: "HashiCorp Vault",
+            slug: "hashicorp-vault",
+            image: "Vault.png",
             isAvailable: true,
-            type: 'pat',
-            clientId: '',
-            docsLink: ''
+            type: "pat",
+            clientId: "",
+            docsLink: "",
         },
         {
-            name: 'Google Cloud Platform',
-            slug: 'gcp',
-            image: 'Google Cloud Platform.png',
+            name: "Google Cloud Platform",
+            slug: "gcp",
+            image: "Google Cloud Platform.png",
             isAvailable: false,
-            type: '',
-            clientId: '',
-            docsLink: ''
-        }
+            type: "",
+            clientId: "",
+            docsLink: "",
+        },
     ]
     
     return INTEGRATION_OPTIONS;

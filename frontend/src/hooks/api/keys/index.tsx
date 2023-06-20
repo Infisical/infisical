@@ -1,1 +1,1 @@
-export { useGetUserWsKey, useUploadWsKey } from './queries';
+export { useGetUserWsKey, useUploadWsKey } from "./queries";

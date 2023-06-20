@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface EncryptedSecretProps {
   id: string;
@@ -13,7 +13,7 @@ interface EncryptedSecretProps {
   secretValueCiphertext: string;
   secretValueIV: string;
   secretValueTag: string;
-  type: 'personal' | 'shared';
+  type: "personal" | "shared";
 }
 
 /**
@@ -33,10 +33,10 @@ const addSecrets = async ({
   env: string;
   workspaceId: string;
 }) =>
-  SecurityClient.fetchCall('/api/v2/secrets', {
-    method: 'POST',
+  SecurityClient.fetchCall("/api/v2/secrets", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       environment: env,
@@ -47,7 +47,7 @@ const addSecrets = async ({
     if (res && res.status === 200) {
       return res.json();
     }
-    console.log('Failed to add certain project secrets');
+    console.log("Failed to add certain project secrets");
     return undefined;
   });
 

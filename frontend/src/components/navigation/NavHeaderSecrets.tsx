@@ -1,10 +1,10 @@
-import { useRouter } from 'next/router';
-import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useRouter } from "next/router";
+import { faAngleRight } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useOrganization, useWorkspace } from '@app/context';
+import { useOrganization, useWorkspace } from "@app/context";
 
-import { Select, SelectItem, Tooltip } from '../v2';
+import { Select, SelectItem, Tooltip } from "../v2";
 
 
 /**
@@ -60,7 +60,7 @@ export default function NavHeaderSecrets({
         </>
       )}
       <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-sm text-gray-400" />
-      {pageName === 'Secrets'
+      {pageName === "Secrets"
       ? <a className="text-md font-medium text-primary/80 hover:text-primary" href={`${router.asPath.split("?")[0]}`}>{pageName}</a>
       : <div className="text-md text-gray-400">{pageName}</div>}
       {currentEnv &&

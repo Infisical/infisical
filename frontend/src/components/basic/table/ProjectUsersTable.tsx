@@ -1,22 +1,22 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { faEye, faEyeSlash, faPenToSquare, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
-import { plans } from 'public/data/frequentConstants';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import { faEye, faEyeSlash, faPenToSquare, faPlus, faX } from "@fortawesome/free-solid-svg-icons";
+import { plans } from "public/data/frequentConstants";
 
-import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
-import { Select, SelectItem } from '@app/components/v2';
-import updateUserProjectPermission from '@app/ee/api/memberships/UpdateUserProjectPermission';
-import getOrganizationSubscriptions from '@app/pages/api/organization/GetOrgSubscription';
-import changeUserRoleInWorkspace from '@app/pages/api/workspace/changeUserRoleInWorkspace';
-import deleteUserFromWorkspace from '@app/pages/api/workspace/deleteUserFromWorkspace';
-import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
-import getProjectInfo from '@app/pages/api/workspace/getProjectInfo';
-import uploadKeys from '@app/pages/api/workspace/uploadKeys';
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import { Select, SelectItem } from "@app/components/v2";
+import updateUserProjectPermission from "@app/ee/api/memberships/UpdateUserProjectPermission";
+import getOrganizationSubscriptions from "@app/pages/api/organization/GetOrgSubscription";
+import changeUserRoleInWorkspace from "@app/pages/api/workspace/changeUserRoleInWorkspace";
+import deleteUserFromWorkspace from "@app/pages/api/workspace/deleteUserFromWorkspace";
+import getLatestFileKey from "@app/pages/api/workspace/getLatestFileKey";
+import getProjectInfo from "@app/pages/api/workspace/getProjectInfo";
+import uploadKeys from "@app/pages/api/workspace/uploadKeys";
 
-import { decryptAssymmetric, encryptAssymmetric } from '../../utilities/cryptography/crypto';
-import guidGenerator from '../../utilities/randomId';
-import Button from '../buttons/Button';
-import UpgradePlanModal from '../dialog/UpgradePlan';
+import { decryptAssymmetric, encryptAssymmetric } from "../../utilities/cryptography/crypto";
+import guidGenerator from "../../utilities/randomId";
+import Button from "../buttons/Button";
+import UpgradePlanModal from "../dialog/UpgradePlan";
 
 // const roles = ['admin', 'user'];
 // TODO: Set type for this
@@ -45,8 +45,8 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
   );
   const host = window.location.origin;
   const router = useRouter();
-  const [myRole, setMyRole] = useState('member');
-  const [currentPlan, setCurrentPlan] = useState('');
+  const [myRole, setMyRole] = useState("member");
+  const [currentPlan, setCurrentPlan] = useState("");
   const [workspaceEnvs, setWorkspaceEnvs] = useState<EnvironmentProps[]>([]);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const { createNotification } = useNotificationContext();
@@ -87,8 +87,8 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
       ...userData.slice(index + 1, userData?.length)
     ]);
     createNotification({
-      text: `Successfully changed user role.`,
-      type: 'success'
+      text: "Successfully changed user role.",
+      type: "success"
     });
   };
 
@@ -99,28 +99,28 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
     slug: string
   ) => {
     let denials: { ability: string; environmentSlug: string }[];
-    if (val === 'Read Only') {
+    if (val === "Read Only") {
       denials = [
         {
-          ability: 'write',
+          ability: "write",
           environmentSlug: slug
         }
       ];
-    } else if (val === 'No Access') {
+    } else if (val === "No Access") {
       denials = [
         {
-          ability: 'write',
+          ability: "write",
           environmentSlug: slug
         },
         {
-          ability: 'read',
+          ability: "read",
           environmentSlug: slug
         }
       ];
-    } else if (val === 'Add Only') {
+    } else if (val === "Add Only") {
       denials = [
         {
-          ability: 'read',
+          ability: "read",
           environmentSlug: slug
         }
       ];
@@ -128,7 +128,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
       denials = [];
     }
 
-    if (currentPlan !== plans.professional && host === 'https://app.infisical.com' && workspaceId !== '63ea8121b6e2b0543ba79616') {
+    if (currentPlan !== plans.professional && host === "https://app.infisical.com" && workspaceId !== "63ea8121b6e2b0543ba79616") {
       setIsUpgradeModalOpen(true);
     } else {
       const allDenials = userData[index].deniedPermissions
@@ -156,8 +156,8 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
         ...userData.slice(index + 1, userData?.length)
       ]);
       createNotification({
-        text: `Successfully changed user permissions.`,
-        type: 'success'
+        text: "Successfully changed user permissions.",
+        type: "success"
       });
     }
   };
@@ -168,7 +168,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
       const result = await getProjectInfo({ projectId: workspaceId });
       setWorkspaceEnvs(result.environments);
 
-      const orgId = localStorage.getItem('orgData.id') as string;
+      const orgId = localStorage.getItem("orgData.id") as string;
       const subscriptions = await getOrganizationSubscriptions({
         orgId
       });
@@ -181,7 +181,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
   const grantAccess = async (id: string, publicKey: string) => {
     const result = await getLatestFileKey({ workspaceId });
 
-    const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+    const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 
     // assymmetrically decrypt symmetric key with local private key
     const key = decryptAssymmetric({
@@ -261,13 +261,13 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
                         // open={isOpen}
                         onValueChange={(e) => handleRoleUpdate(index, e)}
                         value={row.role}
-                        isDisabled={myRole !== 'admin' || myUser === row.email}
+                        isDisabled={myRole !== "admin" || myUser === row.email}
                         // onOpenChange={(open) => setIsOpen(open)}
                       >
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="member">Member</SelectItem>
                       </Select>
-                      {row.status === 'completed' && myUser !== row.email && (
+                      {row.status === "completed" && myUser !== row.email && (
                         <div className="rounded-md border border-mineshaft-700 bg-white/5 text-white duration-200 hover:bg-primary hover:text-black">
                           <Button
                             onButtonPressed={() => grantAccess(row.userId, row.publicKey)}
@@ -297,66 +297,66 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
                           row.deniedPermissions
                             .filter((perm: any) => perm.environmentSlug === env.slug)
                             .map((perm: { ability: string }) => perm.ability)
-                            .includes('write') &&
+                            .includes("write") &&
                           row.deniedPermissions
                             .filter((perm: any) => perm.environmentSlug === env.slug)
                             .map((perm: { ability: string }) => perm.ability)
-                            .includes('read')
-                            ? 'No Access'
+                            .includes("read")
+                            ? "No Access"
                             : // eslint-disable-next-line no-nested-ternary
                             row.deniedPermissions
                                 .filter((perm: any) => perm.environmentSlug === env.slug)
                                 .map((perm: { ability: string }) => perm.ability)
-                                .includes('write') &&
+                                .includes("write") &&
                               !row.deniedPermissions
                                 .filter((perm: any) => perm.environmentSlug === env.slug)
                                 .map((perm: { ability: string }) => perm.ability)
-                                .includes('read')
-                            ? 'Read Only'
+                                .includes("read")
+                            ? "Read Only"
                             : !row.deniedPermissions
                                 .filter((perm: any) => perm.environmentSlug === env.slug)
                                 .map((perm: { ability: string }) => perm.ability)
-                                .includes('write') &&
+                                .includes("write") &&
                               row.deniedPermissions
                                 .filter((perm: any) => perm.environmentSlug === env.slug)
                                 .map((perm: { ability: string }) => perm.ability)
-                                .includes('read')
-                            ? 'Add Only'
-                            : 'Read & Write'
+                                .includes("read")
+                            ? "Add Only"
+                            : "Read & Write"
                         }
                         icon={
                           // eslint-disable-next-line no-nested-ternary
                           row.deniedPermissions
                             .filter((perm: any) => perm.environmentSlug === env.slug)
                             .map((perm: { ability: string }) => perm.ability)
-                            .includes('write') &&
+                            .includes("write") &&
                           row.deniedPermissions
                             .filter((perm: any) => perm.environmentSlug === env.slug)
                             .map((perm: { ability: string }) => perm.ability)
-                            .includes('read')
+                            .includes("read")
                             ? faEyeSlash
                             : // eslint-disable-next-line no-nested-ternary
                             row.deniedPermissions
                                 .filter((perm: any) => perm.environmentSlug === env.slug)
                                 .map((perm: { ability: string }) => perm.ability)
-                                .includes('write') &&
+                                .includes("write") &&
                               !row.deniedPermissions
                                 .filter((perm: any) => perm.environmentSlug === env.slug)
                                 .map((perm: { ability: string }) => perm.ability)
-                                .includes('read')
+                                .includes("read")
                             ? faEye
                             : !row.deniedPermissions
                                 .filter((perm: any) => perm.environmentSlug === env.slug)
                                 .map((perm: { ability: string }) => perm.ability)
-                                .includes('write') &&
+                                .includes("write") &&
                               row.deniedPermissions
                                 .filter((perm: any) => perm.environmentSlug === env.slug)
                                 .map((perm: { ability: string }) => perm.ability)
-                                .includes('read')
+                                .includes("read")
                             ? faPlus
                             : faPenToSquare
                         }
-                        isDisabled={myRole !== 'admin'}
+                        isDisabled={myRole !== "admin"}
                         // onOpenChange={(open) => setIsOpen(open)}
                       >
                         <SelectItem value="No Access" customIcon={faEyeSlash}>
@@ -377,7 +377,7 @@ const ProjectUsersTable = ({ userData, changeData, myUser, filter, isUserListLoa
                   <td className="border-0.5 flex flex-row justify-end border-t border-mineshaft-700 py-2 pl-8 pr-8">
                     {myUser !== row.email &&
                     // row.role !== "admin" &&
-                    myRole !== 'member' ? (
+                    myRole !== "member" ? (
                       <div className="mt-0.5 flex items-center opacity-50 hover:opacity-100">
                         <Button
                           onButtonPressed={() => handleDelete(row.membershipId, index)}

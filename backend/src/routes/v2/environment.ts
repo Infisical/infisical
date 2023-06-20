@@ -1,76 +1,76 @@
-import express, { Response, Request } from 'express';
+import express from "express";
 const router = express.Router();
-import { body, param } from 'express-validator';
-import { environmentController } from '../../controllers/v2';
+import { body, param } from "express-validator";
+import { environmentController } from "../../controllers/v2";
 import {
   requireAuth,
   requireWorkspaceAuth,
   validateRequest,
-} from '../../middleware';
+} from "../../middleware";
 import {
   ADMIN, 
+  AUTH_MODE_JWT,
   MEMBER,
-  AUTH_MODE_JWT
-} from '../../variables';
+} from "../../variables";
 
 router.post(
-  '/:workspaceId/environments',
+  "/:workspaceId/environments",
   requireAuth({
     acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: 'params'
+    locationWorkspaceId: "params",
   }),
-  param('workspaceId').exists().trim(),
-  body('environmentSlug').exists().trim(),
-  body('environmentName').exists().trim(),
+  param("workspaceId").exists().trim(),
+  body("environmentSlug").exists().trim(),
+  body("environmentName").exists().trim(),
   validateRequest,
   environmentController.createWorkspaceEnvironment
 );
 
 router.put(
-  '/:workspaceId/environments',
+  "/:workspaceId/environments",
   requireAuth({
     acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: 'params'
+    locationWorkspaceId: "params",
   }),
-  param('workspaceId').exists().trim(),
-  body('environmentSlug').exists().trim(),
-  body('environmentName').exists().trim(),
-  body('oldEnvironmentSlug').exists().trim(),
+  param("workspaceId").exists().trim(),
+  body("environmentSlug").exists().trim(),
+  body("environmentName").exists().trim(),
+  body("oldEnvironmentSlug").exists().trim(),
   validateRequest,
   environmentController.renameWorkspaceEnvironment
 );
 
 router.delete(
-  '/:workspaceId/environments',
+  "/:workspaceId/environments",
   requireAuth({
     acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN],
-    locationWorkspaceId: 'params'
+    locationWorkspaceId: "params",
   }),
-  param('workspaceId').exists().trim(),
-  body('environmentSlug').exists().trim(),
+  param("workspaceId").exists().trim(),
+  body("environmentSlug").exists().trim(),
   validateRequest,
   environmentController.deleteWorkspaceEnvironment
 );
 
 router.get(
-  '/:workspaceId/environments',
+  "/:workspaceId/environments",
   requireAuth({
     acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [MEMBER, ADMIN],
-    locationWorkspaceId: 'params'
+    locationWorkspaceId: "params",
   }),
-  param('workspaceId').exists().trim(),
+  param("workspaceId").exists().trim(),
   validateRequest,
   environmentController.getAllAccessibleEnvironmentsOfWorkspace
 );

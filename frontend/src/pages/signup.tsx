@@ -1,33 +1,33 @@
 /* eslint-disable no-nested-ternary */
-import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import Head from 'next/head';
-import Image from 'next/image';
-import { useRouter } from 'next/router';
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import Head from "next/head";
+import Image from "next/image";
+import { useRouter } from "next/router";
 
-import CodeInputStep from '@app/components/signup/CodeInputStep';
-import DownloadBackupPDF from '@app/components/signup/DonwloadBackupPDFStep';
-import EnterEmailStep from '@app/components/signup/EnterEmailStep';
-import InitialSignupStep from '@app/components/signup/InitialSignupStep';
-import TeamInviteStep from '@app/components/signup/TeamInviteStep';
-import UserInfoStep from '@app/components/signup/UserInfoStep';
-import SecurityClient from '@app/components/utilities/SecurityClient';
-import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
-import { useProviderAuth } from '@app/hooks/useProviderAuth';
+import CodeInputStep from "@app/components/signup/CodeInputStep";
+import DownloadBackupPDF from "@app/components/signup/DonwloadBackupPDFStep";
+import EnterEmailStep from "@app/components/signup/EnterEmailStep";
+import InitialSignupStep from "@app/components/signup/InitialSignupStep";
+import TeamInviteStep from "@app/components/signup/TeamInviteStep";
+import UserInfoStep from "@app/components/signup/UserInfoStep";
+import SecurityClient from "@app/components/utilities/SecurityClient";
+import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
+import { useProviderAuth } from "@app/hooks/useProviderAuth";
 
-import checkEmailVerificationCode from './api/auth/CheckEmailVerificationCode';
-import getWorkspaces from './api/workspace/getWorkspaces';
+import checkEmailVerificationCode from "./api/auth/CheckEmailVerificationCode";
+import getWorkspaces from "./api/workspace/getWorkspaces";
 
 /**
  * @returns the signup page
  */
 export default function SignUp() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [organizationName, setOrganizationName] = useState('');
-  const [attributionSource, setAttributionSource] = useState('');
-  const [code, setCode] = useState('123456');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [organizationName, setOrganizationName] = useState("");
+  const [attributionSource, setAttributionSource] = useState("");
+  const [code, setCode] = useState("123456");
   const [codeError, setCodeError] = useState(false);
   const [step, setStep] = useState(1);
   const router = useRouter();
@@ -51,7 +51,7 @@ export default function SignUp() {
         const userWorkspaces = await getWorkspaces();
         router.push(`/dashboard/${userWorkspaces[0]._id}`);
       } catch (error) {
-        console.log('Error - Not logged in yet');
+        console.log("Error - Not logged in yet");
       }
     };
     tryAuth();
@@ -150,17 +150,17 @@ export default function SignUp() {
       return <TeamInviteStep />;
     }
 
-    return '';
+    return "";
   };
 
   return (
     <div className="flex min-h-screen flex-col justify-center bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28 ">
       <Head>
-        <title>{t('common.head-title', { title: t('signup.title') })}</title>
+        <title>{t("common.head-title", { title: t("signup.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t('signup.og-title') as string} />
-        <meta name="og:description" content={t('signup.og-description') as string} />
+        <meta property="og:title" content={t("signup.og-title") as string} />
+        <meta name="og:description" content={t("signup.og-description") as string} />
       </Head>
       <div className="mb-4 mt-20 flex justify-center">
         <Image src="/images/gradientLogo.svg" height={90} width={120} alt="Infisical Logo" />

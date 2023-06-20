@@ -1,1 +1,1 @@
-export { UpgradePlanModal } from './UpgradePlanModal';
+export { UpgradePlanModal } from "./UpgradePlanModal";

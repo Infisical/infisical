@@ -1,8 +1,8 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import { 
+    IAction,
     Log,
-    IAction
-} from '../models';
+} from "../models";
 
 /**
  * Create an (audit) log
@@ -21,7 +21,7 @@ const createLogHelper = async ({
     workspaceId,
     actions,
     channel,
-    ipAddress
+    ipAddress,
 }: {
     userId?: Types.ObjectId;
     serviceAccountId?: Types.ObjectId;
@@ -39,12 +39,12 @@ const createLogHelper = async ({
         actionNames: actions.map((a) => a.name),
         actions,
         channel,
-        ipAddress
+        ipAddress,
     }).save();
 
     return log;
 }
 
 export {
-    createLogHelper
+    createLogHelper,
 }

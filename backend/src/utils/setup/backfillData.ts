@@ -5,22 +5,22 @@ import { encryptSymmetric128BitHexKeyUTF8 } from "../crypto";
 import { EESecretService } from "../../ee/services";
 import { ISecretVersion, SecretSnapshot, SecretVersion } from "../../ee/models";
 import {
-  Secret,
-  ISecret,
-  SecretBlindIndexData,
-  Workspace,
-  Bot,
   BackupPrivateKey,
-  IntegrationAuth,
-  ServiceTokenData,
+  Bot,
+  ISecret,
   Integration,
+  IntegrationAuth,
+  Secret,
+  SecretBlindIndexData,
+  ServiceTokenData,
+  Workspace,
 } from "../../models";
 import { generateKeyPair } from "../../utils/crypto";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../../config";
 import {
   ALGORITHM_AES_256_GCM,
-  ENCODING_SCHEME_UTF8,
   ENCODING_SCHEME_BASE64,
+  ENCODING_SCHEME_UTF8,
 } from "../../variables";
 import { InternalServerError } from "../errors";
 

@@ -22,13 +22,13 @@ const login2 = async (loginDetails: {
   clientProof: string;
   providerAuthToken?: string;
 }) => {
-  const response = await fetch('/api/v3/auth/login2', {
-    method: 'POST',
+  const response = await fetch("/api/v3/auth/login2", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify(loginDetails),
-    credentials: 'include'
+    credentials: "include"
   });
   // need precise error handling about the status code
   if (response.status === 200) {
@@ -36,7 +36,7 @@ const login2 = async (loginDetails: {
     return data;
   }
 
-  throw new Error('Password verification failed');
+  throw new Error("Password verification failed");
 };
 
 export default login2;

@@ -1,21 +1,21 @@
-import { Request, Response, NextFunction } from 'express';
-import { ServiceAccount, ServiceAccountWorkspacePermission } from '../models';
+import { NextFunction, Request, Response } from "express";
+import { ServiceAccount, ServiceAccountWorkspacePermission } from "../models";
 import {
-    ServiceAccountNotFoundError
-} from '../utils/errors';
+    ServiceAccountNotFoundError,
+} from "../utils/errors";
 import {
-    validateMembershipOrg
-} from '../helpers/membershipOrg';
+    validateMembershipOrg,
+} from "../helpers/membershipOrg";
 
-type req = 'params' | 'body' | 'query';
+type req = "params" | "body" | "query";
 
 const requireServiceAccountWorkspacePermissionAuth = ({
     acceptedRoles,
     acceptedStatuses,
-    location = 'params'
+    location = "params",
 }: {
-    acceptedRoles: Array<'owner' | 'admin' | 'member'>;
-	acceptedStatuses: Array<'invited' | 'accepted'>;
+    acceptedRoles: Array<"owner" | "admin" | "member">;
+	acceptedStatuses: Array<"invited" | "accepted">;
     location?: req;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
@@ -23,13 +23,13 @@ const requireServiceAccountWorkspacePermissionAuth = ({
         const serviceAccountWorkspacePermission = await ServiceAccountWorkspacePermission.findById(serviceAccountWorkspacePermissionId);
 
         if (!serviceAccountWorkspacePermission) {
-            return next(ServiceAccountNotFoundError({ message: 'Failed to locate Service Account workspace permission' }));
+            return next(ServiceAccountNotFoundError({ message: "Failed to locate Service Account workspace permission" }));
         }
         
         const serviceAccount = await ServiceAccount.findById(serviceAccountWorkspacePermission.serviceAccount);
 
         if (!serviceAccount) {
-            return next(ServiceAccountNotFoundError({ message: 'Failed to locate Service Account' }));
+            return next(ServiceAccountNotFoundError({ message: "Failed to locate Service Account" }));
         }
         
         if (serviceAccount.user.toString() !== req.user.id.toString()) {
@@ -39,7 +39,7 @@ const requireServiceAccountWorkspacePermissionAuth = ({
                 userId: req.user._id,
                 organizationId: serviceAccount.organization,
                 acceptedRoles,
-                acceptedStatuses
+                acceptedStatuses,
             });
         }
         

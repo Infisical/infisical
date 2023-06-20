@@ -1,11 +1,11 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
 /* eslint-disable react/jsx-key */
-import { Fragment, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import Image from 'next/image';
-import { useRouter } from 'next/router';
-import { faGithub, faSlack } from '@fortawesome/free-brands-svg-icons';
-import { faCircleQuestion } from '@fortawesome/free-regular-svg-icons';
+import { Fragment, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import Image from "next/image";
+import { useRouter } from "next/router";
+import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
+import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
   faBook,
@@ -14,35 +14,35 @@ import {
   faGear,
   faPlus,
   faRightFromBracket
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Menu, Transition } from '@headlessui/react';
-import {TFunction} from 'i18next';
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Menu, Transition } from "@headlessui/react";
+import {TFunction} from "i18next";
 
-import guidGenerator from '@app/components/utilities/randomId';
-import { useOrganization, useUser } from '@app/context';
-import { useLogoutUser } from '@app/hooks/api';
+import guidGenerator from "@app/components/utilities/randomId";
+import { useOrganization, useUser } from "@app/context";
+import { useLogoutUser } from "@app/hooks/api";
 
 const supportOptions = (t: TFunction) => [
   [
     <FontAwesomeIcon className="pl-1.5 pr-3 text-lg" icon={faSlack} />,
-    t('nav.support.slack'),
-    'https://infisical.com/slack'
+    t("nav.support.slack"),
+    "https://infisical.com/slack"
   ],
   [
     <FontAwesomeIcon className="pl-1.5 pr-3 text-lg" icon={faBook} />,
-    t('nav.support.docs'),
-    'https://infisical.com/docs/documentation/getting-started/introduction'
+    t("nav.support.docs"),
+    "https://infisical.com/docs/documentation/getting-started/introduction"
   ],
   [
     <FontAwesomeIcon className="pl-1.5 pr-3 text-lg" icon={faGithub} />,
-    t('nav.support.issue'),
-    'https://github.com/Infisical/infisical-cli/issues'
+    t("nav.support.issue"),
+    "https://github.com/Infisical/infisical-cli/issues"
   ],
   [
     <FontAwesomeIcon className="pl-1.5 pr-3 text-lg" icon={faEnvelope} />,
-    t('nav.support.email'),
-    'mailto:support@infisical.com'
+    t("nav.support.email"),
+    "mailto:support@infisical.com"
   ]
 ];
 
@@ -76,19 +76,19 @@ export const Navbar = () => {
 
   const closeApp = async () => {
     try {
-      console.log('Logging out...')
+      console.log("Logging out...")
       await logout.mutateAsync();
-      localStorage.removeItem('protectedKey');
-      localStorage.removeItem('protectedKeyIV');
-      localStorage.removeItem('protectedKeyTag');
-      localStorage.removeItem('publicKey');
-      localStorage.removeItem('encryptedPrivateKey');
-      localStorage.removeItem('iv');
-      localStorage.removeItem('tag');
-      localStorage.removeItem('PRIVATE_KEY');
-      localStorage.removeItem('orgData.id');
-      localStorage.removeItem('projectData.id');
-      router.push('/login');
+      localStorage.removeItem("protectedKey");
+      localStorage.removeItem("protectedKeyIV");
+      localStorage.removeItem("protectedKeyTag");
+      localStorage.removeItem("publicKey");
+      localStorage.removeItem("encryptedPrivateKey");
+      localStorage.removeItem("iv");
+      localStorage.removeItem("tag");
+      localStorage.removeItem("PRIVATE_KEY");
+      localStorage.removeItem("orgData.id");
+      localStorage.removeItem("projectData.id");
+      router.push("/login");
     } catch (error) {
       console.error(error);
     }
@@ -171,7 +171,7 @@ export const Navbar = () => {
             <Menu.Items className="absolute right-0 z-[125] mt-0.5 w-68 origin-top-right divide-y divide-mineshaft-700 drop-shadow-2xl rounded-md border border-mineshaft-700 bg-mineshaft-900 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
               <div className="px-1 py-1">
                 <div className="ml-2 mt-2 self-start text-xs font-semibold tracking-wide text-gray-400">
-                  {t('nav.user.signed-in-as')}
+                  {t("nav.user.signed-in-as")}
                 </div>
                 <div
                   onKeyDown={() => null}
@@ -186,7 +186,7 @@ export const Navbar = () => {
                   <div className="flex w-full items-center justify-between">
                     <div>
                       <p className="px-2 pt-1 text-sm text-gray-300">
-                        {' '}
+                        {" "}
                         {user?.firstName} {user?.lastName}
                       </p>
                       <p className="px-2 pb-1 text-xs text-gray-400"> {user?.email}</p>
@@ -200,7 +200,7 @@ export const Navbar = () => {
               </div>
               <div className="px-2 pt-2">
                 <div className="ml-2 mt-2 self-start text-xs font-semibold tracking-wide text-gray-400">
-                  {t('nav.user.current-organization')}
+                  {t("nav.user.current-organization")}
                 </div>
                 <div
                   onKeyDown={() => null}
@@ -233,7 +233,7 @@ export const Navbar = () => {
                     className="relative mt-1 flex cursor-pointer select-none justify-start rounded-md py-2 px-2 text-gray-400 duration-200 hover:bg-white/5 hover:text-gray-200"
                   >
                     <FontAwesomeIcon className="pl-1.5 pr-3 text-lg" icon={faCoins} />
-                    <div className="text-sm">{t('nav.user.usage-billing')}</div>
+                    <div className="text-sm">{t("nav.user.usage-billing")}</div>
                   </div>
                 </button>
                 <button
@@ -251,14 +251,14 @@ export const Navbar = () => {
                     <span className="absolute inset-y-0 left-0 flex items-center rounded-lg pl-3 pr-4">
                       <FontAwesomeIcon icon={faPlus} className="ml-1" />
                     </span>
-                    <div className="ml-1 text-sm">{t('nav.user.invite')}</div>
+                    <div className="ml-1 text-sm">{t("nav.user.invite")}</div>
                   </div>
                 </button>
               </div>
               {orgs && orgs?.length > 1 && (
                 <div className="px-1 pt-1">
                   <div className="ml-2 mt-2 self-start text-xs font-semibold tracking-wide text-gray-400">
-                    {t('nav.user.other-organizations')}
+                    {t("nav.user.other-organizations")}
                   </div>
                   <div className="mt-3 mb-2 flex flex-col items-start px-1">
                     {orgs
@@ -270,7 +270,7 @@ export const Navbar = () => {
                           tabIndex={0}
                           key={guidGenerator()}
                           onClick={() => {
-                            localStorage.setItem('orgData.id', org._id);
+                            localStorage.setItem("orgData.id", org._id);
                             router.reload();
                           }}
                           className="flex w-full cursor-pointer flex-row items-center justify-start rounded-md p-1.5 hover:bg-white/5"
@@ -293,7 +293,7 @@ export const Navbar = () => {
                       type="button"
                       onClick={closeApp}
                       className={`${
-                        active ? 'bg-red font-semibold text-white' : 'text-gray-400'
+                        active ? "bg-red font-semibold text-white" : "text-gray-400"
                       } group flex w-full items-center rounded-md px-2 py-2 text-sm`}
                     >
                       <div className="relative flex cursor-pointer select-none items-center justify-start">
@@ -301,7 +301,7 @@ export const Navbar = () => {
                           className="ml-1.5 mr-3 text-lg"
                           icon={faRightFromBracket}
                         />
-                        {t('common.logout')}
+                        {t("common.logout")}
                       </div>
                     </button>
                   )}

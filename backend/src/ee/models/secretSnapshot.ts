@@ -1,4 +1,4 @@
-import { Schema, model, Types } from "mongoose";
+import { Schema, Types, model } from "mongoose";
 
 export interface ISecretSnapshot {
   workspace: Types.ObjectId;

@@ -1,8 +1,8 @@
-import { Request, Response } from 'express';
+import { Request, Response } from "express";
 import {
+    MembershipOrg,
     User,
-    MembershipOrg
-} from '../../models';
+} from "../../models";
 
 /**
  * Return the current user.
@@ -38,10 +38,10 @@ export const getMe = async (req: Request, res: Response) => {
     */
     const user = await User
         .findById(req.user._id)
-        .select('+salt +publicKey +encryptedPrivateKey +iv +tag +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag');
+        .select("+salt +publicKey +encryptedPrivateKey +iv +tag +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag");
     
     return res.status(200).send({
-        user
+        user,
     });
 }
 
@@ -60,7 +60,7 @@ export const updateMyMfaEnabled = async (req: Request, res: Response) => {
     if (isMfaEnabled) { 
         // TODO: adapt this route/controller 
         // to work for different forms of MFA
-        req.user.mfaMethods = ['email'];
+        req.user.mfaMethods = ["email"];
     } else {
         req.user.mfaMethods = [];
     }
@@ -70,7 +70,7 @@ export const updateMyMfaEnabled = async (req: Request, res: Response) => {
     const user = req.user;
     
     return res.status(200).send({
-        user
+        user,
     });
 }
 
@@ -109,11 +109,11 @@ export const getMyOrganizations = async (req: Request, res: Response) => {
     */
   const organizations = (
     await MembershipOrg.find({
-      user: req.user._id
-    }).populate('organization')
+      user: req.user._id,
+    }).populate("organization")
   ).map((m) => m.organization);
 
 	return res.status(200).send({
-		organizations
+		organizations,
 	});
 }

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import queryString from 'query-string';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import queryString from "query-string";
 
 import {
   Button,
@@ -10,43 +10,43 @@ import {
   Input,
   Select,
   SelectItem
-} from '../../../components/v2';
+} from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById,
   useGetIntegrationAuthTeams
-} from '../../../hooks/api/integrationAuth';
-import { useGetWorkspaceById } from '../../../hooks/api/workspace';
-import createIntegration from '../../api/integrations/createIntegration';
+} from "../../../hooks/api/integrationAuth";
+import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+import createIntegration from "../../api/integrations/createIntegration";
 
 const gitLabEntities = [
-  { name: 'Individual', value: 'individual' },
-  { name: 'Group', value: 'group' }
+  { name: "Individual", value: "individual" },
+  { name: "Group", value: "group" }
 ];
 
 export default function GitLabCreateIntegrationPage() {
   const router = useRouter();
 
-  const { integrationAuthId } = queryString.parse(router.asPath.split('?')[1]);
+  const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
-  const { data: workspace } = useGetWorkspaceById(localStorage.getItem('projectData.id') ?? '');
-  const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? '');
+  const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
+  const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
 
   const [targetTeamId, setTargetTeamId] = useState<string | null>(null);
 
   const { data: integrationAuthApps } = useGetIntegrationAuthApps({
-    integrationAuthId: (integrationAuthId as string) ?? '',
+    integrationAuthId: (integrationAuthId as string) ?? "",
     ...(targetTeamId ? { teamId: targetTeamId } : {})
   });
   const { data: integrationAuthTeams } = useGetIntegrationAuthTeams(
-    (integrationAuthId as string) ?? ''
+    (integrationAuthId as string) ?? ""
   );
 
   const [targetEntity, setTargetEntity] = useState(gitLabEntities[0].value);
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
-  const [secretPath, setSecretPath] = useState('/');
-  const [targetAppId, setTargetAppId] = useState('');
-  const [targetEnvironment, setTargetEnvironment] = useState('');
+  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+  const [secretPath, setSecretPath] = useState("/");
+  const [targetAppId, setTargetAppId] = useState("");
+  const [targetEnvironment, setTargetEnvironment] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -61,23 +61,23 @@ export default function GitLabCreateIntegrationPage() {
       if (integrationAuthApps.length > 0) {
         setTargetAppId(integrationAuthApps[0].appId as string);
       } else {
-        setTargetAppId('none');
+        setTargetAppId("none");
       }
     }
   }, [integrationAuthApps]);
 
   useEffect(() => {
-    if (targetEntity === 'group' && integrationAuthTeams && integrationAuthTeams.length > 0) {
+    if (targetEntity === "group" && integrationAuthTeams && integrationAuthTeams.length > 0) {
       if (integrationAuthTeams) {
         if (integrationAuthTeams.length > 0) {
           // case: user is part of at least 1 group in GitLab
           setTargetTeamId(integrationAuthTeams[0].teamId);
         } else {
           // case: user is not part of any groups in GitLab
-          setTargetTeamId('none');
+          setTargetTeamId("none");
         }
       }
-    } else if (targetEntity === 'individual') {
+    } else if (targetEntity === "individual") {
       setTargetTeamId(null);
     }
   }, [targetEntity, integrationAuthTeams]);
@@ -96,7 +96,7 @@ export default function GitLabCreateIntegrationPage() {
           )?.name ?? null,
         appId: targetAppId,
         sourceEnvironment: selectedSourceEnvironment,
-        targetEnvironment: targetEnvironment === '' ? '*' : targetEnvironment,
+        targetEnvironment: targetEnvironment === "" ? "*" : targetEnvironment,
         targetEnvironmentId: null,
         targetService: null,
         targetServiceId: null,
@@ -107,7 +107,7 @@ export default function GitLabCreateIntegrationPage() {
       });
 
       setIsLoading(false);
-      router.push(`/integrations/${localStorage.getItem('projectData.id')}`);
+      router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
       console.error(err);
     }
@@ -160,7 +160,7 @@ export default function GitLabCreateIntegrationPage() {
             })}
           </Select>
         </FormControl>
-        {targetEntity === 'group' && targetTeamId && (
+        {targetEntity === "group" && targetTeamId && (
           <FormControl label="GitLab Group">
             <Select
               value={targetTeamId}

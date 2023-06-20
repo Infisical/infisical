@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface WorkspaceProps {
   workspaceId: string;
@@ -12,15 +12,15 @@ interface WorkspaceProps {
  */
 const getProjectSercetSnapshotsCount = async ({ workspaceId }: WorkspaceProps) =>
   SecurityClient.fetchCall(`/api/v1/workspace/${workspaceId}/secret-snapshots/count`, {
-    method: 'GET',
+    method: "GET",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res && res.status === 200) {
       return (await res.json()).count;
     }
-    console.log('Failed to get the count of project secret snapshots');
+    console.log("Failed to get the count of project secret snapshots");
     return undefined;
   });
 

@@ -1,14 +1,14 @@
-import { ChangeEvent, DragEvent } from 'react';
-import { useTranslation } from 'react-i18next';
-import { faUpload } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { twMerge } from 'tailwind-merge';
+import { ChangeEvent, DragEvent } from "react";
+import { useTranslation } from "react-i18next";
+import { faUpload } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
-import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 // TODO:(akhilmhdh) convert all the util functions like this into a lib folder grouped by functionalityj
-import { parseDotEnv } from '@app/components/utilities/parseDotEnv';
-import { Button } from '@app/components/v2';
-import { useToggle } from '@app/hooks/useToggle';
+import { parseDotEnv } from "@app/components/utilities/parseDotEnv";
+import { Button } from "@app/components/v2";
+import { useToggle } from "@app/hooks/useToggle";
 
 type Props = {
   isSmaller: boolean;
@@ -25,9 +25,9 @@ export const SecretDropzone = ({ isSmaller, onParsedEnv, onAddNewSecret }: Props
   const handleDrag = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
+    if (e.type === "dragenter" || e.type === "dragover") {
       setDragActive.on();
-    } else if (e.type === 'dragleave') {
+    } else if (e.type === "dragleave") {
       setDragActive.off();
     }
   };
@@ -36,8 +36,8 @@ export const SecretDropzone = ({ isSmaller, onParsedEnv, onAddNewSecret }: Props
     const reader = new FileReader();
     if (!file) {
       createNotification({
-        text: `You can't inject files from VS Code. Click 'Reveal in finder', and drag your file directly from the directory where it's located.`,
-        type: 'error',
+        text: "You can't inject files from VS Code. Click 'Reveal in finder', and drag your file directly from the directory where it's located.",
+        type: "error",
         timeoutMs: 10000
       });
       return;
@@ -67,7 +67,7 @@ export const SecretDropzone = ({ isSmaller, onParsedEnv, onAddNewSecret }: Props
       return;
     }
 
-    e.dataTransfer.dropEffect = 'copy';
+    e.dataTransfer.dropEffect = "copy";
     setDragActive.off();
     parseFile(e.dataTransfer.files[0]);
   };
@@ -84,10 +84,10 @@ export const SecretDropzone = ({ isSmaller, onParsedEnv, onAddNewSecret }: Props
       onDragOver={handleDrag}
       onDrop={handleDrop}
       className={twMerge(
-        'relative mx-0.5 mb-4 mt-4 flex w-full max-w-[calc(100vw-292px)] cursor-pointer items-center justify-center space-x-2 rounded-md bg-mineshaft-900 py-8 px-2 text-mineshaft-200 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100',
-        isDragActive && 'opacity-100',
-        !isSmaller && 'max-w-3xl flex-col space-y-4 py-20',
-        isLoading && 'bg-bunker-800'
+        "relative mx-0.5 mb-4 mt-4 flex w-full max-w-[calc(100vw-292px)] cursor-pointer items-center justify-center space-x-2 rounded-md bg-mineshaft-900 py-8 px-2 text-mineshaft-200 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100",
+        isDragActive && "opacity-100",
+        !isSmaller && "max-w-3xl flex-col space-y-4 py-20",
+        isLoading && "bg-bunker-800"
       )}
     >
       {isLoading ? (
@@ -97,10 +97,10 @@ export const SecretDropzone = ({ isSmaller, onParsedEnv, onAddNewSecret }: Props
       ) : (
         <>
           <div>
-            <FontAwesomeIcon icon={faUpload} size={isSmaller ? '2x' : '5x'} />
+            <FontAwesomeIcon icon={faUpload} size={isSmaller ? "2x" : "5x"} />
           </div>
           <div>
-            <p className="">{t(isSmaller ? 'common.drop-zone-keys' : 'common.drop-zone')}</p>
+            <p className="">{t(isSmaller ? "common.drop-zone-keys" : "common.drop-zone")}</p>
           </div>
           <input
             id="fileSelect"
@@ -122,7 +122,7 @@ export const SecretDropzone = ({ isSmaller, onParsedEnv, onAddNewSecret }: Props
                 </Button>
               </div>
             </>
-          )}{' '}
+          )}{" "}
         </>
       )}
     </div>

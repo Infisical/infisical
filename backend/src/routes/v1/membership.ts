@@ -1,50 +1,50 @@
-import express from 'express';
+import express from "express";
 const router = express.Router();
-import { body, param } from 'express-validator';
-import { requireAuth, validateRequest } from '../../middleware';
-import { membershipController } from '../../controllers/v1';
-import { membershipController as EEMembershipControllers } from '../../ee/controllers/v1';
-import { AUTH_MODE_JWT } from '../../variables';
+import { body, param } from "express-validator";
+import { requireAuth, validateRequest } from "../../middleware";
+import { membershipController } from "../../controllers/v1";
+import { membershipController as EEMembershipControllers } from "../../ee/controllers/v1";
+import { AUTH_MODE_JWT } from "../../variables";
 
 // note: ALL DEPRECIATED (moved to api/v2/workspace/:workspaceId/memberships/:membershipId)
 
 router.get( // used for old CLI (deprecate)
-	'/:workspaceId/connect',
+	"/:workspaceId/connect",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT]
+		acceptedAuthModes: [AUTH_MODE_JWT],
 	}),
-	param('workspaceId').exists().trim(),
+	param("workspaceId").exists().trim(),
 	validateRequest,
 	membershipController.validateMembership
 );
 
 router.delete(
-	'/:membershipId',
+	"/:membershipId",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT]
+		acceptedAuthModes: [AUTH_MODE_JWT],
 	}),
-	param('membershipId').exists().trim(),
+	param("membershipId").exists().trim(),
 	validateRequest,
 	membershipController.deleteMembership
 );
 
 router.post(
-	'/:membershipId/change-role',
+	"/:membershipId/change-role",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT]
+		acceptedAuthModes: [AUTH_MODE_JWT],
 	}),
-	body('role').exists().trim(),
+	body("role").exists().trim(),
 	validateRequest,
 	membershipController.changeMembershipRole
 );
 
 router.post(
-	'/:membershipId/deny-permissions',
+	"/:membershipId/deny-permissions",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT]
+		acceptedAuthModes: [AUTH_MODE_JWT],
 	}),
-	param('membershipId').isMongoId().exists().trim(),
-	body('permissions').isArray().exists(),
+	param("membershipId").isMongoId().exists().trim(),
+	body("permissions").isArray().exists(),
 	validateRequest,
 	EEMembershipControllers.denyMembershipPermissions
 );

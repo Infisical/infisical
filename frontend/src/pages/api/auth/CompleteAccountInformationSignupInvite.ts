@@ -49,7 +49,7 @@ const completeAccountInformationSignupInvite = async ({
   salt,
   verifier
 }: Props) => {
-  const { data } = await apiRequest.post('/api/v2/signup/complete-account/invite', {
+  const { data } = await apiRequest.post("/api/v2/signup/complete-account/invite", {
     email,
     firstName,
     lastName,

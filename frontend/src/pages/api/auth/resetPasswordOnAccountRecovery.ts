@@ -31,10 +31,10 @@ const resetPasswordOnAccountRecovery = ({
   salt,
   verifier,
   verificationToken,
-}: Props) => fetch('/api/v1/password/password-reset', {
-    method: 'POST',
+}: Props) => fetch("/api/v1/password/password-reset", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${verificationToken}`
     },
     body: JSON.stringify({
@@ -49,7 +49,7 @@ const resetPasswordOnAccountRecovery = ({
     })
   }).then(async (res) => {
     if (res?.status !== 200) {
-      console.log('Failed to get the backup key');
+      console.log("Failed to get the backup key");
     }
     return res;
   });

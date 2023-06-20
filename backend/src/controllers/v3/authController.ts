@@ -1,29 +1,29 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import * as Sentry from '@sentry/node';
-import * as bigintConversion from 'bigint-conversion';
-const jsrp = require('jsrp');
-import { User, LoginSRPDetail } from '../../models';
-import { issueAuthTokens, createToken, validateProviderAuthToken } from '../../helpers/auth';
-import { checkUserDevice } from '../../helpers/user';
-import { sendMail } from '../../helpers/nodemailer';
-import { TokenService } from '../../services';
-import { EELogService } from '../../ee/services';
-import { BadRequestError, InternalServerError } from '../../utils/errors';
+import { Request, Response } from "express";
+import jwt from "jsonwebtoken";
+import * as Sentry from "@sentry/node";
+import * as bigintConversion from "bigint-conversion";
+const jsrp = require("jsrp");
+import { LoginSRPDetail, User } from "../../models";
+import { createToken, issueAuthTokens, validateProviderAuthToken } from "../../helpers/auth";
+import { checkUserDevice } from "../../helpers/user";
+import { sendMail } from "../../helpers/nodemailer";
+import { TokenService } from "../../services";
+import { EELogService } from "../../ee/services";
+import { BadRequestError, InternalServerError } from "../../utils/errors";
 import {
+    ACTION_LOGIN,
     TOKEN_EMAIL_MFA,
-    ACTION_LOGIN
-} from '../../variables';
-import { getChannelFromUserAgent } from '../../utils/posthog'; // TODO: move this
+} from "../../variables";
+import { getChannelFromUserAgent } from "../../utils/posthog"; // TODO: move this
 import {
+    getHttpsEnabled,
     getJwtMfaLifetime,
     getJwtMfaSecret,
-    getHttpsEnabled,
-} from '../../config';
-import { AuthProvider } from '../../models/user';
+} from "../../config";
+import { AuthProvider } from "../../models/user";
 
-declare module 'jsonwebtoken' {
+declare module "jsonwebtoken" {
     export interface ProviderAuthJwtPayload extends jwt.JwtPayload {
         userId: string;
         email: string;
@@ -43,7 +43,7 @@ export const login1 = async (req: Request, res: Response) => {
         const {
             email,
             providerAuthToken,
-            clientPublicKey
+            clientPublicKey,
         }: {
             email: string;
             clientPublicKey: string,
@@ -52,9 +52,9 @@ export const login1 = async (req: Request, res: Response) => {
 
         const user = await User.findOne({
             email,
-        }).select('+salt +verifier');
+        }).select("+salt +verifier");
 
-        if (!user) throw new Error('Failed to find user');
+        if (!user) throw new Error("Failed to find user");
 
         if (user.authProvider) {
             await validateProviderAuthToken({
@@ -68,13 +68,13 @@ export const login1 = async (req: Request, res: Response) => {
         server.init(
             {
                 salt: user.salt,
-                verifier: user.verifier
+                verifier: user.verifier,
             },
             async () => {
                 // generate server-side public key
                 const serverPublicKey = server.getPublicKey();
                 await LoginSRPDetail.findOneAndReplace({
-                    email: email
+                    email: email,
                 }, {
                     email,
                     userId: user.id,
@@ -84,7 +84,7 @@ export const login1 = async (req: Request, res: Response) => {
 
                 return res.status(200).send({
                     serverPublicKey,
-                    salt: user.salt
+                    salt: user.salt,
                 });
             }
         );
@@ -92,7 +92,7 @@ export const login1 = async (req: Request, res: Response) => {
         Sentry.setUser(null);
         Sentry.captureException(err);
         return res.status(400).send({
-            message: 'Failed to start authentication process'
+            message: "Failed to start authentication process",
         });
     }
 };
@@ -107,15 +107,15 @@ export const login1 = async (req: Request, res: Response) => {
 export const login2 = async (req: Request, res: Response) => {
     try {
 
-        if (!req.headers['user-agent']) throw InternalServerError({ message: 'User-Agent header is required' });
+        if (!req.headers["user-agent"]) throw InternalServerError({ message: "User-Agent header is required" });
 
         const { email, clientProof, providerAuthToken } = req.body;
 
         const user = await User.findOne({
             email,
-        }).select('+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag +devices');
+        }).select("+salt +verifier +encryptionVersion +protectedKey +protectedKeyIV +protectedKeyTag +publicKey +encryptedPrivateKey +iv +tag +devices");
 
-        if (!user) throw new Error('Failed to find user');
+        if (!user) throw new Error("Failed to find user");
 
         if (user.authProvider) {
             await validateProviderAuthToken({
@@ -136,7 +136,7 @@ export const login2 = async (req: Request, res: Response) => {
             {
                 salt: user.salt,
                 verifier: user.verifier,
-                b: loginSRPDetail.serverBInt
+                b: loginSRPDetail.serverBInt,
             },
             async () => {
                 server.setClientPublicKey(loginSRPDetail.clientPublicKey);
@@ -150,52 +150,52 @@ export const login2 = async (req: Request, res: Response) => {
                         // generate temporary MFA token
                         const token = createToken({
                             payload: {
-                                userId: user._id.toString()
+                                userId: user._id.toString(),
                             },
                             expiresIn: await getJwtMfaLifetime(),
-                            secret: await getJwtMfaSecret()
+                            secret: await getJwtMfaSecret(),
                         });
 
                         const code = await TokenService.createToken({
                             type: TOKEN_EMAIL_MFA,
-                            email
+                            email,
                         });
 
                         // send MFA code [code] to [email]
                         await sendMail({
-                            template: 'emailMfa.handlebars',
-                            subjectLine: 'Infisical MFA code',
+                            template: "emailMfa.handlebars",
+                            subjectLine: "Infisical MFA code",
                             recipients: [user.email],
                             substitutions: {
-                                code
-                            }
+                                code,
+                            },
                         });
 
                         return res.status(200).send({
                             mfaEnabled: true,
-                            token
+                            token,
                         });
                     }
 
                     await checkUserDevice({
                         user,
                         ip: req.realIP,
-                        userAgent: req.headers['user-agent'] ?? ''
+                        userAgent: req.headers["user-agent"] ?? "",
                     });
 
                     // issue tokens
                     const tokens = await issueAuthTokens({ 
                         userId: user._id,
                         ip: req.realIP,
-                        userAgent: req.headers['user-agent'] ?? ''
+                        userAgent: req.headers["user-agent"] ?? "",
                     });
 
                     // store (refresh) token in httpOnly cookie
-                    res.cookie('jid', tokens.refreshToken, {
+                    res.cookie("jid", tokens.refreshToken, {
                         httpOnly: true,
-                        path: '/',
-                        sameSite: 'strict',
-                        secure: await getHttpsEnabled()
+                        path: "/",
+                        sameSite: "strict",
+                        secure: await getHttpsEnabled(),
                     });
 
                     // case: user does not have MFA enablgged
@@ -221,7 +221,7 @@ export const login2 = async (req: Request, res: Response) => {
                         publicKey: user.publicKey,
                         encryptedPrivateKey: user.encryptedPrivateKey,
                         iv: user.iv,
-                        tag: user.tag
+                        tag: user.tag,
                     }
 
                     if (
@@ -236,21 +236,21 @@ export const login2 = async (req: Request, res: Response) => {
 
                     const loginAction = await EELogService.createAction({
                         name: ACTION_LOGIN,
-                        userId: user._id
+                        userId: user._id,
                     });
 
                     loginAction && await EELogService.createLog({
                         userId: user._id,
                         actions: [loginAction],
-                        channel: getChannelFromUserAgent(req.headers['user-agent']),
-                        ipAddress: req.realIP
+                        channel: getChannelFromUserAgent(req.headers["user-agent"]),
+                        ipAddress: req.realIP,
                     });
 
                     return res.status(200).send(response);
                 }
 
                 return res.status(400).send({
-                    message: 'Failed to authenticate. Try again?'
+                    message: "Failed to authenticate. Try again?",
                 });
             }
         );
@@ -258,7 +258,7 @@ export const login2 = async (req: Request, res: Response) => {
         Sentry.setUser(null);
         Sentry.captureException(err);
         return res.status(400).send({
-            message: 'Failed to authenticate. Try again?'
+            message: "Failed to authenticate. Try again?",
         });
     }
 };

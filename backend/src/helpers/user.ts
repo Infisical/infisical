@@ -1,8 +1,8 @@
 import {
 	IUser, 
 	User,
-} from '../models';
-import { sendMail } from './nodemailer';
+} from "../models";
+import { sendMail } from "./nodemailer";
 
 /**
  * Initialize a user under email [email]
@@ -12,7 +12,7 @@ import { sendMail } from './nodemailer';
  */
 export const setupAccount = async ({ email }: { email: string }) => {
   const user = await new User({
-    email
+    email,
   }).save();
 
 	return user;
@@ -49,7 +49,7 @@ export const completeAccount = async ({
 	encryptedPrivateKeyIV,
 	encryptedPrivateKeyTag,
 	salt,
-	verifier
+	verifier,
 }: {
 	userId: string;
 	firstName: string;
@@ -66,7 +66,7 @@ export const completeAccount = async ({
 	verifier: string;
 }) => {
   const options = {
-    new: true
+    new: true,
   };
   const user = await User.findByIdAndUpdate(
     userId,
@@ -82,7 +82,7 @@ export const completeAccount = async ({
       iv: encryptedPrivateKeyIV,
       tag: encryptedPrivateKeyTag,
       salt,
-      verifier
+      verifier,
     },
     options
   );
@@ -100,7 +100,7 @@ export const completeAccount = async ({
 export const checkUserDevice = async ({
 	user,
 	ip,
-	userAgent
+	userAgent,
 }: {
 	user: IUser;
 	ip: string;
@@ -114,22 +114,22 @@ export const checkUserDevice = async ({
 		
 		user.devices = user.devices.concat([{
 			ip: String(ip),
-			userAgent
+			userAgent,
 		}]);
 		
 		await user.save();
 
 		// send MFA code [code] to [email]
 		await sendMail({
-			template: 'newDevice.handlebars',
-			subjectLine: `Successful login from new device`,
+			template: "newDevice.handlebars",
+			subjectLine: "Successful login from new device",
 			recipients: [user.email],
 			substitutions: {
 				email: user.email,
 				timestamp: new Date().toString(),
 				ip,
-				userAgent
-			}
+				userAgent,
+			},
 		}); 
 	}
 }

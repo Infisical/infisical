@@ -1,77 +1,77 @@
-import crypto from 'crypto';
+import crypto from "crypto";
 
-import { encryptAssymmetric } from '@app/components/utilities/cryptography/crypto';
-import encryptSecrets from '@app/components/utilities/secrets/encryptSecrets';
-import addSecrets from '@app/pages/api/files/AddSecrets';
-import getUser from '@app/pages/api/user/getUser';
+import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
+import encryptSecrets from "@app/components/utilities/secrets/encryptSecrets";
+import addSecrets from "@app/pages/api/files/AddSecrets";
+import getUser from "@app/pages/api/user/getUser";
 import createWorkspace from "@app/pages/api/workspace/createWorkspace";
-import uploadKeys from '@app/pages/api/workspace/uploadKeys';
+import uploadKeys from "@app/pages/api/workspace/uploadKeys";
 
 const secretsToBeAdded = [
     {
       pos: 0,
-      key: 'DATABASE_URL',
+      key: "DATABASE_URL",
       // eslint-disable-next-line no-template-curly-in-string
-      value: 'mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net',
+      value: "mongodb+srv://${DB_USERNAME}:${DB_PASSWORD}@mongodb.net",
       valueOverride: undefined,
-      comment: 'Secret referencing example',
-      id: '',
+      comment: "Secret referencing example",
+      id: "",
       tags: []
     },
     {
       pos: 1,
-      key: 'DB_USERNAME',
-      value: 'OVERRIDE_THIS',
+      key: "DB_USERNAME",
+      value: "OVERRIDE_THIS",
       valueOverride: undefined,
       comment:
-        'Override secrets with personal value',
-      id: '',
+        "Override secrets with personal value",
+      id: "",
       tags: []
     },
     {
       pos: 2,
-      key: 'DB_PASSWORD',
-      value: 'OVERRIDE_THIS',
+      key: "DB_PASSWORD",
+      value: "OVERRIDE_THIS",
       valueOverride: undefined,
       comment:
-        'Another secret override',
-      id: '',
+        "Another secret override",
+      id: "",
       tags: []
     },
     {
       pos: 3,
-      key: 'DB_USERNAME',
-      value: 'user1234',
-      valueOverride: 'user1234',
-      comment: '',
-      id: '',
+      key: "DB_USERNAME",
+      value: "user1234",
+      valueOverride: "user1234",
+      comment: "",
+      id: "",
       tags: []
     },
     {
       pos: 4,
-      key: 'DB_PASSWORD',
-      value: 'example_password',
-      valueOverride: 'example_password',
-      comment: '',
-      id: '',
+      key: "DB_PASSWORD",
+      value: "example_password",
+      valueOverride: "example_password",
+      comment: "",
+      id: "",
       tags: []
     },
     {
       pos: 5,
-      key: 'TWILIO_AUTH_TOKEN',
-      value: 'example_twillio_token',
+      key: "TWILIO_AUTH_TOKEN",
+      value: "example_twillio_token",
       valueOverride: undefined,
-      comment: '',
-      id: '',
+      comment: "",
+      id: "",
       tags: []
     },
     {
       pos: 6,
-      key: 'WEBSITE_URL',
-      value: 'http://localhost:3000',
+      key: "WEBSITE_URL",
+      value: "http://localhost:3000",
       valueOverride: undefined,
-      comment: '',
-      id: '',
+      comment: "",
+      id: "",
       tags: []
     }
 ];
@@ -101,10 +101,10 @@ const initProjectHelper = async ({
         });
 
         // create and upload new (encrypted) project key
-        const randomBytes = crypto.randomBytes(16).toString('hex');
-        const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
+        const randomBytes = crypto.randomBytes(16).toString("hex");
+        const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
         
-        if (!PRIVATE_KEY) throw new Error('Failed to find private key');
+        if (!PRIVATE_KEY) throw new Error("Failed to find private key");
 
         const user = await getUser();
 
@@ -120,17 +120,17 @@ const initProjectHelper = async ({
         const secrets = await encryptSecrets({
             secretsToEncrypt: secretsToBeAdded,
             workspaceId: project._id,
-            env: 'dev'
+            env: "dev"
         });
 
         await addSecrets({
             secrets: secrets ?? [],
-            env: 'dev',
+            env: "dev",
             workspaceId: project._id
         });
 
     } catch (err) {
-        console.error('Failed to init project in organization', err);
+        console.error("Failed to init project in organization", err);
     }
     
     return project;

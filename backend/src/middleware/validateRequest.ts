@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import { validationResult } from 'express-validator';
-import { BadRequestError, UnauthorizedRequestError, ValidationError } from '../utils/errors';
+import { NextFunction, Request, Response } from "express";
+import { validationResult } from "express-validator";
+import { UnauthorizedRequestError, ValidationError } from "../utils/errors";
 
 /**
  * Validate intended inputs on [req] via express-validator
@@ -20,7 +20,7 @@ const validate = (req: Request, res: Response, next: NextFunction) => {
 
 		return next();
 	} catch (err) {
-		return next(UnauthorizedRequestError({ message: 'Unauthenticated requests are not allowed. Try logging in' }))
+		return next(UnauthorizedRequestError({ message: "Unauthenticated requests are not allowed. Try logging in" }))
 	}
 };
 

@@ -8,33 +8,33 @@ import {
     IntegrationAuth,
     Service,
     Team
-} from './types';
+} from "./types";
 
 const integrationAuthKeys = {
-    getIntegrationAuthById: (integrationAuthId: string) => [{ integrationAuthId }, 'integrationAuth'] as const,
-    getIntegrationAuthApps: (integrationAuthId: string, teamId?: string) => [{ integrationAuthId, teamId }, 'integrationAuthApps'] as const,
-    getIntegrationAuthTeams: (integrationAuthId: string) => [{ integrationAuthId }, 'integrationAuthTeams'] as const,
+    getIntegrationAuthById: (integrationAuthId: string) => [{ integrationAuthId }, "integrationAuth"] as const,
+    getIntegrationAuthApps: (integrationAuthId: string, teamId?: string) => [{ integrationAuthId, teamId }, "integrationAuthApps"] as const,
+    getIntegrationAuthTeams: (integrationAuthId: string) => [{ integrationAuthId }, "integrationAuthTeams"] as const,
     getIntegrationAuthVercelBranches: ({
         integrationAuthId,
         appId,
     }: {
         integrationAuthId: string;
         appId: string;
-    }) => [{ integrationAuthId, appId }, 'integrationAuthVercelBranches'] as const,
+    }) => [{ integrationAuthId, appId }, "integrationAuthVercelBranches"] as const,
     getIntegrationAuthRailwayEnvironments: ({
         integrationAuthId,
         appId
     }: {
         integrationAuthId: string;
         appId: string;
-    }) => [{ integrationAuthId, appId }, 'integrationAuthRailwayEnvironments'] as const,
+    }) => [{ integrationAuthId, appId }, "integrationAuthRailwayEnvironments"] as const,
     getIntegrationAuthRailwayServices: ({
         integrationAuthId,
         appId
     }: {
         integrationAuthId: string;
         appId: string;
-    }) => [{ integrationAuthId, appId }, 'integrationAuthRailwayServices'] as const
+    }) => [{ integrationAuthId, appId }, "integrationAuthRailwayServices"] as const
 }
 
 const fetchIntegrationAuthById = async (integrationAuthId: string) => {

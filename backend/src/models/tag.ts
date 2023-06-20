@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, Types, model } from "mongoose";
 
 export interface ITag {
 	_id: Types.ObjectId;
@@ -22,28 +22,28 @@ const tagSchema = new Schema<ITag>(
 			lowercase: true,
 			validate: [
 				function (value: any) {
-					return value.indexOf(' ') === -1;
+					return value.indexOf(" ") === -1;
 				},
-				'slug cannot contain spaces'
-			]
+				"slug cannot contain spaces",
+			],
 		},
 		user: {
 			type: Schema.Types.ObjectId,
-			ref: 'User'
+			ref: "User",
 		},
 		workspace: {
 			type: Schema.Types.ObjectId,
-			ref: 'Workspace'
+			ref: "Workspace",
 		},
 	},
 	{
-		timestamps: true
+		timestamps: true,
 	}
 );
 
 tagSchema.index({ slug: 1, workspace: 1 }, { unique: true })
 tagSchema.index({ workspace: 1 })
 
-const Tag = model<ITag>('Tag', tagSchema);
+const Tag = model<ITag>("Tag", tagSchema);
 
 export default Tag;

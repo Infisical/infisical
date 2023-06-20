@@ -1,4 +1,4 @@
-import { Schema, model, Types, Document } from 'mongoose';
+import { Document, Schema, Types, model } from "mongoose";
 
 export interface IServiceAccount extends Document {
     _id: Types.ObjectId;
@@ -15,39 +15,39 @@ const serviceAccountSchema = new Schema<IServiceAccount>(
     {
         name: {
             type: String,
-            required: true
+            required: true,
         },
         organization: {
             type: Schema.Types.ObjectId,
-            ref: 'Organization',
-            required: true
+            ref: "Organization",
+            required: true,
         },
         user: { // user who created the service account
             type: Schema.Types.ObjectId,
-            ref: 'User',
-            required: true
+            ref: "User",
+            required: true,
         },
         publicKey: {
             type: String,
-            required: true
+            required: true,
         },
         lastUsed: {
-            type: Date
+            type: Date,
         },
         expiresAt: {
-            type: Date
+            type: Date,
         },
         secretHash: {
             type: String,
             required: true,
-            select: false
-        }
+            select: false,
+        },
     },
     {
-        timestamps: true
+        timestamps: true,
     }
 );
 
-const ServiceAccount = model<IServiceAccount>('ServiceAccount', serviceAccountSchema);
+const ServiceAccount = model<IServiceAccount>("ServiceAccount", serviceAccountSchema);
 
 export default ServiceAccount;

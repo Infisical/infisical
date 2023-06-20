@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useEffect } from "react";
+import { useRouter } from "next/router";
 
-import getWorkspaces from './api/workspace/getWorkspaces';
+import getWorkspaces from "./api/workspace/getWorkspaces";
 
 export default function DashboardRedirect() {
   const router = useRouter();
@@ -14,15 +14,15 @@ export default function DashboardRedirect() {
     (async () => {
       let userWorkspace;
       try {
-        if (localStorage.getItem('projectData.id')) {
-          router.push(`/dashboard/${  localStorage.getItem('projectData.id')}`);
+        if (localStorage.getItem("projectData.id")) {
+          router.push(`/dashboard/${  localStorage.getItem("projectData.id")}`);
         } else {
           const userWorkspaces = await getWorkspaces();
           userWorkspace = userWorkspaces[0]._id;
           router.push(`/dashboard/${  userWorkspace}`);
         }
       } catch (error) {
-        console.log('Error - Not logged in yet');
+        console.log("Error - Not logged in yet");
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps

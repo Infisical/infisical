@@ -1,21 +1,21 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import jwt_decode from 'jwt-decode';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import jwt_decode from "jwt-decode";
 
-import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
-import SecurityClient, { PROVIDER_AUTH_TOKEN_KEY } from '@app/components/utilities/SecurityClient';
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import SecurityClient, { PROVIDER_AUTH_TOKEN_KEY } from "@app/components/utilities/SecurityClient";
 
 export const useProviderAuth = () => {
     const router = useRouter();
     const { providerAuthToken: redirectedProviderAuthToken } = router.query;
-    const [email, setEmail] = useState<string>('');
-    const [userId, setUserId] = useState<string>('');
+    const [email, setEmail] = useState<string>("");
+    const [userId, setUserId] = useState<string>("");
     const [providerAuthToken, setProviderAuthToken] = useState<string>(
-        redirectedProviderAuthToken as string || ''
+        redirectedProviderAuthToken as string || ""
     );
     const [isProviderUserCompleted, setIsProviderUserCompleted] = useState<boolean>();
     const { createNotification } = useNotificationContext();
-    const AUTH_ERROR_KEY = 'PROVIDER_AUTH_ERROR'
+    const AUTH_ERROR_KEY = "PROVIDER_AUTH_ERROR"
 
     const handleRedirectWithToken = () => {
         if (providerAuthToken) {
@@ -36,7 +36,7 @@ export const useProviderAuth = () => {
 
         // reset when there is no redirect auth token
         if (!providerAuthToken) {
-            SecurityClient.setProviderAuthToken('');
+            SecurityClient.setProviderAuthToken("");
         }
 
         window.localStorage.removeItem(AUTH_ERROR_KEY);
@@ -59,19 +59,19 @@ export const useProviderAuth = () => {
                     setEmail(resultEmail);
                     setUserId(resultUserId);
                 } else {
-                    setProviderAuthToken('');
-                    setEmail('');
-                    setUserId('');
+                    setProviderAuthToken("");
+                    setEmail("");
+                    setUserId("");
                     setIsProviderUserCompleted(false);
                 }
-                setProviderAuthToken(event.newValue || '');
+                setProviderAuthToken(event.newValue || "");
             }
 
             if (event.key === AUTH_ERROR_KEY) {
                 if (event.newValue) {
                     createNotification({
-                        text: 'An error has occured during login.',
-                        type: 'error',
+                        text: "An error has occured during login.",
+                        type: "error",
                         timeoutMs: 6000,
                     })
 
@@ -80,10 +80,10 @@ export const useProviderAuth = () => {
             }
         };
 
-        window.addEventListener('storage', handleStorageChange);
+        window.addEventListener("storage", handleStorageChange);
 
         return () => {
-            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener("storage", handleStorageChange);
         };
     }, []);
 
