@@ -1,28 +1,28 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import {
-    IUser,
     IServiceAccount,
     IServiceTokenData,
+    IUser,
     Integration,
     IntegrationAuth,
-    User,
     ServiceAccount,
-    ServiceTokenData
-} from '../models';
-import { validateServiceAccountClientForWorkspace } from './serviceAccount';
-import { validateUserClientForWorkspace } from './user';
-import { IntegrationService } from '../services';
+    ServiceTokenData,
+    User,
+} from "../models";
+import { validateServiceAccountClientForWorkspace } from "./serviceAccount";
+import { validateUserClientForWorkspace } from "./user";
+import { IntegrationService } from "../services";
 import {
-    IntegrationNotFoundError,
     IntegrationAuthNotFoundError,
-    UnauthorizedRequestError
-} from '../utils/errors';
+    IntegrationNotFoundError,
+    UnauthorizedRequestError,
+} from "../utils/errors";
 import {
+    AUTH_MODE_API_KEY,
     AUTH_MODE_JWT,
     AUTH_MODE_SERVICE_ACCOUNT,
     AUTH_MODE_SERVICE_TOKEN,
-    AUTH_MODE_API_KEY
-} from '../variables';
+} from "../variables";
 
 /**
  * Validate authenticated clients for integration with id [integrationId] based
@@ -37,14 +37,14 @@ import {
 export const validateClientForIntegration = async ({
     authData,
     integrationId,
-    acceptedRoles
+    acceptedRoles,
 }: {
     authData: {
 		authMode: string;
 		authPayload: IUser | IServiceAccount | IServiceTokenData;
 	};
     integrationId: Types.ObjectId;
-    acceptedRoles: Array<'admin' | 'member'>;
+    acceptedRoles: Array<"admin" | "member">;
 }) => {
     
     const integration = await Integration.findById(integrationId);
@@ -53,20 +53,20 @@ export const validateClientForIntegration = async ({
     const integrationAuth = await IntegrationAuth
         .findById(integration.integrationAuth)
         .select(
-			'+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt'
+			"+refreshCiphertext +refreshIV +refreshTag +accessCiphertext +accessIV +accessTag +accessExpiresAt"
         );
     
     if (!integrationAuth) throw IntegrationAuthNotFoundError();
 
     const accessToken = (await IntegrationService.getIntegrationAuthAccess({
-        integrationAuthId: integrationAuth._id
+        integrationAuthId: integrationAuth._id,
     })).accessToken;
 
     if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
         await validateUserClientForWorkspace({
             user: authData.authPayload,
             workspaceId: integration.workspace,
-            acceptedRoles
+            acceptedRoles,
         });
         
         return ({ integration, accessToken });
@@ -75,7 +75,7 @@ export const validateClientForIntegration = async ({
     if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
         await validateServiceAccountClientForWorkspace({
             serviceAccount: authData.authPayload,
-            workspaceId: integration.workspace
+            workspaceId: integration.workspace,
         });
         
         return ({ integration, accessToken });
@@ -83,7 +83,7 @@ export const validateClientForIntegration = async ({
 
     if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
         throw UnauthorizedRequestError({
-            message: 'Failed service token authorization for integration'
+            message: "Failed service token authorization for integration",
         });
     }
 
@@ -91,13 +91,13 @@ export const validateClientForIntegration = async ({
         await validateUserClientForWorkspace({
             user: authData.authPayload,
             workspaceId: integration.workspace,
-            acceptedRoles
+            acceptedRoles,
         });
         
         return ({ integration, accessToken });
     }
     
     throw UnauthorizedRequestError({
-        message: 'Failed client authorization for integration'
+        message: "Failed client authorization for integration",
     });
 }

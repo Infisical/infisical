@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This function updates user permissions for a certain environment in a project
@@ -18,9 +18,9 @@ const updateUserProjectPermission = async ({
   }[]
 }) =>
   SecurityClient.fetchCall(`/api/v1/membership/${membershipId}/deny-permissions`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       permissions: denials
@@ -32,7 +32,7 @@ const updateUserProjectPermission = async ({
     if (res && res.status === 200) {
       return res.json();
     }
-    console.log('Failed to update user permissions for a certain environment in a project');
+    console.log("Failed to update user permissions for a certain environment in a project");
     return undefined;
   });
 

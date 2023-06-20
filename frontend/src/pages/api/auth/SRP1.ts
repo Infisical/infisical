@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface Props {
   clientPublicKey: string;
@@ -10,10 +10,10 @@ interface Props {
  * @returns
  */
 const SRP1 = ({ clientPublicKey }: Props) =>
-  SecurityClient.fetchCall('/api/v1/password/srp1', {
-    method: 'POST',
+  SecurityClient.fetchCall("/api/v1/password/srp1", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       clientPublicKey
@@ -22,7 +22,7 @@ const SRP1 = ({ clientPublicKey }: Props) =>
     if (res && res.status === 200) {
       return res.json();
     }
-    console.log('Failed to do the first step of SRP');
+    console.log("Failed to do the first step of SRP");
     return undefined;
   });
 

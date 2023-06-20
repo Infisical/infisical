@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, Types, model } from "mongoose";
 
 export interface IServiceAccountKey {
     _id: Types.ObjectId;
@@ -13,32 +13,32 @@ const serviceAccountKeySchema = new Schema<IServiceAccountKey>(
     {
         encryptedKey: {
             type: String,
-            required: true
+            required: true,
         },
         nonce: {
             type: String,
-            required: true
+            required: true,
         },
         sender: {
             type: Schema.Types.ObjectId,
-            required: true
+            required: true,
         },
         serviceAccount: {
             type: Schema.Types.ObjectId,
-            ref: 'ServiceAccount',
-            required: true
+            ref: "ServiceAccount",
+            required: true,
         },
         workspace: {
             type: Schema.Types.ObjectId,
-            ref: 'Workspace',
-            required: true
-        }
+            ref: "Workspace",
+            required: true,
+        },
     },
     {
-        timestamps: true
+        timestamps: true,
     }
 );
 
-const ServiceAccountKey = model<IServiceAccountKey>('ServiceAccountKey', serviceAccountKeySchema);
+const ServiceAccountKey = model<IServiceAccountKey>("ServiceAccountKey", serviceAccountKeySchema);
 
 export default ServiceAccountKey;

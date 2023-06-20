@@ -1,5 +1,5 @@
-import { Types } from 'mongoose';
-import { handleEventHelper } from '../helpers/event';
+import { Types } from "mongoose";
+import { handleEventHelper } from "../helpers/event";
 
 interface Event {
     name: string;
@@ -22,7 +22,7 @@ class EventService {
      */
     static async handleEvent({ event }: { event: Event }): Promise<void> {
         await handleEventHelper({
-            event
+            event,
         });
     }
 }

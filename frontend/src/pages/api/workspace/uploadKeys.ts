@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This route uplods the keys in an encrypted format.
@@ -10,9 +10,9 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const uploadKeys = (workspaceId: string, userId: string, encryptedKey: string, nonce: string) =>
   SecurityClient.fetchCall(`/api/v1/key/${workspaceId}`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       key: {
@@ -25,7 +25,7 @@ const uploadKeys = (workspaceId: string, userId: string, encryptedKey: string, n
     if (res && res.status === 200) {
       return res;
     }
-    console.log('Failed to upload keys for a new user');
+    console.log("Failed to upload keys for a new user");
     return undefined;
   });
 

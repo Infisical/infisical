@@ -1,14 +1,14 @@
-import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from "react";
 
-import { TNotification } from './Notification';
-import Notifications from './Notifications';
+import { TNotification } from "./Notification";
+import Notifications from "./Notifications";
 
 type NotificationContextState = {
   createNotification: (newNotification: TNotification) => void;
 };
 
 const NotificationContext = createContext<NotificationContextState>({
-  createNotification: () => console.log('createNotification not set!')
+  createNotification: () => console.log("createNotification not set!")
 });
 
 export const useNotificationContext = () => useContext(NotificationContext);
@@ -25,7 +25,7 @@ const NotificationProvider = ({ children }: NotificationProviderProps) => {
     setNotifications((state) => state.filter((notif) => notif.text !== text));
 
   const createNotification = useCallback(
-    ({ text, type = 'success', timeoutMs = 4000 }: TNotification) => {
+    ({ text, type = "success", timeoutMs = 4000 }: TNotification) => {
       const doesNotifExist = notifications.some((notif) => notif.text === text);
 
       if (doesNotifExist) {

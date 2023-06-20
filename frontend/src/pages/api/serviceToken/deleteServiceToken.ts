@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface Props {
   serviceTokenId: string;
@@ -12,15 +12,15 @@ interface Props {
  */
 const deleteServiceToken = ({ serviceTokenId }: Props) =>
   SecurityClient.fetchCall(`/api/v2/service-token/${serviceTokenId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res && res.status === 200) {
       return res.json();
     }
-    console.log('Failed to delete a service token');
+    console.log("Failed to delete a service token");
     return undefined;
   });
 

@@ -26,7 +26,7 @@ const batchSecrets = async ({
     environment: string;
     requests: RequestType[];
 }) => {
-    const { data } = await apiRequest.post('/api/v2/secrets/batch', {
+    const { data } = await apiRequest.post("/api/v2/secrets/batch", {
         workspaceId,
         environment,
         requests

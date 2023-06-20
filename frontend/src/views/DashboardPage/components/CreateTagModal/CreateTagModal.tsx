@@ -1,15 +1,15 @@
-import { Controller, useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { Controller, useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
-import { Button, FormControl, Input, ModalClose } from '@app/components/v2';
+import { Button, FormControl, Input, ModalClose } from "@app/components/v2";
 
 type Props = {
   onCreateTag: (tagName: string) => Promise<void>;
 };
 
 const createTagSchema = yup.object({
-  name: yup.string().required().trim().label('Tag Name')
+  name: yup.string().required().trim().label("Tag Name")
 });
 type FormData = yup.InferType<typeof createTagSchema>;
 

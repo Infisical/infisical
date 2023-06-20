@@ -1,14 +1,14 @@
-import { Request, Response, NextFunction } from 'express';
-import { Types } from 'mongoose';
-import { validateClientForServiceAccount } from '../validation';
+import { NextFunction, Request, Response } from "express";
+import { Types } from "mongoose";
+import { validateClientForServiceAccount } from "../validation";
 
-type req = 'params' | 'body' | 'query';
+type req = "params" | "body" | "query";
 
 const requireServiceAccountAuth = ({
     acceptedRoles,
     acceptedStatuses,
-    locationServiceAccountId = 'params',
-    requiredPermissions = []
+    locationServiceAccountId = "params",
+    requiredPermissions = [],
 }: {
     acceptedRoles: string[];
     acceptedStatuses: string[];
@@ -21,7 +21,7 @@ const requireServiceAccountAuth = ({
         req.serviceAccount = await validateClientForServiceAccount({
             authData: req.authData,
             serviceAccountId: new Types.ObjectId(serviceAccountId),
-            requiredPermissions
+            requiredPermissions,
         });
         
         next();

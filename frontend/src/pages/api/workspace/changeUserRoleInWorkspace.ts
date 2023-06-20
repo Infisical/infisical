@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This function change the access of a user in a certain workspace
@@ -8,9 +8,9 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const changeUserRoleInWorkspace = (membershipId: string, role: string) =>
   SecurityClient.fetchCall(`/api/v1/membership/${membershipId}/change-role`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       role
@@ -19,7 +19,7 @@ const changeUserRoleInWorkspace = (membershipId: string, role: string) =>
     if (res && res.status === 200) {
       return res;
     }
-    console.log('Failed to change the user role in a project');
+    console.log("Failed to change the user role in a project");
     return undefined;
   });
 

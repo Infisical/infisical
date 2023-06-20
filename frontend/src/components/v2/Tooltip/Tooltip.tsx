@@ -1,6 +1,6 @@
-import { ReactNode } from 'react';
-import * as TooltipPrimitive from '@radix-ui/react-tooltip';
-import { twMerge } from 'tailwind-merge';
+import { ReactNode } from "react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import { twMerge } from "tailwind-merge";
 
 export type TooltipProps = {
   children: ReactNode;
@@ -10,7 +10,7 @@ export type TooltipProps = {
   asChild?: boolean;
   onOpenChange?: (isOpen: boolean) => void;
   defaultOpen?: boolean;
-} & Omit<TooltipPrimitive.TooltipContentProps, 'open'>;
+} & Omit<TooltipPrimitive.TooltipContentProps, "open">;
 
 export const Tooltip = ({
   children,

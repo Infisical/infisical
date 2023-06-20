@@ -1,8 +1,8 @@
-import { Fragment, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { faShuffle } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Menu, Transition } from '@headlessui/react';
+import { Fragment, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { faShuffle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Menu, Transition } from "@headlessui/react";
 
 /**
  * This is the menu that is used to (re)generate secrets (currently we only have ranom hex, in future we will have more options)
@@ -50,7 +50,7 @@ const GenerateSecretMenu = ({
                 modifyValue(
                   [...Array(randomStringLength)]
                     .map(() => Math.floor(Math.random() * 16).toString(16))
-                    .join(''),
+                    .join(""),
                   id
                 );
               }
@@ -59,8 +59,8 @@ const GenerateSecretMenu = ({
           >
             <FontAwesomeIcon className="pl-1.5 pr-3 text-lg" icon={faShuffle} />
             <div className="flex w-full flex-row justify-between text-sm">
-              <p>{t('dashboard.sidebar.generate-random-hex')}</p>
-              <p>{t('dashboard.sidebar.digits')}</p>
+              <p>{t("dashboard.sidebar.generate-random-hex")}</p>
+              <p>{t("dashboard.sidebar.digits")}</p>
             </div>
           </div>
           <div className="absolute bottom-[0.4rem] right-[3.3rem] flex w-16 flex-row rounded-md border border-chicago-700 bg-bunker-800 text-bunker-200 ">

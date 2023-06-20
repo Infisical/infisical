@@ -1,16 +1,16 @@
-import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import Image from 'next/image';
-import { useRouter } from 'next/router';
-import { faCircle, faDotCircle } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import Image from "next/image";
+import { useRouter } from "next/router";
+import { faCircle, faDotCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
   decryptAssymmetric,
   decryptSymmetric
-} from '@app/components/utilities/cryptography/crypto';
-import getSecretVersions from '@app/ee/api/secrets/GetSecretVersions';
-import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
+} from "@app/components/utilities/cryptography/crypto";
+import getSecretVersions from "@app/ee/api/secrets/GetSecretVersions";
+import getLatestFileKey from "@app/pages/api/workspace/getLatestFileKey";
 
 interface DecryptedSecretVersionListProps {
   createdAt: string;
@@ -41,7 +41,7 @@ const SecretVersionList = ({ secretId }: { secretId: string }) => {
         const encryptedSecretVersions = await getSecretVersions({ secretId, offset: 0, limit: 10 });
         const latestKey = await getLatestFileKey({ workspaceId: String(router.query.id) });
 
-        const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
+        const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
 
         let decryptedLatestKey: string;
         if (latestKey) {
@@ -77,7 +77,7 @@ const SecretVersionList = ({ secretId }: { secretId: string }) => {
 
   return (
     <div className="min-w-40 overflow-x-none dark mt-4 h-[12.4rem] w-full px-4 text-sm text-bunker-300">
-      <p className="">{t('dashboard.sidebar.version-history')}</p>
+      <p className="">{t("dashboard.sidebar.version-history")}</p>
       <div className="overflow-x-none h-full rounded-md border border-mineshaft-500 bg-bunker-800 py-0.5 pl-1">
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
@@ -103,13 +103,13 @@ const SecretVersionList = ({ secretId }: { secretId: string }) => {
                     </div>
                     <div className="flex w-full max-w-[calc(100%-2.3rem)] flex-col">
                       <div className="pr-2 text-bunker-300/90">
-                        {new Date(version.createdAt).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: '2-digit',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit'
+                        {new Date(version.createdAt).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit"
                         })}
                       </div>
                       <div className="">

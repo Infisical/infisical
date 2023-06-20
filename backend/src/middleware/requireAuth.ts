@@ -1,26 +1,26 @@
-import jwt from 'jsonwebtoken';
-import { Request, Response, NextFunction } from 'express';
+import jwt from "jsonwebtoken";
+import { NextFunction, Request, Response } from "express";
 import {
-	validateAuthMode,
-	getAuthUserPayload,
-	getAuthSTDPayload,
 	getAuthAPIKeyPayload,
-	getAuthSAAKPayload
-} from '../helpers/auth';
+	getAuthSAAKPayload,
+	getAuthSTDPayload,
+	getAuthUserPayload,
+	validateAuthMode,
+} from "../helpers/auth";
 import {
-	IUser,
 	IServiceAccount,
-	IServiceTokenData
-} from '../models';
+	IServiceTokenData,
+	IUser,
+} from "../models";
 import {
+	AUTH_MODE_API_KEY,
 	AUTH_MODE_JWT,
 	AUTH_MODE_SERVICE_ACCOUNT,
 	AUTH_MODE_SERVICE_TOKEN,
-	AUTH_MODE_API_KEY
-} from '../variables';
-import { getChannelFromUserAgent } from '../utils/posthog';
+} from "../variables";
+import { getChannelFromUserAgent } from "../utils/posthog";
 
-declare module 'jsonwebtoken' {
+declare module "jsonwebtoken" {
 	export interface UserIDJwtPayload extends jwt.JwtPayload {
 		userId: string;
 	}
@@ -47,32 +47,32 @@ const requireAuth = ({
 		// and return token type [authTokenType] and value [authTokenValue]
 		const { authMode, authTokenValue } = validateAuthMode({
 			headers: req.headers,
-			acceptedAuthModes
+			acceptedAuthModes,
 		});
 
 		let authPayload: IUser | IServiceAccount | IServiceTokenData;
 		switch (authMode) {
 			case AUTH_MODE_SERVICE_ACCOUNT:
 				authPayload = await getAuthSAAKPayload({
-					authTokenValue
+					authTokenValue,
 				});
 				req.serviceAccount = authPayload;
 				break;
 			case AUTH_MODE_SERVICE_TOKEN:
 				authPayload = await getAuthSTDPayload({
-					authTokenValue
+					authTokenValue,
 				});
 				req.serviceTokenData = authPayload;
 				break;
 			case AUTH_MODE_API_KEY:
 				authPayload = await getAuthAPIKeyPayload({
-					authTokenValue
+					authTokenValue,
 				});
 				req.user = authPayload;
 				break;
 			default:
 				const { user, tokenVersionId } = await getAuthUserPayload({
-					authTokenValue
+					authTokenValue,
 				});
 				authPayload = user;
 				req.user = user;
@@ -89,10 +89,10 @@ const requireAuth = ({
 		req.authData = {
 			authMode,
 			authPayload, // User, ServiceAccount, ServiceTokenData
-			authChannel: getChannelFromUserAgent(req.headers['user-agent']),
+			authChannel: getChannelFromUserAgent(req.headers["user-agent"]),
 			authIP: req.realIP,
-			authUserAgent: req.headers['user-agent'] ?? 'other',
-			tokenVersionId: req.tokenVersionId
+			authUserAgent: req.headers["user-agent"] ?? "other",
+			tokenVersionId: req.tokenVersionId,
 		}
 
 		return next();

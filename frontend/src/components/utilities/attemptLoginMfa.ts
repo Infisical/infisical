@@ -1,14 +1,14 @@
 /* eslint-disable prefer-destructuring */
-import jsrp from 'jsrp';
+import jsrp from "jsrp";
 
-import login1 from '@app/pages/api/auth/Login1';
-import verifyMfaToken from '@app/pages/api/auth/verifyMfaToken';
-import getOrganizations from '@app/pages/api/organization/getOrgs';
-import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserProjects';
-import KeyService from '@app/services/KeyService';
+import login1 from "@app/pages/api/auth/Login1";
+import verifyMfaToken from "@app/pages/api/auth/verifyMfaToken";
+import getOrganizations from "@app/pages/api/organization/getOrgs";
+import getOrganizationUserProjects from "@app/pages/api/organization/GetOrgUserProjects";
+import KeyService from "@app/services/KeyService";
 
-import { saveTokenToLocalStorage } from './saveTokenToLocalStorage';
-import SecurityClient from './SecurityClient';
+import { saveTokenToLocalStorage } from "./saveTokenToLocalStorage";
+import SecurityClient from "./SecurityClient";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -60,9 +60,9 @@ const attemptLoginMfa = async ({
                 });
 
                 // unset temporary (MFA) JWT token and set JWT token
-                SecurityClient.setMfaToken('');
+                SecurityClient.setMfaToken("");
                 SecurityClient.setToken(token);
-                SecurityClient.setProviderAuthToken('');
+                SecurityClient.setProviderAuthToken("");
 
                 const privateKey = await KeyService.decryptPrivateKey({
                     encryptionVersion,
@@ -89,12 +89,12 @@ const attemptLoginMfa = async ({
                 // and not initializing the login details
                 const userOrgs = await getOrganizations(); 
                 const orgId = userOrgs[0]._id;
-                localStorage.setItem('orgData.id', orgId);
+                localStorage.setItem("orgData.id", orgId);
 
                 const orgUserProjects = await getOrganizationUserProjects({
                 orgId
                 });
-                localStorage.setItem('projectData.id', orgUserProjects[0]._id);
+                localStorage.setItem("projectData.id", orgUserProjects[0]._id);
 
                 resolve(true);
             } catch (err) {

@@ -1,11 +1,11 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { apiRequest } from '@app/config/request';
+import { apiRequest } from "@app/config/request";
 
-import { UploadWsKeyDTO, UserWsKeyPair } from './types';
+import { UploadWsKeyDTO, UserWsKeyPair } from "./types";
 
 const encKeyKeys = {
-  getUserWorkspaceKey: (workspaceID: string) => ['workspace-key-pair', { workspaceID }] as const
+  getUserWorkspaceKey: (workspaceID: string) => ["workspace-key-pair", { workspaceID }] as const
 };
 
 const fetchUserWsKey = async (workspaceID: string) => {

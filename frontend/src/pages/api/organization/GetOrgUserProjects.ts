@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This route lets us get all the projects of a certain user in an org.
@@ -8,15 +8,15 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const getOrganizationUserProjects = (req: { orgId: string }) =>
   SecurityClient.fetchCall(`/api/v1/organization/${req.orgId}/my-workspaces`, {
-    method: 'GET',
+    method: "GET",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res && res.status === 200) {
       return (await res.json()).workspaces;
     }
-    console.log('Failed to get projects of a user in an org');
+    console.log("Failed to get projects of a user in an org");
     return undefined;
   });
 

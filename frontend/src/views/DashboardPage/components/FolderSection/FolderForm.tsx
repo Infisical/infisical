@@ -1,8 +1,8 @@
-import { Controller, useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { Controller, useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
-import { Button, FormControl, Input, ModalClose } from '@app/components/v2';
+import { Button, FormControl, Input, ModalClose } from "@app/components/v2";
 
 type Props = {
   onCreateFolder: (folderName: string) => Promise<void>;
@@ -16,8 +16,8 @@ const formSchema = yup.object({
     .string()
     .required()
     .trim()
-    .matches(/^[a-zA-Z0-9-_]+$/, 'Folder name cannot contain spaces. Only underscore and dashes')
-    .label('Tag Name')
+    .matches(/^[a-zA-Z0-9-_]+$/, "Folder name cannot contain spaces. Only underscore and dashes")
+    .label("Tag Name")
 });
 type TFormData = yup.InferType<typeof formSchema>;
 
@@ -62,7 +62,7 @@ export const FolderForm = ({
       />
       <div className="mt-8 flex items-center">
         <Button className="mr-4" type="submit" isDisabled={isSubmitting} isLoading={isSubmitting}>
-          {isEdit ? 'Save' : 'Create'}
+          {isEdit ? "Save" : "Create"}
         </Button>
         <ModalClose asChild>
           <Button variant="plain" colorSchema="secondary">

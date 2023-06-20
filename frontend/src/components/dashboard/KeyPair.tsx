@@ -1,10 +1,10 @@
-import { faEllipsis, faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { SecretDataProps, Tag } from 'public/data/frequentInterfaces';
+import { faEllipsis, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { SecretDataProps, Tag } from "public/data/frequentInterfaces";
 
-import AddTagsMenu from './AddTagsMenu';
-import DashboardInputField from './DashboardInputField';
-import { DeleteActionButton } from './DeleteActionButton';
+import AddTagsMenu from "./AddTagsMenu";
+import DashboardInputField from "./DashboardInputField";
+import { DeleteActionButton } from "./DeleteActionButton";
 
 interface KeyPairProps {
   keyPair: SecretDataProps;
@@ -30,26 +30,26 @@ export interface DeleteRowFunctionProps {
 }
 
 const colors = [
-  'bg-[#f1c40f]/40',
-  'bg-[#cb1c8d]/40',
-  'bg-[#badc58]/40',
-  'bg-[#ff5400]/40',
-  'bg-[#3AB0FF]/40',
-  'bg-[#6F1AB6]/40',
-  'bg-[#C40B13]/40',
-  'bg-[#332FD0]/40'
+  "bg-[#f1c40f]/40",
+  "bg-[#cb1c8d]/40",
+  "bg-[#badc58]/40",
+  "bg-[#ff5400]/40",
+  "bg-[#3AB0FF]/40",
+  "bg-[#6F1AB6]/40",
+  "bg-[#C40B13]/40",
+  "bg-[#332FD0]/40"
 ]
 
 
 const colorsText = [
-  'text-[#fcf0c3]/70',
-  'text-[#f2c6e3]/70',
-  'text-[#eef6d5]/70',
-  'text-[#ffddcc]/70',
-  'text-[#f0fffd]/70',
-  'text-[#FFE5F1]/70',
-  'text-[#FFDEDE]/70',
-  'text-[#DFF6FF]/70'
+  "text-[#fcf0c3]/70",
+  "text-[#f2c6e3]/70",
+  "text-[#eef6d5]/70",
+  "text-[#ffddcc]/70",
+  "text-[#f0fffd]/70",
+  "text-[#FFE5F1]/70",
+  "text-[#FFDEDE]/70",
+  "text-[#DFF6FF]/70"
 ]
 
 /**
@@ -96,8 +96,8 @@ const KeyPair = ({
 
   return (
   <div
-    className={`group flex flex-col items-center border-b border-mineshaft-500 hover:bg-white/[0.03] duration-100 ${isSnapshot && 'pointer-events-none'} ${
-      keyPair.id === sidebarSecretId && 'bg-mineshaft-700 duration-200'
+    className={`group flex flex-col items-center border-b border-mineshaft-500 hover:bg-white/[0.03] duration-100 ${isSnapshot && "pointer-events-none"} ${
+      keyPair.id === sidebarSecretId && "bg-mineshaft-700 duration-200"
     }`}
   >
     <div className="relative flex flex-row justify-between w-full mr-auto max-h-14 items-center">
@@ -108,7 +108,7 @@ const KeyPair = ({
             isCapitalized = {isCapitalized}
             onChangeHandler={modifyKey}
             type="varName"
-            id={keyPair.id ? keyPair.id : (keyPair.idOverride || '')}
+            id={keyPair.id ? keyPair.id : (keyPair.idOverride || "")}
             value={keyPair.key}
             isDuplicate={isDuplicate}
             overrideEnabled={keyPair.valueOverride !== undefined}
@@ -124,7 +124,7 @@ const KeyPair = ({
           <DashboardInputField
             onChangeHandler={keyPair.valueOverride !== undefined ? modifyValueOverride : modifyValue}
             type="value"
-            id={keyPair.id ? keyPair.id : (keyPair.idOverride || '')}
+            id={keyPair.id ? keyPair.id : (keyPair.idOverride || "")}
             value={keyPair.valueOverride !== undefined ? keyPair.valueOverride : keyPair.value}
             blurred={isBlurred}
             overrideEnabled={keyPair.valueOverride !== undefined}
@@ -137,7 +137,7 @@ const KeyPair = ({
           <DashboardInputField
             onChangeHandler={modifyComment}
             type="comment"
-            id={keyPair.id ? keyPair.id : (keyPair.idOverride || '')}
+            id={keyPair.id ? keyPair.id : (keyPair.idOverride || "")}
             value={keyPair.comment}
             isDuplicate={isDuplicate}
             isSideBarOpen={keyPair.id === sidebarSecretId}
@@ -153,7 +153,7 @@ const KeyPair = ({
             </div>
           ))}
           
-          <AddTagsMenu allTags={tags} currentTags={keyPair.tags} modifyTags={modifyTags} id={keyPair.id ? keyPair.id : (keyPair.idOverride || '')} />
+          <AddTagsMenu allTags={tags} currentTags={keyPair.tags} modifyTags={modifyTags} id={keyPair.id ? keyPair.id : (keyPair.idOverride || "")} />
         </div>
       </div>
       <div
@@ -166,11 +166,11 @@ const KeyPair = ({
           }
           toggleSidebar(keyPair.id)
         }}
-        className={`cursor-pointer w-[1.5rem] h-[2.35rem] ml-auto group-hover:bg-mineshaft-700 z-50 rounded-md invisible group-hover:visible flex flex-row justify-center items-center ${isSnapshot ?? 'invisible'}`}
+        className={`cursor-pointer w-[1.5rem] h-[2.35rem] ml-auto group-hover:bg-mineshaft-700 z-50 rounded-md invisible group-hover:visible flex flex-row justify-center items-center ${isSnapshot ?? "invisible"}`}
       >
         <FontAwesomeIcon className="text-bunker-300 hover:text-primary text-lg" icon={faEllipsis} />
       </div>
-      <div className={`group-hover:bg-mineshaft-700 z-50 ${isSnapshot ?? 'invisible'}`}>
+      <div className={`group-hover:bg-mineshaft-700 z-50 ${isSnapshot ?? "invisible"}`}>
         {keyPair.key || keyPair.value 
         ? <DeleteActionButton
           onSubmit={() => { if (deleteRow) {

@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This route deletes an incident Contact from a certain organization
@@ -7,9 +7,9 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const deleteIncidentContact = (organizationId: string, email: string) =>
   SecurityClient.fetchCall(`/api/v1/organization/${organizationId}/incidentContactOrg`, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       email
@@ -18,7 +18,7 @@ const deleteIncidentContact = (organizationId: string, email: string) =>
     if (res && res.status === 200) {
       return res;
     }
-    console.log('Failed to delete an incident contact');
+    console.log("Failed to delete an incident contact");
     return undefined;
   });
 

@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This function deletes certain secrets from a certain project
@@ -6,10 +6,10 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const deleteSecrets = async ({ secretIds }: { secretIds: string[] }) =>
-  SecurityClient.fetchCall('/api/v2/secrets', {
-    method: 'DELETE',
+  SecurityClient.fetchCall("/api/v2/secrets", {
+    method: "DELETE",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       secretIds
@@ -18,7 +18,7 @@ const deleteSecrets = async ({ secretIds }: { secretIds: string[] }) =>
     if (res && res.status === 200) {
       return res.json();
     }
-    console.log('Failed to delete certain project secrets');
+    console.log("Failed to delete certain project secrets");
     return undefined;
   });
 

@@ -1,4 +1,4 @@
-import IntegrationTile from './Integration';
+import IntegrationTile from "./Integration";
 
 interface Props {
   integrations: any;

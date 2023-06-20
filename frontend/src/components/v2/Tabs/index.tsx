@@ -1,4 +1,4 @@
 export type {
   TabsProps
-} from './Tabs';
-export { TabsObject } from './Tabs';
+} from "./Tabs";
+export { TabsObject } from "./Tabs";

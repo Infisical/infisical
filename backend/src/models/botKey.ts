@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, Types, model } from "mongoose";
 
 export interface IBotKey {
 	_id: Types.ObjectId;
@@ -13,33 +13,33 @@ const botKeySchema = new Schema<IBotKey>(
 	{
 		encryptedKey: {
 			type: String,
-			required: true
+			required: true,
 		},
 		nonce: {
 			type: String,
-			required: true
+			required: true,
 		},
 		sender: {
 			type: Schema.Types.ObjectId,
-			ref: 'User',
-			required: true
+			ref: "User",
+			required: true,
 		},
 		bot: {
 			type: Schema.Types.ObjectId,
-			ref: 'Bot',
-			required: true
+			ref: "Bot",
+			required: true,
 		},
 		workspace: {
 			type: Schema.Types.ObjectId,
-			ref: 'Workspace',
-			required: true
-		}
+			ref: "Workspace",
+			required: true,
+		},
 	},
 	{
-		timestamps: true
+		timestamps: true,
 	}
 );
 
-const BotKey = model<IBotKey>('BotKey', botKeySchema);
+const BotKey = model<IBotKey>("BotKey", botKeySchema);
 
 export default BotKey;

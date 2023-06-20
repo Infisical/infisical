@@ -3,4 +3,4 @@ export {
   useGetWorkspaceSecretSnapshots,
   useGetWsSnapshotCount,
   usePerformSecretRollback
-} from './queries';
+} from "./queries";

@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import Image from "next/image";
 
 interface Framework {
   name: string;
@@ -16,7 +16,7 @@ const FrameworkIntegration = ({ framework }: { framework: Framework }) => (
   >
     <div
       className={`hover:bg-mineshaft-700 cursor-pointer font-semibold bg-mineshaft-800 border border-mineshaft-600 flex flex-col items-center justify-center h-full w-full rounded-md text-gray-300 group-hover:text-gray-200 duration-200 ${
-        framework?.name?.split(' ').length > 1 ? 'text-sm px-1' : 'text-xl px-2'
+        framework?.name?.split(" ").length > 1 ? "text-sm px-1" : "text-xl px-2"
       } text-center w-full max-w-xs`}
     >
       {framework?.image && (

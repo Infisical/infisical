@@ -1,14 +1,14 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import { 
-    IAction
-} from '../models';
+    IAction,
+} from "../models";
 import {
-    createLogHelper
-} from '../helpers/log';
+    createLogHelper,
+} from "../helpers/log";
 import {
-    createActionHelper
-} from '../helpers/action';
-import EELicenseService from './EELicenseService';
+    createActionHelper,
+} from "../helpers/action";
+import EELicenseService from "./EELicenseService";
 
 /**
  * Class to handle Enterprise Edition log actions
@@ -31,7 +31,7 @@ class EELogService {
         workspaceId,
         actions,
         channel,
-        ipAddress
+        ipAddress,
     }: {
         userId?: Types.ObjectId;
         serviceAccountId?: Types.ObjectId;
@@ -49,7 +49,7 @@ class EELogService {
             workspaceId,
             actions,
             channel,
-            ipAddress
+            ipAddress,
         })
     }
     
@@ -68,7 +68,7 @@ class EELogService {
         serviceAccountId,
         serviceTokenDataId,
         workspaceId,
-        secretIds
+        secretIds,
     }: {
         name: string;
         userId?: Types.ObjectId;
@@ -83,7 +83,7 @@ class EELogService {
             serviceAccountId,
             serviceTokenDataId,
             workspaceId,
-            secretIds
+            secretIds,
         });
     }
 }

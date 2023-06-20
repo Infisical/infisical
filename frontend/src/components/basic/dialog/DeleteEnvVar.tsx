@@ -47,11 +47,11 @@ export const DeleteEnvVar = ({ isOpen, onClose, onSubmit }: Props) => {
               >
                 <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-md bg-bunker border border-mineshaft-600 p-6 text-left align-middle shadow-xl transition-all">
                   <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-bunker-200">
-                    {t('dashboard:sidebar.delete-key-dialog.title')}
+                    {t("dashboard:sidebar.delete-key-dialog.title")}
                   </Dialog.Title>
                   <div className="mt-2">
                     <p className="text-sm text-bunker-300">
-                      {t('dashboard:sidebar.delete-key-dialog.confirm-delete-message')}
+                      {t("dashboard:sidebar.delete-key-dialog.confirm-delete-message")}
                     </p>
                   </div>
                   <div className="mt-6 flex justify-start">

@@ -13,4 +13,4 @@ export {
   useRenameWorkspace,
   useToggleAutoCapitalization,
   useUpdateWsEnvironment
-} from './queries';
+} from "./queries";

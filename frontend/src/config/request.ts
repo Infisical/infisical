@@ -1,15 +1,15 @@
-import axios from 'axios';
+import axios from "axios";
 
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   getAuthToken,
   getMfaTempToken,
-  getSignupTempToken} from '@app/reactQuery';
+  getSignupTempToken} from "@app/reactQuery";
 
 export const apiRequest = axios.create({
-  baseURL: '/',
+  baseURL: "/",
   headers: {
-    'Content-Type': 'application/json'
+    "Content-Type": "application/json"
   }
 });
 

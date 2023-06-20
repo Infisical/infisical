@@ -1,39 +1,39 @@
-import express from 'express';
+import express from "express";
 const router = express.Router();
-import { body, param } from 'express-validator';
+import { body, param } from "express-validator";
 import {
     requireAuth,
     requireBotAuth,
     requireWorkspaceAuth,
-    validateRequest
-} from '../../middleware';
-import { botController } from '../../controllers/v1';
-import { ADMIN, MEMBER, AUTH_MODE_JWT } from '../../variables';
+    validateRequest,
+} from "../../middleware";
+import { botController } from "../../controllers/v1";
+import { ADMIN, AUTH_MODE_JWT, MEMBER } from "../../variables";
 
 router.get(
-    '/:workspaceId',
+    "/:workspaceId",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT]
+        acceptedAuthModes: [AUTH_MODE_JWT],
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-        locationWorkspaceId: 'params'
+        locationWorkspaceId: "params",
 	}),
-    param('workspaceId').exists().trim().notEmpty(),
+    param("workspaceId").exists().trim().notEmpty(),
     validateRequest,
     botController.getBotByWorkspaceId
 );
 
 router.patch(
-    '/:botId/active',
+    "/:botId/active",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT]
+        acceptedAuthModes: [AUTH_MODE_JWT],
     }),
     requireBotAuth({
-		acceptedRoles: [ADMIN, MEMBER]
+		acceptedRoles: [ADMIN, MEMBER],
     }),
-    body('isActive').exists().isBoolean(),
-    body('botKey'),
+    body("isActive").exists().isBoolean(),
+    body("botKey"),
     validateRequest,
     botController.setBotActiveState
 );

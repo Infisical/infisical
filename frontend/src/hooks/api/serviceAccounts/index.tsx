@@ -7,4 +7,4 @@ export {
     useGetServiceAccountProjectLevelPermissions,
     useGetServiceAccounts,
     useRenameServiceAccount
-} from './queries';
+} from "./queries";

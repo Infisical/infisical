@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import Head from 'next/head';
+import Head from "next/head";
 
-import { CreateServiceAccountPage } from '@app/views/Settings/CreateServiceAccountPage';
+import { CreateServiceAccountPage } from "@app/views/Settings/CreateServiceAccountPage";
 
 export default function ServiceAccountPage() {
   return (

@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import Head from 'next/head';
-import Image from 'next/image';
-import { useRouter } from 'next/router';
-import { IconProp } from '@fortawesome/fontawesome-svg-core';
-import { faSlack } from '@fortawesome/free-brands-svg-icons';
+import { useEffect, useState } from "react";
+import Head from "next/head";
+import Image from "next/image";
+import { useRouter } from "next/router";
+import { IconProp } from "@fortawesome/fontawesome-svg-core";
+import { faSlack } from "@fortawesome/free-brands-svg-icons";
 import {
   faCheckCircle,
   faHandPeace,
@@ -12,13 +12,13 @@ import {
   faPlus,
   faStar,
   faUserPlus
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import onboardingCheck from '@app/components/utilities/checks/OnboardingCheck';
-import { TabsObject } from '@app/components/v2/Tabs';
+import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
+import { TabsObject } from "@app/components/v2/Tabs";
 
-import registerUserAction from '../api/userActions/registerUserAction';
+import registerUserAction from "../api/userActions/registerUserAction";
 
 type ItemProps = {
   text: string;
@@ -42,9 +42,9 @@ const learningItem = ({
   if (link) {
     return (
       <a
-        target={`${link.includes('https') ? '_blank' : '_self'}`}
+        target={`${link.includes("https") ? "_blank" : "_self"}`}
         rel="noopener noreferrer"
-        className={`w-full ${complete && 'opacity-30 duration-200 hover:opacity-100'}`}
+        className={`w-full ${complete && "opacity-30 duration-200 hover:opacity-100"}`}
         href={link}
       >
         <div
@@ -52,7 +52,7 @@ const learningItem = ({
           role="button"
           tabIndex={0}
           onClick={async () => {
-            if (userAction && userAction !== 'first_time_secrets_pushed') {
+            if (userAction && userAction !== "first_time_secrets_pushed") {
               await registerUserAction({
                 action: userAction
               });
@@ -73,9 +73,9 @@ const learningItem = ({
             </div>
           </div>
           <div
-            className={`w-28 pr-4 text-right text-sm font-semibold ${complete && 'text-primary'}`}
+            className={`w-28 pr-4 text-right text-sm font-semibold ${complete && "text-primary"}`}
           >
-            {complete ? 'Complete!' : `About ${time}`}
+            {complete ? "Complete!" : `About ${time}`}
           </div>
           {complete && <div className="absolute bottom-0 left-0 h-1 w-full bg-primary" />}
         </div>
@@ -111,8 +111,8 @@ const learningItem = ({
           <div className="mt-0.5 text-sm font-normal">{subText}</div>
         </div>
       </div>
-      <div className={`w-28 pr-4 text-right text-sm font-semibold ${complete && 'text-primary'}`}>
-        {complete ? 'Complete!' : `About ${time}`}
+      <div className={`w-28 pr-4 text-right text-sm font-semibold ${complete && "text-primary"}`}>
+        {complete ? "Complete!" : `About ${time}`}
       </div>
       {complete && <div className="absolute bottom-0 left-0 h-1 w-full bg-primary" />}
     </div>
@@ -162,21 +162,21 @@ export default function Home() {
           />
         </div>
         {learningItem({
-          text: 'Get to know Infisical',
-          subText: '',
+          text: "Get to know Infisical",
+          subText: "",
           complete: hasUserClickedIntro,
           icon: faHandPeace,
-          time: '3 min',
-          userAction: 'intro_cta_clicked',
-          link: 'https://www.youtube.com/watch?v=3F7FNYX94zA'
+          time: "3 min",
+          userAction: "intro_cta_clicked",
+          link: "https://www.youtube.com/watch?v=3F7FNYX94zA"
         })}
         {learningItem({
-          text: 'Add your secrets',
-          subText: 'Click to see example secrets, and add your own.',
+          text: "Add your secrets",
+          subText: "Click to see example secrets, and add your own.",
           complete: hasUserPushedSecrets,
           icon: faPlus,
-          time: '2 min',
-          userAction: 'first_time_secrets_pushed',
+          time: "2 min",
+          userAction: "first_time_secrets_pushed",
           link: `/dashboard/${router.query.id}`
         })}
         <div className="group relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-bunker-500 pl-2 pr-2 pt-4 pb-2 shadow-xl duration-200">
@@ -195,7 +195,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div className={`w-28 pr-4 text-right text-sm font-semibold ${false && 'text-green'}`}>
+            <div className={`w-28 pr-4 text-right text-sm font-semibold ${false && "text-green"}`}>
               About 2 min
             </div>
           </div>
@@ -203,38 +203,38 @@ export default function Home() {
           {false && <div className="absolute bottom-0 left-0 h-1 w-full bg-green" />}
         </div>
         {learningItem({
-          text: 'Integrate Infisical with your infrastructure',
-          subText: 'Connect Infisical to various 3rd party services and platforms.',
+          text: "Integrate Infisical with your infrastructure",
+          subText: "Connect Infisical to various 3rd party services and platforms.",
           complete: false,
           icon: faPlug,
-          time: '15 min',
-          link: 'https://infisical.com/docs/integrations/overview'
+          time: "15 min",
+          link: "https://infisical.com/docs/integrations/overview"
         })}
         {learningItem({
-          text: 'Invite your teammates',
-          subText: '',
+          text: "Invite your teammates",
+          subText: "",
           complete: usersInOrg,
           icon: faUserPlus,
-          time: '2 min',
+          time: "2 min",
           link: `/settings/org/${router.query.id}?invite`
         })}
         {learningItem({
-          text: 'Join Infisical Slack',
-          subText: 'Have any questions? Ask us!',
+          text: "Join Infisical Slack",
+          subText: "Have any questions? Ask us!",
           complete: hasUserClickedSlack,
           icon: faSlack,
-          time: '1 min',
-          userAction: 'slack_cta_clicked',
-          link: 'https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg'
+          time: "1 min",
+          userAction: "slack_cta_clicked",
+          link: "https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg"
         })}
         {learningItem({
-          text: 'Star Infisical on GitHub',
+          text: "Star Infisical on GitHub",
           subText: "Like what we're doing? You know what to do! :)",
           complete: hasUserStarred,
           icon: faStar,
-          time: '1 min',
-          userAction: 'star_cta_clicked',
-          link: 'https://github.com/Infisical/infisical'
+          time: "1 min",
+          userAction: "star_cta_clicked",
+          link: "https://github.com/Infisical/infisical"
         })}
       </div>
     </div>

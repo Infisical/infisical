@@ -1,13 +1,13 @@
 /* eslint-disable new-cap */
-import crypto from 'crypto';
+import crypto from "crypto";
 
-import jsrp from 'jsrp';
+import jsrp from "jsrp";
 
-import issueBackupPrivateKey from '@app/pages/api/auth/IssueBackupPrivateKey';
-import SRP1 from '@app/pages/api/auth/SRP1';
+import issueBackupPrivateKey from "@app/pages/api/auth/IssueBackupPrivateKey";
+import SRP1 from "@app/pages/api/auth/SRP1";
 
-import generateBackupPDF from '../generateBackupPDF';
-import Aes256Gcm from './aes-256-gcm';
+import generateBackupPDF from "../generateBackupPDF";
+import Aes256Gcm from "./aes-256-gcm";
 
 const clientPassword = new jsrp.client();
 const clientKey = new jsrp.client();
@@ -58,14 +58,14 @@ const issueBackupKey = async ({
           salt = res.salt;
         } catch (err) {
           setBackupKeyError(true);
-          console.log('Wrong current password', err, 1);
+          console.log("Wrong current password", err, 1);
         }
 
         clientPassword.setSalt(salt);
         clientPassword.setServerPublicKey(serverPublicKey);
         const clientProof = clientPassword.getProof(); // called M1
 
-        const generatedKey = crypto.randomBytes(16).toString('hex');
+        const generatedKey = crypto.randomBytes(16).toString("hex");
 
         clientKey.init(
           {
@@ -76,7 +76,7 @@ const issueBackupKey = async ({
             clientKey.createVerifier(
               async (err: any, result: { salt: string; verifier: string }) => {
                 const { ciphertext, iv, tag } = Aes256Gcm.encrypt({
-                  text: String(localStorage.getItem('PRIVATE_KEY')),
+                  text: String(localStorage.getItem("PRIVATE_KEY")),
                   secret: generatedKey
                 });
 
@@ -107,7 +107,7 @@ const issueBackupKey = async ({
     );
   } catch (error) {
     setBackupKeyError(true);
-    console.log('Failed to issue a backup key');
+    console.log("Failed to issue a backup key");
   }
   return true;
 };

@@ -1,13 +1,13 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 
 // Be careful on dep cycle
-import { Input } from '../Input/Input';
-import { FormControl } from './FormControl';
+import { Input } from "../Input/Input";
+import { FormControl } from "./FormControl";
 
 const meta: Meta<typeof FormControl> = {
-  title: 'Components/FormControl',
+  title: "Components/FormControl",
   component: FormControl,
-  tags: ['v2'],
+  tags: ["v2"],
   argTypes: {}
 };
 
@@ -18,9 +18,9 @@ type Story = StoryObj<typeof FormControl>;
 export const Basic: Story = {
   args: {
     children: <Input />,
-    label: 'Email',
-    id: 'email',
-    helperText: 'Type something..'
+    label: "Email",
+    id: "email",
+    helperText: "Type something.."
   }
 };
 
@@ -34,7 +34,7 @@ export const RequiredInput: Story = {
 export const ErrorInput: Story = {
   args: {
     ...Basic.args,
-    errorText: 'Some random error',
+    errorText: "Some random error",
     isError: true
   }
 };

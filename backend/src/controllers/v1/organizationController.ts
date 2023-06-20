@@ -1,28 +1,27 @@
-import { Request, Response } from 'express';
-import Stripe from 'stripe';
+import { Request, Response } from "express";
+import Stripe from "stripe";
 import {
+	IncidentContactOrg,
 	Membership,
 	MembershipOrg,
 	Organization,
 	Workspace,
-	IncidentContactOrg
-} from '../../models';
-import { createOrganization as create } from '../../helpers/organization';
-import { addMembershipsOrg } from '../../helpers/membershipOrg';
-import { OWNER, ACCEPTED } from '../../variables';
-import _ from 'lodash';
-import { getStripeSecretKey, getSiteURL } from '../../config';
+} from "../../models";
+import { createOrganization as create } from "../../helpers/organization";
+import { addMembershipsOrg } from "../../helpers/membershipOrg";
+import { ACCEPTED, OWNER } from "../../variables";
+import { getSiteURL, getStripeSecretKey } from "../../config";
 
 export const getOrganizations = async (req: Request, res: Response) => {
   const organizations = (
     await MembershipOrg.find({
       user: req.user._id,
-      status: ACCEPTED
-    }).populate('organization')
+      status: ACCEPTED,
+    }).populate("organization")
   ).map((m) => m.organization);
 
 	return res.status(200).send({
-		organizations
+		organizations,
 	});
 };
 
@@ -37,24 +36,24 @@ export const createOrganization = async (req: Request, res: Response) => {
   const { organizationName } = req.body;
 
   if (organizationName.length < 1) {
-    throw new Error('Organization names must be at least 1-character long');
+    throw new Error("Organization names must be at least 1-character long");
   }
 
   // create organization and add user as member
   const organization = await create({
     email: req.user.email,
-    name: organizationName
+    name: organizationName,
   });
 
   await addMembershipsOrg({
     userIds: [req.user._id.toString()],
     organizationId: organization._id.toString(),
     roles: [OWNER],
-    statuses: [ACCEPTED]
+    statuses: [ACCEPTED],
   });
 
 	return res.status(200).send({
-		organization
+		organization,
 	});
 };
 
@@ -67,7 +66,7 @@ export const createOrganization = async (req: Request, res: Response) => {
 export const getOrganization = async (req: Request, res: Response) => {
 	const organization = req.organization
 	return res.status(200).send({
-		organization
+		organization,
 	});
 };
 
@@ -81,11 +80,11 @@ export const getOrganizationMembers = async (req: Request, res: Response) => {
   const { organizationId } = req.params;
 
   const users = await MembershipOrg.find({
-    organization: organizationId
-  }).populate('user', '+publicKey');
+    organization: organizationId,
+  }).populate("user", "+publicKey");
 
 	return res.status(200).send({
-		users
+		users,
 	});
 };
 
@@ -105,23 +104,23 @@ export const getOrganizationWorkspaces = async (
     (
       await Workspace.find(
         {
-          organization: organizationId
+          organization: organizationId,
         },
-        '_id'
+        "_id"
       )
     ).map((w) => w._id.toString())
   );
 
   const workspaces = (
     await Membership.find({
-      user: req.user._id
-    }).populate('workspace')
+      user: req.user._id,
+    }).populate("workspace")
   )
     .filter((m) => workspacesSet.has(m.workspace._id.toString()))
     .map((m) => m.workspace);
 
 	return res.status(200).send({
-		workspaces
+		workspaces,
 	});
 };
 
@@ -137,19 +136,19 @@ export const changeOrganizationName = async (req: Request, res: Response) => {
 
   const organization = await Organization.findOneAndUpdate(
     {
-      _id: organizationId
+      _id: organizationId,
     },
     {
-      name
+      name,
     },
     {
-      new: true
+      new: true,
     }
   );
 
 	return res.status(200).send({
-		message: 'Successfully changed organization name',
-		organization
+		message: "Successfully changed organization name",
+		organization,
 	});
 };
 
@@ -166,11 +165,11 @@ export const getOrganizationIncidentContacts = async (
   const { organizationId } = req.params;
 
   const incidentContactsOrg = await IncidentContactOrg.find({
-    organization: organizationId
+    organization: organizationId,
   });
 
 	return res.status(200).send({
-		incidentContactsOrg
+		incidentContactsOrg,
 	});
 };
 
@@ -194,7 +193,7 @@ export const addOrganizationIncidentContact = async (
   );
 
 	return res.status(200).send({
-		incidentContactOrg
+		incidentContactOrg,
 	});
 };
 
@@ -213,12 +212,12 @@ export const deleteOrganizationIncidentContact = async (
 
   const incidentContactOrg = await IncidentContactOrg.findOneAndDelete({
     email,
-    organization: organizationId
+    organization: organizationId,
   });
 
 	return res.status(200).send({
-		message: 'Successfully deleted organization incident contact',
-		incidentContactOrg
+		message: "Successfully deleted organization incident contact",
+		incidentContactOrg,
 	});
 };
 
@@ -235,28 +234,28 @@ export const createOrganizationPortalSession = async (
 ) => {
 	let session;
   const stripe = new Stripe(await getStripeSecretKey(), {
-    apiVersion: '2022-08-01'
+    apiVersion: "2022-08-01",
   });
 
   // check if there is a payment method on file
   const paymentMethods = await stripe.paymentMethods.list({
     customer: req.organization.customerId,
-    type: 'card'
+    type: "card",
   });
   
   if (paymentMethods.data.length < 1) {
     // case: no payment method on file
     session = await stripe.checkout.sessions.create({
       customer: req.organization.customerId,
-      mode: 'setup',
-      payment_method_types: ['card'],
-      success_url: (await getSiteURL()) + '/dashboard',
-      cancel_url: (await getSiteURL()) + '/dashboard'
+      mode: "setup",
+      payment_method_types: ["card"],
+      success_url: (await getSiteURL()) + "/dashboard",
+      cancel_url: (await getSiteURL()) + "/dashboard",
     });
   } else {
     session = await stripe.billingPortal.sessions.create({
       customer: req.organization.customerId,
-      return_url: (await getSiteURL()) + '/dashboard'
+      return_url: (await getSiteURL()) + "/dashboard",
     });
   }
 
@@ -274,15 +273,15 @@ export const getOrganizationSubscriptions = async (
 	res: Response
 ) => {
   const stripe = new Stripe(await getStripeSecretKey(), {
-    apiVersion: '2022-08-01'
+    apiVersion: "2022-08-01",
   });
   
   const subscriptions = await stripe.subscriptions.list({
-    customer: req.organization.customerId
+    customer: req.organization.customerId,
   });
 
 	return res.status(200).send({
-		subscriptions
+		subscriptions,
 	});
 };
 
@@ -302,16 +301,16 @@ export const getOrganizationMembersAndTheirWorkspaces = async (
 	const workspacesSet = (
 			await Workspace.find(
 				{
-					organization: organizationId
+					organization: organizationId,
 				},
-				'_id'
+				"_id"
 			)
 		).map((w) => w._id.toString());
 
 	const memberships = (
 		await Membership.find({
-			workspace: { $in: workspacesSet }
-		}).populate('workspace')
+			workspace: { $in: workspacesSet },
+		}).populate("workspace")
 	);
 	const userToWorkspaceIds: any = {};
 

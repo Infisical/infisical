@@ -1,7 +1,7 @@
-import { Request, Response } from 'express';
-import { Types } from 'mongoose';
-import { Bot, BotKey } from '../../models';
-import { createBot } from '../../helpers/bot';
+import { Request, Response } from "express";
+import { Types } from "mongoose";
+import { Bot, BotKey } from "../../models";
+import { createBot } from "../../helpers/bot";
 
 interface BotKey {
     encryptedKey: string;
@@ -19,20 +19,20 @@ export const getBotByWorkspaceId = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
 
   let bot = await Bot.findOne({
-      workspace: workspaceId
+      workspace: workspaceId,
   });
   
   if (!bot) {
       // case: bot doesn't exist for workspace with id [workspaceId]
       // -> create a new bot and return it
       bot = await createBot({
-          name: 'Infisical Bot',
-          workspaceId: new Types.ObjectId(workspaceId)
+          name: "Infisical Bot",
+          workspaceId: new Types.ObjectId(workspaceId),
       });
   }
     
   return res.status(200).send({
-      bot
+      bot,
   });
 };
 
@@ -49,40 +49,40 @@ export const setBotActiveState = async (req: Request, res: Response) => {
         // bot state set to active -> share workspace key with bot
         if (!botKey?.encryptedKey || !botKey?.nonce) {
             return res.status(400).send({
-                message: 'Failed to set bot state to active - missing bot key'
+                message: "Failed to set bot state to active - missing bot key",
             });
         }
         
         await BotKey.findOneAndUpdate({
-            workspace: req.bot.workspace
+            workspace: req.bot.workspace,
         }, {
             encryptedKey: botKey.encryptedKey,
             nonce: botKey.nonce,
             sender: req.user._id,
             bot: req.bot._id,
-            workspace: req.bot.workspace
+            workspace: req.bot.workspace,
         }, {
             upsert: true,
-            new: true
+            new: true,
         });
     } else {
         // case: bot state set to inactive -> delete bot's workspace key
         await BotKey.deleteOne({
-            bot: req.bot._id
+            bot: req.bot._id,
         });
     }
 
-    let bot = await Bot.findOneAndUpdate({
-        _id: req.bot._id
+    const bot = await Bot.findOneAndUpdate({
+        _id: req.bot._id,
     }, {
-        isActive
+        isActive,
     }, {
-        new: true
+        new: true,
     });
     
-    if (!bot) throw new Error('Failed to update bot active state');
+    if (!bot) throw new Error("Failed to update bot active state");
     
     return res.status(200).send({
-        bot
+        bot,
     });
 };

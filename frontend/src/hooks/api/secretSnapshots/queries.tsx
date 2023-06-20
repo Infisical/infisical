@@ -1,29 +1,29 @@
 /* eslint-disable no-param-reassign */
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   decryptAssymmetric,
   decryptSymmetric
-} from '@app/components/utilities/cryptography/crypto';
-import { apiRequest } from '@app/config/request';
+} from "@app/components/utilities/cryptography/crypto";
+import { apiRequest } from "@app/config/request";
 
-import { DecryptedSecret } from '../secrets/types';
+import { DecryptedSecret } from "../secrets/types";
 import {
   GetWorkspaceSecretSnapshotsDTO,
   TSecretRollbackDTO,
   TSnapshotSecret,
   TSnapshotSecretProps,
   TWorkspaceSecretSnapshot
-} from './types';
+} from "./types";
 
 export const secretSnapshotKeys = {
   list: (workspaceId: string, env: string, folderId?: string) =>
-    [{ workspaceId, env, folderId }, 'secret-snapshot'] as const,
-  snapshotSecrets: (snapshotId: string) => [{ snapshotId }, 'secret-snapshot'] as const,
+    [{ workspaceId, env, folderId }, "secret-snapshot"] as const,
+  snapshotSecrets: (snapshotId: string) => [{ snapshotId }, "secret-snapshot"] as const,
   count: (workspaceId: string, env: string, folderId?: string) => [
     { workspaceId, env, folderId },
-    'count',
-    'secret-snapshot'
+    "count",
+    "secret-snapshot"
   ]
 };
 
@@ -78,7 +78,7 @@ export const useGetSnapshotSecrets = ({ decryptFileKey, env, snapshotId }: TSnap
     enabled: Boolean(snapshotId && decryptFileKey),
     queryFn: () => fetchSnapshotEncSecrets(snapshotId),
     select: (data) => {
-      const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
       const latestKey = decryptFileKey;
       const key = decryptAssymmetric({
         ciphertext: latestKey.encryptedKey,
@@ -106,7 +106,7 @@ export const useGetSnapshotSecrets = ({ decryptFileKey, env, snapshotId }: TSnap
             key
           });
 
-          const secretComment = '';
+          const secretComment = "";
 
           const decryptedSecret = {
             _id: encSecret.secret,
@@ -117,10 +117,10 @@ export const useGetSnapshotSecrets = ({ decryptFileKey, env, snapshotId }: TSnap
             comment: secretComment,
             createdAt: encSecret.createdAt,
             updatedAt: encSecret.updatedAt,
-            type: 'modified'
+            type: "modified"
           };
 
-          if (encSecret.type === 'personal') {
+          if (encSecret.type === "personal") {
             personalSecrets[decryptedSecret.key] = { id: encSecret.secret, value: secretValue };
           } else {
             sharedSecrets.push(decryptedSecret);
@@ -131,7 +131,7 @@ export const useGetSnapshotSecrets = ({ decryptFileKey, env, snapshotId }: TSnap
         if (personalSecrets?.[val.key]) {
           val.idOverride = personalSecrets[val.key].id;
           val.valueOverride = personalSecrets[val.key].value;
-          val.overrideAction = 'modified';
+          val.overrideAction = "modified";
         }
       });
 
@@ -180,7 +180,7 @@ export const usePerformSecretRollback = () => {
       return data;
     },
     onSuccess: (_, { workspaceId, environment, folderId }) => {
-      queryClient.invalidateQueries([{ workspaceId, environment }, 'secrets']);
+      queryClient.invalidateQueries([{ workspaceId, environment }, "secrets"]);
       queryClient.invalidateQueries(secretSnapshotKeys.list(workspaceId, environment, folderId));
       queryClient.invalidateQueries(secretSnapshotKeys.count(workspaceId, environment, folderId));
     }

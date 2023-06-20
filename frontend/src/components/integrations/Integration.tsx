@@ -1,21 +1,21 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { faArrowRight, faCheck, faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import { faArrowRight, faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 // TODO: This needs to be moved from public folder
 import {
   contextNetlifyMapping,
   integrationSlugNameMapping,
   reverseContextNetlifyMapping
-} from 'public/data/frequentConstants';
+} from "public/data/frequentConstants";
 
-import Button from '@app/components/basic/buttons/Button';
-import ListBox from '@app/components/basic/Listbox';
+import Button from "@app/components/basic/buttons/Button";
+import ListBox from "@app/components/basic/Listbox";
 
-import deleteIntegration from '../../pages/api/integrations/DeleteIntegration';
-import getIntegrationApps from '../../pages/api/integrations/GetIntegrationApps';
-import updateIntegration from '../../pages/api/integrations/updateIntegration';
+import deleteIntegration from "../../pages/api/integrations/DeleteIntegration";
+import getIntegrationApps from "../../pages/api/integrations/GetIntegrationApps";
+import updateIntegration from "../../pages/api/integrations/updateIntegration";
 
 interface Integration {
   _id: string;
@@ -60,16 +60,16 @@ const IntegrationTile = ({
   environments = [],
   handleDeleteIntegration
 }: Props) => {
-  const [integrationEnvironment, setIntegrationEnvironment] = useState<Props['environments'][0]>(
+  const [integrationEnvironment, setIntegrationEnvironment] = useState<Props["environments"][0]>(
     environments.find(({ slug }) => slug === integration?.environment) || {
-      name: '',
-      slug: ''
+      name: "",
+      slug: ""
     }
   );
   const router = useRouter();
   const [apps, setApps] = useState<IntegrationApp[]>([]); // integration app objects
-  const [integrationApp, setIntegrationApp] = useState(''); // integration app name
-  const [integrationTargetEnvironment, setIntegrationTargetEnvironment] = useState('');
+  const [integrationApp, setIntegrationApp] = useState(""); // integration app name
+  const [integrationTargetEnvironment, setIntegrationTargetEnvironment] = useState("");
 
   useEffect(() => {
     const loadIntegration = async () => {
@@ -86,23 +86,23 @@ const IntegrationTile = ({
       } else if (tempApps.length > 0) {
         setIntegrationApp(tempApps[0].name);
       } else {
-        setIntegrationApp('');
+        setIntegrationApp("");
       }
 
       switch (integration.integration) {
-        case 'vercel':
+        case "vercel":
           setIntegrationTargetEnvironment(
             integration?.targetEnvironment
               ? integration.targetEnvironment.charAt(0).toUpperCase() +
                   integration.targetEnvironment.substring(1)
-              : 'Development'
+              : "Development"
           );
           break;
-        case 'netlify':
+        case "netlify":
           setIntegrationTargetEnvironment(
             integration?.targetEnvironment
               ? contextNetlifyMapping[integration.targetEnvironment]
-              : 'Local development'
+              : "Local development"
           );
           break;
         default:
@@ -116,9 +116,9 @@ const IntegrationTile = ({
   const handleStartIntegration = async () => {
     const reformatTargetEnvironment = (targetEnvironment: string) => {
       switch (integration.integration) {
-        case 'vercel':
+        case "vercel":
           return targetEnvironment.toLowerCase();
-        case 'netlify':
+        case "netlify":
           return reverseContextNetlifyMapping[targetEnvironment];
         default:
           return null;
@@ -153,26 +153,26 @@ const IntegrationTile = ({
   const renderIntegrationSpecificParams = (integration: Integration) => {
     try {
       switch (integration.integration) {
-        case 'vercel':
+        case "vercel":
           return (
             <div>
               <div className="mb-2 w-60 text-xs font-semibold text-gray-400">ENVIRONMENT</div>
               <ListBox
-                data={!integration.isActive ? ['Development', 'Preview', 'Production'] : null}
+                data={!integration.isActive ? ["Development", "Preview", "Production"] : null}
                 isSelected={integrationTargetEnvironment}
                 onChange={setIntegrationTargetEnvironment}
                 isFull
               />
             </div>
           );
-        case 'netlify':
+        case "netlify":
           return (
             <div>
               <div className="mb-2 text-xs font-semibold text-gray-400">CONTEXT</div>
               <ListBox
                 data={
                   !integration.isActive
-                    ? ['Production', 'Deploy previews', 'Branch deploys', 'Local development']
+                    ? ["Production", "Deploy previews", "Branch deploys", "Local development"]
                     : null
                 }
                 isSelected={integrationTargetEnvironment}
@@ -180,14 +180,14 @@ const IntegrationTile = ({
               />
             </div>
           );
-        case 'railway':
+        case "railway":
           return (
             <div>
               <div className="mb-2 text-xs font-semibold text-gray-400">ENVIRONMENT</div>
               <ListBox
                 data={
                   !integration.isActive
-                    ? ['Production', 'Deploy previews', 'Branch deploys', 'Local development']
+                    ? ["Production", "Deploy previews", "Branch deploys", "Local development"]
                     : null
                 }
                 isSelected={integration.targetEnvironment}
@@ -195,7 +195,7 @@ const IntegrationTile = ({
               />
             </div>
           );
-        case 'gitlab':
+        case "gitlab":
           return (
             <div>
               <div className="mb-2 text-xs font-semibold text-gray-400">ENVIRONMENT</div>
@@ -216,10 +216,10 @@ const IntegrationTile = ({
     return <div />;
   };
 
-  if (!integrationApp && integration.integration !== 'checkly') return <div />;
+  if (!integrationApp && integration.integration !== "checkly") return <div />;
 
   const isSelected =
-    integration.integration === 'hashicorp-vault'
+    integration.integration === "hashicorp-vault"
       ? `${integration.app} - path: ${integration.path}`
       : integrationApp;
 
@@ -234,8 +234,8 @@ const IntegrationTile = ({
             onChange={(envName) =>
               setIntegrationEnvironment(
                 environments.find(({ name }) => envName === name) || {
-                  name: 'unknown',
-                  slug: 'unknown'
+                  name: "unknown",
+                  slug: "unknown"
                 }
               )
             }

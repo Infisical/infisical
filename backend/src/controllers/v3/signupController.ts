@@ -1,17 +1,17 @@
-import jwt from 'jsonwebtoken';
-import { Request, Response } from 'express';
-import * as Sentry from '@sentry/node';
-import { User, MembershipOrg } from '../../models';
-import { completeAccount } from '../../helpers/user';
+import jwt from "jsonwebtoken";
+import { Request, Response } from "express";
+import * as Sentry from "@sentry/node";
+import { MembershipOrg, User } from "../../models";
+import { completeAccount } from "../../helpers/user";
 import {
-	initializeDefaultOrg
-} from '../../helpers/signup';
-import { issueAuthTokens, validateProviderAuthToken } from '../../helpers/auth';
-import { INVITED, ACCEPTED } from '../../variables';
-import { standardRequest } from '../../config/request';
-import { getLoopsApiKey, getHttpsEnabled, getJwtSignupSecret } from '../../config';
-import { BadRequestError } from '../../utils/errors';
-import { TelemetryService } from '../../services';
+	initializeDefaultOrg,
+} from "../../helpers/signup";
+import { issueAuthTokens, validateProviderAuthToken } from "../../helpers/auth";
+import { ACCEPTED, INVITED } from "../../variables";
+import { standardRequest } from "../../config/request";
+import { getHttpsEnabled, getJwtSignupSecret, getLoopsApiKey } from "../../config";
+import { BadRequestError } from "../../utils/errors";
+import { TelemetryService } from "../../services";
 
 /**
  * Complete setting up user by adding their personal and auth information as part of the
@@ -63,7 +63,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			// case 1: user doesn't exist.
 			// case 2: user has already completed account
 			return res.status(403).send({
-				error: 'Failed to complete account for complete user'
+				error: "Failed to complete account for complete user",
 			});
 		}
 
@@ -74,16 +74,16 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 				user,
 			});
 		} else {
-			const [AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE] = <[string, string]>req.headers['authorization']?.split(' ', 2) ?? [null, null]
+			const [AUTH_TOKEN_TYPE, AUTH_TOKEN_VALUE] = <[string, string]>req.headers["authorization"]?.split(" ", 2) ?? [null, null]
 			if (AUTH_TOKEN_TYPE === null) {
-				throw BadRequestError({ message: `Missing Authorization Header in the request header.` });
+				throw BadRequestError({ message: "Missing Authorization Header in the request header." });
 			}
-			if (AUTH_TOKEN_TYPE.toLowerCase() !== 'bearer') {
+			if (AUTH_TOKEN_TYPE.toLowerCase() !== "bearer") {
 				throw BadRequestError({ message: `The provided authentication type '${AUTH_TOKEN_TYPE}' is not supported.` })
 			}
 			if (AUTH_TOKEN_VALUE === null) {
 				throw BadRequestError({
-					message: 'Missing Authorization Body in the request header',
+					message: "Missing Authorization Body in the request header",
 				})
 			}
 
@@ -110,16 +110,16 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 			encryptedPrivateKeyIV,
 			encryptedPrivateKeyTag,
 			salt,
-			verifier
+			verifier,
 		});
 
 		if (!user)
-			throw new Error('Failed to complete account for non-existent user'); // ensure user is non-null
+			throw new Error("Failed to complete account for non-existent user"); // ensure user is non-null
 
 		// initialize default organization and workspace
 		await initializeDefaultOrg({
 			organizationName,
-			user
+			user,
 		});
 
 		// update organization membership statuses that are
@@ -127,11 +127,11 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 		await MembershipOrg.updateMany(
 			{
 				inviteEmail: email,
-				status: INVITED
+				status: INVITED,
 			},
 			{
 				user,
-				status: ACCEPTED
+				status: ACCEPTED,
 			}
 		);
 
@@ -139,7 +139,7 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 		const tokens = await issueAuthTokens({
 			userId: user._id,
 			ip: req.realIP,
-			userAgent: req.headers['user-agent'] ?? ''
+			userAgent: req.headers["user-agent"] ?? "",
 		});
 
 		token = tokens.token;
@@ -150,45 +150,45 @@ export const completeAccountSignup = async (req: Request, res: Response) => {
 				"email": email,
 				"eventName": "Sign Up",
 				"firstName": firstName,
-				"lastName": lastName
+				"lastName": lastName,
 			}, {
 				headers: {
 					"Accept": "application/json",
-					"Authorization": "Bearer " + (await getLoopsApiKey())
+					"Authorization": "Bearer " + (await getLoopsApiKey()),
 				},
 			});
 		}
 
 		// store (refresh) token in httpOnly cookie
-		res.cookie('jid', tokens.refreshToken, {
+		res.cookie("jid", tokens.refreshToken, {
 			httpOnly: true,
-			path: '/',
-			sameSite: 'strict',
-			secure: await getHttpsEnabled()
+			path: "/",
+			sameSite: "strict",
+			secure: await getHttpsEnabled(),
 		});
 
 		const postHogClient = await TelemetryService.getPostHogClient();
 		if (postHogClient) {
 			postHogClient.capture({
-				event: 'User Signed Up',
+				event: "User Signed Up",
 				distinctId: email,
 				properties: {
 					email,
-					attributionSource
-				}
+					attributionSource,
+				},
 			});
 		}
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
 		return res.status(400).send({
-			message: 'Failed to complete account setup'
+			message: "Failed to complete account setup",
 		});
 	}
 
 	return res.status(200).send({
-		message: 'Successfully set up account',
+		message: "Successfully set up account",
 		user,
-		token
+		token,
 	});
 };

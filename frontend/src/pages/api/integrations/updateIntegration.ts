@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This route starts the integration after teh default one if gonna set up.
@@ -32,9 +32,9 @@ const updateIntegration = ({
   owner: string | null;
 }) =>
   SecurityClient.fetchCall(`/api/v1/integration/${integrationId}`, {
-    method: 'PATCH',
+    method: "PATCH",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       app,
@@ -48,7 +48,7 @@ const updateIntegration = ({
     if (res && res.status === 200) {
       return (await res.json()).integration;
     }
-    console.log('Failed to start an integration');
+    console.log("Failed to start an integration");
     return undefined;
   });
 

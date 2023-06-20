@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
-import { useToggle } from '@app/hooks';
+import { useToggle } from "@app/hooks";
 
-import { Button } from '../Button';
-import { FormControl } from '../FormControl';
-import { Input } from '../Input';
-import { Modal, ModalClose, ModalContent } from '../Modal';
+import { Button } from "../Button";
+import { FormControl } from "../FormControl";
+import { Input } from "../Input";
+import { Modal, ModalClose, ModalContent } from "../Modal";
 
 type Props = {
   isOpen?: boolean;
@@ -24,11 +24,11 @@ export const DeleteActionModal = ({
   onDeleteApproved,
   title
 }: Props): JSX.Element => {
-  const [inputData, setInputData] = useState('');
+  const [inputData, setInputData] = useState("");
   const [isLoading, setIsLoading] = useToggle();
 
   useEffect(() => {
-    setInputData('');
+    setInputData("");
   }, [isOpen]);
 
   const onDelete = async () => {
@@ -46,7 +46,7 @@ export const DeleteActionModal = ({
     <Modal
       isOpen={isOpen}
       onOpenChange={(isOpenState) => {
-        setInputData('');
+        setInputData("");
         if (onChange) onChange(isOpenState);
       }}
     >
@@ -68,7 +68,7 @@ export const DeleteActionModal = ({
               <Button variant="plain" colorSchema="secondary" onClick={onClose}>
                 Cancel
               </Button>
-            </ModalClose>{' '}
+            </ModalClose>{" "}
           </div>
         }
         onClose={onClose}

@@ -1,5 +1,5 @@
-import { Types } from 'mongoose';
-import { createTokenHelper, validateTokenHelper } from '../helpers/token';
+import { Types } from "mongoose";
+import { createTokenHelper, validateTokenHelper } from "../helpers/token";
 
 /**
  * Class to handle token actions
@@ -19,9 +19,9 @@ class TokenService {
         type,
         email,
         phoneNumber,
-        organizationId
+        organizationId,
     }: {
-        type: 'emailConfirmation' | 'emailMfa' | 'organizationInvitation' | 'passwordReset';
+        type: "emailConfirmation" | "emailMfa" | "organizationInvitation" | "passwordReset";
         email?: string;
         phoneNumber?: string;
         organizationId?: Types.ObjectId;
@@ -30,7 +30,7 @@ class TokenService {
             type,
             email,
             phoneNumber,
-            organizationId
+            organizationId,
         });
     }
     
@@ -48,9 +48,9 @@ class TokenService {
         email,
         phoneNumber,
         organizationId,
-        token
+        token,
     }: {
-        type: 'emailConfirmation' | 'emailMfa' | 'organizationInvitation' | 'passwordReset';
+        type: "emailConfirmation" | "emailMfa" | "organizationInvitation" | "passwordReset";
         email?: string;
         phoneNumber?: string;
         organizationId?: Types.ObjectId;
@@ -61,7 +61,7 @@ class TokenService {
             email,
             phoneNumber,
             organizationId,
-            token
+            token,
         });
     }
 }

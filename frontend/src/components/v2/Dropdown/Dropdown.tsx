@@ -1,6 +1,6 @@
-import { ComponentPropsWithRef, ElementType, forwardRef, ReactNode, Ref } from 'react';
-import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
-import { twMerge } from 'tailwind-merge';
+import { ComponentPropsWithRef, ElementType, forwardRef, ReactNode, Ref } from "react";
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
+import { twMerge } from "tailwind-merge";
 
 // Main menu or parent container
 export type DropdownMenuProps = DropdownMenuPrimitive.DropdownMenuProps;
@@ -21,7 +21,7 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
           {...props}
           ref={forwardedRef}
           className={twMerge(
-            'min-w-[220px] bg-bunker will-change-auto text-bunker-300 rounded-md shadow data-[side=top]:animate-slideDownAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=bottom]:animate-slideUpAndFade',
+            "min-w-[220px] bg-bunker will-change-auto text-bunker-300 rounded-md shadow data-[side=top]:animate-slideDownAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=bottom]:animate-slideUpAndFade",
             className
           )}
         >
@@ -32,14 +32,14 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
   }
 );
 
-DropdownMenuContent.displayName = 'DropdownMenuContent';
+DropdownMenuContent.displayName = "DropdownMenuContent";
 
 // item label component
 export type DropdownLabelProps = DropdownMenuPrimitive.MenuLabelProps;
 export const DropdownMenuLabel = ({ className, ...props }: DropdownLabelProps) => (
   <DropdownMenuPrimitive.Label
     {...props}
-    className={twMerge('text-xs text-bunker-400 px-4 pt-2 pb-1', className)}
+    className={twMerge("text-xs text-bunker-400 px-4 pt-2 pb-1", className)}
   />
 );
 
@@ -51,18 +51,18 @@ export type DropdownMenuItemProps<T extends ElementType> =
     inputRef?: Ref<T>;
   };
 
-export const DropdownMenuItem = <T extends ElementType = 'button'>({
+export const DropdownMenuItem = <T extends ElementType = "button">({
   children,
   inputRef,
   className,
   icon,
-  as: Item = 'button',
+  as: Item = "button",
   ...props
 }: DropdownMenuItemProps<T> & ComponentPropsWithRef<T>) => (
   <DropdownMenuPrimitive.Item
     {...props}
     className={twMerge(
-      'text-sm block font-inter px-4 py-2 data-[highlighted]:bg-gray-700 outline-none cursor-pointer',
+      "text-sm block font-inter px-4 py-2 data-[highlighted]:bg-gray-700 outline-none cursor-pointer",
       className
     )}
   >
@@ -80,7 +80,7 @@ export const DropdownMenuGroup = forwardRef<HTMLDivElement, DropdownMenuGroupPro
   ({ ...props }, ref) => <DropdownMenuPrimitive.Group {...props} ref={ref} />
 );
 
-DropdownMenuGroup.displayName = 'DropdownMenuGroup';
+DropdownMenuGroup.displayName = "DropdownMenuGroup";
 
 // Divider
 export const DropdownMenuSeparator = forwardRef<
@@ -90,8 +90,8 @@ export const DropdownMenuSeparator = forwardRef<
   <DropdownMenuPrimitive.Separator
     ref={ref}
     {...props}
-    className={twMerge('h-[1px] bg-gray-700 m-1', className)}
+    className={twMerge("h-[1px] bg-gray-700 m-1", className)}
   />
 ));
 
-DropdownMenuSeparator.displayName = 'DropdownMenuSeperator';
+DropdownMenuSeparator.displayName = "DropdownMenuSeperator";

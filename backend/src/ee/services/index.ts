@@ -5,5 +5,5 @@ import EELogService from "./EELogService";
 export {
     EELicenseService,
     EESecretService,
-    EELogService
+    EELogService,
 }

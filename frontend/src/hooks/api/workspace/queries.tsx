@@ -1,10 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { apiRequest } from '@app/config/request';
+import { apiRequest } from "@app/config/request";
 
 import {
   EncryptedSecret
-} from '../secrets/types';
+} from "../secrets/types";
 import {
   CreateEnvironmentDTO,
   CreateWorkspaceDTO,
@@ -17,15 +17,15 @@ import {
   UpdateEnvironmentDTO,
   Workspace,
   WorkspaceEnv
-} from './types';
+} from "./types";
 
 const workspaceKeys = {
-  getWorkspaceById: (workspaceId: string) => [{ workspaceId }, 'workspace'] as const,
-  getWorkspaceSecrets: (workspaceId: string) => [{ workspaceId }, 'workspace-secrets'] as const,
-  getWorkspaceIndexStatus: (workspaceId: string) => [{ workspaceId}, 'workspace-index-status'] as const,
-  getWorkspaceMemberships: (orgId: string) => [{ orgId }, 'workspace-memberships'],
-  getAllUserWorkspace: ['workspaces'] as const,
-  getUserWsEnvironments: (workspaceId: string) => ['workspace-env', { workspaceId }] as const
+  getWorkspaceById: (workspaceId: string) => [{ workspaceId }, "workspace"] as const,
+  getWorkspaceSecrets: (workspaceId: string) => [{ workspaceId }, "workspace-secrets"] as const,
+  getWorkspaceIndexStatus: (workspaceId: string) => [{ workspaceId}, "workspace-index-status"] as const,
+  getWorkspaceMemberships: (orgId: string) => [{ orgId }, "workspace-memberships"],
+  getAllUserWorkspace: ["workspaces"] as const,
+  getUserWsEnvironments: (workspaceId: string) => ["workspace-env", { workspaceId }] as const
 };
 
 const fetchWorkspaceById = async (workspaceId: string) => {
@@ -53,7 +53,7 @@ const fetchWorkspaceSecrets = async (workspaceId: string) => {
 }
 
 const fetchUserWorkspaces = async () => {
-  const { data } = await apiRequest.get<{ workspaces: Workspace[] }>('/api/v1/workspace');
+  const { data } = await apiRequest.get<{ workspaces: Workspace[] }>("/api/v1/workspace");
   return data.workspaces;
 };
 
@@ -134,7 +134,7 @@ export const useCreateWorkspace = () => {
 
   return useMutation<{ data: { workspace: Workspace } }, {}, CreateWorkspaceDTO>({
     mutationFn: async ({ organizationId, workspaceName }) =>
-      apiRequest.post('/api/v1/workspace', { workspaceName, organizationId }),
+      apiRequest.post("/api/v1/workspace", { workspaceName, organizationId }),
     onSuccess: () => {
       queryClient.invalidateQueries(workspaceKeys.getAllUserWorkspace);
     }

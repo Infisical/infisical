@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-no-useless-fragment */
-import { memo, useRef } from 'react';
-import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
+import { memo, useRef } from "react";
+import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import {
   faCodeBranch,
   faComment,
@@ -9,10 +9,10 @@ import {
   faPlus,
   faTags,
   faXmark
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { cx } from 'cva';
-import { twMerge } from 'tailwind-merge';
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { cx } from "cva";
+import { twMerge } from "tailwind-merge";
 
 import {
   Button,
@@ -29,11 +29,11 @@ import {
   Tag,
   TextArea,
   Tooltip
-} from '@app/components/v2';
-import { WsTag } from '@app/hooks/api/types';
+} from "@app/components/v2";
+import { WsTag } from "@app/hooks/api/types";
 
-import { FormData, SecretActionType } from '../../DashboardPage.utils';
-import { MaskedInput } from './MaskedInput';
+import { FormData, SecretActionType } from "../../DashboardPage.utils";
+import { MaskedInput } from "./MaskedInput";
 
 type Props = {
   index: number;
@@ -53,14 +53,14 @@ type Props = {
 };
 
 const tagColors = [
-  { bg: 'bg-[#f1c40f]/40', text: 'text-[#fcf0c3]/70' },
-  { bg: 'bg-[#cb1c8d]/40', text: 'text-[#f2c6e3]/70' },
-  { bg: 'bg-[#badc58]/40', text: 'text-[#eef6d5]/70' },
-  { bg: 'bg-[#ff5400]/40', text: 'text-[#ffddcc]/70' },
-  { bg: 'bg-[#3AB0FF]/40', text: 'text-[#f0fffd]/70' },
-  { bg: 'bg-[#6F1AB6]/40', text: 'text-[#FFE5F1]/70' },
-  { bg: 'bg-[#C40B13]/40', text: 'text-[#FFDEDE]/70' },
-  { bg: 'bg-[#332FD0]/40', text: 'text-[#DFF6FF]/70' }
+  { bg: "bg-[#f1c40f]/40", text: "text-[#fcf0c3]/70" },
+  { bg: "bg-[#cb1c8d]/40", text: "text-[#f2c6e3]/70" },
+  { bg: "bg-[#badc58]/40", text: "text-[#eef6d5]/70" },
+  { bg: "bg-[#ff5400]/40", text: "text-[#ffddcc]/70" },
+  { bg: "bg-[#3AB0FF]/40", text: "text-[#f0fffd]/70" },
+  { bg: "bg-[#6F1AB6]/40", text: "text-[#FFE5F1]/70" },
+  { bg: "bg-[#C40B13]/40", text: "text-[#FFDEDE]/70" },
+  { bg: "bg-[#332FD0]/40", text: "text-[#DFF6FF]/70" }
 ];
 
 export const SecretInputRow = memo(
@@ -111,12 +111,12 @@ export const SecretInputRow = memo(
       if (isOverridden) {
         // when user created a new override but then removes
         if (overrideAction === SecretActionType.Created)
-          setValue(`secrets.${index}.valueOverride`, '');
+          setValue(`secrets.${index}.valueOverride`, "");
         setValue(`secrets.${index}.overrideAction`, SecretActionType.Deleted, {
           shouldDirty: true
         });
       } else {
-        setValue(`secrets.${index}.valueOverride`, '');
+        setValue(`secrets.${index}.valueOverride`, "");
         setValue(
           `secrets.${index}.overrideAction`,
           idOverride ? SecretActionType.Modified : SecretActionType.Created,
@@ -147,7 +147,7 @@ export const SecretInputRow = memo(
         secKey?.toUpperCase().includes(searchTerm?.toUpperCase()) ||
         tags
           ?.map((tag) => tag.name)
-          .join(' ')
+          .join(" ")
           ?.toUpperCase()
           .includes(searchTerm?.toUpperCase()) ||
         secComment?.toUpperCase().includes(searchTerm?.toUpperCase())
@@ -168,7 +168,7 @@ export const SecretInputRow = memo(
           render={({ fieldState: { error }, field }) => (
             <HoverCard openDelay={0} open={error?.message ? undefined : false}>
               <HoverCardTrigger asChild>
-                <td className={cx(error?.message ? 'rounded ring ring-red/50' : null)}>
+                <td className={cx(error?.message ? "rounded ring ring-red/50" : null)}>
                   <div className="relative flex w-full min-w-[220px] items-center justify-end lg:min-w-[240px] xl:min-w-[280px]">
                     <Input
                       autoComplete="off"
@@ -246,7 +246,7 @@ export const SecretInputRow = memo(
                     hideCloseBtn
                   >
                     <div className="mb-2 px-2 text-center text-sm font-medium text-bunker-200">
-                      Add tags to {secKey || 'this secret'}
+                      Add tags to {secKey || "this secret"}
                     </div>
                     <div className="flex flex-col space-y-1">
                       {wsTags?.map((wsTag) => (
@@ -254,8 +254,8 @@ export const SecretInputRow = memo(
                           variant="plain"
                           size="sm"
                           className={twMerge(
-                            'justify-start bg-mineshaft-600 text-bunker-100 hover:bg-mineshaft-500',
-                            selectedTagIds?.[wsTag.slug] && 'text-primary'
+                            "justify-start bg-mineshaft-600 text-bunker-100 hover:bg-mineshaft-500",
+                            selectedTagIds?.[wsTag.slug] && "text-primary"
                           )}
                           onClick={() => onSelectTag(wsTag)}
                           leftIcon={
@@ -296,8 +296,8 @@ export const SecretInputRow = memo(
                   <IconButton
                     variant="plain"
                     className={twMerge(
-                      'mt-0.5 w-0 overflow-hidden p-0 group-hover:ml-1 group-hover:w-7',
-                      isOverridden && 'ml-1 w-7 text-primary'
+                      "mt-0.5 w-0 overflow-hidden p-0 group-hover:ml-1 group-hover:w-7",
+                      isOverridden && "ml-1 w-7 text-primary"
                     )}
                     onClick={onSecretOverride}
                     size="md"
@@ -312,14 +312,14 @@ export const SecretInputRow = memo(
               </div>
             )}
             <Tooltip content="Comment">
-              <div className={`mt-0.5 overflow-hidden `}>
+              <div className="mt-0.5 overflow-hidden ">
                 <Popover>
                   <PopoverTrigger asChild>
                     <IconButton
                       className={twMerge(
-                        'w-7 overflow-hidden p-0',
-                        'w-0 group-hover:w-7 data-[state=open]:w-7',
-                        hasComment ? 'w-7 text-primary' : 'group-hover:w-7'
+                        "w-7 overflow-hidden p-0",
+                        "w-0 group-hover:w-7 data-[state=open]:w-7",
+                        hasComment ? "w-7 text-primary" : "group-hover:w-7"
                       )}
                       variant="plain"
                       size="md"
@@ -383,4 +383,4 @@ export const SecretInputRow = memo(
   }
 );
 
-SecretInputRow.displayName = 'SecretInputRow';
+SecretInputRow.displayName = "SecretInputRow";

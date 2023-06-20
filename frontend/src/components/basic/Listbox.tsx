@@ -1,7 +1,7 @@
-import React, { Fragment } from 'react';
-import { faAngleDown, faCheck, faPlus } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Listbox, Transition } from '@headlessui/react';
+import React, { Fragment } from "react";
+import { faAngleDown, faCheck, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Listbox, Transition } from "@headlessui/react";
 
 interface ListBoxProps {
   isSelected: string;
@@ -35,13 +35,13 @@ const ListBox = ({
       <div className="relative">
         <Listbox.Button
           className={`text-gray-400 relative ${
-            isFull ? 'w-full' : 'w-52'
+            isFull ? "w-full" : "w-52"
           } cursor-default rounded-md bg-white/[0.07] hover:bg-white/[0.11] duration-200 py-2.5 pl-3 pr-10 text-left shadow-md focus:outline-none focus-visible:border-indigo-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-orange-300 sm:text-sm`}
         >
           <div className="flex flex-row">
             {text}
             <span className="ml-1 cursor-pointer block truncate font-semibold text-gray-300">
-              {' '}
+              {" "}
               {isSelected}
             </span>
           </div>
@@ -64,11 +64,11 @@ const ListBox = ({
                   key={`${person}.${personIdx + 1}`}
                   className={({ active, selected }) =>
                     `my-0.5 relative cursor-default select-none py-2 pl-10 pr-4 rounded-md ${
-                      selected ? 'bg-white/10 text-gray-400 font-bold' : ''
+                      selected ? "bg-white/10 text-gray-400 font-bold" : ""
                     } ${
                       active && !selected
-                        ? 'bg-white/5 text-mineshaft-200 cursor-pointer'
-                        : 'text-gray-400'
+                        ? "bg-white/5 text-mineshaft-200 cursor-pointer"
+                        : "text-gray-400"
                     } `
                   }
                   value={person}
@@ -77,7 +77,7 @@ const ListBox = ({
                     <>
                       <span
                         className={`block truncate text-primary${
-                          selected ? 'font-medium' : 'font-normal'
+                          selected ? "font-medium" : "font-normal"
                         }`}
                       >
                         {person}

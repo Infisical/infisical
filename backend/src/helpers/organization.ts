@@ -1,25 +1,25 @@
 import Stripe from "stripe";
 import { Types } from "mongoose";
-import { Organization, MembershipOrg } from "../models";
+import { MembershipOrg, Organization } from "../models";
 import {
-  ACCEPTED
+  ACCEPTED,
 } from "../variables";
 import {
-  getStripeSecretKey,
   getStripeProductPro,
-  getStripeProductTeam,
   getStripeProductStarter,
+  getStripeProductTeam,
+  getStripeSecretKey,
 } from "../config";
 import {
-  EELicenseService
-} from '../ee/services';
+  EELicenseService,
+} from "../ee/services";
 import {
-  getLicenseServerUrl
-} from '../config';
+  getLicenseServerUrl,
+} from "../config";
 import {
+  licenseKeyRequest,
   licenseServerKeyRequest,
-  licenseKeyRequest
-} from '../config/request';
+} from "../config/request";
 
 /**
  * Create an organization with name [name]
@@ -137,7 +137,7 @@ export const updateSubscriptionOrgQuantity = async ({
   });
 
   if (organization && organization.customerId) {
-    if (EELicenseService.instanceType === 'cloud') {
+    if (EELicenseService.instanceType === "cloud") {
       // instance of Infisical is a cloud instance
       const quantity = await MembershipOrg.countDocuments({
         organization: new Types.ObjectId(organizationId),
@@ -147,7 +147,7 @@ export const updateSubscriptionOrgQuantity = async ({
       await licenseServerKeyRequest.patch(
         `${await getLicenseServerUrl()}/api/license-server/v1/customers/${organization.customerId}/cloud-plan`,
         {
-          quantity
+          quantity,
         }
       );
 
@@ -155,17 +155,17 @@ export const updateSubscriptionOrgQuantity = async ({
     }
   }
 
-  if (EELicenseService.instanceType === 'enterprise-self-hosted') {
+  if (EELicenseService.instanceType === "enterprise-self-hosted") {
     // instance of Infisical is an enterprise self-hosted instance
     
     const usedSeats = await MembershipOrg.countDocuments({
-      status: ACCEPTED
+      status: ACCEPTED,
     });
 
     await licenseKeyRequest.patch(
       `${await getLicenseServerUrl()}/api/license/v1/license`,
       {
-        usedSeats
+        usedSeats,
       }
     );
   }

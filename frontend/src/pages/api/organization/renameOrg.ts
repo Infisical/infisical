@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This route lets us rename a certain org.
@@ -8,9 +8,9 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const renameOrg = (orgId: string, newOrgName: string) =>
   SecurityClient.fetchCall(`/api/v1/organization/${orgId}/name`, {
-    method: 'PATCH',
+    method: "PATCH",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       name: newOrgName
@@ -19,7 +19,7 @@ const renameOrg = (orgId: string, newOrgName: string) =>
     if (res && res.status === 200) {
       return res;
     }
-    console.log('Failed to rename an organization');
+    console.log("Failed to rename an organization");
     return undefined;
   });
 

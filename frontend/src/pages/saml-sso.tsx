@@ -1,18 +1,18 @@
-import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import Head from 'next/head';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/router";
 
-import { Button, Input } from '@app/components/v2';
-import { isLoggedIn } from '@app/reactQuery';
+import { Button, Input } from "@app/components/v2";
+import { isLoggedIn } from "@app/reactQuery";
 
-import getWorkspaces from './api/workspace/getWorkspaces';
+import getWorkspaces from "./api/workspace/getWorkspaces";
 
 export default function Login() {
   const router = useRouter();
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState("");
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export default function Login() {
         userWorkspace = userWorkspaces[0] && userWorkspaces[0]._id;
         router.push(`/dashboard/${userWorkspace}`);
       } catch (error) {
-        console.log('Error - Not logged in yet');
+        console.log("Error - Not logged in yet");
       }
     };
     if (isLoggedIn()) {
@@ -35,11 +35,11 @@ export default function Login() {
   return (
     <div className="flex h-screen flex-col justify-center bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28 ">
       <Head>
-        <title>{t('common.head-title', { title: t('login.title') })}</title>
+        <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t('login.og-title') ?? ''} />
-        <meta name="og:description" content={t('login.og-description') ?? ''} />
+        <meta property="og:title" content={t("login.og-title") ?? ""} />
+        <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Head>
       <Link href="/">
         <div className="mb-4 mt-20 flex justify-center">
@@ -72,16 +72,16 @@ export default function Login() {
               isFullWidth
               className="h-14"
           > 
-              {t('login.login')} 
+              {t("login.login")} 
           </Button>
         </div>
         <div className="flex flex-row items-center justify-center mt-4">
           <button
-            onClick={() => {router.push('/login')}}
+            onClick={() => {router.push("/login")}}
             type="button"
             className="text-bunker-300 text-sm hover:underline mt-2 hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer"
           >
-            {t('login.other-option')}
+            {t("login.other-option")}
           </button>
         </div>
       </div>

@@ -1,146 +1,146 @@
-import express from 'express';
+import express from "express";
 import { 
   requireAuth, 
-  requireWorkspaceAuth,
   requireSecretAuth,
-  validateRequest 
-} from '../../middleware';
-import { body, param, query } from 'express-validator';
+  requireWorkspaceAuth,
+  validateRequest, 
+} from "../../middleware";
+import { body, param, query } from "express-validator";
 import {
   ADMIN, 
-  MEMBER,
   AUTH_MODE_JWT,
   AUTH_MODE_SERVICE_TOKEN,
+  MEMBER,
   PERMISSION_READ_SECRETS,
-  PERMISSION_WRITE_SECRETS
-} from '../../variables';
-import { CreateSecretRequestBody, ModifySecretRequestBody } from '../../types/secret';
-import { secretController } from '../../controllers/v2';
+  PERMISSION_WRITE_SECRETS,
+} from "../../variables";
+import { CreateSecretRequestBody, ModifySecretRequestBody } from "../../types/secret";
+import { secretController } from "../../controllers/v2";
 
 // note to devs: stop supporting these routes [deprecated]
 
 const router = express.Router();
 
 router.post(
-  '/batch-create/workspace/:workspaceId/environment/:environment',
+  "/batch-create/workspace/:workspaceId/environment/:environment",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: 'params'
+    locationWorkspaceId: "params",
   }),
-  param('workspaceId').exists().isMongoId().trim(),
-  param('environment').exists().trim(),
-  body('secrets').exists().isArray().custom((value) => value.every((item: CreateSecretRequestBody) => typeof item === 'object')),
-  body('channel'),
+  param("workspaceId").exists().isMongoId().trim(),
+  param("environment").exists().trim(),
+  body("secrets").exists().isArray().custom((value) => value.every((item: CreateSecretRequestBody) => typeof item === "object")),
+  body("channel"),
   validateRequest,
   secretController.createSecrets
 );
 
 router.post(
-  '/workspace/:workspaceId/environment/:environment',
+  "/workspace/:workspaceId/environment/:environment",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: 'params'
+    locationWorkspaceId: "params",
   }),
-  param('workspaceId').exists().isMongoId().trim(),
-  param('environment').exists().trim(),
-  body('secret').exists().isObject(),
-  body('channel'),
+  param("workspaceId").exists().isMongoId().trim(),
+  param("environment").exists().trim(),
+  body("secret").exists().isObject(),
+  body("channel"),
   validateRequest,
   secretController.createSecret
 );
 
 router.get(
-  '/workspace/:workspaceId',
-  param('workspaceId').exists().trim(),
+  "/workspace/:workspaceId",
+  param("workspaceId").exists().trim(),
   query("environment").exists(),
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_SERVICE_TOKEN]
+    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_SERVICE_TOKEN],
   }),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: 'params'
+    locationWorkspaceId: "params",
   }),
-  query('channel'),
+  query("channel"),
   validateRequest,
   secretController.getSecrets
 );
 
 router.get(
-  '/:secretId',
+  "/:secretId",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_SERVICE_TOKEN]
+    acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_SERVICE_TOKEN],
   }),
   requireSecretAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    requiredPermissions: [PERMISSION_READ_SECRETS]
+    requiredPermissions: [PERMISSION_READ_SECRETS],
   }),
   validateRequest,
   secretController.getSecret
 );
 
 router.delete(
-  '/batch/workspace/:workspaceId/environment/:environmentName',
+  "/batch/workspace/:workspaceId/environment/:environmentName",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AUTH_MODE_JWT],
   }),
-  param('workspaceId').exists().isMongoId().trim(),
-  param('environmentName').exists().trim(),
-  body('secretIds').exists().isArray().custom(array => array.length > 0),
+  param("workspaceId").exists().isMongoId().trim(),
+  param("environmentName").exists().trim(),
+  body("secretIds").exists().isArray().custom(array => array.length > 0),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: 'params'
+    locationWorkspaceId: "params",
   }),
   validateRequest,
   secretController.deleteSecrets
 );
 
 router.delete(
-  '/:secretId',
+  "/:secretId",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AUTH_MODE_JWT],
   }),
   requireSecretAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    requiredPermissions: [PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS]
+    requiredPermissions: [PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS],
   }),
-  param('secretId').isMongoId(),
+  param("secretId").isMongoId(),
   validateRequest,
   secretController.deleteSecret
 );
 
 router.patch(
-  '/batch-modify/workspace/:workspaceId/environment/:environmentName',
+  "/batch-modify/workspace/:workspaceId/environment/:environmentName",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AUTH_MODE_JWT],
   }),
-  body('secrets').exists().isArray().custom((secrets: ModifySecretRequestBody[]) => secrets.length > 0),
-  param('workspaceId').exists().isMongoId().trim(),
-  param('environmentName').exists().trim(),
+  body("secrets").exists().isArray().custom((secrets: ModifySecretRequestBody[]) => secrets.length > 0),
+  param("workspaceId").exists().isMongoId().trim(),
+  param("environmentName").exists().trim(),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: 'params'
+    locationWorkspaceId: "params",
   }),
   validateRequest,
   secretController.updateSecrets
 );
 
 router.patch(
-  '/workspace/:workspaceId/environment/:environmentName',
+  "/workspace/:workspaceId/environment/:environmentName",
   requireAuth({
-    acceptedAuthModes: [AUTH_MODE_JWT]
+    acceptedAuthModes: [AUTH_MODE_JWT],
   }),
-  body('secret').isObject(),
-  param('workspaceId').exists().isMongoId().trim(),
-  param('environmentName').exists().trim(),
+  body("secret").isObject(),
+  param("workspaceId").exists().isMongoId().trim(),
+  param("environmentName").exists().trim(),
   requireWorkspaceAuth({
     acceptedRoles: [ADMIN, MEMBER],
-    locationWorkspaceId: 'params'
+    locationWorkspaceId: "params",
   }),
   validateRequest,
   secretController.updateSecret

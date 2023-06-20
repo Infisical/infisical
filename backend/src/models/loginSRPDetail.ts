@@ -1,4 +1,4 @@
-import mongoose, { Schema, model, Types } from 'mongoose';
+import mongoose, { Schema, Types, model } from "mongoose";
 
 export interface ILoginSRPDetail {
 	_id: Types.ObjectId;
@@ -13,17 +13,17 @@ const loginSRPDetailSchema = new Schema<ILoginSRPDetail>(
 	{
 		clientPublicKey: {
 			type: String,
-			required: true
+			required: true,
 		},
 		email: {
 			type: String,
-			unique: true
+			unique: true,
 		},
 		serverBInt: { type: mongoose.Schema.Types.Buffer },
-		expireAt: { type: Date }
+		expireAt: { type: Date },
 	}
 );
 
-const LoginSRPDetail = model('LoginSRPDetail', loginSRPDetailSchema);
+const LoginSRPDetail = model("LoginSRPDetail", loginSRPDetailSchema);
 
 export default LoginSRPDetail;

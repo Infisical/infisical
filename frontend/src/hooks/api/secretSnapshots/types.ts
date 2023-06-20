@@ -1,5 +1,5 @@
-import { UserWsKeyPair } from '../keys/types';
-import { EncryptedSecretVersion } from '../secrets/types';
+import { UserWsKeyPair } from "../keys/types";
+import { EncryptedSecretVersion } from "../secrets/types";
 
 export type TWorkspaceSecretSnapshot = {
   _id: string;
@@ -11,7 +11,7 @@ export type TWorkspaceSecretSnapshot = {
   __v: number;
 };
 
-export type TSnapshotSecret = Omit<TWorkspaceSecretSnapshot, 'secretVersions'> & {
+export type TSnapshotSecret = Omit<TWorkspaceSecretSnapshot, "secretVersions"> & {
   secretVersions: EncryptedSecretVersion[];
   folderVersion: Array<{ name: string; id: string }>;
 };

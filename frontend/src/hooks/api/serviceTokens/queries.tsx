@@ -1,16 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { apiRequest } from '@app/config/request';
+import { apiRequest } from "@app/config/request";
 
 import {
   CreateServiceTokenDTO,
   CreateServiceTokenRes,
   DeleteServiceTokenRes,
   ServiceToken
-} from './types';
+} from "./types";
 
 const serviceTokenKeys = {
-  getAllWorkspaceServiceToken: (workspaceID: string) => [{ workspaceID }, 'service-tokens'] as const
+  getAllWorkspaceServiceToken: (workspaceID: string) => [{ workspaceID }, "service-tokens"] as const
 };
 
 const fetchWorkspaceServiceTokens = async (workspaceID: string) => {
@@ -36,7 +36,7 @@ export const useCreateServiceToken = () => {
 
   return useMutation<CreateServiceTokenRes, {}, CreateServiceTokenDTO>({
     mutationFn: async (body) => {
-      const { data } = await apiRequest.post('/api/v2/service-token/', body);
+      const { data } = await apiRequest.post("/api/v2/service-token/", body);
       data.serviceToken += `.${body.randomBytes}`;
       return data;
     },

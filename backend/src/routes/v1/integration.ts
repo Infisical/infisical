@@ -8,9 +8,9 @@ import {
 } from "../../middleware";
 import {
   ADMIN,
-  MEMBER,
-  AUTH_MODE_JWT,
   AUTH_MODE_API_KEY,
+  AUTH_MODE_JWT,
+  MEMBER,
 } from "../../variables";
 import { body, param } from "express-validator";
 import { integrationController } from "../../controllers/v1";

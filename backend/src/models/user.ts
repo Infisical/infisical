@@ -1,7 +1,7 @@
-import { Schema, model, Types, Document } from 'mongoose';
+import { Document, Schema, Types, model } from "mongoose";
 
 export enum AuthProvider {
-	GOOGLE = 'google',
+	GOOGLE = "google",
 }
 
 export interface IUser extends Document {
@@ -44,73 +44,73 @@ const userSchema = new Schema<IUser>(
 			unique: true,
 		},
 		firstName: {
-			type: String
+			type: String,
 		},
 		lastName: {
-			type: String
+			type: String,
 		},
 		encryptionVersion: {
 			type: Number,
 			select: false,
-			default: 1 // to resolve backward-compatibility issues
+			default: 1, // to resolve backward-compatibility issues
 		},
 		protectedKey: { // introduced as part of encryption version 2
 			type: String,
-			select: false
+			select: false,
 		},
 		protectedKeyIV: { // introduced as part of encryption version 2
 			type: String,
-			select: false
+			select: false,
 		},
 		protectedKeyTag: { // introduced as part of encryption version 2
 			type: String,
-			select: false
+			select: false,
 		},
 		publicKey: {
 			type: String,
-			select: false
+			select: false,
 		},
 		encryptedPrivateKey: {
 			type: String,
-			select: false
+			select: false,
 		},
 		iv: { // iv of [encryptedPrivateKey]
 			type: String,
-			select: false
+			select: false,
 		},
 		tag: { // tag of [encryptedPrivateKey]
 			type: String,
-			select: false
+			select: false,
 		},
 		salt: {
 			type: String,
-			select: false
+			select: false,
 		},
 		verifier: {
 			type: String,
-			select: false
+			select: false,
 		},
 		isMfaEnabled: {
 			type: Boolean,
-			default: false
+			default: false,
 		},
 		mfaMethods: [{
-			type: String
+			type: String,
 		}],
 		devices: {
 			type: [{
 				ip: String,
-				userAgent: String
+				userAgent: String,
 			}],
 			default: [],
-			select: false
-		}
+			select: false,
+		},
 	}, 
 	{
-		timestamps: true
+		timestamps: true,
 	}
 );
 
-const User = model<IUser>('User', userSchema);
+const User = model<IUser>("User", userSchema);
 
 export default User;

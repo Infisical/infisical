@@ -1,5 +1,5 @@
-import { Button } from '../Button';
-import { Modal, ModalContent } from '../Modal';
+import { Button } from "../Button";
+import { Modal, ModalContent } from "../Modal";
 
 type Props = {
   isOpen?: boolean;

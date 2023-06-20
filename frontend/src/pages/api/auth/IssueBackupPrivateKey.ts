@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface Props {
   encryptedPrivateKey: string;
@@ -28,10 +28,10 @@ const issueBackupPrivateKey = ({
   verifier,
   clientProof
 }: Props) =>
-  SecurityClient.fetchCall('/api/v1/password/backup-private-key', {
-    method: 'POST',
+  SecurityClient.fetchCall("/api/v1/password/backup-private-key", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       clientProof,
@@ -43,7 +43,7 @@ const issueBackupPrivateKey = ({
     })
   }).then((res) => {
     if (res?.status !== 200) {
-      console.log('Failed to issue the backup key');
+      console.log("Failed to issue the backup key");
     }
     return res;
   });

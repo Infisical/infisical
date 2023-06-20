@@ -1,7 +1,7 @@
-const publicKeyInfisical = () => fetch('/api/v1/key/publicKey/infisical', {
-    method: 'GET',
+const publicKeyInfisical = () => fetch("/api/v1/key/publicKey/infisical", {
+    method: "GET",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   });
 

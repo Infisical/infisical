@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import { Types } from 'mongoose';
-import { validateClientForSecret } from '../validation';
+import { NextFunction, Request, Response } from "express";
+import { Types } from "mongoose";
+import { validateClientForSecret } from "../validation";
 
 // note: used for old /v1/secret and /v2/secret routes.
 // newer /v2/secrets routes use [requireSecretsAuth] middleware with the exception
@@ -14,9 +14,9 @@ import { validateClientForSecret } from '../validation';
  */
 const requireSecretAuth = ({
     acceptedRoles,
-    requiredPermissions
+    requiredPermissions,
 }: {
-    acceptedRoles: Array<'admin' | 'member'>;
+    acceptedRoles: Array<"admin" | "member">;
     requiredPermissions: string[];
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
@@ -26,7 +26,7 @@ const requireSecretAuth = ({
             authData: req.authData,
             secretId: new Types.ObjectId(secretId),
             acceptedRoles,
-            requiredPermissions
+            requiredPermissions,
         });
         
         req._secret = secret;

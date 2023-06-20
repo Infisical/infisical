@@ -1,17 +1,17 @@
-import { Types } from 'mongoose';
-import { Action } from '../models';
+import { Types } from "mongoose";
+import { Action } from "../models";
 import { 
+    getLatestNSecretSecretVersionIds,
     getLatestSecretVersionIds,
-    getLatestNSecretSecretVersionIds
-} from '../helpers/secretVersion';
+} from "../helpers/secretVersion";
 import { 
+    ACTION_ADD_SECRETS,
+    ACTION_DELETE_SECRETS,
     ACTION_LOGIN,
     ACTION_LOGOUT,
-    ACTION_ADD_SECRETS,
     ACTION_READ_SECRETS,
-    ACTION_DELETE_SECRETS,
     ACTION_UPDATE_SECRETS,
-} from '../../variables';
+} from "../../variables";
 
 /**
  * Create an (audit) action for updating secrets
@@ -26,7 +26,7 @@ const createActionUpdateSecret = async ({
     serviceAccountId,
     serviceTokenDataId,
     workspaceId,
-    secretIds
+    secretIds,
 }: {
     name: string;
     userId?: Types.ObjectId;
@@ -37,11 +37,11 @@ const createActionUpdateSecret = async ({
 }) => {
     const latestSecretVersions = (await getLatestNSecretSecretVersionIds({
             secretIds,
-            n: 2
+            n: 2,
         }))
         .map((s) => ({
             oldSecretVersion: s.versions[0]._id,
-            newSecretVersion: s.versions[1]._id
+            newSecretVersion: s.versions[1]._id,
         }));
     
     const action = await new Action({
@@ -51,8 +51,8 @@ const createActionUpdateSecret = async ({
         serviceTokenData: serviceTokenDataId,
         workspace: workspaceId,
         payload: {
-            secretVersions: latestSecretVersions
-        }
+            secretVersions: latestSecretVersions,
+        },
     }).save();
     
     return action;
@@ -72,7 +72,7 @@ const createActionSecret = async ({
     serviceAccountId,
     serviceTokenDataId,
     workspaceId,
-    secretIds
+    secretIds,
 }: {
     name: string;
     userId?: Types.ObjectId;
@@ -84,10 +84,10 @@ const createActionSecret = async ({
     // case: action is adding, deleting, or reading secrets
     // -> add new secret versions
     const latestSecretVersions = (await getLatestSecretVersionIds({
-        secretIds
+        secretIds,
     }))
     .map((s) => ({
-        newSecretVersion: s.versionId
+        newSecretVersion: s.versionId,
     }));
     
    const action = await new Action({
@@ -97,8 +97,8 @@ const createActionSecret = async ({
         serviceTokenData: serviceTokenDataId,
         workspace: workspaceId,
         payload: {
-            secretVersions: latestSecretVersions
-        }
+            secretVersions: latestSecretVersions,
+        },
     }).save(); 
     
     return action;
@@ -116,7 +116,7 @@ const createActionClient = ({
     name,
     userId,
     serviceAccountId,
-    serviceTokenDataId
+    serviceTokenDataId,
 }: {
     name: string;
     userId?: Types.ObjectId;
@@ -127,7 +127,7 @@ const createActionClient = ({
         name,
         user: userId,
         serviceAccount: serviceAccountId,
-        serviceTokenData: serviceTokenDataId
+        serviceTokenData: serviceTokenDataId,
     }).save();
 
     return action; 
@@ -162,27 +162,27 @@ const createActionHelper = async ({
         case ACTION_LOGOUT:
             action = await createActionClient({
                 name,
-                userId
+                userId,
             });
             break;
         case ACTION_ADD_SECRETS:
         case ACTION_READ_SECRETS:
         case ACTION_DELETE_SECRETS:
-            if (!workspaceId || !secretIds) throw new Error('Missing required params workspace id or secret ids to create action secret');
+            if (!workspaceId || !secretIds) throw new Error("Missing required params workspace id or secret ids to create action secret");
             action = await createActionSecret({
                 name,
                 userId,
                 workspaceId,
-                secretIds
+                secretIds,
             });
             break;
         case ACTION_UPDATE_SECRETS:
-            if (!workspaceId || !secretIds) throw new Error('Missing required params workspace id or secret ids to create action secret');
+            if (!workspaceId || !secretIds) throw new Error("Missing required params workspace id or secret ids to create action secret");
             action = await createActionUpdateSecret({
                 name,
                 userId,
                 workspaceId,
-                secretIds
+                secretIds,
             });
             break;
     }
@@ -191,5 +191,5 @@ const createActionHelper = async ({
 }
 
 export { 
-    createActionHelper
+    createActionHelper,
 };

@@ -1,37 +1,37 @@
-import fs from 'fs';
-import path from 'path';
-import { Types } from 'mongoose';
+import fs from "fs";
+import path from "path";
+import { Types } from "mongoose";
 import {
-	IUser, 
+	IOrganization, 
 	ISecret,
 	IServiceAccount,
+	IUser,
 	Membership,
-	IOrganization,
-} from '../models';
-import { validateMembership } from '../helpers/membership';
-import _ from 'lodash';
-import { BadRequestError, UnauthorizedRequestError, ValidationError } from '../utils/errors';
+} from "../models";
+import { validateMembership } from "../helpers/membership";
+import _ from "lodash";
+import { BadRequestError, UnauthorizedRequestError, ValidationError } from "../utils/errors";
 import {
-	validateMembershipOrg
-} from '../helpers/membershipOrg';
+	validateMembershipOrg,
+} from "../helpers/membershipOrg";
 import {
 	PERMISSION_READ_SECRETS,
-	PERMISSION_WRITE_SECRETS
-} from '../variables';
+	PERMISSION_WRITE_SECRETS,
+} from "../variables";
 
 /**
  * Validate that email [email] is not disposable
  * @param email - email to validate
  */
 export const validateUserEmail = (email: string) => {
-	const emailDomain = email.split('@')[1];
+	const emailDomain = email.split("@")[1];
 	const disposableEmails = fs.readFileSync(
-		path.resolve(__dirname, '../data/' + 'disposable_emails.txt'),
-		'utf8'
-	).split('\n');	
+		path.resolve(__dirname, "../data/" + "disposable_emails.txt"),
+		"utf8"
+	).split("\n");	
 	
 	if (disposableEmails.includes(emailDomain)) throw ValidationError({
-		message: 'Failed to validate email as non-disposable'
+		message: "Failed to validate email as non-disposable",
 	});
 }
 
@@ -50,12 +50,12 @@ export const validateUserClientForWorkspace = async ({
 	workspaceId,
 	environment,
 	acceptedRoles,
-	requiredPermissions
+	requiredPermissions,
 }: {
 	user: IUser;
 	workspaceId: Types.ObjectId;
 	environment?: string;
-	acceptedRoles: Array<'admin' | 'member'>;
+	acceptedRoles: Array<"admin" | "member">;
 	requiredPermissions?: string[];
 }) => {
 	
@@ -63,7 +63,7 @@ export const validateUserClientForWorkspace = async ({
 	const membership = await validateMembership({
         userId: user._id,
         workspaceId,
-		acceptedRoles
+		acceptedRoles,
     });
 	
 	let runningIsDisallowed = false;
@@ -81,7 +81,7 @@ export const validateUserClientForWorkspace = async ({
 		
 		if (runningIsDisallowed) {
 			throw UnauthorizedRequestError({
-				message: `Failed permissions authorization for workspace environment action : ${requiredPermission}`
+				message: `Failed permissions authorization for workspace environment action : ${requiredPermission}`,
 			});	
 		}
 	});
@@ -101,17 +101,17 @@ export const validateUserClientForSecret = async ({
 	user,
 	secret,
 	acceptedRoles,
-	requiredPermissions
+	requiredPermissions,
 }: {
 	user: IUser;
 	secret: ISecret;
-	acceptedRoles?: Array<'admin' | 'member'>;
+	acceptedRoles?: Array<"admin" | "member">;
 	requiredPermissions?: string[];
 }) => {
 	const membership = await validateMembership({
 		userId: user._id,
 		workspaceId: secret.workspace,
-		acceptedRoles
+		acceptedRoles,
 	});
 	
 	if (requiredPermissions?.includes(PERMISSION_WRITE_SECRETS)) {
@@ -119,7 +119,7 @@ export const validateUserClientForSecret = async ({
 
 		if (isDisallowed) {
 			throw UnauthorizedRequestError({
-				message: 'You do not have the required permissions to perform this action' 
+				message: "You do not have the required permissions to perform this action", 
 			});
 		}
 	}
@@ -136,7 +136,7 @@ export const validateUserClientForSecret = async ({
 export const validateUserClientForSecrets = async ({
 	user,
 	secrets,
-	requiredPermissions
+	requiredPermissions,
 }: {
 	user: IUser;
 	secrets: ISecret[];
@@ -146,14 +146,14 @@ export const validateUserClientForSecrets = async ({
 	// TODO: add acceptedRoles?
 
 	const userMemberships = await Membership.find({ user: user._id })
-	const userMembershipById = _.keyBy(userMemberships, 'workspace');
+	const userMembershipById = _.keyBy(userMemberships, "workspace");
 	const workspaceIdsSet = new Set(userMemberships.map((m) => m.workspace.toString()));
 
 	// for each secret check if the secret belongs to a workspace the user is a member of
 	secrets.forEach((secret: ISecret) => {
 		if (!workspaceIdsSet.has(secret.workspace.toString())) {
 			throw BadRequestError({
-				message: 'Failed authorization for the secret'
+				message: "Failed authorization for the secret",
 			});
 		}
 
@@ -163,7 +163,7 @@ export const validateUserClientForSecrets = async ({
 
 			if (isDisallowed) {
 				throw UnauthorizedRequestError({
-					message: 'You do not have the required permissions to perform this action' 
+					message: "You do not have the required permissions to perform this action", 
 				});
 			}
 		}
@@ -181,7 +181,7 @@ export const validateUserClientForSecrets = async ({
 export const validateUserClientForServiceAccount = async ({
 	user,
 	serviceAccount,
-	requiredPermissions
+	requiredPermissions,
 }: {
 	user: IUser;
 	serviceAccount: IServiceAccount;
@@ -194,7 +194,7 @@ export const validateUserClientForServiceAccount = async ({
 			userId: user._id,
 			organizationId: serviceAccount.organization,
 			acceptedRoles: [],
-			acceptedStatuses: []
+			acceptedStatuses: [],
 		});
 	}
 }
@@ -209,18 +209,18 @@ export const validateUserClientForOrganization = async ({
 	user,
 	organization,
 	acceptedRoles,
-	acceptedStatuses
+	acceptedStatuses,
 }: {
 	user: IUser;
 	organization: IOrganization;
-	acceptedRoles: Array<'owner' | 'admin' | 'member'>;
-	acceptedStatuses: Array<'invited' | 'accepted'>;
+	acceptedRoles: Array<"owner" | "admin" | "member">;
+	acceptedStatuses: Array<"invited" | "accepted">;
 }) => {
 	const membershipOrg = await validateMembershipOrg({
 		userId: user._id,
 		organizationId: organization._id,
 		acceptedRoles,
-		acceptedStatuses
+		acceptedStatuses,
 	});
 	
 	return membershipOrg;

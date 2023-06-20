@@ -1,4 +1,4 @@
-import { apiRequest } from '@app/config/request';
+import { apiRequest } from "@app/config/request";
 
 /**
  * Get the latest key pairs from a certain workspace

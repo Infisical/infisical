@@ -5,7 +5,7 @@ import {
   requireWorkspaceAuth,
   validateRequest,
 } from "../../../middleware";
-import { param, query, body } from "express-validator";
+import { body, param, query } from "express-validator";
 import { ADMIN, MEMBER } from "../../../variables";
 import { workspaceController } from "../../controllers/v1";
 

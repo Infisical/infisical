@@ -1,20 +1,19 @@
-import crypto from 'crypto';
-import nacl from 'tweetnacl';
-import util from 'tweetnacl-util';
+import crypto from "crypto";
+import nacl from "tweetnacl";
+import util from "tweetnacl-util";
 import { 
-    IGenerateKeyPairOutput,
+    IDecryptAsymmetricInput,
+    IDecryptSymmetricInput,
     IEncryptAsymmetricInput,
     IEncryptAsymmetricOutput,
-    IDecryptAsymmetricInput,
     IEncryptSymmetricInput,
-    IDecryptSymmetricInput
-} from '../../interfaces/utils';
-import { BadRequestError } from '../errors';
+    IGenerateKeyPairOutput,
+} from "../../interfaces/utils";
+import { BadRequestError } from "../errors";
 import { 
-    ALGORITHM_AES_256_GCM, 
-    NONCE_BYTES_SIZE,
-    BLOCK_SIZE_BYTES_16
-} from '../../variables';
+    ALGORITHM_AES_256_GCM,
+    BLOCK_SIZE_BYTES_16,
+} from "../../variables";
 
 /**
  * Return new base64, NaCl, public-private key pair.
@@ -27,7 +26,7 @@ const generateKeyPair = (): IGenerateKeyPairOutput => {
     
 	return ({
 		publicKey: util.encodeBase64(pair.publicKey),
-		privateKey: util.encodeBase64(pair.secretKey)
+		privateKey: util.encodeBase64(pair.secretKey),
 	});
 }
 
@@ -45,7 +44,7 @@ const generateKeyPair = (): IGenerateKeyPairOutput => {
 const encryptAsymmetric = ({
 	plaintext,
 	publicKey,
-	privateKey
+	privateKey,
 }: IEncryptAsymmetricInput): IEncryptAsymmetricOutput => {
   const nonce = nacl.randomBytes(24);
   const ciphertext = nacl.box(
@@ -57,7 +56,7 @@ const encryptAsymmetric = ({
 
 	return {
 		ciphertext: util.encodeBase64(ciphertext),
-		nonce: util.encodeBase64(nonce)
+		nonce: util.encodeBase64(nonce),
 	};
 };
 
@@ -75,7 +74,7 @@ const decryptAsymmetric = ({
 	ciphertext,
 	nonce,
 	publicKey,
-	privateKey
+	privateKey,
 }: IDecryptAsymmetricInput): string => {
     const plaintext: Uint8Array | null = nacl.box.open(
         util.decodeBase64(ciphertext),
@@ -85,7 +84,7 @@ const decryptAsymmetric = ({
     );
   
     if (plaintext == null) throw BadRequestError({
-        message: 'Invalid ciphertext or keys'
+        message: "Invalid ciphertext or keys",
     });
   
     return util.encodeUTF8(plaintext);
@@ -108,18 +107,18 @@ const decryptAsymmetric = ({
  */
 const encryptSymmetric128BitHexKeyUTF8 = ({
     plaintext,
-    key
+    key,
 }: IEncryptSymmetricInput) => {
     const iv = crypto.randomBytes(BLOCK_SIZE_BYTES_16);
     const cipher = crypto.createCipheriv(ALGORITHM_AES_256_GCM, key, iv);
 
-    let ciphertext = cipher.update(plaintext, 'utf8', 'base64');
-    ciphertext += cipher.final('base64');
+    let ciphertext = cipher.update(plaintext, "utf8", "base64");
+    ciphertext += cipher.final("base64");
 
     return {
         ciphertext,
-        iv: iv.toString('base64'),
-        tag: cipher.getAuthTag().toString('base64')
+        iv: iv.toString("base64"),
+        tag: cipher.getAuthTag().toString("base64"),
     };
 }
 /**
@@ -141,18 +140,18 @@ const decryptSymmetric128BitHexKeyUTF8 = ({
     ciphertext,
     iv,
     tag,
-    key
+    key,
 }: IDecryptSymmetricInput) => {
     const decipher = crypto.createDecipheriv(
         ALGORITHM_AES_256_GCM,
         key,
-        Buffer.from(iv, 'base64')
+        Buffer.from(iv, "base64")
     );
 
-    decipher.setAuthTag(Buffer.from(tag, 'base64'));
+    decipher.setAuthTag(Buffer.from(tag, "base64"));
 
-    let cleartext = decipher.update(ciphertext, 'base64', 'utf8');
-    cleartext += decipher.final('utf8');
+    let cleartext = decipher.update(ciphertext, "base64", "utf8");
+    cleartext += decipher.final("utf8");
     
     return cleartext;
 }
@@ -162,5 +161,5 @@ export {
 	encryptAsymmetric,
 	decryptAsymmetric,
     encryptSymmetric128BitHexKeyUTF8,
-    decryptSymmetric128BitHexKeyUTF8
+    decryptSymmetric128BitHexKeyUTF8,
 };

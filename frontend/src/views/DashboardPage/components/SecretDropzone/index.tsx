@@ -1,1 +1,1 @@
-export { SecretDropzone } from './SecretDropzone';
+export { SecretDropzone } from "./SecretDropzone";

@@ -1,10 +1,10 @@
 /* eslint-disable react/button-has-type */
-import React, { ButtonHTMLAttributes } from 'react';
-import Image from 'next/image';
-import { IconProp } from '@fortawesome/fontawesome-svg-core';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import React, { ButtonHTMLAttributes } from "react";
+import Image from "next/image";
+import { IconProp } from "@fortawesome/fontawesome-svg-core";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-const classNames = require('classnames');
+const classNames = require("classnames");
 
 type ButtonProps = {
   text?: string;
@@ -47,49 +47,49 @@ const Button = ({
 }: ButtonProps): JSX.Element => {
   // Check if the button show always be 'active' - then true;
   // or if it should switch between 'active' and 'disabled' - then give the status
-  const activityStatus = active || (text !== '' && textDisabled === undefined);
+  const activityStatus = active || (text !== "" && textDisabled === undefined);
 
   const styleButton = classNames(
-    'group m-auto md:m-0 inline-block rounded-md duration-200',
+    "group m-auto md:m-0 inline-block rounded-md duration-200",
 
     // Setting background colors and hover modes
-    color === 'mineshaft' && activityStatus && 'bg-mineshaft-800 border border-mineshaft-600 hover:bg-primary/[0.15] hover:border-primary/60',
-    color === 'mineshaft' && !activityStatus && 'bg-mineshaft',
-    (color === 'primary' || !color) && activityStatus && 'bg-primary border border-primary-400 opacity-80 hover:opacity-100',
-    (color === 'primary' || !color) && !activityStatus && 'bg-primary',
-    color === 'red' && 'bg-red-800 border border-red',
+    color === "mineshaft" && activityStatus && "bg-mineshaft-800 border border-mineshaft-600 hover:bg-primary/[0.15] hover:border-primary/60",
+    color === "mineshaft" && !activityStatus && "bg-mineshaft",
+    (color === "primary" || !color) && activityStatus && "bg-primary border border-primary-400 opacity-80 hover:opacity-100",
+    (color === "primary" || !color) && !activityStatus && "bg-primary",
+    color === "red" && "bg-red-800 border border-red",
 
     // Changing the opacity when active vs when not
-    activityStatus ? 'opacity-100 cursor-pointer' : 'opacity-40',
+    activityStatus ? "opacity-100 cursor-pointer" : "opacity-40",
 
     // Setting the button sizes
-    size === 'md' && 'h-10 w-full px-2 md:px-4',
-    size === 'lg' && 'h-12 w-full px-2 md:px-8',
-    !size && 'md:py-1 px-3 md:px-8',
-    size === 'icon-md' && 'h-10 w-10 flex items-center justify-center',
-    size === 'icon-sm' && 'h-9 w-9 flex items-center justify-center'
+    size === "md" && "h-10 w-full px-2 md:px-4",
+    size === "lg" && "h-12 w-full px-2 md:px-8",
+    !size && "md:py-1 px-3 md:px-8",
+    size === "icon-md" && "h-10 w-10 flex items-center justify-center",
+    size === "icon-sm" && "h-9 w-9 flex items-center justify-center"
   );
 
   const styleMainDiv = classNames(
-    'relative font-medium flex items-center',
+    "relative font-medium flex items-center",
 
     // Setting the text color for the text and icon
-    color === 'mineshaft' && 'text-bunker-200',
-    color !== 'mineshaft' && color !== 'red' && color !== 'none' && 'text-black',
-    color === 'red' && 'text-gray-200',
-    color === 'none' && 'text-gray-200 text-xl',
-    activityStatus && color !== 'red' && color !== 'mineshaft' && color !== 'none' ? 'group-hover:text-black' : '',
+    color === "mineshaft" && "text-bunker-200",
+    color !== "mineshaft" && color !== "red" && color !== "none" && "text-black",
+    color === "red" && "text-gray-200",
+    color === "none" && "text-gray-200 text-xl",
+    activityStatus && color !== "red" && color !== "mineshaft" && color !== "none" ? "group-hover:text-black" : "",
 
-    size === 'icon' && 'flex items-center justify-center'
+    size === "icon" && "flex items-center justify-center"
   );
 
   const textStyle = classNames(
-    'relative duration-200 text-center w-full',
+    "relative duration-200 text-center w-full",
 
     // Show the loading sign if the loading indicator is on
-    loading ? 'opacity-0' : 'opacity-100',
-    size === 'md' && 'text-sm',
-    size === 'lg' && 'text-lg'
+    loading ? "opacity-0" : "opacity-100",
+    size === "md" && "text-sm",
+    size === "lg" && "text-lg"
   );
 
   const button = (
@@ -102,7 +102,7 @@ const Button = ({
       <div className={styleMainDiv}>
         <div
           className={`${
-            loading === true ? 'opacity-100' : 'opacity-0'
+            loading === true ? "opacity-100" : "opacity-0"
           } absolute flex items-center px-3 bg-primary duration-200 w-full`}
         >
           <Image
@@ -116,16 +116,16 @@ const Button = ({
         {icon && (
           <FontAwesomeIcon
             icon={icon}
-            className={`flex my-auto font-extrabold ${size === 'icon-sm' ? 'text-sm' : 'text-sm'} ${
-              (text || textDisabled) && 'mr-2'
+            className={`flex my-auto font-extrabold ${size === "icon-sm" ? "text-sm" : "text-sm"} ${
+              (text || textDisabled) && "mr-2"
             }`}
           />
         )}
         {iconDisabled && (
           <FontAwesomeIcon
             icon={iconDisabled as IconProp}
-            className={`flex my-auto font-extrabold ${size === 'icon-sm' ? 'text-sm' : 'text-md'} ${
-              (text || textDisabled) && 'mr-2'
+            className={`flex my-auto font-extrabold ${size === "icon-sm" ? "text-sm" : "text-md"} ${
+              (text || textDisabled) && "mr-2"
             }`}
           />
         )}

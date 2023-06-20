@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, Types, model } from "mongoose";
 
 export interface IKey {
 	_id: Types.ObjectId;
@@ -13,33 +13,33 @@ const keySchema = new Schema<IKey>(
 	{
 		encryptedKey: {
 			type: String,
-			required: true
+			required: true,
 		},
 		nonce: {
 			type: String,
-			required: true
+			required: true,
 		},
 		sender: {
 			type: Schema.Types.ObjectId,
-			ref: 'User',
-			required: true
+			ref: "User",
+			required: true,
 		},
 		receiver: {
 			type: Schema.Types.ObjectId,
-			ref: 'User',
-			required: true
+			ref: "User",
+			required: true,
 		},
 		workspace: {
 			type: Schema.Types.ObjectId,
-			ref: 'Workspace',
-			required: true
-		}
+			ref: "Workspace",
+			required: true,
+		},
 	},
 	{
-		timestamps: true
+		timestamps: true,
 	}
 );
 
-const Key = model<IKey>('Key', keySchema);
+const Key = model<IKey>("Key", keySchema);
 
 export default Key;

@@ -55,7 +55,7 @@ const completeAccountInformationSignup = async ({
   providerAuthToken,
   attributionSource
 }: Props) => {
-  const { data } = await apiRequest.post('/api/v3/signup/complete-account/signup', {
+  const { data } = await apiRequest.post("/api/v3/signup/complete-account/signup", {
     email,
     firstName,
     lastName,

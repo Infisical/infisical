@@ -1,4 +1,4 @@
-import { Key, IKey } from '../models';
+import { IKey, Key } from "../models";
 
 interface Key {
 	encryptedKey: string;
@@ -20,7 +20,7 @@ interface Key {
 export const pushKeys = async ({
 	userId,
 	workspaceId,
-	keys
+	keys,
 }: {
 	userId: string;
 	workspaceId: string;
@@ -31,9 +31,9 @@ export const pushKeys = async ({
     (
       await Key.find(
         {
-          workspace: workspaceId
+          workspace: workspaceId,
         },
-        'receiver'
+        "receiver"
       )
     ).map((k: IKey) => k.receiver.toString())
   );
@@ -47,7 +47,7 @@ export const pushKeys = async ({
       nonce: k.nonce,
       sender: userId,
       receiver: k.userId,
-      workspace: workspaceId
+      workspace: workspaceId,
     }))
   );
 };

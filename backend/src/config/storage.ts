@@ -5,7 +5,7 @@ const MemoryLicenseServerKeyTokenStorage = () => {
       setToken: (token: string) => {
         authToken = token;
       },
-      getToken: () => authToken
+      getToken: () => authToken,
     };
 };
 
@@ -16,7 +16,7 @@ const MemoryLicenseKeyTokenStorage = () => {
       setToken: (token: string) => {
         authToken = token;
       },
-      getToken: () => authToken
+      getToken: () => authToken,
     };
 };
 

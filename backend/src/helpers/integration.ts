@@ -3,10 +3,10 @@ import { Bot, Integration, IntegrationAuth } from "../models";
 import { exchangeCode, exchangeRefresh, syncSecrets } from "../integrations";
 import { BotService } from "../services";
 import {
-  INTEGRATION_VERCEL,
-  INTEGRATION_NETLIFY,
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
+  INTEGRATION_NETLIFY,
+  INTEGRATION_VERCEL,
 } from "../variables";
 import { UnauthorizedRequestError } from "../utils/errors";
 

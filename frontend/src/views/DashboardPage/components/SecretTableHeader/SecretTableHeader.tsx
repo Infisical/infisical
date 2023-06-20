@@ -1,10 +1,10 @@
-import { faArrowDown, faArrowUp } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faArrowDown, faArrowUp } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { IconButton } from '@app/components/v2';
+import { IconButton } from "@app/components/v2";
 
 type Props = {
-  sortDir: 'asc' | 'desc';
+  sortDir: "asc" | "desc";
   onSort: () => void;
 };
 
@@ -19,7 +19,7 @@ export const SecretTableHeader = ({ sortDir, onSort }: Props): JSX.Element => (
           <div className="text-md inline-flex items-end font-medium">
             Key
             <IconButton variant="plain" className="ml-2" ariaLabel="sort" onClick={onSort}>
-              <FontAwesomeIcon icon={sortDir === 'asc' ? faArrowDown : faArrowUp} />
+              <FontAwesomeIcon icon={sortDir === "asc" ? faArrowDown : faArrowUp} />
             </IconButton>
           </div>
           <div className="flex w-max flex-row items-center justify-end">

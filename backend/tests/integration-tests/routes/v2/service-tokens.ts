@@ -1,6 +1,6 @@
-import request from 'supertest'
-import main from '../../../../src/index'
-import { getServiceTokenFromTestUser } from '../../../helper/helper';
+import request from "supertest"
+import main from "../../../../src/index"
+import { getServiceTokenFromTestUser } from "../../../helper/helper";
 let server: any;
 
 beforeAll(async () => {
@@ -20,18 +20,18 @@ describe("GET /api/v2/service-token", () => {
       // get the service token details 
       const serviceTokenDetails = await request(server)
         .get("/api/v2/service-token")
-        .set('Authorization', `Bearer ${serviceToken}`)
+        .set("Authorization", `Bearer ${serviceToken}`)
 
       expect(serviceTokenDetails.body).toMatchObject({
         _id: expect.any(String),
-        name: 'test service token',
-        workspace: '63cefb15c8d3175601cfa989',
-        environment: 'dev',
+        name: "test service token",
+        workspace: "63cefb15c8d3175601cfa989",
+        environment: "dev",
         user: {
-          _id: '63cefa6ec8d3175601cfa980',
-          email: 'test@localhost.local',
-          firstName: 'Jake',
-          lastName: 'Moni',
+          _id: "63cefa6ec8d3175601cfa980",
+          email: "test@localhost.local",
+          firstName: "Jake",
+          lastName: "Moni",
           isMfaEnabled: false,
           mfaMethods: expect.any(Array),
           devices: [
@@ -49,7 +49,7 @@ describe("GET /api/v2/service-token", () => {
         encryptedKey: expect.any(String),
         iv: expect.any(String),
         tag: expect.any(String),
-        permissions: ['read'],
+        permissions: ["read"],
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
       });

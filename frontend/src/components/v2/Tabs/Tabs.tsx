@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { faArrowUpRightFromSquare, faCheck, faClipboard } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import * as Tabs from '@radix-ui/react-tabs';
+import { useState } from "react";
+import { faArrowUpRightFromSquare, faCheck, faClipboard } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as Tabs from "@radix-ui/react-tabs";
 
 
 export type TabsProps = Tabs.TabsProps & {};

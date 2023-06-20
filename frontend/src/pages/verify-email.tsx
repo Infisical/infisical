@@ -1,21 +1,21 @@
-import { useState } from 'react';
-import Head from 'next/head';
-import Image from 'next/image';
-import Link from 'next/link';
+import { useState } from "react";
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
 
-import Button from '@app/components/basic/buttons/Button';
-import InputField from '@app/components/basic/InputField';
-import { EmailServiceSetupModal } from '@app/components/v2';
-import { usePopUp } from '@app/hooks';
-import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
+import Button from "@app/components/basic/buttons/Button";
+import InputField from "@app/components/basic/InputField";
+import { EmailServiceSetupModal } from "@app/components/v2";
+import { usePopUp } from "@app/hooks";
+import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 
-import SendEmailOnPasswordReset from './api/auth/SendEmailOnPasswordReset';
+import SendEmailOnPasswordReset from "./api/auth/SendEmailOnPasswordReset";
 
 export default function VerifyEmail() {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [step, setStep] = useState(1);
   const { data: serverDetails } = useFetchServerStatus();
-  const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(['setUpEmail'] as const);
+  const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["setUpEmail"] as const);
 
   /**
    * This function sends the verification email and forwards a user to the next step.
@@ -73,7 +73,7 @@ export default function VerifyEmail() {
                   if (serverDetails?.emailConfigured) {
                     sendVerificationEmail();
                   } else {
-                    handlePopUpOpen('setUpEmail');
+                    handlePopUpOpen("setUpEmail");
                   }
                 }}
                 size="lg"
@@ -97,7 +97,7 @@ export default function VerifyEmail() {
 
       <EmailServiceSetupModal
         isOpen={popUp.setUpEmail?.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle('setUpEmail', isOpen)}
+        onOpenChange={(isOpen) => handlePopUpToggle("setUpEmail", isOpen)}
       />
     </div>
   );

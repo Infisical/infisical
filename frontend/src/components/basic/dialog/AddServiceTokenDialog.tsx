@@ -1,25 +1,25 @@
-import crypto from 'crypto';
+import crypto from "crypto";
 
-import { Fragment, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { faCheck, faCopy } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Dialog, Transition } from '@headlessui/react';
+import { Fragment, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Dialog, Transition } from "@headlessui/react";
 
-import addServiceToken from '@app/pages/api/serviceToken/addServiceToken';
-import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
+import addServiceToken from "@app/pages/api/serviceToken/addServiceToken";
+import getLatestFileKey from "@app/pages/api/workspace/getLatestFileKey";
 
-import { decryptAssymmetric, encryptSymmetric } from '../../utilities/cryptography/crypto';
-import Button from '../buttons/Button';
-import InputField from '../InputField';
-import ListBox from '../Listbox';
+import { decryptAssymmetric, encryptSymmetric } from "../../utilities/cryptography/crypto";
+import Button from "../buttons/Button";
+import InputField from "../InputField";
+import ListBox from "../Listbox";
 
 const expiryMapping = {
-  '1 day': 86400,
-  '7 days': 604800,
-  '1 month': 2592000,
-  '6 months': 15552000,
-  '12 months': 31104000
+  "1 day": 86400,
+  "7 days": 604800,
+  "1 month": 2592000,
+  "6 months": 15552000,
+  "12 months": 31104000
 };
 
 type Props = {
@@ -41,10 +41,10 @@ const AddServiceTokenDialog = ({
   environments,
   setServiceTokens
 }: Props) => {
-  const [serviceToken, setServiceToken] = useState('');
-  const [serviceTokenName, setServiceTokenName] = useState('');
+  const [serviceToken, setServiceToken] = useState("");
+  const [serviceTokenName, setServiceTokenName] = useState("");
   const [selectedServiceTokenEnv, setSelectedServiceTokenEnv] = useState(environments?.[0]);
-  const [serviceTokenExpiresIn, setServiceTokenExpiresIn] = useState('1 day');
+  const [serviceTokenExpiresIn, setServiceTokenExpiresIn] = useState("1 day");
   const [serviceTokenCopied, setServiceTokenCopied] = useState(false);
   const { t } = useTranslation();
 
@@ -55,10 +55,10 @@ const AddServiceTokenDialog = ({
       ciphertext: latestFileKey.latestKey.encryptedKey,
       nonce: latestFileKey.latestKey.nonce,
       publicKey: latestFileKey.latestKey.sender.publicKey,
-      privateKey: localStorage.getItem('PRIVATE_KEY') as string
+      privateKey: localStorage.getItem("PRIVATE_KEY") as string
     });
 
-    const randomBytes = crypto.randomBytes(16).toString('hex');
+    const randomBytes = crypto.randomBytes(16).toString("hex");
     const { ciphertext, iv, tag } = encryptSymmetric({
       plaintext: key,
       key: randomBytes
@@ -88,7 +88,7 @@ const AddServiceTokenDialog = ({
 
   function copyToClipboard() {
     // Get the text field
-    const copyText = document.getElementById('serviceToken') as HTMLInputElement;
+    const copyText = document.getElementById("serviceToken") as HTMLInputElement;
 
     // Select the text field
     copyText.select();
@@ -105,8 +105,8 @@ const AddServiceTokenDialog = ({
 
   const closeAddServiceTokenModal = () => {
     closeModal();
-    setServiceTokenName('');
-    setServiceToken('');
+    setServiceTokenName("");
+    setServiceToken("");
   };
 
   return (
@@ -136,26 +136,26 @@ const AddServiceTokenDialog = ({
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                {serviceToken === '' ? (
+                {serviceToken === "" ? (
                   <Dialog.Panel className="w-full max-w-md transform rounded-md border border-gray-700 bg-bunker-800 p-6 text-left align-middle shadow-xl transition-all">
                     <Dialog.Title
                       as="h3"
                       className="z-50 text-lg font-medium leading-6 text-gray-400"
                     >
-                      {t('section.token.add-dialog.title', {
+                      {t("section.token.add-dialog.title", {
                         target: workspaceName
                       })}
                     </Dialog.Title>
                     <div className="mt-2 mb-4">
                       <div className="flex flex-col">
                         <p className="text-sm text-gray-500">
-                          {t('section.token.add-dialog.description')}
+                          {t("section.token.add-dialog.description")}
                         </p>
                       </div>
                     </div>
                     <div className="mb-2 max-h-28">
                       <InputField
-                        label={t('section.token.add-dialog.name')}
+                        label={t("section.token.add-dialog.name")}
                         onChangeHandler={setServiceTokenName}
                         type="varName"
                         value={serviceTokenName}
@@ -174,22 +174,22 @@ const AddServiceTokenDialog = ({
                         onChange={(envName) =>
                           setSelectedServiceTokenEnv(
                             environments.find(({ name }) => envName === name) || {
-                              name: 'unknown',
-                              slug: 'unknown'
+                              name: "unknown",
+                              slug: "unknown"
                             }
                           )
                         }
                         isFull
-                        text={`${t('common.environment')}: `}
+                        text={`${t("common.environment")}: `}
                       />
                     </div>
                     <div className="max-h-28">
                       <ListBox
                         isSelected={serviceTokenExpiresIn}
                         onChange={setServiceTokenExpiresIn}
-                        data={['1 day', '7 days', '1 month', '6 months', '12 months']}
+                        data={["1 day", "7 days", "1 month", "6 months", "12 months"]}
                         isFull
-                        text={`${t('common.expired-in')}: `}
+                        text={`${t("common.expired-in")}: `}
                       />
                     </div>
                     <div className="max-w-max">
@@ -197,10 +197,10 @@ const AddServiceTokenDialog = ({
                         <Button
                           onButtonPressed={() => generateServiceToken()}
                           color="mineshaft"
-                          text={t('section.token.add-dialog.add') as string}
-                          textDisabled={t('section.token.add-dialog.add') as string}
+                          text={t("section.token.add-dialog.add") as string}
+                          textDisabled={t("section.token.add-dialog.add") as string}
                           size="md"
-                          active={serviceTokenName !== ''}
+                          active={serviceTokenName !== ""}
                         />
                       </div>
                     </div>
@@ -211,12 +211,12 @@ const AddServiceTokenDialog = ({
                       as="h3"
                       className="z-50 text-lg font-medium leading-6 text-gray-400"
                     >
-                      {t('section.token.add-dialog.copy-service-token')}
+                      {t("section.token.add-dialog.copy-service-token")}
                     </Dialog.Title>
                     <div className="mt-2 mb-4">
                       <div className="flex flex-col">
                         <p className="text-sm text-gray-500">
-                          {t('section.token.add-dialog.copy-service-token-description')}
+                          {t("section.token.add-dialog.copy-service-token-description")}
                         </p>
                       </div>
                     </div>
@@ -244,7 +244,7 @@ const AddServiceTokenDialog = ({
                             )}
                           </button>
                           <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-chicago-900 px-3 py-2 text-center text-sm text-gray-400 duration-300 group-hover:flex group-hover:animate-popup">
-                            {t('common.click-to-copy')}
+                            {t("common.click-to-copy")}
                           </span>
                         </div>
                       </div>

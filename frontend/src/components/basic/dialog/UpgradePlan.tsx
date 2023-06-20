@@ -1,6 +1,6 @@
-import { Fragment } from 'react';
-import { useRouter } from 'next/router';
-import { Dialog, Transition } from '@headlessui/react';
+import { Fragment } from "react";
+import { useRouter } from "next/router";
+import { Dialog, Transition } from "@headlessui/react";
 
 // REFACTOR: Move all these modals into one reusable one 
 type Props = {

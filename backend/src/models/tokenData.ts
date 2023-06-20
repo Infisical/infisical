@@ -1,4 +1,4 @@
-import { Schema, Types, model } from 'mongoose';
+import { Schema, Types, model } from "mongoose";
 
 export interface ITokenData {
   type: string;
@@ -16,40 +16,40 @@ const tokenDataSchema = new Schema<ITokenData>({
   type: {
     type: String,
     enum: [
-      'emailConfirmation',
-      'emailMfa',
-      'organizationInvitation',
-      'passwordReset'
+      "emailConfirmation",
+      "emailMfa",
+      "organizationInvitation",
+      "passwordReset",
     ],
-    required: true
+    required: true,
   },
   email: {
-    type: String
+    type: String,
   },
   phoneNumber: {
-    type: String
+    type: String,
   },
   organization: { // organizationInvitation-specific field
     type: Schema.Types.ObjectId,
-    ref: 'Organization'
+    ref: "Organization",
   },
   tokenHash: {
     type: String,
     select: false,
-    required: true
+    required: true,
   },
   triesLeft: {
-    type: Number
+    type: Number,
   },
   expiresAt: {
     type: Date,
     expires: 0,
-    required: true
-  }
+    required: true,
+  },
 }, {
-  timestamps: true
+  timestamps: true,
 });
 
-const TokenData = model<ITokenData>('TokenData', tokenDataSchema);
+const TokenData = model<ITokenData>("TokenData", tokenDataSchema);
 
 export default TokenData;

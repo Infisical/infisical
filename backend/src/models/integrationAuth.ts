@@ -1,29 +1,29 @@
-import { Schema, model, Types, Document } from "mongoose";
+import { Document, Schema, Types, model } from "mongoose";
 import {
-  INTEGRATION_AZURE_KEY_VAULT,
+  ALGORITHM_AES_256_GCM,
+  ENCODING_SCHEME_BASE64,
+  ENCODING_SCHEME_UTF8,
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
-  INTEGRATION_HEROKU,
-  INTEGRATION_VERCEL,
-  INTEGRATION_NETLIFY,
+  INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_CIRCLECI,
+  INTEGRATION_FLYIO,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
-  INTEGRATION_RENDER,
-  INTEGRATION_RAILWAY,
-  INTEGRATION_FLYIO,
-  INTEGRATION_CIRCLECI,
-  INTEGRATION_TRAVISCI,
-  INTEGRATION_SUPABASE,
   INTEGRATION_HASHICORP_VAULT,
-  ALGORITHM_AES_256_GCM,
-  ENCODING_SCHEME_UTF8,
-  ENCODING_SCHEME_BASE64
+  INTEGRATION_HEROKU,
+  INTEGRATION_NETLIFY,
+  INTEGRATION_RAILWAY,
+  INTEGRATION_RENDER,
+  INTEGRATION_SUPABASE,
+  INTEGRATION_TRAVISCI,
+  INTEGRATION_VERCEL,
 } from "../variables";
 
 export interface IIntegrationAuth extends Document {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: 'heroku' | 'vercel' | 'netlify' | 'github' | 'gitlab' | 'render' | 'railway' | 'flyio' | 'azure-key-vault' | 'circleci' | 'travisci' | 'supabase' | 'aws-parameter-store' | 'aws-secret-manager' | 'checkly';
+  integration: "heroku" | "vercel" | "netlify" | "github" | "gitlab" | "render" | "railway" | "flyio" | "azure-key-vault" | "circleci" | "travisci" | "supabase" | "aws-parameter-store" | "aws-secret-manager" | "checkly";
   teamId: string;
   accountId: string;
   url: string;
@@ -37,8 +37,8 @@ export interface IIntegrationAuth extends Document {
   accessCiphertext?: string;
   accessIV?: string;
   accessTag?: string;
-  algorithm?: 'aes-256-gcm';
-  keyEncoding?: 'utf8' | 'base64';
+  algorithm?: "aes-256-gcm";
+  keyEncoding?: "utf8" | "base64";
   accessExpiresAt?: Date;
 }
 
@@ -66,7 +66,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_CIRCLECI,
         INTEGRATION_TRAVISCI,
         INTEGRATION_SUPABASE,
-        INTEGRATION_HASHICORP_VAULT
+        INTEGRATION_HASHICORP_VAULT,
       ],
       required: true,
     },
@@ -76,11 +76,11 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
     },
     url: {
       // for any self-hosted integrations (e.g. self-hosted hashicorp-vault)
-      type: String
+      type: String,
     },
     namespace: {
       // hashicorp-vault-specific integration param
-      type: String
+      type: String,
     },
     accountId: {
       // netlify-specific integration param
@@ -100,15 +100,15 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
     },
     accessIdCiphertext: {
       type: String,
-      select: false
+      select: false,
     },
     accessIdIV: {
       type: String,
-      select: false
+      select: false,
     },
     accessIdTag: {
       type: String,
-      select: false
+      select: false,
     },
     accessCiphertext: {
       type: String,
@@ -129,16 +129,16 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
     algorithm: { // the encryption algorithm used
       type: String,
       enum: [ALGORITHM_AES_256_GCM],
-      required: true
+      required: true,
     },
     keyEncoding: {
         type: String,
         enum: [
             ENCODING_SCHEME_UTF8,
-            ENCODING_SCHEME_BASE64
+            ENCODING_SCHEME_BASE64,
         ],
-        required: true
-    }
+        required: true,
+    },
   },
   {
     timestamps: true,

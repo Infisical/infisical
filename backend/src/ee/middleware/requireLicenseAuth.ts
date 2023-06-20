@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from "express";
 
 /**
  * Validate if organization hosting meets license requirements to 
@@ -7,7 +7,7 @@ import { Request, Response, NextFunction } from 'express';
  * @param {String[]} obj.acceptedTiers
  */
 const requireLicenseAuth = ({
-    acceptedTiers
+    acceptedTiers,
 }: {
     acceptedTiers: string[];
 }) => {

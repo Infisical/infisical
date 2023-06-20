@@ -1,4 +1,4 @@
-import { Schema, model, Types, Document } from "mongoose";
+import { Document, Schema, Types, model } from "mongoose";
 
 export interface IServiceTokenData extends Document {
   _id: Types.ObjectId;

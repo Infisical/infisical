@@ -1,12 +1,12 @@
-import { forwardRef, ReactNode } from 'react';
-import { faTimes } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { cva, VariantProps } from 'cva';
-import { twMerge } from 'tailwind-merge';
+import { forwardRef, ReactNode } from "react";
+import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { cva, VariantProps } from "cva";
+import { twMerge } from "tailwind-merge";
 
-import { Card, CardBody, CardFooter, CardTitle } from '../Card';
-import { IconButton } from '../IconButton';
+import { Card, CardBody, CardFooter, CardTitle } from "../Card";
+import { IconButton } from "../IconButton";
 
 export type DrawerContentProps = DialogPrimitive.DialogContentProps & {
   title?: ReactNode;
@@ -16,14 +16,14 @@ export type DrawerContentProps = DialogPrimitive.DialogContentProps & {
 } & VariantProps<typeof drawerContentVariation>;
 
 const drawerContentVariation = cva(
-  'fixed ease-in-out duration-300 z-[90] border border-mineshaft-600 drop-shadow-2xl',
+  "fixed ease-in-out duration-300 z-[90] border border-mineshaft-600 drop-shadow-2xl",
   {
     variants: {
       direction: {
         right: [
-          'right-0 top-0',
-          'h-full w-96',
-          'data-[state=open]:animate-drawerRightIn data-[state=closed]:animate-drawerRightOut'
+          "right-0 top-0",
+          "h-full w-96",
+          "data-[state=open]:animate-drawerRightIn data-[state=closed]:animate-drawerRightOut"
         ]
       }
     }
@@ -32,13 +32,13 @@ const drawerContentVariation = cva(
 
 export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
   (
-    { children, title, subTitle, className, footerContent, direction = 'right', onClose, ...props },
+    { children, title, subTitle, className, footerContent, direction = "right", onClose, ...props },
     forwardedRef
   ) => (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
         className="fixed inset-0 z-[70] h-full w-full"
-        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
+        style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
       />
       <DialogPrimitive.Content
         {...props}
@@ -54,7 +54,7 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
           <CardBody className="flex-grow overflow-y-auto overflow-x-hidden px-4 dark:[color-scheme:dark]">
             {children}
           </CardBody>
-          {footerContent && <CardFooter>{footerContent}</CardFooter>}{' '}
+          {footerContent && <CardFooter>{footerContent}</CardFooter>}{" "}
           <DialogPrimitive.Close aria-label="Close" asChild onClick={onClose}>
             <IconButton
               variant="plain"
@@ -70,9 +70,9 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
   )
 );
 
-DrawerContent.displayName = 'ModalContent';
+DrawerContent.displayName = "ModalContent";
 
-export type DrawerProps = Omit<DialogPrimitive.DialogProps, 'open'> & { isOpen?: boolean };
+export type DrawerProps = Omit<DialogPrimitive.DialogProps, "open"> & { isOpen?: boolean };
 export const Drawer = ({ isOpen, ...props }: DrawerProps) => (
   <DialogPrimitive.Root open={isOpen} {...props} />
 );

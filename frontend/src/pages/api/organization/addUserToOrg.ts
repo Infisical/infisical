@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This function sends an email invite to a user to join an org
@@ -7,10 +7,10 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const addUserToOrg = (email: string, orgId: string) =>
-  SecurityClient.fetchCall('/api/v1/invite-org/signup', {
-    method: 'POST',
+  SecurityClient.fetchCall("/api/v1/invite-org/signup", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       inviteeEmail: email,
@@ -20,7 +20,7 @@ const addUserToOrg = (email: string, orgId: string) =>
     if (res && res.status === 200) {
       return res;
     }
-    console.log('Failed to add a user to an org');
+    console.log("Failed to add a user to an org");
     return undefined;
   });
 

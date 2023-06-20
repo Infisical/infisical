@@ -1,6 +1,6 @@
-import { twMerge } from 'tailwind-merge';
+import { twMerge } from "tailwind-merge";
 
-type SizeOptions = 'xs' | 'sm' | 'md' | 'lg';
+type SizeOptions = "xs" | "sm" | "md" | "lg";
 
 type Props = {
   className?: string;
@@ -8,19 +8,19 @@ type Props = {
 };
 
 const sizeChart: Record<SizeOptions, string> = {
-  xs: 'w-4 h-4',
-  sm: 'w-6 h-6',
-  md: 'w-8 h-8',
-  lg: 'w-12 h-12'
+  xs: "w-4 h-4",
+  sm: "w-6 h-6",
+  md: "w-8 h-8",
+  lg: "w-12 h-12"
 };
 
-export const Spinner = ({ className, size = 'md' }: Props): JSX.Element => {
+export const Spinner = ({ className, size = "md" }: Props): JSX.Element => {
   return (
     <div role="status">
       <svg
         aria-hidden="true"
         className={twMerge(
-          ' text-gray-200 animate-spin dark:text-gray-600 fill-primary m-1',
+          " text-gray-200 animate-spin dark:text-gray-600 fill-primary m-1",
           sizeChart[size],
           className
         )}

@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { plans } from 'public/data/frequentConstants';
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { plans } from "public/data/frequentConstants";
 
-import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
-import NavHeader from '@app/components/navigation/NavHeader';
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import NavHeader from "@app/components/navigation/NavHeader";
 import {
   decryptAssymmetric,
   encryptAssymmetric
-} from '@app/components/utilities/cryptography/crypto';
-import { useOrganization, useSubscription, useUser, useWorkspace } from '@app/context';
+} from "@app/components/utilities/cryptography/crypto";
+import { useOrganization, useSubscription, useUser, useWorkspace } from "@app/context";
 import {
   useAddIncidentContact,
   useAddUserToOrg,
@@ -22,14 +22,14 @@ import {
   useRenameOrg,
   useUpdateOrgUserRole,
   useUploadWsKey
-} from '@app/hooks/api';
+} from "@app/hooks/api";
 
 import {
   OrgIncidentContactsTable,
   OrgMembersTable,
   OrgNameChangeSection,
   OrgServiceAccountsTable
-} from './components';
+} from "./components";
 
 export const OrgSettingsPage = () => {
   const host = window.location.origin;
@@ -41,12 +41,12 @@ export const OrgSettingsPage = () => {
   const { subscription } = useSubscription();
   const { createNotification } = useNotificationContext();
 
-  const orgId = currentOrg?._id || '';
+  const orgId = currentOrg?._id || "";
 
   const { data: orgUsers, isLoading: isOrgUserLoading } = useGetOrgUsers(orgId);
   const { data: workspaceMemberships, isLoading: IsWsMembershipLoading } =
     useGetUserWorkspaceMemberships(orgId);
-  const { data: wsKey } = useGetUserWsKey(currentWorkspace?._id || '');
+  const { data: wsKey } = useGetUserWsKey(currentWorkspace?._id || "");
   const { data: incidentContact, isLoading: IsIncidentContactLoading } =
     useGetOrgIncidentContact(orgId);
 
@@ -58,7 +58,7 @@ export const OrgSettingsPage = () => {
   const addIncidentContact = useAddIncidentContact();
   const removeIncidentContact = useDeleteIncidentContact();
 
-  const [completeInviteLink, setcompleteInviteLink] = useState<string | undefined>('');
+  const [completeInviteLink, setcompleteInviteLink] = useState<string | undefined>("");
 
   const isMoreUsersNotAllowed = subscription?.memberLimit ? (subscription.membersUsed >= subscription.memberLimit) : false;
 
@@ -68,14 +68,14 @@ export const OrgSettingsPage = () => {
     try {
       await renameOrg.mutateAsync({ orgId: currentOrg?._id, newOrgName: name });
       createNotification({
-        text: 'Successfully renamed organization',
-        type: 'success'
+        text: "Successfully renamed organization",
+        type: "success"
       });
     } catch (error) {
       console.error(error);
       createNotification({
-        text: 'Failed to rename organization',
-        type: 'error'
+        text: "Failed to rename organization",
+        type: "error"
       });
     }
   };
@@ -86,14 +86,14 @@ export const OrgSettingsPage = () => {
     try {
       await removeUserOrgMembership.mutateAsync({ orgId: currentOrg?._id, membershipId });
       createNotification({
-        text: 'Successfully removed user from org',
-        type: 'success'
+        text: "Successfully removed user from org",
+        type: "success"
       });
     } catch (error) {
       console.error(error);
       createNotification({
-        text: 'Failed to remove user from the organization',
-        type: 'error'
+        text: "Failed to remove user from the organization",
+        type: "error"
       });
     }
   };
@@ -110,15 +110,15 @@ export const OrgSettingsPage = () => {
       // only show this notification when email is configured. A [completeInviteLink] will not be sent if smtp is configured
       if (!data.completeInviteLink) {
         createNotification({
-          text: 'Successfully invited user to the organization.',
-          type: 'success'
+          text: "Successfully invited user to the organization.",
+          type: "success"
         });
       }
     } catch (error) {
       console.error(error);
       createNotification({
-        text: 'Failed to invite user to org',
-        type: 'error'
+        text: "Failed to invite user to org",
+        type: "error"
       });
     }
   };
@@ -129,21 +129,21 @@ export const OrgSettingsPage = () => {
     try {
       await updateOrgUserRole.mutateAsync({ organizationId: currentOrg?._id, membershipId, role });
       createNotification({
-        text: 'Successfully updated user role',
-        type: 'success'
+        text: "Successfully updated user role",
+        type: "success"
       });
     } catch (error) {
       console.error(error);
       createNotification({
-        text: 'Failed to update user role',
-        type: 'error'
+        text: "Failed to update user role",
+        type: "error"
       });
     }
   };
 
   const onGrantUserAccess = async (userId: string, publicKey: string) => {
     try {
-      const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
       if (!PRIVATE_KEY || !wsKey) return;
 
       // assymmetrically decrypt symmetric key with local private key
@@ -164,13 +164,13 @@ export const OrgSettingsPage = () => {
         userId,
         nonce,
         encryptedKey: ciphertext,
-        workspaceId: currentWorkspace?._id || ''
+        workspaceId: currentWorkspace?._id || ""
       });
     } catch (err) {
       console.error(err);
       createNotification({
-        text: 'Failed to grant access to user',
-        type: 'error'
+        text: "Failed to grant access to user",
+        type: "error"
       });
     }
   };
@@ -181,14 +181,14 @@ export const OrgSettingsPage = () => {
     try {
       await addIncidentContact.mutateAsync({ orgId, email });
       createNotification({
-        text: 'Successfully added incident contact',
-        type: 'success'
+        text: "Successfully added incident contact",
+        type: "success"
       });
     } catch (error) {
       console.error(error);
       createNotification({
-        text: 'Failed to add incident contact',
-        type: 'error'
+        text: "Failed to add incident contact",
+        type: "error"
       });
     }
   };
@@ -199,14 +199,14 @@ export const OrgSettingsPage = () => {
     try {
       await removeIncidentContact.mutateAsync({ orgId, email });
       createNotification({
-        text: 'Successfully removed incident contact',
-        type: 'success'
+        text: "Successfully removed incident contact",
+        type: "success"
       });
     } catch (error) {
       console.error(error);
       createNotification({
-        text: 'Failed to remove incident contact',
-        type: 'error'
+        text: "Failed to remove incident contact",
+        type: "error"
       });
     }
   };
@@ -234,25 +234,25 @@ export const OrgSettingsPage = () => {
   //
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
-      <NavHeader pageName={t('settings.org.title')} />
+      <NavHeader pageName={t("settings.org.title")} />
       <div className="my-8 ml-8 max-w-5xl">
-        <p className="text-3xl font-semibold text-gray-200">{t('settings.org.title')}</p>
-        <p className="text-base font-normal text-gray-400">{t('settings.org.description')}</p>
+        <p className="text-3xl font-semibold text-gray-200">{t("settings.org.title")}</p>
+        <p className="text-base font-normal text-gray-400">{t("settings.org.description")}</p>
       </div>
       <div className="max-w-8xl ml-6 mr-6 flex flex-col text-mineshaft-50">
         <OrgNameChangeSection orgName={currentOrg?.name} onOrgNameChange={onRenameOrg} />
         <div className="mb-6 w-full rounded-md bg-white/5 p-6">
           <p className="mr-4 mb-4 text-xl font-semibold text-white">
-            {t('section.members.org-members')}
+            {t("section.members.org-members")}
           </p>
           <OrgMembersTable
             isLoading={isOrgUserLoading || IsWsMembershipLoading}
             isMoreUserNotAllowed={isMoreUsersNotAllowed}
-            orgName={currentOrg?.name || ''}
+            orgName={currentOrg?.name || ""}
             members={orgUsers}
             workspaceMemberships={workspaceMemberships}
             onInviteMember={onAddUserToOrg}
-            userId={user?._id || ''}
+            userId={user?._id || ""}
             onRemoveMember={onRemoveUserOrgMembership}
             onRoleChange={onUpdateOrgUserRole}
             onGrantAccess={onGrantUserAccess}
@@ -268,10 +268,10 @@ export const OrgSettingsPage = () => {
           <div className="flex w-full max-w-5xl flex-row items-center justify-between">
             <div className="flex w-full max-w-3xl flex-col justify-between">
               <p className="mb-3 min-w-max text-xl font-semibold">
-                {t('section.incident.incident-contacts')}
+                {t("section.incident.incident-contacts")}
               </p>
               <p className="mb-2 min-w-max text-xs text-gray-500">
-                {t('section.incident.incident-contacts-description')}
+                {t("section.incident.incident-contacts-description")}
               </p>
             </div>
           </div>

@@ -1,12 +1,12 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, Types, model } from "mongoose";
 import {
+    ACTION_ADD_SECRETS,
+    ACTION_DELETE_SECRETS,
     ACTION_LOGIN,
     ACTION_LOGOUT,
-    ACTION_ADD_SECRETS,
-    ACTION_UPDATE_SECRETS,
     ACTION_READ_SECRETS,
-    ACTION_DELETE_SECRETS
-} from '../../variables';
+    ACTION_UPDATE_SECRETS,
+} from "../../variables";
 
 export interface IAction {
     name: string;
@@ -30,42 +30,42 @@ const actionSchema = new Schema<IAction>(
                 ACTION_ADD_SECRETS,
                 ACTION_UPDATE_SECRETS,
                 ACTION_READ_SECRETS,
-                ACTION_DELETE_SECRETS
-            ]
+                ACTION_DELETE_SECRETS,
+            ],
         },
         user: {
             type: Schema.Types.ObjectId,
-            ref: 'User'
+            ref: "User",
         },
         serviceAccount: {
             type: Schema.Types.ObjectId,
-            ref: 'ServiceAccount'
+            ref: "ServiceAccount",
         },
         serviceTokenData: {
             type: Schema.Types.ObjectId,
-            ref: 'ServiceTokenData'
+            ref: "ServiceTokenData",
         },
         workspace: {
             type: Schema.Types.ObjectId,
-            ref: 'Workspace'
+            ref: "Workspace",
         },
         payload: {
             secretVersions: [{
                 oldSecretVersion: {
                     type: Schema.Types.ObjectId,
-                    ref: 'SecretVersion'
+                    ref: "SecretVersion",
                 },
                 newSecretVersion: {
                     type: Schema.Types.ObjectId,
-                    ref: 'SecretVersion'
-                }
-            }]
-        }
+                    ref: "SecretVersion",
+                },
+            }],
+        },
     }, {
-        timestamps: true
+        timestamps: true,
     }
 );
 
-const Action = model<IAction>('Action', actionSchema);
+const Action = model<IAction>("Action", actionSchema);
 
 export default Action;

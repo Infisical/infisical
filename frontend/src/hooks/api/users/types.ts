@@ -1,4 +1,4 @@
-import { UserWsKeyPair } from '../keys/types';
+import { UserWsKeyPair } from "../keys/types";
 
 export type User = {
   createdAt: Date;
@@ -31,8 +31,8 @@ export type OrgUser = {
   };
   inviteEmail: string;
   organization: string;
-  role: 'owner' | 'admin' | 'member';
-  status: 'invited' | 'accepted' | 'verified' | 'completed';
+  role: "owner" | "admin" | "member";
+  status: "invited" | "accepted" | "verified" | "completed";
   deniedPermissions: any[];
 };
 
@@ -42,7 +42,7 @@ export type AddUserToWsDTO = {
 };
 
 export type AddUserToWsRes = {
-  invitee: OrgUser['user'];
+  invitee: OrgUser["user"];
   latestKey: UserWsKeyPair;
 };
 

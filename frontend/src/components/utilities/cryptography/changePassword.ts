@@ -1,14 +1,14 @@
 /* eslint-disable new-cap */
-import crypto from 'crypto';
+import crypto from "crypto";
 
-import jsrp from 'jsrp';
+import jsrp from "jsrp";
 
-import changePassword2 from '@app/pages/api/auth/ChangePassword2';
-import SRP1 from '@app/pages/api/auth/SRP1';
+import changePassword2 from "@app/pages/api/auth/ChangePassword2";
+import SRP1 from "@app/pages/api/auth/SRP1";
 
-import { saveTokenToLocalStorage } from '../saveTokenToLocalStorage';
-import Aes256Gcm from './aes-256-gcm';
-import { deriveArgonKey } from './crypto';
+import { saveTokenToLocalStorage } from "../saveTokenToLocalStorage";
+import Aes256Gcm from "./aes-256-gcm";
+import { deriveArgonKey } from "./crypto";
 
 const clientOldPassword = new jsrp.client();
 const clientNewPassword = new jsrp.client();
@@ -53,7 +53,7 @@ const changePassword = async (
           salt = res.salt;
         } catch (err) {
           setCurrentPasswordError(true);
-          console.log('Wrong current password', err, 1);
+          console.log("Wrong current password", err, 1);
         }
 
         clientOldPassword.setSalt(salt);
@@ -77,7 +77,7 @@ const changePassword = async (
                 hashLen: 32
               });
               
-              if (!derivedKey) throw new Error('Failed to derive key from password');
+              if (!derivedKey) throw new Error("Failed to derive key from password");
 
               const key = crypto.randomBytes(32);
 
@@ -88,7 +88,7 @@ const changePassword = async (
                 iv: encryptedPrivateKeyIV,
                 tag: encryptedPrivateKeyTag
               } = Aes256Gcm.encrypt({
-                text: localStorage.getItem('PRIVATE_KEY') as string,
+                text: localStorage.getItem("PRIVATE_KEY") as string,
                 secret: key
               });
               
@@ -99,7 +99,7 @@ const changePassword = async (
                 iv: protectedKeyIV,
                 tag: protectedKeyTag
               } = Aes256Gcm.encrypt({
-                text: key.toString('hex'),
+                text: key.toString("hex"),
                 secret: Buffer.from(derivedKey.hash)
               });
 
@@ -123,10 +123,10 @@ const changePassword = async (
                 });
 
                 setPasswordChanged(true);
-                setCurrentPassword('');
-                setNewPassword('');
+                setCurrentPassword("");
+                setNewPassword("");
 
-                window.location.href = '/login';
+                window.location.href = "/login";
 
                 // move to login page
               } catch (error) {
@@ -139,7 +139,7 @@ const changePassword = async (
       }
     );
   } catch (error) {
-    console.log('Something went wrong during changing the password');
+    console.log("Something went wrong during changing the password");
   }
   return true;
 };

@@ -1,7 +1,7 @@
-import { Request, Response } from 'express';
-import { EELicenseService } from '../../services';
-import { getLicenseServerUrl } from '../../../config';
-import { licenseServerKeyRequest } from '../../../config/request';
+import { Request, Response } from "express";
+import { EELicenseService } from "../../services";
+import { getLicenseServerUrl } from "../../../config";
+import { licenseServerKeyRequest } from "../../../config/request";
 
 /**
  * Return available cloud product information.
@@ -11,9 +11,9 @@ import { licenseServerKeyRequest } from '../../../config/request';
  * @returns 
  */
 export const getCloudProducts = async (req: Request, res: Response) => {
-    const billingCycle = req.query['billing-cycle'] as string;
+    const billingCycle = req.query["billing-cycle"] as string;
 
-    if (EELicenseService.instanceType === 'cloud') {
+    if (EELicenseService.instanceType === "cloud") {
         const { data } = await licenseServerKeyRequest.get(
             `${await getLicenseServerUrl()}/api/license-server/v1/cloud-products?billing-cycle=${billingCycle}`
         ); 
@@ -23,6 +23,6 @@ export const getCloudProducts = async (req: Request, res: Response) => {
     
     return res.status(200).send({
         head: [],
-        rows: []
+        rows: [],
     });
 }

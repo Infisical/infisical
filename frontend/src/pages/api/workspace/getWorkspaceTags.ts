@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This route lets us get the tags for a certain project
@@ -7,15 +7,15 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const getWorkspaceTags = ({ workspaceId }: { workspaceId: string }) =>
   SecurityClient.fetchCall(`/api/v2/workspace/${workspaceId}/tags`, {
-    method: 'GET',
+    method: "GET",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res?.status === 200) {
       return (await res.json()).workspaceTags;
     }
-    console.log('Failed to get the tags available in a certain project');
+    console.log("Failed to get the tags available in a certain project");
     return undefined;
   });
 

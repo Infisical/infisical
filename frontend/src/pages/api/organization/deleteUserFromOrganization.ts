@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This function removes a certain member from a certain organization
@@ -7,15 +7,15 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const deleteUserFromOrganization = (membershipId: string) =>
   SecurityClient.fetchCall(`/api/v1/membership-org/${membershipId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res && res.status === 200) {
       return res;
     }
-    console.log('Failed to delete a user from an org');
+    console.log("Failed to delete a user from an org");
     return undefined;
   });
 

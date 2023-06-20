@@ -1,10 +1,10 @@
-import crypto from 'crypto';
+import crypto from "crypto";
 
-import { SecretDataProps, Tag } from 'public/data/frequentInterfaces';
+import { SecretDataProps, Tag } from "public/data/frequentInterfaces";
 
-import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
+import getLatestFileKey from "@app/pages/api/workspace/getLatestFileKey";
 
-import { decryptAssymmetric, encryptSymmetric } from '../cryptography/crypto';
+import { decryptAssymmetric, encryptSymmetric } from "../cryptography/crypto";
 
 interface EncryptedSecretProps {
   id: string;
@@ -20,7 +20,7 @@ interface EncryptedSecretProps {
   secretValueCiphertext: string;
   secretValueIV: string;
   secretValueTag: string;
-  type: 'personal' | 'shared';
+  type: "personal" | "shared";
   tags: Tag[];
 }
 
@@ -44,7 +44,7 @@ const encryptSecrets = async ({
   try {
     const sharedKey = await getLatestFileKey({ workspaceId });
 
-    const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+    const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 
     let randomBytes: string;
     if (Object.keys(sharedKey).length > 0) {
@@ -57,7 +57,7 @@ const encryptSecrets = async ({
       });
     } else {
       // case: a (shared) key does not exist for the workspace
-      randomBytes = crypto.randomBytes(16).toString('hex');
+      randomBytes = crypto.randomBytes(16).toString("hex");
     }
 
     secrets = secretsToEncrypt.map((secret) => {
@@ -77,7 +77,7 @@ const encryptSecrets = async ({
         iv: secretValueIV,
         tag: secretValueTag
       } = encryptSymmetric({
-        plaintext: secret.value ?? '',
+        plaintext: secret.value ?? "",
         key: randomBytes
       });
 
@@ -87,13 +87,13 @@ const encryptSecrets = async ({
         iv: secretCommentIV,
         tag: secretCommentTag
       } = encryptSymmetric({
-        plaintext: secret.comment ?? '',
+        plaintext: secret.comment ?? "",
         key: randomBytes
       });
 
       const result: EncryptedSecretProps = {
         id: secret.id,
-        createdAt: '',
+        createdAt: "",
         environment: env,
         secretName: secret.key,
         secretKeyCiphertext,
@@ -107,15 +107,15 @@ const encryptSecrets = async ({
         secretCommentTag,
         type:
           secret.valueOverride === undefined || secret?.value !== secret?.valueOverride
-            ? 'shared'
-            : 'personal',
+            ? "shared"
+            : "personal",
         tags: secret.tags
       };
 
       return result;
     });
   } catch (error) {
-    console.log('Error while encrypting secrets');
+    console.log("Error while encrypting secrets");
   }
 
   return secrets;

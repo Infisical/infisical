@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface WorkspaceProps {
   workspaceId: string;
@@ -26,49 +26,49 @@ const getProjectLogs = async ({
   actionNames
 }: WorkspaceProps) => {
   let payload;
-  if (userId !== '' && actionNames !== '') {
+  if (userId !== "" && actionNames !== "") {
     payload = {
       offset: String(offset),
       limit: String(limit),
-      sortBy: 'recent',
+      sortBy: "recent",
       userId: JSON.stringify(userId),
       actionNames
     };
-  } else if (userId !== '') {
+  } else if (userId !== "") {
     payload = {
       offset: String(offset),
       limit: String(limit),
-      sortBy: 'recent',
+      sortBy: "recent",
       userId: JSON.stringify(userId)
     };
-  } else if (actionNames !== '') {
+  } else if (actionNames !== "") {
     payload = {
       offset: String(offset),
       limit: String(limit),
-      sortBy: 'recent',
+      sortBy: "recent",
       actionNames
     };
   } else {
     payload = {
       offset: String(offset),
       limit: String(limit),
-      sortBy: 'recent'
+      sortBy: "recent"
     };
   }
 
   return SecurityClient.fetchCall(
     `/api/v1/workspace/${workspaceId}/logs?${new URLSearchParams(payload)}`,
     {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json"
       }
     }
   ).then(async (res) => {
     if (res && res.status === 200) {
       return (await res.json()).logs;
     }
-    console.log('Failed to get project logs');
+    console.log("Failed to get project logs");
     return undefined;
   });
 };

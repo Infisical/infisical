@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 type EnvironmentInfo = {
   oldEnvironmentSlug: string;
@@ -13,16 +13,16 @@ type EnvironmentInfo = {
  */
 const updateEnvironment = (workspaceId: string, env: EnvironmentInfo) =>
   SecurityClient.fetchCall(`/api/v2/workspace/${workspaceId}/environments`, {
-    method: 'PUT',
+    method: "PUT",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify(env)
   }).then(async (res) => {
     if (res && res.status === 200) {
       return res;
     }
-    console.log('Failed to update environment');
+    console.log("Failed to update environment");
     return undefined;
   });
 

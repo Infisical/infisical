@@ -1,13 +1,15 @@
-import { Request, Response } from 'express';
-import { User } from '../../models';
+import { Request, Response } from "express";
+import { User } from "../../models";
+import { checkEmailVerification, sendEmailVerification } from "../../helpers/signup";
+import { createToken } from "../../helpers/auth";
+import { BadRequestError } from "../../utils/errors";
 import {
-	sendEmailVerification,
-	checkEmailVerification,
-} from '../../helpers/signup';
-import { createToken } from '../../helpers/auth';
-import { BadRequestError } from '../../utils/errors';
-import { getInviteOnlySignup, getJwtSignupLifetime, getJwtSignupSecret, getSmtpConfigured } from '../../config';
-import { validateUserEmail } from '../../validation';
+  getInviteOnlySignup,
+  getJwtSignupLifetime,
+  getJwtSignupSecret,
+  getSmtpConfigured
+} from "../../config";
+import { validateUserEmail } from "../../validation";
 
 /**
  * Signup step 1: Initialize account for user under email [email] and send a verification code
@@ -17,27 +19,26 @@ import { validateUserEmail } from '../../validation';
  * @returns
  */
 export const beginEmailSignup = async (req: Request, res: Response) => {
-	let email: string;
-  email = req.body.email;
-  
+  const email: string = req.body.email;
+
   // validate that email is not disposable
   validateUserEmail(email);
 
-  const user = await User.findOne({ email }).select('+publicKey');
+  const user = await User.findOne({ email }).select("+publicKey");
   if (user && user?.publicKey) {
     // case: user has already completed account
 
     return res.status(403).send({
-      error: 'Failed to send email verification code for complete account'
+      error: "Failed to send email verification code for complete account"
     });
   }
 
   // send send verification email
   await sendEmailVerification({ email });
 
-	return res.status(200).send({
-		message: `Sent an email verification code to ${email}`
-	});
+  return res.status(200).send({
+    message: `Sent an email verification code to ${email}`
+  });
 };
 
 /**
@@ -48,23 +49,25 @@ export const beginEmailSignup = async (req: Request, res: Response) => {
  * @returns
  */
 export const verifyEmailSignup = async (req: Request, res: Response) => {
-	let user, token;
+  let user;
   const { email, code } = req.body;
 
   // initialize user account
-  user = await User.findOne({ email }).select('+publicKey');
+  user = await User.findOne({ email }).select("+publicKey");
   if (user && user?.publicKey) {
     // case: user has already completed account
     return res.status(403).send({
-      error: 'Failed email verification for complete user'
+      error: "Failed email verification for complete user"
     });
   }
 
   if (await getInviteOnlySignup()) {
     // Only one user can create an account without being invited. The rest need to be invited in order to make an account
-    const userCount = await User.countDocuments({})
+    const userCount = await User.countDocuments({});
     if (userCount != 0) {
-      throw BadRequestError({ message: "New user sign ups are not allowed at this time. You must be invited to sign up." })
+      throw BadRequestError({
+        message: "New user sign ups are not allowed at this time. You must be invited to sign up."
+      });
     }
   }
 
@@ -83,7 +86,7 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
   }
 
   // generate temporary signup token
-  token = createToken({
+  const token = createToken({
     payload: {
       userId: user._id.toString()
     },
@@ -91,9 +94,9 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
     secret: await getJwtSignupSecret()
   });
 
-	return res.status(200).send({
-		message: 'Successfuly verified email',
-		user,
-		token
-	});
+  return res.status(200).send({
+    message: "Successfuly verified email",
+    user,
+    token
+  });
 };

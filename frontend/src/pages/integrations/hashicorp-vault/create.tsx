@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { useRouter } from 'next/router';
-import queryString from 'query-string';
+import { useState } from "react";
+import { useRouter } from "next/router";
+import queryString from "query-string";
 
 import {
   Button,
@@ -10,31 +10,31 @@ import {
   Input,
   Select,
   SelectItem
-} from '../../../components/v2';
-import { useGetIntegrationAuthById } from '../../../hooks/api/integrationAuth';
-import { useGetWorkspaceById } from '../../../hooks/api/workspace';
-import createIntegration from '../../api/integrations/createIntegration';
+} from "../../../components/v2";
+import { useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
+import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+import createIntegration from "../../api/integrations/createIntegration";
 
 export default function HashiCorpVaultCreateIntegrationPage() {
   const router = useRouter();
 
-  const { integrationAuthId } = queryString.parse(router.asPath.split('?')[1]);
+  const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
-  const { data: workspace } = useGetWorkspaceById(localStorage.getItem('projectData.id') ?? '');
-  const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? '');
+  const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
+  const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
 
-  const [vaultEnginePath, setVaultEnginePath] = useState('');
-  const [vaultEnginePathErrorText, setVaultEnginePathErrorText] = useState('');
+  const [vaultEnginePath, setVaultEnginePath] = useState("");
+  const [vaultEnginePathErrorText, setVaultEnginePathErrorText] = useState("");
 
-  const [vaultSecretPath, setVaultSecretPath] = useState('');
-  const [vaultSecretPathErrorText, setVaultSecretPathErrorText] = useState('');
+  const [vaultSecretPath, setVaultSecretPath] = useState("");
+  const [vaultSecretPathErrorText, setVaultSecretPathErrorText] = useState("");
 
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
-  const [secretPath, setSecretPath] = useState('/');
+  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+  const [secretPath, setSecretPath] = useState("/");
   const [isLoading, setIsLoading] = useState(false);
 
   const isValidVaultPath = (vaultPath: string) => {
-    return !(vaultPath.length === 0 || vaultPath.startsWith('/') || vaultPath.endsWith('/'));
+    return !(vaultPath.length === 0 || vaultPath.startsWith("/") || vaultPath.endsWith("/"));
   };
 
   const handleButtonClick = async () => {
@@ -42,15 +42,15 @@ export default function HashiCorpVaultCreateIntegrationPage() {
       if (!integrationAuth?._id) return;
 
       if (!isValidVaultPath(vaultEnginePath)) {
-        setVaultEnginePathErrorText('Vault KV Secrets Engine Path must be valid like kv');
+        setVaultEnginePathErrorText("Vault KV Secrets Engine Path must be valid like kv");
       } else {
-        setVaultEnginePathErrorText('');
+        setVaultEnginePathErrorText("");
       }
 
       if (!isValidVaultPath(vaultSecretPath)) {
-        setVaultSecretPathErrorText('Vault Secret(s) Path must be valid like machine/dev');
+        setVaultSecretPathErrorText("Vault Secret(s) Path must be valid like machine/dev");
       } else {
-        setVaultSecretPathErrorText('');
+        setVaultSecretPathErrorText("");
       }
 
       if (!isValidVaultPath || !isValidVaultPath(vaultSecretPath)) return;
@@ -75,7 +75,7 @@ export default function HashiCorpVaultCreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/${localStorage.getItem('projectData.id')}`);
+      router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
       console.error(err);
     }
@@ -111,7 +111,7 @@ export default function HashiCorpVaultCreateIntegrationPage() {
         <FormControl
           label="Vault KV Secrets Engine Path"
           errorText={vaultEnginePathErrorText}
-          isError={vaultEnginePathErrorText !== '' ?? false}
+          isError={vaultEnginePathErrorText !== "" ?? false}
         >
           <Input
             placeholder="kv"
@@ -122,7 +122,7 @@ export default function HashiCorpVaultCreateIntegrationPage() {
         <FormControl
           label="Vault Secret(s) Path"
           errorText={vaultSecretPathErrorText}
-          isError={vaultSecretPathErrorText !== '' ?? false}
+          isError={vaultSecretPathErrorText !== "" ?? false}
         >
           <Input
             placeholder="machine/dev"

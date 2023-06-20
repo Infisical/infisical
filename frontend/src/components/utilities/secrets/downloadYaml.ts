@@ -1,7 +1,7 @@
 // import YAML from 'yaml';
 // import { YAMLSeq } from 'yaml/types';
 
-import { SecretDataProps } from 'public/data/frequentInterfaces';
+import { SecretDataProps } from "public/data/frequentInterfaces";
 
 // import { envMapping } from "../../../public/data/frequentConstants";
 // import checkOverrides from './checkOverrides';

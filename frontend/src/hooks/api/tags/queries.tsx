@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { apiRequest } from '@app/config/request';
+import { apiRequest } from "@app/config/request";
 
 import {
   CreateTagDTO,
@@ -8,11 +8,11 @@ import {
   DeleteTagDTO,
   DeleteWsTagRes,
   UserWsTags
-} from './types';
+} from "./types";
 
 
 const workspaceTags = {
-  getWsTags: (workspaceID: string) => ['workspace-tags', { workspaceID }] as const
+  getWsTags: (workspaceID: string) => ["workspace-tags", { workspaceID }] as const
 };
 
 const fetchWsTag = async (workspaceID: string) => {

@@ -1,16 +1,16 @@
-import axios from 'axios';
-import axiosRetry from 'axios-retry';
+import axios from "axios";
+import axiosRetry from "axios-retry";
 import {
-  getLicenseServerKeyAuthToken,
-  setLicenseServerKeyAuthToken,
   getLicenseKeyAuthToken,
-  setLicenseKeyAuthToken
-} from './storage';
+  getLicenseServerKeyAuthToken,
+  setLicenseKeyAuthToken,
+  setLicenseServerKeyAuthToken,
+} from "./storage";
 import {
   getLicenseKey,
   getLicenseServerKey, 
-  getLicenseServerUrl
-} from './index';
+  getLicenseServerUrl,
+} from "./index";
 
 // should have JWT to interact with the license server
 export const licenseServerKeyRequest = axios.create();
@@ -35,8 +35,8 @@ export const refreshLicenseServerKeyToken = async () => {
     `${licenseServerUrl}/api/auth/v1/license-server-login`, {},
     {
       headers: {
-        'X-API-KEY': licenseServerKey
-      }
+        "X-API-KEY": licenseServerKey,
+      },
     }
   );
 
@@ -53,8 +53,8 @@ export const refreshLicenseKeyToken = async () => {
     `${licenseServerUrl}/api/auth/v1/license-login`, {},
     {
       headers: {
-        'X-API-KEY': licenseKey
-      }
+        "X-API-KEY": licenseKey,
+      },
     }
   );
 
@@ -86,7 +86,7 @@ licenseServerKeyRequest.interceptors.response.use((response) => {
     // refresh
     const token = await refreshLicenseServerKeyToken();            
     
-    axios.defaults.headers.common['Authorization'] = 'Bearer ' + token;
+    axios.defaults.headers.common["Authorization"] = "Bearer " + token;
     return licenseServerKeyRequest(originalRequest);
   }
 
@@ -116,7 +116,7 @@ licenseKeyRequest.interceptors.response.use((response) => {
     // refresh
     const token = await refreshLicenseKeyToken();            
     
-    axios.defaults.headers.common['Authorization'] = 'Bearer ' + token;
+    axios.defaults.headers.common["Authorization"] = "Bearer " + token;
     return licenseKeyRequest(originalRequest);
   }
 

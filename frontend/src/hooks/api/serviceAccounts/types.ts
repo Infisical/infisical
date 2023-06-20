@@ -1,4 +1,4 @@
-import { Workspace } from '../workspace/types';
+import { Workspace } from "../workspace/types";
 
 export type ServiceAccount = {
     _id: string;

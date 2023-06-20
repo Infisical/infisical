@@ -1,1 +1,1 @@
-export { SecretTableHeader } from './SecretTableHeader';
+export { SecretTableHeader } from "./SecretTableHeader";

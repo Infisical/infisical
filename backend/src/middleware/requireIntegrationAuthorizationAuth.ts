@@ -1,8 +1,8 @@
-import { Types } from 'mongoose';
-import { Request, Response, NextFunction } from 'express';
-import { validateClientForIntegrationAuth } from '../validation';
+import { Types } from "mongoose";
+import { NextFunction, Request, Response } from "express";
+import { validateClientForIntegrationAuth } from "../validation";
 
-type req = 'params' | 'body' | 'query';
+type req = "params" | "body" | "query";
 
 /**
  * Validate if user on request is a member of workspace with proper roles associated
@@ -14,9 +14,9 @@ type req = 'params' | 'body' | 'query';
 const requireIntegrationAuthorizationAuth = ({
 	acceptedRoles,
 	attachAccessToken = true,
-	location = 'params'
+	location = "params",
 }: {
-	acceptedRoles: Array<'admin' | 'member'>;
+	acceptedRoles: Array<"admin" | "member">;
 	attachAccessToken?: boolean;
 	location?: req;
 }) => {
@@ -27,7 +27,7 @@ const requireIntegrationAuthorizationAuth = ({
 			authData: req.authData,
 			integrationAuthId: new Types.ObjectId(integrationAuthId),
 			acceptedRoles,
-			attachAccessToken
+			attachAccessToken,
 		});
 		
 		if (integrationAuth) {

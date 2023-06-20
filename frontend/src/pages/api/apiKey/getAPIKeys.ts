@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This route gets API keys for the user
@@ -6,16 +6,16 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const getAPIKeys = () =>
-  SecurityClient.fetchCall('/api/v2/api-key', {
-    method: 'GET',
+  SecurityClient.fetchCall("/api/v2/api-key", {
+    method: "GET",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res && res.status === 200) {
       return (await res.json()).apiKeyData;
     }
-    console.log('Failed to get API keys');
+    console.log("Failed to get API keys");
     return undefined;
   });
 

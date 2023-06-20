@@ -1,28 +1,28 @@
-import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import Head from 'next/head';
-import Image from 'next/image';
-import { useRouter } from 'next/router';
-import { faMagnifyingGlass, faPlus } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import Head from "next/head";
+import Image from "next/image";
+import { useRouter } from "next/router";
+import { faMagnifyingGlass, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import Button from '@app/components/basic/buttons/Button';
-import AddProjectMemberDialog from '@app/components/basic/dialog/AddProjectMemberDialog';
-import ProjectUsersTable from '@app/components/basic/table/ProjectUsersTable';
-import NavHeader from '@app/components/navigation/NavHeader';
-import guidGenerator from '@app/components/utilities/randomId';
-import { Input } from '@app/components/v2';
+import Button from "@app/components/basic/buttons/Button";
+import AddProjectMemberDialog from "@app/components/basic/dialog/AddProjectMemberDialog";
+import ProjectUsersTable from "@app/components/basic/table/ProjectUsersTable";
+import NavHeader from "@app/components/navigation/NavHeader";
+import guidGenerator from "@app/components/utilities/randomId";
+import { Input } from "@app/components/v2";
 
 import {
   decryptAssymmetric,
   encryptAssymmetric
-} from '../../components/utilities/cryptography/crypto';
-import getOrganizationUsers from '../api/organization/GetOrgUsers';
-import getUser from '../api/user/getUser';
+} from "../../components/utilities/cryptography/crypto";
+import getOrganizationUsers from "../api/organization/GetOrgUsers";
+import getUser from "../api/user/getUser";
 // import DeleteUserDialog from '@app/components/basic/dialog/DeleteUserDialog';
-import addUserToWorkspace from '../api/workspace/addUserToWorkspace';
-import getWorkspaceUsers from '../api/workspace/getWorkspaceUsers';
-import uploadKeys from '../api/workspace/uploadKeys';
+import addUserToWorkspace from "../api/workspace/addUserToWorkspace";
+import getWorkspaceUsers from "../api/workspace/getWorkspaceUsers";
+import uploadKeys from "../api/workspace/uploadKeys";
 
 interface UserProps {
   firstName: string;
@@ -47,9 +47,9 @@ export default function Users() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   // let [isDeleteOpen, setIsDeleteOpen] = useState(false);
   // let [userIdToBeDeleted, setUserIdToBeDeleted] = useState(false);
-  const [email, setEmail] = useState('');
-  const [personalEmail, setPersonalEmail] = useState('');
-  const [searchUsers, setSearchUsers] = useState('');
+  const [email, setEmail] = useState("");
+  const [personalEmail, setPersonalEmail] = useState("");
+  const [searchUsers, setSearchUsers] = useState("");
 
   const { t } = useTranslation();
 
@@ -87,12 +87,12 @@ export default function Users() {
 
       // This is needed to know wha users from an org (if any), we are able to add to a certain project
       const orgUsers = await getOrganizationUsers({
-        orgId: String(localStorage.getItem('orgData.id'))
+        orgId: String(localStorage.getItem("orgData.id"))
       });
       setOrgUserList(orgUsers);
       setEmail(
         orgUsers
-          ?.filter((membership: MembershipProps) => membership.status === 'accepted')
+          ?.filter((membership: MembershipProps) => membership.status === "accepted")
           .map((membership: MembershipProps) => membership.user.email)
           .filter(
             (usEmail: string) =>
@@ -125,7 +125,7 @@ export default function Users() {
   const submitAddModal = async () => {
     const result = await addUserToWorkspace(email, workspaceId);
     if (result?.invitee && result?.latestKey) {
-      const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 
       // assymmetrically decrypt symmetric key with local private key
       const key = decryptAssymmetric({
@@ -143,7 +143,7 @@ export default function Users() {
 
       uploadKeys(workspaceId, result.invitee._id, ciphertext, nonce);
     }
-    setEmail('');
+    setEmail("");
     setIsAddOpen(false);
     router.reload();
   };
@@ -151,12 +151,12 @@ export default function Users() {
   return userList ? (
     <div className="flex max-w-[calc(100vw-240px)] flex-col justify-start bg-bunker-800 md:h-screen">
       <Head>
-        <title>{t('common.head-title', { title: t('settings.members.title') })}</title>
+        <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      <NavHeader pageName={t('settings.members.title')} isProjectRelated />
+      <NavHeader pageName={t("settings.members.title")} isProjectRelated />
       <div className="flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl mb-4">
-        <p className="mr-4 font-semibold text-white">{t('settings.members.title')}</p>
+        <p className="mr-4 font-semibold text-white">{t("settings.members.title")}</p>
       </div>
       <AddProjectMemberDialog
         isOpen={isAddOpen}
@@ -164,7 +164,7 @@ export default function Users() {
         submitModal={submitAddModal}
         email={email}
         data={orgUserList
-          ?.filter((membership: MembershipProps) => membership.status === 'accepted')
+          ?.filter((membership: MembershipProps) => membership.status === "accepted")
           .map((membership: MembershipProps) => membership.user.email)
           .filter(
             (orgEmail) => !userList?.map((user1: UserProps) => user1.email).includes(orgEmail)
@@ -184,7 +184,7 @@ export default function Users() {
         </div>
         <div className="ml-2 flex min-w-max flex-row items-start justify-start">
           <Button
-            text={String(t('section.members.add-member'))}
+            text={String(t("section.members.add-member"))}
             onButtonPressed={openAddModal}
             color="mineshaft"
             size="md"
