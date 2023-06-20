@@ -22,3 +22,9 @@ Environment variables can be rolled back to any point in time via the "Rollback 
   Rolling back environment variables to a past snapshot creates a new commit and
   snapshot at the top of the stack and updates secret versions.
 </Note>
+
+## Folders
+
+Any folder operation, such as creating, updating, or deleting a folder, will create a new commit.
+
+When you roll back the contents of a folder, the folder will be restored to its latest snapshot. The nested folders will also be restored to their respective latest versions.
