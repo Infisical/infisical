@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface Props {
   workspaceId: string;
@@ -18,21 +18,21 @@ interface Props {
  */
 const uploadSecrets = async ({ workspaceId, secrets, keys, environment }: Props) =>
   SecurityClient.fetchCall(`/api/v2/workspace/${workspaceId}/secrets`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       secrets,
       keys,
       environment,
-      channel: 'web'
+      channel: "web"
     })
   }).then(async (res) => {
     if (res && res.status === 200) {
       return res;
     }
-    console.log('Failed to push secrets');
+    console.log("Failed to push secrets");
     return undefined;
   });
 

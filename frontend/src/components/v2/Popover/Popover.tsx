@@ -1,6 +1,6 @@
-import { faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import * as Popover from '@radix-ui/react-popover';
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as Popover from "@radix-ui/react-popover";
 
 type Props = {
   children: any; 
@@ -46,4 +46,4 @@ export const PopoverObject = ({children, text, onChangeHandler, id}: Props) => (
   </Popover.Root>
 );
 
-PopoverObject.displayName = 'Popover';
+PopoverObject.displayName = "Popover";

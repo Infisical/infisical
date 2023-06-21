@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This route registers a certain action for a user
@@ -6,10 +6,10 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  * @returns
  */
 const registerUserAction = ({ action }: { action: string }) =>
-  SecurityClient.fetchCall('/api/v1/user-action', {
-    method: 'POST',
+  SecurityClient.fetchCall("/api/v1/user-action", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       action
@@ -18,7 +18,7 @@ const registerUserAction = ({ action }: { action: string }) =>
     if (res && res.status === 200) {
       return res;
     }
-    console.log('Failed to register a user action');
+    console.log("Failed to register a user action");
     return undefined;
   });
 

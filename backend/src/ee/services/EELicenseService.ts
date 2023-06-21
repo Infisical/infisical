@@ -1,34 +1,35 @@
-import * as Sentry from '@sentry/node';
-import NodeCache from 'node-cache';
+import * as Sentry from "@sentry/node";
+import NodeCache from "node-cache";
 import { 
     getLicenseKey,
     getLicenseServerKey,
-    getLicenseServerUrl
-} from '../../config';
+    getLicenseServerUrl,
+} from "../../config";
 import { 
     licenseKeyRequest,
     licenseServerKeyRequest,
+    refreshLicenseKeyToken,
     refreshLicenseServerKeyToken,
-    refreshLicenseKeyToken
-} from '../../config/request';
-import { Organization } from '../../models';
-import { OrganizationNotFoundError } from '../../utils/errors';
+} from "../../config/request";
+import { Organization } from "../../models";
+import { OrganizationNotFoundError } from "../../utils/errors";
 
 interface FeatureSet {
     _id: string | null;
-    slug: 'starter' | 'team' | 'pro' | 'enterprise' | null;
+    slug: "starter" | "team" | "pro" | "enterprise" | null;
     tier: number;
     workspaceLimit: number | null;
     workspacesUsed: number;
     memberLimit: number | null;
     membersUsed: number;
+    environmentLimit: number | null;
+    environmentsUsed: number;
     secretVersioning: boolean;
     pitRecovery: boolean;
     rbac: boolean;
     customRateLimits: boolean;
     customAlerts: boolean;
     auditLogs: boolean;
-    envLimit?: number | null;
 }
 
 /**
@@ -41,7 +42,7 @@ class EELicenseService {
     
     private readonly _isLicenseValid: boolean; // TODO: deprecate
 
-    public instanceType: 'self-hosted' | 'enterprise-self-hosted' | 'cloud' = 'self-hosted';
+    public instanceType: "self-hosted" | "enterprise-self-hosted" | "cloud" = "self-hosted";
 
     public globalFeatureSet: FeatureSet = {
         _id: null,
@@ -51,13 +52,14 @@ class EELicenseService {
         workspacesUsed: 0,
         memberLimit: null,
         membersUsed: 0,
+        environmentLimit: null,
+        environmentsUsed: 0,
         secretVersioning: true,
         pitRecovery: true,
         rbac: true,
         customRateLimits: true,
         customAlerts: true,
         auditLogs: false,
-        envLimit: null
     }
 
     public localFeatureSet: NodeCache;
@@ -65,14 +67,14 @@ class EELicenseService {
     constructor() {
         this._isLicenseValid = true;
         this.localFeatureSet = new NodeCache({
-            stdTTL: 300
+            stdTTL: 300,
         });
     }
     
-    public async getOrganizationPlan(organizationId: string): Promise<FeatureSet> {
+    public async getPlan(organizationId: string, workspaceId?: string): Promise<FeatureSet> {
         try {
-            if (this.instanceType === 'cloud') {
-                const cachedPlan = this.localFeatureSet.get<FeatureSet>(organizationId);
+            if (this.instanceType === "cloud") {
+                const cachedPlan = this.localFeatureSet.get<FeatureSet>(`${organizationId}-${workspaceId ?? ""}`);
                 if (cachedPlan) {
                     return cachedPlan;
                 }
@@ -80,12 +82,16 @@ class EELicenseService {
                 const organization = await Organization.findById(organizationId);
                 if (!organization) throw OrganizationNotFoundError();
 
-                const { data: { currentPlan } } = await licenseServerKeyRequest.get(
-                    `${await getLicenseServerUrl()}/api/license-server/v1/customers/${organization.customerId}/cloud-plan`
-                );
+                let url = `${await getLicenseServerUrl()}/api/license-server/v1/customers/${organization.customerId}/cloud-plan`;
+
+                if (workspaceId) {
+                    url += `?workspaceId=${workspaceId}`;
+                }
+
+                const { data: { currentPlan } } = await licenseServerKeyRequest.get(url);
 
                 // cache fetched plan for organization
-                this.localFeatureSet.set(organizationId, currentPlan);
+                this.localFeatureSet.set(`${organizationId}-${workspaceId ?? ""}`, currentPlan);
 
                 return currentPlan;
             }
@@ -94,6 +100,13 @@ class EELicenseService {
         }
 
         return this.globalFeatureSet;
+    }
+    
+    public async refreshPlan(organizationId: string, workspaceId?: string) {
+        if (this.instanceType === "cloud") {
+            this.localFeatureSet.del(`${organizationId}-${workspaceId ?? ""}`);
+            await this.getPlan(organizationId, workspaceId);
+        }
     }
 
     public async initGlobalFeatureSet() {
@@ -106,7 +119,7 @@ class EELicenseService {
                 const token = await refreshLicenseServerKeyToken()
                     
                 if (token) {
-                    this.instanceType = 'cloud';
+                    this.instanceType = "cloud";
                 }
                 
                 return;
@@ -122,7 +135,7 @@ class EELicenseService {
                     );
                     
                     this.globalFeatureSet = currentPlan;
-                    this.instanceType = 'enterprise-self-hosted';
+                    this.instanceType = "enterprise-self-hosted";
                 }
             }
         } catch (err) {

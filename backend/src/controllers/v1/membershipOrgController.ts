@@ -1,15 +1,27 @@
-import { Types } from 'mongoose';
-import { Request, Response } from 'express';
-import { MembershipOrg, Organization, User } from '../../models';
-import { deleteMembershipOrg as deleteMemberFromOrg } from '../../helpers/membershipOrg';
-import { createToken } from '../../helpers/auth';
-import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
-import { sendMail } from '../../helpers/nodemailer';
-import { TokenService } from '../../services';
-import { EELicenseService } from '../../ee/services';
-import { OWNER, ADMIN, MEMBER, ACCEPTED, INVITED, TOKEN_EMAIL_ORG_INVITATION } from '../../variables';
-import { getSiteURL, getJwtSignupLifetime, getJwtSignupSecret, getSmtpConfigured } from '../../config';
-import { validateUserEmail } from '../../validation';
+import { Types } from "mongoose";
+import { Request, Response } from "express";
+import { MembershipOrg, Organization, User } from "../../models";
+import { deleteMembershipOrg as deleteMemberFromOrg } from "../../helpers/membershipOrg";
+import { createToken } from "../../helpers/auth";
+import { updateSubscriptionOrgQuantity } from "../../helpers/organization";
+import { sendMail } from "../../helpers/nodemailer";
+import { TokenService } from "../../services";
+import { EELicenseService } from "../../ee/services";
+import {
+  ACCEPTED,
+  ADMIN,
+  INVITED,
+  MEMBER,
+  OWNER,
+  TOKEN_EMAIL_ORG_INVITATION
+} from "../../variables";
+import {
+  getJwtSignupLifetime,
+  getJwtSignupSecret,
+  getSiteURL,
+  getSmtpConfigured
+} from "../../config";
+import { validateUserEmail } from "../../validation";
 
 /**
  * Delete organization membership with id [membershipOrgId] from organization
@@ -17,18 +29,16 @@ import { validateUserEmail } from '../../validation';
  * @param res
  * @returns
  */
-export const deleteMembershipOrg = async (req: Request, res: Response) => {
+export const deleteMembershipOrg = async (req: Request, _res: Response) => {
   const { membershipOrgId } = req.params;
 
   // check if organization membership to delete exists
   const membershipOrgToDelete = await MembershipOrg.findOne({
     _id: membershipOrgId
-  }).populate('user');
+  }).populate("user");
 
   if (!membershipOrgToDelete) {
-    throw new Error(
-      "Failed to delete organization membership that doesn't exist"
-    );
+    throw new Error("Failed to delete organization membership that doesn't exist");
   }
 
   // check if user is a member and admin of the organization
@@ -39,16 +49,16 @@ export const deleteMembershipOrg = async (req: Request, res: Response) => {
   });
 
   if (!membershipOrg) {
-    throw new Error('Failed to validate organization membership');
+    throw new Error("Failed to validate organization membership");
   }
 
   if (membershipOrg.role !== OWNER && membershipOrg.role !== ADMIN) {
     // user is not an admin member of the organization
-    throw new Error('Insufficient role for deleting organization membership');
+    throw new Error("Insufficient role for deleting organization membership");
   }
 
   // delete organization membership
-  const deletedMembershipOrg = await deleteMemberFromOrg({
+  await deleteMemberFromOrg({
     membershipOrgId: membershipOrgToDelete._id.toString()
   });
 
@@ -56,7 +66,7 @@ export const deleteMembershipOrg = async (req: Request, res: Response) => {
     organizationId: membershipOrg.organization.toString()
   });
 
-	return membershipOrgToDelete;
+  return membershipOrgToDelete;
 };
 
 /**
@@ -66,14 +76,14 @@ export const deleteMembershipOrg = async (req: Request, res: Response) => {
  * @returns
  */
 export const changeMembershipOrgRole = async (req: Request, res: Response) => {
-	// change role for (target) organization membership with id
-	// [membershipOrgId]
+  // change role for (target) organization membership with id
+  // [membershipOrgId]
 
-	let membershipToChangeRole;
+  let membershipToChangeRole;
 
-	return res.status(200).send({
-		membershipOrg: membershipToChangeRole
-	});
+  return res.status(200).send({
+    membershipOrg: membershipToChangeRole
+  });
 };
 
 /**
@@ -84,7 +94,7 @@ export const changeMembershipOrgRole = async (req: Request, res: Response) => {
  * @returns
  */
 export const inviteUserToOrganization = async (req: Request, res: Response) => {
-	let invitee, inviteeMembershipOrg, completeInviteLink;
+  let inviteeMembershipOrg, completeInviteLink;
   const { organizationId, inviteeEmail } = req.body;
   const host = req.headers.host;
   const siteUrl = `${req.protocol}://${host}`;
@@ -96,25 +106,26 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
   });
 
   if (!membershipOrg) {
-    throw new Error('Failed to validate organization membership');
+    throw new Error("Failed to validate organization membership");
   }
-  
-  const plan = await EELicenseService.getOrganizationPlan(organizationId);
-  
+
+  const plan = await EELicenseService.getPlan(organizationId);
+
   if (plan.memberLimit !== null) {
     // case: limit imposed on number of members allowed
-    
+
     if (plan.membersUsed >= plan.memberLimit) {
       // case: number of members used exceeds the number of members allowed
       return res.status(400).send({
-        message: 'Failed to invite member due to member limit reached. Upgrade plan to invite more members.'
+        message:
+          "Failed to invite member due to member limit reached. Upgrade plan to invite more members."
       });
     }
   }
 
-  invitee = await User.findOne({
+  const invitee = await User.findOne({
     email: inviteeEmail
-  }).select('+publicKey');
+  }).select("+publicKey");
 
   if (invitee) {
     // case: invitee is an existing user
@@ -125,13 +136,10 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
     });
 
     if (inviteeMembershipOrg && inviteeMembershipOrg.status === ACCEPTED) {
-      throw new Error(
-        'Failed to invite an existing member of the organization'
-      );
+      throw new Error("Failed to invite an existing member of the organization");
     }
 
     if (!inviteeMembershipOrg) {
-      
       await new MembershipOrg({
         user: invitee,
         inviteEmail: inviteeEmail,
@@ -149,7 +157,7 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
 
     if (!inviteeMembershipOrg) {
       // case: invitee has never been invited before
-      
+
       // validate that email is not disposable
       validateUserEmail(inviteeEmail);
 
@@ -165,7 +173,6 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
   const organization = await Organization.findOne({ _id: organizationId });
 
   if (organization) {
-
     const token = await TokenService.createToken({
       type: TOKEN_EMAIL_ORG_INVITATION,
       email: inviteeEmail,
@@ -173,8 +180,8 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
     });
 
     await sendMail({
-      template: 'organizationInvitation.handlebars',
-      subjectLine: 'Infisical organization invitation',
+      template: "organizationInvitation.handlebars",
+      subjectLine: "Infisical organization invitation",
       recipients: [inviteeEmail],
       substitutions: {
         inviterFirstName: req.user.firstName,
@@ -183,21 +190,23 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
         email: inviteeEmail,
         organizationId: organization._id.toString(),
         token,
-        callback_url: (await getSiteURL()) + '/signupinvite'
+        callback_url: (await getSiteURL()) + "/signupinvite"
       }
     });
 
     if (!(await getSmtpConfigured())) {
-      completeInviteLink = `${siteUrl + '/signupinvite'}?token=${token}&to=${inviteeEmail}&organization_id=${organization._id}`
+      completeInviteLink = `${
+        siteUrl + "/signupinvite"
+      }?token=${token}&to=${inviteeEmail}&organization_id=${organization._id}`;
     }
   }
 
   await updateSubscriptionOrgQuantity({ organizationId });
 
-	return res.status(200).send({
-		message: `Sent an invite link to ${req.body.inviteeEmail}`,
-		completeInviteLink
-	});
+  return res.status(200).send({
+    message: `Sent an invite link to ${req.body.inviteeEmail}`,
+    completeInviteLink
+  });
 };
 
 /**
@@ -208,14 +217,10 @@ export const inviteUserToOrganization = async (req: Request, res: Response) => {
  * @returns
  */
 export const verifyUserToOrganization = async (req: Request, res: Response) => {
-	let user;
-  const {
-    email,
-    organizationId,
-    code
-  } = req.body;
+  let user;
+  const { email, organizationId, code } = req.body;
 
-  user = await User.findOne({ email }).select('+publicKey');
+  user = await User.findOne({ email }).select("+publicKey");
 
   const membershipOrg = await MembershipOrg.findOne({
     inviteEmail: email,
@@ -223,8 +228,7 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
     organization: new Types.ObjectId(organizationId)
   });
 
-  if (!membershipOrg)
-    throw new Error('Failed to find any invitations for email');
+  if (!membershipOrg) throw new Error("Failed to find any invitations for email");
 
   await TokenService.validateToken({
     type: TOKEN_EMAIL_ORG_INVITATION,
@@ -238,14 +242,14 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
     // membership can be approved and redirected to login/dashboard
     membershipOrg.status = ACCEPTED;
     await membershipOrg.save();
-    
+
     await updateSubscriptionOrgQuantity({
       organizationId
     });
 
     return res.status(200).send({
-      message: 'Successfully verified email',
-      user,
+      message: "Successfully verified email",
+      user
     });
   }
 
@@ -265,9 +269,9 @@ export const verifyUserToOrganization = async (req: Request, res: Response) => {
     secret: await getJwtSignupSecret()
   });
 
-	return res.status(200).send({
-		message: 'Successfully verified email',
-		user,
-		token
-	});
+  return res.status(200).send({
+    message: "Successfully verified email",
+    user,
+    token
+  });
 };

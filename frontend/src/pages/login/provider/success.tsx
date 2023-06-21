@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/router"
 
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 export default function LoginProviderSuccess() {
     const router = useRouter();

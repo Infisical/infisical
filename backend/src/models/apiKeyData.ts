@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, Types, model } from "mongoose";
 
 export interface IAPIKeyData {
     name: string;
@@ -12,30 +12,30 @@ const apiKeyDataSchema = new Schema<IAPIKeyData>(
     {
         name: {
             type: String,
-            required: true
+            required: true,
         },
         user: {
             type: Schema.Types.ObjectId,
-            ref: 'User',
-            required: true
+            ref: "User",
+            required: true,
         },
         lastUsed: {
-            type: Date
+            type: Date,
         },
         expiresAt: {
-            type: Date
+            type: Date,
         },
         secretHash: {
             type: String,
             required: true,
-            select: false
-        }
+            select: false,
+        },
     }, 
     {
-        timestamps: true
+        timestamps: true,
     }
 );
 
-const APIKeyData = model<IAPIKeyData>('APIKeyData', apiKeyDataSchema);
+const APIKeyData = model<IAPIKeyData>("APIKeyData", apiKeyDataSchema);
 
 export default APIKeyData;

@@ -7,7 +7,7 @@ export const getChannelFromUserAgent = function (userAgent: string | undefined) 
     return "cli"
   } else if (userAgent == K8_OPERATOR_AGENT_NAME) {
     return "k8-operator"
-  } else if (userAgent.toLowerCase().includes('mozilla')) {
+  } else if (userAgent.toLowerCase().includes("mozilla")) {
     return "web"
   } else {
     return "other"

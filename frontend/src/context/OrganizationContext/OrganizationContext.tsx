@@ -1,9 +1,9 @@
-import { createContext, ReactNode, useContext, useMemo } from 'react';
+import { createContext, ReactNode, useContext, useMemo } from "react";
 
-import { useGetOrganization } from '@app/hooks/api';
-import { Organization } from '@app/hooks/api/types';
+import { useGetOrganization } from "@app/hooks/api";
+import { Organization } from "@app/hooks/api/types";
 
-import { useWorkspace } from '../WorkspaceContext';
+import { useWorkspace } from "../WorkspaceContext";
 
 type TOrgContext = {
   orgs?: Organization[];
@@ -39,7 +39,7 @@ export const OrgProvider = ({ children }: Props): JSX.Element => {
 export const useOrganization = () => {
   const ctx = useContext(OrgContext);
   if (!ctx) {
-    throw new Error('useOrganization to be used within <OrgContext.Provider>');
+    throw new Error("useOrganization to be used within <OrgContext.Provider>");
   }
 
   return ctx;

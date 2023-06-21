@@ -1,5 +1,5 @@
-import React, { Fragment } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { Fragment } from "react";
+import { useTranslation } from "react-i18next";
 import {
   faAngleDown,
   faEye,
@@ -7,9 +7,9 @@ import {
   faShuffle,
   faTrash,
   faX
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Listbox, Transition } from '@headlessui/react';
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Listbox, Transition } from "@headlessui/react";
 
 interface ListBoxProps {
   selected: string;
@@ -18,19 +18,19 @@ interface ListBoxProps {
 
 const eventOptions = [
   {
-    name: 'addSecrets',
+    name: "addSecrets",
     icon: faPlus
   },
   {
-    name: 'readSecrets',
+    name: "readSecrets",
     icon: faEye
   },
   {
-    name: 'updateSecrets',
+    name: "updateSecrets",
     icon: faShuffle
   },
   {
-    name: 'deleteSecrets',
+    name: "deleteSecrets",
     icon: faTrash
   }
 ];
@@ -48,13 +48,13 @@ const EventFilter = ({ selected, select }: ListBoxProps): JSX.Element => {
     <Listbox value={t(`activity.event.${selected}`)} onChange={select}>
       <div className="relative">
         <Listbox.Button className="flex h-10 w-52 cursor-pointer items-center justify-between rounded-md bg-mineshaft-800 pl-4 pr-2 text-sm text-bunker-200 duration-200 hover:bg-mineshaft-700">
-          {selected !== '' ? (
+          {selected !== "" ? (
             <p className="select-none text-bunker-100">{t(`activity.event.${selected}`)}</p>
           ) : (
-            <p className="select-none">{String(t('common.select-event'))}</p>
+            <p className="select-none">{String(t("common.select-event"))}</p>
           )}
-          {selected !== '' ? (
-            <FontAwesomeIcon icon={faX} className="w-2 p-2 pl-2" onClick={() => select('')} />
+          {selected !== "" ? (
+            <FontAwesomeIcon icon={faX} className="w-2 p-2 pl-2" onClick={() => select("")} />
           ) : (
             <FontAwesomeIcon icon={faAngleDown} className="pl-4 pr-2" />
           )}
@@ -70,15 +70,15 @@ const EventFilter = ({ selected, select }: ListBoxProps): JSX.Element => {
               <Listbox.Option
                 key={`${event.name}.${id + 1}`}
                 className={`flex h-10 cursor-pointer items-center rounded-md px-4 text-sm text-bunker-200 hover:bg-mineshaft-700 ${
-                  selected === t(`activity.event.${event.name}`) && 'bg-mineshaft-700'
+                  selected === t(`activity.event.${event.name}`) && "bg-mineshaft-700"
                 }`}
                 value={event.name}
               >
                 {({ selected: isSelected }) => (
                   <span
-                    className={`block truncate ${isSelected ? 'font-semibold' : 'font-normal'}`}
+                    className={`block truncate ${isSelected ? "font-semibold" : "font-normal"}`}
                   >
-                    <FontAwesomeIcon icon={event.icon} className="pr-4" />{' '}
+                    <FontAwesomeIcon icon={event.icon} className="pr-4" />{" "}
                     {t(`activity.event.${event.name}`)}
                   </span>
                 )}

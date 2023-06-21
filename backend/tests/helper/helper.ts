@@ -4,15 +4,15 @@ import axiosInstance from "../../src/config/request";
 import { Secret } from "../../src/models";
 import { testUserEmail, testUserPassword } from "../../src/utils/addDevelopmentUser";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const crypto = require('crypto')
+const crypto = require("crypto")
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const jsrp = require('jsrp');
+const jsrp = require("jsrp");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const axios = require('axios');
+const axios = require("axios");
 import { plainTextWorkspaceKey, testWorkspaceId } from "../../src/utils/addDevelopmentUser";
 import {
-  encryptSymmetric128BitHexKeyUTF8
-} from '../../src/utils/crypto';
+  encryptSymmetric128BitHexKeyUTF8,
+} from "../../src/utils/crypto";
 
 interface TokenData {
   token: string;
@@ -37,11 +37,11 @@ export const getJWTFromTestUser = (): Promise<TokenData> => {
       // POST: /login1 
       const reqBody = {
         email: EMAIL,
-        clientPublicKey
+        clientPublicKey,
       }
 
 
-      const loginOneRes = await axiosInstance.post('http://localhost:4000/api/v1/auth/login1', reqBody);
+      const loginOneRes = await axiosInstance.post("http://localhost:4000/api/v1/auth/login1", reqBody);
       const serverPublicKey = loginOneRes.data.serverPublicKey;
       const salt = loginOneRes.data.salt;
 
@@ -53,10 +53,10 @@ export const getJWTFromTestUser = (): Promise<TokenData> => {
       // POST: /login2
       const reqBody2 = {
         email: EMAIL,
-        clientProof
+        clientProof,
       }
 
-      const response2 = await axiosInstance.post('http://localhost:4000/api/v1/auth/login2', reqBody2);
+      const response2 = await axiosInstance.post("http://localhost:4000/api/v1/auth/login2", reqBody2);
 
       resolve(response2.data)
     })
@@ -65,25 +65,25 @@ export const getJWTFromTestUser = (): Promise<TokenData> => {
 
 export const getServiceTokenFromTestUser = async () => {
   const loggedInUserDetails = await getJWTFromTestUser()
-  const randomBytes = crypto.randomBytes(16).toString('hex');
+  const randomBytes = crypto.randomBytes(16).toString("hex");
   const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
     plaintext: plainTextWorkspaceKey,
     key: randomBytes,
   });
 
-  const newServiceToken = await axiosInstance.post('http://localhost:4000/api/v2/service-token/', {
-    'name': "test service token",
-    'workspaceId': testWorkspaceId,
-    'environment': "dev",
-    'encryptedKey': ciphertext,
-    'iv': iv,
-    'tag': tag,
-    'expiresIn': Date.now() + 90000,
-    'permissions': ["read"]
+  const newServiceToken = await axiosInstance.post("http://localhost:4000/api/v2/service-token/", {
+    "name": "test service token",
+    "workspaceId": testWorkspaceId,
+    "environment": "dev",
+    "encryptedKey": ciphertext,
+    "iv": iv,
+    "tag": tag,
+    "expiresIn": Date.now() + 90000,
+    "permissions": ["read"],
   }, {
     headers: {
-      'Authorization': `Bearer ${loggedInUserDetails.token}`
-    }
+      "Authorization": `Bearer ${loggedInUserDetails.token}`,
+    },
   });
 
   return `${newServiceToken.data.serviceToken}.${randomBytes}`

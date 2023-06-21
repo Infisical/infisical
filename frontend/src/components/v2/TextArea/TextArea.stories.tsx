@@ -1,15 +1,15 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 
-import { TextArea } from './TextArea';
+import { TextArea } from "./TextArea";
 
 const meta: Meta<typeof TextArea> = {
-  title: 'Components/TextArea',
+  title: "Components/TextArea",
   component: TextArea,
-  tags: ['v2'],
+  tags: ["v2"],
   argTypes: {
     placeholder: {
-      defaultValue: 'Type anything',
-      type: 'string'
+      defaultValue: "Type anything",
+      type: "string"
     }
   }
 };
@@ -24,13 +24,13 @@ export const Filled: Story = {
 
 export const Outline: Story = {
   args: {
-    variant: 'outline'
+    variant: "outline"
   }
 };
 
 export const Plain: Story = {
   args: {
-    variant: 'plain'
+    variant: "plain"
   }
 };
 
@@ -43,6 +43,6 @@ export const Error: Story = {
 export const AutoWidth: Story = {
   args: {
     isFullWidth: false,
-    className: 'w-auto'
+    className: "w-auto"
   }
 };

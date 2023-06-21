@@ -1,18 +1,18 @@
-import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import Image from 'next/image';
-import { useRouter } from 'next/router';
-import { faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import Image from "next/image";
+import { useRouter } from "next/router";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import getActionData from '@app/ee/api/secrets/GetActionData';
-import patienceDiff from '@app/ee/utilities/findTextDifferences';
-import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
+import getActionData from "@app/ee/api/secrets/GetActionData";
+import patienceDiff from "@app/ee/utilities/findTextDifferences";
+import getLatestFileKey from "@app/pages/api/workspace/getLatestFileKey";
 
 import {
   decryptAssymmetric,
   decryptSymmetric
-} from '../../components/utilities/cryptography/crypto';
+} from "../../components/utilities/cryptography/crypto";
 
 interface SideBarProps {
   toggleSidebar: (value: string) => void;
@@ -64,7 +64,7 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
       setIsLoading(true);
       const tempActionData = await getActionData({ actionId: currentAction });
       const latestKey = await getLatestFileKey({ workspaceId: String(router.query.id) });
-      const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
 
       // #TODO: make this a separate function and reuse across the app
       let decryptedLatestKey: string;
@@ -128,7 +128,7 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
   return (
     <div
       className={`absolute border-l border-mineshaft-500 ${
-        isLoading ? 'bg-bunker-800' : 'bg-bunker'
+        isLoading ? "bg-bunker-800" : "bg-bunker"
       } fixed top-14 right-0 z-40 flex h-[calc(100vh-56px)] w-96 flex-col justify-between shadow-xl`}
     >
       {isLoading ? (
@@ -151,15 +151,15 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
               onKeyDown={() => null}
               role="button"
               tabIndex={0}
-              onClick={() => toggleSidebar('')}
+              onClick={() => toggleSidebar("")}
             >
               <FontAwesomeIcon icon={faXmark} className="h-4 w-4 cursor-pointer text-bunker-300" />
             </div>
           </div>
           <div className="overflow-y-autp flex h-[calc(100vh-120px)] flex-col overflow-y-auto px-4">
-            {(actionMetaData?.name === 'readSecrets' ||
-              actionMetaData?.name === 'addSecrets' ||
-              actionMetaData?.name === 'deleteSecrets') &&
+            {(actionMetaData?.name === "readSecrets" ||
+              actionMetaData?.name === "addSecrets" ||
+              actionMetaData?.name === "deleteSecrets") &&
               actionData?.map((item, id) => (
                 <div key={`secret.${id + 1}`}>
                   <div className="ph-no-capture mt-4 pl-1 text-xs text-bunker-200">
@@ -174,7 +174,7 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
                   </div>
                 </div>
               ))}
-            {actionMetaData?.name === 'updateSecrets' &&
+            {actionMetaData?.name === "updateSecrets" &&
               actionData?.map((item, id) => (
                 <>
                   <div className="mt-4 pl-1 text-xs text-bunker-200">
@@ -182,10 +182,10 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
                   </div>
                   <div className="overflow-hidden break-all rounded-md border border-mineshaft-500 font-mono text-bunker-200">
                     <div className="ph-no-capture bg-red/40 px-2">
-                      -{' '}
+                      -{" "}
                       {patienceDiff(
-                        item.oldSecretVersion.value.split(''),
-                        item.newSecretVersion.value.split(''),
+                        item.oldSecretVersion.value.split(""),
+                        item.newSecretVersion.value.split(""),
                         false
                       ).lines.map(
                         (character, lineId) =>
@@ -193,7 +193,7 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
                             <span
                               key={`actionData.${id + 1}.line.${lineId + 1}`}
                               className={`${
-                                character.aIndex === -1 && 'bg-red-700/80 text-bunker-100'
+                                character.aIndex === -1 && "bg-red-700/80 text-bunker-100"
                               }`}
                             >
                               {character.line}
@@ -202,10 +202,10 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
                       )}
                     </div>
                     <div className="ph-no-capture break-all bg-green-500/40 px-2">
-                      +{' '}
+                      +{" "}
                       {patienceDiff(
-                        item.oldSecretVersion.value.split(''),
-                        item.newSecretVersion.value.split(''),
+                        item.oldSecretVersion.value.split(""),
+                        item.newSecretVersion.value.split(""),
                         false
                       ).lines.map(
                         (character, lineId) =>
@@ -213,7 +213,7 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
                             <span
                               key={`actionData.${id + 1}.linev2.${lineId + 1}`}
                               className={`${
-                                character.bIndex === -1 && 'bg-green-700/80 text-bunker-100'
+                                character.bIndex === -1 && "bg-green-700/80 text-bunker-100"
                               }`}
                             >
                               {character.line}

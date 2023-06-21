@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import Link from 'next/link';
+import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
+import Link from "next/link";
 
-import sendVerificationEmail from '@app/pages/api/auth/SendVerificationEmail';
+import sendVerificationEmail from "@app/pages/api/auth/SendVerificationEmail";
 
-import { Button, Input } from '../v2';
+import { Button, Input } from "../v2";
 
 interface DownloadBackupPDFStepProps {
   incrementStep: () => void;
@@ -36,7 +36,7 @@ export default function EnterEmailStep({
     if (!email) {
       setEmailError(true);
       emailCheckBool = true;
-    } else if (!email.includes('@') || !email.includes('.') || !/[a-z]/.test(email)) {
+    } else if (!email.includes("@") || !email.includes(".") || !/[a-z]/.test(email)) {
       setEmailError(true);
       emailCheckBool = true;
     } else {
@@ -54,7 +54,7 @@ export default function EnterEmailStep({
     <div>
       <div className="w-full md:px-6 mx-auto">
         <p className="text-xl font-medium flex justify-center text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200">
-          {t('signup.step1-start')}
+          {t("signup.step1-start")}
         </p>
         <div className="flex flex-col items-center justify-center lg:w-1/6 w-1/4 min-w-[20rem] m-auto rounded-lg mt-8">
           <Input
@@ -76,7 +76,7 @@ export default function EnterEmailStep({
               className='h-14'
               colorSchema="primary"
               variant="outline_bg"
-            > {String(t('signup.step1-submit'))} </Button>
+            > {String(t("signup.step1-submit"))} </Button>
           </div>
         </div>
       </div>
@@ -84,7 +84,7 @@ export default function EnterEmailStep({
         <Link href="/login">
           <button type="button" className="w-max pb-3 duration-200 hover:opacity-90">
             <span className="text-sm text-mineshaft-400 hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer">
-              {t('signup.already-have-account')}
+              {t("signup.already-have-account")}
             </span>
           </button>
         </Link>

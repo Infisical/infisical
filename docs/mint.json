@@ -22,10 +22,7 @@
     }
   },
   "api": {
-    "baseUrl": [
-      "https://app.infisical.com",
-      "http://localhost:8080"
-    ],
+    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"],
     "auth": {
       "method": "key",
       "name": "X-API-KEY"
@@ -92,7 +89,8 @@
             "documentation/getting-started/sdks",
             "documentation/getting-started/cli",
             "documentation/getting-started/docker",
-            "documentation/getting-started/kubernetes"
+            "documentation/getting-started/kubernetes",
+            "documentation/getting-started/api"
           ]
         },
         {
@@ -111,6 +109,7 @@
       "pages": [
         "documentation/platform/organization",
         "documentation/platform/project",
+        "documentation/platform/folder",
         "documentation/platform/pit-recovery",
         "documentation/platform/secret-versioning",
         "documentation/platform/audit-logs",
@@ -197,6 +196,7 @@
         "integrations/cloud/railway",
         "integrations/cloud/flyio",
         "integrations/cloud/supabase",
+        "integrations/cloud/cloudflare-pages",
         "integrations/cloud/checkly",
         "integrations/cloud/hashicorp-vault",
         "integrations/cloud/azure-key-vault",
@@ -226,9 +226,7 @@
     },
     {
       "group": "Overview",
-      "pages": [
-        "sdks/overview"
-      ]
+      "pages": ["sdks/overview"]
     },
     {
       "group": "SDKs",
@@ -247,17 +245,15 @@
       "pages": [
         "api-reference/overview/introduction",
         "api-reference/overview/authentication",
-        "api-reference/overview/blind-indices",
         {
           "group": "Examples",
           "pages": [
-            "api-reference/overview/examples/retrieve-secrets",
-            "api-reference/overview/examples/create-secret",
-            "api-reference/overview/examples/retrieve-secret",
-            "api-reference/overview/examples/update-secret",
-            "api-reference/overview/examples/delete-secret"
+            "api-reference/overview/examples/note",
+            "api-reference/overview/examples/e2ee-disabled",
+            "api-reference/overview/examples/e2ee-enabled"
           ]
-        }
+        },
+        "api-reference/overview/blind-indices"
       ]
     },
     {
@@ -305,9 +301,7 @@
         },
         {
           "group": "Service Tokens",
-          "pages": [
-            "api-reference/endpoints/service-tokens/get"
-          ]
+          "pages": ["api-reference/endpoints/service-tokens/get"]
         }
       ]
     },
@@ -321,9 +315,7 @@
     },
     {
       "group": "Overview",
-      "pages": [
-        "changelog/overview"
-      ]
+      "pages": ["changelog/overview"]
     },
     {
       "group": "Contributing",

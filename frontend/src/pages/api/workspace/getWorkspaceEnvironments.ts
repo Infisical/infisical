@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This route lets us get the environments that a certain user has acess to in a certain project
@@ -7,15 +7,15 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const getWorkspaceEnvironments = ({ workspaceId }: { workspaceId: string }) =>
   SecurityClient.fetchCall(`/api/v2/workspace/${workspaceId}/environments`, {
-    method: 'GET',
+    method: "GET",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res?.status === 200) {
       return (await res.json()).accessibleEnvironments;
     }
-    console.log('Failed to get accessible environments');
+    console.log("Failed to get accessible environments");
     return undefined;
   });
 

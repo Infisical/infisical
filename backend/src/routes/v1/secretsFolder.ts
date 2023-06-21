@@ -63,6 +63,7 @@ router.get(
   query("workspaceId").exists().isString().trim(),
   query("environment").exists().isString().trim(),
   query("parentFolderId").optional().isString().trim(),
+  query("parentFolderPath").optional().isString().trim(),
   validateRequest,
   getFolders
 );

@@ -1,23 +1,27 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable no-unexpected-multiline */
 /* eslint-disable react-hooks/exhaustive-deps */
-import crypto from 'crypto';
+/* eslint-disable vars-on-top */
+/* eslint-disable no-var */
+/* eslint-disable func-names */
+// @ts-nocheck
+import crypto from "crypto";
 
-import { useEffect, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { faBookOpen, faMobile, faPlus } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { yupResolver } from '@hookform/resolvers/yup';
-import queryString from 'query-string';
-import * as yup from 'yup';
+import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { faBookOpen, faMobile, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import queryString from "query-string";
+import * as yup from "yup";
 
-import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
-import onboardingCheck from '@app/components/utilities/checks/OnboardingCheck';
-import { tempLocalStorage } from '@app/components/utilities/checks/tempLocalStorage';
-import { encryptAssymmetric } from '@app/components/utilities/cryptography/crypto';
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
+import { tempLocalStorage } from "@app/components/utilities/checks/tempLocalStorage";
+import { encryptAssymmetric } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   Checkbox,
@@ -30,22 +34,22 @@ import {
   Select,
   SelectItem,
   UpgradePlanModal
-} from '@app/components/v2';
-import { useOrganization, useSubscription, useUser, useWorkspace } from '@app/context';
-import { usePopUp } from '@app/hooks';
-import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useUploadWsKey } from '@app/hooks/api';
-import getOrganizations from '@app/pages/api/organization/getOrgs';
-import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserProjects';
+} from "@app/components/v2";
+import { useOrganization, useSubscription, useUser, useWorkspace } from "@app/context";
+import { usePopUp } from "@app/hooks";
+import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useUploadWsKey } from "@app/hooks/api";
+import getOrganizations from "@app/pages/api/organization/getOrgs";
+import getOrganizationUserProjects from "@app/pages/api/organization/GetOrgUserProjects";
 
-import { Navbar } from './components/NavBar';
+import { Navbar } from "./components/NavBar";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 const formSchema = yup.object({
-  name: yup.string().required().label('Project Name').trim(),
-  addMembers: yup.bool().required().label('Add Members')
+  name: yup.string().required().label("Project Name").trim(),
+  addMembers: yup.bool().required().label("Add Members")
 });
 
 type TAddProjectFormData = yup.InferType<typeof formSchema>;
@@ -60,16 +64,15 @@ export const AppLayout = ({ children }: LayoutProps) => {
   const { user } = useUser();
   const { subscription } = useSubscription();
 
-  const host = window.location.origin;
-  const isAddingProjectsAllowed = ((subscription?.workspacesUsed || 1) < (subscription?.workspaceLimit || 3)) || host !== 'https://app.infisical.com';
+  const isAddingProjectsAllowed = subscription?.workspaceLimit ? (subscription.workspacesUsed < subscription.workspaceLimit) : true;
 
   const createWs = useCreateWorkspace();
   const uploadWsKey = useUploadWsKey();
   const addWsUser = useAddUserToWs();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    'addNewWs',
-    'upgradePlan'
+    "addNewWs",
+    "upgradePlan"
   ] as const);
   const {
     control,
@@ -81,10 +84,22 @@ export const AppLayout = ({ children }: LayoutProps) => {
   });
 
   const [workspaceMapping, setWorkspaceMapping] = useState<Map<string, string>[]>([]);
-  const [workspaceSelected, setWorkspaceSelected] = useState('∞');
+  const [workspaceSelected, setWorkspaceSelected] = useState("∞");
   const [totalOnboardingActionsDone, setTotalOnboardingActionsDone] = useState(0);
 
   const { t } = useTranslation();
+
+	useEffect(() => {
+		const handleRouteChange = () => {
+			(window).Intercom("update");
+		};
+		
+		router.events.on("routeChangeComplete", handleRouteChange);
+		
+		return () => {
+		  router.events.off("routeChangeComplete", handleRouteChange);
+		};
+	}, []);
 
   // TODO(akhilmhdh): This entire logic will be rechecked and will try to avoid
   // Placing the localstorage as much as possible
@@ -93,24 +108,24 @@ export const AppLayout = ({ children }: LayoutProps) => {
     // Put a user in a workspace if they're not in one yet
 
     const putUserInWorkSpace = async () => {
-      if (tempLocalStorage('orgData.id') === '') {
+      if (tempLocalStorage("orgData.id") === "") {
         const userOrgs = await getOrganizations();
-        localStorage.setItem('orgData.id', userOrgs[0]?._id);
+        localStorage.setItem("orgData.id", userOrgs[0]?._id);
       }
 
       const orgUserProjects = await getOrganizationUserProjects({
-        orgId: tempLocalStorage('orgData.id')
+        orgId: tempLocalStorage("orgData.id")
       });
       const userWorkspaces = orgUserProjects;
       if (
         (userWorkspaces?.length === 0 &&
-          router.asPath !== '/noprojects' &&
-          !router.asPath.includes('home') &&
-          !router.asPath.includes('settings')) ||
-        router.asPath === '/dashboard/undefined'
+          router.asPath !== "/noprojects" &&
+          !router.asPath.includes("home") &&
+          !router.asPath.includes("settings")) ||
+        router.asPath === "/dashboard/undefined"
       ) {
-        router.push('/noprojects');
-      } else if (router.asPath !== '/noprojects') {
+        router.push("/noprojects");
+      } else if (router.asPath !== "/noprojects") {
         // const pathSegments = router.asPath.split('/').filter(segment => segment.length > 0);
 
         // let intendedWorkspaceId;
@@ -124,17 +139,17 @@ export const AppLayout = ({ children }: LayoutProps) => {
         //     [router.asPath.split('/').length - 1].split('?')[0];
         // }
 
-        const pathSegments = router.asPath.split('/').filter((segment) => segment.length > 0);
+        const pathSegments = router.asPath.split("/").filter((segment) => segment.length > 0);
 
         let intendedWorkspaceId;
-        if (pathSegments.length >= 2 && pathSegments[0] === 'dashboard') {
+        if (pathSegments.length >= 2 && pathSegments[0] === "dashboard") {
           [, intendedWorkspaceId] = pathSegments;
-        } else if (pathSegments.length >= 3 && pathSegments[0] === 'settings') {
+        } else if (pathSegments.length >= 3 && pathSegments[0] === "settings") {
           [, , intendedWorkspaceId] = pathSegments;
         } else {
-          const lastPathSegments = router.asPath.split('/').pop();
+          const lastPathSegments = router.asPath.split("/").pop();
           if (lastPathSegments !== undefined) {
-            [intendedWorkspaceId] = lastPathSegments.split('?');
+            [intendedWorkspaceId] = lastPathSegments.split("?");
           }
 
           // const lastPathSegment = router.asPath.split('/').pop().split('?');
@@ -143,19 +158,19 @@ export const AppLayout = ({ children }: LayoutProps) => {
 
         if (!intendedWorkspaceId) return;
 
-        if (!['callback', 'create', 'authorize'].includes(intendedWorkspaceId)) {
-          localStorage.setItem('projectData.id', intendedWorkspaceId);
+        if (!["callback", "create", "authorize"].includes(intendedWorkspaceId)) {
+          localStorage.setItem("projectData.id", intendedWorkspaceId);
         }
 
         // If a user is not a member of a workspace they are trying to access, just push them to one of theirs
         if (
-          !['callback', 'create', 'authorize'].includes(intendedWorkspaceId) &&
+          !["callback", "create", "authorize"].includes(intendedWorkspaceId) &&
           userWorkspaces[0]?._id !== undefined &&
           !userWorkspaces
             .map((workspace: { _id: string }) => workspace._id)
             .includes(intendedWorkspaceId)
         ) {
-          const { env } = queryString.parse(router.asPath.split('?')[1]);
+          const { env } = queryString.parse(router.asPath.split("?")[1]);
           if (!env) {
             router.push(`/dashboard/${userWorkspaces[0]._id}`);
           }
@@ -168,7 +183,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
           setWorkspaceSelected(
             Object.fromEntries(
               userWorkspaces.map((workspace: any) => [workspace._id, workspace.name])
-            )[router.asPath.split('/')[router.asPath.split('/').length - 1].split('?')[0]]
+            )[router.asPath.split("/")[router.asPath.split("/").length - 1].split("?")[0]]
           );
         }
       }
@@ -182,9 +197,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
       if (
         workspaceMapping[workspaceSelected as any] &&
         `${workspaceMapping[workspaceSelected as any]}` !==
-          router.asPath.split('/')[router.asPath.split('/').length - 1].split('?')[0]
+          router.asPath.split("/")[router.asPath.split("/").length - 1].split("?")[0]
       ) {
-        localStorage.setItem('projectData.id', `${workspaceMapping[workspaceSelected as any]}`);
+        localStorage.setItem("projectData.id", `${workspaceMapping[workspaceSelected as any]}`);
         router.push(`/dashboard/${workspaceMapping[workspaceSelected as any]}`);
       }
     } catch (err) {
@@ -205,8 +220,8 @@ export const AppLayout = ({ children }: LayoutProps) => {
         workspaceName: name
       });
 
-      const randomBytes = crypto.randomBytes(16).toString('hex');
-      const PRIVATE_KEY = String(localStorage.getItem('PRIVATE_KEY'));
+      const randomBytes = crypto.randomBytes(16).toString("hex");
+      const PRIVATE_KEY = String(localStorage.getItem("PRIVATE_KEY"));
       const { ciphertext, nonce } = encryptAssymmetric({
         plaintext: randomBytes,
         publicKey: user.publicKey,
@@ -226,16 +241,16 @@ export const AppLayout = ({ children }: LayoutProps) => {
         orgUsers.forEach(({ status, user: orgUser }) => {
           // skip if status of org user is not accepted
           // this orgUser is the person who created the ws
-          if (status !== 'accepted' || user.email === orgUser.email) return;
+          if (status !== "accepted" || user.email === orgUser.email) return;
           addWsUser.mutate({ email: orgUser.email, workspaceId: newWorkspaceId });
         });
       }
-      createNotification({ text: 'Workspace created', type: 'success' });
-      handlePopUpClose('addNewWs');
+      createNotification({ text: "Workspace created", type: "success" });
+      handlePopUpClose("addNewWs");
       router.push(`/dashboard/${newWorkspaceId}`);
     } catch (err) {
       console.error(err);
-      createNotification({ text: 'Failed to create workspace', type: 'error' });
+      createNotification({ text: "Failed to create workspace", type: "error" });
     }
   };
 
@@ -269,7 +284,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           <SelectItem
                             key={`ws-layout-list-${_id}`}
                             value={_id}
-                            className={`${currentWorkspace?._id === _id && 'bg-mineshaft-600'}`}
+                            className={`${currentWorkspace?._id === _id && "bg-mineshaft-600"}`}
                           >
                             {name}
                           </SelectItem>
@@ -284,9 +299,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           size="sm"
                           onClick={() => {
                             if (isAddingProjectsAllowed) {
-                              handlePopUpOpen('addNewWs')
+                              handlePopUpOpen("addNewWs")
                             } else {
-                              handlePopUpOpen('upgradePlan');
+                              handlePopUpOpen("upgradePlan");
                             }
                           }}
                           leftIcon={<FontAwesomeIcon icon={faPlus} />}
@@ -306,9 +321,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       isFullWidth
                       onClick={() => {
                         if (isAddingProjectsAllowed) {
-                          handlePopUpOpen('addNewWs')
+                          handlePopUpOpen("addNewWs")
                         } else {
-                          handlePopUpOpen('upgradePlan');
+                          handlePopUpOpen("upgradePlan");
                         }
                       }}
                       leftIcon={<FontAwesomeIcon icon={faPlus} />}
@@ -317,7 +332,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     </Button>
                   </div>
                 )}
-                <div className={`${currentWorkspace && router.asPath !== "/noprojects" ? 'block' : 'hidden'}`}>
+                <div className={`${currentWorkspace && router.asPath !== "/noprojects" ? "block" : "hidden"}`}>
                   <Menu>
                     <Link href={`/dashboard/${currentWorkspace?._id}`} passHref>
                       <a>
@@ -325,7 +340,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           isSelected={router.asPath.includes(`/dashboard/${currentWorkspace?._id}`)}
                           icon="system-outline-90-lock-closed"
                         >
-                          {t('nav.menu.secrets')}
+                          {t("nav.menu.secrets")}
                         </MenuItem>
                       </a>
                     </Link>
@@ -335,7 +350,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           isSelected={router.asPath === `/users/${currentWorkspace?._id}`}
                           icon="system-outline-96-groups"
                         >
-                          {t('nav.menu.members')}
+                          {t("nav.menu.members")}
                         </MenuItem>
                       </a>
                     </Link>
@@ -345,7 +360,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           isSelected={router.asPath === `/integrations/${currentWorkspace?._id}`}
                           icon="system-outline-82-extension"
                         >
-                          {t('nav.menu.integrations')}
+                          {t("nav.menu.integrations")}
                         </MenuItem>
                       </a>
                     </Link>
@@ -366,7 +381,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                           }
                           icon="system-outline-109-slider-toggle-settings"
                         >
-                          {t('nav.menu.project-settings')}
+                          {t("nav.menu.project-settings")}
                         </MenuItem>
                       </a>
                     </Link>
@@ -374,7 +389,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                 </div>
               </div>
               <div className="mt-40 mb-4 w-full px-2">
-                {router.asPath.split('/')[1] === 'home' ? (
+                {router.asPath.split("/")[1] === "home" ? (
                   <div className="relative flex cursor-pointer rounded bg-primary-50/10 px-0.5 py-2.5 text-sm text-white">
                     <div className="absolute inset-0 top-0 my-1 ml-1 mr-1 w-1 rounded-xl bg-primary" />
                     <p className="ml-4 mr-2 flex w-6 items-center justify-center text-lg">
@@ -382,12 +397,12 @@ export const AppLayout = ({ children }: LayoutProps) => {
                     </p>
                     Infisical Guide
                     <img
-                      src={`/images/progress-${totalOnboardingActionsDone === 0 ? '0' : ''}${
-                        totalOnboardingActionsDone === 1 ? '14' : ''
-                      }${totalOnboardingActionsDone === 2 ? '28' : ''}${
-                        totalOnboardingActionsDone === 3 ? '43' : ''
-                      }${totalOnboardingActionsDone === 4 ? '57' : ''}${
-                        totalOnboardingActionsDone === 5 ? '71' : ''
+                      src={`/images/progress-${totalOnboardingActionsDone === 0 ? "0" : ""}${
+                        totalOnboardingActionsDone === 1 ? "14" : ""
+                      }${totalOnboardingActionsDone === 2 ? "28" : ""}${
+                        totalOnboardingActionsDone === 3 ? "43" : ""
+                      }${totalOnboardingActionsDone === 4 ? "57" : ""}${
+                        totalOnboardingActionsDone === 5 ? "71" : ""
                       }.svg`}
                       height={58}
                       width={58}
@@ -403,12 +418,12 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </p>
                       Infisical Guide
                       <img
-                        src={`/images/progress-${totalOnboardingActionsDone === 0 ? '0' : ''}${
-                          totalOnboardingActionsDone === 1 ? '14' : ''
-                        }${totalOnboardingActionsDone === 2 ? '28' : ''}${
-                          totalOnboardingActionsDone === 3 ? '43' : ''
-                        }${totalOnboardingActionsDone === 4 ? '57' : ''}${
-                          totalOnboardingActionsDone === 5 ? '71' : ''
+                        src={`/images/progress-${totalOnboardingActionsDone === 0 ? "0" : ""}${
+                          totalOnboardingActionsDone === 1 ? "14" : ""
+                        }${totalOnboardingActionsDone === 2 ? "28" : ""}${
+                          totalOnboardingActionsDone === 3 ? "43" : ""
+                        }${totalOnboardingActionsDone === 4 ? "57" : ""}${
+                          totalOnboardingActionsDone === 5 ? "71" : ""
                         }.svg`}
                         height={58}
                         width={58}
@@ -424,7 +439,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
           <Modal
             isOpen={popUp.addNewWs.isOpen}
             onOpenChange={(isModalOpen) => {
-              handlePopUpToggle('addNewWs', isModalOpen);
+              handlePopUpToggle("addNewWs", isModalOpen);
               reset();
             }}
           >
@@ -476,7 +491,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
                   </Button>
                   <Button
                     key="layout-cancel-create-project"
-                    onClick={() => handlePopUpClose('addNewWs')}
+                    onClick={() => handlePopUpClose("addNewWs")}
                     variant="plain"
                     colorSchema="secondary"
                   >
@@ -488,7 +503,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
           </Modal>
           <UpgradePlanModal
             isOpen={popUp.upgradePlan.isOpen}
-            onOpenChange={(isOpen) => handlePopUpToggle('upgradePlan', isOpen)}
+            onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
             text="You have exceeded the number of projects allowed on the free plan."
           />
           <main className="flex-1 overflow-y-auto overflow-x-hidden bg-bunker-800 dark:[color-scheme:dark]">
@@ -499,7 +514,7 @@ export const AppLayout = ({ children }: LayoutProps) => {
       <div className="z-[200] flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
         <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
         <p className="max-w-sm px-6 text-center text-lg text-gray-200">
-          {` ${t('common.no-mobile')} `}
+          {` ${t("common.no-mobile")} `}
         </p>
       </div>
     </>

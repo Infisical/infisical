@@ -1,10 +1,10 @@
 // @ts-nocheck
 /* eslint-disable import/no-extraneous-dependencies */
 /* eslint-disable global-require */
-import { ComponentPropsWithRef, ElementType, ReactNode, Ref, useRef } from 'react';
-import { motion } from 'framer-motion'
-import Lottie from 'lottie-react'
-import { twMerge } from 'tailwind-merge';
+import { ComponentPropsWithRef, ElementType, ReactNode, Ref, useRef } from "react";
+import { motion } from "framer-motion"
+import Lottie from "lottie-react"
+import { twMerge } from "tailwind-merge";
 
 export type MenuProps = {
   children: ReactNode;
@@ -12,7 +12,7 @@ export type MenuProps = {
 };
 
 export const Menu = ({ children, className }: MenuProps): JSX.Element => {
-  return <ul className={twMerge('p-2', className)}>{children}</ul>;
+  return <ul className={twMerge("p-2", className)}>{children}</ul>;
 };
 
 export type MenuItemProps<T extends ElementType> = {
@@ -27,13 +27,13 @@ export type MenuItemProps<T extends ElementType> = {
   inputRef?: Ref<T>;
 };
 
-export const MenuItem = <T extends ElementType = 'button'>({
+export const MenuItem = <T extends ElementType = "button">({
   children,
   icon,
   className,
   isDisabled,
   isSelected,
-  as: Item = 'button',
+  as: Item = "button",
   description,
   // wrapping in forward ref with generic component causes the loss of ts definitions on props
   inputRef,
@@ -48,9 +48,9 @@ export const MenuItem = <T extends ElementType = 'button'>({
     >
       <li
         className={twMerge(
-          'group px-1 py-2.5 mt-0.5 font-inter flex flex-col text-sm text-bunker-100 transition-all rounded cursor-pointer hover:bg-mineshaft-700 duration-50',
-          isSelected && 'bg-mineshaft-600 hover:bg-mineshaft-600',
-          isDisabled && 'hover:bg-transparent cursor-not-allowed',
+          "group px-1 py-2.5 mt-0.5 font-inter flex flex-col text-sm text-bunker-100 transition-all rounded cursor-pointer hover:bg-mineshaft-700 duration-50",
+          isSelected && "bg-mineshaft-600 hover:bg-mineshaft-600",
+          isDisabled && "hover:bg-transparent cursor-not-allowed",
           className
         )}
       >
@@ -76,7 +76,7 @@ export const MenuItem = <T extends ElementType = 'button'>({
   )
 };
 
-MenuItem.displayName = 'MenuItem';
+MenuItem.displayName = "MenuItem";
 
 export type MenuGroupProps = {
   children: ReactNode;

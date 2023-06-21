@@ -1,28 +1,38 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import queryString from 'query-string';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import queryString from "query-string";
 
-import { Button, Card, CardTitle, FormControl, Select, SelectItem } from '../../../components/v2';
+import {
+  Button,
+  Card,
+  CardTitle,
+  FormControl,
+  Input,
+  Select,
+  SelectItem
+} from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
-} from '../../../hooks/api/integrationAuth';
-import { useGetWorkspaceById } from '../../../hooks/api/workspace';
-import createIntegration from '../../api/integrations/createIntegration';
+} from "../../../hooks/api/integrationAuth";
+import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+import createIntegration from "../../api/integrations/createIntegration";
 
 export default function FlyioCreateIntegrationPage() {
   const router = useRouter();
 
-  const { integrationAuthId } = queryString.parse(router.asPath.split('?')[1]);
+  const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
-  const { data: workspace } = useGetWorkspaceById(localStorage.getItem('projectData.id') ?? '');
-  const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? '');
+  const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
+  const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
   const { data: integrationAuthApps } = useGetIntegrationAuthApps({
-    integrationAuthId: (integrationAuthId as string) ?? ''
+    integrationAuthId: (integrationAuthId as string) ?? ""
   });
 
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
-  const [targetApp, setTargetApp] = useState('');
+  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+  const [secretPath, setSecretPath] = useState("/");
+
+  const [targetApp, setTargetApp] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -38,7 +48,7 @@ export default function FlyioCreateIntegrationPage() {
       if (integrationAuthApps.length > 0) {
         setTargetApp(integrationAuthApps[0].name);
       } else {
-        setTargetApp('none');
+        setTargetApp("none");
       }
     }
   }, [integrationAuthApps]);
@@ -61,12 +71,13 @@ export default function FlyioCreateIntegrationPage() {
         targetServiceId: null,
         owner: null,
         path: null,
-        region: null
+        region: null,
+        secretPath
       });
 
       setIsLoading(false);
 
-      router.push(`/integrations/${localStorage.getItem('projectData.id')}`);
+      router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
       console.error(err);
     }
@@ -95,6 +106,13 @@ export default function FlyioCreateIntegrationPage() {
               </SelectItem>
             ))}
           </Select>
+        </FormControl>
+        <FormControl label="Secrets Path">
+          <Input
+            value={secretPath}
+            onChange={(evt) => setSecretPath(evt.target.value)}
+            placeholder="Provide a path, default is /"
+          />
         </FormControl>
         <FormControl label="Fly.io App" className="mt-4">
           <Select

@@ -10,10 +10,10 @@ interface Props {
  * @param {string} obj.code
  * @returns
  */
-const checkEmailVerificationCode = ({ email, code }: Props) => fetch('/api/v1/signup/email/verify', {
-    method: 'POST',
+const checkEmailVerificationCode = ({ email, code }: Props) => fetch("/api/v1/signup/email/verify", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       email,

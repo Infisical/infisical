@@ -1,1 +1,1 @@
-export { OrgIncidentContactsTable } from './OrgIncidentContactsTable';
+export { OrgIncidentContactsTable } from "./OrgIncidentContactsTable";

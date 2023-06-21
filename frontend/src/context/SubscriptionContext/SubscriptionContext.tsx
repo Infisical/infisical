@@ -1,9 +1,9 @@
-import { createContext, ReactNode, useContext, useMemo } from 'react';
+import { createContext, ReactNode, useContext, useMemo } from "react";
 
-import { useGetOrgSubscription } from '@app/hooks/api';
-import { SubscriptionPlan } from '@app/hooks/api/types';
+import { useGetOrgSubscription } from "@app/hooks/api";
+import { SubscriptionPlan } from "@app/hooks/api/types";
 
-import { useWorkspace } from '../WorkspaceContext';
+import { useWorkspace } from "../WorkspaceContext";
 // import { Subscription } from '@app/hooks/api/workspace/types';
 
 type TSubscriptionContext = {
@@ -20,7 +20,7 @@ type Props = {
 export const SubscriptionProvider = ({ children }: Props): JSX.Element => {
   const { currentWorkspace } = useWorkspace();
   const { data, isLoading } = useGetOrgSubscription({
-    orgID: currentWorkspace?.organization || ''
+    orgID: currentWorkspace?.organization || ""
   });
 
   // memorize the workspace details for the context
@@ -38,7 +38,7 @@ export const SubscriptionProvider = ({ children }: Props): JSX.Element => {
 export const useSubscription = () => {
   const ctx = useContext(SubscriptionContext);
   if (!ctx) {
-    throw new Error('useSubscription has to be used within <SubscriptionContext.Provider>');
+    throw new Error("useSubscription has to be used within <SubscriptionContext.Provider>");
   }
 
   return ctx;

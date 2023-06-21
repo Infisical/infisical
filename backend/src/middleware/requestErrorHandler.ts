@@ -1,9 +1,9 @@
-import * as Sentry from '@sentry/node';
-import { ErrorRequestHandler } from 'express';
-import { InternalServerError } from '../utils/errors';
-import { getLogger } from '../utils/logger';
-import RequestError, { LogLevel } from '../utils/requestError';
-import { getNodeEnv } from '../config';
+import * as Sentry from "@sentry/node";
+import { ErrorRequestHandler } from "express";
+import { InternalServerError } from "../utils/errors";
+import { getLogger } from "../utils/logger";
+import RequestError, { LogLevel } from "../utils/requestError";
+import { getNodeEnv } from "../config";
 
 export const requestErrorHandler: ErrorRequestHandler = async (
   error: RequestError | Error,
@@ -24,7 +24,7 @@ export const requestErrorHandler: ErrorRequestHandler = async (
       context: { exception: error.message },
       stack: error.stack,
     });
-    (await getLogger('backend-main')).log(
+    (await getLogger("backend-main")).log(
       (<RequestError>error).levelName.toLowerCase(),
       (<RequestError>error).message
     );

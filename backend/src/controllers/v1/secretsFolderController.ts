@@ -5,12 +5,13 @@ import { BadRequestError } from "../../utils/errors";
 import {
   appendFolder,
   deleteFolderById,
-  getAllFolderIds,
-  searchByFolderIdWithDir,
-  searchByFolderId,
-  validateFolderName,
   generateFolderId,
+  getAllFolderIds,
+  getFolderByPath,
   getParentFromFolderId,
+  searchByFolderId,
+  searchByFolderIdWithDir,
+  validateFolderName,
 } from "../../services/FolderService";
 import { ADMIN, MEMBER } from "../../variables";
 import { validateMembership } from "../../helpers/membership";
@@ -177,11 +178,13 @@ export const deleteFolder = async (req: Request, res: Response) => {
 
 // TODO: validate workspace
 export const getFolders = async (req: Request, res: Response) => {
-  const { workspaceId, environment, parentFolderId } = req.query as {
-    workspaceId: string;
-    environment: string;
-    parentFolderId?: string;
-  };
+  const { workspaceId, environment, parentFolderId, parentFolderPath } =
+    req.query as {
+      workspaceId: string;
+      environment: string;
+      parentFolderId?: string;
+      parentFolderPath?: string;
+    };
 
   const folders = await Folder.findOne({ workspace: workspaceId, environment });
   if (!folders) {
@@ -195,6 +198,20 @@ export const getFolders = async (req: Request, res: Response) => {
     workspaceId,
     acceptedRoles: [ADMIN, MEMBER],
   });
+
+  // if instead of parentFolderId given a path like /folder1/folder2
+  if (parentFolderPath) {
+    const folder = getFolderByPath(folders.nodes, parentFolderPath);
+    if (!folder) {
+      res.send({ folders: [], dir: [] });
+      return;
+    }
+    // dir is not needed at present as this is only used in overview section of secrets
+    res.send({
+      folders: folder.children.map(({ id, name }) => ({ id, name })),
+      dir: [{ name: folder.name, id: folder.id }],
+    });
+  }
 
   if (!parentFolderId) {
     const rootFolders = folders.nodes.children.map(({ id, name }) => ({

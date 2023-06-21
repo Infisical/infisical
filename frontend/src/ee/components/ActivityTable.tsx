@@ -1,12 +1,12 @@
 /* eslint-disable jsx-a11y/no-noninteractive-element-interactions */
-import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { faAngleDown, faAngleRight, faUpRightFromSquare } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { faAngleDown, faAngleRight, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import timeSince from '@app/ee/utilities/timeSince';
+import timeSince from "@app/ee/utilities/timeSince";
 
-import guidGenerator from '../../components/utilities/randomId';
+import guidGenerator from "../../components/utilities/randomId";
 
 interface PayloadProps {
   _id: string;
@@ -51,7 +51,7 @@ const ActivityLogsRow = ({
     if (row?.serviceAccount) return `Service Account: ${row.serviceAccount.name}`;
     if (row?.serviceTokenData.name) return `Service Token: ${row.serviceTokenData.name}`;
 
-    return '';
+    return "";
   };
   return (
     <>
@@ -64,7 +64,7 @@ const ActivityLogsRow = ({
           <FontAwesomeIcon
             icon={payloadOpened ? faAngleDown : faAngleRight}
             className={`ml-6 mb-2 text-mineshaft-300 cursor-pointer ${
-              payloadOpened ? 'bg-mineshaft-500 hover:bg-mineshaft-500' : 'hover:bg-mineshaft-700'
+              payloadOpened ? "bg-mineshaft-500 hover:bg-mineshaft-500" : "hover:bg-mineshaft-700"
             } h-4 w-4 rounded-md p-1 duration-100`}
           />
         </button>
@@ -74,7 +74,7 @@ const ActivityLogsRow = ({
               (action) =>
                 `${String(action.secretVersions.length)} ${t(`activity.event.${action.name}`)}`
             )
-            .join(' and ')}
+            .join(" and ")}
         </div>
         <div className="border-t border-mineshaft-700 py-3 pl-6 w-1/4">{renderUser()}</div>
         <div className="border-t border-mineshaft-700 py-3 pl-6 w-1/4">{row.channel}</div>
@@ -86,7 +86,7 @@ const ActivityLogsRow = ({
         <div className="h-9 border-t border-mineshaft-700 text-sm text-bunker-200 bg-mineshaft-900/50 w-full flex flex-row items-center">
           <div className='max-w-xl w-full flex flex-row items-center'>
             <div className='w-24' />
-            <div className='w-1/2'>{String(t('common.timestamp'))}</div>
+            <div className='w-1/2'>{String(t("common.timestamp"))}</div>
             <div className='w-1/2'>{row.createdAt}</div>
           </div>
         </div>
@@ -108,7 +108,7 @@ const ActivityLogsRow = ({
                     className='w-1/2 text-primary-300 hover:text-primary-500 flex flex-row justify-left items-center duration-100'
                   >
                     {action.secretVersions.length +
-                        (action.secretVersions.length !== 1 ? ' secrets' : ' secret')}
+                        (action.secretVersions.length !== 1 ? " secrets" : " secret")}
                       <FontAwesomeIcon
                         icon={faUpRightFromSquare}
                         className="ml-2 mb-0.5 h-3 w-3 font-light"
@@ -122,7 +122,7 @@ const ActivityLogsRow = ({
         <div className="h-9 border-t border-mineshaft-700 text-sm text-bunker-200 bg-mineshaft-900/50 w-full flex flex-row items-center">
           <div className='max-w-xl w-full flex flex-row items-center'>
             <div className='w-24' />
-            <div className='w-1/2'>{String(t('activity.ip-address'))}</div>
+            <div className='w-1/2'>{String(t("activity.ip-address"))}</div>
             <div className='w-1/2'>{row.ipAddress}</div>
           </div>
         </div>
@@ -169,16 +169,16 @@ const ActivityTable = ({
               </button>
               <div className="flex flex-row justify-between w-full">
                 <div className="pt-2.5 pb-3 text-left font-semibold w-1/4 pl-6">
-                  {String(t('common.event')).toUpperCase()}
+                  {String(t("common.event")).toUpperCase()}
                 </div>
                 <div className="pl-6 pt-2.5 pb-3 text-left font-semibold w-1/4 pl-6">
-                  {String(t('common.user')).toUpperCase()}
+                  {String(t("common.user")).toUpperCase()}
                 </div>
                 <div className="pl-6 pt-2.5 pb-3 text-left font-semibold w-1/4 pl-6">
-                  {String(t('common.source')).toUpperCase()}
+                  {String(t("common.source")).toUpperCase()}
                 </div>
                 <div className="pl-6 pt-2.5 pb-3 text-left font-semibold w-1/4 pl-6">
-                  {String(t('common.time')).toUpperCase()}
+                  {String(t("common.time")).toUpperCase()}
                 </div>
               </div>
             </div>

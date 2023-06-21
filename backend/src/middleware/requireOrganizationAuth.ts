@@ -1,8 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
-import { Types } from 'mongoose';
-import { validateClientForOrganization } from '../validation';
+import { NextFunction, Request, Response } from "express";
+import { Types } from "mongoose";
+import { validateClientForOrganization } from "../validation";
 
-type req = 'params' | 'body' | 'query';
+type req = "params" | "body" | "query";
 
 /**
  * Validate if user on request is a member with proper roles for organization
@@ -14,10 +14,10 @@ type req = 'params' | 'body' | 'query';
 const requireOrganizationAuth = ({
 	acceptedRoles,
 	acceptedStatuses,
-	locationOrganizationId = 'params'
+	locationOrganizationId = "params",
 }: {
-	acceptedRoles: Array<'owner' | 'admin' | 'member'>;
-	acceptedStatuses: Array<'invited' | 'accepted'>;
+	acceptedRoles: Array<"owner" | "admin" | "member">;
+	acceptedStatuses: Array<"invited" | "accepted">;
 	locationOrganizationId?: req;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
@@ -27,7 +27,7 @@ const requireOrganizationAuth = ({
 			authData: req.authData,
 			organizationId: new Types.ObjectId(organizationId),
 			acceptedRoles,
-			acceptedStatuses
+			acceptedStatuses,
 		});
 		
 		if (organization) {

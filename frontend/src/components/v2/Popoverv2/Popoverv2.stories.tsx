@@ -1,12 +1,12 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 
-import { Button } from '../Button';
-import { Popover, PopoverContent, PopoverContentProps, PopoverTrigger } from './Popoverv2';
+import { Button } from "../Button";
+import { Popover, PopoverContent, PopoverContentProps, PopoverTrigger } from "./Popoverv2";
 
 const meta: Meta<typeof PopoverContent> = {
-  title: 'Components/Popover',
+  title: "Components/Popover",
   component: Popover,
-  tags: ['v2']
+  tags: ["v2"]
 };
 
 export default meta;

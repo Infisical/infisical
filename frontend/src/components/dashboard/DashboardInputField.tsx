@@ -1,10 +1,10 @@
-import { memo, SyntheticEvent, useRef } from 'react';
-import { faCircle, faCodeBranch, faExclamationCircle, faEye } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { memo, SyntheticEvent, useRef } from "react";
+import { faCircle, faCodeBranch, faExclamationCircle, faEye } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import guidGenerator from '../utilities/randomId';
-import { HoverObject } from '../v2/HoverCard';
-import { PopoverObject } from '../v2/Popover/Popover';
+import guidGenerator from "../utilities/randomId";
+import { HoverObject } from "../v2/HoverCard";
+import { PopoverObject } from "../v2/Popover/Popover";
 
 const REGEX = /([$]{.*?})/g;
 
@@ -12,7 +12,7 @@ interface DashboardInputFieldProps {
   id: string;
   onChangeHandler: (value: string, id: string) => void;
   value: string | undefined;
-  type: 'varName' | 'value' | 'comment';
+  type: "varName" | "value" | "comment";
   blurred?: boolean;
   isDuplicate?: boolean;
   isCapitalized?: boolean;
@@ -56,19 +56,19 @@ const DashboardInputField = ({
     ref.current.scrollLeft = e.currentTarget.scrollLeft;
   };
 
-  if (type === 'varName') {
-    const startsWithNumber = !Number.isNaN(Number(value?.charAt(0))) && value !== '';
+  if (type === "varName") {
+    const startsWithNumber = !Number.isNaN(Number(value?.charAt(0))) && value !== "";
     const error = startsWithNumber || isDuplicate;
 
     return (
       <div className={`relative flex-col w-full h-10 ${
-        error && value !== '' ? 'bg-red/[0.15]' : ''
+        error && value !== "" ? "bg-red/[0.15]" : ""
       } ${
-        isSideBarOpen && 'bg-mineshaft-700 duration-200'
+        isSideBarOpen && "bg-mineshaft-700 duration-200"
       }`}>
         <div
           className={`group relative flex flex-col justify-center items-center h-full ${
-            error ? 'w-max' : 'w-full'
+            error ? "w-max" : "w-full"
           }`}
         >
           <input
@@ -76,7 +76,7 @@ const DashboardInputField = ({
             type={type}
             value={value}
             className={`z-10 peer font-mono ph-no-capture bg-transparent h-full caret-bunker-200 text-sm px-2 w-full min-w-16 outline-none ${
-              error ? 'text-red-600 focus:text-red-500' : 'text-bunker-300 focus:text-bunker-100'
+              error ? "text-red-600 focus:text-red-500" : "text-bunker-300 focus:text-bunker-100"
             } duration-200`}
             spellCheck="false"
           />
@@ -90,7 +90,7 @@ const DashboardInputField = ({
             />
           </div>
         )}
-        {isDuplicate && value !== '' && !startsWithNumber && (
+        {isDuplicate && value !== "" && !startsWithNumber && (
           <div className='absolute right-2 top-2 text-red z-50'>
             <HoverObject 
               text="Secret names should be unique"
@@ -100,39 +100,39 @@ const DashboardInputField = ({
           </div>
         )}
         {!error && <div className={`absolute right-0 top-0 text-red z-50 bg-mineshaft-800 group-hover:bg-mineshaft-700 ${
-          overrideEnabled ? 'visible' : 'invisible group-hover:visible'
+          overrideEnabled ? "visible" : "invisible group-hover:visible"
         } cursor-pointer duration-0 h-10 flex items-center px-2`}>
           <button type="button" onClick={() => {
             if (modifyValueOverride) {
               if (overrideEnabled === false) {
-                modifyValueOverride('', id);
+                modifyValueOverride("", id);
               } else {
                 modifyValueOverride(undefined, id);
               }
             }
           }}>
             <HoverObject 
-              text={overrideEnabled ? 'This secret is overriden with your personal value' : 'You can override this secret with a personal value'}
+              text={overrideEnabled ? "This secret is overriden with your personal value" : "You can override this secret with a personal value"}
               icon={faCodeBranch}
-              color={overrideEnabled ? 'primary' : 'bunker-400'}
+              color={overrideEnabled ? "primary" : "bunker-400"}
             />
           </button>
         </div>}
       </div>
     );
   }
-  if (type === 'comment') {
-    const startsWithNumber = !Number.isNaN(Number(value?.charAt(0))) && value !== '';
+  if (type === "comment") {
+    const startsWithNumber = !Number.isNaN(Number(value?.charAt(0))) && value !== "";
     const error = startsWithNumber || isDuplicate;
 
     return (
-      <PopoverObject text={value || ''} onChangeHandler={onChangeHandler} id={id}>
+      <PopoverObject text={value || ""} onChangeHandler={onChangeHandler} id={id}>
         <div title={value} className={`relative flex-col w-full h-10 overflow-hidden ${
-          isSideBarOpen && 'bg-mineshaft-700 duration-200'
+          isSideBarOpen && "bg-mineshaft-700 duration-200"
         }`}>
           <div
             className={`group relative flex flex-col justify-center items-center h-full ${
-              error ? 'w-max' : 'w-full'
+              error ? "w-max" : "w-full"
             }`}
           >
             {value?.split("\n")[0] ? <span className='ph-no-capture truncate break-all bg-transparent leading-tight text-xs px-2 w-full min-w-16 outline-none text-bunker-300 focus:text-bunker-100 placeholder:text-bunker-400 placeholder:focus:text-transparent placeholder duration-200'>
@@ -146,7 +146,7 @@ const DashboardInputField = ({
       </PopoverObject>
     );
   }
-  if (type === 'value') {
+  if (type === "value") {
     return (
       <div className="flex-col w-full">
         <div className="group relative whitespace-pre	flex flex-col justify-center w-full">
@@ -161,8 +161,8 @@ const DashboardInputField = ({
             onScroll={syncScroll}
             className={`${
               blurred
-                ? 'text-transparent focus:text-transparent active:text-transparent'
-                : ''
+                ? "text-transparent focus:text-transparent active:text-transparent"
+                : ""
             } z-10 peer font-mono ph-no-capture bg-transparent caret-white text-transparent text-sm px-2 py-2 w-full min-w-16 outline-none duration-200 no-scrollbar no-scrollbar::-webkit-scrollbar`}
             spellCheck="false"
           />
@@ -170,10 +170,10 @@ const DashboardInputField = ({
             ref={ref}
             className={`${
               blurred && !overrideEnabled
-                ? 'text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-100 peer-active:text-gray-400 duration-200'
-                : ''
-            } ${overrideEnabled ? 'text-primary-300' : 'text-gray-400'}
-            absolute flex flex-row whitespace-pre font-mono z-0 ${blurred ? 'invisible' : 'visible'} peer-focus:visible mt-0.5 ph-no-capture overflow-x-scroll bg-transparent h-10 text-sm px-2 py-2 w-full min-w-16 outline-none duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
+                ? "text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-100 peer-active:text-gray-400 duration-200"
+                : ""
+            } ${overrideEnabled ? "text-primary-300" : "text-gray-400"}
+            absolute flex flex-row whitespace-pre font-mono z-0 ${blurred ? "invisible" : "visible"} peer-focus:visible mt-0.5 ph-no-capture overflow-x-scroll bg-transparent h-10 text-sm px-2 py-2 w-full min-w-16 outline-none duration-100 no-scrollbar no-scrollbar::-webkit-scrollbar`}
           >
             {value?.split(REGEX).map((word) => {
               if (word.match(REGEX) !== null) {
@@ -183,7 +183,7 @@ const DashboardInputField = ({
                     <span className="ph-no-capture text-yellow-200/80">
                       {word.slice(2, word.length - 1)}
                     </span>
-                    {word.slice(word.length - 1, word.length) === '}' ? (
+                    {word.slice(word.length - 1, word.length) === "}" ? (
                       <span className="ph-no-capture text-yellow">
                         {word.slice(word.length - 1, word.length)}
                       </span>
@@ -204,17 +204,17 @@ const DashboardInputField = ({
           </div>
           {blurred && (
             <div className={`absolute flex flex-row justify-between items-center z-0 peer pr-2 ${
-              isSideBarOpen ? 'bg-mineshaft-700 duration-200' : 'bg-mineshaft-800'
+              isSideBarOpen ? "bg-mineshaft-700 duration-200" : "bg-mineshaft-800"
             } peer-active:hidden peer-focus:hidden group-hover:bg-white/[0.00] duration-100 h-10 w-full text-bunker-400 text-clip`}>
               <div className="px-2 flex flex-row items-center overflow-x-scroll no-scrollbar no-scrollbar::-webkit-scrollbar">
-                {value?.split('').map(() => (
+                {value?.split("").map(() => (
                   <FontAwesomeIcon
                     key={guidGenerator()}
                     className="text-xxs mr-0.5"
                     icon={faCircle}
                   />
                 ))}
-                {value?.split('').length === 0 && <span className='text-bunker-400/80'>EMPTY</span>}
+                {value?.split("").length === 0 && <span className='text-bunker-400/80'>EMPTY</span>}
               </div>
               <div className='invisible group-hover:visible cursor-default z-[100]'><FontAwesomeIcon icon={faEye} /></div>
             </div>

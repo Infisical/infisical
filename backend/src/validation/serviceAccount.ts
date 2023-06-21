@@ -1,35 +1,35 @@
-import _ from 'lodash';
-import { Types } from 'mongoose';
+import _ from "lodash";
+import { Types } from "mongoose";
 import {
-	User,
+	IOrganization,
+	ISecret,
+	IServiceAccount,
+    IServiceTokenData,
 	IUser,
 	ServiceAccount,
-    IServiceAccount,
+	ServiceAccountWorkspacePermission,
 	ServiceTokenData,
-	IServiceTokenData,
-	ISecret,
-	IOrganization,
-	ServiceAccountWorkspacePermission
-} from '../models';
-import { validateUserClientForServiceAccount } from './user';
+	User,
+} from "../models";
+import { validateUserClientForServiceAccount } from "./user";
 import { 
 	BadRequestError, 
+	ServiceAccountNotFoundError,
 	UnauthorizedRequestError,
-	ServiceAccountNotFoundError
-} from '../utils/errors';
+} from "../utils/errors";
 import {
-	PERMISSION_READ_SECRETS,
-	PERMISSION_WRITE_SECRETS,
+	AUTH_MODE_API_KEY,
 	AUTH_MODE_JWT,
 	AUTH_MODE_SERVICE_ACCOUNT,
 	AUTH_MODE_SERVICE_TOKEN,
-	AUTH_MODE_API_KEY
-} from '../variables';
+	PERMISSION_READ_SECRETS,
+	PERMISSION_WRITE_SECRETS,
+} from "../variables";
 
 export const validateClientForServiceAccount = async ({
 	authData,
 	serviceAccountId,
-	requiredPermissions
+	requiredPermissions,
 }: {
 	authData: {
 		authMode: string;
@@ -42,7 +42,7 @@ export const validateClientForServiceAccount = async ({
 	
 	if (!serviceAccount) {
 		throw ServiceAccountNotFoundError({
-			message: 'Failed to find service account'
+			message: "Failed to find service account",
 		});
 	}
 	
@@ -50,7 +50,7 @@ export const validateClientForServiceAccount = async ({
 		await validateUserClientForServiceAccount({
 			user: authData.authPayload,
 			serviceAccount,
-			requiredPermissions
+			requiredPermissions,
 		});
 		
 		return serviceAccount;
@@ -60,7 +60,7 @@ export const validateClientForServiceAccount = async ({
 		await validateServiceAccountClientForServiceAccount({
 			serviceAccount: authData.authPayload,
 			targetServiceAccount: serviceAccount,
-			requiredPermissions
+			requiredPermissions,
 		});
 
 		return serviceAccount;
@@ -68,7 +68,7 @@ export const validateClientForServiceAccount = async ({
 
 	if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
 		throw UnauthorizedRequestError({
-			message: 'Failed service token authorization for service account resource'
+			message: "Failed service token authorization for service account resource",
 		});
 	}
 
@@ -76,14 +76,14 @@ export const validateClientForServiceAccount = async ({
 		await validateUserClientForServiceAccount({
 			user: authData.authPayload,
 			serviceAccount,
-			requiredPermissions
+			requiredPermissions,
 		});
 		
 		return serviceAccount;
 	}
 	
 	throw UnauthorizedRequestError({
-		message: 'Failed client authorization for service account resource'
+		message: "Failed client authorization for service account resource",
 	});
 }
 
@@ -101,7 +101,7 @@ export const validateServiceAccountClientForWorkspace = async ({
     serviceAccount,
 	workspaceId,
 	environment,
-	requiredPermissions
+	requiredPermissions,
 }: {
     serviceAccount: IServiceAccount;
 	workspaceId: Types.ObjectId;
@@ -115,11 +115,11 @@ export const validateServiceAccountClientForWorkspace = async ({
 		const permission = await ServiceAccountWorkspacePermission.findOne({
 			serviceAccount,
 			workspace: new Types.ObjectId(workspaceId),
-			environment
+			environment,
 		});
 	
 		if (!permission) throw UnauthorizedRequestError({
-			message: 'Failed service account authorization for the given workspace environment'
+			message: "Failed service account authorization for the given workspace environment",
 		});
 
 		let runningIsDisallowed = false;
@@ -137,7 +137,7 @@ export const validateServiceAccountClientForWorkspace = async ({
 			
 			if (runningIsDisallowed) {
 				throw UnauthorizedRequestError({
-					message: `Failed permissions authorization for workspace environment action : ${requiredPermission}`
+					message: `Failed permissions authorization for workspace environment action : ${requiredPermission}`,
 				});	
 			}
 		});
@@ -149,11 +149,11 @@ export const validateServiceAccountClientForWorkspace = async ({
 
 		const permission = await ServiceAccountWorkspacePermission.findOne({
 			serviceAccount,
-			workspace: new Types.ObjectId(workspaceId)
+			workspace: new Types.ObjectId(workspaceId),
 		});
 		
 		if (!permission) throw UnauthorizedRequestError({
-			message: 'Failed service account authorization for the given workspace'
+			message: "Failed service account authorization for the given workspace",
 		});
 	}
 }
@@ -169,7 +169,7 @@ export const validateServiceAccountClientForWorkspace = async ({
 export const validateServiceAccountClientForSecrets = async ({
 	serviceAccount,
 	secrets,
-	requiredPermissions
+	requiredPermissions,
 }: {
 	serviceAccount: IServiceAccount;
 	secrets: ISecret[];
@@ -177,7 +177,7 @@ export const validateServiceAccountClientForSecrets = async ({
 }) => {
 
 	const permissions = await ServiceAccountWorkspacePermission.find({
-		serviceAccount: serviceAccount._id 
+		serviceAccount: serviceAccount._id, 
 	});
 
 	const permissionsObj = _.keyBy(permissions, (p) => {
@@ -188,7 +188,7 @@ export const validateServiceAccountClientForSecrets = async ({
 		const permission = permissionsObj[`${secret.workspace.toString()}-${secret.environment}`];
 		
 		if (!permission) throw BadRequestError({
-			message: 'Failed to find any permission for the secret workspace and environment'
+			message: "Failed to find any permission for the secret workspace and environment",
 		});
 		
 		requiredPermissions?.forEach((requiredPermission: string) => {
@@ -207,7 +207,7 @@ export const validateServiceAccountClientForSecrets = async ({
 				
 				if (runningIsDisallowed) {
 					throw UnauthorizedRequestError({
-						message: `Failed permissions authorization for workspace environment action : ${requiredPermission}`
+						message: `Failed permissions authorization for workspace environment action : ${requiredPermission}`,
 					});	
 				}
 			});
@@ -226,7 +226,7 @@ export const validateServiceAccountClientForSecrets = async ({
 export const validateServiceAccountClientForServiceAccount = ({
 	serviceAccount,
 	targetServiceAccount,
-	requiredPermissions
+	requiredPermissions,
 }: {
 	serviceAccount: IServiceAccount;
 	targetServiceAccount: IServiceAccount;
@@ -234,7 +234,7 @@ export const validateServiceAccountClientForServiceAccount = ({
 }) => {
 	if (!serviceAccount.organization.equals(targetServiceAccount.organization)) {
 		throw UnauthorizedRequestError({
-			message: 'Failed service account authorization for the given service account'
+			message: "Failed service account authorization for the given service account",
 		});
 	}
 }
@@ -247,14 +247,14 @@ export const validateServiceAccountClientForServiceAccount = ({
  */
 export const validateServiceAccountClientForOrganization = async ({
 	serviceAccount,
-	organization
+	organization,
 }: {
 	serviceAccount: IServiceAccount;
 	organization: IOrganization;
 }) => {
 	if (!serviceAccount.organization.equals(organization._id)) {
 		throw UnauthorizedRequestError({
-			message: 'Failed service account authorization for the given organization'
+			message: "Failed service account authorization for the given organization",
 		});
 	}
 }

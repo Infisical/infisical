@@ -1,8 +1,8 @@
-import { Controller, useForm } from 'react-hook-form';
-import { faPencil, faPlus, faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { Controller, useForm } from "react-hook-form";
+import { faPencil, faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
 import {
   Button,
@@ -22,8 +22,8 @@ import {
   THead,
   Tr,
   UpgradePlanModal
-} from '@app/components/v2';
-import { usePopUp } from '@app/hooks/usePopUp';
+} from "@app/components/v2";
+import { usePopUp } from "@app/hooks/usePopUp";
 
 type Props = {
   environments: Array<{ name: string; slug: string }>;
@@ -35,8 +35,8 @@ type Props = {
 };
 
 const createUpdateEnvSchema = yup.object({
-  environmentName: yup.string().label('Environment Name').required(),
-  environmentSlug: yup.string().label('Environment Slug').required()
+  environmentName: yup.string().label("Environment Name").required(),
+  environmentSlug: yup.string().label("Environment Slug").required()
 });
 
 export type CreateUpdateEnvFormData = yup.InferType<typeof createUpdateEnvSchema>;
@@ -50,9 +50,9 @@ export const EnvironmentSection = ({
   onUpdate
 }: Props): JSX.Element => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    'createUpdateEnv',
-    'deleteEnv',
-    'upgradePlan'
+    "createUpdateEnv",
+    "deleteEnv",
+    "upgradePlan"
   ] as const);
 
   const {
@@ -73,12 +73,12 @@ export const EnvironmentSection = ({
     } else {
       await onCreate(data);
     }
-    handlePopUpClose('createUpdateEnv');
+    handlePopUpClose("createUpdateEnv");
   };
 
   const onEnvDeleteSubmit = async (envSlug: string) => {
     await onDelete(envSlug);
-    handlePopUpClose('deleteEnv');
+    handlePopUpClose("deleteEnv");
   };
 
   return (
@@ -98,9 +98,9 @@ export const EnvironmentSection = ({
           <Button
             onClick={() => {
               if (isEnvServiceAllowed) {
-                handlePopUpOpen('createUpdateEnv');
+                handlePopUpOpen("createUpdateEnv");
               } else {
-                handlePopUpOpen('upgradePlan');
+                handlePopUpOpen("upgradePlan");
               }
             }}
             colorSchema="primary"
@@ -130,7 +130,7 @@ export const EnvironmentSection = ({
                     <IconButton
                       className="mr-3 py-2"
                       onClick={() => {
-                        handlePopUpOpen('createUpdateEnv', { name, slug });
+                        handlePopUpOpen("createUpdateEnv", { name, slug });
                         reset({ environmentName: name, environmentSlug: slug });
                       }}
                       colorSchema="primary"
@@ -141,7 +141,7 @@ export const EnvironmentSection = ({
                     </IconButton>
                     <IconButton
                       onClick={() => {
-                        handlePopUpOpen('deleteEnv', { name, slug });
+                        handlePopUpOpen("deleteEnv", { name, slug });
                       }}
                       size="lg"
                       colorSchema="danger"
@@ -166,11 +166,11 @@ export const EnvironmentSection = ({
       <Modal
         isOpen={popUp?.createUpdateEnv?.isOpen}
         onOpenChange={(isOpen) => {
-          handlePopUpToggle('createUpdateEnv', isOpen);
+          handlePopUpToggle("createUpdateEnv", isOpen);
           reset();
         }}
       >
-        <ModalContent title={isEnvUpdate ? 'Update environment' : 'Create a new environment'}>
+        <ModalContent title={isEnvUpdate ? "Update environment" : "Create a new environment"}>
           <form onSubmit={handleSubmit(onEnvModalSubmit)}>
             <Controller
               control={control}
@@ -209,7 +209,7 @@ export const EnvironmentSection = ({
                 isLoading={isSubmitting}
                 isDisabled={isSubmitting}
               >
-                {isEnvUpdate ? 'Update' : 'Create'}
+                {isEnvUpdate ? "Update" : "Create"}
               </Button>
 
               <Button colorSchema="secondary" variant="plain">
@@ -222,17 +222,17 @@ export const EnvironmentSection = ({
       <DeleteActionModal
         isOpen={popUp.deleteEnv.isOpen}
         title={`Are you sure want to delete ${
-          (popUp?.deleteEnv?.data as { name: string })?.name || ' '
+          (popUp?.deleteEnv?.data as { name: string })?.name || " "
         }?`}
-        onChange={(isOpen) => handlePopUpToggle('deleteEnv', isOpen)}
-        deleteKey={(popUp?.deleteEnv?.data as { slug: string })?.slug || ''}
+        onChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}
+        deleteKey={(popUp?.deleteEnv?.data as { slug: string })?.slug || ""}
         onDeleteApproved={() =>
           onEnvDeleteSubmit((popUp?.deleteEnv?.data as { slug: string })?.slug)
         }
       />
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle('upgradePlan', isOpen)}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You can add custom environments if you switch to Infisical's Team plan."
       />
     </div>

@@ -1,14 +1,14 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 
-import { Card, CardBody, CardFooter, CardProps, CardTitle } from './Card';
+import { Card, CardBody, CardFooter, CardProps, CardTitle } from "./Card";
 
 const meta: Meta<typeof Card> = {
-  title: 'Components/Card',
+  title: "Components/Card",
   component: Card,
-  tags: ['v2'],
+  tags: ["v2"],
   argTypes: {
     isRounded: {
-      type: 'boolean',
+      type: "boolean",
       defaultValue: true
     }
   }

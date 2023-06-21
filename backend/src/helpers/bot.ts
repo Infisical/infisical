@@ -1,29 +1,21 @@
 import { Types } from "mongoose";
+import { Bot, BotKey, ISecret, IUser, Secret } from "../models";
 import {
-  Bot,
-  BotKey,
-  Secret,
-  ISecret,
-  IUser
-} from "../models";
-import {
-  generateKeyPair,
-  encryptSymmetric128BitHexKeyUTF8,
+  decryptAsymmetric,
   decryptSymmetric128BitHexKeyUTF8,
-  decryptAsymmetric
-} from '../utils/crypto';
+  encryptSymmetric128BitHexKeyUTF8,
+  generateKeyPair,
+} from "../utils/crypto";
 import {
-  SECRET_SHARED,
   ALGORITHM_AES_256_GCM,
+  ENCODING_SCHEME_BASE64,
   ENCODING_SCHEME_UTF8,
-  ENCODING_SCHEME_BASE64
+  SECRET_SHARED,
 } from "../variables";
-import { 
-  getEncryptionKey, 
-  getRootEncryptionKey,
-  client
-} from "../config";
+import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
 import { InternalServerError } from "../utils/errors";
+import Folder from "../models/folder";
+import { getFolderByPath } from "../services/FolderService";
 
 /**
  * Create an inactive bot with name [name] for workspace with id [workspaceId]
@@ -40,15 +32,14 @@ export const createBot = async ({
 }) => {
   const encryptionKey = await getEncryptionKey();
   const rootEncryptionKey = await getRootEncryptionKey();
-  
+
   const { publicKey, privateKey } = generateKeyPair();
-  
+
   if (rootEncryptionKey) {
-    const { 
-      ciphertext, 
-      iv, 
-      tag 
-    } = client.encryptSymmetric(privateKey, rootEncryptionKey);
+    const { ciphertext, iv, tag } = client.encryptSymmetric(
+      privateKey,
+      rootEncryptionKey
+    );
 
     return await new Bot({
       name,
@@ -59,9 +50,8 @@ export const createBot = async ({
       iv,
       tag,
       algorithm: ALGORITHM_AES_256_GCM,
-      keyEncoding: ENCODING_SCHEME_BASE64
+      keyEncoding: ENCODING_SCHEME_BASE64,
     }).save();
-  
   } else if (encryptionKey) {
     const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
       plaintext: privateKey,
@@ -77,13 +67,25 @@ export const createBot = async ({
       iv,
       tag,
       algorithm: ALGORITHM_AES_256_GCM,
-      keyEncoding: ENCODING_SCHEME_UTF8
+      keyEncoding: ENCODING_SCHEME_UTF8,
     }).save();
   }
 
   throw InternalServerError({
-    message: 'Failed to create new bot due to missing encryption key'
+    message: "Failed to create new bot due to missing encryption key",
   });
+};
+
+/**
+ * Return whether or not workspace with id [workspaceId] is end-to-end encrypted
+ * @param {Types.ObjectId} workspaceId - id of workspace to check
+ */
+export const getIsWorkspaceE2EEHelper = async (workspaceId: Types.ObjectId) => {
+  const botKey = await BotKey.exists({
+    workspace: workspaceId,
+  });
+
+  return botKey ? false : true;
 };
 
 /**
@@ -96,16 +98,38 @@ export const createBot = async ({
 export const getSecretsBotHelper = async ({
   workspaceId,
   environment,
+  secretPath,
 }: {
   workspaceId: Types.ObjectId;
   environment: string;
+  secretPath: string;
 }) => {
   const content = {} as any;
-  const key = await getKey({ workspaceId: workspaceId.toString() });
+  const key = await getKey({ workspaceId: workspaceId });
+
+  let folderId = "root";
+  const folders = await Folder.findOne({
+    workspace: workspaceId,
+    environment,
+  });
+
+  if (!folders && secretPath !== "/") {
+    throw InternalServerError({ message: "Folder not found" });
+  }
+
+  if (folders) {
+    const folder = getFolderByPath(folders.nodes, secretPath);
+    if (!folder) {
+      throw InternalServerError({ message: "Folder not found" });
+    }
+    folderId = folder.id;
+  }
+
   const secrets = await Secret.find({
     workspace: workspaceId,
     environment,
     type: SECRET_SHARED,
+    folder: folderId,
   });
 
   secrets.forEach((secret: ISecret) => {
@@ -136,14 +160,17 @@ export const getSecretsBotHelper = async ({
  * @param {String} obj.workspaceId - id of workspace
  * @returns {String} key - decrypted workspace key
  */
-export const getKey = async ({ workspaceId }: { workspaceId: string }) => {
+export const getKey = async ({
+  workspaceId,
+}: {
+  workspaceId: Types.ObjectId;
+}) => {
   const encryptionKey = await getEncryptionKey();
   const rootEncryptionKey = await getRootEncryptionKey();
 
   const botKey = await BotKey.findOne({
     workspace: workspaceId,
-  })
-  .populate<{ sender: IUser }>("sender", "publicKey");
+  }).populate<{ sender: IUser }>("sender", "publicKey");
 
   if (!botKey) throw new Error("Failed to find bot key");
 
@@ -156,7 +183,12 @@ export const getKey = async ({ workspaceId }: { workspaceId: string }) => {
 
   if (rootEncryptionKey && bot.keyEncoding === ENCODING_SCHEME_BASE64) {
     // case: encoding scheme is base64
-    const privateKeyBot = client.decryptSymmetric(bot.encryptedPrivateKey, rootEncryptionKey, bot.iv, bot.tag);
+    const privateKeyBot = client.decryptSymmetric(
+      bot.encryptedPrivateKey,
+      rootEncryptionKey,
+      bot.iv,
+      bot.tag
+    );
 
     return decryptAsymmetric({
       ciphertext: botKey.encryptedKey,
@@ -165,15 +197,14 @@ export const getKey = async ({ workspaceId }: { workspaceId: string }) => {
       privateKey: privateKeyBot,
     });
   } else if (encryptionKey && bot.keyEncoding === ENCODING_SCHEME_UTF8) {
-    
     // case: encoding scheme is utf8
     const privateKeyBot = decryptSymmetric128BitHexKeyUTF8({
       ciphertext: bot.encryptedPrivateKey,
       iv: bot.iv,
       tag: bot.tag,
-      key: encryptionKey
+      key: encryptionKey,
     });
-    
+
     return decryptAsymmetric({
       ciphertext: botKey.encryptedKey,
       nonce: botKey.nonce,
@@ -183,7 +214,8 @@ export const getKey = async ({ workspaceId }: { workspaceId: string }) => {
   }
 
   throw InternalServerError({
-    message: "Failed to obtain bot's copy of workspace key needed for bot operations"
+    message:
+      "Failed to obtain bot's copy of workspace key needed for bot operations",
   });
 };
 
@@ -201,7 +233,7 @@ export const encryptSymmetricHelper = async ({
   workspaceId: Types.ObjectId;
   plaintext: string;
 }) => {
-  const key = await getKey({ workspaceId: workspaceId.toString() });
+  const key = await getKey({ workspaceId: workspaceId });
   const { ciphertext, iv, tag } = encryptSymmetric128BitHexKeyUTF8({
     plaintext,
     key,
@@ -233,7 +265,7 @@ export const decryptSymmetricHelper = async ({
   iv: string;
   tag: string;
 }) => {
-  const key = await getKey({ workspaceId: workspaceId.toString() });
+  const key = await getKey({ workspaceId: workspaceId });
   const plaintext = decryptSymmetric128BitHexKeyUTF8({
     ciphertext,
     iv,

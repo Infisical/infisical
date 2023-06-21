@@ -1,12 +1,12 @@
-import { useMemo } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useMemo } from "react";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { faAngleRight } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { useOrganization, useWorkspace } from '@app/context';
+import { useOrganization, useWorkspace } from "@app/context";
 
-import { Select, SelectItem, Tooltip } from '../v2';
+import { Select, SelectItem, Tooltip } from "../v2";
 
 type Props = {
   pageName: string;
@@ -75,11 +75,11 @@ export default function NavHeader({
         </>
       )}
       <FontAwesomeIcon icon={faAngleRight} className="ml-3 mr-3 text-sm text-gray-400" />
-      {pageName === 'Secrets' ? (
+      {pageName === "Secrets" ? (
         <Link
           passHref
           legacyBehavior
-          href={{ pathname: '/dashboard/[id]', query: { id: router.query.id } }}
+          href={{ pathname: "/dashboard/[id]", query: { id: router.query.id } }}
         >
           <a className="text-sm font-semibold text-primary/80 hover:text-primary">{pageName}</a>
         </Link>
@@ -112,7 +112,7 @@ export default function NavHeader({
       {isFolderMode &&
         folders?.map(({ id, name }, index) => {
           const query = { ...router.query };
-          if (name !== 'root') query.folderId = id;
+          if (name !== "root") query.folderId = id;
           else delete query.folderId;
           return (
             <div className="flex items-center space-x-3" key={`breadcrumb-folder-${id}`}>
@@ -120,9 +120,9 @@ export default function NavHeader({
               {index + 1 === folders?.length ? (
                 <span className="text-sm font-semibold text-bunker-300">{name}</span>
               ) : (
-                <Link passHref legacyBehavior href={{ pathname: '/dashboard/[id]', query }}>
+                <Link passHref legacyBehavior href={{ pathname: "/dashboard/[id]", query }}>
                   <a className="text-sm font-semibold text-primary/80 hover:text-primary">
-                    {name === 'root' ? selectedEnv?.name : name}
+                    {name === "root" ? selectedEnv?.name : name}
                   </a>
                 </Link>
               )}

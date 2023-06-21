@@ -1,5 +1,5 @@
-import { Request, Response } from 'express';
-import { UserAction } from '../../models';
+import { Request, Response } from "express";
+import { UserAction } from "../../models";
 
 /**
  * Add user action [action]
@@ -15,18 +15,18 @@ export const addUserAction = async (req: Request, res: Response) => {
   const userAction = await UserAction.findOneAndUpdate(
     {
       user: req.user._id,
-      action
+      action,
     },
     { user: req.user._id, action },
     {
       new: true,
-      upsert: true
+      upsert: true,
     }
   );
 
 	return res.status(200).send({
-		message: 'Successfully recorded user action',
-		userAction
+		message: "Successfully recorded user action",
+		userAction,
 	});
 };
 
@@ -42,10 +42,10 @@ export const getUserAction = async (req: Request, res: Response) => {
 
   const userAction = await UserAction.findOne({
     user: req.user._id,
-    action
+    action,
   });
 
 	return res.status(200).send({
-		userAction
+		userAction,
 	});
 };

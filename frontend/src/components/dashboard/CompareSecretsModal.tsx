@@ -1,10 +1,10 @@
-import { SetStateAction, useEffect, useState } from 'react';
-import Image from 'next/image';
+import { SetStateAction, useEffect, useState } from "react";
+import Image from "next/image";
 
-import { WorkspaceEnv } from '@app/hooks/api/types';
+import { WorkspaceEnv } from "@app/hooks/api/types";
 
-import getSecretsForProject from '../utilities/secrets/getSecretsForProject';
-import { Modal, ModalContent } from '../v2';
+import getSecretsForProject from "../utilities/secrets/getSecretsForProject";
+import { Modal, ModalContent } from "../v2";
 
 interface Secrets {
   label: string;
@@ -40,7 +40,7 @@ const CompareSecretsModal = ({
         // #TODO: optimize this query somehow...
         const allSecrets = await getSecretsForProject({ env: env.slug, workspaceId });
         const secret =
-          allSecrets.find((item) => item.key === currentSecret.key)?.value ?? 'Not found';
+          allSecrets.find((item) => item.key === currentSecret.key)?.value ?? "Not found";
         return { label: env.name, secret };
       })
     );

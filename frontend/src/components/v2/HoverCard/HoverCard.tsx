@@ -1,6 +1,6 @@
-import { IconProp } from '@fortawesome/fontawesome-svg-core';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import * as HoverCard from '@radix-ui/react-hover-card';
+import { IconProp } from "@fortawesome/fontawesome-svg-core";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as HoverCard from "@radix-ui/react-hover-card";
 
 type Props = {
   text: string;
@@ -26,7 +26,7 @@ export const HoverObject = ({
     <HoverCard.Portal>
       <HoverCard.Content className="HoverCardContent z-[300]" sideOffset={5}>
         <div className='bg-bunker-700 border border-mineshaft-600 p-2 rounded-md drop-shadow-xl text-bunker-300'>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
             <div>
               <div className="Text bold">{text}</div>
             </div>
@@ -39,4 +39,4 @@ export const HoverObject = ({
   </HoverCard.Root>
 );
 
-HoverObject.displayName = 'HoverCard';
+HoverObject.displayName = "HoverCard";

@@ -1,50 +1,104 @@
 import { Types } from "mongoose";
 import {
   CreateSecretParams,
-  GetSecretsParams,
-  GetSecretParams,
-  UpdateSecretParams,
   DeleteSecretParams,
+  GetSecretParams,
+  GetSecretsParams,
+  UpdateSecretParams,
 } from "../interfaces/services/SecretService";
 import {
-  Secret,
   ISecret,
+  Secret,
   SecretBlindIndexData,
   ServiceTokenData,
 } from "../models";
 import { SecretVersion } from "../ee/models";
 import {
   BadRequestError,
-  SecretNotFoundError,
-  SecretBlindIndexDataNotFoundError,
   InternalServerError,
+  SecretBlindIndexDataNotFoundError,
+  SecretNotFoundError,
   UnauthorizedRequestError,
 } from "../utils/errors";
 import {
-  SECRET_PERSONAL,
-  SECRET_SHARED,
   ACTION_ADD_SECRETS,
+  ACTION_DELETE_SECRETS,
   ACTION_READ_SECRETS,
   ACTION_UPDATE_SECRETS,
-  ACTION_DELETE_SECRETS,
   ALGORITHM_AES_256_GCM,
-  ENCODING_SCHEME_UTF8,
   ENCODING_SCHEME_BASE64,
+  ENCODING_SCHEME_UTF8,
+  SECRET_PERSONAL,
+  SECRET_SHARED,
 } from "../variables";
 import crypto from "crypto";
 import * as argon2 from "argon2";
 import {
-  encryptSymmetric128BitHexKeyUTF8,
   decryptSymmetric128BitHexKeyUTF8,
+  encryptSymmetric128BitHexKeyUTF8,
 } from "../utils/crypto";
-import { getEncryptionKey, client, getRootEncryptionKey } from "../config";
 import { TelemetryService } from "../services";
-import { EESecretService, EELogService } from "../ee/services";
+import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
+import { EELogService, EESecretService } from "../ee/services";
 import {
   getAuthDataPayloadIdObj,
   getAuthDataPayloadUserObj,
 } from "../utils/auth";
 import { getFolderIdFromServiceToken } from "../services/FolderService";
+
+/**
+ * Returns an object containing secret [secret] but with its value, key, comment decrypted.
+ * 
+ * Precondition: the workspace for secret [secret] must have E2EE disabled
+ * @param {ISecret} secret - secret to repackage to raw
+ * @param {String} key - symmetric key to use to decrypt secret
+ * @returns 
+ */
+export const repackageSecretToRaw = ({
+  secret,
+  key,
+}: {
+  secret: ISecret;
+  key: string;
+}) => {
+
+  const secretKey = decryptSymmetric128BitHexKeyUTF8({
+    ciphertext: secret.secretKeyCiphertext,
+    iv: secret.secretKeyIV,
+    tag: secret.secretKeyTag,
+    key,
+  });
+
+  const secretValue = decryptSymmetric128BitHexKeyUTF8({
+    ciphertext: secret.secretValueCiphertext,
+    iv: secret.secretValueIV,
+    tag: secret.secretValueTag,
+    key,
+  });
+
+  let secretComment = "";
+
+  if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
+    secretComment = decryptSymmetric128BitHexKeyUTF8({
+      ciphertext: secret.secretCommentCiphertext,
+      iv: secret.secretCommentIV,
+      tag: secret.secretCommentTag,
+      key,
+    });
+  }
+
+  return ({
+    _id: secret._id,
+    version: secret.version,
+    workspace: secret.workspace,
+    type: secret.type,
+    environment: secret.environment,
+    user: secret.user,
+    secretKey,
+    secretValue,
+    secretComment,
+  });
+}
 
 /**
  * Create secret blind index data containing encrypted blind index [salt]
@@ -271,6 +325,7 @@ export const createSecretHelper = async ({
   secretCommentTag,
   secretPath = "/",
 }: CreateSecretParams) => {
+
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
     workspaceId: new Types.ObjectId(workspaceId),
@@ -448,7 +503,7 @@ export const getSecretsHelper = async ({
     folder: folderId,
     type: SECRET_PERSONAL,
     ...getAuthDataPayloadUserObj(authData),
-  });
+  }).populate("tags").lean();
 
   // concat with shared secrets
   secrets = secrets.concat(
@@ -460,7 +515,7 @@ export const getSecretsHelper = async ({
       secretBlindIndex: {
         $nin: secrets.map((secret) => secret.secretBlindIndex),
       },
-    })
+    }).populate("tags").lean()
   );
 
   // (EE) create (audit) log
@@ -546,7 +601,7 @@ export const getSecretHelper = async ({
     folder: folderId,
     type: type ?? SECRET_PERSONAL,
     ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {}),
-  });
+  }).lean();
 
   if (!secret) {
     // case: failed to find personal secret matching criteria
@@ -557,7 +612,7 @@ export const getSecretHelper = async ({
       environment,
       folder: folderId,
       type: SECRET_SHARED,
-    });
+    }).lean();
   }
 
   if (!secret) throw SecretNotFoundError();
@@ -788,6 +843,7 @@ export const deleteSecretHelper = async ({
   // if using service token filter towards the folderId by secretpath
   if (authData.authPayload instanceof ServiceTokenData) {
     const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
+
     if (secretPath !== serviceTkScopedSecretPath) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
@@ -807,7 +863,7 @@ export const deleteSecretHelper = async ({
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
       folder: folderId,
-    });
+    }).lean();
 
     secret = await Secret.findOneAndDelete({
       secretBlindIndex,
@@ -815,7 +871,7 @@ export const deleteSecretHelper = async ({
       environment,
       type,
       folder: folderId,
-    });
+    }).lean();
 
     await Secret.deleteMany({
       secretBlindIndex,
@@ -831,7 +887,7 @@ export const deleteSecretHelper = async ({
       environment,
       type,
       ...getAuthDataPayloadUserObj(authData),
-    });
+    }).lean();
 
     if (secret) {
       secrets = [secret];
@@ -852,15 +908,13 @@ export const deleteSecretHelper = async ({
     secretIds: secrets.map((secret) => secret._id),
   });
 
-  // (EE) take a secret snapshot
-  action &&
-    (await EELogService.createLog({
-      ...getAuthDataPayloadIdObj(authData),
-      workspaceId,
-      actions: [action],
-      channel: authData.authChannel,
-      ipAddress: authData.authIP,
-    }));
+  action && (await EELogService.createLog({
+    ...getAuthDataPayloadIdObj(authData),
+    workspaceId,
+    actions: [action],
+    channel: authData.authChannel,
+    ipAddress: authData.authIP,
+  }));
 
   // (EE) take a secret snapshot
   await EESecretService.takeSecretSnapshot({
@@ -888,8 +942,8 @@ export const deleteSecretHelper = async ({
     });
   }
 
-  return {
+  return ({
     secrets,
     secret,
-  };
+  });
 };

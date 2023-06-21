@@ -1,16 +1,16 @@
-import {useQuery } from '@tanstack/react-query';
+import {useQuery } from "@tanstack/react-query";
 
-import { apiRequest } from '@app/config/request';
+import { apiRequest } from "@app/config/request";
 
-import { ServerStatus } from './types';
+import { ServerStatus } from "./types";
 
 // cache key
 const serverStatusKeys = {
-  serverStatus: ['serverStatus'] as const
+  serverStatus: ["serverStatus"] as const
 };
 
 const fetchServerStatus = async () => {
-  const {data} = await apiRequest.get<ServerStatus>('/api/status');
+  const {data} = await apiRequest.get<ServerStatus>("/api/status");
   return data;
 };
 

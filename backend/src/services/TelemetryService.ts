@@ -1,24 +1,21 @@
-import { PostHog } from 'posthog-node';
-import { getLogger } from '../utils/logger';
-import { AuthData } from '../interfaces/middleware';
+import { PostHog } from "posthog-node";
+import { getLogger } from "../utils/logger";
+import { AuthData } from "../interfaces/middleware";
 import {
   getNodeEnv,
-  getTelemetryEnabled,
+  getPostHogHost,
   getPostHogProjectApiKey,
-  getPostHogHost
-} from '../config';
+  getTelemetryEnabled,
+} from "../config";
 import {
-  IUser,
-  User,
-  IServiceAccount,
   ServiceAccount,
-  IServiceTokenData,
-  ServiceTokenData
-} from '../models';
+  ServiceTokenData,
+  User,
+} from "../models";
 import {
   AccountNotFoundError,
-  BadRequestError
-} from '../utils/errors';
+  BadRequestError,
+} from "../utils/errors";
 
 class Telemetry {
   /**
@@ -31,7 +28,7 @@ class Telemetry {
         "To improve, Infisical collects telemetry data about general usage.",
         "This helps us understand how the product is doing and guide our product development to create the best possible platform; it also helps us demonstrate growth as we support Infisical as open-source software.",
         "To opt into telemetry, you can set `TELEMETRY_ENABLED=true` within the environment variables.",
-      ].join('\n'))
+      ].join("\n"))
     }
   }
 
@@ -41,10 +38,10 @@ class Telemetry {
    */
   static getPostHogClient = async () => {
     let postHogClient: any;
-    if ((await getNodeEnv()) === 'production' && (await getTelemetryEnabled())) {
+    if ((await getNodeEnv()) === "production" && (await getTelemetryEnabled())) {
       // case: enable opt-out telemetry in production
       postHogClient = new PostHog(await getPostHogProjectApiKey(), {
-        host: await getPostHogHost()
+        host: await getPostHogHost(),
       });
     } 
     
@@ -52,11 +49,11 @@ class Telemetry {
   }
 
   static getDistinctId = async ({
-    authData
+    authData,
   }: {
     authData: AuthData;
   }) => {
-    let distinctId = '';
+    let distinctId = "";
     if (authData.authPayload instanceof User) {
       distinctId = authData.authPayload.email;
     } else if (authData.authPayload instanceof ServiceAccount) {
@@ -64,7 +61,7 @@ class Telemetry {
     } else if (authData.authPayload instanceof ServiceTokenData) {
       
       if (authData.authPayload.user) {
-        const user = await User.findById(authData.authPayload.user, 'email');
+        const user = await User.findById(authData.authPayload.user, "email");
         if (!user) throw AccountNotFoundError();
         distinctId = user.email; 
       } else if (authData.authPayload.serviceAccount) {
@@ -72,8 +69,8 @@ class Telemetry {
       }
     }
     
-    if (distinctId === '') throw BadRequestError({
-      message: 'Failed to obtain distinct id for logging telemetry'
+    if (distinctId === "") throw BadRequestError({
+      message: "Failed to obtain distinct id for logging telemetry",
     });
     
     return distinctId;

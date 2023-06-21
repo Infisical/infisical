@@ -1,8 +1,8 @@
-import { Fragment } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
+import { Fragment } from "react";
+import { Dialog, Transition } from "@headlessui/react";
 
-import Button from '../buttons/Button';
-import InputField from '../InputField';
+import Button from "../buttons/Button";
+import InputField from "../InputField";
 
 type Props = {
   isOpen: boolean;

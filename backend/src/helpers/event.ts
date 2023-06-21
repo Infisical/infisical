@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { Bot, IBot } from "../models";
+import { Bot } from "../models";
 import { EVENT_PUSH_SECRETS } from "../variables";
 import { IntegrationService } from "../services";
 

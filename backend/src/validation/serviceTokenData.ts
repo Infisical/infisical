@@ -1,25 +1,25 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import {
     ISecret,
-    IServiceTokenData,
-    ServiceTokenData,
-    IUser,
-    User,
     IServiceAccount,
+    IServiceTokenData,
+    IUser,
     ServiceAccount,
-} from '../models';
+    ServiceTokenData,
+    User,
+} from "../models";
 import { 
+    ServiceTokenDataNotFoundError,
     UnauthorizedRequestError,
-    ServiceTokenDataNotFoundError
-} from '../utils/errors';
+} from "../utils/errors";
 import {
-    AUTH_MODE_JWT,
+    AUTH_MODE_API_KEY,
+	AUTH_MODE_JWT,
 	AUTH_MODE_SERVICE_ACCOUNT,
 	AUTH_MODE_SERVICE_TOKEN,
-	AUTH_MODE_API_KEY
-} from '../variables';
-import { validateUserClientForWorkspace } from './user';
-import { validateServiceAccountClientForWorkspace } from './serviceAccount';
+} from "../variables";
+import { validateUserClientForWorkspace } from "./user";
+import { validateServiceAccountClientForWorkspace } from "./serviceAccount";
 
 /**
  * Validate authenticated clients for service token with id [serviceTokenId] based
@@ -32,29 +32,29 @@ import { validateServiceAccountClientForWorkspace } from './serviceAccount';
 export const validateClientForServiceTokenData = async ({
     authData,
     serviceTokenDataId,
-    acceptedRoles
+    acceptedRoles,
 }: {
     authData: {
 		authMode: string;
 		authPayload: IUser | IServiceAccount | IServiceTokenData;
 	};
     serviceTokenDataId: Types.ObjectId;
-    acceptedRoles: Array<'admin' | 'member'>;
+    acceptedRoles: Array<"admin" | "member">;
 }) => {
     const serviceTokenData = await ServiceTokenData
             .findById(serviceTokenDataId)
-            .select('+encryptedKey +iv +tag')
-            .populate<{ user: IUser }>('user');
+            .select("+encryptedKey +iv +tag")
+            .populate<{ user: IUser }>("user");
 
     if (!serviceTokenData) throw ServiceTokenDataNotFoundError({
-        message: 'Failed to find service token data'
+        message: "Failed to find service token data",
     });
 
     if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
         await validateUserClientForWorkspace({
             user: authData.authPayload,
             workspaceId: serviceTokenData.workspace,
-            acceptedRoles
+            acceptedRoles,
         });
         
         return serviceTokenData;
@@ -63,7 +63,7 @@ export const validateClientForServiceTokenData = async ({
     if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
         await validateServiceAccountClientForWorkspace({
             serviceAccount: authData.authPayload,
-            workspaceId: serviceTokenData.workspace
+            workspaceId: serviceTokenData.workspace,
         });
         
         return serviceTokenData;
@@ -71,7 +71,7 @@ export const validateClientForServiceTokenData = async ({
 
     if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
         throw UnauthorizedRequestError({
-            message: 'Failed service token authorization for service token data'
+            message: "Failed service token authorization for service token data",
         });
     }
 
@@ -79,14 +79,14 @@ export const validateClientForServiceTokenData = async ({
         await validateUserClientForWorkspace({
             user: authData.authPayload,
             workspaceId: serviceTokenData.workspace,
-            acceptedRoles
+            acceptedRoles,
         });
         
         return serviceTokenData;
     }
     
     throw UnauthorizedRequestError({
-        message: 'Failed client authorization for service token data'
+        message: "Failed client authorization for service token data",
     });
 }
 
@@ -104,7 +104,7 @@ export const validateServiceTokenDataClientForWorkspace = async ({
     serviceTokenData,
 	workspaceId,
 	environment,
-	requiredPermissions
+	requiredPermissions,
 }: {
     serviceTokenData: IServiceTokenData;
 	workspaceId: Types.ObjectId;
@@ -114,7 +114,7 @@ export const validateServiceTokenDataClientForWorkspace = async ({
     if (!serviceTokenData.workspace.equals(workspaceId)) {
         // case: invalid workspaceId passed
         throw UnauthorizedRequestError({
-            message: 'Failed service token authorization for the given workspace'
+            message: "Failed service token authorization for the given workspace",
         });
     }
 
@@ -124,14 +124,14 @@ export const validateServiceTokenDataClientForWorkspace = async ({
         if (serviceTokenData.environment !== environment) {
             // case: invalid environment passed
             throw UnauthorizedRequestError({
-                message: 'Failed service token authorization for the given workspace environment'
+                message: "Failed service token authorization for the given workspace environment",
             });
         }
 
         requiredPermissions?.forEach((permission) => {
             if (!serviceTokenData.permissions.includes(permission)) {
                 throw UnauthorizedRequestError({
-                    message: `Failed service token authorization for the given workspace environment action: ${permission}`
+                    message: `Failed service token authorization for the given workspace environment action: ${permission}`,
                 });
             }
         });
@@ -149,7 +149,7 @@ export const validateServiceTokenDataClientForWorkspace = async ({
 export const validateServiceTokenDataClientForSecrets = async ({
     serviceTokenData,
     secrets,
-	requiredPermissions
+	requiredPermissions,
 }: {
     serviceTokenData: IServiceTokenData;
     secrets: ISecret[];
@@ -160,21 +160,21 @@ export const validateServiceTokenDataClientForSecrets = async ({
         if (!serviceTokenData.workspace.equals(secret.workspace)) {
             // case: invalid workspaceId passed
             throw UnauthorizedRequestError({
-                message: 'Failed service token authorization for the given workspace'
+                message: "Failed service token authorization for the given workspace",
             });
         }
         
         if (serviceTokenData.environment !== secret.environment) {
             // case: invalid environment passed
             throw UnauthorizedRequestError({
-                message: 'Failed service token authorization for the given workspace environment'
+                message: "Failed service token authorization for the given workspace environment",
             });
         }
         
         requiredPermissions?.forEach((permission) => {
             if (!serviceTokenData.permissions.includes(permission)) {
                 throw UnauthorizedRequestError({
-                    message: `Failed service token authorization for the given workspace environment action: ${permission}`
+                    message: `Failed service token authorization for the given workspace environment action: ${permission}`,
                 });
             }
         });

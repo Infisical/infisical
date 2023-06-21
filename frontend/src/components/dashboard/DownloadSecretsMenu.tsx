@@ -1,11 +1,11 @@
-import { Fragment } from 'react';
-import { faDownload } from '@fortawesome/free-solid-svg-icons';
-import { Menu, Transition } from '@headlessui/react';
-import { SecretDataProps } from 'public/data/frequentInterfaces';
+import { Fragment } from "react";
+import { faDownload } from "@fortawesome/free-solid-svg-icons";
+import { Menu, Transition } from "@headlessui/react";
+import { SecretDataProps } from "public/data/frequentInterfaces";
 
-import Button from '../basic/buttons/Button';
-import downloadDotEnv from '../utilities/secrets/downloadDotEnv';
-import downloadYaml from '../utilities/secrets/downloadYaml';
+import Button from "../basic/buttons/Button";
+import downloadDotEnv from "../utilities/secrets/downloadDotEnv";
+import downloadYaml from "../utilities/secrets/downloadYaml";
 
 /**
  * This is the menu that is used to download secrets as .env ad .yml files (in future we may have more options)

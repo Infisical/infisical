@@ -10,10 +10,10 @@ interface Props {
  * @returns
  */
 const SendEmailOnPasswordReset = async ({ email }: Props) => {
-  const response = await fetch('/api/v1/password/email/password-reset', {
-    method: 'POST',
+  const response = await fetch("/api/v1/password/email/password-reset", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       email
@@ -26,7 +26,7 @@ const SendEmailOnPasswordReset = async ({ email }: Props) => {
   }
 
   throw new Error(
-    'Something went wrong while sending the email verification for password reset.'
+    "Something went wrong while sending the email verification for password reset."
   );
 };
 

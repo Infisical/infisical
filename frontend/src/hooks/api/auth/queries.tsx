@@ -1,23 +1,23 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { apiRequest } from '@app/config/request';
-import { setAuthToken } from '@app/reactQuery';
+import { apiRequest } from "@app/config/request";
+import { setAuthToken } from "@app/reactQuery";
 
 import {
   GetAuthTokenAPI,
   SendMfaTokenDTO,
   VerifyMfaTokenDTO,
-  VerifyMfaTokenRes} from './types';
+  VerifyMfaTokenRes} from "./types";
 
 const authKeys = {
-  getAuthToken: ['token'] as const,
-  commonPasswords: ['common-passwords'] as const
+  getAuthToken: ["token"] as const,
+  commonPasswords: ["common-passwords"] as const
 };
 
 export const useSendMfaToken = () => {
   return useMutation<{}, {}, SendMfaTokenDTO>({
     mutationFn: async ({ email }) => {
-      const { data } = await apiRequest.post('/api/v2/auth/mfa/send', { email });
+      const { data } = await apiRequest.post("/api/v2/auth/mfa/send", { email });
       return data;
     }
   });
@@ -26,7 +26,7 @@ export const useSendMfaToken = () => {
 export const useVerifyMfaToken = () => {
   return useMutation<VerifyMfaTokenRes, {}, VerifyMfaTokenDTO>({
     mutationFn: async ({ email, mfaCode }) => {
-      const { data } = await apiRequest.post('/api/v2/auth/mfa/verify', {
+      const { data } = await apiRequest.post("/api/v2/auth/mfa/verify", {
         email,
         mfaToken: mfaCode
       });
@@ -38,7 +38,7 @@ export const useVerifyMfaToken = () => {
 // Refresh token is set as cookie when logged in
 // Using that we fetch the auth bearer token needed for auth calls
 const fetchAuthToken = async () => {
-  const { data } = await apiRequest.post<GetAuthTokenAPI>('/api/v1/auth/token', undefined, {
+  const { data } = await apiRequest.post<GetAuthTokenAPI>("/api/v1/auth/token", undefined, {
     withCredentials: true
   });
 
@@ -54,14 +54,14 @@ export const useGetAuthToken = () =>
 export const useRevokeAllSessions = () => {
   return useMutation({
     mutationFn: async () => {
-      const { data } = await apiRequest.delete('/api/v1/auth/sessions');
+      const { data } = await apiRequest.delete("/api/v1/auth/sessions");
       return data;
     }
   });
 }
 
 const fetchCommonPasswords = async () => {
-  const { data } = await apiRequest.get('/api/v1/auth/common-passwords');
+  const { data } = await apiRequest.get("/api/v1/auth/common-passwords");
   return data || [];
 };
 

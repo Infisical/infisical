@@ -448,7 +448,7 @@ func getFreshUserCredentials(email string, password string) (*api.GetLoginOneV2R
 	})
 
 	if err != nil {
-		util.HandleError(err)
+		return nil, nil, err
 	}
 
 	// **** Login 2

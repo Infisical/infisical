@@ -1,16 +1,11 @@
-import * as express from 'express';
-import { Types } from 'mongoose';
-import { 
-	IUser,
-	IServiceAccount,
-	IServiceTokenData,
-	ISecret 
-} from '../../models';
-import {
-	AuthData
-} from '../../interfaces/middleware';
+import { Types } from "mongoose";
 
-declare module 'express' {
+
+import {
+	AuthData,
+} from "../../interfaces/middleware";
+
+declare module "express" {
 	interface Request {
 		user?: any;
 	}
@@ -37,6 +32,7 @@ declare global {
 			serviceToken: any;
 			serviceAccount: any;
 			accessToken: any;
+			accessId: any;
 			serviceTokenData: any;
 			apiKeyData: any;
 			query?: any;

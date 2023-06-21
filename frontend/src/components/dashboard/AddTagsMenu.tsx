@@ -1,9 +1,9 @@
-import { Fragment } from 'react';
-import { useRouter } from 'next/router';
-import { faCheckSquare, faPlus, faSquare } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Menu, Transition } from '@headlessui/react';
-import { Tag } from 'public/data/frequentInterfaces';
+import { Fragment } from "react";
+import { useRouter } from "next/router";
+import { faCheckSquare, faPlus, faSquare } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Menu, Transition } from "@headlessui/react";
+import { Tag } from "public/data/frequentInterfaces";
 
 /**
  * This is the menu that is used to add more tags to a secret

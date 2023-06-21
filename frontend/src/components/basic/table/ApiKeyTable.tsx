@@ -1,10 +1,10 @@
-import { faX } from '@fortawesome/free-solid-svg-icons';
+import { faX } from "@fortawesome/free-solid-svg-icons";
 
-import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 
-import deleteAPIKey from '../../../pages/api/apiKey/deleteAPIKey';
-import guidGenerator from '../../utilities/randomId';
-import Button from '../buttons/Button';
+import deleteAPIKey from "../../../pages/api/apiKey/deleteAPIKey";
+import guidGenerator from "../../utilities/randomId";
+import Button from "../buttons/Button";
 
 interface TokenProps {
   _id: string;
@@ -58,7 +58,7 @@ const ApiKeyTable = ({ data, setApiKeys }: ServiceTokensProps) => {
                         setApiKeys(data.filter((token) => token._id !== row._id));
                         createNotification({
                           text: `'${row.name}' API key has been revoked.`,
-                          type: 'error'
+                          type: "error"
                         });
                       }}
                       color="red"

@@ -1,1 +1,1 @@
-export { OrgSettingsPage } from './OrgSettingsPage';
+export { OrgSettingsPage } from "./OrgSettingsPage";

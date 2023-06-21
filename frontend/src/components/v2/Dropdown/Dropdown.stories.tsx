@@ -1,8 +1,8 @@
-import { faPlus, faTrash, faUndo } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import type { Meta, StoryObj } from '@storybook/react';
+import { faPlus, faTrash, faUndo } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type { Meta, StoryObj } from "@storybook/react";
 
-import { IconButton } from '../IconButton';
+import { IconButton } from "../IconButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,12 +11,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger
-} from './Dropdown';
+} from "./Dropdown";
 
 const meta: Meta<typeof DropdownMenu> = {
-  title: 'Components/DropdownMenu',
+  title: "Components/DropdownMenu",
   component: DropdownMenu,
-  tags: ['v2'],
+  tags: ["v2"],
   argTypes: {}
 };
 

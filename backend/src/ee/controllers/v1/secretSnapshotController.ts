@@ -17,11 +17,11 @@ export const getSecretSnapshot = async (req: Request, res: Response) => {
   const secretSnapshot = await SecretSnapshot.findById(secretSnapshotId)
     .lean()
     .populate<{ secretVersions: ISecretVersion[] }>({
-      path: 'secretVersions',
+      path: "secretVersions",
       populate: {
-        path: 'tags',
-        model: 'Tag'
-      }
+        path: "tags",
+        model: "Tag",
+      },
     })
     .populate<{ folderVersion: TFolderRootVersionSchema }>("folderVersion");
   

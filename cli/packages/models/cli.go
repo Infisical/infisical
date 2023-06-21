@@ -5,9 +5,10 @@ import (
 )
 
 type UserCredentials struct {
-	Email      string `json:"email"`
-	PrivateKey string `json:"privateKey"`
-	JTWToken   string `json:"JTWToken"`
+	Email        string `json:"email"`
+	PrivateKey   string `json:"privateKey"`
+	JTWToken     string `json:"JTWToken"`
+	RefreshToken string `json:"RefreshToken"`
 }
 
 // The file struct for Infisical config file
@@ -63,4 +64,5 @@ type GetAllSecretsParameters struct {
 	InfisicalToken           string
 	TagSlugs                 string
 	WorkspaceId              string
+	SecretsPath              string
 }

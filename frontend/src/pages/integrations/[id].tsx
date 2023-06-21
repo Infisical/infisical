@@ -1,29 +1,29 @@
-import crypto from 'crypto';
+import crypto from "crypto";
 
-import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import Head from 'next/head';
-import { useRouter } from 'next/router';
-import frameworkIntegrationOptions from 'public/json/frameworkIntegrations.json';
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import frameworkIntegrationOptions from "public/json/frameworkIntegrations.json";
 
-import ActivateBotDialog from '@app/components/basic/dialog/ActivateBotDialog';
-import CloudIntegrationSection from '@app/components/integrations/CloudIntegrationSection';
-import FrameworkIntegrationSection from '@app/components/integrations/FrameworkIntegrationSection';
-import IntegrationSection from '@app/components/integrations/IntegrationSection';
-import NavHeader from '@app/components/navigation/NavHeader';
+import ActivateBotDialog from "@app/components/basic/dialog/ActivateBotDialog";
+import CloudIntegrationSection from "@app/components/integrations/CloudIntegrationSection";
+import FrameworkIntegrationSection from "@app/components/integrations/FrameworkIntegrationSection";
+import IntegrationSection from "@app/components/integrations/IntegrationSection";
+import NavHeader from "@app/components/navigation/NavHeader";
 
 import {
   decryptAssymmetric,
   encryptAssymmetric
-} from '../../components/utilities/cryptography/crypto';
-import getBot from '../api/bot/getBot';
-import setBotActiveStatus from '../api/bot/setBotActiveStatus';
-import deleteIntegration from '../api/integrations/DeleteIntegration';
-import getIntegrationOptions from '../api/integrations/GetIntegrationOptions';
-import getWorkspaceAuthorizations from '../api/integrations/getWorkspaceAuthorizations';
-import getWorkspaceIntegrations from '../api/integrations/getWorkspaceIntegrations';
-import getAWorkspace from '../api/workspace/getAWorkspace';
-import getLatestFileKey from '../api/workspace/getLatestFileKey';
+} from "../../components/utilities/cryptography/crypto";
+import getBot from "../api/bot/getBot";
+import setBotActiveStatus from "../api/bot/setBotActiveStatus";
+import deleteIntegration from "../api/integrations/DeleteIntegration";
+import getIntegrationOptions from "../api/integrations/GetIntegrationOptions";
+import getWorkspaceAuthorizations from "../api/integrations/getWorkspaceAuthorizations";
+import getWorkspaceIntegrations from "../api/integrations/getWorkspaceIntegrations";
+import getAWorkspace from "../api/workspace/getAWorkspace";
+import getLatestFileKey from "../api/workspace/getLatestFileKey";
 
 interface IntegrationAuth {
   _id: string;
@@ -44,6 +44,7 @@ interface Integration {
   integration: string;
   targetEnvironment: string;
   workspace: string;
+  secretPath:string;
   integrationAuth: string;
 }
 
@@ -124,10 +125,10 @@ export default function Integrations() {
       if (bot) {
         // case: there is a bot
         const key = await getLatestFileKey({ workspaceId });
-        const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
+        const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
 
         if (!PRIVATE_KEY) {
-          throw new Error('Private Key missing');
+          throw new Error("Private Key missing");
         }
 
         const WORKSPACE_KEY = decryptAssymmetric({
@@ -166,64 +167,67 @@ export default function Integrations() {
   const handleUnauthorizedIntegrationOptionPress = (integrationOption: IntegrationOption) => {
     try {
       // generate CSRF token for OAuth2 code-token exchange integrations
-      const state = crypto.randomBytes(16).toString('hex');
-      localStorage.setItem('latestCSRFToken', state);
+      const state = crypto.randomBytes(16).toString("hex");
+      localStorage.setItem("latestCSRFToken", state);
 
-      let link = '';
+      let link = "";
       switch (integrationOption.slug) {
-        case 'azure-key-vault':
+        case "azure-key-vault":
           link = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${integrationOption.clientId}&response_type=code&redirect_uri=${window.location.origin}/integrations/azure-key-vault/oauth2/callback&response_mode=query&scope=https://vault.azure.net/.default openid offline_access&state=${state}`;
           break;
-        case 'aws-parameter-store':
+        case "aws-parameter-store":
           link = `${window.location.origin}/integrations/aws-parameter-store/authorize`;
           break;
-        case 'aws-secret-manager':
+        case "aws-secret-manager":
           link = `${window.location.origin}/integrations/aws-secret-manager/authorize`;
           break;
-        case 'heroku':
+        case "heroku":
           link = `https://id.heroku.com/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=write-protected&state=${state}`;
           break;
-        case 'vercel':
+        case "vercel":
           link = `https://vercel.com/integrations/${integrationOption.clientSlug}/new?state=${state}`;
           break;
-        case 'netlify':
+        case "netlify":
           link = `https://app.netlify.com/authorize?client_id=${integrationOption.clientId}&response_type=code&state=${state}&redirect_uri=${window.location.origin}/integrations/netlify/oauth2/callback`;
           break;
-        case 'github':
+        case "github":
           link = `https://github.com/login/oauth/authorize?client_id=${integrationOption.clientId}&response_type=code&scope=repo&redirect_uri=${window.location.origin}/integrations/github/oauth2/callback&state=${state}`;
           break;
-        case 'gitlab':
+        case "gitlab":
           link = `https://gitlab.com/oauth/authorize?client_id=${integrationOption.clientId}&redirect_uri=${window.location.origin}/integrations/gitlab/oauth2/callback&response_type=code&state=${state}`;
           break;
-        case 'render':
+        case "render":
           link = `${window.location.origin}/integrations/render/authorize`;
           break;
-        case 'flyio':
+        case "flyio":
           link = `${window.location.origin}/integrations/flyio/authorize`;
           break;
-        case 'circleci':
+        case "circleci":
           link = `${window.location.origin}/integrations/circleci/authorize`;
           break;
-        case 'travisci':
+        case "travisci":
           link = `${window.location.origin}/integrations/travisci/authorize`;
           break;
-        case 'supabase':
+        case "supabase":
           link = `${window.location.origin}/integrations/supabase/authorize`;
           break;
-        case 'checkly':
+        case "checkly":
           link = `${window.location.origin}/integrations/checkly/authorize`;
           break;
-        case 'railway':
+        case "railway":
           link = `${window.location.origin}/integrations/railway/authorize`;
           break;
-        case 'hashicorp-vault':
+        case "hashicorp-vault":
           link = `${window.location.origin}/integrations/hashicorp-vault/authorize`;
+          break;
+        case "cloudflare-pages":
+          link = `${window.location.origin}/integrations/cloudflare-pages/authorize`;
           break;
         default:
           break;
       }
 
-      if (link !== '') {
+      if (link !== "") {
         window.location.assign(link);
       }
     } catch (err) {
@@ -233,61 +237,64 @@ export default function Integrations() {
 
   const handleAuthorizedIntegrationOptionPress = (integrationAuth: IntegrationAuth) => {
     try {
-      let link = '';
+      let link = "";
       switch (integrationAuth.integration) {
-        case 'azure-key-vault':
+        case "azure-key-vault":
           link = `${window.location.origin}/integrations/azure-key-vault/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'aws-parameter-store':
+        case "aws-parameter-store":
           link = `${window.location.origin}/integrations/aws-parameter-store/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'aws-secret-manager':
+        case "aws-secret-manager":
           link = `${window.location.origin}/integrations/aws-secret-manager/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'heroku':
+        case "heroku":
           link = `${window.location.origin}/integrations/heroku/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'vercel':
+        case "vercel":
           link = `${window.location.origin}/integrations/vercel/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'netlify':
+        case "netlify":
           link = `${window.location.origin}/integrations/netlify/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'github':
+        case "github":
           link = `${window.location.origin}/integrations/github/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'gitlab':
+        case "gitlab":
           link = `${window.location.origin}/integrations/gitlab/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'render':
+        case "render":
           link = `${window.location.origin}/integrations/render/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'flyio':
+        case "flyio":
           link = `${window.location.origin}/integrations/flyio/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'circleci':
+        case "circleci":
           link = `${window.location.origin}/integrations/circleci/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'travisci':
+        case "travisci":
           link = `${window.location.origin}/integrations/travisci/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'supabase':
+        case "supabase":
           link = `${window.location.origin}/integrations/supabase/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'checkly':
+        case "checkly":
           link = `${window.location.origin}/integrations/checkly/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'railway':
+        case "railway":
           link = `${window.location.origin}/integrations/railway/create?integrationAuthId=${integrationAuth._id}`;
           break;
-        case 'hashicorp-vault':
+        case "hashicorp-vault":
           link = `${window.location.origin}/integrations/hashicorp-vault/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case "cloudflare-pages":
+          link = `${window.location.origin}/integrations/cloudflare-pages/create?integrationAuthId=${integrationAuth._id}`;
           break;
         default:
           break;
       }
 
-      if (link !== '') {
+      if (link !== "") {
         window.location.assign(link);
       }
     } catch (err) {
@@ -398,14 +405,14 @@ export default function Integrations() {
   return (
     <div className="flex max-h-full flex-col justify-between bg-bunker-800 text-white">
       <Head>
-        <title>{t('common.head-title', { title: t('integrations.title') })}</title>
+        <title>{t("common.head-title", { title: t("integrations.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
         <meta property="og:title" content="Manage your .env files in seconds" />
-        <meta name="og:description" content={t('integrations.description') as string} />
+        <meta name="og:description" content={t("integrations.description") as string} />
       </Head>
       <div className="no-scrollbar::-webkit-scrollbar h-screen max-h-[calc(100vh-10px)] w-full overflow-y-scroll pb-6 no-scrollbar">
-        <NavHeader pageName={t('integrations.title')} isProjectRelated />
+        <NavHeader pageName={t("integrations.title")} isProjectRelated />
         <ActivateBotDialog
           isOpen={isActivateBotDialogOpen}
           closeModal={() => setIsActivateBotDialogOpen(false)}
@@ -436,7 +443,15 @@ export default function Integrations() {
             handleDeleteIntegrationAuth={handleDeleteIntegrationAuth}
           />
         ) : (
-          <div />
+          <>
+            <div className="m-4 mt-7 flex max-w-5xl flex-col items-start justify-between px-2 text-xl">
+              <h1 className="text-3xl font-semibold">{t("integrations.cloud-integrations")}</h1>
+              <p className="text-base text-gray-400">{t("integrations.click-to-start")}</p>
+            </div>
+            <div className="mx-6 grid max-w-5xl grid-cols-4 grid-rows-2 gap-4">
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map(elem => <div key={elem} className="bg-mineshaft-800 border border-mineshaft-600 animate-pulse h-32 rounded-md"/>)}
+            </div>
+          </>
         )}
         <FrameworkIntegrationSection frameworks={frameworkIntegrationOptions as any} />
       </div>

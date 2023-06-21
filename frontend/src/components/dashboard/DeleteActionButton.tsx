@@ -1,9 +1,9 @@
-import React from 'react'
-import { useTranslation } from 'react-i18next';
-import { faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import React from "react"
+import { useTranslation } from "react-i18next";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import Button from '../basic/buttons/Button';
+import Button from "../basic/buttons/Button";
 
 type Props = {
   onSubmit: () => void;
@@ -16,8 +16,8 @@ export const DeleteActionButton = ({ onSubmit, isPlain }: Props) => {
   return (
     <div className={`${
       !isPlain 
-      ? 'bg-[#9B3535] opacity-70 hover:opacity-100 w-[4.5rem] h-[2.5rem] rounded-md duration-200 ml-2'
-      : 'cursor-pointer w-[1.5rem] h-[2.35rem] mr-2 flex items-center justfy-center'}`}>
+      ? "bg-[#9B3535] opacity-70 hover:opacity-100 w-[4.5rem] h-[2.5rem] rounded-md duration-200 ml-2"
+      : "cursor-pointer w-[1.5rem] h-[2.35rem] mr-2 flex items-center justfy-center"}`}>
       {isPlain 
       ? <div
         onKeyDown={() => null}

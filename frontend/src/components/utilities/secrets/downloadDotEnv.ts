@@ -1,6 +1,6 @@
-import { SecretDataProps } from 'public/data/frequentInterfaces';
+import { SecretDataProps } from "public/data/frequentInterfaces";
 
-import checkOverrides from './checkOverrides';
+import checkOverrides from "./checkOverrides";
 
 /**
  * This function downloads the secrets as a .env file
@@ -18,17 +18,17 @@ const downloadDotEnv = async ({ data, env }: { data: SecretDataProps[]; env: str
         `${
           item.comment
             ? `${item.comment
-                .split('\n')
-                .map((comment) => '# '.concat(comment))
-                .join('\n')}\n`
-            : ''
-        }${[item.key, item.value].join('=')}`
+                .split("\n")
+                .map((comment) => "# ".concat(comment))
+                .join("\n")}\n`
+            : ""
+        }${[item.key, item.value].join("=")}`
     )
-    .join('\n');
+    .join("\n");
 
   const blob = new Blob([file]);
   const fileDownloadUrl = URL.createObjectURL(blob);
-  const alink = document.createElement('a');
+  const alink = document.createElement("a");
   alink.href = fileDownloadUrl;
   alink.download = `${env}.env`;
   alink.click();

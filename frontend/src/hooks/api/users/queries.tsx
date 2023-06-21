@@ -1,13 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   decryptAssymmetric,
   encryptAssymmetric
-} from '@app/components/utilities/cryptography/crypto';
-import { apiRequest } from '@app/config/request';
-import { setAuthToken } from '@app/reactQuery';
+} from "@app/components/utilities/cryptography/crypto";
+import { apiRequest } from "@app/config/request";
+import { setAuthToken } from "@app/reactQuery";
 
-import { useUploadWsKey } from '../keys/queries';
+import { useUploadWsKey } from "../keys/queries";
 import {
   AddUserToOrgDTO,
   AddUserToWsDTO,
@@ -16,12 +16,12 @@ import {
   OrgUser,
   UpdateOrgUserRoleDTO,
   User
-} from './types';
+} from "./types";
 
 const userKeys = {
-  getUser: ['user'] as const,
-  userAction: ['user-action'] as const,
-  getOrgUsers: (orgId: string) => [{ orgId }, 'user']
+  getUser: ["user"] as const,
+  userAction: ["user-action"] as const,
+  getOrgUsers: (orgId: string) => [{ orgId }, "user"]
 };
 
 export const fetchUserDetails = async () => {
@@ -33,7 +33,7 @@ export const fetchUserDetails = async () => {
 export const useGetUser = () => useQuery(userKeys.getUser, fetchUserDetails);
 
 const fetchUserAction = async (action: string) => {
-  const { data } = await apiRequest.get<{ userAction: string }>('/api/v1/user-action', {
+  const { data } = await apiRequest.get<{ userAction: string }>("/api/v1/user-action", {
     params: {
       action
     }
@@ -70,7 +70,7 @@ export const useAddUserToWs = () => {
     mutationFn: ({ email, workspaceId }) =>
       apiRequest.post(`/api/v1/workspace/${workspaceId}/invite-signup`, { email }),
     onSuccess: ({ data }, { workspaceId }) => {
-      const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
       if (!PRIVATE_KEY) return;
 
       // assymmetrically decrypt symmetric key with local private key
@@ -107,7 +107,7 @@ export const useAddUserToOrg = () => {
   }
 
   return useMutation<Response, {}, AddUserToOrgDTO>({
-    mutationFn: (dto) => apiRequest.post(`/api/v1/invite-org/signup`, dto),
+    mutationFn: (dto) => apiRequest.post("/api/v1/invite-org/signup", dto),
     onSuccess: (_, { organizationId }) => {
       queryClient.invalidateQueries(userKeys.getOrgUsers(organizationId));
     }
@@ -147,7 +147,7 @@ export const useUpdateOrgUserRole = () => {
 export const useRegisterUserAction = () => {
   const queryClient = useQueryClient();
   return useMutation<{}, {}, string>({
-    mutationFn: (action) => apiRequest.post('/api/v1/user-action', { action }),
+    mutationFn: (action) => apiRequest.post("/api/v1/user-action", { action }),
     onSuccess: () => {
       queryClient.invalidateQueries(userKeys.userAction);
     }
@@ -156,14 +156,14 @@ export const useRegisterUserAction = () => {
 
 export const useLogoutUser = () =>
   useMutation({
-    mutationFn: () => apiRequest.post('/api/v1/auth/logout'),
+    mutationFn: () => apiRequest.post("/api/v1/auth/logout"),
     onSuccess: () => {
-      setAuthToken('');
+      setAuthToken("");
       // Delete the cookie by not setting a value; Alternatively clear the local storage
-      localStorage.setItem('publicKey', '');
-      localStorage.setItem('encryptedPrivateKey', '');
-      localStorage.setItem('iv', '');
-      localStorage.setItem('tag', '');
-      localStorage.setItem('PRIVATE_KEY', '');
+      localStorage.setItem("publicKey", "");
+      localStorage.setItem("encryptedPrivateKey", "");
+      localStorage.setItem("iv", "");
+      localStorage.setItem("tag", "");
+      localStorage.setItem("PRIVATE_KEY", "");
     }
   });

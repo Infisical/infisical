@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, Types, model } from "mongoose";
 
 export interface IOrganization {
 	_id: Types.ObjectId;
@@ -10,17 +10,17 @@ const organizationSchema = new Schema<IOrganization>(
 	{
 		name: {
 			type: String,
-			required: true
+			required: true,
 		},
 		customerId: {
-			type: String
-		}
+			type: String,
+		},
 	},
 	{
-		timestamps: true
+		timestamps: true,
 	}
 );
 
-const Organization = model<IOrganization>('Organization', organizationSchema);
+const Organization = model<IOrganization>("Organization", organizationSchema);
 
 export default Organization;

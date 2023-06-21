@@ -1,17 +1,17 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 
-import { Button } from '../Button';
+import { Button } from "../Button";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardContentProps,
   HoverCardTrigger
-} from './HoverCardv2';
+} from "./HoverCardv2";
 
 const meta: Meta<typeof HoverCardContent> = {
-  title: 'Components/HoverCard',
+  title: "Components/HoverCard",
   component: HoverCard,
-  tags: ['v2']
+  tags: ["v2"]
 };
 
 export default meta;

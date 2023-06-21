@@ -3,7 +3,7 @@ import { Membership, Workspace } from "../../../models";
 import { IMembershipPermission } from "../../../models/membership";
 import { BadRequestError, UnauthorizedRequestError } from "../../../utils/errors";
 import { ADMIN, MEMBER } from "../../../variables/organization";
-import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from '../../../variables';
+import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../../variables";
 import { Builder } from "builder-pattern"
 import _ from "lodash";
 
@@ -39,7 +39,7 @@ export const denyMembershipPermissions = async (req: Request, res: Response) => 
     throw BadRequestError({ message: "Something went wrong when locating the related workspace" })
   }
 
-  const uniqueEnvironmentSlugs = new Set(_.uniq(_.map(relatedWorkspace.environments, 'slug')));
+  const uniqueEnvironmentSlugs = new Set(_.uniq(_.map(relatedWorkspace.environments, "slug")));
 
   sanitizedMembershipPermissionsUnique.forEach(permission => {
     if (!uniqueEnvironmentSlugs.has(permission.environmentSlug)) {
@@ -59,6 +59,6 @@ export const denyMembershipPermissions = async (req: Request, res: Response) => 
   }
 
   res.send({
-    permissionsDenied: updatedMembershipWithPermissions.deniedPermissions
+    permissionsDenied: updatedMembershipWithPermissions.deniedPermissions,
   })
 }

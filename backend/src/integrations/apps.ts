@@ -2,32 +2,34 @@ import { Octokit } from "@octokit/rest";
 import { IIntegrationAuth } from "../models";
 import { standardRequest } from "../config/request";
 import {
-  INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_AWS_PARAMETER_STORE,
   INTEGRATION_AWS_SECRET_MANAGER,
-  INTEGRATION_HEROKU,
-  INTEGRATION_VERCEL,
-  INTEGRATION_NETLIFY,
+  INTEGRATION_AZURE_KEY_VAULT,
+  INTEGRATION_CHECKLY,
+  INTEGRATION_CHECKLY_API_URL,
+  INTEGRATION_CIRCLECI,
+  INTEGRATION_CIRCLECI_API_URL,
+  INTEGRATION_FLYIO,
+  INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
-  INTEGRATION_RENDER,
-  INTEGRATION_RAILWAY,
-  INTEGRATION_FLYIO,
-  INTEGRATION_CIRCLECI,
-  INTEGRATION_TRAVISCI,
-  INTEGRATION_SUPABASE,
-  INTEGRATION_CHECKLY,
-  INTEGRATION_HEROKU_API_URL,
+  INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUDFLARE_PAGES_API_URL,
   INTEGRATION_GITLAB_API_URL,
-  INTEGRATION_VERCEL_API_URL,
+  INTEGRATION_HEROKU,
+  INTEGRATION_HEROKU_API_URL,
+  INTEGRATION_NETLIFY,
   INTEGRATION_NETLIFY_API_URL,
-  INTEGRATION_RENDER_API_URL,
+  INTEGRATION_RAILWAY,
   INTEGRATION_RAILWAY_API_URL,
-  INTEGRATION_FLYIO_API_URL,
-  INTEGRATION_CIRCLECI_API_URL,
-  INTEGRATION_TRAVISCI_API_URL,
+  INTEGRATION_RENDER,
+  INTEGRATION_RENDER_API_URL,
+  INTEGRATION_SUPABASE,
   INTEGRATION_SUPABASE_API_URL,
-  INTEGRATION_CHECKLY_API_URL
+  INTEGRATION_TRAVISCI,
+  INTEGRATION_TRAVISCI_API_URL,
+  INTEGRATION_VERCEL,
+  INTEGRATION_VERCEL_API_URL,
 } from "../variables";
 
 interface App {
@@ -48,10 +50,12 @@ interface App {
 const getApps = async ({
   integrationAuth,
   accessToken,
+  accessId,
   teamId,
 }: {
   integrationAuth: IIntegrationAuth;
   accessToken: string;
+  accessId?: string;
   teamId?: string;
 }) => {
   let apps: App[] = [];
@@ -126,6 +130,12 @@ const getApps = async ({
       apps = await getAppsCheckly({
         accessToken,
       });
+      break;
+    case INTEGRATION_CLOUDFLARE_PAGES:
+      apps = await getAppsCloudflarePages({
+        accessToken,
+        accountId: accessId
+      })
       break;
   }
 
@@ -212,7 +222,7 @@ const getAppsNetlify = async ({ accessToken }: { accessToken: string }) => {
     const params = new URLSearchParams({
       page: String(page),
       per_page: String(perPage),
-      filter: 'all'
+      filter: "all",
     });
 
     const { data } = await standardRequest.get(
@@ -635,5 +645,38 @@ const getAppsCheckly = async ({ accessToken }: { accessToken: string }) => {
 
   return apps;
 };
+
+/**
+ * Return list of projects for the Cloudflare Pages integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - api key for the Cloudflare API
+ * @returns {Object[]} apps - Cloudflare Pages projects
+ * @returns {String} apps.name - name of Cloudflare Pages project
+ */
+const getAppsCloudflarePages = async ({ 
+    accessToken,
+    accountId
+}: {
+    accessToken: string;
+    accountId?: string;
+}) => {
+    const { data } = await standardRequest.get(
+        `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accountId}/pages/projects`,
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept": "application/json",
+            },
+        }
+    );
+
+    const apps = data.result.map((a: any) => {
+        return {
+            name: a.name,
+            appId: a.id,
+        };
+    });
+    return apps;
+}
 
 export { getApps };

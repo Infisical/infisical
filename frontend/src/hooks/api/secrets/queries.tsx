@@ -1,13 +1,14 @@
 /* eslint-disable no-param-reassign */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   decryptAssymmetric,
   decryptSymmetric
-} from '@app/components/utilities/cryptography/crypto';
-import { apiRequest } from '@app/config/request';
+} from "@app/components/utilities/cryptography/crypto";
+import { apiRequest } from "@app/config/request";
 
-import { secretSnapshotKeys } from '../secretSnapshots/queries';
+import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import {
   BatchSecretDTO,
   DecryptedSecret,
@@ -15,44 +16,47 @@ import {
   EncryptedSecretVersion,
   GetProjectSecretsDTO,
   GetSecretVersionsDTO
-} from './types';
+} from "./types";
 
 export const secretKeys = {
   // this is also used in secretSnapshot part
   getProjectSecret: (workspaceId: string, env: string | string[], folderId?: string) => [
     { workspaceId, env, folderId },
-    'secrets'
+    "secrets"
   ],
-  getSecretVersion: (secretId: string) => [{ secretId }, 'secret-versions']
+  getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"]
 };
 
 const fetchProjectEncryptedSecrets = async (
   workspaceId: string,
   env: string | string[],
-  folderId?: string
+  folderId?: string,
+  secretPath?: string
 ) => {
-  if (typeof env === 'string') {
-    const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
+  if (typeof env === "string") {
+    const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>("/api/v2/secrets", {
       params: {
         environment: env,
         workspaceId,
-        folderId: folderId || undefined
+        folderId: folderId || undefined,
+        secretPath
       }
     });
     return data.secrets;
   }
 
-  if (typeof env === 'object') {
+  if (typeof env === "object") {
     let allEnvData: any = [];
 
     // eslint-disable-next-line no-restricted-syntax
     for (const envPoint of env) {
       // eslint-disable-next-line no-await-in-loop
-      const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
+      const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>("/api/v2/secrets", {
         params: {
           environment: envPoint,
           workspaceId,
-          folderId
+          folderId,
+          secretPath
         }
       });
       allEnvData = allEnvData.concat(data.secrets);
@@ -77,8 +81,8 @@ export const useGetProjectSecrets = ({
     enabled: Boolean(decryptFileKey && workspaceId && env) && !isPaused,
     queryKey: secretKeys.getProjectSecret(workspaceId, env, folderId),
     queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, folderId),
-    select: (data) => {
-      const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+    select: useCallback((data: EncryptedSecret[]) => {
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
       const latestKey = decryptFileKey;
       const key = decryptAssymmetric({
         ciphertext: latestKey.encryptedKey,
@@ -125,7 +129,7 @@ export const useGetProjectSecrets = ({
           updatedAt: encSecret.updatedAt
         };
 
-        if (encSecret.type === 'personal') {
+        if (encSecret.type === "personal") {
           personalSecrets[`${decryptedSecret.key}-${decryptedSecret.env}`] = {
             id: encSecret._id,
             value: secretValue
@@ -142,26 +146,29 @@ export const useGetProjectSecrets = ({
         if (personalSecrets?.[dupKey]) {
           val.idOverride = personalSecrets[dupKey].id;
           val.valueOverride = personalSecrets[dupKey].value;
-          val.overrideAction = 'modified';
+          val.overrideAction = "modified";
         }
       });
       return { secrets: sharedSecrets };
-    }
+    }, [decryptFileKey])
   });
 
 export const useGetProjectSecretsByKey = ({
   workspaceId,
   env,
   decryptFileKey,
-  isPaused
+  isPaused,
+  folderId,
+  secretPath
 }: GetProjectSecretsDTO) =>
   useQuery({
     // wait for all values to be available
     enabled: Boolean(decryptFileKey && workspaceId && env) && !isPaused,
-    queryKey: secretKeys.getProjectSecret(workspaceId, env),
-    queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env),
-    select: (data) => {
-      const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+    // right now secretpath is passed as folderid as only this is used in overview
+    queryKey: secretKeys.getProjectSecret(workspaceId, env, secretPath),
+    queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, folderId, secretPath),
+    select: useCallback((data: EncryptedSecret[]) => {
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
       const latestKey = decryptFileKey;
       const key = decryptAssymmetric({
         ciphertext: latestKey.encryptedKey,
@@ -210,7 +217,7 @@ export const useGetProjectSecretsByKey = ({
           updatedAt: encSecret.updatedAt
         };
 
-        if (encSecret.type === 'personal') {
+        if (encSecret.type === "personal") {
           personalSecrets[`${decryptedSecret.key}-${decryptedSecret.env}`] = {
             id: encSecret._id,
             value: secretValue
@@ -229,13 +236,13 @@ export const useGetProjectSecretsByKey = ({
           if (personalSecrets?.[dupKey]) {
             val.idOverride = personalSecrets[dupKey].id;
             val.valueOverride = personalSecrets[dupKey].value;
-            val.overrideAction = 'modified';
+            val.overrideAction = "modified";
           }
         });
       });
 
       return { secrets: sharedSecrets, uniqueSecCount: Object.keys(uniqSecKeys).length };
-    }
+    }, [decryptFileKey])
   });
 
 const fetchEncryptedSecretVersion = async (secretId: string, offset: number, limit: number) => {
@@ -256,8 +263,8 @@ export const useGetSecretVersion = (dto: GetSecretVersionsDTO) =>
     enabled: Boolean(dto.secretId && dto.decryptFileKey),
     queryKey: secretKeys.getSecretVersion(dto.secretId),
     queryFn: () => fetchEncryptedSecretVersion(dto.secretId, dto.offset, dto.limit),
-    select: (data) => {
-      const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+    select: useCallback((data: EncryptedSecretVersion[]) => {
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
       const latestKey = dto.decryptFileKey;
       const key = decryptAssymmetric({
         ciphertext: latestKey.encryptedKey,
@@ -278,7 +285,7 @@ export const useGetSecretVersion = (dto: GetSecretVersionsDTO) =>
           })
         }))
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    }
+    }, [])
   });
 
 export const useBatchSecretsOp = () => {
@@ -286,7 +293,7 @@ export const useBatchSecretsOp = () => {
 
   return useMutation<{}, {}, BatchSecretDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.post('/api/v2/secrets/batch', dto);
+      const { data } = await apiRequest.post("/api/v2/secrets/batch", dto);
       return data;
     },
     onSuccess: (_, dto) => {

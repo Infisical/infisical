@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { faWarning } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { faWarning } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import Error from '@app/components/basic/Error';
-import attemptLogin from '@app/components/utilities/attemptLogin';
+import Error from "@app/components/basic/Error";
+import attemptLogin from "@app/components/utilities/attemptLogin";
 
-import { Button, Input } from '../v2';
+import { Button, Input } from "../v2";
 
 /**
  * 1st step of login - user enters their username and password
@@ -61,7 +61,7 @@ export default function LoginStep({
         }
 
         // case: login does not require MFA step
-        router.push(`/dashboard/${localStorage.getItem('projectData.id')}`);
+        router.push(`/dashboard/${localStorage.getItem("projectData.id")}`);
       }
 
     } catch (err) {
@@ -75,7 +75,7 @@ export default function LoginStep({
     <form onSubmit={(e) => e.preventDefault()}>
       <div className="w-full mx-auto h-full px-6">
         <p className="text-xl w-max mx-auto flex justify-center text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 mb-6">
-          {t('login.login')}
+          {t("login.login")}
         </p>
         <div className="flex items-center justify-center lg:w-1/6 w-1/4 min-w-[22rem] mx-auto w-full md:p-2 rounded-lg mt-4 md:mt-0 max-h-24 md:max-h-28">
           <Input
@@ -102,7 +102,7 @@ export default function LoginStep({
             />
           </div>
         </div>
-        {!isLoading && loginError && <Error text={t('login.error-login') ?? ''} />}
+        {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
         <div className="flex flex-col items-center justify-center lg:w-1/6 w-1/4 min-w-[22rem] px-2 mt-4 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">
           <div className="text-l py-1 text-lg w-full">
             <Button
@@ -113,19 +113,19 @@ export default function LoginStep({
               colorSchema="primary"
               variant="outline_bg"
               isLoading={isLoading}
-            > {String(t('login.login'))} </Button>
+            > {String(t("login.login"))} </Button>
           </div>
         </div>
       </div>
       <div className="text-bunker-400 text-sm flex flex-row w-max mx-auto">
         <Link href="/verify-email">
-          <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>{t('login.forgot-password')}</span>
+          <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>{t("login.forgot-password")}</span>
         </Link>
       </div>
       {false && (
         <div className="w-full p-2 flex flex-row items-center bg-white/10 text-gray-300 rounded-md max-w-md mx-auto mt-4">
           <FontAwesomeIcon icon={faWarning} className="ml-2 mr-6 text-6xl" />
-          {t('common.maintenance-alert')}
+          {t("common.maintenance-alert")}
         </div>
       )}
     </form>

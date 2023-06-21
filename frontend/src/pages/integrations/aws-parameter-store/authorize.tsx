@@ -1,46 +1,46 @@
-import { useState } from 'react';
-import { useRouter } from 'next/router';
+import { useState } from "react";
+import { useRouter } from "next/router";
 
-import { Button, Card, CardTitle, FormControl, Input } from '../../../components/v2';
-import saveIntegrationAccessToken from '../../api/integrations/saveIntegrationAccessToken';
+import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
+import saveIntegrationAccessToken from "../../api/integrations/saveIntegrationAccessToken";
 
 export default function AWSParameterStoreAuthorizeIntegrationPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const [accessKey, setAccessKey] = useState('');
-  const [accessKeyErrorText, setAccessKeyErrorText] = useState('');
-  const [accessSecretKey, setAccessSecretKey] = useState('');
-  const [accessSecretKeyErrorText, setAccessSecretKeyErrorText] = useState('');
+  const [accessKey, setAccessKey] = useState("");
+  const [accessKeyErrorText, setAccessKeyErrorText] = useState("");
+  const [accessSecretKey, setAccessSecretKey] = useState("");
+  const [accessSecretKeyErrorText, setAccessSecretKeyErrorText] = useState("");
 
   const handleButtonClick = async () => {
     try {
-      setAccessKeyErrorText('');
-      setAccessSecretKeyErrorText('');
+      setAccessKeyErrorText("");
+      setAccessSecretKeyErrorText("");
 
       if (accessKey.length === 0) {
-        setAccessKeyErrorText('Access key cannot be blank');
+        setAccessKeyErrorText("Access key cannot be blank");
         return;
       }
 
       if (accessSecretKey.length === 0) {
-        setAccessSecretKeyErrorText('Secret access key cannot be blank');
+        setAccessSecretKeyErrorText("Secret access key cannot be blank");
         return;
       }
 
       setIsLoading(true);
 
       const integrationAuth = await saveIntegrationAccessToken({
-        workspaceId: localStorage.getItem('projectData.id'),
-        integration: 'aws-parameter-store',
+        workspaceId: localStorage.getItem("projectData.id"),
+        integration: "aws-parameter-store",
         accessId: accessKey,
         accessToken: accessSecretKey,
         url: null,
         namespace: null
       });
 
-      setAccessKey('');
-      setAccessSecretKey('');
+      setAccessKey("");
+      setAccessSecretKey("");
       setIsLoading(false);
 
       router.push(
@@ -58,7 +58,7 @@ export default function AWSParameterStoreAuthorizeIntegrationPage() {
         <FormControl
           label="Access Key ID"
           errorText={accessKeyErrorText}
-          isError={accessKeyErrorText !== '' ?? false}
+          isError={accessKeyErrorText !== "" ?? false}
         >
           <Input 
             placeholder="" 
@@ -69,7 +69,7 @@ export default function AWSParameterStoreAuthorizeIntegrationPage() {
         <FormControl
           label="Secret Access Key"
           errorText={accessSecretKeyErrorText}
-          isError={accessSecretKeyErrorText !== '' ?? false}
+          isError={accessSecretKeyErrorText !== "" ?? false}
         >
           <Input
             placeholder=""

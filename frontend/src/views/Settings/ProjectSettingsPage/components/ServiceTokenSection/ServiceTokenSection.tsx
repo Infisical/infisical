@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
-import { faCheck, faCopy, faKey, faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import { faCheck, faCopy, faKey, faPlus, faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
 import {
   Button,
@@ -28,24 +28,24 @@ import {
   Th,
   THead,
   Tr
-} from '@app/components/v2';
-import { usePopUp, useToggle } from '@app/hooks';
-import { ServiceToken, WorkspaceEnv } from '@app/hooks/api/types';
+} from "@app/components/v2";
+import { usePopUp, useToggle } from "@app/hooks";
+import { ServiceToken, WorkspaceEnv } from "@app/hooks/api/types";
 
 const apiTokenExpiry = [
-  { label: '1 Day', value: 86400 },
-  { label: '7 Days', value: 604800 },
-  { label: '1 Month', value: 2592000 },
-  { label: '6 months', value: 15552000 },
-  { label: '12 months', value: 31104000 },
-  { label: 'Never', value: null }
+  { label: "1 Day", value: 86400 },
+  { label: "7 Days", value: 604800 },
+  { label: "1 Month", value: 2592000 },
+  { label: "6 months", value: 15552000 },
+  { label: "12 months", value: 31104000 },
+  { label: "Never", value: null }
 ];
 
 const createServiceTokenSchema = yup.object({
-  name: yup.string().max(100).required().label('Service Token Name'),
-  environment: yup.string().max(50).required().label('Environment'),
-  secretPath: yup.string().required().default('/').label('Secret Path'),
-  expiresIn: yup.string().optional().label('Service Token Expiration'),
+  name: yup.string().max(100).required().label("Service Token Name"),
+  environment: yup.string().max(50).required().label("Environment"),
+  secretPath: yup.string().required().default("/").label("Secret Path"),
+  expiresIn: yup.string().optional().label("Service Token Expiration"),
   permissions: yup
     .object()
     .shape({
@@ -77,7 +77,7 @@ export const ServiceTokenSection = ({
   environments = [],
   onCreateToken
 }: Props): JSX.Element => {
-  const [newToken, setToken] = useState('');
+  const [newToken, setToken] = useState("");
   const { t } = useTranslation();
   const [isTokenCopied, setIsTokenCopied] = useToggle(false);
 
@@ -95,8 +95,8 @@ export const ServiceTokenSection = ({
   };
 
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
-    'createAPIToken',
-    'deleteAPITokenConfirmation'
+    "createAPIToken",
+    "deleteAPITokenConfirmation"
   ] as const);
 
   const {
@@ -117,37 +117,37 @@ export const ServiceTokenSection = ({
 
   const onDeleteApproved = async () => {
     await onDeleteToken((popUp?.deleteAPITokenConfirmation?.data as DeleteModalData)?.id);
-    handlePopUpClose('deleteAPITokenConfirmation');
+    handlePopUpClose("deleteAPITokenConfirmation");
   };
 
   return (
     <div className="mt-4 mb-4 flex w-full flex-col items-start rounded-md bg-mineshaft-900 p-6">
       <div className="flex w-full flex-row justify-between">
         <div className="flex w-full flex-col">
-          <p className="mb-3 text-xl font-semibold">{t('section.token.service-tokens')}</p>
-          <p className="text-sm text-gray-400 mb-4">{t('section.token.service-tokens-description')}</p>
+          <p className="mb-3 text-xl font-semibold">{t("section.token.service-tokens")}</p>
+          <p className="text-sm text-gray-400 mb-4">{t("section.token.service-tokens-description")}</p>
         </div>
         <div>
           <Modal
             isOpen={popUp?.createAPIToken?.isOpen}
             onOpenChange={(open) => {
-              handlePopUpToggle('createAPIToken', open);
+              handlePopUpToggle("createAPIToken", open);
               reset();
-              setToken('');
+              setToken("");
             }}
           >
             <ModalTrigger asChild>
               <Button color="mineshaft" leftIcon={<FontAwesomeIcon icon={faPlus} />}>
-                {t('section.token.add-new')}
+                {t("section.token.add-new")}
               </Button>
             </ModalTrigger>
             <ModalContent
               title={
-                t('section.token.add-dialog.title', {
+                t("section.token.add-dialog.title", {
                   target: workspaceName
                 }) as string
               }
-              subTitle={t('section.token.add-dialog.description') as string}
+              subTitle={t("section.token.add-dialog.description") as string}
             >
               {!hasServiceToken ? (
                 <form onSubmit={handleSubmit(onFormSubmit)}>
@@ -157,7 +157,7 @@ export const ServiceTokenSection = ({
                     defaultValue=""
                     render={({ field, fieldState: { error } }) => (
                       <FormControl
-                        label={t('section.token.add-dialog.name')}
+                        label={t("section.token.add-dialog.name")}
                         isError={Boolean(error)}
                         errorText={error?.message}
                       >
@@ -223,7 +223,7 @@ export const ServiceTokenSection = ({
                           className="w-full"
                         >
                           {apiTokenExpiry.map(({ label, value }) => (
-                            <SelectItem value={String(value || '')} key={label}>
+                            <SelectItem value={String(value || "")} key={label}>
                               {label}
                             </SelectItem>
                           ))}
@@ -241,12 +241,12 @@ export const ServiceTokenSection = ({
                     render={({ field: { onChange, value }, fieldState: { error } }) => {
                       const options = [
                         {
-                          label: 'Read (default)',
-                          value: 'read'
+                          label: "Read (default)",
+                          value: "read"
                         },
                         {
-                          label: 'Write (optional)',
-                          value: 'write'
+                          label: "Write (optional)",
+                          value: "write"
                         }
                       ];
 
@@ -265,7 +265,7 @@ export const ServiceTokenSection = ({
                                   key={optionValue}
                                   className="data-[state=checked]:bg-primary"
                                   isChecked={value[optionValue]}
-                                  isDisabled={optionValue === 'read'}
+                                  isDisabled={optionValue === "read"}
                                   onCheckedChange={(state) => {
                                     onChange({
                                       ...value,
@@ -309,7 +309,7 @@ export const ServiceTokenSection = ({
                   >
                     <FontAwesomeIcon icon={isTokenCopied ? faCheck : faCopy} />
                     <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">
-                      {t('common.click-to-copy')}
+                      {t("common.click-to-copy")}
                     </span>
                   </IconButton>
                 </div>
@@ -321,11 +321,11 @@ export const ServiceTokenSection = ({
       <DeleteActionModal
         isOpen={popUp.deleteAPITokenConfirmation.isOpen}
         title={`Delete ${
-          (popUp?.deleteAPITokenConfirmation?.data as DeleteModalData)?.name || ' '
+          (popUp?.deleteAPITokenConfirmation?.data as DeleteModalData)?.name || " "
         } service token?`}
-        onChange={(isOpen) => handlePopUpToggle('deleteAPITokenConfirmation', isOpen)}
+        onChange={(isOpen) => handlePopUpToggle("deleteAPITokenConfirmation", isOpen)}
         deleteKey={(popUp?.deleteAPITokenConfirmation?.data as DeleteModalData)?.name}
-        onClose={() => handlePopUpClose('deleteAPITokenConfirmation')}
+        onClose={() => handlePopUpClose("deleteAPITokenConfirmation")}
         onDeleteApproved={onDeleteApproved}
       />
       <TableContainer>
@@ -351,7 +351,7 @@ export const ServiceTokenSection = ({
                   <Td className="flex items-center justify-end">
                     <IconButton
                       onClick={() =>
-                        handlePopUpOpen('deleteAPITokenConfirmation', {
+                        handlePopUpOpen("deleteAPITokenConfirmation", {
                           name: row.name,
                           id: row._id
                         })

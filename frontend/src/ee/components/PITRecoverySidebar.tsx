@@ -1,20 +1,20 @@
 /* eslint-disable no-nested-ternary */
-import { useEffect, useState } from 'react';
-import Image from 'next/image';
-import { useRouter } from 'next/router';
-import { faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Tag } from 'public/data/frequentInterfaces';
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/router";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Tag } from "public/data/frequentInterfaces";
 
-import Button from '@app/components/basic/buttons/Button';
+import Button from "@app/components/basic/buttons/Button";
 import {
   decryptAssymmetric,
   decryptSymmetric
-} from '@app/components/utilities/cryptography/crypto';
-import getProjectSecretShanpshots from '@app/ee/api/secrets/GetProjectSercetShanpshots';
-import getSecretSnapshotData from '@app/ee/api/secrets/GetSecretSnapshotData';
-import timeSince from '@app/ee/utilities/timeSince';
-import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
+} from "@app/components/utilities/cryptography/crypto";
+import getProjectSecretShanpshots from "@app/ee/api/secrets/GetProjectSercetShanpshots";
+import getSecretSnapshotData from "@app/ee/api/secrets/GetSecretSnapshotData";
+import timeSince from "@app/ee/utilities/timeSince";
+import getLatestFileKey from "@app/pages/api/workspace/getLatestFileKey";
 
 export interface SecretDataProps {
   pos: number;
@@ -47,7 +47,7 @@ interface EncrypetedSecretVersionListProps {
   secretKeyIV: string;
   secretKeyTag: string;
   environment: string;
-  type: 'personal' | 'shared';
+  type: "personal" | "shared";
   tags: Tag[];
 }
 
@@ -87,7 +87,7 @@ const PITRecoverySidebar = ({ toggleSidebar, setSnapshotData, chosenSnapshot }: 
     const secretSnapshotData = await getSecretSnapshotData({ secretSnapshotId: snapshotId });
 
     const latestKey = await getLatestFileKey({ workspaceId: String(router.query.id) });
-    const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY');
+    const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY");
 
     let decryptedLatestKey: string;
     if (latestKey) {
@@ -135,44 +135,44 @@ const PITRecoverySidebar = ({ toggleSidebar, setSnapshotData, chosenSnapshot }: 
 
     const result = secretKeys.map((key, index) =>
       decryptedSecretVersions.filter(
-        (secret: SecretDataProps) => secret.key === key && secret.type === 'shared'
+        (secret: SecretDataProps) => secret.key === key && secret.type === "shared"
       )[0]?.id
         ? {
             id: decryptedSecretVersions.filter(
-              (secret: SecretDataProps) => secret.key === key && secret.type === 'shared'
+              (secret: SecretDataProps) => secret.key === key && secret.type === "shared"
             )[0].id,
             pos: index,
             key,
             environment: decryptedSecretVersions.filter(
-              (secret: SecretDataProps) => secret.key === key && secret.type === 'shared'
+              (secret: SecretDataProps) => secret.key === key && secret.type === "shared"
             )[0].environment,
             tags: decryptedSecretVersions.filter(
-              (secret: SecretDataProps) => secret.key === key && secret.type === 'shared'
+              (secret: SecretDataProps) => secret.key === key && secret.type === "shared"
             )[0].tags,
             value: decryptedSecretVersions.filter(
-              (secret: SecretDataProps) => secret.key === key && secret.type === 'shared'
+              (secret: SecretDataProps) => secret.key === key && secret.type === "shared"
             )[0]?.value,
             valueOverride: decryptedSecretVersions.filter(
-              (secret: SecretDataProps) => secret.key === key && secret.type === 'personal'
+              (secret: SecretDataProps) => secret.key === key && secret.type === "personal"
             )[0]?.value
           }
         : {
             id: decryptedSecretVersions.filter(
-              (secret: SecretDataProps) => secret.key === key && secret.type === 'personal'
+              (secret: SecretDataProps) => secret.key === key && secret.type === "personal"
             )[0].id,
             pos: index,
             key,
             environment: decryptedSecretVersions.filter(
-              (secret: SecretDataProps) => secret.key === key && secret.type === 'personal'
+              (secret: SecretDataProps) => secret.key === key && secret.type === "personal"
             )[0].environment,
             tags: decryptedSecretVersions.filter(
-              (secret: SecretDataProps) => secret.key === key && secret.type === 'personal'
+              (secret: SecretDataProps) => secret.key === key && secret.type === "personal"
             )[0].tags,
             value: decryptedSecretVersions.filter(
-              (secret: SecretDataProps) => secret.key === key && secret.type === 'shared'
+              (secret: SecretDataProps) => secret.key === key && secret.type === "shared"
             )[0]?.value,
             valueOverride: decryptedSecretVersions.filter(
-              (secret: SecretDataProps) => secret.key === key && secret.type === 'personal'
+              (secret: SecretDataProps) => secret.key === key && secret.type === "personal"
             )[0]?.value
           }
     );
@@ -182,14 +182,14 @@ const PITRecoverySidebar = ({ toggleSidebar, setSnapshotData, chosenSnapshot }: 
       version: secretSnapshotData.version,
       createdAt: secretSnapshotData.createdAt,
       secretVersions: result,
-      comment: ''
+      comment: ""
     });
   };
 
   return (
     <div
       className={`min-w-sm absolute w-full max-w-sm border-l border-mineshaft-500 ${
-        isLoading ? 'bg-bunker-800' : 'bg-bunker'
+        isLoading ? "bg-bunker-800" : "bg-bunker"
       } fixed sticky right-0 top-0 z-[40] flex h-full flex-col justify-between shadow-xl`}
     >
       {isLoading ? (
@@ -227,41 +227,41 @@ const PITRecoverySidebar = ({ toggleSidebar, setSnapshotData, chosenSnapshot }: 
                 key={snapshot._id}
                 onClick={() => exploreSnapshot({ snapshotId: snapshot._id })}
                 className={`${
-                  chosenSnapshot === snapshot._id || (id === 0 && chosenSnapshot === '')
-                    ? 'pointer-events-none bg-primary text-black'
-                    : 'cursor-pointer bg-mineshaft-700 duration-200 hover:bg-mineshaft-500'
+                  chosenSnapshot === snapshot._id || (id === 0 && chosenSnapshot === "")
+                    ? "pointer-events-none bg-primary text-black"
+                    : "cursor-pointer bg-mineshaft-700 duration-200 hover:bg-mineshaft-500"
                 } mb-2 flex flex-row items-center justify-between rounded-md py-3 px-4`}
               >
                 <div className="flex flex-row items-start">
                   <div
                     className={`${
-                      chosenSnapshot === snapshot._id || (id === 0 && chosenSnapshot === '')
-                        ? 'text-bunker-800'
-                        : 'text-bunker-200'
+                      chosenSnapshot === snapshot._id || (id === 0 && chosenSnapshot === "")
+                        ? "text-bunker-800"
+                        : "text-bunker-200"
                     } mr-1.5 text-sm`}
                   >
                     {timeSince(new Date(snapshot.createdAt))}
                   </div>
                   <div
                     className={`${
-                      chosenSnapshot === snapshot._id || (id === 0 && chosenSnapshot === '')
-                        ? 'text-bunker-900'
-                        : 'text-bunker-300'
+                      chosenSnapshot === snapshot._id || (id === 0 && chosenSnapshot === "")
+                        ? "text-bunker-900"
+                        : "text-bunker-300"
                     } text-sm `}
                   >{` - ${snapshot.secretVersions.length} Secrets`}</div>
                 </div>
                 <div
                   className={`${
-                    chosenSnapshot === snapshot._id || (id === 0 && chosenSnapshot === '')
-                      ? 'pointer-events-none text-bunker-800'
-                      : 'cursor-pointer text-bunker-200 duration-200 hover:text-primary'
+                    chosenSnapshot === snapshot._id || (id === 0 && chosenSnapshot === "")
+                      ? "pointer-events-none text-bunker-800"
+                      : "cursor-pointer text-bunker-200 duration-200 hover:text-primary"
                   } text-sm`}
                 >
                   {id === 0
-                    ? 'Current Version'
+                    ? "Current Version"
                     : chosenSnapshot === snapshot._id
-                    ? 'Currently Viewing'
-                    : 'Explore'}
+                    ? "Currently Viewing"
+                    : "Explore"}
                 </div>
               </div>
             ))}

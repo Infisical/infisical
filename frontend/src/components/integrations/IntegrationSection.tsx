@@ -1,4 +1,4 @@
-import IntegrationTile from './Integration';
+import IntegrationTile from "./Integration";
 
 interface Props {
   integrations: any;
@@ -23,6 +23,7 @@ interface Integration {
   targetEnvironment: string;
   workspace: string;
   integrationAuth: string;
+  secretPath: string;
 }
 
 const ProjectIntegrationSection = ({

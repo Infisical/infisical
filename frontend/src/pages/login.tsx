@@ -14,12 +14,12 @@ import { useProviderAuth } from '@app/hooks/useProviderAuth';
 import { getAuthToken, isLoggedIn } from '@app/reactQuery';
 import { fetchUserDetails } from '~/hooks/api/users/queries';
 
-import getWorkspaces from './api/workspace/getWorkspaces';
+import getWorkspaces from "./api/workspace/getWorkspaces";
 
 export default function Login() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [step, setStep] = useState(1);
   const { t } = useTranslation();
   
@@ -63,7 +63,7 @@ export default function Login() {
         }
         router.push(`/dashboard/${userWorkspace}`);
       } catch (error) {
-        console.log('Error - Not logged in yet');
+        console.log("Error - Not logged in yet");
       }
     };
     if (isLoggedIn()) {
@@ -111,11 +111,11 @@ export default function Login() {
   return (
     <div className="flex h-screen flex-col justify-center bg-gradient-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700 px-6 pb-28 ">
       <Head>
-        <title>{t('common.head-title', { title: t('login.title') })}</title>
+        <title>{t("common.head-title", { title: t("login.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t('login.og-title') ?? ''} />
-        <meta name="og:description" content={t('login.og-description') ?? ''} />
+        <meta property="og:title" content={t("login.og-title") ?? ""} />
+        <meta name="og:description" content={t("login.og-description") ?? ""} />
       </Head>
       <Link href="/">
         <div className="mb-4 mt-20 flex justify-center">

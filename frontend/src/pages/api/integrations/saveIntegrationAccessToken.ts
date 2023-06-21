@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface Props {
   workspaceId: string | null;
@@ -29,10 +29,10 @@ const saveIntegrationAccessToken = ({
     url,
     namespace
 }: Props) =>
-  SecurityClient.fetchCall(`/api/v1/integration-auth/access-token`, {
-    method: 'POST',
+  SecurityClient.fetchCall("/api/v1/integration-auth/access-token", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
         workspaceId,
@@ -46,7 +46,7 @@ const saveIntegrationAccessToken = ({
     if (res && res.status === 200) {
       return (await res.json()).integrationAuth;
     }
-    console.log('Failed to save integration access details');
+    console.log("Failed to save integration access details");
     return undefined;
   });
 

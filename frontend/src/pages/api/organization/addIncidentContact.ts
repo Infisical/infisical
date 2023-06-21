@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This route add an incident contact email to a certain organization
@@ -7,9 +7,9 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const addIncidentContact = (organizationId: string, email: string) =>
   SecurityClient.fetchCall(`/api/v1/organization/${organizationId}/incidentContactOrg`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       email
@@ -18,7 +18,7 @@ const addIncidentContact = (organizationId: string, email: string) =>
     if (res && res.status === 200) {
       return res;
     }
-    console.log('Failed to add an incident contact');
+    console.log("Failed to add an incident contact");
     return undefined;
   });
 

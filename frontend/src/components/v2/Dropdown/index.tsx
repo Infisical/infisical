@@ -5,7 +5,7 @@ export type {
   DropdownMenuItemProps,
   DropdownMenuProps,
   DropdownMenuTriggerProps
-} from './Dropdown';
+} from "./Dropdown";
 export {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,4 +14,4 @@ export {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger
-} from './Dropdown';
+} from "./Dropdown";

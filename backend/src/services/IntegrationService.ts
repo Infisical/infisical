@@ -1,12 +1,12 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import { 
-    handleOAuthExchangeHelper,
-    syncIntegrationsHelper,
-    getIntegrationAuthRefreshHelper,
     getIntegrationAuthAccessHelper,
-    setIntegrationAuthRefreshHelper,
+    getIntegrationAuthRefreshHelper,
+    handleOAuthExchangeHelper,
     setIntegrationAuthAccessHelper,
-} from '../helpers/integration';
+    setIntegrationAuthRefreshHelper,
+    syncIntegrationsHelper,
+} from "../helpers/integration";
 
 /**
  * Class to handle integrations
@@ -30,7 +30,7 @@ class IntegrationService {
         workspaceId,
         integration,
         code,
-        environment
+        environment,
     }: { 
         workspaceId: string;
         integration: string;
@@ -41,7 +41,7 @@ class IntegrationService {
             workspaceId,
             integration,
             code,
-            environment
+            environment,
         });
     }
     
@@ -53,13 +53,13 @@ class IntegrationService {
      */
     static async syncIntegrations({
         workspaceId,
-        environment
+        environment,
     }: {
         workspaceId: Types.ObjectId;
         environment?: string;
     }) {
         return await syncIntegrationsHelper({
-            workspaceId
+            workspaceId,
         });
     }
     
@@ -72,7 +72,7 @@ class IntegrationService {
      */
     static async getIntegrationAuthRefresh({ integrationAuthId }: { integrationAuthId: Types.ObjectId}) {
         return await getIntegrationAuthRefreshHelper({
-            integrationAuthId
+            integrationAuthId,
         });
     }
     
@@ -85,7 +85,7 @@ class IntegrationService {
      */
     static async getIntegrationAuthAccess({ integrationAuthId }: { integrationAuthId: Types.ObjectId }) {
         return await getIntegrationAuthAccessHelper({
-            integrationAuthId
+            integrationAuthId,
         });
     }
 
@@ -100,14 +100,14 @@ class IntegrationService {
      */
     static async setIntegrationAuthRefresh({ 
         integrationAuthId,
-        refreshToken 
+        refreshToken, 
     }: { 
         integrationAuthId: string; 
         refreshToken: string;
     }) {
         return await setIntegrationAuthRefreshHelper({
             integrationAuthId,
-            refreshToken
+            refreshToken,
         });
     }
 
@@ -126,7 +126,7 @@ class IntegrationService {
         integrationAuthId,
         accessId,
         accessToken,
-        accessExpiresAt
+        accessExpiresAt,
     }: { 
         integrationAuthId: string;
         accessId: string | null;
@@ -137,7 +137,7 @@ class IntegrationService {
             integrationAuthId,
             accessId,
             accessToken,
-            accessExpiresAt
+            accessExpiresAt,
         });
     }
 }

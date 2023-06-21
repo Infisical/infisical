@@ -3,19 +3,19 @@ import { Request, Response } from "express";
 import { ISecret, Secret, ServiceTokenData } from "../../models";
 import { IAction, SecretVersion } from "../../ee/models";
 import {
-  SECRET_PERSONAL,
   ACTION_ADD_SECRETS,
+  ACTION_DELETE_SECRETS,
   ACTION_READ_SECRETS,
   ACTION_UPDATE_SECRETS,
-  ACTION_DELETE_SECRETS,
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
+  SECRET_PERSONAL,
 } from "../../variables";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
 import { EventService } from "../../services";
 import { eventPushSecrets } from "../../events";
-import { EESecretService, EELogService } from "../../ee/services";
-import { TelemetryService, SecretService } from "../../services";
+import { EELogService, EESecretService } from "../../ee/services";
+import { SecretService, TelemetryService } from "../../services";
 import { getChannelFromUserAgent } from "../../utils/posthog";
 import { PERMISSION_WRITE_SECRETS } from "../../variables";
 import {
@@ -25,7 +25,7 @@ import {
 } from "../../ee/helpers/checkMembershipPermissions";
 import Tag from "../../models/tag";
 import _ from "lodash";
-import { BatchSecretRequest, BatchSecret } from "../../types/secret";
+import { BatchSecret, BatchSecretRequest } from "../../types/secret";
 import Folder from "../../models/folder";
 import {
   getFolderByPath,
@@ -700,11 +700,15 @@ export const getSecrets = async (req: Request, res: Response) => {
     (!folders && folderId && folderId !== "root") ||
     (!folders && secretPath)
   ) {
-    throw BadRequestError({ message: "Folder not found" });
+    res.send({ secrets: [] });
+    return;
   }
   if (folders && folderId !== "root") {
     const folder = searchByFolderId(folders.nodes, folderId as string);
-    if (!folder) throw BadRequestError({ message: "Folder not found" });
+    if (!folder) {
+      res.send({ secrets: [] });
+      return;
+    }
   }
 
   if (req.authData.authPayload instanceof ServiceTokenData) {
@@ -720,10 +724,11 @@ export const getSecrets = async (req: Request, res: Response) => {
   }
 
   if (folders && secretPath) {
-    if (!folders) throw BadRequestError({ message: "Folder not found" });
+    // avoid throwing error and send empty list
     const folder = getFolderByPath(folders.nodes, secretPath as string);
     if (!folder) {
-      throw BadRequestError({ message: "Secret path not found" });
+      res.send({ secrets: [] });
+      return;
     }
     folderId = folder.id;
   }

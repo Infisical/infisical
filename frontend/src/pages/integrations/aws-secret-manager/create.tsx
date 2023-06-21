@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import queryString from 'query-string';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import queryString from "query-string";
 
 import {
   Button,
@@ -10,55 +10,56 @@ import {
   Input,
   Select,
   SelectItem
-} from '../../../components/v2';
-import { useGetIntegrationAuthById } from '../../../hooks/api/integrationAuth';
-import { useGetWorkspaceById } from '../../../hooks/api/workspace';
-import createIntegration from '../../api/integrations/createIntegration';
+} from "../../../components/v2";
+import { useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
+import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+import createIntegration from "../../api/integrations/createIntegration";
 
 const awsRegions = [
-  { name: 'US East (Ohio)', slug: 'us-east-2' },
-  { name: 'US East (N. Virginia)', slug: 'us-east-1' },
-  { name: 'US West (N. California)', slug: 'us-west-1' },
-  { name: 'US West (Oregon)', slug: 'us-west-2' },
-  { name: 'Africa (Cape Town)', slug: 'af-south-1' },
-  { name: 'Asia Pacific (Hong Kong)', slug: 'ap-east-1' },
-  { name: 'Asia Pacific (Hyderabad)', slug: 'ap-south-2' },
-  { name: 'Asia Pacific (Jakarta)', slug: 'ap-southeast-3' },
-  { name: 'Asia Pacific (Melbourne)', slug: 'ap-southeast-4' },
-  { name: 'Asia Pacific (Mumbai)', slug: 'ap-south-1' },
-  { name: 'Asia Pacific (Osaka)', slug: 'ap-northeast-3' },
-  { name: 'Asia Pacific (Seoul)', slug: 'ap-northeast-2' },
-  { name: 'Asia Pacific (Singapore)', slug: 'ap-southeast-1' },
-  { name: 'Asia Pacific (Sydney)', slug: 'ap-southeast-2' },
-  { name: 'Asia Pacific (Tokyo)', slug: 'ap-northeast-1' },
-  { name: 'Canada (Central)', slug: 'ca-central-1' },
-  { name: 'Europe (Frankfurt)', slug: 'eu-central-1' },
-  { name: 'Europe (Ireland)', slug: 'eu-west-1' },
-  { name: 'Europe (London)', slug: 'eu-west-2' },
-  { name: 'Europe (Milan)', slug: 'eu-south-1' },
-  { name: 'Europe (Paris)', slug: 'eu-west-3' },
-  { name: 'Europe (Spain)', slug: 'eu-south-2' },
-  { name: 'Europe (Stockholm)', slug: 'eu-north-1' },
-  { name: 'Europe (Zurich)', slug: 'eu-central-2' },
-  { name: 'Middle East (Bahrain)', slug: 'me-south-1' },
-  { name: 'Middle East (UAE)', slug: 'me-central-1' },
-  { name: 'South America (Sao Paulo)', slug: 'sa-east-1' },
-  { name: 'AWS GovCloud (US-East)', slug: 'us-gov-east-1' },
-  { name: 'AWS GovCloud (US-West)', slug: 'us-gov-west-1' }
+  { name: "US East (Ohio)", slug: "us-east-2" },
+  { name: "US East (N. Virginia)", slug: "us-east-1" },
+  { name: "US West (N. California)", slug: "us-west-1" },
+  { name: "US West (Oregon)", slug: "us-west-2" },
+  { name: "Africa (Cape Town)", slug: "af-south-1" },
+  { name: "Asia Pacific (Hong Kong)", slug: "ap-east-1" },
+  { name: "Asia Pacific (Hyderabad)", slug: "ap-south-2" },
+  { name: "Asia Pacific (Jakarta)", slug: "ap-southeast-3" },
+  { name: "Asia Pacific (Melbourne)", slug: "ap-southeast-4" },
+  { name: "Asia Pacific (Mumbai)", slug: "ap-south-1" },
+  { name: "Asia Pacific (Osaka)", slug: "ap-northeast-3" },
+  { name: "Asia Pacific (Seoul)", slug: "ap-northeast-2" },
+  { name: "Asia Pacific (Singapore)", slug: "ap-southeast-1" },
+  { name: "Asia Pacific (Sydney)", slug: "ap-southeast-2" },
+  { name: "Asia Pacific (Tokyo)", slug: "ap-northeast-1" },
+  { name: "Canada (Central)", slug: "ca-central-1" },
+  { name: "Europe (Frankfurt)", slug: "eu-central-1" },
+  { name: "Europe (Ireland)", slug: "eu-west-1" },
+  { name: "Europe (London)", slug: "eu-west-2" },
+  { name: "Europe (Milan)", slug: "eu-south-1" },
+  { name: "Europe (Paris)", slug: "eu-west-3" },
+  { name: "Europe (Spain)", slug: "eu-south-2" },
+  { name: "Europe (Stockholm)", slug: "eu-north-1" },
+  { name: "Europe (Zurich)", slug: "eu-central-2" },
+  { name: "Middle East (Bahrain)", slug: "me-south-1" },
+  { name: "Middle East (UAE)", slug: "me-central-1" },
+  { name: "South America (Sao Paulo)", slug: "sa-east-1" },
+  { name: "AWS GovCloud (US-East)", slug: "us-gov-east-1" },
+  { name: "AWS GovCloud (US-West)", slug: "us-gov-west-1" }
 ];
 
 export default function AWSSecretManagerCreateIntegrationPage() {
   const router = useRouter();
 
-  const { integrationAuthId } = queryString.parse(router.asPath.split('?')[1]);
+  const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
-  const { data: workspace } = useGetWorkspaceById(localStorage.getItem('projectData.id') ?? '');
-  const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? '');
+  const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
+  const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
 
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
-  const [selectedAWSRegion, setSelectedAWSRegion] = useState('');
-  const [targetSecretName, setTargetSecretName] = useState('');
-  const [targetSecretNameErrorText, setTargetSecretNameErrorText] = useState('');
+  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+  const [secretPath, setSecretPath] = useState("/");
+  const [selectedAWSRegion, setSelectedAWSRegion] = useState("");
+  const [targetSecretName, setTargetSecretName] = useState("");
+  const [targetSecretNameErrorText, setTargetSecretNameErrorText] = useState("");
 
   // const [path, setPath] = useState('');
   // const [pathErrorText, setPathErrorText] = useState('');
@@ -79,8 +80,8 @@ export default function AWSSecretManagerCreateIntegrationPage() {
 
   const handleButtonClick = async () => {
     try {
-      if (targetSecretName.trim() === '') {
-        setTargetSecretName('Secret name cannot be blank');
+      if (targetSecretName.trim() === "") {
+        setTargetSecretName("Secret name cannot be blank");
         return;
       }
 
@@ -100,13 +101,14 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         targetServiceId: null,
         owner: null,
         path: null,
-        region: selectedAWSRegion
+        region: selectedAWSRegion,
+        secretPath
       });
 
       setIsLoading(false);
-      setTargetSecretNameErrorText('');
+      setTargetSecretNameErrorText("");
 
-      router.push(`/integrations/${localStorage.getItem('projectData.id')}`);
+      router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
       console.error(err);
     }
@@ -132,6 +134,13 @@ export default function AWSSecretManagerCreateIntegrationPage() {
             ))}
           </Select>
         </FormControl>
+        <FormControl label="Secrets Path">
+          <Input
+            value={secretPath}
+            onChange={(evt) => setSecretPath(evt.target.value)}
+            placeholder="Provide a path, default is /"
+          />
+        </FormControl>
         <FormControl label="AWS Region">
           <Select
             value={selectedAWSRegion}
@@ -148,12 +157,12 @@ export default function AWSSecretManagerCreateIntegrationPage() {
         <FormControl
           label="AWS SM Secret Name"
           errorText={targetSecretNameErrorText}
-          isError={targetSecretNameErrorText !== '' ?? false}
+          isError={targetSecretNameErrorText !== "" ?? false}
         >
           <Input
             placeholder={`${workspace.name
               .toLowerCase()
-              .replace(/ /g, '-')}/${selectedSourceEnvironment}`}
+              .replace(/ /g, "-")}/${selectedSourceEnvironment}`}
             value={targetSecretName}
             onChange={(e) => setTargetSecretName(e.target.value)}
           />

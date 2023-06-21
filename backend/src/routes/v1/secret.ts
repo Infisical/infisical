@@ -1,61 +1,61 @@
-import express from 'express';
+import express from "express";
 const router = express.Router();
 import {
 	requireAuth,
-	requireWorkspaceAuth,
 	requireServiceTokenAuth,
-	validateRequest
-} from '../../middleware';
-import { body, query, param } from 'express-validator';
-import { secretController } from '../../controllers/v1';
+	requireWorkspaceAuth,
+	validateRequest,
+} from "../../middleware";
+import { body, param, query } from "express-validator";
+import { secretController } from "../../controllers/v1";
 import {
 	ADMIN, 
+	AUTH_MODE_JWT,
 	MEMBER,
-	AUTH_MODE_JWT
-} from '../../variables';
+} from "../../variables";
 
 // note to devs: these endpoints will be deprecated in favor of v2
 
 router.post(
-	'/:workspaceId',
+	"/:workspaceId",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT]
+		acceptedAuthModes: [AUTH_MODE_JWT],
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		locationWorkspaceId: 'params'
+		locationWorkspaceId: "params",
 	}),
-	body('secrets').exists(),
-	body('keys').exists(),
-	body('environment').exists().trim().notEmpty(),
-	body('channel'),
-	param('workspaceId').exists().trim(),
+	body("secrets").exists(),
+	body("keys").exists(),
+	body("environment").exists().trim().notEmpty(),
+	body("channel"),
+	param("workspaceId").exists().trim(),
 	validateRequest,
 	secretController.pushSecrets
 );
 
 router.get(
-	'/:workspaceId',
+	"/:workspaceId",
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT]
+		acceptedAuthModes: [AUTH_MODE_JWT],
 	}),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		locationWorkspaceId: 'params'
+		locationWorkspaceId: "params",
 	}),
-	query('environment').exists().trim(),
-	query('channel'),
-	param('workspaceId').exists().trim(),
+	query("environment").exists().trim(),
+	query("channel"),
+	param("workspaceId").exists().trim(),
 	validateRequest,
 	secretController.pullSecrets
 );
 
 router.get(
-	'/:workspaceId/service-token',
+	"/:workspaceId/service-token",
 	requireServiceTokenAuth,
-	query('environment').exists().trim(),
-	query('channel'),
-	param('workspaceId').exists().trim(),
+	query("environment").exists().trim(),
+	query("channel"),
+	param("workspaceId").exists().trim(),
 	validateRequest,
 	secretController.pullSecretsServiceToken
 );

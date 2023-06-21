@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
-import { UnauthorizedRequestError, SecretSnapshotNotFoundError } from '../../utils/errors';
-import { SecretSnapshot } from '../models';
+import { NextFunction, Request, Response } from "express";
+import { SecretSnapshotNotFoundError } from "../../utils/errors";
+import { SecretSnapshot } from "../models";
 import {
-    validateMembership
-} from '../../helpers/membership';
+    validateMembership,
+} from "../../helpers/membership";
 
 /**
  * Validate if user on request has proper membership for secret snapshot
@@ -15,7 +15,7 @@ import {
 const requireSecretSnapshotAuth = ({
     acceptedRoles,
 }: {
-    acceptedRoles: Array<'admin' | 'member'>;
+    acceptedRoles: Array<"admin" | "member">;
 }) => {
     return async (req: Request, res: Response, next: NextFunction) => {
         const { secretSnapshotId } = req.params;
@@ -24,14 +24,14 @@ const requireSecretSnapshotAuth = ({
         
         if (!secretSnapshot) {
             return next(SecretSnapshotNotFoundError({
-                message: 'Failed to find secret snapshot'
+                message: "Failed to find secret snapshot",
             }));
         }
         
         await validateMembership({
             userId: req.user._id,
             workspaceId: secretSnapshot.workspace,
-            acceptedRoles
+            acceptedRoles,
         });
         
         req.secretSnapshot = secretSnapshot as any;

@@ -12,4 +12,5 @@ export {
   useNameWorkspaceSecrets,
   useRenameWorkspace,
   useToggleAutoCapitalization,
-  useUpdateWsEnvironment} from './queries';
+  useUpdateWsEnvironment
+} from "./queries";

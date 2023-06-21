@@ -1,15 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { apiRequest } from '@app/config/request';
+import { apiRequest } from "@app/config/request";
 
-import { Organization, RenameOrgDTO } from './types';
+import { Organization, RenameOrgDTO } from "./types";
 
 const organizationKeys = {
-  getUserOrganization: ['organization'] as const
+  getUserOrganization: ["organization"] as const
 };
 
 const fetchUserOrganization = async () => {
-  const { data } = await apiRequest.get<{ organizations: Organization[] }>('/api/v1/organization');
+  const { data } = await apiRequest.get<{ organizations: Organization[] }>("/api/v1/organization");
 
   return data.organizations;
 };

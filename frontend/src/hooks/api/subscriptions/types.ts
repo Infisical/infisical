@@ -1,7 +1,7 @@
 export type SubscriptionPlan = {
   _id: string;
   membersUsed: number;
-  membersLimit: number;
+  memberLimit: number;
   auditLogs: boolean;
   customAlerts: boolean;
   customRateLimits: boolean;
@@ -12,5 +12,5 @@ export type SubscriptionPlan = {
   tier: number;
   workspaceLimit: number;
   workspacesUsed: number;
-  envLimit: number;
+  environmentLimit: number;
 };

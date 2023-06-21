@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface Props {
   apiKeyId: string;
@@ -12,15 +12,15 @@ interface Props {
  */
 const deleteAPIKey = ({ apiKeyId }: Props) =>
   SecurityClient.fetchCall(`/api/v2/api-key/${apiKeyId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res && res.status === 200) {
       return res.json();
     }
-    console.log('Failed to delete API key');
+    console.log("Failed to delete API key");
     return undefined;
   });
 

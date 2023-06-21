@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import axios from "axios"
 
-import attemptLogin from '@app/components/utilities/attemptLogin';
+import attemptLogin from "@app/components/utilities/attemptLogin";
 
-import Error from '../basic/Error';
+import Error from "../basic/Error";
 // import { faGoogle } from '@fortawesome/free-brands-svg-icons';
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Input } from '../v2';
@@ -113,7 +113,7 @@ export default function InitialLoginStep({
                 {t('login.continue-with-google')}
             </Button>
         </div> */}
-        <div className="relative md:px-1.5 flex items-center justify-center lg:w-1/6 w-1/4 min-w-[20rem] md:min-w-[22rem] mx-auto w-full rounded-lg max-h-24 md:max-h-28">
+        <div className="relative md:px-1.5 flex items-center justify-center lg:w-1/6 w-1/4 min-w-[21.3rem] md:min-w-[22rem] mx-auto rounded-lg max-h-24 md:max-h-28">
             <div className="flex items-center justify-center w-full md:px-2 md:py-1 rounded-lg max-h-24 md:max-h-28">
                 <Input
                     value={email}
@@ -126,21 +126,21 @@ export default function InitialLoginStep({
                 />
             </div>
         </div>
-        <div className="relative pt-2 md:pt-0 md:px-1.5 flex items-center justify-center lg:w-1/6 w-1/4 min-w-[20rem] md:min-w-[22rem] mx-auto w-full rounded-lg max-h-24 md:max-h-28">
-            <div className="flex items-center justify-center w-full md:p-2 rounded-lg max-h-24 md:max-h-28">
-                <Input
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    type="password"
-                    placeholder="Enter your password..."
-                    isRequired
-                    autoComplete="current-password"
-                    id="current-password"
-                    className="h-12 select:-webkit-autofill:focus"
-                />
-            </div>
+        <div className="relative pt-2 md:pt-0 md:px-1.5 flex items-center justify-center w-1/4 lg:w-1/6 min-w-[21.3rem] md:min-w-[22rem] mx-auto rounded-lg max-h-24 md:max-h-28">
+          <div className="flex items-center justify-center w-full md:p-2 rounded-lg max-h-24 md:max-h-28">
+            <Input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              placeholder="Enter your password..."
+              isRequired
+              autoComplete="current-password"
+              id="current-password"
+              className="h-12 select:-webkit-autofill:focus"
+            />
+          </div>
         </div>
-        {!isLoading && loginError && <Error text={t('login.error-login') ?? ''} />}
+        {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
         <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
             <Button
                 onClick={async () => handleLogin()}
@@ -171,7 +171,13 @@ export default function InitialLoginStep({
         <div className="mt-6 text-bunker-400 text-sm flex flex-row">
             <span className="mr-1">Don&apos;t have an acount yet?</span>
             <Link href="/signup">
-                <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>{t('login.create-account')}</span>
+                <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>{t("login.create-account")}</span>
+            </Link>
+        </div>
+        <div className="text-bunker-400 text-sm flex flex-row">
+            <span className="mr-1">Forgot password?</span>
+            <Link href="/verify-email">
+                <span className='hover:underline hover:underline-offset-4 hover:decoration-primary-700 hover:text-bunker-200 duration-200 cursor-pointer'>Recover your account</span>
             </Link>
         </div>
     </div>

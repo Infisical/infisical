@@ -1,11 +1,11 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 
-import { Table, TableContainer, TableSkeleton, TBody, Td, Th, THead, Tr } from './Table';
+import { Table, TableContainer, TableSkeleton, TBody, Td, Th, THead, Tr } from "./Table";
 
 const meta: Meta<typeof Table> = {
-  title: 'Components/Table',
+  title: "Components/Table",
   component: Table,
-  tags: ['v2'],
+  tags: ["v2"],
   argTypes: {}
 };
 

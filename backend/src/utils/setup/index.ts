@@ -7,11 +7,12 @@ import { createTestUserForDevelopment } from "../addDevelopmentUser";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import { validateEncryptionKeysConfig } from "./validateConfig";
 import {
-  backfillSecretVersions,
   backfillBots,
-  backfillSecretBlindIndexData,
   backfillEncryptionMetadata,
+  backfillIntegration,
+  backfillSecretBlindIndexData,
   backfillSecretFolders,
+  backfillSecretVersions,
   backfillServiceToken,
 } from "./backfillData";
 import {
@@ -19,11 +20,11 @@ import {
   reencryptSecretBlindIndexDataSalts,
 } from "./reencryptData";
 import {
-  getNodeEnv,
-  getMongoURL,
-  getSentryDSN,
-  getClientSecretGoogle,
   getClientIdGoogle,
+  getClientSecretGoogle,
+  getMongoURL,
+  getNodeEnv,
+  getSentryDSN,
 } from "../../config";
 import { initializePassport } from "../auth";
 
@@ -77,6 +78,7 @@ export const setup = async () => {
   await backfillEncryptionMetadata();
   await backfillSecretFolders();
   await backfillServiceToken();
+  await backfillIntegration();
 
   // re-encrypt any data previously encrypted under server hex 128-bit ENCRYPTION_KEY
   // to base64 256-bit ROOT_ENCRYPTION_KEY

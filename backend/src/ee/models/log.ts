@@ -1,12 +1,12 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, Types, model } from "mongoose";
 import {
+    ACTION_ADD_SECRETS,
+    ACTION_DELETE_SECRETS,
     ACTION_LOGIN,
     ACTION_LOGOUT,
-    ACTION_ADD_SECRETS,
-    ACTION_UPDATE_SECRETS,
     ACTION_READ_SECRETS,
-    ACTION_DELETE_SECRETS
-} from '../../variables';
+    ACTION_UPDATE_SECRETS,
+} from "../../variables";
 
 export interface ILog {
     _id: Types.ObjectId;
@@ -24,19 +24,19 @@ const logSchema = new Schema<ILog>(
     {
         user: {
             type: Schema.Types.ObjectId,
-            ref: 'User'
+            ref: "User",
         },
         serviceAccount: {
             type: Schema.Types.ObjectId,
-            ref: 'ServiceAccount'
+            ref: "ServiceAccount",
         },
         serviceTokenData: {
             type: Schema.Types.ObjectId,
-            ref: 'ServiceTokenData'
+            ref: "ServiceTokenData",
         },
         workspace: {
             type: Schema.Types.ObjectId,
-            ref: 'Workspace'
+            ref: "Workspace",
         },
         actionNames: {
             type: [String],
@@ -46,28 +46,28 @@ const logSchema = new Schema<ILog>(
                 ACTION_ADD_SECRETS,
                 ACTION_UPDATE_SECRETS,
                 ACTION_READ_SECRETS,
-                ACTION_DELETE_SECRETS
+                ACTION_DELETE_SECRETS,
             ],
-            required: true
+            required: true,
         },
         actions: [{
             type: Schema.Types.ObjectId,
-            ref: 'Action',
-            required: true
+            ref: "Action",
+            required: true,
         }],
         channel: {
             type: String,
-            enum: ['web', 'cli', 'auto', 'k8-operator', 'other'],
-            required: true
+            enum: ["web", "cli", "auto", "k8-operator", "other"],
+            required: true,
         },
         ipAddress: {
-            type: String
-        }
+            type: String,
+        },
     }, {
-    timestamps: true
+    timestamps: true,
 }
 );
 
-const Log = model<ILog>('Log', logSchema);
+const Log = model<ILog>("Log", logSchema);
 
 export default Log;

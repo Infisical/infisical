@@ -1,49 +1,50 @@
-import { useState } from 'react';
-import { useRouter } from 'next/router';
-import { Button, Card, CardTitle, FormControl, Input } from '../../../components/v2';
-import saveIntegrationAccessToken from '../../api/integrations/saveIntegrationAccessToken';
+import { useState } from "react";
+import { useRouter } from "next/router";
+
+import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
+import saveIntegrationAccessToken from "../../api/integrations/saveIntegrationAccessToken";
 
 export default function HashiCorpVaultAuthorizeIntegrationPage() {
   const router = useRouter();
 
-  const [vaultURL, setVaultURL] = useState('');
-  const [vaultURLErrorText, setVaultURLErrorText] = useState('');
+  const [vaultURL, setVaultURL] = useState("");
+  const [vaultURLErrorText, setVaultURLErrorText] = useState("");
   
-  const [vaultNamespace, setVaultNamespace] = useState('');
-  const [vaultNamespaceErrorText, setVaultNamespaceErrorText] = useState('');
+  const [vaultNamespace, setVaultNamespace] = useState("");
+  const [vaultNamespaceErrorText, setVaultNamespaceErrorText] = useState("");
 
-  const [vaultRoleID, setVaultRoleID] = useState('');
-  const [vaultRoleIDErrorText, setVaultRoleIDErrorText] = useState('');
+  const [vaultRoleID, setVaultRoleID] = useState("");
+  const [vaultRoleIDErrorText, setVaultRoleIDErrorText] = useState("");
 
-  const [vaultSecretID, setVaultSecretID] = useState('');
-  const [vaultSecretIDErrorText, setVaultSecretIDErrorText] = useState('');
+  const [vaultSecretID, setVaultSecretID] = useState("");
+  const [vaultSecretIDErrorText, setVaultSecretIDErrorText] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
 
   const handleButtonClick = async () => {
     try {
       if (vaultURL.length === 0) {
-        setVaultURLErrorText('Vault Cluster URL cannot be blank');
+        setVaultURLErrorText("Vault Cluster URL cannot be blank");
       } else {
-        setVaultURLErrorText(''); 
+        setVaultURLErrorText(""); 
       }
       
       if (vaultNamespace.length === 0) {
-        setVaultNamespaceErrorText('Vault Namespace cannot be blank');
+        setVaultNamespaceErrorText("Vault Namespace cannot be blank");
       } else {
-        setVaultNamespaceErrorText('');
+        setVaultNamespaceErrorText("");
       }
       
       if (vaultRoleID.length === 0) {
-        setVaultRoleIDErrorText('Vault Role ID cannot be blank');
+        setVaultRoleIDErrorText("Vault Role ID cannot be blank");
       } else {
-        setVaultRoleIDErrorText('');
+        setVaultRoleIDErrorText("");
       }
         
       if (vaultSecretID.length === 0) {
-        setVaultSecretIDErrorText('Vault Secret ID cannot be blank');
+        setVaultSecretIDErrorText("Vault Secret ID cannot be blank");
       } else {
-        setVaultSecretIDErrorText('');
+        setVaultSecretIDErrorText("");
       }
       if (
           vaultURL.length === 0 ||
@@ -57,8 +58,8 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
       setIsLoading(true);
 
       const integrationAuth = await saveIntegrationAccessToken({
-          workspaceId: localStorage.getItem('projectData.id'),
-          integration: 'hashicorp-vault',
+          workspaceId: localStorage.getItem("projectData.id"),
+          integration: "hashicorp-vault",
           accessId: vaultRoleID,
           accessToken: vaultSecretID,
           url: vaultURL,
@@ -80,14 +81,14 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
         <FormControl
           label="Vault Cluster URL"
           errorText={vaultURLErrorText}
-          isError={vaultURLErrorText !== '' ?? false}
+          isError={vaultURLErrorText !== "" ?? false}
         >
           <Input placeholder="" value={vaultURL} onChange={(e) => setVaultURL(e.target.value)} />
         </FormControl>
         <FormControl
           label="Vault Namespace"
           errorText={vaultNamespaceErrorText}
-          isError={vaultNamespaceErrorText !== '' ?? false}
+          isError={vaultNamespaceErrorText !== "" ?? false}
         >
           <Input 
                 placeholder="admin/education" 
@@ -98,14 +99,14 @@ export default function HashiCorpVaultAuthorizeIntegrationPage() {
         <FormControl
           label="Vault RoleID"
           errorText={vaultRoleIDErrorText}
-          isError={vaultRoleIDErrorText !== '' ?? false}
+          isError={vaultRoleIDErrorText !== "" ?? false}
         >
           <Input placeholder="" value={vaultRoleID} onChange={(e) => setVaultRoleID(e.target.value)} />
         </FormControl>
         <FormControl
           label="Vault SecretID"
           errorText={vaultSecretIDErrorText}
-          isError={vaultSecretIDErrorText !== '' ?? false}
+          isError={vaultSecretIDErrorText !== "" ?? false}
         >
           <Input 
                 placeholder="" 

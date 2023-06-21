@@ -1,4 +1,4 @@
-import { Schema, model, Types, Document } from 'mongoose';
+import { Document, Schema, Types, model } from "mongoose";
 
 export interface ITokenVersion extends Document {
     user: Types.ObjectId;
@@ -13,35 +13,35 @@ const tokenVersionSchema = new Schema<ITokenVersion>(
     {
         user: {
             type: Schema.Types.ObjectId,
-            ref: 'User',
-            required: true
+            ref: "User",
+            required: true,
         },
         ip: {
             type: String,
-            required: true
+            required: true,
         },
         userAgent: {
             type: String,
-            required: true
+            required: true,
         },
         refreshVersion: {
             type: Number,
-            required: true
+            required: true,
         },
         accessVersion: {
             type: Number,
-            required: true
+            required: true,
         },
         lastUsed: {
             type: Date,
-            required: true
-        }
+            required: true,
+        },
     },
     {
-        timestamps: true
+        timestamps: true,
     }
 );
 
-const TokenVersion = model<ITokenVersion>('TokenVersion', tokenVersionSchema);
+const TokenVersion = model<ITokenVersion>("TokenVersion", tokenVersionSchema);
 
 export default TokenVersion;

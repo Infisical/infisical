@@ -1,14 +1,14 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 
-import { EmptyState } from './EmptyState';
+import { EmptyState } from "./EmptyState";
 
 const meta: Meta<typeof EmptyState> = {
-  title: 'Components/EmptyState',
+  title: "Components/EmptyState",
   component: EmptyState,
-  tags: ['v2'],
+  tags: ["v2"],
   argTypes: {},
   args: {
-    title: 'No members found'
+    title: "No members found"
   }
 };
 

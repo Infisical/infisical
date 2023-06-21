@@ -1,5 +1,5 @@
-import { Request } from 'express'
-import { getVerboseErrorOutput } from '../config';
+import { Request } from "express"
+import { getVerboseErrorOutput } from "../config";
 
 export enum LogLevel {
     DEBUG = 100,
@@ -44,7 +44,7 @@ export default class RequestError extends Error{
 
         if(stack) this.stack = stack
         else Error.captureStackTrace(this, this.constructor)
-        this.stacktrace = this.stack?.split('\n')
+        this.stacktrace = this.stack?.split("\n")
     }
 
     static convertFrom(error: Error) {
@@ -52,13 +52,13 @@ export default class RequestError extends Error{
         return new RequestError({
             logLevel: LogLevel.ERROR,
             statusCode: 500,
-            type: 'internal_server_error',
-            message: 'This error was not handled by error handler. Please report this incident to the staff',
+            type: "internal_server_error",
+            message: "This error was not handled by error handler. Please report this incident to the staff",
             context: {
                 message: error.message,
-                name: error.name
+                name: error.name,
             },
-            stack: error.stack
+            stack: error.stack,
         })
     }
 
@@ -66,7 +66,7 @@ export default class RequestError extends Error{
     get levelName(){ return this._logName }
 
     withTags(...tags: string[]|number[]){
-        this.context['tags'] = Object.assign(tags, this.context['tags'])
+        this.context["tags"] = Object.assign(tags, this.context["tags"])
         return this
     }
 
@@ -83,14 +83,14 @@ export default class RequestError extends Error{
 
     public async format(req: Request){
         let _context = Object.assign({
-            stacktrace: this.stacktrace
+            stacktrace: this.stacktrace,
         }, this.context)
 
         //* Omit sensitive information from context that can leak internal workings of this program if user is not developer
         if(!(await getVerboseErrorOutput())){
             _context = this._omit(_context, [
-                'stacktrace',
-                'exception',
+                "stacktrace",
+                "exception",
             ])
         }
 
@@ -102,9 +102,9 @@ export default class RequestError extends Error{
             level_name: this.levelName,
             status_code: this.statusCode,
             datetime_iso: new Date().toISOString(),
-            application: process.env.npm_package_name || 'unknown',
+            application: process.env.npm_package_name || "unknown",
             request_id: req.headers["Request-Id"],
-            extra: this.extra
+            extra: this.extra,
         }
 
         return formatObject

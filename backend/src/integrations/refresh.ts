@@ -2,22 +2,22 @@ import { standardRequest } from "../config/request";
 import { IIntegrationAuth } from "../models";
 import {
   INTEGRATION_AZURE_KEY_VAULT,
-  INTEGRATION_HEROKU,
   INTEGRATION_GITLAB,
+  INTEGRATION_HEROKU,
 } from "../variables";
 import {
   INTEGRATION_AZURE_TOKEN_URL,
-  INTEGRATION_HEROKU_TOKEN_URL,
   INTEGRATION_GITLAB_TOKEN_URL,
+  INTEGRATION_HEROKU_TOKEN_URL,
 } from "../variables";
 import { IntegrationService } from "../services";
 import {
-  getSiteURL,
   getClientIdAzure,
-  getClientSecretAzure,
-  getClientSecretHeroku,
   getClientIdGitLab,
+  getClientSecretAzure,
   getClientSecretGitLab,
+  getClientSecretHeroku,
+  getSiteURL,
 } from "../config";
 
 interface RefreshTokenAzureResponse {

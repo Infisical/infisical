@@ -1,16 +1,17 @@
-import { Request, Response } from 'express';
+import { Request, Response } from "express";
 import {
+  Integration,
+  Membership,
   Secret,
   ServiceToken,
-  Workspace,
-  Integration,
   ServiceTokenData,
-  Membership,
-} from '../../models';
-import { SecretVersion } from '../../ee/models';
-import { BadRequestError } from '../../utils/errors';
-import _ from 'lodash';
-import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from '../../variables';
+  Workspace,
+} from "../../models";
+import { SecretVersion } from "../../ee/models";
+import { EELicenseService } from "../../ee/services";
+import { BadRequestError, WorkspaceNotFoundError } from "../../utils/errors";
+import _ from "lodash";
+import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../variables";
 
 /**
  * Create new workspace environment named [environmentName] under workspace with id
@@ -22,16 +23,33 @@ export const createWorkspaceEnvironment = async (
   req: Request,
   res: Response
 ) => {
+
   const { workspaceId } = req.params;
   const { environmentName, environmentSlug } = req.body;
   const workspace = await Workspace.findById(workspaceId).exec();
+  
+  if (!workspace) throw WorkspaceNotFoundError();
+  
+  const plan = await EELicenseService.getPlan(workspace.organization.toString());
+  
+  if (plan.environmentLimit !== null) {
+    // case: limit imposed on number of environments allowed
+    if (workspace.environments.length >= plan.environmentLimit) {
+      // case: number of environments used exceeds the number of environments allowed
+      
+      return res.status(400).send({
+        message: "Failed to create environment due to environment limit reached. Upgrade plan to create more environments.",
+      });
+    }
+  }
+
   if (
     !workspace ||
     workspace?.environments.find(
       ({ name, slug }) => slug === environmentSlug || environmentName === name
     )
   ) {
-    throw new Error('Failed to create workspace environment');
+    throw new Error("Failed to create workspace environment");
   }
 
   workspace?.environments.push({
@@ -40,8 +58,10 @@ export const createWorkspaceEnvironment = async (
   });
   await workspace.save();
 
+  await EELicenseService.refreshPlan(workspace.organization.toString(), workspaceId);
+
   return res.status(200).send({
-    message: 'Successfully created new environment',
+    message: "Successfully created new environment",
     workspace: workspaceId,
     environment: {
       name: environmentName,
@@ -65,13 +85,13 @@ export const renameWorkspaceEnvironment = async (
   const { environmentName, environmentSlug, oldEnvironmentSlug } = req.body;
   // user should pass both new slug and env name
   if (!environmentSlug || !environmentName) {
-    throw new Error('Invalid environment given.');
+    throw new Error("Invalid environment given.");
   }
 
   // atomic update the env to avoid conflict
   const workspace = await Workspace.findById(workspaceId).exec();
   if (!workspace) {
-    throw new Error('Failed to create workspace environment');
+    throw new Error("Failed to create workspace environment");
   }
 
   const isEnvExist = workspace.environments.some(
@@ -80,14 +100,14 @@ export const renameWorkspaceEnvironment = async (
       (name === environmentName || slug === environmentSlug)
   );
   if (isEnvExist) {
-    throw new Error('Invalid environment given');
+    throw new Error("Invalid environment given");
   }
 
   const envIndex = workspace?.environments.findIndex(
     ({ slug }) => slug === oldEnvironmentSlug
   );
   if (envIndex === -1) {
-    throw new Error('Invalid environment given');
+    throw new Error("Invalid environment given");
   }
 
   workspace.environments[envIndex].name = environmentName;
@@ -117,7 +137,7 @@ export const renameWorkspaceEnvironment = async (
   await Membership.updateMany(
     {
       workspace: workspaceId,
-      "deniedPermissions.environmentSlug": oldEnvironmentSlug
+      "deniedPermissions.environmentSlug": oldEnvironmentSlug,
     },
     { $set: { "deniedPermissions.$[element].environmentSlug": environmentSlug } },
     { arrayFilters: [{ "element.environmentSlug": oldEnvironmentSlug }] }
@@ -125,7 +145,7 @@ export const renameWorkspaceEnvironment = async (
 
 
   return res.status(200).send({
-    message: 'Successfully update environment',
+    message: "Successfully update environment",
     workspace: workspaceId,
     environment: {
       name: environmentName,
@@ -149,14 +169,14 @@ export const deleteWorkspaceEnvironment = async (
   // atomic update the env to avoid conflict
   const workspace = await Workspace.findById(workspaceId).exec();
   if (!workspace) {
-    throw new Error('Failed to create workspace environment');
+    throw new Error("Failed to create workspace environment");
   }
 
   const envIndex = workspace?.environments.findIndex(
     ({ slug }) => slug === environmentSlug
   );
   if (envIndex === -1) {
-    throw new Error('Invalid environment given');
+    throw new Error("Invalid environment given");
   }
 
   workspace.environments.splice(envIndex, 1);
@@ -186,10 +206,12 @@ export const deleteWorkspaceEnvironment = async (
   await Membership.updateMany(
     { workspace: workspaceId },
     { $pull: { deniedPermissions: { environmentSlug: environmentSlug } } }
-  )
+  );
+
+  await EELicenseService.refreshPlan(workspace.organization.toString(), workspaceId);
 
   return res.status(200).send({
-    message: 'Successfully deleted environment',
+    message: "Successfully deleted environment",
     workspace: workspaceId,
     environment: environmentSlug,
   });
@@ -203,7 +225,7 @@ export const getAllAccessibleEnvironmentsOfWorkspace = async (
   const { workspaceId } = req.params;
   const workspacesUserIsMemberOf = await Membership.findOne({
     workspace: workspaceId,
-    user: req.user
+    user: req.user,
   })
 
   if (!workspacesUserIsMemberOf) {
@@ -227,7 +249,7 @@ export const getAllAccessibleEnvironmentsOfWorkspace = async (
         name: environment.name,
         slug: environment.slug,
         isWriteDenied: isWriteBlocked,
-        isReadDenied: isReadBlocked
+        isReadDenied: isReadBlocked,
       })
     }
   })

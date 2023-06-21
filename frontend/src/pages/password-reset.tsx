@@ -1,41 +1,41 @@
-import crypto from 'crypto';
+import crypto from "crypto";
 
-import { useState } from 'react';
-import Image from 'next/image';
-import { useRouter } from 'next/router';
-import { faCheck, faX } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import jsrp from 'jsrp';
-import queryString from 'query-string';
+import { useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/router";
+import { faCheck, faX } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import jsrp from "jsrp";
+import queryString from "query-string";
 
-import Button from '@app/components/basic/buttons/Button';
-import InputField from '@app/components/basic/InputField';
-import passwordCheck from '@app/components/utilities/checks/PasswordCheck';
-import Aes256Gcm from '@app/components/utilities/cryptography/aes-256-gcm';
+import Button from "@app/components/basic/buttons/Button";
+import InputField from "@app/components/basic/InputField";
+import passwordCheck from "@app/components/utilities/checks/PasswordCheck";
+import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
 
-import { deriveArgonKey } from '../components/utilities/cryptography/crypto';
-import EmailVerifyOnPasswordReset from './api/auth/EmailVerifyOnPasswordReset';
-import getBackupEncryptedPrivateKey from './api/auth/getBackupEncryptedPrivateKey';
-import resetPasswordOnAccountRecovery from './api/auth/resetPasswordOnAccountRecovery';
+import { deriveArgonKey } from "../components/utilities/cryptography/crypto";
+import EmailVerifyOnPasswordReset from "./api/auth/EmailVerifyOnPasswordReset";
+import getBackupEncryptedPrivateKey from "./api/auth/getBackupEncryptedPrivateKey";
+import resetPasswordOnAccountRecovery from "./api/auth/resetPasswordOnAccountRecovery";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
 
 export default function PasswordReset() {
-  const [verificationToken, setVerificationToken] = useState('');
+  const [verificationToken, setVerificationToken] = useState("");
   const [step, setStep] = useState(1);
-  const [backupKey, setBackupKey] = useState('');
-  const [privateKey, setPrivateKey] = useState('');
-  const [newPassword, setNewPassword] = useState('');
+  const [backupKey, setBackupKey] = useState("");
+  const [privateKey, setPrivateKey] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [backupKeyError, setBackupKeyError] = useState(false);
   const [passwordErrorLength, setPasswordErrorLength] = useState(false);
   const [passwordErrorNumber, setPasswordErrorNumber] = useState(false);
   const [passwordErrorLowerCase, setPasswordErrorLowerCase] = useState(false);
 
   const router = useRouter();
-  const parsedUrl = queryString.parse(router.asPath.split('?')[1]);
+  const parsedUrl = queryString.parse(router.asPath.split("?")[1]);
   const token = parsedUrl.token as string;
-  const email = (parsedUrl.to as string)?.replace(' ', '+').trim();
+  const email = (parsedUrl.to as string)?.replace(" ", "+").trim();
 
   // Unencrypt the private key with a backup key
   const getEncryptedKeyHandler = async () => {
@@ -83,7 +83,7 @@ export default function PasswordReset() {
               hashLen: 32
             });
 
-            if (!derivedKey) throw new Error('Failed to derive key from password');
+            if (!derivedKey) throw new Error("Failed to derive key from password");
 
             const key = crypto.randomBytes(32);
 
@@ -105,7 +105,7 @@ export default function PasswordReset() {
               iv: protectedKeyIV,
               tag: protectedKeyTag
             } = Aes256Gcm.encrypt({
-              text: key.toString('hex'),
+              text: key.toString("hex"),
               secret: Buffer.from(derivedKey.hash)
             });
 
@@ -123,7 +123,7 @@ export default function PasswordReset() {
 
             // if everything works, go the main dashboard page.
             if (response?.status === 200) {
-              router.push('/login');
+              router.push("/login");
             }
           });
         }
@@ -150,8 +150,8 @@ export default function PasswordReset() {
               setVerificationToken((await response.json()).token);
               setStep(2);
             } else {
-              console.log('ERROR', response);
-              router.push('/email-not-verified');
+              console.log("ERROR", response);
+              router.push("/email-not-verified");
             }
           }}
           size="lg"
@@ -166,9 +166,9 @@ export default function PasswordReset() {
       <p className="mx-auto mb-4 flex w-max justify-center text-2xl font-semibold text-bunker-100 md:text-3xl">
         Enter your backup key
       </p>
-      <div className="mt-4 flex flex-row items-center justify-center md:mx-2 md:pb-4">
-        <p className="flex w-max max-w-md justify-center text-sm text-gray-400">
-          You can find it in your emrgency kit. You had to download the enrgency kit during signup.
+      <div className="flex flex-row items-center justify-center md:pb-4 mt-4 md:mx-2">
+        <p className="text-sm flex justify-center text-gray-400 w-max max-w-md">
+          You can find it in your emergency kit. You had to download the emergency kit during signup.
         </p>
       </div>
       <div className="mt-4 flex max-h-24 w-full items-center justify-center rounded-lg md:mt-0 md:max-h-28 md:p-2">
@@ -236,7 +236,7 @@ export default function PasswordReset() {
             ) : (
               <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
             )}
-            <div className={`${passwordErrorLength ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+            <div className={`${passwordErrorLength ? "text-gray-400" : "text-gray-600"} text-sm`}>
               14 characters
             </div>
           </div>
@@ -247,7 +247,7 @@ export default function PasswordReset() {
               <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
             )}
             <div
-              className={`${passwordErrorLowerCase ? 'text-gray-400' : 'text-gray-600'} text-sm`}
+              className={`${passwordErrorLowerCase ? "text-gray-400" : "text-gray-600"} text-sm`}
             >
               1 lowercase character
             </div>
@@ -258,7 +258,7 @@ export default function PasswordReset() {
             ) : (
               <FontAwesomeIcon icon={faCheck} className="text-md mr-2 text-primary" />
             )}
-            <div className={`${passwordErrorNumber ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+            <div className={`${passwordErrorNumber ? "text-gray-400" : "text-gray-600"} text-sm`}>
               1 number
             </div>
           </div>

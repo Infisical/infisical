@@ -1,1 +1,1 @@
-export { AutoCapitalizationSection } from './AutoCapitalizationSection';
+export { AutoCapitalizationSection } from "./AutoCapitalizationSection";

@@ -1,1 +1,7 @@
-export { useCreateFolder, useDeleteFolder, useGetProjectFolders, useUpdateFolder } from './queries';
+export {
+  useCreateFolder,
+  useDeleteFolder,
+  useGetProjectFolders,
+  useGetProjectFoldersBatch,
+  useUpdateFolder
+} from "./queries";

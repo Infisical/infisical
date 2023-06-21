@@ -1,13 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 
-import { apiRequest } from '@app/config/request';
+import { apiRequest } from "@app/config/request";
 
-import { SubscriptionPlan } from './types';
+import { SubscriptionPlan } from "./types";
 
 // import { Workspace } from './types';
 
 const subscriptionKeys = {
-  getOrgSubsription: (orgID: string) => ['plan', { orgID }] as const
+  getOrgSubsription: (orgID: string) => ["plan", { orgID }] as const
 };
 
 const fetchOrgSubscription = async (orgID: string) => {

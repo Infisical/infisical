@@ -1,11 +1,11 @@
-import { forwardRef, ReactNode } from 'react';
-import { faTimes } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { twMerge } from 'tailwind-merge';
+import { forwardRef, ReactNode } from "react";
+import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { twMerge } from "tailwind-merge";
 
-import { Card, CardBody, CardFooter, CardTitle } from '../Card';
-import { IconButton } from '../IconButton';
+import { Card, CardBody, CardFooter, CardTitle } from "../Card";
+import { IconButton } from "../IconButton";
 
 export type ModalContentProps = DialogPrimitive.DialogContentProps & {
   title?: ReactNode;
@@ -22,14 +22,14 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
   ) => (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay
-        className={twMerge('fixed inset-0 z-[70] h-full w-full animate-fadeIn', overlayClassName)}
-        style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
+        className={twMerge("fixed inset-0 z-[70] h-full w-full animate-fadeIn", overlayClassName)}
+        style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
       />
       <DialogPrimitive.Content {...props} ref={forwardedRef}>
         <Card
           isRounded
           className={twMerge(
-            'fixed top-1/2 left-1/2 z-[90] max-w-lg -translate-y-2/4 -translate-x-2/4 animate-popIn border border-mineshaft-600 drop-shadow-2xl',
+            "fixed top-1/2 left-1/2 z-[90] max-w-lg -translate-y-2/4 -translate-x-2/4 animate-popIn border border-mineshaft-600 drop-shadow-2xl",
             className
           )}
         >
@@ -51,9 +51,9 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
   )
 );
 
-ModalContent.displayName = 'ModalContent';
+ModalContent.displayName = "ModalContent";
 
-export type ModalProps = Omit<DialogPrimitive.DialogProps, 'open'> & { isOpen?: boolean };
+export type ModalProps = Omit<DialogPrimitive.DialogProps, "open"> & { isOpen?: boolean };
 export const Modal = ({ isOpen, ...props }: ModalProps) => (
   <DialogPrimitive.Root open={isOpen} {...props} />
 );

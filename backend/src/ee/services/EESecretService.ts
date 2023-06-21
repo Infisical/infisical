@@ -1,11 +1,11 @@
-import { Types } from 'mongoose';
-import { ISecretVersion } from '../models';
+import { Types } from "mongoose";
+import { ISecretVersion } from "../models";
 import {
-  takeSecretSnapshotHelper,
   addSecretVersionsHelper,
   markDeletedSecretVersionsHelper,
-} from '../helpers/secret';
-import EELicenseService from './EELicenseService';
+  takeSecretSnapshotHelper,
+} from "../helpers/secret";
+import EELicenseService from "./EELicenseService";
 
 /**
  * Class to handle Enterprise Edition secret actions

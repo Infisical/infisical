@@ -1,34 +1,91 @@
 ---
 title: "Terraform"
-description: "How to use Infisical to inject environment variables and secrets into terraform."
+description: "Fetch Secrets From Infisical With Terraform"
 ---
 
-Prerequisites:
+This guide provides step-by-step guidance on how to fetch secrets from Infisical using Terraform.
 
-- Set up and add envars to [Infisical Cloud](https://app.infisical.com)
-- [Install the CLI](/cli/overview)
+## Prerequisites
 
-## Initialize Infisical for your [Terraform](https://www.terraform.io/) project
+- Basic understanding of Terraform
+- Install [Terraform](https://www.terraform.io/downloads.html)
 
-```bash
-# navigate to the root of your of your project 
-cd /path/to/project
+## Steps
 
-# then initialize Infisical
-infisical init
+### 1. Define Required Providers
+
+Specify `infisical` in the `required_providers` block within the `terraform` block of your configuration file. If you would like to use a specific version of the provider, uncomment and replace `<latest version>` with the version of the Infisical provider that you want to use.
+
+```hcl main.tf
+terraform {
+  required_providers {
+    infisical = {
+      # version = <latest version>
+      source = "infisical/infisical"
+    }
+  }
+}
 ```
 
-## Run terraform as usual but with Infisical
+### 2. Configure the Infisical Provider
 
-```bash
-infisical run -- <your application start command>
+Set up the Infisical provider by specifying the `host` and `service_token`. Replace `<>` in `service_token` with your actual token. The `host` is only required if you are using a self-hosted instance of Infisical.
 
-# Example
-infisical run -- terraform plan
+```hcl main.tf
+provider "infisical" {
+  host          = "https://app.infisical.com" # Only required if using self hosted instance of Infisical, default is https://app.infisical.com
+  service_token = "<>" # Get token https://infisical.com/docs/documentation/platform/token
+}
 ```
 
-<Note>
-  To inject any arbitrary variable to terraform, you have
-  to prefix them with `TF_VAR`. Read more about that
-  [here](https://developer.hashicorp.com/terraform/cli/config/environment-variables#tf_var_name).
-</Note>
+<Warning>
+  It is recommended to use Terraform variables to pass your service token dynamically to avoid hard coding it
+</Warning>
+
+### 3. Fetch Infisical Secrets
+
+Use the `infisical_secrets` data source to fetch your secrets. This is defined with an empty block `{}` as the provider automatically fetches all secrets associated with your service token.
+
+```hcl main.tf
+data "infisical_secrets" "my-secrets" {}
+```
+
+### 4. Define Outputs
+
+As an example, we are going to output your fetched secrets. Replace `SECRET-NAME` with the actual name of your secret.
+
+For a single secret:
+
+```hcl main.tf
+output "single-secret" {
+  value = data.infisical_secrets.my-secrets.secrets["SECRET-NAME"]
+}
+```
+
+For all secrets:
+
+```hcl
+output "all-secrets" {
+  value = data.infisical_secrets.my-secrets.secrets
+}
+```
+
+### 5. Run Terraform
+
+Once your configuration is complete, initialize your Terraform working directory:
+
+```bash
+$ terraform init
+```
+
+Then, run the plan command to view the fetched secrets:
+
+```bash
+$ terraform plan
+```
+
+Terraform will now fetch your secrets from Infisical and display them as output according to your configuration.
+
+## Conclusion
+
+You have now successfully set up and used the Infisical provider with Terraform to fetch secrets. For more information, visit the [Infisical documentation](https://registry.terraform.io/providers/Infisical/infisical/latest/docs).

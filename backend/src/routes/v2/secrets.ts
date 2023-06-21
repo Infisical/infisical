@@ -3,24 +3,24 @@ const router = express.Router();
 import { Types } from "mongoose";
 import {
   requireAuth,
-  requireWorkspaceAuth,
   requireSecretsAuth,
+  requireWorkspaceAuth,
   validateRequest,
 } from "../../middleware";
 import { validateClientForSecrets } from "../../validation";
-import { query, body } from "express-validator";
+import { body, query } from "express-validator";
 import { secretsController } from "../../controllers/v2";
 import {
   ADMIN,
-  MEMBER,
-  SECRET_PERSONAL,
-  SECRET_SHARED,
-  PERMISSION_READ_SECRETS,
-  PERMISSION_WRITE_SECRETS,
+  AUTH_MODE_API_KEY,
   AUTH_MODE_JWT,
   AUTH_MODE_SERVICE_ACCOUNT,
   AUTH_MODE_SERVICE_TOKEN,
-  AUTH_MODE_API_KEY,
+  MEMBER,
+  PERMISSION_READ_SECRETS,
+  PERMISSION_WRITE_SECRETS,
+  SECRET_PERSONAL,
+  SECRET_SHARED,
 } from "../../variables";
 import { BatchSecretRequest } from "../../types/secret";
 

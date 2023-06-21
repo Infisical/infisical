@@ -1,10 +1,10 @@
-import { Schema, model, Types } from "mongoose";
+import { Schema, Types, model } from "mongoose";
 import {
-  SECRET_SHARED,
-  SECRET_PERSONAL,
   ALGORITHM_AES_256_GCM,
-  ENCODING_SCHEME_UTF8,
   ENCODING_SCHEME_BASE64,
+  ENCODING_SCHEME_UTF8,
+  SECRET_PERSONAL,
+  SECRET_SHARED,
 } from "../../variables";
 
 export interface ISecretVersion {
@@ -114,9 +114,9 @@ const secretVersionSchema = new Schema<ISecretVersion>(
       required: true,
     },
     tags: {
-      ref: 'Tag',
+      ref: "Tag",
       type: [Schema.Types.ObjectId],
-      default: []
+      default: [],
     },
   },
   {

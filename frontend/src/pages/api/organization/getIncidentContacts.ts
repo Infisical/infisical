@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 export interface IIncidentContactOrg {
   _id: string;
@@ -12,15 +12,15 @@ export interface IIncidentContactOrg {
  */
 const getIncidentContacts = (organizationId: string): Promise<IIncidentContactOrg[]> =>
   SecurityClient.fetchCall(`/api/v1/organization/${organizationId}/incidentContactOrg`, {
-    method: 'GET',
+    method: "GET",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res && res.status === 200) {
       return (await res.json()).incidentContactsOrg;
     }
-    console.log('Failed to get incident contacts');
+    console.log("Failed to get incident contacts");
     return undefined;
   });
 

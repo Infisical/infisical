@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 /**
  * This route deletes a specified env.
  * @param {*} workspaceId
@@ -6,16 +6,16 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const deleteEnvironment = (workspaceId: string, environmentSlug: string) =>
   SecurityClient.fetchCall(`/api/v2/workspace/${workspaceId}/environments`, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({ environmentSlug })
   }).then(async (res) => {
     if (res && res.status === 200) {
       return res;
     }
-    console.log('Failed to delete environment');
+    console.log("Failed to delete environment");
     return undefined;
   });
 

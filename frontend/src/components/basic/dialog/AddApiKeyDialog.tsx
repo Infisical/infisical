@@ -1,21 +1,21 @@
-import { Fragment, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { faCheck, faCopy } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Dialog, Transition } from '@headlessui/react';
+import { Fragment, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Dialog, Transition } from "@headlessui/react";
 
-import addAPIKey from '@app/pages/api/apiKey/addAPIKey';
+import addAPIKey from "@app/pages/api/apiKey/addAPIKey";
 
-import Button from '../buttons/Button';
-import InputField from '../InputField';
-import ListBox from '../Listbox';
+import Button from "../buttons/Button";
+import InputField from "../InputField";
+import ListBox from "../Listbox";
 
 const expiryMapping = {
-  '1 day': 86400,
-  '7 days': 604800,
-  '1 month': 2592000,
-  '6 months': 15552000,
-  '12 months': 31104000
+  "1 day": 86400,
+  "7 days": 604800,
+  "1 month": 2592000,
+  "6 months": 15552000,
+  "12 months": 31104000
 };
 
 type Props = {
@@ -28,9 +28,9 @@ type Props = {
 
 // TODO: convert to TS
 const AddApiKeyDialog = ({ isOpen, closeModal, apiKeys, setApiKeys }: Props) => {
-  const [apiKey, setApiKey] = useState('');
-  const [apiKeyName, setApiKeyName] = useState('');
-  const [apiKeyExpiresIn, setApiKeyExpiresIn] = useState('1 day');
+  const [apiKey, setApiKey] = useState("");
+  const [apiKeyName, setApiKeyName] = useState("");
+  const [apiKeyExpiresIn, setApiKeyExpiresIn] = useState("1 day");
   const [apiKeyCopied, setApiKeyCopied] = useState(false);
   const { t } = useTranslation();
 
@@ -46,7 +46,7 @@ const AddApiKeyDialog = ({ isOpen, closeModal, apiKeys, setApiKeys }: Props) => 
 
   function copyToClipboard() {
     // Get the text field
-    const copyText = document.getElementById('apiKey') as HTMLInputElement;
+    const copyText = document.getElementById("apiKey") as HTMLInputElement;
 
     // Select the text field
     copyText.select();
@@ -63,8 +63,8 @@ const AddApiKeyDialog = ({ isOpen, closeModal, apiKeys, setApiKeys }: Props) => 
 
   const closeAddApiKeyModal = () => {
     closeModal();
-    setApiKeyName('');
-    setApiKey('');
+    setApiKeyName("");
+    setApiKey("");
   };
 
   return (
@@ -94,24 +94,24 @@ const AddApiKeyDialog = ({ isOpen, closeModal, apiKeys, setApiKeys }: Props) => 
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                {apiKey === '' ? (
+                {apiKey === "" ? (
                   <Dialog.Panel className="w-full max-w-md transform rounded-md border border-gray-700 bg-bunker-800 p-6 text-left align-middle shadow-xl transition-all">
                     <Dialog.Title
                       as="h3"
                       className="z-50 text-lg font-medium leading-6 text-gray-400"
                     >
-                      {t('section.api-key.add-dialog.title')}
+                      {t("section.api-key.add-dialog.title")}
                     </Dialog.Title>
                     <div className="mt-2 mb-4">
                       <div className="flex flex-col">
                         <p className="text-sm text-gray-500">
-                          {t('section.api-key.add-dialog.description')}
+                          {t("section.api-key.add-dialog.description")}
                         </p>
                       </div>
                     </div>
                     <div className="mb-2 max-h-28">
                       <InputField
-                        label={t('section.api-key.add-dialog.name')}
+                        label={t("section.api-key.add-dialog.name")}
                         onChangeHandler={setApiKeyName}
                         type="varName"
                         value={apiKeyName}
@@ -123,9 +123,9 @@ const AddApiKeyDialog = ({ isOpen, closeModal, apiKeys, setApiKeys }: Props) => 
                       <ListBox
                         isSelected={apiKeyExpiresIn}
                         onChange={setApiKeyExpiresIn}
-                        data={['1 day', '7 days', '1 month', '6 months', '12 months']}
+                        data={["1 day", "7 days", "1 month", "6 months", "12 months"]}
                         isFull
-                        text={`${t('common.expired-in')}: `}
+                        text={`${t("common.expired-in")}: `}
                       />
                     </div>
                     <div className="max-w-max">
@@ -133,10 +133,10 @@ const AddApiKeyDialog = ({ isOpen, closeModal, apiKeys, setApiKeys }: Props) => 
                         <Button
                           onButtonPressed={() => generateAPIKey()}
                           color="mineshaft"
-                          text={t('section.api-key.add-dialog.add') as string}
-                          textDisabled={t('section.api-key.add-dialog.add') as string}
+                          text={t("section.api-key.add-dialog.add") as string}
+                          textDisabled={t("section.api-key.add-dialog.add") as string}
                           size="md"
-                          active={apiKeyName !== ''}
+                          active={apiKeyName !== ""}
                         />
                       </div>
                     </div>
@@ -147,12 +147,12 @@ const AddApiKeyDialog = ({ isOpen, closeModal, apiKeys, setApiKeys }: Props) => 
                       as="h3"
                       className="z-50 text-lg font-medium leading-6 text-gray-400"
                     >
-                      {t('section.api-key.add-dialog.copy-service-token')}
+                      {t("section.api-key.add-dialog.copy-service-token")}
                     </Dialog.Title>
                     <div className="mt-2 mb-4">
                       <div className="flex flex-col">
                         <p className="text-sm text-gray-500">
-                          {t('section.api-key.add-dialog.copy-service-token-description')}
+                          {t("section.api-key.add-dialog.copy-service-token-description")}
                         </p>
                       </div>
                     </div>
@@ -181,7 +181,7 @@ const AddApiKeyDialog = ({ isOpen, closeModal, apiKeys, setApiKeys }: Props) => 
                             )}
                           </button>
                           <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-chicago-900 px-3 py-2 text-center text-sm text-gray-400 duration-300 group-hover:flex group-hover:animate-popup">
-                            {t('common.click-to-copy')}
+                            {t("common.click-to-copy")}
                           </span>
                         </div>
                       </div>

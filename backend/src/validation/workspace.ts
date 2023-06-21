@@ -1,27 +1,29 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import {
-    IUser,
     IServiceAccount,
     IServiceTokenData,
-    Workspace,
-    User,
+    IUser,
+    SecretBlindIndexData,
     ServiceAccount,
     ServiceTokenData,
-    SecretBlindIndexData
-} from '../models';
-import { validateServiceAccountClientForWorkspace } from './serviceAccount';
-import { validateUserClientForWorkspace } from './user';
-import { validateServiceTokenDataClientForWorkspace } from './serviceTokenData';
+    User,
+    Workspace,
+} from "../models";
+import { validateServiceAccountClientForWorkspace } from "./serviceAccount";
+import { validateUserClientForWorkspace } from "./user";
+import { validateServiceTokenDataClientForWorkspace } from "./serviceTokenData";
 import { 
+	BadRequestError,
     UnauthorizedRequestError,
-    WorkspaceNotFoundError 
-} from '../utils/errors';
+    WorkspaceNotFoundError, 
+} from "../utils/errors";
 import {
+    AUTH_MODE_API_KEY,
     AUTH_MODE_JWT,
     AUTH_MODE_SERVICE_ACCOUNT,
     AUTH_MODE_SERVICE_TOKEN,
-    AUTH_MODE_API_KEY
-} from '../variables';
+} from "../variables";
+import { BotService } from "../services";
 
 /**
  * Validate authenticated clients for workspace with id [workspaceId] based
@@ -39,7 +41,8 @@ export const validateClientForWorkspace = async ({
 	environment,
 	acceptedRoles,
 	requiredPermissions,
-	requireBlindIndicesEnabled
+	requireBlindIndicesEnabled,
+	requireE2EEOff,
 }: {
 	authData: {
 		authMode: string;
@@ -47,14 +50,15 @@ export const validateClientForWorkspace = async ({
 	};
 	workspaceId: Types.ObjectId;
 	environment?: string;
-	acceptedRoles: Array<'admin' | 'member'>;
+	acceptedRoles: Array<"admin" | "member">;
 	requiredPermissions?: string[];
 	requireBlindIndicesEnabled: boolean;
+	requireE2EEOff: boolean;
 }) => {
 	const workspace = await Workspace.findById(workspaceId);
 
 	if (!workspace) throw WorkspaceNotFoundError({
-		message: 'Failed to find workspace'
+		message: "Failed to find workspace",
 	});
 
 	if (requireBlindIndicesEnabled) {
@@ -63,11 +67,19 @@ export const validateClientForWorkspace = async ({
 		// and no admin has enabled it)
 		
 		const secretBlindIndexData = await SecretBlindIndexData.exists({
-			workspace: new Types.ObjectId(workspaceId)
+			workspace: new Types.ObjectId(workspaceId),
 		});
 		
 		if (!secretBlindIndexData) throw UnauthorizedRequestError({
-			message: 'Failed workspace authorization due to blind indices not being enabled'
+			message: "Failed workspace authorization due to blind indices not being enabled",
+		});
+	}
+	
+	if (requireE2EEOff) {
+		const isWorkspaceE2EE = await BotService.getIsWorkspaceE2EE(workspaceId);
+		
+		if (isWorkspaceE2EE) throw BadRequestError({
+			message: "Failed workspace authorization due to end-to-end encryption not being disabled",
 		});
 	}
 
@@ -77,7 +89,7 @@ export const validateClientForWorkspace = async ({
 			workspaceId,
 			environment,
 			acceptedRoles,
-			requiredPermissions
+			requiredPermissions,
 		});
 		
 		return ({ membership, workspace });
@@ -88,7 +100,7 @@ export const validateClientForWorkspace = async ({
 			serviceAccount: authData.authPayload,
 			workspaceId,
 			environment,
-			requiredPermissions
+			requiredPermissions,
 		});
 		
 		return {};
@@ -99,7 +111,7 @@ export const validateClientForWorkspace = async ({
 			serviceTokenData: authData.authPayload,
 			workspaceId,
 			environment,
-			requiredPermissions
+			requiredPermissions,
 		});
 
 		return {};
@@ -111,13 +123,13 @@ export const validateClientForWorkspace = async ({
 			workspaceId,
 			environment,
 			acceptedRoles,
-			requiredPermissions
+			requiredPermissions,
 		});
 		
 		return ({ membership, workspace });
 	}
 	
 	throw UnauthorizedRequestError({
-		message: 'Failed client authorization for workspace'
+		message: "Failed client authorization for workspace",
 	});
 }

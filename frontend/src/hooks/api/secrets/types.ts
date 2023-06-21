@@ -1,11 +1,11 @@
-import type { UserWsKeyPair } from '../keys/types';
-import type { WsTag } from '../tags/types';
+import type { UserWsKeyPair } from "../keys/types";
+import type { WsTag } from "../tags/types";
 
 export type EncryptedSecret = {
   _id: string;
   version: number;
   workspace: string;
-  type: 'shared' | 'personal';
+  type: "shared" | "personal";
   environment: string;
   secretKeyCiphertext: string;
   secretKeyIV: string;
@@ -62,7 +62,7 @@ type SecretTagArg = { _id: string; name: string; slug: string };
 export type UpdateSecretArg = {
   _id: string;
   folderId?: string;
-  type: 'shared' | 'personal';
+  type: "shared" | "personal";
   secretName: string;
   secretKeyCiphertext: string;
   secretKeyIV: string;
@@ -76,7 +76,7 @@ export type UpdateSecretArg = {
   tags: SecretTagArg[];
 };
 
-export type CreateSecretArg = Omit<UpdateSecretArg, '_id'>;
+export type CreateSecretArg = Omit<UpdateSecretArg, "_id">;
 
 export type DeleteSecretArg = { _id: string };
 
@@ -85,9 +85,9 @@ export type BatchSecretDTO = {
   folderId: string;
   environment: string;
   requests: Array<
-    | { method: 'POST'; secret: CreateSecretArg }
-    | { method: 'PATCH'; secret: UpdateSecretArg }
-    | { method: 'DELETE'; secret: DeleteSecretArg }
+    | { method: "POST"; secret: CreateSecretArg }
+    | { method: "PATCH"; secret: UpdateSecretArg }
+    | { method: "DELETE"; secret: DeleteSecretArg }
   >;
 };
 
@@ -96,6 +96,7 @@ export type GetProjectSecretsDTO = {
   env: string | string[];
   decryptFileKey: UserWsKeyPair;
   folderId?: string;
+  secretPath?: string;
   isPaused?: boolean;
   onSuccess?: (data: DecryptedSecret[]) => void;
 };

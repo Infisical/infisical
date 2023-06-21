@@ -6,7 +6,8 @@
     "build": "next build",
     "start": "next start",
     "start:docker": "next build && next start",
-    "lint": "eslint --fix --ext js,ts,tsx ./src",
+    "lint": "eslint --ext js,ts,tsx ./src",
+    "lint-and-fix": "eslint --fix --ext js,ts,tsx ./src",
     "type-check": "tsc --project tsconfig.json",
     "storybook": "storybook dev -p 6006 -s ./public",
     "build-storybook": "storybook build"

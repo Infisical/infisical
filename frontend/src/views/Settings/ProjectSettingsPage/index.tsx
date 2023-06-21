@@ -1,1 +1,1 @@
-export { ProjectSettingsPage } from './ProjectSettingsPage';
+export { ProjectSettingsPage } from "./ProjectSettingsPage";

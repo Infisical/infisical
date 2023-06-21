@@ -1,11 +1,11 @@
 import {
-    IIntegrationAuth
-} from '../models';
+    IIntegrationAuth,
+} from "../models";
 import {
     INTEGRATION_GITLAB,
-    INTEGRATION_GITLAB_API_URL
-} from '../variables';
-import { standardRequest } from '../config/request';
+    INTEGRATION_GITLAB_API_URL,
+} from "../variables";
+import { standardRequest } from "../config/request";
 
 interface Team {
     name: string;
@@ -23,7 +23,7 @@ interface Team {
 */
 const getTeams = async ({
     integrationAuth,
-    accessToken
+    accessToken,
 }: {
     integrationAuth: IIntegrationAuth;
     accessToken: string;
@@ -34,7 +34,7 @@ const getTeams = async ({
     switch (integrationAuth.integration) {
         case INTEGRATION_GITLAB:
             teams = await getTeamsGitLab({
-                accessToken
+                accessToken,
             });
             break;
     }
@@ -51,7 +51,7 @@ const getTeams = async ({
  * @returns {String} teams.teamId - id of team
 */
 const getTeamsGitLab = async ({
-    accessToken
+    accessToken,
 }: {
     accessToken: string;
 }) => {
@@ -61,19 +61,19 @@ const getTeamsGitLab = async ({
         {
             headers: {
             Authorization: `Bearer ${accessToken}`,
-            "Accept-Encoding": "application/json"
-            }
+            "Accept-Encoding": "application/json",
+            },
         }
     )).data; 
 
     teams = res.map((t: any) => ({
       name: t.name,
-      teamId: t.id
+      teamId: t.id,
     }));
     
     return teams;
 }
 
 export {
-    getTeams
+    getTeams,
 }

@@ -1,14 +1,14 @@
-import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import {
   faContactBook,
   faMagnifyingGlass,
   faPlus,
   faTrash
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
 import {
   Button,
@@ -28,10 +28,10 @@ import {
   Th,
   THead,
   Tr
-} from '@app/components/v2';
-import { usePopUp } from '@app/hooks';
-import { useFetchServerStatus } from '@app/hooks/api/serverDetails';
-import { IncidentContact } from '@app/hooks/api/types';
+} from "@app/components/v2";
+import { usePopUp } from "@app/hooks";
+import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
+import { IncidentContact } from "@app/hooks/api/types";
 
 type Props = {
   isLoading?: boolean;
@@ -41,7 +41,7 @@ type Props = {
 };
 
 const addContactFormSchema = yup.object({
-  email: yup.string().email().required().label('Email').trim()
+  email: yup.string().email().required().label("Email").trim()
 });
 
 type TAddContactForm = yup.InferType<typeof addContactFormSchema>;
@@ -52,12 +52,12 @@ export const OrgIncidentContactsTable = ({
   onRemoveContact,
   isLoading
 }: Props) => {
-  const [searchContact, setSearchContact] = useState('');
+  const [searchContact, setSearchContact] = useState("");
   const {data: serverDetails } = useFetchServerStatus()
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
-    'addContact',
-    'removeContact',
-    'setUpEmail'
+    "addContact",
+    "removeContact",
+    "setUpEmail"
   ] as const);
 
   const {
@@ -69,14 +69,14 @@ export const OrgIncidentContactsTable = ({
 
   const onAddIncidentContact = ({ email }: TAddContactForm) => {
     onAddContact(email);
-    handlePopUpClose('addContact');
+    handlePopUpClose("addContact");
     reset();
   };
 
   const onRemoveIncidentContact = async () => {
     const incidentContactEmail = (popUp?.removeContact?.data as { email: string })?.email;
     await onRemoveContact(incidentContactEmail);
-    handlePopUpClose('removeContact');
+    handlePopUpClose("removeContact");
   };
 
   const filteredContacts = contacts.filter(({ email }) =>
@@ -99,9 +99,9 @@ export const OrgIncidentContactsTable = ({
             leftIcon={<FontAwesomeIcon icon={faPlus} />}
             onClick={() => {
               if (serverDetails?.emailConfigured){
-                handlePopUpOpen('addContact');
+                handlePopUpOpen("addContact");
               } else {
-                handlePopUpOpen('setUpEmail');
+                handlePopUpOpen("setUpEmail");
               }
             }}
           >
@@ -127,7 +127,7 @@ export const OrgIncidentContactsTable = ({
                     <IconButton
                       ariaLabel="delete"
                       colorSchema="danger"
-                      onClick={() => handlePopUpOpen('removeContact', { email })}
+                      onClick={() => handlePopUpOpen("removeContact", { email })}
                     >
                       <FontAwesomeIcon icon={faTrash} />
                     </IconButton>
@@ -144,7 +144,7 @@ export const OrgIncidentContactsTable = ({
       <Modal
         isOpen={popUp?.addContact?.isOpen}
         onOpenChange={(isOpen) => {
-          handlePopUpToggle('addContact', isOpen);
+          handlePopUpToggle("addContact", isOpen);
           reset();
         }}
       >
@@ -176,7 +176,7 @@ export const OrgIncidentContactsTable = ({
               <Button
                 colorSchema="secondary"
                 variant="plain"
-                onClick={() => handlePopUpClose('addContact')}
+                onClick={() => handlePopUpClose("addContact")}
               >
                 Cancel
               </Button>
@@ -188,12 +188,12 @@ export const OrgIncidentContactsTable = ({
         isOpen={popUp.removeContact.isOpen}
         deleteKey="remove"
         title="Do you want to remove this email from incident contact?"
-        onChange={(isOpen) => handlePopUpToggle('removeContact', isOpen)}
+        onChange={(isOpen) => handlePopUpToggle("removeContact", isOpen)}
         onDeleteApproved={onRemoveIncidentContact}
       />
       <EmailServiceSetupModal
         isOpen={popUp.setUpEmail?.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle('setUpEmail', isOpen)}
+        onOpenChange={(isOpen) => handlePopUpToggle("setUpEmail", isOpen)}
       />
     </div>
   );

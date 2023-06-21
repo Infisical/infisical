@@ -1,8 +1,8 @@
-import { ReactNode } from 'react';
-import * as SwitchPrimitive from '@radix-ui/react-switch';
-import { twMerge } from 'tailwind-merge';
+import { ReactNode } from "react";
+import * as SwitchPrimitive from "@radix-ui/react-switch";
+import { twMerge } from "tailwind-merge";
 
-export type SwitchProps = Omit<SwitchPrimitive.SwitchProps, 'checked' | 'disabled' | 'required'> & {
+export type SwitchProps = Omit<SwitchPrimitive.SwitchProps, "checked" | "disabled" | "required"> & {
   children: ReactNode;
   id: string;
   isChecked?: boolean;
@@ -30,8 +30,8 @@ export const Switch = ({
       checked={isChecked}
       disabled={isDisabled}
       className={twMerge(
-        'ml-3 h-5 w-9 rounded-full bg-bunker-300 transition-all data-[state=checked]:bg-primary',
-        isDisabled && 'bg-bunker-400 hover:bg-bunker-400',
+        "ml-3 h-5 w-9 rounded-full bg-bunker-300 transition-all data-[state=checked]:bg-primary",
+        isDisabled && "bg-bunker-400 hover:bg-bunker-400",
         className
       )}
       id={id}

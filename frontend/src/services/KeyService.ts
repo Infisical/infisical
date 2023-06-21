@@ -1,9 +1,9 @@
 import {
     decryptAssymmetric,
-    encryptAssymmetric} from '@app/components/utilities/cryptography/crypto';
+    encryptAssymmetric} from "@app/components/utilities/cryptography/crypto";
 import { 
     decryptPrivateKeyHelper
-} from '@app/helpers/key';
+} from "@app/helpers/key";
 
 /**
  * Class to handle key actions
@@ -11,7 +11,7 @@ import {
  * must pass through this class
  */
 class KeyService {
-    private static privateKey: string = '';
+    private static privateKey: string = "";
     
     static setPrivateKey(privateKey: string) {
         KeyService.privateKey = privateKey;

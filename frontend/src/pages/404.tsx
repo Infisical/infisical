@@ -1,6 +1,6 @@
-import Head from 'next/head';
-import Image from 'next/image';
-import Link from 'next/link';
+import Head from "next/head";
+import Image from "next/image";
+import Link from "next/link";
 
 export default function Custom404() {
   return (
@@ -12,14 +12,14 @@ export default function Custom404() {
       <div className='flex flex-col items-center justify-center text-gray-200 h-screen w-screen'>
         <p className='text-4xl mt-32'>Oops, something went wrong</p>
         <p className='mt-2 mb-1 text-lg'>
-          Think this is a mistake? Email{' '}
+          Think this is a mistake? Email{" "}
           <a
             className='text-primary underline underline-offset-4'
             href='mailto:team@infisical.com'
           >
             team@infisical.com
-          </a>{' '}
-          and we`ll fix it!{' '}
+          </a>{" "}
+          and we`ll fix it!{" "}
         </p>
         <Link
           href='/dashboard'

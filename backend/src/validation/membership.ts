@@ -1,26 +1,26 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import {
-    IUser,
     IServiceAccount,
     IServiceTokenData,
+    IUser,
     Membership,
-    User,
     ServiceAccount,
-    ServiceTokenData
-} from '../models';
-import { validateServiceAccountClientForWorkspace } from './serviceAccount';
-import { validateUserClientForWorkspace } from './user';
-import { validateServiceTokenDataClientForWorkspace } from './serviceTokenData';
+    ServiceTokenData,
+    User,
+} from "../models";
+import { validateServiceAccountClientForWorkspace } from "./serviceAccount";
+import { validateUserClientForWorkspace } from "./user";
+import { validateServiceTokenDataClientForWorkspace } from "./serviceTokenData";
 import { 
     MembershipNotFoundError,
-    UnauthorizedRequestError
-} from '../utils/errors';
+    UnauthorizedRequestError,
+} from "../utils/errors";
 import {
+    AUTH_MODE_API_KEY,
     AUTH_MODE_JWT,
     AUTH_MODE_SERVICE_ACCOUNT,
     AUTH_MODE_SERVICE_TOKEN,
-    AUTH_MODE_API_KEY
-} from '../variables';
+} from "../variables";
 
 /**
  * Validate authenticated clients for membership with id [membershipId] based
@@ -34,27 +34,27 @@ import {
 export const validateClientForMembership = async ({
 	authData,
 	membershipId,
-	acceptedRoles
+	acceptedRoles,
 }: {
 	authData: {
 		authMode: string;
 		authPayload: IUser | IServiceAccount | IServiceTokenData;
 	};
 	membershipId: Types.ObjectId;
-    acceptedRoles: Array<'admin' | 'member'>;
+    acceptedRoles: Array<"admin" | "member">;
 }) => {
 	
 	const membership = await Membership.findById(membershipId);
 	
 	if (!membership) throw MembershipNotFoundError({
-		message: 'Failed to find membership'
+		message: "Failed to find membership",
 	});
 
 	if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
 		await validateUserClientForWorkspace({
 			user: authData.authPayload,
 			workspaceId: membership.workspace,
-			acceptedRoles
+			acceptedRoles,
 		});
 		
 		return membership;
@@ -63,7 +63,7 @@ export const validateClientForMembership = async ({
 	if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
 		await validateServiceAccountClientForWorkspace({
 			serviceAccount: authData.authPayload,
-			workspaceId: membership.workspace
+			workspaceId: membership.workspace,
 		});
 
 		return membership;
@@ -72,7 +72,7 @@ export const validateClientForMembership = async ({
 	if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
 		await validateServiceTokenDataClientForWorkspace({
 			serviceTokenData: authData.authPayload,
-			workspaceId: new Types.ObjectId(membership.workspace)
+			workspaceId: new Types.ObjectId(membership.workspace),
 		});
 		
 		return membership;
@@ -82,13 +82,13 @@ export const validateClientForMembership = async ({
 		await validateUserClientForWorkspace({
 			user: authData.authPayload,
 			workspaceId: membership.workspace,
-			acceptedRoles 
+			acceptedRoles, 
 		});
 		
 		return membership;
 	}
 	
 	throw UnauthorizedRequestError({
-		message: 'Failed client authorization for membership'
+		message: "Failed client authorization for membership",
 	});
 }

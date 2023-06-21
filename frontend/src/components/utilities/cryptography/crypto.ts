@@ -1,9 +1,9 @@
-import argon2 from 'argon2-browser';
+import argon2 from "argon2-browser";
 
-import aes from './aes-256-gcm';
+import aes from "./aes-256-gcm";
 
-const nacl = require('tweetnacl');
-nacl.util = require('tweetnacl-util');
+const nacl = require("tweetnacl");
+nacl.util = require("tweetnacl-util");
 
 /**
  * Return new base64, NaCl, public-private key pair.
@@ -47,7 +47,7 @@ const verifyPrivateKey = ({
   );
   
   if (derivedPublicKey !== publicKey) {
-    throw new Error('Failed to verify private key');
+    throw new Error("Failed to verify private key");
   }
 }
 
@@ -183,7 +183,7 @@ const encryptSymmetric = ({ plaintext, key }: EncryptSymmetricProps): EncryptSym
     iv = obj.iv;
     tag = obj.tag;
   } catch (err) {
-    console.log('Failed to perform encryption');
+    console.log("Failed to perform encryption");
     console.log(err);
     process.exit(1);
   }
@@ -213,12 +213,12 @@ type DecryptSymmetricProps = {
  *
  */
 const decryptSymmetric = ({ ciphertext, iv, tag, key }: DecryptSymmetricProps): string => {
-  if (!ciphertext) return '';
+  if (!ciphertext) return "";
   let plaintext;
   try {
     plaintext = aes.decrypt({ ciphertext, iv, tag, secret: key });
   } catch (err) {
-    console.log('Failed to perform decryption');
+    console.log("Failed to perform decryption");
     process.exit(1);
   }
 

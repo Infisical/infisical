@@ -1,6 +1,6 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 
-import CloudIntegration from './CloudIntegration';
+import CloudIntegration from "./CloudIntegration";
 
 interface IntegrationOption {
   clientId: string;
@@ -41,8 +41,8 @@ const CloudIntegrationSection = ({
   return (
     <>
       <div className="m-4 mt-7 flex max-w-5xl flex-col items-start justify-between px-2 text-xl">
-        <h1 className="text-3xl font-semibold">{t('integrations.cloud-integrations')}</h1>
-        <p className="text-base text-gray-400">{t('integrations.click-to-start')}</p>
+        <h1 className="text-3xl font-semibold">{t("integrations.cloud-integrations")}</h1>
+        <p className="text-base text-gray-400">{t("integrations.click-to-start")}</p>
       </div>
       <div className="mx-6 grid max-w-5xl grid-cols-4 grid-rows-2 gap-4">
         {cloudIntegrationOptions.map((cloudIntegrationOption) => (

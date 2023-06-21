@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import queryString from 'query-string';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import queryString from "query-string";
 
 import {
   Button,
@@ -10,23 +10,24 @@ import {
   Input,
   Select,
   SelectItem
-} from '../../../components/v2';
-import { useGetIntegrationAuthById } from '../../../hooks/api/integrationAuth';
-import { useGetWorkspaceById } from '../../../hooks/api/workspace';
-import createIntegration from '../../api/integrations/createIntegration';
+} from "../../../components/v2";
+import { useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
+import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+import createIntegration from "../../api/integrations/createIntegration";
 
 export default function AzureKeyVaultCreateIntegrationPage() {
   const router = useRouter();
 
-  const { integrationAuthId } = queryString.parse(router.asPath.split('?')[1]);
+  const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
-  const { data: workspace } = useGetWorkspaceById(localStorage.getItem('projectData.id') ?? '');
-  const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? '');
+  const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
+  const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
 
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
+  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+  const [secretPath, setSecretPath] = useState("/");
 
-  const [vaultBaseUrl, setVaultBaseUrl] = useState('');
-  const [vaultBaseUrlErrorText, setVaultBaseUrlErrorText] = useState('');
+  const [vaultBaseUrl, setVaultBaseUrl] = useState("");
+  const [vaultBaseUrlErrorText, setVaultBaseUrlErrorText] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -39,12 +40,12 @@ export default function AzureKeyVaultCreateIntegrationPage() {
   const handleButtonClick = async () => {
     try {
       if (vaultBaseUrl.length === 0) {
-        setVaultBaseUrlErrorText('Vault URI cannot be blank');
+        setVaultBaseUrlErrorText("Vault URI cannot be blank");
         return;
       }
 
-      if (!vaultBaseUrl.startsWith('https://') || !vaultBaseUrl.endsWith('vault.azure.net')) {
-        setVaultBaseUrlErrorText('Vault URI must be like https://<vault_name>.vault.azure.net');
+      if (!vaultBaseUrl.startsWith("https://") || !vaultBaseUrl.endsWith("vault.azure.net")) {
+        setVaultBaseUrlErrorText("Vault URI must be like https://<vault_name>.vault.azure.net");
         return;
       }
 
@@ -63,11 +64,12 @@ export default function AzureKeyVaultCreateIntegrationPage() {
         targetServiceId: null,
         owner: null,
         path: null,
-        region: null
+        region: null,
+        secretPath
       });
       setIsLoading(false);
 
-      router.push(`/integrations/${localStorage.getItem('projectData.id')}`);
+      router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
       console.error(err);
     }
@@ -93,10 +95,17 @@ export default function AzureKeyVaultCreateIntegrationPage() {
             ))}
           </Select>
         </FormControl>
+        <FormControl label="Secrets Path">
+          <Input
+            value={secretPath}
+            onChange={(evt) => setSecretPath(evt.target.value)}
+            placeholder="Provide a path, default is /"
+          />
+        </FormControl>
         <FormControl
           label="Vault URI"
           errorText={vaultBaseUrlErrorText}
-          isError={vaultBaseUrlErrorText !== '' ?? false}
+          isError={vaultBaseUrlErrorText !== "" ?? false}
         >
           <Input
             placeholder="https://example.vault.azure.net"

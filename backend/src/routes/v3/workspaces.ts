@@ -1,76 +1,75 @@
-import express from 'express';
+import express from "express";
 const router = express.Router();
 import {
     requireAuth,
     requireWorkspaceAuth,
-    validateRequest
-} from '../../middleware';
-import { workspacesController } from '../../controllers/v3';
+    validateRequest,
+} from "../../middleware";
+import { workspacesController } from "../../controllers/v3";
 import {
-    AUTH_MODE_JWT,
     ADMIN,
-    PERMISSION_READ_SECRETS
-} from '../../variables';
-import { param, body, validationResult } from 'express-validator';
+    AUTH_MODE_JWT,
+} from "../../variables";
+import { body, param } from "express-validator";
 
 // -- migration to blind indices endpoints
 
 router.get(
-    '/:workspaceId/secrets/blind-index-status',
-    param('workspaceId').exists().isString().trim(),
+    "/:workspaceId/secrets/blind-index-status",
+    param("workspaceId").exists().isString().trim(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT]
+        acceptedAuthModes: [AUTH_MODE_JWT],
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN],
-        locationWorkspaceId: 'params',
+        locationWorkspaceId: "params",
     }),
     workspacesController.getWorkspaceBlindIndexStatus
 );
 
 router.get( // allow admins to get all workspace secrets (part of blind indices migration)
-    '/:workspaceId/secrets',
-    param('workspaceId').exists().isString().trim(),
+    "/:workspaceId/secrets",
+    param("workspaceId").exists().isString().trim(),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT]
+        acceptedAuthModes: [AUTH_MODE_JWT],
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN],
-        locationWorkspaceId: 'params',
+        locationWorkspaceId: "params",
     }),
     workspacesController.getWorkspaceSecrets
 );
 
 router.post( // allow admins to name all workspace secrets (part of blind indices migration)
-    '/:workspaceId/secrets/names',
-    param('workspaceId').exists().isString().trim(),
-    body('secretsToUpdate')
+    "/:workspaceId/secrets/names",
+    param("workspaceId").exists().isString().trim(),
+    body("secretsToUpdate")
         .exists()
         .isArray()
-        .withMessage('secretsToUpdate must be an array')
+        .withMessage("secretsToUpdate must be an array")
         .customSanitizer((value) => {
             return value.map((secret: any) => ({
                 secretName: secret.secretName,
-                _id: secret._id
+                _id: secret._id,
             }));
         }),
-    body('secretsToUpdate.*.secretName')
+    body("secretsToUpdate.*.secretName")
         .exists()
         .isString()
-        .withMessage('secretName must be a string'),
-    body('secretsToUpdate.*._id')
+        .withMessage("secretName must be a string"),
+    body("secretsToUpdate.*._id")
         .exists()
         .isString()
-        .withMessage('secretId must be a string'),
+        .withMessage("secretId must be a string"),
     validateRequest,
     requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT]
+        acceptedAuthModes: [AUTH_MODE_JWT],
     }),
     requireWorkspaceAuth({
         acceptedRoles: [ADMIN],
-        locationWorkspaceId: 'params'
+        locationWorkspaceId: "params",
     }),
     workspacesController.nameWorkspaceSecrets
 );

@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface Workspace {
   __v: number;
@@ -14,9 +14,9 @@ interface Workspace {
  */
 const getAWorkspace = (workspaceID: string) =>
   SecurityClient.fetchCall(`/api/v1/workspace/${workspaceID}`, {
-    method: 'GET',
+    method: "GET",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res?.status === 200) {
@@ -24,7 +24,7 @@ const getAWorkspace = (workspaceID: string) =>
       return data.workspace;
     }
 
-    throw new Error('Failed to get workspace');
+    throw new Error("Failed to get workspace");
   });
 
 export default getAWorkspace;
