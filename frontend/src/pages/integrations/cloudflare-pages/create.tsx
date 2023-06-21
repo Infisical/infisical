@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { useGetWorkspaceById } from '~/hooks/api';
-import queryString from 'query-string';
-import { useGetIntegrationAuthApps, useGetIntegrationAuthById } from '~/hooks/api/integrationAuth';
-import createIntegration from '~/pages/api/integrations/createIntegration';
-import { Button, Card, CardTitle, FormControl, Select, SelectItem } from '~/components/v2';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
+import { useGetWorkspaceById } from "~/hooks/api";
+import queryString from "query-string";
+import { useGetIntegrationAuthApps, useGetIntegrationAuthById } from "~/hooks/api/integrationAuth";
+import createIntegration from "~/pages/api/integrations/createIntegration";
+import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "~/components/v2";
 
 const cloudflareEnvironments = [
     { name: 'Production', slug: 'production' },

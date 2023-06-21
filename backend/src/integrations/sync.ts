@@ -1843,6 +1843,13 @@ const syncSecretsHashiCorpVault = async ({
   );
 };
 
+/**
+ * Sync/push [secrets] to Cloudflare Pages project with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - API token for Cloudflare
+ */
 const syncSecretsCloudflarePages = async ({
     integration,
     secrets,
@@ -1854,65 +1861,56 @@ const syncSecretsCloudflarePages = async ({
     accessId: string | null;
     accessToken: string;
 }) => {
-    const targetEnvironment = integration.targetEnvironment;
 
-    // get secrets from cloudflare pages
-    const getSecretsRes = (
-        await standardRequest.get(
-            `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`,
-            {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    "Accept": "application/json",
-                },
-            }
-        )
-    )
-    .data.result['deployment_configs'][targetEnvironment]['env_vars'];
+  // get secrets from cloudflare pages
+  const getSecretsRes = (
+      await standardRequest.get(
+          `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`,
+          {
+              headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Accept": "application/json",
+              },
+          }
+      )
+  )
+  .data.result['deployment_configs'][integration.targetEnvironment]['env_vars'];
 
-    // copy the secrets object, so we can set deleted keys to null
-    const secretsObj: any = {...secrets};
+  // copy the secrets object, so we can set deleted keys to null
+  const secretsObj: any = {...secrets};
 
-    for (const [key, val] of Object.entries(secretsObj)) {
-        secretsObj[key] = { type: "secret_text", value: val };
+  for (const [key, val] of Object.entries(secretsObj)) {
+      secretsObj[key] = { type: "secret_text", value: val };
+  }
+
+  if (getSecretsRes) {
+      for await (const key of Object.keys(getSecretsRes)) {
+          if (!(key in secrets)) {
+              // case: secret does not exist in infisical
+              // -> delete secret from cloudflare pages
+              secretsObj[key] = null;
+          }
+      }
+  }
+
+  const data = {
+    "deployment_configs": {
+      [integration.targetEnvironment]: {
+        "env_vars": secretsObj
+      }
     }
+  };
 
-    if (getSecretsRes) { // if there are no env vars set in cloudflare pages, none have to be deleted either
-        for await (const key of Object.keys(getSecretsRes)) {
-            if (!(key in secrets)) {
-                // case: secret does not exist in infisical
-                // -> delete secret from cloudflare pages
-                secretsObj[key] = null;
-            }
-        }
-    }
-
-    const data = targetEnvironment === 'production' 
-    ? {
-        "deployment_configs": {
-            "production" : {
-                "env_vars": secretsObj
-            }
-        }
-    }
-    : {
-        "deployment_configs": {
-            "preview": {
-                "env_vars": secretsObj
-            }
-        }
-    }
-
-    const result = await standardRequest.patch(
-        `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`,
-        data,
-        {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "Accept": "application/json",
-            },
-        }
-    )
+  await standardRequest.patch(
+      `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`,
+      data,
+      {
+          headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Accept": "application/json",
+          },
+      }
+  );
 }
 
 export { syncSecrets };

@@ -288,7 +288,7 @@ export default function Integrations() {
           link = `${window.location.origin}/integrations/hashicorp-vault/create?integrationAuthId=${integrationAuth._id}`;
           break;
         case 'cloudflare-pages':
-          link = `${window.location.origin}/integrations/cloudflare-pages/create?integrationAutHId=${integrationAuth._id}`;
+          link = `${window.location.origin}/integrations/cloudflare-pages/create?integrationAuthId=${integrationAuth._id}`;
         default:
           break;
       }

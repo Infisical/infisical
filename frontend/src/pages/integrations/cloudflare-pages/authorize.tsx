@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { useRouter } from 'next/router';
-import { Card, CardTitle, FormControl, Input, Button } from '../../../components/v2';
-import saveIntegrationAccessToken from '~/pages/api/integrations/saveIntegrationAccessToken';
+import { useState } from "react";
+import { useRouter } from "next/router";
+import { Card, CardTitle, FormControl, Input, Button } from "../../../components/v2";
+import saveIntegrationAccessToken from "~/pages/api/integrations/saveIntegrationAccessToken";
 
 export default function CloudflarePagesIntegrationPage() {
     const router = useRouter();
@@ -16,7 +16,7 @@ export default function CloudflarePagesIntegrationPage() {
             setAccessKeyErrorText('');
             setAccountIdErrorText('');
             if (accessKey.length === 0 || accountId.length === 0) {
-                if (accessKey.length === 0) setAccessKeyErrorText('Access key cannot be blank!');
+                if (accessKey.length === 0) setAccessKeyErrorText('API token cannot be blank!');
                 if (accountId.length === 0) setAccountIdErrorText('Account ID cannot be blank!');
                 return;
             }
