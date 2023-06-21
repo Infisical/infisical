@@ -3,7 +3,9 @@ import React, { useState } from "react";
 import ReactCodeInput from "react-code-input";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/router";
+import axios from "axios"
 
+import attemptCliLoginMfa from "@app/components/utilities/attemptCliLoginMfa"
 import attemptLoginMfa from "@app/components/utilities/attemptLoginMfa";
 import { useSendMfaToken } from "@app/hooks/api/auth";
 
@@ -76,17 +78,43 @@ export default function MFAStep({
       }
 
       setIsLoading(true);
-      const isLoginSuccessful = await attemptLoginMfa({
-        email,
-        password,
-        providerAuthToken,
-        mfaToken: mfaCode
-      });
+      const queryParams = new URLSearchParams(window.location.search)
+      if (queryParams && queryParams.get("callback_port")){
+        const callbackPort = queryParams.get("callback_port")
 
-      if (isLoginSuccessful) {
-        setIsLoading(false);
-        router.push(`/dashboard/${localStorage.getItem("projectData.id")}`);
+        // attemptCliLogin
+        const isCliLoginSuccessful = await attemptCliLoginMfa({
+          email,
+          password,
+          providerAuthToken,
+          mfaToken: mfaCode
+        })
+
+        if (isCliLoginSuccessful && isCliLoginSuccessful.success){
+          // case: login was successful
+          const cliUrl = `http://localhost:${callbackPort}`
+
+          // send request to server endpoint 
+          const instance = axios.create()
+          await instance.post(cliUrl,{...isCliLoginSuccessful.loginResponse,email})
+
+          // cli page
+          router.push("/cli-redirect");
+        }
+      }else{
+        const isLoginSuccessful = await attemptLoginMfa({
+          email,
+          password,
+          providerAuthToken,
+          mfaToken: mfaCode
+        });
+  
+        if (isLoginSuccessful) {
+          setIsLoading(false);
+          router.push(`/dashboard/${localStorage.getItem("projectData.id")}`);
+        }
       }
+      
     } catch (err) {
       const error = err as VerifyMfaTokenError;
 
