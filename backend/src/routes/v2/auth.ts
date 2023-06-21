@@ -1,42 +1,42 @@
-import express from 'express';
+import express from "express";
 const router = express.Router();
-import { body } from 'express-validator';
-import { requireMfaAuth, validateRequest } from '../../middleware';
-import { authController } from '../../controllers/v2';
-import { authLimiter } from '../../helpers/rateLimiter';
+import { body } from "express-validator";
+import { requireMfaAuth, validateRequest } from "../../middleware";
+import { authController } from "../../controllers/v2";
+import { authLimiter } from "../../helpers/rateLimiter";
 
 router.post(
-  '/login1',
+  "/login1",
   authLimiter,
-  body('email').isString().trim().notEmpty(),
-  body('clientPublicKey').isString().trim().notEmpty(),
+  body("email").isString().trim().notEmpty(),
+  body("clientPublicKey").isString().trim().notEmpty(),
   validateRequest,
   authController.login1
 );
 
 router.post(
-  '/login2',
+  "/login2",
   authLimiter,
-  body('email').isString().trim().notEmpty(),
-  body('clientProof').isString().trim().notEmpty(),
+  body("email").isString().trim().notEmpty(),
+  body("clientProof").isString().trim().notEmpty(),
   validateRequest,
   authController.login2
 );
 
 router.post(
-  '/mfa/send',
+  "/mfa/send",
   authLimiter,
-  body('email').isString().trim().notEmpty().isEmail(),
+  body("email").isString().trim().notEmpty().isEmail(),
   validateRequest,
   authController.sendMfaToken
 );
 
 router.post(
-  '/mfa/verify',
+  "/mfa/verify",
   authLimiter,
   requireMfaAuth,
-  body('email').isString().trim().notEmpty(),
-  body('mfaToken').isString().trim().notEmpty(),
+  body("email").isString().trim().notEmpty(),
+  body("mfaToken").isString().trim().notEmpty(),
   validateRequest,
   authController.verifyMfaToken
 );

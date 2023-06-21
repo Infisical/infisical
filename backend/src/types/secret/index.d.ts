@@ -1,7 +1,5 @@
-import { Types } from "mongoose";
 import { Assign, Omit } from "utility-types";
 import { ISecret } from "../../models";
-import { mongo } from "mongoose";
 
 // Everything is required, except the omitted types
 export type CreateSecretRequestBody = Omit<

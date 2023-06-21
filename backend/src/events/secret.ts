@@ -1,8 +1,8 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import { 
+    EVENT_PULL_SECRETS, 
     EVENT_PUSH_SECRETS, 
-    EVENT_PULL_SECRETS 
-} from '../variables';
+} from "../variables";
 
 interface PushSecret {
 	ciphertextKey: string;
@@ -13,7 +13,7 @@ interface PushSecret {
 	ivValue: string;
 	tagValue: string;
 	hashValue: string;
-	type: 'shared' | 'personal';
+	type: "shared" | "personal";
 }
 
 /**
@@ -24,7 +24,7 @@ interface PushSecret {
  */
 const eventPushSecrets = ({
     workspaceId,
-    environment
+    environment,
 }: {
     workspaceId: Types.ObjectId;
     environment?: string;
@@ -35,7 +35,7 @@ const eventPushSecrets = ({
         environment,
         payload: {
 
-        }
+        },
     });
 }
 
@@ -55,10 +55,10 @@ const eventPullSecrets = ({
         workspaceId,
         payload: {
 
-        }
+        },
     });
 }
 
 export {
-    eventPushSecrets
+    eventPushSecrets,
 }

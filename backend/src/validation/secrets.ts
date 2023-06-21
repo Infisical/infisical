@@ -1,26 +1,26 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import {
     ISecret,
     Secret,
-    User,
     ServiceAccount,
-    ServiceTokenData
-} from '../models';
-import { validateServiceAccountClientForWorkspace, validateServiceAccountClientForSecrets } from './serviceAccount';
-import { validateUserClientForSecret, validateUserClientForSecrets } from './user';
-import { validateServiceTokenDataClientForWorkspace, validateServiceTokenDataClientForSecrets } from './serviceTokenData';
-import { AuthData } from '../interfaces/middleware';
+    ServiceTokenData,
+    User,
+} from "../models";
+import { validateServiceAccountClientForSecrets, validateServiceAccountClientForWorkspace } from "./serviceAccount";
+import { validateUserClientForSecret, validateUserClientForSecrets } from "./user";
+import { validateServiceTokenDataClientForSecrets, validateServiceTokenDataClientForWorkspace } from "./serviceTokenData";
+import { AuthData } from "../interfaces/middleware";
 import {
+    BadRequestError,
     SecretNotFoundError,
     UnauthorizedRequestError,
-    BadRequestError
-} from '../utils/errors';
+} from "../utils/errors";
 import {
+    AUTH_MODE_API_KEY,
     AUTH_MODE_JWT,
     AUTH_MODE_SERVICE_ACCOUNT,
     AUTH_MODE_SERVICE_TOKEN,
-    AUTH_MODE_API_KEY
-} from '../variables';
+} from "../variables";
 
 /**
  * Validate authenticated clients for secrets with id [secretId] based
@@ -35,17 +35,17 @@ export const validateClientForSecret = async ({
     authData,
     secretId,
     acceptedRoles,
-    requiredPermissions
+    requiredPermissions,
 }: {
     authData: AuthData;
     secretId: Types.ObjectId;
-    acceptedRoles: Array<'admin' | 'member'>;
+    acceptedRoles: Array<"admin" | "member">;
     requiredPermissions: string[];
 }) => {
     const secret = await Secret.findById(secretId);
 
     if (!secret) throw SecretNotFoundError({
-        message: 'Failed to find secret'
+        message: "Failed to find secret",
     });
 
     if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
@@ -53,7 +53,7 @@ export const validateClientForSecret = async ({
             user: authData.authPayload,
             secret,
             acceptedRoles,
-            requiredPermissions
+            requiredPermissions,
         });
 
         return secret;
@@ -64,7 +64,7 @@ export const validateClientForSecret = async ({
             serviceAccount: authData.authPayload,
             workspaceId: secret.workspace,
             environment: secret.environment,
-            requiredPermissions
+            requiredPermissions,
         });
         
         return secret;
@@ -74,7 +74,7 @@ export const validateClientForSecret = async ({
         await validateServiceTokenDataClientForWorkspace({
             serviceTokenData: authData.authPayload,
             workspaceId: secret.workspace,
-            environment: secret.environment
+            environment: secret.environment,
         });
     
         return secret;
@@ -85,14 +85,14 @@ export const validateClientForSecret = async ({
             user: authData.authPayload,
             secret,
             acceptedRoles,
-            requiredPermissions
+            requiredPermissions,
         });
 
         return secret;
     }
     
     throw UnauthorizedRequestError({
-        message: 'Failed client authorization for secret'
+        message: "Failed client authorization for secret",
     });
 }
 
@@ -109,7 +109,7 @@ export const validateClientForSecret = async ({
 export const validateClientForSecrets = async ({
     authData,
     secretIds,
-    requiredPermissions
+    requiredPermissions,
 }: {
     authData: AuthData;
     secretIds: Types.ObjectId[];
@@ -120,19 +120,19 @@ export const validateClientForSecrets = async ({
     
     secrets = await Secret.find({
         _id: {
-            $in: secretIds
-        }
+            $in: secretIds,
+        },
     });
 
     if (secrets.length != secretIds.length) {
-        throw BadRequestError({ message: 'Failed to validate non-existent secrets' })
+        throw BadRequestError({ message: "Failed to validate non-existent secrets" })
     }
 
     if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
         await validateUserClientForSecrets({
             user: authData.authPayload,
             secrets,
-            requiredPermissions
+            requiredPermissions,
         });
         
         return secrets;
@@ -142,7 +142,7 @@ export const validateClientForSecrets = async ({
         await validateServiceAccountClientForSecrets({
             serviceAccount: authData.authPayload,
             secrets,
-            requiredPermissions
+            requiredPermissions,
         });
         
         return secrets;
@@ -152,7 +152,7 @@ export const validateClientForSecrets = async ({
         await validateServiceTokenDataClientForSecrets({
             serviceTokenData: authData.authPayload,
             secrets,
-            requiredPermissions
+            requiredPermissions,
         });
         
         return secrets;
@@ -162,13 +162,13 @@ export const validateClientForSecrets = async ({
         await validateUserClientForSecrets({
             user: authData.authPayload,
             secrets,
-            requiredPermissions
+            requiredPermissions,
         });
         
         return secrets;
     }
 
     throw UnauthorizedRequestError({
-        message: 'Failed client authorization for secrets resource'
+        message: "Failed client authorization for secrets resource",
     });
 }

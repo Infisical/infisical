@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState } from "react";
 
 type VoidFn = () => void;
 
@@ -23,7 +23,7 @@ export const useToggle = (initialState = false): UseToggleReturn => {
   }, []);
 
   const toggle = useCallback((isOpen?: boolean) => {
-    setValue((prev) => (typeof isOpen === 'boolean' ? isOpen : !prev));
+    setValue((prev) => (typeof isOpen === "boolean" ? isOpen : !prev));
   }, []);
 
   return [value, { on, off, toggle }];

@@ -1,21 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useRouter } from 'next/router';
-import { faFolderOpen, faKey, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useRouter } from "next/router";
+import { faFolderOpen, faKey, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import NavHeader from '@app/components/navigation/NavHeader';
-import { Button, Input, TableContainer, Tooltip } from '@app/components/v2';
-import { useWorkspace } from '@app/context';
+import NavHeader from "@app/components/navigation/NavHeader";
+import { Button, Input, TableContainer, Tooltip } from "@app/components/v2";
+import { useWorkspace } from "@app/context";
 import {
   useGetProjectFoldersBatch,
   useGetProjectSecretsByKey,
   useGetUserWsEnvironments,
   useGetUserWsKey
-} from '@app/hooks/api';
+} from "@app/hooks/api";
 
-import { EnvComparisonRow } from './components/EnvComparisonRow';
-import { FolderComparisonRow } from './components/EnvComparisonRow/FolderComparisonRow';
+import { EnvComparisonRow } from "./components/EnvComparisonRow";
+import { FolderComparisonRow } from "./components/EnvComparisonRow/FolderComparisonRow";
 
 export const DashboardEnvOverview = () => {
   const { t } = useTranslation();
@@ -24,12 +24,12 @@ export const DashboardEnvOverview = () => {
   const { currentWorkspace, isLoading } = useWorkspace();
   const workspaceId = currentWorkspace?._id as string;
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
-  const [searchFilter, setSearchFilter] = useState('');
+  const [searchFilter, setSearchFilter] = useState("");
   const secretPath = router.query?.secretPath as string;
 
   useEffect(() => {
     if (!isLoading && !workspaceId && router.isReady) {
-      router.push('/noprojects');
+      router.push("/noprojects");
     }
   }, [isLoading, workspaceId, router.isReady]);
 
@@ -107,13 +107,13 @@ export const DashboardEnvOverview = () => {
       pathname: router.pathname,
       query: {
         ...router.query,
-        secretPath: `${router.query?.secretPath || ''}/${path}`
+        secretPath: `${router.query?.secretPath || ""}/${path}`
       }
     });
   };
 
   const onFolderCrumbClick = (index: number) => {
-    const newSecPath = secretPath.split('/').filter(Boolean).slice(0, index).join('/');
+    const newSecPath = secretPath.split("/").filter(Boolean).slice(0, index).join("/");
     const query = { ...router.query, secretPath: `/${newSecPath}` } as Record<string, string>;
     // root condition
     if (index === 0) delete query.secretPath;
@@ -144,7 +144,7 @@ export const DashboardEnvOverview = () => {
   return (
     <div className="container mx-auto max-w-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
       <div className="relative right-5">
-        <NavHeader pageName={t('dashboard.title')} isProjectRelated />
+        <NavHeader pageName={t("dashboard.title")} isProjectRelated />
       </div>
       <div className="mt-6">
         <p className="text-3xl font-semibold text-bunker-100">Secrets Overview</p>
@@ -180,14 +180,14 @@ export const DashboardEnvOverview = () => {
           >
             <FontAwesomeIcon icon={faFolderOpen} className="text-primary" />
           </div>
-          {(secretPath || '')
-            .split('/')
+          {(secretPath || "")
+            .split("/")
             .filter(Boolean)
             .map((path, index, arr) => (
               <div
                 key={`secret-path-${index + 1}`}
                 className={`breadcrumb relative z-20 ${
-                  index + 1 === arr.length ? 'cursor-default' : 'cursor-pointer'
+                  index + 1 === arr.length ? "cursor-default" : "cursor-pointer"
                 } border-solid border-mineshaft-600 py-1 pl-5 pr-2 text-sm text-mineshaft-200`}
                 onClick={() => onFolderCrumbClick(index + 1)}
                 onKeyDown={() => null}
@@ -247,7 +247,7 @@ export const DashboardEnvOverview = () => {
         </div>
         <div
           className={`${
-            isDashboardEmpty ? '' : ''
+            isDashboardEmpty ? "" : ""
           } no-scrollbar::-webkit-scrollbar mt-3 flex h-full max-h-[calc(100vh-370px)] w-full min-w-[60.3rem] flex-grow flex-row items-start justify-center overflow-x-hidden rounded-md border border-mineshaft-600 no-scrollbar`}
         >
           {!isDashboardEmpty && (

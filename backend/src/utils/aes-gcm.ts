@@ -1,6 +1,6 @@
-import crypto = require('crypto');
+import crypto = require("crypto");
 
-const ALGORITHM = 'aes-256-gcm';
+const ALGORITHM = "aes-256-gcm";
 const BLOCK_SIZE_BYTES = 16;
 
 export default class AesGCM {
@@ -13,12 +13,12 @@ export default class AesGCM {
 		const iv = crypto.randomBytes(BLOCK_SIZE_BYTES);
 		const cipher = crypto.createCipheriv(ALGORITHM, secret, iv);
 
-		let ciphertext = cipher.update(text, 'utf8', 'base64');
-		ciphertext += cipher.final('base64');
+		let ciphertext = cipher.update(text, "utf8", "base64");
+		ciphertext += cipher.final("base64");
 		return {
 			ciphertext,
-			iv: iv.toString('base64'),
-			tag: cipher.getAuthTag().toString('base64')
+			iv: iv.toString("base64"),
+			tag: cipher.getAuthTag().toString("base64"),
 		};
 	}
 
@@ -31,12 +31,12 @@ export default class AesGCM {
 		const decipher = crypto.createDecipheriv(
 			ALGORITHM,
 			secret,
-			Buffer.from(iv, 'base64')
+			Buffer.from(iv, "base64")
 		);
-		decipher.setAuthTag(Buffer.from(tag, 'base64'));
+		decipher.setAuthTag(Buffer.from(tag, "base64"));
 
-		let cleartext = decipher.update(ciphertext, 'base64', 'utf8');
-		cleartext += decipher.final('utf8');
+		let cleartext = decipher.update(ciphertext, "base64", "utf8");
+		cleartext += decipher.final("utf8");
 
 		return cleartext;
 	}

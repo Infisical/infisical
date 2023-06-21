@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, Types, model } from "mongoose";
 
 export interface IIncidentContactOrg {
 	_id: Types.ObjectId;
@@ -10,21 +10,21 @@ const incidentContactOrgSchema = new Schema<IIncidentContactOrg>(
 	{
 		email: {
 			type: String,
-			required: true
+			required: true,
 		},
 		organization: {
 			type: Schema.Types.ObjectId,
-			ref: 'Organization',
-			required: true
-		}
+			ref: "Organization",
+			required: true,
+		},
 	},
 	{
-		timestamps: true
+		timestamps: true,
 	}
 );
 
 const IncidentContactOrg = model<IIncidentContactOrg>(
-	'IncidentContactOrg',
+	"IncidentContactOrg",
 	incidentContactOrgSchema
 );
 

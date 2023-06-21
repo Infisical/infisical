@@ -1,28 +1,28 @@
-import { useState } from 'react';
-import { useRouter } from 'next/router';
+import { useState } from "react";
+import { useRouter } from "next/router";
 
-import { Button, Card, CardTitle, FormControl, Input } from '../../../components/v2';
-import saveIntegrationAccessToken from '../../api/integrations/saveIntegrationAccessToken';
+import { Button, Card, CardTitle, FormControl, Input } from "../../../components/v2";
+import saveIntegrationAccessToken from "../../api/integrations/saveIntegrationAccessToken";
 
 export default function FlyioCreateIntegrationPage() {
   const router = useRouter();
-  const [accessToken, setAccessToken] = useState('');
-  const [accessTokenErrorText, setAccessTokenErrorText] = useState('');
+  const [accessToken, setAccessToken] = useState("");
+  const [accessTokenErrorText, setAccessTokenErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleButtonClick = async () => {
     try {
-      setAccessTokenErrorText('');
+      setAccessTokenErrorText("");
       if (accessToken.length === 0) {
-        setAccessTokenErrorText('Access token cannot be blank');
+        setAccessTokenErrorText("Access token cannot be blank");
         return;
       }
 
       setIsLoading(true);
 
       const integrationAuth = await saveIntegrationAccessToken({
-        workspaceId: localStorage.getItem('projectData.id'),
-        integration: 'flyio',
+        workspaceId: localStorage.getItem("projectData.id"),
+        integration: "flyio",
         accessId: null,
         accessToken,
         url: null,
@@ -44,7 +44,7 @@ export default function FlyioCreateIntegrationPage() {
         <FormControl
           label="Fly.io Access Token"
           errorText={accessTokenErrorText}
-          isError={accessTokenErrorText !== '' ?? false}
+          isError={accessTokenErrorText !== "" ?? false}
         >
           <Input
             placeholder=""

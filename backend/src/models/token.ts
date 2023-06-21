@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';
+import { Schema, model } from "mongoose";
 
 export interface IToken {
   email: string;
@@ -10,23 +10,23 @@ export interface IToken {
 const tokenSchema = new Schema<IToken>({
   email: {
     type: String,
-    required: true
+    required: true,
   },
   token: {
     type: String,
-    required: true
+    required: true,
   },
   createdAt: {
     type: Date,
-    default: Date.now
+    default: Date.now,
   },
   ttl: {
     type: Number,
-  }
+  },
 });
 
 tokenSchema.index({ email: 1 });
 
-const Token = model<IToken>('Token', tokenSchema);
+const Token = model<IToken>("Token", tokenSchema);
 
 export default Token;

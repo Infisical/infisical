@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
-import { faCheck, faCopy } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useEffect } from "react";
+import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { IconButton } from '@app/components/v2';
-import { useToggle } from '@app/hooks';
+import { IconButton } from "@app/components/v2";
+import { useToggle } from "@app/hooks";
 
 type Props = {
     serviceAccountId: string;

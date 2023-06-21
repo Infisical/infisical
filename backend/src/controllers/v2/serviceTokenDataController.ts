@@ -1,13 +1,10 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
-import { User, ServiceAccount, ServiceTokenData } from "../../models";
-import { userHasWorkspaceAccess } from "../../ee/helpers/checkMembershipPermissions";
+import { ServiceAccount, ServiceTokenData, User } from "../../models";
 import {
-  PERMISSION_READ_SECRETS,
   AUTH_MODE_JWT,
   AUTH_MODE_SERVICE_ACCOUNT,
-  AUTH_MODE_SERVICE_TOKEN,
 } from "../../variables";
 import { getSaltRounds } from "../../config";
 import { BadRequestError } from "../../utils/errors";

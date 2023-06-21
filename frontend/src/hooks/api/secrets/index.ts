@@ -3,4 +3,4 @@ export {
   useGetProjectSecrets,
   useGetProjectSecretsByKey,
   useGetSecretVersion
-} from './queries';
+} from "./queries";

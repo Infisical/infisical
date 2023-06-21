@@ -1,4 +1,4 @@
-import { Schema, model, Types, Document } from 'mongoose';
+import { Document, Schema, Types, model } from "mongoose";
 
 export interface IServiceAccountWorkspacePermission extends Document {
     _id: Types.ObjectId;
@@ -13,32 +13,32 @@ const serviceAccountWorkspacePermissionSchema = new Schema<IServiceAccountWorksp
     {
         serviceAccount: {
             type: Schema.Types.ObjectId,
-            ref: 'ServiceAccount',
-            required: true
+            ref: "ServiceAccount",
+            required: true,
         },
         workspace:{
             type: Schema.Types.ObjectId,
-            ref: 'Workspace',
-            required: true
+            ref: "Workspace",
+            required: true,
         },
         environment: {
             type: String,
-            required: true
+            required: true,
         },
         read: {
             type: Boolean,
-            default: false
+            default: false,
         },
         write: {
             type: Boolean,
-            default: false
-        }
+            default: false,
+        },
     },
     {
-        timestamps: true
+        timestamps: true,
     }
 );
 
-const ServiceAccountWorkspacePermission = model<IServiceAccountWorkspacePermission>('ServiceAccountWorkspacePermission', serviceAccountWorkspacePermissionSchema);
+const ServiceAccountWorkspacePermission = model<IServiceAccountWorkspacePermission>("ServiceAccountWorkspacePermission", serviceAccountWorkspacePermissionSchema);
 
 export default ServiceAccountWorkspacePermission;

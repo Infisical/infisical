@@ -1,8 +1,8 @@
 /* eslint-disable react/jsx-no-useless-fragment */
-import { useCallback, useState } from 'react';
-import { faCircle, faEye, faEyeSlash, faKey, faMinus } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { twMerge } from 'tailwind-merge';
+import { useCallback, useState } from "react";
+import { faCircle, faEye, faEyeSlash, faKey, faMinus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 type Props = {
   secrets: any[] | undefined;
@@ -39,7 +39,7 @@ const DashboardInput = ({
         <span className="ph-no-capture text-yellow" key={`${val}-${index + 1}`}>
           {word.slice(0, 2)}
           <span className="ph-no-capture text-yellow-200/80">{word.slice(2, word.length - 1)}</span>
-          {word.slice(word.length - 1, word.length) === '}' ? (
+          {word.slice(word.length - 1, word.length) === "}" ? (
             <span className="ph-no-capture text-yellow">
               {word.slice(word.length - 1, word.length)}
             </span>
@@ -59,29 +59,29 @@ const DashboardInput = ({
 
   return (
     <td
-      key={`row-${secret?.key || ''}--`}
+      key={`row-${secret?.key || ""}--`}
       className={`flex h-10 w-full cursor-default flex-row items-center justify-center ${
-        !(secret?.value || secret?.value === '') ? 'bg-red-800/10' : 'bg-mineshaft-900/30'
+        !(secret?.value || secret?.value === "") ? "bg-red-800/10" : "bg-mineshaft-900/30"
       }`}
     >
       <div className="group relative flex	w-full cursor-default flex-col justify-center whitespace-pre">
         <input
-          value={isOverridden ? secret.valueOverride : secret?.value || ''}
+          value={isOverridden ? secret.valueOverride : secret?.value || ""}
           readOnly={isReadOnly}
           className={twMerge(
-            'ph-no-capture no-scrollbar::-webkit-scrollbar duration-50 peer z-10 w-full cursor-default bg-transparent px-2 py-2 font-mono text-sm text-transparent caret-transparent outline-none no-scrollbar',
-            isSecretValueHidden && 'text-transparent focus:text-transparent active:text-transparent'
+            "ph-no-capture no-scrollbar::-webkit-scrollbar duration-50 peer z-10 w-full cursor-default bg-transparent px-2 py-2 font-mono text-sm text-transparent caret-transparent outline-none no-scrollbar",
+            isSecretValueHidden && "text-transparent focus:text-transparent active:text-transparent"
           )}
           spellCheck="false"
         />
         <div
           className={twMerge(
-            'ph-no-capture min-w-16 no-scrollbar::-webkit-scrollbar duration-50 absolute z-0 mt-0.5 flex h-10 w-full cursor-default flex-row overflow-x-scroll whitespace-pre bg-transparent px-2 py-2 font-mono text-sm outline-none no-scrollbar peer-focus:visible',
-            isSecretValueHidden && secret?.value ? 'invisible' : 'visible',
+            "ph-no-capture min-w-16 no-scrollbar::-webkit-scrollbar duration-50 absolute z-0 mt-0.5 flex h-10 w-full cursor-default flex-row overflow-x-scroll whitespace-pre bg-transparent px-2 py-2 font-mono text-sm outline-none no-scrollbar peer-focus:visible",
+            isSecretValueHidden && secret?.value ? "invisible" : "visible",
             isSecretValueHidden &&
               secret?.value &&
-              'duration-50 text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-100 peer-active:text-gray-400',
-            !secret?.value && 'justify-center text-bunker-400'
+              "duration-50 text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-100 peer-active:text-gray-400",
+            !secret?.value && "justify-center text-bunker-400"
           )}
         >
           {syntaxHighlight(secret?.value)}
@@ -89,8 +89,8 @@ const DashboardInput = ({
         {isSecretValueHidden && secret?.value && (
           <div className="duration-50 peer absolute z-0 flex h-10 w-full flex-row items-center justify-between text-clip pr-2 text-bunker-400 group-hover:bg-white/[0.00] peer-focus:hidden peer-active:hidden">
             <div className="no-scrollbar::-webkit-scrollbar flex flex-row items-center overflow-x-scroll px-2 no-scrollbar">
-              {(isOverridden ? secret.valueOverride : secret?.value || '')
-                ?.split('')
+              {(isOverridden ? secret.valueOverride : secret?.value || "")
+                ?.split("")
                 .map((_a: string, index: number) => (
                   <FontAwesomeIcon
                     key={`${secret?.value}_${index + 1}`}
@@ -98,7 +98,7 @@ const DashboardInput = ({
                     icon={faCircle}
                   />
                 ))}
-              {(isOverridden ? secret.valueOverride : secret?.value || '')?.split('').length ===
+              {(isOverridden ? secret.valueOverride : secret?.value || "")?.split("").length ===
                 0 && <span className="text-sm text-bunker-400/80">EMPTY</span>}
             </div>
           </div>
@@ -130,7 +130,7 @@ export const EnvComparisonRow = ({
       </td>
       <td className="flex h-full min-w-[200px] flex-row items-center justify-between lg:min-w-[220px] xl:min-w-[250px]">
         <div className="flex h-8 cursor-default flex-row items-center truncate">
-          {secrets![0].key || ''}
+          {secrets![0].key || ""}
         </div>
         <button
           type="button"
@@ -143,7 +143,7 @@ export const EnvComparisonRow = ({
       {userAvailableEnvs?.map(({ slug }) => (
         <DashboardInput
           isReadOnly={isReadOnly}
-          key={`row-${secrets![0].key || ''}-${slug}`}
+          key={`row-${secrets![0].key || ""}-${slug}`}
           isOverridden={false}
           secret={getSecretByEnv(slug, secrets)}
           isSecretValueHidden={areValuesHiddenThisRow && isSecretValueHidden}

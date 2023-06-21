@@ -1,7 +1,7 @@
-import { Fragment, useEffect, useState } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
+import { Fragment, useEffect, useState } from "react";
+import { Dialog, Transition } from "@headlessui/react";
 
-import InputField from '../InputField';
+import InputField from "../InputField";
 
 // REFACTOR: Move all these modals into one reusable one 
 type Props = {

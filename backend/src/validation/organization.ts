@@ -1,25 +1,25 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import {
-    IUser,
     IServiceAccount,
     IServiceTokenData,
+    IUser,
     Organization,
-    User,
     ServiceAccount,
-    ServiceTokenData
-} from '../models';
+    ServiceTokenData,
+    User,
+} from "../models";
 import {
+    AUTH_MODE_API_KEY,
     AUTH_MODE_JWT,
     AUTH_MODE_SERVICE_ACCOUNT,
     AUTH_MODE_SERVICE_TOKEN,
-    AUTH_MODE_API_KEY
-} from '../variables';
+} from "../variables";
 import {
     OrganizationNotFoundError,
-    UnauthorizedRequestError
-} from '../utils/errors';
-import { validateUserClientForOrganization } from './user';
-import { validateServiceAccountClientForOrganization } from './serviceAccount';
+    UnauthorizedRequestError,
+} from "../utils/errors";
+import { validateUserClientForOrganization } from "./user";
+import { validateServiceAccountClientForOrganization } from "./serviceAccount";
 
 /**
  * Validate accepted clients for organization with id [organizationId]

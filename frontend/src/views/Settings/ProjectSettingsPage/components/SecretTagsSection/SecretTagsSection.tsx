@@ -1,8 +1,8 @@
-import { Controller, useForm } from 'react-hook-form';
-import { faPlus, faTags, faTrashCan } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { Controller, useForm } from "react-hook-form";
+import { faPlus, faTags, faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
 import {
   Button,
@@ -22,12 +22,12 @@ import {
   Td,
   Th,
   THead,
-  Tr} from '@app/components/v2';
-import { usePopUp } from '@app/hooks';
-import { WorkspaceTag } from '@app/hooks/api/types';
+  Tr} from "@app/components/v2";
+import { usePopUp } from "@app/hooks";
+import { WorkspaceTag } from "@app/hooks/api/types";
 
 const createTagSchema = yup.object({
-  name: yup.string().required().label('Tag Name')
+  name: yup.string().required().label("Tag Name")
 });
 
 export type CreateWsTag = yup.InferType<typeof createTagSchema>;
@@ -50,8 +50,8 @@ export const SecretTagsSection = ({
   onCreateTag
 }: Props): JSX.Element => {
   const { popUp, handlePopUpToggle, handlePopUpClose, handlePopUpOpen } = usePopUp([
-    'CreateSecretTag',
-    'deleteTagConfirmation'
+    "CreateSecretTag",
+    "deleteTagConfirmation"
   ] as const);
 
   const {
@@ -65,12 +65,12 @@ export const SecretTagsSection = ({
 
   const onFormSubmit = async (data: CreateWsTag) => {
     await onCreateTag(data);
-    handlePopUpClose('CreateSecretTag');
+    handlePopUpClose("CreateSecretTag");
   };
 
   const onDeleteApproved = async () => {
     await onDeleteTag((popUp?.deleteTagConfirmation?.data as DeleteModalData)?.id);
-    handlePopUpClose('deleteTagConfirmation');
+    handlePopUpClose("deleteTagConfirmation");
   };
 
   return (
@@ -87,7 +87,7 @@ export const SecretTagsSection = ({
           <Modal
             isOpen={popUp?.CreateSecretTag?.isOpen}
             onOpenChange={(open) => {
-              handlePopUpToggle('CreateSecretTag', open);
+              handlePopUpToggle("CreateSecretTag", open);
               reset();
             }}
           >
@@ -154,7 +154,7 @@ export const SecretTagsSection = ({
                   <Td className="flex items-center justify-end">
                     <IconButton
                       onClick={() =>
-                        handlePopUpOpen('deleteTagConfirmation', {
+                        handlePopUpOpen("deleteTagConfirmation", {
                           name,
                           id: _id
                         })
@@ -180,11 +180,11 @@ export const SecretTagsSection = ({
       <DeleteActionModal
         isOpen={popUp.deleteTagConfirmation.isOpen}
         title={`Delete ${
-          (popUp?.deleteTagConfirmation?.data as DeleteModalData)?.name || ' '
+          (popUp?.deleteTagConfirmation?.data as DeleteModalData)?.name || " "
         } api key?`}
-        onChange={(isOpen) => handlePopUpToggle('deleteTagConfirmation', isOpen)}
+        onChange={(isOpen) => handlePopUpToggle("deleteTagConfirmation", isOpen)}
         deleteKey={(popUp?.deleteTagConfirmation?.data as DeleteModalData)?.name}
-        onClose={() => handlePopUpClose('deleteTagConfirmation')}
+        onClose={() => handlePopUpClose("deleteTagConfirmation")}
         onDeleteApproved={onDeleteApproved}
       />
     </div>

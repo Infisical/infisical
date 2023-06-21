@@ -1,10 +1,10 @@
 import { Types } from "mongoose";
-import { Secret, ISecret } from "../../models";
+import { Secret } from "../../models";
 import {
+  FolderVersion,
+  ISecretVersion,
   SecretSnapshot,
   SecretVersion,
-  ISecretVersion,
-  FolderVersion,
 } from "../models";
 
 /**

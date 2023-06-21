@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface Props {
   name: string;
@@ -13,10 +13,10 @@ interface Props {
  * @returns
  */
 const addAPIKey = ({ name, expiresIn }: Props) =>
-  SecurityClient.fetchCall('/api/v2/api-key/', {
-    method: 'POST',
+  SecurityClient.fetchCall("/api/v2/api-key/", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       name,
@@ -26,7 +26,7 @@ const addAPIKey = ({ name, expiresIn }: Props) =>
     if (res && res.status === 200) {
       return res.json();
     }
-    console.log('Failed to add API key');
+    console.log("Failed to add API key");
     return undefined;
   });
 

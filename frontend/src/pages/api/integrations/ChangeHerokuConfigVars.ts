@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface Props {
   integrationId: string;
@@ -18,9 +18,9 @@ interface Props {
 
 const changeHerokuConfigVars = ({ integrationId, key, secrets }: Props) =>
   SecurityClient.fetchCall(`/api/v1/integration/${integrationId}/sync`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       key,
@@ -30,7 +30,7 @@ const changeHerokuConfigVars = ({ integrationId, key, secrets }: Props) =>
     if (res && res.status === 200) {
       return res;
     }
-    console.log('Failed to sync secrets to Heroku');
+    console.log("Failed to sync secrets to Heroku");
     return undefined;
   });
 

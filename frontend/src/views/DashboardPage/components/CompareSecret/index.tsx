@@ -1,1 +1,1 @@
-export { CompareSecret } from './CompareSecret';
+export { CompareSecret } from "./CompareSecret";

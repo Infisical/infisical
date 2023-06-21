@@ -1,19 +1,18 @@
 import { Request, Response } from "express";
 import {
-  Workspace,
-  Membership,
-  MembershipOrg,
+  IUser,
   Integration,
   IntegrationAuth,
-  IUser,
+  Membership,
+  MembershipOrg,
   ServiceToken,
-  ServiceTokenData,
+  Workspace,
 } from "../../models";
 import {
   createWorkspace as create,
   deleteWorkspace as deleteWork,
 } from "../../helpers/workspace";
-import { EELicenseService } from '../../ee/services';
+import { EELicenseService } from "../../ee/services";
 import { addMemberships } from "../../helpers/membership";
 import { ADMIN } from "../../variables";
 
@@ -123,7 +122,7 @@ export const createWorkspace = async (req: Request, res: Response) => {
     if (plan.workspacesUsed >= plan.workspaceLimit) {
       // case: number of workspaces used exceeds the number of workspaces allowed
       return res.status(400).send({
-        message: 'Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces.'
+        message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces.",
       });
     }
   }

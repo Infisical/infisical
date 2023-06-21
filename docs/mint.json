@@ -22,10 +22,7 @@
     }
   },
   "api": {
-    "baseUrl": [
-      "https://app.infisical.com",
-      "http://localhost:8080"
-    ],
+    "baseUrl": ["https://app.infisical.com", "http://localhost:8080"],
     "auth": {
       "method": "key",
       "name": "X-API-KEY"
@@ -112,6 +109,7 @@
       "pages": [
         "documentation/platform/organization",
         "documentation/platform/project",
+        "documentation/platform/folder",
         "documentation/platform/pit-recovery",
         "documentation/platform/secret-versioning",
         "documentation/platform/audit-logs",
@@ -227,9 +225,7 @@
     },
     {
       "group": "Overview",
-      "pages": [
-        "sdks/overview"
-      ]
+      "pages": ["sdks/overview"]
     },
     {
       "group": "SDKs",
@@ -304,9 +300,7 @@
         },
         {
           "group": "Service Tokens",
-          "pages": [
-            "api-reference/endpoints/service-tokens/get"
-          ]
+          "pages": ["api-reference/endpoints/service-tokens/get"]
         }
       ]
     },
@@ -320,9 +314,7 @@
     },
     {
       "group": "Overview",
-      "pages": [
-        "changelog/overview"
-      ]
+      "pages": ["changelog/overview"]
     },
     {
       "group": "Contributing",

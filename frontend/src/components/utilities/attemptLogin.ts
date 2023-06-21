@@ -1,15 +1,15 @@
 /* eslint-disable prefer-destructuring */
-import jsrp from 'jsrp';
+import jsrp from "jsrp";
 
-import login1 from '@app/pages/api/auth/Login1';
-import login2 from '@app/pages/api/auth/Login2';
-import getOrganizations from '@app/pages/api/organization/getOrgs';
-import getOrganizationUserProjects from '@app/pages/api/organization/GetOrgUserProjects';
-import KeyService from '@app/services/KeyService';
+import login1 from "@app/pages/api/auth/Login1";
+import login2 from "@app/pages/api/auth/Login2";
+import getOrganizations from "@app/pages/api/organization/getOrgs";
+import getOrganizationUserProjects from "@app/pages/api/organization/GetOrgUserProjects";
+import KeyService from "@app/services/KeyService";
 
-import Telemetry from './telemetry/Telemetry';
-import { saveTokenToLocalStorage } from './saveTokenToLocalStorage';
-import SecurityClient from './SecurityClient';
+import Telemetry from "./telemetry/Telemetry";
+import { saveTokenToLocalStorage } from "./saveTokenToLocalStorage";
+import SecurityClient from "./SecurityClient";
 
 // eslint-disable-next-line new-cap
 const client = new jsrp.client();
@@ -97,7 +97,7 @@ const attemptLogin = async (
             // case: MFA is not enabled
 
             // unset provider auth token in case it was used
-            SecurityClient.setProviderAuthToken('');            
+            SecurityClient.setProviderAuthToken("");            
             // set JWT token
             SecurityClient.setToken(token);
             
@@ -126,19 +126,19 @@ const attemptLogin = async (
             // and not initializing the login details
             const userOrgs = await getOrganizations(); 
             const orgId = userOrgs[0]._id;
-            localStorage.setItem('orgData.id', orgId);
+            localStorage.setItem("orgData.id", orgId);
             
             const orgUserProjects = await getOrganizationUserProjects({
               orgId
             });
             
             if (orgUserProjects.length > 0) {
-              localStorage.setItem('projectData.id', orgUserProjects[0]._id);
+              localStorage.setItem("projectData.id", orgUserProjects[0]._id);
             }
 
             if (email) {
               telemetry.identify(email, email);
-              telemetry.capture('User Logged In');
+              telemetry.capture("User Logged In");
             }
             
             resolve({

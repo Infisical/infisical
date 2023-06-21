@@ -1,4 +1,4 @@
-import { Schema, model, Types } from 'mongoose';
+import { Schema, Types, model } from "mongoose";
 export interface IServiceToken {
 	_id: Types.ObjectId;
 	name: string;
@@ -15,47 +15,47 @@ const serviceTokenSchema = new Schema<IServiceToken>(
 	{
 		name: {
 			type: String,
-			required: true
+			required: true,
 		},
 		user: {
 			// token issuer
 			type: Schema.Types.ObjectId,
-			ref: 'User',
-			required: true
+			ref: "User",
+			required: true,
 		},
 		workspace: {
 			type: Schema.Types.ObjectId,
-			ref: 'Workspace',
-			required: true
+			ref: "Workspace",
+			required: true,
 		},
 		environment: {
 			type: String,
-			required: true
+			required: true,
 		},
 		expiresAt: {
-			type: Date
+			type: Date,
 		},
 		publicKey: {
 			type: String,
 			required: true,
-			select: true
+			select: true,
 		},
 		encryptedKey: {
 			type: String,
 			required: true,
-			select: true
+			select: true,
 		},
 		nonce: {
 			type: String,
 			required: true,
-			select: true
-		}
+			select: true,
+		},
 	},
 	{
-		timestamps: true
+		timestamps: true,
 	}
 );
 
-const ServiceToken = model<IServiceToken>('ServiceToken', serviceTokenSchema);
+const ServiceToken = model<IServiceToken>("ServiceToken", serviceTokenSchema);
 
 export default ServiceToken;

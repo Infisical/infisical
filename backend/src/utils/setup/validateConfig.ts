@@ -1,10 +1,10 @@
 import {
     getEncryptionKey,
-    getRootEncryptionKey
-} from '../../config';
+    getRootEncryptionKey,
+} from "../../config";
 import {
-    InternalServerError
-} from '../../utils/errors';
+    InternalServerError,
+} from "../../utils/errors";
 
 /**
  * Validate ENCRYPTION_KEY and ROOT_ENCRYPTION_KEY. Specifically:
@@ -26,7 +26,7 @@ export const validateEncryptionKeysConfig = async () => {
         (encryptionKey === undefined || encryptionKey === "") &&
         (rootEncryptionKey === undefined || rootEncryptionKey === "")
     ) throw InternalServerError({
-        message: "Failed to find required root encryption key environment variable. Please make sure that you're passing in a ROOT_ENCRYPTION_KEY environment variable."
+        message: "Failed to find required root encryption key environment variable. Please make sure that you're passing in a ROOT_ENCRYPTION_KEY environment variable.",
     });
 
     // if (encryptionKey && encryptionKey !== '') {
@@ -44,18 +44,18 @@ export const validateEncryptionKeysConfig = async () => {
     //     });
     // }
 
-    if (rootEncryptionKey && rootEncryptionKey !== '') {
+    if (rootEncryptionKey && rootEncryptionKey !== "") {
         // validate [rootEncryptionKey]
 
-        const keyBuffer = Buffer.from(rootEncryptionKey, 'base64')
-        const decoded = keyBuffer.toString('base64');
+        const keyBuffer = Buffer.from(rootEncryptionKey, "base64")
+        const decoded = keyBuffer.toString("base64");
 
         if (decoded !== rootEncryptionKey) throw InternalServerError({
-            message: 'Failed to validate that the root encryption key is correctly encoded in base64'
+            message: "Failed to validate that the root encryption key is correctly encoded in base64",
         });
 
         if (keyBuffer.length !== 32) throw InternalServerError({
-            message: 'Failed to validate that the encryption key is a 256-bit base64 string'
+            message: "Failed to validate that the encryption key is a 256-bit base64 string",
         });
     }
 }

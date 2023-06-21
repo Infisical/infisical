@@ -1,25 +1,19 @@
-import { Request, Response } from 'express';
-import { Types } from 'mongoose';
+import { Request, Response } from "express";
+import { Types } from "mongoose";
 import {
-	Workspace,
-	Secret,
-	Membership,
-	MembershipOrg,
-	Integration,
-	IntegrationAuth,
 	Key,
-	IUser,
-	ServiceToken,
-	ServiceTokenData
-} from '../../models';
+	Membership,
+	ServiceTokenData,
+	Workspace,
+} from "../../models";
 import {
-	v2PushSecrets as push,
 	pullSecrets as pull,
-	reformatPullSecrets
-} from '../../helpers/secret';
-import { pushKeys } from '../../helpers/key';
-import { TelemetryService, EventService } from '../../services';
-import { eventPushSecrets } from '../../events';
+	v2PushSecrets as push,
+	reformatPullSecrets,
+} from "../../helpers/secret";
+import { pushKeys } from "../../helpers/key";
+import { EventService, TelemetryService } from "../../services";
+import { eventPushSecrets } from "../../events";
 
 interface V2PushSecret {
 	type: string; // personal or shared
@@ -54,12 +48,12 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
   // validate environment
   const workspaceEnvs = req.membership.workspace.environments;
   if (!workspaceEnvs.find(({ slug }: { slug: string }) => slug === environment)) {
-    throw new Error('Failed to validate environment');
+    throw new Error("Failed to validate environment");
   }
 
   // sanitize secrets
   secrets = secrets.filter(
-    (s: V2PushSecret) => s.secretKeyCiphertext !== '' && s.secretValueCiphertext !== ''
+    (s: V2PushSecret) => s.secretKeyCiphertext !== "" && s.secretValueCiphertext !== ""
   );
 
   await push({
@@ -67,26 +61,26 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
     workspaceId,
     environment,
     secrets,
-    channel: channel ? channel : 'cli',
-    ipAddress: req.realIP
+    channel: channel ? channel : "cli",
+    ipAddress: req.realIP,
   });
 
   await pushKeys({
     userId: req.user._id,
     workspaceId,
-    keys
+    keys,
   });
 
   if (postHogClient) {
     postHogClient.capture({
-      event: 'secrets pushed',
+      event: "secrets pushed",
       distinctId: req.user.email,
       properties: {
         numberOfSecrets: secrets.length,
         environment,
         workspaceId,
-        channel: channel ? channel : 'cli'
-      }
+        channel: channel ? channel : "cli",
+      },
     });
   }
 
@@ -94,12 +88,12 @@ export const pushWorkspaceSecrets = async (req: Request, res: Response) => {
   EventService.handleEvent({
     event: eventPushSecrets({
       workspaceId: new Types.ObjectId(workspaceId),
-      environment
-    })
+      environment,
+    }),
   });
 
 	return res.status(200).send({
-		message: 'Successfully uploaded workspace secrets'
+		message: "Successfully uploaded workspace secrets",
 	});
 };
 
@@ -126,18 +120,18 @@ export const pullSecrets = async (req: Request, res: Response) => {
   // validate environment
   const workspaceEnvs = req.membership.workspace.environments;
   if (!workspaceEnvs.find(({ slug }: { slug: string }) => slug === environment)) {
-    throw new Error('Failed to validate environment');
+    throw new Error("Failed to validate environment");
   }
 
   secrets = await pull({
     userId,
     workspaceId,
     environment,
-    channel: channel ? channel : 'cli',
-    ipAddress: req.realIP
+    channel: channel ? channel : "cli",
+    ipAddress: req.realIP,
   });
 
-  if (channel !== 'cli') {
+  if (channel !== "cli") {
     secrets = reformatPullSecrets({ secrets });
   }
 
@@ -145,18 +139,18 @@ export const pullSecrets = async (req: Request, res: Response) => {
     // capture secrets pushed event in production
     postHogClient.capture({
       distinctId: req.user.email,
-      event: 'secrets pulled',
+      event: "secrets pulled",
       properties: {
         numberOfSecrets: secrets.length,
         environment,
         workspaceId,
-        channel: channel ? channel : 'cli'
-      }
+        channel: channel ? channel : "cli",
+      },
     });
   }
 
 	return res.status(200).send({
-		secrets
+		secrets,
 	});
 };
 
@@ -194,10 +188,10 @@ export const getWorkspaceKey = async (req: Request, res: Response) => {
 
   key = await Key.findOne({
     workspace: workspaceId,
-    receiver: req.user._id
-  }).populate('sender', '+publicKey');
+    receiver: req.user._id,
+  }).populate("sender", "+publicKey");
 
-  if (!key) throw new Error('Failed to find workspace key');
+  if (!key) throw new Error("Failed to find workspace key");
 
 	return res.status(200).json(key);
 }
@@ -209,12 +203,12 @@ export const getWorkspaceServiceTokenData = async (
 
   const serviceTokenData = await ServiceTokenData
     .find({
-      workspace: workspaceId
+      workspace: workspaceId,
     })
-    .select('+encryptedKey +iv +tag');
+    .select("+encryptedKey +iv +tag");
 
 	return res.status(200).send({
-		serviceTokenData
+		serviceTokenData,
 	});
 }
 
@@ -261,11 +255,11 @@ export const getWorkspaceMemberships = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
 
   const memberships = await Membership.find({
-    workspace: workspaceId
-  }).populate('user', '+publicKey');
+    workspace: workspaceId,
+  }).populate("user", "+publicKey");
 
 	return res.status(200).send({
-		memberships
+		memberships,
 	});
 }
 
@@ -330,21 +324,21 @@ export const updateWorkspaceMembership = async (req: Request, res: Response) => 
     }   
     */
   const {
-    membershipId
+    membershipId,
   } = req.params;
   const { role } = req.body;
   
   const membership = await Membership.findByIdAndUpdate(
     membershipId,
     {
-      role
+      role,
     }, {
-      new: true
+      new: true,
     }
   );
 
 	return res.status(200).send({
-		membership
+		membership,
 	}); 
 }
 
@@ -392,20 +386,20 @@ export const deleteWorkspaceMembership = async (req: Request, res: Response) => 
     }   
     */
   const { 
-    membershipId
+    membershipId,
   } = req.params;
   
   const membership = await Membership.findByIdAndDelete(membershipId);
   
-  if (!membership) throw new Error('Failed to delete workspace membership');
+  if (!membership) throw new Error("Failed to delete workspace membership");
   
   await Key.deleteMany({
     receiver: membership.user,
-    workspace: membership.workspace
+    workspace: membership.workspace,
   });
 	
 	return res.status(200).send({
-		membership
+		membership,
 	});
 }
 
@@ -421,18 +415,18 @@ export const toggleAutoCapitalization = async (req: Request, res: Response) => {
 
   const workspace = await Workspace.findOneAndUpdate(
     {
-      _id: workspaceId
+      _id: workspaceId,
     },
     {
-      autoCapitalization
+      autoCapitalization,
     },
     {
-      new: true
+      new: true,
     }
   );
 
 	return res.status(200).send({
-		message: 'Successfully changed autoCapitalization setting',
-		workspace
+		message: "Successfully changed autoCapitalization setting",
+		workspace,
 	});
 };

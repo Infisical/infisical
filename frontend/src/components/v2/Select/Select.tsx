@@ -1,11 +1,11 @@
-import { forwardRef, ReactNode } from 'react';
-import { IconProp } from '@fortawesome/fontawesome-svg-core';
-import { faCaretDown, faCaretUp,faCheck } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import * as SelectPrimitive from '@radix-ui/react-select';
-import { twMerge } from 'tailwind-merge';
+import { forwardRef, ReactNode } from "react";
+import { IconProp } from "@fortawesome/fontawesome-svg-core";
+import { faCaretDown, faCaretUp,faCheck } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import * as SelectPrimitive from "@radix-ui/react-select";
+import { twMerge } from "tailwind-merge";
 
-import { Spinner } from '../Spinner';
+import { Spinner } from "../Spinner";
 
 type Props = {
   children: ReactNode;
@@ -13,12 +13,12 @@ type Props = {
   className?: string;
   dropdownContainerClassName?: string;
   isLoading?: boolean;
-  position?: 'item-aligned' | 'popper';
+  position?: "item-aligned" | "popper";
   isDisabled?: boolean;
   icon?: IconProp;
 };
 
-export type SelectProps = Omit<SelectPrimitive.SelectProps, 'disabled'> & Props;
+export type SelectProps = Omit<SelectPrimitive.SelectProps, "disabled"> & Props;
 
 export const Select = forwardRef<HTMLButtonElement, SelectProps>(
   (
@@ -56,11 +56,11 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
         <SelectPrimitive.Portal>
           <SelectPrimitive.Content
             className={twMerge(
-              'relative top-1 z-[100] overflow-hidden rounded-md bg-mineshaft-900 border border-mineshaft-600 font-inter text-bunker-100 shadow-md',
+              "relative top-1 z-[100] overflow-hidden rounded-md bg-mineshaft-900 border border-mineshaft-600 font-inter text-bunker-100 shadow-md",
               dropdownContainerClassName
             )}
             position={position}
-            style={{ width: 'var(--radix-select-trigger-width)' }}
+            style={{ width: "var(--radix-select-trigger-width)" }}
           >
             <SelectPrimitive.ScrollUpButton>
               <div className="flex items-center justify-center">
@@ -89,9 +89,9 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
   }
 );
 
-Select.displayName = 'Select';
+Select.displayName = "Select";
 
-export type SelectItemProps = Omit<SelectPrimitive.SelectItemProps, 'disabled'> & {
+export type SelectItemProps = Omit<SelectPrimitive.SelectItemProps, "disabled"> & {
   isDisabled?: boolean;
   isSelected?: boolean;
   customIcon?: IconProp;
@@ -106,9 +106,9 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
           `relative mb-0.5 flex
           cursor-pointer select-none items-center rounded-md py-2 pl-10 pr-4 text-sm
           outline-none transition-all hover:bg-mineshaft-500`,
-          isSelected && 'bg-primary',
+          isSelected && "bg-primary",
           isDisabled &&
-            'cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-mineshaft-600',
+            "cursor-not-allowed text-gray-600 hover:bg-transparent hover:text-mineshaft-600",
           className
         )}
         ref={forwardedRef}
@@ -122,4 +122,4 @@ export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
   }
 );
 
-SelectItem.displayName = 'SelectItem';
+SelectItem.displayName = "SelectItem";

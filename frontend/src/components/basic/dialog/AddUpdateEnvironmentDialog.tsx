@@ -1,8 +1,8 @@
-import { FormEventHandler, Fragment, useEffect, useState } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
+import { FormEventHandler, Fragment, useEffect, useState } from "react";
+import { Dialog, Transition } from "@headlessui/react";
 
-import Button from '../buttons/Button';
-import InputField from '../InputField';
+import Button from "../buttons/Button";
+import InputField from "../InputField";
 
 type FormFields = { name: string; slug: string };
 
@@ -31,14 +31,14 @@ export const AddUpdateEnvironmentDialog = ({
   isEditMode,
 }: Props) => {
   const [formInput, setFormInput] = useState<FormFields>({
-    name: '',
-    slug: '',
+    name: "",
+    slug: "",
   });
 
   // This use effect can be removed when the unmount is happening from outside the component
   // When unmount happens outside state gets unmounted also
   useEffect(() => {
-    setFormInput(initialValues || { name: '', slug: '' });
+    setFormInput(initialValues || { name: "", slug: "" });
   }, [isOpen]);
 
   // REFACTOR: Move to react-hook-form with yup for better form management
@@ -92,14 +92,14 @@ export const AddUpdateEnvironmentDialog = ({
                     className='text-lg font-medium leading-6 text-gray-400'
                   >
                     {isEditMode
-                      ? 'Update environment'
-                      : 'Create a new environment'}
+                      ? "Update environment"
+                      : "Create a new environment"}
                   </Dialog.Title>
                   <form onSubmit={onFormSubmit}>
                     <div className='max-h-28 mt-4'>
                       <InputField
                         label='Environment Name'
-                        onChangeHandler={(val) => onInputChange('name', val)}
+                        onChangeHandler={(val) => onInputChange("name", val)}
                         type='varName'
                         value={formInput.name}
                         placeholder=''
@@ -111,7 +111,7 @@ export const AddUpdateEnvironmentDialog = ({
                     <div className='max-h-28 mt-4'>
                       <InputField
                         label='Environment Slug'
-                        onChangeHandler={(val) => onInputChange('slug', val)}
+                        onChangeHandler={(val) => onInputChange("slug", val)}
                         type='varName'
                         value={formInput.slug}
                         placeholder=''
@@ -128,8 +128,8 @@ export const AddUpdateEnvironmentDialog = ({
                         onButtonPressed={() => null}
                         type='submit'
                         color='mineshaft'
-                        text={isEditMode ? 'Update' : 'Create'}
-                        active={formInput.name !== '' && formInput.slug !== ''}
+                        text={isEditMode ? "Update" : "Create"}
+                        active={formInput.name !== "" && formInput.slug !== ""}
                         size='md'
                       />
                     </div>

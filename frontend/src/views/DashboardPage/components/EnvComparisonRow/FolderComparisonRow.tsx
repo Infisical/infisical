@@ -1,5 +1,5 @@
-import { faCheck, faFolder, faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCheck, faFolder, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 type Props = {
   folderInEnv: Record<string, boolean>;
@@ -30,8 +30,8 @@ export const FolderComparisonRow = ({
       <td
         className={`flex h-10 w-full cursor-default flex-row items-center justify-center ${
           folderInEnv[slug]
-            ? 'bg-mineshaft-900/30 text-green-500/80'
-            : 'bg-red-800/10 text-red-500/80'
+            ? "bg-mineshaft-900/30 text-green-500/80"
+            : "bg-red-800/10 text-red-500/80"
         }`}
         key={`${folderName}-${slug}`}
       >

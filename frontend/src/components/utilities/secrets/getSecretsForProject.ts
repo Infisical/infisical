@@ -1,9 +1,9 @@
-import { Tag } from 'public/data/frequentInterfaces';
+import { Tag } from "public/data/frequentInterfaces";
 
-import getSecrets from '@app/pages/api/files/GetSecrets';
-import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
+import getSecrets from "@app/pages/api/files/GetSecrets";
+import getLatestFileKey from "@app/pages/api/workspace/getLatestFileKey";
 
-import { decryptAssymmetric, decryptSymmetric } from '../cryptography/crypto';
+import { decryptAssymmetric, decryptSymmetric } from "../cryptography/crypto";
 
 interface EncryptedSecretProps {
   _id: string;
@@ -18,14 +18,14 @@ interface EncryptedSecretProps {
   secretValueCiphertext: string;
   secretValueIV: string;
   secretValueTag: string;
-  type: 'personal' | 'shared';
+  type: "personal" | "shared";
   tags: Tag[];
 }
 
 interface SecretProps {
   key: string;
   value: string | undefined;
-  type: 'personal' | 'shared';
+  type: "personal" | "shared";
   comment: string;
   id: string;
   tags: Tag[];
@@ -57,16 +57,16 @@ const getSecretsForProject = async ({
     try {
       encryptedSecrets = await getSecrets(workspaceId, env);
     } catch (error) {
-      console.log('ERROR: Not able to access the latest version of secrets');
+      console.log("ERROR: Not able to access the latest version of secrets");
     }
 
     const latestKey = await getLatestFileKey({ workspaceId });
     // This is called isKeyAvailable but what it really means is if a person is able to create new key pairs
-    if (typeof setIsKeyAvailable === 'function') {
+    if (typeof setIsKeyAvailable === "function") {
       setIsKeyAvailable(!latestKey ? encryptedSecrets.length === 0 : true);
     }
 
-    const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+    const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 
     const tempDecryptedSecrets: SecretProps[] = [];
     if (latestKey) {
@@ -108,7 +108,7 @@ const getSecretsForProject = async ({
             key
           });
         } else {
-          plainTextComment = '';
+          plainTextComment = "";
         }
 
         tempDecryptedSecrets.push({
@@ -125,34 +125,34 @@ const getSecretsForProject = async ({
     const secretKeys = [...new Set(tempDecryptedSecrets.map((secret) => secret.key))];
 
     const result = secretKeys.map((key, index) => ({
-      id: tempDecryptedSecrets.filter((secret) => secret.key === key && secret.type === 'shared')[0]
+      id: tempDecryptedSecrets.filter((secret) => secret.key === key && secret.type === "shared")[0]
         ?.id,
       idOverride: tempDecryptedSecrets.filter(
-        (secret) => secret.key === key && secret.type === 'personal'
+        (secret) => secret.key === key && secret.type === "personal"
       )[0]?.id,
       pos: index,
       key,
       value: tempDecryptedSecrets.filter(
-        (secret) => secret.key === key && secret.type === 'shared'
+        (secret) => secret.key === key && secret.type === "shared"
       )[0]?.value,
       valueOverride: tempDecryptedSecrets.filter(
-        (secret) => secret.key === key && secret.type === 'personal'
+        (secret) => secret.key === key && secret.type === "personal"
       )[0]?.value,
       comment: tempDecryptedSecrets.filter(
-        (secret) => secret.key === key && secret.type === 'shared'
+        (secret) => secret.key === key && secret.type === "shared"
       )[0]?.comment,
       tags: tempDecryptedSecrets.filter(
-        (secret) => secret.key === key && secret.type === 'shared'
+        (secret) => secret.key === key && secret.type === "shared"
       )[0]?.tags
     }));
 
-    if (typeof setData === 'function') {
+    if (typeof setData === "function") {
       setData(result);
     }
   
     return result;
   } catch (error) {
-    console.log('Something went wrong during accessing or decripting secrets.');
+    console.log("Something went wrong during accessing or decripting secrets.");
   }
   return [];
 };

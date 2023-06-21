@@ -1,21 +1,21 @@
-import { faEye, faMailBulk } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import type { Meta, StoryObj } from '@storybook/react';
+import { faEye, faMailBulk } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type { Meta, StoryObj } from "@storybook/react";
 
-import { Input } from './Input';
+import { Input } from "./Input";
 
 const meta: Meta<typeof Input> = {
-  title: 'Components/Input',
+  title: "Components/Input",
   component: Input,
-  tags: ['v2'],
+  tags: ["v2"],
   argTypes: {
     isRounded: {
       defaultValue: true,
-      type: 'boolean'
+      type: "boolean"
     },
     placeholder: {
-      defaultValue: 'Type anything',
-      type: 'string'
+      defaultValue: "Type anything",
+      type: "string"
     }
   }
 };
@@ -30,13 +30,13 @@ export const Filled: Story = {
 
 export const Outline: Story = {
   args: {
-    variant: 'outline'
+    variant: "outline"
   }
 };
 
 export const Plain: Story = {
   args: {
-    variant: 'plain'
+    variant: "plain"
   }
 };
 
@@ -49,7 +49,7 @@ export const Error: Story = {
 export const AutoWidth: Story = {
   args: {
     isFullWidth: false,
-    className: 'w-auto'
+    className: "w-auto"
   }
 };
 

@@ -1,18 +1,18 @@
-import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import Head from 'next/head';
-import { useRouter } from 'next/router';
+import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import Head from "next/head";
+import { useRouter } from "next/router";
 
-import Button from '@app/components/basic/buttons/Button';
-import EventFilter from '@app/components/basic/EventFilter';
-import NavHeader from '@app/components/navigation/NavHeader';
-import { UpgradePlanModal } from '@app/components/v2';
-import { useSubscription } from '@app/context';
-import ActivitySideBar from '@app/ee/components/ActivitySideBar';
-import { usePopUp } from '@app/hooks/usePopUp';
+import Button from "@app/components/basic/buttons/Button";
+import EventFilter from "@app/components/basic/EventFilter";
+import NavHeader from "@app/components/navigation/NavHeader";
+import { UpgradePlanModal } from "@app/components/v2";
+import { useSubscription } from "@app/context";
+import ActivitySideBar from "@app/ee/components/ActivitySideBar";
+import { usePopUp } from "@app/hooks/usePopUp";
 
-import getProjectLogs from '../../ee/api/secrets/GetProjectLogs';
-import ActivityTable from '../../ee/components/ActivityTable';
+import getProjectLogs from "../../ee/api/secrets/GetProjectLogs";
+import ActivityTable from "../../ee/components/ActivityTable";
 
 interface LogData {
   _id: string;
@@ -63,7 +63,7 @@ interface LogDataPoint {
  */
 export default function Activity() {
   const router = useRouter();
-  const [eventChosen, setEventChosen] = useState('');
+  const [eventChosen, setEventChosen] = useState("");
   const [logsData, setLogsData] = useState<LogDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentOffset, setCurrentOffset] = useState(0);
@@ -72,7 +72,7 @@ export default function Activity() {
   const { t } = useTranslation();
   const { subscription } = useSubscription();
   const { popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
-    'upgradePlan'
+    "upgradePlan"
   ] as const);
 
   // this use effect updates the data in case of a new filter being added
@@ -84,7 +84,7 @@ export default function Activity() {
         workspaceId: String(router.query.id),
         offset: 0,
         limit: currentLimit,
-        userId: '',
+        userId: "",
         actionNames: eventChosen
       });
 
@@ -117,7 +117,7 @@ export default function Activity() {
         workspaceId: String(router.query.id),
         offset: currentOffset,
         limit: currentLimit,
-        userId: '',
+        userId: "",
         actionNames: eventChosen
       });
       setLogsData(
@@ -145,7 +145,7 @@ export default function Activity() {
 
   const loadMoreLogs = () => {
     if (subscription?.auditLogs === false) {
-      handlePopUpOpen('upgradePlan');
+      handlePopUpOpen("upgradePlan");
     } else {
       setCurrentOffset(currentOffset + currentLimit);
     }
@@ -164,9 +164,9 @@ export default function Activity() {
       )}
       <div className="flex flex-col justify-between items-start mx-4 mt-6 mb-4 text-xl max-w-5xl px-2">
         <div className="flex flex-row justify-start items-center text-3xl">
-          <p className="font-semibold mr-4 text-bunker-100">{t('activity.title')}</p>
+          <p className="font-semibold mr-4 text-bunker-100">{t("activity.title")}</p>
         </div>
-        <p className="mr-4 text-base text-gray-400">{t('activity.subtitle')}</p>
+        <p className="mr-4 text-base text-gray-400">{t("activity.subtitle")}</p>
       </div>
       <div className="px-6 h-8 mt-2">
         <EventFilter selected={eventChosen} select={setEventChosen} />
@@ -175,8 +175,8 @@ export default function Activity() {
       <div className="flex justify-center w-full mb-6">
         <div className="items-center w-60">
           <Button
-            text={String(t('common.view-more'))}
-            textDisabled={String(t('common.end-of-history'))}
+            text={String(t("common.view-more"))}
+            textDisabled={String(t("common.end-of-history"))}
             active={logsData.length % 10 === 0}
             onButtonPressed={loadMoreLogs}
             size="md"
@@ -186,7 +186,7 @@ export default function Activity() {
       </div>
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={() => handlePopUpClose('upgradePlan')}
+        onOpenChange={() => handlePopUpClose("upgradePlan")}
         text="You can see more logs if you switch to Infisical's Business/Professional Plan."
       />
     </div>

@@ -1,12 +1,9 @@
-import { Request, Response } from 'express';
-import { Membership, MembershipOrg, User, Key } from '../../models';
-import {
-	findMembership,
-	deleteMembership as deleteMember
-} from '../../helpers/membership';
-import { sendMail } from '../../helpers/nodemailer';
-import { ADMIN, MEMBER, ACCEPTED } from '../../variables';
-import { getSiteURL } from '../../config';
+import { Request, Response } from "express";
+import { Key, Membership, MembershipOrg, User } from "../../models";
+import { deleteMembership as deleteMember, findMembership } from "../../helpers/membership";
+import { sendMail } from "../../helpers/nodemailer";
+import { ACCEPTED, ADMIN, MEMBER } from "../../variables";
+import { getSiteURL } from "../../config";
 
 /**
  * Check that user is a member of workspace with id [workspaceId]
@@ -23,12 +20,12 @@ export const validateMembership = async (req: Request, res: Response) => {
   });
 
   if (!membership) {
-    throw new Error('Failed to validate membership');
+    throw new Error("Failed to validate membership");
   }
 
-	return res.status(200).send({
-		message: 'Workspace membership confirmed'
-	});
+  return res.status(200).send({
+    message: "Workspace membership confirmed"
+  });
 };
 
 /**
@@ -43,12 +40,10 @@ export const deleteMembership = async (req: Request, res: Response) => {
   // check if membership to delete exists
   const membershipToDelete = await Membership.findOne({
     _id: membershipId
-  }).populate('user');
+  }).populate("user");
 
   if (!membershipToDelete) {
-    throw new Error(
-      "Failed to delete workspace membership that doesn't exist"
-    );
+    throw new Error("Failed to delete workspace membership that doesn't exist");
   }
 
   // check if user is a member and admin of the workspace
@@ -59,12 +54,12 @@ export const deleteMembership = async (req: Request, res: Response) => {
   });
 
   if (!membership) {
-    throw new Error('Failed to validate workspace membership');
+    throw new Error("Failed to validate workspace membership");
   }
 
   if (membership.role !== ADMIN) {
     // user is not an admin member of the workspace
-    throw new Error('Insufficient role for deleting workspace membership');
+    throw new Error("Insufficient role for deleting workspace membership");
   }
 
   // delete workspace membership
@@ -72,9 +67,9 @@ export const deleteMembership = async (req: Request, res: Response) => {
     membershipId: membershipToDelete._id.toString()
   });
 
-	return res.status(200).send({
-		deletedMembership
-	});
+  return res.status(200).send({
+    deletedMembership
+  });
 };
 
 /**
@@ -88,7 +83,7 @@ export const changeMembershipRole = async (req: Request, res: Response) => {
   const { role } = req.body;
 
   if (![ADMIN, MEMBER].includes(role)) {
-    throw new Error('Failed to validate role');
+    throw new Error("Failed to validate role");
   }
 
   // validate target membership
@@ -97,7 +92,7 @@ export const changeMembershipRole = async (req: Request, res: Response) => {
   });
 
   if (!membershipToChangeRole) {
-    throw new Error('Failed to find membership to change role');
+    throw new Error("Failed to find membership to change role");
   }
 
   // check if user is a member and admin of target membership's
@@ -108,20 +103,20 @@ export const changeMembershipRole = async (req: Request, res: Response) => {
   });
 
   if (!membership) {
-    throw new Error('Failed to validate membership');
+    throw new Error("Failed to validate membership");
   }
 
   if (membership.role !== ADMIN) {
     // user is not an admin member of the workspace
-    throw new Error('Insufficient role for changing member roles');
+    throw new Error("Insufficient role for changing member roles");
   }
 
   membershipToChangeRole.role = role;
   await membershipToChangeRole.save();
 
-	return res.status(200).send({
-		membership: membershipToChangeRole
-	});
+  return res.status(200).send({
+    membership: membershipToChangeRole
+  });
 };
 
 /**
@@ -136,10 +131,9 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
 
   const invitee = await User.findOne({
     email
-  }).select('+publicKey');
+  }).select("+publicKey");
 
-  if (!invitee || !invitee?.publicKey)
-    throw new Error('Failed to validate invitee');
+  if (!invitee || !invitee?.publicKey) throw new Error("Failed to validate invitee");
 
   // validate invitee's workspace membership - ensure member isn't
   // already a member of the workspace
@@ -148,8 +142,7 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
     workspace: workspaceId
   });
 
-  if (inviteeMembership)
-    throw new Error('Failed to add existing member of workspace');
+  if (inviteeMembership) throw new Error("Failed to add existing member of workspace");
 
   // validate invitee's organization membership - ensure that only
   // (accepted) organization members can be added to the workspace
@@ -159,8 +152,7 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
     status: ACCEPTED
   });
 
-  if (!membershipOrg)
-    throw new Error("Failed to validate invitee's organization membership");
+  if (!membershipOrg) throw new Error("Failed to validate invitee's organization membership");
 
   // get latest key
   const latestKey = await Key.findOne({
@@ -168,29 +160,29 @@ export const inviteUserToWorkspace = async (req: Request, res: Response) => {
     receiver: req.user._id
   })
     .sort({ createdAt: -1 })
-    .populate('sender', '+publicKey');
+    .populate("sender", "+publicKey");
 
   // create new workspace membership
-  const m = await new Membership({
+  await new Membership({
     user: invitee._id,
     workspace: workspaceId,
     role: MEMBER
   }).save();
 
   await sendMail({
-    template: 'workspaceInvitation.handlebars',
-    subjectLine: 'Infisical workspace invitation',
+    template: "workspaceInvitation.handlebars",
+    subjectLine: "Infisical workspace invitation",
     recipients: [invitee.email],
     substitutions: {
       inviterFirstName: req.user.firstName,
       inviterEmail: req.user.email,
       workspaceName: req.membership.workspace.name,
-      callback_url: (await getSiteURL()) + '/login'
+      callback_url: (await getSiteURL()) + "/login"
     }
   });
 
-	return res.status(200).send({
-		invitee,
-		latestKey
-	});
+  return res.status(200).send({
+    invitee,
+    latestKey
+  });
 };

@@ -1,8 +1,8 @@
-import { createContext, ReactNode, useContext, useMemo } from 'react';
-import { useRouter } from 'next/router';
+import { createContext, ReactNode, useContext, useMemo } from "react";
+import { useRouter } from "next/router";
 
-import { useGetUserWorkspaces } from '@app/hooks/api';
-import { Workspace } from '@app/hooks/api/workspace/types';
+import { useGetUserWorkspaces } from "@app/hooks/api";
+import { Workspace } from "@app/hooks/api/workspace/types";
 
 type TWorkspaceContext = {
   workspaces: Workspace[];
@@ -23,7 +23,7 @@ export const WorkspaceProvider = ({ children }: Props): JSX.Element => {
 
   // memorize the workspace details for the context
   const value = useMemo<TWorkspaceContext>(() => {
-    const wsId = workspaceId || localStorage.getItem('projectData.id');
+    const wsId = workspaceId || localStorage.getItem("projectData.id");
     return {
       workspaces: ws || [],
       currentWorkspace: (ws || []).find(({ _id: id }) => id === wsId),
@@ -37,7 +37,7 @@ export const WorkspaceProvider = ({ children }: Props): JSX.Element => {
 export const useWorkspace = () => {
   const ctx = useContext(WorkspaceContext);
   if (!ctx) {
-    throw new Error('useWorkspace has to be used within <WorkspaceContext.Provider>');
+    throw new Error("useWorkspace has to be used within <WorkspaceContext.Provider>");
   }
 
   return ctx;

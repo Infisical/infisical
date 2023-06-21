@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This function fetches the encrypted secrets for a certain project
@@ -13,16 +13,16 @@ const getSecrets = async (workspaceId: string, env: string) =>
       workspaceId
     })}`,
     {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json"
       }
     }
   ).then(async (res) => {
     if (res && res.status === 200) {
       return (await res.json()).secrets;
     }
-    console.log('Failed to get project secrets');
+    console.log("Failed to get project secrets");
     return undefined;
   });
 

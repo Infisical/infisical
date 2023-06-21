@@ -1,20 +1,20 @@
 /* eslint-disable react/no-unused-prop-types */
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import Image from 'next/image';
-import { faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import Image from "next/image";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import SecretVersionList from '@app/ee/components/SecretVersionList';
-import { WorkspaceEnv } from '@app/hooks/api/types';
+import SecretVersionList from "@app/ee/components/SecretVersionList";
+import { WorkspaceEnv } from "@app/hooks/api/types";
 
-import Button from '../basic/buttons/Button';
-import Toggle from '../basic/Toggle';
-import CommentField from './CommentField';
-import CompareSecretsModal from './CompareSecretsModal';
-import DashboardInputField from './DashboardInputField';
-import { DeleteActionButton } from './DeleteActionButton';
-import GenerateSecretMenu from './GenerateSecretMenu';
+import Button from "../basic/buttons/Button";
+import Toggle from "../basic/Toggle";
+import CommentField from "./CommentField";
+import CompareSecretsModal from "./CompareSecretsModal";
+import DashboardInputField from "./DashboardInputField";
+import { DeleteActionButton } from "./DeleteActionButton";
+import GenerateSecretMenu from "./GenerateSecretMenu";
 
 interface SecretProps {
   key: string;
@@ -93,19 +93,19 @@ const SideBar = ({
       ) : (
         <div className="h-min w-full overflow-y-auto">
           <div className="flex flex-row items-center justify-between border-b border-mineshaft-500 px-4 py-3">
-            <p className="text-lg font-semibold text-bunker-200">{t('dashboard.sidebar.secret')}</p>
+            <p className="text-lg font-semibold text-bunker-200">{t("dashboard.sidebar.secret")}</p>
             <div
               onKeyDown={() => null}
               role="button"
               tabIndex={0}
               className="p-1"
-              onClick={() => toggleSidebar('None')}
+              onClick={() => toggleSidebar("None")}
             >
               <FontAwesomeIcon icon={faXmark} className="h-4 w-4 cursor-pointer text-bunker-300" />
             </div>
           </div>
           <div className="pointer-events-none mt-4 px-4">
-            <p className="text-sm text-bunker-300">{t('dashboard.sidebar.key')}</p>
+            <p className="text-sm text-bunker-300">{t("dashboard.sidebar.key")}</p>
             <div className="overflow-hidden rounded-md border border-mineshaft-600 bg-white/5">
               <DashboardInputField
                 onChangeHandler={modifyKey}
@@ -117,13 +117,13 @@ const SideBar = ({
               />
             </div>
           </div>
-          {data[0]?.value || data[0]?.value === '' ? (
+          {data[0]?.value || data[0]?.value === "" ? (
             <div
               className={`relative mt-2 px-4 ${
-                overrideEnabled && 'pointer-events-none opacity-40'
+                overrideEnabled && "pointer-events-none opacity-40"
               } duration-200`}
             >
-              <p className="text-sm text-bunker-300">{t('dashboard.sidebar.value')}</p>
+              <p className="text-sm text-bunker-300">{t("dashboard.sidebar.value")}</p>
               <div className="overflow-hidden rounded-md border border-mineshaft-600 bg-white/5">
                 <DashboardInputField
                   onChangeHandler={modifyValue}
@@ -141,15 +141,15 @@ const SideBar = ({
           ) : (
             <div className="px-4 pt-4 text-sm text-bunker-300">
               <span className="mr-1 rounded-md bg-primary-200/10 py-0.5 px-1">
-                {t('common.note')}:
+                {t("common.note")}:
               </span>
-              {t('dashboard.sidebar.personal-explanation')}
+              {t("dashboard.sidebar.personal-explanation")}
             </div>
           )}
           <div className="mt-4 px-4">
-            {(data[0]?.value || data[0]?.value === '') && (
+            {(data[0]?.value || data[0]?.value === "") && (
               <div className="my-2 flex flex-row items-center justify-between pl-1 pr-2">
-                <p className="text-sm text-bunker-300">{t('dashboard.sidebar.override')}</p>
+                <p className="text-sm text-bunker-300">{t("dashboard.sidebar.override")}</p>
                 <Toggle
                   enabled={overrideEnabled}
                   setEnabled={setOverrideEnabled}
@@ -160,7 +160,7 @@ const SideBar = ({
             )}
             <div
               className={`relative ${
-                !overrideEnabled && 'pointer-events-none opacity-40'
+                !overrideEnabled && "pointer-events-none opacity-40"
               } duration-200`}
             >
               <div className="overflow-hidden rounded-md border border-mineshaft-600 bg-white/5">
@@ -193,7 +193,7 @@ const SideBar = ({
           <CompareSecretsModal
             compareModal={compareModal}
             setCompareModal={setCompareModal}
-            currentSecret={{ key: data[0]?.key, value: data[0]?.value ?? '' }}
+            currentSecret={{ key: data[0]?.key, value: data[0]?.value ?? "" }}
             workspaceEnvs={workspaceEnvs}
             selectedEnv={selectedEnv}
             workspaceId={workspaceId}
@@ -201,7 +201,7 @@ const SideBar = ({
         </div>
         <div className="flex">
           <Button
-            text={String(t('common.save-changes'))}
+            text={String(t("common.save-changes"))}
             onButtonPressed={savePush}
             color="primary"
             size="md"

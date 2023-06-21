@@ -1,7 +1,7 @@
-import { faEdit, faFolder, faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faEdit, faFolder, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { IconButton, Tooltip } from '@app/components/v2';
+import { IconButton, Tooltip } from "@app/components/v2";
 
 type Props = {
   folders?: Array<{ id: string; name: string }>;
@@ -15,7 +15,7 @@ export const FolderSection = ({
   onFolderUpdate: handleFolderUpdate,
   onFolderDelete: handleFolderDelete,
   onFolderOpen: handleFolderOpen,
-  search = '',
+  search = "",
   folders = []
 }: Props) => {
   return (
@@ -33,7 +33,7 @@ export const FolderSection = ({
             <td
               colSpan={2}
               className="relative flex w-full min-w-[220px] items-center justify-between overflow-hidden text-ellipsis lg:min-w-[240px] xl:min-w-[280px]"
-              style={{ paddingTop: '0', paddingBottom: '0' }}
+              style={{ paddingTop: "0", paddingBottom: "0" }}
             >
               <div
                 className="flex-grow cursor-default p-2"

@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface Props {
     isMfaEnabled: boolean;
@@ -13,10 +13,10 @@ interface Props {
 const updateMyMfaEnabled = async ({
     isMfaEnabled
 }: Props) =>
-  SecurityClient.fetchCall(`/api/v2/users/me/mfa`, {
-    method: 'PATCH',
+  SecurityClient.fetchCall("/api/v2/users/me/mfa", {
+    method: "PATCH",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       isMfaEnabled,
@@ -25,7 +25,7 @@ const updateMyMfaEnabled = async ({
     if (res && res.status === 200) {
       return (await res.json()).user;
     }
-    console.log('Failed to update MFA status');
+    console.log("Failed to update MFA status");
     return undefined;
   });
 

@@ -1,1 +1,1 @@
-export { useGetOrgSubscription } from './queries';
+export { useGetOrgSubscription } from "./queries";

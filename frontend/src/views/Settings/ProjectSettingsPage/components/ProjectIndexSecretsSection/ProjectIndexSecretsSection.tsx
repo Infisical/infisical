@@ -1,4 +1,4 @@
-import { Button } from '@app/components/v2';
+import { Button } from "@app/components/v2";
 
 // TODO: add check so that this only shows up if user is
 // an admin in the workspace

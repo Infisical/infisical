@@ -1,1 +1,1 @@
-export { SAProjectLevelPermissionsTable } from './SAProjectLevelPermissionsTable';
+export { SAProjectLevelPermissionsTable } from "./SAProjectLevelPermissionsTable";

@@ -1,6 +1,6 @@
-import { forwardRef, InputHTMLAttributes, ReactNode } from 'react';
-import { cva, VariantProps } from 'cva';
-import { twMerge } from 'tailwind-merge';
+import { forwardRef, InputHTMLAttributes, ReactNode } from "react";
+import { cva, VariantProps } from "cva";
+import { twMerge } from "tailwind-merge";
 
 type Props = {
   placeholder?: string;
@@ -13,56 +13,56 @@ type Props = {
 };
 
 const inputVariants = cva(
-  'input w-full py-[0.375rem] text-gray-400 placeholder:text-sm placeholder-gray-500 placeholder-opacity-50 outline-none focus:ring-2 hover:ring-[0.05rem] hover:ring-bunker-400/60 duration-100',
+  "input w-full py-[0.375rem] text-gray-400 placeholder:text-sm placeholder-gray-500 placeholder-opacity-50 outline-none focus:ring-2 hover:ring-[0.05rem] hover:ring-bunker-400/60 duration-100",
   {
     variants: {
       size: {
-        xs: ['text-xs'],
-        sm: ['text-sm'],
-        md: ['text-md'],
-        lg: ['text-lg']
+        xs: ["text-xs"],
+        sm: ["text-sm"],
+        md: ["text-md"],
+        lg: ["text-lg"]
       },
       isRounded: {
-        true: ['rounded-md'],
-        false: ''
+        true: ["rounded-md"],
+        false: ""
       },
       variant: {
-        filled: ['bg-mineshaft-900', 'text-gray-400'],
-        outline: ['bg-transparent'],
-        plain: 'bg-transparent outline-none'
+        filled: ["bg-mineshaft-900", "text-gray-400"],
+        outline: ["bg-transparent"],
+        plain: "bg-transparent outline-none"
       },
       isError: {
-        true: 'focus:ring-red/50 placeholder-red-300',
-        false: 'focus:ring-primary-400/50 focus:ring-1'
+        true: "focus:ring-red/50 placeholder-red-300",
+        false: "focus:ring-primary-400/50 focus:ring-1"
       }
     },
     compoundVariants: []
   }
 );
 
-const inputParentContainerVariants = cva('inline-flex font-inter items-center border relative', {
+const inputParentContainerVariants = cva("inline-flex font-inter items-center border relative", {
   variants: {
     isRounded: {
-      true: ['rounded-md'],
-      false: ''
+      true: ["rounded-md"],
+      false: ""
     },
     isError: {
-      true: 'border-red',
-      false: 'border-mineshaft-500'
+      true: "border-red",
+      false: "border-mineshaft-500"
     },
     isFullWidth: {
-      true: 'w-full',
-      false: ''
+      true: "w-full",
+      false: ""
     },
     variant: {
-      filled: ['bg-bunker-800', 'text-gray-400'],
-      outline: ['bg-transparent'],
-      plain: 'border-none'
+      filled: ["bg-bunker-800", "text-gray-400"],
+      outline: ["bg-transparent"],
+      plain: "border-none"
     }
   }
 });
 
-export type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> &
+export type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size"> &
   VariantProps<typeof inputVariants> &
   Props;
 
@@ -77,8 +77,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       isRequired,
       leftIcon,
       rightIcon,
-      variant = 'filled',
-      size = 'md',
+      variant = "filled",
+      size = "md",
       isReadOnly,
       ...props
     },
@@ -94,8 +94,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           readOnly={isReadOnly}
           disabled={isDisabled}
           className={twMerge(
-            leftIcon ? 'pl-10' : 'pl-2.5',
-            rightIcon ? 'pr-10' : 'pr-2.5',
+            leftIcon ? "pl-10" : "pl-2.5",
+            rightIcon ? "pr-10" : "pr-2.5",
             inputVariants({ className, isError, size, isRounded, variant })
           )}
         />
@@ -105,4 +105,4 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   }
 );
 
-Input.displayName = 'Input';
+Input.displayName = "Input";

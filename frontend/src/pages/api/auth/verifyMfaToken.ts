@@ -14,7 +14,7 @@ const verifyMfaToken = async ({
     email: string;
     mfaToken: string;
 }) => {
-  const { data } = await apiRequest.post('/api/v2/auth/mfa/verify', {
+  const { data } = await apiRequest.post("/api/v2/auth/mfa/verify", {
     email,
     mfaToken
   });  

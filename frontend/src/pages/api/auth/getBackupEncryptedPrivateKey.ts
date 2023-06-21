@@ -8,15 +8,15 @@ const getBackupEncryptedPrivateKey = ({
   verificationToken
 }: {
   verificationToken: string;
-}) => fetch('/api/v1/password/backup-private-key', {
-    method: 'GET',
+}) => fetch("/api/v1/password/backup-private-key", {
+    method: "GET",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${  verificationToken}`
     }
   }).then(async (res) => {
     if (res?.status !== 200) {
-      console.log('Failed to get the backup key');
+      console.log("Failed to get the backup key");
     }
     return (await res?.json())?.backupPrivateKey;
   });

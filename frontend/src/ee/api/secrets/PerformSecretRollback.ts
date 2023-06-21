@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This function performs a rollback of secrets in a certain project
@@ -15,9 +15,9 @@ const performSecretRollback = async ({
   version: number;
 }) =>
   SecurityClient.fetchCall(`/api/v1/workspace/${workspaceId}/secret-snapshots/rollback`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({
       version
@@ -26,7 +26,7 @@ const performSecretRollback = async ({
     if (res && res.status === 200) {
       return res.json();
     }
-    console.log('Failed to perform the secret rollback');
+    console.log("Failed to perform the secret rollback");
     return undefined;
   });
 

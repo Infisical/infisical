@@ -1,7 +1,7 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import _ from "lodash";
 import { Membership } from "../../models";
-import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from '../../variables';
+import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../variables";
 
 export const userHasWorkspaceAccess = async (userId: Types.ObjectId, workspaceId: Types.ObjectId, environment: string, action: any) => {
   const membershipForWorkspace = await Membership.findOne({ workspace: workspaceId, user: userId })

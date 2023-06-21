@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import { Types } from 'mongoose';
-import { validateClientForIntegration } from '../validation';
+import { NextFunction, Request, Response } from "express";
+import { Types } from "mongoose";
+import { validateClientForIntegration } from "../validation";
 
 /**
  * Validate if user on request is a member of workspace with proper roles associated
@@ -9,9 +9,9 @@ import { validateClientForIntegration } from '../validation';
  * @param {String[]} obj.acceptedRoles - accepted workspace roles
  */
 const requireIntegrationAuth = ({
-	acceptedRoles
+	acceptedRoles,
 }: {
-	acceptedRoles: Array<'admin' | 'member'>;
+	acceptedRoles: Array<"admin" | "member">;
 }) => {
 	return async (req: Request, res: Response, next: NextFunction) => {
 		const { integrationId } = req.params;
@@ -19,7 +19,7 @@ const requireIntegrationAuth = ({
 		const { integration, accessToken } = await validateClientForIntegration({
 			authData: req.authData,
 			integrationId: new Types.ObjectId(integrationId),
-			acceptedRoles
+			acceptedRoles,
 		});
 
 		if (integration) {

@@ -28,7 +28,7 @@ const changePassword2 = async ({
   salt, 
   verifier
 }: Props) => {
-  const { data } = await apiRequest.post('/api/v1/password/change-password', {
+  const { data } = await apiRequest.post("/api/v1/password/change-password", {
     clientProof,
     protectedKey,
     protectedKeyIV,

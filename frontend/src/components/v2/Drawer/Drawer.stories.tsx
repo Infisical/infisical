@@ -1,12 +1,12 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 
-import { Button } from '../Button';
-import { Drawer, DrawerContent, DrawerContentProps, DrawerTrigger } from './Drawer';
+import { Button } from "../Button";
+import { Drawer, DrawerContent, DrawerContentProps, DrawerTrigger } from "./Drawer";
 
 const meta: Meta<typeof Drawer> = {
-  title: 'Components/Drawer',
+  title: "Components/Drawer",
   component: Drawer,
-  tags: ['v2'],
+  tags: ["v2"],
   argTypes: {}
 };
 
@@ -25,8 +25,8 @@ const Template = (args: DrawerContentProps) => (
 export const Basic: Story = {
   render: (args) => <Template {...args} />,
   args: {
-    title: 'Title',
-    subTitle: 'Something as subtitle',
-    footerContent: 'footer content'
+    title: "Title",
+    subTitle: "Something as subtitle",
+    footerContent: "footer content"
   }
 };

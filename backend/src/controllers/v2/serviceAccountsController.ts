@@ -1,18 +1,18 @@
-import { Request, Response } from 'express';
-import { Types } from 'mongoose';
-import crypto from 'crypto';
-import bcrypt from 'bcrypt';
+import { Request, Response } from "express";
+import { Types } from "mongoose";
+import crypto from "crypto";
+import bcrypt from "bcrypt";
 import { 
     ServiceAccount,
     ServiceAccountKey,
     ServiceAccountOrganizationPermission,
-    ServiceAccountWorkspacePermission
-} from '../../models';
+    ServiceAccountWorkspacePermission,
+} from "../../models";
 import {
-    CreateServiceAccountDto
-} from '../../interfaces/serviceAccounts/dto';
-import { BadRequestError, ServiceAccountNotFoundError } from '../../utils/errors';
-import { getSaltRounds } from '../../config';
+    CreateServiceAccountDto,
+} from "../../interfaces/serviceAccounts/dto";
+import { BadRequestError, ServiceAccountNotFoundError } from "../../utils/errors";
+import { getSaltRounds } from "../../config";
 
 /**
  * Return service account tied to the request (service account) client
@@ -23,11 +23,11 @@ export const getCurrentServiceAccount = async (req: Request, res: Response) => {
     const serviceAccount = await ServiceAccount.findById(req.serviceAccount._id);
     
     if (!serviceAccount) {
-        throw ServiceAccountNotFoundError({ message: 'Failed to find service account' });
+        throw ServiceAccountNotFoundError({ message: "Failed to find service account" });
     }
     
     return res.status(200).send({
-        serviceAccount
+        serviceAccount,
     });
 }
 
@@ -42,11 +42,11 @@ export const getServiceAccountById = async (req: Request, res: Response) => {
     const serviceAccount = await ServiceAccount.findById(serviceAccountId);
     
     if (!serviceAccount) {
-        throw ServiceAccountNotFoundError({ message: 'Failed to find service account' });
+        throw ServiceAccountNotFoundError({ message: "Failed to find service account" });
     }
     
     return res.status(200).send({
-        serviceAccount
+        serviceAccount,
     });
 }
 
@@ -71,7 +71,7 @@ export const createServiceAccount = async (req: Request, res: Response) => {
         expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
     }
 
-    const secret = crypto.randomBytes(16).toString('base64');
+    const secret = crypto.randomBytes(16).toString("base64");
     const secretHash = await bcrypt.hash(secret, await getSaltRounds());
     
     // create service account
@@ -82,7 +82,7 @@ export const createServiceAccount = async (req: Request, res: Response) => {
         publicKey,
         lastUsed: new Date(),
         expiresAt,
-        secretHash
+        secretHash,
     }).save();
     
     const serviceAccountObj = serviceAccount.toObject();
@@ -91,14 +91,14 @@ export const createServiceAccount = async (req: Request, res: Response) => {
 
     // provision default org-level permission for service account
     await new ServiceAccountOrganizationPermission({
-        serviceAccount: serviceAccount._id
+        serviceAccount: serviceAccount._id,
     }).save();
     
-    const secretId = Buffer.from(serviceAccount._id.toString(), 'hex').toString('base64');
+    const secretId = Buffer.from(serviceAccount._id.toString(), "hex").toString("base64");
 
     return res.status(200).send({
         serviceAccountAccessKey: `sa.${secretId}.${secret}`,
-        serviceAccount: serviceAccountObj
+        serviceAccount: serviceAccountObj,
     });
 }
 
@@ -114,18 +114,18 @@ export const changeServiceAccountName = async (req: Request, res: Response) => {
     
     const serviceAccount = await ServiceAccount.findOneAndUpdate(
         {
-            _id: new Types.ObjectId(serviceAccountId)
+            _id: new Types.ObjectId(serviceAccountId),
         },
         {
-            name
+            name,
         },
         {
-            new: true
+            new: true,
         }
     );
     
     return res.status(200).send({
-        serviceAccount
+        serviceAccount,
     });
 }
 
@@ -140,7 +140,7 @@ export const addServiceAccountKey = async (req: Request, res: Response) => {
     const {
         workspaceId,
         encryptedKey,
-        nonce
+        nonce,
     } = req.body;
     
     const serviceAccountKey = await new ServiceAccountKey({
@@ -148,7 +148,7 @@ export const addServiceAccountKey = async (req: Request, res: Response) => {
         nonce,
         sender: req.user._id,
         serviceAccount: req.serviceAccount._d,
-        workspace: new Types.ObjectId(workspaceId)
+        workspace: new Types.ObjectId(workspaceId),
     }).save();
 
     return serviceAccountKey;
@@ -161,11 +161,11 @@ export const addServiceAccountKey = async (req: Request, res: Response) => {
  */
 export const getServiceAccountWorkspacePermissions = async (req: Request, res: Response) => {
     const serviceAccountWorkspacePermissions = await ServiceAccountWorkspacePermission.find({
-        serviceAccount: req.serviceAccount._id
-    }).populate('workspace');
+        serviceAccount: req.serviceAccount._id,
+    }).populate("workspace");
     
     return res.status(200).send({
-        serviceAccountWorkspacePermissions
+        serviceAccountWorkspacePermissions,
     });
 }
 
@@ -182,34 +182,34 @@ export const addServiceAccountWorkspacePermission = async (req: Request, res: Re
         read = false,
         write = false,
         encryptedKey,
-        nonce
+        nonce,
     } = req.body;
     
     if (!req.membership.workspace.environments.some((e: { name: string; slug: string }) => e.slug === environment)) {
         return res.status(400).send({
-            message: 'Failed to validate workspace environment'
+            message: "Failed to validate workspace environment",
         });
     }
     
     const existingPermission = await ServiceAccountWorkspacePermission.findOne({
         serviceAccount: new Types.ObjectId(serviceAccountId),
         workspace: new Types.ObjectId(workspaceId),
-        environment
+        environment,
     });
     
-    if (existingPermission) throw BadRequestError({ message: 'Failed to add workspace permission to service account due to already-existing ' });
+    if (existingPermission) throw BadRequestError({ message: "Failed to add workspace permission to service account due to already-existing " });
 
     const serviceAccountWorkspacePermission = await new ServiceAccountWorkspacePermission({
         serviceAccount: new Types.ObjectId(serviceAccountId),
         workspace: new Types.ObjectId(workspaceId),
         environment,
         read,
-        write
+        write,
     }).save();
     
     const existingServiceAccountKey = await ServiceAccountKey.findOne({
         serviceAccount: new Types.ObjectId(serviceAccountId),
-        workspace: new Types.ObjectId(workspaceId) 
+        workspace: new Types.ObjectId(workspaceId), 
     });
     
     if (!existingServiceAccountKey) {
@@ -218,12 +218,12 @@ export const addServiceAccountWorkspacePermission = async (req: Request, res: Re
             nonce,
             sender: req.user._id,
             serviceAccount: new Types.ObjectId(serviceAccountId),
-            workspace: new Types.ObjectId(workspaceId)
+            workspace: new Types.ObjectId(workspaceId),
         }).save();
     }
 
     return res.status(200).send({
-        serviceAccountWorkspacePermission
+        serviceAccountWorkspacePermission,
     });
 }
 
@@ -240,19 +240,19 @@ export const deleteServiceAccountWorkspacePermission = async (req: Request, res:
         const { serviceAccount, workspace } = serviceAccountWorkspacePermission;
         const count = await ServiceAccountWorkspacePermission.countDocuments({
             serviceAccount,
-            workspace
+            workspace,
         });
         
         if (count === 0) {
             await ServiceAccountKey.findOneAndDelete({
                 serviceAccount,
-                workspace
+                workspace,
             });
         }
     }
 
     return res.status(200).send({
-        serviceAccountWorkspacePermission
+        serviceAccountWorkspacePermission,
     });
 }
 
@@ -269,20 +269,20 @@ export const deleteServiceAccount = async (req: Request, res: Response) => {
 
     if (serviceAccount) {
         await ServiceAccountKey.deleteMany({
-            serviceAccount: serviceAccount._id
+            serviceAccount: serviceAccount._id,
         });
 
         await ServiceAccountOrganizationPermission.deleteMany({
-            serviceAccount: new Types.ObjectId(serviceAccountId)
+            serviceAccount: new Types.ObjectId(serviceAccountId),
         });
 
         await ServiceAccountWorkspacePermission.deleteMany({
-            serviceAccount: new Types.ObjectId(serviceAccountId)
+            serviceAccount: new Types.ObjectId(serviceAccountId),
         });
     }
 
     return res.status(200).send({
-        serviceAccount
+        serviceAccount,
     });
 }
 
@@ -297,10 +297,10 @@ export const getServiceAccountKeys = async (req: Request, res: Response) => {
     
     const serviceAccountKeys = await ServiceAccountKey.find({
         serviceAccount: req.serviceAccount._id,
-        ...(workspaceId ? { workspace: new Types.ObjectId(workspaceId) } : {})
+        ...(workspaceId ? { workspace: new Types.ObjectId(workspaceId) } : {}),
     });
     
     return res.status(200).send({
-        serviceAccountKeys
+        serviceAccountKeys,
     });
 }

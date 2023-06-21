@@ -1,16 +1,16 @@
 /* eslint-disable no-nested-ternary */
-import { type ChangeEvent, type DragEvent, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import Image from 'next/image';
-import { faUpload } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { parseDocument, Scalar, YAMLMap } from 'yaml';
+import { type ChangeEvent, type DragEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
+import Image from "next/image";
+import { faUpload } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { parseDocument, Scalar, YAMLMap } from "yaml";
 
-import Button from '../basic/buttons/Button';
-import Error from '../basic/Error';
-import { useNotificationContext } from '../context/Notifications/NotificationProvider';
-import { parseDotEnv } from '../utilities/parseDotEnv';
-import guidGenerator from '../utilities/randomId';
+import Button from "../basic/buttons/Button";
+import Error from "../basic/Error";
+import { useNotificationContext } from "../context/Notifications/NotificationProvider";
+import { parseDotEnv } from "../utilities/parseDotEnv";
+import guidGenerator from "../utilities/randomId";
 
 interface DropZoneProps {
   // TODO: change Data type from any
@@ -50,7 +50,7 @@ const DropZone = ({
     e.stopPropagation();
 
     // set dropEffect to copy i.e copy of the source item
-    e.dataTransfer.dropEffect = 'copy';
+    e.dataTransfer.dropEffect = "copy";
   };
 
   const [loading, setLoading] = useState(false);
@@ -58,33 +58,33 @@ const DropZone = ({
   const getSecrets = (file: ArrayBuffer, fileType: string) => {
     let secrets;
     switch (fileType) {
-      case 'env': {
+      case "env": {
         const keyPairs = parseDotEnv(file);
         secrets = Object.keys(keyPairs).map((key, index) => ({
           id: guidGenerator(),
           pos: numCurrentRows + index,
           key,
           value: keyPairs[key as keyof typeof keyPairs].value,
-          comment: keyPairs[key as keyof typeof keyPairs].comments.join('\n'),
-          type: 'shared',
+          comment: keyPairs[key as keyof typeof keyPairs].comments.join("\n"),
+          type: "shared",
           tags: []
         }));
         break;
       }
-      case 'json': {
+      case "json": {
         const keyPairs = JSON.parse(String(file));
         secrets = Object.keys(keyPairs).map((key, index) => ({
           id: guidGenerator(),
           pos: numCurrentRows + index,
           key,
           value: keyPairs[key as keyof typeof keyPairs],
-          comment: '',
-          type: 'shared',
+          comment: "",
+          type: "shared",
           tags: []
         }));
         break;
       }
-      case 'yml': {
+      case "yml": {
         const parsedFile = parseDocument(file.toString());
         const keyPairs = parsedFile.contents!.toJSON();
 
@@ -93,26 +93,26 @@ const DropZone = ({
           const comment =
             fileContent!.items
               .find((item) => item.key.value === key)
-              ?.key?.commentBefore?.split('\n')
+              ?.key?.commentBefore?.split("\n")
               .map((cmnt) => cmnt.trim())
-              .join('\n') ?? '';
+              .join("\n") ?? "";
           return {
             id: guidGenerator(),
             pos: numCurrentRows + index,
             key,
-            value: keyPairs[key as keyof typeof keyPairs]?.toString() ?? '',
+            value: keyPairs[key as keyof typeof keyPairs]?.toString() ?? "",
             comment,
-            type: 'shared',
+            type: "shared",
             tags: []
           };
         });
         break;
       }
       default:
-        secrets = '';
+        secrets = "";
         createNotification({
-          text: `The file you are dropping should have one of the following extensions: .env, .yml, .json.`,
-          type: 'error'
+          text: "The file you are dropping should have one of the following extensions: .env, .yml, .json.",
+          type: "error"
         });
         break;
     }
@@ -125,20 +125,20 @@ const DropZone = ({
     setTimeout(() => setLoading(false), 5000);
     e.preventDefault();
     e.stopPropagation();
-    e.dataTransfer.dropEffect = 'copy';
+    e.dataTransfer.dropEffect = "copy";
 
     const file = e.dataTransfer.files[0];
     const reader = new FileReader();
     if (file === undefined) {
       createNotification({
-        text: `You can't inject files from VS Code. Click 'Reveal in finder', and drag your file directly from the directory where it's located.`,
-        type: 'error',
+        text: "You can't inject files from VS Code. Click 'Reveal in finder', and drag your file directly from the directory where it's located.",
+        type: "error",
         timeoutMs: 10000
       });
       setLoading(false);
       return;
     }
-    const fileType = file.name.split('.')[1];
+    const fileType = file.name.split(".")[1];
 
     reader.onload = (event) => {
       if (event.target === null || event.target.result === null) return;
@@ -148,7 +148,7 @@ const DropZone = ({
         setData(newData);
         setButtonReady(true);
       } catch (error) {
-        console.log('Error while dropping the file: ', error);
+        console.log("Error while dropping the file: ", error);
       }
     };
 
@@ -168,7 +168,7 @@ const DropZone = ({
     setTimeout(() => setLoading(false), 5000);
     if (e.currentTarget.files === null) return;
     const file = e.currentTarget.files[0];
-    const fileType = file.name.split('.')[1];
+    const fileType = file.name.split(".")[1];
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target === null || event.target.result === null) return;
@@ -202,7 +202,7 @@ const DropZone = ({
       {errorDragAndDrop ? <div className="my-3 max-w-xl opacity-80" /> : <div className="" />}
       <div className="flex flex-row">
         <FontAwesomeIcon icon={faUpload} className="mr-6 text-3xl text-bunker-300" />
-        <p className="mt-1 text-bunker-300">{t('common.drop-zone-keys')}</p>
+        <p className="mt-1 text-bunker-300">{t("common.drop-zone-keys")}</p>
       </div>
       {errorDragAndDrop && (
         <div className="mt-8 max-w-xl opacity-80">
@@ -219,7 +219,7 @@ const DropZone = ({
       onDrop={handleDrop}
     >
       <FontAwesomeIcon icon={faUpload} className="mb-8 text-7xl" />
-      <p className="">{t('common.drop-zone')}</p>
+      <p className="">{t("common.drop-zone")}</p>
       <input
         id="fileSelect"
         type="file"
@@ -235,7 +235,7 @@ const DropZone = ({
       <div className="z-10 mb-6">
         <Button
           color="mineshaft"
-          text={String(t('dashboard.add-secret'))}
+          text={String(t("dashboard.add-secret"))}
           onButtonPressed={createNewFile}
           size="md"
         />

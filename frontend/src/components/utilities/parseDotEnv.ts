@@ -15,16 +15,16 @@ export function parseDotEnv(src: ArrayBuffer) {
   let lines = src.toString();
 
   // Convert line breaks to same format
-  lines = lines.replace(/\r\n?/gm, '\n');
+  lines = lines.replace(/\r\n?/gm, "\n");
 
   let comments: string[] = [];
 
   lines
-    .split('\n')
+    .split("\n")
     .map((line) => {
       // collect comments of each env variable
-      if (line.startsWith('#')) {
-        comments.push(line.replace('#', '').trim());
+      if (line.startsWith("#")) {
+        comments.push(line.replace("#", "").trim());
       } else if (line) {
         let match;
         let item: [string, string, string[]] | [] = [];
@@ -34,7 +34,7 @@ export function parseDotEnv(src: ArrayBuffer) {
           const key = match[1];
 
           // Default undefined or null to empty string
-          let value = match[2] || '';
+          let value = match[2] || "";
 
           // Remove whitespace
           value = value.trim();
@@ -43,12 +43,12 @@ export function parseDotEnv(src: ArrayBuffer) {
           const maybeQuote = value[0];
 
           // Remove surrounding quotes
-          value = value.replace(/^(['"`])([\s\S]*)\1$/gm, '$2');
+          value = value.replace(/^(['"`])([\s\S]*)\1$/gm, "$2");
 
           // Expand newlines if double quoted
           if (maybeQuote === '"') {
-            value = value.replace(/\\n/g, '\n');
-            value = value.replace(/\\r/g, '\r');
+            value = value.replace(/\\n/g, "\n");
+            value = value.replace(/\\r/g, "\r");
           }
           item = [key, value, comments];
         }

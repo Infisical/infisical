@@ -1,17 +1,17 @@
-import { useEffect, useState } from 'react';
-import { SelectProps } from '@radix-ui/react-select';
+import { useEffect, useState } from "react";
+import { SelectProps } from "@radix-ui/react-select";
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { Meta, StoryObj } from '@storybook/react';
+import { Meta, StoryObj } from "@storybook/react";
 
-import { Select, SelectItem } from './Select';
+import { Select, SelectItem } from "./Select";
 
 const meta: Meta<typeof Select> = {
-  title: 'Components/Select',
+  title: "Components/Select",
   component: Select,
-  tags: ['v2'],
+  tags: ["v2"],
   argTypes: {
     placeholder: {
-      defaultValue: 'Type something...'
+      defaultValue: "Type something..."
     }
   }
 };
@@ -33,7 +33,7 @@ export const Basic: Story = {
 
 const Controlled = (args: SelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [selected, setSelected] = useState('');
+  const [selected, setSelected] = useState("");
 
   return (
     <div className="">

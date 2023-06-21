@@ -1,7 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback } from "react";
 
-import { FormControl, Input, Spinner } from '@app/components/v2';
-import { useGetProjectSecrets, useGetUserWsKey } from '@app/hooks/api';
+import { FormControl, Input, Spinner } from "@app/components/v2";
+import { useGetProjectSecrets, useGetUserWsKey } from "@app/hooks/api";
 
 type SecretValueProps = {
   workspaceId: string;
@@ -21,7 +21,7 @@ const SecretValue = ({ workspaceId, env, envName, secretKey }: SecretValueProps)
   const getValue = useCallback(
     (data: typeof secret) => {
       const sec = data?.secrets?.find(({ key: secKey }) => secKey === secretKey);
-      return sec?.value || 'Not found';
+      return sec?.value || "Not found";
     },
     [secretKey]
   );

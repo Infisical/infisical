@@ -1,26 +1,26 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import {
-    IUser,
     IServiceAccount,
     IServiceTokenData,
+    IUser,
     MembershipOrg,
-    User,
     ServiceAccount,
-    ServiceTokenData
-} from '../models';
+    ServiceTokenData,
+    User,
+} from "../models";
 import {
-    validateMembershipOrg
-} from '../helpers/membershipOrg';
+    validateMembershipOrg,
+} from "../helpers/membershipOrg";
 import {
     MembershipOrgNotFoundError,
-    UnauthorizedRequestError
-} from '../utils/errors';
+    UnauthorizedRequestError,
+} from "../utils/errors";
 import {
+    AUTH_MODE_API_KEY,
     AUTH_MODE_JWT,
     AUTH_MODE_SERVICE_ACCOUNT,
     AUTH_MODE_SERVICE_TOKEN,
-    AUTH_MODE_API_KEY
-} from '../variables';
+} from "../variables";
 
 /**
  * Validate authenticated clients for organization membership with id [membershipOrgId] based
@@ -35,20 +35,20 @@ export const validateClientForMembershipOrg = async ({
 	authData,
 	membershipOrgId,
 	acceptedRoles,
-	acceptedStatuses
+	acceptedStatuses,
 }: {
 	authData: {
 		authMode: string;
 		authPayload: IUser | IServiceAccount | IServiceTokenData;
 	};
 	membershipOrgId: Types.ObjectId;
-    acceptedRoles: Array<'owner' | 'admin' | 'member'>;
-    acceptedStatuses: Array<'invited' | 'accepted'>;
+    acceptedRoles: Array<"owner" | "admin" | "member">;
+    acceptedStatuses: Array<"invited" | "accepted">;
 }) => {
 	const membershipOrg = await MembershipOrg.findById(membershipOrgId);
 
 	if (!membershipOrg) throw MembershipOrgNotFoundError({
-		message: 'Failed to find organization membership '
+		message: "Failed to find organization membership ",
 	});
 
 	if (authData.authMode === AUTH_MODE_JWT && authData.authPayload instanceof User) {
@@ -56,7 +56,7 @@ export const validateClientForMembershipOrg = async ({
 			userId: authData.authPayload._id,
 			organizationId: membershipOrg.organization,
 			acceptedRoles,
-			acceptedStatuses
+			acceptedStatuses,
 		});
 		
 		return membershipOrg;
@@ -64,7 +64,7 @@ export const validateClientForMembershipOrg = async ({
 
 	if (authData.authMode === AUTH_MODE_SERVICE_ACCOUNT && authData.authPayload instanceof ServiceAccount) {
 		if (!authData.authPayload.organization.equals(membershipOrg.organization)) throw UnauthorizedRequestError({
-			message: 'Failed service account client authorization for organization membership'
+			message: "Failed service account client authorization for organization membership",
 		});
 		
 		return membershipOrg;
@@ -72,7 +72,7 @@ export const validateClientForMembershipOrg = async ({
 
 	if (authData.authMode === AUTH_MODE_SERVICE_TOKEN && authData.authPayload instanceof ServiceTokenData) {
 		throw UnauthorizedRequestError({
-			message: 'Failed service account client authorization for organization membership'
+			message: "Failed service account client authorization for organization membership",
 		});
 	}
 	
@@ -81,13 +81,13 @@ export const validateClientForMembershipOrg = async ({
 			userId: authData.authPayload._id,
 			organizationId: membershipOrg.organization,
 			acceptedRoles,
-			acceptedStatuses
+			acceptedStatuses,
 		});
 		
 		return membershipOrg;
 	}
 	
 	throw UnauthorizedRequestError({
-		message: 'Failed client authorization for organization membership'
+		message: "Failed client authorization for organization membership",
 	});
 }

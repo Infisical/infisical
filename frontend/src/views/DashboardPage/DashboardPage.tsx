@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import { FormProvider, useFieldArray, useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
-import { useRouter } from 'next/router';
+import { useEffect, useRef, useState } from "react";
+import { FormProvider, useFieldArray, useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import { useRouter } from "next/router";
 import {
   faArrowLeft,
   faCheck,
@@ -13,13 +13,13 @@ import {
   faFolderPlus,
   faMagnifyingGlass,
   faPlus
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { yupResolver } from '@hookform/resolvers/yup';
-import { useQueryClient } from '@tanstack/react-query';
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { useQueryClient } from "@tanstack/react-query";
 
-import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
-import NavHeader from '@app/components/navigation/NavHeader';
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import NavHeader from "@app/components/navigation/NavHeader";
 import {
   Button,
   DeleteActionModal,
@@ -33,10 +33,10 @@ import {
   TableContainer,
   Tag,
   Tooltip
-} from '@app/components/v2';
-import { leaveConfirmDefaultMessage } from '@app/const';
-import { useWorkspace } from '@app/context';
-import { useLeaveConfirm, usePopUp, useToggle } from '@app/hooks';
+} from "@app/components/v2";
+import { leaveConfirmDefaultMessage } from "@app/const";
+import { useWorkspace } from "@app/context";
+import { useLeaveConfirm, usePopUp, useToggle } from "@app/hooks";
 import {
   useBatchSecretsOp,
   useCreateFolder,
@@ -55,23 +55,23 @@ import {
   usePerformSecretRollback,
   useRegisterUserAction,
   useUpdateFolder
-} from '@app/hooks/api';
-import { secretKeys } from '@app/hooks/api/secrets/queries';
-import { WorkspaceEnv } from '@app/hooks/api/types';
+} from "@app/hooks/api";
+import { secretKeys } from "@app/hooks/api/secrets/queries";
+import { WorkspaceEnv } from "@app/hooks/api/types";
 
-import { CompareSecret } from './components/CompareSecret';
-import { CreateTagModal } from './components/CreateTagModal';
+import { CompareSecret } from "./components/CompareSecret";
+import { CreateTagModal } from "./components/CreateTagModal";
 import {
   FolderForm,
   FolderSection,
   TDeleteFolderForm,
   TEditFolderForm
-} from './components/FolderSection';
-import { PitDrawer } from './components/PitDrawer';
-import { SecretDetailDrawer } from './components/SecretDetailDrawer';
-import { SecretDropzone } from './components/SecretDropzone';
-import { SecretInputRow } from './components/SecretInputRow';
-import { SecretTableHeader } from './components/SecretTableHeader';
+} from "./components/FolderSection";
+import { PitDrawer } from "./components/PitDrawer";
+import { SecretDetailDrawer } from "./components/SecretDetailDrawer";
+import { SecretDropzone } from "./components/SecretDropzone";
+import { SecretInputRow } from "./components/SecretInputRow";
+import { SecretTableHeader } from "./components/SecretTableHeader";
 import {
   DEFAULT_SECRET_VALUE,
   downloadSecret,
@@ -80,9 +80,9 @@ import {
   transformSecretsToBatchSecretReq,
   TSecOverwriteOpt,
   TSecretDetailsOpen
-} from './DashboardPage.utils';
+} from "./DashboardPage.utils";
 
-const USER_ACTION_PUSH = 'first_time_secrets_pushed';
+const USER_ACTION_PUSH = "first_time_secrets_pushed";
 
 /*
  * Some imp aspects to consider. Here there are multiple stats changing
@@ -104,19 +104,19 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
 
   const secretContainer = useRef<HTMLDivElement | null>(null);
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
-    'secretDetails',
-    'addTag',
-    'secretSnapshots',
-    'uploadedSecOpts',
-    'compareSecrets',
-    'folderForm',
-    'deleteFolder'
+    "secretDetails",
+    "addTag",
+    "secretSnapshots",
+    "uploadedSecOpts",
+    "compareSecrets",
+    "folderForm",
+    "deleteFolder"
   ] as const);
   const [isSecretValueHidden, setIsSecretValueHidden] = useToggle(true);
-  const [searchFilter, setSearchFilter] = useState('');
+  const [searchFilter, setSearchFilter] = useState("");
   const [snapshotId, setSnaphotId] = useState<string | null>(null);
   const [selectedEnv, setSelectedEnv] = useState<WorkspaceEnv | null>(null);
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const deletedSecretIds = useRef<string[]>([]);
   const { hasUnsavedChanges, setHasUnsavedChanges } = useLeaveConfirm({ initialValue: false });
 
@@ -129,7 +129,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
 
   useEffect(() => {
     if (!isLoading && !workspaceId && router.isReady) {
-      router.push('/noprojects');
+      router.push("/noprojects");
     }
   }, [isLoading, workspaceId, router.isReady]);
 
@@ -157,15 +157,15 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
 
   const { data: secrets, isLoading: isSecretsLoading } = useGetProjectSecrets({
     workspaceId,
-    env: selectedEnv?.slug || '',
+    env: selectedEnv?.slug || "",
     decryptFileKey: latestFileKey!,
     isPaused: Boolean(snapshotId),
     folderId
   });
 
   const { data: folderData, isLoading: isFoldersLoading } = useGetProjectFolders({
-    workspaceId: workspaceId || '',
-    environment: selectedEnv?.slug || '',
+    workspaceId: workspaceId || "",
+    environment: selectedEnv?.slug || "",
     parentFolderId: folderId,
     isPaused: isRollbackMode,
     sortDir
@@ -178,7 +178,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     isFetchingNextPage
   } = useGetWorkspaceSecretSnapshots({
     workspaceId,
-    environment: selectedEnv?.slug || '',
+    environment: selectedEnv?.slug || "",
     folder: folderId,
     limit: 10
   });
@@ -188,14 +188,14 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     isLoading: isSnapshotSecretsLoading,
     isFetching: isSnapshotChanging
   } = useGetSnapshotSecrets({
-    snapshotId: snapshotId || '',
-    env: selectedEnv?.slug || '',
+    snapshotId: snapshotId || "",
+    env: selectedEnv?.slug || "",
     decryptFileKey: latestFileKey!
   });
 
   const { data: snapshotCount, isLoading: isLoadingSnapshotCount } = useGetWsSnapshotCount(
     workspaceId,
-    selectedEnv?.slug || '',
+    selectedEnv?.slug || "",
     folderId
   );
 
@@ -213,7 +213,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     // why any: well yup inferred ts expects other keys to defined as undefined
     defaultValues: secrets as any,
     values: secrets as any,
-    mode: 'onBlur',
+    mode: "onBlur",
     resolver: yupResolver(schema)
   });
 
@@ -225,7 +225,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     formState: { isSubmitting, isDirty },
     reset
   } = method;
-  const { fields, prepend, append, remove } = useFieldArray({ control, name: 'secrets' });
+  const { fields, prepend, append, remove } = useFieldArray({ control, name: "secrets" });
   const isReadOnly = selectedEnv?.isWriteDenied;
   const isAddOnly = selectedEnv?.isReadDenied && !selectedEnv?.isWriteDenied;
   const canDoRollback = !isReadOnly && !isAddOnly;
@@ -242,17 +242,17 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   }, [isSubmitDisabled]);
 
   const onSortSecrets = () => {
-    const dir = sortDir === 'asc' ? 'desc' : 'asc';
-    const sec = getValues('secrets') || [];
+    const dir = sortDir === "asc" ? "desc" : "asc";
+    const sec = getValues("secrets") || [];
     const sortedSec = sec.sort((a, b) =>
-      dir === 'asc' ? a?.key?.localeCompare(b?.key || '') : b?.key?.localeCompare(a?.key || '')
+      dir === "asc" ? a?.key?.localeCompare(b?.key || "") : b?.key?.localeCompare(a?.key || "")
     );
-    setValue('secrets', sortedSec);
+    setValue("secrets", sortedSec);
     setSortDir(dir);
   };
 
-  const handleUploadedEnv = (uploadedSec: TSecOverwriteOpt['secrets']) => {
-    const sec = getValues('secrets') || [];
+  const handleUploadedEnv = (uploadedSec: TSecOverwriteOpt["secrets"]) => {
+    const sec = getValues("secrets") || [];
     const conflictingSec = sec.filter(({ key }) => Boolean(uploadedSec?.[key]));
     const conflictingSecIds = conflictingSec.reduce<Record<string, boolean>>(
       (prev, curr) => ({
@@ -271,18 +271,18 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
           ...DEFAULT_SECRET_VALUE,
           key,
           value: uploadedSec[key].value,
-          comment: uploadedSec[key].comments.join(',')
+          comment: uploadedSec[key].comments.join(",")
         });
       }
     });
-    setValue('secrets', sec, { shouldDirty: true });
+    setValue("secrets", sec, { shouldDirty: true });
     if (conflictingSec.length > 0) {
-      handlePopUpOpen('uploadedSecOpts', { secrets: conflictingUploadedSec });
+      handlePopUpOpen("uploadedSecOpts", { secrets: conflictingUploadedSec });
     }
   };
 
   const onOverwriteSecrets = () => {
-    const sec = getValues('secrets') || [];
+    const sec = getValues("secrets") || [];
     const uploadedSec = (popUp?.uploadedSecOpts?.data as TSecOverwriteOpt)?.secrets;
     const data: Array<{ key: string; index: number }> = [];
     sec.forEach(({ key }, index) => {
@@ -290,7 +290,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     });
     data.forEach(({ key, index }) => {
       const { value, comments } = uploadedSec[key];
-      const comment = comments.join(', ');
+      const comment = comments.join(", ");
       sec[index] = {
         ...DEFAULT_SECRET_VALUE,
         key,
@@ -299,15 +299,15 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
         tags: sec[index].tags
       };
     });
-    setValue('secrets', sec, { shouldDirty: true });
-    handlePopUpClose('uploadedSecOpts');
+    setValue("secrets", sec, { shouldDirty: true });
+    handlePopUpClose("uploadedSecOpts");
   };
 
   const onSecretRollback = async () => {
     if (!snapshotSecret?.version) {
       createNotification({
-        text: 'Failed to find secret version',
-        type: 'success'
+        text: "Failed to find secret version",
+        type: "success"
       });
       return;
     }
@@ -315,23 +315,23 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
       await performSecretRollback({
         workspaceId,
         version: snapshotSecret.version,
-        environment: selectedEnv?.slug || '',
+        environment: selectedEnv?.slug || "",
         folderId
       });
-      setValue('isSnapshotMode', false);
+      setValue("isSnapshotMode", false);
       setSnaphotId(null);
       queryClient.invalidateQueries(
-        secretKeys.getProjectSecret(workspaceId, selectedEnv?.slug || '')
+        secretKeys.getProjectSecret(workspaceId, selectedEnv?.slug || "")
       );
       createNotification({
-        text: 'Successfully rollback secrets',
-        type: 'success'
+        text: "Successfully rollback secrets",
+        type: "success"
       });
     } catch (error) {
       console.log(error);
       createNotification({
-        text: 'Failed to rollback secrets',
-        type: 'error'
+        text: "Failed to rollback secrets",
+        type: "error"
       });
     }
   };
@@ -344,7 +344,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
       return;
     }
     // just closing this if save is triggered from drawer
-    handlePopUpClose('secretDetails');
+    handlePopUpClose("secretDetails");
     // when add only mode remove rest of things not created
     const sec = isAddOnly ? userSec.filter(({ _id }) => !_id) : userSec;
     // encrypt and format the secrets to batch api format
@@ -365,8 +365,8 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
         environment: selectedEnv?.slug
       });
       createNotification({
-        text: 'Successfully saved changes',
-        type: 'success'
+        text: "Successfully saved changes",
+        type: "success"
       });
       deletedSecretIds.current = [];
       if (!hasUserPushed) {
@@ -375,14 +375,14 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     } catch (error) {
       console.log(error);
       createNotification({
-        text: 'Failed to save changes',
-        type: 'error'
+        text: "Failed to save changes",
+        type: "error"
       });
     }
   };
 
   const onDrawerOpen = (dto: TSecretDetailsOpen) => {
-    handlePopUpOpen('secretDetails', dto);
+    handlePopUpOpen("secretDetails", dto);
   };
 
   const onEnvChange = (slug: string) => {
@@ -407,7 +407,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     if (overrideId) deletedSecretIds.current.push(overrideId);
     remove(index);
     // just the case if this is called from drawer
-    handlePopUpClose('secretDetails');
+    handlePopUpClose("secretDetails");
   };
 
   const onCreateWsTag = async (tagName: string) => {
@@ -415,24 +415,24 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
       await createWsTag({
         workspaceID: workspaceId,
         tagName,
-        tagSlug: tagName.replace(' ', '_')
+        tagSlug: tagName.replace(" ", "_")
       });
-      handlePopUpClose('addTag');
+      handlePopUpClose("addTag");
       createNotification({
-        text: 'Successfully created a tag',
-        type: 'success'
+        text: "Successfully created a tag",
+        type: "success"
       });
     } catch (error) {
       console.error(error);
       createNotification({
-        text: 'Failed to create a tag',
-        type: 'error'
+        text: "Failed to create a tag",
+        type: "error"
       });
     }
   };
 
   const handleFolderOpen = (id: string) => {
-    setSearchFilter('');
+    setSearchFilter("");
     router.push({
       pathname: router.pathname,
       query: {
@@ -448,20 +448,20 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     try {
       await createFolder({
         workspaceId,
-        environment: selectedEnv?.slug || '',
+        environment: selectedEnv?.slug || "",
         folderName: name,
         parentFolderId: folderId
       });
       createNotification({
-        type: 'success',
-        text: 'Successfully created folder'
+        type: "success",
+        text: "Successfully created folder"
       });
-      handlePopUpClose('folderForm');
+      handlePopUpClose("folderForm");
     } catch (error) {
       console.error(error);
       createNotification({
-        text: 'Failed to create folder',
-        type: 'error'
+        text: "Failed to create folder",
+        type: "error"
       });
     }
   };
@@ -472,19 +472,19 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
       await updateFolder({
         folderId: id,
         workspaceId,
-        environment: selectedEnv?.slug || '',
+        environment: selectedEnv?.slug || "",
         name
       });
       createNotification({
-        type: 'success',
-        text: 'Successfully updated folder'
+        type: "success",
+        text: "Successfully updated folder"
       });
-      handlePopUpClose('folderForm');
+      handlePopUpClose("folderForm");
     } catch (error) {
       console.error(error);
       createNotification({
-        text: 'Failed to update folder',
-        type: 'error'
+        text: "Failed to update folder",
+        type: "error"
       });
     }
   };
@@ -494,19 +494,19 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     try {
       deleteFolder({
         workspaceId,
-        environment: selectedEnv?.slug || '',
+        environment: selectedEnv?.slug || "",
         folderId: id
       });
       createNotification({
-        type: 'success',
-        text: 'Successfully removed folder'
+        type: "success",
+        text: "Successfully removed folder"
       });
-      handlePopUpClose('deleteFolder');
+      handlePopUpClose("deleteFolder");
     } catch (error) {
       console.error(error);
       createNotification({
-        text: 'Failed to remove folder',
-        type: 'error'
+        text: "Failed to remove folder",
+        type: "error"
       });
     }
   };
@@ -544,9 +544,9 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
           {/* breadcrumb row */}
           <div className="relative right-6 -top-2 mb-2">
             <NavHeader
-              pageName={t('dashboard.title')}
+              pageName={t("dashboard.title")}
               currentEnv={
-                userAvailableEnvs?.filter((envir) => envir.slug === envFromTop)[0].name || ''
+                userAvailableEnvs?.filter((envir) => envir.slug === envFromTop)[0].name || ""
               }
               isFolderMode
               folders={folderData?.dir}
@@ -556,10 +556,10 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
             />
           </div>
           <div className="mb-4">
-            <h6 className="text-2xl">{isRollbackMode ? 'Secret Snapshot' : ''}</h6>
+            <h6 className="text-2xl">{isRollbackMode ? "Secret Snapshot" : ""}</h6>
             {isRollbackMode && Boolean(snapshotSecret) && (
               <Tag colorSchema="green">
-                {new Date(snapshotSecret?.createdAt || '').toLocaleString()}
+                {new Date(snapshotSecret?.createdAt || "").toLocaleString()}
               </Tag>
             )}
           </div>
@@ -588,7 +588,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                   >
                     <div className="flex flex-col space-y-2">
                       <Button
-                        onClick={() => downloadSecret(getValues('secrets'), selectedEnv?.slug)}
+                        onClick={() => downloadSecret(getValues("secrets"), selectedEnv?.slug)}
                         colorSchema="primary"
                         variant="outline_bg"
                         className="h-8 bg-bunker-700"
@@ -600,7 +600,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                 </Popover>
               </div>
               <div>
-                <Tooltip content={isSecretValueHidden ? 'Reveal Secrets' : 'Hide secrets'}>
+                <Tooltip content={isSecretValueHidden ? "Reveal Secrets" : "Hide secrets"}>
                   <IconButton
                     ariaLabel="reveal"
                     variant="outline_bg"
@@ -615,7 +615,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                   <IconButton
                     ariaLabel="recovery"
                     variant="outline_bg"
-                    onClick={() => handlePopUpOpen('secretSnapshots')}
+                    onClick={() => handlePopUpOpen("secretSnapshots")}
                   >
                     <FontAwesomeIcon icon={faCodeCommit} />
                   </IconButton>
@@ -624,7 +624,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
               <div className="hidden xl:block">
                 <Button
                   variant="outline_bg"
-                  onClick={() => handlePopUpOpen('secretSnapshots')}
+                  onClick={() => handlePopUpOpen("secretSnapshots")}
                   leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
                   isLoading={isLoadingSnapshotCount}
                   isDisabled={!canDoRollback}
@@ -640,7 +640,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                       <IconButton
                         ariaLabel="recovery"
                         variant="outline_bg"
-                        onClick={() => handlePopUpOpen('folderForm')}
+                        onClick={() => handlePopUpOpen("folderForm")}
                       >
                         <FontAwesomeIcon icon={faFolderPlus} />
                       </IconButton>
@@ -656,7 +656,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                           if (secretContainer.current) {
                             secretContainer.current.scroll({
                               top: 0,
-                              behavior: 'smooth'
+                              behavior: "smooth"
                             });
                           }
                           prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
@@ -669,7 +669,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                   <div className="hidden lg:block">
                     <Button
                       leftIcon={<FontAwesomeIcon icon={faFolderPlus} />}
-                      onClick={() => handlePopUpOpen('folderForm')}
+                      onClick={() => handlePopUpOpen("folderForm")}
                       isDisabled={isReadOnly || isRollbackMode}
                       variant="outline_bg"
                       className="h-10"
@@ -685,7 +685,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                         if (secretContainer.current) {
                           secretContainer.current.scroll({
                             top: 0,
-                            behavior: 'smooth'
+                            behavior: "smooth"
                           });
                         }
                         prepend(DEFAULT_SECRET_VALUE, { shouldFocus: false });
@@ -721,13 +721,13 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                 color="primary"
                 variant="solid"
               >
-                {isRollbackMode ? 'Rollback' : 'Save Changes'}
+                {isRollbackMode ? "Rollback" : "Save Changes"}
               </Button>
             </div>
           </div>
           <div
             className={`${
-              isEmptyPage ? 'flex flex-col items-center justify-center' : ''
+              isEmptyPage ? "flex flex-col items-center justify-center" : ""
             } no-scrollbar::-webkit-scrollbar mt-3 h-3/4 overflow-x-hidden overflow-y-scroll no-scrollbar`}
             ref={secretContainer}
           >
@@ -738,8 +738,8 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                   <tbody className="max-h-96 overflow-y-auto">
                     <FolderSection
                       onFolderOpen={handleFolderOpen}
-                      onFolderUpdate={(id, name) => handlePopUpOpen('folderForm', { id, name })}
-                      onFolderDelete={(id, name) => handlePopUpOpen('deleteFolder', { id, name })}
+                      onFolderUpdate={(id, name) => handlePopUpOpen("folderForm", { id, name })}
+                      onFolderDelete={(id, name) => handlePopUpOpen("deleteFolder", { id, name })}
                       folders={folderList}
                       search={searchFilter}
                     />
@@ -755,7 +755,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
                         onRowExpand={() => onDrawerOpen({ id: _id as string, index })}
                         isSecretValueHidden={isSecretValueHidden}
                         wsTags={wsTags}
-                        onCreateTagOpen={() => handlePopUpOpen('addTag')}
+                        onCreateTagOpen={() => handlePopUpOpen("addTag")}
                       />
                     ))}
                     {!isReadOnly && !isRollbackMode && (
@@ -778,7 +778,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
             )}
             <PitDrawer
               isDrawerOpen={popUp?.secretSnapshots?.isOpen}
-              onOpenChange={(isOpen) => handlePopUpToggle('secretSnapshots', isOpen)}
+              onOpenChange={(isOpen) => handlePopUpToggle("secretSnapshots", isOpen)}
               fetchNextPage={fetchNextPage}
               hasNextPage={hasNextPage}
               snapshotId={snapshotId}
@@ -791,10 +791,10 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
               isReadOnly={isReadOnly || isRollbackMode}
               onSecretDelete={onSecretDelete}
               isDrawerOpen={popUp?.secretDetails?.isOpen}
-              onOpenChange={(isOpen) => handlePopUpToggle('secretDetails', isOpen)}
+              onOpenChange={(isOpen) => handlePopUpToggle("secretDetails", isOpen)}
               secretVersion={secretVersion}
               index={(popUp?.secretDetails?.data as TSecretDetailsOpen)?.index}
-              onEnvCompare={(key) => handlePopUpOpen('compareSecrets', key)}
+              onEnvCompare={(key) => handlePopUpOpen("compareSecrets", key)}
             />
             <SecretDropzone
               isSmaller={!isEmptyPage}
@@ -808,7 +808,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
         <Modal
           isOpen={popUp?.addTag?.isOpen}
           onOpenChange={(open) => {
-            handlePopUpToggle('addTag', open);
+            handlePopUpToggle("addTag", open);
           }}
         >
           <ModalContent
@@ -821,7 +821,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
         {/* Uploaded env override or not confirmation modal */}
         <Modal
           isOpen={popUp?.uploadedSecOpts?.isOpen}
-          onOpenChange={(open) => handlePopUpToggle('uploadedSecOpts', open)}
+          onOpenChange={(open) => handlePopUpToggle("uploadedSecOpts", open)}
         >
           <ModalContent
             title="Duplicate Secrets"
@@ -829,7 +829,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
               <Button
                 key="keep-old-btn"
                 className="mr-4"
-                onClick={() => handlePopUpClose('uploadedSecOpts')}
+                onClick={() => handlePopUpClose("uploadedSecOpts")}
               >
                 Keep old
               </Button>,
@@ -843,7 +843,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
               <div className="text-sm text-gray-400">
                 {Object.keys((popUp?.uploadedSecOpts?.data as TSecOverwriteOpt)?.secrets || {})
                   ?.map((key) => key)
-                  .join(', ')}
+                  .join(", ")}
               </div>
               <div>Are you sure you want to overwrite these secrets?</div>
             </div>
@@ -851,9 +851,9 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
         </Modal>
         <Modal
           isOpen={popUp?.folderForm?.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle('folderForm', isOpen)}
+          onOpenChange={(isOpen) => handlePopUpToggle("folderForm", isOpen)}
         >
-          <ModalContent title={isEditFolder ? 'Edit Folder' : 'Create Folder'}>
+          <ModalContent title={isEditFolder ? "Edit Folder" : "Create Folder"}>
             <FolderForm
               isEdit={isEditFolder}
               onUpdateFolder={handleFolderUpdate}
@@ -866,12 +866,12 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
           isOpen={popUp.deleteFolder.isOpen}
           deleteKey={(popUp.deleteFolder?.data as TDeleteFolderForm)?.name}
           title="Do you want to delete this folder?"
-          onChange={(isOpen) => handlePopUpToggle('deleteFolder', isOpen)}
+          onChange={(isOpen) => handlePopUpToggle("deleteFolder", isOpen)}
           onDeleteApproved={handleFolderDelete}
         />
         <Modal
           isOpen={popUp?.compareSecrets?.isOpen}
-          onOpenChange={(open) => handlePopUpToggle('compareSecrets', open)}
+          onOpenChange={(open) => handlePopUpToggle("compareSecrets", open)}
         >
           <ModalContent
             title={popUp?.compareSecrets?.data as string}

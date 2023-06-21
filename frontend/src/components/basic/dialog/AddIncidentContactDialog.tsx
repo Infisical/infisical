@@ -1,11 +1,11 @@
-import { Fragment, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Dialog, Transition } from '@headlessui/react';
+import { Fragment, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Dialog, Transition } from "@headlessui/react";
 
-import addIncidentContact from '@app/pages/api/organization/addIncidentContact';
+import addIncidentContact from "@app/pages/api/organization/addIncidentContact";
 
-import Button from '../buttons/Button';
-import InputField from '../InputField';
+import Button from "../buttons/Button";
+import InputField from "../InputField";
 
 type Props = {
   isOpen: boolean;
@@ -20,7 +20,7 @@ const AddIncidentContactDialog = ({
   incidentContacts,
   setIncidentContacts
 }: Props) => {
-  const [incidentContactEmail, setIncidentContactEmail] = useState('');
+  const [incidentContactEmail, setIncidentContactEmail] = useState("");
   const { t } = useTranslation();
 
   const submit = () => {
@@ -29,7 +29,7 @@ const AddIncidentContactDialog = ({
         ? incidentContacts.concat([incidentContactEmail])
         : [incidentContactEmail]
     );
-    addIncidentContact(localStorage.getItem('orgData.id') as string, incidentContactEmail);
+    addIncidentContact(localStorage.getItem("orgData.id") as string, incidentContactEmail);
     closeModal();
   };
   return (
@@ -61,16 +61,16 @@ const AddIncidentContactDialog = ({
               >
                 <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-md border border-gray-700 bg-bunker-800 p-6 text-left align-middle shadow-xl transition-all">
                   <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-400">
-                    {t('section.incident.add-dialog.title')}
+                    {t("section.incident.add-dialog.title")}
                   </Dialog.Title>
                   <div className="mt-2 mb-2">
                     <p className="text-sm text-gray-500">
-                      {t('section.incident.add-dialog.description')}
+                      {t("section.incident.add-dialog.description")}
                     </p>
                   </div>
                   <div className="max-h-28">
                     <InputField
-                      label={t('common.email')}
+                      label={t("common.email")}
                       onChangeHandler={setIncidentContactEmail}
                       type="varName"
                       value={incidentContactEmail}
@@ -82,7 +82,7 @@ const AddIncidentContactDialog = ({
                     <Button
                       onButtonPressed={submit}
                       color="mineshaft"
-                      text={t('section.incident.add-dialog.add-incident') as string}
+                      text={t("section.incident.add-dialog.add-incident") as string}
                       size="md"
                     />
                   </div>

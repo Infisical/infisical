@@ -1,7 +1,7 @@
-import { Dispatch, SetStateAction, useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
+import { Dispatch, SetStateAction, useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/router";
 
-import { leaveConfirmDefaultMessage } from '@app/const';
+import { leaveConfirmDefaultMessage } from "@app/const";
 
 type LeaveConfirmProps = {
   initialValue: boolean;
@@ -43,12 +43,12 @@ export function useLeaveConfirm({
   );
 
   useEffect(() => {
-    router.events.on('routeChangeStart', onRouteChangeStart);
-    window.addEventListener('beforeunload', handleWindowClose);
+    router.events.on("routeChangeStart", onRouteChangeStart);
+    window.addEventListener("beforeunload", handleWindowClose);
 
     return () => {
-      router.events.off('routeChangeStart', onRouteChangeStart);
-      window.removeEventListener('beforeunload', handleWindowClose);
+      router.events.off("routeChangeStart", onRouteChangeStart);
+      window.removeEventListener("beforeunload", handleWindowClose);
     };
   }, [onRouteChangeStart, handleWindowClose]);
 

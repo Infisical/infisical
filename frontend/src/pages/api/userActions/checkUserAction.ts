@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This route registers a certain action for a user
@@ -8,21 +8,21 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const checkUserAction = ({ action }: { action: string }) =>
   SecurityClient.fetchCall(
-    `/api/v1/user-action` +
+    "/api/v1/user-action" +
       `?${new URLSearchParams({
         action
       })}`,
     {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json"
       }
     }
   ).then(async (res) => {
     if (res && res.status === 200) {
       return (await res.json()).userAction;
     }
-    console.log('Failed to check a user action');
+    console.log("Failed to check a user action");
     return undefined;
   });
 

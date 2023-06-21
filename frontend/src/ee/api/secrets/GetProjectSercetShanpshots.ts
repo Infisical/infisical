@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface WorkspaceProps {
   workspaceId: string;
@@ -21,16 +21,16 @@ const getProjectSecretShanpshots = async ({ workspaceId, offset, limit }: Worksp
       limit: String(limit)
     })}`,
     {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json"
       }
     }
   ).then(async (res) => {
     if (res && res.status === 200) {
       return (await res.json()).secretSnapshots;
     }
-    console.log('Failed to get project secret snapshots');
+    console.log("Failed to get project secret snapshots");
     return undefined;
   });
 

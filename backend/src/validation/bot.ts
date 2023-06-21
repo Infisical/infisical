@@ -1,25 +1,25 @@
-import { Types } from 'mongoose';
+import { Types } from "mongoose";
 import {
-    IUser,
+    Bot,
     IServiceAccount,
     IServiceTokenData,
-    Bot,
-    User,
+    IUser,
     ServiceAccount,
-    ServiceTokenData
-} from '../models';
-import { validateServiceAccountClientForWorkspace } from './serviceAccount';
-import { validateUserClientForWorkspace } from './user';
+    ServiceTokenData,
+    User,
+} from "../models";
+import { validateServiceAccountClientForWorkspace } from "./serviceAccount";
+import { validateUserClientForWorkspace } from "./user";
 import {
+    BotNotFoundError,
     UnauthorizedRequestError,
-    BotNotFoundError
-} from '../utils/errors';
+} from "../utils/errors";
 import {
+    AUTH_MODE_API_KEY,
     AUTH_MODE_JWT,
     AUTH_MODE_SERVICE_ACCOUNT,
     AUTH_MODE_SERVICE_TOKEN,
-    AUTH_MODE_API_KEY
-} from '../variables';
+} from "../variables";
 
 /**
  * Validate authenticated clients for bot with id [botId] based

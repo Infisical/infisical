@@ -1,12 +1,12 @@
-import { useEffect } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
-import { faCheck } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import { useEffect } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import { faCheck } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
-import { Button, FormControl, Input } from '@app/components/v2';
+import { Button, FormControl, Input } from "@app/components/v2";
 
 type Props = {
   orgName?: string;
@@ -14,7 +14,7 @@ type Props = {
 };
 
 const formSchema = yup.object({
-  name: yup.string().required().label('Project Name')
+  name: yup.string().required().label("Project Name")
 });
 
 type FormData = yup.InferType<typeof formSchema>;
@@ -39,7 +39,7 @@ export const OrgNameChangeSection = ({ onOrgNameChange, orgName }: Props): JSX.E
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
       <div className="mb-6 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pb-6 pt-3">
-        <p className="mb-4 mt-2 text-xl font-semibold">{t('common.display-name')}</p>
+        <p className="mb-4 mt-2 text-xl font-semibold">{t("common.display-name")}</p>
         <div className="mb-2 w-full max-w-lg">
           <Controller
             defaultValue=""
@@ -61,7 +61,7 @@ export const OrgNameChangeSection = ({ onOrgNameChange, orgName }: Props): JSX.E
           isDisabled={!isDirty || isSubmitting}
           leftIcon={<FontAwesomeIcon icon={faCheck} />}
         >
-          {t('common.save-changes')}
+          {t("common.save-changes")}
         </Button>
       </div>
     </form>

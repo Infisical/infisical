@@ -1,6 +1,6 @@
-import { Request, Response } from 'express';
-import Stripe from 'stripe';
-import { getStripeSecretKey, getStripeWebhookSecret } from '../../../config';
+import { Request, Response } from "express";
+import Stripe from "stripe";
+import { getStripeSecretKey, getStripeWebhookSecret } from "../../../config";
 
 /**
  * Handle service provisioning/un-provisioning via Stripe
@@ -10,11 +10,11 @@ import { getStripeSecretKey, getStripeWebhookSecret } from '../../../config';
  */
 export const handleWebhook = async (req: Request, res: Response) => {
   const stripe = new Stripe(await getStripeSecretKey(), {
-    apiVersion: '2022-08-01'
+    apiVersion: "2022-08-01",
   });
 
   // check request for valid stripe signature
-  const sig = req.headers['stripe-signature'] as string;
+  const sig = req.headers["stripe-signature"] as string;
   const event = stripe.webhooks.constructEvent(
     req.body,
     sig,
@@ -22,7 +22,7 @@ export const handleWebhook = async (req: Request, res: Response) => {
   );
 
 	switch (event.type) {
-		case '':
+		case "":
 			break;
 		default:
 	}

@@ -1,1 +1,1 @@
-export { DeleteActionModal } from './DeleteActionModal';
+export { DeleteActionModal } from "./DeleteActionModal";

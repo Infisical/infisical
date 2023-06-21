@@ -1,1 +1,1 @@
-export { OrgServiceAccountsTable } from './OrgServiceAccountsTable';
+export { OrgServiceAccountsTable } from "./OrgServiceAccountsTable";

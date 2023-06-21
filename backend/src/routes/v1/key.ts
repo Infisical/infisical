@@ -1,39 +1,39 @@
-import express from 'express';
+import express from "express";
 const router = express.Router();
 import {
 	requireAuth,
 	requireWorkspaceAuth,
-	validateRequest
-} from '../../middleware';
-import { body, param } from 'express-validator';
-import { ADMIN, MEMBER, AUTH_MODE_JWT } from '../../variables';
-import { keyController } from '../../controllers/v1';
+	validateRequest,
+} from "../../middleware";
+import { body, param } from "express-validator";
+import { ADMIN, AUTH_MODE_JWT, MEMBER } from "../../variables";
+import { keyController } from "../../controllers/v1";
 
 router.post(
-	'/:workspaceId',
+	"/:workspaceId",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT]
+        acceptedAuthModes: [AUTH_MODE_JWT],
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		locationWorkspaceId: 'params'
+		locationWorkspaceId: "params",
 	}),
-	param('workspaceId').exists().trim(),
-	body('key').exists(),
+	param("workspaceId").exists().trim(),
+	body("key").exists(),
 	validateRequest,
 	keyController.uploadKey
 );
 
 router.get(
-	'/:workspaceId/latest',
+	"/:workspaceId/latest",
 	requireAuth({
-        acceptedAuthModes: [AUTH_MODE_JWT]
+        acceptedAuthModes: [AUTH_MODE_JWT],
     }),
 	requireWorkspaceAuth({
 		acceptedRoles: [ADMIN, MEMBER],
-		locationWorkspaceId: 'params'
+		locationWorkspaceId: "params",
 	}),
-	param('workspaceId'),
+	param("workspaceId"),
 	validateRequest,
 	keyController.getLatestKey
 );

@@ -1,8 +1,8 @@
-import Image from 'next/image';
-import { faCheck, faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import Image from "next/image";
+import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import deleteIntegrationAuth from '../../pages/api/integrations/DeleteIntegrationAuth';
+import deleteIntegrationAuth from "../../pages/api/integrations/DeleteIntegrationAuth";
 
 interface IntegrationOption {
   clientId: string;
@@ -44,8 +44,8 @@ const CloudIntegration = ({
       tabIndex={0}
       className={`relative ${
         cloudIntegrationOption.isAvailable
-          ? 'cursor-pointer duration-200 hover:bg-mineshaft-700'
-          : 'opacity-50'
+          ? "cursor-pointer duration-200 hover:bg-mineshaft-700"
+          : "opacity-50"
       } flex h-32 flex-row items-center rounded-md bg-mineshaft-800 border border-mineshaft-600 p-4`}
       onClick={() => {
         if (!cloudIntegrationOption.isAvailable) return;
@@ -60,11 +60,11 @@ const CloudIntegration = ({
         width={70}
         alt="integration logo"
       />
-      {cloudIntegrationOption.name.split(' ').length > 2 ? (
+      {cloudIntegrationOption.name.split(" ").length > 2 ? (
         <div className="ml-4 max-w-xs text-3xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
-          <div>{cloudIntegrationOption.name.split(' ')[0]}</div>
+          <div>{cloudIntegrationOption.name.split(" ")[0]}</div>
           <div className="text-base">
-            {cloudIntegrationOption.name.split(' ')[1]} {cloudIntegrationOption.name.split(' ')[2]}
+            {cloudIntegrationOption.name.split(" ")[1]} {cloudIntegrationOption.name.split(" ")[2]}
           </div>
         </div>
       ) : (

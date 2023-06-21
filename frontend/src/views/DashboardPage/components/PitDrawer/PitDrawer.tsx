@@ -1,9 +1,9 @@
-import { Fragment, useCallback } from 'react';
-import { InfiniteData } from '@tanstack/react-query';
+import { Fragment, useCallback } from "react";
+import { InfiniteData } from "@tanstack/react-query";
 
-import { Button, Drawer, DrawerContent } from '@app/components/v2';
-import timeSince from '@app/ee/utilities/timeSince';
-import { TWorkspaceSecretSnapshot } from '@app/hooks/api/secretSnapshots/types';
+import { Button, Drawer, DrawerContent } from "@app/components/v2";
+import timeSince from "@app/ee/utilities/timeSince";
+import { TWorkspaceSecretSnapshot } from "@app/hooks/api/secretSnapshots/types";
 
 type Props = {
   isDrawerOpen: boolean;
@@ -27,9 +27,9 @@ export const PitDrawer = ({
   fetchNextPage
 }: Props): JSX.Element => {
   const getButtonLabel = useCallback((isFirstChild: boolean, isSelectedSnapshot: boolean) => {
-    if (isFirstChild) return 'Current Version';
-    if (isSelectedSnapshot) return 'Currently Viewing';
-    return 'Explore';
+    if (isFirstChild) return "Current Version";
+    if (isSelectedSnapshot) return "Currently Viewing";
+    return "Explore";
   }, []);
 
   return (
@@ -48,13 +48,13 @@ export const PitDrawer = ({
                   isFullWidth
                   colorSchema={
                     (i === 0 && index === 0 && snapshotId === null) || snapshotId === _id
-                      ? 'primary'
-                      : 'secondary'
+                      ? "primary"
+                      : "secondary"
                   }
                   variant={
                     (i === 0 && index === 0 && snapshotId === null) || snapshotId === _id
-                      ? 'selected'
-                      : 'star'
+                      ? "selected"
+                      : "star"
                   }
                   onClick={() => onSelectSnapshot(_id)}
                 >
@@ -75,7 +75,7 @@ export const PitDrawer = ({
           isDisabled={isFetchingNextPage || !hasNextPage}
           onClick={fetchNextPage}
         >
-          {hasNextPage ? 'Load More' : 'End of history'}
+          {hasNextPage ? "Load More" : "End of history"}
         </Button>
       </DrawerContent>
     </Drawer>

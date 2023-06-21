@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { apiRequest } from '@app/config/request';
+import { apiRequest } from "@app/config/request";
 
 import {
     CreateServiceAccountDTO,
@@ -10,12 +10,12 @@ import {
     RenameServiceAccountDTO,
     ServiceAccount,
     ServiceAccountWorkspacePermission
-} from './types';
+} from "./types";
 
 const serviceAccountKeys = {
-    getServiceAccountById: (serviceAccountId: string) => [{ serviceAccountId }, 'service-account'] as const,
-    getServiceAccounts: (organizationID: string) => [{ organizationID }, 'service-accounts'] as const,
-    getServiceAccountProjectLevelPermissions: (serviceAccountId: string) => [{ serviceAccountId }, 'service-account-project-level-permissions'] as const
+    getServiceAccountById: (serviceAccountId: string) => [{ serviceAccountId }, "service-account"] as const,
+    getServiceAccounts: (organizationID: string) => [{ organizationID }, "service-accounts"] as const,
+    getServiceAccountProjectLevelPermissions: (serviceAccountId: string) => [{ serviceAccountId }, "service-account-project-level-permissions"] as const
 }
 
 const fetchServiceAccounts = async (organizationID: string) => {
@@ -54,7 +54,7 @@ export const useCreateServiceAccount = () => {
 
     return useMutation<CreateServiceAccountRes, {}, CreateServiceAccountDTO>({
         mutationFn: async (body) => {
-            const { data } = await apiRequest.post('/api/v2/service-accounts/', body);
+            const { data } = await apiRequest.post("/api/v2/service-accounts/", body);
             return data;
         },
         onSuccess: ({ serviceAccount }) => {

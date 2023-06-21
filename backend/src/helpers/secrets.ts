@@ -1,45 +1,45 @@
 import { Types } from "mongoose";
 import {
   CreateSecretParams,
-  GetSecretsParams,
-  GetSecretParams,
-  UpdateSecretParams,
   DeleteSecretParams,
-} from '../interfaces/services/SecretService';
+  GetSecretParams,
+  GetSecretsParams,
+  UpdateSecretParams,
+} from "../interfaces/services/SecretService";
 import {
-  Secret,
   ISecret,
+  Secret,
   SecretBlindIndexData,
   ServiceTokenData,
 } from "../models";
 import { SecretVersion } from "../ee/models";
 import {
   BadRequestError,
-  SecretNotFoundError,
-  SecretBlindIndexDataNotFoundError,
   InternalServerError,
+  SecretBlindIndexDataNotFoundError,
+  SecretNotFoundError,
   UnauthorizedRequestError,
 } from "../utils/errors";
 import {
-  SECRET_PERSONAL,
-  SECRET_SHARED,
   ACTION_ADD_SECRETS,
+  ACTION_DELETE_SECRETS,
   ACTION_READ_SECRETS,
   ACTION_UPDATE_SECRETS,
-  ACTION_DELETE_SECRETS,
   ALGORITHM_AES_256_GCM,
-  ENCODING_SCHEME_UTF8,
   ENCODING_SCHEME_BASE64,
+  ENCODING_SCHEME_UTF8,
+  SECRET_PERSONAL,
+  SECRET_SHARED,
 } from "../variables";
 import crypto from "crypto";
 import * as argon2 from "argon2";
 import {
-  encryptSymmetric128BitHexKeyUTF8,
   decryptSymmetric128BitHexKeyUTF8,
-} from '../utils/crypto';
-import { TelemetryService } from '../services';
-import { getEncryptionKey, client, getRootEncryptionKey } from "../config";
-import { EESecretService, EELogService } from "../ee/services";
+  encryptSymmetric128BitHexKeyUTF8,
+} from "../utils/crypto";
+import { TelemetryService } from "../services";
+import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
+import { EELogService, EESecretService } from "../ee/services";
 import {
   getAuthDataPayloadIdObj,
   getAuthDataPayloadUserObj,
@@ -56,7 +56,7 @@ import { getFolderIdFromServiceToken } from "../services/FolderService";
  */
 export const repackageSecretToRaw = ({
   secret,
-  key
+  key,
 }: {
   secret: ISecret;
   key: string;
@@ -66,24 +66,24 @@ export const repackageSecretToRaw = ({
     ciphertext: secret.secretKeyCiphertext,
     iv: secret.secretKeyIV,
     tag: secret.secretKeyTag,
-    key
+    key,
   });
 
   const secretValue = decryptSymmetric128BitHexKeyUTF8({
     ciphertext: secret.secretValueCiphertext,
     iv: secret.secretValueIV,
     tag: secret.secretValueTag,
-    key
+    key,
   });
 
-  let secretComment: string = '';
+  let secretComment = "";
 
   if (secret.secretCommentCiphertext && secret.secretCommentIV && secret.secretCommentTag) {
     secretComment = decryptSymmetric128BitHexKeyUTF8({
       ciphertext: secret.secretCommentCiphertext,
       iv: secret.secretCommentIV,
       tag: secret.secretCommentTag,
-      key
+      key,
     });
   }
 
@@ -96,7 +96,7 @@ export const repackageSecretToRaw = ({
     user: secret.user,
     secretKey,
     secretValue,
-    secretComment
+    secretComment,
   });
 }
 
@@ -944,6 +944,6 @@ export const deleteSecretHelper = async ({
 
   return ({
     secrets,
-    secret
+    secret,
   });
 };

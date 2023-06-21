@@ -1,5 +1,5 @@
-import Head from 'next/head';
-import Image from 'next/image';
+import Head from "next/head";
+import Image from "next/image";
 
 /**
  * This is the page that shows up when a user's invitation

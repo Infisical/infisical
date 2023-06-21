@@ -1,1 +1,1 @@
-export { EnvComparisonRow } from './EnvComparisonRow';
+export { EnvComparisonRow } from "./EnvComparisonRow";

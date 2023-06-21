@@ -1,18 +1,18 @@
-import { useState } from 'react';
-import { Controller,useForm } from 'react-hook-form';
+import { useState } from "react";
+import { Controller,useForm } from "react-hook-form";
 import {
     faKey,
     faMagnifyingGlass,
     faPlus,
-    faTrash} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+    faTrash} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
 import { 
     decryptAssymmetric,
     encryptAssymmetric,
-    verifyPrivateKey} from '@app/components/utilities/cryptography/crypto';
+    verifyPrivateKey} from "@app/components/utilities/cryptography/crypto";
 import {
     Button,
     Checkbox,
@@ -33,21 +33,21 @@ import {
     Td,
     Th,
     THead,
-    Tr} from '@app/components/v2';
-import { usePopUp } from '@app/hooks';
+    Tr} from "@app/components/v2";
+import { usePopUp } from "@app/hooks";
 import {
     useCreateServiceAccountProjectLevelPermission,
     useDeleteServiceAccountProjectLevelPermission,
     useGetServiceAccountById,
     useGetServiceAccountProjectLevelPermissions,
     useGetUserWorkspaces
-} from '@app/hooks/api';
-import getLatestFileKey from '@app/pages/api/workspace/getLatestFileKey';
+} from "@app/hooks/api";
+import getLatestFileKey from "@app/pages/api/workspace/getLatestFileKey";
 
 const createProjectLevelPermissionSchema = yup.object({
-    privateKey: yup.string().required().label('Private Key'),
-    workspace: yup.string().required().label('Workspace'),
-    environment: yup.string().required().label('Environment'),
+    privateKey: yup.string().required().label("Private Key"),
+    workspace: yup.string().required().label("Workspace"),
+    environment: yup.string().required().label("Environment"),
     permissions: yup.object().shape({
         read: yup.boolean().required(),
         write: yup.boolean().required()
@@ -65,7 +65,7 @@ export const SAProjectLevelPermissionsTable = ({
 }: Props): JSX.Element => {
     const { data: serviceAccount } = useGetServiceAccountById(serviceAccountId);
     const { data: userWorkspaces, isLoading: isUserWorkspacesLoading } = useGetUserWorkspaces();
-    const [searchPermissions, setSearchPermissions] = useState('');
+    const [searchPermissions, setSearchPermissions] = useState("");
 
     const { data: serviceAccountWorkspacePermissions, isLoading: isPermissionsLoading } = useGetServiceAccountProjectLevelPermissions(serviceAccountId);
     
@@ -73,8 +73,8 @@ export const SAProjectLevelPermissionsTable = ({
     const deleteServiceAccountProjectLevelPermission = useDeleteServiceAccountProjectLevelPermission();
 
     const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
-        'addProjectLevelPermission',
-        'removeProjectLevelPermission',
+        "addProjectLevelPermission",
+        "removeProjectLevelPermission",
     ] as const);
     
     const [, setSelectedWorkspace] = useState<undefined | string>(undefined);
@@ -106,7 +106,7 @@ export const SAProjectLevelPermissionsTable = ({
             publicKey: serviceAccount.publicKey
         });
         
-        const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+        const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
 
         const key = decryptAssymmetric({
             ciphertext: latestKey.encryptedKey,
@@ -130,7 +130,7 @@ export const SAProjectLevelPermissionsTable = ({
             encryptedKey: ciphertext,
             nonce
         });
-        handlePopUpClose('addProjectLevelPermission');
+        handlePopUpClose("addProjectLevelPermission");
     }
     
     const onRemoveProjectLevelPermission = async () => {
@@ -139,7 +139,7 @@ export const SAProjectLevelPermissionsTable = ({
            serviceAccountId,
            serviceAccountWorkspacePermissionId
         });
-        handlePopUpClose('removeProjectLevelPermission');
+        handlePopUpClose("removeProjectLevelPermission");
     }
 
     return (
@@ -157,7 +157,7 @@ export const SAProjectLevelPermissionsTable = ({
                 <Button
                     leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     onClick={() => {
-                        handlePopUpOpen('addProjectLevelPermission')
+                        handlePopUpOpen("addProjectLevelPermission")
                         reset();
                     }}
                 >
@@ -208,7 +208,7 @@ export const SAProjectLevelPermissionsTable = ({
                                             <IconButton
                                                 ariaLabel="delete"
                                                 colorSchema="danger"
-                                                onClick={() => handlePopUpOpen('removeProjectLevelPermission', { _id })}
+                                                onClick={() => handlePopUpOpen("removeProjectLevelPermission", { _id })}
                                             >
                                                 <FontAwesomeIcon icon={faTrash} />
                                             </IconButton>
@@ -230,7 +230,7 @@ export const SAProjectLevelPermissionsTable = ({
             <Modal
                 isOpen={popUp?.addProjectLevelPermission?.isOpen}
                 onOpenChange={(isOpen) => {
-                    handlePopUpToggle('addProjectLevelPermission', isOpen);
+                    handlePopUpToggle("addProjectLevelPermission", isOpen);
                 }}
             >
                 <ModalContent
@@ -337,12 +337,12 @@ export const SAProjectLevelPermissionsTable = ({
                             render={({ field: { onChange, value }, fieldState: { error }}) => { 
                                 const options = [
                                     {
-                                        label: 'Read (default)',
-                                        value: 'read'
+                                        label: "Read (default)",
+                                        value: "read"
                                     }, 
                                     {
-                                        label: 'Write',
-                                        value: 'write'
+                                        label: "Write",
+                                        value: "write"
                                     }
                                 ];
                                 
@@ -360,7 +360,7 @@ export const SAProjectLevelPermissionsTable = ({
                                                         key={optionValue}
                                                         className="data-[state=checked]:bg-primary"
                                                         isChecked={value[optionValue]}
-                                                        isDisabled={optionValue === 'read'}
+                                                        isDisabled={optionValue === "read"}
                                                         onCheckedChange={(state) => {
                                                             onChange({
                                                                 ...value,
@@ -399,7 +399,7 @@ export const SAProjectLevelPermissionsTable = ({
                 isOpen={popUp.removeProjectLevelPermission.isOpen}
                 deleteKey="remove"
                 title="Do you want to remove this permission from the service account?"
-                onChange={(isOpen) => handlePopUpToggle('removeProjectLevelPermission', isOpen)}
+                onChange={(isOpen) => handlePopUpToggle("removeProjectLevelPermission", isOpen)}
                 onDeleteApproved={onRemoveProjectLevelPermission}
             />
         </div>

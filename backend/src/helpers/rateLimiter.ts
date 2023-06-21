@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit from "express-rate-limit";
 // const MongoStore = require('rate-limit-mongo');
 
 // 200 per minute
@@ -14,11 +14,11 @@ export const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (request) => {
-    return request.path === '/healthcheck' || request.path === '/api/status'
+    return request.path === "/healthcheck" || request.path === "/api/status"
   },
   keyGenerator: (req, res) => {
     return req.realIP
-  }
+  },
 });
 
 // 50 requests per 1 hours
@@ -35,7 +35,7 @@ const authLimit = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req, res) => {
     return req.realIP
-  }
+  },
 });
 
 // 5 requests per 1 hour
@@ -52,11 +52,11 @@ export const passwordLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req, res) => {
     return req.realIP
-  }
+  },
 });
 
 export const authLimiter = (req: any, res: any, next: any) => {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === "production") {
     authLimit(req, res, next);
   } else {
     next();

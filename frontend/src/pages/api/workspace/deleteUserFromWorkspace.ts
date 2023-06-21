@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 /**
  * This function removes a certain member from a certain workspace
@@ -7,15 +7,15 @@ import SecurityClient from '@app/components/utilities/SecurityClient';
  */
 const deleteUserFromWorkspace = (membershipId: string) =>
   SecurityClient.fetchCall(`/api/v1/membership/${membershipId}`, {
-    method: 'DELETE',
+    method: "DELETE",
     headers: {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     }
   }).then(async (res) => {
     if (res && res.status === 200) {
       return res;
     }
-    console.log('Failed to delete a user from a project');
+    console.log("Failed to delete a user from a project");
     return undefined;
   });
 

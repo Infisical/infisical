@@ -1,4 +1,4 @@
-import { initProjectHelper } from '@app/helpers/project';
+import { initProjectHelper } from "@app/helpers/project";
 
 class ProjectService {
     /**

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import queryString from 'query-string';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import queryString from "query-string";
 
 import {
   Button,
@@ -10,28 +10,28 @@ import {
   Input,
   Select,
   SelectItem
-} from '../../../components/v2';
+} from "../../../components/v2";
 import {
   useGetIntegrationAuthApps,
   useGetIntegrationAuthById
-} from '../../../hooks/api/integrationAuth';
-import { useGetWorkspaceById } from '../../../hooks/api/workspace';
-import createIntegration from '../../api/integrations/createIntegration';
+} from "../../../hooks/api/integrationAuth";
+import { useGetWorkspaceById } from "../../../hooks/api/workspace";
+import createIntegration from "../../api/integrations/createIntegration";
 
 export default function RenderCreateIntegrationPage() {
   const router = useRouter();
 
-  const { integrationAuthId } = queryString.parse(router.asPath.split('?')[1]);
+  const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
 
-  const { data: workspace } = useGetWorkspaceById(localStorage.getItem('projectData.id') ?? '');
-  const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? '');
+  const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
+  const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
   const { data: integrationAuthApps } = useGetIntegrationAuthApps({
-    integrationAuthId: (integrationAuthId as string) ?? ''
+    integrationAuthId: (integrationAuthId as string) ?? ""
   });
 
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
-  const [targetApp, setTargetApp] = useState('');
-  const [secretPath, setSecretPath] = useState('/');
+  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+  const [targetApp, setTargetApp] = useState("");
+  const [secretPath, setSecretPath] = useState("/");
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function RenderCreateIntegrationPage() {
       if (integrationAuthApps.length > 0) {
         setTargetApp(integrationAuthApps[0].name);
       } else {
-        setTargetApp('none');
+        setTargetApp("none");
       }
     }
   }, [integrationAuthApps]);
@@ -76,7 +76,7 @@ export default function RenderCreateIntegrationPage() {
 
       setIsLoading(false);
 
-      router.push(`/integrations/${localStorage.getItem('projectData.id')}`);
+      router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
       console.error(err);
     }

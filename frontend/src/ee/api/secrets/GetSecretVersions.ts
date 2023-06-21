@@ -1,4 +1,4 @@
-import SecurityClient from '@app/components/utilities/SecurityClient';
+import SecurityClient from "@app/components/utilities/SecurityClient";
 
 interface SecretVersionProps {
   secretId: string;
@@ -21,16 +21,16 @@ const getSecretVersions = async ({ secretId, offset, limit }: SecretVersionProps
       limit: String(limit)
     })}`,
     {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json"
       }
     }
   ).then(async (res) => {
     if (res && res.status === 200) {
       return res.json();
     }
-    console.log('Failed to get secret version history');
+    console.log("Failed to get secret version history");
     return undefined;
   });
 

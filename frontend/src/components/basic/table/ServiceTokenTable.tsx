@@ -1,10 +1,10 @@
-import { faX } from '@fortawesome/free-solid-svg-icons';
+import { faX } from "@fortawesome/free-solid-svg-icons";
 
-import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 
-import deleteServiceToken from '../../../pages/api/serviceToken/deleteServiceToken';
-import guidGenerator from '../../utilities/randomId';
-import Button from '../buttons/Button';
+import deleteServiceToken from "../../../pages/api/serviceToken/deleteServiceToken";
+import guidGenerator from "../../utilities/randomId";
+import Button from "../buttons/Button";
 
 interface TokenProps {
   _id: string;
@@ -71,7 +71,7 @@ const ServiceTokenTable = ({ data, workspaceName, setServiceTokens }: ServiceTok
                         setServiceTokens(data.filter((token) => token._id !== row._id));
                         createNotification({
                           text: `'${row.name}' token has been revoked.`,
-                          type: 'error'
+                          type: "error"
                         });
                       }}
                       color="red"

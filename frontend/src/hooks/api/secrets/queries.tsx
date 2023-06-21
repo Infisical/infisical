@@ -1,14 +1,14 @@
 /* eslint-disable no-param-reassign */
-import { useCallback } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   decryptAssymmetric,
   decryptSymmetric
-} from '@app/components/utilities/cryptography/crypto';
-import { apiRequest } from '@app/config/request';
+} from "@app/components/utilities/cryptography/crypto";
+import { apiRequest } from "@app/config/request";
 
-import { secretSnapshotKeys } from '../secretSnapshots/queries';
+import { secretSnapshotKeys } from "../secretSnapshots/queries";
 import {
   BatchSecretDTO,
   DecryptedSecret,
@@ -16,15 +16,15 @@ import {
   EncryptedSecretVersion,
   GetProjectSecretsDTO,
   GetSecretVersionsDTO
-} from './types';
+} from "./types";
 
 export const secretKeys = {
   // this is also used in secretSnapshot part
   getProjectSecret: (workspaceId: string, env: string | string[], folderId?: string) => [
     { workspaceId, env, folderId },
-    'secrets'
+    "secrets"
   ],
-  getSecretVersion: (secretId: string) => [{ secretId }, 'secret-versions']
+  getSecretVersion: (secretId: string) => [{ secretId }, "secret-versions"]
 };
 
 const fetchProjectEncryptedSecrets = async (
@@ -33,8 +33,8 @@ const fetchProjectEncryptedSecrets = async (
   folderId?: string,
   secretPath?: string
 ) => {
-  if (typeof env === 'string') {
-    const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
+  if (typeof env === "string") {
+    const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>("/api/v2/secrets", {
       params: {
         environment: env,
         workspaceId,
@@ -45,13 +45,13 @@ const fetchProjectEncryptedSecrets = async (
     return data.secrets;
   }
 
-  if (typeof env === 'object') {
+  if (typeof env === "object") {
     let allEnvData: any = [];
 
     // eslint-disable-next-line no-restricted-syntax
     for (const envPoint of env) {
       // eslint-disable-next-line no-await-in-loop
-      const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>('/api/v2/secrets', {
+      const { data } = await apiRequest.get<{ secrets: EncryptedSecret[] }>("/api/v2/secrets", {
         params: {
           environment: envPoint,
           workspaceId,
@@ -82,7 +82,7 @@ export const useGetProjectSecrets = ({
     queryKey: secretKeys.getProjectSecret(workspaceId, env, folderId),
     queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, folderId),
     select: useCallback((data: EncryptedSecret[]) => {
-      const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
       const latestKey = decryptFileKey;
       const key = decryptAssymmetric({
         ciphertext: latestKey.encryptedKey,
@@ -129,7 +129,7 @@ export const useGetProjectSecrets = ({
           updatedAt: encSecret.updatedAt
         };
 
-        if (encSecret.type === 'personal') {
+        if (encSecret.type === "personal") {
           personalSecrets[`${decryptedSecret.key}-${decryptedSecret.env}`] = {
             id: encSecret._id,
             value: secretValue
@@ -146,7 +146,7 @@ export const useGetProjectSecrets = ({
         if (personalSecrets?.[dupKey]) {
           val.idOverride = personalSecrets[dupKey].id;
           val.valueOverride = personalSecrets[dupKey].value;
-          val.overrideAction = 'modified';
+          val.overrideAction = "modified";
         }
       });
       return { secrets: sharedSecrets };
@@ -168,7 +168,7 @@ export const useGetProjectSecretsByKey = ({
     queryKey: secretKeys.getProjectSecret(workspaceId, env, secretPath),
     queryFn: () => fetchProjectEncryptedSecrets(workspaceId, env, folderId, secretPath),
     select: useCallback((data: EncryptedSecret[]) => {
-      const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
       const latestKey = decryptFileKey;
       const key = decryptAssymmetric({
         ciphertext: latestKey.encryptedKey,
@@ -217,7 +217,7 @@ export const useGetProjectSecretsByKey = ({
           updatedAt: encSecret.updatedAt
         };
 
-        if (encSecret.type === 'personal') {
+        if (encSecret.type === "personal") {
           personalSecrets[`${decryptedSecret.key}-${decryptedSecret.env}`] = {
             id: encSecret._id,
             value: secretValue
@@ -236,7 +236,7 @@ export const useGetProjectSecretsByKey = ({
           if (personalSecrets?.[dupKey]) {
             val.idOverride = personalSecrets[dupKey].id;
             val.valueOverride = personalSecrets[dupKey].value;
-            val.overrideAction = 'modified';
+            val.overrideAction = "modified";
           }
         });
       });
@@ -264,7 +264,7 @@ export const useGetSecretVersion = (dto: GetSecretVersionsDTO) =>
     queryKey: secretKeys.getSecretVersion(dto.secretId),
     queryFn: () => fetchEncryptedSecretVersion(dto.secretId, dto.offset, dto.limit),
     select: useCallback((data: EncryptedSecretVersion[]) => {
-      const PRIVATE_KEY = localStorage.getItem('PRIVATE_KEY') as string;
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
       const latestKey = dto.decryptFileKey;
       const key = decryptAssymmetric({
         ciphertext: latestKey.encryptedKey,
@@ -293,7 +293,7 @@ export const useBatchSecretsOp = () => {
 
   return useMutation<{}, {}, BatchSecretDTO>({
     mutationFn: async (dto) => {
-      const { data } = await apiRequest.post('/api/v2/secrets/batch', dto);
+      const { data } = await apiRequest.post("/api/v2/secrets/batch", dto);
       return data;
     },
     onSuccess: (_, dto) => {

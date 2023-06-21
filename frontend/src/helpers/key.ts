@@ -1,5 +1,5 @@
-import Aes256Gcm from '@app/components/utilities/cryptography/aes-256-gcm';
-import { deriveArgonKey } from '@app/components/utilities/cryptography/crypto';
+import Aes256Gcm from "@app/components/utilities/cryptography/aes-256-gcm";
+import { deriveArgonKey } from "@app/components/utilities/cryptography/crypto";
 
 /**
  * @param {Object} obj
@@ -43,7 +43,7 @@ let privateKey;
                 tag,
                 secret: password
                 .slice(0, 32)
-                .padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), '0')
+                .padStart(32 + (password.slice(0, 32).length - new Blob([password]).size), "0")
             });
         } else if (encryptionVersion === 2 && protectedKey && protectedKeyIV && protectedKeyTag) {
             const derivedKey = await deriveArgonKey({
@@ -55,7 +55,7 @@ let privateKey;
                 hashLen: 32
             });
             
-            if (!derivedKey) throw new Error('Failed to generate derived key');
+            if (!derivedKey) throw new Error("Failed to generate derived key");
 
             const key = Aes256Gcm.decrypt({
                 ciphertext: protectedKey,
@@ -69,13 +69,13 @@ let privateKey;
                 ciphertext: encryptedPrivateKey,
                 iv,
                 tag,
-                secret: Buffer.from(key, 'hex')
+                secret: Buffer.from(key, "hex")
             });
         } else {
-            throw new Error('Insufficient details to decrypt private key');
+            throw new Error("Insufficient details to decrypt private key");
         }
     } catch (err) {
-        throw new Error('Failed to decrypt private key');
+        throw new Error("Failed to decrypt private key");
     }
 
     return privateKey;

@@ -1,16 +1,16 @@
 import { Types } from "mongoose";
-import { Secret, ISecret } from "../models";
-import { EESecretService, EELogService } from "../ee/services";
+import { ISecret, Secret } from "../models";
+import { EELogService, EESecretService } from "../ee/services";
 import { IAction, SecretVersion } from "../ee/models";
 import {
-  SECRET_SHARED,
-  SECRET_PERSONAL,
   ACTION_ADD_SECRETS,
-  ACTION_UPDATE_SECRETS,
   ACTION_DELETE_SECRETS,
   ACTION_READ_SECRETS,
+  ACTION_UPDATE_SECRETS,
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_UTF8,
+  SECRET_PERSONAL,
+  SECRET_SHARED,
 } from "../variables";
 
 interface V1PushSecret {

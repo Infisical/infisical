@@ -1,20 +1,20 @@
-import { faPlus } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import type { Meta, StoryObj } from '@storybook/react';
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type { Meta, StoryObj } from "@storybook/react";
 
-import { IconButton } from './IconButton';
+import { IconButton } from "./IconButton";
 
 const meta: Meta<typeof IconButton> = {
-  title: 'Components/IconButton',
+  title: "Components/IconButton",
   component: IconButton,
-  tags: ['v2'],
+  tags: ["v2"],
   argTypes: {
     isRounded: {
       defaultValue: true,
-      type: 'boolean'
+      type: "boolean"
     },
     ariaLabel: {
-      defaultValue: 'Some buttons...'
+      defaultValue: "Some buttons..."
     }
   }
 };
@@ -32,23 +32,23 @@ export const Primary: Story = {
 export const Secondary: Story = {
   args: {
     children: <FontAwesomeIcon icon={faPlus} />,
-    colorSchema: 'secondary',
-    variant: 'outline'
+    colorSchema: "secondary",
+    variant: "outline"
   }
 };
 
 export const Danger: Story = {
   args: {
     children: <FontAwesomeIcon icon={faPlus} />,
-    colorSchema: 'danger',
-    variant: 'solid'
+    colorSchema: "danger",
+    variant: "solid"
   }
 };
 
 export const Plain: Story = {
   args: {
     children: <FontAwesomeIcon icon={faPlus} />,
-    variant: 'plain'
+    variant: "plain"
   }
 };
 

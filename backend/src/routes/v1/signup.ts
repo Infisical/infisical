@@ -1,23 +1,23 @@
-import express from 'express';
+import express from "express";
 const router = express.Router();
-import { body } from 'express-validator';
-import { validateRequest } from '../../middleware';
-import { signupController } from '../../controllers/v1';
-import { authLimiter } from '../../helpers/rateLimiter';
+import { body } from "express-validator";
+import { validateRequest } from "../../middleware";
+import { signupController } from "../../controllers/v1";
+import { authLimiter } from "../../helpers/rateLimiter";
 
 router.post(
-	'/email/signup',
+	"/email/signup",
 	authLimiter,
-	body('email').exists().trim().notEmpty().isEmail(),
+	body("email").exists().trim().notEmpty().isEmail(),
 	validateRequest,
 	signupController.beginEmailSignup
 );
 
 router.post(
-	'/email/verify',
+	"/email/verify",
 	authLimiter,
-	body('email').exists().trim().notEmpty().isEmail(),
-	body('code').exists().trim().notEmpty(),
+	body("email").exists().trim().notEmpty().isEmail(),
+	body("code").exists().trim().notEmpty(),
 	validateRequest,
 	signupController.verifyEmailSignup
 );
