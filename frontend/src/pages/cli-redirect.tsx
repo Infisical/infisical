@@ -13,12 +13,6 @@ export default function CliRedirect() {
         <p className='mt-2 mb-1 text-lg'>
           You&apos;ve successfully logged into infisical-cli
         </p>
-        <Image
-          src='/images/dragon-404.svg'
-          height={554}
-          width={942}
-          alt='infisical dragon - page not found'
-         />
       </div>
     </div>
   );
