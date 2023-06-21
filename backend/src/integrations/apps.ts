@@ -13,6 +13,8 @@ import {
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
+  INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUDFLARE_PAGES_API_URL,
   INTEGRATION_GITLAB_API_URL,
   INTEGRATION_HEROKU,
   INTEGRATION_HEROKU_API_URL,
@@ -128,6 +130,12 @@ const getApps = async ({
       apps = await getAppsCheckly({
         accessToken,
       });
+      break;
+    case INTEGRATION_CLOUDFLARE_PAGES:
+      apps = await getAppsCloudflarePages({
+        accessToken,
+        accountId: accessId
+      })
       break;
   }
 
@@ -637,5 +645,38 @@ const getAppsCheckly = async ({ accessToken }: { accessToken: string }) => {
 
   return apps;
 };
+
+/**
+ * Return list of projects for the Cloudflare Pages integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - api key for the Cloudflare API
+ * @returns {Object[]} apps - Cloudflare Pages projects
+ * @returns {String} apps.name - name of Cloudflare Pages project
+ */
+const getAppsCloudflarePages = async ({ 
+    accessToken,
+    accountId
+}: {
+    accessToken: string;
+    accountId?: string;
+}) => {
+    const { data } = await standardRequest.get(
+        `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accountId}/pages/projects`,
+        {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept": "application/json",
+            },
+        }
+    );
+
+    const apps = data.result.map((a: any) => {
+        return {
+            name: a.name,
+            appId: a.id,
+        };
+    });
+    return apps;
+}
 
 export { getApps };

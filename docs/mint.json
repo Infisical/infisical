@@ -196,6 +196,7 @@
         "integrations/cloud/railway",
         "integrations/cloud/flyio",
         "integrations/cloud/supabase",
+        "integrations/cloud/cloudflare-pages",
         "integrations/cloud/checkly",
         "integrations/cloud/hashicorp-vault",
         "integrations/cloud/azure-key-vault",

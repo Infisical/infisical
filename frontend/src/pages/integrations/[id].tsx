@@ -220,6 +220,9 @@ export default function Integrations() {
         case "hashicorp-vault":
           link = `${window.location.origin}/integrations/hashicorp-vault/authorize`;
           break;
+        case "cloudflare-pages":
+          link = `${window.location.origin}/integrations/cloudflare-pages/authorize`;
+          break;
         default:
           break;
       }
@@ -283,6 +286,9 @@ export default function Integrations() {
           break;
         case "hashicorp-vault":
           link = `${window.location.origin}/integrations/hashicorp-vault/create?integrationAuthId=${integrationAuth._id}`;
+          break;
+        case "cloudflare-pages":
+          link = `${window.location.origin}/integrations/cloudflare-pages/create?integrationAuthId=${integrationAuth._id}`;
           break;
         default:
           break;

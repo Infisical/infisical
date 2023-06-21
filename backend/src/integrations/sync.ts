@@ -34,6 +34,8 @@ import {
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_SUPABASE,
   INTEGRATION_SUPABASE_API_URL,
+  INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUDFLARE_PAGES_API_URL,
   INTEGRATION_TRAVISCI,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
@@ -208,6 +210,14 @@ const syncSecrets = async ({
           secrets,
           accessId,
           accessToken,
+        });
+        break;
+      case INTEGRATION_CLOUDFLARE_PAGES:
+        await syncSecretsCloudflarePages({
+            integration,
+            secrets,
+            accessId,
+            accessToken
         });
         break;
     }
@@ -1832,5 +1842,75 @@ const syncSecretsHashiCorpVault = async ({
     }
   );
 };
+
+/**
+ * Sync/push [secrets] to Cloudflare Pages project with name [integration.app]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - API token for Cloudflare
+ */
+const syncSecretsCloudflarePages = async ({
+    integration,
+    secrets,
+    accessId,
+    accessToken,
+}: {
+    integration: IIntegration;
+    secrets: any;
+    accessId: string | null;
+    accessToken: string;
+}) => {
+
+  // get secrets from cloudflare pages
+  const getSecretsRes = (
+      await standardRequest.get(
+          `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`,
+          {
+              headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Accept": "application/json",
+              },
+          }
+      )
+  )
+  .data.result['deployment_configs'][integration.targetEnvironment]['env_vars'];
+
+  // copy the secrets object, so we can set deleted keys to null
+  const secretsObj: any = {...secrets};
+
+  for (const [key, val] of Object.entries(secretsObj)) {
+      secretsObj[key] = { type: "secret_text", value: val };
+  }
+
+  if (getSecretsRes) {
+      for await (const key of Object.keys(getSecretsRes)) {
+          if (!(key in secrets)) {
+              // case: secret does not exist in infisical
+              // -> delete secret from cloudflare pages
+              secretsObj[key] = null;
+          }
+      }
+  }
+
+  const data = {
+    "deployment_configs": {
+      [integration.targetEnvironment]: {
+        "env_vars": secretsObj
+      }
+    }
+  };
+
+  await standardRequest.patch(
+      `${INTEGRATION_CLOUDFLARE_PAGES_API_URL}/client/v4/accounts/${accessId}/pages/projects/${integration.app}`,
+      data,
+      {
+          headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Accept": "application/json",
+          },
+      }
+  );
+}
 
 export { syncSecrets };
