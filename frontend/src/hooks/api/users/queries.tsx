@@ -25,7 +25,7 @@ const userKeys = {
 };
 
 export const fetchUserDetails = async () => {
-  const { data } = await apiRequest.get<{ user: User }>('/api/v1/user');
+  const { data } = await apiRequest.get<{ user: User }>("/api/v1/user");
 
   return data.user;
 };

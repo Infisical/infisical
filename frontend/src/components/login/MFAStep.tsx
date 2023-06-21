@@ -1,13 +1,13 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import React, { useState } from 'react';
-import ReactCodeInput from 'react-code-input';
-import { useTranslation } from 'react-i18next';
-import { useRouter } from 'next/router';
+import React, { useState } from "react";
+import ReactCodeInput from "react-code-input";
+import { useTranslation } from "react-i18next";
+import { useRouter } from "next/router";
 import axios from "axios"
 
-import attemptLoginMfa from '@app/components/utilities/attemptLoginMfa';
-import attemptCliLoginMfa from '@app/components/utilities/attemptCliLoginMfa'
-import { useSendMfaToken } from '@app/hooks/api/auth';
+import attemptCliLoginMfa from "@app/components/utilities/attemptCliLoginMfa"
+import attemptLoginMfa from "@app/components/utilities/attemptLoginMfa";
+import { useSendMfaToken } from "@app/hooks/api/auth";
 
 import Error from "../basic/Error";
 import { Button } from "../v2";
@@ -78,11 +78,11 @@ export default function MFAStep({
       }
 
       setIsLoading(true);
-      const queryParams = new URLSearchParams(location.search)
+      const queryParams = new URLSearchParams(window.location.search)
       if (queryParams && queryParams.get("callback_port")){
         const callbackPort = queryParams.get("callback_port")
 
-        //attemptCliLogin
+        // attemptCliLogin
         const isCliLoginSuccessful = await attemptCliLoginMfa({
           email,
           password,
@@ -94,11 +94,11 @@ export default function MFAStep({
           // case: login was successful
           const cliUrl = `http://localhost:${callbackPort}`
 
-          //send request to server endpoint 
+          // send request to server endpoint 
           const instance = axios.create()
-          const cliResp = await instance.post(cliUrl,{...isCliLoginSuccessful.loginResponse,email})
+          await instance.post(cliUrl,{...isCliLoginSuccessful.loginResponse,email})
 
-          //cli page
+          // cli page
           router.push("/cli-redirect");
         }
       }else{
@@ -111,7 +111,7 @@ export default function MFAStep({
   
         if (isLoginSuccessful) {
           setIsLoading(false);
-          router.push(`/dashboard/${localStorage.getItem('projectData.id')}`);
+          router.push(`/dashboard/${localStorage.getItem("projectData.id")}`);
         }
       }
       

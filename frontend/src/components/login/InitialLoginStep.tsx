@@ -1,16 +1,16 @@
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import Link from "next/link";
+import { useRouter } from "next/router";
 import axios from "axios"
 
 import attemptLogin from "@app/components/utilities/attemptLogin";
 
 import Error from "../basic/Error";
+import attemptCliLogin from "../utilities/attemptCliLogin";
 // import { faGoogle } from '@fortawesome/free-brands-svg-icons';
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Input } from '../v2';
-import attemptCliLogin from '../utilities/attemptCliLogin';
+import { Button, Input } from "../v2";
 
 export default function InitialLoginStep({
     setStep,
@@ -38,11 +38,11 @@ export default function InitialLoginStep({
             }
 
             setIsLoading(true);
-            const queryParams = new URLSearchParams(location.search)
+            const queryParams = new URLSearchParams(window.location.search)
             if (queryParams && queryParams.get("callback_port")) {
                 const callbackPort = queryParams.get("callback_port")
 
-                //attemptCliLogin
+                // attemptCliLogin
                 const isCliLoginSuccessful = await attemptCliLogin({
                     email,
                     password,
@@ -59,15 +59,15 @@ export default function InitialLoginStep({
                     // case: login was successful
                     const cliUrl = `http://localhost:${callbackPort}`
 
-                    //send request to server endpoint
+                    // send request to server endpoint
                     const instance = axios.create()
-                    const cliResp = await instance.post(cliUrl,{...isCliLoginSuccessful.loginResponse})
+                    const cliResp = await instance.post(cliUrl, { ...isCliLoginSuccessful.loginResponse })
                     console.log(cliResp)
 
-                    //cli page
+                    // cli page
                     router.push("/cli-redirect");
 
-                    //on success, router.push to cli Login Successful page
+                    // on success, router.push to cli Login Successful page
 
                 }
             } else {
@@ -86,7 +86,7 @@ export default function InitialLoginStep({
                     }
 
                     // case: login does not require MFA step
-                    router.push(`/dashboard/${localStorage.getItem('projectData.id')}`);
+                    router.push(`/dashboard/${localStorage.getItem("projectData.id")}`);
                 }
             }
 
@@ -127,18 +127,18 @@ export default function InitialLoginStep({
             </div>
         </div>
         <div className="relative pt-2 md:pt-0 md:px-1.5 flex items-center justify-center w-1/4 lg:w-1/6 min-w-[21.3rem] md:min-w-[22rem] mx-auto rounded-lg max-h-24 md:max-h-28">
-          <div className="flex items-center justify-center w-full md:p-2 rounded-lg max-h-24 md:max-h-28">
-            <Input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              placeholder="Enter your password..."
-              isRequired
-              autoComplete="current-password"
-              id="current-password"
-              className="h-12 select:-webkit-autofill:focus"
-            />
-          </div>
+            <div className="flex items-center justify-center w-full md:p-2 rounded-lg max-h-24 md:max-h-28">
+                <Input
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    type="password"
+                    placeholder="Enter your password..."
+                    isRequired
+                    autoComplete="current-password"
+                    id="current-password"
+                    className="h-12 select:-webkit-autofill:focus"
+                />
+            </div>
         </div>
         {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
         <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
