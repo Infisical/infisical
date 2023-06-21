@@ -1,30 +1,31 @@
-import { useState, useEffect } from "react";
+import { useEffect,useState } from "react";
 import { useRouter } from "next/router";
-import { useGetWorkspaceById } from "~/hooks/api";
 import queryString from "query-string";
-import { useGetIntegrationAuthApps, useGetIntegrationAuthById } from "~/hooks/api/integrationAuth";
-import createIntegration from "~/pages/api/integrations/createIntegration";
-import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "~/components/v2";
+
+import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "../../../components/v2";
+import { useGetWorkspaceById } from "../../../hooks/api";
+import { useGetIntegrationAuthApps, useGetIntegrationAuthById } from "../../../hooks/api/integrationAuth";
+import createIntegration from "../../api/integrations/createIntegration";
 
 const cloudflareEnvironments = [
-    { name: 'Production', slug: 'production' },
-    { name: 'Preview', slug: 'preview' }
+    { name: "Production", slug: "production" },
+    { name: "Preview", slug: "preview" }
 ];
 
 export default function CloudflarePagesIntegrationPage() {
     const router = useRouter();
 
-    const { integrationAuthId } = queryString.parse(router.asPath.split('?')[1]);
-    const { data: workspace } = useGetWorkspaceById(localStorage.getItem('projectData.id') ?? '');
-    const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? '');
+    const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
+    const { data: workspace } = useGetWorkspaceById(localStorage.getItem("projectData.id") ?? "");
+    const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
     const { data: integrationAuthApps } = useGetIntegrationAuthApps({
-        integrationAuthId: (integrationAuthId as string) ?? ''
+        integrationAuthId: (integrationAuthId as string) ?? ""
     });
 
-    const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState('');
-    const [targetApp, setTargetApp] = useState('');
-    const [targetAppId, setTargetAppId] = useState('');
-    const [targetEnvironment, setTargetEnvironment] = useState('');
+    const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
+    const [targetApp, setTargetApp] = useState("");
+    const [targetAppId, setTargetAppId] = useState("");
+    const [targetEnvironment, setTargetEnvironment] = useState("");
 
     const [isLoading, setIsLoading] = useState(false);
 
@@ -41,7 +42,7 @@ export default function CloudflarePagesIntegrationPage() {
                 setTargetAppId(String(integrationAuthApps[0].appId));
                 setTargetEnvironment(cloudflareEnvironments[0].slug);
             } else {
-                setTargetApp('none');
+                setTargetApp("none");
                 setTargetEnvironment(cloudflareEnvironments[0].slug);
             }
         }
@@ -66,12 +67,12 @@ export default function CloudflarePagesIntegrationPage() {
                 owner: null,
                 path: null,
                 region: null,
-                secretPath: '/',
+                secretPath: "/",
             });
 
             setIsLoading(false);
 
-            router.push(`/integrations/${localStorage.getItem('projectData.id')}`);
+            router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
         } catch(err) {
             console.error(err);
         }

@@ -1,39 +1,40 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
-import { Card, CardTitle, FormControl, Input, Button } from "../../../components/v2";
-import saveIntegrationAccessToken from "~/pages/api/integrations/saveIntegrationAccessToken";
+
+import { Button,Card, CardTitle, FormControl, Input } from "../../../components/v2";
+import saveIntegrationAccessToken from "../../api/integrations/saveIntegrationAccessToken";
 
 export default function CloudflarePagesIntegrationPage() {
     const router = useRouter();
-    const [accessKey, setAccessKey] = useState('');
-    const [accessKeyErrorText, setAccessKeyErrorText] = useState('');
-    const [accountId, setAccountId] = useState('');
-    const [accountIdErrorText, setAccountIdErrorText] = useState('');
+    const [accessKey, setAccessKey] = useState("");
+    const [accessKeyErrorText, setAccessKeyErrorText] = useState("");
+    const [accountId, setAccountId] = useState("");
+    const [accountIdErrorText, setAccountIdErrorText] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
     const handleButtonClick = async () => {
         try {
-            setAccessKeyErrorText('');
-            setAccountIdErrorText('');
+            setAccessKeyErrorText("");
+            setAccountIdErrorText("");
             if (accessKey.length === 0 || accountId.length === 0) {
-                if (accessKey.length === 0) setAccessKeyErrorText('API token cannot be blank!');
-                if (accountId.length === 0) setAccountIdErrorText('Account ID cannot be blank!');
+                if (accessKey.length === 0) setAccessKeyErrorText("API token cannot be blank!");
+                if (accountId.length === 0) setAccountIdErrorText("Account ID cannot be blank!");
                 return;
             }
 
             setIsLoading(true);
 
             const integrationAuth = await saveIntegrationAccessToken({
-                workspaceId: localStorage.getItem('projectData.id'),
-                integration: 'cloudflare-pages',
+                workspaceId: localStorage.getItem("projectData.id"),
+                integration: "cloudflare-pages",
                 accessId: accountId,
                 accessToken: accessKey,
                 url: null,
                 namespace: null
             });
 
-            setAccessKey('');
-            setAccountId('');
+            setAccessKey("");
+            setAccountId("");
             setIsLoading(false);
 
             router.push(`/integrations/cloudflare-pages/create?integrationAuthId=${integrationAuth._id}`);
@@ -49,7 +50,7 @@ export default function CloudflarePagesIntegrationPage() {
                 <FormControl
                     label="Cloudflare Pages API token"
                     errorText={accessKeyErrorText}
-                    isError={accessKeyErrorText !== '' ?? false}
+                    isError={accessKeyErrorText !== "" ?? false}
                     className="mx-6"
                 >
                     <Input
@@ -61,7 +62,7 @@ export default function CloudflarePagesIntegrationPage() {
                 <FormControl
                     label="Cloudflare Pages Account ID"
                     errorText={accountIdErrorText}
-                    isError={accountIdErrorText !== '' ?? false}
+                    isError={accountIdErrorText !== "" ?? false}
                     className="mx-6"
                 >
                     <Input
