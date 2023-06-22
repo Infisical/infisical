@@ -37,7 +37,6 @@ import {
   secretsFolder as v1SecretsFolder,
   serviceToken as v1ServiceTokenRouter,
   signup as v1SignupRouter,
-  stripe as v1StripeRouter,
   userAction as v1UserActionRouter,
   user as v1UserRouter,
   workspace as v1WorkspaceRouter,
@@ -123,7 +122,6 @@ const main = async () => {
   app.use("/api/v1/secret", v1SecretRouter); // deprecate
   app.use("/api/v1/service-token", v1ServiceTokenRouter); // deprecate
   app.use("/api/v1/password", v1PasswordRouter);
-  app.use("/api/v1/stripe", v1StripeRouter);
   app.use("/api/v1/integration", v1IntegrationRouter);
   app.use("/api/v1/integration-auth", v1IntegrationAuthRouter);
   app.use("/api/v1/folders", v1SecretsFolder);

@@ -10,7 +10,6 @@ import * as passwordController from "./passwordController";
 import * as secretController from "./secretController";
 import * as serviceTokenController from "./serviceTokenController";
 import * as signupController from "./signupController";
-import * as stripeController from "./stripeController";
 import * as userActionController from "./userActionController";
 import * as userController from "./userController";
 import * as workspaceController from "./workspaceController";
@@ -28,7 +27,6 @@ export {
 	secretController,
 	serviceTokenController,
 	signupController,
-	stripeController,
 	userActionController,
 	userController,
 	workspaceController,

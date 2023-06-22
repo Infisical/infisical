@@ -8,6 +8,5 @@ export * from "./organization";
 export * from "./permission";
 export * from "./secret";
 export * from "./smtp";
-export * from "./stripe";
 export * from "./token";
 export * from "./user";

@@ -39,12 +39,6 @@ declare global {
       SMTP_PASSWORD: string;
       SMTP_FROM_ADDRESS: string;
       SMTP_FROM_NAME: string;
-      STRIPE_PRODUCT_STARTER: string;
-      STRIPE_PRODUCT_TEAM: string;
-      STRIPE_PRODUCT_PRO: string;
-      STRIPE_PUBLISHABLE_KEY: string;
-      STRIPE_SECRET_KEY: string;
-      STRIPE_WEBHOOK_SECRET: string;
       TELEMETRY_ENABLED: string;
       LICENSE_KEY: string;
     }
