@@ -8,6 +8,7 @@ import {
 } from "../../middleware";
 import {
 	ADMIN, 
+	AUTH_MODE_API_KEY,
 	AUTH_MODE_JWT,
 	MEMBER,
 } from "../../variables";
@@ -44,7 +45,7 @@ router.get(
 router.get(
 	"/", 
 	requireAuth({
-		acceptedAuthModes: [AUTH_MODE_JWT],
+		acceptedAuthModes: [AUTH_MODE_JWT, AUTH_MODE_API_KEY],
 	}), 
 	workspaceController.getWorkspaces
 );
