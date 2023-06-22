@@ -12,6 +12,7 @@ export const IntercomProvider = ({ children }: { children: any }) => {
   const router = useRouter();
 
   if (typeof window !== "undefined") {
+    console.log("window is defined");
     loadIntercom();
     bootIntercom();
   }
