@@ -15,9 +15,8 @@ export const IntercomProvider = ({ children }: { children: any }) => {
   const router = useRouter();
 
   if (typeof window !== "undefined") {
-    console.log("window is defined");
     loadIntercom();
-    bootIntercom({name: `${user?.firstName || ""} ${user?.lastName || ""}`, email: user?.email || "", createdAt: user?.createdAt});
+    bootIntercom({name: `${user?.firstName || ""} ${user?.lastName || ""}`, email: user?.email || "", created_at: user?.createdAt.toISOString()});
   }
 
   useEffect(() => {
