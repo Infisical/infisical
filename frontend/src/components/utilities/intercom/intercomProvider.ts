@@ -17,7 +17,7 @@ export const IntercomProvider = ({ children }: { children: any }) => {
   if (typeof window !== "undefined") {
     console.log("window is defined");
     loadIntercom();
-    bootIntercom({name: `${user.firstName} ${user.lastName}`, email: user.email});
+    bootIntercom({name: `${user?.firstName || ""} ${user?.lastName || ""}`, email: user?.email || ""});
   }
 
   useEffect(() => {
