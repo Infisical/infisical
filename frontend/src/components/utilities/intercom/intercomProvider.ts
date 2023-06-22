@@ -16,7 +16,7 @@ export const IntercomProvider = ({ children }: { children: any }) => {
 
   if (typeof window !== "undefined") {
     loadIntercom();
-    bootIntercom({name: `${user?.firstName || ""} ${user?.lastName || ""}`, email: user?.email || "", created_at: Math.floor((user?.createdAt.getTime() || 0) / 1000)});
+    bootIntercom({name: `${user?.firstName || ""} ${user?.lastName || ""}`, email: user?.email || "", created_at: Math.floor((user?.createdAt?.getTime() || 0) / 1000)});
   }
 
   useEffect(() => {
