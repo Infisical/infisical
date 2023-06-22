@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 
+import { useUser } from "@app/context";
+
 import {
   boot as bootIntercom,
   load as loadIntercom,
@@ -9,12 +11,13 @@ import {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const IntercomProvider = ({ children }: { children: any }) => {
+  const { user } = useUser();
   const router = useRouter();
 
   if (typeof window !== "undefined") {
     console.log("window is defined");
     loadIntercom();
-    bootIntercom();
+    bootIntercom({name: `${user.firstName} ${user.lastName}`, email: user.email});
   }
 
   useEffect(() => {

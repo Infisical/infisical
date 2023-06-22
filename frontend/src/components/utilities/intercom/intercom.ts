@@ -50,18 +50,16 @@ export const load = () => {
       }
     }
   })();
-  console.log("loaded", APP_ID);
 }
 
 // Initializes Intercom
 export const boot = (options = {}) => {
+  console.log("boot", options)
   window &&
     window.Intercom &&
     window.Intercom("boot", { app_id: APP_ID, ...options });
-  console.log("booted");
 };
 
 export const update = () => {
   window && window.Intercom && window.Intercom("update");
-  console.log("updated");
 };
