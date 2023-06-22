@@ -244,9 +244,9 @@ export const checkAuth = async (req: Request, res: Response) => {
 export const getNewToken = async (req: Request, res: Response) => {
   const refreshToken = req.cookies.jid;
 
-  if (!refreshToken) {
-    throw new Error("Failed to find refresh token in request cookies");
-  }
+  if (!refreshToken) throw BadRequestError({
+    message: "Failed to find refresh token in request cookies"
+  });
 
   const decodedToken = <jwt.UserIDJwtPayload>(
     jwt.verify(refreshToken, await getJwtRefreshSecret())
