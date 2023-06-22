@@ -54,7 +54,6 @@ export const load = () => {
 
 // Initializes Intercom
 export const boot = (options = {}) => {
-  console.log("boot", options, { app_id: APP_ID, ...options })
   window &&
     window.Intercom &&
     window.Intercom("boot", { app_id: APP_ID, ...options });
