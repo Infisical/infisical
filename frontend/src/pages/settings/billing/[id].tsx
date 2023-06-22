@@ -1,13 +1,12 @@
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
+
 import Plan from "@app/components/billing/Plan";
 import NavHeader from "@app/components/navigation/NavHeader";
 import { useSubscription } from "@app/context";
 
 export default function SettingsBilling() {
   const { subscription } = useSubscription();
-  const [numUsers, setNumUsers] = useState(0);
 
   const { t } = useTranslation();
 
@@ -21,7 +20,7 @@ export default function SettingsBilling() {
       subtext: t("billing.starter.subtext")!,
       buttonTextMain: t("billing.downgrade")!,
       buttonTextSecondary: t("billing.learn-more")!,
-      current: subscription?.slug === "starter" // subscription.slug?
+      current: subscription?.slug === "starter"
     },
     {
       key: 2,
@@ -77,19 +76,19 @@ export default function SettingsBilling() {
                 <Plan key={plan.name} plan={plan} />
               ))}
             </div>
-            <p className="mt-12 text-xl font-bold">{t("billing.current-usage")}</p>
+            {/* <p className="mt-12 text-xl font-bold">{t("billing.current-usage")}</p>
             <div className="flex flex-row">
               <div className="mr-4 mt-8 flex w-60 flex-col items-center justify-center rounded-md bg-white/5 pt-6 pb-10 text-gray-300">
                 <p className="text-6xl font-bold">{numUsers}</p>
                 <p className="text-gray-300">
-                  {numUsers > 1 ? "Organization members" : "Organization member"}
+                  Organization members
                 </p>
               </div>
-              {/* <div className="mr-4 mt-8 text-gray-300 w-60 pt-6 pb-10 rounded-md bg-white/5 flex justify-center items-center flex flex-col">
+              <div className="mr-4 mt-8 text-gray-300 w-60 pt-6 pb-10 rounded-md bg-white/5 flex justify-center items-center flex flex-col">
 									<p className="text-6xl font-bold">1 </p>
 									<p className="text-gray-300">Organization projects</p>
-								</div> */}
-            </div>
+								</div>
+            </div> */}
           </div>
         </div>
       </div>
