@@ -1,19 +1,13 @@
-import Stripe from "stripe";
 import { Types } from "mongoose";
 import { MembershipOrg, Organization } from "../models";
 import {
   ACCEPTED,
 } from "../variables";
 import {
-  getStripeProductPro,
-  getStripeProductStarter,
-  getStripeProductTeam,
-  getStripeSecretKey,
-} from "../config";
-import {
   EELicenseService,
 } from "../ee/services";
 import {
+  getLicenseServerKey,
   getLicenseServerUrl,
 } from "../config";
 import {
@@ -35,88 +29,29 @@ export const createOrganization = async ({
   name: string;
   email: string;
 }) => {
+  const licenseServerKey = await getLicenseServerKey();
   let organization;
-  // register stripe account
-  const stripe = new Stripe(await getStripeSecretKey(), {
-    apiVersion: "2022-08-01",
-  });
-
-  if (await getStripeSecretKey()) {
-    const customer = await stripe.customers.create({
-      email,
-      description: name,
-    });
-
+  
+  if (licenseServerKey) {
+    const { data: { customerId } } = await licenseServerKeyRequest.post(
+      `${await getLicenseServerUrl()}/api/license-server/v1/customers`,
+      {
+        email,
+        name
+      }
+    );
+    
     organization = await new Organization({
       name,
-      customerId: customer.id,
+      customerId
     }).save();
   } else {
     organization = await new Organization({
       name,
     }).save();
   }
-
-  await initSubscriptionOrg({ organizationId: organization._id });
 
   return organization;
-};
-
-/**
- * Initialize free-tier subscription for new organization
- * @param {Object} obj
- * @param {String} obj.organizationId - id of associated organization for subscription
- * @return {Object} obj
- * @return {Object} obj.stripeSubscription - new stripe subscription
- * @return {Subscription} obj.subscription - new subscription
- */
-export const initSubscriptionOrg = async ({
-  organizationId,
-}: {
-  organizationId: Types.ObjectId;
-}) => {
-  let stripeSubscription;
-  let subscription;
-
-  // find organization
-  const organization = await Organization.findOne({
-    _id: organizationId,
-  });
-
-  if (organization) {
-    if (organization.customerId) {
-      // initialize starter subscription with quantity of 0
-      const stripe = new Stripe(await getStripeSecretKey(), {
-        apiVersion: "2022-08-01",
-      });
-
-      const productToPriceMap = {
-        starter: await getStripeProductStarter(),
-        team: await getStripeProductTeam(),
-        pro: await getStripeProductPro(),
-      };
-
-      stripeSubscription = await stripe.subscriptions.create({
-        customer: organization.customerId,
-        items: [
-          {
-            price: productToPriceMap["starter"],
-            quantity: 1,
-          },
-        ],
-        payment_behavior: "default_incomplete",
-        proration_behavior: "none",
-        expand: ["latest_invoice.payment_intent"],
-      });
-    }
-  } else {
-    throw new Error("Failed to initialize free organization subscription");
-  }
-
-  return {
-    stripeSubscription,
-    subscription,
-  };
 };
 
 /**
@@ -130,7 +65,6 @@ export const updateSubscriptionOrgQuantity = async ({
 }: {
   organizationId: string;
 }) => {
-  let stripeSubscription;
   // find organization
   const organization = await Organization.findOne({
     _id: organizationId,
@@ -171,6 +105,4 @@ export const updateSubscriptionOrgQuantity = async ({
   }
 
   await EELicenseService.refreshPlan(organizationId);
-
-  return stripeSubscription;
 };

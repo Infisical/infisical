@@ -41,7 +41,6 @@
     "query-string": "^7.1.3",
     "rate-limit-mongo": "^2.3.2",
     "rimraf": "^3.0.2",
-    "stripe": "^10.7.0",
     "swagger-autogen": "^2.22.0",
     "swagger-ui-express": "^4.6.2",
     "tweetnacl": "^1.0.3",

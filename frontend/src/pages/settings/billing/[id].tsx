@@ -1,17 +1,12 @@
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
 
 import Plan from "@app/components/billing/Plan";
 import NavHeader from "@app/components/navigation/NavHeader";
-import { plans as plansConstant } from "@app/const";
-
-import getOrganizationSubscriptions from "../../api/organization/GetOrgSubscription";
-import getOrganizationUsers from "../../api/organization/GetOrgUsers";
+import { useSubscription } from "@app/context";
 
 export default function SettingsBilling() {
-  const [currentPlan, setCurrentPlan] = useState("");
-  const [numUsers, setNumUsers] = useState(0);
+  const { subscription } = useSubscription();
 
   const { t } = useTranslation();
 
@@ -25,7 +20,7 @@ export default function SettingsBilling() {
       subtext: t("billing.starter.subtext")!,
       buttonTextMain: t("billing.downgrade")!,
       buttonTextSecondary: t("billing.learn-more")!,
-      current: currentPlan === plansConstant.starter
+      current: subscription?.slug === "starter"
     },
     {
       key: 2,
@@ -35,7 +30,7 @@ export default function SettingsBilling() {
       text: "Unlimited members, up to 10 projects. Additional developer experience features.",
       buttonTextMain: t("billing.upgrade")!,
       buttonTextSecondary: t("billing.learn-more")!,
-      current: currentPlan === plansConstant.team
+      current: subscription?.slug === "team" || subscription?.slug === "team-annual"
     },
     {
       key: 3,
@@ -46,7 +41,7 @@ export default function SettingsBilling() {
       subtext: t("billing.professional.subtext")!,
       buttonTextMain: t("billing.upgrade")!,
       buttonTextSecondary: t("billing.learn-more")!,
-      current: currentPlan === plansConstant.professional
+      current: subscription?.slug === "pro" || subscription?.slug === "pro-annual"
     },
     {
       key: 4,
@@ -55,25 +50,9 @@ export default function SettingsBilling() {
       text: "Boost the security and efficiency of your engineering teams.",
       buttonTextMain: t("billing.schedule-demo")!,
       buttonTextSecondary: t("billing.learn-more")!,
-      current: false
+      current: subscription?.slug === "enterprise"
     }
   ];
-
-  useEffect(() => {
-    (async () => {
-      const orgId = localStorage.getItem("orgData.id") as string;
-      const subscriptions = await getOrganizationSubscriptions({
-        orgId
-      });
-      if (subscriptions) {
-        setCurrentPlan(subscriptions.data[0].plan.product);
-      }
-      const orgUsers = await getOrganizationUsers({
-        orgId
-      });
-      setNumUsers(orgUsers.length);
-    })();
-  }, []);
 
   return (
     <div className="flex flex-col justify-between bg-bunker-800 pb-4 text-white">
@@ -97,19 +76,19 @@ export default function SettingsBilling() {
                 <Plan key={plan.name} plan={plan} />
               ))}
             </div>
-            <p className="mt-12 text-xl font-bold">{t("billing.current-usage")}</p>
+            {/* <p className="mt-12 text-xl font-bold">{t("billing.current-usage")}</p>
             <div className="flex flex-row">
               <div className="mr-4 mt-8 flex w-60 flex-col items-center justify-center rounded-md bg-white/5 pt-6 pb-10 text-gray-300">
                 <p className="text-6xl font-bold">{numUsers}</p>
                 <p className="text-gray-300">
-                  {numUsers > 1 ? "Organization members" : "Organization member"}
+                  Organization members
                 </p>
               </div>
-              {/* <div className="mr-4 mt-8 text-gray-300 w-60 pt-6 pb-10 rounded-md bg-white/5 flex justify-center items-center flex flex-col">
+              <div className="mr-4 mt-8 text-gray-300 w-60 pt-6 pb-10 rounded-md bg-white/5 flex justify-center items-center flex flex-col">
 									<p className="text-6xl font-bold">1 </p>
 									<p className="text-gray-300">Organization projects</p>
-								</div> */}
-            </div>
+								</div>
+            </div> */}
           </div>
         </div>
       </div>

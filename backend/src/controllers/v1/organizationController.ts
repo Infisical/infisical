@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import Stripe from "stripe";
 import {
 	IncidentContactOrg,
 	Membership,
@@ -10,7 +9,8 @@ import {
 import { createOrganization as create } from "../../helpers/organization";
 import { addMembershipsOrg } from "../../helpers/membershipOrg";
 import { ACCEPTED, OWNER } from "../../variables";
-import { getSiteURL, getStripeSecretKey } from "../../config";
+import { getSiteURL, getLicenseServerUrl } from "../../config";
+import { licenseServerKeyRequest } from "../../config/request";
 
 export const getOrganizations = async (req: Request, res: Response) => {
   const organizations = (
@@ -222,7 +222,7 @@ export const deleteOrganizationIncidentContact = async (
 };
 
 /**
- * Redirect user to (stripe) billing portal or add card page depending on
+ * Redirect user to billing portal or add card page depending on
  * if there is a card on file
  * @param req
  * @param res
@@ -232,34 +232,32 @@ export const createOrganizationPortalSession = async (
 	req: Request,
 	res: Response
 ) => {
-	let session;
-  const stripe = new Stripe(await getStripeSecretKey(), {
-    apiVersion: "2022-08-01",
-  });
-
-  // check if there is a payment method on file
-  const paymentMethods = await stripe.paymentMethods.list({
-    customer: req.organization.customerId,
-    type: "card",
-  });
+  const { data: { pmtMethods } } = await licenseServerKeyRequest.get(
+    `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details/payment-methods`,
+  );
   
-  if (paymentMethods.data.length < 1) {
-    // case: no payment method on file
-    session = await stripe.checkout.sessions.create({
-      customer: req.organization.customerId,
-      mode: "setup",
-      payment_method_types: ["card"],
-      success_url: (await getSiteURL()) + "/dashboard",
-      cancel_url: (await getSiteURL()) + "/dashboard",
-    });
+  if (pmtMethods.length < 1) {
+    // case: organization has no payment method on file
+    // -> redirect to add payment method portal 
+    const { data: { url } } = await licenseServerKeyRequest.post(
+      `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details/payment-methods`,
+      {
+        success_url: (await getSiteURL()) + "/dashboard",
+        cancel_url: (await getSiteURL()) + "/dashboard"
+      }
+    );
+    return res.status(200).send({ url });
   } else {
-    session = await stripe.billingPortal.sessions.create({
-      customer: req.organization.customerId,
-      return_url: (await getSiteURL()) + "/dashboard",
-    });
+    // case: organization has payment method on file
+    // -> redirect to billing portal
+    const { data: { url } } = await licenseServerKeyRequest.post(
+      `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details/billing-portal`,
+      {
+        return_url: (await getSiteURL()) + "/dashboard"
+      }
+    );
+    return res.status(200).send({ url });
   }
-
-  return res.status(200).send({ url: session.url });
 };
 
 /**
@@ -272,16 +270,8 @@ export const getOrganizationSubscriptions = async (
 	req: Request,
 	res: Response
 ) => {
-  const stripe = new Stripe(await getStripeSecretKey(), {
-    apiVersion: "2022-08-01",
-  });
-  
-  const subscriptions = await stripe.subscriptions.list({
-    customer: req.organization.customerId,
-  });
-
 	return res.status(200).send({
-		subscriptions,
+		subscriptions: []
 	});
 };
 

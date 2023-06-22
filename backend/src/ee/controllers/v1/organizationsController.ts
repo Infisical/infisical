@@ -52,7 +52,7 @@ export const getOrganizationPmtMethods = async (req: Request, res: Response) => 
 }
 
 /**
- * Return a Stripe session URL to add payment method for organization
+ * Return URL to add payment method for organization
  */
 export const addOrganizationPmtMethod = async (req: Request, res: Response) => {
     const {

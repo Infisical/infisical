@@ -83,7 +83,7 @@ class EELicenseService {
                 if (!organization) throw OrganizationNotFoundError();
 
                 let url = `${await getLicenseServerUrl()}/api/license-server/v1/customers/${organization.customerId}/cloud-plan`;
-
+                
                 if (workspaceId) {
                     url += `?workspaceId=${workspaceId}`;
                 }

@@ -67,14 +67,6 @@ export const getLicenseServerKey = async () => {
 }
 export const getLicenseServerUrl = async () => (await client.getSecret("LICENSE_SERVER_URL")).secretValue || "https://portal.infisical.com";
 
-// TODO: deprecate from here
-export const getStripeProductStarter = async () => (await client.getSecret("STRIPE_PRODUCT_STARTER")).secretValue;
-export const getStripeProductPro = async () => (await client.getSecret("STRIPE_PRODUCT_PRO")).secretValue;
-export const getStripeProductTeam = async () => (await client.getSecret("STRIPE_PRODUCT_TEAM")).secretValue;
-export const getStripePublishableKey = async () => (await client.getSecret("STRIPE_PUBLISHABLE_KEY")).secretValue;
-export const getStripeSecretKey = async () => (await client.getSecret("STRIPE_SECRET_KEY")).secretValue;
-export const getStripeWebhookSecret = async () => (await client.getSecret("STRIPE_WEBHOOK_SECRET")).secretValue;
-
 export const getTelemetryEnabled = async () => (await client.getSecret("TELEMETRY_ENABLED")).secretValue !== "false" && true;
 export const getLoopsApiKey = async () => (await client.getSecret("LOOPS_API_KEY")).secretValue;
 export const getSmtpConfigured = async () => (await client.getSecret("SMTP_HOST")).secretValue == "" || (await client.getSecret("SMTP_HOST")).secretValue == undefined ? false : true
