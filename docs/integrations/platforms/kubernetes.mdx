@@ -51,16 +51,10 @@ spec:
   # The host that should be used to pull secrets from. If left empty, the value specified in Global configuration will be used
   hostAPI: https://app.infisical.com/api
   authentication:
-    serviceToken: # <-- option 1
+    serviceToken:
       serviceTokenSecretReference:
         secretName: service-token
         secretNamespace: option
-    serviceAccount: # <-- method 2
-      serviceAccountSecretReference:
-        secretName: service-account
-        secretNamespace: default
-      projectId: "6439ec224cfbf7ea2a95b651"
-      environmentName: "dev"
   managedSecretReference:
     secretName: managed-secret # <-- the name of kubernetes secret that will be created
     secretNamespace: default # <-- where the kubernetes secret that will be created
@@ -86,7 +80,7 @@ spec:
 </Accordion>
 
 <Accordion title="authentication">
-  The `authentication` property tells the operator where it should look to find credentials needed to fetch secrets from Infisical. You can authenticate via two methods as described below.
+  The `authentication` property tells the operator where it should look to find credentials needed to fetch secrets from Infisical.
 
   <Tabs>
     <Tab title="Service Token">
@@ -94,7 +88,7 @@ spec:
       
       #### 1. Generate service token 
 
-      You can generate a service token for an Infisical project by heading over to the Infisical dashboard then to Project Settings.
+      You can generate a [service token](../../documentation/platform/token) for an Infisical project by heading over to the Infisical dashboard then to Project Settings.
 
       #### 2. Create Kubernetes secret containing service token 
 
@@ -122,52 +116,6 @@ spec:
               secretName: service-token # <-- name of the Kubernetes secret that stores our service token
               secretNamespace: option # <-- namespace of the Kubernetes secret that stores our service token
         ...
-      ```
-
-    </Tab>
-    <Tab title="Service Account">
-      We recommend authenticating with service account credentials when you have a large number of services. With this method, instead of creating a service token for each Infisical project you'd like to 
-      fetch secrets from, you can fetch secrets from a number of Infisical projects with just one set of credentials.
-      
-      #### 1. Generate service account
-
-      You can generate a service account by heading over to the organization settings. Once you create the service account, keep the credentials at hand for the next steps.
-
-      #### 2. Grant service account access to Infisical projects
-
-      Click on the pencil icon on the service account you just created and add the projects you'd like to be accessible via that service account.
-
-      #### 3. Store service account credentials in K8 secret  
-      Next, we'll need to store the service account credentials in a kubernetes secret so that we can reference it in our InfisicalSecret CRD. 
-
-      We recommend you create this kubernetes secret in a new namespace since you may need to reference it many times for each InfisicalSecret CRD you create.
-
-      To quickly create a Kubernetes secret containing the service account details, you can execute the command below after replacing it with your own service account credentials.
-
-      ```
-      kubectl create secret generic service-token --from-literal=serviceAccountAccessKey=[REPLACE] --from-literal=serviceAccountPrivateKey=[REPLACE]  --from-literal=serviceAccountPublicKey=[REPLACE] 
-      ```
-
-      Regardless of how you create the kubernetes secret containing the service account credentials, you will need to define values for the following keys in the secret: `serviceAccountAccessKey`, `serviceAccountPrivateKey`, and `serviceAccountPublicKey` 
-
-      Once the secret is created, add the name and namespace of the secret that was just created under `authentication.serviceAccount.serviceAccountSecretReference` field in the InfisicalSecret CRD.
-
-      #### 4. Add projectId and environment from which to fetch secrets from
-      Add the Infisical project id and environment from which to fetch secrets for by providing values under `authentication.serviceAccount.projectId` and `authentication.serviceAccount.environmentName`.
-
-      ## Example
-      ```yaml
-      apiVersion: secrets.infisical.com/v1alpha1
-      kind: InfisicalSecret
-      metadata:
-        name: infisicalsecret-sample-crd
-      spec:
-        serviceAccount:
-        serviceAccountSecretReference:
-          secretName: service-account
-          secretNamespace: default
-        projectId: "6439ec224cfbf7ea2a95b651"
-        environmentName: "dev"
       ```
     </Tab>
   </Tabs>

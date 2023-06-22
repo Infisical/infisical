@@ -10,7 +10,7 @@ export const apiLimiter = rateLimit({
   //   errorHandler: console.error.bind(null, 'rate-limit-mongo')
   // }),
   windowMs: 60 * 1000,
-  max: 240,
+  max: 350,
   standardHeaders: true,
   legacyHeaders: false,
   skip: (request) => {
@@ -30,7 +30,7 @@ const authLimit = rateLimit({
   //   collectionName: "expressRateRecords-authLimit",
   // }),
   windowMs: 60 * 1000,
-  max: 10,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req, res) => {

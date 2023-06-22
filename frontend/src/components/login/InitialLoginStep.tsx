@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import axios from "axios"
 
 import attemptLogin from "@app/components/utilities/attemptLogin";
 
 import Error from "../basic/Error";
+import attemptCliLogin from "../utilities/attemptCliLogin";
 // import { faGoogle } from '@fortawesome/free-brands-svg-icons';
 // import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Input } from "../v2";
@@ -31,33 +33,68 @@ export default function InitialLoginStep({
 
     const handleLogin = async () => {
         try {
-          if (!email || !password) {
-            return;
-          }
-    
-          setIsLoading(true);
-          const isLoginSuccessful = await attemptLogin({
-            email,
-            password,
-          });
-          if (isLoginSuccessful && isLoginSuccessful.success) {
-            // case: login was successful
-    
-            if (isLoginSuccessful.mfaEnabled) {
-              // case: login requires MFA step
-              setStep(2);
-              setIsLoading(false);
-              return;
+            if (!email || !password) {
+                return;
             }
-    
-            // case: login does not require MFA step
-            router.push(`/dashboard/${localStorage.getItem("projectData.id")}`);
-          }
-    
+
+            setIsLoading(true);
+            const queryParams = new URLSearchParams(window.location.search)
+            if (queryParams && queryParams.get("callback_port")) {
+                const callbackPort = queryParams.get("callback_port")
+
+                // attemptCliLogin
+                const isCliLoginSuccessful = await attemptCliLogin({
+                    email,
+                    password,
+                })
+
+                if (isCliLoginSuccessful && isCliLoginSuccessful.success) {
+
+                    if (isCliLoginSuccessful.mfaEnabled) {
+                        // case: login requires MFA step
+                        setStep(2);
+                        setIsLoading(false);
+                        return;
+                    }
+                    // case: login was successful
+                    const cliUrl = `http://localhost:${callbackPort}`
+
+                    // send request to server endpoint
+                    const instance = axios.create()
+                    const cliResp = await instance.post(cliUrl, { ...isCliLoginSuccessful.loginResponse })
+                    console.log(cliResp)
+
+                    // cli page
+                    router.push("/cli-redirect");
+
+                    // on success, router.push to cli Login Successful page
+
+                }
+            } else {
+                const isLoginSuccessful = await attemptLogin({
+                    email,
+                    password,
+                });
+                if (isLoginSuccessful && isLoginSuccessful.success) {
+                    // case: login was successful
+
+                    if (isLoginSuccessful.mfaEnabled) {
+                        // case: login requires MFA step
+                        setStep(2);
+                        setIsLoading(false);
+                        return;
+                    }
+
+                    // case: login does not require MFA step
+                    router.push(`/dashboard/${localStorage.getItem("projectData.id")}`);
+                }
+            }
+
+
         } catch (err) {
-          setLoginError(true);
+            setLoginError(true);
         }
-    
+
         setIsLoading(false);
     }
 
@@ -90,18 +127,18 @@ export default function InitialLoginStep({
             </div>
         </div>
         <div className="relative pt-2 md:pt-0 md:px-1.5 flex items-center justify-center w-1/4 lg:w-1/6 min-w-[21.3rem] md:min-w-[22rem] mx-auto rounded-lg max-h-24 md:max-h-28">
-          <div className="flex items-center justify-center w-full md:p-2 rounded-lg max-h-24 md:max-h-28">
-            <Input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              placeholder="Enter your password..."
-              isRequired
-              autoComplete="current-password"
-              id="current-password"
-              className="h-12 select:-webkit-autofill:focus"
-            />
-          </div>
+            <div className="flex items-center justify-center w-full md:p-2 rounded-lg max-h-24 md:max-h-28">
+                <Input
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    type="password"
+                    placeholder="Enter your password..."
+                    isRequired
+                    autoComplete="current-password"
+                    id="current-password"
+                    className="h-12 select:-webkit-autofill:focus"
+                />
+            </div>
         </div>
         {!isLoading && loginError && <Error text={t("login.error-login") ?? ""} />}
         <div className='lg:w-1/6 w-1/4 min-w-[21.2rem] md:min-w-[20.1rem] text-center rounded-md mt-4'>
@@ -116,18 +153,18 @@ export default function InitialLoginStep({
             > Login </Button>
         </div>
         <div className='lg:w-1/6 w-1/4 min-w-[20rem] flex flex-row items-center mt-4 py-2'>
-            <div className='w-1/2 border-t border-mineshaft-500'/>
+            <div className='w-1/2 border-t border-mineshaft-500' />
             <span className='px-4 text-sm text-bunker-400'>or</span>
-            <div className='w-1/2 border-t border-mineshaft-500'/>
+            <div className='w-1/2 border-t border-mineshaft-500' />
         </div>
         <div className='lg:w-1/6 w-1/4 min-w-[20rem] text-center rounded-md mt-4'>
             <Button
-                colorSchema="primary" 
+                colorSchema="primary"
                 variant="outline_bg"
-                onClick={() => router.push("/saml-sso")} 
+                onClick={() => router.push("/saml-sso")}
                 isFullWidth
                 className="h-14 w-full mx-0"
-            > 
+            >
                 Continue with SAML SSO
             </Button>
         </div>
