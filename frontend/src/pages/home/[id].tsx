@@ -168,7 +168,7 @@ export default function Home() {
           icon: faHandPeace,
           time: "3 min",
           userAction: "intro_cta_clicked",
-          link: "https://www.youtube.com/watch?v=3F7FNYX94zA"
+          link: "https://www.youtube.com/watch?v=PK23097-25I"
         })}
         {learningItem({
           text: "Add your secrets",
