@@ -1,11 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { apiRequest } from '@app/config/request';
+import { apiRequest } from "@app/config/request";
 
-import { TBot, TSetBotActiveStatusDto } from './types';
+import { TBot, TSetBotActiveStatusDto } from "./types";
 
 const queryKeys = {
-  getBot: (workspaceId: string) => [{ workspaceId }, 'bot'] as const
+  getBot: (workspaceId: string) => [{ workspaceId }, "bot"] as const
 };
 
 const fetchWorkspaceBot = async (workspaceId: string) => {

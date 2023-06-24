@@ -1,10 +1,10 @@
-import { useTranslation } from 'react-i18next';
-import { faCheck, faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useTranslation } from "react-i18next";
+import { faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { DeleteActionModal,Skeleton, Tooltip } from '@app/components/v2';
-import { usePopUp } from '@app/hooks';
-import { IntegrationAuth, TCloudIntegration } from '@app/hooks/api/types';
+import { DeleteActionModal,Skeleton, Tooltip } from "@app/components/v2";
+import { usePopUp } from "@app/hooks";
+import { IntegrationAuth, TCloudIntegration } from "@app/hooks/api/types";
 
 type Props = {
   isLoading?: boolean;
@@ -26,7 +26,7 @@ export const CloudIntegrationSection = ({
 }: Props) => {
   const { t } = useTranslation();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    'deleteConfirmation'
+    "deleteConfirmation"
   ] as const);
 
   const isEmpty = !isLoading && !cloudIntegrations?.length;
@@ -34,12 +34,12 @@ export const CloudIntegrationSection = ({
   return (
     <div>
       <div className="m-4 mt-7 flex max-w-5xl flex-col items-start justify-between px-2 text-xl">
-        <h1 className="text-3xl font-semibold">{t('integrations.cloud-integrations')}</h1>
-        <p className="text-base text-gray-400">{t('integrations.click-to-start')}</p>
+        <h1 className="text-3xl font-semibold">{t("integrations.cloud-integrations")}</h1>
+        <p className="text-base text-gray-400">{t("integrations.click-to-start")}</p>
       </div>
       <div
         className="mx-6 grid grid-flow-dense gap-4"
-        style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(256px, 1fr))' }}
+        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(256px, 1fr))" }}
       >
         {isLoading &&
           Array.from({ length: 12 }).map((_, index) => (
@@ -53,8 +53,8 @@ export const CloudIntegrationSection = ({
               tabIndex={0}
               className={`group relative ${
                 cloudIntegration.isAvailable
-                  ? 'cursor-pointer duration-200 hover:bg-mineshaft-700'
-                  : 'opacity-50'
+                  ? "cursor-pointer duration-200 hover:bg-mineshaft-700"
+                  : "opacity-50"
               } flex h-32 flex-row items-center rounded-md border border-mineshaft-600 bg-mineshaft-800 p-4`}
               onClick={() => {
                 if (!cloudIntegration.isAvailable) return;
@@ -68,11 +68,11 @@ export const CloudIntegrationSection = ({
                 width={70}
                 alt="integration logo"
               />
-              {cloudIntegration.name.split(' ').length > 2 ? (
+              {cloudIntegration.name.split(" ").length > 2 ? (
                 <div className="ml-4 max-w-xs text-3xl font-semibold text-gray-300 duration-200 group-hover:text-gray-200">
-                  <div>{cloudIntegration.name.split(' ')[0]}</div>
+                  <div>{cloudIntegration.name.split(" ")[0]}</div>
                   <div className="text-base">
-                    {cloudIntegration.name.split(' ')[1]} {cloudIntegration.name.split(' ')[2]}
+                    {cloudIntegration.name.split(" ")[1]} {cloudIntegration.name.split(" ")[2]}
                   </div>
                 </div>
               ) : (
@@ -95,7 +95,7 @@ export const CloudIntegrationSection = ({
                           tabIndex={0}
                           onClick={async (event) => {
                             event.stopPropagation();
-                            handlePopUpOpen('deleteConfirmation', {
+                            handlePopUpOpen("deleteConfirmation", {
                               provider: cloudIntegration.slug
                             });
                           }}
@@ -123,15 +123,15 @@ export const CloudIntegrationSection = ({
       <DeleteActionModal
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure want to revoke access ${
-          (popUp?.deleteConfirmation.data as TRevokeIntegrationPopUp)?.provider || ' '
+          (popUp?.deleteConfirmation.data as TRevokeIntegrationPopUp)?.provider || " "
         }?`}
         subTitle="This will remove all the secret integration of this provider!!!"
-        onChange={(isOpen) => handlePopUpToggle('deleteConfirmation', isOpen)}
-        deleteKey={(popUp?.deleteConfirmation?.data as TRevokeIntegrationPopUp)?.provider || ''}
+        onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
+        deleteKey={(popUp?.deleteConfirmation?.data as TRevokeIntegrationPopUp)?.provider || ""}
         onDeleteApproved={async () => {
           onIntegrationRevoke(
             (popUp.deleteConfirmation.data as TRevokeIntegrationPopUp)?.provider,
-            () => handlePopUpClose('deleteConfirmation')
+            () => handlePopUpClose("deleteConfirmation")
           );
         }}
       />

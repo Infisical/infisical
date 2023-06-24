@@ -1,1 +1,1 @@
-export { IntegrationsSection } from './IntegrationsSection';
+export { IntegrationsSection } from "./IntegrationsSection";

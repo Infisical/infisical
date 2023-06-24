@@ -24,7 +24,7 @@ export const DeleteActionModal = ({
   deleteKey,
   onDeleteApproved,
   title,
-  subTitle = 'This action is irreversible!'
+  subTitle = "This action is irreversible!"
 }: Props): JSX.Element => {
   const [inputData, setInputData] = useState("");
   const [isLoading, setIsLoading] = useToggle();

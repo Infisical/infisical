@@ -1,17 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { apiRequest } from '@app/config/request';
+import { apiRequest } from "@app/config/request";
 
-import { workspaceKeys } from '../workspace/queries';
-import { TCloudIntegration } from './types';
+import { workspaceKeys } from "../workspace/queries";
+import { TCloudIntegration } from "./types";
 
 export const integrationQueryKeys = {
-  getIntegrations: () => ['integrations'] as const
+  getIntegrations: () => ["integrations"] as const
 };
 
 const fetchIntegrations = async () => {
   const { data } = await apiRequest.get<{ integrationOptions: TCloudIntegration[] }>(
-    '/api/v1/integration-auth/integration-options'
+    "/api/v1/integration-auth/integration-options"
   );
 
   return data.integrationOptions;

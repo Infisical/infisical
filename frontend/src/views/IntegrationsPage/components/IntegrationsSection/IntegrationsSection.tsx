@@ -1,6 +1,6 @@
-import { faArrowRight, faXmark } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { integrationSlugNameMapping } from 'public/data/frequentConstants';
+import { faArrowRight, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { integrationSlugNameMapping } from "public/data/frequentConstants";
 
 import {
   DeleteActionModal,
@@ -11,9 +11,9 @@ import {
   Select,
   SelectItem,
   Skeleton
-} from '@app/components/v2';
-import { usePopUp } from '@app/hooks';
-import { TIntegration } from '@app/hooks/api/types';
+} from "@app/components/v2";
+import { usePopUp } from "@app/hooks";
+import { TIntegration } from "@app/hooks/api/types";
 
 type Props = {
   environments: Array<{ name: string; slug: string }>;
@@ -29,7 +29,7 @@ export const IntegrationsSection = ({
   onIntegrationDelete
 }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    'deleteConfirmation'
+    "deleteConfirmation"
   ] as const);
 
   return (
@@ -95,15 +95,15 @@ export const IntegrationsSection = ({
                 <div className="ml-2 flex flex-col">
                   <FormLabel label="App" />
                   <div className="min-w-[8rem] rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
-                    {integration.integration === 'hashicorp-vault'
+                    {integration.integration === "hashicorp-vault"
                       ? `${integration.app} - path: ${integration.path}`
                       : integration.app}
                   </div>
                 </div>
-                {(integration.integration === 'vercel' ||
-                  integration.integration === 'netlify' ||
-                  integration.integration === 'railway' ||
-                  integration.integration === 'gitlab') && (
+                {(integration.integration === "vercel" ||
+                  integration.integration === "netlify" ||
+                  integration.integration === "railway" ||
+                  integration.integration === "gitlab") && (
                   <div className="ml-4 flex flex-col">
                     <FormLabel label="Target Environment" />
                     <div className="rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
@@ -115,7 +115,7 @@ export const IntegrationsSection = ({
               <div className="flex cursor-default items-center">
                 <div className="ml-2 opacity-80 duration-200 hover:opacity-100">
                   <IconButton
-                    onClick={() => handlePopUpOpen('deleteConfirmation', integration)}
+                    onClick={() => handlePopUpOpen("deleteConfirmation", integration)}
                     ariaLabel="delete"
                     colorSchema="danger"
                   >
@@ -130,13 +130,13 @@ export const IntegrationsSection = ({
       <DeleteActionModal
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure want to remove ${
-          (popUp?.deleteConfirmation.data as TIntegration)?.integrationAuth || ' '
-        } integration for ${(popUp?.deleteConfirmation.data as TIntegration)?.app || ' '}?`}
-        onChange={(isOpen) => handlePopUpToggle('deleteConfirmation', isOpen)}
-        deleteKey={(popUp?.deleteConfirmation?.data as TIntegration)?.app || ''}
+          (popUp?.deleteConfirmation.data as TIntegration)?.integrationAuth || " "
+        } integration for ${(popUp?.deleteConfirmation.data as TIntegration)?.app || " "}?`}
+        onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
+        deleteKey={(popUp?.deleteConfirmation?.data as TIntegration)?.app || ""}
         onDeleteApproved={async () =>
           onIntegrationDelete(popUp?.deleteConfirmation.data as TIntegration, () =>
-            handlePopUpClose('deleteConfirmation')
+            handlePopUpClose("deleteConfirmation")
           )
         }
       />

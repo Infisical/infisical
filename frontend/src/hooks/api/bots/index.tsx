@@ -1,1 +1,1 @@
-export { useGetWorkspaceBot, useUpdateBotActiveStatus } from './queries';
+export { useGetWorkspaceBot, useUpdateBotActiveStatus } from "./queries";

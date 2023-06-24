@@ -1,1 +1,1 @@
-export { IntegrationsPage } from './IntegrationsPage';
+export { IntegrationsPage } from "./IntegrationsPage";

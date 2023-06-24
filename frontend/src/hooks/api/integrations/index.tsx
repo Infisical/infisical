@@ -1,1 +1,1 @@
-export { useDeleteIntegration,useGetCloudIntegrations } from './queries';
+export { useDeleteIntegration,useGetCloudIntegrations } from "./queries";

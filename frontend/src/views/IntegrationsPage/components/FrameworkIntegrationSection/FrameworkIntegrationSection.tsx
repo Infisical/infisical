@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 
 type Props = {
   frameworks: Array<{
@@ -15,12 +15,12 @@ export const FrameworkIntegrationSection = ({ frameworks }: Props) => {
   return (
     <>
       <div className="mx-4 mt-12 mb-4 flex flex-col items-start justify-between px-2 text-xl">
-        <h1 className="text-3xl font-semibold">{t('integrations.framework-integrations')}</h1>
-        <p className="text-base text-gray-400">{t('integrations.click-to-setup')}</p>
+        <h1 className="text-3xl font-semibold">{t("integrations.framework-integrations")}</h1>
+        <p className="text-base text-gray-400">{t("integrations.click-to-setup")}</p>
       </div>
       <div
         className="mx-6 mt-4 grid grid-flow-dense gap-4"
-        style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))' }}
+        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))" }}
       >
         {frameworks.map((framework) => (
           <a
@@ -32,7 +32,7 @@ export const FrameworkIntegrationSection = ({ frameworks }: Props) => {
           >
             <div
               className={`flex h-full w-full cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-800 font-semibold text-gray-300 duration-200 hover:bg-mineshaft-700 group-hover:text-gray-200 ${
-                framework?.name?.split(' ').length > 1 ? 'px-1 text-sm' : 'px-2 text-xl'
+                framework?.name?.split(" ").length > 1 ? "px-1 text-sm" : "px-2 text-xl"
               } w-full max-w-xs text-center`}
             >
               {framework?.image && (
