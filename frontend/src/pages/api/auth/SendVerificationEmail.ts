@@ -1,5 +1,5 @@
 /**
- * This route send the verification email to the user's email (contains a 6-digit verification code)
+ * This route send the verification email to the user's email (contains a link to confirm)
  * @param {*} email
  */
 const sendVerificationEmail = (email: string) => {

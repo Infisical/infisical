@@ -4,18 +4,19 @@ import { useTranslation } from "react-i18next";
 import Head from "next/head";
 import Image from "next/image";
 import { useRouter } from "next/router";
+import queryString from "query-string";
 
-import CodeInputStep from "@app/components/signup/CodeInputStep";
 import DownloadBackupPDF from "@app/components/signup/DonwloadBackupPDFStep";
 import EnterEmailStep from "@app/components/signup/EnterEmailStep";
 import InitialSignupStep from "@app/components/signup/InitialSignupStep";
 import TeamInviteStep from "@app/components/signup/TeamInviteStep";
 import UserInfoStep from "@app/components/signup/UserInfoStep";
+import WaitForEmailStep from "@app/components/signup/WaitForEmailStep";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { useProviderAuth } from "@app/hooks/useProviderAuth";
 
-import checkEmailVerificationCode from "./api/auth/CheckEmailVerificationCode";
+import confirmEmailSignUp from "./api/auth/confirmEmailSignUp";
 import getWorkspaces from "./api/workspace/getWorkspaces";
 
 /**
@@ -27,14 +28,12 @@ export default function SignUp() {
   const [name, setName] = useState("");
   const [organizationName, setOrganizationName] = useState("");
   const [attributionSource, setAttributionSource] = useState("");
-  const [code, setCode] = useState("123456");
-  const [codeError, setCodeError] = useState(false);
   const [step, setStep] = useState(1);
   const router = useRouter();
   const { data: serverDetails } = useFetchServerStatus();
   const [isSignupWithEmail, setIsSignupWithEmail] = useState(false);
-  const [isCodeInputCheckLoading, setIsCodeInputCheckLoading] = useState(false);
   const { t } = useTranslation();
+
   const { email: providerEmail, providerAuthToken, isProviderUserCompleted } = useProviderAuth();
 
   if (providerAuthToken && isProviderUserCompleted) {
@@ -57,6 +56,34 @@ export default function SignUp() {
     tryAuth();
   }, []);
 
+  useEffect(() => {
+    const checkEmailConfirm = async () => {
+      if (step >= 3) {
+        return;
+      }
+      const parsedUrl = queryString.parse(router.asPath.split("?")[1]);
+      const tokenParam = parsedUrl.token as string;
+      const emailParam = (parsedUrl.to as string)?.replace(" ", "+").trim();
+      if (!tokenParam || !emailParam) {
+        return;
+      }
+      try {
+        const response = await confirmEmailSignUp({ email: emailParam, token: tokenParam });
+        if (response?.status === 200) {
+          const tempToken = (await response.json()).token;
+          SecurityClient.setSignupToken(tempToken);
+          setStep(3);
+          setEmail(emailParam);
+        } else {
+          throw new Error("Unable to confirm email!");
+        }
+      } catch (error) {
+        router.push("/login");
+      }
+    };
+    checkEmailConfirm();
+  }, []);
+
   /**
    * Goes to the following step (out of 5) of the signup process.
    * Step 1 is submitting your email
@@ -68,18 +95,6 @@ export default function SignUp() {
   const incrementStep = async () => {
     if (step === 1 || step === 3 || step === 4) {
       setStep(step + 1);
-    } else if (step === 2) {
-      setIsCodeInputCheckLoading(true);
-      // Checking if the code matches the email.
-      const response = await checkEmailVerificationCode({ email, code });
-      if (response.status === 200) {
-        const { token } = await response.json();
-        SecurityClient.setSignupToken(token);
-        setStep(3);
-      } else {
-        setCodeError(true);
-      }
-      setIsCodeInputCheckLoading(false);
     }
   };
 
@@ -106,15 +121,7 @@ export default function SignUp() {
     }
 
     if (registerStep === 2) {
-      return (
-        <CodeInputStep
-          email={email}
-          incrementStep={incrementStep}
-          setCode={setCode}
-          codeError={codeError}
-          isCodeInputCheckLoading={isCodeInputCheckLoading}
-        />
-      );
+      return <WaitForEmailStep email={email} />;
     }
 
     if (registerStep === 3) {

@@ -50,7 +50,7 @@ export const beginEmailSignup = async (req: Request, res: Response) => {
  */
 export const verifyEmailSignup = async (req: Request, res: Response) => {
   let user;
-  const { email, code } = req.body;
+  const { email, token } = req.body;
 
   // initialize user account
   user = await User.findOne({ email }).select("+publicKey");
@@ -75,7 +75,7 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
   if (await getSmtpConfigured()) {
     await checkEmailVerification({
       email,
-      code
+      token
     });
   }
 
@@ -86,7 +86,7 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
   }
 
   // generate temporary signup token
-  const token = createToken({
+  const tempToken = createToken({
     payload: {
       userId: user._id.toString()
     },
@@ -97,6 +97,6 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
   return res.status(200).send({
     message: "Successfuly verified email",
     user,
-    token
+    token: tempToken
   });
 };

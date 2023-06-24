@@ -5,6 +5,7 @@ import { ACCEPTED, OWNER } from "../variables";
 import { sendMail } from "../helpers/nodemailer";
 import { TokenService } from "../services";
 import { TOKEN_EMAIL_CONFIRMATION } from "../variables";
+import { getSiteURL } from "../config";
 
 /**
  * Send magic link to verify email to [email]
@@ -14,39 +15,41 @@ import { TOKEN_EMAIL_CONFIRMATION } from "../variables";
  * @returns {Boolean} success - whether or not operation was successful
  */
 export const sendEmailVerification = async ({ email }: { email: string }) => {
-	const token = await TokenService.createToken({
-		type: TOKEN_EMAIL_CONFIRMATION,
-		email,
-	});
+  const token = await TokenService.createToken({
+    type: TOKEN_EMAIL_CONFIRMATION,
+    email
+  });
 
   // send mail
   await sendMail({
     template: "emailVerification.handlebars",
-    subjectLine: "Infisical confirmation code",
+    subjectLine: "Infisical email verification",
     recipients: [email],
     substitutions: {
-      code: token,
-    },
+      email,
+      token,
+      callback_url: (await getSiteURL()) + "/signup"
+    }
   });
 };
 
 /**
- * Validate [code] sent to [email]
+ * Validate [token] sent to [email]
  * @param {Object} obj
  * @param {String} obj.email - emai
- * @param {String} obj.code - code that was sent to [email]
+ * @param {String} obj.token - token that was sent to [email]
  */
 export const checkEmailVerification = async ({
-	email,
-	code,
+  email,
+  token
 }: {
-	email: string;
-	code: string;
+  email: string;
+  token: string;
 }) => {
   await TokenService.validateToken({
     type: TOKEN_EMAIL_CONFIRMATION,
     email,
-    token: code,
+    token
   });
 };
 
@@ -58,27 +61,27 @@ export const checkEmailVerification = async ({
  * @param {IUser} obj.user - user who we are initializing for
  */
 export const initializeDefaultOrg = async ({
-	organizationName,
-	user,
+  organizationName,
+  user
 }: {
-	organizationName: string;
-	user: IUser;
+  organizationName: string;
+  user: IUser;
 }) => {
-	try {
-		// create organization with user as owner and initialize a free
-		// subscription
-		const organization = await createOrganization({
-			email: user.email,
-			name: organizationName,
-		});
+  try {
+    // create organization with user as owner and initialize a free
+    // subscription
+    const organization = await createOrganization({
+      email: user.email,
+      name: organizationName
+    });
 
-		await addMembershipsOrg({
-			userIds: [user._id.toString()],
-			organizationId: organization._id.toString(),
-			roles: [OWNER],
-			statuses: [ACCEPTED],
-		});
-	} catch (err) {
-		throw new Error(`Failed to initialize default organization and workspace [err=${err}]`);
-	}
+    await addMembershipsOrg({
+      userIds: [user._id.toString()],
+      organizationId: organization._id.toString(),
+      roles: [OWNER],
+      statuses: [ACCEPTED]
+    });
+  } catch (err) {
+    throw new Error(`Failed to initialize default organization and workspace [err=${err}]`);
+  }
 };

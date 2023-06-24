@@ -147,7 +147,7 @@
     "step1-start": "Let's get started",
     "step1-privacy": "By creating an account, you agree to our Terms and have read and acknowledged the Privacy Policy.",
     "step1-submit": "Get Started",
-    "step2-message": "We've sent a verification code to",
+    "step2-message": "We've sent a confirmation link to",
     "step2-code-error": "Oops. Your code is wrong. Tries left:",
     "step2-resend-alert": "Don't see the code?",
     "step2-resend-submit": "Resend",
