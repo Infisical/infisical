@@ -13,6 +13,7 @@ type Props = {
   onChange?: (isOpen: boolean) => void;
   deleteKey: string;
   title: string;
+  subTitle?: string;
   onDeleteApproved: () => Promise<void>;
 };
 
@@ -22,7 +23,8 @@ export const DeleteActionModal = ({
   onChange,
   deleteKey,
   onDeleteApproved,
-  title
+  title,
+  subTitle = 'This action is irreversible!'
 }: Props): JSX.Element => {
   const [inputData, setInputData] = useState("");
   const [isLoading, setIsLoading] = useToggle();
@@ -52,7 +54,7 @@ export const DeleteActionModal = ({
     >
       <ModalContent
         title={title}
-        subTitle="This action is irreversible!"
+        subTitle={subTitle}
         footerContent={
           <div className="flex items-center">
             <Button
