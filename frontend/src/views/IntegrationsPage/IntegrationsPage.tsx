@@ -1,12 +1,12 @@
-import { useCallback, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useRouter } from 'next/router';
+import { useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { useRouter } from "next/router";
 
-import { useNotificationContext } from '@app/components/context/Notifications/NotificationProvider';
-import NavHeader from '@app/components/navigation/NavHeader';
-import { Button,Modal, ModalContent } from '@app/components/v2';
-import { useWorkspace } from '@app/context';
-import { usePopUp } from '@app/hooks';
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import NavHeader from "@app/components/navigation/NavHeader";
+import { Button, Modal, ModalContent } from "@app/components/v2";
+import { useWorkspace } from "@app/context";
+import { usePopUp } from "@app/hooks";
 import {
   useDeleteIntegration,
   useDeleteIntegrationAuth,
@@ -15,17 +15,18 @@ import {
   useGetWorkspaceAuthorizations,
   useGetWorkspaceBot,
   useGetWorkspaceIntegrations,
-  useUpdateBotActiveStatus} from '@app/hooks/api';
-import { IntegrationAuth } from '@app/hooks/api/types';
+  useUpdateBotActiveStatus
+} from "@app/hooks/api";
+import { IntegrationAuth } from "@app/hooks/api/types";
 
-import { CloudIntegrationSection } from './components/CloudIntegrationSection';
-import { FrameworkIntegrationSection } from './components/FrameworkIntegrationSection';
-import { IntegrationsSection } from './components/IntegrationsSection';
+import { CloudIntegrationSection } from "./components/CloudIntegrationSection";
+import { FrameworkIntegrationSection } from "./components/FrameworkIntegrationSection";
+import { IntegrationsSection } from "./components/IntegrationsSection";
 import {
   generateBotKey,
   redirectForProviderAuth,
   redirectToIntegrationAppConfigScreen
-} from './IntegrationPage.utils';
+} from "./IntegrationPage.utils";
 
 type Props = {
   frameworkIntegrations: Array<{ name: string; slug: string; image: string; docsLink: string }>;
@@ -37,15 +38,15 @@ export const IntegrationsPage = ({ frameworkIntegrations }: Props) => {
   const router = useRouter();
 
   const { currentWorkspace } = useWorkspace();
-  const workspaceId = currentWorkspace?._id || '';
+  const workspaceId = currentWorkspace?._id || "";
   const environments = currentWorkspace?.environments || [];
 
   const { data: latestWsKey } = useGetUserWsKey(workspaceId);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
-    'activeBot',
-    'revokeProviderPermissionConf',
-    'removeIntegrationConf'
+    "activeBot",
+    "revokeProviderPermissionConf",
+    "removeIntegrationConf"
   ] as const);
 
   const { data: cloudIntegrations, isLoading: isCloudIntegrationsLoading } =
@@ -126,7 +127,7 @@ export const IntegrationsPage = ({ frameworkIntegrations }: Props) => {
   // confirmation to user passing the bot key for provider to get secret access
   const handleProviderIntegrationStart = (provider: string) => {
     if (!bot?.isActive) {
-      handlePopUpOpen('activeBot', { provider });
+      handlePopUpOpen("activeBot", { provider });
       return;
     }
     handleProviderIntegration(provider);
@@ -135,7 +136,7 @@ export const IntegrationsPage = ({ frameworkIntegrations }: Props) => {
   const handleUserAcceptBotCondition = () => {
     const { provider } = popUp.activeBot?.data as { provider: string };
     handleProviderIntegration(provider);
-    handlePopUpClose('activeBot');
+    handlePopUpClose("activeBot");
   };
 
   const handleIntegrationDelete = async (integrationId: string, cb: () => void) => {
@@ -143,14 +144,14 @@ export const IntegrationsPage = ({ frameworkIntegrations }: Props) => {
       await deleteIntegration({ id: integrationId, workspaceId });
       if (cb) cb();
       createNotification({
-        type: 'success',
-        text: 'Deleted integration'
+        type: "success",
+        text: "Deleted integration"
       });
     } catch (err) {
       console.log(err);
       createNotification({
-        type: 'error',
-        text: 'Failed to delete integration'
+        type: "error",
+        text: "Failed to delete integration"
       });
     }
   };
@@ -165,21 +166,21 @@ export const IntegrationsPage = ({ frameworkIntegrations }: Props) => {
       });
       if (cb) cb();
       createNotification({
-        type: 'success',
-        text: 'Revoked provider authentication'
+        type: "success",
+        text: "Revoked provider authentication"
       });
     } catch (err) {
       console.error(err);
       createNotification({
-        type: 'error',
-        text: 'Failed to revoke provider authentication'
+        type: "error",
+        text: "Failed to revoke provider authentication"
       });
     }
   };
 
   return (
     <div className="container mx-auto px-8 pb-12 text-white">
-      <NavHeader pageName={t('integrations.title')} isProjectRelated />
+      <NavHeader pageName={t("integrations.title")} isProjectRelated />
       <IntegrationsSection
         isLoading={isIntegrationLoading}
         integrations={integrations}
@@ -195,17 +196,17 @@ export const IntegrationsPage = ({ frameworkIntegrations }: Props) => {
       />
       <Modal
         isOpen={popUp.activeBot?.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle('activeBot', isOpen)}
+        onOpenChange={(isOpen) => handlePopUpToggle("activeBot", isOpen)}
       >
         <ModalContent
-          title={t('integrations.grant-access-to-secrets') as string}
+          title={t("integrations.grant-access-to-secrets") as string}
           footerContent={
             <div className="flex items-center space-x-2">
               <Button onClick={() => handleUserAcceptBotCondition()}>
-                {t('integrations.grant-access-button') as string}
+                {t("integrations.grant-access-button") as string}
               </Button>
               <Button
-                onClick={() => handlePopUpClose('activeBot')}
+                onClick={() => handlePopUpClose("activeBot")}
                 variant="outline_bg"
                 colorSchema="secondary"
               >
@@ -214,7 +215,7 @@ export const IntegrationsPage = ({ frameworkIntegrations }: Props) => {
             </div>
           }
         >
-          {t('integrations.why-infisical-needs-access')}
+          {t("integrations.why-infisical-needs-access")}
         </ModalContent>
       </Modal>
       <FrameworkIntegrationSection frameworks={frameworkIntegrations} />
