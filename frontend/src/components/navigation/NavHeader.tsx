@@ -57,7 +57,7 @@ export default function NavHeader({
   );
 
   return (
-    <div className="ml-6 flex flex-row items-center pt-6">
+    <div className="flex flex-row items-center pt-6">
       <div className="mr-2 flex h-6 w-6 items-center justify-center rounded-md bg-primary-900 text-mineshaft-100">
         {currentOrg?.name?.charAt(0)}
       </div>
