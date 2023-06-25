@@ -3,7 +3,6 @@ import { Types } from "mongoose";
 import { Membership, Secret } from "../../models";
 import Tag from "../../models/tag";
 import { BadRequestError, UnauthorizedRequestError } from "../../utils/errors";
-import { MongoError } from "mongodb";
 
 export const createWorkspaceTag = async (req: Request, res: Response) => {
   const { workspaceId } = req.params;
