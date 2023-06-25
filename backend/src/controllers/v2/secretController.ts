@@ -55,12 +55,7 @@ export const createSecret = async (req: Request, res: Response) => {
     keyEncoding: ENCODING_SCHEME_UTF8
   };
 
-  const secret = await Secret.create(sanitizedSecret).catch((err) => {
-    if (err instanceof ValidationError) {
-      throw RouteValidationError({ message: err.message, stack: err.stack });
-    }
-    throw err;
-  });
+  const secret = await new Secret(sanitizedSecret).save();
 
   if (postHogClient) {
     postHogClient.capture({
@@ -117,19 +112,7 @@ export const createSecrets = async (req: Request, res: Response) => {
     sanitizedSecretesToCreate.push(safeUpdateFields);
   });
 
-  const secrets = await Secret.insertMany(sanitizedSecretesToCreate).catch((bulkCreateError) => {
-    if (bulkCreateError instanceof ValidationError) {
-      throw RouteValidationError({
-        message: bulkCreateError.message,
-        stack: bulkCreateError.stack
-      });
-    }
-    
-    throw InternalServerError({
-      message: "Unable to process your batch create request. Please try again",
-      stack: bulkCreateError ? bulkCreateError.stack : undefined
-    });
-  });
+  const secrets = await Secret.insertMany(sanitizedSecretesToCreate);
 
   if (postHogClient) {
     postHogClient.capture({
@@ -160,12 +143,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
   const { workspaceId, environmentName } = req.params;
   const secretIdsToDelete: string[] = req.body.secretIds;
 
-  const secretIdsUserCanDelete = await Secret.find({ workspace: workspaceId, environment: environmentName }, { _id: 1 })
-  .catch((secretIdsUserCanDeleteError) => {
-    throw InternalServerError({
-      message: `Unable to fetch secrets you own: [error=${secretIdsUserCanDeleteError.message}]`
-    });
-  });
+  const secretIdsUserCanDelete = await Secret.find({ workspace: workspaceId, environment: environmentName }, { _id: 1 });
 
   const secretsUserCanDeleteSet: Set<string> = new Set(
     secretIdsUserCanDelete.map((objectId) => objectId._id.toString())
@@ -187,17 +165,7 @@ export const deleteSecrets = async (req: Request, res: Response) => {
     }
   });
 
-  await Secret.bulkWrite(deleteOperationsToPerform)
-  .catch((bulkDeleteError) => {
-    if (bulkDeleteError instanceof ValidationError) {
-      throw RouteValidationError({
-        message: "Unable to apply modifications, please try again",
-        stack: bulkDeleteError.stack
-      })
-    }
-
-    throw InternalServerError();
-  })
+  await Secret.bulkWrite(deleteOperationsToPerform);
 
   if (postHogClient) {
     postHogClient.capture({
@@ -254,10 +222,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
   const postHogClient = await TelemetryService.getPostHogClient();
   const { workspaceId, environmentName } = req.params;
   const secretsModificationsRequested: ModifySecretRequestBody[] = req.body.secrets;
-  const secretIdsUserCanModify = await Secret.find({ workspace: workspaceId, environment: environmentName }, { _id: 1 })
-  .catch(() => {
-    throw InternalServerError({ message: "Unable to fetch secrets you own" })
-  })
+  const secretIdsUserCanModify = await Secret.find({ workspace: workspaceId, environment: environmentName }, { _id: 1 });
 
   const secretsUserCanModifySet: Set<string> = new Set(
     secretIdsUserCanModify.map((objectId) => objectId._id.toString())
@@ -295,17 +260,7 @@ export const updateSecrets = async (req: Request, res: Response) => {
     }
   });
 
-  await Secret.bulkWrite(updateOperationsToPerform)
-  .catch((bulkModificationInfoError) => {
-    if (bulkModificationInfoError instanceof ValidationError) {
-      throw RouteValidationError({
-        message: "Unable to apply modifications, please try again",
-        stack: bulkModificationInfoError.stack
-      });
-    }
-
-    throw InternalServerError();
-  });
+  await Secret.bulkWrite(updateOperationsToPerform);
 
   if (postHogClient) {
     postHogClient.capture({
@@ -335,12 +290,7 @@ export const updateSecret = async (req: Request, res: Response) => {
   const { workspaceId, environmentName } = req.params;
   const secretModificationsRequested: ModifySecretRequestBody = req.body.secret;
 
-  const secretIdUserCanModify = await Secret.findOne({ workspace: workspaceId, environment: environmentName }, { _id: 1 })
-  .catch((secretIdUserCanModifyError) => {
-    if (secretIdUserCanModifyError && !secretIdUserCanModify) {
-      throw BadRequestError();
-    }
-  });
+  const secretIdUserCanModify = await Secret.findOne({ workspace: workspaceId, environment: environmentName }, { _id: 1 });
 
   const sanitizedSecret: SanitizedSecretModify = {
     secretKeyCiphertext: secretModificationsRequested.secretKeyCiphertext,

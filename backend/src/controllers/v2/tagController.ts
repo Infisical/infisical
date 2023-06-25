@@ -16,14 +16,7 @@ export const createWorkspaceTag = async (req: Request, res: Response) => {
       user: new Types.ObjectId(req.user._id),
     };
   
-  const createdTag = await Tag.create(tagToCreate)
-  .catch ((err) => {
-    if ((err as MongoError).code === 11000) {
-      throw BadRequestError({ message: "Tags must be unique in a workspace" });
-    }
-
-    throw err;
-  });
+  const createdTag = await new Tag(tagToCreate);
   
   res.json(createdTag);
 };
