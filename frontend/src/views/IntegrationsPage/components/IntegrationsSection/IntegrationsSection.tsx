@@ -34,7 +34,7 @@ export const IntegrationsSection = ({
 
   return (
     <div className="mb-8">
-      <div className="mx-4 mb-4 mt-6 flex max-w-5xl flex-col items-start justify-between px-2 text-xl">
+      <div className="mx-4 mb-4 mt-6 flex flex-col items-start justify-between px-2 text-xl">
         <h1 className="text-3xl font-semibold">Current Integrations</h1>
         <p className="text-base text-bunker-300">Manage integrations with third-party services.</p>
       </div>
@@ -53,7 +53,7 @@ export const IntegrationsSection = ({
         <div className="flex flex-col space-y-4 p-6 pt-0">
           {integrations?.map((integration) => (
             <div
-              className="flex max-w-6xl justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 pb-2"
+              className="flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 pb-2"
               key={`integration-${integration?._id.toString()}`}
             >
               <div className="flex">
@@ -130,7 +130,7 @@ export const IntegrationsSection = ({
       <DeleteActionModal
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure want to remove ${
-          (popUp?.deleteConfirmation.data as TIntegration)?.integrationAuth || " "
+          (popUp?.deleteConfirmation.data as TIntegration)?.integration || " "
         } integration for ${(popUp?.deleteConfirmation.data as TIntegration)?.app || " "}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
         deleteKey={(popUp?.deleteConfirmation?.data as TIntegration)?.app || ""}

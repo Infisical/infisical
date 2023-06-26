@@ -44,9 +44,7 @@ export const IntegrationsPage = ({ frameworkIntegrations }: Props) => {
   const { data: latestWsKey } = useGetUserWsKey(workspaceId);
 
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
-    "activeBot",
-    "revokeProviderPermissionConf",
-    "removeIntegrationConf"
+    "activeBot"
   ] as const);
 
   const { data: cloudIntegrations, isLoading: isCloudIntegrationsLoading } =
@@ -179,7 +177,7 @@ export const IntegrationsPage = ({ frameworkIntegrations }: Props) => {
   };
 
   return (
-    <div className="container mr-auto pb-12 text-white">
+    <div className="container mx-auto max-w-7xl px-8 pb-12 text-white">
       <NavHeader pageName={t("integrations.title")} isProjectRelated />
       <IntegrationsSection
         isLoading={isIntegrationLoading}
