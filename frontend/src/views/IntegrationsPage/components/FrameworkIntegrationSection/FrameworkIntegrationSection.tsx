@@ -19,7 +19,7 @@ export const FrameworkIntegrationSection = ({ frameworks }: Props) => {
         <p className="text-base text-gray-400">{t("integrations.click-to-setup")}</p>
       </div>
       <div
-        className="mx-6 mt-4 grid grid-flow-dense gap-4"
+        className="mx-6 mt-4 grid grid-flow-dense gap-3"
         style={{ gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))" }}
       >
         {frameworks.map((framework) => (

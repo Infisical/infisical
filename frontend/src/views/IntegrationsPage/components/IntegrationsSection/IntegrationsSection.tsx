@@ -45,7 +45,7 @@ export const IntegrationsSection = ({
       )}
       {!isLoading && !integrations.length && (
         <EmptyState
-          className="mx-6 py-8"
+          className="mx-6 pt-8 pb-4 rounded-md border border-mineshaft-700"
           title="No integrations found. Click on one of the below providers to sync secrets."
         />
       )}
