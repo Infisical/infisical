@@ -99,7 +99,6 @@ const USER_ACTION_PUSH = "first_time_secrets_pushed";
  */
 export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   const { subscription } = useSubscription();
-  console.log("dashboard sub: ", subscription);
   const { t } = useTranslation();
   const router = useRouter();
   const { createNotification } = useNotificationContext();
