@@ -36,7 +36,7 @@ import {
   UpgradePlanModal
 } from "@app/components/v2";
 import { leaveConfirmDefaultMessage } from "@app/const";
-import { useWorkspace, useSubscription } from "@app/context";
+import { useSubscription,useWorkspace } from "@app/context";
 import { useLeaveConfirm, usePopUp, useToggle } from "@app/hooks";
 import {
   useBatchSecretsOp,
@@ -99,7 +99,7 @@ const USER_ACTION_PUSH = "first_time_secrets_pushed";
  */
 export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   const { subscription } = useSubscription();
-  console.log('dashboard sub: ', subscription);
+  console.log("dashboard sub: ", subscription);
   const { t } = useTranslation();
   const router = useRouter();
   const { createNotification } = useNotificationContext();
