@@ -1,6 +1,10 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
 
-import Button from "@app/components/basic/buttons/Button";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import {
+  Button
+} from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useAddOrgPmtMethod } from "@app/hooks/api";
 
@@ -8,11 +12,11 @@ import { PmtMethodsTable } from "./PmtMethodsTable";
 
 export const PmtMethodsSection = () => {
     const { currentOrg } = useOrganization();
-    const addOrgPmtMethod = useAddOrgPmtMethod();
+    const { mutateAsync, isLoading } = useAddOrgPmtMethod();
     
     const handleAddPmtMethodBtnClick = async () => {
         if (!currentOrg?._id) return;
-        const url = await addOrgPmtMethod.mutateAsync({
+        const url = await mutateAsync({
             organizationId: currentOrg._id,
             success_url: window.location.href,
             cancel_url: window.location.href
@@ -27,16 +31,14 @@ export const PmtMethodsSection = () => {
                 <h2 className="text-xl font-semibold flex-1 text-white">
                     Payment Methods
                 </h2>
-                <div className="inline-block">
-                    <Button
-                        text="Add method"
-                        type="submit"
-                        color="mineshaft"
-                        size="md"
-                        icon={faPlus}
-                        onButtonPressed={handleAddPmtMethodBtnClick}
-                    />
-                </div>
+                <Button
+                    onClick={handleAddPmtMethodBtnClick}
+                    colorSchema="secondary"
+                    isLoading={isLoading}
+                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                >
+                    Add method
+                </Button>
             </div>
             <PmtMethodsTable />
         </div>

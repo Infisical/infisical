@@ -3,9 +3,11 @@ import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
-import Button from "@app/components/basic/buttons/Button";
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
-import { FormControl,Input } from "@app/components/v2";
+import { 
+    Button,
+    FormControl,
+    Input} from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { 
     useGetOrgBillingDetails,
@@ -26,7 +28,7 @@ export const CompanyNameSection = () => {
         resolver: yupResolver(schema)
     });
     const { data } = useGetOrgBillingDetails(currentOrg?._id ?? "");
-    const updateOrgBillingDetails = useUpdateOrgBillingDetails();
+    const { mutateAsync, isLoading } = useUpdateOrgBillingDetails();
     
     useEffect(() => {
         if (data) {
@@ -40,7 +42,7 @@ export const CompanyNameSection = () => {
         try {
             if (!currentOrg?._id) return;
             if (name === "") return;
-            await updateOrgBillingDetails.mutateAsync({
+            await mutateAsync({
                 name,
                 organizationId: currentOrg._id
             });
@@ -82,15 +84,13 @@ export const CompanyNameSection = () => {
                     name="name"
                 />
             </div>
-            <div className="inline-block">
-                <Button
-                    text="Save"
-                    type="submit"
-                    color="mineshaft"
-                    size="md"
-                    onButtonPressed={() => console.log("Saved company name")}
-                />
-            </div>
+            <Button
+                type="submit"
+                colorSchema="secondary"
+                isLoading={isLoading}
+            >
+                Save
+            </Button>
         </form>
     );
 }

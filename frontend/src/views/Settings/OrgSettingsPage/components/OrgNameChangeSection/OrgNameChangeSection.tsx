@@ -1,17 +1,13 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { faCheck } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, FormControl, Input } from "@app/components/v2";
-
-type Props = {
-  orgName?: string;
-  onOrgNameChange: (name: string) => Promise<void>;
-};
+import { useOrganization } from "@app/context";
+import { useRenameOrg } from "@app/hooks/api";
 
 const formSchema = yup.object({
   name: yup.string().required().label("Project Name")
@@ -19,33 +15,54 @@ const formSchema = yup.object({
 
 type FormData = yup.InferType<typeof formSchema>;
 
-export const OrgNameChangeSection = ({ onOrgNameChange, orgName }: Props): JSX.Element => {
+export const OrgNameChangeSection = (): JSX.Element => {
+  const { t } = useTranslation();
+  const { currentOrg } = useOrganization();
+  const { createNotification } = useNotificationContext();
   const {
     handleSubmit,
     control,
-    reset,
-    formState: { isDirty, isSubmitting }
+    reset
   } = useForm<FormData>({ resolver: yupResolver(formSchema) });
-  const { t } = useTranslation();
+  const { mutateAsync, isLoading } = useRenameOrg();
 
   useEffect(() => {
-    reset({ name: orgName });
-  }, [orgName]);
+    if (currentOrg) {
+      reset({ name: currentOrg.name });
+    }
+  }, [currentOrg]);
 
   const onFormSubmit = async ({ name }: FormData) => {
-    await onOrgNameChange(name);
+    try {
+      if (!currentOrg?._id) return;
+      if (name === "") return;
+
+      await mutateAsync({ orgId: currentOrg?._id, newOrgName: name });
+      createNotification({
+        text: "Successfully renamed organization",
+        type: "success"
+      });
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: "Failed to rename organization",
+        type: "error"
+      });
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)}>
-      <div className="mb-6 flex w-full flex-col items-start rounded-md bg-white/5 px-6 pb-6 pt-3">
-        <p className="mb-4 mt-2 text-xl font-semibold">{t("common.display-name")}</p>
-        <div className="mb-2 w-full max-w-lg">
+    <form 
+      onSubmit={handleSubmit(onFormSubmit)}
+      className="p-4 bg-mineshaft-900 mb-6 max-w-screen-lg rounded-lg border border-mineshaft-600 "
+    >
+        <p className="text-xl font-semibold text-mineshaft-100 mb-8">{t("common.display-name")}</p>
+        <div className="mb-2 max-w-md">
           <Controller
             defaultValue=""
             render={({ field, fieldState: { error } }) => (
               <FormControl isError={Boolean(error)} errorText={error?.message}>
-                <Input placeholder="Type your org name" {...field} />
+                <Input placeholder="Acme Corp" {...field} />
               </FormControl>
             )}
             control={control}
@@ -53,17 +70,13 @@ export const OrgNameChangeSection = ({ onOrgNameChange, orgName }: Props): JSX.E
           />
         </div>
         <Button
-          isLoading={isSubmitting}
+          isLoading={isLoading}
           color="primary"
-          variant="outline_bg"
-          size="sm"
+          colorSchema="secondary"
           type="submit"
-          isDisabled={!isDirty || isSubmitting}
-          leftIcon={<FontAwesomeIcon icon={faCheck} />}
         >
-          {t("common.save-changes")}
+          Save
         </Button>
-      </div>
     </form>
   );
 };

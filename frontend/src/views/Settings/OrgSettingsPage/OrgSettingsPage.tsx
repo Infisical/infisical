@@ -18,7 +18,6 @@ import {
   useGetOrgUsers,
   useGetUserWorkspaceMemberships,
   useGetUserWsKey,
-  useRenameOrg,
   useUpdateOrgUserRole,
   useUploadWsKey
 } from "@app/hooks/api";
@@ -47,7 +46,7 @@ export const OrgSettingsPage = () => {
   const { data: incidentContact, isLoading: IsIncidentContactLoading } =
     useGetOrgIncidentContact(orgId);
 
-  const renameOrg = useRenameOrg();
+  
   const removeUserOrgMembership = useDeleteOrgMembership();
   const addUserToOrg = useAddUserToOrg();
   const updateOrgUserRole = useUpdateOrgUserRole();
@@ -58,24 +57,6 @@ export const OrgSettingsPage = () => {
   const [completeInviteLink, setcompleteInviteLink] = useState<string | undefined>("");
 
   const isMoreUsersNotAllowed = subscription?.memberLimit ? (subscription.membersUsed >= subscription.memberLimit) : false;
-
-  const onRenameOrg = async (name: string) => {
-    if (!currentOrg?._id) return;
-
-    try {
-      await renameOrg.mutateAsync({ orgId: currentOrg?._id, newOrgName: name });
-      createNotification({
-        text: "Successfully renamed organization",
-        type: "success"
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to rename organization",
-        type: "error"
-      });
-    }
-  };
 
   const onRemoveUserOrgMembership = async (membershipId: string) => {
     if (!currentOrg?._id) return;
@@ -216,7 +197,7 @@ export const OrgSettingsPage = () => {
         <p className="text-base font-normal text-gray-400">{t("settings.org.description")}</p>
       </div>
       <div className="max-w-8xl ml-6 mr-6 flex flex-col text-mineshaft-50">
-        <OrgNameChangeSection orgName={currentOrg?.name} onOrgNameChange={onRenameOrg} />
+        <OrgNameChangeSection />
         <div className="mb-6 w-full rounded-md bg-white/5 p-6">
           <p className="mr-4 mb-4 text-xl font-semibold text-white">
             {t("section.members.org-members")}
