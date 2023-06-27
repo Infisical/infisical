@@ -4,7 +4,6 @@ import { IMembershipPermission } from "../../../models/membership";
 import { BadRequestError, UnauthorizedRequestError } from "../../../utils/errors";
 import { ADMIN, MEMBER } from "../../../variables/organization";
 import { PERMISSION_READ_SECRETS, PERMISSION_WRITE_SECRETS } from "../../../variables";
-import { Builder } from "builder-pattern"
 import _ from "lodash";
 
 export const denyMembershipPermissions = async (req: Request, res: Response) => {
@@ -15,10 +14,10 @@ export const denyMembershipPermissions = async (req: Request, res: Response) => 
       throw BadRequestError({ message: "One or more required fields are missing from the request or have incorrect type" })
     }
 
-    return Builder<IMembershipPermission>()
-      .environmentSlug(permission.environmentSlug)
-      .ability(permission.ability)
-      .build();
+    return {
+      environmentSlug: permission.environmentSlug,
+      ability: permission.ability
+    }
   })
 
   const sanitizedMembershipPermissionsUnique = _.uniqWith(sanitizedMembershipPermissions, _.isEqual)
