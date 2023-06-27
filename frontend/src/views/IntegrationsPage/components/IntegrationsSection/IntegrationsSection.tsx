@@ -10,7 +10,8 @@ import {
   IconButton,
   Select,
   SelectItem,
-  Skeleton
+  Skeleton,
+  Tooltip
 } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
 import { TIntegration } from "@app/hooks/api/types";
@@ -53,7 +54,7 @@ export const IntegrationsSection = ({
         <div className="flex flex-col space-y-4 p-6 pt-0">
           {integrations?.map((integration) => (
             <div
-              className="flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 pb-2"
+              className="flex max-w-8xl justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 pb-2"
               key={`integration-${integration?._id.toString()}`}
             >
               <div className="flex">
@@ -62,7 +63,7 @@ export const IntegrationsSection = ({
                     <Select
                       value={integration.environment}
                       isDisabled={integration.isActive}
-                      className="min-w-[8rem]"
+                      className="min-w-[8rem] border border-mineshaft-700"
                     >
                       {environments.map((environment) => {
                         return (
@@ -79,7 +80,7 @@ export const IntegrationsSection = ({
                 </div>
                 <div className="ml-2 flex flex-col">
                   <FormLabel label="Secret Path" />
-                  <div className="min-w-[8rem] rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                  <div className="min-w-[8rem] rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200 border border-mineshaft-700">
                     {integration.secretPath}
                   </div>
                 </div>
@@ -88,13 +89,13 @@ export const IntegrationsSection = ({
                 </div>
                 <div className="ml-4 flex flex-col">
                   <FormLabel label="Integration" />
-                  <div className="min-w-[8rem] rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                  <div className="min-w-[8rem] rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200 border border-mineshaft-700">
                     {integrationSlugNameMapping[integration.integration]}
                   </div>
                 </div>
                 <div className="ml-2 flex flex-col">
                   <FormLabel label="App" />
-                  <div className="min-w-[8rem] rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                  <div className="min-w-[8rem] rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200 border border-mineshaft-700">
                     {integration.integration === "hashicorp-vault"
                       ? `${integration.app} - path: ${integration.path}`
                       : integration.app}
@@ -106,7 +107,7 @@ export const IntegrationsSection = ({
                   integration.integration === "gitlab") && (
                   <div className="ml-4 flex flex-col">
                     <FormLabel label="Target Environment" />
-                    <div className="rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
+                    <div className="rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200 border border-mineshaft-700">
                       {integration.targetEnvironment}
                     </div>
                   </div>
@@ -114,13 +115,16 @@ export const IntegrationsSection = ({
               </div>
               <div className="flex cursor-default items-center">
                 <div className="ml-2 opacity-80 duration-200 hover:opacity-100">
-                  <IconButton
-                    onClick={() => handlePopUpOpen("deleteConfirmation", integration)}
-                    ariaLabel="delete"
-                    colorSchema="danger"
-                  >
-                    <FontAwesomeIcon icon={faXmark} />
-                  </IconButton>
+                  <Tooltip content="Remove Integration">
+                    <IconButton
+                      onClick={() => handlePopUpOpen("deleteConfirmation", integration)}
+                      ariaLabel="delete"
+                      colorSchema="danger"
+                      variant="star"
+                    >
+                      <FontAwesomeIcon icon={faXmark} className="px-0.5" />
+                    </IconButton>
+                  </Tooltip>
                 </div>
               </div>
             </div>
@@ -130,7 +134,7 @@ export const IntegrationsSection = ({
       <DeleteActionModal
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure want to remove ${
-          (popUp?.deleteConfirmation.data as TIntegration)?.integration || " "
+          (popUp?.deleteConfirmation.data as TIntegration)?.integrationAuth || " "
         } integration for ${(popUp?.deleteConfirmation.data as TIntegration)?.app || " "}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
         deleteKey={(popUp?.deleteConfirmation?.data as TIntegration)?.app || ""}
