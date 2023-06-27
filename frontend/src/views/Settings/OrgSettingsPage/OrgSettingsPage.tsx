@@ -31,8 +31,6 @@ import {
 } from "./components";
 
 export const OrgSettingsPage = () => {
-  const host = window.location.origin;
-
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
   const { currentWorkspace } = useWorkspace();
