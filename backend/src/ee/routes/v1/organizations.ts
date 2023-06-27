@@ -11,26 +11,10 @@ import {
     ACCEPTED, ADMIN, MEMBER, OWNER,
 } from "../../../variables";
 
-router.post(
-    "/:organizationId/billing-details/session",
-    requireAuth({
-		acceptedAuthModes: ["jwt", "apiKey"],
-	}),
-    requireOrganizationAuth({
-        acceptedRoles: [OWNER, ADMIN, MEMBER],
-        acceptedStatuses: [ACCEPTED],
-    }),
-    param("organizationId").exists().trim(),
-    body("productId").exists().trim(),
-    body("success_url").exists().trim(),
-    validateRequest,
-    organizationsController.createProductCheckoutSession
-);
-
 router.get(
     "/:organizationId/plans/table",
     requireAuth({
-		acceptedAuthModes: ["jwt", "apiKey"],
+		acceptedAuthModes: ["jwt"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -45,7 +29,7 @@ router.get(
 router.get(
     "/:organizationId/plan",
     requireAuth({
-		acceptedAuthModes: ["jwt", "apiKey"],
+		acceptedAuthModes: ["jwt"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -60,7 +44,7 @@ router.get(
 router.get(
     "/:organizationId/plan/billing",
     requireAuth({
-		acceptedAuthModes: ["jwt", "apiKey"],
+		acceptedAuthModes: ["jwt"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -75,7 +59,7 @@ router.get(
 router.get(
     "/:organizationId/plan/table",
     requireAuth({
-		acceptedAuthModes: ["jwt", "apiKey"],
+		acceptedAuthModes: ["jwt"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -87,25 +71,10 @@ router.get(
     organizationsController.getOrganizationPlanTable
 );
 
-router.patch(
-    "/:organizationId/plan",
-    requireAuth({
-		acceptedAuthModes: ["jwt", "apiKey"],
-	}),
-    requireOrganizationAuth({
-        acceptedRoles: [OWNER, ADMIN, MEMBER],
-        acceptedStatuses: [ACCEPTED],
-    }),
-    param("organizationId").exists().trim(),
-    body("productId").exists().isString(),
-    validateRequest,
-    organizationsController.updateOrganizationPlan
-);
-
 router.get(
     "/:organizationId/billing-details",
     requireAuth({
-		acceptedAuthModes: ["jwt", "apiKey"],
+		acceptedAuthModes: ["jwt"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -119,7 +88,7 @@ router.get(
 router.patch(
     "/:organizationId/billing-details",
     requireAuth({
-		acceptedAuthModes: ["jwt", "apiKey"],
+		acceptedAuthModes: ["jwt"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -135,7 +104,7 @@ router.patch(
 router.get(
     "/:organizationId/billing-details/payment-methods",
     requireAuth({
-		acceptedAuthModes: ["jwt", "apiKey"],
+		acceptedAuthModes: ["jwt"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -149,7 +118,7 @@ router.get(
 router.post(
     "/:organizationId/billing-details/payment-methods",
     requireAuth({
-		acceptedAuthModes: ["jwt", "apiKey"],
+		acceptedAuthModes: ["jwt"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -165,7 +134,7 @@ router.post(
 router.delete(
     "/:organizationId/billing-details/payment-methods/:pmtMethodId",
     requireAuth({
-		acceptedAuthModes: ["jwt", "apiKey"],
+		acceptedAuthModes: ["jwt"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -180,7 +149,7 @@ router.delete(
 router.get(
     "/:organizationId/billing-details/tax-ids",
     requireAuth({
-		acceptedAuthModes: ["jwt", "apiKey"],
+		acceptedAuthModes: ["jwt"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -194,7 +163,7 @@ router.get(
 router.post(
     "/:organizationId/billing-details/tax-ids",
     requireAuth({
-		acceptedAuthModes: ["jwt", "apiKey"],
+		acceptedAuthModes: ["jwt"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -210,7 +179,7 @@ router.post(
 router.delete(
     "/:organizationId/billing-details/tax-ids/:taxId",
     requireAuth({
-		acceptedAuthModes: ["jwt", "apiKey"],
+		acceptedAuthModes: ["jwt"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],
@@ -225,7 +194,7 @@ router.delete(
 router.get(
     "/:organizationId/invoices",
     requireAuth({
-		acceptedAuthModes: ["jwt", "apiKey"],
+		acceptedAuthModes: ["jwt"],
 	}),
     requireOrganizationAuth({
         acceptedRoles: [OWNER, ADMIN, MEMBER],

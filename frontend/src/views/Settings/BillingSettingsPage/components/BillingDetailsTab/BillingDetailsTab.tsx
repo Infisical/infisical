@@ -5,11 +5,11 @@ import { TaxIDSection } from "./TaxIDSection";
 
 export const BillingDetailsTab = () => {
     return (
-        <div>
+        <>
             <CompanyNameSection />
             <InvoiceEmailSection />
             <PmtMethodsSection />
             <TaxIDSection />
-        </div>
+        </>
     );
 }

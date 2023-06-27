@@ -1,6 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { apiRequest } from "@app/config/request";
-import { Organization, RenameOrgDTO, BillingDetails } from "./types";
+
+import { 
+  BillingDetails,
+  Invoice,
+  Organization, 
+  OrgPlanTable,
+  PlanBillingInfo,
+  PmtMethod,
+  ProductsTable,
+  RenameOrgDTO, 
+  TaxID} from "./types";
 
 const organizationKeys = {
   getUserOrganization: ["organization"] as const,
@@ -13,50 +24,17 @@ const organizationKeys = {
   getOrgInvoices: (orgId: string) => [{ orgId }, "organization-invoices"] as const
 };
 
-const fetchUserOrganization = async () => {
-  const { data } = await apiRequest.get<{ organizations: Organization[] }>("/api/v1/organization");
+export const useGetOrganization = () => {
+  return useQuery({ 
+    queryKey: organizationKeys.getUserOrganization, 
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ organizations: Organization[] }>("/api/v1/organization");
 
-  return data.organizations;
-};
-
-// TODO: fix the type situation here and move fetches directly into hooks
-
-const fetchOrgBillingDetails = async (organizationId: string) => {
-  const { data } = await apiRequest.get<BillingDetails>(
-    `/api/v1/organizations/${organizationId}/billing-details`
-  );
-
-  return data;
+      return data.organizations;
+    }
+  });
 }
 
-const fetchOrgPmtMethods = async (organizationId: string) => {
-  const { data } = await apiRequest.get<BillingDetails>(
-    `/api/v1/organizations/${organizationId}/billing-details/payment-methods`
-  );
-
-  return data;
-}
-
-const fetchOrgTaxIds = async (organizationId: string) => {
-  const { data } = await apiRequest.get<BillingDetails>(
-    `/api/v1/organizations/${organizationId}/billing-details/tax-ids`
-  );
-
-  return data;
-}
-
-const fetchOrgInvoices = async (organizationId: string) => {
-  const { data: { invoices } } = await apiRequest.get<BillingDetails>(
-    `/api/v1/organizations/${organizationId}/invoices`
-  );
-
-  return invoices;
-}
-
-export const useGetOrganization = () =>
-  useQuery({ queryKey: organizationKeys.getUserOrganization, queryFn: fetchUserOrganization });
-
-// mutation
 export const useRenameOrg = () => {
   const queryClient = useQueryClient();
 
@@ -73,7 +51,7 @@ export const useGetOrgPlanBillingInfo = (organizationId: string) => {
   return useQuery({
     queryKey: organizationKeys.getOrgPlanBillingInfo(organizationId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<BillingDetails>(
+      const { data } = await apiRequest.get<PlanBillingInfo>(
         `/api/v1/organizations/${organizationId}/plan/billing`
       );
 
@@ -87,7 +65,7 @@ export const useGetOrgPlanTable = (organizationId: string) => {
   return useQuery({
     queryKey: organizationKeys.getOrgPlanTable(organizationId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<BillingDetails>(
+      const { data } = await apiRequest.get<OrgPlanTable>(
         `/api/v1/organizations/${organizationId}/plan/table`
       );
 
@@ -102,12 +80,12 @@ export const useGetOrgPlansTable = ({
   billingCycle
 }: {
   organizationId: string;
-  billingCycle: "monthly" | "annual"
+  billingCycle: "monthly" | "yearly"
 }) => {
   return useQuery({
     queryKey: organizationKeys.getOrgPlansTable(organizationId, billingCycle),
     queryFn: async () => {
-      const { data } = await apiRequest.get<BillingDetails>(
+      const { data } = await apiRequest.get<ProductsTable>(
         `/api/v1/organizations/${organizationId}/plans/table?billingCycle=${billingCycle}`
       );
 
@@ -120,7 +98,13 @@ export const useGetOrgPlansTable = ({
 export const useGetOrgBillingDetails = (organizationId: string) => {
   return useQuery({
     queryKey: organizationKeys.getOrgBillingDetails(organizationId),
-    queryFn: () => fetchOrgBillingDetails(organizationId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<BillingDetails>(
+        `/api/v1/organizations/${organizationId}/billing-details`
+      );
+
+      return data;
+    },
     enabled: true
   });
 }
@@ -137,10 +121,14 @@ export const useUpdateOrgBillingDetails = () => {
       name?: string;
       email?: string;
     }) => {
-      const { data } = await apiRequest.patch(`/api/v1/organizations/${organizationId}/billing-details`, {
-        name,
-        email
-      });
+      const { data } = await apiRequest.patch(
+        `/api/v1/organizations/${organizationId}/billing-details`, 
+        {
+          name,
+          email
+        }
+      );
+
       return data;
     },
     onSuccess(_, dto) {
@@ -152,7 +140,13 @@ export const useUpdateOrgBillingDetails = () => {
 export const useGetOrgPmtMethods = (organizationId: string) => {
   return useQuery({
     queryKey: organizationKeys.getOrgPmtMethods(organizationId),
-    queryFn: () => fetchOrgPmtMethods(organizationId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<PmtMethod[]>(
+        `/api/v1/organizations/${organizationId}/billing-details/payment-methods`
+      );
+
+      return data;
+    },
     enabled: true
   });
 }
@@ -170,10 +164,14 @@ export const useAddOrgPmtMethod = () => {
       success_url: string;
       cancel_url: string;
     }) => {
-      const { data: { url } } = await apiRequest.post(`/api/v1/organizations/${organizationId}/billing-details/payment-methods`, {
-        success_url,
-        cancel_url
-      });
+      const { data: { url } } = await apiRequest.post(
+        `/api/v1/organizations/${organizationId}/billing-details/payment-methods`, 
+        {
+          success_url,
+          cancel_url
+        }
+      );
+
       return url;
     },
     onSuccess(_, dto) {
@@ -193,7 +191,10 @@ export const useDeleteOrgPmtMethod = () => {
       organizationId: string;
       pmtMethodId: string;
     }) => {
-      const { data } = await apiRequest.delete(`/api/v1/organizations/${organizationId}/billing-details/payment-methods/${pmtMethodId}`);
+      const { data } = await apiRequest.delete(
+        `/api/v1/organizations/${organizationId}/billing-details/payment-methods/${pmtMethodId}`
+      );
+
       return data;
     },
     onSuccess(_, dto) {
@@ -205,7 +206,13 @@ export const useDeleteOrgPmtMethod = () => {
 export const useGetOrgTaxIds = (organizationId: string) => {
   return useQuery({
     queryKey: organizationKeys.getOrgTaxIds(organizationId),
-    queryFn: () => fetchOrgTaxIds(organizationId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TaxID[]>(
+        `/api/v1/organizations/${organizationId}/billing-details/tax-ids`
+      );
+
+      return data;
+    },
     enabled: true
   });
 }
@@ -223,10 +230,13 @@ export const useAddOrgTaxId = () => {
       type: string;
       value: string;
     }) => {
-      const { data } = await apiRequest.post(`/api/v1/organizations/${organizationId}/billing-details/tax-ids`, {
-        type,
-        value
-      });
+      const { data } = await apiRequest.post(
+        `/api/v1/organizations/${organizationId}/billing-details/tax-ids`, 
+        {
+          type,
+          value
+        }
+      );
 
       return data;
     },
@@ -247,7 +257,10 @@ export const useDeleteOrgTaxId = () => {
       organizationId: string;
       taxId: string;
     }) => {
-      const { data } = await apiRequest.delete(`/api/v1/organizations/${organizationId}/billing-details/tax-ids/${taxId}`);
+      const { data } = await apiRequest.delete(
+        `/api/v1/organizations/${organizationId}/billing-details/tax-ids/${taxId}`
+      );
+
       return data;
     },
     onSuccess(_, dto) {
@@ -259,54 +272,24 @@ export const useDeleteOrgTaxId = () => {
 export const useGetOrgInvoices = (organizationId: string) => {
   return useQuery({
     queryKey: organizationKeys.getOrgInvoices(organizationId),
-    queryFn: () => fetchOrgInvoices(organizationId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<Invoice[]>(
+        `/api/v1/organizations/${organizationId}/invoices`
+      );
+
+      return data;
+    },
     enabled: true
   });
 }
 
-export const useUpdateOrgPlan = () => {
-  const queryClient = useQueryClient();
+export const useCreateCustomerPortalSession = () => {
   return useMutation({
-    mutationFn: async ({
-      organizationId,
-      productId
-    }: {
-      organizationId: string;
-      productId: string;
-    }) => {
-      const { data } = await apiRequest.patch(`/api/v1/organizations/${organizationId}/plan`, {
-        productId
-      });
+    mutationFn: async (organizationId: string) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/organization/${organizationId}/customer-portal-session`
+      );
       return data;
-    },
-    onSuccess(_, dto) {
-      queryClient.invalidateQueries([
-        organizationKeys.getOrgPlanTable(dto.organizationId),
-      ]);
-    }
-  });
-};
-
-export const useCreateProductCheckoutSession = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      organizationId,
-      productId,
-      success_url
-    }: {
-      organizationId: string;
-      productId: string;
-      success_url: string;
-    }) => {
-      const { data } = await apiRequest.post(`/api/v1/organizations/${organizationId}/billing-details/session`, {
-        productId,
-        success_url
-      });
-      return data;
-    },
-    onSuccess(_, dto) {
-      console.log('onSuccess');
     }
   });
 };

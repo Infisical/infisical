@@ -1,21 +1,9 @@
-import { useSubscription } from "@app/context";
-import { useOrganization } from "@app/context";
-import { Tab } from '@headlessui/react'
-import { Fragment } from 'react'
-import { 
-    useGetOrgPlanBillingInfo,
-    useGetOrgPlanTable,
-    useGetOrgPlansTable,
-    useUpdateOrgPlan,
-    useCreateProductCheckoutSession
-} from "@app/hooks/api";
+import { faCircleCheck, faCircleXmark,faFileInvoice } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import {
-  FormControl,
   Button,
-  IconButton,
-  Input,
-  Select,
-  SelectItem,
+  EmptyState,
   Table,
   TableContainer,
   TableSkeleton,
@@ -24,37 +12,31 @@ import {
   Th,
   THead,
   Tr,
-  EmptyState,
-  Modal,
-  ModalContent
 } from "@app/components/v2";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileInvoice, faCircleCheck, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
-
-// TODO: upgrade
+import { useOrganization,useSubscription  } from "@app/context";
+import { 
+    useCreateCustomerPortalSession,
+    useGetOrgPlansTable} from "@app/hooks/api";
 
 type Props = {
-    billingCycle: 'monthly' | 'yearly'
+    billingCycle: "monthly" | "yearly"
 }
 
 export const ManagePlansTable = ({
     billingCycle
 }: Props) => {
     const { currentOrg } = useOrganization();
-    const { subscription, isLoading: isSubscriptionLoading } = useSubscription();
+    const { subscription } = useSubscription();
     const { data: tableData, isLoading: isTableDataLoading } = useGetOrgPlansTable({
-        organizationId: currentOrg?._id ?? '',
+        organizationId: currentOrg?._id ?? "",
         billingCycle
     });
-    const updateOrgPlan = useUpdateOrgPlan();
-    const createProductCheckoutSession = useCreateProductCheckoutSession();
-
-    console.log('tableData: ', tableData);
+    const createCustomerPortalSession = useCreateCustomerPortalSession();
 
     const displayCell = (value: null | number | string | boolean) => {
-        if (value === null) return '-';
+        if (value === null) return "-";
         
-        if (typeof value === 'boolean') {
+        if (typeof value === "boolean") {
             if (value) return (
                 <FontAwesomeIcon 
                     icon={faCircleCheck}
@@ -77,20 +59,18 @@ export const ManagePlansTable = ({
         <TableContainer>
             <Table>
                 <THead>
-                    {!isTableDataLoading && tableData?.head.length > 0 && (
+                    {subscription && !isTableDataLoading && tableData && (
                         <Tr>
                             <Th className="">Feature / Limit</Th>
                             {tableData.head.map(({
                                 name,
-                                slug,
                                 priceLine
-                            }: {
-                                name: string;
-                                slug: string;
-                                priceLine: string;
                             }) => {
                                 return (
-                                    <Th className={`${slug === subscription.slug ? "bg-mineshaft-600 text-center" : "text-center"}`}>
+                                    <Th 
+                                        key={`plans-feature-head-${billingCycle}-${name}`}
+                                        className="text-center flex-1"
+                                    >
                                         <p>{name}</p>
                                         <p>{priceLine}</p>
                                     </Th>
@@ -100,26 +80,28 @@ export const ManagePlansTable = ({
                     )}
                 </THead>
                 <TBody>
-                    {!isTableDataLoading && tableData?.rows.length > 0 && tableData.rows.map(({
+                    {subscription && !isTableDataLoading && tableData && tableData.rows.map(({
                         name,
                         starter,
                         team,
                         pro,
                         enterprise
-                    }: {
-                        name: string;
-                        starter: null | number | string | boolean;
-                        team: null | number | string | boolean;
-                        pro: null | number | string | boolean;
-                        enterprise: null | number | string | boolean;
                     }) => {
                         return (
-                            <Tr className="h-12">
+                            <Tr className="h-12" key={`plans-feature-row-${billingCycle}-${name}`}>
                                 <Td>{displayCell(name)}</Td>
-                                <Td className={'starter' === subscription.slug ? "bg-mineshaft-600 text-center" : "text-center"}>{displayCell(starter)}</Td>
-                                <Td className={'team' === subscription.slug ? "bg-mineshaft-600 text-center" : "text-center"}>{displayCell(team)}</Td>
-                                <Td className={'pro' === subscription.slug ? "bg-mineshaft-600 text-center" : "text-center"}>{displayCell(pro)}</Td>
-                                <Td className={'enterprise' === subscription.slug ? "bg-mineshaft-600 text-center" : "text-center"}>{displayCell(enterprise)}</Td>
+                                <Td className="text-center">
+                                    {displayCell(starter)}
+                                </Td>
+                                <Td className="text-center">
+                                    {displayCell(team)}
+                                </Td>
+                                <Td className="text-center">
+                                    {displayCell(pro)}
+                                </Td>
+                                <Td className="text-center">
+                                    {displayCell(enterprise)}
+                                </Td>
                             </Tr>
                         );
                     })}
@@ -134,46 +116,53 @@ export const ManagePlansTable = ({
                             </Td>
                         </Tr>
                     )}
-                    {subscription && !isTableDataLoading && tableData?.head.length > 0 && (
+                    {subscription && !isTableDataLoading && tableData && (
                         <Tr className="h-12">
-                            <Td></Td>
+                            <Td />
                             {tableData.head.map(({
                                 slug,
-                                productId
-                            }: {
-                                slug: string;
-                                productId: string;
+                                tier
                             }) => {
+                                
                                 const isCurrentPlan = slug === subscription.slug;
+                                let subscriptionText = "Upgrade";
+                                
+                                if (subscription.tier > tier) {
+                                   subscriptionText = "Downgrade"
+                                }
+                                
+                                if (tier === 3) {
+                                   subscriptionText = "Contact sales"
+                                }
 
-                                console.log('productId: ', productId);
                                 return isCurrentPlan ? (
-                                    <Td className="bg-mineshaft-600">
-                                        <p className="text-center font-semibold">Current</p>
+                                    <Td>
+                                        <Button 
+                                            colorSchema="secondary"
+                                            className="w-full"
+                                            isDisabled
+                                        >
+                                            Current
+                                        </Button>
                                     </Td>
                                 ) : (
                                     <Td>
                                         <Button 
                                             onClick={async () => {
-                                                console.log('upgrade to product: ', productId);
                                                 if (!currentOrg?._id) return;
-                                                // const test = await updateOrgPlan.mutateAsync({
-                                                //     organizationId: currentOrg._id,
-                                                //     productId
-                                                // });
                                                 
-                                                const { url } = await createProductCheckoutSession.mutateAsync({
-                                                    organizationId: currentOrg._id,
-                                                    productId,
-                                                    success_url: window.location.href
-                                                })
+                                                if (tier !== 3) {
+                                                    const { url } = await createCustomerPortalSession.mutateAsync(currentOrg._id);
+                                                    window.location.href = url;
+                                                    return;
+                                                }
                                                 
-                                                window.location.href = url;
+                                                window.location.href = "https://infisical.com/scheduledemo";
                                             }}
                                             color="mineshaft"
                                             className="w-full"
                                         >
-                                            Upgrade
+                                            {subscriptionText}
                                         </Button>
                                     </Td>
                                 );

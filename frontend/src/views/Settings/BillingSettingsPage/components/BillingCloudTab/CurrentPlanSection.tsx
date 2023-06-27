@@ -1,7 +1,8 @@
+import { faCircleCheck, faCircleXmark,faFileInvoice } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import {
-  Input,
-  IconButton,
-  Button,
+  EmptyState,
   Table,
   TableContainer,
   TableSkeleton,
@@ -9,24 +10,20 @@ import {
   Td,
   Th,
   THead,
-  Tr,
-  EmptyState
-} from "@app/components/v2";
+  Tr} from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import { 
     useGetOrgPlanTable
 } from "@app/hooks/api";
-import { useOrganization } from "@app/context";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileInvoice, faCircleCheck, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
 
 export const CurrentPlanSection = () => {
     const { currentOrg } = useOrganization();
-    const { data, isLoading } = useGetOrgPlanTable(currentOrg?._id ?? '');
+    const { data, isLoading } = useGetOrgPlanTable(currentOrg?._id ?? "");
     
     const displayCell = (value: null | number | string | boolean) => {
-        if (value === null) return '-';
+        if (value === null) return "-";
         
-        if (typeof value === 'boolean') {
+        if (typeof value === "boolean") {
             if (value) return (
                 <FontAwesomeIcon 
                     icon={faCircleCheck}
@@ -58,14 +55,10 @@ export const CurrentPlanSection = () => {
                     </Tr>
                 </THead>
                 <TBody>
-                    {!isLoading && data?.rows?.length > 0 && data.rows.map(({
+                    {!isLoading && data && data?.rows?.length > 0 && data.rows.map(({
                         name,
                         allowed,
                         used
-                    }: {
-                        name: string;
-                        allowed: number | boolean;
-                        used: string;
                     }) => {
                         return (
                            <Tr key={`current-plan-row-${name}`} className="h-12">
@@ -76,7 +69,7 @@ export const CurrentPlanSection = () => {
                         );
                     })}
                     {isLoading && <TableSkeleton columns={5} key="invoices" />}
-                    {!isLoading && data?.length === 0 && (
+                    {!isLoading && data && data?.rows?.length === 0 && (
                         <Tr>
                             <Td colSpan={3}>
                                 <EmptyState 

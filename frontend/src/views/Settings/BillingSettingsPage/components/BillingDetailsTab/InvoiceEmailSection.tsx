@@ -1,12 +1,13 @@
 import { useEffect } from "react";
+import { Controller, useForm } from "react-hook-form"; 
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+
+import Button from "@app/components/basic/buttons/Button";
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import {
-  Input,
-  Button,
-  FormControl
-} from "@app/components/v2";
-import { Controller, useForm } from 'react-hook-form'; 
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+  FormControl,
+  Input} from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { 
     useGetOrgBillingDetails,
@@ -14,24 +15,25 @@ import {
 } from "@app/hooks/api";
 
 const schema = yup.object({
-    email: yup.string().required('Email is required')
+    email: yup.string().required("Email is required")
 }).required();
 
 export const InvoiceEmailSection = () => {
+    const { createNotification } = useNotificationContext();
     const { currentOrg } = useOrganization();
-    const { reset, control, register, handleSubmit, watch, formState: { errors } } = useForm({
+    const { reset, control, handleSubmit } = useForm({
         defaultValues: {
-            name: ''
+            email: ""
         },
         resolver: yupResolver(schema)
     });
-    const { data } = useGetOrgBillingDetails(currentOrg?._id ?? '');
+    const { data } = useGetOrgBillingDetails(currentOrg?._id ?? "");
     const updateOrgBillingDetails = useUpdateOrgBillingDetails();
 
     useEffect(() => {
         if (data) {
             reset({
-                email: data?.email ?? ''
+                email: data?.email ?? ""
             });
         }
     }, [data]);
@@ -39,13 +41,23 @@ export const InvoiceEmailSection = () => {
     const onFormSubmit = async ({ email }: { email: string }) => {
         try {
             if (!currentOrg?._id) return;
-            if (email === '') return;
+            if (email === "") return;
+
             await updateOrgBillingDetails.mutateAsync({
                 email,
                 organizationId: currentOrg._id
             });
+            
+            createNotification({
+                text: "Successfully updated invoice email recipient",
+                type: "success"
+            });
         } catch (err) {
             console.error(err);
+            createNotification({
+                text: "Failed to update invoice email recipient",
+                type: "error"
+            });
         }
     }
 
@@ -54,17 +66,9 @@ export const InvoiceEmailSection = () => {
             onSubmit={handleSubmit(onFormSubmit)}
             className="p-4 bg-mineshaft-900 mt-8 max-w-screen-lg rounded-lg border border-mineshaft-600"
         >
-            <div className="flex items-center mb-8">
-                <h2 className="text-xl font-semibold flex-1 text-white">
-                    Invoice email recipient
-                </h2>
-                <Button 
-                    color="mineshaft"
-                    type="submit"
-                >
-                    Save
-                </Button>
-            </div>
+            <h2 className="text-xl font-semibold flex-1 text-white mb-8">
+                Invoice email recipient
+            </h2>
             <div className="max-w-md">
                 <Controller
                     defaultValue=""
@@ -79,6 +83,15 @@ export const InvoiceEmailSection = () => {
                     )}
                     control={control}
                     name="email"
+                />
+            </div>
+            <div className="inline-block">
+                <Button
+                    text="Save"
+                    type="submit"
+                    color="mineshaft"
+                    size="md"
+                    onButtonPressed={() => console.log("Saved email address")}
                 />
             </div>
         </form>

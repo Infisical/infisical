@@ -3,25 +3,6 @@ import { getLicenseServerUrl } from "../../../config";
 import { licenseServerKeyRequest } from "../../../config/request";
 import { EELicenseService } from "../../services";
 
-export const createProductCheckoutSession = async (req: Request, res: Response) => {
-    const {
-        productId,
-        success_url
-    } = req.body;
-    console.log('createProductCheckoutSession req.body: ', req.body);
-
-    const { data } = await licenseServerKeyRequest.post(
-        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/billing-details/session`,
-        {
-            productId,
-            success_url
-        }
-    ); 
-    console.log('createProductCheckoutSession data: ', data);
-
-    return res.status(200).send(data);
-}
-
 export const getOrganizationPlansTable = async (req: Request, res: Response) => {
     const billingCycle = req.query.billingCycle as string;
     
@@ -71,30 +52,6 @@ export const getOrganizationPlanTable = async (req: Request, res: Response) => {
         `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/cloud-plan/table`
     ); 
 
-    return res.status(200).send(data);
-}
-
-/**
- * Update the organization plan to product with id [productId]
- * @param req 
- * @param res 
- * @returns 
- */
-export const updateOrganizationPlan = async (req: Request, res: Response) => {
-    const {
-        productId,
-    } = req.body;
-
-    console.log('backend update productId: ', productId);
-    const { data } = await licenseServerKeyRequest.patch(
-        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/cloud-plan`,
-        {
-            productId,
-        }
-    ); 
-
-    console.log(' ttproductId: ', data);
-    
     return res.status(200).send(data);
 }
 
@@ -208,9 +165,9 @@ export const deleteOrganizationTaxId = async (req: Request, res: Response) => {
 }
 
 export const getOrganizationInvoices = async (req: Request, res: Response) => {
-    const { data } = await licenseServerKeyRequest.get(
+    const { data: { invoices } } = await licenseServerKeyRequest.get(
         `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/invoices`
     );
 
-    return res.status(200).send(data); 
+    return res.status(200).send(invoices); 
 }
