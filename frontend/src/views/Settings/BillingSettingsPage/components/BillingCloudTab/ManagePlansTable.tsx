@@ -34,7 +34,7 @@ export const ManagePlansTable = ({
     const createCustomerPortalSession = useCreateCustomerPortalSession();
 
     const displayCell = (value: null | number | string | boolean) => {
-        if (value === null) return "-";
+        if (value === null) return "Unlimited";
         
         if (typeof value === "boolean") {
             if (value) return (
