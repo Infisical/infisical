@@ -65,8 +65,6 @@ export const Navbar = () => {
   const router = useRouter();
   const { subscription } = useSubscription();
   
-  console.log("subscription: ", subscription);
-
   const { currentOrg, orgs } = useOrganization();
   const { user } = useUser();
 
