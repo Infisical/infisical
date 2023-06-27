@@ -46,7 +46,7 @@ export const IntegrationsSection = ({
       )}
       {!isLoading && !integrations.length && (
         <EmptyState
-          className="mx-6 pt-8 pb-4 rounded-md border border-mineshaft-700"
+          className="mx-6 rounded-md border border-mineshaft-700 pt-8 pb-4"
           title="No integrations found. Click on one of the below providers to sync secrets."
         />
       )}
@@ -54,7 +54,7 @@ export const IntegrationsSection = ({
         <div className="flex flex-col space-y-4 p-6 pt-0">
           {integrations?.map((integration) => (
             <div
-              className="flex max-w-8xl justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 pb-2"
+              className="max-w-8xl flex justify-between rounded-md border border-mineshaft-600 bg-mineshaft-800 p-6 pb-2"
               key={`integration-${integration?._id.toString()}`}
             >
               <div className="flex">
@@ -80,7 +80,7 @@ export const IntegrationsSection = ({
                 </div>
                 <div className="ml-2 flex flex-col">
                   <FormLabel label="Secret Path" />
-                  <div className="min-w-[8rem] rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200 border border-mineshaft-700">
+                  <div className="min-w-[8rem] rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
                     {integration.secretPath}
                   </div>
                 </div>
@@ -89,13 +89,13 @@ export const IntegrationsSection = ({
                 </div>
                 <div className="ml-4 flex flex-col">
                   <FormLabel label="Integration" />
-                  <div className="min-w-[8rem] rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200 border border-mineshaft-700">
+                  <div className="min-w-[8rem] rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
                     {integrationSlugNameMapping[integration.integration]}
                   </div>
                 </div>
                 <div className="ml-2 flex flex-col">
                   <FormLabel label="App" />
-                  <div className="min-w-[8rem] rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200 border border-mineshaft-700">
+                  <div className="min-w-[8rem] rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
                     {integration.integration === "hashicorp-vault"
                       ? `${integration.app} - path: ${integration.path}`
                       : integration.app}
@@ -107,7 +107,7 @@ export const IntegrationsSection = ({
                   integration.integration === "gitlab") && (
                   <div className="ml-4 flex flex-col">
                     <FormLabel label="Target Environment" />
-                    <div className="rounded-md bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200 border border-mineshaft-700">
+                    <div className="rounded-md border border-mineshaft-700 bg-mineshaft-900 px-3 py-2 font-inter text-sm text-bunker-200">
                       {integration.targetEnvironment}
                     </div>
                   </div>
@@ -134,7 +134,7 @@ export const IntegrationsSection = ({
       <DeleteActionModal
         isOpen={popUp.deleteConfirmation.isOpen}
         title={`Are you sure want to remove ${
-          (popUp?.deleteConfirmation.data as TIntegration)?.integrationAuth || " "
+          (popUp?.deleteConfirmation.data as TIntegration)?.integration || " "
         } integration for ${(popUp?.deleteConfirmation.data as TIntegration)?.app || " "}?`}
         onChange={(isOpen) => handlePopUpToggle("deleteConfirmation", isOpen)}
         deleteKey={(popUp?.deleteConfirmation?.data as TIntegration)?.app || ""}
