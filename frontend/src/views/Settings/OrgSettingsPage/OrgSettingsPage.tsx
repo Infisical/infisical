@@ -210,27 +210,6 @@ export const OrgSettingsPage = () => {
     }
   };
 
-  /**
-   * This function deleted a workspace.
-   * It first checks if there is more than one workspace available. Otherwise, it doesn't delete
-   * It then checks if the name of the workspace to be deleted is correct. Otherwise, it doesn't delete.
-   * It then deletes the workspace and forwards the user to another available workspace.
-   */
-  // const executeDeletingWorkspace = async () => {
-  //   const userWorkspaces = await getWorkspaces();
-  //
-  //   if (userWorkspaces.length > 1) {
-  //     if (
-  //       userWorkspaces.filter((workspace) => workspace._id === workspaceId)[0].name ===
-  //       workspaceToBeDeletedName
-  //     ) {
-  //       await deleteWorkspace(workspaceId);
-  //       const ws = await getWorkspaces();
-  //       router.push(`/dashboard/${ws[0]._id}`);
-  //     }
-  //   }
-  // };
-  //
   return (
     <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       <NavHeader pageName={t("settings.org.title")} />
