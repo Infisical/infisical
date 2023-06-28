@@ -12,7 +12,7 @@ import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { faBookOpen, faMobile, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faAngleDown, faBookOpen, faMobile, faPlus, faQuestion } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { yupResolver } from "@hookform/resolvers/yup";
 import queryString from "query-string";
@@ -257,13 +257,20 @@ export const AppLayout = ({ children }: LayoutProps) => {
   return (
     <>
       <div className="dark hidden h-screen w-full flex-col overflow-x-hidden md:flex">
-        <Navbar />
+        {/* <Navbar /> */}
         <div className="flex flex-grow flex-col overflow-y-hidden md:flex-row">
           <aside className="w-full border-r border-mineshaft-600 bg-gradient-to-tr from-mineshaft-700 via-mineshaft-800 to-mineshaft-900 md:w-60">
             <nav className="items-between flex h-full flex-col justify-between">
               <div>
-                {currentWorkspace && router.asPath !== "/noprojects" ? (
-                  <div className="mt-3 mb-4 w-full p-4">
+                <div className="h-12 px-3 flex items-center pt-6 cursor-default">
+                  <div className="mr-auto flex items-center hover:bg-mineshaft-600 py-1.5 pl-1.5 pr-2 rounded-md">
+                    <div className="w-5 h-5 rounded-md bg-[#E0ED34] flex justify-center items-center">I</div>
+                    <div className="pl-3.5 text-mineshaft-100 text-sm">Infisical <FontAwesomeIcon icon={faAngleDown} className="text-xs pl-1 pt-1 text-mineshaft-300" /></div>
+                  </div>
+                  <div className="w-5 h-5 rounded-full bg-green hover:opacity-80 pr-1"></div>
+                </div>
+                {!router.asPath.includes("org") && (currentWorkspace && router.asPath !== "/noprojects" ? (
+                  <div className="mt-3 mb-4 w-full p-3">
                     <p className="ml-1.5 mb-1 text-xs font-semibold uppercase text-gray-400">
                       Project
                     </p>
@@ -331,9 +338,9 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       Add Project
                     </Button>
                   </div>
-                )}
-                <div className={`${currentWorkspace && router.asPath !== "/noprojects" ? "block" : "hidden"}`}>
-                  <Menu>
+                ))}
+                <div className={`px-1 ${currentWorkspace && router.asPath !== "/noprojects" ? "block" : "hidden"}`}>
+                  {router.asPath.includes("project") ? <Menu>
                     <Link href={`/dashboard/${currentWorkspace?._id}`} passHref>
                       <a>
                         <MenuItem
@@ -386,53 +393,51 @@ export const AppLayout = ({ children }: LayoutProps) => {
                       </a>
                     </Link>
                   </Menu>
+                  : <Menu className="mt-4">
+                      <Link href={`/dashboard/${currentWorkspace?._id}`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath.includes(`/dashboard/${currentWorkspace?._id}`)}
+                            icon="system-outline-90-lock-closed"
+                          >
+                            Overview
+                          </MenuItem>
+                        </a>
+                      </Link>
+                      <Link href={`/users/${currentWorkspace?._id}`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={router.asPath === `/users/${currentWorkspace?._id}`}
+                            icon="system-outline-96-groups"
+                          >
+                            {t("nav.menu.members")}
+                          </MenuItem>
+                        </a>
+                      </Link>
+                      <Link href={`/settings/project/${currentWorkspace?._id}`} passHref>
+                        <a>
+                          <MenuItem
+                            isSelected={
+                              router.asPath === `/settings/project/${currentWorkspace?._id}`
+                            }
+                            icon="system-outline-109-slider-toggle-settings"
+                          >
+                            Org Setting
+                          </MenuItem>
+                        </a>
+                      </Link>
+                  </Menu>}
                 </div>
               </div>
-              <div className="mt-40 mb-4 w-full px-2">
-                {router.asPath.split("/")[1] === "home" ? (
-                  <div className="relative flex cursor-pointer rounded bg-primary-50/10 px-0.5 py-2.5 text-sm text-white">
-                    <div className="absolute inset-0 top-0 my-1 ml-1 mr-1 w-1 rounded-xl bg-primary" />
-                    <p className="ml-4 mr-2 flex w-6 items-center justify-center text-lg">
-                      <FontAwesomeIcon icon={faBookOpen} />
-                    </p>
-                    Infisical Guide
-                    <img
-                      src={`/images/progress-${totalOnboardingActionsDone === 0 ? "0" : ""}${
-                        totalOnboardingActionsDone === 1 ? "14" : ""
-                      }${totalOnboardingActionsDone === 2 ? "28" : ""}${
-                        totalOnboardingActionsDone === 3 ? "43" : ""
-                      }${totalOnboardingActionsDone === 4 ? "57" : ""}${
-                        totalOnboardingActionsDone === 5 ? "71" : ""
-                      }.svg`}
-                      height={58}
-                      width={58}
-                      alt="progress bar"
-                      className="absolute right-2 -top-2"
-                    />
-                  </div>
-                ) : (
-                  <Link href={`/home/${currentWorkspace?._id}`}>
-                    <div className="mt-max relative flex h-10 cursor-pointer overflow-visible rounded bg-white/10 p-2.5 text-sm text-white hover:bg-primary-50/[0.15]">
-                      <p className="flex w-10 items-center justify-center text-lg">
-                        <FontAwesomeIcon icon={faBookOpen} />
-                      </p>
-                      Infisical Guide
-                      <img
-                        src={`/images/progress-${totalOnboardingActionsDone === 0 ? "0" : ""}${
-                          totalOnboardingActionsDone === 1 ? "14" : ""
-                        }${totalOnboardingActionsDone === 2 ? "28" : ""}${
-                          totalOnboardingActionsDone === 3 ? "43" : ""
-                        }${totalOnboardingActionsDone === 4 ? "57" : ""}${
-                          totalOnboardingActionsDone === 5 ? "71" : ""
-                        }.svg`}
-                        height={58}
-                        width={58}
-                        alt="progress bar"
-                        className="absolute right-2 -top-2"
-                      />
-                    </div>
-                  </Link>
-                )}
+              <div className="mt-40 mb-4 w-full px-2 text-mineshaft-400 cursor-default pl-6 text-sm">
+                <div className="hover:text-mineshaft-200 duration-200 mb-3">
+                  <FontAwesomeIcon icon={faPlus} className="mr-3"/>
+                  Invite people
+                </div>
+                <div className="hover:text-mineshaft-200 duration-200 mb-2">
+                  <FontAwesomeIcon icon={faQuestion} className="px-[0.1rem] mr-3"/>
+                  Help & Support
+                </div>
               </div>
             </nav>
           </aside>
