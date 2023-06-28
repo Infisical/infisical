@@ -98,7 +98,7 @@ export default function ChecklyCreateIntegrationPage() {
         >
           Checkly Integration
         </CardTitle>
-        <FormControl label="Infisical Project Environment" className="mt-2 px-6">
+        <FormControl label="Infisical Project Environment" className="mt-4 px-6">
           <Select
             value={selectedSourceEnvironment}
             onValueChange={(val) => setSelectedSourceEnvironment(val)}
@@ -114,7 +114,7 @@ export default function ChecklyCreateIntegrationPage() {
             ))}
           </Select>
         </FormControl>
-        <FormControl label="Secrets Path">
+        <FormControl label="Secrets Path" className="mt-4 px-6">
           <Input
             value={secretPath}
             onChange={(evt) => setSecretPath(evt.target.value)}

@@ -184,11 +184,13 @@ export default function Activity() {
           />
         </div>
       </div>
-      <UpgradePlanModal
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={() => handlePopUpClose("upgradePlan")}
-        text="You can see more logs if you switch to Infisical's Business/Professional Plan."
-      />
+      {subscription && (
+        <UpgradePlanModal
+          isOpen={popUp.upgradePlan.isOpen}
+          onOpenChange={() => handlePopUpClose("upgradePlan")}
+          text={subscription.slug === null ? "You can see more logs under an Enterprise license" : "You can see more logs if you switch to Infisical's Business/Professional Plan."}
+        />
+      )}
     </div>
   );
 }

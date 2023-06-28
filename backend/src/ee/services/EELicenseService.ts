@@ -55,7 +55,7 @@ class EELicenseService {
         environmentLimit: null,
         environmentsUsed: 0,
         secretVersioning: true,
-        pitRecovery: true,
+        pitRecovery: false,
         rbac: true,
         customRateLimits: true,
         customAlerts: true,

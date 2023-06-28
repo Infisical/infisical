@@ -97,7 +97,7 @@ export default function InitialLoginStep({
 
         setIsLoading(false);
     }
-
+    
     return <div className='flex flex-col mx-auto w-full justify-center items-center'>
         <h1 className='text-xl font-medium text-transparent bg-clip-text bg-gradient-to-b from-white to-bunker-200 text-center mb-8' >Login to Infisical</h1>
         {/* <div className='lg:w-1/6 w-1/4 min-w-[20rem] rounded-md'>
