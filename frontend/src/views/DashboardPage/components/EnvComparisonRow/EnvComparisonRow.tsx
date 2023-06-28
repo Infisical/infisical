@@ -2,8 +2,10 @@
 import { useCallback, useRef, useState } from "react";
 import { faEye, faEyeSlash, faKey, faMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useToggle } from "~/hooks/useToggle";
+
 import { useSyntaxHighlight } from "@app/hooks";
+
+import { useToggle } from "~/hooks/useToggle";
 
 type Props = {
   secrets: any[] | undefined;
@@ -31,7 +33,7 @@ const DashboardInput = ({
   const [isFocused, setIsFocused] = useToggle();
   const syntaxHighlight = useSyntaxHighlight();
 
-  const value = isOverridden ? secret.valueOverride : secret?.value || "";
+  const value = isOverridden ? secret.valueOverride : secret?.value;
   const multilineExpandUnit = ((value?.match(/\n/g)?.length || 0) + 1) * SEC_VAL_LINE_HEIGHT;
   const maxMultilineHeight = Math.min(multilineExpandUnit, 21 * MAX_MULTI_LINE);
 
@@ -72,7 +74,13 @@ const DashboardInput = ({
             }`}
             style={{ height: `${maxMultilineHeight}px`, width: "calc(100% - 12px)" }}
           >
-            {syntaxHighlight(value || "", isSecretValueHidden ? !isFocused : isSecretValueHidden)}
+            {value === undefined ? (
+              <span className="cursor-default font-sans text-xs italic text-red-500/80">
+                <FontAwesomeIcon icon={faMinus} className="mt-1" />
+              </span>
+            ) : (
+              syntaxHighlight(value || "", isSecretValueHidden ? !isFocused : isSecretValueHidden)
+            )}
           </code>
         </pre>
       </div>

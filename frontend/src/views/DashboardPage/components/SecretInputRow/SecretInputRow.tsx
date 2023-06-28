@@ -34,7 +34,6 @@ import { WsTag } from "@app/hooks/api/types";
 
 import { FormData, SecretActionType } from "../../DashboardPage.utils";
 import { MaskedInput } from "./MaskedInput";
-import { useToggle } from "~/hooks/useToggle";
 
 type Props = {
   index: number;

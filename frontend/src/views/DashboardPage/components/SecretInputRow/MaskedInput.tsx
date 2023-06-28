@@ -1,8 +1,9 @@
 import { useRef } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 
-import { FormData } from "../../DashboardPage.utils";
 import { useSyntaxHighlight, useToggle } from "@app/hooks";
+
+import { FormData } from "../../DashboardPage.utils";
 
 type Props = {
   isReadOnly?: boolean;

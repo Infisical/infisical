@@ -1,6 +1,6 @@
+import { useCallback } from "react";
 import { faCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useCallback } from "react";
 
 const REGEX = /([$]{.*?})/g;
 
