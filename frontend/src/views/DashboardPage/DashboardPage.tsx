@@ -545,7 +545,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
       <FormProvider {...method}>
         <form autoComplete="off" className="h-full">
           {/* breadcrumb row */}
-          <div className="relative right-6 -top-2 mb-2">
+          <div className="relative right-6 -top-2 mb-2 ml-6">
             <NavHeader
               pageName={t("dashboard.title")}
               currentEnv={

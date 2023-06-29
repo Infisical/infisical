@@ -51,15 +51,6 @@ export const useGetAuthToken = () =>
     retry: 0
   });
 
-export const useRevokeAllSessions = () => {
-  return useMutation({
-    mutationFn: async () => {
-      const { data } = await apiRequest.delete("/api/v1/auth/sessions");
-      return data;
-    }
-  });
-}
-
 const fetchCommonPasswords = async () => {
   const { data } = await apiRequest.get("/api/v1/auth/common-passwords");
   return data || [];

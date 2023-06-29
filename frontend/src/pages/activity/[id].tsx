@@ -158,7 +158,9 @@ export default function Activity() {
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Head>
-      <NavHeader pageName="Audit Logs" isProjectRelated />
+      <div className="ml-6">
+        <NavHeader pageName="Audit Logs" isProjectRelated />
+      </div>
       {currentSidebarAction && (
         <ActivitySideBar toggleSidebar={toggleSidebar} currentAction={currentSidebarAction} />
       )}
