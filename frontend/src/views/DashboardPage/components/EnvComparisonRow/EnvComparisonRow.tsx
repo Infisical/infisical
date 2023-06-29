@@ -1,8 +1,11 @@
 /* eslint-disable react/jsx-no-useless-fragment */
-import { useCallback, useState } from "react";
-import { faCircle, faEye, faEyeSlash, faKey, faMinus } from "@fortawesome/free-solid-svg-icons";
+import { useCallback, useRef, useState } from "react";
+import { faEye, faEyeSlash, faKey, faMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
+
+import { useSyntaxHighlight } from "@app/hooks";
+
+import { useToggle } from "~/hooks/useToggle";
 
 type Props = {
   secrets: any[] | undefined;
@@ -12,7 +15,8 @@ type Props = {
   userAvailableEnvs?: any[];
 };
 
-const REGEX = /([$]{.*?})/g;
+const SEC_VAL_LINE_HEIGHT = 21;
+const MAX_MULTI_LINE = 6;
 
 const DashboardInput = ({
   isOverridden,
@@ -25,84 +29,60 @@ const DashboardInput = ({
   isReadOnly?: boolean;
   secret?: any;
 }): JSX.Element => {
-  const syntaxHighlight = useCallback((val: string) => {
-    if (val === undefined)
-      return (
-        <span className="cursor-default font-sans text-xs italic text-red-500/80">
-          <FontAwesomeIcon icon={faMinus} className="mt-1" />
-        </span>
-      );
-    if (val?.length === 0)
-      return <span className="w-full font-sans text-bunker-400/80">EMPTY</span>;
-    return val?.split(REGEX).map((word, index) =>
-      word.match(REGEX) !== null ? (
-        <span className="ph-no-capture text-yellow" key={`${val}-${index + 1}`}>
-          {word.slice(0, 2)}
-          <span className="ph-no-capture text-yellow-200/80">{word.slice(2, word.length - 1)}</span>
-          {word.slice(word.length - 1, word.length) === "}" ? (
-            <span className="ph-no-capture text-yellow">
-              {word.slice(word.length - 1, word.length)}
-            </span>
-          ) : (
-            <span className="ph-no-capture text-yellow-400">
-              {word.slice(word.length - 1, word.length)}
-            </span>
-          )}
-        </span>
-      ) : (
-        <span key={word} className="ph-no-capture">
-          {word}
-        </span>
-      )
-    );
-  }, []);
+  const ref = useRef<HTMLElement | null>(null);
+  const [isFocused, setIsFocused] = useToggle();
+  const syntaxHighlight = useSyntaxHighlight();
+
+  const value = isOverridden ? secret.valueOverride : secret?.value;
+  const multilineExpandUnit = ((value?.match(/\n/g)?.length || 0) + 1) * SEC_VAL_LINE_HEIGHT;
+  const maxMultilineHeight = Math.min(multilineExpandUnit, 21 * MAX_MULTI_LINE);
 
   return (
     <td
       key={`row-${secret?.key || ""}--`}
-      className={`flex h-10 w-full cursor-default flex-row items-center justify-center ${
+      className={`flex w-full cursor-default flex-row ${
         !(secret?.value || secret?.value === "") ? "bg-red-800/10" : "bg-mineshaft-900/30"
       }`}
     >
-      <div className="group relative flex	w-full cursor-default flex-col justify-center whitespace-pre">
-        <input
-          value={isOverridden ? secret.valueOverride : secret?.value || ""}
+      <div className="group relative flex w-full flex-col whitespace-pre px-1.5 pt-1.5">
+        <textarea
           readOnly={isReadOnly}
-          className={twMerge(
-            "ph-no-capture no-scrollbar::-webkit-scrollbar duration-50 peer z-10 w-full cursor-default bg-transparent px-2 py-2 font-mono text-sm text-transparent caret-transparent outline-none no-scrollbar",
-            isSecretValueHidden && "text-transparent focus:text-transparent active:text-transparent"
-          )}
+          value={value}
+          className="ph-no-capture min-w-16 duration-50 peer z-20 w-full resize-none overflow-auto text-ellipsis bg-transparent px-2  font-mono text-sm text-transparent caret-white outline-none no-scrollbar"
+          style={{ height: `${maxMultilineHeight}px` }}
           spellCheck="false"
+          onBlur={() => setIsFocused.off()}
+          onFocus={() => setIsFocused.on()}
+          onInput={(el) => {
+            if (ref.current) {
+              ref.current.scrollTop = el.currentTarget.scrollTop;
+              ref.current.scrollLeft = el.currentTarget.scrollLeft;
+            }
+          }}
+          onScroll={(el) => {
+            if (ref.current) {
+              ref.current.scrollTop = el.currentTarget.scrollTop;
+              ref.current.scrollLeft = el.currentTarget.scrollLeft;
+            }
+          }}
         />
-        <div
-          className={twMerge(
-            "ph-no-capture min-w-16 no-scrollbar::-webkit-scrollbar duration-50 absolute z-0 mt-0.5 flex h-10 w-full cursor-default flex-row overflow-x-scroll whitespace-pre bg-transparent px-2 py-2 font-mono text-sm outline-none no-scrollbar peer-focus:visible",
-            isSecretValueHidden && secret?.value ? "invisible" : "visible",
-            isSecretValueHidden &&
-              secret?.value &&
-              "duration-50 text-bunker-800 group-hover:text-gray-400 peer-focus:text-gray-100 peer-active:text-gray-400",
-            !secret?.value && "justify-center text-bunker-400"
-          )}
-        >
-          {syntaxHighlight(secret?.value)}
-        </div>
-        {isSecretValueHidden && secret?.value && (
-          <div className="duration-50 peer absolute z-0 flex h-10 w-full flex-row items-center justify-between text-clip pr-2 text-bunker-400 group-hover:bg-white/[0.00] peer-focus:hidden peer-active:hidden">
-            <div className="no-scrollbar::-webkit-scrollbar flex flex-row items-center overflow-x-scroll px-2 no-scrollbar">
-              {(isOverridden ? secret.valueOverride : secret?.value || "")
-                ?.split("")
-                .map((_a: string, index: number) => (
-                  <FontAwesomeIcon
-                    key={`${secret?.value}_${index + 1}`}
-                    className="mr-0.5 text-xxs"
-                    icon={faCircle}
-                  />
-                ))}
-              {(isOverridden ? secret.valueOverride : secret?.value || "")?.split("").length ===
-                0 && <span className="text-sm text-bunker-400/80">EMPTY</span>}
-            </div>
-          </div>
-        )}
+        <pre className="whitespace-pre-wrap break-words">
+          <code
+            ref={ref}
+            className={`absolute top-1.5 left-3.5 z-10 overflow-auto font-mono text-sm transition-all no-scrollbar ${
+              isOverridden && "text-primary-300"
+            }`}
+            style={{ height: `${maxMultilineHeight}px`, width: "calc(100% - 12px)" }}
+          >
+            {value === undefined ? (
+              <span className="cursor-default font-sans text-xs italic text-red-500/80">
+                <FontAwesomeIcon icon={faMinus} className="mt-1" />
+              </span>
+            ) : (
+              syntaxHighlight(value || "", isSecretValueHidden ? !isFocused : isSecretValueHidden)
+            )}
+          </code>
+        </pre>
       </div>
     </td>
   );
@@ -122,14 +102,14 @@ export const EnvComparisonRow = ({
   );
 
   return (
-    <tr className="group flex min-w-full flex-row items-center hover:bg-mineshaft-800">
-      <td className="flex h-10 w-10 items-center justify-center border-none px-4">
-        <div className="w-10 text-center text-xs text-bunker-400">
+    <tr className="group flex min-w-full flex-row hover:bg-mineshaft-800">
+      <td className="flex w-10 justify-center border-none px-4">
+        <div className="flex h-8 w-10 items-center justify-center text-center text-xs text-bunker-400">
           <FontAwesomeIcon icon={faKey} />
         </div>
       </td>
-      <td className="flex h-full min-w-[200px] flex-row items-center justify-between lg:min-w-[220px] xl:min-w-[250px]">
-        <div className="flex h-8 cursor-default flex-row items-center truncate">
+      <td className="flex min-w-[200px] flex-row justify-between lg:min-w-[220px] xl:min-w-[250px]">
+        <div className="flex h-8 cursor-default flex-row items-center justify-center truncate">
           {secrets![0].key || ""}
         </div>
         <button
