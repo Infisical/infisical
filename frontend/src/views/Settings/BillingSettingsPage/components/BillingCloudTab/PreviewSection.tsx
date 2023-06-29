@@ -12,7 +12,7 @@ export const PreviewSection = () => {
     const { subscription, isLoading: isSubscriptionLoading } = useSubscription();
     const { data, isLoading } = useGetOrgPlanBillingInfo(currentOrg?._id ?? "");
     const createCustomerPortalSession = useCreateCustomerPortalSession();
-
+    
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
         "managePlan"
     ] as const);
@@ -35,6 +35,12 @@ export const PreviewSection = () => {
         
         return formattedDate;
     }
+
+    function formatPlanSlug(slug: string) {
+        return slug
+            .replace(/(\b[a-z])/g, match => match.toUpperCase())
+            .replace(/-/g, " ");
+    }
     
     return (
         <div>
@@ -52,11 +58,13 @@ export const PreviewSection = () => {
                     </Button>
                 </div>
             )}
-            {!isLoading && data && (
+            {!isLoading && subscription && data && (
                 <div className="flex mb-6 max-w-screen-lg">
                     <div className="p-4 bg-mineshaft-900 rounded-lg flex-1 mr-4 border border-mineshaft-600">
                         <p className="mb-2 text-gray-400">Current plan</p>
-                        <p className="text-2xl mb-8 text-mineshaft-50 font-semibold">Starter</p>
+                        <p className="text-2xl mb-8 text-mineshaft-50 font-semibold">
+                            {formatPlanSlug(subscription.slug)}
+                        </p>
                         <button 
                             type="button"
                             onClick={async () => {
