@@ -356,7 +356,7 @@ export const ProjectSettingsPage = () => {
   return (
     <div className="dark container mx-auto flex flex-col px-8 text-mineshaft-50 dark:[color-scheme:dark]">
       {/* TODO(akhilmhdh): Remove this right when layout is refactored  */}
-      <div className="relative right-5">
+      <div className="relative right-5 ml-4">
         <NavHeader pageName={t("settings.project.title")} isProjectRelated />
       </div>
       <div className="my-8 flex max-w-5xl flex-row items-center justify-between text-xl">

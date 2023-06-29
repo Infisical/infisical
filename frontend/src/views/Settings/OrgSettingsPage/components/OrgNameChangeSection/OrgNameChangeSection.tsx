@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { useTranslation } from "react-i18next";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 
@@ -16,7 +15,6 @@ const formSchema = yup.object({
 type FormData = yup.InferType<typeof formSchema>;
 
 export const OrgNameChangeSection = (): JSX.Element => {
-  const { t } = useTranslation();
   const { currentOrg } = useOrganization();
   const { createNotification } = useNotificationContext();
   const {
@@ -54,9 +52,11 @@ export const OrgNameChangeSection = (): JSX.Element => {
   return (
     <form 
       onSubmit={handleSubmit(onFormSubmit)}
-      className="p-4 bg-mineshaft-900 mb-6 max-w-screen-lg rounded-lg border border-mineshaft-600 "
+      className="p-4 bg-mineshaft-900 mb-6 max-w-screen-lg rounded-lg border border-mineshaft-600"
     >
-        <p className="text-xl font-semibold text-mineshaft-100 mb-8">{t("common.display-name")}</p>
+        <p className="text-xl font-semibold text-mineshaft-100 mb-8">
+          Organization name
+        </p>
         <div className="mb-2 max-w-md">
           <Controller
             defaultValue=""

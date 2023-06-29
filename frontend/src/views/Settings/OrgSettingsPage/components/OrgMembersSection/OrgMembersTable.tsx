@@ -1,20 +1,19 @@
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/router";
-import { faCheck, faCopy, faMagnifyingGlass, faPlus, faTrash, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faPlus, faTrash, faUsers } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
 
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import {
+  decryptAssymmetric,
+  encryptAssymmetric
+} from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   DeleteActionModal,
-  EmailServiceSetupModal,  EmptyState,
-  FormControl,
+  EmptyState,
   IconButton,
   Input,
-  Modal,
-  ModalContent,
   Select,
   SelectItem,
   Table,
@@ -25,73 +24,63 @@ import {
   Td,
   Th,
   THead,
-  Tr,
-  UpgradePlanModal} from "@app/components/v2";
-import { usePopUp, useToggle } from "@app/hooks";
+  Tr
+} from "@app/components/v2";
+import { useOrganization, useUser, useWorkspace } from "@app/context";
+import { usePopUp } from "@app/hooks";
+import {
+    useAddUserToOrg,
+    useDeleteOrgMembership,
+    useGetOrgUsers,
+    useGetUserWorkspaceMemberships,
+    useGetUserWsKey,
+    useUpdateOrgUserRole,
+    useUploadWsKey
+} from "@app/hooks/api";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
-import { OrgUser, Workspace } from "@app/hooks/api/types";
 
-type Props = {
-  members?: OrgUser[];
-  workspaceMemberships?: Record<string, Workspace[]>;
-  orgName: string;
-  isLoading?: boolean;
-  isMoreUserNotAllowed: boolean;
-  onRemoveMember: (userId: string) => Promise<void>;
-  onInviteMember: (email: string) => Promise<void>;
-  onRoleChange: (membershipId: string, role: string) => Promise<void>;
-  onGrantAccess: (userId: string, publicKey: string) => Promise<void>;
-  // the current user id to block remove org button
-  userId: string;
-  completeInviteLink: string | undefined,
-  setCompleteInviteLink: Dispatch<SetStateAction<string | undefined>>
-};
-
-const addMemberFormSchema = yup.object({
-  email: yup.string().email().required().label("Email").trim()
-});
-
-type TAddMemberForm = yup.InferType<typeof addMemberFormSchema>;
-
-export const OrgMembersTable = ({
-  members = [],
-  workspaceMemberships = {},
-  orgName,
-  isMoreUserNotAllowed,
-  onRemoveMember,
-  onInviteMember,
-  onGrantAccess,
-  onRoleChange,
-  userId,
-  isLoading,
-  completeInviteLink,
-  setCompleteInviteLink
-}: Props) => {
+export const OrgMembersTable = () => {
   const router = useRouter();
+  const { user: currentUser } = useUser();
+  const { currentWorkspace } = useWorkspace();
+  const { currentOrg } = useOrganization();
+  const { createNotification } = useNotificationContext();
   const [searchMemberFilter, setSearchMemberFilter] = useState("");
-  const {data: serverDetails } = useFetchServerStatus()
-  const [isInviteLinkCopied, setInviteLinkCopied] = useToggle(false);
+
+  const { data: serverDetails } = useFetchServerStatus()
+  const { data: members, isLoading: isOrgUserLoading } = useGetOrgUsers(currentOrg?._id ?? ""); // members
+  const { data: workspaceMemberships, isLoading: IsWsMembershipLoading } = useGetUserWorkspaceMemberships(currentOrg?._id ?? "");
+  const { data: wsKey } = useGetUserWsKey(currentWorkspace?._id || "");
+
+  const uploadWsKey = useUploadWsKey();
+  const addUserToOrg = useAddUserToOrg();
+  const removeUserOrgMembership = useDeleteOrgMembership();
+  const updateOrgUserRole = useUpdateOrgUserRole();
+    
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
-    "addMember",
     "removeMember",
-    "upgradePlan",
     "setUpEmail"
   ] as const);
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { isSubmitting }
-  } = useForm<TAddMemberForm>({ resolver: yupResolver(addMemberFormSchema) });
+    const isLoading = isOrgUserLoading || IsWsMembershipLoading;
+    const userId = currentUser?._id || "";
+  const onRemoveMember = async (membershipId: string) => {
+    if (!currentOrg?._id) return;
 
-  const onAddMember = async ({ email }: TAddMemberForm) => {
-    await onInviteMember(email);
-      if (serverDetails?.emailConfigured){
-        handlePopUpClose("addMember");
-      }
-      
-      reset();
+    try {
+        if (!currentOrg?._id) return;
+      await removeUserOrgMembership.mutateAsync({ orgId: currentOrg?._id, membershipId });
+      createNotification({
+        text: "Successfully removed user from org",
+        type: "success"
+      });
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: "Failed to remove user from the organization",
+        type: "error"
+      });
+    }
   };
 
   const onRemoveOrgMemberApproved = async () => {
@@ -100,62 +89,111 @@ export const OrgMembersTable = ({
     handlePopUpClose("removeMember");
   };
 
+
+  const onInviteMember = async (email: string) => {
+    if (!currentOrg?._id) return;
+
+    try {
+      const { data } = await addUserToOrg.mutateAsync({
+        organizationId: currentOrg?._id,
+        inviteeEmail: email
+      });
+
+      // only show this notification when email is configured. A [completeInviteLink] will not be sent if smtp is configured
+      if (!data.completeInviteLink) {
+        createNotification({
+          text: "Successfully invited user to the organization.",
+          type: "success"
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: "Failed to invite user to org",
+        type: "error"
+      });
+    }
+  };
+
+  const onGrantAccess = async (targetUserId: string, publicKey: string) => {
+    try {
+      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
+      if (!PRIVATE_KEY || !wsKey) return;
+
+      // assymmetrically decrypt symmetric key with local private key
+      const key = decryptAssymmetric({
+        ciphertext: wsKey.encryptedKey,
+        nonce: wsKey.nonce,
+        publicKey: wsKey.sender.publicKey,
+        privateKey: PRIVATE_KEY
+      });
+
+      const { ciphertext, nonce } = encryptAssymmetric({
+        plaintext: key,
+        publicKey,
+        privateKey: PRIVATE_KEY
+      });
+
+      await uploadWsKey.mutateAsync({
+        userId: targetUserId,
+        nonce,
+        encryptedKey: ciphertext,
+        workspaceId: currentWorkspace?._id || ""
+      });
+    } catch (err) {
+      console.error(err);
+      createNotification({
+        text: "Failed to grant access to user",
+        type: "error"
+      });
+    }
+  };
+
+  const onRoleChange = async (membershipId: string, role: string) => {
+    if (!currentOrg?._id) return;
+
+    try {
+      await updateOrgUserRole.mutateAsync({ organizationId: currentOrg?._id, membershipId, role });
+      createNotification({
+        text: "Successfully updated user role",
+        type: "success"
+      });
+    } catch (error) {
+      console.error(error);
+      createNotification({
+        text: "Failed to update user role",
+        type: "error"
+      });
+    }
+  };
+
   const isIamOwner = useMemo(
-    () => members.find(({ user }) => userId === user?._id)?.role === "owner",
+    () => members ? members.find(({ user }) => userId === user?._id)?.role === "owner" : [],
     [userId, members]
   );
   
   const filterdUser = useMemo(
     () =>
-      members.filter(
+      members ? members.filter(
         ({ user, inviteEmail }) =>
           user?.firstName?.toLowerCase().includes(searchMemberFilter) ||
           user?.lastName?.toLowerCase().includes(searchMemberFilter) ||
           user?.email?.toLowerCase().includes(searchMemberFilter) ||
           inviteEmail?.includes(searchMemberFilter)
-      ),
+      ) : [],
     [members, searchMemberFilter]
   );
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isInviteLinkCopied) {
-      timer = setTimeout(() => setInviteLinkCopied.off(), 2000);
-    }
-    return () => clearTimeout(timer);
-  }, [isInviteLinkCopied]);
-
-  const copyTokenToClipboard = () => {
-    navigator.clipboard.writeText(completeInviteLink as string);
-    setInviteLinkCopied.on();
-  };
 
   return (
     <div className="w-full">
-      <div className="mb-4 flex">
-        <div className="mr-4 flex-1">
-          <Input
+        <Input
             value={searchMemberFilter}
             onChange={(e) => setSearchMemberFilter(e.target.value)}
             leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
             placeholder="Search members..."
-          />
-        </div>
-        <Button
-          leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          onClick={() => {
-            if (isMoreUserNotAllowed) {
-              handlePopUpOpen("upgradePlan");
-            } else {
-              handlePopUpOpen("addMember");
-            }
-          }}
-        >
-          Add Member
-        </Button>
-      </div>
-      <div>
-        <TableContainer>
+        />
+        <TableContainer className="mt-4">
           <Table>
             <THead>
               <Tr>
@@ -167,7 +205,7 @@ export const OrgMembersTable = ({
               </Tr>
             </THead>
             <TBody>
-              {isLoading && <TableSkeleton columns={5} key="org-members" />}
+              {isLoading && <TableSkeleton columns={5} />}
               {!isLoading &&
                 filterdUser.map(({ user, inviteEmail, role, _id: orgMembershipId, status }) => {
                   const name = user ? `${user.firstName} ${user.lastName}` : "-";
@@ -213,7 +251,7 @@ export const OrgMembersTable = ({
                       <Td>
                         {userWs ? (
                           userWs?.map(({ name: wsName, _id }) => (
-                            <Tag key={`user-${user._id}-workspace-${_id}`} className="my-1">
+                            <Tag key={`user-${currentUser._id}-workspace-${_id}`} className="my-1">
                               {wsName}
                             </Tag>
                           ))
@@ -254,89 +292,12 @@ export const OrgMembersTable = ({
             <EmptyState title="No project members found" icon={faUsers} />
           )}
         </TableContainer>
-      </div>
-      <Modal
-        isOpen={popUp?.addMember?.isOpen}
-        onOpenChange={(isOpen) => {
-          handlePopUpToggle("addMember", isOpen);
-          setCompleteInviteLink(undefined) 
-        }}
-      >
-        <ModalContent
-          title={`Invite others to ${orgName}`}
-          subTitle={
-            <div>
-              {!completeInviteLink && <div>
-                An invite is specific to an email address and expires after 1 day.
-                <br />
-                For security reasons, you will need to separately add members to projects.
-              </div>}
-              {completeInviteLink && "This Infisical instance does not have a email provider setup. Please share this invite link with the invitee manually"}
-            </div>
-          }
-        >
-          {!completeInviteLink && <form onSubmit={handleSubmit(onAddMember)} >
-            <Controller
-              control={control}
-              defaultValue=""
-              name="email"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl label="Email" isError={Boolean(error)} errorText={error?.message}>
-                  <Input {...field} />
-                </FormControl>
-              )}
-            />
-            <div className="mt-8 flex items-center">
-              <Button
-                className="mr-4"
-                size="sm"
-                type="submit"
-                isLoading={isSubmitting}
-                isDisabled={isSubmitting}
-              >
-                Add Member
-              </Button>
-              <Button
-                colorSchema="secondary"
-                variant="plain"
-                onClick={() => handlePopUpClose("addMember")}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>}
-          {
-            completeInviteLink && 
-            <div className="mt-2 mb-3 mr-2 flex items-center justify-end rounded-md bg-white/[0.07] p-2 text-base text-gray-400">
-            <p className="mr-4 break-all">{completeInviteLink}</p>
-            <IconButton
-              ariaLabel="copy icon"
-              colorSchema="secondary"
-              className="group relative"
-              onClick={copyTokenToClipboard}
-            >
-              <FontAwesomeIcon icon={isInviteLinkCopied ? faCheck : faCopy} />
-              <span className="absolute -left-8 -top-20 hidden w-28 translate-y-full rounded-md bg-bunker-800 py-2 pl-3 text-center text-sm text-gray-400 group-hover:flex group-hover:animate-fadeIn">click to copy</span>
-            </IconButton>
-          </div>
-          }
-        </ModalContent>
-      </Modal>
       <DeleteActionModal
         isOpen={popUp.removeMember.isOpen}
         deleteKey="remove"
         title="Do you want to remove this user from the org?"
         onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
         onDeleteApproved={onRemoveOrgMemberApproved}
-      />
-      <UpgradePlanModal
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can add custom environments if you switch to Infisical's Team plan."
-      />
-      <EmailServiceSetupModal
-        isOpen={popUp.setUpEmail?.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("setUpEmail", isOpen)}
       />
     </div>
   );

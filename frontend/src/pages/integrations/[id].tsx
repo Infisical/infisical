@@ -412,7 +412,9 @@ export default function Integrations() {
         <meta name="og:description" content={t("integrations.description") as string} />
       </Head>
       <div className="no-scrollbar::-webkit-scrollbar h-screen max-h-[calc(100vh-10px)] w-full overflow-y-scroll pb-6 no-scrollbar">
-        <NavHeader pageName={t("integrations.title")} isProjectRelated />
+        <div className="ml-6">
+          <NavHeader pageName={t("integrations.title")} isProjectRelated />
+        </div>
         <ActivateBotDialog
           isOpen={isActivateBotDialogOpen}
           closeModal={() => setIsActivateBotDialogOpen(false)}
