@@ -93,7 +93,7 @@ export default function SignUp() {
    * Step 5 is inviting users
    */
   const incrementStep = async () => {
-    if (step === 1 || step === 3 || step === 4) {
+    if (step < 5) {
       setStep(step + 1);
     }
   };
