@@ -32,10 +32,11 @@ import {
   PopoverTrigger,
   TableContainer,
   Tag,
-  Tooltip
+  Tooltip,
+  UpgradePlanModal
 } from "@app/components/v2";
 import { leaveConfirmDefaultMessage } from "@app/const";
-import { useWorkspace } from "@app/context";
+import { useSubscription,useWorkspace } from "@app/context";
 import { useLeaveConfirm, usePopUp, useToggle } from "@app/hooks";
 import {
   useBatchSecretsOp,
@@ -97,6 +98,7 @@ const USER_ACTION_PUSH = "first_time_secrets_pushed";
  * They will get it back
  */
 export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
+  const { subscription } = useSubscription();
   const { t } = useTranslation();
   const router = useRouter();
   const { createNotification } = useNotificationContext();
@@ -110,7 +112,8 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
     "uploadedSecOpts",
     "compareSecrets",
     "folderForm",
-    "deleteFolder"
+    "deleteFolder",
+    "upgradePlan"
   ] as const);
   const [isSecretValueHidden, setIsSecretValueHidden] = useToggle(true);
   const [searchFilter, setSearchFilter] = useState("");
@@ -542,7 +545,7 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
       <FormProvider {...method}>
         <form autoComplete="off" className="h-full">
           {/* breadcrumb row */}
-          <div className="relative right-6 -top-2 mb-2">
+          <div className="relative right-6 -top-2 mb-2 ml-6">
             <NavHeader
               pageName={t("dashboard.title")}
               currentEnv={
@@ -624,7 +627,14 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
               <div className="hidden xl:block">
                 <Button
                   variant="outline_bg"
-                  onClick={() => handlePopUpOpen("secretSnapshots")}
+                  onClick={() => {
+                    if (subscription && subscription.pitRecovery) {
+                      handlePopUpOpen("secretSnapshots");
+                      return;
+                    }
+                    
+                    handlePopUpOpen("upgradePlan");
+                  }}
                   leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
                   isLoading={isLoadingSnapshotCount}
                   isDisabled={!canDoRollback}
@@ -886,6 +896,13 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
           </ModalContent>
         </Modal>
       </FormProvider>
+      {subscription && (
+        <UpgradePlanModal
+          isOpen={popUp.upgradePlan.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          text={subscription.slug === null ? "You can perform point-in-time recovery under an Enterprise license" : "You can perform point-in-time recovery if you switch to Infisical's Team plan"}
+        />
+      )}
     </div>
   );
 };

@@ -1,5 +1,4 @@
-export { OrgIncidentContactsTable } from "./OrgIncidentContactsTable";
-export { OrgMembersTable } from "./OrgMembersTable";
+export { OrgIncidentContactsSection } from "./OrgIncidentContactsSection";
+export { OrgMembersSection } from "./OrgMembersSection";
 export { OrgNameChangeSection } from "./OrgNameChangeSection";
 export { OrgServiceAccountsTable } from "./OrgServiceAccountsTable";
-

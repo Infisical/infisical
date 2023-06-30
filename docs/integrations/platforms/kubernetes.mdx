@@ -50,6 +50,7 @@ metadata:
 spec:
   # The host that should be used to pull secrets from. If left empty, the value specified in Global configuration will be used
   hostAPI: https://app.infisical.com/api
+  resyncInterval: 60 # <-- the time in seconds between secret re-sync. Faster re-syncs will require higher rate limits
   authentication:
     serviceToken:
       serviceTokenSecretReference:
@@ -77,6 +78,11 @@ spec:
 
     Make sure to replace `<backend-svc-name>` and `<namespace>` with the appropriate values for your backend service and namespace.
   </Accordion>
+</Accordion>
+
+<Accordion title="resyncInterval">
+This property defines the time in seconds between each secret re-sync from Infisical. Shorter time between re-syncs will require higher rate limits only available on paid plans.
+Default re-sync interval is every 1 minute.
 </Accordion>
 
 <Accordion title="authentication">

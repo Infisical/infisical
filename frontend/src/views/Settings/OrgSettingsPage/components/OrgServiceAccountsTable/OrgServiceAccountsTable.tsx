@@ -1,5 +1,8 @@
 import { useEffect, useMemo,useState } from "react";
-import { Controller,useForm } from "react-hook-form";
+import { 
+    // Controller,
+    // useForm 
+} from "react-hook-form";
 import { useRouter } from "next/router";
 import { 
     faCheck, 
@@ -10,21 +13,21 @@ import {
     faServer, 
     faTrash} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
 
-import { generateKeyPair } from "@app/components/utilities/cryptography/crypto";
+// import { yupResolver } from "@hookform/resolvers/yup";
+// import * as yup from "yup";
+// import { generateKeyPair } from "@app/components/utilities/cryptography/crypto";
 import {
   Button,
   DeleteActionModal,
   EmptyState,
-  FormControl,
+//   FormControl,
   IconButton,
   Input,
   Modal,
   ModalContent,
-  Select,
-  SelectItem,
+//   Select,
+//   SelectItem,
   Table,
   TableContainer,
   TableSkeleton,
@@ -37,25 +40,26 @@ import {
 import { useOrganization, useWorkspace } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
-    useCreateServiceAccount,
+    // useCreateServiceAccount,
     useDeleteServiceAccount,
-    useGetServiceAccounts} from "@app/hooks/api";
+    useGetServiceAccounts
+} from "@app/hooks/api";
 
-const serviceAccountExpiration = [
-  { label: "1 Day", value: 86400 },
-  { label: "7 Days", value: 604800 },
-  { label: "1 Month", value: 2592000 },
-  { label: "6 months", value: 15552000 },
-  { label: "12 months", value: 31104000 },
-  { label: "Never", value: -1 }
-];
+// const serviceAccountExpiration = [
+//   { label: "1 Day", value: 86400 },
+//   { label: "7 Days", value: 604800 },
+//   { label: "1 Month", value: 2592000 },
+//   { label: "6 months", value: 15552000 },
+//   { label: "12 months", value: 31104000 },
+//   { label: "Never", value: -1 }
+// ];
 
-const addServiceAccountFormSchema = yup.object({
-    name: yup.string().required().label("Name").trim(),
-    expiresIn: yup.string().required().label("Service Account Expiration")
-});
+// const addServiceAccountFormSchema = yup.object({
+//     name: yup.string().required().label("Name").trim(),
+//     expiresIn: yup.string().required().label("Service Account Expiration")
+// });
 
-type TAddServiceAccountForm = yup.InferType<typeof addServiceAccountFormSchema>;
+// type TAddServiceAccountForm = yup.InferType<typeof addServiceAccountFormSchema>;
 
 export const OrgServiceAccountsTable = () => {
     const router = useRouter();
@@ -67,9 +71,9 @@ export const OrgServiceAccountsTable = () => {
     const [isAccessKeyCopied, setIsAccessKeyCopied] = useToggle(false);
     const [isPublicKeyCopied, setIsPublicKeyCopied] = useToggle(false);
     const [isPrivateKeyCopied, setIsPrivateKeyCopied] = useToggle(false);
-    const [accessKey, setAccessKey] = useState("");
-    const [publicKey, setPublicKey] = useState("");
-    const [privateKey, setPrivateKey] = useState("");
+    const [accessKey] = useState("");
+    const [publicKey] = useState("");
+    const [privateKey] = useState("");
     const [searchServiceAccountFilter, setSearchServiceAccountFilter] = useState("");
     const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
         "addServiceAccount",
@@ -78,7 +82,7 @@ export const OrgServiceAccountsTable = () => {
 
     const { data: serviceAccounts = [], isLoading: isServiceAccountsLoading } = useGetServiceAccounts(orgId);
     
-    const createServiceAccount = useCreateServiceAccount();
+    // const createServiceAccount = useCreateServiceAccount();
     const removeServiceAccount = useDeleteServiceAccount();
     
     useEffect(() => {
@@ -98,32 +102,32 @@ export const OrgServiceAccountsTable = () => {
         return () => clearTimeout(timer);
     }, [isAccessKeyCopied, isPublicKeyCopied, isPrivateKeyCopied]);
 
-    const {
-        control,
-        handleSubmit,
-        reset,
-        formState: { isSubmitting }
-    } = useForm<TAddServiceAccountForm>({ resolver: yupResolver(addServiceAccountFormSchema) });
+    // const {
+    //     control,
+    //     handleSubmit,
+    //     reset,
+    //     formState: { isSubmitting }
+    // } = useForm<TAddServiceAccountForm>({ resolver: yupResolver(addServiceAccountFormSchema) });
     
-    const onAddServiceAccount = async ({ name, expiresIn }: TAddServiceAccountForm) => {
-        if (!currentOrg?._id) return;
+    // const onAddServiceAccount = async ({ name, expiresIn }: TAddServiceAccountForm) => {
+    //     if (!currentOrg?._id) return;
 
-        const keyPair = generateKeyPair();
-        setPublicKey(keyPair.publicKey);
-        setPrivateKey(keyPair.privateKey);
+    //     const keyPair = generateKeyPair();
+    //     setPublicKey(keyPair.publicKey);
+    //     setPrivateKey(keyPair.privateKey);
         
-        const serviceAccountDetails = await createServiceAccount.mutateAsync({
-            name,
-            organizationId: currentOrg?._id,
-            publicKey: keyPair.publicKey,
-            expiresIn: Number(expiresIn)
-        });
+    //     const serviceAccountDetails = await createServiceAccount.mutateAsync({
+    //         name,
+    //         organizationId: currentOrg?._id,
+    //         publicKey: keyPair.publicKey,
+    //         expiresIn: Number(expiresIn)
+    //     });
         
-        setAccessKey(serviceAccountDetails.serviceAccountAccessKey);
+    //     setAccessKey(serviceAccountDetails.serviceAccountAccessKey);
 
-        setStep(1);
-        reset();
-    }
+    //     setStep(1);
+    //     reset();
+    // }
     
     const onRemoveServiceAccount = async () => {
         const serviceAccountId = (popUp?.removeServiceAccount?.data as { _id: string })?._id;
@@ -144,63 +148,67 @@ export const OrgServiceAccountsTable = () => {
         switch (stepToRender) {
             case 0:
                 return (
-                   <form onSubmit={handleSubmit(onAddServiceAccount)}>
-                        <Controller
-                            control={control}
-                            defaultValue=""
-                            name="name"
-                            render={({ field, fieldState: { error } }) => (
-                                <FormControl label="Name" isError={Boolean(error)} errorText={error?.message}>
-                                <Input {...field} />
-                                </FormControl>
-                            )}
-                        />
-                        <Controller
-                            control={control}
-                            name="expiresIn"
-                            defaultValue={String(serviceAccountExpiration?.[0]?.value)}
-                            render={({ field: { onChange, ...field }, fieldState: { error } }) => {
-                                return (
-                                    <FormControl
-                                        label="Expiration"
-                                        errorText={error?.message}
-                                        isError={Boolean(error)}
-                                    >
-                                        <Select
-                                            defaultValue={field.value}
-                                            {...field}
-                                            onValueChange={(e) => onChange(e)}
-                                            className="w-full"
-                                        >
-                                        {serviceAccountExpiration.map(({ label, value }) => (
-                                            <SelectItem value={String(value)} key={label}>
-                                                {label}
-                                            </SelectItem>
-                                        ))}
-                                        </Select>
-                                    </FormControl>
-                                );
-                            }}
-                        />
-                        <div className="mt-8 flex items-center">
-                            <Button
-                                className="mr-4"
-                                size="sm"
-                                type="submit"
-                                isLoading={isSubmitting}
-                                isDisabled={isSubmitting}
-                            >
-                                Create Service Account
-                            </Button>
-                            <Button
-                                colorSchema="secondary"
-                                variant="plain"
-                                onClick={() => handlePopUpClose("addServiceAccount")}
-                            >
-                                Cancel
-                            </Button>
-                        </div>
-                    </form> 
+                    <div>
+                        We are currently revising the service account mechanism. In the meantime,
+                        please use service tokens or API key to fetch secrets via API request.
+                    </div>
+                //    <form onSubmit={handleSubmit(onAddServiceAccount)}>
+                //         <Controller
+                //             control={control}
+                //             defaultValue=""
+                //             name="name"
+                //             render={({ field, fieldState: { error } }) => (
+                //                 <FormControl label="Name" isError={Boolean(error)} errorText={error?.message}>
+                //                 <Input {...field} />
+                //                 </FormControl>
+                //             )}
+                //         />
+                //         <Controller
+                //             control={control}
+                //             name="expiresIn"
+                //             defaultValue={String(serviceAccountExpiration?.[0]?.value)}
+                //             render={({ field: { onChange, ...field }, fieldState: { error } }) => {
+                //                 return (
+                //                     <FormControl
+                //                         label="Expiration"
+                //                         errorText={error?.message}
+                //                         isError={Boolean(error)}
+                //                     >
+                //                         <Select
+                //                             defaultValue={field.value}
+                //                             {...field}
+                //                             onValueChange={(e) => onChange(e)}
+                //                             className="w-full"
+                //                         >
+                //                         {serviceAccountExpiration.map(({ label, value }) => (
+                //                             <SelectItem value={String(value)} key={label}>
+                //                                 {label}
+                //                             </SelectItem>
+                //                         ))}
+                //                         </Select>
+                //                     </FormControl>
+                //                 );
+                //             }}
+                //         />
+                //         <div className="mt-8 flex items-center">
+                //             <Button
+                //                 className="mr-4"
+                //                 size="sm"
+                //                 type="submit"
+                //                 isLoading={isSubmitting}
+                //                 isDisabled={isSubmitting}
+                //             >
+                //                 Create Service Account
+                //             </Button>
+                //             <Button
+                //                 colorSchema="secondary"
+                //                 variant="plain"
+                //                 onClick={() => handlePopUpClose("addServiceAccount")}
+                //             >
+                //                 Cancel
+                //             </Button>
+                //         </div>
+                //     </form> 
                 );
             case 1:
                 return (
@@ -269,27 +277,27 @@ export const OrgServiceAccountsTable = () => {
     
     return (
         <div className="w-full">
-            <div className="mb-4 flex">
-                <div className="mr-4 flex-1">
-                    <Input 
-                        value={searchServiceAccountFilter}
-                        onChange={(e) => setSearchServiceAccountFilter(e.target.value)}
-                        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-                        placeholder="Search service accounts..."
-                    />
-                </div>
+            <div className="flex justify-between mb-8">
+                <p className="text-xl font-semibold text-mineshaft-100">Service Accounts</p>
                 <Button
+                    colorSchema="secondary"
                     leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     onClick={() => {
                         setStep(0);
-                        reset();
+                        // reset();
                         handlePopUpOpen("addServiceAccount");
                     }}
                 >
                     Add Service Account
                 </Button>
             </div>
-            <TableContainer>
+            <Input 
+                value={searchServiceAccountFilter}
+                onChange={(e) => setSearchServiceAccountFilter(e.target.value)}
+                leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+                placeholder="Search service accounts..."
+            />
+            <TableContainer className="mt-4">
                 <Table>
                     <THead>
                         <Th>Name</Th>
@@ -345,7 +353,7 @@ export const OrgServiceAccountsTable = () => {
                 isOpen={popUp?.addServiceAccount?.isOpen}
                 onOpenChange={(isOpen) => {
                     handlePopUpToggle("addServiceAccount", isOpen);
-                    reset();
+                    // reset();
                 }}
             >
                 <ModalContent

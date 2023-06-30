@@ -20,7 +20,7 @@ import { Menu, Transition } from "@headlessui/react";
 import {TFunction} from "i18next";
 
 import guidGenerator from "@app/components/utilities/randomId";
-import { useOrganization, useUser } from "@app/context";
+import { useOrganization, useSubscription,useUser } from "@app/context";
 import { useLogoutUser } from "@app/hooks/api";
 
 const supportOptions = (t: TFunction) => [
@@ -63,7 +63,8 @@ export interface IUser {
  */
 export const Navbar = () => {
   const router = useRouter();
-
+  const { subscription } = useSubscription();
+  
   const { currentOrg, orgs } = useOrganization();
   const { user } = useUser();
 
@@ -220,22 +221,24 @@ export const Navbar = () => {
                     />
                   </div>
                 </div>
-                <button
-                  // onClick={buttonAction}
-                  type="button"
-                  className="w-full cursor-pointer"
-                >
-                  <div
-                    onKeyDown={() => null}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => router.push(`/settings/billing/${router.query.id}`)}
-                    className="relative mt-1 flex cursor-pointer select-none justify-start rounded-md py-2 px-2 text-gray-400 duration-200 hover:bg-white/5 hover:text-gray-200"
+                {subscription && subscription.slug !== null && (
+                  <button
+                    // onClick={buttonAction}
+                    type="button"
+                    className="w-full cursor-pointer"
                   >
-                    <FontAwesomeIcon className="pl-1.5 pr-3 text-lg" icon={faCoins} />
-                    <div className="text-sm">{t("nav.user.usage-billing")}</div>
-                  </div>
-                </button>
+                    <div
+                      onKeyDown={() => null}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => router.push(`/settings/billing/${router.query.id}`)}
+                      className="relative mt-1 flex cursor-pointer select-none justify-start rounded-md py-2 px-2 text-gray-400 duration-200 hover:bg-white/5 hover:text-gray-200"
+                    >
+                      <FontAwesomeIcon className="pl-1.5 pr-3 text-lg" icon={faCoins} />
+                      <div className="text-sm">{t("nav.user.usage-billing")}</div>
+                    </div>
+                  </button>
+                )}
                 <button
                   type="button"
                   // onClick={buttonAction}

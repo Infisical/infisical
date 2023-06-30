@@ -158,7 +158,9 @@ export default function Activity() {
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
       </Head>
-      <NavHeader pageName="Audit Logs" isProjectRelated />
+      <div className="ml-6">
+        <NavHeader pageName="Audit Logs" isProjectRelated />
+      </div>
       {currentSidebarAction && (
         <ActivitySideBar toggleSidebar={toggleSidebar} currentAction={currentSidebarAction} />
       )}
@@ -184,11 +186,13 @@ export default function Activity() {
           />
         </div>
       </div>
-      <UpgradePlanModal
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={() => handlePopUpClose("upgradePlan")}
-        text="You can see more logs if you switch to Infisical's Business/Professional Plan."
-      />
+      {subscription && (
+        <UpgradePlanModal
+          isOpen={popUp.upgradePlan.isOpen}
+          onOpenChange={() => handlePopUpClose("upgradePlan")}
+          text={subscription.slug === null ? "You can see more logs under an Enterprise license" : "You can see more logs if you switch to Infisical's Business/Professional Plan."}
+        />
+      )}
     </div>
   );
 }

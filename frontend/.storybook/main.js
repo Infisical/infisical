@@ -6,7 +6,14 @@ module.exports = {
     '@storybook/addon-essentials',
     '@storybook/addon-interactions',
     'storybook-dark-mode',
-    '@storybook/addon-postcss'
+    {
+      name: '@storybook/addon-styling',
+      options: {
+        postCss: {
+          implementation: require('postcss')
+        }
+      }
+    }
   ],
   framework: {
     name: '@storybook/nextjs',
