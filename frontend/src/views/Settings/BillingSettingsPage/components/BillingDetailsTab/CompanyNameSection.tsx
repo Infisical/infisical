@@ -88,6 +88,7 @@ export const CompanyNameSection = () => {
                 type="submit"
                 colorSchema="secondary"
                 isLoading={isLoading}
+                isDisabled={isLoading}
             >
                 Save
             </Button>
