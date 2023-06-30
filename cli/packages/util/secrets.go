@@ -37,6 +37,7 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string) ([]models.Singl
 	encryptedSecrets, err := api.CallGetSecretsV3(httpClient, api.GetEncryptedSecretsV3Request{
 		WorkspaceId: serviceTokenDetails.Workspace,
 		Environment: serviceTokenDetails.Environment,
+		SecretPath:  serviceTokenDetails.SecretPath,
 	})
 
 	if err != nil {

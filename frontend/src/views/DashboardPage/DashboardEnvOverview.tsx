@@ -143,7 +143,7 @@ export const DashboardEnvOverview = () => {
 
   return (
     <div className="container mx-auto max-w-full px-6 text-mineshaft-50 dark:[color-scheme:dark]">
-      <div className="relative right-5">
+      <div className="relative right-5 ml-4">
         <NavHeader pageName={t("dashboard.title")} isProjectRelated />
       </div>
       <div className="mt-6">

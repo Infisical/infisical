@@ -61,3 +61,27 @@ export type AddUserToOrgDTO = {
   inviteeEmail: string;
   organizationId: string;
 };
+
+export type CreateAPIKeyRes = {
+  apiKey: string;
+  apiKeyData: APIKeyData;
+}
+
+export type APIKeyData = {
+  _id: string;
+  name: string;
+  user: string;
+  lastUsed: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export type TokenVersion = {
+  _id: string;
+  user: string;
+  userAgent: string;
+  ip: string;
+  lastUsed: string;
+  createdAt: string;
+  updatedAt: string;
+}

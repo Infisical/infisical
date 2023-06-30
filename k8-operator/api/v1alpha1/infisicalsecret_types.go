@@ -42,6 +42,9 @@ type InfisicalSecretSpec struct {
 	// +kubebuilder:validation:Required
 	ManagedSecretReference KubeSecretReference `json:"managedSecretReference"`
 
+	// +kubebuilder:default:=60
+	ResyncInterval int `json:"resyncInterval"`
+
 	// Infisical host to pull secrets from
 	// +kubebuilder:validation:Optional
 	HostAPI string `json:"hostAPI"`

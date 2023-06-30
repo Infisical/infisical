@@ -188,7 +188,7 @@ type GetServiceTokenDetailsResponse struct {
 	Tag          string    `json:"tag"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
-	V            int       `json:"__v"`
+	SecretPath   string    `json:"secretPath"`
 }
 
 type GetAccessibleEnvironmentsRequest struct {

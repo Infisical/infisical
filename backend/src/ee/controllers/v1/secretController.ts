@@ -54,23 +54,20 @@ export const getSecretVersions = async (req: Request, res: Response) => {
         }
     }   
     */
-  const { secretId, workspaceId, environment, folderId } = req.params;
+  const { secretId } = req.params;
 
   const offset: number = parseInt(req.query.offset as string);
   const limit: number = parseInt(req.query.limit as string);
 
   const secretVersions = await SecretVersion.find({
-    secret: secretId,
-    workspace: workspaceId,
-    environment,
-    folder: folderId,
+    secret: secretId
   })
     .sort({ createdAt: -1 })
     .skip(offset)
     .limit(limit);
 
   return res.status(200).send({
-    secretVersions,
+    secretVersions
   });
 };
 
@@ -135,7 +132,7 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
   // validate secret version
   const oldSecretVersion = await SecretVersion.findOne({
     secret: secretId,
-    version,
+    version
   }).select("+secretBlindIndex");
 
   if (!oldSecretVersion) throw new Error("Failed to find secret version");
@@ -154,7 +151,7 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
     secretValueTag,
     algorithm,
     folder,
-    keyEncoding,
+    keyEncoding
   } = oldSecretVersion;
 
   // update secret
@@ -162,7 +159,7 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
     secretId,
     {
       $inc: {
-        version: 1,
+        version: 1
       },
       workspace,
       type,
@@ -177,10 +174,10 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
       secretValueTag,
       folderId: folder,
       algorithm,
-      keyEncoding,
+      keyEncoding
     },
     {
-      new: true,
+      new: true
     }
   );
 
@@ -204,17 +201,17 @@ export const rollbackSecretVersion = async (req: Request, res: Response) => {
     secretValueTag,
     folder,
     algorithm,
-    keyEncoding,
+    keyEncoding
   }).save();
 
   // take secret snapshot
   await EESecretService.takeSecretSnapshot({
     workspaceId: secret.workspace,
     environment,
-    folderId: folder,
+    folderId: folder
   });
 
   return res.status(200).send({
-    secret,
+    secret
   });
 };
