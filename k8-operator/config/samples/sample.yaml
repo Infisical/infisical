@@ -4,6 +4,7 @@ metadata:
   name: infisicalsecret-sample
 spec:
   hostAPI: http://localhost:7070/api
+  resyncInterval: 60
   authentication:
     serviceAccount:
       serviceAccountSecretReference:

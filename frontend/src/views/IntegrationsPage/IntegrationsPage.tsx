@@ -178,7 +178,9 @@ export const IntegrationsPage = ({ frameworkIntegrations }: Props) => {
 
   return (
     <div className="container mx-auto max-w-7xl px-8 pb-12 text-white">
-      <NavHeader pageName={t("integrations.title")} isProjectRelated />
+      <div className="ml-4">
+        <NavHeader pageName={t("integrations.title")} isProjectRelated />
+      </div>
       <IntegrationsSection
         isLoading={isIntegrationLoading}
         integrations={integrations}

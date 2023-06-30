@@ -154,7 +154,9 @@ export default function Users() {
         <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      <NavHeader pageName={t("settings.members.title")} isProjectRelated />
+      <div className="ml-6">
+        <NavHeader pageName={t("settings.members.title")} isProjectRelated />
+      </div>
       <div className="flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl mb-4">
         <p className="mr-4 font-semibold text-white">{t("settings.members.title")}</p>
       </div>

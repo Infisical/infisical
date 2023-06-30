@@ -51,7 +51,6 @@ import {
   secrets as v2SecretsRouter,
   serviceTokenData as v2ServiceTokenDataRouter,
   serviceAccounts as v2ServiceAccountsRouter,
-  apiKeyData as v2APIKeyDataRouter,
   environment as v2EnvironmentRouter,
   tags as v2TagsRouter,
 } from "./routes/v2";
@@ -138,7 +137,6 @@ const main = async () => {
   app.use("/api/v2/secrets", v2SecretsRouter); // note: in the process of moving to v3/secrets
   app.use("/api/v2/service-token", v2ServiceTokenDataRouter);
   app.use("/api/v2/service-accounts", v2ServiceAccountsRouter); // new
-  app.use("/api/v2/api-key", v2APIKeyDataRouter);
 
   // v3 routes (experimental)
   app.use("/api/v3/auth", v3AuthRouter);
