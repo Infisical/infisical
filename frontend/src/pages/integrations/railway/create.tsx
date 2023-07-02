@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
@@ -20,15 +21,27 @@ import {
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 import createIntegration from "../../api/integrations/createIntegration";
 
+interface RailwayCreateIntegrationFormValues {
+  selectedSourceEnvironment: string;
+  secretPath: string;
+  targetAppId: string;
+  targetEnvironmentId: string;
+  targetServiceId: string;
+}
+
 export default function RailwayCreateIntegrationPage() {
   const router = useRouter();
+  const { handleSubmit, setValue, getValues, control, watch } =
+    useForm<RailwayCreateIntegrationFormValues>({
+      defaultValues: {
+        selectedSourceEnvironment: "",
+        secretPath: "",
+        targetAppId: "",
+        targetEnvironmentId: "",
+        targetServiceId: ""
+      }
+    });
 
-  const [targetAppId, setTargetAppId] = useState("");
-  const [targetEnvironmentId, setTargetEnvironmentId] = useState("");
-  const [targetServiceId, setTargetServiceId] = useState("");
-
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
-  const [secretPath, setSecretPath] = useState("/");
   const [isLoading, setIsLoading] = useState(false);
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
@@ -37,27 +50,29 @@ export default function RailwayCreateIntegrationPage() {
   const { data: integrationAuthApps } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
+
   const { data: targetEnvironments } = useGetIntegrationAuthRailwayEnvironments({
     integrationAuthId: (integrationAuthId as string) ?? "",
-    appId: targetAppId
+    appId: watch("targetAppId")
   });
+
   const { data: targetServices } = useGetIntegrationAuthRailwayServices({
     integrationAuthId: (integrationAuthId as string) ?? "",
-    appId: targetAppId
+    appId: watch("targetAppId")
   });
 
   useEffect(() => {
     if (workspace) {
-      setSelectedSourceEnvironment(workspace.environments[0].slug);
+      setValue("selectedSourceEnvironment", workspace.environments[0].slug);
     }
   }, [workspace]);
 
   useEffect(() => {
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
-        setTargetAppId(integrationAuthApps[0].appId as string);
+        setValue("targetAppId", integrationAuthApps[0].appId as string);
       } else {
-        setTargetAppId("none");
+        setValue("targetAppId", "none");
       }
     }
   }, [integrationAuthApps]);
@@ -65,9 +80,9 @@ export default function RailwayCreateIntegrationPage() {
   useEffect(() => {
     if (targetEnvironments) {
       if (targetEnvironments.length > 0) {
-        setTargetEnvironmentId(targetEnvironments[0].environmentId);
+        setValue("targetEnvironmentId", targetEnvironments[0].environmentId);
       } else {
-        setTargetEnvironmentId("none");
+        setValue("targetEnvironmentId", "none");
       }
     }
   }, [targetEnvironments]);
@@ -77,7 +92,15 @@ export default function RailwayCreateIntegrationPage() {
     serviceId: ""
   });
 
-  const handleButtonClick = async () => {
+  const handleButtonClick = async (data: RailwayCreateIntegrationFormValues) => {
+    const {
+      targetAppId,
+      targetEnvironmentId,
+      targetServiceId,
+      selectedSourceEnvironment,
+      secretPath
+    } = data;
+
     try {
       setIsLoading(true);
 
@@ -90,7 +113,7 @@ export default function RailwayCreateIntegrationPage() {
         (environment) => environment.environmentId === targetEnvironmentId
       );
 
-      if (!targetApp || !targetApp.appId || !targetEnvironment) return;
+      if (!targetApp?.appId || !targetEnvironment) return;
 
       const targetService = targetServices?.find(
         (service) => service.serviceId === targetServiceId
@@ -121,106 +144,138 @@ export default function RailwayCreateIntegrationPage() {
   };
 
   return workspace &&
-    selectedSourceEnvironment &&
+    getValues("selectedSourceEnvironment") &&
     integrationAuthApps &&
     targetEnvironments &&
     filteredServices ? (
     <div className="flex h-full w-full items-center justify-center">
       <Card className="max-w-md rounded-md p-8">
         <CardTitle className="text-center">Railway Integration</CardTitle>
-        <FormControl label="Project Environment" className="mt-4">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {workspace?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
-              >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
+        <form onSubmit={handleSubmit(handleButtonClick)}>
+          <Controller
+            name="selectedSourceEnvironment"
+            control={control}
+            render={({ field }) => {
+              return (
+                <FormControl label="Project Environment" className="mt-4">
+                  <Select
+                    {...field}
+                    className="w-full border border-mineshaft-500"
+                    onValueChange={field.onChange}
+                  >
+                    {workspace?.environments.map((sourceEnvironment) => (
+                      <SelectItem
+                        value={sourceEnvironment.slug}
+                        key={`source-environment-${sourceEnvironment.slug}`}
+                      >
+                        {sourceEnvironment.name}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              );
+            }}
           />
-        </FormControl>
-        <FormControl label="Railway Project">
-          <Select
-            value={targetAppId}
-            onValueChange={(val) => setTargetAppId(val)}
-            className="w-full border border-mineshaft-500"
+
+          <Controller
+            name="secretPath"
+            control={control}
+            render={({ field }) => (
+              <FormControl label="Secrets Path">
+                <Input {...field} placeholder="Provide a path, default is /" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            name="targetAppId"
+            control={control}
+            render={({ field }) => (
+              <FormControl label="Railway Project">
+                <Select
+                  {...field}
+                  className="w-full border border-mineshaft-500"
+                  isDisabled={integrationAuthApps.length === 0}
+                  onValueChange={field.onChange}
+                >
+                  {integrationAuthApps.length > 0 ? (
+                    integrationAuthApps.map((integrationAuthApp) => (
+                      <SelectItem
+                        value={integrationAuthApp.appId as string}
+                        key={`target-app-${integrationAuthApp.appId as string}`}
+                      >
+                        {integrationAuthApp.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" key="target-app-none">
+                      No projects found
+                    </SelectItem>
+                  )}
+                </Select>
+              </FormControl>
+            )}
+          />
+          <Controller
+            name="targetEnvironmentId"
+            control={control}
+            render={({ field }) => (
+              <FormControl label="Railway Project Environment">
+                <Select
+                  {...field}
+                  className="w-full border border-mineshaft-500"
+                  onValueChange={field.onChange}
+                >
+                  {targetEnvironments.length > 0 ? (
+                    targetEnvironments.map((targetEnvironment) => (
+                      <SelectItem
+                        value={targetEnvironment.environmentId as string}
+                        key={`target-environment-${targetEnvironment.environmentId as string}`}
+                      >
+                        {targetEnvironment.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" key="target-environment-none">
+                      No environments found
+                    </SelectItem>
+                  )}
+                </Select>
+              </FormControl>
+            )}
+          />
+          <Controller
+            name="targetServiceId"
+            control={control}
+            render={({ field }) => (
+              <FormControl label="Railway Service (Optional)">
+                <Select
+                  {...field}
+                  className="w-full border border-mineshaft-500"
+                  onValueChange={field.onChange}
+                >
+                  {filteredServices.map((targetService) => (
+                    <SelectItem
+                      value={targetService.serviceId as string}
+                      key={`target-service-${targetService.serviceId as string}`}
+                    >
+                      {targetService.name}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          />
+
+          <Button
+            color="mineshaft"
+            className="mt-4"
+            isLoading={isLoading}
             isDisabled={integrationAuthApps.length === 0}
+            type="submit"
           >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.appId as string}
-                  key={`target-app-${integrationAuthApp.appId as string}`}
-                >
-                  {integrationAuthApp.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No projects found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
-        <FormControl label="Railway Project Environment">
-          <Select
-            value={targetEnvironmentId}
-            onValueChange={(val) => setTargetEnvironmentId(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {targetEnvironments.length > 0 ? (
-              targetEnvironments.map((targetEnvironment) => (
-                <SelectItem
-                  value={targetEnvironment.environmentId as string}
-                  key={`target-environment-${targetEnvironment.environmentId as string}`}
-                >
-                  {targetEnvironment.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-environment-none">
-                No environments found
-              </SelectItem>
-            )}
-          </Select>
-        </FormControl>
-        <FormControl label="Railway Service (Optional)">
-          <Select
-            value={targetServiceId}
-            onValueChange={(val) => setTargetServiceId(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {filteredServices.map((targetService) => (
-              <SelectItem
-                value={targetService.serviceId as string}
-                key={`target-service-${targetService.serviceId as string}`}
-              >
-                {targetService.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          color="mineshaft"
-          className="mt-4"
-          isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
-        >
-          Create Integration
-        </Button>
+            Create Integration
+          </Button>
+        </form>
       </Card>
     </div>
   ) : (
