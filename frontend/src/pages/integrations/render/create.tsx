@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/router";
 import queryString from "query-string";
 
@@ -18,6 +19,12 @@ import {
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 import createIntegration from "../../api/integrations/createIntegration";
 
+interface RenderCreateIntegrationFormValues {
+  selectedSourceEnvironment: string;
+  secretPath: string;
+  targetApp: string;
+}
+
 export default function RenderCreateIntegrationPage() {
   const router = useRouter();
 
@@ -29,28 +36,36 @@ export default function RenderCreateIntegrationPage() {
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
 
-  const [selectedSourceEnvironment, setSelectedSourceEnvironment] = useState("");
-  const [targetApp, setTargetApp] = useState("");
-  const [secretPath, setSecretPath] = useState("/");
+  const { handleSubmit, setValue, getValues, control } = useForm<RenderCreateIntegrationFormValues>(
+    {
+      defaultValues: {
+        selectedSourceEnvironment: "",
+        secretPath: "/",
+        targetApp: ""
+      }
+    }
+  );
+
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (workspace) {
-      setSelectedSourceEnvironment(workspace.environments[0].slug);
+      setValue("selectedSourceEnvironment", workspace.environments[0].slug);
     }
   }, [workspace]);
 
   useEffect(() => {
     if (integrationAuthApps) {
       if (integrationAuthApps.length > 0) {
-        setTargetApp(integrationAuthApps[0].name);
+        setValue("targetApp", integrationAuthApps[0].name);
       } else {
-        setTargetApp("none");
+        setValue("targetApp", "none");
       }
     }
   }, [integrationAuthApps]);
 
-  const handleButtonClick = async () => {
+  const handleButtonClick = async (data: RenderCreateIntegrationFormValues) => {
+    const { targetApp, selectedSourceEnvironment, secretPath } = data;
     try {
       if (!integrationAuth?._id) return;
 
@@ -84,67 +99,86 @@ export default function RenderCreateIntegrationPage() {
 
   return integrationAuth &&
     workspace &&
-    selectedSourceEnvironment &&
+    getValues("selectedSourceEnvironment") &&
     integrationAuthApps &&
-    targetApp ? (
+    getValues("targetApp") ? (
     <div className="flex h-full w-full items-center justify-center">
       <Card className="max-w-md rounded-md p-8">
         <CardTitle className="text-center">Render Integration</CardTitle>
-        <FormControl label="Project Environment" className="mt-4">
-          <Select
-            value={selectedSourceEnvironment}
-            onValueChange={(val) => setSelectedSourceEnvironment(val)}
-            className="w-full border border-mineshaft-500"
-          >
-            {workspace?.environments.map((sourceEnvironment) => (
-              <SelectItem
-                value={sourceEnvironment.slug}
-                key={`source-environment-${sourceEnvironment.slug}`}
-              >
-                {sourceEnvironment.name}
-              </SelectItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl label="Secrets Path">
-          <Input
-            value={secretPath}
-            onChange={(evt) => setSecretPath(evt.target.value)}
-            placeholder="Provide a path, default is /"
-          />
-        </FormControl>
-        <FormControl label="Render Service" className="mt-4">
-          <Select
-            value={targetApp}
-            onValueChange={(val) => setTargetApp(val)}
-            className="w-full border border-mineshaft-500"
-            isDisabled={integrationAuthApps.length === 0}
-          >
-            {integrationAuthApps.length > 0 ? (
-              integrationAuthApps.map((integrationAuthApp) => (
-                <SelectItem
-                  value={integrationAuthApp.name}
-                  key={`target-app-${integrationAuthApp.name}`}
+        <form onSubmit={handleSubmit(handleButtonClick)}>
+          <Controller
+            name="selectedSourceEnvironment"
+            control={control}
+            render={({ field }) => (
+              <FormControl label="Project Environment" className="mt-4">
+                <Select
+                  {...field}
+                  onValueChange={(val) => field.onChange(val)}
+                  className="w-full border border-mineshaft-500"
                 >
-                  {integrationAuthApp.name}
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="none" key="target-app-none">
-                No services found
-              </SelectItem>
+                  {workspace?.environments.map((sourceEnvironment) => (
+                    <SelectItem
+                      value={sourceEnvironment.slug}
+                      key={`source-environment-${sourceEnvironment.slug}`}
+                    >
+                      {sourceEnvironment.name}
+                    </SelectItem>
+                  ))}
+                </Select>
+              </FormControl>
             )}
-          </Select>
-        </FormControl>
-        <Button
-          onClick={handleButtonClick}
-          color="mineshaft"
-          className="mt-4"
-          isLoading={isLoading}
-          isDisabled={integrationAuthApps.length === 0}
-        >
-          Create Integration
-        </Button>
+          />
+
+          <Controller
+            name="secretPath"
+            control={control}
+            render={({ field }) => (
+              <FormControl label="Secrets Path">
+                <Input {...field} placeholder="Provide a path, default is /" />
+              </FormControl>
+            )}
+          />
+
+          <Controller
+            name="targetApp"
+            control={control}
+            render={({ field }) => (
+              <FormControl label="Render Service" className="mt-4">
+                <Select
+                  {...field}
+                  onValueChange={field.onChange}
+                  className="w-full border border-mineshaft-500"
+                  isDisabled={integrationAuthApps.length === 0}
+                >
+                  {integrationAuthApps.length > 0 ? (
+                    integrationAuthApps.map((integrationAuthApp) => (
+                      <SelectItem
+                        value={integrationAuthApp.name}
+                        key={`target-app-${integrationAuthApp.name}`}
+                      >
+                        {integrationAuthApp.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" key="target-app-none">
+                      No services found
+                    </SelectItem>
+                  )}
+                </Select>
+              </FormControl>
+            )}
+          />
+
+          <Button
+            color="mineshaft"
+            className="mt-4"
+            isLoading={isLoading}
+            isDisabled={integrationAuthApps.length === 0}
+            type="submit"
+          >
+            Create Integration
+          </Button>
+        </form>
       </Card>
     </div>
   ) : (
