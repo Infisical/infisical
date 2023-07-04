@@ -13,6 +13,7 @@ import * as signupController from "./signupController";
 import * as userActionController from "./userActionController";
 import * as userController from "./userController";
 import * as workspaceController from "./workspaceController";
+import * as secretScanningController from "./secretScanningController";
 
 export {
 	authController,
@@ -30,4 +31,5 @@ export {
 	userActionController,
 	userController,
 	workspaceController,
+	secretScanningController
 };

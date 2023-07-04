@@ -364,6 +364,14 @@ export const AppLayout = ({ children }: LayoutProps) => {
                         </MenuItem>
                       </a>
                     </Link>
+                    <Link href="/secret-scanning" passHref>
+                      <a>
+                        <MenuItem
+                          isSelected={router.asPath === "/secret-scanning"}
+                          icon="system-outline-82-extension"
+                        >Secret scanning </MenuItem>
+                      </a>
+                    </Link>
                     <Link href={`/activity/${currentWorkspace?._id}`} passHref>
                       <MenuItem
                         isSelected={router.asPath === `/activity/${currentWorkspace?._id}`}

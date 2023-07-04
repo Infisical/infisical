@@ -3,11 +3,9 @@ import { exec } from "child_process";
 import { writeFile, readFile, rm, mkdir, } from "fs";
 import { tmpdir } from "os";
 import { join } from "path"
-
-// interface CommandResult {
-//   stdout: string;
-//   stderr: string;
-// }
+import mongoose from "mongoose";
+import GitRisks from "./models/gitRisks";
+import GitAppOrganizationInstallation from "./models/gitAppOrganizationInstallation";
 
 type SecretMatch = {
   Description: string;
@@ -31,17 +29,41 @@ type SecretMatch = {
 };
 
 export = (app: Probot) => {
-  app.on("pull_request", async (context) => {
-    // create a check 
+  // connect to DB
+  initDatabase()
+
+  app.on("installation.created", async (context) => {
+    const { payload } = context;
+    // console.log("payload==>", payload.installation.repository_selection)
+  })
+
+  app.on("installation.deleted", async (context) => {
+    const { payload } = context;
+    const { installation, repositories } = payload;
+    if (installation.repository_selection == "all") {
+      await GitRisks.deleteMany({ installationId: installation.id })
+      await GitAppOrganizationInstallation.deleteOne({ installationId: installation.id })
+    } else {
+      for (const repository of repositories) {
+        await GitRisks.deleteMany({ repositoryId: repository.id })
+      }
+    }
   })
 
   app.on("push", async (context) => {
-    console.log("something was pushed")
     const { payload } = context;
-    const { commits, repository } = payload;
+    const { commits, repository, installation, } = payload;
     const [owner, repo] = repository.full_name.split('/');
 
-    const fingerPrints: any = []
+    const installationLinkToOrgExists = await GitAppOrganizationInstallation.findOne({ installationId: installation.id }).lean()
+    if (!installationLinkToOrgExists) {
+      return
+    }
+
+    console.log("installation link does exist!")
+
+    const findingsByFingerprint: { [key: string]: SecretMatch; } = {}
+
     for (const commit of commits) {
       for (const filepath of [...commit.added, ...commit.modified]) {
         try {
@@ -57,7 +79,13 @@ export = (app: Probot) => {
           const findings = await scanContentAndGetFindings(`\n${fileContent}`) // to count lines correctly
 
           for (const finding of findings) {
-            fingerPrints.push(`${commit.id}:${filepath}:${finding.RuleID}:${finding.StartLine}`)
+            const fingerPrint = `${commit.id}:${filepath}:${finding.RuleID}:${finding.StartLine}`
+            finding.Fingerprint = fingerPrint
+            finding.Commit = commit.id
+            finding.File = filepath
+            finding.Author = commit.author.name
+            finding.Email = commit.author.email
+            findingsByFingerprint[fingerPrint] = finding
           }
 
         } catch (error) {
@@ -66,7 +94,19 @@ export = (app: Probot) => {
       }
     }
 
-    console.log("fingerPrints==>", fingerPrints)
+    // change to update
+    for (const key in findingsByFingerprint) {
+      await GitRisks.findOneAndUpdate({ fingerprint: findingsByFingerprint[key].Fingerprint },
+        {
+          ...convertKeysToLowercase(findingsByFingerprint[key]),
+          installationId: installation.id,
+          organization: installationLinkToOrgExists.organizationId,
+          repositoryFullName: repository.full_name,
+          repositoryId: repository.id
+        }, {
+        upsert: true
+      })
+    }
   });
 };
 
@@ -148,4 +188,32 @@ function deleteTempFolder(folderPath: string): Promise<void> {
       }
     });
   });
+}
+
+const initDatabase = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URL);
+    // allow empty strings to pass the required validator
+    mongoose.Schema.Types.String.checkRequired(v => typeof v === "string");
+
+    console.log("Database connection established");
+
+  } catch (err) {
+    console.log(`Unable to establish Database connection due to the error.\n${err}`);
+  }
+
+  return mongoose.connection;
+}
+
+function convertKeysToLowercase<T>(obj: T): T {
+  const convertedObj = {} as T;
+
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const lowercaseKey = key.charAt(0).toLowerCase() + key.slice(1);
+      convertedObj[lowercaseKey] = obj[key];
+    }
+  }
+
+  return convertedObj;
 }

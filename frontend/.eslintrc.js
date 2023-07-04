@@ -7,7 +7,8 @@ module.exports = {
   root: true,
   env: {
     browser: true,
-    es2021: true
+    es2021: true,
+    "es6": true
   },
   extends: [
     "airbnb",
@@ -70,6 +71,7 @@ module.exports = {
     ],
     "@typescript-eslint/no-non-null-assertion": "off",
     "simple-import-sort/exports": "warn",
+    "@typescript-eslint/no-empty-function": "off",
     "simple-import-sort/imports": [
       "warn",
       {
