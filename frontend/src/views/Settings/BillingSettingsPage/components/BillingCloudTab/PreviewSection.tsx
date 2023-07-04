@@ -4,7 +4,6 @@ import {
     useCreateCustomerPortalSession,
     useGetOrgPlanBillingInfo} from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
-
 import { ManagePlansModal } from "./ManagePlansModal";
 
 export const PreviewSection = () => {
@@ -62,8 +61,8 @@ export const PreviewSection = () => {
                 <div className="flex mb-6 max-w-screen-lg">
                     <div className="p-4 bg-mineshaft-900 rounded-lg flex-1 mr-4 border border-mineshaft-600">
                         <p className="mb-2 text-gray-400">Current plan</p>
-                        <p className="text-2xl mb-8 text-mineshaft-50 font-semibold">
-                            {formatPlanSlug(subscription.slug)}
+                        <p className="text-2xl text-mineshaft-50 font-semibold mb-8"> 
+                            {`${formatPlanSlug(subscription.slug)} ${subscription.status === "trialing" ? "(Trial)" : ""}`}
                         </p>
                         <button 
                             type="button"
@@ -80,7 +79,7 @@ export const PreviewSection = () => {
                     <div className="p-4 bg-mineshaft-900 rounded-lg flex-1 border border-mineshaft-600 mr-4">
                         <p className="mb-2 text-gray-400">Price</p>
                         <p className="text-2xl mb-8 text-mineshaft-50 font-semibold">
-                            {`${formatAmount(data.amount)} / ${data.interval}`}
+                            {subscription.status === "trialing" ? "$0.00 / month" : `${formatAmount(data.amount)} / ${data.interval}`}
                         </p>
                     </div>
                     <div className="p-4 bg-mineshaft-900 rounded-lg flex-1 border border-mineshaft-600">
