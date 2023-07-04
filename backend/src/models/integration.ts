@@ -5,18 +5,19 @@ import {
   INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_CHECKLY,
   INTEGRATION_CIRCLECI,
+  INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_FLYIO,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
   INTEGRATION_HASHICORP_VAULT,
   INTEGRATION_HEROKU,
   INTEGRATION_NETLIFY,
+  INTEGRATION_NORTHFLANK,
   INTEGRATION_RAILWAY,
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
-  INTEGRATION_CLOUDFLARE_PAGES,
   INTEGRATION_TRAVISCI,
-  INTEGRATION_VERCEL,
+  INTEGRATION_VERCEL
 } from "../variables";
 
 export interface IIntegration {
@@ -52,7 +53,8 @@ export interface IIntegration {
     | "supabase"
     | "checkly"
     | "hashicorp-vault"
-    | "cloudflare-pages";
+    | "cloudflare-pages"
+    | "northflank";
   integrationAuth: Types.ObjectId;
 }
 
@@ -141,6 +143,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_CHECKLY,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
+        INTEGRATION_NORTHFLANK
       ],
       required: true,
     },

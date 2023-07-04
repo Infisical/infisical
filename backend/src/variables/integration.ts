@@ -21,10 +21,11 @@ export const INTEGRATION_RAILWAY = "railway";
 export const INTEGRATION_FLYIO = "flyio";
 export const INTEGRATION_CIRCLECI = "circleci";
 export const INTEGRATION_TRAVISCI = "travisci";
-export const INTEGRATION_SUPABASE = 'supabase';
-export const INTEGRATION_CHECKLY = 'checkly';
-export const INTEGRATION_HASHICORP_VAULT = 'hashicorp-vault';
-export const INTEGRATION_CLOUDFLARE_PAGES = 'cloudflare-pages';
+export const INTEGRATION_SUPABASE = "supabase";
+export const INTEGRATION_CHECKLY = "checkly";
+export const INTEGRATION_HASHICORP_VAULT = "hashicorp-vault";
+export const INTEGRATION_CLOUDFLARE_PAGES = "cloudflare-pages";
+export const INTEGRATION_NORTHFLANK = "northflank";
 export const INTEGRATION_SET = new Set([
     INTEGRATION_AZURE_KEY_VAULT,
   INTEGRATION_HEROKU,
@@ -39,7 +40,8 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_SUPABASE,
   INTEGRATION_CHECKLY,
   INTEGRATION_HASHICORP_VAULT,
-  INTEGRATION_CLOUDFLARE_PAGES
+  INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_NORTHFLANK
 ]);
 
 // integration types
@@ -65,9 +67,10 @@ export const INTEGRATION_RAILWAY_API_URL = "https://backboard.railway.app/graphq
 export const INTEGRATION_FLYIO_API_URL = "https://api.fly.io/graphql";
 export const INTEGRATION_CIRCLECI_API_URL = "https://circleci.com/api";
 export const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
-export const INTEGRATION_SUPABASE_API_URL = 'https://api.supabase.com';
-export const INTEGRATION_CHECKLY_API_URL = 'https://api.checklyhq.com';
-export const INTEGRATION_CLOUDFLARE_PAGES_API_URL = 'https://api.cloudflare.com';
+export const INTEGRATION_SUPABASE_API_URL = "https://api.supabase.com";
+export const INTEGRATION_CHECKLY_API_URL = "https://api.checklyhq.com";
+export const INTEGRATION_CLOUDFLARE_PAGES_API_URL = "https://api.cloudflare.com";
+export const INTEGRATION_NORTHFLANK_API_URL = "https://api.northflank.com";
 
 export const getIntegrationOptions = async () => {
     const INTEGRATION_OPTIONS = [
@@ -221,18 +224,27 @@ export const getIntegrationOptions = async () => {
             slug: "gcp",
             image: "Google Cloud Platform.png",
             isAvailable: false,
-            type: '',
-            clientId: '',
-            docsLink: ''
+            type: "",
+            clientId: "",
+            docsLink: ""
         },
         {
-            name: 'Cloudflare Pages',
-            slug: 'cloudflare-pages',
-            image: 'Cloudflare.png',
+            name: "Cloudflare Pages",
+            slug: "cloudflare-pages",
+            image: "Cloudflare.png",
             isAvailable: true,
-            type: 'pat',
-            clientId: '',
-            docsLink: ''
+            type: "pat",
+            clientId: "",
+            docsLink: ""
+        },
+        {
+            name: "Northflank",
+            slug: "northflank",
+            image: "Northflank.png",
+            isAvailable: true,
+            type: "pat",
+            clientId: "",
+            docsLink: ""
         }
     ]
     

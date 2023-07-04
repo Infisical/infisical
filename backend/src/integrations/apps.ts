@@ -9,17 +9,19 @@ import {
   INTEGRATION_CHECKLY_API_URL,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CIRCLECI_API_URL,
+  INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUDFLARE_PAGES_API_URL,
   INTEGRATION_FLYIO,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GITHUB,
   INTEGRATION_GITLAB,
-  INTEGRATION_CLOUDFLARE_PAGES,
-  INTEGRATION_CLOUDFLARE_PAGES_API_URL,
   INTEGRATION_GITLAB_API_URL,
   INTEGRATION_HEROKU,
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_NETLIFY,
   INTEGRATION_NETLIFY_API_URL,
+  INTEGRATION_NORTHFLANK,
+  INTEGRATION_NORTHFLANK_API_URL,
   INTEGRATION_RAILWAY,
   INTEGRATION_RAILWAY_API_URL,
   INTEGRATION_RENDER,
@@ -29,7 +31,7 @@ import {
   INTEGRATION_TRAVISCI,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
-  INTEGRATION_VERCEL_API_URL,
+  INTEGRATION_VERCEL_API_URL
 } from "../variables";
 
 interface App {
@@ -135,7 +137,12 @@ const getApps = async ({
       apps = await getAppsCloudflarePages({
         accessToken,
         accountId: accessId
-      })
+      });
+      break;
+    case INTEGRATION_NORTHFLANK:
+      apps = await getAppsNorthflank({
+        accessToken,
+      });
       break;
   }
 
@@ -678,5 +685,37 @@ const getAppsCloudflarePages = async ({
     });
     return apps;
 }
+ /* Return list of projects for Northflank integration
+ * @param {Object} obj
+ * @param {String} obj.accessToken - access token for Northflank API
+ * @returns {Object[]} apps - names of Northflank apps
+ * @returns {String} apps.name - name of Northflank app
+ */
+const getAppsNorthflank = async ({ accessToken }: { accessToken: string }) => {
+  const {
+    data: {
+      data: {
+        projects
+      }
+    }
+  } = await standardRequest.get(
+    `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Accept-Encoding": "application/json",
+      },
+    }
+  );
+
+  const apps = projects.map((a: any) => {
+    return {
+      name: a.name,
+      appId: a.id,
+    };
+  });
+
+  return apps;
+};
 
 export { getApps };

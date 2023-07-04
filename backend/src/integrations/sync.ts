@@ -18,6 +18,8 @@ import {
   INTEGRATION_CHECKLY_API_URL,
   INTEGRATION_CIRCLECI,
   INTEGRATION_CIRCLECI_API_URL,
+  INTEGRATION_CLOUDFLARE_PAGES,
+  INTEGRATION_CLOUDFLARE_PAGES_API_URL,
   INTEGRATION_FLYIO,
   INTEGRATION_FLYIO_API_URL,
   INTEGRATION_GITHUB,
@@ -28,14 +30,14 @@ import {
   INTEGRATION_HEROKU_API_URL,
   INTEGRATION_NETLIFY,
   INTEGRATION_NETLIFY_API_URL,
+  INTEGRATION_NORTHFLANK,
+  INTEGRATION_NORTHFLANK_API_URL,
   INTEGRATION_RAILWAY,
   INTEGRATION_RAILWAY_API_URL,
   INTEGRATION_RENDER,
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_SUPABASE,
   INTEGRATION_SUPABASE_API_URL,
-  INTEGRATION_CLOUDFLARE_PAGES,
-  INTEGRATION_CLOUDFLARE_PAGES_API_URL,
   INTEGRATION_TRAVISCI,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
@@ -168,34 +170,6 @@ const syncSecrets = async ({
           accessToken,
         });
         break;
-      case INTEGRATION_FLYIO:
-        await syncSecretsFlyio({
-          integration,
-          secrets,
-          accessToken,
-        });
-        break;
-      case INTEGRATION_CIRCLECI:
-        await syncSecretsCircleCI({
-          integration,
-          secrets,
-          accessToken,
-        });
-        break;
-      case INTEGRATION_TRAVISCI:
-        await syncSecretsTravisCI({
-          integration,
-          secrets,
-          accessToken,
-        });
-        break;
-      case INTEGRATION_SUPABASE:
-        await syncSecretsSupabase({
-            integration,
-            secrets,
-            accessToken,
-        });
-        break;
       case INTEGRATION_CHECKLY:
         await syncSecretsCheckly({
           integration,
@@ -218,6 +192,13 @@ const syncSecrets = async ({
             secrets,
             accessId,
             accessToken
+        });
+        break;
+      case INTEGRATION_NORTHFLANK:
+        await syncSecretsNorthflank({
+          integration,
+          secrets,
+          accessToken
         });
         break;
     }
@@ -1874,7 +1855,7 @@ const syncSecretsCloudflarePages = async ({
           }
       )
   )
-  .data.result['deployment_configs'][integration.targetEnvironment]['env_vars'];
+  .data.result["deployment_configs"][integration.targetEnvironment]["env_vars"];
 
   // copy the secrets object, so we can set deleted keys to null
   const secretsObj: any = {...secrets};
@@ -1912,5 +1893,111 @@ const syncSecretsCloudflarePages = async ({
       }
   );
 }
+ /* Sync/push [secrets] to Northflank
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Northflank integration
+ */
+const syncSecretsNorthflank = async ({
+  integration,
+  secrets,
+  accessToken
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessToken: string;
+}) => {
+  
+//  secrets: {
+//   secretGroupID: 'some_id',
+//   secretGroupName: 'some_name',
+//   data: {}
+//  }
+
+  const {
+    data: {
+      secrets: getSecretsRes
+    }
+  } = await standardRequest.get(
+    `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects/${integration.appId}/secrets`,
+    {
+      headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Accept-Encoding": "application/json"
+      }
+    }
+  );
+
+  const secretGroups = getSecretsRes.map((group: any) => {
+    return {
+      id: group.id,
+      name: group.name
+    };
+  })
+
+  for await (const group of secretGroups) {
+       if (group.id === secrets.secretGroupID) {
+        // add secret to existing group
+        let {
+          data: {
+            secrets: {
+              variables
+            }
+          }
+        } = await standardRequest.get(
+          `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects/${integration.appId}/secrets/${secrets.secretGroupID}`,
+          {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept-Encoding": "application/json"
+            }
+          }
+        );
+
+        variables = { ...secrets.data }
+
+        const modifiedFormatForSecretInjection = {
+          secrets: {
+            variables
+          }
+        }
+
+        await standardRequest.post(
+          `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects/${integration.appId}/secrets/${secrets.secretGroupID}`,
+          modifiedFormatForSecretInjection,
+          {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept-Encoding": "application/json"
+            }
+          }
+        );
+      } else {
+        // create new secret group
+        const modifiedFormatForSecretInjection = {
+          name: secrets.secretGroupName,
+          secretType: "environment",
+          priority: 10,
+          secrets: {
+            variables: secrets.data
+          }
+        };
+
+        await standardRequest.post(
+          `${INTEGRATION_NORTHFLANK_API_URL}/v1/projects/${integration.appId}/secrets`,
+          modifiedFormatForSecretInjection,
+          {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Accept-Encoding": "application/json"
+            }
+          }
+        );
+      }
+  }
+
+  // TODO:: figure out delete business logic for secret groups
+};
 
 export { syncSecrets };
