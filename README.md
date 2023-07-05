@@ -25,7 +25,7 @@
     <img src="https://img.shields.io/github/commit-activity/m/infisical/infisical" alt="git commit activity" />
   </a>
   <a href="https://cloudsmith.io/~infisical/repos/">
-    <img src="https://img.shields.io/badge/Downloads-305.8k-orange" alt="Cloudsmith downloads" />
+    <img src="https://img.shields.io/badge/Downloads-395.8k-orange" alt="Cloudsmith downloads" />
   </a>
   <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg">
     <img src="https://img.shields.io/badge/chat-on%20Slack-blueviolet" alt="Slack community channel" />
@@ -61,17 +61,11 @@ And much more.
 
 ## Getting started
 
-Check out the [Quickstart](https://infisical.com/docs/getting-started/introduction) Guides
+Check out the [Quickstart Guides](https://infisical.com/docs/getting-started/introduction)
 
-### Use Infisical Cloud
-
-The fastest and most reliable way to get started with Infisical is signing up for free to [Infisical Cloud](https://app.infisical.com/login).
-
-### Deploy Infisical on premise
-
-<a href="https://infisical.com/docs/self-hosting/deployment-options/digital-ocean-marketplace"><img src=".github/images/do-k8-install-btn.png" width="200"/></a> <a href="https://infisical.com/docs/self-hosting/deployment-options/aws-ec2"><img src=".github/images/deploy-aws-button.png" width="150" width="300" /></a>
-
-View all [deployment options](https://infisical.com/docs/self-hosting/overview)
+| Use Infisical Cloud | Deploy Infisical on premise |
+| --- | ----------- |
+| The fastest and most reliable way to <br> get started with Infisical is signing up <br> for free to [Infisical Cloud](https://app.infisical.com/login). | <a href="https://infisical.com/docs/self-hosting/deployment-options/aws-ec2"><img src=".github/images/deploy-aws-button.png" width="150" width="300" /></a> <a href="https://infisical.com/docs/self-hosting/deployment-options/digital-ocean-marketplace"><img src=".github/images/do-k8-install-btn.png" width="200"/></a> <br> View all [deployment options](https://infisical.com/docs/self-hosting/overview) |
 
 ### Run Infisical locally
 
@@ -92,7 +86,7 @@ git clone https://github.com/Infisical/infisical && cd infisical && copy .env.ex
 Create an account at `http://localhost:80`
 
 ### Scan and prevent secret leaks 
-On top managing secrets with Infisical, you can also scan for over 140+ secret types in your files, directories and git repositories. 
+On top managing secrets with Infisical, you can also [scan for over 140+ secret types]() in your files, directories and git repositories. 
 
 To scan your full git history, run:
 
@@ -111,7 +105,11 @@ Lean about Infisical's code scanning feature [here](https://infisical.com/docs/c
 
 ## Open-source vs. paid
 
-This repo available under the [MIT expat license](https://github.com/Infisical/infisical/blob/main/LICENSE), with the exception of the `ee` directory which will contain premium enterprise features requiring a Infisical license in the future. 
+This repo available under the [MIT expat license](https://github.com/Infisical/infisical/blob/main/LICENSE), with the exception of the `ee` directory which will contain premium enterprise features requiring a Infisical license. 
+
+If you are interested in managed Infisical Cloud of self-hosted Enterprise Offering, take a look at [our webiste](https://infisical.com/) or [book a meeting with us](https://cal.com/vmatsiiako/infisical-demo): 
+
+<a href="https://cal.com/vmatsiiako/infisical-demo"><img alt="Schedule a meeting" src="https://cal.com/book-with-cal-dark.svg" /></a>
 
 ## Security
 
