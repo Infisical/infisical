@@ -1,4 +1,4 @@
-import { faKey, faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import { faFolder, faKey, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
@@ -18,71 +18,82 @@ import { useGetUserWsServiceTokens } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
-    handlePopUpOpen: (
-        popUpName: keyof UsePopUpState<["deleteAPITokenConfirmation"]>,
-        {
-            name,
-            id
-        }: {
-            name: string;
-            id: string;
-        }
-    ) => void;
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["deleteAPITokenConfirmation"]>,
+    {
+      name,
+      id
+    }: {
+      name: string;
+      id: string;
+    }
+  ) => void;
 };
 
-export const ServiceTokenTable = ({
-    handlePopUpOpen
-}: Props) => {
-    const { currentWorkspace } = useWorkspace();
-    const { data, isLoading } = useGetUserWsServiceTokens({
-        workspaceID: currentWorkspace?._id || ""
-    });
+export const ServiceTokenTable = ({ handlePopUpOpen }: Props) => {
+  const { currentWorkspace } = useWorkspace();
+  const { data, isLoading } = useGetUserWsServiceTokens({
+    workspaceID: currentWorkspace?._id || ""
+  });
 
-    return (
-        <TableContainer>
-            <Table>
-                <THead>
-                    <Tr>
-                    <Th>Token Name</Th>
-                    <Th>Environment</Th>
-                    <Th>Secret Path</Th>
-                    <Th>Valid Until</Th>
-                    <Th aria-label="button" />
-                    </Tr>
-                </THead>
-                <TBody>
-                    {isLoading && <TableSkeleton columns={4} key="project-service-tokens" />}
-                    {!isLoading && data && data.map((row) => (
-                        <Tr key={row._id}>
-                            <Td>{row.name}</Td>
-                            <Td>{row.environment}</Td>
-                            <Td>{row.secretPath}</Td>
-                            <Td>{row.expiresAt && new Date(row.expiresAt).toUTCString()}</Td>
-                            <Td className="flex items-center justify-end">
-                                <IconButton
-                                onClick={() =>
-                                    handlePopUpOpen("deleteAPITokenConfirmation", {
-                                        name: row.name,
-                                        id: row._id
-                                    })
-                                }
-                                colorSchema="danger"
-                                ariaLabel="delete"
-                                >
-                                <FontAwesomeIcon icon={faTrashCan} />
-                                </IconButton>
-                            </Td>
-                        </Tr>
+  return (
+    <TableContainer>
+      <Table>
+        <THead>
+          <Tr>
+            <Th>Token Name</Th>
+            <Th>Envrionment - Secret Path</Th>
+            <Th>Valid Until</Th>
+            <Th aria-label="button" />
+          </Tr>
+        </THead>
+        <TBody>
+          {isLoading && <TableSkeleton columns={4} key="project-service-tokens" />}
+          {!isLoading &&
+            data &&
+            data.map((row) => (
+              <Tr key={row._id}>
+                <Td>{row.name}</Td>
+                <Td>
+                  <div className="mb-2 flex flex-col flex-wrap space-y-1">
+                    {row?.scopes.map(({ secretPath, environment }) => (
+                      <div
+                        key={`${row._id}-${environment}-${secretPath}`}
+                        className="inline-flex items-center space-x-1 rounded-md border border-mineshaft-600 p-1 px-2"
+                      >
+                        <div className="mr-2 border-r border-mineshaft-600 pr-2">{environment}</div>
+                        <FontAwesomeIcon icon={faFolder} size="sm" />
+                        <span className="pl-2">{secretPath}</span>
+                      </div>
                     ))}
-                    {!isLoading && data && data?.length === 0 && (
-                        <Tr>
-                            <Td colSpan={4} className="bg-mineshaft-800 text-center text-bunker-400">
-                            <EmptyState title="No service tokens found" icon={faKey} />
-                            </Td>
-                        </Tr>
-                    )}
-                </TBody>
-            </Table>
-        </TableContainer> 
-    );
-}
+                  </div>
+                </Td>
+                <Td>{row.expiresAt && new Date(row.expiresAt).toUTCString()}</Td>
+                <Td>
+                  <IconButton
+                    onClick={() =>
+                      handlePopUpOpen("deleteAPITokenConfirmation", {
+                        name: row.name,
+                        id: row._id
+                      })
+                    }
+                    colorSchema="danger"
+                    ariaLabel="delete"
+                  >
+                    <FontAwesomeIcon icon={faTrashCan} />
+                  </IconButton>
+                </Td>
+              </Tr>
+            ))}
+          {!isLoading && data && data?.length === 0 && (
+            <Tr>
+              <Td colSpan={4} className="bg-mineshaft-800 text-center text-bunker-400">
+                <EmptyState title="No service tokens found" icon={faKey} />
+              </Td>
+            </Tr>
+          )}
+        </TBody>
+      </Table>
+    </TableContainer>
+  );
+};
