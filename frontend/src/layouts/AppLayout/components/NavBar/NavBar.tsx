@@ -3,6 +3,7 @@
 import { Fragment, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
@@ -348,7 +349,8 @@ export const Navbar = () => {
       {subscription && subscription.status === "trialing" && subscription.trial_end && (
         <div className="w-full mx-auto border-t border-mineshaft-500">
           <p className="text-center py-4 text-sm">
-            {`You are currently trialing the ${formatPlanSlug(subscription.slug)} plan until ${formatDate(subscription.trial_end).formattedDate} when you'll be downgraded to the Starter plan - You still have ${formatDate(subscription.trial_end).remainingDays} day(s) left.`}
+            {`Currently trialing the ${formatPlanSlug(subscription.slug)} plan until ${formatDate(subscription.trial_end).formattedDate} - ${formatDate(subscription.trial_end).remainingDays} day(s) left. `}
+            <Link href={`/settings/billing/${localStorage.getItem("projectData.id")}`}>Add a card to avoid being downgraded to the Starter plan afterward &rarr;</Link>
           </p>
         </div>
       )}
