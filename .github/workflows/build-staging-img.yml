@@ -124,20 +124,6 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Set up Depot CLI
         uses: depot/setup-action@v1
-      # - name: 📦 Build frontend and export to Docker
-      #   uses: depot/build-push-action@v1
-      #   with:
-      #     load: true
-      #     token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
-      #     project: 64mmf0n610
-      #     context: frontend
-      #     tags: infisical/staging_deployment_secret-scanning-git-app:test
-      # - name: ⏻ Spawn frontend container
-      #   run: |
-      #     docker run -d --rm --name secret-scanning-git-app infisical/staging_deployment_frontend:test
-      # - name: ⏻ Shut down frontend container
-      #   run: |
-      #     docker stop secret-scanning-git-app
       - name: 🏗️ Build secret scanning git app and push
         uses: depot/build-push-action@v1
         with:
@@ -149,8 +135,6 @@ jobs:
             infisical/staging_deployment_secret-scanning-git-app:${{ steps.commit.outputs.short }}
             infisical/staging_deployment_secret-scanning-git-app:latest
           platforms: linux/amd64,linux/arm64
-          build-args: |
-            POSTHOG_API_KEY=${{ secrets.PUBLIC_POSTHOG_API_KEY }}
   gamma-deployment:
     name: Deploy to gamma
     runs-on: ubuntu-latest
