@@ -17,9 +17,13 @@ export default function LaravelForgeCreateIntegrationPage() {
       setApiKeyErrorText("");
       setServerIdErrorText("");
 
-      if (apiKey.length === 0 || serverId.length === 0) {
-        if (apiKey.length === 0) setApiKeyErrorText("Access Token cannot be blank");
-        if (serverId.length === 0) setServerIdErrorText("Server Id cannot be blank");
+      if (apiKey.length === 0) {
+        setApiKeyErrorText("Access Token cannot be blank");
+        return;
+      }
+      
+      if (serverId.length === 0) {
+        setServerIdErrorText("Server Id cannot be blank");
         return;
       }
 
@@ -54,11 +58,11 @@ export default function LaravelForgeCreateIntegrationPage() {
           <Input placeholder="Access Token" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
         </FormControl>
         <FormControl
-          label="Laravel Forge Server Id"
+          label="Laravel Forge Server ID"
           errorText={serverIdErrorText}
           isError={serverIdErrorText !== "" ?? false}
         >
-          <Input placeholder="Server Id" value={serverId} onChange={(e) => setServerId(e.target.value)} />
+          <Input placeholder="123456" value={serverId} onChange={(e) => setServerId(e.target.value)} />
         </FormControl>
         <Button
           onClick={handleButtonClick}

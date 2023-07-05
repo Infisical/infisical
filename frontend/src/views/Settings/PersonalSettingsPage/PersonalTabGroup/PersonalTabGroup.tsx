@@ -5,7 +5,7 @@ import { PersonalAPIKeyTab } from "../PersonalAPIKeyTab";
 import { PersonalSecurityTab } from "../PersonalSecurityTab";
 
 const tabs = [
-    { name: "Security", key: "tab-account-security" },
+    { name: "General", key: "tab-account-security" },
     { name: "API Keys", key: "tab-account-api-keys" }
 ];
 

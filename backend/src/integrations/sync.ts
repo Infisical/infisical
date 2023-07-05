@@ -1167,12 +1167,20 @@ const syncSecretsLaravelForge = async ({
   accessId: string | null;
   accessToken: string;
 }) => {
+
+  function transformObjectToString(obj: any) {
+    let result = "";
+    for (const key in obj) {
+      result += `${key}=${obj[key]}\n`;
+    }
+    return result;
+  }
+  
   await standardRequest.put(
     `${INTEGRATION_LARAVELFORGE_API_URL}/api/v1/servers/${accessId}/sites/${integration.appId}/env`,
-    Object.keys(secrets).map((key) => ({
-      key,
-      value: secrets[key],
-    })),
+    {
+      content: transformObjectToString(secrets),
+    },
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -1890,7 +1898,7 @@ const syncSecretsCloudflarePages = async ({
           }
       )
   )
-  .data.result['deployment_configs'][integration.targetEnvironment]['env_vars'];
+  .data.result["deployment_configs"][integration.targetEnvironment]["env_vars"];
 
   // copy the secrets object, so we can set deleted keys to null
   const secretsObj: any = {...secrets};
