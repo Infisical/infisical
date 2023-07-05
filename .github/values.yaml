@@ -1,3 +1,10 @@
+secretScanningGitApp:
+  enabled: true
+  deploymentAnnotations:
+    secrets.infisical.com/auto-reload: "true"
+  image:
+    repository: infisical/staging_deployment_secret-scanning-git-app
+    
 frontend:
   enabled: true
   name: frontend
