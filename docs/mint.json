@@ -110,6 +110,7 @@
         "documentation/platform/organization",
         "documentation/platform/project",
         "documentation/platform/folder",
+        "documentation/platform/secret-reference",
         "documentation/platform/pit-recovery",
         "documentation/platform/secret-versioning",
         "documentation/platform/audit-logs",
