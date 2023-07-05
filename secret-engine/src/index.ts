@@ -6,6 +6,10 @@ import { join } from "path"
 import mongoose from "mongoose";
 import GitRisks from "./models/gitRisks";
 import GitAppOrganizationInstallation from "./models/gitAppOrganizationInstallation";
+import { sendMail, setTransporter } from "./helper/nodemailer";
+import { initSmtp } from "./service/smtp";
+import MembershipOrg, { ADMIN, OWNER } from "./models/membershipOrg";
+import User from "./models/user";
 
 type SecretMatch = {
   Description: string;
@@ -28,9 +32,11 @@ type SecretMatch = {
   Fingerprint: string;
 };
 
-export = (app: Probot) => {
+export = async (app: Probot) => {
   // connect to DB
   initDatabase()
+
+  setTransporter(await initSmtp());
 
   app.on("installation.created", async (context) => {
     const { payload } = context;
@@ -52,15 +58,13 @@ export = (app: Probot) => {
 
   app.on("push", async (context) => {
     const { payload } = context;
-    const { commits, repository, installation, } = payload;
+    const { commits, repository, installation, pusher } = payload;
     const [owner, repo] = repository.full_name.split('/');
 
     const installationLinkToOrgExists = await GitAppOrganizationInstallation.findOne({ installationId: installation.id }).lean()
     if (!installationLinkToOrgExists) {
       return
     }
-
-    console.log("installation link does exist!")
 
     const findingsByFingerprint: { [key: string]: SecretMatch; } = {}
 
@@ -106,6 +110,53 @@ export = (app: Probot) => {
         }, {
         upsert: true
       })
+    }
+    // get emails of admins
+    const adminsOfWork = await MembershipOrg.find({
+      organization: installationLinkToOrgExists.organizationId,
+      $or: [
+        { role: OWNER },
+        { role: ADMIN }
+      ]
+    }).lean()
+
+    const userEmails = await User.find({
+      _id: {
+        $in: [adminsOfWork.map(orgMembership => orgMembership.user)]
+      }
+    }).select("email").lean()
+
+    const adminOrOwnerEmails = userEmails.map(userObject => userObject.email)
+
+    await sendMail({
+      template: "secretLeakIncident.handlebars",
+      subjectLine: `Incident alert: leaked secrets found in Github repository ${repository.full_name}`,
+      recipients: [pusher.email, ...adminOrOwnerEmails],
+      substitutions: {
+        numberOfSecrets: Object.keys(findingsByFingerprint).length,
+        pusher_email: pusher.email,
+        pusher_name: pusher.name
+      }
+    });
+  });
+
+  app.on(['pull_request.opened', 'pull_request.synchronize'], async (context) => {
+    const { payload } = context;
+    const { pull_request } = payload
+    if (false) {
+      const check = {
+        owner: pull_request.head.repo.owner.login,
+        repo: pull_request.head.repo.name,
+        name: 'Secret Detection',
+        head_sha: pull_request.head.sha,
+        status: 'completed',
+        conclusion: 'failure',
+        output: {
+          title: `X Secrets detected`,
+          summary: 'We detected potential leaked secret(s) in your pull request.',
+        },
+      };
+      return context.octokit.checks.create(check);
     }
   });
 };

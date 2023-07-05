@@ -12,13 +12,15 @@
     "probot-app"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -R ./src/templates ./lib",
     "dev": "npm run build && probot run ./lib/index.js",
     "start": "nodemon -e ts,yml --watch './**/*.ts' --exec npm run dev",
     "test": "jest"
   },
   "dependencies": {
+    "handlebars": "^4.7.7",
     "mongoose": "^7.3.1",
+    "nodemailer": "^6.9.3",
     "probot": "^12.2.4",
     "ts-node": "^10.9.1"
   },

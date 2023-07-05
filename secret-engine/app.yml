@@ -13,7 +13,7 @@
 # The list of events the GitHub App subscribes to.
 # Uncomment the event names below to enable them.
 default_events:
-  # - check_run
+  - check_run
   # - check_suite
   # - commit_comment
   # - create
@@ -23,20 +23,20 @@ default_events:
   # - fork
   # - gollum
   # - issue_comment
-  - issues
+  # - issues
   - push
-# - label
-# - milestone
-# - member
-# - membership
-# - org_block
-# - organization
-# - page_build
-# - project
-# - project_card
-# - project_column
-# - public
-# - pull_request
+  # - label
+  # - milestone
+  # - member
+  # - membership
+  # - org_block
+  # - organization
+  # - page_build
+  # - project
+  # - project_card
+  # - project_column
+  # - public
+  - pull_request
 # - pull_request_review
 # - pull_request_review_comment
 # - release
@@ -128,7 +128,7 @@ name: Infisical Radar
 # The homepage of your GitHub App.
 url: https://infisical.com/radar
 # A description of the GitHub App.
-description: A description of my awesome app
+description: Scan your commits for leaked secrets
 # Set to true when your GitHub App is available to the public or false when it is only accessible to the owner of the app.
 # Default: true
 # public: false
