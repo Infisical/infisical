@@ -4,21 +4,16 @@ import {
   DeleteSecretParams,
   GetSecretParams,
   GetSecretsParams,
-  UpdateSecretParams,
+  UpdateSecretParams
 } from "../interfaces/services/SecretService";
-import {
-  ISecret,
-  Secret,
-  SecretBlindIndexData,
-  ServiceTokenData,
-} from "../models";
+import { ISecret, Secret, SecretBlindIndexData, ServiceTokenData } from "../models";
 import { SecretVersion } from "../ee/models";
 import {
   BadRequestError,
   InternalServerError,
   SecretBlindIndexDataNotFoundError,
   SecretNotFoundError,
-  UnauthorizedRequestError,
+  UnauthorizedRequestError
 } from "../utils/errors";
 import {
   ACTION_ADD_SECRETS,
@@ -29,51 +24,42 @@ import {
   ENCODING_SCHEME_BASE64,
   ENCODING_SCHEME_UTF8,
   SECRET_PERSONAL,
-  SECRET_SHARED,
+  SECRET_SHARED
 } from "../variables";
 import crypto from "crypto";
 import * as argon2 from "argon2";
 import {
   decryptSymmetric128BitHexKeyUTF8,
-  encryptSymmetric128BitHexKeyUTF8,
+  encryptSymmetric128BitHexKeyUTF8
 } from "../utils/crypto";
 import { TelemetryService } from "../services";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../config";
 import { EELogService, EESecretService } from "../ee/services";
-import {
-  getAuthDataPayloadIdObj,
-  getAuthDataPayloadUserObj,
-} from "../utils/auth";
+import { getAuthDataPayloadIdObj, getAuthDataPayloadUserObj } from "../utils/auth";
 import { getFolderIdFromServiceToken } from "../services/FolderService";
+import picomatch from "picomatch";
 
 /**
  * Returns an object containing secret [secret] but with its value, key, comment decrypted.
- * 
+ *
  * Precondition: the workspace for secret [secret] must have E2EE disabled
  * @param {ISecret} secret - secret to repackage to raw
  * @param {String} key - symmetric key to use to decrypt secret
- * @returns 
+ * @returns
  */
-export const repackageSecretToRaw = ({
-  secret,
-  key,
-}: {
-  secret: ISecret;
-  key: string;
-}) => {
-
+export const repackageSecretToRaw = ({ secret, key }: { secret: ISecret; key: string }) => {
   const secretKey = decryptSymmetric128BitHexKeyUTF8({
     ciphertext: secret.secretKeyCiphertext,
     iv: secret.secretKeyIV,
     tag: secret.secretKeyTag,
-    key,
+    key
   });
 
   const secretValue = decryptSymmetric128BitHexKeyUTF8({
     ciphertext: secret.secretValueCiphertext,
     iv: secret.secretValueIV,
     tag: secret.secretValueTag,
-    key,
+    key
   });
 
   let secretComment = "";
@@ -83,11 +69,11 @@ export const repackageSecretToRaw = ({
       ciphertext: secret.secretCommentCiphertext,
       iv: secret.secretCommentIV,
       tag: secret.secretCommentTag,
-      key,
+      key
     });
   }
 
-  return ({
+  return {
     _id: secret._id,
     version: secret.version,
     workspace: secret.workspace,
@@ -96,9 +82,9 @@ export const repackageSecretToRaw = ({
     user: secret.user,
     secretKey,
     secretValue,
-    secretComment,
-  });
-}
+    secretComment
+  };
+};
 
 /**
  * Create secret blind index data containing encrypted blind index [salt]
@@ -107,7 +93,7 @@ export const repackageSecretToRaw = ({
  * @param {Types.ObjectId} obj.workspaceId
  */
 export const createSecretBlindIndexDataHelper = async ({
-  workspaceId,
+  workspaceId
 }: {
   workspaceId: Types.ObjectId;
 }) => {
@@ -121,7 +107,7 @@ export const createSecretBlindIndexDataHelper = async ({
     const {
       ciphertext: encryptedSaltCiphertext,
       iv: saltIV,
-      tag: saltTag,
+      tag: saltTag
     } = client.encryptSymmetric(salt, rootEncryptionKey);
 
     return await new SecretBlindIndexData({
@@ -130,16 +116,16 @@ export const createSecretBlindIndexDataHelper = async ({
       saltIV,
       saltTag,
       algorithm: ALGORITHM_AES_256_GCM,
-      keyEncoding: ENCODING_SCHEME_BASE64,
+      keyEncoding: ENCODING_SCHEME_BASE64
     }).save();
   } else {
     const {
       ciphertext: encryptedSaltCiphertext,
       iv: saltIV,
-      tag: saltTag,
+      tag: saltTag
     } = encryptSymmetric128BitHexKeyUTF8({
       plaintext: salt,
-      key: encryptionKey,
+      key: encryptionKey
     });
 
     return await new SecretBlindIndexData({
@@ -148,7 +134,7 @@ export const createSecretBlindIndexDataHelper = async ({
       saltIV,
       saltTag,
       algorithm: ALGORITHM_AES_256_GCM,
-      keyEncoding: ENCODING_SCHEME_UTF8,
+      keyEncoding: ENCODING_SCHEME_UTF8
     }).save();
   }
 };
@@ -160,7 +146,7 @@ export const createSecretBlindIndexDataHelper = async ({
  * @returns
  */
 export const getSecretBlindIndexSaltHelper = async ({
-  workspaceId,
+  workspaceId
 }: {
   workspaceId: Types.ObjectId;
 }) => {
@@ -168,36 +154,30 @@ export const getSecretBlindIndexSaltHelper = async ({
   const rootEncryptionKey = await getRootEncryptionKey();
 
   const secretBlindIndexData = await SecretBlindIndexData.findOne({
-    workspace: workspaceId,
+    workspace: workspaceId
   }).select("+algorithm +keyEncoding");
 
   if (!secretBlindIndexData) throw SecretBlindIndexDataNotFoundError();
 
-  if (
-    rootEncryptionKey &&
-    secretBlindIndexData.keyEncoding === ENCODING_SCHEME_BASE64
-  ) {
+  if (rootEncryptionKey && secretBlindIndexData.keyEncoding === ENCODING_SCHEME_BASE64) {
     return client.decryptSymmetric(
       secretBlindIndexData.encryptedSaltCiphertext,
       rootEncryptionKey,
       secretBlindIndexData.saltIV,
       secretBlindIndexData.saltTag
     );
-  } else if (
-    encryptionKey &&
-    secretBlindIndexData.keyEncoding === ENCODING_SCHEME_UTF8
-  ) {
+  } else if (encryptionKey && secretBlindIndexData.keyEncoding === ENCODING_SCHEME_UTF8) {
     // decrypt workspace salt
     return decryptSymmetric128BitHexKeyUTF8({
       ciphertext: secretBlindIndexData.encryptedSaltCiphertext,
       iv: secretBlindIndexData.saltIV,
       tag: secretBlindIndexData.saltTag,
-      key: encryptionKey,
+      key: encryptionKey
     });
   }
 
   throw InternalServerError({
-    message: "Failed to obtain workspace salt needed for secret blind indexing",
+    message: "Failed to obtain workspace salt needed for secret blind indexing"
   });
 };
 
@@ -210,7 +190,7 @@ export const getSecretBlindIndexSaltHelper = async ({
  */
 export const generateSecretBlindIndexWithSaltHelper = async ({
   secretName,
-  salt,
+  salt
 }: {
   secretName: string;
   salt: string;
@@ -224,7 +204,7 @@ export const generateSecretBlindIndexWithSaltHelper = async ({
       memoryCost: 65536, // default pool of 64 MiB per thread.
       hashLength: 32,
       parallelism: 1,
-      raw: true,
+      raw: true
     })
   ).toString("base64");
 
@@ -240,7 +220,7 @@ export const generateSecretBlindIndexWithSaltHelper = async ({
  */
 export const generateSecretBlindIndexHelper = async ({
   secretName,
-  workspaceId,
+  workspaceId
 }: {
   secretName: string;
   workspaceId: Types.ObjectId;
@@ -250,16 +230,13 @@ export const generateSecretBlindIndexHelper = async ({
   const rootEncryptionKey = await getRootEncryptionKey();
 
   const secretBlindIndexData = await SecretBlindIndexData.findOne({
-    workspace: workspaceId,
+    workspace: workspaceId
   }).select("+algorithm +keyEncoding");
 
   if (!secretBlindIndexData) throw SecretBlindIndexDataNotFoundError();
 
   let salt;
-  if (
-    rootEncryptionKey &&
-    secretBlindIndexData.keyEncoding === ENCODING_SCHEME_BASE64
-  ) {
+  if (rootEncryptionKey && secretBlindIndexData.keyEncoding === ENCODING_SCHEME_BASE64) {
     salt = client.decryptSymmetric(
       secretBlindIndexData.encryptedSaltCiphertext,
       rootEncryptionKey,
@@ -269,32 +246,29 @@ export const generateSecretBlindIndexHelper = async ({
 
     const secretBlindIndex = await generateSecretBlindIndexWithSaltHelper({
       secretName,
-      salt,
+      salt
     });
 
     return secretBlindIndex;
-  } else if (
-    encryptionKey &&
-    secretBlindIndexData.keyEncoding === ENCODING_SCHEME_UTF8
-  ) {
+  } else if (encryptionKey && secretBlindIndexData.keyEncoding === ENCODING_SCHEME_UTF8) {
     // decrypt workspace salt
     salt = decryptSymmetric128BitHexKeyUTF8({
       ciphertext: secretBlindIndexData.encryptedSaltCiphertext,
       iv: secretBlindIndexData.saltIV,
       tag: secretBlindIndexData.saltTag,
-      key: encryptionKey,
+      key: encryptionKey
     });
 
     const secretBlindIndex = await generateSecretBlindIndexWithSaltHelper({
       secretName,
-      salt,
+      salt
     });
 
     return secretBlindIndex;
   }
 
   throw InternalServerError({
-    message: "Failed to generate secret blind index",
+    message: "Failed to generate secret blind index"
   });
 };
 
@@ -323,38 +297,39 @@ export const createSecretHelper = async ({
   secretCommentCiphertext,
   secretCommentIV,
   secretCommentTag,
-  secretPath = "/",
+  secretPath = "/"
 }: CreateSecretParams) => {
-
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
-    workspaceId: new Types.ObjectId(workspaceId),
+    workspaceId: new Types.ObjectId(workspaceId)
   });
 
   // if using service token filter towards the folderId by secretpath
   if (authData.authPayload instanceof ServiceTokenData) {
-    const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
-    if (secretPath !== serviceTkScopedSecretPath) {
+    const { scopes: tkScopes } = authData.authPayload;
+    const validScope = tkScopes.find(
+      (scope) =>
+        picomatch.isMatch(secretPath, scope.secretPath, { strictSlashes: false }) &&
+        scope.environment === environment
+    );
+
+    if (!validScope) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
-  const folderId = await getFolderIdFromServiceToken(
-    workspaceId,
-    environment,
-    secretPath
-  );
+  const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
 
   const exists = await Secret.exists({
     secretBlindIndex,
     workspace: new Types.ObjectId(workspaceId),
     folder: folderId,
     type,
-    ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {}),
+    ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {})
   });
 
   if (exists)
     throw BadRequestError({
-      message: "Failed to create secret that already exists",
+      message: "Failed to create secret that already exists"
     });
 
   if (type === SECRET_PERSONAL) {
@@ -365,13 +340,12 @@ export const createSecretHelper = async ({
       secretBlindIndex,
       folder: folderId,
       workspace: new Types.ObjectId(workspaceId),
-      type: SECRET_SHARED,
+      type: SECRET_SHARED
     });
 
     if (!exists)
       throw BadRequestError({
-        message:
-          "Failed to create personal secret override for no corresponding shared secret",
+        message: "Failed to create personal secret override for no corresponding shared secret"
       });
   }
 
@@ -394,7 +368,7 @@ export const createSecretHelper = async ({
     secretCommentTag,
     folder: folderId,
     algorithm: ALGORITHM_AES_256_GCM,
-    keyEncoding: ENCODING_SCHEME_UTF8,
+    keyEncoding: ENCODING_SCHEME_UTF8
   }).save();
 
   const secretVersion = new SecretVersion({
@@ -414,12 +388,12 @@ export const createSecretHelper = async ({
     secretValueIV,
     secretValueTag,
     algorithm: ALGORITHM_AES_256_GCM,
-    keyEncoding: ENCODING_SCHEME_UTF8,
+    keyEncoding: ENCODING_SCHEME_UTF8
   });
 
   // (EE) add version for new secret
   await EESecretService.addSecretVersions({
-    secretVersions: [secretVersion],
+    secretVersions: [secretVersion]
   });
 
   // (EE) create (audit) log
@@ -427,7 +401,7 @@ export const createSecretHelper = async ({
     name: ACTION_ADD_SECRETS,
     ...getAuthDataPayloadIdObj(authData),
     workspaceId,
-    secretIds: [secret._id],
+    secretIds: [secret._id]
   });
 
   action &&
@@ -436,14 +410,14 @@ export const createSecretHelper = async ({
       workspaceId,
       actions: [action],
       channel: authData.authChannel,
-      ipAddress: authData.authIP,
+      ipAddress: authData.authIP
     }));
 
   // (EE) take a secret snapshot
   await EESecretService.takeSecretSnapshot({
     workspaceId,
     environment,
-    folderId,
+    folderId
   });
 
   const postHogClient = await TelemetryService.getPostHogClient();
@@ -452,7 +426,7 @@ export const createSecretHelper = async ({
     postHogClient.capture({
       event: "secrets added",
       distinctId: await TelemetryService.getDistinctId({
-        authData,
+        authData
       }),
       properties: {
         numberOfSecrets: 1,
@@ -460,8 +434,8 @@ export const createSecretHelper = async ({
         workspaceId,
         folderId,
         channel: authData.authChannel,
-        userAgent: authData.authUserAgent,
-      },
+        userAgent: authData.authUserAgent
+      }
     });
   }
 
@@ -480,21 +454,23 @@ export const getSecretsHelper = async ({
   workspaceId,
   environment,
   authData,
-  secretPath = "/",
+  secretPath = "/"
 }: GetSecretsParams) => {
   let secrets: ISecret[] = [];
   // if using service token filter towards the folderId by secretpath
   if (authData.authPayload instanceof ServiceTokenData) {
-    const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
-    if (secretPath !== serviceTkScopedSecretPath) {
+    const { scopes: tkScopes } = authData.authPayload;
+    const validScope = tkScopes.find(
+      (scope) =>
+        picomatch.isMatch(secretPath, scope.secretPath, { strictSlashes: false }) &&
+        scope.environment === environment
+    );
+
+    if (!validScope) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
-  const folderId = await getFolderIdFromServiceToken(
-    workspaceId,
-    environment,
-    secretPath
-  );
+  const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
 
   // get personal secrets first
   secrets = await Secret.find({
@@ -502,8 +478,10 @@ export const getSecretsHelper = async ({
     environment,
     folder: folderId,
     type: SECRET_PERSONAL,
-    ...getAuthDataPayloadUserObj(authData),
-  }).populate("tags").lean();
+    ...getAuthDataPayloadUserObj(authData)
+  })
+    .populate("tags")
+    .lean();
 
   // concat with shared secrets
   secrets = secrets.concat(
@@ -513,9 +491,11 @@ export const getSecretsHelper = async ({
       folder: folderId,
       type: SECRET_SHARED,
       secretBlindIndex: {
-        $nin: secrets.map((secret) => secret.secretBlindIndex),
-      },
-    }).populate("tags").lean()
+        $nin: secrets.map((secret) => secret.secretBlindIndex)
+      }
+    })
+      .populate("tags")
+      .lean()
   );
 
   // (EE) create (audit) log
@@ -523,7 +503,7 @@ export const getSecretsHelper = async ({
     name: ACTION_READ_SECRETS,
     ...getAuthDataPayloadIdObj(authData),
     workspaceId,
-    secretIds: secrets.map((secret) => secret._id),
+    secretIds: secrets.map((secret) => secret._id)
   });
 
   action &&
@@ -532,7 +512,7 @@ export const getSecretsHelper = async ({
       workspaceId,
       actions: [action],
       channel: authData.authChannel,
-      ipAddress: authData.authIP,
+      ipAddress: authData.authIP
     }));
 
   const postHogClient = await TelemetryService.getPostHogClient();
@@ -541,7 +521,7 @@ export const getSecretsHelper = async ({
     postHogClient.capture({
       event: "secrets pulled",
       distinctId: await TelemetryService.getDistinctId({
-        authData,
+        authData
       }),
       properties: {
         numberOfSecrets: secrets.length,
@@ -549,8 +529,8 @@ export const getSecretsHelper = async ({
         workspaceId,
         folderId,
         channel: authData.authChannel,
-        userAgent: authData.authUserAgent,
-      },
+        userAgent: authData.authUserAgent
+      }
     });
   }
 
@@ -573,25 +553,27 @@ export const getSecretHelper = async ({
   environment,
   type,
   authData,
-  secretPath = "/",
+  secretPath = "/"
 }: GetSecretParams) => {
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
-    workspaceId: new Types.ObjectId(workspaceId),
+    workspaceId: new Types.ObjectId(workspaceId)
   });
   let secret: ISecret | null = null;
   // if using service token filter towards the folderId by secretpath
   if (authData.authPayload instanceof ServiceTokenData) {
-    const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
-    if (secretPath !== serviceTkScopedSecretPath) {
+    const { scopes: tkScopes } = authData.authPayload;
+    const validScope = tkScopes.find(
+      (scope) =>
+        picomatch.isMatch(secretPath, scope.secretPath, { strictSlashes: false }) &&
+        scope.environment === environment
+    );
+
+    if (!validScope) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
-  const folderId = await getFolderIdFromServiceToken(
-    workspaceId,
-    environment,
-    secretPath
-  );
+  const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
 
   // try getting personal secret first (if exists)
   secret = await Secret.findOne({
@@ -600,7 +582,7 @@ export const getSecretHelper = async ({
     environment,
     folder: folderId,
     type: type ?? SECRET_PERSONAL,
-    ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {}),
+    ...(type === SECRET_PERSONAL ? getAuthDataPayloadUserObj(authData) : {})
   }).lean();
 
   if (!secret) {
@@ -611,7 +593,7 @@ export const getSecretHelper = async ({
       workspace: new Types.ObjectId(workspaceId),
       environment,
       folder: folderId,
-      type: SECRET_SHARED,
+      type: SECRET_SHARED
     }).lean();
   }
 
@@ -622,7 +604,7 @@ export const getSecretHelper = async ({
     name: ACTION_READ_SECRETS,
     ...getAuthDataPayloadIdObj(authData),
     workspaceId,
-    secretIds: [secret._id],
+    secretIds: [secret._id]
   });
 
   action &&
@@ -631,7 +613,7 @@ export const getSecretHelper = async ({
       workspaceId,
       actions: [action],
       channel: authData.authChannel,
-      ipAddress: authData.authIP,
+      ipAddress: authData.authIP
     }));
 
   const postHogClient = await TelemetryService.getPostHogClient();
@@ -640,7 +622,7 @@ export const getSecretHelper = async ({
     postHogClient.capture({
       event: "secrets pull",
       distinctId: await TelemetryService.getDistinctId({
-        authData,
+        authData
       }),
       properties: {
         numberOfSecrets: 1,
@@ -648,8 +630,8 @@ export const getSecretHelper = async ({
         workspaceId,
         folderId,
         channel: authData.authChannel,
-        userAgent: authData.authUserAgent,
-      },
+        userAgent: authData.authUserAgent
+      }
     });
   }
 
@@ -679,26 +661,28 @@ export const updateSecretHelper = async ({
   secretValueCiphertext,
   secretValueIV,
   secretValueTag,
-  secretPath,
+  secretPath
 }: UpdateSecretParams) => {
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
-    workspaceId: new Types.ObjectId(workspaceId),
+    workspaceId: new Types.ObjectId(workspaceId)
   });
 
   let secret: ISecret | null = null;
   // if using service token filter towards the folderId by secretpath
   if (authData.authPayload instanceof ServiceTokenData) {
-    const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
-    if (secretPath !== serviceTkScopedSecretPath) {
+    const { scopes: tkScopes } = authData.authPayload;
+    const validScope = tkScopes.find(
+      (scope) =>
+        picomatch.isMatch(secretPath, scope.secretPath, { strictSlashes: false }) &&
+        scope.environment === environment
+    );
+
+    if (!validScope) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
-  const folderId = await getFolderIdFromServiceToken(
-    workspaceId,
-    environment,
-    secretPath
-  );
+  const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
 
   if (type === SECRET_SHARED) {
     // case: update shared secret
@@ -708,16 +692,16 @@ export const updateSecretHelper = async ({
         workspace: new Types.ObjectId(workspaceId),
         environment,
         folder: folderId,
-        type,
+        type
       },
       {
         secretValueCiphertext,
         secretValueIV,
         secretValueTag,
-        $inc: { version: 1 },
+        $inc: { version: 1 }
       },
       {
-        new: true,
+        new: true
       }
     );
   } else {
@@ -730,16 +714,16 @@ export const updateSecretHelper = async ({
         environment,
         type,
         folder: folderId,
-        ...getAuthDataPayloadUserObj(authData),
+        ...getAuthDataPayloadUserObj(authData)
       },
       {
         secretValueCiphertext,
         secretValueIV,
         secretValueTag,
-        $inc: { version: 1 },
+        $inc: { version: 1 }
       },
       {
-        new: true,
+        new: true
       }
     );
   }
@@ -763,12 +747,12 @@ export const updateSecretHelper = async ({
     secretValueIV,
     secretValueTag,
     algorithm: ALGORITHM_AES_256_GCM,
-    keyEncoding: ENCODING_SCHEME_UTF8,
+    keyEncoding: ENCODING_SCHEME_UTF8
   });
 
   // (EE) add version for new secret
   await EESecretService.addSecretVersions({
-    secretVersions: [secretVersion],
+    secretVersions: [secretVersion]
   });
 
   // (EE) create (audit) log
@@ -776,7 +760,7 @@ export const updateSecretHelper = async ({
     name: ACTION_UPDATE_SECRETS,
     ...getAuthDataPayloadIdObj(authData),
     workspaceId,
-    secretIds: [secret._id],
+    secretIds: [secret._id]
   });
 
   action &&
@@ -785,14 +769,14 @@ export const updateSecretHelper = async ({
       workspaceId,
       actions: [action],
       channel: authData.authChannel,
-      ipAddress: authData.authIP,
+      ipAddress: authData.authIP
     }));
 
   // (EE) take a secret snapshot
   await EESecretService.takeSecretSnapshot({
     workspaceId,
     environment,
-    folderId: secret?.folder,
+    folderId: secret?.folder
   });
 
   const postHogClient = await TelemetryService.getPostHogClient();
@@ -801,7 +785,7 @@ export const updateSecretHelper = async ({
     postHogClient.capture({
       event: "secrets modified",
       distinctId: await TelemetryService.getDistinctId({
-        authData,
+        authData
       }),
       properties: {
         numberOfSecrets: 1,
@@ -809,8 +793,8 @@ export const updateSecretHelper = async ({
         workspaceId,
         folderId,
         channel: authData.authChannel,
-        userAgent: authData.authUserAgent,
-      },
+        userAgent: authData.authUserAgent
+      }
     });
   }
 
@@ -833,26 +817,27 @@ export const deleteSecretHelper = async ({
   environment,
   type,
   authData,
-  secretPath = "/",
+  secretPath = "/"
 }: DeleteSecretParams) => {
   const secretBlindIndex = await generateSecretBlindIndexHelper({
     secretName,
-    workspaceId: new Types.ObjectId(workspaceId),
+    workspaceId: new Types.ObjectId(workspaceId)
   });
 
   // if using service token filter towards the folderId by secretpath
   if (authData.authPayload instanceof ServiceTokenData) {
-    const { secretPath: serviceTkScopedSecretPath } = authData.authPayload;
+    const { scopes: tkScopes } = authData.authPayload;
+    const validScope = tkScopes.find(
+      (scope) =>
+        picomatch.isMatch(secretPath, scope.secretPath, { strictSlashes: false }) &&
+        scope.environment === environment
+    );
 
-    if (secretPath !== serviceTkScopedSecretPath) {
+    if (!validScope) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
-  const folderId = await getFolderIdFromServiceToken(
-    workspaceId,
-    environment,
-    secretPath
-  );
+  const folderId = await getFolderIdFromServiceToken(workspaceId, environment, secretPath);
 
   let secrets: ISecret[] = [];
   let secret: ISecret | null = null;
@@ -862,7 +847,7 @@ export const deleteSecretHelper = async ({
       secretBlindIndex,
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
-      folder: folderId,
+      folder: folderId
     }).lean();
 
     secret = await Secret.findOneAndDelete({
@@ -870,14 +855,14 @@ export const deleteSecretHelper = async ({
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
       type,
-      folder: folderId,
+      folder: folderId
     }).lean();
 
     await Secret.deleteMany({
       secretBlindIndex,
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
-      folder: folderId,
+      folder: folderId
     });
   } else {
     secret = await Secret.findOneAndDelete({
@@ -886,7 +871,7 @@ export const deleteSecretHelper = async ({
       workspaceId: new Types.ObjectId(workspaceId),
       environment,
       type,
-      ...getAuthDataPayloadUserObj(authData),
+      ...getAuthDataPayloadUserObj(authData)
     }).lean();
 
     if (secret) {
@@ -897,7 +882,7 @@ export const deleteSecretHelper = async ({
   if (!secret) throw SecretNotFoundError();
 
   await EESecretService.markDeletedSecretVersions({
-    secretIds: secrets.map((secret) => secret._id),
+    secretIds: secrets.map((secret) => secret._id)
   });
 
   // (EE) create (audit) log
@@ -905,22 +890,23 @@ export const deleteSecretHelper = async ({
     name: ACTION_DELETE_SECRETS,
     ...getAuthDataPayloadIdObj(authData),
     workspaceId,
-    secretIds: secrets.map((secret) => secret._id),
+    secretIds: secrets.map((secret) => secret._id)
   });
 
-  action && (await EELogService.createLog({
-    ...getAuthDataPayloadIdObj(authData),
-    workspaceId,
-    actions: [action],
-    channel: authData.authChannel,
-    ipAddress: authData.authIP,
-  }));
+  action &&
+    (await EELogService.createLog({
+      ...getAuthDataPayloadIdObj(authData),
+      workspaceId,
+      actions: [action],
+      channel: authData.authChannel,
+      ipAddress: authData.authIP
+    }));
 
   // (EE) take a secret snapshot
   await EESecretService.takeSecretSnapshot({
     workspaceId,
     environment,
-    folderId: secret?.folder,
+    folderId: secret?.folder
   });
 
   const postHogClient = await TelemetryService.getPostHogClient();
@@ -929,7 +915,7 @@ export const deleteSecretHelper = async ({
     postHogClient.capture({
       event: "secrets deleted",
       distinctId: await TelemetryService.getDistinctId({
-        authData,
+        authData
       }),
       properties: {
         numberOfSecrets: secrets.length,
@@ -937,13 +923,13 @@ export const deleteSecretHelper = async ({
         workspaceId,
         folderId,
         channel: authData.authChannel,
-        userAgent: authData.authUserAgent,
-      },
+        userAgent: authData.authUserAgent
+      }
     });
   }
 
-  return ({
+  return {
     secrets,
-    secret,
-  });
+    secret
+  };
 };

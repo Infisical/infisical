@@ -13,14 +13,14 @@ import {
   Secret,
   SecretBlindIndexData,
   ServiceTokenData,
-  Workspace,
+  Workspace
 } from "../../models";
 import { generateKeyPair } from "../../utils/crypto";
 import { client, getEncryptionKey, getRootEncryptionKey } from "../../config";
 import {
   ALGORITHM_AES_256_GCM,
   ENCODING_SCHEME_BASE64,
-  ENCODING_SCHEME_UTF8,
+  ENCODING_SCHEME_UTF8
 } from "../../variables";
 import { InternalServerError } from "../errors";
 
@@ -29,10 +29,7 @@ import { InternalServerError } from "../errors";
  * corresponding secret versions
  */
 export const backfillSecretVersions = async () => {
-  await Secret.updateMany(
-    { version: { $exists: false } },
-    { $set: { version: 1 } }
-  );
+  await Secret.updateMany({ version: { $exists: false } }, { $set: { version: 1 } });
 
   const unversionedSecrets: ISecret[] = await Secret.aggregate([
     {
@@ -40,14 +37,14 @@ export const backfillSecretVersions = async () => {
         from: "secretversions",
         localField: "_id",
         foreignField: "secret",
-        as: "versions",
-      },
+        as: "versions"
+      }
     },
     {
       $match: {
-        versions: { $size: 0 },
-      },
-    },
+        versions: { $size: 0 }
+      }
+    }
   ]);
 
   if (unversionedSecrets.length > 0) {
@@ -62,9 +59,9 @@ export const backfillSecretVersions = async () => {
             workspace: s.workspace,
             environment: s.environment,
             algorithm: ALGORITHM_AES_256_GCM,
-            keyEncoding: ENCODING_SCHEME_UTF8,
+            keyEncoding: ENCODING_SCHEME_UTF8
           })
-      ),
+      )
     });
   }
   console.log("Migration: Secret version migration v1 complete");
@@ -80,8 +77,8 @@ export const backfillBots = async () => {
   const workspaceIdsWithBot = await Bot.distinct("workspace");
   const workspaceIdsToAddBot = await Workspace.distinct("_id", {
     _id: {
-      $nin: workspaceIdsWithBot,
-    },
+      $nin: workspaceIdsWithBot
+    }
   });
 
   if (workspaceIdsToAddBot.length === 0) return;
@@ -94,7 +91,7 @@ export const backfillBots = async () => {
         const {
           ciphertext: encryptedPrivateKey,
           iv,
-          tag,
+          tag
         } = client.encryptSymmetric(privateKey, rootEncryptionKey);
 
         return new Bot({
@@ -106,16 +103,16 @@ export const backfillBots = async () => {
           iv,
           tag,
           algorithm: ALGORITHM_AES_256_GCM,
-          keyEncoding: ENCODING_SCHEME_BASE64,
+          keyEncoding: ENCODING_SCHEME_BASE64
         });
       } else if (encryptionKey) {
         const {
           ciphertext: encryptedPrivateKey,
           iv,
-          tag,
+          tag
         } = encryptSymmetric128BitHexKeyUTF8({
           plaintext: privateKey,
-          key: encryptionKey,
+          key: encryptionKey
         });
 
         return new Bot({
@@ -127,13 +124,12 @@ export const backfillBots = async () => {
           iv,
           tag,
           algorithm: ALGORITHM_AES_256_GCM,
-          keyEncoding: ENCODING_SCHEME_UTF8,
+          keyEncoding: ENCODING_SCHEME_UTF8
         });
       }
 
       throw InternalServerError({
-        message:
-          "Failed to backfill workspace bots due to missing encryption key",
+        message: "Failed to backfill workspace bots due to missing encryption key"
       });
     })
   );
@@ -149,13 +145,11 @@ export const backfillSecretBlindIndexData = async () => {
   const encryptionKey = await getEncryptionKey();
   const rootEncryptionKey = await getRootEncryptionKey();
 
-  const workspaceIdsBlindIndexed = await SecretBlindIndexData.distinct(
-    "workspace"
-  );
+  const workspaceIdsBlindIndexed = await SecretBlindIndexData.distinct("workspace");
   const workspaceIdsToBlindIndex = await Workspace.distinct("_id", {
     _id: {
-      $nin: workspaceIdsBlindIndexed,
-    },
+      $nin: workspaceIdsBlindIndexed
+    }
   });
 
   if (workspaceIdsToBlindIndex.length === 0) return;
@@ -168,7 +162,7 @@ export const backfillSecretBlindIndexData = async () => {
         const {
           ciphertext: encryptedSaltCiphertext,
           iv: saltIV,
-          tag: saltTag,
+          tag: saltTag
         } = client.encryptSymmetric(salt, rootEncryptionKey);
 
         return new SecretBlindIndexData({
@@ -177,16 +171,16 @@ export const backfillSecretBlindIndexData = async () => {
           saltIV,
           saltTag,
           algorithm: ALGORITHM_AES_256_GCM,
-          keyEncoding: ENCODING_SCHEME_BASE64,
+          keyEncoding: ENCODING_SCHEME_BASE64
         });
       } else if (encryptionKey) {
         const {
           ciphertext: encryptedSaltCiphertext,
           iv: saltIV,
-          tag: saltTag,
+          tag: saltTag
         } = encryptSymmetric128BitHexKeyUTF8({
           plaintext: salt,
-          key: encryptionKey,
+          key: encryptionKey
         });
 
         return new SecretBlindIndexData({
@@ -195,13 +189,12 @@ export const backfillSecretBlindIndexData = async () => {
           saltIV,
           saltTag,
           algorithm: ALGORITHM_AES_256_GCM,
-          keyEncoding: ENCODING_SCHEME_UTF8,
+          keyEncoding: ENCODING_SCHEME_UTF8
         });
       }
 
       throw InternalServerError({
-        message:
-          "Failed to backfill secret blind index data due to missing encryption key",
+        message: "Failed to backfill secret blind index data due to missing encryption key"
       });
     })
   );
@@ -219,17 +212,17 @@ export const backfillEncryptionMetadata = async () => {
   await Secret.updateMany(
     {
       algorithm: {
-        $exists: false,
+        $exists: false
       },
       keyEncoding: {
-        $exists: false,
-      },
+        $exists: false
+      }
     },
     {
       $set: {
         algorithm: ALGORITHM_AES_256_GCM,
-        keyEncoding: ENCODING_SCHEME_UTF8,
-      },
+        keyEncoding: ENCODING_SCHEME_UTF8
+      }
     }
   );
 
@@ -237,17 +230,17 @@ export const backfillEncryptionMetadata = async () => {
   await SecretVersion.updateMany(
     {
       algorithm: {
-        $exists: false,
+        $exists: false
       },
       keyEncoding: {
-        $exists: false,
-      },
+        $exists: false
+      }
     },
     {
       $set: {
         algorithm: ALGORITHM_AES_256_GCM,
-        keyEncoding: ENCODING_SCHEME_UTF8,
-      },
+        keyEncoding: ENCODING_SCHEME_UTF8
+      }
     }
   );
 
@@ -255,17 +248,17 @@ export const backfillEncryptionMetadata = async () => {
   await SecretBlindIndexData.updateMany(
     {
       algorithm: {
-        $exists: false,
+        $exists: false
       },
       keyEncoding: {
-        $exists: false,
-      },
+        $exists: false
+      }
     },
     {
       $set: {
         algorithm: ALGORITHM_AES_256_GCM,
-        keyEncoding: ENCODING_SCHEME_UTF8,
-      },
+        keyEncoding: ENCODING_SCHEME_UTF8
+      }
     }
   );
 
@@ -273,17 +266,17 @@ export const backfillEncryptionMetadata = async () => {
   await Bot.updateMany(
     {
       algorithm: {
-        $exists: false,
+        $exists: false
       },
       keyEncoding: {
-        $exists: false,
-      },
+        $exists: false
+      }
     },
     {
       $set: {
         algorithm: ALGORITHM_AES_256_GCM,
-        keyEncoding: ENCODING_SCHEME_UTF8,
-      },
+        keyEncoding: ENCODING_SCHEME_UTF8
+      }
     }
   );
 
@@ -291,17 +284,17 @@ export const backfillEncryptionMetadata = async () => {
   await BackupPrivateKey.updateMany(
     {
       algorithm: {
-        $exists: false,
+        $exists: false
       },
       keyEncoding: {
-        $exists: false,
-      },
+        $exists: false
+      }
     },
     {
       $set: {
         algorithm: ALGORITHM_AES_256_GCM,
-        keyEncoding: ENCODING_SCHEME_UTF8,
-      },
+        keyEncoding: ENCODING_SCHEME_UTF8
+      }
     }
   );
 
@@ -309,17 +302,17 @@ export const backfillEncryptionMetadata = async () => {
   await IntegrationAuth.updateMany(
     {
       algorithm: {
-        $exists: false,
+        $exists: false
       },
       keyEncoding: {
-        $exists: false,
-      },
+        $exists: false
+      }
     },
     {
       $set: {
         algorithm: ALGORITHM_AES_256_GCM,
-        keyEncoding: ENCODING_SCHEME_UTF8,
-      },
+        keyEncoding: ENCODING_SCHEME_UTF8
+      }
     }
   );
 };
@@ -328,26 +321,26 @@ export const backfillSecretFolders = async () => {
   await Secret.updateMany(
     {
       folder: {
-        $exists: false,
-      },
+        $exists: false
+      }
     },
     {
       $set: {
-        folder: "root",
-      },
+        folder: "root"
+      }
     }
   );
 
   await SecretVersion.updateMany(
     {
       folder: {
-        $exists: false,
-      },
+        $exists: false
+      }
     },
     {
       $set: {
-        folder: "root",
-      },
+        folder: "root"
+      }
     }
   );
 
@@ -355,20 +348,20 @@ export const backfillSecretFolders = async () => {
   await SecretVersion.updateMany(
     {
       tags: {
-        $exists: false,
-      },
+        $exists: false
+      }
     },
     {
       $set: {
-        tags: [],
-      },
+        tags: []
+      }
     }
   );
 
   let secretSnapshots = await SecretSnapshot.find({
     environment: {
-      $exists: false,
-    },
+      $exists: false
+    }
   })
     .populate<{ secretVersions: ISecretVersion[] }>("secretVersions")
     .limit(50);
@@ -377,8 +370,7 @@ export const backfillSecretFolders = async () => {
     for (const secSnapshot of secretSnapshots) {
       const groupSnapByEnv: Record<string, Array<ISecretVersion>> = {};
       secSnapshot.secretVersions.forEach((secVer) => {
-        if (!groupSnapByEnv?.[secVer.environment])
-          groupSnapByEnv[secVer.environment] = [];
+        if (!groupSnapByEnv?.[secVer.environment]) groupSnapByEnv[secVer.environment] = [];
         groupSnapByEnv[secVer.environment].push(secVer);
       });
 
@@ -390,7 +382,7 @@ export const backfillSecretFolders = async () => {
           ...secSnapshot.toObject({ virtuals: false }),
           _id: new Types.ObjectId(),
           environment: snapEnv,
-          secretVersions: secretIdsOfEnvGroup,
+          secretVersions: secretIdsOfEnvGroup
         };
       });
 
@@ -400,8 +392,8 @@ export const backfillSecretFolders = async () => {
 
     secretSnapshots = await SecretSnapshot.find({
       environment: {
-        $exists: false,
-      },
+        $exists: false
+      }
     })
       .populate<{ secretVersions: ISecretVersion[] }>("secretVersions")
       .limit(50);
@@ -414,13 +406,13 @@ export const backfillServiceToken = async () => {
   await ServiceTokenData.updateMany(
     {
       secretPath: {
-        $exists: false,
-      },
+        $exists: false
+      }
     },
     {
       $set: {
-        secretPath: "/",
-      },
+        secretPath: "/"
+      }
     }
   );
   console.log("Migration: Service token migration v1 complete");
@@ -430,14 +422,36 @@ export const backfillIntegration = async () => {
   await Integration.updateMany(
     {
       secretPath: {
-        $exists: false,
-      },
+        $exists: false
+      }
     },
     {
       $set: {
-        secretPath: "/",
-      },
+        secretPath: "/"
+      }
     }
   );
   console.log("Migration: Integration migration v1 complete");
+};
+
+export const backfillServiceTokenMultiScope = async () => {
+  await ServiceTokenData.updateMany(
+    {
+      scopes: {
+        $exists: false
+      }
+    },
+    [
+      {
+        $set: {
+          scopes: [{ environment: "$environment", secretPath: "$secretPath" }]
+        }
+      },
+      {
+        $unset: ["environment", "secretPath"]
+      }
+    ]
+  );
+
+  console.log("Migration: Service token migration v2 complete");
 };
