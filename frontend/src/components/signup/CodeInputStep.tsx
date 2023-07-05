@@ -114,6 +114,7 @@ export default function CodeInputStep({
       <div className="flex flex-col items-center justify-center lg:w-[19%] w-1/4 min-w-[20rem] mt-2 max-w-xs md:max-w-md mx-auto text-sm text-center md:text-left">
         <div className="text-l py-1 text-lg w-full">
           <Button
+            type="submit"
             onClick={incrementStep}
             size="sm"
             isFullWidth
