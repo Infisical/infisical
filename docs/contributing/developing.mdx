@@ -69,7 +69,20 @@ machine and run the command below to start up the development server.
 
 ```bash
 docker-compose -f docker-compose.dev.yml up --build --force-recreate
+
+# or
+docker compose -f docker-compose.dev.yml up --build --force-recreate
 ```
+
+<Note>
+  As of June 2023, Docker has deprecated Compose V1 and recommended that everyone switches to Compose V2.
+
+Switching is easy. Type `docker compose` instead of `docker-compose` in your favorite terminal.
+
+More information about this can be found [here](https://www.docker.com/blog/new-docker-compose-v2-and-v1-deprecation).
+
+</Note>
+
 #### Access local server 
 
 Once all the services have spun up, browse to http://localhost:8080. To sign in, you may use the default credentials listed below.
@@ -82,4 +95,7 @@ Password: `testInfisical1`
 ```bash
 # To stop environment use Control+C (on Mac) CTRL+C (on Win) or
 docker-compose -f docker-compose.dev.yml down
+
+# or
+docker compose -f docker-compose.dev.yml down
 ```
