@@ -14,7 +14,8 @@
   "scripts": {
     "build": "tsc && cp -R ./src/templates ./lib",
     "dev": "npm run build && probot run ./lib/index.js",
-    "start": "nodemon -e ts,yml --watch './**/*.ts' --exec npm run dev",
+    "start:dev": "nodemon -e ts,yml --watch './**/*.ts' --exec npm run dev",
+    "start:prod": "probot run ./lib/index.js",
     "test": "jest"
   },
   "dependencies": {
