@@ -3,16 +3,25 @@
   <img width="300" src="/img/logoname-white.svg#gh-dark-mode-only" alt="infisical">
 </h1>
 <p align="center">
-  <p align="center">Open-source, end-to-end encrypted platform to manage secrets and configs across your team and infrastructure.</p>
+  <p align="center"><b>Open-source, end-to-end encrypted secret management platform</b>: distribute secrets/configs across your team/infrastructure and prevent secret leaks.</p>
 </p>
 
 <h4 align="center">
-  <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg">Slack</a> |
+  <a href="https://join.slack.com/t/infisical-users/shared_invite/zt-1ye0tm8ab-899qZ6ZbpfESuo6TEikyOQ">Slack</a> |
   <a href="https://infisical.com/">Infisical Cloud</a> |
   <a href="https://infisical.com/docs/self-hosting/overview">Self-Hosting</a> |
   <a href="https://infisical.com/docs/documentation/getting-started/introduction">Docs</a> |
   <a href="https://www.infisical.com">Website</a>
 </h4>
+
+<p align="center">
+  <a href="https://infisical.com/docs/self-hosting/deployment-options/aws-ec2">
+    <img src=".github/images/deploy-to-aws.png" width="137" />
+  </a>
+  <a href="https://marketplace.digitalocean.com/apps/chatwoot?refcode=f2238426a2a8" alt="Deploy to DigitalOcean">
+     <img width="200" alt="Deploy to DO" src="https://www.deploytodo.com/do-btn-blue.svg"/>
+  </a>
+</p>
 
 <h4 align="center">
   <a href="https://github.com/Infisical/infisical/blob/main/LICENSE">
@@ -54,8 +63,8 @@ We're on a mission to make secret management more accessible to everyone, not ju
 -   **[Secret versioning](https://infisical.com/docs/documentation/platform/secret-versioning)** and **[Point-in-Time Recovery]()** to version every secret and project state
 -   **[Audit logs](https://infisical.com/docs/documentation/platform/audit-logs)** to record every action taken in a project
 -   **Role-based Access Controls** per environment
--   [**Simple on-premise deployments** to AWS and Digital Ocean](https://infisical.com/docs/self-hosting/overview)
--   [**Secret Scanning**](https://infisical.com/docs/cli/scanning-overview)
+-   [**Simple on-premise deployments** to AWS, Digital Ocean, and more](https://infisical.com/docs/self-hosting/overview)
+-   [**Secret Scanning and Leak Prevention**](https://infisical.com/docs/cli/scanning-overview)
 
 And much more.
 
@@ -65,7 +74,7 @@ Check out the [Quickstart Guides](https://infisical.com/docs/getting-started/int
 
 | Use Infisical Cloud | Deploy Infisical on premise |
 | --- | ----------- |
-| The fastest and most reliable way to <br> get started with Infisical is signing up <br> for free to [Infisical Cloud](https://app.infisical.com/login). | <a href="https://infisical.com/docs/self-hosting/deployment-options/aws-ec2"><img src=".github/images/deploy-aws-button.png" width="150" width="300" /></a> <a href="https://infisical.com/docs/self-hosting/deployment-options/digital-ocean-marketplace"><img src=".github/images/do-k8-install-btn.png" width="200"/></a> <br> View all [deployment options](https://infisical.com/docs/self-hosting/overview) |
+| The fastest and most reliable way to <br> get started with Infisical is signing up <br> for free to [Infisical Cloud](https://app.infisical.com/login). | <a href="https://infisical.com/docs/self-hosting/deployment-options/aws-ec2"><img src=".github/images/deploy-to-aws.png" width="150" width="300" /></a> <a href="https://infisical.com/docs/self-hosting/deployment-options/digital-ocean-marketplace" alt="Deploy to DigitalOcean"> <img width="217" alt="Deploy to DO" src="https://www.deploytodo.com/do-btn-blue.svg"/> </a> <br> View all [deployment options](https://infisical.com/docs/self-hosting/overview) |
 
 ### Run Infisical locally
 
