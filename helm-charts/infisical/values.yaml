@@ -172,7 +172,7 @@ backendEnvironmentVariables:
 secretScanningGitApp:
   ## @param backend.enabled Enable git scanning app
   ##
-  enabled: true
+  enabled: false
   ## @param backend.name Backend name
   ##
   name: secret-scanning-git-app
