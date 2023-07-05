@@ -10,4 +10,4 @@ RUN apt-get update && apt-get install -y bash curl && curl -1sLf \
   && apt-get update && apt-get install -y infisical=0.8.1
 
 
-CMD [ "npm", "start" ]
+CMD [ "npm", "run", "start:dev" ]

@@ -4,7 +4,7 @@ import { writeFile, readFile, rm, mkdir, } from "fs";
 import { tmpdir } from "os";
 import { join } from "path"
 import mongoose from "mongoose";
-import GitRisks from "./models/gitRisks";
+import GitRisks, { STATUS_RESOLVED_FALSE_POSITIVE } from "./models/gitRisks";
 import GitAppOrganizationInstallation from "./models/gitAppOrganizationInstallation";
 import { sendMail, setTransporter } from "./helper/nodemailer";
 import { initSmtp } from "./service/smtp";
@@ -66,7 +66,7 @@ export = async (app: Probot) => {
       return
     }
 
-    const findingsByFingerprint: { [key: string]: SecretMatch; } = {}
+    const allFindingsByFingerprint: { [key: string]: SecretMatch; } = {}
 
     for (const commit of commits) {
       for (const filepath of [...commit.added, ...commit.modified]) {
@@ -89,7 +89,7 @@ export = async (app: Probot) => {
             finding.File = filepath
             finding.Author = commit.author.name
             finding.Email = commit.author.email
-            findingsByFingerprint[fingerPrint] = finding
+            allFindingsByFingerprint[fingerPrint] = finding
           }
 
         } catch (error) {
@@ -98,18 +98,27 @@ export = async (app: Probot) => {
       }
     }
 
+
+
     // change to update
-    for (const key in findingsByFingerprint) {
-      await GitRisks.findOneAndUpdate({ fingerprint: findingsByFingerprint[key].Fingerprint },
+    const noneFalsePositiveFindings = {}
+
+    for (const key in allFindingsByFingerprint) {
+      const risk = await GitRisks.findOneAndUpdate({ fingerprint: allFindingsByFingerprint[key].Fingerprint },
         {
-          ...convertKeysToLowercase(findingsByFingerprint[key]),
+          ...convertKeysToLowercase(allFindingsByFingerprint[key]),
           installationId: installation.id,
           organization: installationLinkToOrgExists.organizationId,
           repositoryFullName: repository.full_name,
           repositoryId: repository.id
         }, {
         upsert: true
-      })
+      }).lean()
+
+      if (risk.status != STATUS_RESOLVED_FALSE_POSITIVE) {
+        noneFalsePositiveFindings[key] = { ...convertKeysToLowercase(allFindingsByFingerprint[key]) }
+      }
+
     }
     // get emails of admins
     const adminsOfWork = await MembershipOrg.find({
@@ -128,12 +137,16 @@ export = async (app: Probot) => {
 
     const adminOrOwnerEmails = userEmails.map(userObject => userObject.email)
 
+
+    // TODO
+    // don't notify if the risk is marked as false positive
+
     await sendMail({
       template: "secretLeakIncident.handlebars",
       subjectLine: `Incident alert: leaked secrets found in Github repository ${repository.full_name}`,
       recipients: [pusher.email, ...adminOrOwnerEmails],
       substitutions: {
-        numberOfSecrets: Object.keys(findingsByFingerprint).length,
+        numberOfSecrets: Object.keys(allFindingsByFingerprint).length,
         pusher_email: pusher.email,
         pusher_name: pusher.name
       }
