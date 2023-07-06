@@ -292,7 +292,11 @@ func recursivelyExpandSecret(expandedSecs map[string]string, interpolatedSecs ma
 		return v
 	}
 
-	interpolatedVal := interpolatedSecs[key]
+	interpolatedVal, ok := interpolatedSecs[key]
+	if !ok {
+		HandleError(fmt.Errorf("Could not find refered secret -  %s", key), "Kindly check whether its provided")
+	}
+
 	refs := secRefRegex.FindAllStringSubmatch(interpolatedVal, -1)
 	for _, val := range refs {
 		// key: "${something}" val: [${something},something]

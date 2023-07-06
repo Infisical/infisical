@@ -6,7 +6,13 @@ import {
   GetSecretsParams,
   UpdateSecretParams
 } from "../interfaces/services/SecretService";
-import { ISecret, Secret, SecretBlindIndexData, ServiceTokenData } from "../models";
+import {
+  ISecret,
+  IServiceTokenData,
+  Secret,
+  SecretBlindIndexData,
+  ServiceTokenData
+} from "../models";
 import { SecretVersion } from "../ee/models";
 import {
   BadRequestError,
@@ -38,6 +44,21 @@ import { EELogService, EESecretService } from "../ee/services";
 import { getAuthDataPayloadIdObj, getAuthDataPayloadUserObj } from "../utils/auth";
 import { getFolderIdFromServiceToken } from "../services/FolderService";
 import picomatch from "picomatch";
+
+export const isValidScope = (
+  authPayload: IServiceTokenData,
+  environment: string,
+  secretPath: string
+) => {
+  const { scopes: tkScopes } = authPayload;
+  const validScope = tkScopes.find(
+    (scope) =>
+      picomatch.isMatch(secretPath, scope.secretPath, { strictSlashes: false }) &&
+      scope.environment === environment
+  );
+
+  return Boolean(validScope);
+};
 
 /**
  * Returns an object containing secret [secret] but with its value, key, comment decrypted.
@@ -306,14 +327,7 @@ export const createSecretHelper = async ({
 
   // if using service token filter towards the folderId by secretpath
   if (authData.authPayload instanceof ServiceTokenData) {
-    const { scopes: tkScopes } = authData.authPayload;
-    const validScope = tkScopes.find(
-      (scope) =>
-        picomatch.isMatch(secretPath, scope.secretPath, { strictSlashes: false }) &&
-        scope.environment === environment
-    );
-
-    if (!validScope) {
+    if (!isValidScope(authData.authPayload, environment, secretPath)) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
@@ -459,14 +473,7 @@ export const getSecretsHelper = async ({
   let secrets: ISecret[] = [];
   // if using service token filter towards the folderId by secretpath
   if (authData.authPayload instanceof ServiceTokenData) {
-    const { scopes: tkScopes } = authData.authPayload;
-    const validScope = tkScopes.find(
-      (scope) =>
-        picomatch.isMatch(secretPath, scope.secretPath, { strictSlashes: false }) &&
-        scope.environment === environment
-    );
-
-    if (!validScope) {
+    if (!isValidScope(authData.authPayload, environment, secretPath)) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
@@ -562,14 +569,7 @@ export const getSecretHelper = async ({
   let secret: ISecret | null = null;
   // if using service token filter towards the folderId by secretpath
   if (authData.authPayload instanceof ServiceTokenData) {
-    const { scopes: tkScopes } = authData.authPayload;
-    const validScope = tkScopes.find(
-      (scope) =>
-        picomatch.isMatch(secretPath, scope.secretPath, { strictSlashes: false }) &&
-        scope.environment === environment
-    );
-
-    if (!validScope) {
+    if (!isValidScope(authData.authPayload, environment, secretPath)) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
@@ -671,14 +671,7 @@ export const updateSecretHelper = async ({
   let secret: ISecret | null = null;
   // if using service token filter towards the folderId by secretpath
   if (authData.authPayload instanceof ServiceTokenData) {
-    const { scopes: tkScopes } = authData.authPayload;
-    const validScope = tkScopes.find(
-      (scope) =>
-        picomatch.isMatch(secretPath, scope.secretPath, { strictSlashes: false }) &&
-        scope.environment === environment
-    );
-
-    if (!validScope) {
+    if (!isValidScope(authData.authPayload, environment, secretPath)) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
@@ -826,14 +819,7 @@ export const deleteSecretHelper = async ({
 
   // if using service token filter towards the folderId by secretpath
   if (authData.authPayload instanceof ServiceTokenData) {
-    const { scopes: tkScopes } = authData.authPayload;
-    const validScope = tkScopes.find(
-      (scope) =>
-        picomatch.isMatch(secretPath, scope.secretPath, { strictSlashes: false }) &&
-        scope.environment === environment
-    );
-
-    if (!validScope) {
+    if (!isValidScope(authData.authPayload, environment, secretPath)) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }

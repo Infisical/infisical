@@ -446,9 +446,6 @@ export const backfillServiceTokenMultiScope = async () => {
         $set: {
           scopes: [{ environment: "$environment", secretPath: "$secretPath" }]
         }
-      },
-      {
-        $unset: ["environment", "secretPath"]
       }
     ]
   );

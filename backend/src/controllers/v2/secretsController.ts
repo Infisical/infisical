@@ -1,6 +1,5 @@
 import { Types } from "mongoose";
 import { Request, Response } from "express";
-import picomatch from "picomatch";
 import { ISecret, Secret, ServiceTokenData } from "../../models";
 import { IAction, SecretVersion } from "../../ee/models";
 import {
@@ -33,6 +32,7 @@ import {
   getFolderIdFromServiceToken,
   searchByFolderId
 } from "../../services/FolderService";
+import { isValidScope } from "../../helpers/secrets";
 
 /**
  * Peform a batch of any specified CUD secret operations
@@ -74,16 +74,11 @@ export const batchSecrets = async (req: Request, res: Response) => {
   }
 
   if (req.authData.authPayload instanceof ServiceTokenData) {
-    const { scopes: tkScopes } = req.authData.authPayload;
-    const validScope = tkScopes.find(
-      (scope) =>
-        picomatch.isMatch(secretPath, scope.secretPath, { strictSlashes: false }) &&
-        scope.environment === environment
-    );
+    const isValidScopeAccess = isValidScope(req.authData.authPayload, environment, secretPath);
 
     // in service token when not giving secretpath folderid must be root
     // this is to avoid giving folderid when service tokens are used
-    if ((!secretPath && folderId !== "root") || (secretPath && !validScope)) {
+    if ((!secretPath && folderId !== "root") || (secretPath && !isValidScopeAccess)) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
@@ -447,16 +442,15 @@ export const createSecrets = async (req: Request, res: Response) => {
   }
 
   if (req.authData.authPayload instanceof ServiceTokenData) {
-    const { scopes: tkScopes } = req.authData.authPayload;
-    const validScope = tkScopes.find(
-      (scope) =>
-        picomatch.isMatch(secretPath || "/", scope.secretPath, { strictSlashes: false }) &&
-        scope.environment === environment
+    const isValidScopeAccess = isValidScope(
+      req.authData.authPayload,
+      environment,
+      secretPath || "/"
     );
 
     // in service token when not giving secretpath folderid must be root
     // this is to avoid giving folderid when service tokens are used
-    if ((!secretPath && folderId !== "root") || (secretPath && !validScope)) {
+    if ((!secretPath && folderId !== "root") || (secretPath && !isValidScopeAccess)) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
@@ -704,17 +698,15 @@ export const getSecrets = async (req: Request, res: Response) => {
   }
 
   if (req.authData.authPayload instanceof ServiceTokenData) {
-    const { scopes: tkScopes } = req.authData.authPayload;
-    const validScope = tkScopes.find(
-      (scope) =>
-        picomatch.isMatch((secretPath as string) || "/", scope.secretPath, {
-          strictSlashes: false
-        }) && scope.environment === environment
+    const isValidScopeAccess = isValidScope(
+      req.authData.authPayload,
+      environment,
+      (secretPath as string) || "/"
     );
 
     // in service token when not giving secretpath folderid must be root
     // this is to avoid giving folderid when service tokens are used
-    if ((!secretPath && folderId !== "root") || (secretPath && !validScope)) {
+    if ((!secretPath && folderId !== "root") || (secretPath && !isValidScopeAccess)) {
       throw UnauthorizedRequestError({ message: "Folder Permission Denied" });
     }
   }
