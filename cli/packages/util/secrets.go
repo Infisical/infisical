@@ -17,7 +17,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func GetPlainTextSecretsViaServiceToken(fullServiceToken string) ([]models.SingleEnvironmentVariable, api.GetServiceTokenDetailsResponse, error) {
+func GetPlainTextSecretsViaServiceToken(fullServiceToken string, environment string, secretPath string) ([]models.SingleEnvironmentVariable, api.GetServiceTokenDetailsResponse, error) {
 	serviceTokenParts := strings.SplitN(fullServiceToken, ".", 4)
 	if len(serviceTokenParts) < 4 {
 		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("invalid service token entered. Please double check your service token and try again")
@@ -35,10 +35,19 @@ func GetPlainTextSecretsViaServiceToken(fullServiceToken string) ([]models.Singl
 		return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("unable to get service token details. [err=%v]", err)
 	}
 
+	// if multiple scopes are there then user needs to specify which environment and secret path
+	if environment == "" {
+		if len(serviceTokenDetails.Scopes) != 1 {
+			return nil, api.GetServiceTokenDetailsResponse{}, fmt.Errorf("you need to provide the --env for multiple environment scoped token")
+		} else {
+			environment = serviceTokenDetails.Scopes[0].Environment
+		}
+	}
+
 	encryptedSecrets, err := api.CallGetSecretsV3(httpClient, api.GetEncryptedSecretsV3Request{
 		WorkspaceId: serviceTokenDetails.Workspace,
-		Environment: serviceTokenDetails.Environment,
-		SecretPath:  serviceTokenDetails.SecretPath,
+		Environment: environment,
+		SecretPath:  secretPath,
 	})
 
 	if err != nil {
@@ -190,11 +199,7 @@ func GetAllEnvironmentVariables(params models.GetAllSecretsParameters) ([]models
 
 	} else {
 		log.Debug().Msg("Trying to fetch secrets using service token")
-		secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(infisicalToken)
-
-		// if serviceTokenDetails.Environment != params.Environment {
-		// 	PrintErrorMessageAndExit(fmt.Sprintf("Fetch secrets failed: token allows [%s] environment access, not [%s]. Service tokens are environment-specific; no need for --env flag.", params.Environment, serviceTokenDetails.Environment))
-		// }
+		secretsToReturn, _, errorToReturn = GetPlainTextSecretsViaServiceToken(infisicalToken, params.Environment, params.SecretsPath)
 	}
 
 	return secretsToReturn, errorToReturn
