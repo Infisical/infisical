@@ -45,7 +45,14 @@ const schema = yup.object({
     .array(
       yup.object({
         environment: yup.string().max(50).required().label("Environment"),
-        secretPath: yup.string().required().default("/").label("Secret Path")
+        secretPath: yup
+          .string()
+          .required()
+          .default("/")
+          .label("Secret Path")
+          .transform((val) =>
+            typeof val === "string" && val.at(-1) === "/" && val.length > 1 ? val.slice(0, -1) : val
+          )
       })
     )
     .min(1)

@@ -358,10 +358,9 @@ func ExpandSecrets(secrets []models.SingleEnvironmentVariable, infisicalToken st
 		}
 
 		expandedVal := recursivelyExpandSecret(expandedSecs, interpolatedSecs, func(env string, secPaths []string, secKey string) string {
+			secPaths = append([]string{"/"}, secPaths...)
 			secPath := path.Join(secPaths...)
-			if secPath == "" {
-				secPath = "/"
-			}
+
 			secPathDot := strings.Join(secPaths, ".")
 			uniqKey := fmt.Sprintf("%s.%s", env, secPathDot)
 
