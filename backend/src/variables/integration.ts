@@ -24,6 +24,7 @@ export const INTEGRATION_CIRCLECI = "circleci";
 export const INTEGRATION_TRAVISCI = "travisci";
 export const INTEGRATION_SUPABASE = "supabase";
 export const INTEGRATION_CHECKLY = "checkly";
+export const INTEGRATION_TERRAFORM_CLOUD = "terraform-cloud";
 export const INTEGRATION_HASHICORP_VAULT = "hashicorp-vault";
 export const INTEGRATION_CLOUDFLARE_PAGES = "cloudflare-pages";
 export const INTEGRATION_SET = new Set([
@@ -40,6 +41,7 @@ export const INTEGRATION_SET = new Set([
   INTEGRATION_TRAVISCI,
   INTEGRATION_SUPABASE,
   INTEGRATION_CHECKLY,
+  INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_HASHICORP_VAULT,
   INTEGRATION_CLOUDFLARE_PAGES
 ]);
@@ -70,6 +72,7 @@ export const INTEGRATION_TRAVISCI_API_URL = "https://api.travis-ci.com";
 export const INTEGRATION_SUPABASE_API_URL = "https://api.supabase.com";
 export const INTEGRATION_LARAVELFORGE_API_URL = "https://forge.laravel.com";
 export const INTEGRATION_CHECKLY_API_URL = "https://api.checklyhq.com";
+export const INTEGRATION_TERRAFORM_CLOUD_API_URL = "https://app.terraform.io";
 export const INTEGRATION_CLOUDFLARE_PAGES_API_URL = "https://api.cloudflare.com";
 
 export const getIntegrationOptions = async () => {
@@ -217,6 +220,15 @@ export const getIntegrationOptions = async () => {
             isAvailable: true,
             type: "pat",
             clientId: "",
+            docsLink: "",
+        },
+        {
+            name: "Terraform Cloud",
+            slug: "terraform-cloud",
+            image: "Terraform Cloud.png",
+            isAvailable: true,
+            type: "pat",
+            cliendId: "",
             docsLink: "",
         },
         {

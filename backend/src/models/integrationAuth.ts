@@ -18,6 +18,7 @@ import {
   INTEGRATION_RAILWAY,
   INTEGRATION_RENDER,
   INTEGRATION_SUPABASE,
+  INTEGRATION_TERRAFORM_CLOUD,
   INTEGRATION_TRAVISCI,
   INTEGRATION_VERCEL
 } from "../variables";
@@ -25,7 +26,7 @@ import {
 export interface IIntegrationAuth extends Document {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: "heroku" | "vercel" | "netlify" | "github" | "gitlab" | "render" | "railway" | "flyio" | "azure-key-vault" | "laravel-forge" | "circleci" | "travisci" | "supabase" | "aws-parameter-store" | "aws-secret-manager" | "checkly" | "cloudflare-pages";
+  integration: "heroku" | "vercel" | "netlify" | "github" | "gitlab" | "render" | "railway" | "flyio" | "azure-key-vault" | "laravel-forge" | "circleci" | "travisci" | "supabase" | "aws-parameter-store" | "aws-secret-manager" | "terraform-cloud" | "checkly" | "cloudflare-pages";
   teamId: string;
   accountId: string;
   url: string;
@@ -69,6 +70,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_LARAVELFORGE,
         INTEGRATION_TRAVISCI,
         INTEGRATION_SUPABASE,
+        INTEGRATION_TERRAFORM_CLOUD,
         INTEGRATION_HASHICORP_VAULT,
         INTEGRATION_CLOUDFLARE_PAGES,
       ],

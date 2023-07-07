@@ -38,6 +38,8 @@ import {
   INTEGRATION_RENDER_API_URL,
   INTEGRATION_SUPABASE,
   INTEGRATION_SUPABASE_API_URL,
+  INTEGRATION_TERRAFORM_CLOUD,
+  INTEGRATION_TERRAFORM_CLOUD_API_URL,
   INTEGRATION_TRAVISCI,
   INTEGRATION_TRAVISCI_API_URL,
   INTEGRATION_VERCEL,
@@ -182,6 +184,14 @@ const syncSecrets = async ({
       await syncSecretsCheckly({
         integration,
         secrets,
+        accessToken,
+      });
+      break;
+    case INTEGRATION_TERRAFORM_CLOUD:
+      await syncSecretsTerraformCloud({
+        integration,
+        secrets,
+        accessId,
         accessToken,
       });
       break;
@@ -1804,6 +1814,39 @@ const syncSecretsCheckly = async ({
       );
     }
   }
+};
+
+/**
+ * Sync/push [secrets] to Terraform Cloud projects with id [integration.appId]
+ * @param {Object} obj
+ * @param {IIntegration} obj.integration - integration details
+ * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
+ * @param {String} obj.accessToken - access token for Terraform Cloud integration
+ */
+const syncSecretsTerraformCloud = async ({
+  integration,
+  secrets,
+  accessId,
+  accessToken,
+}: {
+  integration: IIntegration;
+  secrets: any;
+  accessId: string | null;
+  accessToken: string;
+}) => {
+  await standardRequest.put(
+    `${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${accessId}/${integration.app}`,
+    Object.keys(secrets).map((key) => ({
+      key,
+      value: secrets[key],
+    })),
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+    }
+  );
 };
 
 /**
