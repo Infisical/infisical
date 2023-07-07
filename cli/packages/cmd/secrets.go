@@ -65,7 +65,7 @@ var secretsCmd = &cobra.Command{
 		}
 
 		if shouldExpandSecrets {
-			secrets = util.SubstituteSecrets(secrets)
+			secrets = util.ExpandSecrets(secrets, infisicalToken)
 		}
 
 		visualize.PrintAllSecretDetails(secrets)

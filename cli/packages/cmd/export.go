@@ -83,7 +83,7 @@ var exportCmd = &cobra.Command{
 
 		var output string
 		if shouldExpandSecrets {
-			substitutions := util.SubstituteSecrets(secrets)
+			substitutions := util.ExpandSecrets(secrets, infisicalToken)
 			output, err = formatEnvs(substitutions, format)
 			if err != nil {
 				util.HandleError(err)
