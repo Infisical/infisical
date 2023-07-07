@@ -4,8 +4,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type Authentication struct {
+	// +kubebuilder:validation:Optional
+	ServiceAccount ServiceAccountDetails `json:"serviceAccount"`
+	// +kubebuilder:validation:Optional
+	ServiceToken ServiceTokenDetails `json:"serviceToken"`
+}
+
 type ServiceTokenDetails struct {
+	// +kubebuilder:validation:Required
 	ServiceTokenSecretReference KubeSecretReference `json:"serviceTokenSecretReference"`
+
+	// +kubebuilder:validation:Required
+	SecretsScope SecretScopeInWorkspace `json:"secretsScope"`
 }
 
 type ServiceAccountDetails struct {
@@ -14,11 +25,12 @@ type ServiceAccountDetails struct {
 	EnvironmentName               string              `json:"environmentName"`
 }
 
-type Authentication struct {
-	// +kubebuilder:validation:Optional
-	ServiceAccount ServiceAccountDetails `json:"serviceAccount"`
-	// +kubebuilder:validation:Optional
-	ServiceToken ServiceTokenDetails `json:"serviceToken"`
+type SecretScopeInWorkspace struct {
+	// +kubebuilder:validation:Required
+	SecretsPath string `json:"secretsPath"`
+
+	// +kubebuilder:validation:Required
+	EnvSlug string `json:"envSlug"`
 }
 
 type KubeSecretReference struct {
