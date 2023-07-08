@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/router";
+import { yupResolver } from "@hookform/resolvers/yup";
 import queryString from "query-string";
+import * as yup from "yup";
 
 import {
   Button,
@@ -19,11 +21,13 @@ import {
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 import createIntegration from "../../api/integrations/createIntegration";
 
-interface RenderCreateIntegrationFormValues {
-  selectedSourceEnvironment: string;
-  secretPath: string;
-  targetApp: string;
-}
+const formSchema = yup.object({
+  selectedSourceEnvironment: yup.string().required().label("Project Environment"),
+  secretPath: yup.string().required().label("Secrets Path"),
+  targetApp: yup.string().required().label("Netlify Site")
+});
+
+type FormData = yup.InferType<typeof formSchema>;
 
 export default function RenderCreateIntegrationPage() {
   const router = useRouter();
@@ -36,17 +40,20 @@ export default function RenderCreateIntegrationPage() {
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
 
-  const { handleSubmit, setValue, getValues, control } = useForm<RenderCreateIntegrationFormValues>(
-    {
-      defaultValues: {
-        selectedSourceEnvironment: "",
-        secretPath: "/",
-        targetApp: ""
-      }
-    }
-  );
-
-  const [isLoading, setIsLoading] = useState(false);
+  const {
+    handleSubmit,
+    setValue,
+    getValues,
+    control,
+    formState: { isSubmitting }
+  } = useForm<FormData>({
+    defaultValues: {
+      selectedSourceEnvironment: "",
+      secretPath: "/",
+      targetApp: ""
+    },
+    resolver: yupResolver(formSchema)
+  });
 
   useEffect(() => {
     if (workspace) {
@@ -64,12 +71,10 @@ export default function RenderCreateIntegrationPage() {
     }
   }, [integrationAuthApps]);
 
-  const handleButtonClick = async (data: RenderCreateIntegrationFormValues) => {
+  const handleButtonClick = async (data: FormData) => {
     const { targetApp, selectedSourceEnvironment, secretPath } = data;
     try {
       if (!integrationAuth?._id) return;
-
-      setIsLoading(true);
 
       await createIntegration({
         integrationAuthId: integrationAuth?._id,
@@ -89,8 +94,6 @@ export default function RenderCreateIntegrationPage() {
         secretPath
       });
 
-      setIsLoading(false);
-
       router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
       console.error(err);
@@ -109,8 +112,13 @@ export default function RenderCreateIntegrationPage() {
           <Controller
             name="selectedSourceEnvironment"
             control={control}
-            render={({ field }) => (
-              <FormControl label="Project Environment" className="mt-4">
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Project Environment"
+                className="mt-4"
+                errorText={error?.message}
+                isError={Boolean(error)}
+              >
                 <Select
                   {...field}
                   onValueChange={(val) => field.onChange(val)}
@@ -132,8 +140,8 @@ export default function RenderCreateIntegrationPage() {
           <Controller
             name="secretPath"
             control={control}
-            render={({ field }) => (
-              <FormControl label="Secrets Path">
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Secrets Path" errorText={error?.message} isError={Boolean(error)}>
                 <Input {...field} placeholder="Provide a path, default is /" />
               </FormControl>
             )}
@@ -142,8 +150,13 @@ export default function RenderCreateIntegrationPage() {
           <Controller
             name="targetApp"
             control={control}
-            render={({ field }) => (
-              <FormControl label="Render Service" className="mt-4">
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Render Service"
+                className="mt-4"
+                errorText={error?.message}
+                isError={Boolean(error)}
+              >
                 <Select
                   {...field}
                   onValueChange={field.onChange}
@@ -172,7 +185,7 @@ export default function RenderCreateIntegrationPage() {
           <Button
             color="mineshaft"
             className="mt-4"
-            isLoading={isLoading}
+            isLoading={isSubmitting}
             isDisabled={integrationAuthApps.length === 0}
             type="submit"
           >
