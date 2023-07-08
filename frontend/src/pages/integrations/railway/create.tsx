@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/router";
+import { yupResolver } from "@hookform/resolvers/yup";
 import queryString from "query-string";
+import * as yup from "yup";
 
 import {
   Button,
@@ -21,28 +23,35 @@ import {
 import { useGetWorkspaceById } from "../../../hooks/api/workspace";
 import createIntegration from "../../api/integrations/createIntegration";
 
-interface RailwayCreateIntegrationFormValues {
-  selectedSourceEnvironment: string;
-  secretPath: string;
-  targetAppId: string;
-  targetEnvironmentId: string;
-  targetServiceId: string;
-}
+const formSchema = yup.object({
+  selectedSourceEnvironment: yup.string().required().label("Project Environment"),
+  secretPath: yup.string().required().label("Secrets Path"),
+  targetAppId: yup.string().required().label("Railway Project"),
+  targetEnvironmentId: yup.string().required().label("Railway Project Environment"),
+  targetServiceId: yup.string().label("Railway Service")
+});
+
+type FormData = yup.InferType<typeof formSchema>;
 
 export default function RailwayCreateIntegrationPage() {
   const router = useRouter();
-  const { handleSubmit, setValue, getValues, control, watch } =
-    useForm<RailwayCreateIntegrationFormValues>({
-      defaultValues: {
-        selectedSourceEnvironment: "",
-        secretPath: "",
-        targetAppId: "",
-        targetEnvironmentId: "",
-        targetServiceId: ""
-      }
-    });
-
-  const [isLoading, setIsLoading] = useState(false);
+  const {
+    handleSubmit,
+    setValue,
+    getValues,
+    control,
+    watch,
+    formState: { isSubmitting }
+  } = useForm<FormData>({
+    defaultValues: {
+      selectedSourceEnvironment: "",
+      secretPath: "/",
+      targetAppId: "",
+      targetEnvironmentId: "",
+      targetServiceId: ""
+    },
+    resolver: yupResolver(formSchema)
+  });
 
   const { integrationAuthId } = queryString.parse(router.asPath.split("?")[1]);
   const { data: integrationAuth } = useGetIntegrationAuthById((integrationAuthId as string) ?? "");
@@ -50,15 +59,16 @@ export default function RailwayCreateIntegrationPage() {
   const { data: integrationAuthApps } = useGetIntegrationAuthApps({
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
+  const watchTargetAppId = watch("targetAppId");
 
   const { data: targetEnvironments } = useGetIntegrationAuthRailwayEnvironments({
     integrationAuthId: (integrationAuthId as string) ?? "",
-    appId: watch("targetAppId")
+    appId: watchTargetAppId
   });
 
   const { data: targetServices } = useGetIntegrationAuthRailwayServices({
     integrationAuthId: (integrationAuthId as string) ?? "",
-    appId: watch("targetAppId")
+    appId: watchTargetAppId
   });
 
   useEffect(() => {
@@ -92,7 +102,7 @@ export default function RailwayCreateIntegrationPage() {
     serviceId: ""
   });
 
-  const handleButtonClick = async (data: RailwayCreateIntegrationFormValues) => {
+  const handleButtonClick = async (data: FormData) => {
     const {
       targetAppId,
       targetEnvironmentId,
@@ -102,8 +112,6 @@ export default function RailwayCreateIntegrationPage() {
     } = data;
 
     try {
-      setIsLoading(true);
-
       if (!integrationAuth?._id) return;
 
       const targetApp = integrationAuthApps?.find(
@@ -135,8 +143,6 @@ export default function RailwayCreateIntegrationPage() {
         secretPath
       });
 
-      setIsLoading(false);
-
       router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
       console.error(err);
@@ -155,9 +161,14 @@ export default function RailwayCreateIntegrationPage() {
           <Controller
             name="selectedSourceEnvironment"
             control={control}
-            render={({ field }) => {
+            render={({ field, fieldState: { error } }) => {
               return (
-                <FormControl label="Project Environment" className="mt-4">
+                <FormControl
+                  label="Project Environment"
+                  className="mt-4"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
                   <Select
                     {...field}
                     className="w-full border border-mineshaft-500"
@@ -180,8 +191,8 @@ export default function RailwayCreateIntegrationPage() {
           <Controller
             name="secretPath"
             control={control}
-            render={({ field }) => (
-              <FormControl label="Secrets Path">
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Secrets Path" isError={Boolean(error)} errorText={error?.message}>
                 <Input {...field} placeholder="Provide a path, default is /" />
               </FormControl>
             )}
@@ -189,8 +200,12 @@ export default function RailwayCreateIntegrationPage() {
           <Controller
             name="targetAppId"
             control={control}
-            render={({ field }) => (
-              <FormControl label="Railway Project">
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Railway Project"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
                 <Select
                   {...field}
                   className="w-full border border-mineshaft-500"
@@ -218,36 +233,47 @@ export default function RailwayCreateIntegrationPage() {
           <Controller
             name="targetEnvironmentId"
             control={control}
-            render={({ field }) => (
-              <FormControl label="Railway Project Environment">
-                <Select
-                  {...field}
-                  className="w-full border border-mineshaft-500"
-                  onValueChange={field.onChange}
+            render={({ field, fieldState: { error } }) => {
+              console.log("errror", error);
+              return (
+                <FormControl
+                  label="Railway Project Environment"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
                 >
-                  {targetEnvironments.length > 0 ? (
-                    targetEnvironments.map((targetEnvironment) => (
-                      <SelectItem
-                        value={targetEnvironment.environmentId as string}
-                        key={`target-environment-${targetEnvironment.environmentId as string}`}
-                      >
-                        {targetEnvironment.name}
+                  <Select
+                    {...field}
+                    className="w-full border border-mineshaft-500"
+                    onValueChange={field.onChange}
+                  >
+                    {targetEnvironments.length > 0 ? (
+                      targetEnvironments.map((targetEnvironment) => (
+                        <SelectItem
+                          value={targetEnvironment.environmentId as string}
+                          key={`target-environment-${targetEnvironment.environmentId as string}`}
+                        >
+                          {targetEnvironment.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" key="target-environment-none">
+                        No environments found
                       </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" key="target-environment-none">
-                      No environments found
-                    </SelectItem>
-                  )}
-                </Select>
-              </FormControl>
-            )}
+                    )}
+                  </Select>
+                </FormControl>
+              );
+            }}
           />
           <Controller
             name="targetServiceId"
             control={control}
-            render={({ field }) => (
-              <FormControl label="Railway Service (Optional)">
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Railway Service (Optional)"
+                isError={Boolean(error)}
+                errorText={error?.message}
+              >
                 <Select
                   {...field}
                   className="w-full border border-mineshaft-500"
@@ -269,7 +295,7 @@ export default function RailwayCreateIntegrationPage() {
           <Button
             color="mineshaft"
             className="mt-4"
-            isLoading={isLoading}
+            isLoading={isSubmitting}
             isDisabled={integrationAuthApps.length === 0}
             type="submit"
           >
