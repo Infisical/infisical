@@ -99,6 +99,15 @@ Export environment variables from the platform into a file format.
     Default value: `true`
   </Accordion>
 
+  <Accordion title="--path">
+    The `--path` flag indicates which project folder secrets will be injected from.
+
+    ```bash
+    # Example
+    infisical export --path="/path/to/folder" --env=dev
+    ```
+  </Accordion>
+
   <Accordion title="--tags">
     When working with tags, you can use this flag to filter and retrieve only secrets that are associated with a specific tag(s).
 
