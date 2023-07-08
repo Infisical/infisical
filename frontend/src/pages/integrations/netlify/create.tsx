@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useRouter } from "next/router";
+import { yupResolver } from "@hookform/resolvers/yup";
 import queryString from "query-string";
+import * as yup from "yup";
 
 import {
   Button,
@@ -26,12 +28,14 @@ const netlifyEnvironments = [
   { name: "Production", slug: "production" }
 ];
 
-interface NetlifyCreateIntegrationFormValues {
-  selectedSourceEnvironment: string;
-  targetApp: string;
-  targetEnvironment: string;
-  secretPath: string;
-}
+const formSchema = yup.object({
+  selectedSourceEnvironment: yup.string().required().label("Project Environment"),
+  secretPath: yup.string().required().label("Secrets Path"),
+  targetApp: yup.string().required().label("Netlify Site"),
+  targetEnvironment: yup.string().required().label("Netlify Context")
+});
+
+type FormData = yup.InferType<typeof formSchema>;
 
 export default function NetlifyCreateIntegrationPage() {
   const router = useRouter();
@@ -44,17 +48,21 @@ export default function NetlifyCreateIntegrationPage() {
     integrationAuthId: (integrationAuthId as string) ?? ""
   });
 
-  const { handleSubmit, setValue, getValues, control } =
-    useForm<NetlifyCreateIntegrationFormValues>({
-      defaultValues: {
-        selectedSourceEnvironment: "",
-        targetApp: "",
-        targetEnvironment: "",
-        secretPath: "/"
-      }
-    });
-
-  const [isLoading, setIsLoading] = useState(false);
+  const {
+    handleSubmit,
+    setValue,
+    getValues,
+    control,
+    formState: { isSubmitting }
+  } = useForm<FormData>({
+    defaultValues: {
+      selectedSourceEnvironment: "",
+      targetApp: "",
+      targetEnvironment: "",
+      secretPath: "/"
+    },
+    resolver: yupResolver(formSchema)
+  });
 
   useEffect(() => {
     if (workspace) {
@@ -73,11 +81,9 @@ export default function NetlifyCreateIntegrationPage() {
     }
   }, [integrationAuthApps]);
 
-  const handleButtonClick = async (data: NetlifyCreateIntegrationFormValues) => {
+  const handleButtonClick = async (data: FormData) => {
     const { targetApp, targetEnvironment, selectedSourceEnvironment, secretPath } = data;
     try {
-      setIsLoading(true);
-
       if (!integrationAuth?._id) return;
 
       await createIntegration({
@@ -98,7 +104,6 @@ export default function NetlifyCreateIntegrationPage() {
         secretPath
       });
 
-      setIsLoading(false);
       router.push(`/integrations/${localStorage.getItem("projectData.id")}`);
     } catch (err) {
       console.error(err);
@@ -118,8 +123,12 @@ export default function NetlifyCreateIntegrationPage() {
           <Controller
             name="selectedSourceEnvironment"
             control={control}
-            render={({ field }) => (
-              <FormControl label="Project Environment">
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Project Environment"
+                errorText={error?.message}
+                isError={Boolean(error)}
+              >
                 <Select
                   {...field}
                   onValueChange={field.onChange}
@@ -141,8 +150,8 @@ export default function NetlifyCreateIntegrationPage() {
           <Controller
             name="secretPath"
             control={control}
-            render={({ field }) => (
-              <FormControl label="Secrets Path">
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Secrets Path" errorText={error?.message} isError={Boolean(error)}>
                 <Input {...field} placeholder="Provide a path, default is /" />
               </FormControl>
             )}
@@ -151,8 +160,8 @@ export default function NetlifyCreateIntegrationPage() {
           <Controller
             name="targetApp"
             control={control}
-            render={({ field }) => (
-              <FormControl label="Netlify Site">
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Netlify Site" errorText={error?.message} isError={Boolean(error)}>
                 <Select
                   {...field}
                   onValueChange={field.onChange}
@@ -181,8 +190,12 @@ export default function NetlifyCreateIntegrationPage() {
           <Controller
             name="targetEnvironment"
             control={control}
-            render={({ field }) => (
-              <FormControl label="Netlify Context">
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Netlify Context"
+                errorText={error?.message}
+                isError={Boolean(error)}
+              >
                 <Select
                   {...field}
                   onValueChange={field.onChange}
@@ -205,7 +218,7 @@ export default function NetlifyCreateIntegrationPage() {
             type="submit"
             color="mineshaft"
             className="mt-4"
-            isLoading={isLoading}
+            isLoading={isSubmitting}
             isDisabled={integrationAuthApps.length === 0}
           >
             Create Integration
