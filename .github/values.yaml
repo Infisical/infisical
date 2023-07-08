@@ -1,5 +1,5 @@
 secretScanningGitApp:
-  enabled: true
+  enabled: false
   deploymentAnnotations:
     secrets.infisical.com/auto-reload: "true"
   image:
