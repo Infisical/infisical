@@ -70,7 +70,12 @@ var exportCmd = &cobra.Command{
 			util.HandleError(err, "Unable to parse flag")
 		}
 
-		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, WorkspaceId: projectId})
+		secretsPath, err := cmd.Flags().GetString("path")
+		if err != nil {
+			util.HandleError(err, "Unable to parse flag")
+		}
+
+		secrets, err := util.GetAllEnvironmentVariables(models.GetAllSecretsParameters{Environment: environmentName, InfisicalToken: infisicalToken, TagSlugs: tagSlugs, WorkspaceId: projectId, SecretsPath: secretsPath})
 		if err != nil {
 			util.HandleError(err, "Unable to fetch secrets")
 		}
@@ -83,7 +88,7 @@ var exportCmd = &cobra.Command{
 
 		var output string
 		if shouldExpandSecrets {
-			substitutions := util.SubstituteSecrets(secrets)
+			substitutions := util.ExpandSecrets(secrets, infisicalToken)
 			output, err = formatEnvs(substitutions, format)
 			if err != nil {
 				util.HandleError(err)
@@ -110,6 +115,7 @@ func init() {
 	exportCmd.Flags().String("token", "", "Fetch secrets using the Infisical Token")
 	exportCmd.Flags().StringP("tags", "t", "", "filter secrets by tag slugs")
 	exportCmd.Flags().String("projectId", "", "manually set the projectId to fetch secrets from")
+	exportCmd.Flags().String("path", "/", "get secrets within a folder path")
 }
 
 // Format according to the format flag

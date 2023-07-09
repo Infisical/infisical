@@ -13,6 +13,7 @@ import {
   INTEGRATION_GITLAB,
   INTEGRATION_HASHICORP_VAULT,
   INTEGRATION_HEROKU,
+  INTEGRATION_LARAVELFORGE,
   INTEGRATION_NETLIFY,
   INTEGRATION_NORTHFLANK,
   INTEGRATION_RAILWAY,
@@ -25,7 +26,7 @@ import {
 export interface IIntegrationAuth extends Document {
   _id: Types.ObjectId;
   workspace: Types.ObjectId;
-  integration: "heroku" | "vercel" | "netlify" | "github" | "gitlab" | "render" | "railway" | "flyio" | "azure-key-vault" | "circleci" | "travisci" | "supabase" | "aws-parameter-store" | "aws-secret-manager" | "checkly" | "cloudflare-pages" | "northflank";
+  integration: "heroku" | "vercel" | "netlify" | "github" | "gitlab" | "render" | "railway" | "flyio" | "azure-key-vault" | "laravel-forge" | "circleci" | "travisci" | "supabase" | "aws-parameter-store" | "aws-secret-manager" | "checkly" | "cloudflare-pages" | "northflank";
   teamId: string;
   accountId: string;
   url: string;
@@ -66,6 +67,7 @@ const integrationAuthSchema = new Schema<IIntegrationAuth>(
         INTEGRATION_RAILWAY,
         INTEGRATION_FLYIO,
         INTEGRATION_CIRCLECI,
+        INTEGRATION_LARAVELFORGE,
         INTEGRATION_TRAVISCI,
         INTEGRATION_SUPABASE,
         INTEGRATION_HASHICORP_VAULT,

@@ -100,7 +100,7 @@ var runCmd = &cobra.Command{
 		}
 
 		if shouldExpandSecrets {
-			secrets = util.SubstituteSecrets(secrets)
+			secrets = util.ExpandSecrets(secrets, infisicalToken)
 		}
 
 		secretsByKey := getSecretsByKeys(secrets)

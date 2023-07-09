@@ -11,6 +11,7 @@ import {
   INTEGRATION_GITLAB,
   INTEGRATION_HASHICORP_VAULT,
   INTEGRATION_HEROKU,
+  INTEGRATION_LARAVELFORGE,
   INTEGRATION_NETLIFY,
   INTEGRATION_NORTHFLANK,
   INTEGRATION_RAILWAY,
@@ -49,6 +50,7 @@ export interface IIntegration {
     | "railway"
     | "flyio"
     | "circleci"
+    | "laravel-forge"
     | "travisci"
     | "supabase"
     | "checkly"
@@ -138,6 +140,7 @@ const integrationSchema = new Schema<IIntegration>(
         INTEGRATION_RAILWAY,
         INTEGRATION_FLYIO,
         INTEGRATION_CIRCLECI,
+        INTEGRATION_LARAVELFORGE,
         INTEGRATION_TRAVISCI,
         INTEGRATION_SUPABASE,
         INTEGRATION_CHECKLY,

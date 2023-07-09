@@ -9,8 +9,6 @@ import {
 } from "../../types/secret";
 const { ValidationError } = mongoose.Error;
 import {
-  BadRequestError,
-  InternalServerError,
   ValidationError as RouteValidationError,
   UnauthorizedRequestError
 } from "../../utils/errors";
@@ -290,7 +288,7 @@ export const updateSecret = async (req: Request, res: Response) => {
   const { workspaceId, environmentName } = req.params;
   const secretModificationsRequested: ModifySecretRequestBody = req.body.secret;
 
-  const secretIdUserCanModify = await Secret.findOne({ workspace: workspaceId, environment: environmentName }, { _id: 1 });
+  await Secret.findOne({ workspace: workspaceId, environment: environmentName }, { _id: 1 });
 
   const sanitizedSecret: SanitizedSecretModify = {
     secretKeyCiphertext: secretModificationsRequested.secretKeyCiphertext,
