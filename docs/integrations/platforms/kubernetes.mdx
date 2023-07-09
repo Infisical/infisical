@@ -38,7 +38,7 @@ The operator can be install via [Helm](helm.sh) or [kubectl](https://github.com/
 </Tabs>
 
 ## Sync Infisical Secrets to your cluster
-To retrieve secrets from an Infisical project and save them as native Kubernetes secrets within a specific namespace, utilize the `InfisicalSecret` custom resource definition (CRD). 
+Once you have installed the operator to your cluster, you'll need to create a `InfisicalSecret` custom resource definition (CRD). 
 
 ```yaml example-infisical-secret-crd.yaml
 apiVersion: secrets.infisical.com/v1alpha1
@@ -150,6 +150,14 @@ You should specify the name and namespace of the Kubernetes secret that will hol
 The managed secret be should be created in the same namespace as the deployment that will use it.
 
 </Accordion>
+
+### Apply the Infisical CRD to your cluster 
+Once you have configured the Infisical CRD with the required fields, you can apply it to your cluster. 
+After applying, you should notice that the managed secret has been created in the desired namespace your specified.
+
+```
+kubectl apply -f example-infisical-secret-crd.yaml
+```
 
 ### Verify managed secret creation 
 
