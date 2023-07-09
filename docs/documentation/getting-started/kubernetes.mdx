@@ -61,14 +61,18 @@ metadata:
 spec:
   # The host that should be used to pull secrets from. If left empty, the value specified in Global configuration will be used
   hostAPI: https://app.infisical.com/api
+  resyncInterval:
   authentication:
-    serviceToken: 
-      serviceTokenSecretReference: # <-- The secret's namespaced name that holds the project token for authentication in step 1
+    serviceToken:
+      serviceTokenSecretReference:
         secretName: service-token
         secretNamespace: option
-  managedSecretReference: 
+      secretsScope:
+        envSlug: dev
+        secretsPath: "/"
+  managedSecretReference:
     secretName: managed-secret # <-- the name of kubernetes secret that will be created
-    secretNamespace: default # <-- in what namespace it will be created in
+    secretNamespace: default # <-- where the kubernetes secret should be created
 ```
 
 ```

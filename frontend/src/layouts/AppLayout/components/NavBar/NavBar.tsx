@@ -3,6 +3,7 @@
 import { Fragment, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
@@ -64,7 +65,7 @@ export interface IUser {
 export const Navbar = () => {
   const router = useRouter();
   const { subscription } = useSubscription();
-  
+
   const { currentOrg, orgs } = useOrganization();
   const { user } = useUser();
 
@@ -95,17 +96,47 @@ export const Navbar = () => {
     }
   };
 
+  function formatPlanSlug(slug: string) {
+    return slug
+      .replace(/(\b[a-z])/g, match => match.toUpperCase())
+      .replace(/-/g, " ");
+  }
+
+  const calculateRemainingDays = (date: number) => {
+    const now = new Date();
+    const endDate = new Date(date * 1000);
+    
+    const differenceInTime = endDate.getTime() - now.getTime();
+    const differenceInDays = Math.ceil(differenceInTime / (1000 * 3600 * 24));
+    
+    return differenceInDays;
+  }
+
+  const formatDate = (date: number) => {
+    const endDate = new Date(date * 1000);
+    const day: number = endDate.getDate();
+    const month: number = endDate.getMonth() + 1;
+    const year: number = endDate.getFullYear();
+    
+    const formattedDate: string = `${day}/${month}/${year}`;
+    const remainingDays: number = calculateRemainingDays(date);
+
+    return {
+      formattedDate,
+      remainingDays
+    };
+  }
+
   return (
-    <div className="z-[70] flex w-full flex-row justify-between border-b border-mineshaft-500 bg-mineshaft-900 text-white">
-      <div className="m-auto mx-4 flex items-center justify-start">
-        <div className="flex flex-row items-center">
-          <div className="flex justify-center py-4">
-            <Image src="/images/logotransparent.png" height={23} width={57} alt="logo" />
-          </div>
-          <a href="#" className="mx-2 text-2xl font-semibold text-white">
-            Infisical
-          </a>
+    <div className="z-[70] border-b border-mineshaft-500 bg-mineshaft-900 text-white">
+      <div className="flex w-full justify-between px-4">
+      <div className="flex flex-row items-center">
+        <div className="flex justify-center py-4">
+          <Image src="/images/logotransparent.png" height={23} width={57} alt="logo" />
         </div>
+        <a href="#" className="mx-2 text-2xl font-semibold text-white">
+          Infisical
+        </a>
       </div>
       <div className="relative z-40 mx-2 flex items-center justify-start">
         <a
@@ -190,7 +221,7 @@ export const Navbar = () => {
                         {" "}
                         {user?.firstName} {user?.lastName}
                       </p>
-                      <p className="px-2 pb-1 text-xs text-gray-400"> {user?.email}</p>
+                      <p className="px-2 pb-1 text-xs text-gray-400">{user?.email}</p>
                     </div>
                     <FontAwesomeIcon
                       icon={faGear}
@@ -314,6 +345,15 @@ export const Navbar = () => {
           </Transition>
         </Menu>
       </div>
+      </div>
+      {subscription && subscription.status === "trialing" && subscription.trial_end && (
+        <div className="w-full mx-auto border-t border-mineshaft-500">
+          <p className="text-center py-4 text-sm">
+            {`Currently trialing the ${formatPlanSlug(subscription.slug)} plan until ${formatDate(subscription.trial_end).formattedDate} - ${formatDate(subscription.trial_end).remainingDays} day(s) left. `}
+            <Link href={`/settings/billing/${localStorage.getItem("projectData.id")}`}>Add a card to avoid being downgraded to the Starter plan afterward &rarr;</Link>
+          </p>
+        </div>
+      )}
     </div>
   );
 };
