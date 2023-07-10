@@ -28,6 +28,30 @@ export const getOrganizationPlan = async (req: Request, res: Response) => {
 }
 
 /**
+ * Return checkout url for pro trial
+ * @param req 
+ * @param res 
+ * @returns 
+ */
+export const startOrganizationTrial = async (req: Request, res: Response) => {
+    const { organizationId } = req.params;
+    const { success_url } = req.body;
+
+    const { data: { url } } = await licenseServerKeyRequest.post(
+        `${await getLicenseServerUrl()}/api/license-server/v1/customers/${req.organization.customerId}/session/trial`,
+        {
+            success_url
+        }
+    ); 
+    
+    EELicenseService.delPlan(organizationId);
+    
+    return res.status(200).send({
+        url
+    });
+}
+
+/**
  * Return the organization's current plan's billing info
  * @param req 
  * @param res 

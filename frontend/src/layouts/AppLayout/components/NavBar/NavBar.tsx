@@ -3,7 +3,6 @@
 import { Fragment, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
@@ -22,7 +21,9 @@ import {TFunction} from "i18next";
 
 import guidGenerator from "@app/components/utilities/randomId";
 import { useOrganization, useSubscription,useUser } from "@app/context";
-import { useLogoutUser } from "@app/hooks/api";
+import { 
+  useGetOrgTrialUrl,
+  useLogoutUser} from "@app/hooks/api";
 
 const supportOptions = (t: TFunction) => [
   [
@@ -67,6 +68,7 @@ export const Navbar = () => {
   const { subscription } = useSubscription();
 
   const { currentOrg, orgs } = useOrganization();
+  const { mutateAsync } = useGetOrgTrialUrl();
   const { user } = useUser();
 
   const logout = useLogoutUser();
@@ -95,37 +97,6 @@ export const Navbar = () => {
       console.error(error);
     }
   };
-
-  function formatPlanSlug(slug: string) {
-    return slug
-      .replace(/(\b[a-z])/g, match => match.toUpperCase())
-      .replace(/-/g, " ");
-  }
-
-  const calculateRemainingDays = (date: number) => {
-    const now = new Date();
-    const endDate = new Date(date * 1000);
-    
-    const differenceInTime = endDate.getTime() - now.getTime();
-    const differenceInDays = Math.ceil(differenceInTime / (1000 * 3600 * 24));
-    
-    return differenceInDays;
-  }
-
-  const formatDate = (date: number) => {
-    const endDate = new Date(date * 1000);
-    const day: number = endDate.getDate();
-    const month: number = endDate.getMonth() + 1;
-    const year: number = endDate.getFullYear();
-    
-    const formattedDate: string = `${day}/${month}/${year}`;
-    const remainingDays: number = calculateRemainingDays(date);
-
-    return {
-      formattedDate,
-      remainingDays
-    };
-  }
 
   return (
     <div className="z-[70] border-b border-mineshaft-500 bg-mineshaft-900 text-white">
@@ -346,12 +317,25 @@ export const Navbar = () => {
         </Menu>
       </div>
       </div>
-      {subscription && subscription.status === "trialing" && subscription.trial_end && (
-        <div className="w-full mx-auto border-t border-mineshaft-500">
-          <p className="text-center py-4 text-sm">
-            {`Currently trialing the ${formatPlanSlug(subscription.slug)} plan until ${formatDate(subscription.trial_end).formattedDate} - ${formatDate(subscription.trial_end).remainingDays} day(s) left. `}
-            <Link href={`/settings/billing/${localStorage.getItem("projectData.id")}`}>Add a card to avoid being downgraded to the Starter plan afterward &rarr;</Link>
-          </p>
+      {subscription && subscription.slug === "starter" && !subscription.has_used_trial && (
+        <div className="w-full mx-auto border-t border-mineshaft-500 text-center">
+          <button 
+            type="button"
+            onClick={async () => {
+              if (!subscription || !currentOrg) return;
+      
+              // direct user to start pro trial
+              const url = await mutateAsync({
+                orgId: currentOrg._id,
+                success_url: window.location.href
+              });
+              
+              window.location.href = url;
+            }}
+            className="text-center py-4 text-sm mx-auto"
+          >
+              You are currently on the <span className="font-semibold">Starter</span> plan. Unlock the full power of Infisical on the <span className="font-semibold">Pro Free Trial &rarr;</span>
+          </button>
         </div>
       )}
     </div>
