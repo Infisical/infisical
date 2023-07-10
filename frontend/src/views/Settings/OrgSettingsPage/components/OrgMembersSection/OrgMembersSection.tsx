@@ -21,8 +21,8 @@ export const OrgMembersSection = () => {
     const isMoreMembersAllowed = subscription?.memberLimit ? (subscription.membersUsed < subscription.memberLimit) : true;
 
     return (
-        <div className="mb-6 p-4 bg-mineshaft-900 max-w-screen-lg rounded-lg border border-mineshaft-600">
-            <div className="flex justify-between mb-8">
+        <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
+            <div className="flex justify-between mb-4">
                 <p className="text-xl font-semibold text-mineshaft-100">
                     Organization members
                 </p>

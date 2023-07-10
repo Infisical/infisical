@@ -54,7 +54,7 @@ export const ProjectIndexSecretsSection = () => {
   };
 
     return (!isBlindIndexedLoading && !isBlindIndexed) ? (
-        <div className="mb-6 p-4 bg-mineshaft-900 max-w-screen-lg rounded-lg border border-mineshaft-600">
+        <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
             <p className="mb-3 text-xl font-semibold">Blind Indices</p>
             <p className="text-gray-400 mb-8">
                 Your project, created before the introduction of blind indexing, contains unindexed secrets. To access individual secrets by name through the SDK and public API, please enable blind indexing.

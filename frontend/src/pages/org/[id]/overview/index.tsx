@@ -1,51 +1,30 @@
+
+import crypto from "crypto";
+
 import { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import Head from "next/head";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { faSlack } from "@fortawesome/free-brands-svg-icons";
-import { faArrowRight, faCheckCircle, faHandPeace, faMagnifyingGlass, faNetworkWired, faPlug, faPlus, faStar, faUserPlus } from "@fortawesome/free-solid-svg-icons";
+import { faFolderOpen } from "@fortawesome/free-regular-svg-icons";
+import { faArrowRight, faCheckCircle, faHandPeace, faMagnifyingGlass, faNetworkWired, faPlug, faPlus, faUserPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 
-import AddProjectMemberDialog from "@app/components/basic/dialog/AddProjectMemberDialog";
-import ProjectUsersTable from "@app/components/basic/table/ProjectUsersTable";
-import guidGenerator from "@app/components/utilities/randomId";
-import { useWorkspace } from "@app/context";
-import { Workspace } from "@app/hooks/api/workspace/types";
+import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
+import onboardingCheck from "@app/components/utilities/checks/OnboardingCheck";
+import { Button, Checkbox, FormControl, Input, Modal, ModalContent, UpgradePlanModal } from "@app/components/v2";
+import { TabsObject } from "@app/components/v2/Tabs";
+import { useSubscription, useUser, useWorkspace } from "@app/context";
+import { fetchOrgUsers, useAddUserToWs, useCreateWorkspace, useUploadWsKey } from "@app/hooks/api";
+import { usePopUp } from "@app/hooks/usePopUp";
 
-import onboardingCheck from "~/components/utilities/checks/OnboardingCheck";
-import { TabsObject } from "~/components/v2/Tabs";
-
-import {
-  decryptAssymmetric,
-  encryptAssymmetric
-} from "../../components/utilities/cryptography/crypto";
-import getOrganizationUsers from "../api/organization/GetOrgUsers";
-import getUser from "../api/user/getUser";
-import registerUserAction from "../api/userActions/registerUserAction";
-// import DeleteUserDialog from '@app/components/basic/dialog/DeleteUserDialog';
-import addUserToWorkspace from "../api/workspace/addUserToWorkspace";
-import getWorkspaceUsers from "../api/workspace/getWorkspaceUsers";
-import uploadKeys from "../api/workspace/uploadKeys";
-
-interface UserProps {
-  firstName: string;
-  lastName: string;
-  email: string;
-  _id: string;
-  publicKey: string;
-}
-
-interface MembershipProps {
-  deniedPermissions: any[];
-  user: UserProps;
-  inviteEmail: string;
-  role: string;
-  status: string;
-  _id: string;
-}
+import { encryptAssymmetric } from "../../../../components/utilities/cryptography/crypto";
+import registerUserAction from "../../../api/userActions/registerUserAction";
 
 const features = [{
   "_id": 0,
@@ -154,131 +133,110 @@ const learningItem = ({
   );
 };
 
+const formSchema = yup.object({
+  name: yup.string().required().label("Project Name").trim(),
+  addMembers: yup.bool().required().label("Add Members")
+});
+
+type TAddProjectFormData = yup.InferType<typeof formSchema>;
+
 // #TODO: Update all the workspaceIds
 
 export default function Organization() {
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  // let [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  // let [userIdToBeDeleted, setUserIdToBeDeleted] = useState(false);
-  const [email, setEmail] = useState("");
-  const [personalEmail, setPersonalEmail] = useState("");
-  const [searchUsers, setSearchUsers] = useState("");
-
   const { t } = useTranslation();
 
   const router = useRouter();
-  const workspaceId = router.query.id as string;
 
-  const [userList, setUserList] = useState<any[]>([]);
-  const [isUserListLoading, setIsUserListLoading] = useState(true);
-  const [orgUserList, setOrgUserList] = useState<any[]>([]);
-  const { workspaces, isLoading: isWorkspaceLoading } = useWorkspace();
+  const { workspaces, 
+    // isLoading: isWorkspaceLoading 
+  } = useWorkspace();
+  const currentOrg = String(router.query.id);
+  const { createNotification } = useNotificationContext();
+  const addWsUser = useAddUserToWs();
+  
+  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+    "addNewWs",
+    "upgradePlan"
+  ] as const);
+  const {
+    control,
+    formState: { isSubmitting },
+    reset,
+    handleSubmit
+  } = useForm<TAddProjectFormData>({
+    resolver: yupResolver(formSchema)
+  });
 
-  useEffect(() => {
-    (async () => {
-      const user = await getUser();
-      setPersonalEmail(user.email);
-
-      // This part quiries the current users of a project
-      const workspaceUsers = await getWorkspaceUsers({
-        workspaceId
-      });
-      const tempUserList = workspaceUsers.map((membership: MembershipProps) => ({
-        key: guidGenerator(),
-        firstName: membership.user?.firstName,
-        lastName: membership.user?.lastName,
-        email: membership.user?.email === null ? membership.inviteEmail : membership.user?.email,
-        role: membership?.role,
-        status: membership?.status,
-        userId: membership.user?._id,
-        membershipId: membership._id,
-        deniedPermissions: membership.deniedPermissions,
-        publicKey: membership.user?.publicKey
-      }));
-      setUserList(tempUserList);
-
-      setIsUserListLoading(false);
-
-      // This is needed to know wha users from an org (if any), we are able to add to a certain project
-      const orgUsers = await getOrganizationUsers({
-        orgId: String(localStorage.getItem("orgData.id"))
-      });
-      setOrgUserList(orgUsers);
-      setEmail(
-        orgUsers
-          ?.filter((membership: MembershipProps) => membership.status === "accepted")
-          .map((membership: MembershipProps) => membership.user.email)
-          .filter(
-            (usEmail: string) =>
-              !tempUserList?.map((user1: UserProps) => user1.email).includes(usEmail)
-          )[0]
-      );
-    })();
-  }, []);
-
-  const closeAddModal = () => {
-    setIsAddOpen(false);
-  };
-
-  const openAddModal = () => {
-    setIsAddOpen(true);
-  };
-
-  // function closeDeleteModal() {
-  //   setIsDeleteOpen(false);
-  // }
-
-  // function deleteMembership(userId) {
-  //   deleteUserFromWorkspace(userId, router.query.id)
-  // }
-
-  // function openDeleteModal() {
-  //   setIsDeleteOpen(true);
-  // }
-
-  const submitAddModal = async () => {
-    const result = await addUserToWorkspace(email, workspaceId);
-    if (result?.invitee && result?.latestKey) {
-      const PRIVATE_KEY = localStorage.getItem("PRIVATE_KEY") as string;
-
-      // assymmetrically decrypt symmetric key with local private key
-      const key = decryptAssymmetric({
-        ciphertext: result.latestKey.encryptedKey,
-        nonce: result.latestKey.nonce,
-        publicKey: result.latestKey.sender.publicKey,
-        privateKey: PRIVATE_KEY
-      });
-
-      const { ciphertext, nonce } = encryptAssymmetric({
-        plaintext: key,
-        publicKey: result.invitee.publicKey,
-        privateKey: PRIVATE_KEY
-      });
-
-      uploadKeys(workspaceId, result.invitee._id, ciphertext, nonce);
-    }
-    setEmail("");
-    setIsAddOpen(false);
-    router.rel
-    oad();
-  };
   const [hasUserClickedSlack, setHasUserClickedSlack] = useState(false);
   const [hasUserClickedIntro, setHasUserClickedIntro] = useState(false);
-  const [hasUserStarred, setHasUserStarred] = useState(false);
   const [hasUserPushedSecrets, setHasUserPushedSecrets] = useState(false);
   const [usersInOrg, setUsersInOrg] = useState(false);
+  const [searchFilter, setSearchFilter] = useState("");
+  const createWs = useCreateWorkspace();
+  const { user } = useUser();
+  const uploadWsKey = useUploadWsKey();
+
+  const onCreateProject = async ({ name, addMembers }: TAddProjectFormData) => {
+    // type check
+    if (!currentOrg) return;
+    try {
+      const {
+        data: {
+          workspace: { _id: newWorkspaceId }
+        }
+      } = await createWs.mutateAsync({
+        organizationId: currentOrg,
+        workspaceName: name
+      });
+
+      const randomBytes = crypto.randomBytes(16).toString("hex");
+      const PRIVATE_KEY = String(localStorage.getItem("PRIVATE_KEY"));
+      const { ciphertext, nonce } = encryptAssymmetric({
+        plaintext: randomBytes,
+        publicKey: user.publicKey,
+        privateKey: PRIVATE_KEY
+      });
+
+      await uploadWsKey.mutateAsync({
+        encryptedKey: ciphertext,
+        nonce,
+        userId: user?._id,
+        workspaceId: newWorkspaceId
+      });
+
+      if (addMembers) {
+        // not using hooks because need at this point only
+        const orgUsers = await fetchOrgUsers(currentOrg);
+        orgUsers.forEach(({ status, user: orgUser }) => {
+          // skip if status of org user is not accepted
+          // this orgUser is the person who created the ws
+          if (status !== "accepted" || user.email === orgUser.email) return;
+          addWsUser.mutate({ email: orgUser.email, workspaceId: newWorkspaceId });
+        });
+      }
+      createNotification({ text: "Workspace created", type: "success" });
+      handlePopUpClose("addNewWs");
+      router.push(`/project/${newWorkspaceId}/secrets`);
+    } catch (err) {
+      console.error(err);
+      createNotification({ text: "Failed to create workspace", type: "error" });
+    }
+  };
+
+  const { subscription } = useSubscription();
+
+  const isAddingProjectsAllowed = subscription?.workspaceLimit ? (subscription.workspacesUsed < subscription.workspaceLimit) : true;
 
   useEffect(() => {
     onboardingCheck({
       setHasUserClickedIntro,
       setHasUserClickedSlack,
       setHasUserPushedSecrets,
-      setHasUserStarred,
       setUsersInOrg
     });
   }, []);
 
-  return userList ? (
+  return (
     <div className="flex max-w-7xl mx-auto flex-col justify-start bg-bunker-800 md:h-screen">
       <Head>
         <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
@@ -286,15 +244,50 @@ export default function Organization() {
       </Head>
       <div className="flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl mb-4">
         <p className="mr-4 font-semibold text-white">Projects</p>
-        <div className="mt-4 w-full grid grid-flow-dense gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(256px, 4fr))" }}>
-          {workspaces.map(workspace => <div key={workspace._id} className="h-40 w-72 rounded-md bg-mineshaft-800 border border-mineshaft-600 p-4 flex flex-col justify-between">
+        <div className="w-full flex flex-row mt-6">
+          <Input
+            className="h-[2.3rem] text-sm bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
+            placeholder="Search by project name..."
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          />
+          <Button
+            colorSchema="primary"
+            leftIcon={<FontAwesomeIcon icon={faPlus} />}
+            onClick={() => {
+              if (isAddingProjectsAllowed) {
+                handlePopUpOpen("addNewWs")
+              } else {
+                handlePopUpOpen("upgradePlan");
+              }
+            }}
+            className="ml-2"
+          >
+            Add New Project
+          </Button>
+        </div>
+        <div className="mt-4 w-full grid gap-4 grid-cols-3 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {workspaces.filter(ws => ws.name.toLowerCase().includes(searchFilter.toLowerCase())).map(workspace => <div key={workspace._id} className="h-32 lg:h-40 min-w-72 rounded-md bg-mineshaft-800 border border-mineshaft-600 p-4 flex flex-col justify-between">
             <div className="text-lg text-mineshaft-100 mt-0">{workspace.name}</div>
-            <div className="text-sm text-mineshaft-300 mt-0 pb-6">{(workspace.environments?.length || 0)} environments</div>
-            <Link href="/dashbaord">
+            <div className="text-sm text-mineshaft-300 mt-0 lg:pb-6">{(workspace.environments?.length || 0)} environments</div>
+            <Link href={`/project/${workspace._id}/secrets`}>
               <div className="group cursor-default ml-auto hover:bg-primary-800/20 text-sm text-mineshaft-300 hover:text-mineshaft-200 bg-mineshaft-900 py-2 px-4 rounded-full w-max border border-mineshaft-600 hover:border-primary-500/80">Explore <FontAwesomeIcon icon={faArrowRight} className="pl-1.5 pr-0.5 group-hover:pl-2 group-hover:pr-0 duration-200" /></div>
             </Link>
           </div>)}
         </div>
+        {workspaces.length === 0 && ( 
+          <div className="w-full rounded-md bg-mineshaft-800 border border-mineshaft-700 px-4 py-6 text-mineshaft-300 text-base">
+            <FontAwesomeIcon icon={faFolderOpen} className="w-full text-center text-5xl mb-4 mt-2 text-mineshaft-400" />
+            <div className="text-center font-light">
+              You are not part of any projects in this organization yet. When you are, they will appear
+              here.
+            </div>
+            <div className="mt-0.5 text-center font-light">
+              Create a new project, or ask other organization members to give you necessary permissions.
+            </div>
+          </div>
+        )}
       </div>
       <div className="flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl mb-4">
         <p className="mr-4 font-semibold text-white mb-4">Onboarding Guide</p>
@@ -314,9 +307,9 @@ export default function Organization() {
           icon: faPlus,
           time: "1 min",
           userAction: "first_time_secrets_pushed",
-          link: `/dashboard/${router.query.id}`
+          link: `/project/${workspaces[0]?._id}/secrets`
         })}
-        <div className="group text-mineshaft-100 relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-bunker-500 pl-2 pr-2 pt-4 pb-2 shadow-xl duration-200">
+        <div className="group text-mineshaft-100 relative mb-3 flex h-full w-full cursor-default flex-col items-center justify-between overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-800 pl-2 pr-2 pt-4 pb-2 shadow-xl duration-200">
           <div className="mb-4 flex w-full flex-row items-center pr-4">
             <div className="mr-4 flex w-full flex-row items-center">
               <FontAwesomeIcon icon={faNetworkWired} className="mx-2 w-16 text-4xl" />
@@ -362,7 +355,7 @@ export default function Organization() {
           icon: faSlack,
           time: "1 min",
           userAction: "slack_cta_clicked",
-          link: "https://join.slack.com/t/infisical-users/shared_invite/zt-1wehzfnzn-1aMo5JcGENJiNAC2SD8Jlg"
+          link: "https://join.slack.com/t/infisical-users/shared_invite/zt-1ye0tm8ab-899qZ6ZbpfESuo6TEikyOQ"
         })}
         {/* <div className="mt-4 w-full grid grid-flow-dense gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(256px, 4fr))" }}>
           {workspaces.map(workspace => <div key={workspace._id} className="h-40 w-72 rounded-md bg-mineshaft-800 border border-mineshaft-600 p-4 flex flex-col justify-between">
@@ -381,51 +374,89 @@ export default function Organization() {
             <div className="text-[15px] font-light text-mineshaft-300 mb-4 mt-2">{feature.description}</div>
             <div className="w-full flex items-center">
               <div className="text-mineshaft-300 text-[15px] font-light">Setup time: 20 min</div>
-              <Link href="/dashbaord">
-                <div className="group cursor-default ml-auto hover:bg-primary-800/20 text-sm text-mineshaft-300 hover:text-mineshaft-200 bg-mineshaft-900 py-2 px-4 rounded-full w-max border border-mineshaft-600 hover:border-primary-500/80">Learn more <FontAwesomeIcon icon={faArrowRight} className="pl-1.5 pr-0.5 group-hover:pl-2 group-hover:pr-0 duration-200" /></div>
-              </Link>
+              <a
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group cursor-default ml-auto hover:bg-primary-800/20 text-sm text-mineshaft-300 hover:text-mineshaft-200 bg-mineshaft-900 py-2 px-4 rounded-full w-max border border-mineshaft-600 hover:border-primary-500/80"
+                href="https://infisical.com/docs/documentation/getting-started/kubernetes"
+              >
+                Learn more <FontAwesomeIcon icon={faArrowRight} className="pl-1.5 pr-0.5 group-hover:pl-2 group-hover:pr-0 duration-200"/>
+              </a>
             </div>
           </div>)}
         </div>
       </div>
-      <AddProjectMemberDialog
-        isOpen={isAddOpen}
-        closeModal={closeAddModal}
-        submitModal={submitAddModal}
-        email={email}
-        data={orgUserList
-          ?.filter((membership: MembershipProps) => membership.status === "accepted")
-          .map((membership: MembershipProps) => membership.user.email)
-          .filter(
-            (orgEmail) => !userList?.map((user1: UserProps) => user1.email).includes(orgEmail)
-          )}
-        setEmail={setEmail}
+      <Modal
+        isOpen={popUp.addNewWs.isOpen}
+        onOpenChange={(isModalOpen) => {
+          handlePopUpToggle("addNewWs", isModalOpen);
+          reset();
+        }}
+      >
+        <ModalContent
+          title="Create a new project"
+          subTitle="This project will contain your secrets and configurations."
+        >
+          <form onSubmit={handleSubmit(onCreateProject)}>
+            <Controller
+              control={control}
+              name="name"
+              defaultValue=""
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Project Name"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="Type your project name" />
+                </FormControl>
+              )}
+            />
+            <div className="mt-4 pl-1">
+              <Controller
+                control={control}
+                name="addMembers"
+                defaultValue
+                render={({ field: { onBlur, value, onChange } }) => (
+                  <Checkbox
+                    id="add-project-layout"
+                    isChecked={value}
+                    onCheckedChange={onChange}
+                    onBlur={onBlur}
+                  >
+                    Add all members of my organization to this project
+                  </Checkbox>
+                )}
+              />
+            </div>
+            <div className="mt-7 flex items-center">
+              <Button
+                isDisabled={isSubmitting}
+                isLoading={isSubmitting}
+                key="layout-create-project-submit"
+                className="mr-4"
+                type="submit"
+              >
+                Create Project
+              </Button>
+              <Button
+                key="layout-cancel-create-project"
+                onClick={() => handlePopUpClose("addNewWs")}
+                variant="plain"
+                colorSchema="secondary"
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </ModalContent>
+      </Modal>
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        text="You have exceeded the number of projects allowed on the free plan."
       />
       {/* <DeleteUserDialog isOpen={isDeleteOpen} closeModal={closeDeleteModal} submitModal={deleteMembership} userIdToBeDeleted={userIdToBeDeleted}/> */}
-      {/* <div className="absolute right-4 top-36 flex w-full flex-row items-start px-6 pb-1">
-        <div className="flex w-full max-w-sm flex flex-row ml-auto">
-          <Input
-            className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
-            placeholder="Search by users..."
-            value={searchUsers}
-            onChange={(e) => setSearchUsers(e.target.value)}
-            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          />
-        </div>
-        <div className="ml-2 flex min-w-max flex-row items-start justify-start">
-          <Button
-            text={String(t("section.members.add-member"))}
-            onButtonPressed={openAddModal}
-            color="mineshaft"
-            size="md"
-            icon={faPlus}
-          />
-        </div>
-      </div> */}
-    </div>
-  ) : (
-    <div className="relative z-10 mr-auto ml-2 flex h-full w-10/12 flex-col items-center justify-center bg-bunker-800">
-      <Image src="/images/loading/loading.gif" height={70} width={120} alt="loading animation" />
     </div>
   );
 }

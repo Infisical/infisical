@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 
 import { useNotificationContext } from "@app/components/context/Notifications/NotificationProvider";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { useWorkspace } from "@app/context";
+import { useOrganization, useWorkspace } from "@app/context";
 import { useToggle } from "@app/hooks";
 import {
     useDeleteWorkspace
@@ -14,7 +14,8 @@ export const DeleteProjectSection = () => {
     const { t } = useTranslation();
     const router = useRouter();
     const { createNotification } = useNotificationContext();
-    const { currentWorkspace, workspaces } = useWorkspace();
+    const { currentWorkspace } = useWorkspace();
+    const { currentOrg } = useOrganization()
     const [isDeleting, setIsDeleting] = useToggle();
     const [deleteProjectInput, setDeleteProjectInput] = useState("");
     const deleteWorkspace = useDeleteWorkspace();
@@ -26,12 +27,9 @@ export const DeleteProjectSection = () => {
       await deleteWorkspace.mutateAsync({ 
         workspaceID: currentWorkspace?._id
     });
-      // redirect user to first workspace user is part of
-      const ws = workspaces.find(({ _id }) => _id !== currentWorkspace?._id);
-      if (!ws) {
-        router.push("/noprojects");
-      }
-      router.push(`/dashboard/${ws?._id}`);
+      // redirect user to the org overview
+      router.push(`/org/${currentOrg?._id}/overview`);
+
       createNotification({
         text: "Successfully deleted workspace",
         type: "success"
@@ -48,7 +46,7 @@ export const DeleteProjectSection = () => {
   };
 
     return (
-        <div className="mb-6 p-4 bg-mineshaft-900 max-w-screen-lg rounded-lg border border-red">
+        <div className="mb-6 p-4 bg-mineshaft-900 rounded-lg border border-red">
           <p className="mb-3 text-xl font-semibold text-red">{t("settings.project.danger-zone")}</p>
           <p className="text-gray-400 mb-8">{t("settings.project.danger-zone-note")}</p>
           <div className="mr-auto mt-4 max-h-28 w-full max-w-md">

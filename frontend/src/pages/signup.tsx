@@ -16,7 +16,7 @@ import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
 import { useProviderAuth } from "@app/hooks/useProviderAuth";
 
 import checkEmailVerificationCode from "./api/auth/CheckEmailVerificationCode";
-import getWorkspaces from "./api/workspace/getWorkspaces";
+import getOrganizations from "./api/organization/getOrgs";
 
 /**
  * @returns the signup page
@@ -48,8 +48,8 @@ export default function SignUp() {
   useEffect(() => {
     const tryAuth = async () => {
       try {
-        const userWorkspaces = await getWorkspaces();
-        router.push(`/dashboard/${userWorkspaces[0]._id}`);
+        const userOrgs = await getOrganizations();
+        router.push(`/org/${userOrgs[0]._id}/overview`);
       } catch (error) {
         console.log("Error - Not logged in yet");
       }
@@ -90,8 +90,8 @@ export default function SignUp() {
     }
 
     if (!serverDetails?.emailConfigured && step === 5) {
-      getWorkspaces().then((userWorkspaces) => {
-        router.push(`/dashboard/${userWorkspaces[0]._id}`);
+      getOrganizations().then((userOrgs) => {
+        router.push(`/org/${userOrgs[0]._id}/overview`);
       });
     }
   }, [step]);

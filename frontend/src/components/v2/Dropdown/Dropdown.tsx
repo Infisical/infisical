@@ -21,7 +21,7 @@ export const DropdownMenuContent = forwardRef<HTMLDivElement, DropdownMenuConten
           {...props}
           ref={forwardedRef}
           className={twMerge(
-            "min-w-[220px] bg-bunker will-change-auto text-bunker-300 rounded-md shadow data-[side=top]:animate-slideDownAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=bottom]:animate-slideUpAndFade",
+            "min-w-[220px] z-30 bg-mineshaft-900 border border-mineshaft-600 will-change-auto text-bunker-300 rounded-md shadow data-[side=top]:animate-slideDownAndFade data-[side=left]:animate-slideRightAndFade data-[side=right]:animate-slideLeftAndFade data-[side=bottom]:animate-slideUpAndFade",
             className
           )}
         >
@@ -62,7 +62,7 @@ export const DropdownMenuItem = <T extends ElementType = "button">({
   <DropdownMenuPrimitive.Item
     {...props}
     className={twMerge(
-      "text-sm block font-inter px-4 py-2 data-[highlighted]:bg-gray-700 outline-none cursor-pointer",
+      "text-xs text-mineshaft-200 block font-inter px-4 py-2 data-[highlighted]:bg-mineshaft-700 rounded-sm outline-none cursor-pointer",
       className
     )}
   >

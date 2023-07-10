@@ -21,7 +21,7 @@ export const SessionsSection = () => {
     }
     
     return (
-        <div className="p-4 mb-6 bg-mineshaft-900 max-w-screen-lg rounded-lg border border-mineshaft-600">
+        <div className="p-4 mb-6 bg-mineshaft-900 rounded-lg border border-mineshaft-600">
             <div className="flex justify-between mb-8">
                 <h2 className="text-xl font-semibold flex-1 text-mineshaft-100">
                     Sessions

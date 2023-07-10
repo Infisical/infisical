@@ -9,20 +9,19 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Button from "@app/components/basic/buttons/Button";
 import AddProjectMemberDialog from "@app/components/basic/dialog/AddProjectMemberDialog";
 import ProjectUsersTable from "@app/components/basic/table/ProjectUsersTable";
-import NavHeader from "@app/components/navigation/NavHeader";
 import guidGenerator from "@app/components/utilities/randomId";
 import { Input } from "@app/components/v2";
 
 import {
   decryptAssymmetric,
   encryptAssymmetric
-} from "../../components/utilities/cryptography/crypto";
-import getOrganizationUsers from "../api/organization/GetOrgUsers";
-import getUser from "../api/user/getUser";
+} from "../../../../components/utilities/cryptography/crypto";
+import getOrganizationUsers from "../../../api/organization/GetOrgUsers";
+import getUser from "../../../api/user/getUser";
 // import DeleteUserDialog from '@app/components/basic/dialog/DeleteUserDialog';
-import addUserToWorkspace from "../api/workspace/addUserToWorkspace";
-import getWorkspaceUsers from "../api/workspace/getWorkspaceUsers";
-import uploadKeys from "../api/workspace/uploadKeys";
+import addUserToWorkspace from "../../../api/workspace/addUserToWorkspace";
+import getWorkspaceUsers from "../../../api/workspace/getWorkspaceUsers";
+import uploadKeys from "../../../api/workspace/uploadKeys";
 
 interface UserProps {
   firstName: string;
@@ -149,14 +148,11 @@ export default function Users() {
   };
 
   return userList ? (
-    <div className="flex max-w-[calc(100vw-240px)] flex-col justify-start bg-bunker-800 md:h-screen">
+    <div className="flex max-w-7xl mx-auto flex-col justify-start bg-bunker-800 md:h-screen">
       <Head>
         <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Head>
-      <div className="ml-6">
-        <NavHeader pageName={t("settings.members.title")} isProjectRelated />
-      </div>
       <div className="flex flex-col items-start justify-start px-6 py-6 pb-0 text-3xl mb-4">
         <p className="mr-4 font-semibold text-white">{t("settings.members.title")}</p>
       </div>
@@ -174,7 +170,7 @@ export default function Users() {
         setEmail={setEmail}
       />
       {/* <DeleteUserDialog isOpen={isDeleteOpen} closeModal={closeDeleteModal} submitModal={deleteMembership} userIdToBeDeleted={userIdToBeDeleted}/> */}
-      <div className="absolute right-4 top-36 flex w-full flex-row items-start px-6 pb-1">
+      <div className="flex w-full flex-row items-start px-6 pb-1">
         <div className="flex w-full max-w-sm flex flex-row ml-auto">
           <Input
             className="h-[2.3rem] bg-mineshaft-800 placeholder-mineshaft-50 duration-200 focus:bg-mineshaft-700/80"
@@ -194,7 +190,7 @@ export default function Users() {
           />
         </div>
       </div>
-      <div className="no-scrollbar::-webkit-scrollbar block overflow-x-scroll px-6 pb-6 no-scrollbar">
+      <div className="block overflow-x-auto px-6 pb-6">
         <ProjectUsersTable
           userData={userList}
           changeData={setUserList}

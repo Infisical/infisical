@@ -36,7 +36,7 @@ import {
   UpgradePlanModal
 } from "@app/components/v2";
 import { leaveConfirmDefaultMessage } from "@app/const";
-import { useSubscription,useWorkspace } from "@app/context";
+import { useOrganization, useSubscription,useWorkspace } from "@app/context";
 import { useLeaveConfirm, usePopUp, useToggle } from "@app/hooks";
 import {
   useBatchSecretsOp,
@@ -127,12 +127,13 @@ export const DashboardPage = ({ envFromTop }: { envFromTop: string }) => {
   const isRollbackMode = Boolean(snapshotId);
 
   const { currentWorkspace, isLoading } = useWorkspace();
+  const { currentOrg } = useOrganization();
   const workspaceId = currentWorkspace?._id as string;
   const { data: latestFileKey } = useGetUserWsKey(workspaceId);
 
   useEffect(() => {
     if (!isLoading && !workspaceId && router.isReady) {
-      router.push("/noprojects");
+      router.push(`/org/${currentOrg?._id}/overview`);
     }
   }, [isLoading, workspaceId, router.isReady]);
 

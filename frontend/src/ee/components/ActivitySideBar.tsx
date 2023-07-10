@@ -129,7 +129,7 @@ const ActivitySideBar = ({ toggleSidebar, currentAction }: SideBarProps) => {
     <div
       className={`absolute border-l border-mineshaft-500 ${
         isLoading ? "bg-bunker-800" : "bg-bunker"
-      } fixed top-14 right-0 z-40 flex h-[calc(100vh-56px)] w-96 flex-col justify-between shadow-xl`}
+      } fixed right-0 z-40 flex h-[calc(100vh)] w-96 flex-col justify-between shadow-xl`}
     >
       {isLoading ? (
         <div className="mb-8 flex h-full items-center justify-center">

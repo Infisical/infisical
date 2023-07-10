@@ -51,7 +51,7 @@ export const SecuritySection = () => {
   return (
     <>
     <form>
-      <div className="p-4 mb-6 bg-mineshaft-900 max-w-screen-lg rounded-lg border border-mineshaft-600">
+      <div className="p-4 mb-6 bg-mineshaft-900 max-w-6xl rounded-lg border border-mineshaft-600">
         <p className="text-xl font-semibold text-mineshaft-100 mb-8">
           Two-factor Authentication
         </p>
