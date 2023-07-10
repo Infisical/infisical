@@ -129,7 +129,7 @@ const getApps = async ({
     case INTEGRATION_TERRAFORM_CLOUD:
       apps = await getAppsTerraformCloud({
         accessToken,
-        organizationName: accessId,
+        workspacesId: accessId,
       });
       break;
     case INTEGRATION_TRAVISCI:
@@ -544,18 +544,19 @@ const getAppsTravisCI = async ({ accessToken }: { accessToken: string }) => {
  * Return list of projects for Terraform Cloud integration
  * @param {Object} obj
  * @param {String} obj.accessToken - access token for Terraform Cloud API
+ * @param {String} obj.workspacesId - workspace id of Terraform Cloud projects
  * @returns {Object[]} apps - names and ids of Terraform Cloud projects
  * @returns {String} apps.name - name of Terraform Cloud projects
  */
 const getAppsTerraformCloud = async ({ 
   accessToken,
-  organizationName
+  workspacesId
 }: {
   accessToken: string;
-  organizationName?: string;
+  workspacesId?: string;
 }) => {
   const res = (
-    await standardRequest.get(`${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${organizationName}/projects`, {
+    await standardRequest.get(`${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${workspacesId}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json",
@@ -563,11 +564,14 @@ const getAppsTerraformCloud = async ({
     })
   ).data.data;
 
-  const apps = res?.map((a: any) => {
-    return {
-      name: a?.attributes.name,
-    };
-  });
+  const apps = []
+
+  const appsObj = {
+      name: res?.attributes.name,
+      appId: res?.id,
+  };
+
+  apps.push(appsObj)
 
   return apps;
 };

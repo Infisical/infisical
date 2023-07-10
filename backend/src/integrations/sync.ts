@@ -191,7 +191,6 @@ const syncSecrets = async ({
       await syncSecretsTerraformCloud({
         integration,
         secrets,
-        accessId,
         accessToken,
       });
       break;
@@ -1821,29 +1820,42 @@ const syncSecretsCheckly = async ({
  * @param {Object} obj
  * @param {IIntegration} obj.integration - integration details
  * @param {Object} obj.secrets - secrets to push to integration (object where keys are secret keys and values are secret values)
- * @param {String} obj.accessToken - access token for Terraform Cloud integration
+ * @param {String} obj.accessToken - access token for Terraform Cloud API
  */
 const syncSecretsTerraformCloud = async ({
   integration,
   secrets,
-  accessId,
   accessToken,
 }: {
   integration: IIntegration;
   secrets: any;
-  accessId: string | null;
   accessToken: string;
 }) => {
-  await standardRequest.put(
-    `${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/organizations/${accessId}/${integration.app}`,
-    Object.keys(secrets).map((key) => ({
-      key,
-      value: secrets[key],
-    })),
+
+  // const entries = Object.entries(secrets);
+
+  // const data = entries.map((a: any) => {
+  //   const obj = {
+  //     "data": {
+  //       "attributes": {
+  //         "key": a.key,
+  //         "value": a.value,
+  //         "category": "env"
+  //       }
+  //     }
+  //   }
+  //   return Object.fromEntries(obj)
+  // })
+
+  console.log("Testing Out:", secrets)
+
+  await standardRequest.post(
+    `${INTEGRATION_TERRAFORM_CLOUD_API_URL}/api/v2/workspaces/${integration.appId}/vars`,
+    {},
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
+        "Content-Type": "application/vnd.api+json"
       },
     }
   );
