@@ -92,6 +92,9 @@ export const redirectForProviderAuth = (integrationOption: TCloudIntegration) =>
       case "cloudflare-pages":
         link = `${window.location.origin}/integrations/cloudflare-pages/authorize`;
         break;
+      case "northflank":
+        link = `${window.location.origin}/integrations/northflank/authorize`;
+        break;
       default:
         break;
     }
