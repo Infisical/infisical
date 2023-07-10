@@ -89,6 +89,7 @@
     "@types/node": "^18.11.3",
     "@types/nodemailer": "^6.4.6",
     "@types/passport": "^1.0.12",
+    "@types/picomatch": "^2.3.0",
     "@types/supertest": "^2.0.12",
     "@types/swagger-jsdoc": "^6.0.1",
     "@types/swagger-ui-express": "^4.1.3",

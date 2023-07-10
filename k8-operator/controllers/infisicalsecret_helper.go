@@ -219,7 +219,10 @@ func (r *InfisicalSecretReconciler) ReconcileInfisicalSecret(ctx context.Context
 		fmt.Println("ReconcileInfisicalSecret: Fetched secrets via service account")
 
 	} else if infisicalToken != "" {
-		plainTextSecretsFromApi, fullEncryptedSecretsResponse, err = util.GetPlainTextSecretsViaServiceToken(infisicalToken, secretVersionBasedOnETag)
+		envSlug := infisicalSecret.Spec.Authentication.ServiceToken.SecretsScope.EnvSlug
+		secretsPath := infisicalSecret.Spec.Authentication.ServiceToken.SecretsScope.SecretsPath
+
+		plainTextSecretsFromApi, fullEncryptedSecretsResponse, err = util.GetPlainTextSecretsViaServiceToken(infisicalToken, secretVersionBasedOnETag, envSlug, secretsPath)
 		if err != nil {
 			return fmt.Errorf("\nfailed to get secrets because [err=%v]", err)
 		}

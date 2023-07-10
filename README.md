@@ -18,7 +18,7 @@
   <a href="https://infisical.com/docs/self-hosting/deployment-options/aws-ec2">
     <img src=".github/images/deploy-to-aws.png" width="137" />
   </a>
-  <a href="https://marketplace.digitalocean.com/apps/chatwoot?refcode=f2238426a2a8" alt="Deploy to DigitalOcean">
+  <a href="https://infisical.com/docs/self-hosting/deployment-options/digital-ocean-marketplace" alt="Deploy to DigitalOcean">
      <img width="200" alt="Deploy to DO" src="https://www.deploytodo.com/do-btn-blue.svg"/>
   </a>
 </p>
