@@ -11,7 +11,6 @@ import {
   PmtMethod,
   ProductsTable,
   RenameOrgDTO,
-  GetOrgTrialUrlDTO,
   TaxID
 } from "./types";
 

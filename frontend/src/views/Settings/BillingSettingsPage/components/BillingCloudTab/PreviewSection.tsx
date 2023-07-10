@@ -11,7 +11,7 @@ import { ManagePlansModal } from "./ManagePlansModal";
 
 export const PreviewSection = () => {
     const { currentOrg } = useOrganization();
-    const { subscription, isLoading: isSubscriptionLoading } = useSubscription();
+    const { subscription } = useSubscription();
     const { data, isLoading } = useGetOrgPlanBillingInfo(currentOrg?._id ?? "");
     const getOrgTrialUrl = useGetOrgTrialUrl();
     const createCustomerPortalSession = useCreateCustomerPortalSession();

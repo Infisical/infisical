@@ -10,11 +10,6 @@ export type RenameOrgDTO = {
   newOrgName: string;
 };
 
-export type GetOrgTrialUrlDTO = {
-  orgId: string;
-  success_url: string;
-}
-
 export type BillingDetails = {
   name: string;
   email: string;

@@ -12,7 +12,7 @@ export {
     useGetOrgPlanTable,
     useGetOrgPmtMethods,
     useGetOrgTaxIds,
-    useRenameOrg, 
     useGetOrgTrialUrl,
+    useRenameOrg, 
     useUpdateOrgBillingDetails
 } from "./queries";

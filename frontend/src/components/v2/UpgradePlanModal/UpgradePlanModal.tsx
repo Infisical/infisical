@@ -1,11 +1,10 @@
-import Link from "next/link";
-import { useSubscription } from "@app/context";
-import { Button } from "@app/components/v2";
-import { Modal, ModalClose, ModalContent } from "../Modal";
-import { useOrganization } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import {
     useGetOrgTrialUrl
 } from "@app/hooks/api";
+
+import { Button } from "../Button";
+import { Modal, ModalContent } from "../Modal";
 
 type Props = {
   isOpen?: boolean;

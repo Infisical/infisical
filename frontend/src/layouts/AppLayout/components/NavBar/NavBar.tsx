@@ -3,7 +3,6 @@
 import { Fragment, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
@@ -23,9 +22,8 @@ import {TFunction} from "i18next";
 import guidGenerator from "@app/components/utilities/randomId";
 import { useOrganization, useSubscription,useUser } from "@app/context";
 import { 
-  useLogoutUser,
-  useGetOrgTrialUrl
-} from "@app/hooks/api";
+  useGetOrgTrialUrl,
+  useLogoutUser} from "@app/hooks/api";
 
 const supportOptions = (t: TFunction) => [
   [
@@ -70,7 +68,7 @@ export const Navbar = () => {
   const { subscription } = useSubscription();
 
   const { currentOrg, orgs } = useOrganization();
-  const { mutateAsync, isLoading } = useGetOrgTrialUrl();
+  const { mutateAsync } = useGetOrgTrialUrl();
   const { user } = useUser();
 
   const logout = useLogoutUser();
@@ -99,37 +97,6 @@ export const Navbar = () => {
       console.error(error);
     }
   };
-
-  function formatPlanSlug(slug: string) {
-    return slug
-      .replace(/(\b[a-z])/g, match => match.toUpperCase())
-      .replace(/-/g, " ");
-  }
-
-  const calculateRemainingDays = (date: number) => {
-    const now = new Date();
-    const endDate = new Date(date * 1000);
-    
-    const differenceInTime = endDate.getTime() - now.getTime();
-    const differenceInDays = Math.ceil(differenceInTime / (1000 * 3600 * 24));
-    
-    return differenceInDays;
-  }
-
-  const formatDate = (date: number) => {
-    const endDate = new Date(date * 1000);
-    const day: number = endDate.getDate();
-    const month: number = endDate.getMonth() + 1;
-    const year: number = endDate.getFullYear();
-    
-    const formattedDate: string = `${day}/${month}/${year}`;
-    const remainingDays: number = calculateRemainingDays(date);
-
-    return {
-      formattedDate,
-      remainingDays
-    };
-  }
 
   return (
     <div className="z-[70] border-b border-mineshaft-500 bg-mineshaft-900 text-white">
