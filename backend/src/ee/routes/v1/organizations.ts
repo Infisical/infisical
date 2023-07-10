@@ -41,6 +41,21 @@ router.get(
     organizationsController.getOrganizationPlan
 );
 
+router.post(
+    "/:organizationId/session/trial",
+    requireAuth({
+		acceptedAuthModes: ["jwt"],
+	}),
+    requireOrganizationAuth({
+        acceptedRoles: [OWNER, ADMIN, MEMBER],
+        acceptedStatuses: [ACCEPTED],
+    }),
+    param("organizationId").exists().trim(),
+    body("success_url").exists().trim(),
+    validateRequest,
+    organizationsController.startOrganizationTrial
+);
+
 router.get(
     "/:organizationId/plan/billing",
     requireAuth({
