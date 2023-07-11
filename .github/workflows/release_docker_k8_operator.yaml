@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: Extract version from tag
         id: extract_version
-        run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical/}"
+        run: echo "::set-output name=version::${GITHUB_REF_NAME#infisical-k8-operator/}"
       - uses: actions/checkout@v2
 
       - name: 🔧 Set up QEMU
