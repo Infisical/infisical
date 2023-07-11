@@ -3,12 +3,12 @@ title: "Configure email service"
 description: "How to configure your email when self-hosting Infisical."
 ---
 
-By default, the core functions of Infisical work without any email service configuration. Without email service, basic sign up/login and secret operations will function without any issue. 
+By default, the core functions of Infisical work without any email service configuration. Without email service, basic sign up/login and secret operations will function without any issue.
 However, the following functionality will be disabled.
 
-- Multi-factor authentication 
+- Multi-factor authentication
 - Sending invite links via email for projects to teammates
-- Sending alerts such as suspicious login attempts 
+- Sending alerts such as suspicious login attempts
 
 ## General configuration
 
@@ -157,8 +157,27 @@ SMTP_FROM_NAME=Infisical
   As per the [notice](https://support.google.com/accounts/answer/6010255?hl=en) by Google, you should note that using Gmail credentials for SMTP configuration
   will only work for Google Workspace or Google Cloud Identity customers as of May 30, 2022.
 
-  Put differently, the SMTP configuration is only possible with business (not personal) Gmail credentials.
+Put differently, the SMTP configuration is only possible with business (not personal) Gmail credentials.
+
 </Warning>
+
+</Accordion>
+
+<Accordion title="Office365">
+
+1. Create an account and configure [Office365](https://www.office.com/) to send emails.
+
+2. With your login credentials, you can now set up your SMTP environment variables:
+
+```
+SMTP_HOST=smtp.office365.com
+SMTP_USERNAME=username@yourdomain.com # your username
+SMTP_PASSWORD=password # your password
+SMTP_PORT=587
+SMTP_SECURE=true
+SMTP_FROM_ADDRESS=username@yourdomain.com
+SMTP_FROM_NAME=Infisical
+```
 
 </Accordion>
 
